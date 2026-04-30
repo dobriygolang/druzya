@@ -1,0 +1,198 @@
+// calendar.proto — Connect-RPC contract for personal events.
+//
+// Personal calendar surface: interviews, deadlines, exams, club_session
+// reflections, ad-hoc study blocks, ai-suggested prep blocks. One row =
+// one user (no participants — circle-wide events live in events.proto).
+//
+// CRUD + outcome capture + upcoming-feed for the Hone Today chip and the
+// AI coach severity grader.
+//
+// Bounded context: the service WRITES only to personal_events; it READS
+// companies(name) for the ListEvents projection. No other mutations.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// PersonalEventKind mirrors the personal_event_kind enum in 00003.
+// New kinds require both a SQL migration and a value here, by design —
+// AI coach severity rules switch on this enum.
+enum PersonalEventKind {
+  PERSONAL_EVENT_KIND_UNSPECIFIED         = 0;
+  PERSONAL_EVENT_KIND_INTERVIEW           = 1;
+  PERSONAL_EVENT_KIND_DEADLINE            = 2;
+  PERSONAL_EVENT_KIND_EXAM                = 3;
+  PERSONAL_EVENT_KIND_CLUB_SESSION        = 4;
+  PERSONAL_EVENT_KIND_STUDY_BLOCK         = 5;
+  PERSONAL_EVENT_KIND_INTERVIEW_PREP_BLOCK = 6;
+}
+
+// PersonalEventStatus mirrors the personal_event_status enum.
+enum PersonalEventStatus {
+  PERSONAL_EVENT_STATUS_UNSPECIFIED = 0;
+  PERSONAL_EVENT_STATUS_PLANNED     = 1;
+  PERSONAL_EVENT_STATUS_LIVE        = 2;
+  PERSONAL_EVENT_STATUS_DONE        = 3;
+  PERSONAL_EVENT_STATUS_CANCELLED   = 4;
+  PERSONAL_EVENT_STATUS_NO_SHOW     = 5;
+}
+
+// PersonalEventSource records who created the row. Drives default
+// trustworthiness in the coach prompt — user-confirmed events outrank
+// AI-suggested ones.
+enum PersonalEventSource {
+  PERSONAL_EVENT_SOURCE_UNSPECIFIED     = 0;
+  PERSONAL_EVENT_SOURCE_USER            = 1;
+  PERSONAL_EVENT_SOURCE_AI              = 2;
+  PERSONAL_EVENT_SOURCE_CLUB_CURATOR    = 3;
+  PERSONAL_EVENT_SOURCE_INTEGRATION_TG  = 4;
+}
+
+// PersonalEvent — one personal_events row, projected for the wire.
+// company_name is filled when company_id is set (LEFT JOIN on companies).
+message PersonalEvent {
+  string id                  = 1;
+  string user_id             = 2;
+  PersonalEventKind kind     = 3;
+  string title               = 4;
+  string description_md      = 5;
+
+  google.protobuf.Timestamp starts_at = 6;
+  google.protobuf.Timestamp ends_at   = 7;  // null when open-ended / all_day
+  bool   all_day             = 8;
+
+  string company_id          = 9;   // empty when not linked
+  string company_name        = 10;  // joined; empty when no company
+  string role                = 11;
+  string current_level       = 12;
+  int32  readiness_pct       = 13;  // 0..100
+
+  string codex_article_slug  = 14;
+  string track_id            = 15;  // forward-FK; empty when not linked
+  string club_session_id     = 16;  // forward-FK; empty when not linked
+
+  PersonalEventStatus status = 17;
+  string outcome_md          = 18;
+  // felt_score is optional 1..5. Wire 0 == "not set" so we don't need a
+  // separate optional-marker field; coach reader treats 0 as nil.
+  int32  felt_score          = 19;
+  google.protobuf.Timestamp finished_at = 20;
+
+  PersonalEventSource source = 21;
+  google.protobuf.Timestamp created_at = 22;
+  google.protobuf.Timestamp updated_at = 23;
+}
+
+// PersonalEventInput — writable shape for Create / Update.
+message PersonalEventInput {
+  PersonalEventKind kind     = 1;
+  string title               = 2;
+  string description_md      = 3;
+  google.protobuf.Timestamp starts_at = 4;
+  google.protobuf.Timestamp ends_at   = 5;
+  bool   all_day             = 6;
+  string company_id          = 7;   // empty = no company link
+  string role                = 8;
+  string current_level       = 9;
+  int32  readiness_pct       = 10;
+  string codex_article_slug  = 11;
+  string track_id            = 12;
+  string club_session_id     = 13;
+}
+
+// CreatePersonalEventRequest.
+message CreatePersonalEventRequest {
+  PersonalEventInput event = 1;
+  // source defaults to USER server-side when UNSPECIFIED. AI-side callers
+  // (coach generator) explicitly set AI; club curator set CLUB_CURATOR.
+  PersonalEventSource source = 2;
+}
+
+// UpdatePersonalEventRequest.
+message UpdatePersonalEventRequest {
+  string id                = 1;
+  PersonalEventInput event = 2;
+}
+
+// DeletePersonalEventRequest.
+message DeletePersonalEventRequest {
+  string id = 1;
+}
+message DeletePersonalEventResponse { bool ok = 1; }
+
+// ListPersonalEventsRequest — used by the calendar grid. Either
+// (from, to) range OR upcoming_within_days; the server treats them as
+// exclusive (range wins when both provided). kinds is an optional
+// allow-list filter, empty = every kind.
+message ListPersonalEventsRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to   = 2;
+  int32 upcoming_within_days = 3;  // 0 = use range
+  repeated PersonalEventKind kinds = 4;
+}
+
+message ListPersonalEventsResponse {
+  repeated PersonalEvent items = 1;
+}
+
+// SetPersonalEventStatusRequest — terminal-state transition. The Coach
+// uses this to mark events 'done' after UpsertOutcome; users use it to
+// cancel ahead of time.
+message SetPersonalEventStatusRequest {
+  string id = 1;
+  PersonalEventStatus status = 2;
+}
+
+// UpsertPersonalEventOutcomeRequest — post-event reflection capture.
+// felt_score 0 means "not set", 1..5 is the meaningful range. The
+// server flips status to DONE if it was still PLANNED/LIVE.
+message UpsertPersonalEventOutcomeRequest {
+  string id          = 1;
+  int32  felt_score  = 2;
+  string outcome_md  = 3;
+}
+
+service CalendarService {
+  // ListEvents powers the calendar grid + the Hone Today chip + the
+  // coach upcoming feed. Single endpoint, three caller shapes.
+  rpc ListEvents(ListPersonalEventsRequest) returns (ListPersonalEventsResponse) {
+    option (google.api.http) = {get: "/api/v1/calendar/events"};
+  }
+
+  rpc CreateEvent(CreatePersonalEventRequest) returns (PersonalEvent) {
+    option (google.api.http) = {
+      post: "/api/v1/calendar/events"
+      body: "*"
+    };
+  }
+
+  rpc UpdateEvent(UpdatePersonalEventRequest) returns (PersonalEvent) {
+    option (google.api.http) = {
+      put: "/api/v1/calendar/events/{id}"
+      body: "event"
+    };
+  }
+
+  rpc DeleteEvent(DeletePersonalEventRequest) returns (DeletePersonalEventResponse) {
+    option (google.api.http) = {delete: "/api/v1/calendar/events/{id}"};
+  }
+
+  // SetStatus is the cancel / no-show / mark-done path; outcome is
+  // captured separately so the UI can split the gestures.
+  rpc SetStatus(SetPersonalEventStatusRequest) returns (PersonalEvent) {
+    option (google.api.http) = {
+      post: "/api/v1/calendar/events/{id}/status"
+      body: "*"
+    };
+  }
+
+  rpc UpsertOutcome(UpsertPersonalEventOutcomeRequest) returns (PersonalEvent) {
+    option (google.api.http) = {
+      post: "/api/v1/calendar/events/{id}/outcome"
+      body: "*"
+    };
+  }
+}

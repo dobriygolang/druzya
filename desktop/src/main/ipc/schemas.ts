@@ -161,6 +161,15 @@ export const sessionListSchema = z.object({
   kind: sessionKindSchema.optional(),
 });
 
+// ─── English polish (Wave 6.2) ────────────────────────────────────────────
+//
+// The text comes straight from the system clipboard. 50_000 chars is the
+// same upper bound the Hone backend's GradeEnglishWriting use case enforces;
+// rejecting earlier here saves a round-trip when the user has a giant
+// document on the clipboard.
+
+export const englishPolishTextSchema = z.string().max(50_000);
+
 // ─── Transcription ────────────────────────────────────────────────────────
 
 // 25MB cap matches domain.MaxAudioBytes on the server. Language is

@@ -68,6 +68,44 @@ proto3.util.setEnumType(BriefRecommendationKind, "druz9.v1.BriefRecommendationKi
 ]);
 
 /**
+ * @generated from enum druz9.v1.InsightSeverity
+ */
+export enum InsightSeverity {
+  /**
+   * @generated from enum value: INSIGHT_SEVERITY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: INSIGHT_SEVERITY_CRUISE = 1;
+   */
+  CRUISE = 1,
+
+  /**
+   * @generated from enum value: INSIGHT_SEVERITY_NUDGE = 2;
+   */
+  NUDGE = 2,
+
+  /**
+   * @generated from enum value: INSIGHT_SEVERITY_WARN = 3;
+   */
+  WARN = 3,
+
+  /**
+   * @generated from enum value: INSIGHT_SEVERITY_CRITICAL = 4;
+   */
+  CRITICAL = 4,
+}
+// Retrieve enum metadata with: proto3.getEnumType(InsightSeverity)
+proto3.util.setEnumType(InsightSeverity, "druz9.v1.InsightSeverity", [
+  { no: 0, name: "INSIGHT_SEVERITY_UNSPECIFIED" },
+  { no: 1, name: "INSIGHT_SEVERITY_CRUISE" },
+  { no: 2, name: "INSIGHT_SEVERITY_NUDGE" },
+  { no: 3, name: "INSIGHT_SEVERITY_WARN" },
+  { no: 4, name: "INSIGHT_SEVERITY_CRITICAL" },
+]);
+
+/**
  * BriefRecommendation — one actionable suggestion in DailyBrief.
  *
  * @generated from message druz9.v1.BriefRecommendation
@@ -167,6 +205,24 @@ export class DailyBrief extends Message<DailyBrief> {
    */
   briefId = "";
 
+  /**
+   * Phase 4.4 — severity drives the colour-strip on the brief panel:
+   *   cruise   → muted
+   *   nudge    → blue
+   *   warn     → amber
+   *   critical → red
+   * Reason — short English fragment used in tooltips ("interview Friday
+   * in 2 days"). Computed deterministically server-side, не от LLM.
+   *
+   * @generated from field: druz9.v1.InsightSeverity severity = 6;
+   */
+  severity = InsightSeverity.UNSPECIFIED;
+
+  /**
+   * @generated from field: string severity_reason = 7;
+   */
+  severityReason = "";
+
   constructor(data?: PartialMessage<DailyBrief>) {
     super();
     proto3.util.initPartial(data, this);
@@ -180,6 +236,8 @@ export class DailyBrief extends Message<DailyBrief> {
     { no: 3, name: "recommendations", kind: "message", T: BriefRecommendation, repeated: true },
     { no: 4, name: "generated_at", kind: "message", T: Timestamp },
     { no: 5, name: "brief_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "severity", kind: "enum", T: proto3.getEnumType(InsightSeverity) },
+    { no: 7, name: "severity_reason", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DailyBrief {
@@ -537,6 +595,312 @@ export class AskNotesRequest extends Message<AskNotesRequest> {
 
   static equals(a: AskNotesRequest | PlainMessage<AskNotesRequest> | undefined, b: AskNotesRequest | PlainMessage<AskNotesRequest> | undefined): boolean {
     return proto3.util.equals(AskNotesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.Insight
+ */
+export class Insight extends Message<Insight> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * 'today'|'arena'|'mock'|'codex'
+   *
+   * @generated from field: string surface = 2;
+   */
+  surface = "";
+
+  /**
+   * @generated from field: druz9.v1.InsightSeverity severity = 3;
+   */
+  severity = InsightSeverity.UNSPECIFIED;
+
+  /**
+   * stable "what about" id
+   *
+   * @generated from field: string anchor = 4;
+   */
+  anchor = "";
+
+  /**
+   * ≤80 char glanceable fact
+   *
+   * @generated from field: string headline = 5;
+   */
+  headline = "";
+
+  /**
+   * 1 sentence with numbers
+   *
+   * @generated from field: string evidence = 6;
+   */
+  evidence = "";
+
+  /**
+   * 1 sentence pattern claim
+   *
+   * @generated from field: string interpret = 7;
+   */
+  interpret = "";
+
+  /**
+   * 1 sentence today's action
+   *
+   * @generated from field: string lever = 8;
+   */
+  lever = "";
+
+  /**
+   * in-app route, optional
+   *
+   * @generated from field: string deep_link = 9;
+   */
+  deepLink = "";
+
+  /**
+   * forward-FK to personal_events
+   *
+   * @generated from field: string event_id = 10;
+   */
+  eventId = "";
+
+  /**
+   * @generated from field: string skill_key = 11;
+   */
+  skillKey = "";
+
+  /**
+   * @generated from field: string codex_slug = 12;
+   */
+  codexSlug = "";
+
+  /**
+   * @generated from field: string track_id = 13;
+   */
+  trackId = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp generated_at = 14;
+   */
+  generatedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expires_at = 15;
+   */
+  expiresAt?: Timestamp;
+
+  constructor(data?: PartialMessage<Insight>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.Insight";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "surface", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "severity", kind: "enum", T: proto3.getEnumType(InsightSeverity) },
+    { no: 4, name: "anchor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "headline", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "evidence", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "interpret", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "lever", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "deep_link", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "event_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "skill_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 12, name: "codex_slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "track_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 14, name: "generated_at", kind: "message", T: Timestamp },
+    { no: 15, name: "expires_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Insight {
+    return new Insight().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Insight {
+    return new Insight().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Insight {
+    return new Insight().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Insight | PlainMessage<Insight> | undefined, b: Insight | PlainMessage<Insight> | undefined): boolean {
+    return proto3.util.equals(Insight, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListInsightsRequest
+ */
+export class ListInsightsRequest extends Message<ListInsightsRequest> {
+  /**
+   * surface MUST be one of the closed set; empty defaults to 'today'.
+   *
+   * @generated from field: string surface = 1;
+   */
+  surface = "";
+
+  /**
+   * 0 → server default (10)
+   *
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListInsightsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListInsightsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "surface", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListInsightsRequest {
+    return new ListInsightsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListInsightsRequest {
+    return new ListInsightsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListInsightsRequest {
+    return new ListInsightsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListInsightsRequest | PlainMessage<ListInsightsRequest> | undefined, b: ListInsightsRequest | PlainMessage<ListInsightsRequest> | undefined): boolean {
+    return proto3.util.equals(ListInsightsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListInsightsResponse
+ */
+export class ListInsightsResponse extends Message<ListInsightsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.Insight items = 1;
+   */
+  items: Insight[] = [];
+
+  constructor(data?: PartialMessage<ListInsightsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListInsightsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: Insight, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListInsightsResponse {
+    return new ListInsightsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListInsightsResponse {
+    return new ListInsightsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListInsightsResponse {
+    return new ListInsightsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListInsightsResponse | PlainMessage<ListInsightsResponse> | undefined, b: ListInsightsResponse | PlainMessage<ListInsightsResponse> | undefined): boolean {
+    return proto3.util.equals(ListInsightsResponse, a, b);
+  }
+}
+
+/**
+ * AckInsightRequest — user feedback. action 'follow' marks acted_at,
+ * 'dismiss' marks dismissed_at. Both idempotent on the server.
+ *
+ * @generated from message druz9.v1.AckInsightRequest
+ */
+export class AckInsightRequest extends Message<AckInsightRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * 'follow' | 'dismiss'
+   *
+   * @generated from field: string action = 2;
+   */
+  action = "";
+
+  constructor(data?: PartialMessage<AckInsightRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AckInsightRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "action", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AckInsightRequest {
+    return new AckInsightRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AckInsightRequest {
+    return new AckInsightRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AckInsightRequest {
+    return new AckInsightRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AckInsightRequest | PlainMessage<AckInsightRequest> | undefined, b: AckInsightRequest | PlainMessage<AckInsightRequest> | undefined): boolean {
+    return proto3.util.equals(AckInsightRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AckInsightResponse
+ */
+export class AckInsightResponse extends Message<AckInsightResponse> {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  constructor(data?: PartialMessage<AckInsightResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AckInsightResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AckInsightResponse {
+    return new AckInsightResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AckInsightResponse {
+    return new AckInsightResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AckInsightResponse {
+    return new AckInsightResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AckInsightResponse | PlainMessage<AckInsightResponse> | undefined, b: AckInsightResponse | PlainMessage<AckInsightResponse> | undefined): boolean {
+    return proto3.util.equals(AckInsightResponse, a, b);
   }
 }
 

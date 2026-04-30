@@ -66,6 +66,7 @@ type atlasNodeDTO struct {
 	PosY        *int   `json:"pos_y,omitempty"`
 	SortOrder   int    `json:"sort_order"`
 	IsActive    bool   `json:"is_active"`
+	TrackKind   string `json:"track_kind,omitempty"`
 	EdgesCount  int    `json:"edges_count,omitempty"`
 }
 
@@ -89,6 +90,7 @@ func toNodeDTO(n domain.AtlasCatalogueNode) atlasNodeDTO {
 		PosY:        n.PosY,
 		SortOrder:   n.SortOrder,
 		IsActive:    n.IsActive,
+		TrackKind:   n.TrackKind,
 	}
 }
 
@@ -124,7 +126,8 @@ type upsertNodeBody struct {
 	PosX        *int   `json:"pos_x"`
 	PosY        *int   `json:"pos_y"`
 	SortOrder   int    `json:"sort_order"`
-	IsActive    *bool  `json:"is_active"` // optional → defaults to true on create
+	IsActive    *bool  `json:"is_active"`  // optional → defaults to true on create
+	TrackKind   string `json:"track_kind"` // optional → defaults to 'dev' (column default)
 }
 
 func (b upsertNodeBody) validate() error {
@@ -183,6 +186,7 @@ func (h *AtlasAdminHandler) HandleCreateNode(w http.ResponseWriter, r *http.Requ
 		PosY:        body.PosY,
 		SortOrder:   body.SortOrder,
 		IsActive:    active,
+		TrackKind:   body.TrackKind,
 	}
 	if err := h.Repo.UpsertNode(r.Context(), n); err != nil {
 		h.respondErr(w, fmt.Errorf("atlas-admin: upsert node: %w", err))
@@ -231,6 +235,7 @@ func (h *AtlasAdminHandler) HandleUpdateNode(w http.ResponseWriter, r *http.Requ
 		PosY:        body.PosY,
 		SortOrder:   body.SortOrder,
 		IsActive:    active,
+		TrackKind:   body.TrackKind,
 	}
 	if err := h.Repo.UpsertNode(r.Context(), n); err != nil {
 		h.respondErr(w, fmt.Errorf("atlas-admin: upsert node: %w", err))

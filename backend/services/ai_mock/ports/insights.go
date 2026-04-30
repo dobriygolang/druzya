@@ -127,6 +127,34 @@ func (s *MockServer) GetInsightsOverview(
 			Score: st.Score, Verdict: st.Verdict,
 		})
 	}
+	// English HR trend (Wave 1 of docs/feature/english.md). Skip the
+	// whole field when the user has no English HR sessions in the
+	// window — the frontend hides the card on nil/zero, not on
+	// total_sessions == 0, so leaving the proto field unset is the
+	// cleaner contract.
+	if res.EnglishHR.TotalSessions > 0 {
+		eh := &pb.EnglishHRTrend{
+			TotalSessions: int32(res.EnglishHR.TotalSessions),
+			AvgScore:      int32(res.EnglishHR.AvgScore),
+			LastScore:     int32(res.EnglishHR.LastScore),
+			Trajectory:    make([]*pb.EnglishHRTrendPoint, 0, len(res.EnglishHR.Trajectory)),
+		}
+		if !res.EnglishHR.LastFinishedAt.IsZero() {
+			eh.LastFinishedAt = res.EnglishHR.LastFinishedAt.UTC().Format(time.RFC3339)
+		}
+		for _, p := range res.EnglishHR.Trajectory {
+			ts := ""
+			if !p.FinishedAt.IsZero() {
+				ts = p.FinishedAt.UTC().Format(time.RFC3339)
+			}
+			eh.Trajectory = append(eh.Trajectory, &pb.EnglishHRTrendPoint{
+				SessionId:  p.SessionID.String(),
+				FinishedAt: ts,
+				Score:      int32(p.Score),
+			})
+		}
+		out.EnglishHr = eh
+	}
 	if out.TotalSessions_30D > 0 && s.InsightsSummaryFn != nil {
 		out.Summary = s.InsightsSummaryFn(ctx, uid.String(), summaryInput)
 	}

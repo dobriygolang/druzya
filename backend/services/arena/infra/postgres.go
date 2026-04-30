@@ -280,6 +280,70 @@ func (p *Postgres) ListByUser(
 	return out, int(totalRaw), nil
 }
 
+// PickBySkillFilter возвращает одну активную task'у с пересечением
+// skill_keys && skillFilter. Используется solo-лобби (Phase 2c-2),
+// чтобы Practice CTA на TrackDetailPage привёл юзера к задаче,
+// размеченной правильным Atlas-узлом. section + diff передаются как
+// soft hint (ORDER BY совпадение по section/diff first), но не как
+// жёсткий фильтр — иначе при разреженной разметке solo lobby почти
+// всегда упадёт в fallback.
+//
+// Возвращает ErrNotFound если ни одна активная задача не помечена
+// нужными skill_keys; вызывающий код в lobby адаптере fallback'ом
+// делает PickBySectionDifficulty.
+func (p *Postgres) PickBySkillFilter(
+	ctx context.Context,
+	skillFilter []string,
+	section enums.Section,
+	diff enums.Difficulty,
+) (domain.TaskPublic, error) {
+	if len(skillFilter) == 0 {
+		return domain.TaskPublic{}, fmt.Errorf("arena.pg.PickBySkillFilter: empty filter")
+	}
+	const sql = `
+		SELECT id, version, slug, title_ru, description_ru, difficulty, section,
+		       time_limit_sec, memory_limit_mb
+		  FROM tasks
+		 WHERE is_active
+		   AND skill_keys && $1
+		 ORDER BY (section = $2 AND difficulty = $3) DESC,
+		          (section = $2) DESC,
+		          random()
+		 LIMIT 1`
+	var (
+		id            uuid.UUID
+		version       int32
+		slug          string
+		titleRU       string
+		descRU        string
+		difficultyStr string
+		sectionStr    string
+		timeLimitSec  int32
+		memoryLimitMb int32
+	)
+	err := p.pool.QueryRow(ctx, sql, skillFilter, string(section), string(diff)).
+		Scan(&id, &version, &slug, &titleRU, &descRU,
+			&difficultyStr, &sectionStr, &timeLimitSec, &memoryLimitMb)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.TaskPublic{}, domain.ErrNotFound
+		}
+		return domain.TaskPublic{}, fmt.Errorf("arena.pg.PickBySkillFilter: %w", err)
+	}
+	return domain.TaskPublic{
+		ID:            id,
+		Version:       int(version),
+		Slug:          slug,
+		Title:         titleRU,
+		Description:   descRU,
+		Difficulty:    enums.Difficulty(difficultyStr),
+		Section:       enums.Section(sectionStr),
+		TimeLimitSec:  int(timeLimitSec),
+		MemoryLimitMB: int(memoryLimitMb),
+		StarterCode:   map[string]string{},
+	}, nil
+}
+
 // PickBySectionDifficulty возвращает одну активную task'у по заданным
 // section+difficulty. solution_hint никогда не выбирается.
 func (p *Postgres) PickBySectionDifficulty(ctx context.Context, section enums.Section, diff enums.Difficulty) (domain.TaskPublic, error) {

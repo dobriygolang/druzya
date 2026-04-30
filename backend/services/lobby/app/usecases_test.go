@@ -174,7 +174,7 @@ type fakeMatchCreator struct {
 	err     error
 }
 
-func (f *fakeMatchCreator) CreateMatch(_ context.Context, _ domain.Mode, _, _ string, _ []uuid.UUID) (uuid.UUID, error) {
+func (f *fakeMatchCreator) CreateMatch(_ context.Context, _ domain.Mode, _, _ string, _ []uuid.UUID, _ []string) (uuid.UUID, error) {
 	if f.err != nil {
 		return uuid.Nil, f.err
 	}
@@ -250,7 +250,7 @@ func TestJoinByCode_LookupHappy(t *testing.T) {
 	owner := uuid.New()
 	l, err := create.Do(context.Background(), CreateLobbyInput{
 		OwnerID:    owner,
-		Mode:       domain.Mode2v2,
+		Mode:       domain.Mode1v1,
 		Section:    "go",
 		Difficulty: "hard",
 	})

@@ -365,7 +365,7 @@ func languageToProtoEditor(l enums.Language) pb.Language {
 }
 
 func sectionToProtoEditor(s enums.Section) pb.Section {
-	switch s {
+	switch s { //nolint:exhaustive // free-form sections fall through to default UNSPECIFIED
 	case enums.SectionAlgorithms:
 		return pb.Section_SECTION_ALGORITHMS
 	case enums.SectionSQL:

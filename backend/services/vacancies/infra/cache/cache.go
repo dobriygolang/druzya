@@ -281,23 +281,73 @@ func (c *Cache) List(filter domain.ListFilter) domain.Page {
 }
 
 // Facets aggregates the four sidebar histograms over the *unfiltered*
-// snapshot — that's what the user wants, the badges show "how many exist
-// in the catalogue" not "how many remain after my current filter".
+// snapshot. Phase 1.6 — kept for callers that explicitly want the
+// catalogue-wide counts (e.g. boot diagnostics). UI now goes through
+// FacetsForFilter, which respects active sidebar selections.
 func (c *Cache) Facets() domain.Facets {
+	return c.FacetsForFilter(domain.ListFilter{})
+}
+
+// FacetsForFilter computes per-axis counts under the same standard
+// e-commerce facet rule used by Algolia / Booking / Yandex.Market:
+// each axis ignores its OWN selection so toggling stays reversible
+// (otherwise selecting a single option would zero the other options
+// and lock the user in). Non-axis filters DO apply: salary / location
+// / skills always narrow the dataset because they're free-form.
+//
+// Concretely:
+//   - Companies counts apply (categories, sources, salary, location, skills)
+//   - Categories counts apply (companies, sources, salary, location, skills)
+//   - Sources counts apply (companies, categories, salary, location, skills)
+//   - Locations counts apply (companies, categories, sources, salary, skills)
+//
+// Cost: 4 linear passes over the snapshot. Cache snapshot is in-memory
+// and small (<10k rows), so 40k matchesFilter() calls per request stay
+// in single-digit-ms range.
+func (c *Cache) FacetsForFilter(f domain.ListFilter) domain.Facets {
 	all := c.snapshot()
 	companies := map[string]int{}
-	categories := map[string]int{}
-	sources := map[string]int{}
-	locations := map[string]int{}
 	for _, v := range all {
-		if v.Company != "" {
-			companies[v.Company]++
+		if v.Company == "" {
+			continue
+		}
+		// Drop only the Companies axis from f.
+		probe := f
+		probe.Companies = nil
+		if !matchesFilter(v, probe) {
+			continue
+		}
+		companies[v.Company]++
+	}
+	categories := map[string]int{}
+	for _, v := range all {
+		probe := f
+		probe.Categories = nil
+		if !matchesFilter(v, probe) {
+			continue
 		}
 		categories[string(v.Category)]++
-		sources[string(v.Source)]++
-		if v.Location != "" {
-			locations[v.Location]++
+	}
+	sources := map[string]int{}
+	for _, v := range all {
+		probe := f
+		probe.Sources = nil
+		if !matchesFilter(v, probe) {
+			continue
 		}
+		sources[string(v.Source)]++
+	}
+	locations := map[string]int{}
+	for _, v := range all {
+		if v.Location == "" {
+			continue
+		}
+		probe := f
+		probe.Location = ""
+		if !matchesFilter(v, probe) {
+			continue
+		}
+		locations[v.Location]++
 	}
 	return domain.Facets{
 		Companies:  toEntriesSorted(companies),

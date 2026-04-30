@@ -111,9 +111,14 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 		RejectAppUC:    &profileApp.RejectInterviewerApplication{Repo: cached},
 		AllocateAtlas:  profileApp.NewAllocateAtlasNode(cached, d.Log),
 		VacanciesModel: pg, // non-cached: setting flips at most once/week
-		ReportFetcher:  reportCache,
-		Repo:           cached,
-		Log:            d.Log,
+		// Multi-track UCs hit Postgres directly — there's no payoff to
+		// caching since the response is read once on onboarding/settings
+		// load and the dataset per user is at most 6 rows.
+		GetUserTracks: &profileApp.GetUserTracks{Repo: pg},
+		SetUserTracks: &profileApp.SetUserTracks{Repo: pg},
+		ReportFetcher: reportCache,
+		Repo:          cached,
+		Log:           d.Log,
 	})
 	server := profilePorts.NewProfileServer(h)
 

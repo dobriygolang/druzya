@@ -19,17 +19,27 @@ import (
 	"github.com/google/uuid"
 )
 
-// Mode — number of human players. Internal arena matches still use
+// Mode — lobby format. Internal arena matches still use
 // shared/enums.ArenaMode; this enum is the lobby-level UX contract.
+//
+// Phase 1.7 — 2v2 removed: paired-mode UX was confusing (queue counters
+// shared across modes, half the lobby UI was Mode-dependent) and weak
+// adoption. Existing arena_match rows with mode='duo_2v2' stay as
+// history but no new lobby can request 2v2.
+//
+// Phase 2c — `solo` introduced: a single-player drill room with an
+// optional skill_keys filter ("only BFS", "only segment-tree"). Solo
+// lobbies pull tasks from arena_tasks WHERE skill_keys && filter.
+// MaxMembers is forced to 1 by the validator.
 type Mode string
 
 const (
-	Mode1v1 Mode = "1v1"
-	Mode2v2 Mode = "2v2"
+	Mode1v1  Mode = "1v1"
+	ModeSolo Mode = "solo"
 )
 
 // IsValid returns true for known modes.
-func (m Mode) IsValid() bool { return m == Mode1v1 || m == Mode2v2 }
+func (m Mode) IsValid() bool { return m == Mode1v1 || m == ModeSolo }
 
 // Visibility controls discoverability.
 type Visibility string
@@ -75,6 +85,12 @@ const CodeLength = 4
 const MaxCodeRetries = 5
 
 // Lobby is the room entity.
+//
+// SkillFilter is a Phase 2c addition: when non-empty, the task picker
+// only chooses tasks tagged with at least one of the listed skill_keys
+// (Atlas node keys). UI uses this to spin up "only BFS" or
+// "only segment-tree" drill sessions from a Track step. Empty = no
+// filter, falls back to the standard (Section, Difficulty) selector.
 type Lobby struct {
 	ID           uuid.UUID
 	Code         string
@@ -82,6 +98,7 @@ type Lobby struct {
 	Mode         Mode
 	Section      string
 	Difficulty   string
+	SkillFilter  []string
 	Visibility   Visibility
 	MaxMembers   int
 	AIAllowed    bool
@@ -93,14 +110,13 @@ type Lobby struct {
 }
 
 // MaxSlotsForMode returns the canonical slot count for a mode. Used to
-// validate MaxMembers requested by the owner — the column itself accepts
-// 2..4 but we constrain by mode here.
+// validate MaxMembers requested by the owner.
 func MaxSlotsForMode(m Mode) int {
 	switch m {
 	case Mode1v1:
 		return 2
-	case Mode2v2:
-		return 4
+	case ModeSolo:
+		return 1
 	}
 	return 0
 }

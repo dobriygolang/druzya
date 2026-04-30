@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { PaywallPortal } from './components/PaywallPortal';
 import { AreaOverlayScreen } from './screens/area-overlay/AreaOverlayScreen';
 import { CompactScreen } from './screens/compact/CompactScreen';
+import { EnglishPolishScreen } from './screens/english-polish/EnglishPolishScreen';
 import { ExpandedScreen } from './screens/expanded/ExpandedScreen';
 import { HistoryScreen } from './screens/history/HistoryScreen';
 import { OnboardingScreen } from './screens/onboarding/OnboardingScreen';
@@ -26,7 +27,8 @@ type Route =
   | 'history'
   | 'picker'
   | 'toast'
-  | 'tray-popup';
+  | 'tray-popup'
+  | 'english-polish';
 
 function readRoute(): Route {
   // Hash may carry a query string (e.g. #/picker?kind=model), strip it.
@@ -39,7 +41,8 @@ function readRoute(): Route {
     h === 'history' ||
     h === 'picker' ||
     h === 'toast' ||
-    h === 'tray-popup'
+    h === 'tray-popup' ||
+    h === 'english-polish'
   )
     return h;
   return 'compact';
@@ -77,6 +80,7 @@ export function App() {
   if (route === 'picker') return <PickerScreen />;
   if (route === 'toast') return <ToastScreen />;
   if (route === 'tray-popup') return <TrayScreen />;
+  if (route === 'english-polish') return <EnglishPolishScreen />;
 
   const screen =
     route === 'compact' ? <CompactScreen /> :

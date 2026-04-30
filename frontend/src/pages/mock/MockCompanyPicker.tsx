@@ -41,11 +41,39 @@ function loadInitialAiAssist(): boolean {
   }
 }
 
+// Phase 1.6 — sections selector. Empty array (or all selected) = full
+// 5-stage pipeline; subset = pipeline trimmed to those stages only.
+// Persisted in localStorage so the user's preferred subset survives
+// reloads inside one device.
+const SECTION_OPTIONS: { id: string; label: string; hint: string }[] = [
+  { id: 'hr', label: 'HR', hint: 'Скрининг с голосовой нейрокой' },
+  { id: 'algo', label: 'Algo', hint: 'Алгоритмическая задача в редакторе' },
+  { id: 'coding', label: 'Coding', hint: 'Go + SQL практический раунд' },
+  { id: 'sysdesign', label: 'System Design', hint: 'Проектирование на whiteboard' },
+  { id: 'behavioral', label: 'Behavioral', hint: 'Поведенческие вопросы' },
+]
+
+const MOCK_SECTIONS_STORAGE_KEY = 'druz9.mock.sections'
+
+function loadInitialSections(): string[] {
+  try {
+    if (typeof window === 'undefined') return []
+    const raw = window.localStorage.getItem(MOCK_SECTIONS_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((x): x is string => typeof x === 'string' && SECTION_OPTIONS.some((o) => o.id === x))
+  } catch {
+    return []
+  }
+}
+
 export default function MockCompanyPicker() {
   const navigate = useNavigate()
   const companies = useMockCompaniesQuery()
   const create = useCreateMockPipelineMutation()
   const [aiAssist, setAiAssist] = useState<boolean>(loadInitialAiAssist)
+  const [selectedSections, setSelectedSections] = useState<string[]>(loadInitialSections)
 
   const persistAiAssist = (next: boolean) => {
     setAiAssist(next)
@@ -58,9 +86,34 @@ export default function MockCompanyPicker() {
     }
   }
 
+  const persistSections = (next: string[]) => {
+    setSelectedSections(next)
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(MOCK_SECTIONS_STORAGE_KEY, JSON.stringify(next))
+      }
+    } catch {
+      /* localStorage unavailable */
+    }
+  }
+
+  const toggleSection = (id: string) => {
+    if (selectedSections.includes(id)) {
+      persistSections(selectedSections.filter((x) => x !== id))
+    } else {
+      persistSections([...selectedSections, id])
+    }
+  }
+
   const handlePick = (company_id: string) => {
+    // Empty selection or "all" both mean full pipeline; backend treats
+    // empty array as "no allow-list".
+    const sections =
+      selectedSections.length === 0 || selectedSections.length === SECTION_OPTIONS.length
+        ? undefined
+        : selectedSections
     create.mutate(
-      { company_id, ai_assist: aiAssist },
+      { company_id, ai_assist: aiAssist, sections },
       {
         onSuccess: (pipeline) => navigate(`/mock/pipeline/${pipeline.id}`),
       },
@@ -83,6 +136,43 @@ export default function MockCompanyPicker() {
 
         <FirstRunSteps />
 
+
+        <fieldset
+          className="flex flex-col gap-2 rounded-xl border border-border bg-surface-1 p-4"
+          aria-label="Какие секции тренировать"
+        >
+          <legend className="font-mono text-[10px] uppercase tracking-wider text-text-muted px-1">
+            Секции пайплайна
+          </legend>
+          <p className="text-xs text-text-secondary">
+            Пусто или все включены = полный 5-секционный собес. Выбери подмножество, чтобы потренировать только
+            нужное.
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {SECTION_OPTIONS.map((opt) => {
+              const checked = selectedSections.includes(opt.id)
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={checked}
+                  onClick={() => toggleSection(opt.id)}
+                  title={opt.hint}
+                  className={[
+                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-xs transition-colors',
+                    checked
+                      ? 'border-text-primary bg-text-primary text-bg'
+                      : 'border-border bg-surface-2 text-text-secondary hover:border-text-primary/40 hover:text-text-primary',
+                  ].join(' ')}
+                >
+                  {checked && <Check className="h-3 w-3" />}
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
 
         <fieldset
           className="flex flex-col gap-2 rounded-xl border border-border bg-surface-1 p-4"
@@ -205,28 +295,14 @@ function AiAssistOption({
   )
 }
 
-// FirstRunSteps — 3-card explainer for first-time users. Dismissable;
-// the dismissed flag lives in localStorage so we don't re-shame
-// returning users with onboarding noise.
-const FIRST_RUN_KEY = 'druz9.mock.first-run-dismissed'
-
+// FirstRunSteps — 3-card explainer for the mock pipeline.
+//
+// Phase 0.10 — pinned permanently (no Dismiss button). The previous
+// localStorage-flag UX caused users to accidentally hide it on first
+// visit and never see the explanation again — the cards are tiny and
+// re-reading them costs nothing, while removing them stranded
+// returning users without context.
 function FirstRunSteps() {
-  const [dismissed, setDismissed] = useState<boolean>(() => {
-    try {
-      return typeof window !== 'undefined' && window.localStorage.getItem(FIRST_RUN_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
-  if (dismissed) return null
-  const dismiss = () => {
-    setDismissed(true)
-    try {
-      window.localStorage.setItem(FIRST_RUN_KEY, '1')
-    } catch {
-      /* ignore */
-    }
-  }
   const steps: Array<{ n: string; title: string; body: string }> = [
     {
       n: '1',
@@ -246,17 +322,10 @@ function FirstRunSteps() {
   ]
   return (
     <div className="rounded-xl border border-border bg-surface-1 p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3">
         <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
           Как это работает
         </span>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-text-primary"
-        >
-          Скрыть
-        </button>
       </div>
       <ol className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {steps.map((s) => (

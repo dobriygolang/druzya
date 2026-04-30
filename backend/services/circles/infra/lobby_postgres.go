@@ -88,8 +88,9 @@ func (p *LobbyPostgres) Create(ctx context.Context, l lobbyDomain.Lobby) (lobbyD
 		INSERT INTO lobbies(
 			id, code, owner_id, mode, section, difficulty, visibility,
 			max_members, ai_allowed, time_limit_min, status,
+			skill_filter,
 			created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$12)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13)
 		RETURNING code, created_at, updated_at`
 
 	var (
@@ -108,6 +109,7 @@ func (p *LobbyPostgres) Create(ctx context.Context, l lobbyDomain.Lobby) (lobbyD
 			lobPgUUID(l.ID), code, lobPgUUID(l.OwnerID),
 			string(l.Mode), l.Section, l.Difficulty, string(l.Visibility),
 			int16(l.MaxMembers), l.AIAllowed, int16(l.TimeLimitMin), string(l.Status),
+			normalizeSkillFilter(l.SkillFilter),
 			l.CreatedAt,
 		).Scan(&gotCode, &created, &updated)
 		if err == nil {
@@ -143,6 +145,7 @@ func (p *LobbyPostgres) Create(ctx context.Context, l lobbyDomain.Lobby) (lobbyD
 func (p *LobbyPostgres) Get(ctx context.Context, id uuid.UUID) (lobbyDomain.Lobby, error) {
 	const q = `SELECT id, code, owner_id, mode, section, difficulty, visibility,
 		              max_members, ai_allowed, time_limit_min, status, match_id,
+		              skill_filter,
 		              created_at, updated_at
 		         FROM lobbies WHERE id = $1`
 	return p.scanOne(p.pool.QueryRow(ctx, q, lobPgUUID(id)))
@@ -151,6 +154,7 @@ func (p *LobbyPostgres) Get(ctx context.Context, id uuid.UUID) (lobbyDomain.Lobb
 func (p *LobbyPostgres) GetByCode(ctx context.Context, code string) (lobbyDomain.Lobby, error) {
 	const q = `SELECT id, code, owner_id, mode, section, difficulty, visibility,
 		              max_members, ai_allowed, time_limit_min, status, match_id,
+		              skill_filter,
 		              created_at, updated_at
 		         FROM lobbies WHERE code = $1`
 	return p.scanOne(p.pool.QueryRow(ctx, q, strings.ToUpper(code)))
@@ -167,10 +171,11 @@ func (p *LobbyPostgres) scanOne(row lobbyRow) (lobbyDomain.Lobby, error) {
 		code, mode, sec, diff, vis, st string
 		maxMembers, timeLimit          int16
 		aiAllowed                      bool
+		skillFilter                    []string
 		created, updated               time.Time
 	)
 	if err := row.Scan(&id, &code, &owner, &mode, &sec, &diff, &vis,
-		&maxMembers, &aiAllowed, &timeLimit, &st, &matchID, &created, &updated); err != nil {
+		&maxMembers, &aiAllowed, &timeLimit, &st, &matchID, &skillFilter, &created, &updated); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return lobbyDomain.Lobby{}, lobbyDomain.ErrNotFound
 		}
@@ -182,13 +187,24 @@ func (p *LobbyPostgres) scanOne(row lobbyRow) (lobbyDomain.Lobby, error) {
 		Visibility: lobbyDomain.Visibility(vis),
 		MaxMembers: int(maxMembers), AIAllowed: aiAllowed,
 		TimeLimitMin: int(timeLimit), Status: lobbyDomain.Status(st),
-		CreatedAt: created, UpdatedAt: updated,
+		SkillFilter: skillFilter,
+		CreatedAt:   created, UpdatedAt: updated,
 	}
 	if matchID.Valid {
 		mid := lobFromPgUUID(matchID)
 		out.MatchID = &mid
 	}
 	return out, nil
+}
+
+// normalizeSkillFilter — гарантия non-nil pgx-friendly значения для
+// TEXT[] NOT NULL колонки. nil срез pgx сериализует как NULL → CHECK
+// constraint падает; явный []string{} → '{}'.
+func normalizeSkillFilter(in []string) []string {
+	if len(in) == 0 {
+		return []string{}
+	}
+	return in
 }
 
 func (p *LobbyPostgres) ListPublic(ctx context.Context, f lobbyDomain.ListFilter) ([]lobbyDomain.Lobby, error) {
@@ -206,6 +222,7 @@ func (p *LobbyPostgres) ListPublic(ctx context.Context, f lobbyDomain.ListFilter
 	q := fmt.Sprintf(`
 		SELECT id, code, owner_id, mode, section, difficulty, visibility,
 		       max_members, ai_allowed, time_limit_min, status, match_id,
+		       skill_filter,
 		       created_at, updated_at
 		  FROM lobbies
 		 WHERE %s

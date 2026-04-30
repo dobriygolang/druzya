@@ -253,6 +253,12 @@ const api: Druz9API = {
     listAttachedToSession: (sessionId: string) =>
       ipcRenderer.invoke(invokeChannels.documentsListAttached, sessionId) as Promise<string[]>,
   },
+  english: {
+    polish: (text: string) =>
+      ipcRenderer.invoke(invokeChannels.englishPolishGrade, text) as Promise<
+        import('@shared/ipc').EnglishPolishResult
+      >,
+  },
   on: <T>(channel: string, handler: (payload: T) => void) => {
     // Whitelist so renderer can't subscribe to arbitrary channels.
     const allowed = Object.values(eventChannels) as string[];

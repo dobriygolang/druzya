@@ -18,6 +18,7 @@ import {
   areaRectSchema,
   documentSearchSchema,
   documentUploadSchema,
+  englishPolishTextSchema,
   hotkeyActionSchema,
   hotkeyBindingsSchema,
   memorySyncSchema,
@@ -47,6 +48,7 @@ import { createMemoryClient } from '../api/memory';
 import { createTranscriptionClient } from '../api/transcription';
 import { createAudioCapture, type AudioCaptureState } from '../capture/audio-mac';
 import { createSuggestionClient } from '../api/suggestion';
+import { createEnglishPolishClient } from '../api/english';
 import { createTriggerPolicy } from '../coach/trigger-policy';
 import { loadAppearance, saveAppearance, type AppearancePrefs } from '../settings/appearance';
 import { createSessionManager, type SessionManager } from '../sessions/manager';
@@ -803,6 +805,21 @@ export function registerHandlers(opts: RegisterOptions): void {
   // ── Transcription ──
   handleIn(invokeChannels.transcriptionTranscribe, transcribeSchema, async (input) =>
     transcriptionREST.transcribe(input),
+  );
+
+  // ── English polish (Wave 6.2) ──
+  // Renderer passes the clipboard text; we proxy to /hone/writing/grade
+  // (Wave 4.4 backend). Keeps the bearer token main-only.
+  const englishREST = createEnglishPolishClient({
+    apiBaseURL,
+    updateFeedURL: '',
+    sentryDSN: '',
+    environment: '',
+    defaultLocale: 'ru',
+    isDev: false,
+  });
+  handleIn(invokeChannels.englishPolishGrade, englishPolishTextSchema, async (text) =>
+    englishREST.polish(text),
   );
 
   // ── Audio capture (macOS system audio via ScreenCaptureKit native) ──

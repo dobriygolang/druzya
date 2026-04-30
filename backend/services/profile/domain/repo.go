@@ -1,4 +1,4 @@
-//go:generate go run go.uber.org/mock/mockgen -package mocks -destination mocks/repo_mock.go -source repo.go
+//go:generate mockgen -package mocks -destination mocks/repo_mock.go -source repo.go
 package domain
 
 import (
@@ -101,6 +101,18 @@ type ProfileRepo interface {
 	// ResolveShareToken находит активный токен; ErrNotFound если протух/нет.
 	// Также инкрементирует views_count атомарно.
 	ResolveShareToken(ctx context.Context, token string) (ShareResolution, error)
+
+	// ── Multi-track (см docs/feature/tracks.md) ──────────────────────────
+	// ListUserTracks возвращает все активные треки пользователя, primary
+	// первым. Пустой срез — валидный ответ (например, юзер сбросил
+	// onboarding и ещё не выбрал треки заново).
+	ListUserTracks(ctx context.Context, userID uuid.UUID) ([]UserTrack, error)
+
+	// SetUserTracks атомарно замещает список треков пользователя. Вызывающий
+	// гарантирует ValidateTrackList(items) == nil. Реализация: delete +
+	// bulk insert в одной транзакции; started_at сохраняется для треков,
+	// которые остались, и проставляется now() для новых.
+	SetUserTracks(ctx context.Context, userID uuid.UUID, items []UserTrack) ([]UserTrack, error)
 }
 
 // Bundle is the joined shape of GET /profile/me.

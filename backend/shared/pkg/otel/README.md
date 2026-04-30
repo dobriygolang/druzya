@@ -22,23 +22,12 @@ func main() {
 
 ## Configuration
 
-| Env var                       | Default              | Notes                                |
-|-------------------------------|----------------------|--------------------------------------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://jaeger:4318` | OTLP/HTTP receiver. Jaeger 1.62+ OK. |
-| `APP_ENV`                     | (empty)              | Tagged onto every span as `deployment.environment.name`. |
+| Env var                       | Default     | Notes                                |
+|-------------------------------|-------------|--------------------------------------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | (empty)     | Если пусто — NoopTracerProvider, спанов не пишем. В проде заполняется когда подключим Tempo в Grafana Cloud. |
+| `APP_ENV`                     | (empty)     | Tagged onto every span as `deployment.environment.name`. |
 
-## Viewing traces locally
-
-Bring up the observability stack:
-
-```bash
-docker-compose -f docker-compose.yml -f infra/observability/docker-compose.obs.yml up
-```
-
-Then open Jaeger UI: <http://localhost:16686> and select service
-`druz9-monolith`. In Grafana (<http://localhost:3000>, admin/admin) the
-Jaeger datasource is auto-provisioned, so you can also click trace links
-from Loki log lines.
+Tracing сейчас disabled by default — wiring готов, но collector не настроен. Включается единой env-переменной когда понадобится.
 
 ## Propagation
 

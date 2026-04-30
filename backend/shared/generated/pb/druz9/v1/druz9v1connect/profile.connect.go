@@ -83,6 +83,12 @@ const (
 	// ProfileServiceSetAIVacanciesModelProcedure is the fully-qualified name of the ProfileService's
 	// SetAIVacanciesModel RPC.
 	ProfileServiceSetAIVacanciesModelProcedure = "/druz9.v1.ProfileService/SetAIVacanciesModel"
+	// ProfileServiceGetUserTracksProcedure is the fully-qualified name of the ProfileService's
+	// GetUserTracks RPC.
+	ProfileServiceGetUserTracksProcedure = "/druz9.v1.ProfileService/GetUserTracks"
+	// ProfileServiceSetUserTracksProcedure is the fully-qualified name of the ProfileService's
+	// SetUserTracks RPC.
+	ProfileServiceSetUserTracksProcedure = "/druz9.v1.ProfileService/SetUserTracks"
 )
 
 // ProfileServiceClient is a client for the druz9.v1.ProfileService service.
@@ -133,6 +139,15 @@ type ProfileServiceClient interface {
 	// SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
 	// to clear the override and fall back to the server default.
 	SetAIVacanciesModel(context.Context, *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
+	// GetUserTracks returns the caller's active tracks (multi-track Atlas,
+	// см docs/feature/tracks.md). New users get an empty list and must
+	// pass through onboarding-fork; existing users were backfilled in
+	// migration 00006_user_tracks.sql with a primary `dev` track.
+	GetUserTracks(context.Context, *connect.Request[v1.GetUserTracksRequest]) (*connect.Response[v1.UserTracks], error)
+	// SetUserTracks replaces the caller's track list atomically. Exactly
+	// one item must have primary=true. Empty list is rejected — to leave
+	// a track, send the new full list without it.
+	SetUserTracks(context.Context, *connect.Request[v1.SetUserTracksRequest]) (*connect.Response[v1.UserTracks], error)
 }
 
 // NewProfileServiceClient constructs a client for the druz9.v1.ProfileService service. By default,
@@ -230,6 +245,18 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("SetAIVacanciesModel")),
 			connect.WithClientOptions(opts...),
 		),
+		getUserTracks: connect.NewClient[v1.GetUserTracksRequest, v1.UserTracks](
+			httpClient,
+			baseURL+ProfileServiceGetUserTracksProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("GetUserTracks")),
+			connect.WithClientOptions(opts...),
+		),
+		setUserTracks: connect.NewClient[v1.SetUserTracksRequest, v1.UserTracks](
+			httpClient,
+			baseURL+ProfileServiceSetUserTracksProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("SetUserTracks")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -249,6 +276,8 @@ type profileServiceClient struct {
 	allocateAtlasSkill            *connect.Client[v1.AllocateAtlasSkillRequest, v1.AllocateAtlasSkillResponse]
 	getAIVacanciesModel           *connect.Client[v1.GetAIVacanciesModelRequest, v1.AIVacanciesModel]
 	setAIVacanciesModel           *connect.Client[v1.SetAIVacanciesModelRequest, v1.AIVacanciesModel]
+	getUserTracks                 *connect.Client[v1.GetUserTracksRequest, v1.UserTracks]
+	setUserTracks                 *connect.Client[v1.SetUserTracksRequest, v1.UserTracks]
 }
 
 // GetMyProfile calls druz9.v1.ProfileService.GetMyProfile.
@@ -321,6 +350,16 @@ func (c *profileServiceClient) SetAIVacanciesModel(ctx context.Context, req *con
 	return c.setAIVacanciesModel.CallUnary(ctx, req)
 }
 
+// GetUserTracks calls druz9.v1.ProfileService.GetUserTracks.
+func (c *profileServiceClient) GetUserTracks(ctx context.Context, req *connect.Request[v1.GetUserTracksRequest]) (*connect.Response[v1.UserTracks], error) {
+	return c.getUserTracks.CallUnary(ctx, req)
+}
+
+// SetUserTracks calls druz9.v1.ProfileService.SetUserTracks.
+func (c *profileServiceClient) SetUserTracks(ctx context.Context, req *connect.Request[v1.SetUserTracksRequest]) (*connect.Response[v1.UserTracks], error) {
+	return c.setUserTracks.CallUnary(ctx, req)
+}
+
 // ProfileServiceHandler is an implementation of the druz9.v1.ProfileService service.
 type ProfileServiceHandler interface {
 	// GetMyProfile returns the rich profile for the authenticated caller.
@@ -369,6 +408,15 @@ type ProfileServiceHandler interface {
 	// SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
 	// to clear the override and fall back to the server default.
 	SetAIVacanciesModel(context.Context, *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
+	// GetUserTracks returns the caller's active tracks (multi-track Atlas,
+	// см docs/feature/tracks.md). New users get an empty list and must
+	// pass through onboarding-fork; existing users were backfilled in
+	// migration 00006_user_tracks.sql with a primary `dev` track.
+	GetUserTracks(context.Context, *connect.Request[v1.GetUserTracksRequest]) (*connect.Response[v1.UserTracks], error)
+	// SetUserTracks replaces the caller's track list atomically. Exactly
+	// one item must have primary=true. Empty list is rejected — to leave
+	// a track, send the new full list without it.
+	SetUserTracks(context.Context, *connect.Request[v1.SetUserTracksRequest]) (*connect.Response[v1.UserTracks], error)
 }
 
 // NewProfileServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -462,6 +510,18 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		connect.WithSchema(profileServiceMethods.ByName("SetAIVacanciesModel")),
 		connect.WithHandlerOptions(opts...),
 	)
+	profileServiceGetUserTracksHandler := connect.NewUnaryHandler(
+		ProfileServiceGetUserTracksProcedure,
+		svc.GetUserTracks,
+		connect.WithSchema(profileServiceMethods.ByName("GetUserTracks")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profileServiceSetUserTracksHandler := connect.NewUnaryHandler(
+		ProfileServiceSetUserTracksProcedure,
+		svc.SetUserTracks,
+		connect.WithSchema(profileServiceMethods.ByName("SetUserTracks")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProfileServiceGetMyProfileProcedure:
@@ -492,6 +552,10 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceGetAIVacanciesModelHandler.ServeHTTP(w, r)
 		case ProfileServiceSetAIVacanciesModelProcedure:
 			profileServiceSetAIVacanciesModelHandler.ServeHTTP(w, r)
+		case ProfileServiceGetUserTracksProcedure:
+			profileServiceGetUserTracksHandler.ServeHTTP(w, r)
+		case ProfileServiceSetUserTracksProcedure:
+			profileServiceSetUserTracksHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -555,4 +619,12 @@ func (UnimplementedProfileServiceHandler) GetAIVacanciesModel(context.Context, *
 
 func (UnimplementedProfileServiceHandler) SetAIVacanciesModel(context.Context, *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.SetAIVacanciesModel is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) GetUserTracks(context.Context, *connect.Request[v1.GetUserTracksRequest]) (*connect.Response[v1.UserTracks], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetUserTracks is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) SetUserTracks(context.Context, *connect.Request[v1.SetUserTracksRequest]) (*connect.Response[v1.UserTracks], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.SetUserTracks is not implemented"))
 }

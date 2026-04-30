@@ -244,11 +244,15 @@ interface DoFetchArgs {
 }
 
 async function doFetch({ path, init, bearer }: DoFetchArgs): Promise<Response> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...((init.headers as Record<string, string> | undefined) ?? {}),
+  // Use Headers object so case-variant keys ('Content-Type' vs
+  // 'content-type') don't collide — a record-spread keeps both and the
+  // resulting Headers concatenates the values into "application/json,
+  // application/json", which the backend transcoder rejects with 415.
+  const headers = new Headers(init.headers ?? undefined)
+  if (!headers.has('content-type')) {
+    headers.set('content-type', 'application/json')
   }
-  if (bearer) headers['Authorization'] = `Bearer ${bearer}`
+  if (bearer) headers.set('authorization', `Bearer ${bearer}`)
   return fetch(`${API_BASE}${path}`, {
     credentials: 'include',
     ...init,

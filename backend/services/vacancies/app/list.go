@@ -24,6 +24,9 @@ type CacheReader interface {
 	Get(source domain.Source, externalID string) (domain.Vacancy, error)
 	ListBySource(source domain.Source) []domain.Vacancy
 	Facets() domain.Facets
+	// FacetsForFilter — Phase 1.6 smart facets. Each axis ignores its
+	// own selection so counts respond to user choices reversibly.
+	FacetsForFilter(filter domain.ListFilter) domain.Facets
 }
 
 // ListVacancies is the use case behind GET /vacancies.
@@ -81,7 +84,10 @@ type GetFacets struct {
 	Cache CacheReader
 }
 
-// Do returns the four sidebar histograms over the *unfiltered* cache.
-func (g *GetFacets) Do(_ context.Context) (domain.Facets, error) {
-	return g.Cache.Facets(), nil
+// Do returns the four sidebar histograms with smart-facet semantics
+// (each axis ignores its own selection). Empty filter falls through to
+// catalogue-wide counts via FacetsForFilter — same shape, simpler call
+// site.
+func (g *GetFacets) Do(_ context.Context, f domain.ListFilter) (domain.Facets, error) {
+	return g.Cache.FacetsForFilter(f), nil
 }

@@ -15,7 +15,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '../apiClient'
 
-export type LobbyMode = '1v1' | '2v2'
+export type LobbyMode = '1v1' | 'solo' | '2v2'
 export type LobbyVisibility = 'public' | 'unlisted' | 'private'
 export type LobbyStatus = 'open' | 'live' | 'cancelled'
 
@@ -33,6 +33,7 @@ export type Lobby = {
   status: LobbyStatus
   match_id: string | null
   members_count: number
+  skill_filter?: string[]
   created_at: string
 }
 
@@ -119,6 +120,8 @@ export type CreateLobbyPayload = {
   max_members?: number
   ai_allowed?: boolean
   time_limit_min?: number
+  // Phase 2c-2 — applied только для mode='solo'. Atlas node keys.
+  skill_filter?: string[]
 }
 
 export function useCreateLobby() {

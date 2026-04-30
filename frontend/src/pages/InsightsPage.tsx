@@ -3,18 +3,39 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Compass, Map as MapIcon, Shield, Sparkles, Target, TrendingUp, Trophy } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
+import { InsightStrip } from '../components/InsightStrip'
 import { useMockLeaderboardQuery } from '../lib/queries/mockPipeline'
 import { useAtlasQuery } from '../lib/queries/profile'
 import {
  useMockInsightsOverviewQuery,
+ type EnglishHRTrend,
  type RecurringPattern,
  type ScoreTrajectoryPoint,
  type StagePerformance,
 } from '../lib/queries/mockInsights'
 import {
+ normalizeSeverity,
  useDailyBriefQuery,
+ type CoachSeverity,
  type RecommendationKind,
 } from '../lib/queries/intelligence'
+
+// Phase 4.4 — severity-based UI tokens. Stripe = top border colour;
+// pill = badge background+text. Critical = red, warn = amber, nudge =
+// blue, cruise = muted. Pill только показывается на non-cruise чтобы
+// не визуально шуметь на спокойных днях.
+const SEVERITY_STRIP: Record<CoachSeverity, string> = {
+ critical: 'rgb(239 68 68)',
+ warn: 'rgb(245 158 11)',
+ nudge: 'rgb(59 130 246)',
+ cruise: 'transparent',
+}
+const SEVERITY_PILL: Record<CoachSeverity, string> = {
+ critical: 'border-danger/40 bg-danger/10 text-danger',
+ warn: 'border-warn/40 bg-warn/10 text-warn',
+ nudge: 'border-blue-500/40 bg-blue-500/10 text-blue-400',
+ cruise: 'border-border bg-surface-2 text-text-muted',
+}
 
 /**
  * InsightsPage — live analytics surface.
@@ -66,6 +87,12 @@ export default function InsightsPage() {
  </p>
  </header>
 
+ {/* Phase 1.5 — atomic AI-coach insight cards. Hero strip above
+     the legacy 30-day analytics so the user sees today's actionable
+     items before the back-looking patterns. Empty stream renders
+     nothing (next block stays the page hero). */}
+ <InsightStrip surface="today" />
+
  {/* AI Coach narrative — single paragraph synthesised from the data
      below. Hero of the page when there's anything to talk about. */}
  {overview?.summary && (
@@ -95,6 +122,17 @@ export default function InsightsPage() {
  errored={overviewQ.isError}
  />
  </section>
+
+ {/* English HR trend — Wave 1 of docs/feature/english.md. Hidden
+     entirely when the user has no English HR sessions in the
+     window (backend omits the field; frontend renders nothing).
+     Self-contained widget — does not interleave with engineering
+     pipeline blocks above. */}
+ {overview?.english_hr && overview.english_hr.total_sessions > 0 && (
+ <section>
+ <EnglishHRTrendCard trend={overview.english_hr} />
+ </section>
+ )}
 
  {/* Atlas — "what to learn next" sub-section */}
  <section className="flex flex-col gap-3">
@@ -128,14 +166,32 @@ function WeeklyDigestCard() {
  const brief = briefQ.data
  const loading = briefQ.isPending
  const failed = briefQ.isError && !briefQ.data
+ // Phase 4.4 — severity drives the top accent strip + tooltip on the
+ // coach pill. Cruise (default) рендерится как muted, чтобы шапка не
+ // выглядела «алертно» на спокойных днях.
+ const severity = normalizeSeverity(brief?.severity)
+ const stripColor = SEVERITY_STRIP[severity]
+ const pillTone = SEVERITY_PILL[severity]
 
  return (
- <Card className="flex-col gap-3 p-5" interactive={false}>
+ <Card
+ className="flex-col gap-3 p-5"
+ interactive={false}
+ style={{ borderTop: `3px solid ${stripColor}` }}
+ >
  <div className="flex items-center gap-2">
  <Sparkles className="h-4 w-4 text-text-primary" />
  <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
  AI coach · today
  </span>
+ {brief && severity !== 'cruise' && (
+ <span
+ className={`ml-auto rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${pillTone}`}
+ title={brief.severity_reason || severity}
+ >
+ {severity}
+ </span>
+ )}
  </div>
 
  {loading && (
@@ -623,5 +679,95 @@ function LeaderboardCard() {
  </ol>
  )}
  </Card>
+ )
+}
+
+// ── English HR trend card ─────────────────────────────────────────────
+//
+// Wave 1 of docs/feature/english.md. Renders only when the user has at
+// least one finished English HR mock in the window — InsightsPage gates
+// on overview.english_hr presence so this component can assume a non-
+// empty trend. Sparkline mirrors the engineering one in shape but uses
+// a single colour (no verdict — there's no pass/fail in HR rounds).
+function EnglishHRTrendCard({ trend }: { trend: EnglishHRTrend }) {
+ const navigate = useNavigate()
+ const lastDate = trend.last_finished_at ? new Date(trend.last_finished_at).toLocaleDateString() : '—'
+ return (
+ <Card className="flex-col gap-4 p-5" interactive={false}>
+ <div className="flex items-baseline justify-between gap-3">
+ <h3 className="font-display text-lg font-bold text-text-primary">English HR · trend</h3>
+ <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">last 30 days</span>
+ </div>
+ <div className="grid grid-cols-3 gap-3">
+ <Stat label="Sessions" value={String(trend.total_sessions)} />
+ <Stat label="Avg score" value={`${trend.avg_score}/100`} />
+ <Stat label="Last score" value={`${trend.last_score}/100`} />
+ </div>
+ {trend.trajectory.length > 0 && (
+ <div className="flex flex-col gap-2">
+ <div className="flex items-baseline justify-between text-text-secondary">
+ <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">trajectory</span>
+ <span className="font-mono text-[11px] text-text-muted">last: {lastDate}</span>
+ </div>
+ <EnglishHRSparkline points={trend.trajectory} onPick={(id) => navigate(`/mock/${id}/result`)} />
+ </div>
+ )}
+ </Card>
+ )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+ return (
+ <div className="rounded-lg border border-border bg-surface-2 px-3 py-2.5">
+ <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{label}</div>
+ <div className="font-display text-lg font-bold tabular-nums text-text-primary">{value}</div>
+ </div>
+ )
+}
+
+function EnglishHRSparkline({
+ points,
+ onPick,
+}: {
+ points: EnglishHRTrend['trajectory']
+ onPick: (sessionID: string) => void
+}) {
+ if (points.length === 0) return null
+ const w = 320
+ const h = 56
+ const pad = 4
+ const xs = points.map((_, i) =>
+  points.length === 1
+   ? w / 2
+   : pad + (i * (w - 2 * pad)) / (points.length - 1),
+ )
+ const ys = points.map((p) => h - pad - (p.score / 100) * (h - 2 * pad))
+ const d = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ')
+ const lastX = xs[xs.length - 1]
+ const lastY = ys[ys.length - 1]
+ return (
+ <svg viewBox={`0 0 ${w} ${h}`} className="h-14 w-full">
+ <path d={d} fill="none" stroke="currentColor" strokeWidth={1.5} className="text-text-primary" />
+ {points.map((p, i) => (
+ <g key={p.session_id || i}>
+  <circle
+   cx={xs[i]}
+   cy={ys[i]}
+   r={8}
+   className="cursor-pointer fill-transparent"
+   onClick={() => onPick(p.session_id)}
+  >
+   <title>{`${p.score}/100 · ${new Date(p.finished_at).toLocaleDateString()} — click for result`}</title>
+  </circle>
+  <circle
+   cx={xs[i]}
+   cy={ys[i]}
+   r={1.6}
+   className="pointer-events-none fill-text-primary"
+  />
+ </g>
+ ))}
+ <circle cx={lastX} cy={lastY} r={3} className="pointer-events-none fill-text-primary" />
+ </svg>
  )
 }

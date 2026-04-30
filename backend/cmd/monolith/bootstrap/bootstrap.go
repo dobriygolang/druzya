@@ -23,7 +23,9 @@ import (
 	aiMockServices "druz9/cmd/monolith/services/ai_mock"
 	arenaServices "druz9/cmd/monolith/services/arena"
 	authServices "druz9/cmd/monolith/services/auth"
+	calendarServices "druz9/cmd/monolith/services/calendar"
 	circlesServices "druz9/cmd/monolith/services/circles"
+	clubsServices "druz9/cmd/monolith/services/clubs"
 	copilotServices "druz9/cmd/monolith/services/copilot"
 	dailyServices "druz9/cmd/monolith/services/daily"
 	editorServices "druz9/cmd/monolith/services/editor"
@@ -40,6 +42,8 @@ import (
 	storageServices "druz9/cmd/monolith/services/storage"
 	subscriptionServices "druz9/cmd/monolith/services/subscription"
 	syncServices "druz9/cmd/monolith/services/sync"
+	tracksServices "druz9/cmd/monolith/services/tracks"
+	tutorServices "druz9/cmd/monolith/services/tutor"
 	whiteboardRoomsServices "druz9/cmd/monolith/services/whiteboard_rooms"
 	honeApp "druz9/hone/app"
 	honeInfra "druz9/hone/infra"
@@ -250,13 +254,40 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		circlesServices.NewFeed(deps),
 		adminServices.NewVacancies(deps),
 		// Phase-4 ADR-001 — `achievements` removed (gamification cut, no UI surface).
-		circlesServices.NewFriends(deps),
+		// Phase 1.7 — `friends` removed (social graph lives in TG channel + circles).
 		honeServices.NewHone(deps),
 		intelligenceMod.Module,
 		whiteboardRoomsServices.NewWhiteboardRooms(deps),
 		circlesMod.Module,
 		aiMockServices.NewMockInterview(deps),
 		eventsServices.NewEvents(deps, circlesMod),
+		// Personal calendar — interviews, deadlines, exams, club_session
+		// reflections. Reads come from intelligence (severity grading) and
+		// the upcoming-events ribbon in Hone Today. The reminder
+		// dispatcher (Phase 1.8b) is wired with notify.Bot as the TG
+		// sender; absence of either dependency makes the dispatcher
+		// idle without breaking the RPC surface.
+		calendarServices.NewCalendar(deps, calendarServices.CalendarDeps{
+			NotifyPrefs:    notify.Prefs,
+			NotifyChannels: notify.ChannelPrefs,
+			NotifySender:   notify.Bot,
+		}),
+		// Phase 2 — curated learning Tracks (bounded context tracks).
+		// Reads are auth-gated so the catalogue can show enrolment state.
+		tracksServices.NewTracks(deps),
+		// Phase 3 — Clubs MVP (catalogue + sessions + RSVP). Curator
+		// CRUD UI отдельной фазой; здесь read-mostly read-mostly + одна
+		// mutation.
+		clubsServices.NewClubs(deps),
+		// Wave 2 of docs/feature/tutor.md — tutor as distribution
+		// channel. Briefer wired via llmchain (Wave 2.5); the
+		// constructor returns nil when LLMChain is nil (offline /
+		// tests) and the use-case falls back to snapshot-only.
+		// TutorDisplay still nil — the profile display-name reader
+		// plugs in alongside /tutor frontend (Wave 2.6).
+		tutorServices.NewTutor(deps, tutorServices.TutorDeps{
+			Briefer: tutorServices.NewBriefer(deps.LLMChain, deps.Log, deps.Now),
+		}),
 		circlesServices.NewLobby(deps),
 		subscriptionServices.NewSubscription(deps),
 		storageMod,

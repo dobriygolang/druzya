@@ -27,6 +27,10 @@ export type Tab =
   | 'mock_strictness'
   | 'quotas'
   | 'copilot_plans'
+  | 'obs_tracks'
+  | 'obs_english_hr'
+  | 'obs_mock_block'
+  | 'obs_intelligence'
 
 type Item = { id: Tab; label: string; chip?: string; chipColor?: string }
 type Group = { id: string; label: string; defaultOpen: boolean; items: Item[] }
@@ -113,6 +117,17 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
       items: [
         { id: 'quotas', label: 'Subscription · квоты' },
         { id: 'copilot_plans', label: 'Copilot · тарифы' },
+      ],
+    },
+    {
+      id: 'observability',
+      label: 'Observability',
+      defaultOpen: false,
+      items: [
+        { id: 'obs_tracks', label: 'Tracks · adoption' },
+        { id: 'obs_english_hr', label: 'English HR · health' },
+        { id: 'obs_mock_block', label: 'Mock-block · strictness' },
+        { id: 'obs_intelligence', label: 'Intelligence · coach' },
       ],
     },
   ]

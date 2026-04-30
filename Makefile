@@ -228,6 +228,11 @@ gen-sqlc: ## Generate sqlc typed queries per-domain
 
 .PHONY: gen-mocks
 gen-mocks: ## Generate mockgen mocks from //go:generate directives
+	# Pre-build mockgen из backend/tools/ — там у него полный go.sum.
+	# Сервисные go.mod не имеют transitive deps mockgen'а (golang.org/x/mod,
+	# golang.org/x/tools), поэтому `go run` из сервиса валится; pre-built
+	# bin/mockgen в PATH решает это раз и навсегда.
+	cd backend/tools && GOWORK=off go build -o ../../bin/mockgen go.uber.org/mock/mockgen
 	# go generate должен запускаться ВНУТРИ Go-модуля. backend/ — не модуль
 	# (модули — services/<svc>/), поэтому cd внутрь каждого сервиса перед запуском.
 	# List is auto-detected: any services/<svc>/domain/*.go containing
@@ -235,7 +240,7 @@ gen-mocks: ## Generate mockgen mocks from //go:generate directives
 	# is enough — no Makefile edit needed.
 	@for svc in $$(grep -rl --include='*.go' '^//go:generate' backend/services/*/domain/ 2>/dev/null | sed -E 's|backend/services/([^/]+)/.*|\1|' | sort -u); do \
 		echo "==> $$svc"; \
-		(cd backend/services/$$svc && GOWORK=off GOFLAGS= go generate ./domain/...) \
+		(cd backend/services/$$svc && PATH="$(CURDIR)/bin:$$PATH" GOWORK=off GOFLAGS= go generate ./domain/...) \
 			|| (echo "FAILED: $$svc" && exit 1); \
 	done
 
@@ -256,6 +261,16 @@ migrate-down: ## Roll back last migration
 migrate-status: ## Show migration status
 	goose -dir $(MIGRATIONS_DIR) postgres "$(GOOSE_DSN)" status
 
+.PHONY: migrate-new
+migrate-new: ## Create a new migration with auto-incremented unique number. Usage: make migrate-new NAME=add_foo_table
+	@if [ -z "$(NAME)" ]; then echo "Usage: make migrate-new NAME=<snake_name>"; exit 1; fi
+	@LAST=$$(ls $(MIGRATIONS_DIR)/[0-9]*.sql 2>/dev/null | sed -E 's|.*/0*([0-9]+)_.*|\1|' | sort -n | tail -1); \
+	 NEXT=$$(printf "%05d" $$((LAST + 1))); \
+	 FILE="$(MIGRATIONS_DIR)/$${NEXT}_$(NAME).sql"; \
+	 if [ -f "$$FILE" ]; then echo "$$FILE already exists"; exit 1; fi; \
+	 printf -- "-- +goose Up\n-- +goose StatementBegin\n\n-- +goose StatementEnd\n\n-- +goose Down\n-- +goose StatementBegin\nSELECT 1;\n-- +goose StatementEnd\n" > $$FILE; \
+	 echo "created $$FILE"
+
 .PHONY: seed
 seed: ## Load seed data (tasks, companies)
 	cd backend && go run ./scripts/seed
@@ -263,6 +278,10 @@ seed: ## Load seed data (tasks, companies)
 .PHONY: check-stubs
 check-stubs: ## Warn about STUB comments (CI advisory)
 	@grep -rn "// STUB:" backend frontend/src || echo "no STUB comments found"
+
+.PHONY: eval-coach
+eval-coach: ## Phase 5 — run offline eval over coach brief parser/sanitizer (no LLM calls)
+	cd backend/services/intelligence && go run ./cmd/eval_coach -dataset cmd/eval_coach/dataset.json
 
 .PHONY: desktop-install
 desktop-install: ## Install desktop app npm dependencies

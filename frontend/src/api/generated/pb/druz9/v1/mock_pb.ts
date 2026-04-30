@@ -645,6 +645,12 @@ export class GetMockLeaderboardResponse extends Message<GetMockLeaderboardRespon
  * (empty = первая активная компания из списка). ai_assist=true помечает
  * прохождение как "с подсказками AI" → не учитывается в leaderboard'е.
  *
+ * Phase 1.6 — sections фильтрует stage skeleton. Empty / nil = full
+ * pipeline (all 5 stages). При [hr,algo] оркестратор пропускает coding,
+ * sysdesign и behavioral. Backend валидирует имена против известных
+ * stage_kind значений; неизвестные отбрасываются (вместо 400 — мягкий
+ * fallback на full-pipeline, anti-strict policy).
+ *
  * @generated from message druz9.v1.CreateMockPipelineRequest
  */
 export class CreateMockPipelineRequest extends Message<CreateMockPipelineRequest> {
@@ -658,6 +664,11 @@ export class CreateMockPipelineRequest extends Message<CreateMockPipelineRequest
    */
   aiAssist = false;
 
+  /**
+   * @generated from field: repeated string sections = 3;
+   */
+  sections: string[] = [];
+
   constructor(data?: PartialMessage<CreateMockPipelineRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -668,6 +679,7 @@ export class CreateMockPipelineRequest extends Message<CreateMockPipelineRequest
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "company_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "ai_assist", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "sections", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateMockPipelineRequest {

@@ -809,10 +809,17 @@ func (x *GetMockLeaderboardResponse) GetFairnessWatermark() string {
 // CreatePipeline — заводит новый pipeline. company_id опционально
 // (empty = первая активная компания из списка). ai_assist=true помечает
 // прохождение как "с подсказками AI" → не учитывается в leaderboard'е.
+//
+// Phase 1.6 — sections фильтрует stage skeleton. Empty / nil = full
+// pipeline (all 5 stages). При [hr,algo] оркестратор пропускает coding,
+// sysdesign и behavioral. Backend валидирует имена против известных
+// stage_kind значений; неизвестные отбрасываются (вместо 400 — мягкий
+// fallback на full-pipeline, anti-strict policy).
 type CreateMockPipelineRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
 	AiAssist      bool                   `protobuf:"varint,2,opt,name=ai_assist,json=aiAssist,proto3" json:"ai_assist,omitempty"`
+	Sections      []string               `protobuf:"bytes,3,rep,name=sections,proto3" json:"sections,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -859,6 +866,13 @@ func (x *CreateMockPipelineRequest) GetAiAssist() bool {
 		return x.AiAssist
 	}
 	return false
+}
+
+func (x *CreateMockPipelineRequest) GetSections() []string {
+	if x != nil {
+		return x.Sections
+	}
+	return nil
 }
 
 type CancelMockPipelineRequest struct {
@@ -5235,11 +5249,12 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x81\x01\n" +
 	"\x1aGetMockLeaderboardResponse\x124\n" +
 	"\x05items\x18\x01 \x03(\v2\x1e.druz9.v1.MockLeaderboardEntryR\x05items\x12-\n" +
-	"\x12fairness_watermark\x18\x02 \x01(\tR\x11fairnessWatermark\"W\n" +
+	"\x12fairness_watermark\x18\x02 \x01(\tR\x11fairnessWatermark\"s\n" +
 	"\x19CreateMockPipelineRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1b\n" +
-	"\tai_assist\x18\x02 \x01(\bR\baiAssist\"+\n" +
+	"\tai_assist\x18\x02 \x01(\bR\baiAssist\x12\x1a\n" +
+	"\bsections\x18\x03 \x03(\tR\bsections\"+\n" +
 	"\x19CancelMockPipelineRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\")\n" +
 	"\x17AttemptFinalisedRequest\x12\x0e\n" +

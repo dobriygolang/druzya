@@ -9,14 +9,17 @@ import { api } from '../apiClient'
 export type AtlasAdminNode = {
   id: string
   title: string
-  section: string // algorithms / sql / go / system_design / behavioral / ...
-  kind: string // normal | keystone | ascendant | center
+  section: string // algorithms / sql / go / system_design / behavioral / english_hr
+  kind: string // hub | keystone | notable | small
   description: string
   total_count: number
   pos_x?: number | null
   pos_y?: number | null
   sort_order: number
   is_active: boolean
+  // Track-kind grouping. Backend default 'dev' (column default) when
+  // omitted; the AtlasPanel filter scopes the CMS view by this.
+  track_kind?: string
 }
 
 export type AtlasAdminEdge = {
@@ -65,6 +68,8 @@ export type UpsertNodePayload = {
   pos_y?: number | null
   sort_order?: number
   is_active?: boolean
+  // Empty / omitted = backend column default 'dev'.
+  track_kind?: string
 }
 
 export function useCreateAtlasNodeMutation() {

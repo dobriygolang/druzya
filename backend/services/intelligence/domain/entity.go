@@ -51,6 +51,12 @@ type DailyBrief struct {
 	Narrative       string
 	Recommendations []Recommendation
 	GeneratedAt     time.Time
+	// Severity — deterministic urgency grade (cruise/nudge/warn/critical).
+	// Computed by deriveSeverity at brief synthesis time, не от LLM.
+	// SeverityReason — short fragment ("interview Friday in 2 days") used
+	// в UI tooltip. Phase 4.4 — wire-exposed in proto.DailyBrief.
+	Severity       InsightSeverity
+	SeverityReason string
 }
 
 // Citation is one note referenced by [N] in AskAnswer.AnswerMD.
@@ -198,16 +204,25 @@ type DailyNoteHead struct {
 	Excerpt string // first ~400 chars
 }
 
-// UpcomingInterview — interview_calendars row, строка для prompt'а.
-// Coach использует «Google interview Friday → prep system_design» — сильный
-// signal для targeted recommendations.
+// UpcomingInterview — projection of one personal_events row. Originally
+// modeled only interviews; the shape now carries every personal-calendar
+// kind through the same prompt slot (interview, deadline, exam,
+// club_session, study_block, interview_prep_block) so the coach reasons
+// about calendar pressure as one feature.
+//
+// Kind drives severity: interview/exam/deadline are first-class urgency
+// signals; club_session is informational. The original field name is
+// kept so existing prompt builders compile while severity rules in
+// daily_brief_diagnosis.go switch on Kind to pick critical/warn/nudge.
 type UpcomingInterview struct {
-	CompanyName   string
-	Role          string
-	InterviewDate time.Time
-	CurrentLevel  string // L4, Senior, etc — может быть пустым
-	ReadinessPct  int    // 0..100 — self-reported
-	DaysFromNow   int    // computed by reader: дней до собеса (отрицательное = прошло)
+	Kind          string    // 'interview'|'deadline'|'exam'|'club_session'|'study_block'|'interview_prep_block'
+	CompanyName   string    // empty for non-interview kinds
+	Role          string    // empty for non-interview kinds
+	InterviewDate time.Time // == personal_events.starts_at; "interview" suffix kept for backwards compat
+	CurrentLevel  string    // empty for non-interview kinds
+	ReadinessPct  int       // 0..100 — only meaningful for interview-like kinds
+	Title         string    // free-form, for non-interview kinds (e.g. "Final paper due")
+	DaysFromNow   int       // ceil((starts_at - today)/24h); negative = past, 0 = today
 }
 
 // MockKeywords — keyword frequency table из mock_messages user-content'а.
@@ -230,4 +245,25 @@ type CodexArticleSuggestion struct {
 	Source      string
 	ReadMin     int
 	Link        string
+}
+
+// ActiveTrack — projection of one of the user's enrolled learning
+// tracks for the coach's prompt. Only carries the data the coach
+// actually reasons about: name, current step's title + skill_keys,
+// estimated minutes, and "days since last touch".
+//
+// DaysSinceLastTouch is computed by the reader from completed_at /
+// last activity inside the step's required_kind table. >5 means
+// "stalled" — severity grader can use that to flag warn.
+type ActiveTrack struct {
+	TrackID            uuid.UUID
+	Slug               string
+	Name               string
+	CurrentStep        int
+	StepsTotal         int
+	CurrentStepTitle   string
+	CurrentStepSkills  []string
+	EstimatedMinutes   int
+	IsPaused           bool
+	DaysSinceLastTouch int
 }

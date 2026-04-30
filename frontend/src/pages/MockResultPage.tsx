@@ -20,7 +20,7 @@ import {
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
-import { useMockReportQuery, normalizeMockReportStatus } from '../lib/queries/mock'
+import { useMockReportQuery, useMockSessionQuery, normalizeMockReportStatus } from '../lib/queries/mock'
 import { API_BASE } from '../lib/apiClient'
 
 function ErrorChip() {
@@ -268,6 +268,14 @@ export default function MockResultPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const { data: report, isError, isLoading } = useMockReportQuery(sessionId)
+  // We need session.section to pick the right rubric at render time.
+  // Without this the English HR round would silently show all-zero
+  // engineering cards (problem_solving / code_quality / etc).
+  const { data: session } = useMockSessionQuery(sessionId)
+  const isEnglishHR = session?.section === 'english_hr'
+  const isSeniorSD = session?.section === 'system_design_senior'
+  const isTechLead = session?.section === 'tech_lead_em'
+  const isFreeform = isEnglishHR || isSeniorSD || isTechLead
   const isProcessing = normalizeMockReportStatus(report?.status) === 'processing' || (!report && isLoading)
 
   // Empty / fallback values keep the page rendering coherently while the
@@ -275,10 +283,26 @@ export default function MockResultPage() {
   // numbers — no hardcoded "72" sneaks through.
   const overall = report?.overall_score ?? 0
   const sections = report?.sections ?? {}
+  // Engineering rubric.
   const ps = sections['problem_solving'] ?? { score: 0, comment: '—' }
   const cq = sections['code_quality'] ?? { score: 0, comment: '—' }
   const cm = sections['communication'] ?? { score: 0, comment: '—' }
   const sh = sections['stress_handling'] ?? { score: 0, comment: '—' }
+  // English HR rubric. Keys mirror BuildEnglishHRReportPrompt.
+  const clarityCell = sections['clarity'] ?? { score: 0, comment: '—' }
+  const accuracyCell = sections['accuracy'] ?? { score: 0, comment: '—' }
+  const rangeCell = sections['range'] ?? { score: 0, comment: '—' }
+  const fluencyCell = sections['fluency'] ?? { score: 0, comment: '—' }
+  // Senior SD rubric. Keys mirror BuildSystemDesignSeniorReportPrompt.
+  const depthCell = sections['depth'] ?? { score: 0, comment: '—' }
+  const tradeoffsCell = sections['tradeoffs'] ?? { score: 0, comment: '—' }
+  const failureModesCell = sections['failure_modes'] ?? { score: 0, comment: '—' }
+  const pragmatismCell = sections['pragmatism'] ?? { score: 0, comment: '—' }
+  // Tech Lead / EM rubric. Keys mirror BuildTechLeadReportPrompt.
+  const structureCell = sections['structure'] ?? { score: 0, comment: '—' }
+  const ownershipCell = sections['ownership'] ?? { score: 0, comment: '—' }
+  const impactCell = sections['impact'] ?? { score: 0, comment: '—' }
+  const learningCell = sections['learning'] ?? { score: 0, comment: '—' }
   const strengths = report?.strengths ?? []
   const weaknesses = report?.weaknesses ?? []
   const recs = (report?.recommendations ?? []).map((r, i) => ({ p: i < 2 ? 'P1' : 'P2', text: r.title }))
@@ -358,17 +382,42 @@ export default function MockResultPage() {
           </div>
         )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <SectionCard label="Problem Solving" value={ps.score} variant={ps.score >= 70 ? 'success' : 'warn'} comment={ps.comment} />
-          <SectionCard label="Code Quality" value={cq.score} variant={cq.score >= 70 ? 'success' : 'warn'} comment={cq.comment} />
-          <SectionCard label="Communication" value={cm.score} variant={cm.score >= 70 ? 'success' : 'warn'} comment={cm.comment} />
-          <SectionCard label="Stress Handling" value={sh.score} variant={sh.score >= 70 ? 'success' : 'warn'} comment={sh.comment} />
+          {isEnglishHR ? (
+            <>
+              <SectionCard label="Clarity"  value={clarityCell.score}  variant={clarityCell.score  >= 70 ? 'success' : 'warn'} comment={clarityCell.comment} />
+              <SectionCard label="Accuracy" value={accuracyCell.score} variant={accuracyCell.score >= 70 ? 'success' : 'warn'} comment={accuracyCell.comment} />
+              <SectionCard label="Range"    value={rangeCell.score}    variant={rangeCell.score    >= 70 ? 'success' : 'warn'} comment={rangeCell.comment} />
+              <SectionCard label="Fluency"  value={fluencyCell.score}  variant={fluencyCell.score  >= 70 ? 'success' : 'warn'} comment={fluencyCell.comment} />
+            </>
+          ) : isSeniorSD ? (
+            <>
+              <SectionCard label="Depth"         value={depthCell.score}        variant={depthCell.score        >= 70 ? 'success' : 'warn'} comment={depthCell.comment} />
+              <SectionCard label="Tradeoffs"     value={tradeoffsCell.score}    variant={tradeoffsCell.score    >= 70 ? 'success' : 'warn'} comment={tradeoffsCell.comment} />
+              <SectionCard label="Failure Modes" value={failureModesCell.score} variant={failureModesCell.score >= 70 ? 'success' : 'warn'} comment={failureModesCell.comment} />
+              <SectionCard label="Pragmatism"    value={pragmatismCell.score}   variant={pragmatismCell.score   >= 70 ? 'success' : 'warn'} comment={pragmatismCell.comment} />
+            </>
+          ) : isTechLead ? (
+            <>
+              <SectionCard label="Structure" value={structureCell.score} variant={structureCell.score >= 70 ? 'success' : 'warn'} comment={structureCell.comment} />
+              <SectionCard label="Ownership" value={ownershipCell.score} variant={ownershipCell.score >= 70 ? 'success' : 'warn'} comment={ownershipCell.comment} />
+              <SectionCard label="Impact"    value={impactCell.score}    variant={impactCell.score    >= 70 ? 'success' : 'warn'} comment={impactCell.comment} />
+              <SectionCard label="Learning"  value={learningCell.score}  variant={learningCell.score  >= 70 ? 'success' : 'warn'} comment={learningCell.comment} />
+            </>
+          ) : (
+            <>
+              <SectionCard label="Problem Solving" value={ps.score} variant={ps.score >= 70 ? 'success' : 'warn'} comment={ps.comment} />
+              <SectionCard label="Code Quality"    value={cq.score} variant={cq.score >= 70 ? 'success' : 'warn'} comment={cq.comment} />
+              <SectionCard label="Communication"   value={cm.score} variant={cm.score >= 70 ? 'success' : 'warn'} comment={cm.comment} />
+              <SectionCard label="Stress Handling" value={sh.score} variant={sh.score >= 70 ? 'success' : 'warn'} comment={sh.comment} />
+            </>
+          )}
         </div>
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
           <div className="flex flex-1 flex-col gap-4">
             {strengths.length > 0 && <StrengthsCard items={strengths} />}
             {weaknesses.length > 0 && <WeaknessesCard items={weaknesses} />}
             {recs.length > 0 && <RecsCard items={recs} />}
-            {report?.stress_analysis && (
+            {!isFreeform && report?.stress_analysis && (
               <Card className="flex-col gap-2 p-5" interactive={false}>
                 <h3 className="font-display text-base font-bold text-text-primary">Стресс-анализ</h3>
                 <p className="text-[13px] leading-relaxed text-text-secondary">{report.stress_analysis}</p>
@@ -376,8 +425,15 @@ export default function MockResultPage() {
             )}
           </div>
           <div className="flex w-full flex-col gap-4 lg:w-[380px]">
-            <StressTimelineCard />
-            <CompanyScoreCard />
+            {/* Stress timeline + company-score panels are engineering-mock
+                artifacts. Free-form rounds (English HR, senior SD) have no
+                stress signal and no per-company score — hide the right column. */}
+            {!isFreeform && (
+              <>
+                <StressTimelineCard />
+                <CompanyScoreCard />
+              </>
+            )}
             <ApplyCard />
           </div>
         </div>

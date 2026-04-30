@@ -24,6 +24,7 @@ export const emptyNodeForm: UpsertNodePayload = {
   pos_y: null,
   sort_order: 0,
   is_active: true,
+  track_kind: 'dev',
 }
 
 export function AtlasNodeModal({
@@ -52,6 +53,7 @@ export function AtlasNodeModal({
     pos_y: initial.pos_y ?? null,
     sort_order: initial.sort_order ?? 0,
     is_active: initial.is_active ?? true,
+    track_kind: ('track_kind' in initial && initial.track_kind) ? initial.track_kind : 'dev',
   }
   const [form, setForm] = useState<UpsertNodePayload>(seed)
   const [error, setError] = useState<string | null>(null)
@@ -149,6 +151,21 @@ export function AtlasNodeModal({
                 {ATLAS_KIND_OPTIONS.map((k) => (
                   <option key={k} value={k}>{k}</option>
                 ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">track_kind</span>
+              <select
+                value={form.track_kind ?? 'dev'}
+                onChange={(e) => setField('track_kind', e.target.value)}
+                className="h-9 rounded-md border border-border bg-surface-2 px-2 text-sm text-text-primary"
+              >
+                <option value="dev">dev</option>
+                <option value="dev_senior">dev_senior</option>
+                <option value="sysanalyst">sysanalyst</option>
+                <option value="product_analyst">product_analyst</option>
+                <option value="qa">qa</option>
+                <option value="english">english</option>
               </select>
             </label>
           </div>

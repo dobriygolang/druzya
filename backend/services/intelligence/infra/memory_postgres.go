@@ -472,3 +472,57 @@ func nullableFloat32Slice(v []float32) any {
 	}
 	return v
 }
+
+// CountByKindInRange — Phase 4.5. Single GROUP BY query. weekly_memory_summary
+// исключаем сами из результата чтобы prior consolidations не двоились.
+func (r *Episodes) CountByKindInRange(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[domain.EpisodeKind]int, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT kind, COUNT(*)::int4
+		   FROM coach_episodes
+		  WHERE user_id    = $1
+		    AND occurred_at >= $2
+		    AND occurred_at <  $3
+		    AND kind       <> $4
+		  GROUP BY kind`,
+		sharedpg.UUID(userID), from, to, string(domain.EpisodeWeeklyMemorySummary),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.Episodes.CountByKindInRange: %w", err)
+	}
+	defer rows.Close()
+	out := make(map[domain.EpisodeKind]int, 8)
+	for rows.Next() {
+		var (
+			kind  string
+			count int32
+		)
+		if err := rows.Scan(&kind, &count); err != nil {
+			return nil, fmt.Errorf("intelligence.Episodes.CountByKindInRange: scan: %w", err)
+		}
+		out[domain.EpisodeKind(kind)] = int(count)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("intelligence.Episodes.CountByKindInRange: rows: %w", err)
+	}
+	return out, nil
+}
+
+// HasWeeklySummary — Phase 4.5. Идемпотентность для consolidator: при
+// повторном вызове за ту же неделю не дублируем episode. Сравниваем по
+// payload.week_start (RFC3339 timestamp начала недели).
+func (r *Episodes) HasWeeklySummary(ctx context.Context, userID uuid.UUID, weekStart time.Time) (bool, error) {
+	weekStartUTC := weekStart.UTC().Format(time.RFC3339)
+	var n int32
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*)::int4
+		   FROM coach_episodes
+		  WHERE user_id = $1
+		    AND kind    = $2
+		    AND payload->>'week_start' = $3`,
+		sharedpg.UUID(userID), string(domain.EpisodeWeeklyMemorySummary), weekStartUTC,
+	).Scan(&n)
+	if err != nil {
+		return false, fmt.Errorf("intelligence.Episodes.HasWeeklySummary: %w", err)
+	}
+	return n > 0, nil
+}

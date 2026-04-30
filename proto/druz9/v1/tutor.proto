@@ -1,0 +1,301 @@
+// tutor.proto — Connect-RPC contract for the tutor bounded context.
+// Wave 2 of docs/feature/tutor.md (tutor as distribution channel).
+//
+// Tier 1 surface — invitations and active relationships. Per-student
+// snapshot aggregator, pre-session brief LLM-job and Tier 2/3 are
+// deliberately deferred — see plan.md.
+//
+// PeekInvite is intentionally public (bypasses bearer auth via
+// publicPaths-style exemption — see main.go); every other method is
+// authenticated and the role is enforced at the use-case layer
+// (tutor mutating his own invite vs student accepting).
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// InviteStatus mirrors domain.InviteStatus. Computed server-side
+// from accepted_at / revoked_at / expires_at — no stored column on
+// tutor_invites.
+enum InviteStatus {
+  INVITE_STATUS_UNSPECIFIED = 0;
+  INVITE_STATUS_ACTIVE      = 1;
+  INVITE_STATUS_ACCEPTED    = 2;
+  INVITE_STATUS_REVOKED     = 3;
+  INVITE_STATUS_EXPIRED     = 4;
+}
+
+message TutorInvite {
+  string id           = 1;
+  string tutor_id     = 2;
+  string code         = 3;
+  string note         = 4;
+  google.protobuf.Timestamp created_at  = 5;
+  google.protobuf.Timestamp expires_at  = 6;
+  google.protobuf.Timestamp accepted_at = 7; // zero when not accepted
+  string accepted_by  = 8;                   // empty when not accepted
+  google.protobuf.Timestamp revoked_at  = 9; // zero when not revoked
+  InviteStatus status = 10;                  // server-computed convenience field
+}
+
+message TutorRelationship {
+  string id          = 1;
+  string tutor_id    = 2;
+  string student_id  = 3;
+  string invite_id   = 4;                    // empty when admin-created without invite
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp ended_at   = 6;  // zero when active
+  string note        = 7;
+}
+
+// ── Requests / responses ─────────────────────────────────────────────
+
+message TutorCreateInviteRequest  { string note = 1; }
+message TutorRevokeInviteRequest  { string invite_id = 1; }
+message TutorPeekInviteRequest    { string code = 1; }
+message TutorAcceptInviteRequest  { string code = 1; }
+message TutorListInvitesRequest   { int32  limit = 1; } // 0 → server default (50)
+message TutorListInvitesResponse  { repeated TutorInvite items = 1; }
+message TutorListStudentsRequest  {}
+message TutorListStudentsResponse { repeated TutorRelationship items = 1; }
+message TutorEndRelationshipRequest { string student_id = 1; }
+message TutorEndRelationshipResponse {}
+
+// ── Snapshot (Wave 2.4b) ────────────────────────────────────────────
+
+message TutorWeakSpot {
+  string node_key = 1;
+  string title    = 2;
+  int32  progress = 3; // 0..100
+}
+
+// StudentSnapshot — aggregated student view rendered on the tutor
+// dashboard. window_days defaults to 7 (server-side). Empty fields
+// (zero counts, zero last_active_at) mean «no activity in the window».
+message TutorStudentSnapshot {
+  string student_id      = 1;
+  int32  window_days     = 2;
+  google.protobuf.Timestamp last_active_at = 3;
+  int32  focus_minutes_window  = 4;
+  int32  focus_sessions_count  = 5;
+  int32  english_mocks_count       = 6;
+  int32  english_mocks_avg_score   = 7; // 0..100; 0 when count == 0
+  int32  english_mocks_last_score  = 8; // 0..100
+  repeated TutorWeakSpot weak_spots = 9;
+  int32  notes_count = 10;
+}
+
+message TutorGetStudentSnapshotRequest {
+  string student_id  = 1;
+  int32  window_days = 2; // 0 → server default (7)
+}
+
+message TutorPreSessionBrief {
+  TutorStudentSnapshot snapshot = 1;
+  string brief = 2; // markdown narrative; empty when LLMChain unavailable
+}
+
+message TutorGenerateBriefRequest {
+  string student_id  = 1;
+  int32  window_days = 2;
+}
+
+// ─── Assignments (Wave 5.1) ────────────────────────────────────────
+
+message TutorAssignment {
+  string id           = 1;
+  string tutor_id     = 2;
+  string student_id   = 3;
+  string title        = 4;
+  string body_md      = 5;
+  // Optional. Zero-Timestamp = «open-ended» — frontend renders «no
+  // due» chip rather than a countdown.
+  google.protobuf.Timestamp due_at       = 6;
+  google.protobuf.Timestamp created_at   = 7;
+  // Zero when not yet completed; non-zero shows ✓ + delta-from-due
+  // on the tutor's view.
+  google.protobuf.Timestamp completed_at = 8;
+  // Zero when not archived. Archived rows are excluded from the
+  // student's pending feed and from the active partial index.
+  google.protobuf.Timestamp archived_at  = 9;
+}
+
+message TutorPushAssignmentRequest {
+  string student_id = 1;
+  string title      = 2;
+  string body_md    = 3;
+  // Optional. Set to a future TZ-aware timestamp; past timestamps are
+  // rejected by the use case (ErrInvalidInput → 400).
+  google.protobuf.Timestamp due_at = 4;
+}
+
+message TutorListAssignmentsRequest {
+  string student_id = 1;
+  int32  limit      = 2; // 0 → server default (50)
+}
+
+message TutorListPendingAssignmentsRequest {
+  int32 limit = 1; // 0 → server default (25)
+}
+
+message TutorListAssignmentsResponse {
+  repeated TutorAssignment items = 1;
+}
+
+message TutorCompleteAssignmentRequest  { string assignment_id = 1; }
+message TutorCompleteAssignmentResponse {}
+
+message TutorArchiveAssignmentRequest  { string assignment_id = 1; }
+message TutorArchiveAssignmentResponse {}
+
+message TutorBroadcastAssignmentRequest {
+  string title   = 1;
+  string body_md = 2;
+  // Optional. Past timestamps rejected by the use case.
+  google.protobuf.Timestamp due_at = 3;
+}
+
+// One per failed student. The use case never aborts the whole batch
+// on partial failure — successful pushes still land, failures are
+// collected here for a per-student retry UI.
+message TutorBroadcastFailure {
+  string student_id = 1;
+  string error      = 2;
+}
+
+message TutorBroadcastAssignmentResponse {
+  repeated TutorAssignment      pushed = 1;
+  repeated TutorBroadcastFailure failed = 2;
+}
+
+// TutorPeekInviteResponse mirrors domain.PeekInviteResult — the invite
+// itself plus the derived status, so the landing page renders the
+// right CTA without recomputing the timestamps.
+message TutorPeekInviteResponse {
+  TutorInvite invite = 1;
+  // tutor_display is populated by the handler from the users table
+  // (display_name fallback to username) — student needs to see «Maria
+  // приглашает тебя» on the landing without exposing tutor's UUID.
+  string tutor_display = 2;
+}
+
+service TutorService {
+  // CreateInvite — tutor-authenticated. tutor_id taken from bearer.
+  rpc CreateInvite(TutorCreateInviteRequest) returns (TutorInvite) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/invites"
+      body: "*"
+    };
+  }
+
+  // RevokeInvite — tutor-only; verifies tutor owns the invite.
+  rpc RevokeInvite(TutorRevokeInviteRequest) returns (TutorInvite) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/invites/{invite_id}/revoke"
+      body: "*"
+    };
+  }
+
+  // ListInvites — tutor's own invites, recent first.
+  rpc ListInvites(TutorListInvitesRequest) returns (TutorListInvitesResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/invites"};
+  }
+
+  // PeekInvite — PUBLIC. Used by the /invite/{code} landing before
+  // the student has authed. Returns enough metadata to decide the
+  // CTA (Active → «Accept»; Expired/Revoked → message; Accepted →
+  // «You already accepted» if accepted_by matches the viewer once
+  // they auth, but that join is a frontend concern).
+  rpc PeekInvite(TutorPeekInviteRequest) returns (TutorPeekInviteResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/invites/peek/{code}"};
+  }
+
+  // AcceptInvite — student-authenticated. student_id taken from bearer.
+  rpc AcceptInvite(TutorAcceptInviteRequest) returns (TutorRelationship) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/invites/accept"
+      body: "*"
+    };
+  }
+
+  // ListStudents — tutor's active students.
+  rpc ListStudents(TutorListStudentsRequest) returns (TutorListStudentsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/students"};
+  }
+
+  // EndRelationship — tutor soft-ends a relationship.
+  rpc EndRelationship(TutorEndRelationshipRequest) returns (TutorEndRelationshipResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/students/{student_id}/end"
+      body: "*"
+    };
+  }
+
+  // GetStudentSnapshot — Wave 2.4b. Per-student aggregate (focus
+  // minutes / English HR mocks / Atlas weak-spots / notes count).
+  // Tutor must own the relationship; foreign-id probes return
+  // NotFound, not PermissionDenied (cross-user leak protection).
+  rpc GetStudentSnapshot(TutorGetStudentSnapshotRequest) returns (TutorStudentSnapshot) {
+    option (google.api.http) = {get: "/api/v1/tutor/students/{student_id}/snapshot"};
+  }
+
+  // GeneratePreSessionBrief — Wave 2.5. Snapshot + LLM-rendered
+  // 1-page Russian narrative. Brief field empty when LLMChain
+  // unavailable; the snapshot fallback is always populated.
+  rpc GeneratePreSessionBrief(TutorGenerateBriefRequest) returns (TutorPreSessionBrief) {
+    option (google.api.http) = {get: "/api/v1/tutor/students/{student_id}/brief"};
+  }
+
+  // ── Wave 5.1 — assignments ───────────────────────────────────────
+  // PushAssignment — tutor authors a piece of work for one student.
+  rpc PushAssignment(TutorPushAssignmentRequest) returns (TutorAssignment) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/students/{student_id}/assignments"
+      body: "*"
+    };
+  }
+
+  // ListAssignmentsForTutor — full backlog for one student (active +
+  // completed + archived). Tutor-side dashboard view.
+  rpc ListAssignmentsForTutor(TutorListAssignmentsRequest) returns (TutorListAssignmentsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/students/{student_id}/assignments"};
+  }
+
+  // ListPendingAssignments — student-side feed: «what tutors pushed
+  // me that I haven't done yet». Excludes completed + archived.
+  rpc ListPendingAssignments(TutorListPendingAssignmentsRequest) returns (TutorListAssignmentsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/assignments/pending"};
+  }
+
+  // CompleteAssignment — student stamps completed_at. Idempotent;
+  // re-call returns FailedPrecondition (ErrAlreadyCompleted).
+  rpc CompleteAssignment(TutorCompleteAssignmentRequest) returns (TutorCompleteAssignmentResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/assignments/{assignment_id}/complete"
+      body: "*"
+    };
+  }
+
+  // ArchiveAssignment — tutor withdraws a stale assignment.
+  rpc ArchiveAssignment(TutorArchiveAssignmentRequest) returns (TutorArchiveAssignmentResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/assignments/{assignment_id}/archive"
+      body: "*"
+    };
+  }
+
+  // BroadcastAssignment — Wave 5.2a (slice of Tier 3). Sends the same
+  // assignment body to ALL of the tutor's active students in one call.
+  // Partial-failure semantics: response carries `pushed` + `failed`
+  // arrays so the UI can show «Pushed to 5 / 6 students» and let the
+  // tutor retry the one that failed.
+  rpc BroadcastAssignment(TutorBroadcastAssignmentRequest) returns (TutorBroadcastAssignmentResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/assignments/broadcast"
+      body: "*"
+    };
+  }
+}

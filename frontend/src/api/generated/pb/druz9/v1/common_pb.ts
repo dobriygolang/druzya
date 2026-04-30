@@ -13,6 +13,14 @@ import { proto3 } from "@bufbuild/protobuf";
 
 /**
  * Section mirrors shared/enums.Section and the OpenAPI Section enum.
+ * English HR (value=6) is the first non-engineering section — Wave 1 of
+ * docs/feature/english.md. It sits in the same enum because
+ * mock_sessions.section is the natural lookup key and creating a parallel
+ * taxonomy for English would force every consumer (Insights, mock-pipeline,
+ * history) to carry a tagged-union switch. Tables that gate on engineering
+ * sections via CHECK constraints (ratings, elo_snapshots, tasks,
+ * arena_matches, slots) do NOT accept english_hr — see
+ * migrations/00001_baseline.sql.
  *
  * @generated from enum druz9.v1.Section
  */
@@ -46,6 +54,33 @@ export enum Section {
    * @generated from enum value: SECTION_BEHAVIORAL = 5;
    */
   BEHAVIORAL = 5,
+
+  /**
+   * @generated from enum value: SECTION_ENGLISH_HR = 6;
+   */
+  ENGLISH_HR = 6,
+
+  /**
+   * System Design senior (Wave 3.2 of docs/feature/plan.md). Free-form
+   * discussion of distributed systems / real-time / ML / observability —
+   * no algorithmic task. Differs from SECTION_SYSTEM_DESIGN: that one
+   * pairs with a designed-prompt task ("design URL shortener with these
+   * constraints"), this one is interview-style architectural pushback.
+   *
+   * @generated from enum value: SECTION_SYSTEM_DESIGN_SENIOR = 7;
+   */
+  SYSTEM_DESIGN_SENIOR = 7,
+
+  /**
+   * Tech Lead / EM mock (Wave 3.4 of docs/feature/plan.md). Free-form
+   * STAR-style behavioral round at TL/EM level — people scenarios
+   * (1:1s, conflict, hiring, tech-debt defense). Differs from
+   * SECTION_BEHAVIORAL: that one pairs with concrete behavioral tasks;
+   * this one is open conversation with the AI as a hiring panel.
+   *
+   * @generated from enum value: SECTION_TECH_LEAD_EM = 8;
+   */
+  TECH_LEAD_EM = 8,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Section)
 proto3.util.setEnumType(Section, "druz9.v1.Section", [
@@ -55,6 +90,9 @@ proto3.util.setEnumType(Section, "druz9.v1.Section", [
   { no: 3, name: "SECTION_GO" },
   { no: 4, name: "SECTION_SYSTEM_DESIGN" },
   { no: 5, name: "SECTION_BEHAVIORAL" },
+  { no: 6, name: "SECTION_ENGLISH_HR" },
+  { no: 7, name: "SECTION_SYSTEM_DESIGN_SENIOR" },
+  { no: 8, name: "SECTION_TECH_LEAD_EM" },
 ]);
 
 /**

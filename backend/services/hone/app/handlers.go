@@ -91,6 +91,31 @@ type Handler struct {
 	ShareToWeb      *ShareToWeb
 	MakePrivate     *MakePrivate
 
+	// Reading-модуль (Wave 4 of docs/feature/english.md). Library +
+	// reader sessions + Leitner SRS vocab queue.
+	AddReadingMaterial     *AddReadingMaterial
+	GetReadingMaterial     *GetReadingMaterial
+	ListReadingMaterials   *ListReadingMaterials
+	ArchiveReadingMaterial *ArchiveReadingMaterial
+	StartReadingSession    *StartReadingSession
+	EndReadingSession      *EndReadingSession
+	AddVocab               *AddVocab
+	ReviewVocab            *ReviewVocab
+	ListVocabDue           *ListVocabDue
+
+	// Writing-as-Focus (Wave 4.4). One-shot LLM grader, no persistence.
+	GradeEnglishWriting *GradeEnglishWriting
+
+	// Code-review-coaching (Wave 3.6). One-shot grader for diff + review.
+	GradeCodeReview *GradeCodeReview
+
+	// Listening-модуль (Wave 6.1). Library of audio + transcript;
+	// click-on-word reuses the AddVocab use case above.
+	AddListeningMaterial     *AddListeningMaterial
+	GetListeningMaterial     *GetListeningMaterial
+	ListListeningMaterials   *ListListeningMaterials
+	ArchiveListeningMaterial *ArchiveListeningMaterial
+
 	Log *slog.Logger
 	Now func() time.Time
 }

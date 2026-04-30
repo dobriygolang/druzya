@@ -96,6 +96,28 @@ func (r *MockReader) LastNFinished(ctx context.Context, userID uuid.UUID, n int)
 	return out, nil
 }
 
+// RecentAbandonedCount — Phase 4.7. Single COUNT(*) хватит: мы используем
+// только число для severity grader'а (детали abandoned mocks coach не
+// показывает, чтобы не превращать brief в naming-and-shaming).
+func (r *MockReader) RecentAbandonedCount(ctx context.Context, userID uuid.UUID, sinceDays int) (int, error) {
+	if sinceDays <= 0 {
+		sinceDays = 14
+	}
+	var n int32
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*)::int4
+		   FROM mock_sessions
+		  WHERE user_id = $1
+		    AND status = 'abandoned'
+		    AND created_at >= now() - ($2 || ' days')::interval`,
+		sharedpg.UUID(userID), fmt.Sprintf("%d", sinceDays),
+	).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("intelligence.MockReader.RecentAbandonedCount: %w", err)
+	}
+	return int(n), nil
+}
+
 // ── KataReader: services/daily domain ──
 
 // KataReader implements domain.KataReader over daily_streaks + daily_kata_history.
@@ -381,9 +403,15 @@ func (r *DailyNoteReader) RecentDailyNotes(ctx context.Context, userID uuid.UUID
 	return out, nil
 }
 
-// ── CalendarReader: services/daily interview_calendars ──
+// ── CalendarReader: services/calendar personal_events ──
 
-// CalendarReader implements domain.CalendarReader over interview_calendars + companies.
+// CalendarReader implements domain.CalendarReader over personal_events
+// + companies. The reader returns every personal-calendar kind, not
+// interviews only — severity grading downstream switches on Kind.
+//
+// "interview_calendars" was the legacy table; this reader reads from the
+// unified personal_events surface introduced in 00003. Existing
+// interview rows are migrated separately and become kind='interview'.
 type CalendarReader struct{ pool *pgxpool.Pool }
 
 // NewCalendarReader wraps a pool.
@@ -393,16 +421,23 @@ func (r *CalendarReader) UpcomingInterviews(ctx context.Context, userID uuid.UUI
 	if withinDays <= 0 || withinDays > 365 {
 		withinDays = 30
 	}
-	rows, err := r.pool.Query(ctx,
-		`SELECT COALESCE(c.name, '?'), ic.role, ic.interview_date,
-		        COALESCE(ic.current_level, ''), ic.readiness_pct,
-		        (ic.interview_date - CURRENT_DATE)::int AS days_from_now
-		   FROM interview_calendars ic
-		   LEFT JOIN companies c ON c.id = ic.company_id
-		  WHERE ic.user_id=$1
-		    AND ic.interview_date >= CURRENT_DATE
-		    AND ic.interview_date <= CURRENT_DATE + $2::int
-		  ORDER BY ic.interview_date ASC`,
+	rows, err := r.pool.Query(ctx, `
+		SELECT
+		    pe.kind::text,
+		    COALESCE(c.name, ''),
+		    pe.role,
+		    pe.starts_at,
+		    pe.current_level,
+		    pe.readiness_pct,
+		    pe.title,
+		    (pe.starts_at::date - CURRENT_DATE)::int AS days_from_now
+		  FROM personal_events pe
+		  LEFT JOIN companies c ON c.id = pe.company_id
+		 WHERE pe.user_id = $1
+		   AND pe.status  = 'planned'
+		   AND pe.starts_at::date >= CURRENT_DATE
+		   AND pe.starts_at::date <= CURRENT_DATE + $2::int
+		 ORDER BY pe.starts_at ASC`,
 		sharedpg.UUID(userID), withinDays,
 	)
 	if err != nil {
@@ -411,9 +446,20 @@ func (r *CalendarReader) UpcomingInterviews(ctx context.Context, userID uuid.UUI
 	defer rows.Close()
 	out := make([]domain.UpcomingInterview, 0)
 	for rows.Next() {
-		var ui domain.UpcomingInterview
-		var pct int32
-		if err := rows.Scan(&ui.CompanyName, &ui.Role, &ui.InterviewDate, &ui.CurrentLevel, &pct, &ui.DaysFromNow); err != nil {
+		var (
+			ui  domain.UpcomingInterview
+			pct int16
+		)
+		if err := rows.Scan(
+			&ui.Kind,
+			&ui.CompanyName,
+			&ui.Role,
+			&ui.InterviewDate,
+			&ui.CurrentLevel,
+			&pct,
+			&ui.Title,
+			&ui.DaysFromNow,
+		); err != nil {
 			return nil, fmt.Errorf("intelligence.CalendarReader: scan: %w", err)
 		}
 		ui.ReadinessPct = int(pct)
@@ -531,4 +577,467 @@ func (r *MockMessagesReader) TopKeywords(ctx context.Context, userID uuid.UUID, 
 		all = append(all[:best], all[best+1:]...)
 	}
 	return out, nil
+}
+
+// ── TrackReader: services/tracks user_tracks + track_steps ──
+
+// TrackReader implements domain.TrackReader over user_tracks +
+// track_steps. Adapter lives here (not in services/tracks/infra) so
+// intelligence stays the single owner of cross-product reads.
+type TrackReader struct{ pool *pgxpool.Pool }
+
+// NewTrackReader wires the adapter.
+func NewTrackReader(pool *pgxpool.Pool) *TrackReader {
+	return &TrackReader{pool: pool}
+}
+
+// ActiveTracks returns the user's non-completed tracks with current-step
+// info + days-since-last-touch.
+func (r *TrackReader) ActiveTracks(ctx context.Context, userID uuid.UUID) ([]domain.ActiveTrack, error) {
+	rows, err := r.pool.Query(ctx, `
+        SELECT
+            t.id, t.slug, t.name,
+            ut.current_step,
+            COALESCE((SELECT COUNT(*) FROM track_steps ts WHERE ts.track_id = t.id), 0) AS steps_total,
+            COALESCE(s.title, '')                  AS step_title,
+            COALESCE(s.skill_keys, '{}'::text[])   AS step_skill_keys,
+            COALESCE(s.estimated_minutes, 0)       AS step_minutes,
+            ut.paused_at IS NOT NULL               AS is_paused,
+            (
+                SELECT EXTRACT(EPOCH FROM (now() - MAX(fs.ended_at)))::int / 86400
+                  FROM hone_focus_sessions fs
+                 WHERE fs.user_id = $1
+                   AND s.skill_keys IS NOT NULL
+                   AND s.skill_keys && ARRAY[fs.skill_key]
+            ) AS days_since
+          FROM user_tracks ut
+          JOIN tracks t ON t.id = ut.track_id
+          LEFT JOIN track_steps s
+                 ON s.track_id   = ut.track_id
+                AND s.step_index = ut.current_step
+         WHERE ut.user_id = $1
+           AND ut.completed_at IS NULL
+         ORDER BY ut.paused_at IS NOT NULL ASC, ut.joined_at DESC
+         LIMIT 5`,
+		sharedpg.UUID(userID),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.TrackReader: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.ActiveTrack, 0, 4)
+	for rows.Next() {
+		var (
+			tID                   pgtype.UUID
+			slug, name, stepTitle string
+			currentStep           int16
+			stepsTotal            int64
+			skillKeys             []string
+			stepMinutes           int32
+			isPaused              bool
+			days                  pgtype.Int4
+		)
+		if err := rows.Scan(&tID, &slug, &name, &currentStep, &stepsTotal,
+			&stepTitle, &skillKeys, &stepMinutes, &isPaused, &days); err != nil {
+			return nil, fmt.Errorf("intelligence.TrackReader: scan: %w", err)
+		}
+		daysSince := 999
+		if days.Valid {
+			daysSince = int(days.Int32)
+			if daysSince < 0 {
+				daysSince = 0
+			}
+		}
+		out = append(out, domain.ActiveTrack{
+			TrackID:            sharedpg.UUIDFrom(tID),
+			Slug:               slug,
+			Name:               name,
+			CurrentStep:        int(currentStep),
+			StepsTotal:         int(stepsTotal),
+			CurrentStepTitle:   stepTitle,
+			CurrentStepSkills:  skillKeys,
+			EstimatedMinutes:   int(stepMinutes),
+			IsPaused:           isPaused,
+			DaysSinceLastTouch: daysSince,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return out, fmt.Errorf("intelligence.TrackReader: rows: %w", err)
+	}
+	return out, nil
+}
+
+// Compile-time guard.
+var _ domain.TrackReader = (*TrackReader)(nil)
+
+// ── ClubReader: services/clubs club_attendees + club_sessions (Phase 3) ──
+
+// ClubReader implements domain.ClubReader over club_attendees +
+// club_sessions. Live в этом пакете (а не в services/clubs/infra) — same
+// reasoning как у TrackReader: intelligence сам владеет cross-product
+// reads, чтобы клубы не тащили intelligence/domain.
+type ClubReader struct{ pool *pgxpool.Pool }
+
+// NewClubReader wires the adapter.
+func NewClubReader(pool *pgxpool.Pool) *ClubReader {
+	return &ClubReader{pool: pool}
+}
+
+// GhostedSessions — past windowDays сессии где user RSVP'd_yes но
+// статус остался rsvp_yes (никто не проставил attended). Только сессии
+// в статусе 'done' — cancelled не считаем (там не было шанса dropout'нуть).
+func (r *ClubReader) GhostedSessions(ctx context.Context, userID uuid.UUID, windowDays int) ([]domain.GhostedClubSession, error) {
+	if windowDays <= 0 || windowDays > 60 {
+		windowDays = 7
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT c.name, s.topic_title,
+		       (EXTRACT(EPOCH FROM (now() - s.scheduled_at))::int / 86400) AS days_ago
+		  FROM club_attendees a
+		  JOIN club_sessions s ON s.id = a.session_id
+		  JOIN clubs c         ON c.id = s.club_id
+		 WHERE a.user_id = $1
+		   AND a.status  = 'rsvp_yes'
+		   AND s.status  = 'done'
+		   AND s.scheduled_at >= now() - ($2 || ' days')::interval
+		   AND s.scheduled_at < now()
+		 ORDER BY s.scheduled_at DESC
+		 LIMIT 5`,
+		sharedpg.UUID(userID), fmt.Sprintf("%d", windowDays),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.ClubReader: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.GhostedClubSession, 0, 4)
+	for rows.Next() {
+		var (
+			club, topic string
+			ago         int32
+		)
+		if err := rows.Scan(&club, &topic, &ago); err != nil {
+			return nil, fmt.Errorf("intelligence.ClubReader: scan: %w", err)
+		}
+		if ago < 0 {
+			ago = 0
+		}
+		out = append(out, domain.GhostedClubSession{
+			ClubName: club, TopicTitle: topic, HappenedAgo: int(ago),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return out, fmt.Errorf("intelligence.ClubReader: rows: %w", err)
+	}
+	return out, nil
+}
+
+// Compile-time guard.
+var _ domain.ClubReader = (*ClubReader)(nil)
+
+// ── GoalsReader: services/intelligence user_goals (Phase 4.3) ──
+
+// GoalsReader implements domain.GoalsReader over user_goals. Lives here
+// (а не в services/<owner>/infra) потому что user_goals — собственная
+// таблица intelligence-context'а: цели читает только coach, других
+// потребителей нет.
+type GoalsReader struct{ pool *pgxpool.Pool }
+
+// NewGoalsReader wires the adapter.
+func NewGoalsReader(pool *pgxpool.Pool) *GoalsReader {
+	return &GoalsReader{pool: pool}
+}
+
+// ActiveGoals returns up to 8 active user goals, ordered by deadline
+// (NULLS LAST так что job_target с дедлайном перевешивает skill_target
+// без срока). DaysToDeadline pre-computed:
+//   - -1 если deadline NULL,
+//   - 0 если deadline = today,
+//   - N если deadline через N days,
+//   - отрицательное N если deadline просрочен (coach всё равно увидит,
+//     это сигнал «надо подбить итог или сдвинуть»).
+func (r *GoalsReader) ActiveGoals(ctx context.Context, userID uuid.UUID) ([]domain.UserGoal, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, kind, title, notes_md, deadline, track_id, skill_keys, created_at,
+		       CASE
+		         WHEN deadline IS NULL THEN -1
+		         ELSE (deadline - CURRENT_DATE)::int
+		       END AS days_to_deadline
+		  FROM user_goals
+		 WHERE user_id = $1
+		   AND status  = 'active'
+		 ORDER BY deadline NULLS LAST, created_at DESC
+		 LIMIT 8`,
+		sharedpg.UUID(userID),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GoalsReader: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.UserGoal, 0, 4)
+	for rows.Next() {
+		var (
+			id, trackID    pgtype.UUID
+			kind, title    string
+			notesMD        string
+			deadline       *time.Time
+			skillKeys      []string
+			createdAt      time.Time
+			daysToDeadline int32
+		)
+		if err := rows.Scan(&id, &kind, &title, &notesMD, &deadline,
+			&trackID, &skillKeys, &createdAt, &daysToDeadline); err != nil {
+			return nil, fmt.Errorf("intelligence.GoalsReader: scan: %w", err)
+		}
+		g := domain.UserGoal{
+			ID:             sharedpg.UUIDFrom(id),
+			Kind:           domain.UserGoalKind(kind),
+			Status:         "active", // ActiveGoals filters by status; не из row.
+			Title:          title,
+			NotesMD:        notesMD,
+			Deadline:       deadline,
+			DaysToDeadline: int(daysToDeadline),
+			SkillKeys:      skillKeys,
+			CreatedAt:      createdAt,
+		}
+		if trackID.Valid {
+			tid := sharedpg.UUIDFrom(trackID)
+			g.TrackID = &tid
+		}
+		out = append(out, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("intelligence.GoalsReader: rows: %w", err)
+	}
+	return out, nil
+}
+
+var _ domain.GoalsReader = (*GoalsReader)(nil)
+var _ domain.GoalsRepo = (*GoalsReader)(nil)
+
+// ListByUser — full goals list (any status), newest first. Used by the
+// /goals page to render archive/paused goals alongside active.
+func (r *GoalsReader) ListByUser(ctx context.Context, userID uuid.UUID) ([]domain.UserGoal, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, kind, title, notes_md, deadline, track_id, skill_keys, created_at,
+		       CASE WHEN deadline IS NULL THEN -1
+		            ELSE (deadline - CURRENT_DATE)::int END AS days_to_deadline,
+		       status
+		  FROM user_goals
+		 WHERE user_id = $1
+		 ORDER BY (status = 'active') DESC,
+		          deadline NULLS LAST,
+		          created_at DESC`,
+		sharedpg.UUID(userID),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GoalsReader.ListByUser: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.UserGoal, 0, 8)
+	for rows.Next() {
+		var (
+			id, trackID    pgtype.UUID
+			kind, title    string
+			notesMD        string
+			deadline       *time.Time
+			skillKeys      []string
+			createdAt      time.Time
+			daysToDeadline int32
+			status         string
+		)
+		if err := rows.Scan(&id, &kind, &title, &notesMD, &deadline,
+			&trackID, &skillKeys, &createdAt, &daysToDeadline, &status); err != nil {
+			return nil, fmt.Errorf("intelligence.GoalsReader.ListByUser: scan: %w", err)
+		}
+		g := domain.UserGoal{
+			ID:             sharedpg.UUIDFrom(id),
+			Kind:           domain.UserGoalKind(kind),
+			Status:         status,
+			Title:          title,
+			NotesMD:        notesMD,
+			Deadline:       deadline,
+			DaysToDeadline: int(daysToDeadline),
+			SkillKeys:      skillKeys,
+			CreatedAt:      createdAt,
+		}
+		if trackID.Valid {
+			tid := sharedpg.UUIDFrom(trackID)
+			g.TrackID = &tid
+		}
+		out = append(out, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("intelligence.GoalsReader.ListByUser: rows: %w", err)
+	}
+	return out, nil
+}
+
+// Create inserts an active goal. Status defaults to 'active' on the SQL
+// side (column default). Skill_keys + deadline + track_id all nullable —
+// caller передаёт zero values когда нужно.
+func (r *GoalsReader) Create(ctx context.Context, in domain.CreateGoalInput) (domain.UserGoal, error) {
+	if in.Title == "" {
+		return domain.UserGoal{}, fmt.Errorf("intelligence.GoalsReader.Create: empty title")
+	}
+	if !goalKindIsValid(in.Kind) {
+		return domain.UserGoal{}, fmt.Errorf("intelligence.GoalsReader.Create: invalid kind %q", in.Kind)
+	}
+	skillKeys := in.SkillKeys
+	if skillKeys == nil {
+		skillKeys = []string{}
+	}
+	var trackID pgtype.UUID
+	if in.TrackID != nil {
+		trackID = sharedpg.UUID(*in.TrackID)
+	}
+	var (
+		id        pgtype.UUID
+		createdAt time.Time
+		updatedAt time.Time
+	)
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO user_goals (user_id, kind, title, notes_md, deadline, track_id, skill_keys)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, created_at, updated_at`,
+		sharedpg.UUID(in.UserID), string(in.Kind), in.Title, in.NotesMD,
+		nullableDate(in.Deadline), trackID, skillKeys,
+	).Scan(&id, &createdAt, &updatedAt)
+	if err != nil {
+		return domain.UserGoal{}, fmt.Errorf("intelligence.GoalsReader.Create: %w", err)
+	}
+	out := domain.UserGoal{
+		ID:        sharedpg.UUIDFrom(id),
+		Kind:      in.Kind,
+		Status:    "active",
+		Title:     in.Title,
+		NotesMD:   in.NotesMD,
+		Deadline:  in.Deadline,
+		SkillKeys: skillKeys,
+		CreatedAt: createdAt,
+	}
+	if in.Deadline != nil {
+		days := int(in.Deadline.UTC().Truncate(24*time.Hour).Sub(time.Now().UTC().Truncate(24*time.Hour)).Hours() / 24)
+		out.DaysToDeadline = days
+	} else {
+		out.DaysToDeadline = -1
+	}
+	if in.TrackID != nil {
+		tid := *in.TrackID
+		out.TrackID = &tid
+	}
+	return out, nil
+}
+
+// UpdateStatus changes status (active/paused/done/abandoned). Done flips
+// completed_at; transitions back to active clear it.
+func (r *GoalsReader) UpdateStatus(ctx context.Context, userID, goalID uuid.UUID, status string) (domain.UserGoal, error) {
+	if !goalStatusIsValid(status) {
+		return domain.UserGoal{}, fmt.Errorf("intelligence.GoalsReader.UpdateStatus: invalid status %q", status)
+	}
+	var completedExpr string
+	if status == "done" {
+		completedExpr = "now()"
+	} else {
+		completedExpr = "NULL"
+	}
+	cmd, err := r.pool.Exec(ctx, fmt.Sprintf(`
+		UPDATE user_goals
+		   SET status       = $3,
+		       completed_at = %s,
+		       updated_at   = now()
+		 WHERE id = $1 AND user_id = $2`, completedExpr),
+		sharedpg.UUID(goalID), sharedpg.UUID(userID), status,
+	)
+	if err != nil {
+		return domain.UserGoal{}, fmt.Errorf("intelligence.GoalsReader.UpdateStatus: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return domain.UserGoal{}, domain.ErrNotFound
+	}
+	// Re-read updated row for caller convenience.
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, kind, title, notes_md, deadline, track_id, skill_keys, created_at,
+		       CASE WHEN deadline IS NULL THEN -1
+		            ELSE (deadline - CURRENT_DATE)::int END AS days_to_deadline,
+		       status
+		  FROM user_goals WHERE id = $1`,
+		sharedpg.UUID(goalID),
+	)
+	if err != nil {
+		return domain.UserGoal{}, fmt.Errorf("intelligence.GoalsReader.UpdateStatus: re-read: %w", err)
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return domain.UserGoal{}, domain.ErrNotFound
+	}
+	var (
+		id, trackID    pgtype.UUID
+		kind, title    string
+		notesMD        string
+		deadline       *time.Time
+		skillKeys      []string
+		createdAt      time.Time
+		daysToDeadline int32
+		newStatus      string
+	)
+	if err := rows.Scan(&id, &kind, &title, &notesMD, &deadline,
+		&trackID, &skillKeys, &createdAt, &daysToDeadline, &newStatus); err != nil {
+		return domain.UserGoal{}, fmt.Errorf("intelligence.GoalsReader.UpdateStatus: scan: %w", err)
+	}
+	out := domain.UserGoal{
+		ID:             sharedpg.UUIDFrom(id),
+		Kind:           domain.UserGoalKind(kind),
+		Status:         newStatus,
+		Title:          title,
+		NotesMD:        notesMD,
+		Deadline:       deadline,
+		DaysToDeadline: int(daysToDeadline),
+		SkillKeys:      skillKeys,
+		CreatedAt:      createdAt,
+	}
+	if trackID.Valid {
+		tid := sharedpg.UUIDFrom(trackID)
+		out.TrackID = &tid
+	}
+	return out, nil
+}
+
+// Delete removes a goal. Scoped to the owner so no cross-user deletes.
+func (r *GoalsReader) Delete(ctx context.Context, userID, goalID uuid.UUID) error {
+	cmd, err := r.pool.Exec(ctx,
+		`DELETE FROM user_goals WHERE id = $1 AND user_id = $2`,
+		sharedpg.UUID(goalID), sharedpg.UUID(userID),
+	)
+	if err != nil {
+		return fmt.Errorf("intelligence.GoalsReader.Delete: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+// ── helpers ──────────────────────────────────────────────────────────
+
+func goalKindIsValid(k domain.UserGoalKind) bool {
+	switch k {
+	case domain.UserGoalKindJob, domain.UserGoalKindSkill, domain.UserGoalKindTrack:
+		return true
+	}
+	return false
+}
+
+func goalStatusIsValid(s string) bool {
+	switch s {
+	case "active", "paused", "done", "abandoned":
+		return true
+	}
+	return false
+}
+
+func nullableDate(t *time.Time) any {
+	if t == nil {
+		return nil
+	}
+	return *t
 }

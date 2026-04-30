@@ -354,7 +354,15 @@ export default function VacanciesPage() {
     page,
     limit: 30,
   })
-  const facets = useFacetsQuery()
+  // Phase 1.6 — pass active sidebar selections so badge counts respond
+  // to user toggles (each axis ignores its own selection on the server).
+  const facets = useFacetsQuery({
+    sources: sources.length ? sources : undefined,
+    companies: companies.length ? companies : undefined,
+    categories: categories.length ? categories : undefined,
+    salary_min: salaryMin || undefined,
+    location: location || undefined,
+  })
   const profile = useProfileQuery()
   const userSkills = useMemo(() => {
     type ProfileBundle = { skill_nodes?: { node_key?: string }[] }

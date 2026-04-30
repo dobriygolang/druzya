@@ -12,6 +12,138 @@ import (
 	"github.com/pgvector/pgvector-go"
 )
 
+type ClubAttendeeStatus string
+
+const (
+	ClubAttendeeStatusRsvpYes  ClubAttendeeStatus = "rsvp_yes"
+	ClubAttendeeStatusRsvpNo   ClubAttendeeStatus = "rsvp_no"
+	ClubAttendeeStatusAttended ClubAttendeeStatus = "attended"
+	ClubAttendeeStatusNoShow   ClubAttendeeStatus = "no_show"
+)
+
+func (e *ClubAttendeeStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ClubAttendeeStatus(s)
+	case string:
+		*e = ClubAttendeeStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ClubAttendeeStatus: %T", src)
+	}
+	return nil
+}
+
+type NullClubAttendeeStatus struct {
+	ClubAttendeeStatus ClubAttendeeStatus
+	Valid              bool // Valid is true if ClubAttendeeStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullClubAttendeeStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ClubAttendeeStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ClubAttendeeStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullClubAttendeeStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ClubAttendeeStatus), nil
+}
+
+type ClubSessionStatus string
+
+const (
+	ClubSessionStatusScheduled ClubSessionStatus = "scheduled"
+	ClubSessionStatusLive      ClubSessionStatus = "live"
+	ClubSessionStatusDone      ClubSessionStatus = "done"
+	ClubSessionStatusCancelled ClubSessionStatus = "cancelled"
+)
+
+func (e *ClubSessionStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ClubSessionStatus(s)
+	case string:
+		*e = ClubSessionStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ClubSessionStatus: %T", src)
+	}
+	return nil
+}
+
+type NullClubSessionStatus struct {
+	ClubSessionStatus ClubSessionStatus
+	Valid             bool // Valid is true if ClubSessionStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullClubSessionStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ClubSessionStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ClubSessionStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullClubSessionStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ClubSessionStatus), nil
+}
+
+type InsightSeverity string
+
+const (
+	InsightSeverityCruise   InsightSeverity = "cruise"
+	InsightSeverityNudge    InsightSeverity = "nudge"
+	InsightSeverityWarn     InsightSeverity = "warn"
+	InsightSeverityCritical InsightSeverity = "critical"
+)
+
+func (e *InsightSeverity) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = InsightSeverity(s)
+	case string:
+		*e = InsightSeverity(s)
+	default:
+		return fmt.Errorf("unsupported scan type for InsightSeverity: %T", src)
+	}
+	return nil
+}
+
+type NullInsightSeverity struct {
+	InsightSeverity InsightSeverity
+	Valid           bool // Valid is true if InsightSeverity is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullInsightSeverity) Scan(value interface{}) error {
+	if value == nil {
+		ns.InsightSeverity, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.InsightSeverity.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullInsightSeverity) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.InsightSeverity), nil
+}
+
 type MockPipelineVerdict string
 
 const (
@@ -56,6 +188,318 @@ func (ns NullMockPipelineVerdict) Value() (driver.Value, error) {
 	return string(ns.MockPipelineVerdict), nil
 }
 
+type PersonalEventKind string
+
+const (
+	PersonalEventKindInterview          PersonalEventKind = "interview"
+	PersonalEventKindDeadline           PersonalEventKind = "deadline"
+	PersonalEventKindExam               PersonalEventKind = "exam"
+	PersonalEventKindClubSession        PersonalEventKind = "club_session"
+	PersonalEventKindStudyBlock         PersonalEventKind = "study_block"
+	PersonalEventKindInterviewPrepBlock PersonalEventKind = "interview_prep_block"
+)
+
+func (e *PersonalEventKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PersonalEventKind(s)
+	case string:
+		*e = PersonalEventKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PersonalEventKind: %T", src)
+	}
+	return nil
+}
+
+type NullPersonalEventKind struct {
+	PersonalEventKind PersonalEventKind
+	Valid             bool // Valid is true if PersonalEventKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPersonalEventKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.PersonalEventKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PersonalEventKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPersonalEventKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PersonalEventKind), nil
+}
+
+type PersonalEventReminderHorizon string
+
+const (
+	PersonalEventReminderHorizonT24h PersonalEventReminderHorizon = "t24h"
+	PersonalEventReminderHorizonT1h  PersonalEventReminderHorizon = "t1h"
+	PersonalEventReminderHorizonNow  PersonalEventReminderHorizon = "now"
+)
+
+func (e *PersonalEventReminderHorizon) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PersonalEventReminderHorizon(s)
+	case string:
+		*e = PersonalEventReminderHorizon(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PersonalEventReminderHorizon: %T", src)
+	}
+	return nil
+}
+
+type NullPersonalEventReminderHorizon struct {
+	PersonalEventReminderHorizon PersonalEventReminderHorizon
+	Valid                        bool // Valid is true if PersonalEventReminderHorizon is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPersonalEventReminderHorizon) Scan(value interface{}) error {
+	if value == nil {
+		ns.PersonalEventReminderHorizon, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PersonalEventReminderHorizon.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPersonalEventReminderHorizon) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PersonalEventReminderHorizon), nil
+}
+
+type PersonalEventStatus string
+
+const (
+	PersonalEventStatusPlanned   PersonalEventStatus = "planned"
+	PersonalEventStatusLive      PersonalEventStatus = "live"
+	PersonalEventStatusDone      PersonalEventStatus = "done"
+	PersonalEventStatusCancelled PersonalEventStatus = "cancelled"
+	PersonalEventStatusNoShow    PersonalEventStatus = "no_show"
+)
+
+func (e *PersonalEventStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PersonalEventStatus(s)
+	case string:
+		*e = PersonalEventStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PersonalEventStatus: %T", src)
+	}
+	return nil
+}
+
+type NullPersonalEventStatus struct {
+	PersonalEventStatus PersonalEventStatus
+	Valid               bool // Valid is true if PersonalEventStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPersonalEventStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.PersonalEventStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PersonalEventStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPersonalEventStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PersonalEventStatus), nil
+}
+
+type TrackKind string
+
+const (
+	TrackKindDev            TrackKind = "dev"
+	TrackKindDevSenior      TrackKind = "dev_senior"
+	TrackKindSysanalyst     TrackKind = "sysanalyst"
+	TrackKindProductAnalyst TrackKind = "product_analyst"
+	TrackKindQa             TrackKind = "qa"
+	TrackKindEnglish        TrackKind = "english"
+)
+
+func (e *TrackKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TrackKind(s)
+	case string:
+		*e = TrackKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TrackKind: %T", src)
+	}
+	return nil
+}
+
+type NullTrackKind struct {
+	TrackKind TrackKind
+	Valid     bool // Valid is true if TrackKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTrackKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.TrackKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TrackKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTrackKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TrackKind), nil
+}
+
+type TrackStepKind string
+
+const (
+	TrackStepKindKata       TrackStepKind = "kata"
+	TrackStepKindArena      TrackStepKind = "arena"
+	TrackStepKindMock       TrackStepKind = "mock"
+	TrackStepKindCodexRead  TrackStepKind = "codex_read"
+	TrackStepKindFocusBlock TrackStepKind = "focus_block"
+)
+
+func (e *TrackStepKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TrackStepKind(s)
+	case string:
+		*e = TrackStepKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TrackStepKind: %T", src)
+	}
+	return nil
+}
+
+type NullTrackStepKind struct {
+	TrackStepKind TrackStepKind
+	Valid         bool // Valid is true if TrackStepKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTrackStepKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.TrackStepKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TrackStepKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTrackStepKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TrackStepKind), nil
+}
+
+type UserGoalKind string
+
+const (
+	UserGoalKindJobTarget   UserGoalKind = "job_target"
+	UserGoalKindSkillTarget UserGoalKind = "skill_target"
+	UserGoalKindTrackTarget UserGoalKind = "track_target"
+)
+
+func (e *UserGoalKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = UserGoalKind(s)
+	case string:
+		*e = UserGoalKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for UserGoalKind: %T", src)
+	}
+	return nil
+}
+
+type NullUserGoalKind struct {
+	UserGoalKind UserGoalKind
+	Valid        bool // Valid is true if UserGoalKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullUserGoalKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.UserGoalKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.UserGoalKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullUserGoalKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.UserGoalKind), nil
+}
+
+type UserGoalStatus string
+
+const (
+	UserGoalStatusActive    UserGoalStatus = "active"
+	UserGoalStatusPaused    UserGoalStatus = "paused"
+	UserGoalStatusDone      UserGoalStatus = "done"
+	UserGoalStatusAbandoned UserGoalStatus = "abandoned"
+)
+
+func (e *UserGoalStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = UserGoalStatus(s)
+	case string:
+		*e = UserGoalStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for UserGoalStatus: %T", src)
+	}
+	return nil
+}
+
+type NullUserGoalStatus struct {
+	UserGoalStatus UserGoalStatus
+	Valid          bool // Valid is true if UserGoalStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullUserGoalStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.UserGoalStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.UserGoalStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullUserGoalStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.UserGoalStatus), nil
+}
+
 type AiCredit struct {
 	UserID    pgtype.UUID
 	Balance   int32
@@ -63,9 +507,17 @@ type AiCredit struct {
 }
 
 type AiStrictnessProfile struct {
-	ID         pgtype.UUID
-	Name       string
-	ConfigJson []byte
+	ID                   pgtype.UUID
+	Slug                 string
+	Name                 string
+	OffTopicPenalty      float64
+	MustMentionPenalty   float64
+	HallucinationPenalty float64
+	BiasTowardFail       float64
+	CustomPromptTemplate pgtype.Text
+	Active               bool
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
 }
 
 type AnticheatSignal struct {
@@ -123,6 +575,7 @@ type AtlasNode struct {
 	IsActive    bool
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	TrackKind   TrackKind
 }
 
 type Booking struct {
@@ -149,6 +602,63 @@ type CircleMember struct {
 	UserID   pgtype.UUID
 	Role     string
 	JoinedAt pgtype.Timestamptz
+}
+
+type Club struct {
+	ID              pgtype.UUID
+	CircleID        pgtype.UUID
+	Slug            string
+	Name            string
+	TopicTag        string
+	CuratorUserID   pgtype.UUID
+	CurriculumMd    string
+	ScheduleKind    string
+	DefaultZoomLink string
+	TgAnchorUrl     string
+	CoverImageUrl   string
+	IsPublic        bool
+	IsActive        bool
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+type ClubAttendee struct {
+	SessionID pgtype.UUID
+	UserID    pgtype.UUID
+	Status    ClubAttendeeStatus
+	NotesMd   string
+	RsvpAt    pgtype.Timestamptz
+}
+
+type ClubMaterial struct {
+	ID        pgtype.UUID
+	SessionID pgtype.UUID
+	Kind      string
+	Label     string
+	Url       string
+	SortOrder int32
+	CreatedAt pgtype.Timestamptz
+}
+
+type ClubSession struct {
+	ID                 pgtype.UUID
+	ClubID             pgtype.UUID
+	ScheduledAt        pgtype.Timestamptz
+	DurationMin        int32
+	TopicTitle         string
+	TopicMd            string
+	PresenterHandle    string
+	ZoomLink           string
+	TgPostUrl          string
+	RecordingUrl       string
+	PreReadMd          string
+	SummaryMd          string
+	TakeawaysMd        string
+	Status             ClubSessionStatus
+	AttachedCodexSlugs []string
+	AttachedEventIds   []pgtype.UUID
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
 }
 
 type CoachEpisode struct {
@@ -207,11 +717,15 @@ type Company struct {
 }
 
 type CompanyQuestion struct {
-	ID         pgtype.UUID
-	CompanyID  pgtype.UUID
-	StageKind  string
-	QuestionMd string
-	AnswerHint pgtype.Text
+	ID                pgtype.UUID
+	CompanyID         pgtype.UUID
+	StageKind         string
+	Body              string
+	ExpectedAnswerMd  string
+	ReferenceCriteria []byte
+	Active            bool
+	SortOrder         int32
+	CreatedAt         pgtype.Timestamptz
 }
 
 type CompanyStage struct {
@@ -419,21 +933,6 @@ type FollowUpQuestion struct {
 	OrderNum   int32
 }
 
-type FriendCode struct {
-	UserID    pgtype.UUID
-	Code      string
-	ExpiresAt pgtype.Timestamptz
-}
-
-type Friendship struct {
-	ID          int64
-	RequesterID pgtype.UUID
-	AddresseeID pgtype.UUID
-	Status      string
-	CreatedAt   pgtype.Timestamptz
-	AcceptedAt  pgtype.Timestamptz
-}
-
 type HoneDailyBrief struct {
 	ID          pgtype.UUID
 	UserID      pgtype.UUID
@@ -465,6 +964,17 @@ type HoneFocusSession struct {
 	PomodorosCompleted int32
 	SecondsFocused     int32
 	CreatedAt          pgtype.Timestamptz
+}
+
+type HoneListeningMaterial struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	Title        string
+	AudioUrl     string
+	TranscriptMd string
+	ArchivedAt   pgtype.Timestamptz
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
 }
 
 type HoneNote struct {
@@ -518,6 +1028,31 @@ type HoneQueueItem struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type HoneReadingMaterial struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	SourceKind string
+	SourceUrl  string
+	Title      string
+	BodyMd     string
+	TotalChars int32
+	ArchivedAt pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type HoneReadingSession struct {
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	MaterialID     pgtype.UUID
+	CharsRead      int32
+	CharsTotal     int32
+	StartedAt      pgtype.Timestamptz
+	EndedAt        pgtype.Timestamptz
+	AiSummaryScore pgtype.Int4
+	SummaryMd      string
+}
+
 type HoneStreakDay struct {
 	UserID          pgtype.UUID
 	Day             pgtype.Date
@@ -561,6 +1096,19 @@ type HoneTaskComment struct {
 	CreatedAt  pgtype.Timestamptz
 }
 
+type HoneVocabQueue struct {
+	UserID         pgtype.UUID
+	Word           string
+	Translation    string
+	ContextMd      string
+	SourceMaterial pgtype.UUID
+	Box            int16
+	NextReviewAt   pgtype.Timestamptz
+	ReviewedCount  int32
+	LearnedAt      pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+}
+
 type HoneWhiteboard struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID
@@ -580,6 +1128,27 @@ type Incident struct {
 	Description      string
 	AffectedServices []string
 	CreatedAt        pgtype.Timestamptz
+}
+
+type IntelligenceInsight struct {
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	Surface     string
+	Severity    InsightSeverity
+	Anchor      string
+	Headline    string
+	Evidence    string
+	Interpret   string
+	Lever       string
+	DeepLink    string
+	EventID     pgtype.UUID
+	SkillKey    string
+	CodexSlug   string
+	TrackID     pgtype.UUID
+	DismissedAt pgtype.Timestamptz
+	ActedAt     pgtype.Timestamptz
+	GeneratedAt pgtype.Timestamptz
+	ExpiresAt   pgtype.Timestamptz
 }
 
 type InterviewerApplication struct {
@@ -648,6 +1217,7 @@ type Lobby struct {
 	MatchID      pgtype.UUID
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	SkillFilter  []string
 }
 
 type LobbyMember struct {
@@ -721,24 +1291,33 @@ type MockSession struct {
 }
 
 type MockTask struct {
-	ID               pgtype.UUID
-	Section          string
-	Difficulty       string
-	Title            string
-	BriefMd          string
-	Language         pgtype.Text
-	LlmModel         pgtype.Text
-	ExpectedKeywords []string
-	IsActive         bool
-	CreatedAt        pgtype.Timestamptz
+	ID                       pgtype.UUID
+	StageKind                string
+	Language                 string
+	Difficulty               int16
+	Title                    string
+	BodyMd                   string
+	SampleIoMd               string
+	ReferenceCriteria        []byte
+	ReferenceSolutionMd      string
+	FunctionalRequirementsMd string
+	TimeLimitMin             int32
+	AiStrictnessProfileID    pgtype.UUID
+	LlmModel                 pgtype.Text
+	Active                   bool
+	CreatedByAdminID         pgtype.UUID
+	CreatedAt                pgtype.Timestamptz
+	UpdatedAt                pgtype.Timestamptz
 }
 
 type MockTaskTestCase struct {
-	ID         pgtype.UUID
-	MockTaskID pgtype.UUID
-	InputMd    string
-	Expected   string
-	Weight     int32
+	ID             pgtype.UUID
+	TaskID         pgtype.UUID
+	Input          string
+	ExpectedOutput string
+	IsHidden       bool
+	Ordinal        int32
+	CreatedAt      pgtype.Timestamptz
 }
 
 type NoteYjsUpdate struct {
@@ -790,6 +1369,38 @@ type Persona struct {
 	IsEnabled     bool
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+}
+
+type PersonalEvent struct {
+	ID               pgtype.UUID
+	UserID           pgtype.UUID
+	Kind             PersonalEventKind
+	Title            string
+	DescriptionMd    string
+	StartsAt         pgtype.Timestamptz
+	EndsAt           pgtype.Timestamptz
+	AllDay           bool
+	CompanyID        pgtype.UUID
+	Role             string
+	CurrentLevel     string
+	ReadinessPct     int16
+	CodexArticleSlug string
+	TrackID          pgtype.UUID
+	ClubSessionID    pgtype.UUID
+	Status           PersonalEventStatus
+	OutcomeMd        string
+	FeltScore        pgtype.Int2
+	FinishedAt       pgtype.Timestamptz
+	Source           string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type PersonalEventRemindersSent struct {
+	EventID pgtype.UUID
+	Horizon PersonalEventReminderHorizon
+	Channel string
+	SentAt  pgtype.Timestamptz
 }
 
 type PipelineAttempt struct {
@@ -936,10 +1547,14 @@ type Slot struct {
 }
 
 type StageDefaultQuestion struct {
-	ID         pgtype.UUID
-	StageKind  string
-	QuestionMd string
-	AnswerHint pgtype.Text
+	ID                pgtype.UUID
+	StageKind         string
+	Body              string
+	ExpectedAnswerMd  string
+	ReferenceCriteria []byte
+	Active            bool
+	SortOrder         int32
+	CreatedAt         pgtype.Timestamptz
 }
 
 type Subscription struct {
@@ -993,13 +1608,17 @@ type Task struct {
 	AvgRating     pgtype.Numeric
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+	SkillKeys     []string
 }
 
 type TaskQuestion struct {
-	ID         pgtype.UUID
-	MockTaskID pgtype.UUID
-	QuestionMd string
-	AnswerHint pgtype.Text
+	ID                pgtype.UUID
+	TaskID            pgtype.UUID
+	Body              string
+	ExpectedAnswerMd  string
+	ReferenceCriteria []byte
+	SortOrder         int32
+	CreatedAt         pgtype.Timestamptz
 }
 
 type TaskRating struct {
@@ -1044,6 +1663,71 @@ type TgUserLink struct {
 	LastSeenAt  pgtype.Timestamptz
 }
 
+type Track struct {
+	ID             pgtype.UUID
+	Slug           string
+	Name           string
+	Tagline        string
+	DescriptionMd  string
+	CoverImageUrl  string
+	AccentColor    string
+	CuratorID      pgtype.UUID
+	EstimatedWeeks int16
+	Difficulty     string
+	IsCurated      bool
+	IsActive       bool
+	Tags           []string
+	CompanyFocus   []string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type TrackStep struct {
+	TrackID            pgtype.UUID
+	StepIndex          int16
+	Title              string
+	DescriptionMd      string
+	SkillKeys          []string
+	RequiredKind       TrackStepKind
+	RequiredCount      int32
+	RecommendedReading []string
+	EstimatedMinutes   int32
+}
+
+type TutorAssignment struct {
+	ID          pgtype.UUID
+	TutorID     pgtype.UUID
+	StudentID   pgtype.UUID
+	Title       string
+	BodyMd      string
+	DueAt       pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	CompletedAt pgtype.Timestamptz
+	ArchivedAt  pgtype.Timestamptz
+}
+
+type TutorInvite struct {
+	ID         pgtype.UUID
+	TutorID    pgtype.UUID
+	Code       string
+	Note       string
+	CreatedAt  pgtype.Timestamptz
+	ExpiresAt  pgtype.Timestamptz
+	AcceptedBy pgtype.UUID
+	AcceptedAt pgtype.Timestamptz
+	RevokedAt  pgtype.Timestamptz
+}
+
+type TutorStudent struct {
+	ID        pgtype.UUID
+	TutorID   pgtype.UUID
+	StudentID pgtype.UUID
+	InviteID  pgtype.UUID
+	StartedAt pgtype.Timestamptz
+	EndedAt   pgtype.Timestamptz
+	Note      string
+}
+
 type User struct {
 	ID                    pgtype.UUID
 	Username              string
@@ -1075,6 +1759,21 @@ type UserBan struct {
 	LiftedBy  pgtype.UUID
 }
 
+type UserGoal struct {
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	Kind        UserGoalKind
+	Status      UserGoalStatus
+	Title       string
+	NotesMd     string
+	Deadline    pgtype.Date
+	TrackID     pgtype.UUID
+	SkillKeys   []string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	CompletedAt pgtype.Timestamptz
+}
+
 type UserNotification struct {
 	ID        int64
 	UserID    pgtype.UUID
@@ -1088,6 +1787,15 @@ type UserNotification struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type UserPersonaTrack struct {
+	UserID       pgtype.UUID
+	Track        TrackKind
+	Seniority    pgtype.Text
+	PrimaryTrack bool
+	StartedAt    pgtype.Timestamptz
+	LastActiveAt pgtype.Timestamptz
+}
+
 type UserReport struct {
 	ID          pgtype.UUID
 	ReporterID  pgtype.UUID
@@ -1098,6 +1806,16 @@ type UserReport struct {
 	ResolvedAt  pgtype.Timestamptz
 	ResolvedBy  pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
+}
+
+type UserTrack struct {
+	UserID      pgtype.UUID
+	TrackID     pgtype.UUID
+	JoinedAt    pgtype.Timestamptz
+	CurrentStep int16
+	Progress    []byte
+	PausedAt    pgtype.Timestamptz
+	CompletedAt pgtype.Timestamptz
 }
 
 type UserXp struct {

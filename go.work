@@ -6,6 +6,7 @@ use (
 	./backend/services/ai_mock
 	./backend/services/arena
 	./backend/services/auth
+	./backend/services/calendar
 	./backend/services/circles
 	./backend/services/copilot
 	./backend/services/daily
@@ -13,7 +14,6 @@ use (
 	./backend/services/editor
 	./backend/services/events
 	./backend/services/feed
-	./backend/services/friends
 	./backend/services/hone
 	./backend/services/intelligence
 	./backend/services/lobby
@@ -28,7 +28,10 @@ use (
 	./backend/services/storage
 	./backend/services/subscription
 	./backend/services/sync
+	./backend/services/clubs
+	./backend/services/tracks
 	./backend/services/tg_coach
+	./backend/services/tutor
 	./backend/services/transcription
 	./backend/services/vacancies
 	./backend/services/whiteboard_rooms

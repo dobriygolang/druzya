@@ -169,50 +169,6 @@ func elo(e sharedDomain.MatchCompleted, uid uuid.UUID) int {
 	return e.EloDeltas[uid]
 }
 
-// OnFriendRequest подписывается на friends.RequestReceived через
-// общий sharedDomain.Event (we type-assert внутри).
-//
-// Поскольку friends.FriendRequestReceived лежит в другом модуле и реализует
-// sharedDomain.Event с Topic()=="friends.RequestReceived", мы дёргаем его
-// через рефлексию-free type-проверку только по Topic().
-func (h *FeedHandlers) OnFriendRequest(ctx context.Context, ev sharedDomain.Event) error {
-	if ev.Topic() != "friends.RequestReceived" {
-		return nil
-	}
-	// Извлекаем поля через FriendRequestPayloader, который реализован
-	// adapter'ом в monolith services/friends.go (см. wiring).
-	if pe, ok := ev.(friendRequestPayloader); ok {
-		_, err := h.Repo.Insert(ctx, domain.UserNotification{
-			UserID:  pe.Addressee(),
-			Channel: "social",
-			Type:    "friend_request",
-			Title:   "Новая заявка в друзья",
-			Body:    "Кто-то добавил тебя в друзья",
-			Payload: map[string]any{
-				"requester_id":  pe.Requester().String(),
-				"friendship_id": pe.FriendshipID(),
-			},
-		})
-		if err != nil {
-			h.Log.WarnContext(ctx, "notify.feed.OnFriendRequest: insert failed", slog.Any("err", err))
-		}
-	}
-	return nil
-}
-
-// friendRequestPayloader — узкий интерфейс, который должны удовлетворить
-// события friends-домена. friends.FriendRequestReceived реализует его прямо
-// в своём типе (см. friends/domain/events.go: Requester/Addressee — поля).
-//
-// Чтобы избежать import cycle, мы расширяем event этим runtime-протоколом
-// через type-assert (см. сама adapter-функцию в monolith wiring или прямо
-// здесь — проверка через interface).
-type friendRequestPayloader interface {
-	Requester() uuid.UUID
-	Addressee() uuid.UUID
-	FriendshipID() int64
-}
-
 // OnDailyKataMissed — system channel: streak under attack.
 func (h *FeedHandlers) OnDailyKataMissed(ctx context.Context, ev sharedDomain.Event) error {
 	e, ok := ev.(sharedDomain.DailyKataMissed)

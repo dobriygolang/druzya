@@ -38,6 +38,10 @@ type briefPayload struct {
 	Headline        string                  `json:"headline"`
 	Narrative       string                  `json:"narrative"`
 	Recommendations []recommendationPayload `json:"recommendations"`
+	// Phase 4.4 — severity wire. Empty string in legacy rows = treat as
+	// cruise on read.
+	Severity       string `json:"severity,omitempty"`
+	SeverityReason string `json:"severity_reason,omitempty"`
 }
 
 type recommendationPayload struct {
@@ -70,10 +74,12 @@ func (r *DailyBriefs) GetForDate(ctx context.Context, userID uuid.UUID, date tim
 		return domain.DailyBrief{}, fmt.Errorf("intelligence.DailyBriefs.GetForDate: unmarshal: %w", err)
 	}
 	out := domain.DailyBrief{
-		BriefID:     uuidOrNil(p.BriefID),
-		Headline:    p.Headline,
-		Narrative:   p.Narrative,
-		GeneratedAt: generatedAt,
+		BriefID:        uuidOrNil(p.BriefID),
+		Headline:       p.Headline,
+		Narrative:      p.Narrative,
+		GeneratedAt:    generatedAt,
+		Severity:       severityFromPayload(p.Severity),
+		SeverityReason: p.SeverityReason,
 	}
 	for _, rec := range p.Recommendations {
 		out.Recommendations = append(out.Recommendations, domain.Recommendation{
@@ -86,9 +92,89 @@ func (r *DailyBriefs) GetForDate(ctx context.Context, userID uuid.UUID, date tim
 	return out, nil
 }
 
+// severityFromPayload — пустая строка в payload (legacy rows до Phase 4.4)
+// = cruise; невалидное значение тоже = cruise (мы не хотим UNSPECIFIED
+// в кеше, фронт опирается на one-of-four).
+func severityFromPayload(s string) domain.InsightSeverity {
+	sev := domain.InsightSeverity(s)
+	if sev.IsValid() {
+		return sev
+	}
+	return domain.InsightSeverityCruise
+}
+
+// RecentForUser — Phase 5 Hone /coach feed. Возвращает briefs за
+// последние sinceDays дней, newest first. Limit hard-capped в caller'е.
+//
+// payload jsonb mapping: briefPayload struct (см. выше) — те же поля
+// что и в GetForDate, плюс severity / severity_reason для UI окраски.
+func (r *DailyBriefs) RecentForUser(ctx context.Context, userID uuid.UUID, sinceDays, limit int) ([]domain.DailyBrief, error) {
+	if sinceDays <= 0 {
+		sinceDays = 30
+	}
+	if limit <= 0 || limit > 60 {
+		limit = 30
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT brief_date, payload, generated_at
+		   FROM hone_daily_briefs
+		  WHERE user_id  = $1
+		    AND brief_date >= CURRENT_DATE - ($2 || ' days')::interval
+		  ORDER BY brief_date DESC
+		  LIMIT $3`,
+		sharedpg.UUID(userID), fmt.Sprintf("%d", sinceDays), int32(limit),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.DailyBriefs.RecentForUser: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.DailyBrief, 0, limit)
+	for rows.Next() {
+		var (
+			briefDate   time.Time
+			raw         []byte
+			generatedAt time.Time
+		)
+		if err := rows.Scan(&briefDate, &raw, &generatedAt); err != nil {
+			return nil, fmt.Errorf("intelligence.DailyBriefs.RecentForUser: scan: %w", err)
+		}
+		var p briefPayload
+		if err := json.Unmarshal(raw, &p); err != nil {
+			// Skip битые row'ы а не валим весь запрос — feed не критичен.
+			continue
+		}
+		brief := domain.DailyBrief{
+			BriefID:        uuidOrNil(p.BriefID),
+			Headline:       p.Headline,
+			Narrative:      p.Narrative,
+			GeneratedAt:    generatedAt,
+			Severity:       severityFromPayload(p.Severity),
+			SeverityReason: p.SeverityReason,
+		}
+		for _, rec := range p.Recommendations {
+			brief.Recommendations = append(brief.Recommendations, domain.Recommendation{
+				Kind:      domain.RecommendationKind(rec.Kind),
+				Title:     rec.Title,
+				Rationale: rec.Rationale,
+				TargetID:  rec.TargetID,
+			})
+		}
+		out = append(out, brief)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("intelligence.DailyBriefs.RecentForUser: rows: %w", err)
+	}
+	return out, nil
+}
+
 // Upsert replaces the brief for (user, date).
 func (r *DailyBriefs) Upsert(ctx context.Context, userID uuid.UUID, date time.Time, b domain.DailyBrief) error {
-	p := briefPayload{Headline: b.Headline, Narrative: b.Narrative}
+	p := briefPayload{
+		Headline:       b.Headline,
+		Narrative:      b.Narrative,
+		Severity:       string(b.Severity),
+		SeverityReason: b.SeverityReason,
+	}
 	if b.BriefID != uuid.Nil {
 		p.BriefID = b.BriefID.String()
 	}

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "interview_in_2_days_critical",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "UpcomingInterviews": [
+        {
+          "CompanyName": "Yandex",
+          "Role": "backend",
+          "Kind": "interview",
+          "Title": "Yandex L4",
+          "DaysFromNow": 2,
+          "InterviewDate": "2026-05-02T00:00:00Z",
+          "ReadinessPct": 40
+        }
+      ],
+      "Mocks": [
+        {
+          "SessionID": "00000000-0000-0000-0000-000000000001",
+          "Section": "system_design",
+          "Difficulty": "medium",
+          "Status": "finished",
+          "Score": 5,
+          "WeakTopics": ["capacity-estimation", "sharding"],
+          "FinishedAt": "2026-04-28T00:00:00Z",
+          "DurationMin": 45
+        }
+      ]
+    },
+    "raw": "{\"headline\":\"Yandex L4 in 2 days — capacity-estimation gap.\",\"narrative\":\"Last system_design mock 2 days ago scored 5/10 with capacity-estimation flagged weak. You have 2 days until Yandex L4 interview, readiness_pct=40.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Solve one capacity-estimation back-of-envelope drill (60s users, 1KB row).\",\"rationale\":\"Last mock scored 5/10 on this section, Yandex interview in 2 days.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Run a system_design mock today, focus on capacity-estimation.\",\"rationale\":\"Last mock scored 5/10, Yandex interview in 2 days.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Memorise Latency Numbers Every Programmer Should Know.\",\"rationale\":\"Capacity-estimation rationale needs these constants live.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "weak_skill_nudge",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "WeakSkills": [
+        {"SkillKey": "graphs", "Title": "Graphs", "Progress": 18}
+      ],
+      "FocusDays": [
+        {"Day": "2026-04-29T00:00:00Z", "Seconds": 3600, "Pomodoros": 2}
+      ]
+    },
+    "raw": "{\"headline\":\"Graphs at 18/100 — focus there today.\",\"narrative\":\"Skill_progress shows graphs at 18/100, the weakest in your atlas. 3 days of healthy focus — momentum is there, just point it at graphs.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Solve one BFS problem on a small grid (5x5).\",\"rationale\":\"Graphs is at 18/100; one solved problem typically lifts mastery 4-6 points.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Read the BFS section of [graph fundamentals](/codex?topic=algorithms&article=bfs-overview) and write 2 takeaways.\",\"rationale\":\"Atlas weakness is graphs; 10 min curated read locks the pattern.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Block 30 min focus before lunch on graph drills.\",\"rationale\":\"3 of 7 focus days hit 1h+, so 30 min is doable; pin it on calendar.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "abandoned_mocks_warn",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "MockAbandonedRecent": 3
+    },
+    "raw": "{\"headline\":\"3 mocks abandoned in 14 days — consistency_break.\",\"narrative\":\"You started 3 mock sessions in the last 14 days and bailed mid-way each time. The pattern suggests scope mismatch — 45-minute slots feel too long for current energy. Today's lever: pick a 20-min slot and finish it.\",\"recommendations\":[{\"kind\":\"schedule\",\"title\":\"Block one 20-min mock today, not 45.\",\"rationale\":\"3 abandoned in 14 days; shorter slot increases finish probability.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Pick one weak_topic and pre-write your high-level approach in 5 min.\",\"rationale\":\"Pre-thinking before the mock cuts cold-start anxiety on resume.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"After the mock, write 1 line on what would have made you finish.\",\"rationale\":\"3 unfinished mocks have no signal; one finish + reason is data.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "kata_streak_broken_nudge",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "KataStreak": {"Current": 0, "Longest": 12, "LastKataDate": "2026-04-28T00:00:00Z"}
+    },
+    "raw": "{\"headline\":\"12-day kata streak broke — restart today.\",\"narrative\":\"Your 12-day daily kata streak broke yesterday. Last kata was 2 days ago. Today's lever: solve one easy kata before lunch to restart the counter.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Do today's daily kata — restart the streak counter.\",\"rationale\":\"Streak was 12 days, broke yesterday; one kata today restarts to 1.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Pick an easy kata, not medium — friction = re-skip.\",\"rationale\":\"After a break, easy difficulty has 80% completion vs 50% for medium.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Pin daily kata at 9:30 AM tomorrow as a fixed slot.\",\"rationale\":\"Streak broke during free-floating timing; fixed slot prevents re-break.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "cruise_healthy",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "FocusDays": [
+        {"Day": "2026-04-28T00:00:00Z", "Seconds": 5400, "Pomodoros": 3},
+        {"Day": "2026-04-29T00:00:00Z", "Seconds": 4800, "Pomodoros": 3}
+      ]
+    },
+    "raw": "{\"headline\":\"Two days of solid 80-min focus — keep it.\",\"narrative\":\"Last 2 days each landed 80+ min of deep focus across 3 pomodoros. No urgent bottleneck right now. Today's lever: pick the next thing on Atlas you've been avoiding and prep it.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Pick one weak Atlas node and read its description block.\",\"rationale\":\"2 days of healthy focus — invest in inventory pruning before next push.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Schedule a 60-min focus block tomorrow on the same atlas node.\",\"rationale\":\"Pomodoros at 3/day is sustainable; 60 min concrete target keeps it.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Write 2 lines in daily note about today's actual blocker.\",\"rationale\":\"Focus is up; reflection lag is the next leverage point.\",\"target_id\":\"\"}]}"
+  }
+]

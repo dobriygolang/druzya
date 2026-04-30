@@ -5,7 +5,6 @@ import {
   Loader2,
   Sparkles,
   Swords,
-  Users,
   Video,
   X,
   Zap,
@@ -18,9 +17,8 @@ import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
-import { Avatar } from '../components/Avatar'
 import type { ReactNode } from 'react'
-import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
+import { useRatingMeQuery } from '../lib/queries/rating'
 import {
   useArenaQueueStatsQuery,
   useCancelSearchMutation,
@@ -43,18 +41,11 @@ import { useProfileQuery } from '../lib/queries/profile'
 // QUEUE_TIMEOUT_SEC moved to MatchmakingPoller (single source of truth
 // for the cross-page queue lifetime).
 
-type PartyMode = 'solo' | 'party'
+// Phase 1.7 — PartyMode and the solo/party toggle removed with the
+// 2v2 mode. Section enum kept for type compat; arena queue is hardcoded
+// to `algorithms` until the other sections get a task pool.
 
-// Section enum kept for type compat; arena queue is hardcoded to
-// `algorithms` until the other sections get a task pool.
-
-function HeaderRow({
-  partyMode,
-  onTogglePartyMode,
-}: {
-  partyMode: PartyMode
-  onTogglePartyMode: (next: PartyMode) => void
-}) {
+function HeaderRow() {
   const { t } = useTranslation('arena')
   const { data: rating, isError } = useRatingMeQuery()
   const totalMatches = rating?.ratings?.reduce((acc, r) => acc + r.matches_count, 0) ?? 0
@@ -69,42 +60,6 @@ function HeaderRow({
             ? t('subtitle_error')
             : t('subtitle_played', { count: totalMatches })}
         </p>
-      </div>
-      <div
-        role="tablist"
-        aria-label="Party / Solo"
-        className="flex items-center gap-1 rounded-xl border border-border bg-surface-1 p-1"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={partyMode === 'solo'}
-          onClick={() => onTogglePartyMode('solo')}
-          className={[
-            'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] transition-colors',
-            partyMode === 'solo'
-              ? 'bg-text-primary text-bg'
-              : 'text-text-muted hover:text-text-primary',
-          ].join(' ')}
-        >
-          <Avatar size="sm" gradient="violet-cyan" initials="Я" />
-          {t('solo')}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={partyMode === 'party'}
-          onClick={() => onTogglePartyMode('party')}
-          className={[
-            'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] transition-colors',
-            partyMode === 'party'
-              ? 'bg-text-primary text-bg'
-              : 'text-text-muted hover:text-text-primary',
-          ].join(' ')}
-        >
-          <Users className="h-3.5 w-3.5" />
-          {t('party')}
-        </button>
       </div>
     </div>
   )
@@ -313,7 +268,7 @@ function AiPanel({
 }
 
 type Mode = {
-  key: 'solo_practice' | 'daily_kata' | 'ranked_1v1' | 'casual_1v1' | 'ranked_2v2' | 'mock' | 'quiz'
+  key: 'solo_practice' | 'daily_kata' | 'ranked_1v1' | 'casual_1v1' | 'mock' | 'quiz'
   name: string
   desc: string
   icon: ReactNode
@@ -321,8 +276,6 @@ type Mode = {
   /** Which arena queue to enqueue into. Ignored for non-queue modes
    *  (mock) which navigate instead of enqueue. */
   arenaMode: ArenaModeKey
-  /** True if this card needs the user to be in Party mode (2v2). */
-  requiresParty: boolean
   /** True for the AI cards — selected neural model is shown / used. */
   aiPowered: boolean
 }
@@ -338,7 +291,6 @@ const MODES: Mode[] = [
     icon: <BookOpen className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/12',
     arenaMode: 'solo_1v1', // unused for solo card — handled by navigate.
-    requiresParty: false,
     aiPowered: false,
   },
   {
@@ -348,7 +300,6 @@ const MODES: Mode[] = [
     icon: <BookOpen className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/10',
     arenaMode: 'solo_1v1', // unused — handled by navigate to /arena/kata.
-    requiresParty: false,
     aiPowered: false,
   },
   {
@@ -360,7 +311,6 @@ const MODES: Mode[] = [
     // is by name + icon, not hue — same rule as Atlas clusters.
     gradient: 'bg-text-primary/15',
     arenaMode: 'ranked',
-    requiresParty: false,
     aiPowered: false,
   },
   {
@@ -370,17 +320,6 @@ const MODES: Mode[] = [
     icon: <Zap className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/10',
     arenaMode: 'solo_1v1',
-    requiresParty: false,
-    aiPowered: false,
-  },
-  {
-    key: 'ranked_2v2',
-    name: 'Ranked 2v2',
-    desc: 'Командный режим, парный код.',
-    icon: <Users className="h-7 w-7 text-text-primary" />,
-    gradient: 'bg-text-primary/12',
-    arenaMode: 'duo_2v2',
-    requiresParty: true,
     aiPowered: false,
   },
   {
@@ -390,7 +329,6 @@ const MODES: Mode[] = [
     icon: <Video className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/8',
     arenaMode: 'hardcore',
-    requiresParty: false,
     aiPowered: true,
   },
   {
@@ -400,7 +338,6 @@ const MODES: Mode[] = [
     icon: <HelpCircle className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/10',
     arenaMode: 'solo_1v1', // unused — handled by navigate('/quiz').
-    requiresParty: false,
     aiPowered: true,
   },
 ]
@@ -483,55 +420,11 @@ function ModeCard({
   )
 }
 
-function FriendsStrip({ onCreateParty }: { onCreateParty: () => void }) {
-  const { t } = useTranslation('arena')
-  const { data: lb } = useLeaderboardQuery('algorithms')
-  const gradients = ['violet-cyan', 'pink-violet', 'cyan-violet', 'success-cyan'] as const
-  const top = lb?.entries?.slice(0, 4) ?? []
-  // Anti-fallback: ранее тут был hardcode @alexey/@kirill_dev/@nastya/@misha,
-  // который вводил пользователя в заблуждение (фейковые "онлайн друзья").
-  // Если бэк не отдал лидерборд — показываем пустую панель с CTA, а не
-  // придуманные имена.
-  const friends = top.map((e, i) => ({
-    initials: (e.username || '?').charAt(0).toUpperCase(),
-    username: `@${e.username || 'unknown'}`,
-    gradient: gradients[i % gradients.length],
-  }))
-  return (
-    <Card
-      className="flex-col items-start justify-between gap-4 p-4 lg:flex-row lg:items-center"
-      interactive={false}
-    >
-      <div className="flex min-w-0 flex-wrap items-center gap-4">
-        <span className="font-display text-sm font-bold text-text-primary">
-          {t('friends_online', { count: friends.length })}
-        </span>
-        {friends.length > 0 ? (
-          <>
-            <div className="flex -space-x-2">
-              {friends.map((f, i) => (
-                <Avatar key={i} size="md" gradient={f.gradient} initials={f.initials} status="online" />
-              ))}
-            </div>
-            <span className="min-w-0 break-words font-mono text-[11px] text-text-muted">
-              {friends.map((f) => f.username).join(' · ')}
-            </span>
-          </>
-        ) : (
-          <span className="font-mono text-[11px] text-text-muted">Никого онлайн</span>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={onCreateParty}
-        className="inline-flex items-center gap-2 rounded-full border border-border-strong bg-text-primary/5 px-4 py-2 font-sans text-[13px] font-medium text-text-primary hover:bg-text-primary/10"
-      >
-        <Users className="h-3.5 w-3.5" />
-        {t('create_party')}
-      </button>
-    </Card>
-  )
-}
+// Phase 1.7 — FriendsStrip removed with 2v2 / friends. The "online
+// friends" indicator was decorative (top-4 leaderboard with hardcoded
+// "online" status) and the Create Party CTA paired you up for a mode
+// that no longer exists. Replacement (showing real top players inline,
+// without fake presence) is part of Phase 0.9 arena polish.
 
 export default function ArenaPage() {
   const { t } = useTranslation('arena')
@@ -540,7 +433,6 @@ export default function ArenaPage() {
   const cancelSearch = useCancelSearchMutation()
   // Section is hardcoded — see comment on the deleted SECTIONS const above.
   const section: SectionKey = 'algorithms'
-  const [partyMode, setPartyMode] = useState<PartyMode>('solo')
   // Neural model id is now a free-form string (the backend's model id, e.g.
   // "openai/gpt-4o-mini"). Persisted to localStorage so the choice survives
   // reloads — no enum guard needed because the backend rejects unknown ids.
@@ -597,13 +489,9 @@ export default function ArenaPage() {
           setPendingMode(null)
           // Backend may pair us up immediately if a partner was already
           // waiting. In that case skip the queue UI and jump straight in.
-          // Both clients hit the same code path so they navigate together.
+          // Phase 1.7 — duo_2v2 retired, only 1v1 paths remain.
           if (resp.match_id) {
-            const path =
-              mode === 'duo_2v2'
-                ? `/arena/2v2/${resp.match_id}`
-                : `/arena/match/${resp.match_id}`
-            navigate(path)
+            navigate(`/arena/match/${resp.match_id}`)
             return
           }
           // No instant match — push the search into the global store.
@@ -660,34 +548,19 @@ export default function ArenaPage() {
       navigate('/arena/kata')
       return
     }
-    if (m.requiresParty && partyMode !== 'party') {
-      setPartyMode('party')
-    }
-    if (!m.requiresParty && partyMode === 'party') {
-      setPartyMode('solo')
-    }
+    // Phase 1.7 — party mode retired with 2v2; every card now goes
+    // straight into the 1v1 queue.
     enqueue(m.arenaMode, m.key)
   }
 
-  const handleCreateParty = () => {
-    setPartyMode('party')
-  }
-
-  const visibleModes = useMemo(() => {
-    if (partyMode === 'party') {
-      // Party mode emphasises 2v2 modes; solo modes hidden so the user is not
-      // tempted to enqueue a single-player ladder while a partner is waiting.
-      return MODES.filter((m) => m.requiresParty)
-    }
-    return MODES.filter((m) => !m.requiresParty)
-  }, [partyMode])
+  const visibleModes = MODES
 
   return (
     <AppShellV2>
       {/* Daily Kata top-tab dropped — invisible in practice; the same
           flow lives as a dedicated mode card below. */}
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
-        <HeaderRow partyMode={partyMode} onTogglePartyMode={setPartyMode} />
+        <HeaderRow />
         <HeroQueue
           inQueue={inQueue}
           waitSeconds={waitSec}
@@ -700,9 +573,7 @@ export default function ArenaPage() {
         <div className="flex flex-col gap-4">
           <div className="flex items-end justify-between">
             <h2 className="font-display text-xl font-bold text-text-primary">
-              {partyMode === 'party'
-                ? t('party_modes')
-                : t('all_modes')}
+              {t('all_modes')}
             </h2>
             <span className="font-mono text-[11px] text-text-muted">
               {t('modes_available_count', {
@@ -715,10 +586,10 @@ export default function ArenaPage() {
               <ModeCard
                 key={m.key}
                 m={m}
-                // While a search is running, every mode card disables — the
-                // matchmaking dock at the bottom owns the cancel/queue UX
-                // and re-enqueueing while still in queue silently no-ops.
-                isPending={pendingMode === m.key || inQueue}
+                // Phase 0.9 — pendingMode is set per-card, so only the
+                // clicked card shows the spinner. Other cards stay clickable
+                // until enqueue resolves; if it fails, error shows on hero.
+                isPending={pendingMode === m.key}
                 selectedModel={neuralModel}
                 liveWaiting={queueStats.data?.by_mode?.[m.arenaMode]}
                 onClick={() => handleModeClick(m)}
@@ -726,7 +597,6 @@ export default function ArenaPage() {
             ))}
           </div>
         </div>
-        <FriendsStrip onCreateParty={handleCreateParty} />
       </div>
     </AppShellV2>
   )

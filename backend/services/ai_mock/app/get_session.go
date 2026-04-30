@@ -48,15 +48,21 @@ func (uc *GetSession) Do(ctx context.Context, userID, sessionID uuid.UUID) (GetS
 	}
 
 	// Hint-bearing task is fetched so we can still surface Title/Description to
-	// the client — ToPublic drops the hint right here.
-	task, err := uc.Tasks.GetWithHint(ctx, s.TaskID)
-	if err != nil {
-		return GetSessionResult{}, fmt.Errorf("mock.GetSession: task: %w", err)
+	// the client — ToPublic drops the hint right here. English HR sessions
+	// have no task (TaskID is uuid.Nil); return a zero-value TaskPublic so
+	// the frontend can branch on section instead of nil-checking.
+	var taskPublic domain.TaskPublic
+	if s.TaskID != uuid.Nil {
+		task, err := uc.Tasks.GetWithHint(ctx, s.TaskID)
+		if err != nil {
+			return GetSessionResult{}, fmt.Errorf("mock.GetSession: task: %w", err)
+		}
+		taskPublic = task.ToPublic()
 	}
 
 	return GetSessionResult{
 		Session:      s,
-		Task:         task.ToPublic(),
+		Task:         taskPublic,
 		LastMessages: msgs,
 	}, nil
 }

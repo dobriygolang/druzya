@@ -65,12 +65,13 @@ function PercentileGauge({ label, value }: { label: string; value: number }) {
 }
 
 export function PercentileRow({ percentiles }: { percentiles: PercentileView }) {
+  // Phase 1.7 — Friends bounded context removed; in_friends always 0.
+  // Two columns instead of three keeps the layout balanced.
   return (
     <section className="flex flex-col gap-3">
       <h2 className="font-display text-lg font-bold text-text-primary">Где ты на лестнице</h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <PercentileGauge label="Tier" value={percentiles.in_tier} />
-        <PercentileGauge label="Friends" value={percentiles.in_friends} />
         <PercentileGauge label="Globally" value={percentiles.in_global} />
       </div>
     </section>

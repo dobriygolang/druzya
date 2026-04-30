@@ -8,8 +8,10 @@
 //                           citation parsing.
 import { createPromiseClient } from '@connectrpc/connect';
 import { IntelligenceService } from '@generated/pb/druz9/v1/intelligence_connect';
-import { BriefRecommendationKind } from '@generated/pb/druz9/v1/intelligence_pb';
+import { BriefRecommendationKind, InsightSeverity } from '@generated/pb/druz9/v1/intelligence_pb';
 
+import { API_BASE_URL, DEV_BEARER_TOKEN } from './config';
+import { useSessionStore } from '../stores/session';
 import { transport } from './transport';
 
 // ─── Domain-shaped POJOs ────────────────────────────────────────────────────
@@ -25,12 +27,17 @@ export interface Recommendation {
   targetId: string;
 }
 
+// CoachSeverity — Phase 4.4 wire enum mirror.
+export type CoachSeverity = 'cruise' | 'nudge' | 'warn' | 'critical';
+
 export interface DailyBrief {
   briefId: string;
   headline: string;
   narrative: string;
   recommendations: Recommendation[];
   generatedAt: Date | null;
+  severity: CoachSeverity;
+  severityReason: string;
 }
 
 export interface MemoryStats {
@@ -71,6 +78,19 @@ function unwrapKind(k: BriefRecommendationKind): RecommendationKind {
       return 'unblock';
     default:
       return 'tiny_task';
+  }
+}
+
+function unwrapSeverity(s: InsightSeverity): CoachSeverity {
+  switch (s) {
+    case InsightSeverity.CRITICAL:
+      return 'critical';
+    case InsightSeverity.WARN:
+      return 'warn';
+    case InsightSeverity.NUDGE:
+      return 'nudge';
+    default:
+      return 'cruise';
   }
 }
 
@@ -129,6 +149,8 @@ export async function getDailyBrief(force = false): Promise<DailyBrief> {
           targetId: r.targetId,
         })),
         generatedAt: protoTs(resp.generatedAt as unknown as { seconds: bigint; nanos: number } | undefined),
+        severity: unwrapSeverity(resp.severity),
+        severityReason: resp.severityReason,
       };
     } catch (err) {
       // Connect-RPC мапит HTTP 429 в ResourceExhausted (Code=8). Если
@@ -183,4 +205,89 @@ export async function askNotes(question: string): Promise<AskAnswer> {
       snippet: c.snippet,
     })),
   };
+}
+
+// ─── Recent briefs feed (Phase 5) ───────────────────────────────────────
+
+export interface RecentBrief {
+  briefId: string;
+  headline: string;
+  narrative: string;
+  recommendations: Recommendation[];
+  generatedAt: Date | null;
+  severity: CoachSeverity;
+  severityReason: string;
+}
+
+interface RecentBriefsWire {
+  items: Array<{
+    brief_id: string;
+    headline: string;
+    narrative: string;
+    generated_at: string;
+    severity: string;
+    severity_reason: string;
+    recommendations: Array<{
+      kind: string;
+      title: string;
+      rationale: string;
+      target_id?: string;
+    }>;
+  }>;
+}
+
+function severityFromString(s: string): CoachSeverity {
+  const v = (s ?? '').toLowerCase();
+  if (v.includes('critical')) return 'critical';
+  if (v.includes('warn')) return 'warn';
+  if (v.includes('nudge')) return 'nudge';
+  return 'cruise';
+}
+
+function recKindFromString(s: string): RecommendationKind {
+  switch (s) {
+    case 'tiny_task':
+    case 'schedule':
+    case 'review_note':
+    case 'unblock':
+      return s;
+    default:
+      return 'tiny_task';
+  }
+}
+
+// listRecentBriefs — Hone /coach feed source. Fetch /intelligence/briefs/
+// recent?days=N с Bearer-токеном из sessionStore. Backend hard-cap'ит
+// limit на 60; days clamped к [1,60] на сервере.
+export async function listRecentBriefs(days = 30): Promise<RecentBrief[]> {
+  const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
+  const headers: Record<string, string> = {};
+  if (token) headers.authorization = `Bearer ${token}`;
+  try {
+    const resp = await fetch(
+      `${API_BASE_URL}/api/v1/intelligence/briefs/recent?days=${encodeURIComponent(String(days))}`,
+      { headers },
+    );
+    if (!resp.ok) {
+      // 401 / 5xx — feed не критичен, возвращаем пустой массив.
+      return [];
+    }
+    const body = (await resp.json()) as RecentBriefsWire;
+    return (body.items ?? []).map((b) => ({
+      briefId: b.brief_id ?? '',
+      headline: b.headline ?? '',
+      narrative: b.narrative ?? '',
+      generatedAt: b.generated_at ? new Date(b.generated_at) : null,
+      severity: severityFromString(b.severity ?? ''),
+      severityReason: b.severity_reason ?? '',
+      recommendations: (b.recommendations ?? []).map((r) => ({
+        kind: recKindFromString(r.kind),
+        title: r.title ?? '',
+        rationale: r.rationale ?? '',
+        targetId: r.target_id ?? '',
+      })),
+    }));
+  } catch {
+    return [];
+  }
 }

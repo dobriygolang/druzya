@@ -19,7 +19,7 @@ message Lobby {
   string id = 1;
   string code = 2;
   string owner_id = 3;
-  string mode = 4;             // "1v1" | "2v2"
+  string mode = 4;             // "1v1" | "solo" | "2v2" (legacy)
   string section = 5;
   string difficulty = 6;
   string visibility = 7;       // "public" | "private"
@@ -30,6 +30,9 @@ message Lobby {
   string match_id = 12;        // empty until Start
   int32 members_count = 13;    // 0 in list view, real count in detail view
   google.protobuf.Timestamp created_at = 14;
+  // Phase 2c-2 — non-empty for solo drill rooms; the task picker matches
+  // tasks.skill_keys && skill_filter. Atlas node keys ("bfs", "lru-cache").
+  repeated string skill_filter = 15;
 }
 
 message LobbyMember {
@@ -73,6 +76,9 @@ message CreateLobbyRequest {
   int32 max_members = 5;
   bool ai_allowed = 6;
   int32 time_limit_min = 7;
+  // Phase 2c-2 — only honoured when mode='solo'. Up to 10 skill keys
+  // (Atlas node keys) restricting the task picker. Empty = no filter.
+  repeated string skill_filter = 8;
 }
 
 message JoinLobbyRequest {

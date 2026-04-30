@@ -192,9 +192,17 @@ func (uc *SendMessage) StreamReply(ctx context.Context, s domain.Session, curren
 }
 
 func (uc *SendMessage) loadContext(ctx context.Context, s domain.Session) (domain.TaskWithHint, compaction.Window, domain.UserContext, domain.CompanyContext, error) {
-	task, err := uc.Tasks.GetWithHint(ctx, s.TaskID)
-	if err != nil {
-		return domain.TaskWithHint{}, compaction.Window{}, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("task: %w", err)
+	// English HR sessions have no task — TaskID is uuid.Nil. Skip the
+	// fetch and pass an empty TaskWithHint downstream; BuildSystemPrompt
+	// branches by Section before reading any task fields, so the empty
+	// struct never leaks into the LLM input.
+	var task domain.TaskWithHint
+	if s.TaskID != uuid.Nil {
+		var err error
+		task, err = uc.Tasks.GetWithHint(ctx, s.TaskID)
+		if err != nil {
+			return domain.TaskWithHint{}, compaction.Window{}, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("task: %w", err)
+		}
 	}
 	// Было SummarizeOlder(keep=MessageContextSize) — теперь BuildWindow:
 	// грузим полный список, отдаём LLM последние WindowSize turns; старые

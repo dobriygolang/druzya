@@ -31,13 +31,29 @@ var _ druz9v1connect.IntelligenceServiceHandler = (*IntelligenceServer)(nil)
 type IntelligenceServer struct {
 	H      *app.Handler
 	Memory *app.Memory // optional — Phase B
+	// Insights stream — Phase 1.5. nil-safe: when absent, ListInsights
+	// returns an empty list and AckInsight returns Unavailable. The
+	// generator is wired separately by a periodic worker.
+	ListInsightsUC *app.ListInsights
+	AckInsightUC   *app.AckInsight
 }
 
 // NewIntelligenceServer wires a server around the Handler. mem может
 // быть nil — тогда AckRecommendation / GetMemoryStats возвращают
-// Unavailable (memory layer ещё не зарегистрирован).
-func NewIntelligenceServer(h *app.Handler, mem *app.Memory) *IntelligenceServer {
-	return &IntelligenceServer{H: h, Memory: mem}
+// Unavailable (memory layer ещё не зарегистрирован). insightList /
+// insightAck — Phase 1.5; могут быть nil до полного rollout'а.
+func NewIntelligenceServer(
+	h *app.Handler,
+	mem *app.Memory,
+	insightList *app.ListInsights,
+	insightAck *app.AckInsight,
+) *IntelligenceServer {
+	return &IntelligenceServer{
+		H:              h,
+		Memory:         mem,
+		ListInsightsUC: insightList,
+		AckInsightUC:   insightAck,
+	}
 }
 
 // GetDailyBrief implements druz9.v1.IntelligenceService/GetDailyBrief.
@@ -136,6 +152,112 @@ func (s *IntelligenceServer) GetMemoryStats(
 	return connect.NewResponse(out), nil
 }
 
+// ListInsights — Phase 1.5 surface-scoped feed.
+func (s *IntelligenceServer) ListInsights(
+	ctx context.Context,
+	req *connect.Request[pb.ListInsightsRequest],
+) (*connect.Response[pb.ListInsightsResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.ListInsightsUC == nil {
+		// nil-safe: no insights wired yet. Return empty list rather
+		// than a 503 — clients render an empty state cleanly.
+		return connect.NewResponse(&pb.ListInsightsResponse{}), nil
+	}
+	surface := domain.InsightSurface(req.Msg.GetSurface())
+	if surface == "" {
+		surface = domain.InsightSurfaceToday
+	}
+	if !surface.IsValid() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid surface"))
+	}
+	rows, err := s.ListInsightsUC.Do(ctx, app.ListInsightsInput{
+		UserID:  uid,
+		Surface: surface,
+		Limit:   int(req.Msg.GetLimit()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.ListInsights: %w", s.toConnectErr(err))
+	}
+	out := &pb.ListInsightsResponse{Items: make([]*pb.Insight, 0, len(rows))}
+	for _, r := range rows {
+		out.Items = append(out.Items, insightToProto(r))
+	}
+	return connect.NewResponse(out), nil
+}
+
+// AckInsight — Phase 1.5 user-feedback tap.
+func (s *IntelligenceServer) AckInsight(
+	ctx context.Context,
+	req *connect.Request[pb.AckInsightRequest],
+) (*connect.Response[pb.AckInsightResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.AckInsightUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			errors.New("insight stream not configured"))
+	}
+	id, perr := uuid.Parse(req.Msg.GetId())
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid id"))
+	}
+	action := strings.ToLower(strings.TrimSpace(req.Msg.GetAction()))
+	if action != "follow" && action != "dismiss" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action must be 'follow' or 'dismiss'"))
+	}
+	if err := s.AckInsightUC.Do(ctx, app.AckInsightInput{
+		UserID:    uid,
+		InsightID: id,
+		Action:    action,
+	}); err != nil {
+		return nil, fmt.Errorf("intelligence.AckInsight: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.AckInsightResponse{Ok: true}), nil
+}
+
+func insightToProto(in domain.Insight) *pb.Insight {
+	out := &pb.Insight{
+		Id:          in.ID.String(),
+		Surface:     string(in.Surface),
+		Severity:    insightSeverityToProto(in.Severity),
+		Anchor:      in.Anchor,
+		Headline:    in.Headline,
+		Evidence:    in.Evidence,
+		Interpret:   in.Interpret,
+		Lever:       in.Lever,
+		DeepLink:    in.DeepLink,
+		SkillKey:    in.SkillKey,
+		CodexSlug:   in.CodexSlug,
+		GeneratedAt: timestamppb.New(in.GeneratedAt.UTC()),
+		ExpiresAt:   timestamppb.New(in.ExpiresAt.UTC()),
+	}
+	if in.EventID != nil {
+		out.EventId = in.EventID.String()
+	}
+	if in.TrackID != nil {
+		out.TrackId = in.TrackID.String()
+	}
+	return out
+}
+
+func insightSeverityToProto(s domain.InsightSeverity) pb.InsightSeverity {
+	switch s {
+	case domain.InsightSeverityCruise:
+		return pb.InsightSeverity_INSIGHT_SEVERITY_CRUISE
+	case domain.InsightSeverityNudge:
+		return pb.InsightSeverity_INSIGHT_SEVERITY_NUDGE
+	case domain.InsightSeverityWarn:
+		return pb.InsightSeverity_INSIGHT_SEVERITY_WARN
+	case domain.InsightSeverityCritical:
+		return pb.InsightSeverity_INSIGHT_SEVERITY_CRITICAL
+	}
+	return pb.InsightSeverity_INSIGHT_SEVERITY_UNSPECIFIED
+}
+
 // ─── helpers ──────────────────────────────────────────────────────────────
 
 func requireUser(ctx context.Context) (uuid.UUID, error) {
@@ -148,7 +270,7 @@ func requireUser(ctx context.Context) (uuid.UUID, error) {
 
 func (s *IntelligenceServer) toConnectErr(err error) error {
 	switch {
-	case errors.Is(err, domain.ErrNotFound), errors.Is(err, domain.ErrEpisodeNotFound):
+	case errors.Is(err, domain.ErrNotFound), errors.Is(err, domain.ErrEpisodeNotFound), errors.Is(err, domain.ErrInsightNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, domain.ErrInvalidInput):
 		return connect.NewError(connect.CodeInvalidArgument, err)
@@ -174,9 +296,11 @@ func (s *IntelligenceServer) toConnectErr(err error) error {
 
 func toDailyBriefProto(b domain.DailyBrief) *pb.DailyBrief {
 	out := &pb.DailyBrief{
-		Headline:    b.Headline,
-		Narrative:   b.Narrative,
-		GeneratedAt: timestamppb.New(b.GeneratedAt.UTC()),
+		Headline:       b.Headline,
+		Narrative:      b.Narrative,
+		GeneratedAt:    timestamppb.New(b.GeneratedAt.UTC()),
+		Severity:       insightSeverityToProto(b.Severity),
+		SeverityReason: b.SeverityReason,
 	}
 	if b.BriefID != uuid.Nil {
 		out.BriefId = b.BriefID.String()

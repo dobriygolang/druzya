@@ -65,8 +65,9 @@ func (s *stubCacheReader) ListBySource(src domain.Source) []domain.Vacancy {
 
 // List + Facets are not exercised by AnalyzeURL but the shared CacheReader
 // interface (see list.go) requires them. Stub them as no-ops.
-func (s *stubCacheReader) List(_ domain.ListFilter) domain.Page { return domain.Page{} }
-func (s *stubCacheReader) Facets() domain.Facets                { return domain.Facets{} }
+func (s *stubCacheReader) List(_ domain.ListFilter) domain.Page              { return domain.Page{} }
+func (s *stubCacheReader) Facets() domain.Facets                             { return domain.Facets{} }
+func (s *stubCacheReader) FacetsForFilter(_ domain.ListFilter) domain.Facets { return domain.Facets{} }
 
 func TestDetectSource(t *testing.T) {
 	t.Parallel()

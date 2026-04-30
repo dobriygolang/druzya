@@ -1,0 +1,159 @@
+// tracks.proto — Connect-RPC contract for the curated catalogue +
+// per-user enrolment. Phase 2 of the Atlas → Tracks rework.
+//
+// Reads are public (any logged-in user). Mutations are user-scoped:
+// JoinTrack writes a row in user_tracks for the current user, etc.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+enum TrackStepKind {
+  TRACK_STEP_KIND_UNSPECIFIED  = 0;
+  TRACK_STEP_KIND_KATA         = 1;
+  TRACK_STEP_KIND_ARENA        = 2;
+  TRACK_STEP_KIND_MOCK         = 3;
+  TRACK_STEP_KIND_CODEX_READ   = 4;
+  TRACK_STEP_KIND_FOCUS_BLOCK  = 5;
+}
+
+// LearningTrack — one row of the curated catalogue. Renamed from
+// `Track` to avoid clashing with profile.proto's career-track enum
+// inside the same druz9.v1 package.
+message LearningTrack {
+  string id              = 1;
+  string slug            = 2;
+  string name            = 3;
+  string tagline         = 4;
+  string description_md  = 5;
+  string cover_image_url = 6;
+  string accent_color    = 7;
+  // curator_id empty for the seeded curated catalogue.
+  string curator_id      = 8;
+  int32  estimated_weeks = 9;
+  string difficulty      = 10;     // 'easy' | 'medium' | 'hard'
+  bool   is_curated      = 11;
+  bool   is_active       = 12;
+  repeated string tags          = 13;
+  repeated string company_focus = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+// TrackStep — ordered checklist row.
+message TrackStep {
+  string track_id            = 1;
+  int32  step_index          = 2;
+  string title               = 3;
+  string description_md      = 4;
+  repeated string skill_keys = 5;
+  TrackStepKind required_kind = 6;
+  int32  required_count      = 7;
+  repeated string recommended_reading = 8;
+  int32  estimated_minutes   = 9;
+}
+
+// LearningTrackEnrolment — per-user row of user_tracks. Renamed from
+// `UserTrack` to avoid clashing with profile.UserTrack.
+message LearningTrackEnrolment {
+  string user_id        = 1;
+  string track_id       = 2;
+  google.protobuf.Timestamp joined_at    = 3;
+  int32  current_step   = 4;
+  google.protobuf.Timestamp paused_at    = 5;  // null/unset when active
+  google.protobuf.Timestamp completed_at = 6;  // null/unset when not finished
+}
+
+// LearningTrackProgress — listing projection: enrolment + parent track
+// + total steps.
+message LearningTrackProgress {
+  LearningTrackEnrolment enrolment   = 1;
+  LearningTrack          track       = 2;
+  int32                  steps_total = 3;
+}
+
+// ListTracksRequest — public catalogue read. No filters today; the
+// catalogue is small, client filters in JS.
+message ListTracksRequest {}
+message ListTracksResponse {
+  repeated LearningTrack items = 1;
+}
+
+// GetTrackRequest — by slug.
+message GetTrackRequest {
+  string slug = 1;
+}
+message GetTrackResponse {
+  LearningTrack      track = 1;
+  repeated TrackStep steps = 2;
+}
+
+// ListUserTracksRequest — current user's enrolments.
+message ListUserTracksRequest {}
+message ListUserTracksResponse {
+  repeated LearningTrackProgress items = 1;
+}
+
+// JoinTrackRequest. When already enrolled and paused, the server
+// resumes and returns the row; when already enrolled and active, it
+// is a no-op (returns the existing row).
+message JoinTrackRequest {
+  string track_id = 1;
+}
+
+// AdvanceStepRequest — bump current_step by one. The server caps the
+// value at len(steps) and stamps completed_at when reached.
+message AdvanceStepRequest {
+  string track_id = 1;
+}
+
+// PauseTrackRequest — set paused_at = now. JoinTrack on a paused row
+// resumes it.
+message PauseTrackRequest {
+  string track_id = 1;
+}
+
+// LeaveTrackRequest — delete the enrolment row entirely.
+message LeaveTrackRequest {
+  string track_id = 1;
+}
+message LeaveTrackResponse { bool ok = 1; }
+
+service TracksService {
+  rpc ListTracks(ListTracksRequest) returns (ListTracksResponse) {
+    option (google.api.http) = {get: "/api/v1/tracks"};
+  }
+  rpc GetTrack(GetTrackRequest) returns (GetTrackResponse) {
+    option (google.api.http) = {get: "/api/v1/tracks/{slug}"};
+  }
+  rpc ListUserTracks(ListUserTracksRequest) returns (ListUserTracksResponse) {
+    option (google.api.http) = {get: "/api/v1/tracks/me"};
+  }
+  rpc JoinTrack(JoinTrackRequest) returns (LearningTrackEnrolment) {
+    option (google.api.http) = {
+      post: "/api/v1/tracks/{track_id}/join"
+      body: "*"
+    };
+  }
+  rpc AdvanceStep(AdvanceStepRequest) returns (LearningTrackEnrolment) {
+    option (google.api.http) = {
+      post: "/api/v1/tracks/{track_id}/advance"
+      body: "*"
+    };
+  }
+  rpc PauseTrack(PauseTrackRequest) returns (LearningTrackEnrolment) {
+    option (google.api.http) = {
+      post: "/api/v1/tracks/{track_id}/pause"
+      body: "*"
+    };
+  }
+  rpc LeaveTrack(LeaveTrackRequest) returns (LeaveTrackResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tracks/{track_id}/leave"
+      body: "*"
+    };
+  }
+}

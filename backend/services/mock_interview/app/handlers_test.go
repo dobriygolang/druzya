@@ -364,7 +364,7 @@ func newTestHandlers() (*Handlers, *fakeCompanyStageRepo, *fakePipelineStageRepo
 
 func TestCreatePipeline_RandomModeUsesDefaultSkeleton(t *testing.T) {
 	h, _, ps, _, _ := newTestHandlers()
-	got, err := h.CreatePipeline(context.Background(), uuid.New(), nil, false)
+	got, err := h.CreatePipeline(context.Background(), uuid.New(), nil, false, nil)
 	if err != nil {
 		t.Fatalf("CreatePipeline: %v", err)
 	}
@@ -399,7 +399,7 @@ func TestCreatePipeline_CompanyModeUsesCompanyStages(t *testing.T) {
 			{CompanyID: companyID, StageKind: domain.StageAlgo, Ordinal: 1},
 		},
 	}
-	got, err := h.CreatePipeline(context.Background(), uuid.New(), &companyID, true)
+	got, err := h.CreatePipeline(context.Background(), uuid.New(), &companyID, true, nil)
 	if err != nil {
 		t.Fatalf("CreatePipeline: %v", err)
 	}

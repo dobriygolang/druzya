@@ -36,8 +36,17 @@ export function AtlasPanel() {
   const [edgeFrom, setEdgeFrom] = useState('')
   const [edgeTo, setEdgeTo] = useState('')
   const [edgeError, setEdgeError] = useState<string | null>(null)
+  // Track-kind filter (Wave 3 / admin add-on for the multi-track Atlas).
+  // Empty string = «все треки». Stored as state so re-renders don't reset
+  // the dropdown when nodes refetch.
+  const [trackFilter, setTrackFilter] = useState<string>('')
 
-  const nodes = nodesQ.data?.items ?? []
+  const allNodes = useMemo(() => nodesQ.data?.items ?? [], [nodesQ.data])
+  const nodes = useMemo(() => {
+    if (!trackFilter) return allNodes
+    // Treat empty / missing track_kind as 'dev' (column default in DB).
+    return allNodes.filter((n) => (n.track_kind ?? 'dev') === trackFilter)
+  }, [allNodes, trackFilter])
   // Wrap in useMemo so the `?? []` fallback identity is stable across
   // renders — otherwise the inner edgeCountByNode useMemo re-runs every
   // render (its `edges` dep is a fresh `[]` literal each time).
@@ -95,10 +104,27 @@ export function AtlasPanel() {
         <ErrorBox message="Не удалось загрузить узлы атласа" />
       ) : (
         <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-sm font-bold text-text-secondary">
-              Узлы ({nodes.length})
-            </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <h2 className="font-display text-sm font-bold text-text-secondary">
+                Узлы ({nodes.length}
+                {trackFilter ? ` / ${allNodes.length}` : ''})
+              </h2>
+              <select
+                value={trackFilter}
+                onChange={(e) => setTrackFilter(e.target.value)}
+                className="h-8 rounded-md border border-border bg-surface-1 px-2 font-mono text-[11px] text-text-secondary"
+                aria-label="Фильтр по track_kind"
+              >
+                <option value="">все треки</option>
+                <option value="dev">dev</option>
+                <option value="dev_senior">dev_senior</option>
+                <option value="sysanalyst">sysanalyst</option>
+                <option value="product_analyst">product_analyst</option>
+                <option value="qa">qa</option>
+                <option value="english">english</option>
+              </select>
+            </div>
             <Button size="sm" onClick={() => setCreating(true)}>
               + Новый узел
             </Button>

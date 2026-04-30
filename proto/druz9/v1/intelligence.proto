@@ -54,6 +54,15 @@ message DailyBrief {
   // brief_id — UUID для AckRecommendation. Phase A briefs (без memory)
   // отдают пустую строку.
   string brief_id = 5;
+  // Phase 4.4 — severity drives the colour-strip on the brief panel:
+  //   cruise   → muted
+  //   nudge    → blue
+  //   warn     → amber
+  //   critical → red
+  // Reason — short English fragment used in tooltips ("interview Friday
+  // in 2 days"). Computed deterministically server-side, не от LLM.
+  InsightSeverity severity        = 6;
+  string          severity_reason = 7;
 }
 
 // AckRecommendation — юзер кликнул 👍 (followed=true) или 👎 (followed=false)
@@ -96,6 +105,62 @@ message AskNotesRequest {
   string question = 1;
 }
 
+// ── Insight stream (Phase 1.5) ───────────────────────────────────────
+//
+// Atomic coach cards. Each Insight is one fact + lever. Surfaces
+// (web /today, Hone Today, /arena, /mock, /codex) read the same stream
+// with a surface filter — no per-surface duplicate logic on backend.
+//
+// Severity drives card colour and ranking. Anchor identifies "what
+// this is about" so dismiss-state survives re-generation.
+
+enum InsightSeverity {
+  INSIGHT_SEVERITY_UNSPECIFIED = 0;
+  INSIGHT_SEVERITY_CRUISE      = 1;
+  INSIGHT_SEVERITY_NUDGE       = 2;
+  INSIGHT_SEVERITY_WARN        = 3;
+  INSIGHT_SEVERITY_CRITICAL    = 4;
+}
+
+message Insight {
+  string id            = 1;
+  string surface       = 2;     // 'today'|'arena'|'mock'|'codex'
+  InsightSeverity severity = 3;
+  string anchor        = 4;     // stable "what about" id
+
+  string headline      = 5;     // ≤80 char glanceable fact
+  string evidence      = 6;     // 1 sentence with numbers
+  string interpret     = 7;     // 1 sentence pattern claim
+  string lever         = 8;     // 1 sentence today's action
+  string deep_link     = 9;     // in-app route, optional
+
+  string event_id      = 10;    // forward-FK to personal_events
+  string skill_key     = 11;
+  string codex_slug    = 12;
+  string track_id      = 13;
+
+  google.protobuf.Timestamp generated_at = 14;
+  google.protobuf.Timestamp expires_at   = 15;
+}
+
+message ListInsightsRequest {
+  // surface MUST be one of the closed set; empty defaults to 'today'.
+  string surface = 1;
+  int32  limit   = 2;  // 0 → server default (10)
+}
+
+message ListInsightsResponse {
+  repeated Insight items = 1;
+}
+
+// AckInsightRequest — user feedback. action 'follow' marks acted_at,
+// 'dismiss' marks dismissed_at. Both idempotent on the server.
+message AckInsightRequest {
+  string id     = 1;
+  string action = 2;   // 'follow' | 'dismiss'
+}
+message AckInsightResponse { bool ok = 1; }
+
 service IntelligenceService {
   rpc GetDailyBrief(GetDailyBriefRequest) returns (DailyBrief) {
     option (google.api.http) = {
@@ -117,5 +182,15 @@ service IntelligenceService {
   }
   rpc GetMemoryStats(GetMemoryStatsRequest) returns (MemoryStats) {
     option (google.api.http) = { get: "/api/v1/intelligence/memory/stats" };
+  }
+
+  rpc ListInsights(ListInsightsRequest) returns (ListInsightsResponse) {
+    option (google.api.http) = {get: "/api/v1/intelligence/insights"};
+  }
+  rpc AckInsight(AckInsightRequest) returns (AckInsightResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/insights/{id}/ack"
+      body: "*"
+    };
   }
 }

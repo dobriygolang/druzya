@@ -33,7 +33,19 @@ var defaultStageOrder = []domain.StageKind{
 //
 // companyID nil ⇢ random mode: use defaultStageOrder.
 // companyID set ⇢ pull company_stages config; fall back to default if empty.
-func (h *Handlers) CreatePipeline(ctx context.Context, userID uuid.UUID, companyID *uuid.UUID, aiAssist bool) (PipelineWithStages, error) {
+//
+// Phase 1.6 — sections is an optional allow-list of stage_kind values.
+// Empty / nil ⇒ full pipeline. With ['hr','algo'] only HR and algo
+// stages are allocated, in their natural order from the resolved
+// skeleton. Unknown kinds are dropped silently (anti-strict policy:
+// frontend dropdown drift shouldn't 400 the user).
+func (h *Handlers) CreatePipeline(
+	ctx context.Context,
+	userID uuid.UUID,
+	companyID *uuid.UUID,
+	aiAssist bool,
+	sections []domain.StageKind,
+) (PipelineWithStages, error) {
 	if userID == uuid.Nil {
 		return PipelineWithStages{}, fmt.Errorf("user_id required: %w", domain.ErrValidation)
 	}
@@ -42,6 +54,17 @@ func (h *Handlers) CreatePipeline(ctx context.Context, userID uuid.UUID, company
 	stageKinds, err := h.resolveStageOrder(ctx, companyID)
 	if err != nil {
 		return PipelineWithStages{}, err
+	}
+	if len(sections) > 0 {
+		stageKinds = filterStagesByKinds(stageKinds, sections)
+		if len(stageKinds) == 0 {
+			// Every section was unknown — fall back to full pipeline so
+			// the user always gets *something* runnable.
+			stageKinds, err = h.resolveStageOrder(ctx, companyID)
+			if err != nil {
+				return PipelineWithStages{}, err
+			}
+		}
 	}
 
 	now := h.Now().UTC()
@@ -73,6 +96,30 @@ func (h *Handlers) CreatePipeline(ctx context.Context, userID uuid.UUID, company
 		stages = append(stages, s)
 	}
 	return PipelineWithStages{Pipeline: pipe, Stages: stages}, nil
+}
+
+// filterStagesByKinds keeps stages from `stageKinds` whose kind appears
+// in `wanted`. Order follows the original skeleton (we don't reorder by
+// the wanted slice — flow integrity matters more than user choice).
+// Validation lives in domain.StageKind.Valid; entries that fail it are
+// silently dropped.
+func filterStagesByKinds(stageKinds []domain.StageKind, wanted []domain.StageKind) []domain.StageKind {
+	allow := make(map[domain.StageKind]struct{}, len(wanted))
+	for _, k := range wanted {
+		if k.Valid() {
+			allow[k] = struct{}{}
+		}
+	}
+	if len(allow) == 0 {
+		return nil
+	}
+	out := make([]domain.StageKind, 0, len(stageKinds))
+	for _, k := range stageKinds {
+		if _, ok := allow[k]; ok {
+			out = append(out, k)
+		}
+	}
+	return out
 }
 
 func (h *Handlers) resolveStageOrder(ctx context.Context, companyID *uuid.UUID) ([]domain.StageKind, error) {

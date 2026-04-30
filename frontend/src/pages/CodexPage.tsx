@@ -188,7 +188,7 @@ export default function CodexPage() {
 
   const articlesQ = useCodexArticlesQuery()
   const categoriesQ = useCodexCategoriesQuery()
-  const articles: CodexArticle[] = articlesQ.data ?? []
+  const articles: CodexArticle[] = useMemo(() => articlesQ.data ?? [], [articlesQ.data])
   const categories: RenderCategory[] = categoriesQ.data && categoriesQ.data.length > 0
     ? categoriesQ.data
     : categoriesFromArticles(articles)

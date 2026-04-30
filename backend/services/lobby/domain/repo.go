@@ -41,10 +41,16 @@ type Repo interface {
 type MatchCreator interface {
 	// CreateMatch создаёт arena_match со списком user_id и возвращает его id.
 	// Lobby сама не знает про team-распределение arena — это забота адаптера.
+	//
+	// skillFilter — Phase 2c-2. Применяется только для Mode=solo: адаптер
+	// должен выбрать задачу через `tasks WHERE skill_keys && skillFilter`,
+	// и при пустом результате fallback'ом идти на section/difficulty.
+	// Для 1v1 параметр игнорируется.
 	CreateMatch(
 		ctx context.Context,
 		mode Mode,
 		section, difficulty string,
 		userIDs []uuid.UUID,
+		skillFilter []string,
 	) (uuid.UUID, error)
 }

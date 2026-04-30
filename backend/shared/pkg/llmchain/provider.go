@@ -142,6 +142,63 @@ const (
 	// VirtualUltra ModelOverride. См task_map.go::TaskVision для актуального
 	// списка alternatives.
 	TaskVision Task = "vision"
+	// TaskEnglishMockHR — Wave 1 of docs/feature/english.md. AI-собеседующий
+	// проводит HR-этап на английском, оценивает clarity / accuracy / range /
+	// fluency. Reasoning + streaming, 70B-class — качество прозы важно
+	// (плохая модель плодит canned ESL phrases вместо real HR pushback).
+	// Rubric и system-prompt живут в services/ai_mock/infra/llm.go рядом
+	// с уже существующими mock-prompt'ами.
+	TaskEnglishMockHR Task = "english_mock_hr"
+	// TaskSystemDesignSeniorMock — Wave 3.2 of docs/feature/plan.md.
+	// Free-form senior/staff-level SD interview: AI pushes back on
+	// architectural choices, probes failure modes, demands tradeoff
+	// articulation. NOT the same as TaskSysDesignCritique — that one
+	// grades a specific diagram; this one runs a multi-turn dialogue.
+	// Reasoning-heavy + long context (multi-turn architectural drift),
+	// 70B-class minimum.
+	TaskSystemDesignSeniorMock Task = "system_design_senior_mock"
+	// TaskTechLeadMock — Wave 3.4 of docs/feature/plan.md. Behavioral
+	// STAR-style mock at Tech Lead / EM level. AI plays a hiring panel,
+	// adapts questions to answers, scores STAR structure + ownership +
+	// impact + learning. 70B-class — narrative quality of the prompt
+	// matters; small models bleed into "good for you!" affirmation
+	// instead of probing for accountability.
+	TaskTechLeadMock Task = "tech_lead_mock"
+	// TaskTutorPreSessionBrief — Wave 2.5 of docs/feature/plan.md. Tutor
+	// requests a 1-page summary of a student's last week of activity
+	// before a tutoring session. Reasoning + concise prose, 70B-class.
+	// Output is markdown text (NOT JSON) — the tutor reads it directly,
+	// no downstream parser. Brief MUST avoid revealing AI-coach private
+	// content (note bodies, exact mock answers); only aggregates and
+	// labels are safe to surface.
+	TaskTutorPreSessionBrief Task = "tutor_pre_session_brief"
+	// TaskHoneSummaryGrade — Wave 4.3 of docs/feature/english.md. After
+	// the user finishes a Reading-chapter and submits their summary,
+	// the grader compares it to the chapter body and returns a single
+	// integer 0..100 measuring coverage + accuracy + non-fabrication.
+	// Output is strict JSON (`{"score":N,"feedback":"..."}`) — small
+	// surface, latency matters (user is staring at a "scoring..." spinner),
+	// so we run a 7B-class model. The 70B fallback only kicks in when
+	// the small model fails twice in a row.
+	TaskHoneSummaryGrade Task = "hone_summary_grade"
+	// TaskHoneWritingFeedback — Wave 4.4 of docs/feature/english.md.
+	// User wrote a paragraph / short essay in English; we want a list of
+	// concrete issues with category (grammar / vocab / style), the exact
+	// excerpt, and a suggested fix. Strict JSON envelope so the frontend
+	// can render structured annotations rather than a free-form blob.
+	// Same latency tier as summary grader — user is waiting in front of
+	// a textarea — so 8B-class with 70B fallback.
+	TaskHoneWritingFeedback Task = "hone_writing_feedback"
+	// TaskHoneCodeReviewGrade — Wave 3.6 of docs/feature/plan.md
+	// (Code-review-coaching). User pastes a unified diff + writes
+	// their PR-style review; we grade the review against the diff and
+	// surface concrete issues across correctness / completeness /
+	// clarity / tone. The diff itself goes into the prompt — we don't
+	// extract per-hunk metadata, the LLM reads the patch directly.
+	// Larger context window than other tasks (a 500-line diff is
+	// already ~15KB), so we lean on 70B-class providers for deeper
+	// reasoning rather than the 8B tier used by writing feedback.
+	TaskHoneCodeReviewGrade Task = "hone_code_review_grade"
 )
 
 // Role mirrors OpenAI chat roles. Kept as a string (not an enum) because

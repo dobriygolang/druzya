@@ -126,3 +126,7 @@ func (f *fakeBriefRepo) Upsert(context.Context, uuid.UUID, time.Time, domain.Dai
 func (f *fakeBriefRepo) LastForcedAt(context.Context, uuid.UUID) (time.Time, error) {
 	return time.Time{}, nil
 }
+
+func (f *fakeBriefRepo) RecentForUser(context.Context, uuid.UUID, int, int) ([]domain.DailyBrief, error) {
+	return nil, nil
+}

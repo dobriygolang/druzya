@@ -235,7 +235,11 @@ type listResp struct {
 	Offset int          `json:"offset"`
 }
 
-func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
+// parseListFilter pulls query params into a ListFilter, validating
+// enum-typed fields. Shared between handleList (which uses the full
+// filter for pagination) and handleFacets (which uses only the axis
+// values; pagination fields are ignored by FacetsForFilter).
+func parseListFilter(w http.ResponseWriter, r *http.Request) (domain.ListFilter, bool) {
 	q := r.URL.Query()
 	f := domain.ListFilter{
 		SalaryMin: parseIntDefault(q.Get("salary_min"), 0),
@@ -259,7 +263,7 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 			src := domain.Source(x)
 			if !domain.IsValidSource(src) {
 				writeError(w, http.StatusBadRequest, "invalid source: "+x)
-				return
+				return domain.ListFilter{}, false
 			}
 			f.Sources = append(f.Sources, src)
 		}
@@ -273,7 +277,7 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 			c := domain.Category(x)
 			if !domain.IsValidCategory(c) {
 				writeError(w, http.StatusBadRequest, "invalid category: "+x)
-				return
+				return domain.ListFilter{}, false
 			}
 			f.Categories = append(f.Categories, c)
 		}
@@ -294,6 +298,14 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	return f, true
+}
+
+func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
+	f, ok := parseListFilter(w, r)
+	if !ok {
+		return
+	}
 	page, err := h.List.Do(r.Context(), f)
 	if err != nil {
 		h.logErr(r, "list", err)
@@ -308,7 +320,14 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleFacets(w http.ResponseWriter, r *http.Request) {
-	f, err := h.Facets.Do(r.Context())
+	// Phase 1.6 — facets respond to active sidebar selections so the
+	// counts on each axis decrement when the user toggles a checkbox.
+	// parseListFilter writes its own 400 on bad enum input.
+	filter, ok := parseListFilter(w, r)
+	if !ok {
+		return
+	}
+	f, err := h.Facets.Do(r.Context(), filter)
 	if err != nil {
 		h.logErr(r, "facets", err)
 		writeError(w, http.StatusInternalServerError, "facets failed")

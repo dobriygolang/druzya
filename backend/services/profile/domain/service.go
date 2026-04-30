@@ -31,15 +31,21 @@ func (c CareerStage) String() string { return string(c) }
 
 // GlobalPowerScore is the weighted average of section ELOs. Sections with
 // zero matches contribute the baseline 1000 to avoid rewarding emptiness.
-// Formula (bible §3): arithmetic mean across the 5 canonical sections. Made a
-// pure domain function so it can be unit-tested without Postgres.
+// Formula (bible §3): arithmetic mean across the 5 canonical engineering
+// sections. English HR (added Wave 1 of feature/english.md) is non-
+// engineering and intentionally excluded — it has no ELO rating system,
+// the AI mock there is rubric-scored not ranked. Made a pure domain
+// function so it can be unit-tested without Postgres.
 func GlobalPowerScore(ratings []SectionRating) int {
 	totals := make(map[enums.Section]int)
 	for _, s := range enums.AllSections() {
+		if !s.IsEngineering() {
+			continue
+		}
 		totals[s] = 1000 // baseline
 	}
 	for _, r := range ratings {
-		if r.Section.IsValid() {
+		if r.Section.IsValid() && r.Section.IsEngineering() {
 			totals[r.Section] = r.Elo
 		}
 	}

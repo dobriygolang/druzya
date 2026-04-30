@@ -139,6 +139,102 @@ func (i *Insights) ScoreTrajectory(ctx context.Context, userID uuid.UUID, limit 
 	return out, nil
 }
 
+// EnglishHRTrend — Wave 1 of docs/feature/english.md. Aggregates
+// English HR mock-rounds (section='english_hr') over the trailing
+// window. ai_report stores the LLM grader's JSON; we extract
+// overall_score (an int 0..100) for averaging and trajectory.
+//
+// Defensive on bad data: rows with NULL ai_report or missing
+// overall_score key contribute zero to the averages but DO count
+// toward total_sessions — matches "you finished 3 sessions, but 1
+// wasn't graded yet". Frontend hides the card on TotalSessions == 0.
+func (i *Insights) EnglishHRTrend(ctx context.Context, userID uuid.UUID, windowDays, trajectoryLimit int) (domain.EnglishHRTrend, error) {
+	out := domain.EnglishHRTrend{Trajectory: []domain.EnglishHRTrendPoint{}}
+
+	var totalSessions int
+	var avgScore *float64
+	var lastScore *int32
+	var lastFinishedAt pgtype.Timestamptz
+	if err := i.pool.QueryRow(ctx, `
+			SELECT COUNT(*) AS total,
+			       AVG((ai_report->>'overall_score')::int)
+			           FILTER (WHERE ai_report ? 'overall_score') AS avg_score,
+			       (
+			         SELECT (ai_report->>'overall_score')::int
+			           FROM mock_sessions
+			          WHERE user_id = $1
+			            AND section = 'english_hr'
+			            AND finished_at IS NOT NULL
+			            AND finished_at >= now() - ($2 || ' days')::interval
+			            AND ai_report ? 'overall_score'
+			          ORDER BY finished_at DESC
+			          LIMIT 1
+			       ) AS last_score,
+			       MAX(finished_at) AS last_finished_at
+			  FROM mock_sessions
+			 WHERE user_id = $1
+			   AND section = 'english_hr'
+			   AND finished_at IS NOT NULL
+			   AND finished_at >= now() - ($2 || ' days')::interval`,
+		sharedpg.UUID(userID), strconv.Itoa(windowDays),
+	).Scan(&totalSessions, &avgScore, &lastScore, &lastFinishedAt); err != nil {
+		return domain.EnglishHRTrend{}, fmt.Errorf("ai_mock.Insights.EnglishHRTrend headline: %w", err)
+	}
+	out.TotalSessions = totalSessions
+	if avgScore != nil {
+		out.AvgScore = int(*avgScore + 0.5) // round half-up
+	}
+	if lastScore != nil {
+		out.LastScore = int(*lastScore)
+	}
+	if lastFinishedAt.Valid {
+		out.LastFinishedAt = lastFinishedAt.Time
+	}
+	if totalSessions == 0 {
+		return out, nil
+	}
+
+	rows, err := i.pool.Query(ctx, `
+			SELECT id, finished_at, (ai_report->>'overall_score')::int AS score
+			  FROM mock_sessions
+			 WHERE user_id = $1
+			   AND section = 'english_hr'
+			   AND finished_at IS NOT NULL
+			   AND finished_at >= now() - ($2 || ' days')::interval
+			   AND ai_report ? 'overall_score'
+			 ORDER BY finished_at DESC
+			 LIMIT $3`,
+		sharedpg.UUID(userID), strconv.Itoa(windowDays), trajectoryLimit,
+	)
+	if err != nil {
+		return domain.EnglishHRTrend{}, fmt.Errorf("ai_mock.Insights.EnglishHRTrend trajectory: %w", err)
+	}
+	defer rows.Close()
+	pts := make([]domain.EnglishHRTrendPoint, 0, trajectoryLimit)
+	for rows.Next() {
+		var idRaw pgtype.UUID
+		var finishedAt pgtype.Timestamptz
+		var score int32
+		if scanErr := rows.Scan(&idRaw, &finishedAt, &score); scanErr != nil {
+			continue
+		}
+		p := domain.EnglishHRTrendPoint{
+			SessionID: sharedpg.UUIDFrom(idRaw),
+			Score:     int(score),
+		}
+		if finishedAt.Valid {
+			p.FinishedAt = finishedAt.Time
+		}
+		pts = append(pts, p)
+	}
+	// Reverse to ASC so the sparkline reads left-to-right.
+	for l, r := 0, len(pts)-1; l < r; l, r = l+1, r-1 {
+		pts[l], pts[r] = pts[r], pts[l]
+	}
+	out.Trajectory = pts
+	return out, nil
+}
+
 // PipelineHeadline — total + pass-rate aggregates for the page hero.
 func (i *Insights) PipelineHeadline(ctx context.Context, userID uuid.UUID, windowDays int) (domain.PipelineHeadline, error) {
 	var h domain.PipelineHeadline

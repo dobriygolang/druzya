@@ -101,7 +101,7 @@ type CMSListFilter struct {
 
 // PodcastCMSRepo is the persistence port for the CMS surface.
 //
-//go:generate go run go.uber.org/mock/mockgen -package mocks -destination mocks/cms_mock.go -source cms.go
+//go:generate mockgen -package mocks -destination mocks/cms_mock.go -source cms.go
 type PodcastCMSRepo interface {
 	// ListCMS returns a category-aware podcast page. Non-published rows
 	// are excluded when OnlyPublished is true (public path); admin path

@@ -303,7 +303,7 @@ func (l *CoachListener) warn(ctx context.Context, where string, err error) {
 // atlas_nodes id we use as task.skill_key. Falls back to empty so the
 // settle/regress paths short-circuit if the section is unknown.
 func skillKeyForArenaSection(s enums.Section) string {
-	switch s {
+	switch s { //nolint:exhaustive // free-form sections short-circuit to empty
 	case enums.SectionAlgorithms:
 		return "algo_basics"
 	case enums.SectionGo:

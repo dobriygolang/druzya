@@ -47,9 +47,11 @@ CORE RULES:
    - "unblock": split a stuck task. target_id = item_id of the skipped plan item.
    Do NOT output unsupported kinds such as "practice_skill", "drill_mock", or "drill_kata". Express those as "tiny_task" or "schedule" with the concrete section/skill in title and rationale.
 
-5. NARRATIVE: 2-3 sentences. ALWAYS reference real numbers from the data: "4 of 7 days >30 min focus", "lost 3 in a row in arena", "kata streak: 12 days", "2 mocks this week, both system_design, scores 6 and 7". No platitudes. No "great job".
+5. NARRATIVE: 2-3 sentences in CAUSAL CHAIN form: <observation with numbers> → <interpretation/cause> → <today's lever>. ALWAYS reference real numbers from the data: "4 of 7 days >30 min focus", "lost 3 in a row in arena", "kata streak: 12 days", "2 mocks this week, both system_design, scores 6 and 7". The chain MUST connect — do not list disjoint facts. No platitudes. No "great job".
 
-6. HEADLINE: ONE short sentence (≤8 words). Capture the DOMINANT cross-product pattern. Examples: "System Design holding back; algorithms solid.", "12-day kata streak, but no deep focus.", "Three quiet days after Saturday burst.".
+   Causal chain example: "Last system_design mock scored 5/10 with capacity-estimation flagged weak (Mon). Same gap shows in 3 of 5 mock weak_topics this month — pattern, not luck. Google interview is Fri, so today's lever is one capacity-estimation drill before anything else."
+
+6. HEADLINE: ONE short sentence (≤8 words). Capture the DOMINANT cross-product pattern AT THE SEVERITY LEVEL given in SIGNAL DIGEST. severity=critical → headline must convey urgency (interview/streak break/3+ losses). severity=warn → headline names the bottleneck. severity=nudge → headline names the leverage point. severity=cruise → headline acknowledges momentum without flattery. Examples: "System Design holding back; algorithms solid.", "12-day kata streak, but no deep focus.", "Three quiet days after Saturday burst.".
 
 7. ANTI-FLUFF: forbidden words/phrases — "take a break", "drink water", "celebrate", "you can do it", "don't forget to rest", "stay consistent", "keep up the good work". The user pays you to be honest, not nice.
 
@@ -80,6 +82,97 @@ FEW-SHOT EXAMPLES (good vs bad — match the good one's specificity):
 
 Return ONLY the JSON object. No prose, no code fences.`
 
+// variantPromptOverlay — Phase 5 A/B prompt-variant overlay. Возвращает
+// 1-2 строчки instruction tied к variant'у. Пустая строка = default
+// (briefSystemPrompt без изменений).
+//
+// Variants:
+//
+//	terse  — сократи narrative до ≤2 коротких предложений; rationale
+//	         ≤14 слов на recommendation. Headline остаётся ≤8 слов.
+//	sharp  — headline должен называть конкретный signal+number в первой
+//	         фразе ("Yandex Wed — 5/10 sysdesign"); narrative до 2 sent.
+func variantPromptOverlay(v CoachPromptVariant) string {
+	switch v {
+	case CoachPromptVariantTerse:
+		return "VARIANT: terse. Narrative ≤2 short sentences. Each recommendation rationale ≤14 words. Cut adjectives, keep numbers."
+	case CoachPromptVariantSharp:
+		return "VARIANT: sharp. Headline MUST lead with a concrete signal + number (e.g. \"Yandex Wed — 5/10 sysdesign\"). Narrative ≤2 sentences."
+	case CoachPromptVariantDefault:
+		return ""
+	}
+	return ""
+}
+
+// personaToneOverlay — Phase 4.2 system-prompt overlay. Возвращает 1-2
+// строчки с tone hint, которые caller добавляет отдельным system message
+// после `briefSystemPrompt`. Пустая строка = no overlay (default tone
+// briefSystemPrompt уже даёт «honest, not nice»).
+//
+// Обоснование одной-двух строк: длинные tone hint'ы перетягивают на себя
+// внимание модели и приводят к prompt-leak («Hi! As a strict coach…»).
+// Короткий direct hint меняет наклон без переписывания контракта output'а.
+func personaToneOverlay(p CoachPersona) string {
+	switch p {
+	case CoachPersonaStrict:
+		return "TONE OVERLAY: strict. Direct, no hedging. Hold high standards. The user wants to be pushed, не утешён."
+	case CoachPersonaWarm:
+		return "TONE OVERLAY: warm. Acknowledge effort visibly, frame growth as learning. Stay specific, but lead with what's working."
+	case CoachPersonaSparring:
+		return "TONE OVERLAY: sparring. Treat the user as a peer who can take pushback. Question stale assumptions implicitly."
+	}
+	return ""
+}
+
+// critiqueSystemPrompt — Phase 4.1 second-stage. Coach видит свой
+// предыдущий sketch + те же signals и должен либо его подтвердить, либо
+// вернуть улучшенную версию. Триггерится только для severity warn /
+// critical: мы платим латентностью + LLM-токенами там, где stake'и
+// оправдывают (interview через 3 дня, broken streak, chronic avoidance).
+//
+// Output контракт идентичен sketch'у — тот же JSON envelope. Это
+// позволяет переиспользовать parseBriefJSON без бранчей. Если critique
+// возвращает null/empty/malformed → caller использует исходный sketch.
+const critiqueSystemPrompt = `You are a senior coach reviewing a draft brief that another LLM produced from the same signals.
+
+Your job: critique the draft against these tests, then return an improved JSON brief OR confirm the draft is already optimal.
+
+REVIEW CHECKLIST:
+1. Specificity — does every recommendation cite a concrete number/topic from the signals? Generic verbs ("practice algorithms") = fail.
+2. Severity match — for warn/critical headlines, does the lead sentence convey urgency / name the dominant signal?
+3. Causal narrative — 2-3 sentences in <observation> → <interpretation> → <today's lever> form, with real numbers?
+4. Recommendation diversity — three distinct levers, not three flavours of the same topic (unless interview within 7d overrides).
+5. Anti-fluff — no "stay consistent", "great job", "keep going". Honest, not nice.
+6. Action-readability — could the user follow each recommendation in <15 min today?
+7. Codex links only from the "Available Codex curated articles" list, no invented URLs.
+
+If the draft passes all 7 checks, RETURN IT VERBATIM (same JSON shape, same field values).
+If 1+ checks fail, RETURN AN IMPROVED VERSION (same JSON envelope) that fixes them. Improvements MUST stay grounded in the same signals — do not invent facts the draft did not have access to.
+
+Output EXACTLY the same JSON shape, nothing else:
+{"headline":"...","narrative":"...","recommendations":[
+  {"kind":"...","title":"...","rationale":"...","target_id":"..."},
+  ... (exactly 3)
+]}
+
+Allowed kinds: tiny_task | schedule | review_note | unblock. target_id matches the sketch when carrying note_id / plan_item_id; empty otherwise.`
+
+// buildBriefCritiqueUserPrompt assembles the second-stage user prompt.
+// The critic must see the SAME signals stage 1 did so improvements stay
+// grounded — we re-use buildBriefUserPrompt verbatim and prepend the
+// draft for review. Single source of truth for "what evidence exists".
+func buildBriefCritiqueUserPrompt(in domain.BriefPromptInput, sketchJSON string) string {
+	var sb strings.Builder
+	sb.WriteString("──────────────────────────────────────────────────\n")
+	sb.WriteString("DRAFT BRIEF (under review):\n")
+	sb.WriteString(strings.TrimSpace(sketchJSON))
+	sb.WriteString("\n──────────────────────────────────────────────────\n\n")
+	sb.WriteString("Same signals stage 1 saw, in full:\n\n")
+	sb.WriteString(buildBriefUserPrompt(in))
+	sb.WriteString("\n\nReturn ONLY the final JSON brief (verbatim if draft passes all 7 checks; improved otherwise). No prose, no fences.")
+	return sb.String()
+}
+
 func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Today: %s\n\n", in.Today.Format("2006-01-02 (Monday)"))
@@ -87,6 +180,46 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 	writeCoachDiagnosis(&sb, in)
 	writeActionCandidates(&sb, in)
 	writeActionContract(&sb, in)
+
+	// ── USER GOALS (Phase 4.3) ─────────────────────────────────────────
+	// High-level goals shape narrative framing — coach should mention the
+	// active job_target / skill_target / track_target by name, и привязать
+	// today's lever к движению по нему. Deadline-aware severity already
+	// fires в deriveSeverity для критических случаев.
+	if len(in.ActiveGoals) > 0 {
+		sb.WriteString("USER GOALS (active — anchor narrative + at least one recommendation to the most-pressing one; deadline goals override skill/track when sooner):\n")
+		for _, g := range in.ActiveGoals {
+			fmt.Fprintf(&sb, "  - kind=%s · %q", g.Kind, g.Title)
+			if g.DaysToDeadline >= 0 {
+				fmt.Fprintf(&sb, " · in %d day(s)", g.DaysToDeadline)
+			} else if g.Deadline == nil {
+				sb.WriteString(" · no deadline")
+			} else {
+				fmt.Fprintf(&sb, " · OVERDUE by %d day(s)", -g.DaysToDeadline)
+			}
+			if len(g.SkillKeys) > 0 {
+				fmt.Fprintf(&sb, " · skills=[%s]", strings.Join(g.SkillKeys, ","))
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	// ── PENDING FOLLOW-UPS (Phase 4.8) ────────────────────────────────
+	// Coach должен в narrative или одной recommendation спросить «landed
+	// ли X?» — иначе те же review_note/tiny_task будут предлагаться из
+	// дня в день без feedback loop.
+	if len(in.PendingFollowups) > 0 {
+		sb.WriteString("PENDING FOLLOW-UPS (you suggested these recently — ASK whether they landed in the narrative or one recommendation, do NOT re-suggest verbatim):\n")
+		for _, f := range in.PendingFollowups {
+			fmt.Fprintf(&sb, "  - %s — kind=%s · %dh ago", f.Title, f.Kind, f.HoursAgo)
+			if f.TargetID != "" {
+				fmt.Fprintf(&sb, " · target=%s", f.TargetID)
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
 
 	// ── UPCOMING INTERVIEWS (highest-priority signal) ─────────────────
 	if len(in.UpcomingInterviews) > 0 {
@@ -274,6 +407,16 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 }
 func writeSignalDigest(sb *strings.Builder, in domain.BriefPromptInput) {
 	sb.WriteString("SIGNAL DIGEST (prioritise in this order; use raw sections only as evidence):\n")
+	severity, severityReason := deriveSeverity(in)
+	fmt.Fprintf(sb, "  severity=%s · %s — match headline tone and narrative pressure to this grade.\n",
+		severity, severityReason)
+	// Stale-data guard: when the user has been off for >=14 days, every
+	// "old" mock / arena / queue signal becomes context-only. Coach
+	// MUST NOT cite a 22-day-old mock as if it were yesterday — the
+	// pattern is dated and the user has likely forgotten the details.
+	if days := daysSinceLastTouch(in); days >= LongAbsenceDays {
+		fmt.Fprintf(sb, "  STALE_DATA_GUARD: last activity was %d days ago. Do NOT cite mock scores, arena losses, queue items, or focus stats as if they were current. Tone = welcome-back nudge. Recommendations = ONE small re-entry win (today's kata, one short focus block, schedule a fresh mock to recalibrate).\n", days)
+	}
 	fmt.Fprintf(sb, "  data_coverage: focus_days=%d mocks=%d arena=%d queue_items=%d weak_skills=%d notes=%d cue_memories=%d codex_articles=%d past_coach=%d\n",
 		len(in.FocusDays), len(in.Mocks), len(in.Arena), len(in.Queue.Items),
 		len(in.WeakSkills), len(in.RecentNotes)+len(in.DailyNotes)+len(in.Reflections),
@@ -337,6 +480,26 @@ func writeSignalDigest(sb *strings.Builder, in domain.BriefPromptInput) {
 		fmt.Fprintf(sb, "  P2 today_queue: done=%d/%d in_progress=%d todo=%d\n",
 			in.Queue.Done, in.Queue.Total, in.Queue.InProgress, in.Queue.Todo)
 		wrote = true
+	}
+	// Phase 2d — surface the user's primary track. The first non-paused
+	// track wins the digest slot; coach is steered to anchor today's
+	// recommendations to its current step's skill_keys.
+	for _, t := range in.ActiveTracks {
+		if t.IsPaused {
+			continue
+		}
+		stalledTag := ""
+		if t.DaysSinceLastTouch >= 5 && t.DaysSinceLastTouch < 999 {
+			stalledTag = fmt.Sprintf(" · stalled %dd", t.DaysSinceLastTouch)
+		}
+		skills := strings.Join(t.CurrentStepSkills, ",")
+		if skills == "" {
+			skills = "no-skill-key"
+		}
+		fmt.Fprintf(sb, "  P1 active_track: %s · step %d/%d %q · skills=[%s]%s\n",
+			t.Name, t.CurrentStep+1, t.StepsTotal, t.CurrentStepTitle, skills, stalledTag)
+		wrote = true
+		break
 	}
 	if len(in.DailyNotes) > 0 {
 		fmt.Fprintf(sb, "  P1 today_intent: %q\n", firstN(in.DailyNotes[0].Excerpt, 140))
@@ -471,7 +634,8 @@ func coachMemoryPolicy(past []domain.Episode) string {
 			domain.EpisodeFocusSessionDone,
 			domain.EpisodeMockPipelineFinished,
 			domain.EpisodeCodexArticleOpened,
-			domain.EpisodeCueConversationMemory:
+			domain.EpisodeCueConversationMemory,
+			domain.EpisodeWeeklyMemorySummary:
 			// not used for coach memory policy
 		}
 	}

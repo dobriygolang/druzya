@@ -96,9 +96,15 @@ func (w *ReportWorker) run(ctx context.Context, sessionID uuid.UUID) error {
 	if err != nil {
 		return fmt.Errorf("load session: %w", err)
 	}
-	task, err := w.Tasks.GetWithHint(ctx, s.TaskID)
-	if err != nil {
-		return fmt.Errorf("load task: %w", err)
+	// English HR sessions have no task (TaskID is uuid.Nil). Build the
+	// report against an empty TaskWithHint — BuildReportPrompt branches
+	// on Section first and never dereferences task fields for English HR.
+	var task domain.TaskWithHint
+	if s.TaskID != uuid.Nil {
+		task, err = w.Tasks.GetWithHint(ctx, s.TaskID)
+		if err != nil {
+			return fmt.Errorf("load task: %w", err)
+		}
 	}
 	msgs, err := w.Messages.ListAll(ctx, sessionID)
 	if err != nil {

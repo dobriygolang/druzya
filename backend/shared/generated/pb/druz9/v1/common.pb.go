@@ -28,6 +28,14 @@ const (
 )
 
 // Section mirrors shared/enums.Section and the OpenAPI Section enum.
+// English HR (value=6) is the first non-engineering section — Wave 1 of
+// docs/feature/english.md. It sits in the same enum because
+// mock_sessions.section is the natural lookup key and creating a parallel
+// taxonomy for English would force every consumer (Insights, mock-pipeline,
+// history) to carry a tagged-union switch. Tables that gate on engineering
+// sections via CHECK constraints (ratings, elo_snapshots, tasks,
+// arena_matches, slots) do NOT accept english_hr — see
+// migrations/00001_baseline.sql.
 type Section int32
 
 const (
@@ -37,6 +45,19 @@ const (
 	Section_SECTION_GO            Section = 3
 	Section_SECTION_SYSTEM_DESIGN Section = 4
 	Section_SECTION_BEHAVIORAL    Section = 5
+	Section_SECTION_ENGLISH_HR    Section = 6
+	// System Design senior (Wave 3.2 of docs/feature/plan.md). Free-form
+	// discussion of distributed systems / real-time / ML / observability —
+	// no algorithmic task. Differs from SECTION_SYSTEM_DESIGN: that one
+	// pairs with a designed-prompt task ("design URL shortener with these
+	// constraints"), this one is interview-style architectural pushback.
+	Section_SECTION_SYSTEM_DESIGN_SENIOR Section = 7
+	// Tech Lead / EM mock (Wave 3.4 of docs/feature/plan.md). Free-form
+	// STAR-style behavioral round at TL/EM level — people scenarios
+	// (1:1s, conflict, hiring, tech-debt defense). Differs from
+	// SECTION_BEHAVIORAL: that one pairs with concrete behavioral tasks;
+	// this one is open conversation with the AI as a hiring panel.
+	Section_SECTION_TECH_LEAD_EM Section = 8
 )
 
 // Enum value maps for Section.
@@ -48,14 +69,20 @@ var (
 		3: "SECTION_GO",
 		4: "SECTION_SYSTEM_DESIGN",
 		5: "SECTION_BEHAVIORAL",
+		6: "SECTION_ENGLISH_HR",
+		7: "SECTION_SYSTEM_DESIGN_SENIOR",
+		8: "SECTION_TECH_LEAD_EM",
 	}
 	Section_value = map[string]int32{
-		"SECTION_UNSPECIFIED":   0,
-		"SECTION_ALGORITHMS":    1,
-		"SECTION_SQL":           2,
-		"SECTION_GO":            3,
-		"SECTION_SYSTEM_DESIGN": 4,
-		"SECTION_BEHAVIORAL":    5,
+		"SECTION_UNSPECIFIED":          0,
+		"SECTION_ALGORITHMS":           1,
+		"SECTION_SQL":                  2,
+		"SECTION_GO":                   3,
+		"SECTION_SYSTEM_DESIGN":        4,
+		"SECTION_BEHAVIORAL":           5,
+		"SECTION_ENGLISH_HR":           6,
+		"SECTION_SYSTEM_DESIGN_SENIOR": 7,
+		"SECTION_TECH_LEAD_EM":         8,
 	}
 )
 
@@ -1209,7 +1236,7 @@ var File_druz9_v1_common_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x15druz9/v1/common.proto\x12\bdruz9.v1*\x8e\x01\n" +
+	"\x15druz9/v1/common.proto\x12\bdruz9.v1*\xe2\x01\n" +
 	"\aSection\x12\x17\n" +
 	"\x13SECTION_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SECTION_ALGORITHMS\x10\x01\x12\x0f\n" +
@@ -1217,7 +1244,10 @@ const file_druz9_v1_common_proto_rawDesc = "" +
 	"\n" +
 	"SECTION_GO\x10\x03\x12\x19\n" +
 	"\x15SECTION_SYSTEM_DESIGN\x10\x04\x12\x16\n" +
-	"\x12SECTION_BEHAVIORAL\x10\x05*i\n" +
+	"\x12SECTION_BEHAVIORAL\x10\x05\x12\x16\n" +
+	"\x12SECTION_ENGLISH_HR\x10\x06\x12 \n" +
+	"\x1cSECTION_SYSTEM_DESIGN_SENIOR\x10\a\x12\x18\n" +
+	"\x14SECTION_TECH_LEAD_EM\x10\b*i\n" +
 	"\n" +
 	"Difficulty\x12\x1a\n" +
 	"\x16DIFFICULTY_UNSPECIFIED\x10\x00\x12\x13\n" +

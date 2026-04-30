@@ -17,6 +17,7 @@ import {
   Moon,
   Languages,
   Check,
+  Layers,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
@@ -38,9 +39,11 @@ import { gradientStyleForUser } from '../lib/avatarGradients'
 import { useTheme, type ThemeMode } from '../lib/theme'
 import { changeLanguage, currentLanguage, type Lang } from '../lib/i18n'
 import { BillingTab } from './settings/BillingTab'
+import { TracksTab } from './settings/TracksTab'
 
 type NavId =
   | 'account'
+  | 'tracks'
   | 'billing'
   | 'integrations'
   | 'notifications'
@@ -53,6 +56,7 @@ function useNav() {
   const { t } = useTranslation('settings')
   return [
     { id: 'account' as const, label: t('nav.account'), icon: User },
+    { id: 'tracks' as const, label: 'Треки', icon: Layers },
     { id: 'billing' as const, label: t('nav.billing'), icon: CreditCard, badge: 'Premium' },
     { id: 'integrations' as const, label: t('nav.integrations'), icon: Plug },
     { id: 'notifications' as const, label: t('nav.notifications'), icon: Bell },
@@ -621,6 +625,7 @@ export default function SettingsPage() {
                 <AccountInfoCard />
               </>
             )}
+            {active === 'tracks' && <TracksTab />}
             {active === 'billing' && <BillingTab />}
             {active === 'integrations' && <IntegrationsCard />}
             {active === 'notifications' && <NotificationsCard />}

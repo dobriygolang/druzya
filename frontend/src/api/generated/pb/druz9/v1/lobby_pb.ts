@@ -37,7 +37,7 @@ export class Lobby extends Message<Lobby> {
   ownerId = "";
 
   /**
-   * "1v1" | "2v2"
+   * "1v1" | "solo" | "2v2" (legacy)
    *
    * @generated from field: string mode = 4;
    */
@@ -101,6 +101,14 @@ export class Lobby extends Message<Lobby> {
    */
   createdAt?: Timestamp;
 
+  /**
+   * Phase 2c-2 — non-empty for solo drill rooms; the task picker matches
+   * tasks.skill_keys && skill_filter. Atlas node keys ("bfs", "lru-cache").
+   *
+   * @generated from field: repeated string skill_filter = 15;
+   */
+  skillFilter: string[] = [];
+
   constructor(data?: PartialMessage<Lobby>) {
     super();
     proto3.util.initPartial(data, this);
@@ -123,6 +131,7 @@ export class Lobby extends Message<Lobby> {
     { no: 12, name: "match_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 13, name: "members_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 14, name: "created_at", kind: "message", T: Timestamp },
+    { no: 15, name: "skill_filter", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Lobby {
@@ -455,6 +464,14 @@ export class CreateLobbyRequest extends Message<CreateLobbyRequest> {
    */
   timeLimitMin = 0;
 
+  /**
+   * Phase 2c-2 — only honoured when mode='solo'. Up to 10 skill keys
+   * (Atlas node keys) restricting the task picker. Empty = no filter.
+   *
+   * @generated from field: repeated string skill_filter = 8;
+   */
+  skillFilter: string[] = [];
+
   constructor(data?: PartialMessage<CreateLobbyRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -470,6 +487,7 @@ export class CreateLobbyRequest extends Message<CreateLobbyRequest> {
     { no: 5, name: "max_members", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "ai_allowed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 7, name: "time_limit_min", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 8, name: "skill_filter", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateLobbyRequest {

@@ -635,6 +635,103 @@ service HoneService {
   rpc BulkNotesMeta(BulkNotesMetaRequest) returns (BulkNotesMetaResponse) {
     option (google.api.http) = {get: "/api/v1/notes/meta"};
   }
+
+  // ─── Reading-модуль (Wave 4 of docs/feature/english.md) ──────────────
+  //
+  // Library + reader + SRS vocab queue. Free-form English content
+  // (no algorithmic task), all rows scoped to user_id at the SQL gate.
+
+  rpc AddReadingMaterial(AddReadingMaterialRequest) returns (ReadingMaterial) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/reading/materials"
+      body: "*"
+    };
+  }
+  rpc ListReadingMaterials(ListReadingMaterialsRequest) returns (ListReadingMaterialsResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/reading/materials"};
+  }
+  rpc GetReadingMaterial(GetReadingMaterialRequest) returns (ReadingMaterial) {
+    option (google.api.http) = {get: "/api/v1/hone/reading/materials/{id}"};
+  }
+  rpc ArchiveReadingMaterial(ArchiveReadingMaterialRequest) returns (ArchiveReadingMaterialResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/reading/materials/{id}/archive"
+      body: "*"
+    };
+  }
+  rpc StartReadingSession(StartReadingSessionRequest) returns (ReadingSession) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/reading/sessions"
+      body: "*"
+    };
+  }
+  rpc EndReadingSession(EndReadingSessionRequest) returns (EndReadingSessionResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/reading/sessions/{session_id}/end"
+      body: "*"
+    };
+  }
+  rpc AddVocab(AddVocabRequest) returns (VocabEntry) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/reading/vocab"
+      body: "*"
+    };
+  }
+  rpc ReviewVocab(ReviewVocabRequest) returns (VocabEntry) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/reading/vocab/review"
+      body: "*"
+    };
+  }
+  rpc ListVocabDue(ListVocabDueRequest) returns (ListVocabDueResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/reading/vocab/due"};
+  }
+
+  // ─── Listening-модуль (Wave 6.1) ─────────────────────────────────
+  // User-owned library of audio + transcript materials. Click-on-word
+  // reuses the AddVocab RPC (vocab queue is shared with Reading).
+  rpc AddListeningMaterial(AddListeningMaterialRequest) returns (ListeningMaterial) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/listening/materials"
+      body: "*"
+    };
+  }
+  rpc ListListeningMaterials(ListListeningMaterialsRequest) returns (ListListeningMaterialsResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/listening/materials"};
+  }
+  rpc GetListeningMaterial(GetListeningMaterialRequest) returns (ListeningMaterial) {
+    option (google.api.http) = {get: "/api/v1/hone/listening/materials/{id}"};
+  }
+  rpc ArchiveListeningMaterial(ArchiveListeningMaterialRequest) returns (ArchiveListeningMaterialResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/listening/materials/{id}/archive"
+      body: "*"
+    };
+  }
+
+  // ─── Writing-as-Focus (Wave 4.4) ─────────────────────────────────
+  // GradeEnglishWriting — request-scoped: take a draft, return a
+  // structured list of grammar / vocab / style issues + an overall
+  // 0..100 score. No persistence layer; if the user wants to keep the
+  // text they save it via CreateNote.
+  rpc GradeEnglishWriting(GradeEnglishWritingRequest) returns (GradeEnglishWritingResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/writing/grade"
+      body: "*"
+    };
+  }
+
+  // ─── Code-review-coaching (Wave 3.6) ─────────────────────────────
+  // GradeCodeReview — user pastes a unified diff + their PR-style
+  // review; we grade the review across correctness/completeness/
+  // clarity/tone. Same one-shot, no-persistence pattern as the
+  // writing grader.
+  rpc GradeCodeReview(GradeCodeReviewRequest) returns (GradeCodeReviewResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/code-review/grade"
+      body: "*"
+    };
+  }
 }
 
 // ─── Publish-to-web messages ────────────────────────────────────────────────
@@ -891,4 +988,213 @@ message GetTodayStandupRequest {}
 message GetTodayStandupResponse {
   bool recorded = 1;
   repeated string yesterday_done = 2;
+}
+
+// ─── Reading-модуль messages (Wave 4 of docs/feature/english.md) ────────────
+//
+// Three top-level entities: ReadingMaterial / ReadingSession /
+// VocabEntry — mirror domain.* in services/hone/domain/reading.go.
+// source_kind is a string (proto3 doesn't help us with a tiny
+// closed-set; the backend validates via domain.ReadingSourceKind).
+
+message ReadingMaterial {
+  string id           = 1;
+  string user_id      = 2;
+  string source_kind  = 3; // "paste" | "url" | "pdf" | "epub"
+  string source_url   = 4; // empty for paste
+  string title        = 5;
+  string body_md      = 6; // omitted from list responses to save bandwidth
+  int32  total_chars  = 7;
+  google.protobuf.Timestamp archived_at = 8; // zero when active
+  google.protobuf.Timestamp created_at  = 9;
+  google.protobuf.Timestamp updated_at  = 10;
+}
+
+message ReadingSession {
+  string id          = 1;
+  string user_id     = 2;
+  string material_id = 3;
+  int32  chars_read  = 4;
+  int32  chars_total = 5;
+  google.protobuf.Timestamp started_at = 6;
+  google.protobuf.Timestamp ended_at   = 7; // zero when active
+  // ai_summary_score is optional (NULL until AI summary check fires);
+  // wire as 0 with a separate has_score flag rather than a wrapper —
+  // proto3 wrapper types add codegen weight for one nullable int.
+  int32  ai_summary_score = 8;
+  bool   has_score        = 9;
+  string summary_md       = 10;
+}
+
+message VocabEntry {
+  string user_id          = 1;
+  string word             = 2;
+  string translation      = 3;
+  string context_md       = 4;
+  string source_material  = 5; // empty when not linked to a material
+  int32  box              = 6; // 0..5; 5 = graduated
+  google.protobuf.Timestamp next_review_at = 7;
+  int32  reviewed_count   = 8;
+  google.protobuf.Timestamp learned_at = 9; // zero when not graduated
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message AddReadingMaterialRequest {
+  string source_kind = 1;
+  string source_url  = 2;
+  string title       = 3;
+  string body_md     = 4;
+}
+
+message ListReadingMaterialsRequest {
+  int32 limit = 1; // 0 → server default (50)
+}
+
+message ListReadingMaterialsResponse {
+  // body_md omitted from list items by the handler — clients fetch it
+  // via GetReadingMaterial when they actually open a material.
+  repeated ReadingMaterial items = 1;
+}
+
+message GetReadingMaterialRequest {
+  string id = 1;
+}
+
+message ArchiveReadingMaterialRequest {
+  string id = 1;
+}
+message ArchiveReadingMaterialResponse {}
+
+message StartReadingSessionRequest {
+  string material_id = 1;
+}
+
+message EndReadingSessionRequest {
+  string session_id = 1;
+  int32  chars_read = 2;
+  string summary_md = 3;
+}
+// Returns the closed session — including ai_summary_score / has_score if
+// the LLM grader was available and finished within the request budget.
+// If the grader is offline or times out, has_score is false and the score
+// can still arrive later via a background re-grading task (Wave 4.3+).
+message EndReadingSessionResponse {
+  ReadingSession session = 1;
+}
+
+message AddVocabRequest {
+  string word            = 1;
+  string translation     = 2;
+  string context_md      = 3;
+  string source_material = 4; // optional
+}
+
+message ReviewVocabRequest {
+  string word    = 1;
+  bool   correct = 2;
+}
+
+message ListVocabDueRequest {
+  int32 limit = 1; // 0 → server default (20)
+}
+
+message ListVocabDueResponse {
+  repeated VocabEntry items = 1;
+}
+
+// ─── Listening-модуль messages (Wave 6.1) ─────────────────────────
+
+message ListeningMaterial {
+  string id            = 1;
+  string user_id       = 2;
+  string title         = 3;
+  string audio_url     = 4;
+  // omitted from list responses to save bandwidth (transcripts can
+  // run 50KB+); clients call GetListeningMaterial when they open the
+  // player to fetch the full text.
+  string transcript_md = 5;
+  google.protobuf.Timestamp archived_at = 6;
+  google.protobuf.Timestamp created_at  = 7;
+  google.protobuf.Timestamp updated_at  = 8;
+}
+
+message AddListeningMaterialRequest {
+  string title         = 1;
+  string audio_url     = 2;
+  string transcript_md = 3;
+}
+
+message ListListeningMaterialsRequest {
+  int32 limit = 1; // 0 → server default (50)
+}
+
+message ListListeningMaterialsResponse {
+  repeated ListeningMaterial items = 1;
+}
+
+message GetListeningMaterialRequest  { string id = 1; }
+message ArchiveListeningMaterialRequest  { string id = 1; }
+message ArchiveListeningMaterialResponse {}
+
+// ─── Writing-as-Focus messages (Wave 4.4) ───────────────────────────────────
+//
+// One round-trip: draft text in, structured feedback out. The frontend
+// renders issues in a list and (optionally) highlights matching slices
+// of the draft via excerpt-as-needle search.
+
+message GradeEnglishWritingRequest {
+  // Optional. Lets the grader scope its judgement (off-topic becomes
+  // a clarity issue when title is set; otherwise grader stays neutral).
+  string title = 1;
+  string text  = 2;
+}
+
+message WritingIssue {
+  // Verbatim slice of the user's text the issue applies to. Frontend
+  // can highlight by searching for this in the original; we don't
+  // ship char-offsets because they don't survive client-side text
+  // editing between request + render.
+  string excerpt    = 1;
+  // "grammar" | "vocab" | "style" | "clarity". Unknown categories
+  // from the LLM are coerced to "style" server-side.
+  string category   = 2;
+  string suggestion = 3;
+  string explanation = 4;
+}
+
+message GradeEnglishWritingResponse {
+  // 0..100. Mirrors the summary-grader's scale so the UI can reuse
+  // the same strong / mid / weak chip.
+  int32 overall_score = 1;
+  repeated WritingIssue issues = 2;
+}
+
+// ─── Code-review-coaching messages (Wave 3.6) ──────────────────────────
+
+message GradeCodeReviewRequest {
+  // Optional. Lets the grader scope its judgement on whether the review
+  // is on-topic for what the PR claims to do.
+  string pr_title  = 1;
+  // Unified diff. Plain text (NOT base64). Frontend caps at ~100KB.
+  string diff_md   = 2;
+  // The user's review write-up.
+  string review_md = 3;
+}
+
+message CodeReviewIssue {
+  // Verbatim slice of the user's review the issue applies to. Empty
+  // is allowed only when category == "completeness" (the reviewer
+  // didn't write anything for that gap; suggestion holds the comment
+  // they SHOULD have written).
+  string excerpt     = 1;
+  // "correctness" | "completeness" | "clarity" | "tone". Unknown
+  // categories from the LLM are coerced to "clarity" server-side.
+  string category    = 2;
+  string suggestion  = 3;
+  string explanation = 4;
+}
+
+message GradeCodeReviewResponse {
+  int32 overall_score = 1;
+  repeated CodeReviewIssue issues = 2;
 }

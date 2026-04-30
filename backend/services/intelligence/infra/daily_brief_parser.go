@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"druz9/intelligence/domain"
 )
@@ -57,6 +58,11 @@ func parseBriefJSON(raw string, in domain.BriefPromptInput) (domain.DailyBrief, 
 
 	allowedLinks := allowedCodexLinks(in.CodexArticles)
 	blockedPast := blockedRecommendationKeys(in.PastEpisodes)
+	// Phase 4.6 — anti-suggestion-fatigue cooldown. Если за последние 14
+	// дней юзер dismissed ≥3 recommendations одного kind'а, блокируем
+	// весь kind на этот brief — coach должен искать другую leverage
+	// rather than продолжать ту же категорию.
+	cooledKinds := cooledDownKinds(in.PastEpisodes, in.Today, 14, 3)
 	recs := make([]domain.Recommendation, 0, len(env.Recommendations))
 	seen := make(map[string]struct{}, len(env.Recommendations))
 	for _, r := range env.Recommendations {
@@ -91,6 +97,9 @@ func parseBriefJSON(raw string, in domain.BriefPromptInput) (domain.DailyBrief, 
 		if _, repeatedPast := blockedPast[key]; repeatedPast {
 			continue
 		}
+		if _, cooled := cooledKinds[kind]; cooled {
+			continue
+		}
 		seen[key] = struct{}{}
 		recs = append(recs, domain.Recommendation{
 			Kind:      kind,
@@ -108,11 +117,117 @@ func parseBriefJSON(raw string, in domain.BriefPromptInput) (domain.DailyBrief, 
 	if len(recs) > 3 {
 		recs = recs[:3]
 	}
+	headline := sanitizeBriefLinks(strings.TrimSpace(env.Headline), allowedLinks)
+	narrative := sanitizeBriefLinks(strings.TrimSpace(env.Narrative), allowedLinks)
+	headline = pinCriticalHeadline(headline, in)
+	headline = pinWelcomeBackHeadline(headline, in)
+	severity, severityReason := deriveSeverity(in)
 	return domain.DailyBrief{
-		Headline:        sanitizeBriefLinks(strings.TrimSpace(env.Headline), allowedLinks),
-		Narrative:       sanitizeBriefLinks(strings.TrimSpace(env.Narrative), allowedLinks),
+		Headline:        headline,
+		Narrative:       narrative,
 		Recommendations: recs,
+		Severity:        coachSeverityToDomain(severity),
+		SeverityReason:  severityReason,
 	}, nil
+}
+
+// coachSeverityToDomain converts the infra-only enum into the wire-shared
+// domain.InsightSeverity (cruise / nudge / warn / critical). Both share
+// the same string values, but keeping the conversion explicit means a
+// future rename of one will not silently desync the other.
+func coachSeverityToDomain(s coachSeverity) domain.InsightSeverity {
+	switch s {
+	case severityCruise:
+		return domain.InsightSeverityCruise
+	case severityNudge:
+		return domain.InsightSeverityNudge
+	case severityWarn:
+		return domain.InsightSeverityWarn
+	case severityCritical:
+		return domain.InsightSeverityCritical
+	}
+	return domain.InsightSeverityCruise
+}
+
+// pinWelcomeBackHeadline overrides the LLM headline when the user was
+// off for ≥LongAbsenceDays AND severity didn't already get pinned by
+// pinCriticalHeadline (interview-in-3-days etc keep their override).
+//
+// Why pin here too: even with STALE_DATA_GUARD in the prompt, the LLM
+// occasionally drifts back to "Caching gap — drill today" using stale
+// mocks. The deterministic pin is a safety net.
+func pinWelcomeBackHeadline(headline string, in domain.BriefPromptInput) string {
+	severity, _ := deriveSeverity(in)
+	if severity != severityCruise {
+		return headline
+	}
+	days := daysSinceLastTouch(in)
+	if days < LongAbsenceDays {
+		return headline
+	}
+	// LLM could already greet the user properly — don't re-pin.
+	low := strings.ToLower(headline)
+	if strings.Contains(low, "welcome back") || strings.Contains(low, "fresh start") || strings.Contains(low, "снова") {
+		return headline
+	}
+	return fmt.Sprintf("Welcome back — %d days off. One small win today.", days)
+}
+
+// pinCriticalHeadline overrides a vague LLM headline when the deterministic
+// severity is critical and the LLM didn't echo the dominant signal. We keep
+// the LLM headline if it already mentions the company / topic / streak —
+// only swap when it drifted to a generic "keep going" line.
+func pinCriticalHeadline(headline string, in domain.BriefPromptInput) string {
+	severity, _ := deriveSeverity(in)
+	if severity != severityCritical {
+		return headline
+	}
+	pinned, anchor := criticalHeadlineFor(in)
+	if pinned == "" {
+		return headline
+	}
+	if anchor != "" && strings.Contains(strings.ToLower(headline), strings.ToLower(anchor)) {
+		return headline
+	}
+	return pinned
+}
+
+// criticalHeadlineFor builds the deterministic headline for a critical
+// signal. Returns the headline plus an "anchor" string that, if present
+// in the LLM's own headline, means we should leave it alone.
+func criticalHeadlineFor(in domain.BriefPromptInput) (string, string) {
+	for _, ui := range in.UpcomingInterviews {
+		if ui.DaysFromNow >= 0 && ui.DaysFromNow <= 3 {
+			company := strings.TrimSpace(ui.CompanyName)
+			if company == "" {
+				company = "Interview"
+			}
+			var when string
+			switch ui.DaysFromNow {
+			case 0:
+				when = "today"
+			case 1:
+				when = "tomorrow"
+			default:
+				when = fmt.Sprintf("in %d days", ui.DaysFromNow)
+			}
+			return fmt.Sprintf("%s interview %s — readiness %d%%.", company, when, ui.ReadinessPct), company
+		}
+	}
+	if item, n := repeatedSkippedPlanItem(in.SkippedRecent); n >= 4 {
+		title := strings.TrimSpace(item.Title)
+		if title == "" {
+			title = strings.TrimSpace(item.SkillKey)
+		}
+		if title == "" {
+			title = "the same item"
+		}
+		return fmt.Sprintf("Skipped %s %d×. Wall — break it today.", title, n), title
+	}
+	if section, losses := arenaLossStreak(in.Arena); losses >= 3 {
+		return fmt.Sprintf("%d-loss streak in %s — slow down.", losses, section), section
+	}
+	return "", ""
 }
 
 func enforceInterviewRecommendations(
@@ -237,6 +352,67 @@ func allowedCodexLinks(articles []domain.CodexArticleSuggestion) map[string]stru
 		out[link] = struct{}{}
 	}
 	return out
+}
+
+// cooledDownKinds — Phase 4.6 anti-fatigue. Возвращает множество
+// recommendation-kinds, по которым юзер dismissed ≥threshold раз за
+// последние windowDays. Эти kinds исключаются из текущего brief.
+//
+// Решение работает на rec_kind (не на title), потому что title-level
+// блокировку уже делает blockedRecommendationKeys: если юзер прибил
+// 3 разных tiny_task'а подряд — явный сигнал «не для меня этот формат
+// сейчас», и нужен schedule/review_note/unblock вместо очередного
+// tiny_task.
+//
+// windowDays используется относительно `now` (= in.Today). PastEpisodes
+// уже ограничены SinceDays=30 в use case'е, так что мы лишь сужаем
+// 30→14d. threshold=3 — обоснованный минимум для «pattern not noise».
+func cooledDownKinds(past []domain.Episode, now time.Time, windowDays, threshold int) map[domain.RecommendationKind]struct{} {
+	out := make(map[domain.RecommendationKind]struct{})
+	if threshold <= 0 || windowDays <= 0 {
+		return out
+	}
+	cutoff := now.Add(-time.Duration(windowDays) * 24 * time.Hour)
+	counts := make(map[domain.RecommendationKind]int)
+	for _, ep := range past {
+		if ep.Kind != domain.EpisodeBriefDismissed {
+			continue
+		}
+		if !ep.OccurredAt.IsZero() && ep.OccurredAt.Before(cutoff) {
+			continue
+		}
+		kind := extractDismissedKind(ep.Payload)
+		if kind == "" {
+			continue
+		}
+		counts[kind]++
+	}
+	for kind, n := range counts {
+		if n >= threshold {
+			out[kind] = struct{}{}
+		}
+	}
+	return out
+}
+
+// extractDismissedKind — payload pattern from app/memory.go AckRecommendation:
+// {"brief_id":..., "index":..., "rec_kind": "tiny_task", "target_id":...}.
+// При отсутствии rec_kind возвращает пустой kind — caller просто скипает.
+func extractDismissedKind(raw []byte) domain.RecommendationKind {
+	if len(raw) == 0 {
+		return ""
+	}
+	var payload struct {
+		RecKind string `json:"rec_kind"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return ""
+	}
+	k := domain.RecommendationKind(strings.TrimSpace(payload.RecKind))
+	if !k.IsValid() {
+		return ""
+	}
+	return k
 }
 
 func blockedRecommendationKeys(past []domain.Episode) map[string]struct{} {

@@ -1184,6 +1184,128 @@ export class ScoreTrajectoryPoint extends Message<ScoreTrajectoryPoint> {
 }
 
 /**
+ * EnglishHRTrendPoint — Wave 1 of docs/feature/english.md. One finished
+ * English HR mock as a sparkline datapoint. SessionID enables deep-link
+ * from the Insights card back to the per-round result page.
+ *
+ * @generated from message druz9.v1.EnglishHRTrendPoint
+ */
+export class EnglishHRTrendPoint extends Message<EnglishHRTrendPoint> {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId = "";
+
+  /**
+   * RFC3339 UTC
+   *
+   * @generated from field: string finished_at = 2;
+   */
+  finishedAt = "";
+
+  /**
+   * @generated from field: int32 score = 3;
+   */
+  score = 0;
+
+  constructor(data?: PartialMessage<EnglishHRTrendPoint>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.EnglishHRTrendPoint";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "finished_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EnglishHRTrendPoint {
+    return new EnglishHRTrendPoint().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EnglishHRTrendPoint {
+    return new EnglishHRTrendPoint().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EnglishHRTrendPoint {
+    return new EnglishHRTrendPoint().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EnglishHRTrendPoint | PlainMessage<EnglishHRTrendPoint> | undefined, b: EnglishHRTrendPoint | PlainMessage<EnglishHRTrendPoint> | undefined): boolean {
+    return proto3.util.equals(EnglishHRTrendPoint, a, b);
+  }
+}
+
+/**
+ * EnglishHRTrend — aggregated stats for the user's English HR mocks
+ * over the trailing window. total_sessions == 0 is the empty state
+ * (frontend hides the widget rather than rendering a zero-card).
+ *
+ * @generated from message druz9.v1.EnglishHRTrend
+ */
+export class EnglishHRTrend extends Message<EnglishHRTrend> {
+  /**
+   * @generated from field: int32 total_sessions = 1;
+   */
+  totalSessions = 0;
+
+  /**
+   * @generated from field: int32 avg_score = 2;
+   */
+  avgScore = 0;
+
+  /**
+   * @generated from field: int32 last_score = 3;
+   */
+  lastScore = 0;
+
+  /**
+   * RFC3339 UTC, empty when total_sessions==0
+   *
+   * @generated from field: string last_finished_at = 4;
+   */
+  lastFinishedAt = "";
+
+  /**
+   * @generated from field: repeated druz9.v1.EnglishHRTrendPoint trajectory = 5;
+   */
+  trajectory: EnglishHRTrendPoint[] = [];
+
+  constructor(data?: PartialMessage<EnglishHRTrend>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.EnglishHRTrend";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "total_sessions", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "avg_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "last_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "last_finished_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "trajectory", kind: "message", T: EnglishHRTrendPoint, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EnglishHRTrend {
+    return new EnglishHRTrend().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EnglishHRTrend {
+    return new EnglishHRTrend().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EnglishHRTrend {
+    return new EnglishHRTrend().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EnglishHRTrend | PlainMessage<EnglishHRTrend> | undefined, b: EnglishHRTrend | PlainMessage<EnglishHRTrend> | undefined): boolean {
+    return proto3.util.equals(EnglishHRTrend, a, b);
+  }
+}
+
+/**
  * @generated from message druz9.v1.InsightsOverview
  */
 export class InsightsOverview extends Message<InsightsOverview> {
@@ -1222,6 +1344,14 @@ export class InsightsOverview extends Message<InsightsOverview> {
    */
   summary = "";
 
+  /**
+   * English HR-specific aggregation. Optional in the wire — old clients
+   * that ignore the field still render the engineering panel correctly.
+   *
+   * @generated from field: druz9.v1.EnglishHRTrend english_hr = 8;
+   */
+  englishHr?: EnglishHRTrend;
+
   constructor(data?: PartialMessage<InsightsOverview>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1237,6 +1367,7 @@ export class InsightsOverview extends Message<InsightsOverview> {
     { no: 5, name: "total_sessions_30d", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "pipeline_pass_rate_30d", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 7, name: "summary", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "english_hr", kind: "message", T: EnglishHRTrend },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): InsightsOverview {

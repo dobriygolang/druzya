@@ -21,7 +21,9 @@ type Pipelines struct{ pool *pgxpool.Pool }
 
 func NewPipelines(pool *pgxpool.Pool) *Pipelines { return &Pipelines{pool: pool} }
 
-const pipelineCols = `id, user_id, company_id, ai_assist, current_stage_idx, verdict, total_score, started_at, finished_at`
+// verdict is cast to text so scanPipeline can read it into a plain string
+// without depending on enum-OID registration on the connection.
+const pipelineCols = `id, user_id, company_id, ai_assist, current_stage_idx, verdict::text, total_score, started_at, finished_at`
 
 func scanPipeline(row pgx.Row) (domain.MockPipeline, error) {
 	var (
@@ -62,10 +64,17 @@ func scanPipeline(row pgx.Row) (domain.MockPipeline, error) {
 }
 
 func (r *Pipelines) Create(ctx context.Context, p domain.MockPipeline) (domain.MockPipeline, error) {
+	// verdict is a Postgres ENUM (mock_pipeline_verdict). pgx v5 does not
+	// auto-discover custom enum OIDs unless we register them — so write the
+	// cast explicitly on both sides: $6::mock_pipeline_verdict on insert
+	// and verdict::text in RETURNING. Without this, a fresh pool may emit
+	// "could not determine data type" on the parameter and surface as 500.
 	row := r.pool.QueryRow(ctx, `
 		INSERT INTO mock_pipelines (id, user_id, company_id, ai_assist, current_stage_idx, verdict, started_at)
-		VALUES ($1,$2,$3,$4,$5,$6, COALESCE(NULLIF($7, '0001-01-01 00:00:00+00'::timestamptz), now()))
-		RETURNING `+pipelineCols,
+		VALUES ($1,$2,$3,$4,$5,$6::mock_pipeline_verdict,
+		        COALESCE(NULLIF($7, '0001-01-01 00:00:00+00'::timestamptz), now()))
+		RETURNING id, user_id, company_id, ai_assist, current_stage_idx,
+		          verdict::text, total_score, started_at, finished_at`,
 		sharedpg.UUID(p.ID), sharedpg.UUID(p.UserID), nullableUUID(p.CompanyID),
 		p.AIAssist, p.CurrentStageIdx, string(p.Verdict),
 		pgtype.Timestamptz{Time: p.StartedAt, Valid: !p.StartedAt.IsZero()})

@@ -184,6 +184,16 @@ app.whenReady().then(async () => {
       target.focus();
       return;
     }
+    if (action === 'english_polish') {
+      // Wave 6.2 — open the panel anchored top-right, then forward the
+      // hotkey-fired event so the renderer triggers the auto-grade flow
+      // on mount (clipboard read happens renderer-side via navigator).
+      const win = showWindow('english-polish', windowOptions);
+      win.webContents.send(eventChannels.hotkeyFired, { action });
+      win.show();
+      win.focus();
+      return;
+    }
     broadcast(eventChannels.hotkeyFired, { action });
   });
 
@@ -211,6 +221,9 @@ app.whenReady().then(async () => {
     { action: 'move_window_right', accelerator: 'CommandOrControl+Alt+Right' },
     { action: 'move_window_up', accelerator: 'CommandOrControl+Alt+Up' },
     { action: 'move_window_down', accelerator: 'CommandOrControl+Alt+Down' },
+    // Wave 6.2 — Cue English mode. ⌃⇧L (CmdOrCtrl+Shift+L) opens the
+    // polish panel; renderer reads the clipboard on mount.
+    { action: 'english_polish', accelerator: 'CommandOrControl+Shift+L' },
   ]);
 
   // Trigger macOS Screen Recording prompt BEFORE the compact window

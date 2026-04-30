@@ -11,7 +11,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AIVacanciesModel, AllocateAtlasSkillRequest, AllocateAtlasSkillResponse, ApproveInterviewerApplicationRequest, BecomeInterviewerRequest, GetAIVacanciesModelRequest, GetMyAtlasRequest, GetMyInterviewerApplicationRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetWeeklyShareRequest, InterviewerApplication, InterviewerApplicationList, ListInterviewerApplicationsRequest, ProfileFull, ProfilePublic, ProfileSettings, RejectInterviewerApplicationRequest, SetAIVacanciesModelRequest, SkillAtlas, UpdateProfileSettingsRequest, WeeklyReport } from "./profile_pb.js";
+import { AIVacanciesModel, AllocateAtlasSkillRequest, AllocateAtlasSkillResponse, ApproveInterviewerApplicationRequest, BecomeInterviewerRequest, GetAIVacanciesModelRequest, GetMyAtlasRequest, GetMyInterviewerApplicationRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetUserTracksRequest, GetWeeklyShareRequest, InterviewerApplication, InterviewerApplicationList, ListInterviewerApplicationsRequest, ProfileFull, ProfilePublic, ProfileSettings, RejectInterviewerApplicationRequest, SetAIVacanciesModelRequest, SetUserTracksRequest, SkillAtlas, UpdateProfileSettingsRequest, UserTracks, WeeklyReport } from "./profile_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -190,6 +190,33 @@ export const ProfileService = {
       name: "SetAIVacanciesModel",
       I: SetAIVacanciesModelRequest,
       O: AIVacanciesModel,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetUserTracks returns the caller's active tracks (multi-track Atlas,
+     * см docs/feature/tracks.md). New users get an empty list and must
+     * pass through onboarding-fork; existing users were backfilled in
+     * migration 00006_user_tracks.sql with a primary `dev` track.
+     *
+     * @generated from rpc druz9.v1.ProfileService.GetUserTracks
+     */
+    getUserTracks: {
+      name: "GetUserTracks",
+      I: GetUserTracksRequest,
+      O: UserTracks,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetUserTracks replaces the caller's track list atomically. Exactly
+     * one item must have primary=true. Empty list is rejected — to leave
+     * a track, send the new full list without it.
+     *
+     * @generated from rpc druz9.v1.ProfileService.SetUserTracks
+     */
+    setUserTracks: {
+      name: "SetUserTracks",
+      I: SetUserTracksRequest,
+      O: UserTracks,
       kind: MethodKind.Unary,
     },
   }

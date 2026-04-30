@@ -53,13 +53,12 @@ type queueStatsResponse struct {
 }
 
 // modesForLanding — modes shown on the /arena landing-page cards. Cursed
-// is excluded (not on the landing). One ZCard per (mode × section) is
-// cheap — Redis ZCard is O(1), and 4 modes × 5 sections = 20 calls per
-// request, well within a single round-trip on a hot connection.
+// is excluded (not on the landing). Phase 1.7 — duo_2v2 dropped: lobby
+// no longer creates 2v2 matches, frontend hides the card. One ZCard per
+// (mode × section) is cheap (Redis ZCard is O(1)).
 var modesForLanding = []enums.ArenaMode{
 	enums.ArenaModeRanked,
 	enums.ArenaModeSolo1v1,
-	enums.ArenaModeDuo2v2,
 	enums.ArenaModeHardcore,
 }
 

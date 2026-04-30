@@ -116,6 +116,7 @@ func (s *Server) CreateLobby(
 		MaxMembers:   int(req.Msg.MaxMembers),
 		AIAllowed:    req.Msg.AiAllowed,
 		TimeLimitMin: int(req.Msg.TimeLimitMin),
+		SkillFilter:  req.Msg.SkillFilter,
 	}
 	l, err := s.Create.Do(ctx, in)
 	if err != nil {
@@ -267,7 +268,8 @@ func lobbyToProto(l domain.Lobby, members int) *pb.Lobby {
 		Visibility: string(l.Visibility), MaxMembers: int32(l.MaxMembers),
 		AiAllowed: l.AIAllowed, TimeLimitMin: int32(l.TimeLimitMin),
 		Status: string(l.Status), MembersCount: int32(members),
-		CreatedAt: timestamppb.New(l.CreatedAt.UTC()),
+		SkillFilter: l.SkillFilter,
+		CreatedAt:   timestamppb.New(l.CreatedAt.UTC()),
 	}
 	if l.MatchID != nil {
 		out.MatchId = l.MatchID.String()

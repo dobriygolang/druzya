@@ -40,6 +40,10 @@ type NotifyModule struct {
 	// can resolve telegram_chat_id without going through the full notify
 	// pipeline. Read-only consumers; the bot itself owns writes.
 	Prefs notifyDomain.PreferencesRepo
+	// ChannelPrefs — per-user channel toggles (channel_enabled jsonb).
+	// Read by the calendar dispatcher to honour the user's opt-out for
+	// the 'calendar' notification category.
+	ChannelPrefs notifyDomain.NotificationPrefsRepo
 }
 
 // NewNotify wires notifications: prefs CRUD, the multi-channel sender,
@@ -146,6 +150,9 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 		Bot:             tg,
 		Handlers:        handlers,
 		Prefs:           pg,
+		// Phase 1.8c — expose the per-channel toggle store so the
+		// calendar reminder dispatcher can honour the 'calendar' opt-out.
+		ChannelPrefs: prefsPg,
 		Module: monolithServices.Module{
 			ConnectPath:        connectPath,
 			ConnectHandler:     transcoder,
@@ -190,7 +197,6 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 					b.Subscribe(sharedDomain.MatchCompleted{}.Topic(), feedHandlers.OnArenaMatchCompleted)
 					b.Subscribe(sharedDomain.DailyKataMissed{}.Topic(), feedHandlers.OnDailyKataMissed)
 					b.Subscribe(sharedDomain.DailyKataCompleted{}.Topic(), feedHandlers.OnDailyKataCompletedFeed)
-					b.Subscribe("friends.RequestReceived", feedHandlers.OnFriendRequest)
 				},
 			},
 			Background: []func(ctx context.Context){

@@ -60,6 +60,61 @@ proto3.util.setEnumType(InterviewerApplicationStatus, "druz9.v1.InterviewerAppli
 ]);
 
 /**
+ * Track mirrors the `track_kind` Postgres enum from migration 00006. Wire
+ * names use the TRACK_ prefix; the server maps to/from lowercase DB values.
+ * Adding a new value: extend the DB enum + this message + per-track wiring
+ * (Atlas seed, mock persona, Insights — see docs/feature/tracks.md).
+ *
+ * @generated from enum druz9.v1.Track
+ */
+export enum Track {
+  /**
+   * @generated from enum value: TRACK_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TRACK_DEV = 1;
+   */
+  DEV = 1,
+
+  /**
+   * @generated from enum value: TRACK_DEV_SENIOR = 2;
+   */
+  DEV_SENIOR = 2,
+
+  /**
+   * @generated from enum value: TRACK_SYSANALYST = 3;
+   */
+  SYSANALYST = 3,
+
+  /**
+   * @generated from enum value: TRACK_PRODUCT_ANALYST = 4;
+   */
+  PRODUCT_ANALYST = 4,
+
+  /**
+   * @generated from enum value: TRACK_QA = 5;
+   */
+  QA = 5,
+
+  /**
+   * @generated from enum value: TRACK_ENGLISH = 6;
+   */
+  ENGLISH = 6,
+}
+// Retrieve enum metadata with: proto3.getEnumType(Track)
+proto3.util.setEnumType(Track, "druz9.v1.Track", [
+  { no: 0, name: "TRACK_UNSPECIFIED" },
+  { no: 1, name: "TRACK_DEV" },
+  { no: 2, name: "TRACK_DEV_SENIOR" },
+  { no: 3, name: "TRACK_SYSANALYST" },
+  { no: 4, name: "TRACK_PRODUCT_ANALYST" },
+  { no: 5, name: "TRACK_QA" },
+  { no: 6, name: "TRACK_ENGLISH" },
+]);
+
+/**
  * Attributes mirrors OpenAPI Attributes.
  *
  * @generated from message druz9.v1.Attributes
@@ -2309,6 +2364,179 @@ export class RejectInterviewerApplicationRequest extends Message<RejectInterview
 
   static equals(a: RejectInterviewerApplicationRequest | PlainMessage<RejectInterviewerApplicationRequest> | undefined, b: RejectInterviewerApplicationRequest | PlainMessage<RejectInterviewerApplicationRequest> | undefined): boolean {
     return proto3.util.equals(RejectInterviewerApplicationRequest, a, b);
+  }
+}
+
+/**
+ * UserTrack mirrors a row in `user_tracks`. seniority is "junior"|"middle"|
+ * "senior"|"lead" for engineering/analyst tracks; empty for english (the
+ * only cross-cutting track without level distinction in MVP).
+ *
+ * @generated from message druz9.v1.UserTrack
+ */
+export class UserTrack extends Message<UserTrack> {
+  /**
+   * @generated from field: druz9.v1.Track track = 1;
+   */
+  track = Track.UNSPECIFIED;
+
+  /**
+   * @generated from field: string seniority = 2;
+   */
+  seniority = "";
+
+  /**
+   * @generated from field: bool primary = 3;
+   */
+  primary = false;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 4;
+   */
+  startedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_active_at = 5;
+   */
+  lastActiveAt?: Timestamp;
+
+  constructor(data?: PartialMessage<UserTrack>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UserTrack";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "track", kind: "enum", T: proto3.getEnumType(Track) },
+    { no: 2, name: "seniority", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "primary", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 4, name: "started_at", kind: "message", T: Timestamp },
+    { no: 5, name: "last_active_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UserTrack {
+    return new UserTrack().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UserTrack {
+    return new UserTrack().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UserTrack {
+    return new UserTrack().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UserTrack | PlainMessage<UserTrack> | undefined, b: UserTrack | PlainMessage<UserTrack> | undefined): boolean {
+    return proto3.util.equals(UserTrack, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.UserTracks
+ */
+export class UserTracks extends Message<UserTracks> {
+  /**
+   * @generated from field: repeated druz9.v1.UserTrack items = 1;
+   */
+  items: UserTrack[] = [];
+
+  constructor(data?: PartialMessage<UserTracks>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UserTracks";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: UserTrack, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UserTracks {
+    return new UserTracks().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UserTracks {
+    return new UserTracks().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UserTracks {
+    return new UserTracks().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UserTracks | PlainMessage<UserTracks> | undefined, b: UserTracks | PlainMessage<UserTracks> | undefined): boolean {
+    return proto3.util.equals(UserTracks, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetUserTracksRequest
+ */
+export class GetUserTracksRequest extends Message<GetUserTracksRequest> {
+  constructor(data?: PartialMessage<GetUserTracksRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetUserTracksRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetUserTracksRequest {
+    return new GetUserTracksRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetUserTracksRequest {
+    return new GetUserTracksRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetUserTracksRequest {
+    return new GetUserTracksRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetUserTracksRequest | PlainMessage<GetUserTracksRequest> | undefined, b: GetUserTracksRequest | PlainMessage<GetUserTracksRequest> | undefined): boolean {
+    return proto3.util.equals(GetUserTracksRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SetUserTracksRequest
+ */
+export class SetUserTracksRequest extends Message<SetUserTracksRequest> {
+  /**
+   * The full new list. Replaces existing rows atomically. Must contain
+   * at least one item; exactly one item must have primary=true.
+   *
+   * @generated from field: repeated druz9.v1.UserTrack items = 1;
+   */
+  items: UserTrack[] = [];
+
+  constructor(data?: PartialMessage<SetUserTracksRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SetUserTracksRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: UserTrack, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetUserTracksRequest {
+    return new SetUserTracksRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetUserTracksRequest {
+    return new SetUserTracksRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetUserTracksRequest {
+    return new SetUserTracksRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetUserTracksRequest | PlainMessage<SetUserTracksRequest> | undefined, b: SetUserTracksRequest | PlainMessage<SetUserTracksRequest> | undefined): boolean {
+    return proto3.util.equals(SetUserTracksRequest, a, b);
   }
 }
 

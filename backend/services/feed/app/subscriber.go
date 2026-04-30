@@ -96,7 +96,7 @@ func (s *Subscriber) onLevelUp(_ context.Context, e sharedDomain.Event) error {
 }
 
 func sectionLabel(s enums.Section) string {
-	switch s {
+	switch s { //nolint:exhaustive // free-form sections fall through to default
 	case enums.SectionAlgorithms:
 		return "Algorithms"
 	case enums.SectionSQL:

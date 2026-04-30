@@ -140,7 +140,7 @@ export default function TaskBoardPage() {
     return () => document.removeEventListener('click', onClick)
   }, [ctx])
 
-  const all = tasksQ.data ?? []
+  const all = useMemo(() => tasksQ.data ?? [], [tasksQ.data])
   const filtered = useMemo(() => all.filter((t) => matchesFilter(t, filter)), [all, filter])
   const active = filtered.filter((t) => t.status !== 'dismissed').length
 

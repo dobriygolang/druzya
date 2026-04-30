@@ -9,6 +9,12 @@
 // on every page change. Force-refresh button bypasses both caches (sends
 // force=true; backend rate-limits 1/h, surfacing as 429).
 //
+// Phase 2.6 — Offline-first: navigator.onLine is consulted before each
+// fetch. If offline and cache exists, we serve the cache without going
+// to the network (no visible "errored" state for a known-offline case).
+// On online recovery (window 'online' event) we silently refetch in the
+// background to bring the cached brief up to date.
+//
 // Hidden during running focus session — coach must not distract.
 import { useCallback, useEffect, useState } from 'react';
 
@@ -16,9 +22,33 @@ import {
   getDailyBrief,
   ackRecommendation,
   getMemoryStats,
+  type CoachSeverity,
   type DailyBrief,
   type Recommendation,
 } from '../api/intelligence';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+
+// Phase 4.4 — severity tokens. Stripe paints a 3px top border на panel,
+// pill = compact badge in header. Cruise (default) hides pill чтобы не
+// шуметь на спокойных днях.
+const SEVERITY_STRIPE: Record<CoachSeverity, string> = {
+  critical: 'rgb(239, 68, 68)',
+  warn: 'rgb(245, 158, 11)',
+  nudge: 'rgb(59, 130, 246)',
+  cruise: 'transparent',
+};
+const SEVERITY_PILL_BG: Record<CoachSeverity, string> = {
+  critical: 'rgba(239, 68, 68, 0.16)',
+  warn: 'rgba(245, 158, 11, 0.16)',
+  nudge: 'rgba(59, 130, 246, 0.16)',
+  cruise: 'rgba(255,255,255,0.04)',
+};
+const SEVERITY_PILL_FG: Record<CoachSeverity, string> = {
+  critical: 'rgb(248, 113, 113)',
+  warn: 'rgb(251, 191, 36)',
+  nudge: 'rgb(96, 165, 250)',
+  cruise: 'rgba(255,255,255,0.5)',
+};
 
 const CACHE_PREFIX = 'hone:daily-brief:cache:';
 
@@ -39,6 +69,10 @@ function loadCache(): DailyBrief | null {
     return {
       ...parsed,
       generatedAt: parsed.generatedAt ? new Date(parsed.generatedAt) : null,
+      // Legacy cache rows предшествующие Phase 4.4 не имели severity —
+      // дефолтим в cruise чтобы не падал TS-narrowing на UI.
+      severity: parsed.severity ?? 'cruise',
+      severityReason: parsed.severityReason ?? '',
     };
   } catch {
     return null;
@@ -70,12 +104,14 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
   const [acked, setAcked] = useState<Record<number, 'follow' | 'dismiss'>>({});
   // Memory stats trust indicator («COACH KNOWS [N] EVENTS»).
   const [memStats, setMemStats] = useState<number | null>(null);
+  const online = useOnlineStatus();
 
   useEffect(() => {
+    if (!online) return; // memory stats are advisory; skip when offline
     void getMemoryStats()
       .then((s) => setMemStats(s.total30d))
       .catch(() => setMemStats(0)); // нулевая статистика → «LEARNING…»
-  }, []);
+  }, [online]);
 
   // Trigger slide-in animation after a delay so canvas settles first.
   useEffect(() => {
@@ -84,6 +120,14 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
   }, []);
 
   const load = useCallback(async (force = false) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // No network — never paint an error state when we already have
+      // cached evidence. Force is moot: server enforces 1/h, and the
+      // request would 0-out anyway. Returning the cached brief silently
+      // is correct: the OfflineBanner up top tells the user they're
+      // offline, no need to repeat it inside the panel.
+      return;
+    }
     setLoading(true);
     setErrored(false);
     try {
@@ -104,6 +148,16 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Phase 2.6 — when online flips back on, silently refetch to refresh
+  // the cached brief. No explicit "Refreshed!" toast: the panel just
+  // updates in place when the new payload arrives.
+  useEffect(() => {
+    if (!online) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    void load(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
+
   const refresh = useCallback(() => {
     setAcked({}); // новый brief → fresh feedback state
     void load(true);
@@ -122,6 +176,9 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
     [brief?.briefId],
   );
 
+  const severity: CoachSeverity = brief?.severity ?? 'cruise';
+  const stripeColor = SEVERITY_STRIPE[severity];
+
   return (
     <div
       style={{
@@ -136,6 +193,10 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         border: '1px solid rgba(255,255,255,0.06)',
+        borderTop:
+          severity === 'cruise'
+            ? '1px solid rgba(255,255,255,0.06)'
+            : `3px solid ${stripeColor}`,
         boxShadow: '0 6px 28px rgba(0,0,0,0.35)',
         color: 'rgba(255,255,255,0.92)',
         fontFamily: 'ui-sans-serif, -apple-system, system-ui, sans-serif',
@@ -146,21 +207,48 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
         pointerEvents: 'auto',
       }}
     >
-      {/* Trust indicator */}
+      {/* Trust indicator + severity pill (Phase 4.4) */}
       <div
-        className="mono"
         style={{
-          fontSize: 9,
-          letterSpacing: '0.18em',
-          color: 'rgba(255,255,255,0.32)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
           marginBottom: 6,
         }}
       >
-        {memStats === null
-          ? 'COACH'
-          : memStats === 0
-            ? 'COACH · LEARNING ABOUT YOU…'
-            : `COACH · KNOWS ${memStats} EVENTS`}
+        <div
+          className="mono"
+          style={{
+            flex: 1,
+            fontSize: 9,
+            letterSpacing: '0.18em',
+            color: 'rgba(255,255,255,0.32)',
+          }}
+        >
+          {memStats === null
+            ? 'COACH'
+            : memStats === 0
+              ? 'COACH · LEARNING ABOUT YOU…'
+              : `COACH · KNOWS ${memStats} EVENTS`}
+        </div>
+        {brief && severity !== 'cruise' && (
+          <span
+            className="mono"
+            title={brief.severityReason || severity}
+            style={{
+              padding: '2px 8px',
+              borderRadius: 999,
+              background: SEVERITY_PILL_BG[severity],
+              color: SEVERITY_PILL_FG[severity],
+              fontSize: 9,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              border: `1px solid ${SEVERITY_PILL_FG[severity]}33`,
+            }}
+          >
+            {severity}
+          </span>
+        )}
       </div>
 
       {/* Top row: headline + refresh */}

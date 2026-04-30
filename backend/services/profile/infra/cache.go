@@ -530,3 +530,25 @@ func (c *CachedRepo) ResolveShareToken(ctx context.Context, token string) (domai
 	}
 	return r, nil
 }
+
+// ListUserTracks — pass-through. Track membership rarely matches the
+// per-user Bundle cache invariants (tracks are mutated via SetUserTracks
+// in a separate write path), and the read is small enough that going
+// through cache invalidation just to layer Redis on top isn't worth it.
+func (c *CachedRepo) ListUserTracks(ctx context.Context, userID uuid.UUID) ([]domain.UserTrack, error) {
+	out, err := c.delegate.ListUserTracks(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("profile.CachedRepo.ListUserTracks: %w", err)
+	}
+	return out, nil
+}
+
+// SetUserTracks — pass-through. The write is rare (onboarding / settings
+// only); we don't maintain a Redis copy of the track list itself.
+func (c *CachedRepo) SetUserTracks(ctx context.Context, userID uuid.UUID, items []domain.UserTrack) ([]domain.UserTrack, error) {
+	out, err := c.delegate.SetUserTracks(ctx, userID, items)
+	if err != nil {
+		return out, fmt.Errorf("profile.cache.SetUserTracks: %w", err)
+	}
+	return out, nil
+}

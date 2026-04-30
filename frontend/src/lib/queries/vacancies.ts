@@ -236,10 +236,27 @@ export function useVacanciesList(filter: ListFilter) {
   })
 }
 
-export function useFacetsQuery() {
+// useFacetsQuery — Phase 1.6 smart facets. Pass the current sidebar
+// filter so each axis count reflects "what would remain if I toggled
+// THIS option" (the axis being computed ignores its own selection).
+// Empty filter falls through to catalogue-wide counts.
+export function useFacetsQuery(filter?: ListFilter) {
+  // Pagination fields don't influence facet counts; strip them so the
+  // cache key stays stable when only page/offset changes.
+  const facetFilter: ListFilter = filter
+    ? {
+        sources: filter.sources,
+        companies: filter.companies,
+        categories: filter.categories,
+        skills: filter.skills,
+        salary_min: filter.salary_min,
+        location: filter.location,
+      }
+    : {}
   return useQuery({
-    queryKey: ['vacancies', 'facets'],
-    queryFn: () => api<FacetsResponse>(`/vacancies/facets`),
+    queryKey: ['vacancies', 'facets', facetFilter],
+    queryFn: () => api<FacetsResponse>(`/vacancies/facets${buildListQuery(facetFilter)}`),
+    placeholderData: keepPreviousData,
   })
 }
 

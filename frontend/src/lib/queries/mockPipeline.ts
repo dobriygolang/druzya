@@ -205,7 +205,10 @@ export const MOCK_AI_ASSIST_STORAGE_KEY = 'druz9.mock.ai_assist'
 export function useCreateMockPipelineMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (input: { company_id?: string; ai_assist?: boolean }) => {
+    // Phase 1.6 — sections is an optional allow-list. Empty / missing
+    // → server runs the full 5-stage pipeline; ['hr','algo'] runs only
+    // those two in their natural order.
+    mutationFn: async (input: { company_id?: string; ai_assist?: boolean; sections?: string[] }) => {
       if (!PIPELINE_FEATURE_ENABLED) throw new Error('mock_pipeline.coming_soon')
       return api<Pipeline>('/mock/pipelines', {
         method: 'POST',

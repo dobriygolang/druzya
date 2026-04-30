@@ -46,8 +46,30 @@ func (uc *GetKata) Do(ctx context.Context, userID uuid.UUID) (domain.Kata, error
 	if err != nil {
 		return domain.Kata{}, fmt.Errorf("daily.GetKata: list tasks: %w", err)
 	}
+	// Empty pool — fall through the difficulty ladder before giving up. New
+	// admins seed (algorithms, easy) first, so a hard-difficulty user with no
+	// matching task should still get *something* on day 1.
 	if len(candidates) == 0 {
-		return domain.Kata{}, fmt.Errorf("daily.GetKata: no active tasks for section=%s diff=%s", section, difficulty)
+		for _, fallback := range []enums.Difficulty{enums.DifficultyEasy, enums.DifficultyMedium, enums.DifficultyHard} {
+			if fallback == difficulty {
+				continue
+			}
+			alt, altErr := uc.Tasks.ListActiveBySectionDifficulty(ctx, section, fallback)
+			if altErr != nil {
+				return domain.Kata{}, fmt.Errorf("daily.GetKata: fallback list: %w", altErr)
+			}
+			if len(alt) > 0 {
+				candidates = alt
+				break
+			}
+		}
+	}
+	// Still nothing — the catalog is empty for this section. Surface as a
+	// clean NotFound so the transcoder responds 404, not 500. Frontend treats
+	// 404 as the onboarding "no kata available, ping admin" state.
+	if len(candidates) == 0 {
+		return domain.Kata{}, fmt.Errorf("daily.GetKata: no active tasks for section=%s any difficulty: %w",
+			section, domain.ErrNotFound)
 	}
 	pick, ok := domain.PickKataForUser(userID, today, candidates)
 	if !ok {

@@ -294,6 +294,10 @@ func (r *fakeDailyBriefRepo) LastForcedAt(context.Context, uuid.UUID) (time.Time
 	return time.Time{}, nil
 }
 
+func (r *fakeDailyBriefRepo) RecentForUser(context.Context, uuid.UUID, int, int) ([]domain.DailyBrief, error) {
+	return nil, nil
+}
+
 type fakeFocusReader struct{}
 
 func (fakeFocusReader) LastNDays(context.Context, uuid.UUID, int) ([]domain.FocusDay, error) {
@@ -395,6 +399,14 @@ func (r *fakeEpisodeRepo) DeleteOlderThan(context.Context, time.Time) (int64, er
 
 func (r *fakeEpisodeRepo) MarkStaleForReembed(context.Context, string) (int64, error) {
 	return 0, nil
+}
+
+func (r *fakeEpisodeRepo) CountByKindInRange(context.Context, uuid.UUID, time.Time, time.Time) (map[domain.EpisodeKind]int, error) {
+	return nil, nil
+}
+
+func (r *fakeEpisodeRepo) HasWeeklySummary(context.Context, uuid.UUID, time.Time) (bool, error) {
+	return false, nil
 }
 
 func cueEpisode(t *testing.T, occurredAt time.Time, outcome, summary string, topics []string) domain.Episode {

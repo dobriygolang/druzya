@@ -92,17 +92,28 @@ type lobbyArenaAdapter struct {
 // CreateMatch maps lobby parameters → arena domain types and inserts a fresh
 // arena_match in status='active'. Team layout: 1v1 → both team=1 (legacy
 // arena entity treats winner_id, not team), 2v2 → first 2 team=1, rest team=2.
+//
+// Solo lobby (Phase 2c-2): mode=solo permits a single participant. When
+// skillFilter is non-empty, the task picker first attempts
+// PickBySkillFilter; if no task matches the filter we fall back to the
+// section/difficulty pick so the lobby never hard-fails on an unindexed
+// catalog.
 func (a *lobbyArenaAdapter) CreateMatch(
 	ctx context.Context,
 	mode lobbyDomain.Mode,
 	section, difficulty string,
 	userIDs []uuid.UUID,
+	skillFilter []string,
 ) (uuid.UUID, error) {
 	if a.Arena == nil || a.Tasks == nil {
 		return uuid.Nil, errors.New("lobby.arena: postgres not wired")
 	}
-	if len(userIDs) < 2 {
-		return uuid.Nil, fmt.Errorf("lobby.arena: need >=2 users, got %d", len(userIDs))
+	minUsers := 2
+	if mode == lobbyDomain.ModeSolo {
+		minUsers = 1
+	}
+	if len(userIDs) < minUsers {
+		return uuid.Nil, fmt.Errorf("lobby.arena: need >=%d users, got %d", minUsers, len(userIDs))
 	}
 	sec := enums.Section(section)
 	if !sec.IsValid() {
@@ -112,30 +123,41 @@ func (a *lobbyArenaAdapter) CreateMatch(
 	if !diff.IsValid() {
 		return uuid.Nil, fmt.Errorf("lobby.arena: invalid difficulty %q", difficulty)
 	}
-	task, err := a.Tasks.PickBySectionDifficulty(ctx, sec, diff)
+	var (
+		task arenaDomain.TaskPublic
+		err  error
+	)
+	if mode == lobbyDomain.ModeSolo && len(skillFilter) > 0 {
+		task, err = a.Tasks.PickBySkillFilter(ctx, skillFilter, sec, diff)
+		if err != nil && errors.Is(err, arenaDomain.ErrNotFound) {
+			task, err = a.Tasks.PickBySectionDifficulty(ctx, sec, diff)
+		}
+	} else {
+		task, err = a.Tasks.PickBySectionDifficulty(ctx, sec, diff)
+	}
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("lobby.arena: pick task: %w", err)
 	}
 
+	// Phase 1.7 — Mode2v2 retired. Lobby exposes only 1v1 now; the
+	// ArenaModeDuo2v2 constant survives in the enum so historical
+	// arena_match rows still parse, but no new rows reach this path.
+	// Phase 2c-2 — solo single-player drill rooms map to the same
+	// solo_1v1 arena mode (single arena_participant row); arena's
+	// kata-style scoring already handles single-participant matches.
 	var arenaMode enums.ArenaMode
 	switch mode {
-	case lobbyDomain.Mode1v1:
+	case lobbyDomain.Mode1v1, lobbyDomain.ModeSolo:
 		arenaMode = enums.ArenaModeSolo1v1
-	case lobbyDomain.Mode2v2:
-		arenaMode = enums.ArenaModeDuo2v2
 	default:
 		return uuid.Nil, fmt.Errorf("lobby.arena: unknown mode %q", mode)
 	}
 
 	parts := make([]arenaDomain.Participant, 0, len(userIDs))
-	for i, uid := range userIDs {
-		team := 1
-		if mode == lobbyDomain.Mode2v2 && i >= 2 {
-			team = 2
-		}
+	for _, uid := range userIDs {
 		parts = append(parts, arenaDomain.Participant{
 			UserID:    uid,
-			Team:      team,
+			Team:      1,
 			EloBefore: arenaDomain.InitialELO,
 		})
 	}

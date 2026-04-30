@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { HoneDemo, CueDemo, EnglishMockDemo, DemoModal } from './welcome/demos'
 
 /**
  * WelcomePage — публичный лендинг druz9.
@@ -106,6 +107,7 @@ function Nav() {
           DRUZ9
         </a>
         <nav className="hidden md:flex" style={{ gap: 24 }}>
+          <NavLink href="#tracks">Треки</NavLink>
           <NavLink href="#arena">Arena</NavLink>
           <NavLink href="#hone">Hone</NavLink>
           <NavLink href="#cue">Cue</NavLink>
@@ -132,7 +134,7 @@ function Nav() {
       {open && (
         <div className="md:hidden" style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 4, paddingBottom: 10 }}>
           {[
-            ['arena', 'Arena'], ['hone', 'Hone'], ['cue', 'Cue'],
+            ['tracks', 'Треки'], ['arena', 'Arena'], ['hone', 'Hone'], ['cue', 'Cue'],
             ['pricing', 'Тарифы'], ['faq', 'FAQ'],
           ].map(([h, label]) => (
             <a key={h} href={`#${h}`} onClick={() => setOpen(false)}
@@ -248,10 +250,10 @@ function ProductPill({ name, tag }: { name: string; tag: string }) {
 /* ────────────────────────── Ritual ────────────────────────── */
 function Ritual() {
   const beats: { t: string; icon: IconName; title: string; sub: string }[] = [
-    { t: '07:00', icon: 'moon-sun', title: 'Открой Hone.',         sub: 'AI собирает план дня.' },
-    { t: '09:30', icon: 'pomo',     title: 'Фокус-сессия.',         sub: 'Решай на druz9.ru.' },
-    { t: '13:00', icon: 'shh',      title: 'Завис на работе.',      sub: '⌘⇧Space. Cue шепнёт.' },
-    { t: '18:00', icon: 'arena',    title: 'Mock-интервью.',         sub: 'На druz9.ru.' },
+    { t: '07:00', icon: 'moon-sun', title: 'Открой Hone.',           sub: 'AI собирает план по твоим трекам.' },
+    { t: '13:00', icon: 'shh',      title: 'Завис на работе.',        sub: '⌘⇧Space. Cue шепнёт.' },
+    { t: '18:00', icon: 'arena',    title: 'Mock-собес.',             sub: 'Strict или с AI — на druz9.online.' },
+    { t: '22:00', icon: 'pomo',     title: 'Insights показал неделю.', sub: 'Куда расти, без догадок.' },
   ]
   return (
     <Section id="ritual">
@@ -287,6 +289,144 @@ function Ritual() {
         ОДИН АККАУНТ · ОДНА ПОДПИСКА · ТРИ ПОВЕРХНОСТИ
       </div>
     </Section>
+  )
+}
+
+/* ────────────────────────── Tracks ─────────────────────────── */
+// Wave 3.7 of docs/feature/plan.md — visual call-out of the multi-track
+// Atlas. Sits between Ritual (day-in-the-life) and product rows so the
+// reader sees «один продукт, шесть треков» before the per-app deep-dives.
+//
+// Tracks parallel the Postgres `track_kind` enum + Section adapter:
+// dev / dev_senior / sysanalyst / product_analyst / qa / english.
+// Status field reflects current launch state, not a roadmap promise:
+// «live» tracks have prompts + Atlas seed shipped; «soon» = on plan but
+// requires part-time content expert (sysanalyst, product_analyst — see
+// docs/feature/tracks.md §«НЕ запускай сам»).
+function Tracks() {
+  type Status = 'live' | 'soon'
+  const tracks: { id: string; title: string; sub: string; tags: string[]; status: Status }[] = [
+    {
+      id: 'dev',
+      title: 'Разработчик',
+      sub: 'Алгоритмы · SQL · Go · System Design · Behavioral. Стартовая точка для middle.',
+      tags: ['Mock-сессии', 'Skill Atlas', 'ELO арена'],
+      status: 'live',
+    },
+    {
+      id: 'dev_senior',
+      title: 'Senior dev',
+      sub: 'System Design на staff/principal-уровне + Tech Lead / EM behavioral.',
+      tags: ['Senior SD mock', 'Tech Lead STAR', 'Code review (скоро)'],
+      status: 'live',
+    },
+    {
+      id: 'english',
+      title: 'English',
+      sub: 'Не Duolingo. Дисциплина-слой между тобой и твоим тутром.',
+      tags: ['HR-mock', 'Reading + Writing (Hone)', 'SRS'],
+      status: 'live',
+    },
+    {
+      id: 'sysanalyst',
+      title: 'Системный аналитик',
+      sub: 'BPMN · use-cases · SQL · requirements gathering. Свитчерам из dev.',
+      tags: ['Mock с экспертом', 'Atlas (TBD)'],
+      status: 'soon',
+    },
+    {
+      id: 'product_analyst',
+      title: 'Product analyst',
+      sub: 'Метрики · A/B · SQL · dashboards. Дешевле GoPractice.',
+      tags: ['Mock с экспертом', 'Atlas (TBD)'],
+      status: 'soon',
+    },
+    {
+      id: 'qa',
+      title: 'QA / тестировщик',
+      sub: 'Тест-дизайн · API-тестирование · автотесты.',
+      tags: ['Year 2'],
+      status: 'soon',
+    },
+  ]
+  return (
+    <Section id="tracks">
+      <Eyebrow>Треки</Eyebrow>
+      <h2 style={{
+        margin: '16px 0 0', fontSize: 'clamp(34px, 5vw, 56px)', fontWeight: 400,
+        letterSpacing: '-0.025em', lineHeight: 1.05,
+      }}>
+        Один продукт.<br />Шесть треков.
+      </h2>
+      <p style={{ margin: '18px 0 0', fontSize: 15, color: 'var(--ink-60)', maxWidth: 620, lineHeight: 1.55 }}>
+        Multi-track Atlas: можно держать «Senior dev + English» как
+        sticky combo. Каждый трек — свой mock-rubric, свои Insights, свой
+        Atlas-подграф. Primary-трек определяет дефолт; остальные живут рядом.
+      </p>
+      <div className="md-grid"
+           style={{ marginTop: 60, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        {tracks.map((t) => (
+          <div key={t.id}
+               style={{
+                 padding: '20px 18px 18px',
+                 border: '1px solid var(--hair-2)',
+                 borderRadius: 14,
+                 background: '#000',
+                 position: 'relative',
+                 opacity: t.status === 'soon' ? 0.62 : 1,
+               }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span className="mono" style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)' }}>
+                {t.id.toUpperCase()}
+              </span>
+              <StatusPill status={t.status} />
+            </div>
+            <div style={{ fontSize: 19, letterSpacing: '-0.01em', marginBottom: 8 }}>{t.title}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.5, marginBottom: 14 }}>
+              {t.sub}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {t.tags.map((tag) => (
+                <span key={tag} className="mono"
+                      style={{
+                        fontSize: 10, letterSpacing: '.12em', padding: '4px 8px',
+                        borderRadius: 999, border: '1px solid var(--hair-2)',
+                        color: 'var(--ink-60)',
+                      }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mono"
+           style={{ marginTop: 60, fontSize: 12, color: 'var(--ink-40)', letterSpacing: '.12em', textAlign: 'center' }}>
+        ВЫБИРАЕШЬ ПРИ РЕГИСТРАЦИИ · МЕНЯЕШЬ В SETTINGS · INSIGHTS ВЕЗДЕ
+      </div>
+    </Section>
+  )
+}
+
+function StatusPill({ status }: { status: 'live' | 'soon' }) {
+  if (status === 'live') {
+    return (
+      <span className="mono" style={{
+        fontSize: 9, letterSpacing: '.18em', padding: '3px 7px',
+        borderRadius: 999, border: '1px solid rgba(140,255,170,0.35)',
+        background: 'rgba(40,200,120,0.08)', color: 'rgb(140,240,170)',
+      }}>
+        LIVE
+      </span>
+    )
+  }
+  return (
+    <span className="mono" style={{
+      fontSize: 9, letterSpacing: '.18em', padding: '3px 7px',
+      borderRadius: 999, border: '1px solid var(--hair-2)', color: 'var(--ink-40)',
+    }}>
+      SOON
+    </span>
   )
 }
 
@@ -333,198 +473,6 @@ function ProductRow({ id, sideLeft = true, name, tag, title, desc, bullets, cta,
   )
 }
 
-/* ────────────────────────── Mocks ─────────────────────────── */
-function ArenaMock() {
-  return (
-    <div style={{ position: 'relative', aspectRatio: '4/3', borderRadius: 14, overflow: 'hidden',
-      border: '1px solid var(--hair-2)', background: '#000' }}>
-      <div style={{ position: 'absolute', inset: 0, opacity: 0.7 }}>
-        <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
-          {STARS.map((s, i) => (
-            <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.r * 0.9}
-                    fill={`rgba(255,255,255,${s.o * 0.6})`} />
-          ))}
-        </svg>
-      </div>
-      <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 6,
-        borderBottom: '1px solid var(--hair)', background: 'rgba(0,0,0,0.5)', position: 'relative', zIndex: 2 }}>
-        <span style={{ width: 10, height: 10, borderRadius: 99, background: 'rgba(255,255,255,0.14)' }} />
-        <span style={{ width: 10, height: 10, borderRadius: 99, background: 'rgba(255,255,255,0.14)' }} />
-        <span style={{ width: 10, height: 10, borderRadius: 99, background: 'rgba(255,255,255,0.14)' }} />
-        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-40)', marginLeft: 14 }}>druz9.ru/arena</div>
-        <span className="red-pulse"
-              style={{ marginLeft: 'auto', width: 5, height: 5, borderRadius: 99, background: 'var(--red)' }} />
-        <span className="mono" style={{ fontSize: 10, color: 'var(--red)', letterSpacing: '.14em' }}>LIVE</span>
-      </div>
-      <div style={{ position: 'relative', zIndex: 2, padding: '22px 20px', display: 'grid',
-                    gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 14 }}>
-        <Fighter name="ты" elo="1842" streak="+12" />
-        <div className="mono"
-             style={{ fontSize: 34, fontWeight: 300, textAlign: 'center', letterSpacing: '-0.03em' }}>
-          02:14
-          <div style={{ fontSize: 10, color: 'var(--ink-40)', letterSpacing: '.22em', marginTop: 2 }}>DUEL 1V1</div>
-        </div>
-        <Fighter name="@ivn" elo="1869" streak="−3" right />
-      </div>
-      <div style={{ position: 'relative', zIndex: 2, padding: '6px 20px 18px' }}>
-        <div className="mono"
-             style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', margin: '10px 0 8px' }}>
-          СЕЗОН · ТОП 5
-        </div>
-        {[
-          { n: 'zkv',       v: '2341' },
-          { n: 'vlad',      v: '2210' },
-          { n: 'alena_b',   v: '2104', me: true },
-          { n: 'arhip42',   v: '2088' },
-          { n: 'kostya.go', v: '2041' },
-        ].map((r, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '24px 1fr auto',
-                                alignItems: 'center', padding: '5px 0',
-                                borderTop: '1px solid var(--hair)', fontSize: 12 }}>
-            <span className="mono" style={{ color: 'var(--ink-40)' }}>#{i + 1}</span>
-            <span style={{ color: r.me ? 'rgb(var(--ink))' : 'var(--ink-90)' }}>
-              {r.n}
-              {r.me && <span className="mono" style={{ color: 'var(--red)', marginLeft: 6 }}>ты</span>}
-            </span>
-            <span className="mono" style={{ color: 'var(--ink-60)' }}>{r.v}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-function Fighter({ name, elo, streak, right }: {
-  name: string; elo: string; streak: string; right?: boolean
-}) {
-  return (
-    <div style={{ textAlign: right ? 'right' : 'left' }}>
-      <div className="mono" style={{ fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)' }}>
-        {right ? 'СОПЕРНИК' : 'ТЫ'}
-      </div>
-      <div style={{ fontSize: 18, marginTop: 6 }}>{name}</div>
-      <div className="mono" style={{ fontSize: 11, color: 'var(--ink-60)', marginTop: 4 }}>
-        ELO {elo}{' '}
-        <span style={{ color: streak.startsWith('+') ? 'rgb(120,230,170)' : 'var(--red)' }}>{streak}</span>
-      </div>
-    </div>
-  )
-}
-
-function HoneMock() {
-  return (
-    <div style={{ position: 'relative', aspectRatio: '4/3', borderRadius: 14, overflow: 'hidden',
-      border: '1px solid var(--hair-2)', background: '#000' }}>
-      <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 6,
-        borderBottom: '1px solid var(--hair)', background: 'rgba(0,0,0,0.6)', position: 'relative', zIndex: 3 }}>
-        <span style={{ width: 10, height: 10, borderRadius: 99, background: 'rgba(255,255,255,0.14)' }} />
-        <span style={{ width: 10, height: 10, borderRadius: 99, background: 'rgba(255,255,255,0.14)' }} />
-        <span style={{ width: 10, height: 10, borderRadius: 99, background: 'rgba(255,255,255,0.14)' }} />
-      </div>
-      <div style={{ position: 'absolute', inset: 0 }}>
-        <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
-          {STARS.map((s, i) => (
-            <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.r}
-                    fill={`rgba(255,255,255,${s.o * 0.6})`} />
-          ))}
-        </svg>
-        <svg width="100%" height="100%" viewBox="0 0 1600 900" preserveAspectRatio="none"
-             style={{ position: 'absolute', inset: 0 }}>
-          {WAVES.map((d, i) => (
-            <path key={i} d={d} fill="none" stroke={`rgba(255,255,255,${0.07 + (i % 3) * 0.005})`} strokeWidth="1" />
-          ))}
-        </svg>
-      </div>
-      <div style={{ position: 'absolute', top: 54, left: 24, zIndex: 3 }}>
-        <div className="mono"
-             style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.3em', paddingBottom: 5,
-               borderBottom: '1px solid rgba(255,255,255,0.5)', display: 'inline-block' }}>HONE</div>
-      </div>
-      <div style={{ position: 'absolute', top: 54, right: 24, zIndex: 3, textAlign: 'right' }}>
-        <div className="mono" style={{ fontSize: 9, color: 'var(--ink-40)', letterSpacing: '.22em' }}>1010</div>
-        <div className="mono" style={{ fontSize: 9, color: 'var(--ink-40)', letterSpacing: '.14em', marginTop: 4 }}>v.0.0.1</div>
-      </div>
-      <div style={{ position: 'absolute', left: '28%', top: '52%', transform: 'translate(-50%,-50%)',
-                    width: 100, height: 100, opacity: 0.18 }}>
-        <svg width="100" height="100" viewBox="-50 -50 100 100">
-          <rect x={-34} y={-34} width={68} height={68} fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="1" />
-        </svg>
-        <svg width="100" height="100" viewBox="-50 -50 100 100"
-             style={{ position: 'absolute', inset: 0, transform: 'rotate(10deg)' }}>
-          <rect x={-34} y={-34} width={68} height={68} fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="1" />
-        </svg>
-      </div>
-      <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-                    display: 'flex', alignItems: 'center', gap: 2, padding: 4, borderRadius: 999,
-                    background: 'rgba(10,10,10,0.72)', border: '1px solid rgba(255,255,255,0.08)',
-                    backdropFilter: 'blur(14px)', zIndex: 3 }}>
-        <span style={{ padding: '6px 8px', color: 'var(--ink-60)' }}><Icon name="menu" size={13} /></span>
-        <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.08)' }} />
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
-          <span className="red-pulse" style={{ width: 5, height: 5, borderRadius: 99, background: 'var(--red)' }} />
-          <span className="mono" style={{ fontSize: 13, color: 'rgb(var(--ink))' }}>24:10</span>
-        </span>
-        <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.08)' }} />
-        <span style={{ padding: '6px 8px', color: 'var(--ink-60)' }}><Icon name="pomo" size={13} sw={1.2} /></span>
-      </div>
-    </div>
-  )
-}
-
-function CueMock() {
-  return (
-    <div style={{ position: 'relative', aspectRatio: '4/3', borderRadius: 14, overflow: 'hidden',
-      border: '1px solid var(--hair-2)', background: '#0a0a0a' }}>
-      <div style={{ position: 'absolute', inset: 0, padding: '14px 0 0 0' }}>
-        <div style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 10,
-                      borderBottom: '1px solid var(--hair)' }}>
-          <span style={{ width: 8, height: 8, borderRadius: 99, background: 'rgba(255,255,255,0.14)' }} />
-          <span style={{ width: 8, height: 8, borderRadius: 99, background: 'rgba(255,255,255,0.14)' }} />
-          <span style={{ width: 8, height: 8, borderRadius: 99, background: 'rgba(255,255,255,0.14)' }} />
-          <div className="mono" style={{ fontSize: 10, color: 'var(--ink-40)', marginLeft: 12 }}>handlers.go</div>
-        </div>
-        <div className="mono" style={{ padding: '16px 18px', fontSize: 11, color: 'var(--ink-40)', lineHeight: 1.8 }}>
-          <div><span style={{ color: 'rgba(255,255,255,0.3)' }}>23 </span><span style={{ color: 'rgba(160,200,255,0.7)' }}>func</span>{' '}
-               <span style={{ color: 'var(--ink-90)' }}>handleBatch</span>(items []Item) error {'{'}</div>
-          <div><span style={{ color: 'rgba(255,255,255,0.3)' }}>24 </span>  out := []byte{'{'}{'}'}</div>
-          <div><span style={{ color: 'rgba(255,255,255,0.3)' }}>25 </span>  <span style={{ color: 'rgba(160,200,255,0.7)' }}>for</span> _, it := range items {'{'}</div>
-          <div style={{ background: 'rgba(255,59,48,0.08)', borderLeft: '2px solid var(--red)',
-                        paddingLeft: 6, marginLeft: -8 }}>
-            <span style={{ color: 'rgba(255,255,255,0.3)' }}>26 </span>    b, _ := json.Marshal(it)
-          </div>
-          <div><span style={{ color: 'rgba(255,255,255,0.3)' }}>27 </span>    out = append(out, b...)</div>
-          <div><span style={{ color: 'rgba(255,255,255,0.3)' }}>28 </span>  {'}'}</div>
-        </div>
-      </div>
-      <div style={{ position: 'absolute', top: 16, right: 14, width: 260, zIndex: 4,
-                    background: 'rgba(8,8,8,0.9)', border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 11, overflow: 'hidden', backdropFilter: 'blur(20px)',
-                    boxShadow: '0 20px 50px -10px rgba(0,0,0,0.7)' }}>
-        <div className="mono"
-             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px',
-               fontSize: 9, color: 'rgb(140,240,170)', background: 'rgba(40,200,120,0.08)',
-               borderBottom: '1px solid rgba(140,255,170,0.18)', letterSpacing: '.16em' }}>
-          <Icon name="eye-off" size={10} /> СКРЫТО ОТ ЗАХВАТА
-          <span className="red-pulse"
-                style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: 99, background: 'rgb(100,230,140)' }} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
-                      borderBottom: '1px solid var(--hair)' }}>
-          <Icon name="camera" size={11} stroke="rgba(255,255,255,0.8)" />
-          <span style={{ fontSize: 10.5, color: 'var(--ink-90)' }}>Захвачен экран</span>
-        </div>
-        <div style={{ padding: 10 }}>
-          <div className="mono" style={{ fontSize: 8.5, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 3 }}>Q</div>
-          <div style={{ fontSize: 11, color: 'rgb(var(--ink))' }}>Почему этот код медленный?</div>
-          <div className="mono" style={{ fontSize: 8.5, letterSpacing: '.22em', color: 'var(--ink-40)', margin: '10px 0 3px' }}>A</div>
-          <div style={{ fontSize: 10.5, color: 'var(--ink-90)', lineHeight: 1.55 }}>
-            json.Marshal на каждом шаге заново рефлектит структуру.
-            Префиксируй слайс и кэшируй encoder — <span className="mono" style={{ color: 'rgb(var(--ink))' }}>3-4×</span> быстрее.
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 /* ────────────────────────── Pricing ───────────────────────── */
 function Pricing() {
@@ -549,13 +497,13 @@ function Pricing() {
         />
         <PlanCard
           featured
-          name="druz9 Pro" price="790 ₽" priceSuffix="/ месяц" tag="всё внутри"
+          name="druz9 Pro" price="990 ₽" priceSuffix="/ месяц" tag="всё внутри"
           features={[
-            'Безлимит Arena · дуэли, моки, сезоны',
+            'Безлимит mock-сессий (AI / strict)',
             'Hone с AI-планом и связями',
             'Cue copilot · без лимита',
-            'Skill Atlas + прогноз рейтинга',
-            'Приоритет в circles',
+            'Multi-track Atlas + Insights',
+            'English HR-round + сценарии тутора',
             'Всё, что появится в будущем',
           ]}
           cta="14 дней бесплатно"
@@ -679,13 +627,15 @@ function Footer() {
         <div>
           <div className="mono" style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.28em' }}>DRUZ9</div>
           <div style={{ marginTop: 14, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            <FooterLink href="#arena">Arena</FooterLink>
+            <FooterLink href="#arena">druz9.online</FooterLink>
             <FooterLink href="#hone">Hone</FooterLink>
             <FooterLink href="#cue">Cue</FooterLink>
             <FooterLink href="#pricing">Тарифы</FooterLink>
+            <FooterLink href="/insights" router>Insights</FooterLink>
             <FooterLink href="/help" router>Помощь</FooterLink>
             <FooterLink href="/legal/terms" router>Условия</FooterLink>
             <FooterLink href="/legal/privacy" router>Приватность</FooterLink>
+            <FooterLink href="https://github.com/dobriygolang/druzya">GitHub</FooterLink>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -711,7 +661,11 @@ function FooterLink({ href, children, router }: {
 }
 
 /* ────────────────────────── App ───────────────────────────── */
+type ExpandedDemo = 'hone' | 'cue' | 'english' | null
+
 export default function WelcomePage() {
+  const [expanded, setExpanded] = useState<ExpandedDemo>(null)
+
   // body must lose .v2 here — landing wants pure black, not the v2 token bg.
   // Also disable horizontal overflow guard inherited from .v2.
   useEffect(() => {
@@ -748,13 +702,14 @@ export default function WelcomePage() {
       <Nav />
       <Hero />
       <Ritual />
+      <Tracks />
 
       <ProductRow
         id="arena" sideLeft
-        name="druz9" tag="Продукт · Arena"
-        title="Арена."
-        desc="Живые дуэли. Mock-интервью. Рейтинг. Circles. Подкасты. Здесь ты соревнуешься с равными в реальном времени и видишь, где стоишь."
-        bullets={['Дуэли 1v1 и 2v2', 'AI + peer mock', 'Skill Atlas прогресс', 'Сезоны и турниры']}
+        name="druz9.online" tag="Продукт · Web"
+        title="Арена + аналитика."
+        desc="Mock-собесы со честным watermark'ом, 1v1 / 2v2 дуэли, Insights поверх трёх клиентов. С Phase-4 — multi-track Atlas: Senior dev, English, Sysanalyst — у каждого свой mock и свои метрики."
+        bullets={['Mock-сессии (AI / strict)', '1v1 / 2v2 арена', 'Insights · недельный digest', 'Multi-track Skill Atlas']}
         cta={
           <Link to="/arena"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
@@ -763,7 +718,7 @@ export default function WelcomePage() {
             На арену <Icon name="arrow" size={12} />
           </Link>
         }
-        mock={<ArenaMock />}
+        mock={<EnglishMockDemo onExpand={() => setExpanded('english')} />}
       />
 
       <ProductRow
@@ -780,7 +735,7 @@ export default function WelcomePage() {
             <Icon name="apple" size={14} /> Скачать для macOS
           </a>
         }
-        mock={<HoneMock />}
+        mock={<HoneDemo onExpand={() => setExpanded('hone')} />}
       />
 
       <ProductRow
@@ -808,12 +763,40 @@ export default function WelcomePage() {
             </span>
           </div>
         }
-        mock={<CueMock />}
+        mock={<CueDemo onExpand={() => setExpanded('cue')} />}
       />
 
       <Pricing />
       <FAQ />
       <Footer />
+
+      <DemoModal
+        open={expanded === 'hone'}
+        onClose={() => setExpanded(null)}
+        title="HONE · DAILY COCKPIT"
+      >
+        <div style={{ aspectRatio: '4/3', maxHeight: '70vh' }}>
+          <HoneDemo />
+        </div>
+      </DemoModal>
+      <DemoModal
+        open={expanded === 'cue'}
+        onClose={() => setExpanded(null)}
+        title="CUE · STEALTH COPILOT"
+      >
+        <div style={{ aspectRatio: '4/3', maxHeight: '70vh' }}>
+          <CueDemo />
+        </div>
+      </DemoModal>
+      <DemoModal
+        open={expanded === 'english'}
+        onClose={() => setExpanded(null)}
+        title="DRUZ9.ONLINE · ENGLISH HR-MOCK"
+      >
+        <div style={{ aspectRatio: '4/3', maxHeight: '70vh' }}>
+          <EnglishMockDemo />
+        </div>
+      </DemoModal>
     </div>
   )
 }

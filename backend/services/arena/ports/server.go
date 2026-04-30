@@ -136,6 +136,13 @@ func (s *ArenaServer) FindMatch(
 	if !mode.IsValid() {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid mode"))
 	}
+	// Phase 1.7 — duo_2v2 deprecated. Historical matches stay readable
+	// but new queue joins are rejected. Frontend hides the option; this
+	// is a server-side belt for the rare API caller hitting old client.
+	if mode == enums.ArenaModeDuo2v2 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("2v2 mode is no longer available"))
+	}
 	elo := domain.InitialELO
 	if s.UserEloFn != nil {
 		elo = s.UserEloFn(ctx, uid, section)
@@ -405,6 +412,12 @@ func sectionToProto(s enums.Section) pb.Section {
 		return pb.Section_SECTION_SYSTEM_DESIGN
 	case enums.SectionBehavioral:
 		return pb.Section_SECTION_BEHAVIORAL
+	case enums.SectionEnglishHR:
+		return pb.Section_SECTION_ENGLISH_HR
+	case enums.SectionSystemDesignSenior:
+		return pb.Section_SECTION_SYSTEM_DESIGN_SENIOR
+	case enums.SectionTechLeadEM:
+		return pb.Section_SECTION_TECH_LEAD_EM
 	default:
 		return pb.Section_SECTION_UNSPECIFIED
 	}
@@ -422,6 +435,12 @@ func sectionFromProto(s pb.Section) enums.Section {
 		return enums.SectionSystemDesign
 	case pb.Section_SECTION_BEHAVIORAL:
 		return enums.SectionBehavioral
+	case pb.Section_SECTION_ENGLISH_HR:
+		return enums.SectionEnglishHR
+	case pb.Section_SECTION_SYSTEM_DESIGN_SENIOR:
+		return enums.SectionSystemDesignSenior
+	case pb.Section_SECTION_TECH_LEAD_EM:
+		return enums.SectionTechLeadEM
 	case pb.Section_SECTION_UNSPECIFIED:
 		return ""
 	default:

@@ -636,3 +636,288 @@ func TestUUIDOrNilParsesBriefID(t *testing.T) {
 		t.Fatalf("uuidOrNil empty=%s, want nil", got)
 	}
 }
+
+func timePtr(t time.Time) *time.Time { return &t }
+
+func TestDeriveSeverityRanksSignals(t *testing.T) {
+	tests := []struct {
+		name string
+		in   domain.BriefPromptInput
+		want coachSeverity
+	}{
+		{
+			name: "interview_in_3_days_is_critical",
+			in: domain.BriefPromptInput{
+				UpcomingInterviews: []domain.UpcomingInterview{{
+					CompanyName: "Yandex", DaysFromNow: 3, ReadinessPct: 40,
+				}},
+			},
+			want: severityCritical,
+		},
+		{
+			name: "interview_in_7_days_is_warn",
+			in: domain.BriefPromptInput{
+				UpcomingInterviews: []domain.UpcomingInterview{{
+					CompanyName: "Yandex", DaysFromNow: 7, ReadinessPct: 40,
+				}},
+			},
+			want: severityWarn,
+		},
+		{
+			name: "skipped_4x_is_critical",
+			in: domain.BriefPromptInput{
+				SkippedRecent: []domain.SkippedPlanItem{
+					{ItemID: "a", SkillKey: "prefix-sum", Title: "review prefix sum"},
+					{ItemID: "b", SkillKey: "prefix-sum", Title: "review prefix sum"},
+					{ItemID: "c", SkillKey: "prefix-sum", Title: "review prefix sum"},
+					{ItemID: "d", SkillKey: "prefix-sum", Title: "review prefix sum"},
+				},
+			},
+			want: severityCritical,
+		},
+		{
+			name: "three_arena_losses_is_critical",
+			in: domain.BriefPromptInput{
+				Arena: []domain.ArenaMatchSummary{
+					{Section: "algorithms", Outcome: "lost"},
+					{Section: "algorithms", Outcome: "lost"},
+					{Section: "algorithms", Outcome: "lost"},
+				},
+			},
+			want: severityCritical,
+		},
+		{
+			name: "weak_skill_alone_is_nudge",
+			in: domain.BriefPromptInput{
+				WeakSkills: []domain.SkillWeak{{SkillKey: "graphs", Title: "Graphs", Progress: 18}},
+			},
+			want: severityNudge,
+		},
+		{
+			// Phase 4.7 — abandoned mock pipelines = consistency-break warn.
+			name: "two_abandoned_mocks_is_warn",
+			in: domain.BriefPromptInput{
+				MockAbandonedRecent: 2,
+			},
+			want: severityWarn,
+		},
+		{
+			// Phase 4.3 — goal deadline ≤3 days → critical.
+			name: "goal_due_in_2_days_is_critical",
+			in: domain.BriefPromptInput{
+				ActiveGoals: []domain.UserGoal{{
+					Kind:           domain.UserGoalKindJob,
+					Title:          "Yandex L4 offer",
+					Deadline:       timePtr(time.Date(2026, 5, 2, 0, 0, 0, 0, time.UTC)),
+					DaysToDeadline: 2,
+				}},
+			},
+			want: severityCritical,
+		},
+		{
+			// Phase 4.3 — goal deadline 4-7 days → warn.
+			name: "goal_due_in_5_days_is_warn",
+			in: domain.BriefPromptInput{
+				ActiveGoals: []domain.UserGoal{{
+					Kind:           domain.UserGoalKindSkill,
+					Title:          "Системный дизайн до L4",
+					Deadline:       timePtr(time.Date(2026, 5, 5, 0, 0, 0, 0, time.UTC)),
+					DaysToDeadline: 5,
+				}},
+			},
+			want: severityWarn,
+		},
+		{
+			// Phase 4.3 — goal без deadline → не триггерит severity (cruise
+			// если нет других сигналов).
+			name: "goal_without_deadline_is_cruise",
+			in: domain.BriefPromptInput{
+				ActiveGoals: []domain.UserGoal{{
+					Kind:           domain.UserGoalKindSkill,
+					Title:          "Освоить Go",
+					DaysToDeadline: -1,
+				}},
+			},
+			want: severityCruise,
+		},
+		{
+			// Single abandoned — random fluctuation, не паттерн. Cruise.
+			name: "one_abandoned_mock_is_cruise",
+			in: domain.BriefPromptInput{
+				MockAbandonedRecent: 1,
+			},
+			want: severityCruise,
+		},
+		{
+			name: "empty_input_is_cruise",
+			in:   domain.BriefPromptInput{},
+			want: severityCruise,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, _ := deriveSeverity(tc.in)
+			if got != tc.want {
+				t.Fatalf("severity=%q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestPinCriticalHeadlineOverridesGenericLLMHeadline(t *testing.T) {
+	in := domain.BriefPromptInput{
+		UpcomingInterviews: []domain.UpcomingInterview{{
+			CompanyName: "Yandex", Role: "backend", DaysFromNow: 2, ReadinessPct: 35,
+		}},
+	}
+	got := pinCriticalHeadline("Stay focused and consistent.", in)
+	if !strings.Contains(got, "Yandex") || !strings.Contains(got, "in 2 days") {
+		t.Fatalf("pinned headline lost critical anchor: %q", got)
+	}
+}
+
+func TestPinCriticalHeadlineKeepsLLMHeadlineWithAnchor(t *testing.T) {
+	in := domain.BriefPromptInput{
+		UpcomingInterviews: []domain.UpcomingInterview{{
+			CompanyName: "Yandex", Role: "backend", DaysFromNow: 2, ReadinessPct: 35,
+		}},
+	}
+	llm := "Yandex Friday — system_design gap."
+	got := pinCriticalHeadline(llm, in)
+	if got != llm {
+		t.Fatalf("pin overrode a headline that already mentioned anchor: %q -> %q", llm, got)
+	}
+}
+
+func TestPinCriticalHeadlineNoOpForCruise(t *testing.T) {
+	llm := "Steady week, ship one drill."
+	got := pinCriticalHeadline(llm, domain.BriefPromptInput{})
+	if got != llm {
+		t.Fatalf("pin should not touch cruise-severity briefs: %q -> %q", llm, got)
+	}
+}
+
+func TestLongAbsenceDropsToCruiseWithWelcomeBack(t *testing.T) {
+	today := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	// Last activity 22 days ago (≥ LongAbsenceDays = 14).
+	old := today.AddDate(0, 0, -22)
+	in := domain.BriefPromptInput{
+		Today:     today,
+		FocusDays: []domain.FocusDay{{Day: old, Seconds: 1800}},
+		Mocks: []domain.MockSessionSummary{{
+			Section: "system_design", Score: 4, FinishedAt: old,
+			WeakTopics: []string{"caching"},
+		}},
+	}
+	got, reason := deriveSeverity(in)
+	if got != severityCruise {
+		t.Fatalf("severity=%q, want cruise after %dd absence", got, 22)
+	}
+	if !strings.Contains(reason, "22 days off") {
+		t.Fatalf("reason should mention exact absence days, got %q", reason)
+	}
+}
+
+func TestPinWelcomeBackOverridesGenericLLMHeadline(t *testing.T) {
+	today := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	old := today.AddDate(0, 0, -18)
+	in := domain.BriefPromptInput{
+		Today: today,
+		Mocks: []domain.MockSessionSummary{{
+			Section: "algorithms", Score: 5, FinishedAt: old,
+		}},
+	}
+	got := pinWelcomeBackHeadline("Caching gap — drill today.", in)
+	if !strings.Contains(strings.ToLower(got), "welcome back") {
+		t.Fatalf("welcome-back pin missing, got %q", got)
+	}
+}
+
+func TestPinWelcomeBackKeepsLLMHeadlineThatGreetsAlready(t *testing.T) {
+	today := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	old := today.AddDate(0, 0, -20)
+	in := domain.BriefPromptInput{
+		Today: today,
+		Mocks: []domain.MockSessionSummary{{Section: "go", Score: 6, FinishedAt: old}},
+	}
+	llm := "Welcome back — start with one focus block."
+	got := pinWelcomeBackHeadline(llm, in)
+	if got != llm {
+		t.Fatalf("pin overrode an already-welcoming headline: %q -> %q", llm, got)
+	}
+}
+
+func TestCriticalEventOverridesLongAbsence(t *testing.T) {
+	today := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	in := domain.BriefPromptInput{
+		Today: today,
+		// Even after 30 days off, an interview in 2 days must stay critical.
+		UpcomingInterviews: []domain.UpcomingInterview{{
+			Kind: "interview", CompanyName: "Yandex",
+			DaysFromNow: 2, ReadinessPct: 30,
+			InterviewDate: today.AddDate(0, 0, 2),
+		}},
+		FocusDays: []domain.FocusDay{{
+			Day: today.AddDate(0, 0, -30), Seconds: 1800,
+		}},
+	}
+	got, reason := deriveSeverity(in)
+	if got != severityCritical {
+		t.Fatalf("severity=%q, want critical despite long absence", got)
+	}
+	if !strings.Contains(reason, "Yandex") {
+		t.Fatalf("reason should mention interview, got %q", reason)
+	}
+}
+
+func TestDaysSinceLastTouchEmptyInputReturnsMinusOne(t *testing.T) {
+	got := daysSinceLastTouch(domain.BriefPromptInput{
+		Today: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+	})
+	if got != -1 {
+		t.Fatalf("daysSinceLastTouch on empty input = %d, want -1", got)
+	}
+}
+
+func TestTrackStalledEscalatesToWarn(t *testing.T) {
+	in := domain.BriefPromptInput{
+		Today: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+		ActiveTracks: []domain.ActiveTrack{{
+			TrackID:            uuid.New(),
+			Slug:               "yandex-backend-prep",
+			Name:               "Yandex Backend Prep",
+			CurrentStep:        3,
+			StepsTotal:         6,
+			CurrentStepTitle:   "Sysdesign · cache + consistency",
+			CurrentStepSkills:  []string{"cache-design"},
+			IsPaused:           false,
+			DaysSinceLastTouch: 7,
+		}},
+	}
+	got, reason := deriveSeverity(in)
+	if got != severityWarn {
+		t.Fatalf("severity=%q, want warn for stalled track", got)
+	}
+	if !strings.Contains(reason, "stalled 7 days") {
+		t.Fatalf("reason should mention stalled days, got %q", reason)
+	}
+}
+
+func TestTrackPausedDoesNotEscalate(t *testing.T) {
+	in := domain.BriefPromptInput{
+		Today: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC),
+		ActiveTracks: []domain.ActiveTrack{{
+			TrackID:            uuid.New(),
+			Slug:               "algorithms-full-cycle",
+			Name:               "Algorithms",
+			CurrentStep:        2,
+			StepsTotal:         12,
+			IsPaused:           true,
+			DaysSinceLastTouch: 30,
+		}},
+	}
+	got, _ := deriveSeverity(in)
+	if got != severityCruise {
+		t.Fatalf("severity=%q, want cruise for paused track (no signal)", got)
+	}
+}

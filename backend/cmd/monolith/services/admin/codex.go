@@ -67,6 +67,27 @@ func NewCodex(d monolithServices.Deps) *monolithServices.Module {
 		}
 		transcoder.ServeHTTP(w, r)
 	}
+	// adminListAdapter rewrites GET /admin/codex/{articles,categories} onto
+	// the public ListArticles/ListCategories transcoder paths with
+	// active_only=false, so the admin can fetch drafts. The proto contract
+	// only declares one List handler per resource; this is the cheap way
+	// to add an admin-visible variant without a proto regen.
+	adminListAdapter := func(publicPath string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if _, err := authServices.RequireAdminInline(r); err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(authServices.StatusForAuthErr(err))
+				_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+				return
+			}
+			r.URL.Path = publicPath
+			r.RequestURI = ""
+			q := r.URL.Query()
+			q.Set("active_only", "false")
+			r.URL.RawQuery = q.Encode()
+			transcoder.ServeHTTP(w, r)
+		}
+	}
 	// publicListAdapter forces active_only=true regardless of incoming
 	// query so anonymous callers hitting /codex/articles never get drafts.
 	publicListAdapter := func(w http.ResponseWriter, r *http.Request) {
@@ -94,12 +115,14 @@ func NewCodex(d monolithServices.Deps) *monolithServices.Module {
 			// Auth-required tap (any logged-in user).
 			r.Post("/codex/articles/{id}/open", transcoder.ServeHTTP)
 			// Admin CRUD — admin role gate above the transcoder.
-			r.Get("/admin/codex/articles", adminGate)
+			// GET routes redirect to public List* transcoder path; the
+			// proto-declared list method is reused with active_only=false.
+			r.Get("/admin/codex/articles", adminListAdapter("/api/v1/codex/articles"))
 			r.Post("/admin/codex/articles", adminGate)
 			r.Patch("/admin/codex/articles/{id}", adminGate)
 			r.Delete("/admin/codex/articles/{id}", adminGate)
 			r.Post("/admin/codex/articles/{id}/active", adminGate)
-			r.Get("/admin/codex/categories", adminGate)
+			r.Get("/admin/codex/categories", adminListAdapter("/api/v1/codex/categories"))
 			r.Post("/admin/codex/categories", adminGate)
 			r.Patch("/admin/codex/categories/{slug}", adminGate)
 			r.Delete("/admin/codex/categories/{slug}", adminGate)

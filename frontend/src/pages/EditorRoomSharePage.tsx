@@ -453,6 +453,10 @@ function RoomEditorImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
       sendAwarenessRef.current = null
       sendSnapshotRef.current = null
     }
+    // myDisplayName/myUserId/themeName используются в начальной awareness +
+    // CodeMirror setup; пересоздавать WS+CRDT на их смене — дорого, awareness
+    // и тема hot-swap'аются отдельными эффектами (см. ниже).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, guestToken])
 
   // handleFormat — реальный gofmt через backend (POST /editor/room/{id}/format).
@@ -1098,7 +1102,6 @@ const _legacyVscodeDarkHighlight = HighlightStyle.define([
   { tag: t.escape, color: '#d7ba7d' },
 ])
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function _legacyEditorThemeWeb() {
   return EditorView.theme(
     {
@@ -1319,6 +1322,7 @@ function openWs(
     }
   })()
   const log = (...args: unknown[]) => {
+    // eslint-disable-next-line no-console -- gated by hone:debug:ws localStorage flag
     if (dbg) console.log('[editor.ws]', ...args)
   }
 

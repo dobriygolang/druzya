@@ -3,7 +3,6 @@
 // Discriminated union by `kind` derived from the backend `type` string:
 //   - match-invite          → accept / decline inline (challenge type)
 //   - achievement-unlocked  → "view" arrow CTA
-//   - friend-request        → accept / decline inline (friendship_id payload)
 //   - coach-insight-ready   → open arrow (plan_id / insight_id payload)
 //   - system-alert          → warn icon + body, optional href
 //

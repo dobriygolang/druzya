@@ -51,7 +51,14 @@ type SweepKey struct {
 }
 
 // NewMatchmaker собирает matchmaker с дефолтным набором sweep'ов (все
-// секции × все режимы, включая duo_2v2 с Phase 5).
+// секции × 1v1-режимы).
+//
+// Phase 1.7 — duo_2v2 убран из дефолтного sweep-листа. Существующие
+// arena_match'и c mode='duo_2v2' остаются как история (читаются
+// профилем и leaderboard), но новые матчи не создаются: queue просто
+// никогда не сканируется. Const ArenaModeDuo2v2 + tickDuo() и весь
+// 2v2 domain-код тоже остаются — нужны для исторических чтений и
+// чтобы тесты на дотрагивание (matchmaker_2v2_test) продолжали работать.
 func NewMatchmaker(
 	q domain.QueueRepo,
 	ready domain.ReadyCheckRepo,
@@ -67,14 +74,13 @@ func NewMatchmaker(
 		// а тесты — фейковый Clock. nil означает ошибку сборки графа.
 		panic("arena.NewMatchmaker: clk is required")
 	}
-	sweeps := make([]SweepKey, 0, len(enums.AllSections())*5)
+	sweeps := make([]SweepKey, 0, len(enums.AllSections())*4)
 	for _, s := range enums.AllSections() {
 		for _, mode := range []enums.ArenaMode{
 			enums.ArenaModeSolo1v1,
 			enums.ArenaModeRanked,
 			enums.ArenaModeHardcore,
 			enums.ArenaModeCursed,
-			enums.ArenaModeDuo2v2,
 		} {
 			sweeps = append(sweeps, SweepKey{Section: s, Mode: mode})
 		}

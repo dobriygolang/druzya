@@ -38,8 +38,11 @@ function DailyKataRedirect() {
 const ArenaPage = lazy(() => import('./pages/ArenaPage'))
 const ArenaMatchPage = lazy(() => import('./pages/ArenaMatchPage'))
 const AtlasPage = lazy(() => import('./pages/AtlasPage'))
+const AtlasExplorePage = lazy(() => import('./pages/atlas/AtlasExplorePage'))
+const TrackDetailPage = lazy(() => import('./pages/atlas/TrackDetailPage'))
 const TaskBoardPage = lazy(() => import('./pages/TaskBoardPage'))
 const InsightsPage = lazy(() => import('./pages/InsightsPage'))
+const GoalsPage = lazy(() => import('./pages/GoalsPage'))
 const PracticePage = lazy(() => import('./pages/PracticePage'))
 const CodexPage = lazy(() => import('./pages/CodexPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
@@ -55,9 +58,15 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AuthCallbackYandexPage = lazy(() => import('./pages/AuthCallbackYandexPage'))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'))
 const AllSetPage = lazy(() => import('./pages/AllSetPage'))
+const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage'))
+// Wave 2.6 — tutor dashboard. Both routes are tutor-authenticated; the
+// backend gates per-row, so an unauthorised viewer just sees an empty list.
+const TutorDashboardPage = lazy(() => import('./pages/TutorDashboardPage'))
+const TutorStudentPage = lazy(() => import('./pages/TutorStudentPage'))
 // Wave-10 onboarding flow (design-review v3 part A) — 5-step gated flow
 // living under /onboarding/{welcome,class,skill,task}. Step 5 is a tour
 // overlay on /sanctum (mounted via ?tour=1 query param).
+const OnbStep0 = lazy(() => import('./pages/onboarding/Step0Tracks'))
 const OnbStep1 = lazy(() => import('./pages/onboarding/Step1Welcome'))
 const OnbStep2 = lazy(() => import('./pages/onboarding/Step2Class'))
 const OnbStep3 = lazy(() => import('./pages/onboarding/Step3Skill'))
@@ -110,6 +119,10 @@ const CheckoutFailure = lazy(() => import('./pages/checkout/CheckoutFailure'))
 // поверхности; Hone только показывает + RSVP.
 const CirclesPage = lazy(() => import('./pages/circles/CirclesPage'))
 const CircleDetailPage = lazy(() => import('./pages/circles/CircleDetailPage'))
+// Phase 3 — Clubs MVP: structured sessions inside circles.
+const ClubsPage = lazy(() => import('./pages/clubs/ClubsPage'))
+const ClubDetailPage = lazy(() => import('./pages/clubs/ClubDetailPage'))
+const ClubSessionPage = lazy(() => import('./pages/clubs/ClubSessionPage'))
 const WhiteboardSharePage = lazy(() => import('./pages/WhiteboardSharePage'))
 const EditorRoomSharePage = lazy(() => import('./pages/EditorRoomSharePage'))
 // WAVE-11 — Custom Lobby restored. Backend: services/lobby + 8 REST endpoints
@@ -144,8 +157,17 @@ export default function App() {
         <Route path="/arena/kata" element={<DailyPage />} />
         <Route path="/arena/kata/:slug" element={<DailyPage />} />
         <Route path="/atlas" element={<AtlasPage />} />
+        {/* Phase 2e — Tracks UI. /atlas теперь Tracks ribbon (catalogue);
+            старый skill-graph переехал в /atlas/explore. Детали трека —
+            /atlas/track/:slug. */}
+        <Route path="/atlas/explore" element={<AtlasExplorePage />} />
+        <Route path="/atlas/track/:slug" element={<TrackDetailPage />} />
         <Route path="/insights" element={<InsightsPage />} />
+        <Route path="/goals" element={<GoalsPage />} />
         <Route path="/tasks" element={<TaskBoardPage />} />
+        {/* Calendar UI вырезан 2026-04-30: backend personal_events + coach
+            CalendarReader keepalive, но web UI оказался вторичным. /calendar
+            редиректит на /arena вторым роутом ниже. */}
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/codex" element={<CodexPage />} />
         <Route path="/profile" element={<ProfilePage />} />
@@ -177,7 +199,16 @@ export default function App() {
         {/* Wave-10 onboarding (design-review v3) — 4 step pages.
             Phase-2 ADR-001: Sanctum tour overlay removed alongside
             SanctumPage. /onboarding/done lands directly on /arena. */}
+        <Route path="/onboarding/tracks" element={<OnbStep0 />} />
         <Route path="/onboarding/welcome" element={<OnbStep1 />} />
+        {/* Wave 2.7 — public invite landing. PeekInvite RPC reads
+            without bearer; Accept gates on logged-in user with
+            /login?next=/invite/{code} round-trip. */}
+        <Route path="/invite/:code" element={<InviteAcceptPage />} />
+        {/* Wave 2.6 — tutor dashboard. Backend enforces per-row auth;
+            anonymous viewers see empty lists (no 403 surface). */}
+        <Route path="/tutor" element={<TutorDashboardPage />} />
+        <Route path="/tutor/students/:id" element={<TutorStudentPage />} />
         <Route path="/onboarding/class" element={<OnbStep2 />} />
         <Route path="/onboarding/skill" element={<OnbStep3 />} />
         <Route path="/onboarding/task" element={<OnbStep4 />} />
@@ -212,7 +243,7 @@ export default function App() {
         <Route path="/slots" element={<SlotsPage />} />
         {/* Phase-4 ADR-001 Wave 1 — Achievements removed (gamification cut). */}
         <Route path="/achievements" element={<Navigate to="/profile" replace />} />
-        {/* /friends removed — community lives in /circles. */}
+        {/* Phase 1.7 — /friends removed; bookmarks fall through to /circles. */}
         <Route path="/friends" element={<Navigate to="/circles" replace />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/match/:matchId/end" element={<MatchEndPage />} />
@@ -257,6 +288,9 @@ export default function App() {
         {/* /pair moved to Hone (E hotkey, bible §2.1). */}
         <Route path="/circles" element={<CirclesPage />} />
         <Route path="/circles/:circleId" element={<CircleDetailPage />} />
+        <Route path="/clubs" element={<ClubsPage />} />
+        <Route path="/clubs/:slug" element={<ClubDetailPage />} />
+        <Route path="/clubs/:slug/session/:id" element={<ClubSessionPage />} />
         <Route path="/whiteboard/:roomId" element={<WhiteboardSharePage />} />
         <Route path="/editor/:roomId" element={<EditorRoomSharePage />} />
         {/* WAVE-11 Custom Lobby — restored. /lobbies = public list +

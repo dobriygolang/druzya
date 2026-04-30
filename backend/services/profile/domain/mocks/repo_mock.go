@@ -312,6 +312,21 @@ func (mr *MockProfileRepoMockRecorder) ListSkillNodes(ctx, userID any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSkillNodes", reflect.TypeOf((*MockProfileRepo)(nil).ListSkillNodes), ctx, userID)
 }
 
+// ListUserTracks mocks base method.
+func (m *MockProfileRepo) ListUserTracks(ctx context.Context, userID uuid.UUID) ([]domain.UserTrack, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUserTracks", ctx, userID)
+	ret0, _ := ret[0].([]domain.UserTrack)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUserTracks indicates an expected call of ListUserTracks.
+func (mr *MockProfileRepoMockRecorder) ListUserTracks(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUserTracks", reflect.TypeOf((*MockProfileRepo)(nil).ListUserTracks), ctx, userID)
+}
+
 // ListWeeklyXPSince mocks base method.
 func (m *MockProfileRepo) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error) {
 	m.ctrl.T.Helper()
@@ -369,6 +384,21 @@ func (m *MockProfileRepo) ResolveShareToken(ctx context.Context, token string) (
 func (mr *MockProfileRepoMockRecorder) ResolveShareToken(ctx, token any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveShareToken", reflect.TypeOf((*MockProfileRepo)(nil).ResolveShareToken), ctx, token)
+}
+
+// SetUserTracks mocks base method.
+func (m *MockProfileRepo) SetUserTracks(ctx context.Context, userID uuid.UUID, items []domain.UserTrack) ([]domain.UserTrack, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetUserTracks", ctx, userID, items)
+	ret0, _ := ret[0].([]domain.UserTrack)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SetUserTracks indicates an expected call of SetUserTracks.
+func (mr *MockProfileRepoMockRecorder) SetUserTracks(ctx, userID, items any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserTracks", reflect.TypeOf((*MockProfileRepo)(nil).SetUserTracks), ctx, userID, items)
 }
 
 // SubmitInterviewerApplication mocks base method.

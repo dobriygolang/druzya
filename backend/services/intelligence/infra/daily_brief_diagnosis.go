@@ -15,7 +15,280 @@ type coachDiagnosis struct {
 	line     string
 }
 
+// coachSeverity is a deterministic urgency grade derived from the same
+// signals the LLM sees. We pre-compute it (not the LLM) so the brain
+// reasons about *how loud to be* before composing words. The grade then
+// shapes headline tone, narrative pressure, and action scheduling.
+type coachSeverity string
+
+const (
+	severityCruise   coachSeverity = "cruise"
+	severityNudge    coachSeverity = "nudge"
+	severityWarn     coachSeverity = "warn"
+	severityCritical coachSeverity = "critical"
+)
+
 const focusedDaySeconds = 30 * 60
+
+// LongAbsenceDays — beyond this gap with zero touchpoints (no focus, no
+// mocks, no kata, no plan moves, no fresh notes) we treat the user as
+// "returning after a long break". The coach then must NOT cite stale
+// evidence as if it were live; severity drops to cruise and the
+// headline is pinned to a welcome-back nudge. 14 days picks up
+// vacation gaps without firing for the average weekend skipper.
+const LongAbsenceDays = 14
+
+// daysSinceLastTouch returns how many full days passed since the user
+// last did *anything* the coach reads — focus, mock, kata, plan move
+// (skip/complete), reflection note, daily note. Returns -1 when there
+// is literally no signal in the input (fresh account); the caller
+// treats that as "not stale, just empty".
+//
+// The function is cheap (single linear pass over already-loaded slices)
+// and intentionally lives next to deriveSeverity so the long-absence
+// branch stays right where the urgency grading lives.
+func daysSinceLastTouch(in domain.BriefPromptInput) int {
+	var newest time.Time
+	bump := func(t time.Time) {
+		if t.IsZero() {
+			return
+		}
+		if newest.IsZero() || t.After(newest) {
+			newest = t
+		}
+	}
+	for _, d := range in.FocusDays {
+		if d.Seconds > 0 {
+			bump(d.Day)
+		}
+	}
+	for _, m := range in.Mocks {
+		bump(m.FinishedAt)
+	}
+	for _, a := range in.Arena {
+		bump(a.FinishedAt)
+	}
+	if in.KataStreak.LastKataDate != nil {
+		bump(*in.KataStreak.LastKataDate)
+	}
+	for _, k := range in.KataRecent {
+		if k.SubmittedAt != nil {
+			bump(*k.SubmittedAt)
+		}
+	}
+	for _, c := range in.CompletedRecent {
+		bump(c.PlanDate)
+	}
+	for _, s := range in.SkippedRecent {
+		bump(s.PlanDate)
+	}
+	for _, r := range in.Reflections {
+		bump(r.CreatedAt)
+	}
+	for _, n := range in.DailyNotes {
+		bump(n.Day)
+	}
+	for _, n := range in.RecentNotes {
+		bump(n.UpdatedAt)
+	}
+	if newest.IsZero() {
+		return -1
+	}
+	today := in.Today.UTC().Truncate(24 * time.Hour)
+	gap := today.Sub(newest.UTC().Truncate(24 * time.Hour))
+	d := int(gap.Hours() / 24)
+	if d < 0 {
+		return 0
+	}
+	return d
+}
+
+// deriveSeverity ranks signals into one of four buckets. The reason
+// returned is a short English fragment used in the SIGNAL DIGEST so the
+// LLM knows *why* this severity was assigned and can echo it concretely.
+//
+// Long-absence guard runs FIRST. If the user has been off for
+// LongAbsenceDays+, every "old" mock score / arena loss becomes stale
+// evidence — citing it as fresh is dishonest. Severity drops to cruise
+// with an explicit "welcome back" reason; the prompt sees a guard that
+// blocks recommendations whose rationale leans on >7d-old facts.
+// Critical interview events still override (an interview in 2 days is
+// urgent regardless of whether the user opened the app yesterday).
+//
+// Rules (first match wins, top-down):
+//   - critical: interview/exam ≤3 days, deadline ≤2 days, OR same plan
+//     item skipped ≥4×, OR 3+ consecutive arena losses.
+//   - cruise (long absence): no touchpoints in ≥LongAbsenceDays AND no
+//     critical-event override above.
+//   - warn:     interview ≤7 days, exam ≤7 days, deadline ≤5 days, OR
+//     same mock weak_topic across ≥3 mocks, OR 2 same plan item skips,
+//     OR all-zero focus week.
+//   - nudge:    weak skill ≤30/100, broken kata streak, club_session
+//     in ≤2 days with pre-read pinned, or open queue pressure.
+//   - cruise:   nothing meaningful; healthy momentum or no data.
+func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
+	// Critical events override the long-absence cap — interview Friday
+	// matters even if the user vanished for 3 weeks.
+	for _, ev := range in.UpcomingInterviews {
+		if ev.DaysFromNow < 0 {
+			continue
+		}
+		switch ev.Kind {
+		case "interview", "":
+			if ev.DaysFromNow <= 3 {
+				return severityCritical, fmt.Sprintf("%s interview in %d day(s)",
+					interviewLabelFromUI(ev), ev.DaysFromNow)
+			}
+		case "exam":
+			if ev.DaysFromNow <= 3 {
+				return severityCritical, fmt.Sprintf("exam %q in %d day(s)",
+					strings.TrimSpace(ev.Title), ev.DaysFromNow)
+			}
+		case "deadline":
+			if ev.DaysFromNow <= 2 {
+				return severityCritical, fmt.Sprintf("deadline %q in %d day(s)",
+					strings.TrimSpace(ev.Title), ev.DaysFromNow)
+			}
+		}
+	}
+	if _, _, n := repeatedSkippedItem(in.SkippedRecent); n >= 4 {
+		return severityCritical, fmt.Sprintf("plan item skipped %d times — chronic avoidance", n)
+	}
+	if _, losses := arenaLossStreak(in.Arena); losses >= 3 {
+		return severityCritical, fmt.Sprintf("%d consecutive arena losses", losses)
+	}
+	// Phase 4.3 — goal deadline crit. job_target в 3 дня = равноценно
+	// interview-event критическому: нужен срочный фокус. skill/track
+	// goals с deadline считаем тоже — юзер сам поставил дедлайн.
+	for _, g := range in.ActiveGoals {
+		if g.Deadline == nil || g.DaysToDeadline < 0 {
+			continue
+		}
+		if g.DaysToDeadline <= 3 {
+			return severityCritical, fmt.Sprintf("goal %q (%s) due in %d day(s)",
+				strings.TrimSpace(g.Title), g.Kind, g.DaysToDeadline)
+		}
+	}
+	// Long absence — runs after critical-event detection so urgent dates
+	// still surface, but before warn-grade signals so old mocks /
+	// arena losses don't mislead the coach into "you're failing".
+	if days := daysSinceLastTouch(in); days >= LongAbsenceDays {
+		return severityCruise, fmt.Sprintf("welcome back — %d days off; old data is stale, treat today as a fresh start", days)
+	}
+	for _, ev := range in.UpcomingInterviews {
+		if ev.DaysFromNow < 0 {
+			continue
+		}
+		switch ev.Kind {
+		case "interview", "":
+			if ev.DaysFromNow <= 7 {
+				return severityWarn, fmt.Sprintf("%s interview in %d days",
+					interviewLabelFromUI(ev), ev.DaysFromNow)
+			}
+		case "exam":
+			if ev.DaysFromNow <= 7 {
+				return severityWarn, fmt.Sprintf("exam %q in %d days",
+					strings.TrimSpace(ev.Title), ev.DaysFromNow)
+			}
+		case "deadline":
+			if ev.DaysFromNow <= 5 {
+				return severityWarn, fmt.Sprintf("deadline %q in %d days",
+					strings.TrimSpace(ev.Title), ev.DaysFromNow)
+			}
+		}
+	}
+	if topic, n := repeatedMockWeakTopic(in.Mocks); n >= 3 {
+		return severityWarn, fmt.Sprintf("%s flagged weak in %d mocks", topic, n)
+	}
+	// Phase 4.3 — goal deadline warn. ≤7 дней = «приближается» — ниже
+	// critical, но достаточно близко чтобы coach об этом сказал.
+	for _, g := range in.ActiveGoals {
+		if g.Deadline == nil || g.DaysToDeadline < 0 {
+			continue
+		}
+		if g.DaysToDeadline <= 7 {
+			return severityWarn, fmt.Sprintf("goal %q (%s) due in %d days",
+				strings.TrimSpace(g.Title), g.Kind, g.DaysToDeadline)
+		}
+	}
+	// Phase 4.7 — abandoned mock pipelines = consistency-break сигнал.
+	// 2+ за 14 дней = pattern, не случайность; coach должен это проговорить
+	// пока юзер не залип в loop'е start-mock-bail-out.
+	if in.MockAbandonedRecent >= 2 {
+		return severityWarn, fmt.Sprintf("%d mock pipelines abandoned in 14 days — consistency_break", in.MockAbandonedRecent)
+	}
+	if _, _, n := repeatedSkippedItem(in.SkippedRecent); n >= 2 {
+		return severityWarn, fmt.Sprintf("plan item skipped %d times", n)
+	}
+	if focusedDays, totalMin := focusCoverage(in.FocusDays); len(in.FocusDays) >= 5 && focusedDays == 0 && totalMin < 30 {
+		return severityWarn, fmt.Sprintf("near-zero deep focus across %d days", len(in.FocusDays))
+	}
+	if len(in.WeakSkills) > 0 && in.WeakSkills[0].Progress <= 30 {
+		w := in.WeakSkills[0]
+		return severityNudge, fmt.Sprintf("weakest skill %s at %d/100", w.SkillKey, w.Progress)
+	}
+	if in.KataStreak.LastKataDate != nil && in.KataStreak.Current == 0 && in.KataStreak.Longest >= 3 {
+		return severityNudge, fmt.Sprintf("kata streak broken (was %d days)", in.KataStreak.Longest)
+	}
+	if in.Queue.Total > 0 && in.Queue.Done == 0 && (in.Queue.Todo+in.Queue.InProgress) >= 3 {
+		return severityNudge, fmt.Sprintf("queue stalled: 0/%d done", in.Queue.Total)
+	}
+	for _, ev := range in.UpcomingInterviews {
+		if ev.Kind == "club_session" && ev.DaysFromNow >= 0 && ev.DaysFromNow <= 2 && strings.TrimSpace(ev.Title) != "" {
+			return severityNudge, fmt.Sprintf("club session %q in %d day(s)",
+				strings.TrimSpace(ev.Title), ev.DaysFromNow)
+		}
+	}
+	// Phase 3 final — ghosted clubs. Если за неделю юзер пропустил ≥1
+	// сессию на которую RSVP'нул_yes — это disengagement signal. nudge,
+	// не warn: клубы — soft commitment, не hard как mock или goal.
+	if len(in.GhostedClubs) > 0 {
+		gc := in.GhostedClubs[0]
+		topic := strings.TrimSpace(gc.TopicTitle)
+		if topic == "" {
+			topic = strings.TrimSpace(gc.ClubName)
+		}
+		if topic != "" {
+			return severityNudge, fmt.Sprintf("RSVP'd_yes но не дошёл на %q (%d дн назад) — disengagement",
+				topic, gc.HappenedAgo)
+		}
+	}
+	// Phase 2d — track stalled. Active (non-paused) track that hasn't
+	// seen activity for 5+ days = warn. Coach should call out the
+	// specific step the user is stuck on.
+	for _, t := range in.ActiveTracks {
+		if t.IsPaused {
+			continue
+		}
+		if t.DaysSinceLastTouch >= 5 && t.DaysSinceLastTouch < 999 {
+			return severityWarn, fmt.Sprintf("track %q stalled %d days on step %d/%d (%s)",
+				t.Name, t.DaysSinceLastTouch, t.CurrentStep+1, t.StepsTotal, t.CurrentStepTitle)
+		}
+	}
+	return severityCruise, "no urgent bottleneck detected"
+}
+
+// interviewLabelFromUI is the same logic as interviewLabel(domain.UpcomingInterview)
+// but tolerates an empty company name by falling back to the title slot,
+// which non-interview kinds populate. Kept private to this file because
+// daily_brief_actions.go has its own interviewLabel that consumers
+// elsewhere already depend on.
+func interviewLabelFromUI(ev domain.UpcomingInterview) string {
+	parts := make([]string, 0, 2)
+	if s := strings.TrimSpace(ev.CompanyName); s != "" {
+		parts = append(parts, s)
+	}
+	if s := strings.TrimSpace(ev.Role); s != "" {
+		parts = append(parts, s)
+	}
+	if len(parts) == 0 {
+		if t := strings.TrimSpace(ev.Title); t != "" {
+			return t
+		}
+		return "upcoming interview"
+	}
+	return strings.Join(parts, " ")
+}
 
 func writeCoachDiagnosis(sb *strings.Builder, in domain.BriefPromptInput) {
 	items := coachDiagnoses(in)

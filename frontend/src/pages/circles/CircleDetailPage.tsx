@@ -4,7 +4,7 @@
 // показывается всем — на 403 покажем error). Пользователь может прикрепить
 // editor_room_id или whiteboard_room_id если хочет, чтобы event автоматически
 // открывал нужную комнату в Hone (Phase 6.5.3 smart-routing).
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Calendar, ExternalLink, Users } from 'lucide-react'
 
@@ -41,7 +41,7 @@ export default function CircleDetailPage() {
   })
   const [showAdvanced, setShowAdvanced] = useState(false)
 
-  const reload = async () => {
+  const reload = useCallback(async () => {
     if (!circleId) return
     try {
       const [c, allEvents] = await Promise.all([getCircle(circleId), listMyEvents()])
@@ -51,11 +51,11 @@ export default function CircleDetailPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
-  }
+  }, [circleId])
 
   useEffect(() => {
     void reload()
-  }, [circleId])
+  }, [reload])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

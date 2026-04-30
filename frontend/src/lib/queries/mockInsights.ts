@@ -29,6 +29,24 @@ export type ScoreTrajectoryPoint = {
   verdict: string // 'pass' | 'fail'
 }
 
+// English HR trend (Wave 1 of docs/feature/english.md). Wire-side names
+// are snake_case to match the proto3 JSON encoding from
+// services/ai_mock/ports/insights.go. The whole `english_hr` field is
+// omitted when total_sessions == 0 — components MUST handle undefined.
+export type EnglishHRTrendPoint = {
+  session_id: string
+  finished_at: string // RFC3339
+  score: number // 0..100
+}
+
+export type EnglishHRTrend = {
+  total_sessions: number
+  avg_score: number // 0..100
+  last_score: number // 0..100
+  last_finished_at: string // RFC3339; '' when total_sessions == 0
+  trajectory: EnglishHRTrendPoint[] // ASC by finished_at
+}
+
 export type MockInsightsOverview = {
   window_days: number
   stage_performance: StagePerformance[]
@@ -39,6 +57,7 @@ export type MockInsightsOverview = {
   // Single-paragraph LLM-synthesised narrative built from the data
   // above. Empty when LLMChain unavailable or no 30d activity.
   summary?: string
+  english_hr?: EnglishHRTrend
 }
 
 const STALE_MS = 60_000

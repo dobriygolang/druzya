@@ -4338,3 +4338,1469 @@ export class GetTodayStandupResponse extends Message<GetTodayStandupResponse> {
   }
 }
 
+/**
+ * @generated from message druz9.v1.ReadingMaterial
+ */
+export class ReadingMaterial extends Message<ReadingMaterial> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId = "";
+
+  /**
+   * "paste" | "url" | "pdf" | "epub"
+   *
+   * @generated from field: string source_kind = 3;
+   */
+  sourceKind = "";
+
+  /**
+   * empty for paste
+   *
+   * @generated from field: string source_url = 4;
+   */
+  sourceUrl = "";
+
+  /**
+   * @generated from field: string title = 5;
+   */
+  title = "";
+
+  /**
+   * omitted from list responses to save bandwidth
+   *
+   * @generated from field: string body_md = 6;
+   */
+  bodyMd = "";
+
+  /**
+   * @generated from field: int32 total_chars = 7;
+   */
+  totalChars = 0;
+
+  /**
+   * zero when active
+   *
+   * @generated from field: google.protobuf.Timestamp archived_at = 8;
+   */
+  archivedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 9;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 10;
+   */
+  updatedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<ReadingMaterial>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ReadingMaterial";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "source_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "source_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "total_chars", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 8, name: "archived_at", kind: "message", T: Timestamp },
+    { no: 9, name: "created_at", kind: "message", T: Timestamp },
+    { no: 10, name: "updated_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ReadingMaterial {
+    return new ReadingMaterial().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ReadingMaterial {
+    return new ReadingMaterial().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ReadingMaterial {
+    return new ReadingMaterial().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ReadingMaterial | PlainMessage<ReadingMaterial> | undefined, b: ReadingMaterial | PlainMessage<ReadingMaterial> | undefined): boolean {
+    return proto3.util.equals(ReadingMaterial, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ReadingSession
+ */
+export class ReadingSession extends Message<ReadingSession> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string material_id = 3;
+   */
+  materialId = "";
+
+  /**
+   * @generated from field: int32 chars_read = 4;
+   */
+  charsRead = 0;
+
+  /**
+   * @generated from field: int32 chars_total = 5;
+   */
+  charsTotal = 0;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 6;
+   */
+  startedAt?: Timestamp;
+
+  /**
+   * zero when active
+   *
+   * @generated from field: google.protobuf.Timestamp ended_at = 7;
+   */
+  endedAt?: Timestamp;
+
+  /**
+   * ai_summary_score is optional (NULL until AI summary check fires);
+   * wire as 0 with a separate has_score flag rather than a wrapper —
+   * proto3 wrapper types add codegen weight for one nullable int.
+   *
+   * @generated from field: int32 ai_summary_score = 8;
+   */
+  aiSummaryScore = 0;
+
+  /**
+   * @generated from field: bool has_score = 9;
+   */
+  hasScore = false;
+
+  /**
+   * @generated from field: string summary_md = 10;
+   */
+  summaryMd = "";
+
+  constructor(data?: PartialMessage<ReadingSession>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ReadingSession";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "material_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "chars_read", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "chars_total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "started_at", kind: "message", T: Timestamp },
+    { no: 7, name: "ended_at", kind: "message", T: Timestamp },
+    { no: 8, name: "ai_summary_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 9, name: "has_score", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "summary_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ReadingSession {
+    return new ReadingSession().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ReadingSession {
+    return new ReadingSession().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ReadingSession {
+    return new ReadingSession().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ReadingSession | PlainMessage<ReadingSession> | undefined, b: ReadingSession | PlainMessage<ReadingSession> | undefined): boolean {
+    return proto3.util.equals(ReadingSession, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.VocabEntry
+ */
+export class VocabEntry extends Message<VocabEntry> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string word = 2;
+   */
+  word = "";
+
+  /**
+   * @generated from field: string translation = 3;
+   */
+  translation = "";
+
+  /**
+   * @generated from field: string context_md = 4;
+   */
+  contextMd = "";
+
+  /**
+   * empty when not linked to a material
+   *
+   * @generated from field: string source_material = 5;
+   */
+  sourceMaterial = "";
+
+  /**
+   * 0..5; 5 = graduated
+   *
+   * @generated from field: int32 box = 6;
+   */
+  box = 0;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp next_review_at = 7;
+   */
+  nextReviewAt?: Timestamp;
+
+  /**
+   * @generated from field: int32 reviewed_count = 8;
+   */
+  reviewedCount = 0;
+
+  /**
+   * zero when not graduated
+   *
+   * @generated from field: google.protobuf.Timestamp learned_at = 9;
+   */
+  learnedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 10;
+   */
+  createdAt?: Timestamp;
+
+  constructor(data?: PartialMessage<VocabEntry>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.VocabEntry";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "word", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "translation", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "context_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "source_material", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "box", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "next_review_at", kind: "message", T: Timestamp },
+    { no: 8, name: "reviewed_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 9, name: "learned_at", kind: "message", T: Timestamp },
+    { no: 10, name: "created_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): VocabEntry {
+    return new VocabEntry().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): VocabEntry {
+    return new VocabEntry().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): VocabEntry {
+    return new VocabEntry().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: VocabEntry | PlainMessage<VocabEntry> | undefined, b: VocabEntry | PlainMessage<VocabEntry> | undefined): boolean {
+    return proto3.util.equals(VocabEntry, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AddReadingMaterialRequest
+ */
+export class AddReadingMaterialRequest extends Message<AddReadingMaterialRequest> {
+  /**
+   * @generated from field: string source_kind = 1;
+   */
+  sourceKind = "";
+
+  /**
+   * @generated from field: string source_url = 2;
+   */
+  sourceUrl = "";
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string body_md = 4;
+   */
+  bodyMd = "";
+
+  constructor(data?: PartialMessage<AddReadingMaterialRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AddReadingMaterialRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "source_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "source_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AddReadingMaterialRequest {
+    return new AddReadingMaterialRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AddReadingMaterialRequest {
+    return new AddReadingMaterialRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AddReadingMaterialRequest {
+    return new AddReadingMaterialRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AddReadingMaterialRequest | PlainMessage<AddReadingMaterialRequest> | undefined, b: AddReadingMaterialRequest | PlainMessage<AddReadingMaterialRequest> | undefined): boolean {
+    return proto3.util.equals(AddReadingMaterialRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListReadingMaterialsRequest
+ */
+export class ListReadingMaterialsRequest extends Message<ListReadingMaterialsRequest> {
+  /**
+   * 0 → server default (50)
+   *
+   * @generated from field: int32 limit = 1;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListReadingMaterialsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListReadingMaterialsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListReadingMaterialsRequest {
+    return new ListReadingMaterialsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListReadingMaterialsRequest {
+    return new ListReadingMaterialsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListReadingMaterialsRequest {
+    return new ListReadingMaterialsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListReadingMaterialsRequest | PlainMessage<ListReadingMaterialsRequest> | undefined, b: ListReadingMaterialsRequest | PlainMessage<ListReadingMaterialsRequest> | undefined): boolean {
+    return proto3.util.equals(ListReadingMaterialsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListReadingMaterialsResponse
+ */
+export class ListReadingMaterialsResponse extends Message<ListReadingMaterialsResponse> {
+  /**
+   * body_md omitted from list items by the handler — clients fetch it
+   * via GetReadingMaterial when they actually open a material.
+   *
+   * @generated from field: repeated druz9.v1.ReadingMaterial items = 1;
+   */
+  items: ReadingMaterial[] = [];
+
+  constructor(data?: PartialMessage<ListReadingMaterialsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListReadingMaterialsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: ReadingMaterial, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListReadingMaterialsResponse {
+    return new ListReadingMaterialsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListReadingMaterialsResponse {
+    return new ListReadingMaterialsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListReadingMaterialsResponse {
+    return new ListReadingMaterialsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListReadingMaterialsResponse | PlainMessage<ListReadingMaterialsResponse> | undefined, b: ListReadingMaterialsResponse | PlainMessage<ListReadingMaterialsResponse> | undefined): boolean {
+    return proto3.util.equals(ListReadingMaterialsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetReadingMaterialRequest
+ */
+export class GetReadingMaterialRequest extends Message<GetReadingMaterialRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<GetReadingMaterialRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetReadingMaterialRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetReadingMaterialRequest {
+    return new GetReadingMaterialRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetReadingMaterialRequest {
+    return new GetReadingMaterialRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetReadingMaterialRequest {
+    return new GetReadingMaterialRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetReadingMaterialRequest | PlainMessage<GetReadingMaterialRequest> | undefined, b: GetReadingMaterialRequest | PlainMessage<GetReadingMaterialRequest> | undefined): boolean {
+    return proto3.util.equals(GetReadingMaterialRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ArchiveReadingMaterialRequest
+ */
+export class ArchiveReadingMaterialRequest extends Message<ArchiveReadingMaterialRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<ArchiveReadingMaterialRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ArchiveReadingMaterialRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArchiveReadingMaterialRequest {
+    return new ArchiveReadingMaterialRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ArchiveReadingMaterialRequest {
+    return new ArchiveReadingMaterialRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ArchiveReadingMaterialRequest {
+    return new ArchiveReadingMaterialRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ArchiveReadingMaterialRequest | PlainMessage<ArchiveReadingMaterialRequest> | undefined, b: ArchiveReadingMaterialRequest | PlainMessage<ArchiveReadingMaterialRequest> | undefined): boolean {
+    return proto3.util.equals(ArchiveReadingMaterialRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ArchiveReadingMaterialResponse
+ */
+export class ArchiveReadingMaterialResponse extends Message<ArchiveReadingMaterialResponse> {
+  constructor(data?: PartialMessage<ArchiveReadingMaterialResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ArchiveReadingMaterialResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArchiveReadingMaterialResponse {
+    return new ArchiveReadingMaterialResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ArchiveReadingMaterialResponse {
+    return new ArchiveReadingMaterialResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ArchiveReadingMaterialResponse {
+    return new ArchiveReadingMaterialResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ArchiveReadingMaterialResponse | PlainMessage<ArchiveReadingMaterialResponse> | undefined, b: ArchiveReadingMaterialResponse | PlainMessage<ArchiveReadingMaterialResponse> | undefined): boolean {
+    return proto3.util.equals(ArchiveReadingMaterialResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.StartReadingSessionRequest
+ */
+export class StartReadingSessionRequest extends Message<StartReadingSessionRequest> {
+  /**
+   * @generated from field: string material_id = 1;
+   */
+  materialId = "";
+
+  constructor(data?: PartialMessage<StartReadingSessionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.StartReadingSessionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "material_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StartReadingSessionRequest {
+    return new StartReadingSessionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): StartReadingSessionRequest {
+    return new StartReadingSessionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): StartReadingSessionRequest {
+    return new StartReadingSessionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: StartReadingSessionRequest | PlainMessage<StartReadingSessionRequest> | undefined, b: StartReadingSessionRequest | PlainMessage<StartReadingSessionRequest> | undefined): boolean {
+    return proto3.util.equals(StartReadingSessionRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.EndReadingSessionRequest
+ */
+export class EndReadingSessionRequest extends Message<EndReadingSessionRequest> {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId = "";
+
+  /**
+   * @generated from field: int32 chars_read = 2;
+   */
+  charsRead = 0;
+
+  /**
+   * @generated from field: string summary_md = 3;
+   */
+  summaryMd = "";
+
+  constructor(data?: PartialMessage<EndReadingSessionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.EndReadingSessionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "chars_read", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "summary_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EndReadingSessionRequest {
+    return new EndReadingSessionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EndReadingSessionRequest {
+    return new EndReadingSessionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EndReadingSessionRequest {
+    return new EndReadingSessionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EndReadingSessionRequest | PlainMessage<EndReadingSessionRequest> | undefined, b: EndReadingSessionRequest | PlainMessage<EndReadingSessionRequest> | undefined): boolean {
+    return proto3.util.equals(EndReadingSessionRequest, a, b);
+  }
+}
+
+/**
+ * Returns the closed session — including ai_summary_score / has_score if
+ * the LLM grader was available and finished within the request budget.
+ * If the grader is offline or times out, has_score is false and the score
+ * can still arrive later via a background re-grading task (Wave 4.3+).
+ *
+ * @generated from message druz9.v1.EndReadingSessionResponse
+ */
+export class EndReadingSessionResponse extends Message<EndReadingSessionResponse> {
+  /**
+   * @generated from field: druz9.v1.ReadingSession session = 1;
+   */
+  session?: ReadingSession;
+
+  constructor(data?: PartialMessage<EndReadingSessionResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.EndReadingSessionResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "session", kind: "message", T: ReadingSession },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EndReadingSessionResponse {
+    return new EndReadingSessionResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EndReadingSessionResponse {
+    return new EndReadingSessionResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EndReadingSessionResponse {
+    return new EndReadingSessionResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EndReadingSessionResponse | PlainMessage<EndReadingSessionResponse> | undefined, b: EndReadingSessionResponse | PlainMessage<EndReadingSessionResponse> | undefined): boolean {
+    return proto3.util.equals(EndReadingSessionResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AddVocabRequest
+ */
+export class AddVocabRequest extends Message<AddVocabRequest> {
+  /**
+   * @generated from field: string word = 1;
+   */
+  word = "";
+
+  /**
+   * @generated from field: string translation = 2;
+   */
+  translation = "";
+
+  /**
+   * @generated from field: string context_md = 3;
+   */
+  contextMd = "";
+
+  /**
+   * optional
+   *
+   * @generated from field: string source_material = 4;
+   */
+  sourceMaterial = "";
+
+  constructor(data?: PartialMessage<AddVocabRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AddVocabRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "word", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "translation", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "context_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "source_material", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AddVocabRequest {
+    return new AddVocabRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AddVocabRequest {
+    return new AddVocabRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AddVocabRequest {
+    return new AddVocabRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AddVocabRequest | PlainMessage<AddVocabRequest> | undefined, b: AddVocabRequest | PlainMessage<AddVocabRequest> | undefined): boolean {
+    return proto3.util.equals(AddVocabRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ReviewVocabRequest
+ */
+export class ReviewVocabRequest extends Message<ReviewVocabRequest> {
+  /**
+   * @generated from field: string word = 1;
+   */
+  word = "";
+
+  /**
+   * @generated from field: bool correct = 2;
+   */
+  correct = false;
+
+  constructor(data?: PartialMessage<ReviewVocabRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ReviewVocabRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "word", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "correct", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ReviewVocabRequest {
+    return new ReviewVocabRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ReviewVocabRequest {
+    return new ReviewVocabRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ReviewVocabRequest {
+    return new ReviewVocabRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ReviewVocabRequest | PlainMessage<ReviewVocabRequest> | undefined, b: ReviewVocabRequest | PlainMessage<ReviewVocabRequest> | undefined): boolean {
+    return proto3.util.equals(ReviewVocabRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListVocabDueRequest
+ */
+export class ListVocabDueRequest extends Message<ListVocabDueRequest> {
+  /**
+   * 0 → server default (20)
+   *
+   * @generated from field: int32 limit = 1;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListVocabDueRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListVocabDueRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListVocabDueRequest {
+    return new ListVocabDueRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListVocabDueRequest {
+    return new ListVocabDueRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListVocabDueRequest {
+    return new ListVocabDueRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListVocabDueRequest | PlainMessage<ListVocabDueRequest> | undefined, b: ListVocabDueRequest | PlainMessage<ListVocabDueRequest> | undefined): boolean {
+    return proto3.util.equals(ListVocabDueRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListVocabDueResponse
+ */
+export class ListVocabDueResponse extends Message<ListVocabDueResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.VocabEntry items = 1;
+   */
+  items: VocabEntry[] = [];
+
+  constructor(data?: PartialMessage<ListVocabDueResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListVocabDueResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: VocabEntry, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListVocabDueResponse {
+    return new ListVocabDueResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListVocabDueResponse {
+    return new ListVocabDueResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListVocabDueResponse {
+    return new ListVocabDueResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListVocabDueResponse | PlainMessage<ListVocabDueResponse> | undefined, b: ListVocabDueResponse | PlainMessage<ListVocabDueResponse> | undefined): boolean {
+    return proto3.util.equals(ListVocabDueResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListeningMaterial
+ */
+export class ListeningMaterial extends Message<ListeningMaterial> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string audio_url = 4;
+   */
+  audioUrl = "";
+
+  /**
+   * omitted from list responses to save bandwidth (transcripts can
+   * run 50KB+); clients call GetListeningMaterial when they open the
+   * player to fetch the full text.
+   *
+   * @generated from field: string transcript_md = 5;
+   */
+  transcriptMd = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp archived_at = 6;
+   */
+  archivedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 8;
+   */
+  updatedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<ListeningMaterial>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListeningMaterial";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "audio_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "transcript_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "archived_at", kind: "message", T: Timestamp },
+    { no: 7, name: "created_at", kind: "message", T: Timestamp },
+    { no: 8, name: "updated_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListeningMaterial {
+    return new ListeningMaterial().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListeningMaterial {
+    return new ListeningMaterial().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListeningMaterial {
+    return new ListeningMaterial().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListeningMaterial | PlainMessage<ListeningMaterial> | undefined, b: ListeningMaterial | PlainMessage<ListeningMaterial> | undefined): boolean {
+    return proto3.util.equals(ListeningMaterial, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AddListeningMaterialRequest
+ */
+export class AddListeningMaterialRequest extends Message<AddListeningMaterialRequest> {
+  /**
+   * @generated from field: string title = 1;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string audio_url = 2;
+   */
+  audioUrl = "";
+
+  /**
+   * @generated from field: string transcript_md = 3;
+   */
+  transcriptMd = "";
+
+  constructor(data?: PartialMessage<AddListeningMaterialRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AddListeningMaterialRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "audio_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "transcript_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AddListeningMaterialRequest {
+    return new AddListeningMaterialRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AddListeningMaterialRequest {
+    return new AddListeningMaterialRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AddListeningMaterialRequest {
+    return new AddListeningMaterialRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AddListeningMaterialRequest | PlainMessage<AddListeningMaterialRequest> | undefined, b: AddListeningMaterialRequest | PlainMessage<AddListeningMaterialRequest> | undefined): boolean {
+    return proto3.util.equals(AddListeningMaterialRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListListeningMaterialsRequest
+ */
+export class ListListeningMaterialsRequest extends Message<ListListeningMaterialsRequest> {
+  /**
+   * 0 → server default (50)
+   *
+   * @generated from field: int32 limit = 1;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListListeningMaterialsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListListeningMaterialsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListListeningMaterialsRequest {
+    return new ListListeningMaterialsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListListeningMaterialsRequest {
+    return new ListListeningMaterialsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListListeningMaterialsRequest {
+    return new ListListeningMaterialsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListListeningMaterialsRequest | PlainMessage<ListListeningMaterialsRequest> | undefined, b: ListListeningMaterialsRequest | PlainMessage<ListListeningMaterialsRequest> | undefined): boolean {
+    return proto3.util.equals(ListListeningMaterialsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListListeningMaterialsResponse
+ */
+export class ListListeningMaterialsResponse extends Message<ListListeningMaterialsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.ListeningMaterial items = 1;
+   */
+  items: ListeningMaterial[] = [];
+
+  constructor(data?: PartialMessage<ListListeningMaterialsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListListeningMaterialsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: ListeningMaterial, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListListeningMaterialsResponse {
+    return new ListListeningMaterialsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListListeningMaterialsResponse {
+    return new ListListeningMaterialsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListListeningMaterialsResponse {
+    return new ListListeningMaterialsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListListeningMaterialsResponse | PlainMessage<ListListeningMaterialsResponse> | undefined, b: ListListeningMaterialsResponse | PlainMessage<ListListeningMaterialsResponse> | undefined): boolean {
+    return proto3.util.equals(ListListeningMaterialsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetListeningMaterialRequest
+ */
+export class GetListeningMaterialRequest extends Message<GetListeningMaterialRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<GetListeningMaterialRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetListeningMaterialRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetListeningMaterialRequest {
+    return new GetListeningMaterialRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetListeningMaterialRequest {
+    return new GetListeningMaterialRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetListeningMaterialRequest {
+    return new GetListeningMaterialRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetListeningMaterialRequest | PlainMessage<GetListeningMaterialRequest> | undefined, b: GetListeningMaterialRequest | PlainMessage<GetListeningMaterialRequest> | undefined): boolean {
+    return proto3.util.equals(GetListeningMaterialRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ArchiveListeningMaterialRequest
+ */
+export class ArchiveListeningMaterialRequest extends Message<ArchiveListeningMaterialRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<ArchiveListeningMaterialRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ArchiveListeningMaterialRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArchiveListeningMaterialRequest {
+    return new ArchiveListeningMaterialRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ArchiveListeningMaterialRequest {
+    return new ArchiveListeningMaterialRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ArchiveListeningMaterialRequest {
+    return new ArchiveListeningMaterialRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ArchiveListeningMaterialRequest | PlainMessage<ArchiveListeningMaterialRequest> | undefined, b: ArchiveListeningMaterialRequest | PlainMessage<ArchiveListeningMaterialRequest> | undefined): boolean {
+    return proto3.util.equals(ArchiveListeningMaterialRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ArchiveListeningMaterialResponse
+ */
+export class ArchiveListeningMaterialResponse extends Message<ArchiveListeningMaterialResponse> {
+  constructor(data?: PartialMessage<ArchiveListeningMaterialResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ArchiveListeningMaterialResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArchiveListeningMaterialResponse {
+    return new ArchiveListeningMaterialResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ArchiveListeningMaterialResponse {
+    return new ArchiveListeningMaterialResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ArchiveListeningMaterialResponse {
+    return new ArchiveListeningMaterialResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ArchiveListeningMaterialResponse | PlainMessage<ArchiveListeningMaterialResponse> | undefined, b: ArchiveListeningMaterialResponse | PlainMessage<ArchiveListeningMaterialResponse> | undefined): boolean {
+    return proto3.util.equals(ArchiveListeningMaterialResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GradeEnglishWritingRequest
+ */
+export class GradeEnglishWritingRequest extends Message<GradeEnglishWritingRequest> {
+  /**
+   * Optional. Lets the grader scope its judgement (off-topic becomes
+   * a clarity issue when title is set; otherwise grader stays neutral).
+   *
+   * @generated from field: string title = 1;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string text = 2;
+   */
+  text = "";
+
+  constructor(data?: PartialMessage<GradeEnglishWritingRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GradeEnglishWritingRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GradeEnglishWritingRequest {
+    return new GradeEnglishWritingRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GradeEnglishWritingRequest {
+    return new GradeEnglishWritingRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GradeEnglishWritingRequest {
+    return new GradeEnglishWritingRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GradeEnglishWritingRequest | PlainMessage<GradeEnglishWritingRequest> | undefined, b: GradeEnglishWritingRequest | PlainMessage<GradeEnglishWritingRequest> | undefined): boolean {
+    return proto3.util.equals(GradeEnglishWritingRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.WritingIssue
+ */
+export class WritingIssue extends Message<WritingIssue> {
+  /**
+   * Verbatim slice of the user's text the issue applies to. Frontend
+   * can highlight by searching for this in the original; we don't
+   * ship char-offsets because they don't survive client-side text
+   * editing between request + render.
+   *
+   * @generated from field: string excerpt = 1;
+   */
+  excerpt = "";
+
+  /**
+   * "grammar" | "vocab" | "style" | "clarity". Unknown categories
+   * from the LLM are coerced to "style" server-side.
+   *
+   * @generated from field: string category = 2;
+   */
+  category = "";
+
+  /**
+   * @generated from field: string suggestion = 3;
+   */
+  suggestion = "";
+
+  /**
+   * @generated from field: string explanation = 4;
+   */
+  explanation = "";
+
+  constructor(data?: PartialMessage<WritingIssue>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.WritingIssue";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "excerpt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "category", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "suggestion", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "explanation", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): WritingIssue {
+    return new WritingIssue().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): WritingIssue {
+    return new WritingIssue().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): WritingIssue {
+    return new WritingIssue().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: WritingIssue | PlainMessage<WritingIssue> | undefined, b: WritingIssue | PlainMessage<WritingIssue> | undefined): boolean {
+    return proto3.util.equals(WritingIssue, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GradeEnglishWritingResponse
+ */
+export class GradeEnglishWritingResponse extends Message<GradeEnglishWritingResponse> {
+  /**
+   * 0..100. Mirrors the summary-grader's scale so the UI can reuse
+   * the same strong / mid / weak chip.
+   *
+   * @generated from field: int32 overall_score = 1;
+   */
+  overallScore = 0;
+
+  /**
+   * @generated from field: repeated druz9.v1.WritingIssue issues = 2;
+   */
+  issues: WritingIssue[] = [];
+
+  constructor(data?: PartialMessage<GradeEnglishWritingResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GradeEnglishWritingResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "overall_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "issues", kind: "message", T: WritingIssue, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GradeEnglishWritingResponse {
+    return new GradeEnglishWritingResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GradeEnglishWritingResponse {
+    return new GradeEnglishWritingResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GradeEnglishWritingResponse {
+    return new GradeEnglishWritingResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GradeEnglishWritingResponse | PlainMessage<GradeEnglishWritingResponse> | undefined, b: GradeEnglishWritingResponse | PlainMessage<GradeEnglishWritingResponse> | undefined): boolean {
+    return proto3.util.equals(GradeEnglishWritingResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GradeCodeReviewRequest
+ */
+export class GradeCodeReviewRequest extends Message<GradeCodeReviewRequest> {
+  /**
+   * Optional. Lets the grader scope its judgement on whether the review
+   * is on-topic for what the PR claims to do.
+   *
+   * @generated from field: string pr_title = 1;
+   */
+  prTitle = "";
+
+  /**
+   * Unified diff. Plain text (NOT base64). Frontend caps at ~100KB.
+   *
+   * @generated from field: string diff_md = 2;
+   */
+  diffMd = "";
+
+  /**
+   * The user's review write-up.
+   *
+   * @generated from field: string review_md = 3;
+   */
+  reviewMd = "";
+
+  constructor(data?: PartialMessage<GradeCodeReviewRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GradeCodeReviewRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "pr_title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "diff_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "review_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GradeCodeReviewRequest {
+    return new GradeCodeReviewRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GradeCodeReviewRequest {
+    return new GradeCodeReviewRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GradeCodeReviewRequest {
+    return new GradeCodeReviewRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GradeCodeReviewRequest | PlainMessage<GradeCodeReviewRequest> | undefined, b: GradeCodeReviewRequest | PlainMessage<GradeCodeReviewRequest> | undefined): boolean {
+    return proto3.util.equals(GradeCodeReviewRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.CodeReviewIssue
+ */
+export class CodeReviewIssue extends Message<CodeReviewIssue> {
+  /**
+   * Verbatim slice of the user's review the issue applies to. Empty
+   * is allowed only when category == "completeness" (the reviewer
+   * didn't write anything for that gap; suggestion holds the comment
+   * they SHOULD have written).
+   *
+   * @generated from field: string excerpt = 1;
+   */
+  excerpt = "";
+
+  /**
+   * "correctness" | "completeness" | "clarity" | "tone". Unknown
+   * categories from the LLM are coerced to "clarity" server-side.
+   *
+   * @generated from field: string category = 2;
+   */
+  category = "";
+
+  /**
+   * @generated from field: string suggestion = 3;
+   */
+  suggestion = "";
+
+  /**
+   * @generated from field: string explanation = 4;
+   */
+  explanation = "";
+
+  constructor(data?: PartialMessage<CodeReviewIssue>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CodeReviewIssue";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "excerpt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "category", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "suggestion", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "explanation", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CodeReviewIssue {
+    return new CodeReviewIssue().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CodeReviewIssue {
+    return new CodeReviewIssue().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CodeReviewIssue {
+    return new CodeReviewIssue().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CodeReviewIssue | PlainMessage<CodeReviewIssue> | undefined, b: CodeReviewIssue | PlainMessage<CodeReviewIssue> | undefined): boolean {
+    return proto3.util.equals(CodeReviewIssue, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GradeCodeReviewResponse
+ */
+export class GradeCodeReviewResponse extends Message<GradeCodeReviewResponse> {
+  /**
+   * @generated from field: int32 overall_score = 1;
+   */
+  overallScore = 0;
+
+  /**
+   * @generated from field: repeated druz9.v1.CodeReviewIssue issues = 2;
+   */
+  issues: CodeReviewIssue[] = [];
+
+  constructor(data?: PartialMessage<GradeCodeReviewResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GradeCodeReviewResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "overall_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "issues", kind: "message", T: CodeReviewIssue, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GradeCodeReviewResponse {
+    return new GradeCodeReviewResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GradeCodeReviewResponse {
+    return new GradeCodeReviewResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GradeCodeReviewResponse {
+    return new GradeCodeReviewResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GradeCodeReviewResponse | PlainMessage<GradeCodeReviewResponse> | undefined, b: GradeCodeReviewResponse | PlainMessage<GradeCodeReviewResponse> | undefined): boolean {
+    return proto3.util.equals(GradeCodeReviewResponse, a, b);
+  }
+}
+

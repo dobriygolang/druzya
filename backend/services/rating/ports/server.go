@@ -136,7 +136,7 @@ func sectionFromString(s string) pb.Section {
 // sectionToString is the inverse — app.GetLeaderboard.Do still takes a string
 // keyed on shared/enums.Section values, so we translate back at the edge.
 func sectionToString(s pb.Section) string {
-	switch s {
+	switch s { //nolint:exhaustive // free-form sections fall through to default
 	case pb.Section_SECTION_ALGORITHMS:
 		return "algorithms"
 	case pb.Section_SECTION_SQL:

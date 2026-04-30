@@ -17,6 +17,10 @@ type DailyBriefRepo interface {
 	// LastForcedAt returns the generated_at of the most-recent brief for
 	// the user. Used to gate force=true to 1/h. Zero time when none.
 	LastForcedAt(ctx context.Context, userID uuid.UUID) (time.Time, error)
+	// RecentForUser — Phase 5. Returns last N days of briefs (newest first)
+	// для Hone /coach feed. Limit hard-capped at 60 в caller'е чтобы
+	// payload не разросся.
+	RecentForUser(ctx context.Context, userID uuid.UUID, sinceDays, limit int) ([]DailyBrief, error)
 }
 
 // FocusReader reads focus aggregates for the daily-brief prompt. Implementation
@@ -64,6 +68,11 @@ type Embedder interface {
 // scored 6/10, weak on capacity-estimation — practice that today».
 type MockReader interface {
 	LastNFinished(ctx context.Context, userID uuid.UUID, n int) ([]MockSessionSummary, error)
+
+	// RecentAbandonedCount — Phase 4.7. Возвращает кол-во abandoned mock
+	// sessions за последние sinceDays. ≥2 = consistency-break сигнал
+	// (юзер бросает интервью на середине → coach должен этим управлять).
+	RecentAbandonedCount(ctx context.Context, userID uuid.UUID, sinceDays int) (int, error)
 }
 
 // KataReader — daily kata streak + recent attempts. Сигнал «consistency».
@@ -118,6 +127,85 @@ type CodexReader interface {
 	SuggestArticles(ctx context.Context, userID uuid.UUID, topics []string, limit int) ([]CodexArticleSuggestion, error)
 }
 
+// TrackReader — Phase 2d. Surfaces the user's active learning tracks so
+// the coach can spot "track stalled 5 days on step 4" patterns and pin
+// recommendations to the active step's skill_keys.
+type TrackReader interface {
+	ActiveTracks(ctx context.Context, userID uuid.UUID) ([]ActiveTrack, error)
+}
+
+// ClubReader — Phase 3 final. Adapter в intelligence-context'е, вычитывает
+// ghosted club_sessions для severity grader'а («RSVP'нул но не дошёл»).
+type ClubReader interface {
+	GhostedSessions(ctx context.Context, userID uuid.UUID, windowDays int) ([]GhostedClubSession, error)
+}
+
+// GoalsReader — Phase 4.3. Surfaces the user's active goals so the coach
+// can frame narrative around them ("Yandex L4 in 5 days — ваш job_target").
+// Только status='active' — paused / done / abandoned не светятся.
+type GoalsReader interface {
+	ActiveGoals(ctx context.Context, userID uuid.UUID) ([]UserGoal, error)
+}
+
+// GoalsRepo — full CRUD над user_goals. Reader выше намеренно узкий —
+// coach reads только active. Этот интерфейс шире: web /goals страница
+// должна видеть paused/done/abandoned + менять статусы.
+//
+// Caller-friendly: ListByUser возвращает все goals независимо от статуса
+// (caller сам фильтрует в UI). Status вынесен на string чтобы avoid
+// dragging UserGoalStatus enum в proto/wire-formats — слой выше валидирует
+// ('active'|'paused'|'done'|'abandoned').
+type GoalsRepo interface {
+	GoalsReader
+	ListByUser(ctx context.Context, userID uuid.UUID) ([]UserGoal, error)
+	Create(ctx context.Context, in CreateGoalInput) (UserGoal, error)
+	UpdateStatus(ctx context.Context, userID, goalID uuid.UUID, status string) (UserGoal, error)
+	Delete(ctx context.Context, userID, goalID uuid.UUID) error
+}
+
+// CreateGoalInput — wire-shape для POST /goals. Deadline опциональный
+// (skill/track goals часто без жёсткой даты). TrackID привязка к
+// learning track — set null если goal не привязан.
+type CreateGoalInput struct {
+	UserID    uuid.UUID
+	Kind      UserGoalKind
+	Title     string
+	NotesMD   string
+	Deadline  *time.Time
+	TrackID   *uuid.UUID
+	SkillKeys []string
+}
+
+// UserGoalKind mirrors the SQL enum. Stable string values are wire-safe.
+type UserGoalKind string
+
+const (
+	UserGoalKindJob   UserGoalKind = "job_target"
+	UserGoalKindSkill UserGoalKind = "skill_target"
+	UserGoalKindTrack UserGoalKind = "track_target"
+)
+
+// UserGoal — projection over user_goals.
+//
+// Status: ActiveGoals (coach reader) фильтрует по 'active', но ListByUser
+// (web /goals) показывает все статусы — поле возвращается explicit.
+//
+// Deadline = nil = «без жёсткого срока» (skill goals часто такие).
+// DaysToDeadline pre-computed reader'ом: -1 = no deadline, 0 = today,
+// 5 = in 5 days. Coach использует значение в severity-grader'е.
+type UserGoal struct {
+	ID             uuid.UUID
+	Kind           UserGoalKind
+	Status         string // active | paused | done | abandoned
+	Title          string
+	NotesMD        string
+	Deadline       *time.Time
+	DaysToDeadline int
+	TrackID        *uuid.UUID
+	SkillKeys      []string
+	CreatedAt      time.Time
+}
+
 // BriefSynthesizer generates the daily brief via TaskDailyBrief. Real impl
 // returns strict JSON parsed into the struct; floor returns ErrLLMUnavailable.
 type BriefSynthesizer interface {
@@ -148,6 +236,10 @@ type BriefPromptInput struct {
 	// дают specific recommendations вместо generic «do system design».
 	Mocks []MockSessionSummary
 
+	// MockAbandonedRecent — Phase 4.7. Кол-во abandoned mock sessions за
+	// последние 14 дней. ≥2 = consistency-break warn в severity grader.
+	MockAbandonedRecent int
+
 	// KataStreak / KataRecent — daily kata consistency (current_streak)
 	// + последние passed/failed attempts.
 	KataStreak KataStreak
@@ -177,6 +269,48 @@ type BriefPromptInput struct {
 	// CodexArticles — curated learning links selected from codex_articles
 	// for current weak topics. The LLM may link only to these exact URLs.
 	CodexArticles []CodexArticleSuggestion
+
+	// ActiveTracks — Phase 2d. The user's enrolled learning tracks with
+	// current-step progress. Coach uses this to: (a) flag stalled tracks
+	// (warn severity), (b) tighten recommendations to the active step's
+	// skill_keys, (c) avoid suggesting drills outside the current track
+	// when the user has clearly committed to one.
+	ActiveTracks []ActiveTrack
+
+	// PendingFollowups — Phase 4.8. Recommendations that the user followed
+	// (clicked) within the last 24-48h but coach hasn't yet asked whether
+	// they landed. Prompt section nudges the LLM to write «как с [X]?»
+	// в narrative/recommendation, чтобы цикл закрывался — иначе тоже
+	// самые review_note/tiny_task'и будут предлагаться снова и снова.
+	PendingFollowups []PendingFollowup
+
+	// ActiveGoals — Phase 4.3. User's high-level goals (job/skill/track).
+	// Coach использует для (a) framing narrative («Yandex L4 в 5 дней —
+	// ваш job_target»), (b) deadline-aware severity, (c) приоритезации
+	// recommendations в сторону активной цели.
+	ActiveGoals []UserGoal
+
+	// GhostedClubs — Phase 3 final. Сессии за окно 7 дней где user
+	// RSVP'd_yes но статус остался rsvp_yes (никто не проставил
+	// attended). Сигнал disengagement → severity=nudge.
+	GhostedClubs []GhostedClubSession
+}
+
+// GhostedClubSession — projection used by deriveSeverity. Pre-computed
+// `HappenedAgo` (days). Coach сам выбирает фразу — здесь только данные.
+type GhostedClubSession struct {
+	ClubName    string
+	TopicTitle  string
+	HappenedAgo int
+}
+
+// PendingFollowup — derived projection over EpisodeBriefFollowed.
+type PendingFollowup struct {
+	Title      string
+	Kind       RecommendationKind
+	TargetID   string    // note_id / plan_item_id если был
+	FollowedAt time.Time // когда юзер кликнул
+	HoursAgo   int       // pre-computed для prompt'а
 }
 
 // AskNotesPromptInput — вход для NoteAnswerer (Phase B). Past Q&A

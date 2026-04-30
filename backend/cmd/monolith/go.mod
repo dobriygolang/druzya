@@ -9,12 +9,13 @@ require (
 	druz9/ai_mock v0.0.0-00010101000000-000000000000
 	druz9/arena v0.0.0-00010101000000-000000000000
 	druz9/auth v0.0.0-00010101000000-000000000000
+	druz9/calendar v0.0.0
+	druz9/clubs v0.0.0
 	druz9/copilot v0.0.0-00010101000000-000000000000
 	druz9/daily v0.0.0-00010101000000-000000000000
 	druz9/documents v0.0.0-00010101000000-000000000000
 	druz9/editor v0.0.0-00010101000000-000000000000
 	druz9/feed v0.0.0-00010101000000-000000000000
-	druz9/friends v0.0.0-00010101000000-000000000000
 	druz9/hone v0.0.0-00010101000000-000000000000
 	druz9/intelligence v0.0.0-00010101000000-000000000000
 	druz9/lobby v0.0.0
@@ -28,7 +29,9 @@ require (
 	druz9/shared v0.0.0
 	druz9/slot v0.0.0-00010101000000-000000000000
 	druz9/tg_coach v0.0.0-00010101000000-000000000000
+	druz9/tracks v0.0.0
 	druz9/transcription v0.0.0-00010101000000-000000000000
+	druz9/tutor v0.0.0-00010101000000-000000000000
 	druz9/vacancies v0.0.0-00010101000000-000000000000
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
@@ -128,8 +131,6 @@ replace druz9/admin => ../../services/admin
 
 replace druz9/vacancies => ../../services/vacancies
 
-replace druz9/friends => ../../services/friends
-
 replace druz9/hone => ../../services/hone
 
 replace druz9/intelligence => ../../services/intelligence
@@ -146,6 +147,8 @@ replace druz9/review => ../../services/review
 
 replace druz9/tg_coach => ../../services/tg_coach
 
+replace druz9/tutor => ../../services/tutor
+
 replace druz9/subscription => ../../services/subscription
 
 replace druz9/whiteboard_rooms => ../../services/whiteboard_rooms
@@ -161,3 +164,9 @@ replace druz9/sync => ../../services/sync
 replace druz9/storage => ../../services/storage
 
 replace druz9/quiz => ../../services/quiz
+
+replace druz9/clubs => ../../services/clubs
+
+replace druz9/calendar => ../../services/calendar
+
+replace druz9/tracks => ../../services/tracks

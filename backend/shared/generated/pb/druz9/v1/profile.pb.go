@@ -90,6 +90,71 @@ func (InterviewerApplicationStatus) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{0}
 }
 
+// Track mirrors the `track_kind` Postgres enum from migration 00006. Wire
+// names use the TRACK_ prefix; the server maps to/from lowercase DB values.
+// Adding a new value: extend the DB enum + this message + per-track wiring
+// (Atlas seed, mock persona, Insights — see docs/feature/tracks.md).
+type Track int32
+
+const (
+	Track_TRACK_UNSPECIFIED     Track = 0
+	Track_TRACK_DEV             Track = 1
+	Track_TRACK_DEV_SENIOR      Track = 2
+	Track_TRACK_SYSANALYST      Track = 3
+	Track_TRACK_PRODUCT_ANALYST Track = 4
+	Track_TRACK_QA              Track = 5
+	Track_TRACK_ENGLISH         Track = 6
+)
+
+// Enum value maps for Track.
+var (
+	Track_name = map[int32]string{
+		0: "TRACK_UNSPECIFIED",
+		1: "TRACK_DEV",
+		2: "TRACK_DEV_SENIOR",
+		3: "TRACK_SYSANALYST",
+		4: "TRACK_PRODUCT_ANALYST",
+		5: "TRACK_QA",
+		6: "TRACK_ENGLISH",
+	}
+	Track_value = map[string]int32{
+		"TRACK_UNSPECIFIED":     0,
+		"TRACK_DEV":             1,
+		"TRACK_DEV_SENIOR":      2,
+		"TRACK_SYSANALYST":      3,
+		"TRACK_PRODUCT_ANALYST": 4,
+		"TRACK_QA":              5,
+		"TRACK_ENGLISH":         6,
+	}
+)
+
+func (x Track) Enum() *Track {
+	p := new(Track)
+	*p = x
+	return p
+}
+
+func (x Track) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Track) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_profile_proto_enumTypes[1].Descriptor()
+}
+
+func (Track) Type() protoreflect.EnumType {
+	return &file_druz9_v1_profile_proto_enumTypes[1]
+}
+
+func (x Track) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Track.Descriptor instead.
+func (Track) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{1}
+}
+
 // Attributes mirrors OpenAPI Attributes.
 type Attributes struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2768,6 +2833,211 @@ func (x *RejectInterviewerApplicationRequest) GetNote() string {
 	return ""
 }
 
+// UserTrack mirrors a row in `user_tracks`. seniority is "junior"|"middle"|
+// "senior"|"lead" for engineering/analyst tracks; empty for english (the
+// only cross-cutting track without level distinction in MVP).
+type UserTrack struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Track         Track                  `protobuf:"varint,1,opt,name=track,proto3,enum=druz9.v1.Track" json:"track,omitempty"`
+	Seniority     string                 `protobuf:"bytes,2,opt,name=seniority,proto3" json:"seniority,omitempty"`
+	Primary       bool                   `protobuf:"varint,3,opt,name=primary,proto3" json:"primary,omitempty"`
+	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	LastActiveAt  *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=last_active_at,json=lastActiveAt,proto3" json:"last_active_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserTrack) Reset() {
+	*x = UserTrack{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserTrack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserTrack) ProtoMessage() {}
+
+func (x *UserTrack) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserTrack.ProtoReflect.Descriptor instead.
+func (*UserTrack) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *UserTrack) GetTrack() Track {
+	if x != nil {
+		return x.Track
+	}
+	return Track_TRACK_UNSPECIFIED
+}
+
+func (x *UserTrack) GetSeniority() string {
+	if x != nil {
+		return x.Seniority
+	}
+	return ""
+}
+
+func (x *UserTrack) GetPrimary() bool {
+	if x != nil {
+		return x.Primary
+	}
+	return false
+}
+
+func (x *UserTrack) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *UserTrack) GetLastActiveAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastActiveAt
+	}
+	return nil
+}
+
+type UserTracks struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*UserTrack           `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserTracks) Reset() {
+	*x = UserTracks{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserTracks) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserTracks) ProtoMessage() {}
+
+func (x *UserTracks) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserTracks.ProtoReflect.Descriptor instead.
+func (*UserTracks) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *UserTracks) GetItems() []*UserTrack {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type GetUserTracksRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserTracksRequest) Reset() {
+	*x = GetUserTracksRequest{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserTracksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserTracksRequest) ProtoMessage() {}
+
+func (x *GetUserTracksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserTracksRequest.ProtoReflect.Descriptor instead.
+func (*GetUserTracksRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{39}
+}
+
+type SetUserTracksRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The full new list. Replaces existing rows atomically. Must contain
+	// at least one item; exactly one item must have primary=true.
+	Items         []*UserTrack `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetUserTracksRequest) Reset() {
+	*x = SetUserTracksRequest{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetUserTracksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetUserTracksRequest) ProtoMessage() {}
+
+func (x *SetUserTracksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetUserTracksRequest.ProtoReflect.Descriptor instead.
+func (*SetUserTracksRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *SetUserTracksRequest) GetItems() []*UserTrack {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_druz9_v1_profile_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_profile_proto_rawDesc = "" +
@@ -3011,13 +3281,34 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x04note\x18\x02 \x01(\tR\x04note\"`\n" +
 	"#RejectInterviewerApplicationRequest\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12\x12\n" +
-	"\x04note\x18\x02 \x01(\tR\x04note*\x86\x02\n" +
+	"\x04note\x18\x02 \x01(\tR\x04note\"\xe7\x01\n" +
+	"\tUserTrack\x12%\n" +
+	"\x05track\x18\x01 \x01(\x0e2\x0f.druz9.v1.TrackR\x05track\x12\x1c\n" +
+	"\tseniority\x18\x02 \x01(\tR\tseniority\x12\x18\n" +
+	"\aprimary\x18\x03 \x01(\bR\aprimary\x129\n" +
+	"\n" +
+	"started_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12@\n" +
+	"\x0elast_active_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\flastActiveAt\"7\n" +
+	"\n" +
+	"UserTracks\x12)\n" +
+	"\x05items\x18\x01 \x03(\v2\x13.druz9.v1.UserTrackR\x05items\"\x16\n" +
+	"\x14GetUserTracksRequest\"A\n" +
+	"\x14SetUserTracksRequest\x12)\n" +
+	"\x05items\x18\x01 \x03(\v2\x13.druz9.v1.UserTrackR\x05items*\x86\x02\n" +
 	"\x1cInterviewerApplicationStatus\x12.\n" +
 	"*INTERVIEWER_APPLICATION_STATUS_UNSPECIFIED\x10\x00\x120\n" +
 	",INTERVIEWER_APPLICATION_STATUS_NOT_SUBMITTED\x10\x01\x12*\n" +
 	"&INTERVIEWER_APPLICATION_STATUS_PENDING\x10\x02\x12+\n" +
 	"'INTERVIEWER_APPLICATION_STATUS_APPROVED\x10\x03\x12+\n" +
-	"'INTERVIEWER_APPLICATION_STATUS_REJECTED\x10\x042\xa7\x0f\n" +
+	"'INTERVIEWER_APPLICATION_STATUS_REJECTED\x10\x04*\x95\x01\n" +
+	"\x05Track\x12\x15\n" +
+	"\x11TRACK_UNSPECIFIED\x10\x00\x12\r\n" +
+	"\tTRACK_DEV\x10\x01\x12\x14\n" +
+	"\x10TRACK_DEV_SENIOR\x10\x02\x12\x14\n" +
+	"\x10TRACK_SYSANALYST\x10\x03\x12\x19\n" +
+	"\x15TRACK_PRODUCT_ANALYST\x10\x04\x12\f\n" +
+	"\bTRACK_QA\x10\x05\x12\x11\n" +
+	"\rTRACK_ENGLISH\x10\x062\xfe\x10\n" +
 	"\x0eProfileService\x12`\n" +
 	"\fGetMyProfile\x12\x1d.druz9.v1.GetMyProfileRequest\x1a\x15.druz9.v1.ProfileFull\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/profile/me\x12a\n" +
 	"\n" +
@@ -3033,7 +3324,9 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x1cRejectInterviewerApplication\x12-.druz9.v1.RejectInterviewerApplicationRequest\x1a .druz9.v1.InterviewerApplication\"I\x82\xd3\xe4\x93\x02C:\x01*\">/api/v1/admin/interviewer-applications/{application_id}/reject\x12\x8d\x01\n" +
 	"\x12AllocateAtlasSkill\x12#.druz9.v1.AllocateAtlasSkillRequest\x1a$.druz9.v1.AllocateAtlasSkillResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/profile/me/atlas/allocate\x12\x86\x01\n" +
 	"\x13GetAIVacanciesModel\x12$.druz9.v1.GetAIVacanciesModelRequest\x1a\x1a.druz9.v1.AIVacanciesModel\"-\x82\xd3\xe4\x93\x02'\x12%/api/v1/profile/me/ai-vacancies-model\x12\x89\x01\n" +
-	"\x13SetAIVacanciesModel\x12$.druz9.v1.SetAIVacanciesModelRequest\x1a\x1a.druz9.v1.AIVacanciesModel\"0\x82\xd3\xe4\x93\x02*:\x01*\x1a%/api/v1/profile/me/ai-vacancies-modelB\x89\x01\n" +
+	"\x13SetAIVacanciesModel\x12$.druz9.v1.SetAIVacanciesModelRequest\x1a\x1a.druz9.v1.AIVacanciesModel\"0\x82\xd3\xe4\x93\x02*:\x01*\x1a%/api/v1/profile/me/ai-vacancies-model\x12h\n" +
+	"\rGetUserTracks\x12\x1e.druz9.v1.GetUserTracksRequest\x1a\x14.druz9.v1.UserTracks\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/profile/me/tracks\x12k\n" +
+	"\rSetUserTracks\x12\x1e.druz9.v1.SetUserTracksRequest\x1a\x14.druz9.v1.UserTracks\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\x1a\x19/api/v1/profile/me/tracksB\x89\x01\n" +
 	"\fcom.druz9.v1B\fProfileProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -3048,126 +3341,140 @@ func file_druz9_v1_profile_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_profile_proto_rawDescData
 }
 
-var file_druz9_v1_profile_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_druz9_v1_profile_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_druz9_v1_profile_proto_goTypes = []any{
 	(InterviewerApplicationStatus)(0),            // 0: druz9.v1.InterviewerApplicationStatus
-	(*Attributes)(nil),                           // 1: druz9.v1.Attributes
-	(*ProfileSubscription)(nil),                  // 2: druz9.v1.ProfileSubscription
-	(*ProfileFull)(nil),                          // 3: druz9.v1.ProfileFull
-	(*ProfileSectionRating)(nil),                 // 4: druz9.v1.ProfileSectionRating
-	(*SkillNode)(nil),                            // 5: druz9.v1.SkillNode
-	(*KataRef)(nil),                              // 6: druz9.v1.KataRef
-	(*SkillEdge)(nil),                            // 7: druz9.v1.SkillEdge
-	(*SkillAtlas)(nil),                           // 8: druz9.v1.SkillAtlas
-	(*ProfilePublic)(nil),                        // 9: druz9.v1.ProfilePublic
-	(*ReportMetrics)(nil),                        // 10: druz9.v1.ReportMetrics
-	(*ReportWeakness)(nil),                       // 11: druz9.v1.ReportWeakness
-	(*RecommendationAction)(nil),                 // 12: druz9.v1.RecommendationAction
-	(*Recommendation)(nil),                       // 13: druz9.v1.Recommendation
-	(*SectionBreakdown)(nil),                     // 14: druz9.v1.SectionBreakdown
-	(*WeekComparison)(nil),                       // 15: druz9.v1.WeekComparison
-	(*EloPoint)(nil),                             // 16: druz9.v1.EloPoint
-	(*PercentileView)(nil),                       // 17: druz9.v1.PercentileView
-	(*WeeklyReport)(nil),                         // 18: druz9.v1.WeeklyReport
-	(*ProfileSettings)(nil),                      // 19: druz9.v1.ProfileSettings
-	(*UpdateProfileSettingsRequest)(nil),         // 20: druz9.v1.UpdateProfileSettingsRequest
-	(*GetMyProfileRequest)(nil),                  // 21: druz9.v1.GetMyProfileRequest
-	(*GetMyAtlasRequest)(nil),                    // 22: druz9.v1.GetMyAtlasRequest
-	(*GetMyReportRequest)(nil),                   // 23: druz9.v1.GetMyReportRequest
-	(*GetPublicProfileRequest)(nil),              // 24: druz9.v1.GetPublicProfileRequest
-	(*GetWeeklyShareRequest)(nil),                // 25: druz9.v1.GetWeeklyShareRequest
-	(*AllocateAtlasSkillRequest)(nil),            // 26: druz9.v1.AllocateAtlasSkillRequest
-	(*AllocateAtlasSkillResponse)(nil),           // 27: druz9.v1.AllocateAtlasSkillResponse
-	(*GetAIVacanciesModelRequest)(nil),           // 28: druz9.v1.GetAIVacanciesModelRequest
-	(*SetAIVacanciesModelRequest)(nil),           // 29: druz9.v1.SetAIVacanciesModelRequest
-	(*AIVacanciesModel)(nil),                     // 30: druz9.v1.AIVacanciesModel
-	(*BecomeInterviewerRequest)(nil),             // 31: druz9.v1.BecomeInterviewerRequest
-	(*GetMyInterviewerApplicationRequest)(nil),   // 32: druz9.v1.GetMyInterviewerApplicationRequest
-	(*InterviewerApplication)(nil),               // 33: druz9.v1.InterviewerApplication
-	(*InterviewerApplicationList)(nil),           // 34: druz9.v1.InterviewerApplicationList
-	(*ListInterviewerApplicationsRequest)(nil),   // 35: druz9.v1.ListInterviewerApplicationsRequest
-	(*ApproveInterviewerApplicationRequest)(nil), // 36: druz9.v1.ApproveInterviewerApplicationRequest
-	(*RejectInterviewerApplicationRequest)(nil),  // 37: druz9.v1.RejectInterviewerApplicationRequest
-	nil,                             // 38: druz9.v1.RecommendationAction.ParamsEntry
-	(SubscriptionPlan)(0),           // 39: druz9.v1.SubscriptionPlan
-	(*timestamppb.Timestamp)(nil),   // 40: google.protobuf.Timestamp
-	(CharClass)(0),                  // 41: druz9.v1.CharClass
-	(UserRole)(0),                   // 42: druz9.v1.UserRole
-	(Section)(0),                    // 43: druz9.v1.Section
-	(Language)(0),                   // 44: druz9.v1.Language
-	(*NotificationPreferences)(nil), // 45: druz9.v1.NotificationPreferences
+	(Track)(0),                                   // 1: druz9.v1.Track
+	(*Attributes)(nil),                           // 2: druz9.v1.Attributes
+	(*ProfileSubscription)(nil),                  // 3: druz9.v1.ProfileSubscription
+	(*ProfileFull)(nil),                          // 4: druz9.v1.ProfileFull
+	(*ProfileSectionRating)(nil),                 // 5: druz9.v1.ProfileSectionRating
+	(*SkillNode)(nil),                            // 6: druz9.v1.SkillNode
+	(*KataRef)(nil),                              // 7: druz9.v1.KataRef
+	(*SkillEdge)(nil),                            // 8: druz9.v1.SkillEdge
+	(*SkillAtlas)(nil),                           // 9: druz9.v1.SkillAtlas
+	(*ProfilePublic)(nil),                        // 10: druz9.v1.ProfilePublic
+	(*ReportMetrics)(nil),                        // 11: druz9.v1.ReportMetrics
+	(*ReportWeakness)(nil),                       // 12: druz9.v1.ReportWeakness
+	(*RecommendationAction)(nil),                 // 13: druz9.v1.RecommendationAction
+	(*Recommendation)(nil),                       // 14: druz9.v1.Recommendation
+	(*SectionBreakdown)(nil),                     // 15: druz9.v1.SectionBreakdown
+	(*WeekComparison)(nil),                       // 16: druz9.v1.WeekComparison
+	(*EloPoint)(nil),                             // 17: druz9.v1.EloPoint
+	(*PercentileView)(nil),                       // 18: druz9.v1.PercentileView
+	(*WeeklyReport)(nil),                         // 19: druz9.v1.WeeklyReport
+	(*ProfileSettings)(nil),                      // 20: druz9.v1.ProfileSettings
+	(*UpdateProfileSettingsRequest)(nil),         // 21: druz9.v1.UpdateProfileSettingsRequest
+	(*GetMyProfileRequest)(nil),                  // 22: druz9.v1.GetMyProfileRequest
+	(*GetMyAtlasRequest)(nil),                    // 23: druz9.v1.GetMyAtlasRequest
+	(*GetMyReportRequest)(nil),                   // 24: druz9.v1.GetMyReportRequest
+	(*GetPublicProfileRequest)(nil),              // 25: druz9.v1.GetPublicProfileRequest
+	(*GetWeeklyShareRequest)(nil),                // 26: druz9.v1.GetWeeklyShareRequest
+	(*AllocateAtlasSkillRequest)(nil),            // 27: druz9.v1.AllocateAtlasSkillRequest
+	(*AllocateAtlasSkillResponse)(nil),           // 28: druz9.v1.AllocateAtlasSkillResponse
+	(*GetAIVacanciesModelRequest)(nil),           // 29: druz9.v1.GetAIVacanciesModelRequest
+	(*SetAIVacanciesModelRequest)(nil),           // 30: druz9.v1.SetAIVacanciesModelRequest
+	(*AIVacanciesModel)(nil),                     // 31: druz9.v1.AIVacanciesModel
+	(*BecomeInterviewerRequest)(nil),             // 32: druz9.v1.BecomeInterviewerRequest
+	(*GetMyInterviewerApplicationRequest)(nil),   // 33: druz9.v1.GetMyInterviewerApplicationRequest
+	(*InterviewerApplication)(nil),               // 34: druz9.v1.InterviewerApplication
+	(*InterviewerApplicationList)(nil),           // 35: druz9.v1.InterviewerApplicationList
+	(*ListInterviewerApplicationsRequest)(nil),   // 36: druz9.v1.ListInterviewerApplicationsRequest
+	(*ApproveInterviewerApplicationRequest)(nil), // 37: druz9.v1.ApproveInterviewerApplicationRequest
+	(*RejectInterviewerApplicationRequest)(nil),  // 38: druz9.v1.RejectInterviewerApplicationRequest
+	(*UserTrack)(nil),                            // 39: druz9.v1.UserTrack
+	(*UserTracks)(nil),                           // 40: druz9.v1.UserTracks
+	(*GetUserTracksRequest)(nil),                 // 41: druz9.v1.GetUserTracksRequest
+	(*SetUserTracksRequest)(nil),                 // 42: druz9.v1.SetUserTracksRequest
+	nil,                                          // 43: druz9.v1.RecommendationAction.ParamsEntry
+	(SubscriptionPlan)(0),                        // 44: druz9.v1.SubscriptionPlan
+	(*timestamppb.Timestamp)(nil),                // 45: google.protobuf.Timestamp
+	(CharClass)(0),                               // 46: druz9.v1.CharClass
+	(UserRole)(0),                                // 47: druz9.v1.UserRole
+	(Section)(0),                                 // 48: druz9.v1.Section
+	(Language)(0),                                // 49: druz9.v1.Language
+	(*NotificationPreferences)(nil),              // 50: druz9.v1.NotificationPreferences
 }
 var file_druz9_v1_profile_proto_depIdxs = []int32{
-	39, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
-	40, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
-	41, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
-	1,  // 3: druz9.v1.ProfileFull.attributes:type_name -> druz9.v1.Attributes
-	2,  // 4: druz9.v1.ProfileFull.subscription:type_name -> druz9.v1.ProfileSubscription
-	40, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
-	42, // 6: druz9.v1.ProfileFull.role:type_name -> druz9.v1.UserRole
-	43, // 7: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
-	43, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
-	40, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
-	40, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
-	6,  // 11: druz9.v1.SkillNode.recommended_kata:type_name -> druz9.v1.KataRef
-	5,  // 12: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
-	7,  // 13: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
-	41, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
-	4,  // 15: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
-	8,  // 16: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
-	38, // 17: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
-	12, // 18: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
-	43, // 19: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
-	10, // 20: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
-	11, // 21: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
-	13, // 22: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
-	14, // 23: druz9.v1.WeeklyReport.strong_sections:type_name -> druz9.v1.SectionBreakdown
-	14, // 24: druz9.v1.WeeklyReport.weak_sections:type_name -> druz9.v1.SectionBreakdown
-	15, // 25: druz9.v1.WeeklyReport.weekly_xp:type_name -> druz9.v1.WeekComparison
-	16, // 26: druz9.v1.WeeklyReport.elo_series:type_name -> druz9.v1.EloPoint
-	17, // 27: druz9.v1.WeeklyReport.percentiles:type_name -> druz9.v1.PercentileView
-	44, // 28: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
-	45, // 29: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
-	19, // 30: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
+	44, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
+	45, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
+	46, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
+	2,  // 3: druz9.v1.ProfileFull.attributes:type_name -> druz9.v1.Attributes
+	3,  // 4: druz9.v1.ProfileFull.subscription:type_name -> druz9.v1.ProfileSubscription
+	45, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
+	47, // 6: druz9.v1.ProfileFull.role:type_name -> druz9.v1.UserRole
+	48, // 7: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
+	48, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
+	45, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
+	45, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
+	7,  // 11: druz9.v1.SkillNode.recommended_kata:type_name -> druz9.v1.KataRef
+	6,  // 12: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
+	8,  // 13: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
+	46, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
+	5,  // 15: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
+	9,  // 16: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
+	43, // 17: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
+	13, // 18: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
+	48, // 19: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
+	11, // 20: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
+	12, // 21: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
+	14, // 22: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
+	15, // 23: druz9.v1.WeeklyReport.strong_sections:type_name -> druz9.v1.SectionBreakdown
+	15, // 24: druz9.v1.WeeklyReport.weak_sections:type_name -> druz9.v1.SectionBreakdown
+	16, // 25: druz9.v1.WeeklyReport.weekly_xp:type_name -> druz9.v1.WeekComparison
+	17, // 26: druz9.v1.WeeklyReport.elo_series:type_name -> druz9.v1.EloPoint
+	18, // 27: druz9.v1.WeeklyReport.percentiles:type_name -> druz9.v1.PercentileView
+	49, // 28: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
+	50, // 29: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
+	20, // 30: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
 	0,  // 31: druz9.v1.InterviewerApplication.status:type_name -> druz9.v1.InterviewerApplicationStatus
-	40, // 32: druz9.v1.InterviewerApplication.reviewed_at:type_name -> google.protobuf.Timestamp
-	40, // 33: druz9.v1.InterviewerApplication.created_at:type_name -> google.protobuf.Timestamp
-	33, // 34: druz9.v1.InterviewerApplicationList.items:type_name -> druz9.v1.InterviewerApplication
+	45, // 32: druz9.v1.InterviewerApplication.reviewed_at:type_name -> google.protobuf.Timestamp
+	45, // 33: druz9.v1.InterviewerApplication.created_at:type_name -> google.protobuf.Timestamp
+	34, // 34: druz9.v1.InterviewerApplicationList.items:type_name -> druz9.v1.InterviewerApplication
 	0,  // 35: druz9.v1.ListInterviewerApplicationsRequest.status:type_name -> druz9.v1.InterviewerApplicationStatus
-	21, // 36: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
-	22, // 37: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
-	23, // 38: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
-	20, // 39: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
-	24, // 40: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
-	25, // 41: druz9.v1.ProfileService.GetWeeklyShare:input_type -> druz9.v1.GetWeeklyShareRequest
-	31, // 42: druz9.v1.ProfileService.BecomeInterviewer:input_type -> druz9.v1.BecomeInterviewerRequest
-	32, // 43: druz9.v1.ProfileService.GetMyInterviewerApplication:input_type -> druz9.v1.GetMyInterviewerApplicationRequest
-	35, // 44: druz9.v1.ProfileService.ListInterviewerApplications:input_type -> druz9.v1.ListInterviewerApplicationsRequest
-	36, // 45: druz9.v1.ProfileService.ApproveInterviewerApplication:input_type -> druz9.v1.ApproveInterviewerApplicationRequest
-	37, // 46: druz9.v1.ProfileService.RejectInterviewerApplication:input_type -> druz9.v1.RejectInterviewerApplicationRequest
-	26, // 47: druz9.v1.ProfileService.AllocateAtlasSkill:input_type -> druz9.v1.AllocateAtlasSkillRequest
-	28, // 48: druz9.v1.ProfileService.GetAIVacanciesModel:input_type -> druz9.v1.GetAIVacanciesModelRequest
-	29, // 49: druz9.v1.ProfileService.SetAIVacanciesModel:input_type -> druz9.v1.SetAIVacanciesModelRequest
-	3,  // 50: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
-	8,  // 51: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
-	18, // 52: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
-	19, // 53: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
-	9,  // 54: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
-	18, // 55: druz9.v1.ProfileService.GetWeeklyShare:output_type -> druz9.v1.WeeklyReport
-	33, // 56: druz9.v1.ProfileService.BecomeInterviewer:output_type -> druz9.v1.InterviewerApplication
-	33, // 57: druz9.v1.ProfileService.GetMyInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
-	34, // 58: druz9.v1.ProfileService.ListInterviewerApplications:output_type -> druz9.v1.InterviewerApplicationList
-	33, // 59: druz9.v1.ProfileService.ApproveInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
-	33, // 60: druz9.v1.ProfileService.RejectInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
-	27, // 61: druz9.v1.ProfileService.AllocateAtlasSkill:output_type -> druz9.v1.AllocateAtlasSkillResponse
-	30, // 62: druz9.v1.ProfileService.GetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
-	30, // 63: druz9.v1.ProfileService.SetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
-	50, // [50:64] is the sub-list for method output_type
-	36, // [36:50] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	1,  // 36: druz9.v1.UserTrack.track:type_name -> druz9.v1.Track
+	45, // 37: druz9.v1.UserTrack.started_at:type_name -> google.protobuf.Timestamp
+	45, // 38: druz9.v1.UserTrack.last_active_at:type_name -> google.protobuf.Timestamp
+	39, // 39: druz9.v1.UserTracks.items:type_name -> druz9.v1.UserTrack
+	39, // 40: druz9.v1.SetUserTracksRequest.items:type_name -> druz9.v1.UserTrack
+	22, // 41: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
+	23, // 42: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
+	24, // 43: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
+	21, // 44: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
+	25, // 45: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
+	26, // 46: druz9.v1.ProfileService.GetWeeklyShare:input_type -> druz9.v1.GetWeeklyShareRequest
+	32, // 47: druz9.v1.ProfileService.BecomeInterviewer:input_type -> druz9.v1.BecomeInterviewerRequest
+	33, // 48: druz9.v1.ProfileService.GetMyInterviewerApplication:input_type -> druz9.v1.GetMyInterviewerApplicationRequest
+	36, // 49: druz9.v1.ProfileService.ListInterviewerApplications:input_type -> druz9.v1.ListInterviewerApplicationsRequest
+	37, // 50: druz9.v1.ProfileService.ApproveInterviewerApplication:input_type -> druz9.v1.ApproveInterviewerApplicationRequest
+	38, // 51: druz9.v1.ProfileService.RejectInterviewerApplication:input_type -> druz9.v1.RejectInterviewerApplicationRequest
+	27, // 52: druz9.v1.ProfileService.AllocateAtlasSkill:input_type -> druz9.v1.AllocateAtlasSkillRequest
+	29, // 53: druz9.v1.ProfileService.GetAIVacanciesModel:input_type -> druz9.v1.GetAIVacanciesModelRequest
+	30, // 54: druz9.v1.ProfileService.SetAIVacanciesModel:input_type -> druz9.v1.SetAIVacanciesModelRequest
+	41, // 55: druz9.v1.ProfileService.GetUserTracks:input_type -> druz9.v1.GetUserTracksRequest
+	42, // 56: druz9.v1.ProfileService.SetUserTracks:input_type -> druz9.v1.SetUserTracksRequest
+	4,  // 57: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
+	9,  // 58: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
+	19, // 59: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
+	20, // 60: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
+	10, // 61: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
+	19, // 62: druz9.v1.ProfileService.GetWeeklyShare:output_type -> druz9.v1.WeeklyReport
+	34, // 63: druz9.v1.ProfileService.BecomeInterviewer:output_type -> druz9.v1.InterviewerApplication
+	34, // 64: druz9.v1.ProfileService.GetMyInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
+	35, // 65: druz9.v1.ProfileService.ListInterviewerApplications:output_type -> druz9.v1.InterviewerApplicationList
+	34, // 66: druz9.v1.ProfileService.ApproveInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
+	34, // 67: druz9.v1.ProfileService.RejectInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
+	28, // 68: druz9.v1.ProfileService.AllocateAtlasSkill:output_type -> druz9.v1.AllocateAtlasSkillResponse
+	31, // 69: druz9.v1.ProfileService.GetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
+	31, // 70: druz9.v1.ProfileService.SetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
+	40, // 71: druz9.v1.ProfileService.GetUserTracks:output_type -> druz9.v1.UserTracks
+	40, // 72: druz9.v1.ProfileService.SetUserTracks:output_type -> druz9.v1.UserTracks
+	57, // [57:73] is the sub-list for method output_type
+	41, // [41:57] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_profile_proto_init() }
@@ -3183,8 +3490,8 @@ func file_druz9_v1_profile_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_profile_proto_rawDesc), len(file_druz9_v1_profile_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   38,
+			NumEnums:      2,
+			NumMessages:   42,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

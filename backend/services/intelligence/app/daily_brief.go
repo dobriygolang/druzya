@@ -53,6 +53,26 @@ type GetDailyBrief struct {
 	Calendar     domain.CalendarReader
 	MockMessages domain.MockMessagesReader
 	Codex        domain.CodexReader
+	// Tracks — Phase 2d. Reads the user's active learning tracks so
+	// the coach can flag stalled tracks and pin recommendations to the
+	// current step's skill_keys. nil-safe.
+	Tracks domain.TrackReader
+
+	// Goals — Phase 4.3. User's active high-level goals (job/skill/track).
+	// nil-safe: пустой goals reader → coach просто не видит секцию,
+	// поведение существующих briefs не меняется.
+	Goals domain.GoalsReader
+
+	// Clubs — Phase 3 final. Reads "ghosted club sessions" сигнал
+	// (юзер RSVP'нул, не дошёл). nil-safe.
+	Clubs domain.ClubReader
+
+	// Insights — Phase 1.5b. nil-safe. When set, the brief use-case
+	// passes the same prompt-input snapshot to the insight generator
+	// after synthesise — so both surfaces (full DailyBrief + atomic
+	// insight cards) reflect the same world-state without re-fetching
+	// any of the readers above.
+	Insights *GenerateInsights
 }
 
 // GetDailyBriefInput — параметры use case'а.
@@ -160,15 +180,19 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	}
 
 	var (
-		mocks      []domain.MockSessionSummary
-		kataStreak domain.KataStreak
-		kataRecent []domain.KataAttempt
-		arena      []domain.ArenaMatchSummary
-		queue      domain.QueueSnapshot
-		weakSkills []domain.SkillWeak
-		dailyNotes []domain.DailyNoteHead
-		upcoming   []domain.UpcomingInterview
-		keywords   []domain.MockKeywords
+		mocks           []domain.MockSessionSummary
+		kataStreak      domain.KataStreak
+		kataRecent      []domain.KataAttempt
+		arena           []domain.ArenaMatchSummary
+		queue           domain.QueueSnapshot
+		weakSkills      []domain.SkillWeak
+		dailyNotes      []domain.DailyNoteHead
+		upcoming        []domain.UpcomingInterview
+		keywords        []domain.MockKeywords
+		tracks          []domain.ActiveTrack
+		goals           []domain.UserGoal
+		ghostedClubs    []domain.GhostedClubSession
+		abandonedRecent int
 	)
 
 	var optionalWG sync.WaitGroup
@@ -180,6 +204,13 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 				mocks = v
 			} else {
 				warnReader(uc.Log, "mocks", err)
+			}
+			// Phase 4.7 — abandoned-mock counter (consistency-break сигнал).
+			// 14d window matches «recent» horizon other readers используют.
+			if v, err := uc.Mocks.RecentAbandonedCount(ctx, in.UserID, 14); err == nil {
+				abandonedRecent = v
+			} else {
+				warnReader(uc.Log, "mocks_abandoned", err)
 			}
 		}()
 	}
@@ -265,6 +296,39 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 			}
 		}()
 	}
+	if uc.Tracks != nil {
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.Tracks.ActiveTracks(ctx, in.UserID); err == nil {
+				tracks = v
+			} else {
+				warnReader(uc.Log, "tracks", err)
+			}
+		}()
+	}
+	if uc.Goals != nil {
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.Goals.ActiveGoals(ctx, in.UserID); err == nil {
+				goals = v
+			} else {
+				warnReader(uc.Log, "goals", err)
+			}
+		}()
+	}
+	if uc.Clubs != nil {
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.Clubs.GhostedSessions(ctx, in.UserID, 7); err == nil {
+				ghostedClubs = v
+			} else {
+				warnReader(uc.Log, "clubs", err)
+			}
+		}()
+	}
 	optionalWG.Wait()
 	recent = freshRecentNotesForBrief(recent, today)
 	dailyNotes = freshDailyNotesForBrief(dailyNotes, today)
@@ -332,27 +396,38 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		}
 	}
 
-	brief, err := uc.Synthesiser.Synthesise(ctx, domain.BriefPromptInput{
-		UserID:             in.UserID,
-		Today:              today,
-		FocusDays:          focus,
-		SkippedRecent:      skipped,
-		CompletedRecent:    completed,
-		Reflections:        refl,
-		RecentNotes:        recent,
-		PastEpisodes:       pastEpisodes,
-		CueMemories:        cueMemories,
-		Mocks:              mocks,
-		KataStreak:         kataStreak,
-		KataRecent:         kataRecent,
-		Arena:              arena,
-		Queue:              queue,
-		WeakSkills:         weakSkills,
-		DailyNotes:         dailyNotes,
-		UpcomingInterviews: upcoming,
-		MockKeywords:       keywords,
-		CodexArticles:      codexArticles,
-	})
+	// Phase 4.8 — pending follow-ups derived from recently-followed
+	// brief_emitted episodes. Coach sees «вчера юзер кликнул X» и
+	// должен спросить «landed ли X?» в next brief.
+	pendingFollowups := computePendingFollowups(pastEpisodes, now, 36)
+
+	snapshot := domain.BriefPromptInput{
+		UserID:              in.UserID,
+		Today:               today,
+		FocusDays:           focus,
+		SkippedRecent:       skipped,
+		CompletedRecent:     completed,
+		Reflections:         refl,
+		RecentNotes:         recent,
+		PastEpisodes:        pastEpisodes,
+		CueMemories:         cueMemories,
+		Mocks:               mocks,
+		MockAbandonedRecent: abandonedRecent,
+		KataStreak:          kataStreak,
+		KataRecent:          kataRecent,
+		Arena:               arena,
+		Queue:               queue,
+		WeakSkills:          weakSkills,
+		DailyNotes:          dailyNotes,
+		UpcomingInterviews:  upcoming,
+		MockKeywords:        keywords,
+		CodexArticles:       codexArticles,
+		ActiveTracks:        tracks,
+		PendingFollowups:    pendingFollowups,
+		ActiveGoals:         goals,
+		GhostedClubs:        ghostedClubs,
+	}
+	brief, err := uc.Synthesiser.Synthesise(ctx, snapshot)
 	if err != nil {
 		// Pass-through — пусть transport сам решит как 503-ить.
 		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: synthesise: %w", err)
@@ -375,6 +450,26 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		// чтобы оператор видел persistent-faults.
 		uc.Log.Warn("intelligence.GetDailyBrief.Do: cache upsert failed",
 			slog.Any("err", err), slog.String("user_id", in.UserID.String()))
+	}
+	// Phase 1.5b — share the same snapshot with the insight generator.
+	// Runs in a detached goroutine so the brief's RPC latency stays
+	// untouched: insight production is a side-effect (writes to its own
+	// table via Upsert) and never blocks the user.
+	if uc.Insights != nil {
+		go func(s domain.BriefPromptInput) {
+			// Disconnected ctx — request ctx may be cancelled the moment
+			// the brief response is flushed. We give the generator its
+			// own short window so DB writes don't get torn.
+			bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if _, err := uc.Insights.Do(bgCtx, GenerateInsightsInput{
+				UserID:   in.UserID,
+				Snapshot: s,
+			}); err != nil {
+				uc.Log.Warn("intelligence.GetDailyBrief.Do: insight generation failed",
+					slog.Any("err", err), slog.String("user_id", in.UserID.String()))
+			}
+		}(snapshot)
 	}
 	return brief, nil
 }
@@ -697,4 +792,59 @@ func cueOutcomeUseful(outcome string) bool {
 	default:
 		return false
 	}
+}
+
+// computePendingFollowups — Phase 4.8 closing-the-loop. Возвращает
+// follow-ups: brief_followed эпизоды за последние windowHours, чьи
+// titles/kinds должны попасть в next brief как «landed ли X?».
+//
+// Только actionable closables — review_note (read article) и tiny_task
+// (solve drill). schedule = чистый timing, нечего спрашивать;
+// unblock — обычно multi-day, не закрывается в одну ночь.
+//
+// Title берём из Episode.Summary; payload — formatting из
+// app/memory.go AckRecommendation. Жёсткий cap на 3 чтобы prompt не
+// разросся — coach-prompt and so already busy enough.
+func computePendingFollowups(past []domain.Episode, now time.Time, windowHours int) []domain.PendingFollowup {
+	if windowHours <= 0 {
+		windowHours = 36
+	}
+	cutoff := now.Add(-time.Duration(windowHours) * time.Hour)
+	out := make([]domain.PendingFollowup, 0, 3)
+	for _, ep := range past {
+		if ep.Kind != domain.EpisodeBriefFollowed {
+			continue
+		}
+		if ep.OccurredAt.IsZero() || ep.OccurredAt.Before(cutoff) {
+			continue
+		}
+		var p struct {
+			RecKind  string `json:"rec_kind"`
+			TargetID string `json:"target_id"`
+		}
+		_ = json.Unmarshal(ep.Payload, &p)
+		kind := domain.RecommendationKind(strings.TrimSpace(p.RecKind))
+		if kind != domain.RecommendationReviewNote && kind != domain.RecommendationTinyTask {
+			continue
+		}
+		title := strings.TrimSpace(ep.Summary)
+		if title == "" {
+			continue
+		}
+		hours := int(now.Sub(ep.OccurredAt).Hours())
+		if hours < 0 {
+			hours = 0
+		}
+		out = append(out, domain.PendingFollowup{
+			Title:      title,
+			Kind:       kind,
+			TargetID:   strings.TrimSpace(p.TargetID),
+			FollowedAt: ep.OccurredAt,
+			HoursAgo:   hours,
+		})
+		if len(out) >= 3 {
+			break
+		}
+	}
+	return out
 }

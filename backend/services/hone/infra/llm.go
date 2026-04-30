@@ -547,6 +547,466 @@ func (e *HoneEmbedder) Embed(ctx context.Context, text string) ([]float32, strin
 	return vec, e.model, nil
 }
 
+// ─── Reading summary grader (Wave 4.3) ────────────────────────────────────
+
+// NoLLMSummaryGrader is the floor adapter. EndReadingSession treats its
+// error as best-effort, so this just punts the work — the session is
+// still saved with summary_md, ai_summary_score stays NULL.
+type NoLLMSummaryGrader struct{}
+
+// NewNoLLMSummaryGrader returns the floor adapter.
+func NewNoLLMSummaryGrader() *NoLLMSummaryGrader { return &NoLLMSummaryGrader{} }
+
+// GradeSummary always returns ErrLLMUnavailable.
+func (*NoLLMSummaryGrader) GradeSummary(_ context.Context, _ domain.GradeSummaryInput) (int, error) {
+	return 0, fmt.Errorf("hone.NoLLMSummaryGrader.GradeSummary: %w", domain.ErrLLMUnavailable)
+}
+
+// LLMChainSummaryGrader uses llmchain Task=HoneSummaryGrade. Single
+// JSON-mode call; we read out the score, ignore the feedback (UI shows
+// just the number for MVP, feedback can be surfaced later).
+type LLMChainSummaryGrader struct {
+	chain   llmchain.ChatClient
+	log     *slog.Logger
+	timeout time.Duration
+}
+
+// NewLLMChainSummaryGrader wires the adapter. Same nil-policy as the
+// other LLM adapters: chain MUST be non-nil; the wirer falls back to
+// NoLLMSummaryGrader at boot when no providers are configured.
+func NewLLMChainSummaryGrader(chain llmchain.ChatClient, log *slog.Logger) *LLMChainSummaryGrader {
+	if chain == nil {
+		panic("hone.NewLLMChainSummaryGrader: chain is required (use NoLLMSummaryGrader when nil)")
+	}
+	if log == nil {
+		panic("hone.NewLLMChainSummaryGrader: logger is required (anti-fallback policy)")
+	}
+	return &LLMChainSummaryGrader{chain: chain, log: log, timeout: 12 * time.Second}
+}
+
+// summaryGradePrompt — ground rules for the model. Compact: tell it
+// what we're scoring on, lock the JSON shape, refuse fabrication.
+const summaryGradePrompt = `You are a strict but fair reading-comprehension grader.
+
+Inputs:
+- TITLE: chapter / article title.
+- BODY: the full chapter / article text the user just read.
+- SUMMARY: what the user wrote about it.
+
+Score the summary 0..100 on three axes (weight equally):
+  1. Coverage — does it mention the key claims, characters, or arguments of BODY?
+  2. Accuracy — does every statement actually hold up against BODY?
+  3. Non-fabrication — penalize hard for content the user invented (-30+ if egregious).
+
+A vague but accurate summary scores ~50–60.
+A detailed and accurate summary scores 80–95.
+An empty or off-topic summary scores 0–20.
+A summary that contains fabrications loses points proportional to severity.
+
+Return ONLY this JSON (no prose around it):
+{"score": <integer 0..100>, "feedback": "<one short sentence>"}`
+
+// gradeJSONEnvelope — wire shape returned by the model.
+type gradeJSONEnvelope struct {
+	Score    int    `json:"score"`
+	Feedback string `json:"feedback"`
+}
+
+// GradeSummary calls the chain. Truncates BODY to ~16 KB so a giant
+// chapter doesn't blow the model's context window — the first chunk is
+// usually enough for grading the user's high-level summary; if a future
+// version wants per-section grading we'll chunk + map-reduce.
+func (g *LLMChainSummaryGrader) GradeSummary(ctx context.Context, in domain.GradeSummaryInput) (int, error) {
+	body := strings.TrimSpace(in.BodyMD)
+	if len(body) > 16_000 {
+		body = body[:16_000] + "\n…[truncated]"
+	}
+	summary := strings.TrimSpace(in.Summary)
+	if summary == "" {
+		return 0, fmt.Errorf("hone.LLMChainSummaryGrader.GradeSummary: empty summary")
+	}
+	user := fmt.Sprintf("TITLE: %s\n\nBODY:\n%s\n\nSUMMARY:\n%s", in.Title, body, summary)
+
+	ctx, cancel := context.WithTimeout(ctx, g.timeout)
+	defer cancel()
+
+	var lastErr error
+	for attempt := 0; attempt < 2; attempt++ {
+		resp, err := g.chain.Chat(ctx, llmchain.Request{
+			Task:        llmchain.TaskHoneSummaryGrade,
+			JSONMode:    true,
+			Temperature: 0.2,
+			MaxTokens:   180,
+			Messages: []llmchain.Message{
+				{Role: llmchain.RoleSystem, Content: summaryGradePrompt},
+				{Role: llmchain.RoleUser, Content: user},
+			},
+		})
+		if err != nil {
+			lastErr = err
+			g.log.Warn("hone.LLMChainSummaryGrader: chain error",
+				slog.Any("err", err), slog.Int("attempt", attempt))
+			continue
+		}
+		var env gradeJSONEnvelope
+		if err := json.Unmarshal([]byte(strings.TrimSpace(resp.Content)), &env); err != nil {
+			lastErr = err
+			g.log.Warn("hone.LLMChainSummaryGrader: parse error",
+				slog.Any("err", err), slog.Int("attempt", attempt),
+				slog.String("preview", firstN(resp.Content, 200)))
+			continue
+		}
+		if env.Score < 0 {
+			env.Score = 0
+		}
+		if env.Score > 100 {
+			env.Score = 100
+		}
+		return env.Score, nil
+	}
+	return 0, fmt.Errorf("hone.LLMChainSummaryGrader.GradeSummary: both attempts failed: %w (%w)", lastErr, domain.ErrLLMUnavailable)
+}
+
+// ─── Writing feedback grader (Wave 4.4) ───────────────────────────────────
+
+// NoLLMWritingGrader is the floor adapter. Use case treats the error
+// as user-facing 503; we don't fabricate writing feedback under any
+// circumstance.
+type NoLLMWritingGrader struct{}
+
+// NewNoLLMWritingGrader returns the floor adapter.
+func NewNoLLMWritingGrader() *NoLLMWritingGrader { return &NoLLMWritingGrader{} }
+
+// GradeWriting always returns ErrLLMUnavailable.
+func (*NoLLMWritingGrader) GradeWriting(_ context.Context, _ domain.GradeWritingInput) (domain.WritingFeedback, error) {
+	return domain.WritingFeedback{}, fmt.Errorf("hone.NoLLMWritingGrader.GradeWriting: %w", domain.ErrLLMUnavailable)
+}
+
+// LLMChainWritingGrader uses llmchain Task=HoneWritingFeedback. Strict
+// JSON envelope is enforced server-side; malformed responses retry once
+// and then surface as a typed error.
+type LLMChainWritingGrader struct {
+	chain   llmchain.ChatClient
+	log     *slog.Logger
+	timeout time.Duration
+}
+
+// NewLLMChainWritingGrader wires the adapter. Same nil-policy as the
+// other LLM adapters.
+func NewLLMChainWritingGrader(chain llmchain.ChatClient, log *slog.Logger) *LLMChainWritingGrader {
+	if chain == nil {
+		panic("hone.NewLLMChainWritingGrader: chain is required (use NoLLMWritingGrader when nil)")
+	}
+	if log == nil {
+		panic("hone.NewLLMChainWritingGrader: logger is required (anti-fallback policy)")
+	}
+	return &LLMChainWritingGrader{chain: chain, log: log, timeout: 18 * time.Second}
+}
+
+// writingFeedbackPrompt — locks the JSON shape and the rubric.
+const writingFeedbackPrompt = `You are an English writing tutor. The user is a non-native speaker working on their fluency.
+
+You receive their TEXT (and optionally a TITLE describing what the piece is about).
+
+Return a flat list of CONCRETE issues — every entry must:
+  - excerpt:     verbatim slice of TEXT the issue applies to (max ~80 chars; keep it tight)
+  - category:    one of "grammar", "vocab", "style", "clarity"
+  - suggestion:  the proposed fix as a complete drop-in replacement
+  - explanation: ONE short sentence explaining why (≤ 18 words)
+
+Rules:
+  - Skip subjective rewrites — only flag things that are wrong or notably off.
+  - DO NOT invent or paraphrase the excerpt. Copy verbatim.
+  - If a sentence has multiple unrelated issues, emit multiple entries.
+  - Stop at ~10 issues even if more exist; pick the most impactful ones.
+  - If the text is already strong, return an empty issues array.
+
+Also produce overall_score (0..100): 80+ for strong, 50-79 for OK, <50 for needs work.
+
+Output ONLY this JSON (no prose, no markdown fences):
+{"overall_score": <int>, "issues": [{"excerpt":"...", "category":"...", "suggestion":"...", "explanation":"..."}, ...]}`
+
+// writingFeedbackEnvelope — wire shape from the model.
+type writingFeedbackEnvelope struct {
+	OverallScore int                       `json:"overall_score"`
+	Issues       []writingFeedbackIssueRaw `json:"issues"`
+}
+
+type writingFeedbackIssueRaw struct {
+	Excerpt     string `json:"excerpt"`
+	Category    string `json:"category"`
+	Suggestion  string `json:"suggestion"`
+	Explanation string `json:"explanation"`
+}
+
+// GradeWriting calls the chain, parses, sanitises. Caps text at 12 KB
+// — that's ~2000 words, more than any reasonable «short essay» Hone
+// targets. Past that the latency budget breaks anyway.
+func (g *LLMChainWritingGrader) GradeWriting(ctx context.Context, in domain.GradeWritingInput) (domain.WritingFeedback, error) {
+	text := strings.TrimSpace(in.Text)
+	if text == "" {
+		return domain.WritingFeedback{}, fmt.Errorf("hone.LLMChainWritingGrader.GradeWriting: empty text")
+	}
+	if len(text) > 12_000 {
+		text = text[:12_000] + "\n…[truncated]"
+	}
+	var user string
+	if title := strings.TrimSpace(in.Title); title != "" {
+		user = "TITLE: " + title + "\n\nTEXT:\n" + text
+	} else {
+		user = "TEXT:\n" + text
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, g.timeout)
+	defer cancel()
+
+	var lastErr error
+	for attempt := 0; attempt < 2; attempt++ {
+		resp, err := g.chain.Chat(ctx, llmchain.Request{
+			Task:        llmchain.TaskHoneWritingFeedback,
+			JSONMode:    true,
+			Temperature: 0.2,
+			MaxTokens:   1100,
+			Messages: []llmchain.Message{
+				{Role: llmchain.RoleSystem, Content: writingFeedbackPrompt},
+				{Role: llmchain.RoleUser, Content: user},
+			},
+		})
+		if err != nil {
+			lastErr = err
+			g.log.Warn("hone.LLMChainWritingGrader: chain error",
+				slog.Any("err", err), slog.Int("attempt", attempt))
+			continue
+		}
+		var env writingFeedbackEnvelope
+		if err := json.Unmarshal([]byte(strings.TrimSpace(resp.Content)), &env); err != nil {
+			lastErr = err
+			g.log.Warn("hone.LLMChainWritingGrader: parse error",
+				slog.Any("err", err), slog.Int("attempt", attempt),
+				slog.String("preview", firstN(resp.Content, 240)))
+			continue
+		}
+		return sanitiseWritingFeedback(env), nil
+	}
+	return domain.WritingFeedback{}, fmt.Errorf("hone.LLMChainWritingGrader.GradeWriting: both attempts failed: %w (%w)", lastErr, domain.ErrLLMUnavailable)
+}
+
+// sanitiseWritingFeedback clamps the score, drops obviously-broken
+// entries (empty excerpt or empty suggestion), and coerces unknown
+// categories to "style". Soft-fail philosophy — we'd rather show 7
+// good issues than refuse the whole batch over one malformed entry.
+func sanitiseWritingFeedback(env writingFeedbackEnvelope) domain.WritingFeedback {
+	score := env.OverallScore
+	if score < 0 {
+		score = 0
+	}
+	if score > 100 {
+		score = 100
+	}
+	out := domain.WritingFeedback{OverallScore: score}
+	for _, raw := range env.Issues {
+		excerpt := strings.TrimSpace(raw.Excerpt)
+		suggestion := strings.TrimSpace(raw.Suggestion)
+		if excerpt == "" || suggestion == "" {
+			continue
+		}
+		cat := domain.WritingIssueCategory(strings.ToLower(strings.TrimSpace(raw.Category)))
+		if !cat.IsValid() {
+			cat = domain.WritingIssueStyle
+		}
+		out.Issues = append(out.Issues, domain.WritingIssue{
+			Excerpt:     excerpt,
+			Category:    cat,
+			Suggestion:  suggestion,
+			Explanation: strings.TrimSpace(raw.Explanation),
+		})
+		// Defensive cap — even if the model ignored the prompt's «~10 max».
+		if len(out.Issues) >= 20 {
+			break
+		}
+	}
+	return out
+}
+
+// ─── Code review grader (Wave 3.6) ────────────────────────────────────────
+
+// NoLLMCodeReviewGrader returns ErrLLMUnavailable on every call. Use
+// case treats the error as user-facing 503 (same convention as the
+// writing grader); we never fabricate a review grade.
+type NoLLMCodeReviewGrader struct{}
+
+// NewNoLLMCodeReviewGrader returns the floor adapter.
+func NewNoLLMCodeReviewGrader() *NoLLMCodeReviewGrader { return &NoLLMCodeReviewGrader{} }
+
+// GradeReview always returns ErrLLMUnavailable.
+func (*NoLLMCodeReviewGrader) GradeReview(_ context.Context, _ domain.GradeCodeReviewInput) (domain.CodeReviewFeedback, error) {
+	return domain.CodeReviewFeedback{}, fmt.Errorf("hone.NoLLMCodeReviewGrader.GradeReview: %w", domain.ErrLLMUnavailable)
+}
+
+// LLMChainCodeReviewGrader uses llmchain Task=HoneCodeReviewGrade.
+// 70B-class providers (see task_map.go) — comparing a review to a diff
+// is a reasoning task, not pattern matching.
+type LLMChainCodeReviewGrader struct {
+	chain   llmchain.ChatClient
+	log     *slog.Logger
+	timeout time.Duration
+}
+
+// NewLLMChainCodeReviewGrader wires the adapter. Same nil-policy as the
+// other LLM adapters.
+func NewLLMChainCodeReviewGrader(chain llmchain.ChatClient, log *slog.Logger) *LLMChainCodeReviewGrader {
+	if chain == nil {
+		panic("hone.NewLLMChainCodeReviewGrader: chain is required (use NoLLMCodeReviewGrader when nil)")
+	}
+	if log == nil {
+		panic("hone.NewLLMChainCodeReviewGrader: logger is required (anti-fallback policy)")
+	}
+	// Larger time budget than writing feedback — reasoning over a diff
+	// is slower than spotting grammar mistakes.
+	return &LLMChainCodeReviewGrader{chain: chain, log: log, timeout: 28 * time.Second}
+}
+
+// codeReviewPrompt — locks the JSON shape and the rubric. Note the
+// asymmetry vs writing-feedback: completeness issues won't have an
+// excerpt (the reviewer didn't write anything for that gap).
+const codeReviewPrompt = `You are a senior engineer mentoring a junior reviewer. They've written a code review for a diff; grade their review.
+
+Inputs you receive:
+  - PR_TITLE  (optional) — what the PR claims to do.
+  - DIFF      — the unified diff being reviewed.
+  - REVIEW    — the user's review write-up.
+
+Score the REVIEW 0..100 across:
+  1. Correctness — every technical claim must hold up against DIFF. Subtract heavily for confidently-wrong statements.
+  2. Completeness — did they catch the obvious bugs / missing tests / unsafe ops in DIFF?
+  3. Clarity — comments must be specific (line refs / function names) rather than hand-wavy.
+  4. Tone — comments must be respectful and constructive. No patronising / blame language.
+
+Then emit a flat list of issues — every entry MUST have:
+  - excerpt:     verbatim slice of REVIEW the issue applies to (max ~120 chars). EMPTY string allowed only when category == "completeness" (the reviewer didn't write anything for that gap).
+  - category:    one of "correctness", "completeness", "clarity", "tone".
+  - suggestion:  the proposed fix as a complete drop-in replacement (or, for completeness, the comment they SHOULD have written).
+  - explanation: ONE short sentence explaining why (≤ 22 words).
+
+Rules:
+  - DO NOT invent or paraphrase the excerpt. Copy verbatim from REVIEW.
+  - Stop at ~10 issues even if more exist; pick the most impactful ones.
+  - If the review is genuinely solid, return an empty issues array.
+
+Output ONLY this JSON (no prose, no markdown fences):
+{"overall_score": <int>, "issues": [{"excerpt":"...", "category":"...", "suggestion":"...", "explanation":"..."}, ...]}`
+
+type codeReviewEnvelope struct {
+	OverallScore int                  `json:"overall_score"`
+	Issues       []codeReviewIssueRaw `json:"issues"`
+}
+
+type codeReviewIssueRaw struct {
+	Excerpt     string `json:"excerpt"`
+	Category    string `json:"category"`
+	Suggestion  string `json:"suggestion"`
+	Explanation string `json:"explanation"`
+}
+
+// GradeReview calls the chain. Caps DIFF at 24 KB and REVIEW at 8 KB —
+// past those points the grading-quality benefit diminishes and the
+// latency budget bites.
+func (g *LLMChainCodeReviewGrader) GradeReview(ctx context.Context, in domain.GradeCodeReviewInput) (domain.CodeReviewFeedback, error) {
+	diff := strings.TrimSpace(in.DiffMD)
+	if diff == "" {
+		return domain.CodeReviewFeedback{}, fmt.Errorf("hone.LLMChainCodeReviewGrader.GradeReview: empty diff")
+	}
+	review := strings.TrimSpace(in.ReviewMD)
+	if review == "" {
+		return domain.CodeReviewFeedback{}, fmt.Errorf("hone.LLMChainCodeReviewGrader.GradeReview: empty review")
+	}
+	if len(diff) > 24_000 {
+		diff = diff[:24_000] + "\n…[truncated]"
+	}
+	if len(review) > 8_000 {
+		review = review[:8_000] + "\n…[truncated]"
+	}
+	var sb strings.Builder
+	if title := strings.TrimSpace(in.PRTitle); title != "" {
+		fmt.Fprintf(&sb, "PR_TITLE: %s\n\n", title)
+	}
+	fmt.Fprintf(&sb, "DIFF:\n%s\n\nREVIEW:\n%s", diff, review)
+
+	ctx, cancel := context.WithTimeout(ctx, g.timeout)
+	defer cancel()
+
+	var lastErr error
+	for attempt := 0; attempt < 2; attempt++ {
+		resp, err := g.chain.Chat(ctx, llmchain.Request{
+			Task:        llmchain.TaskHoneCodeReviewGrade,
+			JSONMode:    true,
+			Temperature: 0.2,
+			MaxTokens:   1500,
+			Messages: []llmchain.Message{
+				{Role: llmchain.RoleSystem, Content: codeReviewPrompt},
+				{Role: llmchain.RoleUser, Content: sb.String()},
+			},
+		})
+		if err != nil {
+			lastErr = err
+			g.log.Warn("hone.LLMChainCodeReviewGrader: chain error",
+				slog.Any("err", err), slog.Int("attempt", attempt))
+			continue
+		}
+		var env codeReviewEnvelope
+		if err := json.Unmarshal([]byte(strings.TrimSpace(resp.Content)), &env); err != nil {
+			lastErr = err
+			g.log.Warn("hone.LLMChainCodeReviewGrader: parse error",
+				slog.Any("err", err), slog.Int("attempt", attempt),
+				slog.String("preview", firstN(resp.Content, 240)))
+			continue
+		}
+		return sanitiseCodeReviewFeedback(env), nil
+	}
+	return domain.CodeReviewFeedback{}, fmt.Errorf("hone.LLMChainCodeReviewGrader.GradeReview: both attempts failed: %w (%w)", lastErr, domain.ErrLLMUnavailable)
+}
+
+// sanitiseCodeReviewFeedback clamps the score, drops bad entries, and
+// coerces unknown categories. Same soft-fail philosophy as the writing
+// sanitiser — keep the good issues, throw away the malformed ones.
+func sanitiseCodeReviewFeedback(env codeReviewEnvelope) domain.CodeReviewFeedback {
+	score := env.OverallScore
+	if score < 0 {
+		score = 0
+	}
+	if score > 100 {
+		score = 100
+	}
+	out := domain.CodeReviewFeedback{OverallScore: score}
+	for _, raw := range env.Issues {
+		excerpt := strings.TrimSpace(raw.Excerpt)
+		suggestion := strings.TrimSpace(raw.Suggestion)
+		// Suggestion is required for every category; excerpt is required
+		// for everything except completeness (the reviewer didn't write
+		// anything to quote).
+		if suggestion == "" {
+			continue
+		}
+		cat := domain.CodeReviewIssueCategory(strings.ToLower(strings.TrimSpace(raw.Category)))
+		if !cat.IsValid() {
+			cat = domain.ReviewIssueClarity
+		}
+		if excerpt == "" && cat != domain.ReviewIssueCompleteness {
+			continue
+		}
+		out.Issues = append(out.Issues, domain.CodeReviewIssue{
+			Excerpt:     excerpt,
+			Category:    cat,
+			Suggestion:  suggestion,
+			Explanation: strings.TrimSpace(raw.Explanation),
+		})
+		if len(out.Issues) >= 20 {
+			break
+		}
+	}
+	return out
+}
+
 // ── interface guards ──────────────────────────────────────────────────────
 
 var (
@@ -556,4 +1016,10 @@ var (
 	_ domain.CritiqueStreamer = (*LLMChainCritiqueStreamer)(nil)
 	_ domain.Embedder         = (*NoEmbedder)(nil)
 	_ domain.Embedder         = (*HoneEmbedder)(nil)
+	_ domain.SummaryGrader    = (*NoLLMSummaryGrader)(nil)
+	_ domain.SummaryGrader    = (*LLMChainSummaryGrader)(nil)
+	_ domain.WritingGrader    = (*NoLLMWritingGrader)(nil)
+	_ domain.WritingGrader    = (*LLMChainWritingGrader)(nil)
+	_ domain.CodeReviewGrader = (*NoLLMCodeReviewGrader)(nil)
+	_ domain.CodeReviewGrader = (*LLMChainCodeReviewGrader)(nil)
 )

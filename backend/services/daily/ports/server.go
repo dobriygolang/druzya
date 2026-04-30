@@ -196,7 +196,7 @@ func toStreakInfoProto(s domain.StreakInfo) *pb.StreakInfo {
 // UpsertCalendar handlers — no remaining reader of section input from
 // the wire. sectionToProto stays for streak/kata response shaping.
 func sectionToProto(s enums.Section) pb.Section {
-	switch s {
+	switch s { //nolint:exhaustive // free-form sections (english_hr, sd_senior, tech_lead_em) fall through to default UNSPECIFIED
 	case enums.SectionAlgorithms:
 		return pb.Section_SECTION_ALGORITHMS
 	case enums.SectionSQL:

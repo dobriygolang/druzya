@@ -23,7 +23,7 @@
 // Любой URL не из этих — forward'им в renderer как generic event,
 // renderer решает что делать (или ignore).
 
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell } from 'electron';
 import { init as sentryInit, IPCMode } from '@sentry/electron/main';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -134,6 +134,64 @@ if (process.platform === 'darwin') {
 }
 
 let mainWindow: BrowserWindow | null = null;
+
+// Phase 2.5 — macOS menubar tray. Renderer pushes a compact status
+// title via IPC (tray:update) — focus timer, pinned-task short label
+// — and the icon stays clickable to summon / dismiss the main window.
+let tray: Tray | null = null;
+
+function createTray(): Tray {
+  // 16×16 PNG; macOS scales up for retina automatically. We reuse the
+  // app icon at small size; if missing in dev we fall back to an empty
+  // image (text-only tray entry, still functional).
+  const iconPath = app.isPackaged
+    ? join(process.resourcesPath, 'icon.png')
+    : join(__dirname, '../../resources/icon.png');
+  let img: Electron.NativeImage;
+  try {
+    img = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+  } catch {
+    img = nativeImage.createEmpty();
+  }
+  // On macOS, marking the image as "template" makes it adapt to dark
+  // / light menubar colour automatically.
+  if (process.platform === 'darwin') {
+    img.setTemplateImage(true);
+  }
+  const t = new Tray(img);
+  t.setToolTip('Hone');
+  t.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Open Hone', click: () => showMainWindow() },
+      { type: 'separator' },
+      { label: 'Quit', click: () => app.quit() },
+    ]),
+  );
+  // Left-click toggles the window (show + focus, or hide if already
+  // focused). Mirrors how Things 3 / Linear menubar agents behave.
+  t.on('click', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      showMainWindow();
+      return;
+    }
+    if (mainWindow.isVisible() && mainWindow.isFocused()) {
+      mainWindow.hide();
+    } else {
+      showMainWindow();
+    }
+  });
+  return t;
+}
+
+function showMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    mainWindow = createMainWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  if (!mainWindow.isVisible()) mainWindow.show();
+  mainWindow.focus();
+}
 
 function createMainWindow(): BrowserWindow {
   const iconPath = app.isPackaged
@@ -407,9 +465,29 @@ app.whenReady().then(() => {
     mainWindow.setWindowButtonVisibility(Boolean(visible));
   });
 
-  // ── Window ─────────────────────────────────────────────────────────────
+  // Phase 2.5 — tray status push. Renderer's pomodoro tick / track
+  // progress hooks call window.hone.tray.update(...) with a compact
+  // title; main updates the macOS menubar entry. No-op on
+  // non-darwin platforms (Tray.setTitle is darwin-only).
+  ipcMain.handle(
+    invokeChannels.trayUpdate,
+    async (_e, payload: { title?: string; tooltip?: string }) => {
+      if (!tray) return;
+      const title = typeof payload?.title === 'string' ? payload.title : '';
+      const tooltip = typeof payload?.tooltip === 'string' ? payload.tooltip : '';
+      if (process.platform === 'darwin') {
+        tray.setTitle(title);
+      }
+      tray.setToolTip(tooltip || 'Hone');
+    },
+  );
+
+  // ── Window + tray ──────────────────────────────────────────────────────
   consumeColdStartURL();
   mainWindow = createMainWindow();
+  // Phase 2.5 — menubar agent. Created after the window so showMainWindow
+  // has something to focus on the very first click.
+  tray = createTray();
 
   // Updater: wire events to renderer + kick periodic check.
   wireUpdater(() => mainWindow);

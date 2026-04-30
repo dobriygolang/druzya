@@ -47,8 +47,20 @@ export function LLMChainPanel() {
   const [conflict, setConflict] = useState(false)
 
   // Инициализация + сброс при успешном сейве / refetch.
+  // Backend may emit a partial document (empty dynamic_config row → no
+  // chain_order/task_map/virtual_chains keys at all). Normalise here so
+  // child sections can rely on collection types existing.
   useEffect(() => {
-    if (q.data) setDraft(q.data)
+    if (q.data) {
+      setDraft({
+        ...q.data,
+        chain_order: q.data.chain_order ?? [],
+        task_map: q.data.task_map ?? {},
+        virtual_chains: q.data.virtual_chains ?? {},
+        virtual_chains_defaults: q.data.virtual_chains_defaults ?? {},
+        registered_providers: q.data.registered_providers ?? [],
+      })
+    }
   }, [q.data])
 
   if (q.isPending) return <PanelSkeleton rows={8} />
@@ -456,23 +468,24 @@ function ChainOrderSection({
   order,
   onChange,
 }: {
-  order: string[]
+  order: string[] | undefined
   onChange: (next: string[]) => void
 }) {
-  const unused = KNOWN_PROVIDERS.filter((p) => !order.includes(p))
+  const safeOrder = order ?? []
+  const unused = KNOWN_PROVIDERS.filter((p) => !safeOrder.includes(p))
 
   function move(from: number, to: number) {
-    if (to < 0 || to >= order.length) return
-    const next = [...order]
+    if (to < 0 || to >= safeOrder.length) return
+    const next = [...safeOrder]
     ;[next[from], next[to]] = [next[to], next[from]]
     onChange(next)
   }
   function remove(idx: number) {
-    onChange(order.filter((_, i) => i !== idx))
+    onChange(safeOrder.filter((_, i) => i !== idx))
   }
   function add(p: string) {
-    if (!p || order.includes(p)) return
-    onChange([...order, p])
+    if (!p || safeOrder.includes(p)) return
+    onChange([...safeOrder, p])
   }
 
   return (
@@ -483,12 +496,12 @@ function ChainOrderSection({
       </p>
 
       <div className="flex flex-col gap-2">
-        {order.length === 0 && (
+        {safeOrder.length === 0 && (
           <div className="rounded-md border border-dashed border-border bg-surface-2 px-4 py-5 text-center font-mono text-xs text-text-muted">
             Пусто — используется LLM_CHAIN_ORDER из env или дефолт backend'а.
           </div>
         )}
-        {order.map((p, i) => (
+        {safeOrder.map((p, i) => (
           <div key={p} className="flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2">
             <span className="font-mono text-[10px] text-text-muted">{i + 1}.</span>
             <span className="flex-1 font-mono text-sm text-text-primary">{p}</span>
@@ -502,7 +515,7 @@ function ChainOrderSection({
             </button>
             <button
               onClick={() => move(i, i + 1)}
-              disabled={i === order.length - 1}
+              disabled={i === safeOrder.length - 1}
               className="rounded p-1 text-text-muted hover:bg-surface-3 hover:text-text-primary disabled:opacity-30"
               title="Ниже"
             >

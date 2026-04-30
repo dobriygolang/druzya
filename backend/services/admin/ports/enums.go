@@ -22,6 +22,12 @@ func sectionToProtoAdmin(s enums.Section) pb.Section {
 		return pb.Section_SECTION_SYSTEM_DESIGN
 	case enums.SectionBehavioral:
 		return pb.Section_SECTION_BEHAVIORAL
+	case enums.SectionEnglishHR:
+		return pb.Section_SECTION_ENGLISH_HR
+	case enums.SectionSystemDesignSenior:
+		return pb.Section_SECTION_SYSTEM_DESIGN_SENIOR
+	case enums.SectionTechLeadEM:
+		return pb.Section_SECTION_TECH_LEAD_EM
 	default:
 		return pb.Section_SECTION_UNSPECIFIED
 	}
@@ -41,6 +47,12 @@ func sectionFromProtoAdmin(s pb.Section) enums.Section {
 		return enums.SectionSystemDesign
 	case pb.Section_SECTION_BEHAVIORAL:
 		return enums.SectionBehavioral
+	case pb.Section_SECTION_ENGLISH_HR:
+		return enums.SectionEnglishHR
+	case pb.Section_SECTION_SYSTEM_DESIGN_SENIOR:
+		return enums.SectionSystemDesignSenior
+	case pb.Section_SECTION_TECH_LEAD_EM:
+		return enums.SectionTechLeadEM
 	default:
 		return ""
 	}

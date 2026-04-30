@@ -29,6 +29,11 @@ type Handler struct {
 	// ai-vacancies-model RPCs migrated off chi in Phase K.12.
 	AllocateAtlas  *app.AllocateAtlasNode
 	VacanciesModel AIVacanciesModelRepo
+	// Multi-track use cases (см docs/feature/tracks.md). Wired in
+	// cmd/monolith/services/profile.go alongside the rest of the
+	// profile UCs.
+	GetUserTracks *app.GetUserTracks
+	SetUserTracks *app.SetUserTracks
 	// ReportFetcher — необязательный опитимизирующий wrapper (Redis-cache).
 	// Если nil, GetMyReport вызывает GetReport напрямую. В проде wired в
 	// cmd/monolith/services/profile.go.

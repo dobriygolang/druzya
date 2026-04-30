@@ -116,7 +116,14 @@ func (s *Server) CreatePipeline(
 		}
 		companyID = &cid
 	}
-	out, err := s.H.CreatePipeline(ctx, uid, companyID, req.Msg.GetAiAssist())
+	// Phase 1.6 — sections are an optional allow-list (HR / algo / coding
+	// / sysdesign / behavioral). Empty wire → full pipeline.
+	rawSections := req.Msg.GetSections()
+	sections := make([]domain.StageKind, 0, len(rawSections))
+	for _, s := range rawSections {
+		sections = append(sections, domain.StageKind(s))
+	}
+	out, err := s.H.CreatePipeline(ctx, uid, companyID, req.Msg.GetAiAssist(), sections)
 	if err != nil {
 		return nil, s.toConnectErr(err)
 	}

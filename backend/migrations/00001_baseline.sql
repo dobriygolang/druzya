@@ -1628,6 +1628,1472 @@ CREATE TABLE ai_strictness_profiles (
 
 -- +goose StatementEnd
 
+-- ============================================================
+-- Phase 1-4 + Wave 0-6 incremental patches (consolidated)
+-- ============================================================
+
+-- ── from 00002_mock_schema_align.sql ──
+-- +goose StatementBegin
+
+-- 00002_mock_schema_align.sql
+--
+-- Aligns six mock-interview tables with the shape Go code already expects.
+-- The 00001 baseline was authored before the mock_interview Phase B/C
+-- refactor; the runtime queries SELECT columns that don't exist yet, which
+-- surfaces as 500 "internal" on every admin/mock list endpoint
+-- (default-questions, strictness, tasks, etc).
+--
+-- Strategy: DROP + CREATE for the six tables. They are infrastructural —
+-- their content is admin-curated CMS, not user data — so a clean rebuild
+-- is safer than a long ALTER chain. Down block is the conventional
+-- baseline-style no-op (rebuild from scratch on rollback).
+--
+-- Tables touched (in FK-safe order):
+--   1. mock_task_test_cases  — depends on mock_tasks
+--   2. task_questions        — depends on mock_tasks
+--   3. company_questions     — depends on companies
+--   4. stage_default_questions
+--   5. mock_tasks            — depends on ai_strictness_profiles
+--   6. ai_strictness_profiles
+--
+-- Drops use CASCADE only where children are recreated below — there are no
+-- external readers of these tables outside the mock_interview bounded
+-- context.
+
+DROP TABLE IF EXISTS mock_task_test_cases CASCADE;
+DROP TABLE IF EXISTS task_questions CASCADE;
+DROP TABLE IF EXISTS company_questions CASCADE;
+DROP TABLE IF EXISTS stage_default_questions CASCADE;
+DROP TABLE IF EXISTS mock_tasks CASCADE;
+DROP TABLE IF EXISTS ai_strictness_profiles CASCADE;
+
+-- ai_strictness_profiles — referenced by mock_tasks.ai_strictness_profile_id.
+-- Slug is the public identifier; name is human-facing. Penalty fields are
+-- deductions applied to the LLM judge's score (0..1).
+CREATE TABLE ai_strictness_profiles (
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug                     TEXT NOT NULL UNIQUE,
+    name                     TEXT NOT NULL,
+    off_topic_penalty        DOUBLE PRECISION NOT NULL DEFAULT 0,
+    must_mention_penalty     DOUBLE PRECISION NOT NULL DEFAULT 0,
+    hallucination_penalty    DOUBLE PRECISION NOT NULL DEFAULT 0,
+    bias_toward_fail         DOUBLE PRECISION NOT NULL DEFAULT 0,
+    custom_prompt_template   TEXT,
+    active                   BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Seed: a single 'standard' profile so mock_tasks.ai_strictness_profile_id
+-- can FK to something even on a fresh DB. UI lets admins add more.
+INSERT INTO ai_strictness_profiles (slug, name, off_topic_penalty, must_mention_penalty, hallucination_penalty, bias_toward_fail)
+VALUES ('standard', 'Стандарт', 0.1, 0.15, 0.2, 0.0);
+
+-- mock_tasks — the catalog of interview tasks the orchestrator pulls from.
+-- stage_kind determines which stage of the pipeline can ask this task;
+-- language is the runtime expected by Judge0 ('any' for stages without
+-- code execution).
+CREATE TABLE mock_tasks (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    stage_kind                  TEXT NOT NULL,
+    language                    TEXT NOT NULL DEFAULT 'any',
+    difficulty                  SMALLINT NOT NULL DEFAULT 2,
+    title                       TEXT NOT NULL,
+    body_md                     TEXT NOT NULL DEFAULT '',
+    sample_io_md                TEXT NOT NULL DEFAULT '',
+    reference_criteria          JSONB NOT NULL DEFAULT '[]'::jsonb,
+    reference_solution_md       TEXT NOT NULL DEFAULT '',
+    functional_requirements_md  TEXT NOT NULL DEFAULT '',
+    time_limit_min              INT NOT NULL DEFAULT 30,
+    ai_strictness_profile_id    UUID REFERENCES ai_strictness_profiles(id) ON DELETE SET NULL,
+    llm_model                   TEXT,
+    active                      BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by_admin_id         UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX mock_tasks_stage_kind_active_idx
+    ON mock_tasks (stage_kind, active);
+
+-- task_questions — follow-up questions tied to a specific task.
+CREATE TABLE task_questions (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id             UUID NOT NULL REFERENCES mock_tasks(id) ON DELETE CASCADE,
+    body                TEXT NOT NULL,
+    expected_answer_md  TEXT NOT NULL DEFAULT '',
+    reference_criteria  JSONB NOT NULL DEFAULT '[]'::jsonb,
+    sort_order          INT NOT NULL DEFAULT 0,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX task_questions_task_id_idx ON task_questions (task_id, sort_order);
+
+-- mock_task_test_cases — Judge0 test inputs for code-stage tasks.
+-- ordinal drives display order; is_hidden flags cases not shown to user
+-- (Judge0 evaluates them but they're hidden for anti-overfit).
+CREATE TABLE mock_task_test_cases (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id           UUID NOT NULL REFERENCES mock_tasks(id) ON DELETE CASCADE,
+    input             TEXT NOT NULL,
+    expected_output   TEXT NOT NULL DEFAULT '',
+    is_hidden         BOOLEAN NOT NULL DEFAULT FALSE,
+    ordinal           INT NOT NULL DEFAULT 0,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX mock_task_test_cases_task_idx
+    ON mock_task_test_cases (task_id, ordinal);
+
+-- stage_default_questions — fallback questions used when neither company nor
+-- task supplies one for a stage. stage_kind narrows the pool.
+CREATE TABLE stage_default_questions (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    stage_kind          TEXT NOT NULL,
+    body                TEXT NOT NULL,
+    expected_answer_md  TEXT NOT NULL DEFAULT '',
+    reference_criteria  JSONB NOT NULL DEFAULT '[]'::jsonb,
+    active              BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order          INT NOT NULL DEFAULT 0,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX stage_default_questions_stage_idx
+    ON stage_default_questions (stage_kind, active, sort_order);
+
+-- company_questions — company-flavoured fallback questions per stage.
+-- Picked over stage_default_questions when the pipeline is bound to a
+-- specific company.
+CREATE TABLE company_questions (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id          UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    stage_kind          TEXT NOT NULL,
+    body                TEXT NOT NULL,
+    expected_answer_md  TEXT NOT NULL DEFAULT '',
+    reference_criteria  JSONB NOT NULL DEFAULT '[]'::jsonb,
+    active              BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order          INT NOT NULL DEFAULT 0,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX company_questions_company_stage_idx
+    ON company_questions (company_id, stage_kind, active, sort_order);
+
+-- +goose StatementEnd
+
+
+-- ── from 00003_personal_events.sql ──
+-- +goose StatementBegin
+
+-- 00003_personal_events.sql
+--
+-- Personal calendar surface — events that belong to one user, not a circle.
+-- This unifies what was scattered before:
+--   • interview_calendars     → personal_events with kind='interview'
+--   • ad-hoc deadlines        → kind='deadline'
+--   • exam reminders          → kind='exam'
+--   • club_session reflections → kind='club_session' (cross-link to clubs)
+--   • personal study blocks   → kind='study_block'
+--
+-- Why a new table instead of extending interview_calendars: kind matters
+-- for severity grading in the AI coach (interview ≤3 days = critical;
+-- deadline ≤2 days = critical; club_session = inform). A single typed
+-- model lets one Reader feed every code path that asks "what's coming up
+-- for this user?".
+--
+-- interview_calendars is NOT dropped here — backwards compatibility for
+-- legacy reads. A view-replacement and the data-migration are scheduled
+-- for Phase 1b once the new RPC is live and the UI flips over.
+--
+-- Outcome capture is on the same row (status + outcome_md + felt_score)
+-- so the coach memory loop can read post-event reflections directly,
+-- without joining a sidecar table.
+
+CREATE TYPE personal_event_kind AS ENUM (
+    'interview',
+    'deadline',
+    'exam',
+    'club_session',
+    'study_block',
+    'interview_prep_block'
+);
+
+CREATE TYPE personal_event_status AS ENUM (
+    'planned',
+    'live',
+    'done',
+    'cancelled',
+    'no_show'
+);
+
+CREATE TABLE personal_events (
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id            UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind               personal_event_kind NOT NULL,
+    title              TEXT NOT NULL,
+    description_md     TEXT NOT NULL DEFAULT '',
+    -- Time anchor. all_day rows have starts_at = midnight UTC of the day,
+    -- ends_at NULL — readers convert to local in UI. Otherwise both fields
+    -- are populated; ends_at NULL means "open-ended" (rare).
+    starts_at          TIMESTAMPTZ NOT NULL,
+    ends_at            TIMESTAMPTZ,
+    all_day            BOOLEAN NOT NULL DEFAULT FALSE,
+
+    -- Optional cross-context links. NULL when irrelevant; coach reads
+    -- through these to decide which surfaces should highlight the event.
+    company_id         UUID REFERENCES companies(id) ON DELETE SET NULL,
+    role               TEXT NOT NULL DEFAULT '',          -- e.g. "Backend Senior"
+    current_level      TEXT NOT NULL DEFAULT '',          -- e.g. "L4"
+    readiness_pct      SMALLINT NOT NULL DEFAULT 0
+        CHECK (readiness_pct BETWEEN 0 AND 100),
+    codex_article_slug TEXT NOT NULL DEFAULT '',          -- pinned pre-read
+    track_id           UUID,                              -- forward-FK to tracks (Phase 2)
+    club_session_id    UUID,                              -- forward-FK to club_sessions (Phase 3)
+
+    -- Lifecycle.
+    status             personal_event_status NOT NULL DEFAULT 'planned',
+    -- After-event reflection (UpsertOutcome). Coach pulls this into
+    -- intelligence.Memory as `event_outcome_recorded` episodes.
+    outcome_md         TEXT NOT NULL DEFAULT '',
+    felt_score         SMALLINT
+        CHECK (felt_score IS NULL OR felt_score BETWEEN 1 AND 5),
+    finished_at        TIMESTAMPTZ,
+
+    source             TEXT NOT NULL DEFAULT 'user'       -- user|ai|club_curator|integration_tg
+        CHECK (source IN ('user','ai','club_curator','integration_tg')),
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Coach + UI read paths: by user, ordered by date, narrowed to upcoming.
+CREATE INDEX personal_events_user_starts_idx
+    ON personal_events (user_id, starts_at);
+
+-- Filter on kind for "show only my interviews" / "deadlines this week".
+CREATE INDEX personal_events_user_kind_starts_idx
+    ON personal_events (user_id, kind, starts_at);
+
+-- Severity grading wants to find rows in a (today, today + N days) window
+-- across the whole product (cron jobs, notifier). Partial index keeps it
+-- cheap even when the table grows.
+CREATE INDEX personal_events_upcoming_idx
+    ON personal_events (starts_at)
+    WHERE status = 'planned';
+
+-- +goose StatementEnd
+
+
+-- ── from 00004_remove_friends.sql ──
+-- +goose StatementBegin
+
+-- 00004_remove_friends.sql
+--
+-- Drops the friends bounded context entirely. Decision: социальный граф
+-- живёт в Telegram-канале + circles, а внутри-приложения "друзей"
+-- быть не должно — feature не дочитывалась пользователями и
+-- порождала странные карточки в профиле без живой механики.
+--
+-- Removed:
+--   • friendships         — pairwise friendship state
+--   • friend_codes        — invite codes
+--   • profile.in_friends  — percentile-band that depended on the table
+--                            (inlined as 0 in code; stays in proto for
+--                            backwards-compat, frontend stops rendering it).
+--
+-- Cascade is safe: the only FKs into these tables are user-scoped and
+-- get rebuilt on user delete anyway. There are no cross-context FKs
+-- referencing friendships outside the friends service.
+
+DROP TABLE IF EXISTS friend_codes  CASCADE;
+DROP TABLE IF EXISTS friendships   CASCADE;
+
+-- +goose StatementEnd
+
+
+-- ── from 00005_insights.sql ──
+-- +goose StatementBegin
+
+-- 00005_insights.sql
+--
+-- Insight stream — атомарные «факты дня» от AI-coach. Каждый insight =
+-- (severity × surface × anchor × headline+evidence+lever+deepLink).
+-- Это замена толстого DailyBrief как UI-юнита: web/today, hone/today,
+-- arena/insights, codex/insights — все читают тот же поток с разным
+-- surface-фильтром. DailyBrief остаётся как цельный narrative-документ
+-- для weekly-recap, но день-в-день UX крутится вокруг insight'ов.
+--
+-- Why a separate table (а не виден через DailyBrief envelope):
+--   1. UI surfaces расходятся (Hone компактный chip, web — большая
+--      карточка). Один общий стрим с filter'ом проще двух разных
+--      рендеров над разными фигурами proto.
+--   2. Атомарность важна для acked: юзер dismissed конкретный insight,
+--      а не весь brief.
+--   3. Generation cron может производить пачку на (user, day) и не
+--      писать единый brief — гибче, мы не платим за полный brief
+--      генерации каждый раз.
+--
+-- expires_at: insight'ы коротко-живущие (24h дефолт). Reader фильтрует
+-- по expires_at > now(). cron-cleanup чистит истёкшие.
+
+CREATE TYPE insight_severity AS ENUM ('cruise', 'nudge', 'warn', 'critical');
+
+-- Surface targets where this insight should appear. Storing as text
+-- (not enum) so adding a surface later — say 'stealth' for Cue copilot
+-- — doesn't require a SQL ALTER TYPE migration.
+--
+-- Known values today:
+--   'today'  — main /today feed (web) + Hone Today ribbon (3 top)
+--   'arena'  — /arena bottom contextual chip
+--   'mock'   — /mock company-picker side
+--   'codex'  — /codex inline reading-time nudge
+CREATE TABLE intelligence_insights (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    surface       TEXT NOT NULL,
+    severity      insight_severity NOT NULL DEFAULT 'nudge',
+
+    -- Anchor stably identifies "what this insight is about" so we can
+    -- dedupe across days. Examples:
+    --   event:yandex_2026-05-08
+    --   skill:caching
+    --   streak:kata
+    --   absence:welcome_back
+    -- The same anchor on the same user+surface gets upserted, not
+    -- duplicated — generator owns this contract.
+    anchor        TEXT NOT NULL,
+
+    headline      TEXT NOT NULL,
+    evidence      TEXT NOT NULL DEFAULT '',  -- 1 sentence, numbers
+    interpret     TEXT NOT NULL DEFAULT '',  -- 1 sentence, why this is a pattern
+    lever         TEXT NOT NULL DEFAULT '',  -- 1 sentence, action today
+    deep_link     TEXT NOT NULL DEFAULT '',  -- in-app route or empty
+
+    -- Optional cross-context anchors. Generator fills when relevant.
+    event_id      UUID,                      -- forward-FK to personal_events
+    skill_key     TEXT NOT NULL DEFAULT '',  -- 'caching', 'dp', etc
+    codex_slug    TEXT NOT NULL DEFAULT '',
+    track_id      UUID,                      -- forward-FK to tracks (Phase 2)
+
+    -- User feedback tap.
+    dismissed_at  TIMESTAMPTZ,
+    acted_at      TIMESTAMPTZ,
+
+    generated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- 24h default lifetime. Override per-row when generator wants a
+    -- longer window (e.g. interview-prep insight pinned for 7 days).
+    expires_at    TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '24 hours'),
+
+    UNIQUE (user_id, surface, anchor)
+);
+
+-- Read path for the lane feeds: by-surface, freshest first, dismissed
+-- + expired filtered out at query time.
+CREATE INDEX intelligence_insights_user_surface_idx
+    ON intelligence_insights (user_id, surface, generated_at DESC);
+
+-- Periodic cleanup tap.
+CREATE INDEX intelligence_insights_expires_idx
+    ON intelligence_insights (expires_at)
+    WHERE dismissed_at IS NULL;
+
+-- +goose StatementEnd
+
+
+-- ── from 00006_event_reminders_sent.sql ──
+-- +goose StatementBegin
+
+-- 00006_event_reminders_sent.sql
+--
+-- Dedup ledger for outbound personal-event reminders (T-24h, T-1h,
+-- T-now). Each (event_id, horizon) writes once; cron worker checks
+-- this table before sending so a Hone-side reminder + backend TG
+-- reminder can both run without doubling-up notifications.
+--
+-- Why a separate table (not a column on personal_events): horizons are
+-- multiple per row (3 reminders for one interview) and we want a
+-- compact UNIQUE constraint that's easy to extend with new horizons
+-- (e.g. T-7d for "interview scheduled, start prep").
+
+CREATE TYPE personal_event_reminder_horizon AS ENUM ('t24h', 't1h', 'now');
+
+CREATE TABLE personal_event_reminders_sent (
+    event_id   UUID NOT NULL REFERENCES personal_events(id) ON DELETE CASCADE,
+    horizon    personal_event_reminder_horizon NOT NULL,
+    -- Channel identifier so a future per-channel suppression can read
+    -- this directly. Today only 'tg'; 'web_push' / 'hone_native' may
+    -- come later.
+    channel    TEXT NOT NULL DEFAULT 'tg',
+    sent_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (event_id, horizon, channel)
+);
+
+CREATE INDEX personal_event_reminders_sent_event_idx
+    ON personal_event_reminders_sent (event_id);
+
+-- +goose StatementEnd
+
+
+-- ── from 00006_user_persona_tracks.sql ──
+-- +goose StatementBegin
+
+-- 00006_user_persona_tracks.sql
+--
+-- Multi-track foundation for the onboarding fork: a user can be on
+-- one or many parallel tracks (e.g. "Senior dev + English"). This is
+-- the data layer for docs/feature/tracks.md and the prerequisite for
+-- the senior dev pack, English, and switcher tracks (sysanalyst,
+-- product analyst).
+--
+-- Why a separate table instead of extending users.focus_class:
+--   • focus_class is single-valued ('algo' | 'backend' | ...). Tracks
+--     need to be multi-valued (one user can prep for senior dev AND
+--     learn English in parallel — that's the sticky combo).
+--   • Per-track metadata: seniority for engineering tracks, started_at
+--     for cohort analysis, last_active_at to drive Insights.
+--   • Extensible: adding a track = adding an enum value; no schema churn.
+--
+-- focus_class stays as-is for now (algo/backend/system specialization
+-- within a dev track). It's orthogonal to track_kind and may be
+-- migrated into per-track Atlas branches later.
+--
+-- Backfill: every existing user gets ('dev', 'middle', primary=true)
+-- so the current UX doesn't suddenly route them to onboarding.
+
+CREATE TYPE track_kind AS ENUM (
+    'dev',
+    'dev_senior',
+    'sysanalyst',
+    'product_analyst',
+    'qa',
+    'english'
+);
+
+CREATE TABLE IF NOT EXISTS user_persona_tracks (
+    user_id        UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    track          track_kind   NOT NULL,
+    seniority      TEXT,                                                  -- 'junior'|'middle'|'senior'|'lead' for dev/sysanalyst/qa; NULL for english
+    primary_track  BOOLEAN      NOT NULL DEFAULT FALSE,                    -- the "main" track shown first in UI
+    started_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    last_active_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, track),
+    CONSTRAINT user_persona_tracks_seniority_valid
+        CHECK (seniority IS NULL OR seniority IN ('junior','middle','senior','lead'))
+);
+
+-- One primary track per user. Partial unique index — applies only
+-- where primary_track=true, allowing many non-primary rows per user.
+CREATE UNIQUE INDEX idx_user_persona_tracks_one_primary
+    ON user_persona_tracks (user_id) WHERE primary_track = TRUE;
+
+CREATE INDEX idx_user_persona_tracks_track_lastactive
+    ON user_persona_tracks (track, last_active_at DESC);
+
+-- Backfill: existing users get a 'dev' middle track marked primary so
+-- existing flows (Atlas, Insights, Today) keep working without prompting
+-- onboarding.
+INSERT INTO user_persona_tracks (user_id, track, seniority, primary_track)
+SELECT id, 'dev'::track_kind, 'middle', TRUE
+FROM users
+ON CONFLICT (user_id, track) DO NOTHING;
+
+-- +goose StatementEnd
+
+
+-- ── from 00007_skill_atlas_tracks.sql ──
+-- +goose StatementBegin
+
+-- 00007_skill_atlas_tracks.sql
+--
+-- Add track_kind to atlas_nodes so Skill Atlas can be filtered by the
+-- user's active track(s). Required by docs/feature/tracks.md — without
+-- this column the Atlas page can't render different content for
+-- "Senior dev", "English", or "Sysanalyst" personas without massive
+-- application-side filtering.
+--
+-- Design choice: single-valued track_kind on atlas_nodes (Option A
+-- in plan.md). If the same skill ever needs to live in two tracks,
+-- we duplicate the row — simpler than a junction table and the
+-- duplication cost is small since cross-track nodes are rare. We can
+-- migrate to atlas_node_tracks (M:N) later if reuse becomes painful.
+--
+-- Existing nodes default to 'dev' — that's where the current 50-task
+-- catalog and the existing Atlas tree live.
+--
+-- The track_kind ENUM was created in 00006_user_tracks.sql. We reuse
+-- it here so user_tracks.track and atlas_nodes.track_kind share a
+-- single source of truth.
+
+ALTER TABLE atlas_nodes
+    ADD COLUMN IF NOT EXISTS track_kind track_kind NOT NULL DEFAULT 'dev';
+
+-- Partial index per track. Atlas page hits this on every render with
+-- WHERE is_active = TRUE AND track_kind = ANY($1).
+CREATE INDEX IF NOT EXISTS idx_atlas_nodes_active_track
+    ON atlas_nodes (track_kind, section)
+    WHERE is_active = TRUE;
+
+-- +goose StatementEnd
+
+
+-- ── from 00007_tracks.sql ──
+-- +goose StatementBegin
+
+-- 00007_tracks.sql
+--
+-- Phase 2 — Atlas → Tracks. A Track is a curated programme: ordered
+-- sequence of steps, each step a (skill_keys, required_kind, count)
+-- tuple. The Atlas graph stays as the *visual core* of the track-detail
+-- page (each step renders as a node connected to the prerequisites);
+-- the catalogue's primary navigation moves from "skills" to "tracks".
+--
+-- Tables:
+--   tracks         — curated catalogue (admin-authored) + future user forks
+--   track_steps    — ordered checklist per track
+--   user_tracks    — per-user enrolment + progress counter
+--
+-- Why three tables (vs. embedding steps as JSONB): the coach reads
+-- step-level progress to flag "track stalled 5 days on step 4" — that's
+-- a join query against user_tracks.current_step + a count from the
+-- relevant kind tables. Embedding would force re-parsing JSONB on every
+-- coach tick.
+
+CREATE TABLE tracks (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug            TEXT NOT NULL UNIQUE,
+    name            TEXT NOT NULL,
+    tagline         TEXT NOT NULL DEFAULT '',
+    description_md  TEXT NOT NULL DEFAULT '',
+    cover_image_url TEXT NOT NULL DEFAULT '',
+    accent_color    TEXT NOT NULL DEFAULT '#FFFFFF',
+
+    -- curator_id NULL for the seeded curated catalogue (admin-authored,
+    -- shared by everyone). Forks (Phase 2 follow-up) carry the
+    -- forking user's id here.
+    curator_id      UUID REFERENCES users(id) ON DELETE SET NULL,
+
+    estimated_weeks SMALLINT NOT NULL DEFAULT 4 CHECK (estimated_weeks BETWEEN 1 AND 52),
+    difficulty      TEXT NOT NULL DEFAULT 'medium'
+                    CHECK (difficulty IN ('easy', 'medium', 'hard')),
+
+    is_curated      BOOLEAN NOT NULL DEFAULT TRUE,
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+
+    -- Tag arrays for the catalogue filter chips. Keep them as TEXT[]
+    -- (not enums) so admins can add new tags without a migration.
+    tags            TEXT[] NOT NULL DEFAULT '{}'::text[],
+    company_focus   TEXT[] NOT NULL DEFAULT '{}'::text[],
+
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX tracks_active_idx ON tracks (is_active);
+
+-- track_steps — one row per ordered step inside a track.
+--
+-- required_kind values:
+--   'kata'        — solve N daily kata in atlas section
+--   'arena'       — finish N arena matches (any mode in 1v1)
+--   'mock'        — finish N mock pipelines for the matching skill
+--   'codex_read'  — open M codex articles tagged with the skill
+-- The orchestrator (Phase 2d) reads existing tables (focus_sessions,
+-- mock_sessions, codex_article_opens) — there is no per-step write row.
+CREATE TYPE track_step_kind AS ENUM ('kata', 'arena', 'mock', 'codex_read', 'focus_block');
+
+CREATE TABLE track_steps (
+    track_id           UUID NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    step_index         SMALLINT NOT NULL CHECK (step_index >= 0),
+    title              TEXT NOT NULL,
+    description_md     TEXT NOT NULL DEFAULT '',
+    skill_keys         TEXT[] NOT NULL DEFAULT '{}'::text[],
+    required_kind      track_step_kind NOT NULL,
+    required_count     INT NOT NULL DEFAULT 1 CHECK (required_count > 0),
+    recommended_reading TEXT[] NOT NULL DEFAULT '{}'::text[],
+    estimated_minutes  INT NOT NULL DEFAULT 25,
+    PRIMARY KEY (track_id, step_index)
+);
+
+CREATE INDEX track_steps_skill_idx ON track_steps USING GIN (skill_keys);
+
+-- user_tracks — enrolment row. current_step is 0-based; when current_step
+-- reaches len(track_steps) we set completed_at.
+--
+-- Pause semantics: paused_at is informational only — coach reads it to
+-- soften "track stalled" insights into "you paused this on N". A
+-- paused track still counts in ListUserTracks; UI greys it out.
+CREATE TABLE user_tracks (
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    track_id     UUID NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    joined_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    current_step SMALLINT NOT NULL DEFAULT 0,
+    -- progress jsonb keyed by step_index (string). Values look like
+    --   {"kata_done": 3, "arena_done": 0, "last_action_at": "..."}
+    -- Schema is intentionally untyped — readers tolerate missing keys.
+    progress     JSONB NOT NULL DEFAULT '{}'::jsonb,
+    paused_at    TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    PRIMARY KEY (user_id, track_id)
+);
+
+CREATE INDEX user_tracks_user_active_idx
+    ON user_tracks (user_id)
+    WHERE completed_at IS NULL;
+
+-- +goose StatementEnd
+
+
+-- ── from 00008_tracks_seed.sql ──
+-- +goose StatementBegin
+
+-- 00008_tracks_seed.sql
+--
+-- Initial curated catalogue. Five tracks designed to cover the most
+-- common reasons a user opens the app:
+--
+--   algorithms-full-cycle  — classic interview-grind, 12 weeks
+--   system-design-from-zero — 10 weeks ramp, lots of codex reads
+--   senior-backend-pack    — short, mock-heavy, 8 weeks
+--   mock-marathon-7        — 5 mocks in 7 days, intensive
+--   yandex-backend-prep    — company-focused, 6 weeks
+--
+-- Skill_keys reference Atlas node keys (skill_nodes.node_key). When the
+-- atlas seed grows, new tracks just append rows here.
+
+INSERT INTO tracks (slug, name, tagline, description_md, accent_color,
+                    estimated_weeks, difficulty, is_curated, tags, company_focus)
+VALUES
+  ('algorithms-full-cycle',
+   'Algorithms · полный цикл',
+   '12 недель алгоритмической формы',
+   'BFS / DFS / DP / strings / graphs / advanced. Каждую неделю — 5 кат + одна дуэль в Arena. AI-coach отслеживает прогресс по weak topics.',
+   '#FFFFFF', 12, 'medium', TRUE,
+   ARRAY['algorithms', 'core'], ARRAY[]::text[]),
+
+  ('system-design-from-zero',
+   'System Design с нуля',
+   'От load balancing до consistency',
+   'Caching strategies → consistency → sharding → distributed systems. Каждая секция — codex-чтение + sysdesign-mock в конце недели.',
+   '#FFFFFF', 10, 'hard', TRUE,
+   ARRAY['system_design', 'core'], ARRAY[]::text[]),
+
+  ('senior-backend-pack',
+   'Senior Backend Interview Pack',
+   'Алго + sys-design + behavioral за 8 недель',
+   'Сбалансированная программа: 2 mock-собеса в неделю с AI-судьёй, micro-чтения в Codex по слабым темам, weekly readiness-replay.',
+   '#FFFFFF', 8, 'hard', TRUE,
+   ARRAY['mocks', 'cross-section'], ARRAY[]::text[]),
+
+  ('mock-marathon-7',
+   'Mock Marathon · 5 за 7 дней',
+   'Жёсткий интенсив перед собесом',
+   'Один mock pipeline в день в течение 5 дней, разбор в day 6, отдых 7. Под крайний дедлайн (interview через 1-2 недели).',
+   '#FFFFFF', 1, 'hard', TRUE,
+   ARRAY['mocks', 'intensive'], ARRAY[]::text[]),
+
+  ('yandex-backend-prep',
+   'Yandex Backend Prep',
+   'Целево под Yandex L4-L5',
+   '6 недель: HR → algo (Yandex-style) → coding (Go + SQL) → sys-design (cache, consistency) → behavioral. Mocks с Yandex persona, codex-pre-reads под каждую секцию.',
+   '#FFFFFF', 6, 'hard', TRUE,
+   ARRAY['mocks', 'company-focused'], ARRAY['yandex']);
+
+-- track_steps — заполняем по 5-12 шагов на каждый трек. Скил-ключи
+-- ссылаются на узлы Atlas; для треков-под-компании оставляем
+-- ARRAY[]::text[] когда шаг pure-mock без конкретной skill-привязки.
+
+-- algorithms-full-cycle (12 шагов).
+INSERT INTO track_steps (track_id, step_index, title, description_md, skill_keys,
+                         required_kind, required_count, estimated_minutes)
+SELECT t.id, x.step_index, x.title, x.description_md, x.skill_keys,
+       x.required_kind::track_step_kind, x.required_count, x.estimated_minutes
+  FROM tracks t,
+       (VALUES
+         (0, 'Two pointers + sliding window', 'Базовые ленточные паттерны.', ARRAY['two-pointers'], 'kata', 5, 25),
+         (1, 'Hashmap drills', 'Индексация, group-by, dedup.', ARRAY['hashmap'], 'kata', 4, 25),
+         (2, 'BFS + DFS', 'Обход графа, посещение, backtracking.', ARRAY['bfs', 'dfs'], 'kata', 6, 30),
+         (3, 'Topological sort', 'DAG, уровни, dependency resolution.', ARRAY['topological-sort'], 'kata', 3, 25),
+         (4, 'Heap / priority queue', 'Top-K, merge-K, kth-element.', ARRAY['heap'], 'kata', 4, 25),
+         (5, 'Binary search', 'Linear → bisect, lower/upper bound.', ARRAY['binary-search'], 'kata', 5, 25),
+         (6, 'Dynamic programming · easy', 'Climbing stairs, coin change.', ARRAY['dp'], 'kata', 4, 30),
+         (7, 'Dynamic programming · medium', 'Knapsack, LCS, edit distance.', ARRAY['dp'], 'kata', 4, 30),
+         (8, 'Strings · KMP / Z', 'Substring matching, периодичность.', ARRAY['strings'], 'kata', 3, 30),
+         (9, 'Graphs · advanced', 'Dijkstra, Bellman-Ford, MST.', ARRAY['graphs'], 'kata', 4, 30),
+         (10, 'Mock — algo only', 'Один арена-матч 1v1 для калибровки.', ARRAY['algorithms'], 'arena', 1, 45),
+         (11, 'Mock — full pipeline', 'Полный mock-pipeline ↦ дебриф.', ARRAY['algorithms'], 'mock', 1, 90)
+       ) AS x(step_index, title, description_md, skill_keys, required_kind, required_count, estimated_minutes)
+ WHERE t.slug = 'algorithms-full-cycle';
+
+-- system-design-from-zero (10 шагов).
+INSERT INTO track_steps (track_id, step_index, title, description_md, skill_keys,
+                         required_kind, required_count, estimated_minutes)
+SELECT t.id, x.step_index, x.title, x.description_md, x.skill_keys,
+       x.required_kind::track_step_kind, x.required_count, x.estimated_minutes
+  FROM tracks t,
+       (VALUES
+         (0, 'Read · networking primer', 'TCP, HTTP, latency budget.', ARRAY['networking'], 'codex_read', 2, 30),
+         (1, 'Read · caching strategies', 'Read-through, write-through, write-back.', ARRAY['cache-design'], 'codex_read', 2, 30),
+         (2, 'Read · consistency models', 'Strong, eventual, RYW.', ARRAY['consistency'], 'codex_read', 2, 35),
+         (3, 'Read · sharding', 'Range, hash, consistent hashing.', ARRAY['sharding'], 'codex_read', 2, 35),
+         (4, 'Read · queues + streams', 'At-least-once, exactly-once, ordering.', ARRAY['queues'], 'codex_read', 2, 30),
+         (5, 'Drill · capacity estimation', 'Back-of-envelope drills.', ARRAY['capacity-estimation'], 'kata', 3, 30),
+         (6, 'Drill · API + storage tradeoffs', 'REST vs GraphQL vs gRPC, RDBMS vs DDB.', ARRAY['api-design'], 'focus_block', 1, 60),
+         (7, 'Mock · sysdesign easy', 'TinyURL / rate limiter уровень.', ARRAY['system_design'], 'mock', 1, 60),
+         (8, 'Mock · sysdesign medium', 'News feed / chat уровень.', ARRAY['system_design'], 'mock', 1, 75),
+         (9, 'Mock · sysdesign hard', 'Web crawler / distributed cache.', ARRAY['system_design'], 'mock', 1, 90)
+       ) AS x(step_index, title, description_md, skill_keys, required_kind, required_count, estimated_minutes)
+ WHERE t.slug = 'system-design-from-zero';
+
+-- senior-backend-pack (8 шагов).
+INSERT INTO track_steps (track_id, step_index, title, description_md, skill_keys,
+                         required_kind, required_count, estimated_minutes)
+SELECT t.id, x.step_index, x.title, x.description_md, x.skill_keys,
+       x.required_kind::track_step_kind, x.required_count, x.estimated_minutes
+  FROM tracks t,
+       (VALUES
+         (0, 'Algo refresher', 'Top-3 weak topics из Atlas.', ARRAY['algorithms'], 'kata', 6, 30),
+         (1, 'Mock — algo + coding', 'Hardcore-режим, AI-судья.', ARRAY['algorithms'], 'mock', 1, 75),
+         (2, 'Read · sysdesign tradeoffs', 'Caching + consistency + sharding.', ARRAY['system_design'], 'codex_read', 3, 60),
+         (3, 'Mock — sysdesign', 'Один полный sysdesign-mock.', ARRAY['system_design'], 'mock', 1, 75),
+         (4, 'Behavioral prep', 'STAR-stories, leadership principles.', ARRAY['behavioral'], 'codex_read', 2, 30),
+         (5, 'Mock — behavioral', 'Один полный behavioral mock.', ARRAY['behavioral'], 'mock', 1, 45),
+         (6, 'Mock — full pipeline', 'Связка всех секций.', ARRAY['mocks'], 'mock', 1, 120),
+         (7, 'Replay + readiness', 'Просмотр AI-debrief, фикс weak_topics.', ARRAY[]::text[], 'focus_block', 1, 45)
+       ) AS x(step_index, title, description_md, skill_keys, required_kind, required_count, estimated_minutes)
+ WHERE t.slug = 'senior-backend-pack';
+
+-- mock-marathon-7 (7 шагов на 7 дней).
+INSERT INTO track_steps (track_id, step_index, title, description_md, skill_keys,
+                         required_kind, required_count, estimated_minutes)
+SELECT t.id, x.step_index, x.title, x.description_md, x.skill_keys,
+       x.required_kind::track_step_kind, x.required_count, x.estimated_minutes
+  FROM tracks t,
+       (VALUES
+         (0, 'Day 1 · screening', 'Лёгкий разогревочный mock.', ARRAY['hr'], 'mock', 1, 60),
+         (1, 'Day 2 · algo', 'Чистый алго-mock.', ARRAY['algorithms'], 'mock', 1, 75),
+         (2, 'Day 3 · coding', 'Go + SQL practical.', ARRAY['coding'], 'mock', 1, 75),
+         (3, 'Day 4 · sysdesign', 'Один sysdesign-mock.', ARRAY['system_design'], 'mock', 1, 75),
+         (4, 'Day 5 · behavioral', 'Behavioral mock.', ARRAY['behavioral'], 'mock', 1, 45),
+         (5, 'Day 6 · debrief', 'Просмотр всех 5 reports подряд, takeaways.', ARRAY[]::text[], 'focus_block', 1, 60),
+         (6, 'Day 7 · rest', 'Активный отдых, лёгкая kata, без mocks.', ARRAY['core'], 'kata', 1, 25)
+       ) AS x(step_index, title, description_md, skill_keys, required_kind, required_count, estimated_minutes)
+ WHERE t.slug = 'mock-marathon-7';
+
+-- yandex-backend-prep (6 шагов).
+INSERT INTO track_steps (track_id, step_index, title, description_md, skill_keys,
+                         required_kind, required_count, estimated_minutes)
+SELECT t.id, x.step_index, x.title, x.description_md, x.skill_keys,
+       x.required_kind::track_step_kind, x.required_count, x.estimated_minutes
+  FROM tracks t,
+       (VALUES
+         (0, 'HR-screening', 'Базовый рассказ, мотивация, вилка.', ARRAY['hr'], 'mock', 1, 30),
+         (1, 'Algo · Yandex pool', 'Yandex-style сложности.', ARRAY['algorithms'], 'kata', 8, 30),
+         (2, 'Coding · Go + SQL', 'Yandex coding-раунд.', ARRAY['coding'], 'mock', 1, 75),
+         (3, 'Sysdesign · cache + consistency', 'Yandex акцент на cache.', ARRAY['cache-design', 'consistency'], 'mock', 1, 90),
+         (4, 'Behavioral · Yandex values', 'Скорость, hands-on, результат.', ARRAY['behavioral'], 'mock', 1, 45),
+         (5, 'Final mock · full pipeline', 'Все 5 секций под Yandex persona.', ARRAY['mocks'], 'mock', 1, 180)
+       ) AS x(step_index, title, description_md, skill_keys, required_kind, required_count, estimated_minutes)
+ WHERE t.slug = 'yandex-backend-prep';
+
+-- +goose StatementEnd
+
+
+-- ── from 00009_english_atlas_seed.sql ──
+-- +goose StatementBegin
+
+-- 00009_english_atlas_seed.sql
+--
+-- English-track Atlas seed (Wave 1 of docs/feature/english.md). Adds
+-- ~15 atlas_nodes under track_kind='english' / section='english_hr',
+-- organised into 4 branches: Reading / Listening / Writing / Speaking.
+--
+-- Why a seed migration (not admin-CMS): English is the first non-engineering
+-- track and the Atlas catalogue is the prerequisite for every other Wave 1
+-- piece (mock-round, Insights widget, frontend track-aware Atlas page).
+-- We need it materialised in DB so generated UCs read non-empty for QA.
+-- Admin CMS can add more nodes later — this is the floor.
+--
+-- IDs use 'eng_' prefix to avoid collisions with engineering nodes
+-- ('algo_basics', 'sql_perf', etc.). cluster column tracks the branch
+-- so the Atlas page can group by it.
+--
+-- track_kind column was added in 00007_skill_atlas_tracks.sql; we set
+-- it explicitly per row instead of relying on the default 'dev'.
+--
+-- sort_order range 200-299 is reserved for English (engineering uses
+-- 0-50). Reserves 300-399 for sysanalyst, 400-499 for product analyst.
+--
+-- Free of edges that cross into engineering tracks — English is its own
+-- subgraph. If we ever want "English tech-vocab" to read from sd_basics
+-- nodes, that's a Phase-2 concern.
+
+INSERT INTO atlas_nodes (id, title, section, kind, cluster, description, total_count, sort_order, track_kind) VALUES
+    -- Hub
+    ('eng_root',         'English',                  'english_hr', 'hub',      'english',   'Точка входа в English-трек',                            0, 200, 'english'),
+
+    -- Reading branch
+    ('eng_reading',      'Reading',                  'english_hr', 'keystone', 'reading',   'Чтение: художка + tech-литература + статьи',           0, 210, 'english'),
+    ('eng_read_fiction', 'Reading: fiction',         'english_hr', 'small',    'reading',   'Художественная проза, narrative voice, vocab range',   0, 211, 'english'),
+    ('eng_read_tech',    'Reading: tech',            'english_hr', 'small',    'reading',   'Tech-блоги, доки, архитектурные статьи',                0, 212, 'english'),
+    ('eng_read_news',    'Reading: news / journal',  'english_hr', 'small',    'reading',   'Новости, журналистика, idiomatic phrasing',            0, 213, 'english'),
+
+    -- Listening branch
+    ('eng_listening',    'Listening',                'english_hr', 'keystone', 'listening', 'Аудио: подкасты + tech-talks + диалоги',                0, 220, 'english'),
+    ('eng_listen_pods',  'Listening: podcasts',      'english_hr', 'small',    'listening', 'Native-speed подкасты, slow→native прогрессия',         0, 221, 'english'),
+    ('eng_listen_tech',  'Listening: tech-talks',    'english_hr', 'small',    'listening', 'Conf-talks, technical interviews, screen recordings',   0, 222, 'english'),
+    ('eng_listen_conv',  'Listening: conversations', 'english_hr', 'small',    'listening', 'Casual conversations, accent diversity, fillers',       0, 223, 'english'),
+
+    -- Writing branch
+    ('eng_writing',      'Writing',                  'english_hr', 'keystone', 'writing',   'Письмо: summaries + tech-writing + casual',             0, 230, 'english'),
+    ('eng_write_summ',   'Writing: summaries',       'english_hr', 'small',    'writing',   'Конспекты прочитанного, paraphrasing, key-idea capture',0, 231, 'english'),
+    ('eng_write_tech',   'Writing: tech-writing',    'english_hr', 'small',    'writing',   'Технические письма, RFC-стиль, design docs',           0, 232, 'english'),
+    ('eng_write_casual', 'Writing: casual / email',  'english_hr', 'small',    'writing',   'Email, Slack, разговорный регистр',                     0, 233, 'english'),
+
+    -- Speaking branch
+    ('eng_speaking',     'Speaking',                 'english_hr', 'notable',  'speaking',  'Речь: self-recording + mock + tutor',                   0, 240, 'english'),
+    ('eng_speak_mock',   'Speaking: mock interviews','english_hr', 'small',    'speaking',  'AI mock HR-rounds (clarity, accuracy, range, fluency)', 0, 241, 'english'),
+    ('eng_speak_tutor',  'Speaking: tutor sessions', 'english_hr', 'small',    'speaking',  'Логирование сессий с реальным тутром',                  0, 242, 'english')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO atlas_edges (from_id, to_id) VALUES
+    -- Hub → 4 branches
+    ('eng_root', 'eng_reading'),
+    ('eng_root', 'eng_listening'),
+    ('eng_root', 'eng_writing'),
+    ('eng_root', 'eng_speaking'),
+    -- Reading sub-skills
+    ('eng_reading', 'eng_read_fiction'),
+    ('eng_reading', 'eng_read_tech'),
+    ('eng_reading', 'eng_read_news'),
+    -- Listening sub-skills
+    ('eng_listening', 'eng_listen_pods'),
+    ('eng_listening', 'eng_listen_tech'),
+    ('eng_listening', 'eng_listen_conv'),
+    -- Writing sub-skills
+    ('eng_writing', 'eng_write_summ'),
+    ('eng_writing', 'eng_write_tech'),
+    ('eng_writing', 'eng_write_casual'),
+    -- Speaking sub-skills
+    ('eng_speaking', 'eng_speak_mock'),
+    ('eng_speaking', 'eng_speak_tutor')
+ON CONFLICT (from_id, to_id) DO NOTHING;
+
+-- +goose StatementEnd
+
+
+-- ── from 00010_lobby_skill_filter.sql ──
+-- +goose StatementBegin
+
+-- 00010_lobby_skill_filter.sql
+--
+-- Phase 2c-2 — solo-lobby support + skill-filtered task picker.
+--
+-- Three things ship together because they're a single feature surface:
+--
+--   1. lobbies.skill_filter — TEXT[] списком Atlas-узлов (skill_keys),
+--      по которым solo-lobby ограничивает выбор задачи. Пустой массив =
+--      без фильтра, fallback на section/difficulty.
+--
+--   2. lobbies CHECK constraints обновлены:
+--      - mode добавляет 'solo' (раньше {1v1, 2v2}; 2v2 retired Phase 1.7
+--        но строки могли остаться в БД).
+--      - max_members BETWEEN 1 AND 4 (раньше 2..4 — solo требует 1).
+--
+--   3. tasks.skill_keys — TEXT[] для GIN-индекса. Solo task picker делает
+--      `WHERE skill_keys && lobby.skill_filter`. Существующие row'ы по
+--      умолчанию пустые: пока кураторы не разметят, fallback срабатывает
+--      и solo lobby с filter'ом получит ту же задачу что и 1v1 lobby.
+--      Это ОК — feature degradades gracefully вместо 404.
+
+ALTER TABLE lobbies
+    ADD COLUMN skill_filter TEXT[] NOT NULL DEFAULT '{}';
+
+-- Replace mode CHECK to permit 'solo'.
+ALTER TABLE lobbies DROP CONSTRAINT IF EXISTS lobbies_mode_valid;
+ALTER TABLE lobbies
+    ADD CONSTRAINT lobbies_mode_valid CHECK (mode IN ('1v1', '2v2', 'solo'));
+
+-- Replace max_members range to allow 1 (solo).
+ALTER TABLE lobbies DROP CONSTRAINT IF EXISTS lobbies_max_members_range;
+ALTER TABLE lobbies
+    ADD CONSTRAINT lobbies_max_members_range CHECK (max_members BETWEEN 1 AND 4);
+
+-- tasks.skill_keys — задачам нужны Atlas-узлы для skill-filtered pickup'а.
+-- Default пустой → не сбивает существующие seed'ы; куратор может выставить
+-- через admin UI / SQL update.
+ALTER TABLE tasks
+    ADD COLUMN skill_keys TEXT[] NOT NULL DEFAULT '{}'::text[];
+
+-- GIN-индекс для && / @> — task picker делает существенный hot-read.
+CREATE INDEX IF NOT EXISTS idx_tasks_skill_keys_gin
+    ON tasks USING GIN (skill_keys)
+    WHERE is_active;
+
+-- +goose StatementEnd
+
+
+-- ── from 00011_senior_atlas_seed.sql ──
+-- +goose StatementBegin
+
+-- 00011_senior_atlas_seed.sql
+--
+-- Wave 3 of docs/feature/plan.md — Senior dev pack Atlas seed. Adds
+-- ~15 atlas_nodes under track_kind='dev_senior' organised into two
+-- branches: System Design depth + Tech Lead / People skills.
+--
+-- Why a seed migration (vs admin-CMS):
+--   * dev_senior is a new persona track with no existing catalogue —
+--     we need a non-empty floor for QA + design-partner demos before
+--     admin even knows what to edit.
+--   * Mirrors 00009_english_atlas_seed.sql (English) and the engineering
+--     baseline (00001) — keeps the catalogue's "first cut" reproducible
+--     across DB rebuilds.
+--
+-- IDs use 'sd_' for System Design and 'tl_' for Tech Lead, scoped to
+-- the senior track. cluster groups them visually on the Atlas page.
+--
+-- sort_order range 500-599 reserved for dev_senior. Engineering
+-- baseline uses 0-50; English (00009) uses 200-299; this leaves room
+-- for sysanalyst (300-399), product analyst (400-499) without renumbering.
+--
+-- Sections:
+--   * 'system_design' for SD nodes — reuses the existing engineering
+--     section so SD-specific tools (sysdesign-judge, BuildSysDesign
+--     Critique LLM task) keep working without further branching.
+--   * 'behavioral' for Tech Lead nodes — closest existing section;
+--     people-skills are graded over a behavioral rubric.
+
+INSERT INTO atlas_nodes (id, title, section, kind, cluster, description, total_count, sort_order, track_kind) VALUES
+    -- ─── System Design depth (5 sub-skills + branch hub) ───
+    ('sd_senior_root',     'System Design (senior)',     'system_design', 'hub',      'system_design', 'Точка входа в SD-трек senior-уровня',                  0, 500, 'dev_senior'),
+    ('sd_distributed',     'Distributed systems',        'system_design', 'keystone', 'system_design', 'Consistency, sharding, replication, consensus',         0, 501, 'dev_senior'),
+    ('sd_realtime',        'Real-time / streaming',      'system_design', 'notable',  'system_design', 'Pub/sub, Kafka, WebSocket fan-out, backpressure',       0, 502, 'dev_senior'),
+    ('sd_ml_systems',      'ML systems',                 'system_design', 'notable',  'system_design', 'Feature stores, online inference, drift monitoring',    0, 503, 'dev_senior'),
+    ('sd_security',        'Security & threat model',    'system_design', 'small',    'system_design', 'Auth flows, secret mgmt, SSRF, prompt injection',       0, 504, 'dev_senior'),
+    ('sd_observability',   'Observability & SLO',        'system_design', 'small',    'system_design', 'Metrics, tracing, SLO/SLI design, on-call rotation',    0, 505, 'dev_senior'),
+
+    -- ─── Tech Lead / People skills (5 sub-skills + branch hub) ───
+    ('tl_root',            'Tech Lead / EM',             'behavioral',    'keystone', 'tech_lead',     'People-leadership мокаемые кейсы для senior+',         0, 510, 'dev_senior'),
+    ('tl_one_on_one',      '1:1s + underperformer',      'behavioral',    'notable',  'tech_lead',     'Постановка expectations, perf-conversation cadence',    0, 511, 'dev_senior'),
+    ('tl_conflict',        'Conflict resolution',        'behavioral',    'small',    'tech_lead',     'Между разработчиками; с PM; с stakeholder',             0, 512, 'dev_senior'),
+    ('tl_tradeoffs',       'Tech-debt vs feature',       'behavioral',    'small',    'tech_lead',     'Defending refactor budget, ROI articulation',           0, 513, 'dev_senior'),
+    ('tl_hiring',          'Hiring decisions',           'behavioral',    'small',    'tech_lead',     'Loop calibration, junior-vs-senior tradeoff',           0, 514, 'dev_senior'),
+    ('tl_pushback',        'PM/stakeholder pushback',    'behavioral',    'small',    'tech_lead',     'Defending a deadline change; saying no with data',      0, 515, 'dev_senior'),
+
+    -- ─── Code-review-coaching (placeholder for Wave 3.6) ───
+    ('crv_root',           'Code review craft',          'behavioral',    'notable',  'code_review',   'Анализ открытых PR с эталонным консенсусом мейнтейнеров', 0, 520, 'dev_senior')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO atlas_edges (from_id, to_id) VALUES
+    -- SD branch
+    ('sd_senior_root', 'sd_distributed'),
+    ('sd_senior_root', 'sd_realtime'),
+    ('sd_senior_root', 'sd_ml_systems'),
+    ('sd_senior_root', 'sd_security'),
+    ('sd_senior_root', 'sd_observability'),
+
+    -- Tech Lead branch
+    ('tl_root', 'tl_one_on_one'),
+    ('tl_root', 'tl_conflict'),
+    ('tl_root', 'tl_tradeoffs'),
+    ('tl_root', 'tl_hiring'),
+    ('tl_root', 'tl_pushback'),
+
+    -- Cross-link from baseline System Design hub into senior depth.
+    -- Lets graduates of the engineering SD path see the senior tree
+    -- as a natural next step rather than a parallel universe.
+    ('sd_basics', 'sd_senior_root'),
+    ('sd_scale',  'sd_senior_root')
+ON CONFLICT (from_id, to_id) DO NOTHING;
+
+-- +goose StatementEnd
+
+
+-- ── from 00011_user_goals.sql ──
+-- +goose StatementBegin
+
+-- 00011_user_goals.sql
+--
+-- Phase 4.3 — goal-aware coach briefs.
+--
+-- user_goals — лёгкая таблица персональных целей юзера, которые coach
+-- использует как high-level контекст. Три kind'а:
+--   job_target    — «Yandex L4 backend» (карьерная цель, может иметь
+--                    deadline = expected interview date / decision date).
+--   skill_target  — «Освоить системный дизайн до уровня L4» (без жёсткого
+--                    deadline'а, но с self-review milestone'ами).
+--   track_target  — «Закончить Algorithms-Full-Cycle к концу мая»
+--                    (привязка к learning track из Phase 2).
+--
+-- Schema choices:
+--   - status enum: active / paused / done / abandoned. Coach видит только
+--     active; paused — юзер сам пометил «не сейчас», abandoned — ушло
+--     в архив.
+--   - deadline NULLABLE: skill_target часто не имеет жёсткой даты.
+--   - track_id NULLABLE FK на tracks(id) для track_target. ON DELETE
+--     SET NULL — если трек удалён из каталога, цель не сносим, coach
+--     просто перестаёт привязывать narrative к нему.
+--   - notes_md — свободный markdown, юзер пишет «зачем» / progress.
+
+CREATE TYPE user_goal_kind AS ENUM ('job_target', 'skill_target', 'track_target');
+CREATE TYPE user_goal_status AS ENUM ('active', 'paused', 'done', 'abandoned');
+
+CREATE TABLE user_goals (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind         user_goal_kind   NOT NULL,
+    status       user_goal_status NOT NULL DEFAULT 'active',
+    title        TEXT NOT NULL,
+    notes_md     TEXT NOT NULL DEFAULT '',
+    deadline     DATE,
+    track_id     UUID REFERENCES tracks(id) ON DELETE SET NULL,
+    skill_keys   TEXT[] NOT NULL DEFAULT '{}'::text[],
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at TIMESTAMPTZ
+);
+
+-- Hot read: coach pulls active goals on every brief.
+CREATE INDEX idx_user_goals_user_active ON user_goals(user_id, deadline NULLS LAST)
+    WHERE status = 'active';
+
+-- For deadline-approach severity scan we want a window-based read.
+CREATE INDEX idx_user_goals_deadline ON user_goals(deadline)
+    WHERE status = 'active' AND deadline IS NOT NULL;
+
+-- +goose StatementEnd
+
+
+-- ── from 00012_clubs.sql ──
+-- +goose StatementBegin
+
+-- 00012_clubs.sql — Phase 3 (Circles → Clubs).
+--
+-- Clubs — структурированная витрина TG-mirror'a внутри circles.
+-- Каждый club живёт под одним circle (FK), но имеет свою curriculum +
+-- расписание + curator + ленту sessions с pre-read / recording /
+-- takeaways. Это распределяет content production между curators и
+-- даёт юзерам понять «когда / о чём / нужно ли готовиться».
+--
+-- 4 таблицы:
+--   clubs            — top-level: одна row на клуб (slug + curator + curriculum).
+--   club_sessions    — лента: одна row на встречу (date + topic + materials).
+--   club_materials   — артефакты сессии (slides, code, links).
+--   club_attendees   — RSVP + post-session notes per-user.
+--
+-- Status enum:
+--   sessions: scheduled / live / done / cancelled
+--   attendees: rsvp_yes / rsvp_no / attended / no_show
+--
+-- Public visibility (clubs.is_public): когда true — видно
+-- неавторизованным юзерам (хочется лендинг для виральности). False —
+-- видят только members своего circle.
+
+CREATE TYPE club_session_status AS ENUM ('scheduled', 'live', 'done', 'cancelled');
+CREATE TYPE club_attendee_status AS ENUM ('rsvp_yes', 'rsvp_no', 'attended', 'no_show');
+
+CREATE TABLE clubs (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    circle_id         UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    slug              TEXT NOT NULL UNIQUE,
+    name              TEXT NOT NULL,
+    topic_tag         TEXT NOT NULL DEFAULT '',
+    curator_user_id   UUID REFERENCES users(id) ON DELETE SET NULL,
+    curriculum_md     TEXT NOT NULL DEFAULT '',
+    schedule_kind     TEXT NOT NULL DEFAULT '',  -- "weekly" / "biweekly" / "ad-hoc"
+    default_zoom_link TEXT NOT NULL DEFAULT '',
+    tg_anchor_url     TEXT NOT NULL DEFAULT '',
+    cover_image_url   TEXT NOT NULL DEFAULT '',
+    is_public         BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active         BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_clubs_circle ON clubs(circle_id) WHERE is_active;
+CREATE INDEX idx_clubs_public ON clubs(is_active, created_at DESC) WHERE is_public AND is_active;
+
+CREATE TABLE club_sessions (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    club_id             UUID NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+    scheduled_at        TIMESTAMPTZ NOT NULL,
+    duration_min        INT NOT NULL DEFAULT 60,
+    topic_title         TEXT NOT NULL,
+    topic_md            TEXT NOT NULL DEFAULT '',
+    presenter_handle    TEXT NOT NULL DEFAULT '',
+    zoom_link           TEXT NOT NULL DEFAULT '',
+    tg_post_url         TEXT NOT NULL DEFAULT '',
+    recording_url       TEXT NOT NULL DEFAULT '',
+    pre_read_md         TEXT NOT NULL DEFAULT '',
+    summary_md          TEXT NOT NULL DEFAULT '',
+    takeaways_md        TEXT NOT NULL DEFAULT '',
+    status              club_session_status NOT NULL DEFAULT 'scheduled',
+    attached_codex_slugs TEXT[] NOT NULL DEFAULT '{}'::text[],
+    attached_event_ids   UUID[] NOT NULL DEFAULT '{}'::uuid[],
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_club_sessions_club_time ON club_sessions(club_id, scheduled_at DESC);
+CREATE INDEX idx_club_sessions_upcoming
+    ON club_sessions(scheduled_at)
+ WHERE status = 'scheduled';
+
+CREATE TABLE club_materials (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id  UUID NOT NULL REFERENCES club_sessions(id) ON DELETE CASCADE,
+    kind        TEXT NOT NULL,  -- 'slides' | 'code' | 'link' | 'doc' | 'transcript'
+    label       TEXT NOT NULL,
+    url         TEXT NOT NULL,
+    sort_order  INT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_club_materials_session ON club_materials(session_id, sort_order);
+
+CREATE TABLE club_attendees (
+    session_id  UUID NOT NULL REFERENCES club_sessions(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status      club_attendee_status NOT NULL DEFAULT 'rsvp_yes',
+    notes_md    TEXT NOT NULL DEFAULT '',
+    rsvp_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (session_id, user_id)
+);
+CREATE INDEX idx_club_attendees_user ON club_attendees(user_id, rsvp_at DESC);
+
+-- +goose StatementEnd
+
+
+-- ── from 00012_tutor_relationships.sql ──
+-- +goose StatementBegin
+
+-- 00012_tutor_relationships.sql
+--
+-- Wave 2 of docs/feature/plan.md (tutor as distribution channel) —
+-- two tables: invitations and accepted relationships. The flow:
+--
+--   1. Tutor calls /tutor/invites → creates a row in tutor_invites
+--      with a random 8-char code and TTL 30 days.
+--   2. Student opens /invite/{code} on the public web → frontend
+--      calls /tutor/invites/{code}/accept (authenticated) which
+--      creates a row in tutor_students and marks the invite consumed.
+--   3. Student's user_persona_tracks remain user-controlled; the
+--      tutor sees data via the snapshot aggregator (read-only).
+--
+-- Why a separate `tutor_students` table (not a tutor_id column on
+-- users):
+--   * a student can have multiple tutors over time (English-tutor +
+--     Math-tutor — Year 2 multi-tutor, but schema must allow now).
+--   * deletion semantics: student leaves a tutor → row disappears,
+--     user record stays.
+--   * audit: started_at lets us measure tutor-driven retention vs
+--     self-acquired without joining mock_sessions on a date guess.
+--
+-- A composite UNIQUE on (tutor_id, student_id) prevents duplicate
+-- relationships from a re-invitation that the student accepted twice.
+
+-- Tutors aren't a separate role yet — any user with users.role='user'
+-- becomes a tutor by sending their first invite. This avoids a
+-- migration on users.role + UI gates; we'll add a dedicated role
+-- ('tutor' / 'tutor_pro') later if the access surface grows.
+
+CREATE TABLE IF NOT EXISTS tutor_invites (
+    id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    tutor_id    UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code        TEXT         NOT NULL UNIQUE,
+    note        TEXT         NOT NULL DEFAULT '',  -- tutor's free-form annotation, e.g. «Маша, English HR»
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    expires_at  TIMESTAMPTZ  NOT NULL,
+    accepted_by UUID         REFERENCES users(id) ON DELETE SET NULL,
+    accepted_at TIMESTAMPTZ,
+    revoked_at  TIMESTAMPTZ,                       -- tutor-cancelled before student accepts
+    CONSTRAINT tutor_invites_code_format CHECK (char_length(code) BETWEEN 6 AND 32)
+);
+
+-- Active-invite lookup by code is the hot read path on every
+-- /invite/{code} landing — partial index keeps it tight.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tutor_invites_code_active
+    ON tutor_invites (code)
+    WHERE accepted_at IS NULL AND revoked_at IS NULL;
+
+-- Tutor's invite list — most-recent-first.
+CREATE INDEX IF NOT EXISTS idx_tutor_invites_tutor_created
+    ON tutor_invites (tutor_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS tutor_students (
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    tutor_id     UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id   UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invite_id    UUID         REFERENCES tutor_invites(id) ON DELETE SET NULL,
+    started_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    ended_at     TIMESTAMPTZ,                       -- soft-end; row stays for cohort analytics
+    note         TEXT         NOT NULL DEFAULT '',
+    CONSTRAINT tutor_students_self_link CHECK (tutor_id <> student_id)
+);
+
+-- One active relationship per (tutor, student). A row that was ended
+-- doesn't block re-acceptance — caller updates ended_at IS NULL guard
+-- in the upsert.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tutor_students_active
+    ON tutor_students (tutor_id, student_id)
+    WHERE ended_at IS NULL;
+
+-- Tutor dashboard list — most-recent-first per tutor.
+CREATE INDEX IF NOT EXISTS idx_tutor_students_tutor_started
+    ON tutor_students (tutor_id, started_at DESC);
+
+-- Reverse lookup «who is my tutor» — used by the student-side view.
+CREATE INDEX IF NOT EXISTS idx_tutor_students_student_started
+    ON tutor_students (student_id, started_at DESC);
+
+-- +goose StatementEnd
+
+
+-- ── from 00013_hone_reading.sql ──
+-- +goose StatementBegin
+
+-- 00013_hone_reading.sql
+--
+-- Wave 4 of docs/feature/english.md — Reading-модуль в Hone.
+-- Хранилище материалов, которые юзер загрузил (PDF / EPUB / web-URL),
+-- лог reading-сессий поверх них и SRS-очередь vocab.
+--
+-- Why three tables (vs. one fat hone_reading_state):
+--   * materials — long-form content; deduplication по URL имеет смысл
+--     (тот же блогпост у разных юзеров — разные строки, но source_url
+--     индекс ускоряет «есть ли уже эта статья у меня»).
+--   * sessions — append-only audit; analytics-time-bounded запросы
+--     (сколько прочитал за неделю) хорошо разделены от read-path
+--     материала.
+--   * vocab_queue — отдельная горячая таблица для SRS-review (5 мин
+--     daily). Не хочется дёргать материалы при каждом review-tick'е.
+--
+-- Hone domain owns this — все таблицы под `hone_reading_*` prefix.
+-- Engineering-only тренажёрные таблицы (ratings, elo_*, tasks) НЕ
+-- касаются — Reading это free-form English content, не contest data.
+--
+-- ── Materials ─────────────────────────────────────────────────────
+--
+-- source_kind: 'paste' | 'url' | 'pdf' | 'epub'. Сейчас MVP принимает
+-- 'paste' (юзер вставляет markdown) и 'url' (фронт fetch'ит через
+-- services/documents extractor → backend получает уже текст).
+--
+-- body_md — само содержимое в markdown. Хранится в DB, не в S3 —
+-- средняя статья ~30KB, годовой объём пользователя ~300 KB.
+-- Когда vault-storage flag dial up'ируется (>10 MB у юзера) —
+-- мигрируем body_md в MinIO, оставляя preview_md в DB.
+--
+-- total_chars — счётчик для прогресс-бара. Считаем при insert один
+-- раз; пересчитывать на каждый рендер не надо.
+
+CREATE TABLE IF NOT EXISTS hone_reading_materials (
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_kind  TEXT         NOT NULL,
+    source_url   TEXT         NOT NULL DEFAULT '',
+    title        TEXT         NOT NULL,
+    body_md      TEXT         NOT NULL,
+    total_chars  INT          NOT NULL DEFAULT 0,
+    archived_at  TIMESTAMPTZ,             -- soft-delete; UI hides, queries ignore
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT hone_reading_source_kind_valid
+        CHECK (source_kind IN ('paste','url','pdf','epub')),
+    CONSTRAINT hone_reading_total_chars_nonneg
+        CHECK (total_chars >= 0)
+);
+
+-- Library list — most-recent first per user.
+CREATE INDEX IF NOT EXISTS idx_hone_reading_materials_user_active
+    ON hone_reading_materials (user_id, created_at DESC)
+    WHERE archived_at IS NULL;
+
+-- ── Sessions ─────────────────────────────────────────────────────
+--
+-- One row per reading «sit». chars_read advances as the user scrolls
+-- (frontend reports periodic progress); ended_at is stamped when
+-- they close the page or the 25-min timer expires.
+--
+-- ai_summary_score — optional, 0..100, set by AI summary check after
+-- the chapter (Wave 4.3). NULL = not yet graded.
+
+CREATE TABLE IF NOT EXISTS hone_reading_sessions (
+    id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id          UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    material_id      UUID         NOT NULL REFERENCES hone_reading_materials(id) ON DELETE CASCADE,
+    chars_read       INT          NOT NULL DEFAULT 0,
+    chars_total      INT          NOT NULL DEFAULT 0,
+    started_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    ended_at         TIMESTAMPTZ,
+    ai_summary_score INT,
+    summary_md       TEXT         NOT NULL DEFAULT '',
+    CONSTRAINT hone_reading_sessions_score_range
+        CHECK (ai_summary_score IS NULL OR (ai_summary_score >= 0 AND ai_summary_score <= 100))
+);
+
+CREATE INDEX IF NOT EXISTS idx_hone_reading_sessions_user_started
+    ON hone_reading_sessions (user_id, started_at DESC);
+
+-- Per-material session list — used by «materials with progress» card.
+CREATE INDEX IF NOT EXISTS idx_hone_reading_sessions_material
+    ON hone_reading_sessions (material_id, started_at DESC);
+
+-- ── Vocab queue ─────────────────────────────────────────────────
+--
+-- SRS state per (user_id, word). Алгоритм — упрощённый SM-2:
+--   * box: 0..5 (Leitner-style); 0 = только что добавлено, 5 = mastered.
+--   * next_review_at: serves as the «show this card today?» key.
+--   * reviewed_count: счётчик для аналитики, не для алгоритма.
+--
+-- context_md — фраза вокруг слова из материала, чтобы review-карточка
+-- показывала «in what sentence did you see it?» (без context vocab
+-- учится в 3х хуже).
+
+CREATE TABLE IF NOT EXISTS hone_vocab_queue (
+    user_id          UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    word             TEXT         NOT NULL,
+    translation      TEXT         NOT NULL DEFAULT '',
+    context_md       TEXT         NOT NULL DEFAULT '',
+    source_material  UUID         REFERENCES hone_reading_materials(id) ON DELETE SET NULL,
+    box              SMALLINT     NOT NULL DEFAULT 0,
+    next_review_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    reviewed_count   INT          NOT NULL DEFAULT 0,
+    learned_at       TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, word),
+    CONSTRAINT hone_vocab_box_range CHECK (box BETWEEN 0 AND 5)
+);
+
+-- The «what's due today» query — partial idx on the active part of
+-- the queue so daily-review hits a tiny index.
+CREATE INDEX IF NOT EXISTS idx_hone_vocab_due
+    ON hone_vocab_queue (user_id, next_review_at)
+    WHERE learned_at IS NULL;
+
+-- +goose StatementEnd
+
+
+-- ── from 00014_tutor_assignments.sql ──
+-- +goose StatementBegin
+
+-- 00014_tutor_assignments.sql
+--
+-- Wave 5.1 of docs/feature/plan.md (Tutor Tier 2: tutor pushes
+-- assignments to a student's Hone Today). Tutor authors a piece of
+-- work — a chapter to read, a writing prompt, a mock to take —
+-- attached to a specific (tutor, student) pair. Student sees it on
+-- the Hone Today surface with `source=from_tutor` styling and can
+-- mark it complete; tutor sees the completion timestamp.
+--
+-- Why a separate table (vs piggybacking on hone_focus_queue or
+-- hone_plan_items):
+--   * ownership: rows are owned by the tutor who authored them, not
+--     the student who consumes them. Cross-user delete cascading
+--     differs (deleting the tutor revokes assignments; deleting the
+--     student archives them).
+--   * lifecycle: an assignment outlives one focus session. Today's
+--     plan can show it; tomorrow's plan can show it again until
+--     completed_at is stamped.
+--   * auth: tutor-side endpoints scope by tutor_id, student-side by
+--     student_id. A composite-purpose table forces every callsite
+--     to think about both axes; keeping it flat makes the SQL gate
+--     trivial («WHERE tutor_id = $1» / «WHERE student_id = $1»).
+--
+-- An (tutor_id, student_id) row pair MUST exist in tutor_students
+-- with ended_at IS NULL at the time of INSERT — enforced at the use
+-- case level (EnsureRelationship), not via FK, because relationships
+-- are mutable (end + restart) and an FK would force ON DELETE
+-- decisions we don't want to bake in.
+
+CREATE TABLE IF NOT EXISTS tutor_assignments (
+    id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    tutor_id      UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id    UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title         TEXT         NOT NULL,
+    body_md       TEXT         NOT NULL DEFAULT '',
+    -- Optional «do this by» — when set, Hone Today surfaces it with a
+    -- countdown chip. NULL = open-ended (tutor just wants it done «soon»).
+    due_at        TIMESTAMPTZ,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    -- Stamped when the student marks the assignment done. Tutor's view
+    -- shows ✓ + the completion delta-from-due as a feedback signal.
+    completed_at  TIMESTAMPTZ,
+    -- Soft-archive — tutor can withdraw an assignment without losing
+    -- the audit trail (e.g. they realised they sent it to the wrong
+    -- student or the topic became irrelevant).
+    archived_at   TIMESTAMPTZ,
+    CONSTRAINT tutor_assignments_self_link CHECK (tutor_id <> student_id),
+    CONSTRAINT tutor_assignments_title_nonempty CHECK (char_length(title) > 0)
+);
+
+-- Tutor's per-student backlog — most-recent-first; archived rows
+-- excluded from the partial index so the dashboard list query is tight.
+CREATE INDEX IF NOT EXISTS idx_tutor_assignments_tutor_student_active
+    ON tutor_assignments (tutor_id, student_id, created_at DESC)
+    WHERE archived_at IS NULL;
+
+-- Student's active list — drives the Hone Today «from_tutor» surface.
+-- Excludes completed AND archived so the partial index covers exactly
+-- the «show me what to work on» query.
+CREATE INDEX IF NOT EXISTS idx_tutor_assignments_student_pending
+    ON tutor_assignments (student_id, due_at NULLS LAST, created_at DESC)
+    WHERE archived_at IS NULL AND completed_at IS NULL;
+
+-- +goose StatementEnd
+
+
+-- ── from 00015_hone_listening.sql ──
+-- +goose StatementBegin
+
+-- 00015_hone_listening.sql
+--
+-- Wave 6.1 of docs/feature/plan.md (Listening — transcript over
+-- podcasts + click-on-word + speed control). Parallel to Reading-
+-- модуль (migration 00013): user-owned library of listening materials
+-- where each row carries an audio_url + transcript_md. The user
+-- consumes a material in the Hone Listening-page (hotkey L), clicks
+-- on words to add them to `hone_vocab_queue` (already exists, Wave 4).
+--
+-- Why a separate table (vs piggybacking on hone_reading_materials):
+--   * audio_url is a top-level concern, not an optional field on a
+--     material that's «mostly» text.
+--   * transcript_md needs to align tightly with audio playhead — a
+--     future enhancement adds [HH:MM] anchor lines that the player
+--     auto-scrolls. Reading materials don't have this need.
+--   * separate library indices = library views стай tight; user can
+--     have 100 articles + 20 podcasts without one cluttering the
+--     other.
+--
+-- No sessions table yet — Listening V1 doesn't track «how much I
+-- listened» the way Reading tracks chars_read. If the analytic value
+-- materialises we'll add hone_listening_sessions in V2 (parallel to
+-- hone_reading_sessions).
+
+CREATE TABLE IF NOT EXISTS hone_listening_materials (
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title        TEXT         NOT NULL,
+    -- audio_url: direct-playable URL (mp3, m4a, ogg, etc.) OR file://
+    -- local path. YouTube/Spotify etc. are NOT supported by V1's
+    -- <audio> player; the frontend rejects unrecognised hosts at
+    -- input time so we don't store junk.
+    audio_url    TEXT         NOT NULL,
+    -- transcript_md: full transcript as markdown. The body is what
+    -- the click-on-word vocab pipeline reads; without it, Listening
+    -- degrades to a plain audio player with no SRS-feeding power.
+    transcript_md TEXT        NOT NULL DEFAULT '',
+    -- Soft-delete; library views filter on `archived_at IS NULL`.
+    archived_at  TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT hone_listening_title_nonempty CHECK (char_length(title) > 0),
+    CONSTRAINT hone_listening_audio_url_nonempty CHECK (char_length(audio_url) > 0)
+);
+
+-- Library list — most-recent first per user, active rows only.
+CREATE INDEX IF NOT EXISTS idx_hone_listening_materials_user_active
+    ON hone_listening_materials (user_id, created_at DESC)
+    WHERE archived_at IS NULL;
+
+-- +goose StatementEnd
+
+
 -- +goose Down
 -- +goose StatementBegin
 SELECT 1;  -- baseline; rollback by dropping the database

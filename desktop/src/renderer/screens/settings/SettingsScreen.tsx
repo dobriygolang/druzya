@@ -689,6 +689,7 @@ function HotkeysTab() {
     { action: 'move_window_right', accelerator: 'CommandOrControl+Alt+Right' },
     { action: 'move_window_up', accelerator: 'CommandOrControl+Alt+Up' },
     { action: 'move_window_down', accelerator: 'CommandOrControl+Alt+Down' },
+    { action: 'english_polish', accelerator: 'CommandOrControl+Shift+L' },
   ];
   // Always iterate LOCAL_DEFAULTS for the UI — server may return
   // placeholders with numeric action strings which break the label
@@ -725,6 +726,7 @@ function HotkeysTab() {
     move_window_right: 'Окно к правому краю',
     move_window_up: 'Окно к верхнему краю',
     move_window_down: 'Окно к нижнему краю',
+    english_polish: 'Polish English (буфер обмена)',
   };
 
   return (

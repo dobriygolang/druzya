@@ -98,6 +98,11 @@ export const invokeChannels = {
   appQuit: 'app:quit',
   appVersion: 'app:version',
 
+  // Wave 6.2 — Cue English mode. Renderer asks main to grade text via
+  // the existing /api/v1/hone/writing/grade endpoint (auth lives in
+  // main, so the API call is naturally proxied here).
+  englishPolishGrade: 'english:polish-grade',
+
   /** Renderer → main: ask to broadcast "open provider picker" to the
    *  expanded window. Main handles showing the expanded window too. */
   openProviderPicker: 'ui:open-provider-picker',
@@ -378,7 +383,10 @@ export type WindowName =
   | 'history'
   | 'picker'
   | 'toast'
-  | 'tray-popup';
+  | 'tray-popup'
+  // Wave 6.2 — Cue English mode. Mini panel that opens via ⌃⇧L,
+  // reads the clipboard, and shows GradeEnglishWriting feedback.
+  | 'english-polish';
 
 /** Picker kind — which dropdown the compact opens in the floating picker
  *  window. Persona / Model each reuse their own dropdown component. */
@@ -854,6 +862,33 @@ export interface Druz9API {
     listAttachedToSession: (sessionId: string) => Promise<string[]>;
   };
 
+  /**
+   * Wave 6.2 — Cue English mode. Renderer asks main to grade text via
+   * the existing /api/v1/hone/writing/grade endpoint. Bearer auth
+   * lives in main, so the renderer never sees the token.
+   */
+  english: {
+    polish: (text: string) => Promise<EnglishPolishResult>;
+  };
+
   /** Subscribe to a main-process event. Returns an unsubscribe function. */
   on: <T = unknown>(channel: string, handler: (payload: T) => void) => () => void;
+}
+
+// Wave 6.2 wire shape returned by `english.polish`. Mirrors
+// frontend/src/api/writing.ts on the web side; we keep an independent
+// declaration here because Cue's @shared/types deliberately doesn't
+// import the @generated proto bundle.
+export type EnglishPolishCategory = 'grammar' | 'vocab' | 'style' | 'clarity';
+
+export interface EnglishPolishIssue {
+  excerpt: string;
+  category: EnglishPolishCategory;
+  suggestion: string;
+  explanation: string;
+}
+
+export interface EnglishPolishResult {
+  overallScore: number; // 0..100
+  issues: EnglishPolishIssue[];
 }

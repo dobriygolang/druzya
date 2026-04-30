@@ -52,6 +52,13 @@ const api: HoneAPI = {
     setTrafficLights: (visible: boolean) =>
       ipcRenderer.invoke(invokeChannels.trafficLightsShow, visible) as Promise<void>,
   },
+  tray: {
+    // Phase 2.5 — push a compact status to the macOS menubar tray.
+    // title  — "25:00" / "Focus 12:34" / "" to clear.
+    // tooltip — longer hover text (pinned task name, track step).
+    update: (title: string, tooltip: string) =>
+      ipcRenderer.invoke(invokeChannels.trayUpdate, { title, tooltip }) as Promise<void>,
+  },
   vault: {
     passLoad: () =>
       ipcRenderer.invoke(invokeChannels.vaultPassLoad) as Promise<string | null>,

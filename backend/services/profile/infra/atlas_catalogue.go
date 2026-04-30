@@ -35,7 +35,7 @@ func NewAtlasCataloguePostgres(pool *pgxpool.Pool) *AtlasCataloguePostgres {
 func (r *AtlasCataloguePostgres) ListNodes(ctx context.Context) ([]domain.AtlasCatalogueNode, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, title, section, kind, cluster, description, total_count,
-		       pos_x, pos_y, sort_order, is_active
+		       pos_x, pos_y, sort_order, is_active, track_kind::text
 		FROM atlas_nodes
 		WHERE is_active = TRUE
 		ORDER BY sort_order, id
@@ -62,7 +62,7 @@ func (r *AtlasCataloguePostgres) ListNodes(ctx context.Context) ([]domain.AtlasC
 func (r *AtlasCataloguePostgres) ListAllNodes(ctx context.Context) ([]domain.AtlasCatalogueNode, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, title, section, kind, cluster, description, total_count,
-		       pos_x, pos_y, sort_order, is_active
+		       pos_x, pos_y, sort_order, is_active, track_kind::text
 		FROM atlas_nodes
 		ORDER BY sort_order, id
 	`)
@@ -88,7 +88,7 @@ func (r *AtlasCataloguePostgres) ListAllNodes(ctx context.Context) ([]domain.Atl
 func (r *AtlasCataloguePostgres) GetNode(ctx context.Context, id string) (domain.AtlasCatalogueNode, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, title, section, kind, cluster, description, total_count,
-		       pos_x, pos_y, sort_order, is_active
+		       pos_x, pos_y, sort_order, is_active, track_kind::text
 		FROM atlas_nodes
 		WHERE id = $1
 	`, id)
@@ -114,11 +114,18 @@ func (r *AtlasCataloguePostgres) UpsertNode(ctx context.Context, n domain.AtlasC
 	if n.PosY != nil {
 		posY = *n.PosY
 	}
+	// TrackKind defaults to 'dev' to match the schema default — admin
+	// can pass empty string for engineering nodes without breaking the
+	// enum cast.
+	trackKind := n.TrackKind
+	if trackKind == "" {
+		trackKind = "dev"
+	}
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO atlas_nodes
-		    (id, title, section, kind, cluster, description, total_count, pos_x, pos_y, sort_order, is_active, updated_at)
+		    (id, title, section, kind, cluster, description, total_count, pos_x, pos_y, sort_order, is_active, track_kind, updated_at)
 		VALUES
-		    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
+		    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::track_kind, now())
 		ON CONFLICT (id) DO UPDATE SET
 		    title = EXCLUDED.title,
 		    section = EXCLUDED.section,
@@ -130,8 +137,9 @@ func (r *AtlasCataloguePostgres) UpsertNode(ctx context.Context, n domain.AtlasC
 		    pos_y = EXCLUDED.pos_y,
 		    sort_order = EXCLUDED.sort_order,
 		    is_active = EXCLUDED.is_active,
+		    track_kind = EXCLUDED.track_kind,
 		    updated_at = now()
-	`, n.ID, n.Title, n.Section, n.Kind, n.Cluster, n.Description, n.TotalCount, posX, posY, n.SortOrder, n.IsActive)
+	`, n.ID, n.Title, n.Section, n.Kind, n.Cluster, n.Description, n.TotalCount, posX, posY, n.SortOrder, n.IsActive, trackKind)
 	if err != nil {
 		return fmt.Errorf("profile.AtlasCataloguePostgres.UpsertNode: %w", err)
 	}
@@ -261,7 +269,7 @@ func scanAtlasNode(s scanner) (domain.AtlasCatalogueNode, error) {
 	var posX, posY *int
 	if err := s.Scan(
 		&n.ID, &n.Title, &n.Section, &n.Kind, &n.Cluster, &n.Description, &n.TotalCount,
-		&posX, &posY, &n.SortOrder, &n.IsActive,
+		&posX, &posY, &n.SortOrder, &n.IsActive, &n.TrackKind,
 	); err != nil {
 		return domain.AtlasCatalogueNode{}, fmt.Errorf("profile.scanAtlasNode: %w", err)
 	}

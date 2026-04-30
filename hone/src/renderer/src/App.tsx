@@ -41,6 +41,12 @@ import { SharedBoardsPage } from './pages/SharedBoards';
 import { EditorPage } from './pages/Editor';
 import { BoardsTabsChrome } from './components/BoardsTabsChrome';
 import { EventsPage } from './pages/Events';
+import { CoachPage } from './pages/Coach';
+import { ReadingPage } from './pages/Reading';
+import { WritingPage } from './pages/Writing';
+import { TutorAssignmentsPage } from './pages/TutorAssignments';
+import { ListeningPage } from './pages/Listening';
+import { CodeReviewPage } from './pages/CodeReview';
 import { SettingsPage, readStoredTheme, readPomodoroSeconds } from './pages/Settings';
 import { useSessionStore } from './stores/session';
 import { startFocusSession, endFocusSession } from './api/hone';
@@ -331,6 +337,25 @@ export default function App() {
     void bridge.pomodoro.save({ remainSec: remain, running, savedAt: now });
   }, [remain, running]);
 
+  // Phase 2.5 — push pomodoro status to the macOS menubar tray.
+  // Format: "12:34" while running, empty string when idle so the tray
+  // collapses to icon-only. Tooltip carries the pinned task name when
+  // available so a hover reveals what the timer is for.
+  useEffect(() => {
+    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+    if (!bridge) return;
+    if (running) {
+      const totalSec = Math.max(0, remain);
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      const title = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      const tooltip = pinnedTitle ? `Hone — ${pinnedTitle}` : 'Hone — focus session';
+      void bridge.tray.update(title, tooltip);
+    } else {
+      void bridge.tray.update('', 'Hone');
+    }
+  }, [remain, running, pinnedTitle]);
+
   // ── Focus session backend integration ─────────────────────────────────
   // Start session при первом переходе running false→true. Errors глотаем —
   // streak-наполнение «best-effort», не должно ломать таймер.
@@ -577,6 +602,11 @@ export default function App() {
       else if (code === 'KeyE') toggleTo('events');
       else if (code === 'KeyS') toggleTo('stats');
       else if (code === 'KeyP') toggleTo('podcasts');
+      else if (code === 'KeyR') toggleTo('reading');
+      else if (code === 'KeyW') toggleTo('writing');
+      else if (code === 'KeyA') toggleTo('assignments');
+      else if (code === 'KeyL') toggleTo('listening');
+      else if (code === 'KeyG') toggleTo('code_review');
       else if (code === 'Comma') toggleTo('settings');
     };
     window.addEventListener('keydown', onKey);
@@ -807,6 +837,13 @@ export default function App() {
           }}
         />
       )}
+
+      {page === 'coach' && <CoachPage />}
+      {page === 'reading' && <ReadingPage />}
+      {page === 'writing' && <WritingPage />}
+      {page === 'assignments' && <TutorAssignmentsPage />}
+      {page === 'listening' && <ListeningPage />}
+      {page === 'code_review' && <CodeReviewPage />}
 
       <Dock
         onMenu={() => setPaletteOpen(true)}

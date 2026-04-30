@@ -113,3 +113,11 @@ func (r *recallEpisodeRepo) DeleteOlderThan(context.Context, time.Time) (int64, 
 func (r *recallEpisodeRepo) MarkStaleForReembed(context.Context, string) (int64, error) {
 	return 0, nil
 }
+
+func (r *recallEpisodeRepo) CountByKindInRange(context.Context, uuid.UUID, time.Time, time.Time) (map[domain.EpisodeKind]int, error) {
+	return nil, nil
+}
+
+func (r *recallEpisodeRepo) HasWeeklySummary(context.Context, uuid.UUID, time.Time) (bool, error) {
+	return false, nil
+}

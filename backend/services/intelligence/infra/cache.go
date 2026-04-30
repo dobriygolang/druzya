@@ -136,6 +136,18 @@ func (c *CachedDailyBriefs) LastForcedAt(ctx context.Context, userID uuid.UUID) 
 	return lastForcedAt, nil
 }
 
+// RecentForUser проброс через кеш-обёртку без кеширования: feed dataset
+// большой (до 30 briefs), кешировать его в Redis невыгодно — каждый
+// brief апсертится день от дня и инвалидация была бы сложнее, чем сама
+// польза. Просто проксируем delegate.
+func (c *CachedDailyBriefs) RecentForUser(ctx context.Context, userID uuid.UUID, sinceDays, limit int) ([]domain.DailyBrief, error) {
+	out, err := c.delegate.RecentForUser(ctx, userID, sinceDays, limit)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.CachedDailyBriefs.RecentForUser: %w", err)
+	}
+	return out, nil
+}
+
 func (c *CachedDailyBriefs) set(ctx context.Context, key string, b domain.DailyBrief) {
 	raw, err := json.Marshal(b)
 	if err != nil {

@@ -180,6 +180,49 @@ const (
 	// HoneServiceBulkNotesMetaProcedure is the fully-qualified name of the HoneService's BulkNotesMeta
 	// RPC.
 	HoneServiceBulkNotesMetaProcedure = "/druz9.v1.HoneService/BulkNotesMeta"
+	// HoneServiceAddReadingMaterialProcedure is the fully-qualified name of the HoneService's
+	// AddReadingMaterial RPC.
+	HoneServiceAddReadingMaterialProcedure = "/druz9.v1.HoneService/AddReadingMaterial"
+	// HoneServiceListReadingMaterialsProcedure is the fully-qualified name of the HoneService's
+	// ListReadingMaterials RPC.
+	HoneServiceListReadingMaterialsProcedure = "/druz9.v1.HoneService/ListReadingMaterials"
+	// HoneServiceGetReadingMaterialProcedure is the fully-qualified name of the HoneService's
+	// GetReadingMaterial RPC.
+	HoneServiceGetReadingMaterialProcedure = "/druz9.v1.HoneService/GetReadingMaterial"
+	// HoneServiceArchiveReadingMaterialProcedure is the fully-qualified name of the HoneService's
+	// ArchiveReadingMaterial RPC.
+	HoneServiceArchiveReadingMaterialProcedure = "/druz9.v1.HoneService/ArchiveReadingMaterial"
+	// HoneServiceStartReadingSessionProcedure is the fully-qualified name of the HoneService's
+	// StartReadingSession RPC.
+	HoneServiceStartReadingSessionProcedure = "/druz9.v1.HoneService/StartReadingSession"
+	// HoneServiceEndReadingSessionProcedure is the fully-qualified name of the HoneService's
+	// EndReadingSession RPC.
+	HoneServiceEndReadingSessionProcedure = "/druz9.v1.HoneService/EndReadingSession"
+	// HoneServiceAddVocabProcedure is the fully-qualified name of the HoneService's AddVocab RPC.
+	HoneServiceAddVocabProcedure = "/druz9.v1.HoneService/AddVocab"
+	// HoneServiceReviewVocabProcedure is the fully-qualified name of the HoneService's ReviewVocab RPC.
+	HoneServiceReviewVocabProcedure = "/druz9.v1.HoneService/ReviewVocab"
+	// HoneServiceListVocabDueProcedure is the fully-qualified name of the HoneService's ListVocabDue
+	// RPC.
+	HoneServiceListVocabDueProcedure = "/druz9.v1.HoneService/ListVocabDue"
+	// HoneServiceAddListeningMaterialProcedure is the fully-qualified name of the HoneService's
+	// AddListeningMaterial RPC.
+	HoneServiceAddListeningMaterialProcedure = "/druz9.v1.HoneService/AddListeningMaterial"
+	// HoneServiceListListeningMaterialsProcedure is the fully-qualified name of the HoneService's
+	// ListListeningMaterials RPC.
+	HoneServiceListListeningMaterialsProcedure = "/druz9.v1.HoneService/ListListeningMaterials"
+	// HoneServiceGetListeningMaterialProcedure is the fully-qualified name of the HoneService's
+	// GetListeningMaterial RPC.
+	HoneServiceGetListeningMaterialProcedure = "/druz9.v1.HoneService/GetListeningMaterial"
+	// HoneServiceArchiveListeningMaterialProcedure is the fully-qualified name of the HoneService's
+	// ArchiveListeningMaterial RPC.
+	HoneServiceArchiveListeningMaterialProcedure = "/druz9.v1.HoneService/ArchiveListeningMaterial"
+	// HoneServiceGradeEnglishWritingProcedure is the fully-qualified name of the HoneService's
+	// GradeEnglishWriting RPC.
+	HoneServiceGradeEnglishWritingProcedure = "/druz9.v1.HoneService/GradeEnglishWriting"
+	// HoneServiceGradeCodeReviewProcedure is the fully-qualified name of the HoneService's
+	// GradeCodeReview RPC.
+	HoneServiceGradeCodeReviewProcedure = "/druz9.v1.HoneService/GradeCodeReview"
 )
 
 // HoneServiceClient is a client for the druz9.v1.HoneService service.
@@ -252,6 +295,34 @@ type HoneServiceClient interface {
 	ShareToWeb(context.Context, *connect.Request[v1.ShareToWebRequest]) (*connect.Response[v1.ShareToWebResponse], error)
 	MakePrivate(context.Context, *connect.Request[v1.MakePrivateRequest]) (*connect.Response[v1.MakePrivateResponse], error)
 	BulkNotesMeta(context.Context, *connect.Request[v1.BulkNotesMetaRequest]) (*connect.Response[v1.BulkNotesMetaResponse], error)
+	AddReadingMaterial(context.Context, *connect.Request[v1.AddReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error)
+	ListReadingMaterials(context.Context, *connect.Request[v1.ListReadingMaterialsRequest]) (*connect.Response[v1.ListReadingMaterialsResponse], error)
+	GetReadingMaterial(context.Context, *connect.Request[v1.GetReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error)
+	ArchiveReadingMaterial(context.Context, *connect.Request[v1.ArchiveReadingMaterialRequest]) (*connect.Response[v1.ArchiveReadingMaterialResponse], error)
+	StartReadingSession(context.Context, *connect.Request[v1.StartReadingSessionRequest]) (*connect.Response[v1.ReadingSession], error)
+	EndReadingSession(context.Context, *connect.Request[v1.EndReadingSessionRequest]) (*connect.Response[v1.EndReadingSessionResponse], error)
+	AddVocab(context.Context, *connect.Request[v1.AddVocabRequest]) (*connect.Response[v1.VocabEntry], error)
+	ReviewVocab(context.Context, *connect.Request[v1.ReviewVocabRequest]) (*connect.Response[v1.VocabEntry], error)
+	ListVocabDue(context.Context, *connect.Request[v1.ListVocabDueRequest]) (*connect.Response[v1.ListVocabDueResponse], error)
+	// ─── Listening-модуль (Wave 6.1) ─────────────────────────────────
+	// User-owned library of audio + transcript materials. Click-on-word
+	// reuses the AddVocab RPC (vocab queue is shared with Reading).
+	AddListeningMaterial(context.Context, *connect.Request[v1.AddListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error)
+	ListListeningMaterials(context.Context, *connect.Request[v1.ListListeningMaterialsRequest]) (*connect.Response[v1.ListListeningMaterialsResponse], error)
+	GetListeningMaterial(context.Context, *connect.Request[v1.GetListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error)
+	ArchiveListeningMaterial(context.Context, *connect.Request[v1.ArchiveListeningMaterialRequest]) (*connect.Response[v1.ArchiveListeningMaterialResponse], error)
+	// ─── Writing-as-Focus (Wave 4.4) ─────────────────────────────────
+	// GradeEnglishWriting — request-scoped: take a draft, return a
+	// structured list of grammar / vocab / style issues + an overall
+	// 0..100 score. No persistence layer; if the user wants to keep the
+	// text they save it via CreateNote.
+	GradeEnglishWriting(context.Context, *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error)
+	// ─── Code-review-coaching (Wave 3.6) ─────────────────────────────
+	// GradeCodeReview — user pastes a unified diff + their PR-style
+	// review; we grade the review across correctness/completeness/
+	// clarity/tone. Same one-shot, no-persistence pattern as the
+	// writing grader.
+	GradeCodeReview(context.Context, *connect.Request[v1.GradeCodeReviewRequest]) (*connect.Response[v1.GradeCodeReviewResponse], error)
 }
 
 // NewHoneServiceClient constructs a client for the druz9.v1.HoneService service. By default, it
@@ -553,6 +624,96 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("BulkNotesMeta")),
 			connect.WithClientOptions(opts...),
 		),
+		addReadingMaterial: connect.NewClient[v1.AddReadingMaterialRequest, v1.ReadingMaterial](
+			httpClient,
+			baseURL+HoneServiceAddReadingMaterialProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("AddReadingMaterial")),
+			connect.WithClientOptions(opts...),
+		),
+		listReadingMaterials: connect.NewClient[v1.ListReadingMaterialsRequest, v1.ListReadingMaterialsResponse](
+			httpClient,
+			baseURL+HoneServiceListReadingMaterialsProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListReadingMaterials")),
+			connect.WithClientOptions(opts...),
+		),
+		getReadingMaterial: connect.NewClient[v1.GetReadingMaterialRequest, v1.ReadingMaterial](
+			httpClient,
+			baseURL+HoneServiceGetReadingMaterialProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GetReadingMaterial")),
+			connect.WithClientOptions(opts...),
+		),
+		archiveReadingMaterial: connect.NewClient[v1.ArchiveReadingMaterialRequest, v1.ArchiveReadingMaterialResponse](
+			httpClient,
+			baseURL+HoneServiceArchiveReadingMaterialProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ArchiveReadingMaterial")),
+			connect.WithClientOptions(opts...),
+		),
+		startReadingSession: connect.NewClient[v1.StartReadingSessionRequest, v1.ReadingSession](
+			httpClient,
+			baseURL+HoneServiceStartReadingSessionProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("StartReadingSession")),
+			connect.WithClientOptions(opts...),
+		),
+		endReadingSession: connect.NewClient[v1.EndReadingSessionRequest, v1.EndReadingSessionResponse](
+			httpClient,
+			baseURL+HoneServiceEndReadingSessionProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("EndReadingSession")),
+			connect.WithClientOptions(opts...),
+		),
+		addVocab: connect.NewClient[v1.AddVocabRequest, v1.VocabEntry](
+			httpClient,
+			baseURL+HoneServiceAddVocabProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("AddVocab")),
+			connect.WithClientOptions(opts...),
+		),
+		reviewVocab: connect.NewClient[v1.ReviewVocabRequest, v1.VocabEntry](
+			httpClient,
+			baseURL+HoneServiceReviewVocabProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ReviewVocab")),
+			connect.WithClientOptions(opts...),
+		),
+		listVocabDue: connect.NewClient[v1.ListVocabDueRequest, v1.ListVocabDueResponse](
+			httpClient,
+			baseURL+HoneServiceListVocabDueProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListVocabDue")),
+			connect.WithClientOptions(opts...),
+		),
+		addListeningMaterial: connect.NewClient[v1.AddListeningMaterialRequest, v1.ListeningMaterial](
+			httpClient,
+			baseURL+HoneServiceAddListeningMaterialProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("AddListeningMaterial")),
+			connect.WithClientOptions(opts...),
+		),
+		listListeningMaterials: connect.NewClient[v1.ListListeningMaterialsRequest, v1.ListListeningMaterialsResponse](
+			httpClient,
+			baseURL+HoneServiceListListeningMaterialsProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListListeningMaterials")),
+			connect.WithClientOptions(opts...),
+		),
+		getListeningMaterial: connect.NewClient[v1.GetListeningMaterialRequest, v1.ListeningMaterial](
+			httpClient,
+			baseURL+HoneServiceGetListeningMaterialProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GetListeningMaterial")),
+			connect.WithClientOptions(opts...),
+		),
+		archiveListeningMaterial: connect.NewClient[v1.ArchiveListeningMaterialRequest, v1.ArchiveListeningMaterialResponse](
+			httpClient,
+			baseURL+HoneServiceArchiveListeningMaterialProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ArchiveListeningMaterial")),
+			connect.WithClientOptions(opts...),
+		),
+		gradeEnglishWriting: connect.NewClient[v1.GradeEnglishWritingRequest, v1.GradeEnglishWritingResponse](
+			httpClient,
+			baseURL+HoneServiceGradeEnglishWritingProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GradeEnglishWriting")),
+			connect.WithClientOptions(opts...),
+		),
+		gradeCodeReview: connect.NewClient[v1.GradeCodeReviewRequest, v1.GradeCodeReviewResponse](
+			httpClient,
+			baseURL+HoneServiceGradeCodeReviewProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GradeCodeReview")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -606,6 +767,21 @@ type honeServiceClient struct {
 	shareToWeb               *connect.Client[v1.ShareToWebRequest, v1.ShareToWebResponse]
 	makePrivate              *connect.Client[v1.MakePrivateRequest, v1.MakePrivateResponse]
 	bulkNotesMeta            *connect.Client[v1.BulkNotesMetaRequest, v1.BulkNotesMetaResponse]
+	addReadingMaterial       *connect.Client[v1.AddReadingMaterialRequest, v1.ReadingMaterial]
+	listReadingMaterials     *connect.Client[v1.ListReadingMaterialsRequest, v1.ListReadingMaterialsResponse]
+	getReadingMaterial       *connect.Client[v1.GetReadingMaterialRequest, v1.ReadingMaterial]
+	archiveReadingMaterial   *connect.Client[v1.ArchiveReadingMaterialRequest, v1.ArchiveReadingMaterialResponse]
+	startReadingSession      *connect.Client[v1.StartReadingSessionRequest, v1.ReadingSession]
+	endReadingSession        *connect.Client[v1.EndReadingSessionRequest, v1.EndReadingSessionResponse]
+	addVocab                 *connect.Client[v1.AddVocabRequest, v1.VocabEntry]
+	reviewVocab              *connect.Client[v1.ReviewVocabRequest, v1.VocabEntry]
+	listVocabDue             *connect.Client[v1.ListVocabDueRequest, v1.ListVocabDueResponse]
+	addListeningMaterial     *connect.Client[v1.AddListeningMaterialRequest, v1.ListeningMaterial]
+	listListeningMaterials   *connect.Client[v1.ListListeningMaterialsRequest, v1.ListListeningMaterialsResponse]
+	getListeningMaterial     *connect.Client[v1.GetListeningMaterialRequest, v1.ListeningMaterial]
+	archiveListeningMaterial *connect.Client[v1.ArchiveListeningMaterialRequest, v1.ArchiveListeningMaterialResponse]
+	gradeEnglishWriting      *connect.Client[v1.GradeEnglishWritingRequest, v1.GradeEnglishWritingResponse]
+	gradeCodeReview          *connect.Client[v1.GradeCodeReviewRequest, v1.GradeCodeReviewResponse]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -848,6 +1024,81 @@ func (c *honeServiceClient) BulkNotesMeta(ctx context.Context, req *connect.Requ
 	return c.bulkNotesMeta.CallUnary(ctx, req)
 }
 
+// AddReadingMaterial calls druz9.v1.HoneService.AddReadingMaterial.
+func (c *honeServiceClient) AddReadingMaterial(ctx context.Context, req *connect.Request[v1.AddReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error) {
+	return c.addReadingMaterial.CallUnary(ctx, req)
+}
+
+// ListReadingMaterials calls druz9.v1.HoneService.ListReadingMaterials.
+func (c *honeServiceClient) ListReadingMaterials(ctx context.Context, req *connect.Request[v1.ListReadingMaterialsRequest]) (*connect.Response[v1.ListReadingMaterialsResponse], error) {
+	return c.listReadingMaterials.CallUnary(ctx, req)
+}
+
+// GetReadingMaterial calls druz9.v1.HoneService.GetReadingMaterial.
+func (c *honeServiceClient) GetReadingMaterial(ctx context.Context, req *connect.Request[v1.GetReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error) {
+	return c.getReadingMaterial.CallUnary(ctx, req)
+}
+
+// ArchiveReadingMaterial calls druz9.v1.HoneService.ArchiveReadingMaterial.
+func (c *honeServiceClient) ArchiveReadingMaterial(ctx context.Context, req *connect.Request[v1.ArchiveReadingMaterialRequest]) (*connect.Response[v1.ArchiveReadingMaterialResponse], error) {
+	return c.archiveReadingMaterial.CallUnary(ctx, req)
+}
+
+// StartReadingSession calls druz9.v1.HoneService.StartReadingSession.
+func (c *honeServiceClient) StartReadingSession(ctx context.Context, req *connect.Request[v1.StartReadingSessionRequest]) (*connect.Response[v1.ReadingSession], error) {
+	return c.startReadingSession.CallUnary(ctx, req)
+}
+
+// EndReadingSession calls druz9.v1.HoneService.EndReadingSession.
+func (c *honeServiceClient) EndReadingSession(ctx context.Context, req *connect.Request[v1.EndReadingSessionRequest]) (*connect.Response[v1.EndReadingSessionResponse], error) {
+	return c.endReadingSession.CallUnary(ctx, req)
+}
+
+// AddVocab calls druz9.v1.HoneService.AddVocab.
+func (c *honeServiceClient) AddVocab(ctx context.Context, req *connect.Request[v1.AddVocabRequest]) (*connect.Response[v1.VocabEntry], error) {
+	return c.addVocab.CallUnary(ctx, req)
+}
+
+// ReviewVocab calls druz9.v1.HoneService.ReviewVocab.
+func (c *honeServiceClient) ReviewVocab(ctx context.Context, req *connect.Request[v1.ReviewVocabRequest]) (*connect.Response[v1.VocabEntry], error) {
+	return c.reviewVocab.CallUnary(ctx, req)
+}
+
+// ListVocabDue calls druz9.v1.HoneService.ListVocabDue.
+func (c *honeServiceClient) ListVocabDue(ctx context.Context, req *connect.Request[v1.ListVocabDueRequest]) (*connect.Response[v1.ListVocabDueResponse], error) {
+	return c.listVocabDue.CallUnary(ctx, req)
+}
+
+// AddListeningMaterial calls druz9.v1.HoneService.AddListeningMaterial.
+func (c *honeServiceClient) AddListeningMaterial(ctx context.Context, req *connect.Request[v1.AddListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error) {
+	return c.addListeningMaterial.CallUnary(ctx, req)
+}
+
+// ListListeningMaterials calls druz9.v1.HoneService.ListListeningMaterials.
+func (c *honeServiceClient) ListListeningMaterials(ctx context.Context, req *connect.Request[v1.ListListeningMaterialsRequest]) (*connect.Response[v1.ListListeningMaterialsResponse], error) {
+	return c.listListeningMaterials.CallUnary(ctx, req)
+}
+
+// GetListeningMaterial calls druz9.v1.HoneService.GetListeningMaterial.
+func (c *honeServiceClient) GetListeningMaterial(ctx context.Context, req *connect.Request[v1.GetListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error) {
+	return c.getListeningMaterial.CallUnary(ctx, req)
+}
+
+// ArchiveListeningMaterial calls druz9.v1.HoneService.ArchiveListeningMaterial.
+func (c *honeServiceClient) ArchiveListeningMaterial(ctx context.Context, req *connect.Request[v1.ArchiveListeningMaterialRequest]) (*connect.Response[v1.ArchiveListeningMaterialResponse], error) {
+	return c.archiveListeningMaterial.CallUnary(ctx, req)
+}
+
+// GradeEnglishWriting calls druz9.v1.HoneService.GradeEnglishWriting.
+func (c *honeServiceClient) GradeEnglishWriting(ctx context.Context, req *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error) {
+	return c.gradeEnglishWriting.CallUnary(ctx, req)
+}
+
+// GradeCodeReview calls druz9.v1.HoneService.GradeCodeReview.
+func (c *honeServiceClient) GradeCodeReview(ctx context.Context, req *connect.Request[v1.GradeCodeReviewRequest]) (*connect.Response[v1.GradeCodeReviewResponse], error) {
+	return c.gradeCodeReview.CallUnary(ctx, req)
+}
+
 // HoneServiceHandler is an implementation of the druz9.v1.HoneService service.
 type HoneServiceHandler interface {
 	// ─── Plan ───────────────────────────────────────────────────────────
@@ -918,6 +1169,34 @@ type HoneServiceHandler interface {
 	ShareToWeb(context.Context, *connect.Request[v1.ShareToWebRequest]) (*connect.Response[v1.ShareToWebResponse], error)
 	MakePrivate(context.Context, *connect.Request[v1.MakePrivateRequest]) (*connect.Response[v1.MakePrivateResponse], error)
 	BulkNotesMeta(context.Context, *connect.Request[v1.BulkNotesMetaRequest]) (*connect.Response[v1.BulkNotesMetaResponse], error)
+	AddReadingMaterial(context.Context, *connect.Request[v1.AddReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error)
+	ListReadingMaterials(context.Context, *connect.Request[v1.ListReadingMaterialsRequest]) (*connect.Response[v1.ListReadingMaterialsResponse], error)
+	GetReadingMaterial(context.Context, *connect.Request[v1.GetReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error)
+	ArchiveReadingMaterial(context.Context, *connect.Request[v1.ArchiveReadingMaterialRequest]) (*connect.Response[v1.ArchiveReadingMaterialResponse], error)
+	StartReadingSession(context.Context, *connect.Request[v1.StartReadingSessionRequest]) (*connect.Response[v1.ReadingSession], error)
+	EndReadingSession(context.Context, *connect.Request[v1.EndReadingSessionRequest]) (*connect.Response[v1.EndReadingSessionResponse], error)
+	AddVocab(context.Context, *connect.Request[v1.AddVocabRequest]) (*connect.Response[v1.VocabEntry], error)
+	ReviewVocab(context.Context, *connect.Request[v1.ReviewVocabRequest]) (*connect.Response[v1.VocabEntry], error)
+	ListVocabDue(context.Context, *connect.Request[v1.ListVocabDueRequest]) (*connect.Response[v1.ListVocabDueResponse], error)
+	// ─── Listening-модуль (Wave 6.1) ─────────────────────────────────
+	// User-owned library of audio + transcript materials. Click-on-word
+	// reuses the AddVocab RPC (vocab queue is shared with Reading).
+	AddListeningMaterial(context.Context, *connect.Request[v1.AddListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error)
+	ListListeningMaterials(context.Context, *connect.Request[v1.ListListeningMaterialsRequest]) (*connect.Response[v1.ListListeningMaterialsResponse], error)
+	GetListeningMaterial(context.Context, *connect.Request[v1.GetListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error)
+	ArchiveListeningMaterial(context.Context, *connect.Request[v1.ArchiveListeningMaterialRequest]) (*connect.Response[v1.ArchiveListeningMaterialResponse], error)
+	// ─── Writing-as-Focus (Wave 4.4) ─────────────────────────────────
+	// GradeEnglishWriting — request-scoped: take a draft, return a
+	// structured list of grammar / vocab / style issues + an overall
+	// 0..100 score. No persistence layer; if the user wants to keep the
+	// text they save it via CreateNote.
+	GradeEnglishWriting(context.Context, *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error)
+	// ─── Code-review-coaching (Wave 3.6) ─────────────────────────────
+	// GradeCodeReview — user pastes a unified diff + their PR-style
+	// review; we grade the review across correctness/completeness/
+	// clarity/tone. Same one-shot, no-persistence pattern as the
+	// writing grader.
+	GradeCodeReview(context.Context, *connect.Request[v1.GradeCodeReviewRequest]) (*connect.Response[v1.GradeCodeReviewResponse], error)
 }
 
 // NewHoneServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1215,6 +1494,96 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("BulkNotesMeta")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceAddReadingMaterialHandler := connect.NewUnaryHandler(
+		HoneServiceAddReadingMaterialProcedure,
+		svc.AddReadingMaterial,
+		connect.WithSchema(honeServiceMethods.ByName("AddReadingMaterial")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListReadingMaterialsHandler := connect.NewUnaryHandler(
+		HoneServiceListReadingMaterialsProcedure,
+		svc.ListReadingMaterials,
+		connect.WithSchema(honeServiceMethods.ByName("ListReadingMaterials")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceGetReadingMaterialHandler := connect.NewUnaryHandler(
+		HoneServiceGetReadingMaterialProcedure,
+		svc.GetReadingMaterial,
+		connect.WithSchema(honeServiceMethods.ByName("GetReadingMaterial")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceArchiveReadingMaterialHandler := connect.NewUnaryHandler(
+		HoneServiceArchiveReadingMaterialProcedure,
+		svc.ArchiveReadingMaterial,
+		connect.WithSchema(honeServiceMethods.ByName("ArchiveReadingMaterial")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceStartReadingSessionHandler := connect.NewUnaryHandler(
+		HoneServiceStartReadingSessionProcedure,
+		svc.StartReadingSession,
+		connect.WithSchema(honeServiceMethods.ByName("StartReadingSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceEndReadingSessionHandler := connect.NewUnaryHandler(
+		HoneServiceEndReadingSessionProcedure,
+		svc.EndReadingSession,
+		connect.WithSchema(honeServiceMethods.ByName("EndReadingSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceAddVocabHandler := connect.NewUnaryHandler(
+		HoneServiceAddVocabProcedure,
+		svc.AddVocab,
+		connect.WithSchema(honeServiceMethods.ByName("AddVocab")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceReviewVocabHandler := connect.NewUnaryHandler(
+		HoneServiceReviewVocabProcedure,
+		svc.ReviewVocab,
+		connect.WithSchema(honeServiceMethods.ByName("ReviewVocab")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListVocabDueHandler := connect.NewUnaryHandler(
+		HoneServiceListVocabDueProcedure,
+		svc.ListVocabDue,
+		connect.WithSchema(honeServiceMethods.ByName("ListVocabDue")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceAddListeningMaterialHandler := connect.NewUnaryHandler(
+		HoneServiceAddListeningMaterialProcedure,
+		svc.AddListeningMaterial,
+		connect.WithSchema(honeServiceMethods.ByName("AddListeningMaterial")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListListeningMaterialsHandler := connect.NewUnaryHandler(
+		HoneServiceListListeningMaterialsProcedure,
+		svc.ListListeningMaterials,
+		connect.WithSchema(honeServiceMethods.ByName("ListListeningMaterials")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceGetListeningMaterialHandler := connect.NewUnaryHandler(
+		HoneServiceGetListeningMaterialProcedure,
+		svc.GetListeningMaterial,
+		connect.WithSchema(honeServiceMethods.ByName("GetListeningMaterial")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceArchiveListeningMaterialHandler := connect.NewUnaryHandler(
+		HoneServiceArchiveListeningMaterialProcedure,
+		svc.ArchiveListeningMaterial,
+		connect.WithSchema(honeServiceMethods.ByName("ArchiveListeningMaterial")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceGradeEnglishWritingHandler := connect.NewUnaryHandler(
+		HoneServiceGradeEnglishWritingProcedure,
+		svc.GradeEnglishWriting,
+		connect.WithSchema(honeServiceMethods.ByName("GradeEnglishWriting")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceGradeCodeReviewHandler := connect.NewUnaryHandler(
+		HoneServiceGradeCodeReviewProcedure,
+		svc.GradeCodeReview,
+		connect.WithSchema(honeServiceMethods.ByName("GradeCodeReview")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.HoneService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HoneServiceGenerateDailyPlanProcedure:
@@ -1313,6 +1682,36 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceMakePrivateHandler.ServeHTTP(w, r)
 		case HoneServiceBulkNotesMetaProcedure:
 			honeServiceBulkNotesMetaHandler.ServeHTTP(w, r)
+		case HoneServiceAddReadingMaterialProcedure:
+			honeServiceAddReadingMaterialHandler.ServeHTTP(w, r)
+		case HoneServiceListReadingMaterialsProcedure:
+			honeServiceListReadingMaterialsHandler.ServeHTTP(w, r)
+		case HoneServiceGetReadingMaterialProcedure:
+			honeServiceGetReadingMaterialHandler.ServeHTTP(w, r)
+		case HoneServiceArchiveReadingMaterialProcedure:
+			honeServiceArchiveReadingMaterialHandler.ServeHTTP(w, r)
+		case HoneServiceStartReadingSessionProcedure:
+			honeServiceStartReadingSessionHandler.ServeHTTP(w, r)
+		case HoneServiceEndReadingSessionProcedure:
+			honeServiceEndReadingSessionHandler.ServeHTTP(w, r)
+		case HoneServiceAddVocabProcedure:
+			honeServiceAddVocabHandler.ServeHTTP(w, r)
+		case HoneServiceReviewVocabProcedure:
+			honeServiceReviewVocabHandler.ServeHTTP(w, r)
+		case HoneServiceListVocabDueProcedure:
+			honeServiceListVocabDueHandler.ServeHTTP(w, r)
+		case HoneServiceAddListeningMaterialProcedure:
+			honeServiceAddListeningMaterialHandler.ServeHTTP(w, r)
+		case HoneServiceListListeningMaterialsProcedure:
+			honeServiceListListeningMaterialsHandler.ServeHTTP(w, r)
+		case HoneServiceGetListeningMaterialProcedure:
+			honeServiceGetListeningMaterialHandler.ServeHTTP(w, r)
+		case HoneServiceArchiveListeningMaterialProcedure:
+			honeServiceArchiveListeningMaterialHandler.ServeHTTP(w, r)
+		case HoneServiceGradeEnglishWritingProcedure:
+			honeServiceGradeEnglishWritingHandler.ServeHTTP(w, r)
+		case HoneServiceGradeCodeReviewProcedure:
+			honeServiceGradeCodeReviewHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1512,4 +1911,64 @@ func (UnimplementedHoneServiceHandler) MakePrivate(context.Context, *connect.Req
 
 func (UnimplementedHoneServiceHandler) BulkNotesMeta(context.Context, *connect.Request[v1.BulkNotesMetaRequest]) (*connect.Response[v1.BulkNotesMetaResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.BulkNotesMeta is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) AddReadingMaterial(context.Context, *connect.Request[v1.AddReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddReadingMaterial is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListReadingMaterials(context.Context, *connect.Request[v1.ListReadingMaterialsRequest]) (*connect.Response[v1.ListReadingMaterialsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListReadingMaterials is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GetReadingMaterial(context.Context, *connect.Request[v1.GetReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetReadingMaterial is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ArchiveReadingMaterial(context.Context, *connect.Request[v1.ArchiveReadingMaterialRequest]) (*connect.Response[v1.ArchiveReadingMaterialResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ArchiveReadingMaterial is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) StartReadingSession(context.Context, *connect.Request[v1.StartReadingSessionRequest]) (*connect.Response[v1.ReadingSession], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.StartReadingSession is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) EndReadingSession(context.Context, *connect.Request[v1.EndReadingSessionRequest]) (*connect.Response[v1.EndReadingSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.EndReadingSession is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) AddVocab(context.Context, *connect.Request[v1.AddVocabRequest]) (*connect.Response[v1.VocabEntry], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddVocab is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ReviewVocab(context.Context, *connect.Request[v1.ReviewVocabRequest]) (*connect.Response[v1.VocabEntry], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ReviewVocab is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListVocabDue(context.Context, *connect.Request[v1.ListVocabDueRequest]) (*connect.Response[v1.ListVocabDueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListVocabDue is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) AddListeningMaterial(context.Context, *connect.Request[v1.AddListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddListeningMaterial is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListListeningMaterials(context.Context, *connect.Request[v1.ListListeningMaterialsRequest]) (*connect.Response[v1.ListListeningMaterialsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListListeningMaterials is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GetListeningMaterial(context.Context, *connect.Request[v1.GetListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetListeningMaterial is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ArchiveListeningMaterial(context.Context, *connect.Request[v1.ArchiveListeningMaterialRequest]) (*connect.Response[v1.ArchiveListeningMaterialResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ArchiveListeningMaterial is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GradeEnglishWriting(context.Context, *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GradeEnglishWriting is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GradeCodeReview(context.Context, *connect.Request[v1.GradeCodeReviewRequest]) (*connect.Response[v1.GradeCodeReviewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GradeCodeReview is not implemented"))
 }

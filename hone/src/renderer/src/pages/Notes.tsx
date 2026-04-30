@@ -959,6 +959,78 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
     }
   }, [flushNow]);
 
+  // Phase 0.11 — bring a cloud note BACK to local-only.
+  //
+  // Symmetric counterpart to handleSyncToCloud: read the latest cloud
+  // body, materialise it into IndexedDB as a local note, then delete the
+  // cloud row. Encrypted notes are decrypted first (vault prompt) so the
+  // local copy holds plaintext — local notes don't carry encryption.
+  // If the note is currently published the share-slug must be cleared
+  // first; we run unpublishNote to be idempotent.
+  const handleCloudToLocal = useCallback(async (id: string) => {
+    if (isLocalNoteId(id)) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setToast("You're offline · come back when you have internet");
+      window.setTimeout(() => setToast(null), 2400);
+      return;
+    }
+    try {
+      await flushNow();
+      const meta = await getNotesMeta();
+      const m = meta.find((row) => row.id === id);
+      const isEncrypted = m?.encrypted ?? false;
+      const isPublished = !!m?.published;
+      const note = await getNote(id);
+      let plaintextMd = note.bodyMd ?? '';
+      if (isEncrypted) {
+        const { isUnlocked, unlockVault, fetchSalt, decryptText } =
+          await import('../api/vault');
+        if (!isUnlocked()) {
+          const salt = await fetchSalt();
+          if (!salt) {
+            setToast('Set up Vault in Settings first');
+            window.setTimeout(() => setToast(null), 2800);
+            return;
+          }
+          const pwd = window.prompt('Vault password to bring this note local:');
+          if (!pwd) return;
+          await unlockVault(pwd);
+        }
+        plaintextMd = await decryptText(note.bodyMd ?? '');
+      }
+      // Public link goes away first so the cloud row can be deleted next.
+      if (isPublished) {
+        try { await unpublishNote(id); } catch { /* ignore — delete still works */ }
+      }
+      const local = await createLocalNote(note.title ?? 'Untitled', plaintextMd);
+      await deleteNote(id);
+      setList((prev) => ({
+        ...prev,
+        notes: prev.notes.map((row) =>
+          row.id === id
+            ? {
+                id: local.id,
+                title: local.title,
+                // LocalNote.updatedAt is ISO string; NoteSummary expects
+                // Date|null — sidebar formatters handle null gracefully.
+                updatedAt: local.updatedAt ? new Date(local.updatedAt) : null,
+                sizeBytes: local.bodyMd.length,
+                folderId: null,
+              }
+            : row,
+        ),
+      }));
+      setSelectedId((cur) => (cur === id ? local.id : cur));
+      setActive((cur) => (cur && cur.id === id ? { ...cur, id: local.id } : cur));
+      setToast('Moved to local-only');
+      window.setTimeout(() => setToast(null), 2400);
+      void useQuotaStore.getState().refresh();
+    } catch (e) {
+      setToast(`Move-local failed: ${(e as Error).message}`);
+      window.setTimeout(() => setToast(null), 3400);
+    }
+  }, [flushNow]);
+
   // Phase C-7 — encrypt note. Lock-icon в sidebar row → этот handler.
   // Flow:
   //   1. Если vault не unlocked — prompt password, derive key.
@@ -1173,6 +1245,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
           onUnpublish={handleUnpublish}
           onEncrypt={handleEncrypt}
           onSyncToCloud={handleSyncToCloud}
+          onCloudToLocal={handleCloudToLocal}
           onToggleCollapse={handleSidebarCollapse}
         />
       )}
@@ -1255,6 +1328,7 @@ interface SidebarProps {
   onEncrypt: (id: string) => void;
   onUnpublish: (id: string) => void;
   onSyncToCloud: (id: string) => void;
+  onCloudToLocal: (id: string) => void;
   onToggleCollapse: () => void;
 }
 
@@ -1332,7 +1406,7 @@ function writeExpandedFolders(s: Set<string>): void {
   }
 }
 
-function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSessions, folders, selectedFolder, onSelectFolder, onCreateFolder, onDeleteFolder, onMoveNote, onSelect, onSelectCueSession, onDeleteCueSession, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onToggleCollapse }: SidebarProps) {
+function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSessions, folders, selectedFolder, onSelectFolder, onCreateFolder, onDeleteFolder, onMoveNote, onSelect, onSelectCueSession, onDeleteCueSession, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onCloudToLocal, onToggleCollapse }: SidebarProps) {
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState<{ parentId: string | null } | null>(null);
   const [folderInputRef] = useState(() => ({ current: null as HTMLInputElement | null }));
@@ -1422,6 +1496,13 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
       <SidebarHeader
         status={list.status}
         onCreate={onCreate}
+        onCreateFolder={() => {
+          // Phase 0.12 — single create entry-point. Folder action lives
+          // in the header split-button now; the duplicate "+" inside the
+          // Folders strip below is gone. Inline form opens at the root.
+          setCreatingFolder({ parentId: null });
+          window.setTimeout(() => folderInputRef.current?.focus(), 40);
+        }}
         onToggleCollapse={onToggleCollapse}
       />
 
@@ -1481,8 +1562,9 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
         <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
       </div>
 
-      {/* Folder tree — рендерится ВСЕГДА (даже если folders=0), иначе
-          юзер не видит «+ folder» кнопку и не может создать первую. */}
+      {/* Folder tree — рендерится ВСЕГДА (даже если folders=0). Phase
+          0.12 — кнопка "+ folder" перенесена в header split-button,
+          здесь остаётся только заголовок + сам список. */}
       <div style={{ marginBottom: 4 }}>
           <div style={{
             padding: '4px 14px 2px',
@@ -1500,31 +1582,6 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
             }}>
               Folders
             </span>
-            <button
-              onClick={() => {
-                setCreatingFolder({ parentId: null });
-                window.setTimeout(() => folderInputRef.current?.focus(), 40);
-              }}
-              title="New folder"
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: 4,
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--ink-40)',
-                display: 'grid',
-                placeItems: 'center',
-                transition: 'color 160ms ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
-            >
-              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
           </div>
 
           {creatingFolder && creatingFolder.parentId === null && (
@@ -1585,6 +1642,7 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
               onUnpublishNote={onUnpublish}
               onEncryptNote={onEncrypt}
               onSyncToCloudNote={onSyncToCloud}
+              onCloudToLocalNote={onCloudToLocal}
               onMoveNote={onMoveNote}
               onCreateChild={(pid) => {
                 setCreatingFolder({ parentId: pid });
@@ -1654,6 +1712,7 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
                 onUnpublish={onUnpublish}
                 onEncrypt={onEncrypt}
                 onSyncToCloud={onSyncToCloud}
+                onCloudToLocal={onCloudToLocal}
                 onMove={onMoveNote}
               />
             );
@@ -1807,10 +1866,12 @@ function NotesRetentionHint() {
 function SidebarHeader({
   status,
   onCreate,
+  onCreateFolder,
   onToggleCollapse,
 }: {
   status: ListState['status'];
   onCreate: () => void;
+  onCreateFolder: () => void;
   onToggleCollapse: () => void;
 }) {
   return (
@@ -1867,7 +1928,7 @@ function SidebarHeader({
       >
         {status === 'loading' ? 'Notes' : status === 'error' ? 'Offline' : 'Notes'}
       </span>
-      <CreateButton onClick={onCreate} />
+      <CreateSplitButton onCreateNote={onCreate} onCreateFolder={onCreateFolder} />
       <button
         onClick={onToggleCollapse}
         className="focus-ring"
@@ -1903,43 +1964,148 @@ function SidebarHeader({
   );
 }
 
-function CreateButton({ onClick }: { onClick: () => void }) {
+// CreateSplitButton — Phase 0.12. Linear-style split button: main click
+// on "+" creates a note (the 95% case); the "▾" stub opens a tiny
+// popover with the second action ("New folder"). Hides the original
+// duplicated "+ folder" button down in the Folders section so the
+// sidebar has exactly one entry point for "create something".
+function CreateSplitButton({
+  onCreateNote,
+  onCreateFolder,
+}: {
+  onCreateNote: () => void;
+  onCreateFolder: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   return (
-    <button
-      onClick={onClick}
-      className="focus-ring"
-      title="New note (⌘N)"
-      style={{
-        width: 26,
-        height: 26,
-        borderRadius: 7,
-        background: 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        color: 'var(--ink-60)',
-        display: 'grid',
-        placeItems: 'center',
-        transition: 'background-color 180ms ease, color 180ms ease, transform 180ms ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
-        e.currentTarget.style.color = 'var(--ink)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = 'var(--ink-60)';
-      }}
-      onMouseDown={(e) => {
-        e.currentTarget.style.transform = 'scale(0.92)';
-      }}
-      onMouseUp={(e) => {
-        e.currentTarget.style.transform = 'scale(1)';
-      }}
-    >
-      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-    </button>
+    <div ref={wrapRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <button
+        onClick={onCreateNote}
+        className="focus-ring"
+        title="New note (⌘N)"
+        style={{
+          width: 24,
+          height: 26,
+          borderTopLeftRadius: 7,
+          borderBottomLeftRadius: 7,
+          borderTopRightRadius: 0,
+          borderBottomRightRadius: 0,
+          background: 'transparent',
+          border: 'none',
+          borderRight: '1px solid rgba(255,255,255,0.06)',
+          cursor: 'pointer',
+          color: 'var(--ink-60)',
+          display: 'grid',
+          placeItems: 'center',
+          transition: 'background-color 180ms ease, color 180ms ease, transform 180ms ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+          e.currentTarget.style.color = 'var(--ink)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--ink-60)';
+        }}
+        onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+        onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+      >
+        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="focus-ring"
+        title="More create options"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        style={{
+          width: 16,
+          height: 26,
+          borderTopRightRadius: 7,
+          borderBottomRightRadius: 7,
+          borderTopLeftRadius: 0,
+          borderBottomLeftRadius: 0,
+          background: open ? 'rgba(255,255,255,0.07)' : 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          color: open ? 'var(--ink)' : 'var(--ink-60)',
+          display: 'grid',
+          placeItems: 'center',
+          transition: 'background-color 180ms ease, color 180ms ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+          e.currentTarget.style.color = 'var(--ink)';
+        }}
+        onMouseLeave={(e) => {
+          if (!open) {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--ink-60)';
+          }
+        }}
+      >
+        <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="fadein"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            right: 0,
+            zIndex: 30,
+            minWidth: 168,
+            padding: 6,
+            borderRadius: 10,
+            background: 'rgba(20,20,22,0.96)',
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            animationDuration: '120ms',
+          }}
+        >
+          <DropdownItem
+            icon={
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6" />
+              </svg>
+            }
+            label="New note"
+            onClick={() => { setOpen(false); onCreateNote(); }}
+          />
+          <DropdownItem
+            icon={<FolderIcon />}
+            label="New folder"
+            onClick={() => { setOpen(false); onCreateFolder(); }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1974,6 +2140,7 @@ function FolderTreeBranch({
   onUnpublishNote,
   onEncryptNote,
   onSyncToCloudNote,
+  onCloudToLocalNote,
   onMoveNote,
   inlineCreate,
   inlineCreateUnderId,
@@ -1998,6 +2165,7 @@ function FolderTreeBranch({
   onUnpublishNote: (id: string) => void;
   onEncryptNote: (id: string) => void;
   onSyncToCloudNote: (id: string) => void;
+  onCloudToLocalNote: (id: string) => void;
   onMoveNote: (noteId: string, folderId: string | null) => void;
   inlineCreate: React.ReactNode;
   inlineCreateUnderId: string | null;
@@ -2050,6 +2218,7 @@ function FolderTreeBranch({
                 onUnpublishNote={onUnpublishNote}
                 onEncryptNote={onEncryptNote}
                 onSyncToCloudNote={onSyncToCloudNote}
+                onCloudToLocalNote={onCloudToLocalNote}
                 onMoveNote={onMoveNote}
                 inlineCreate={inlineCreate}
                 inlineCreateUnderId={inlineCreateUnderId}
@@ -2078,6 +2247,7 @@ function FolderTreeBranch({
             onUnpublish={onUnpublishNote}
             onEncrypt={onEncryptNote}
             onSyncToCloud={onSyncToCloudNote}
+            onCloudToLocal={onCloudToLocalNote}
             onMove={onMoveNote}
           />
         );
@@ -2103,6 +2273,7 @@ interface NoteTreeRowProps {
   onUnpublish: (id: string) => void;
   onEncrypt: (id: string) => void;
   onSyncToCloud: (id: string) => void;
+  onCloudToLocal: (id: string) => void;
   onMove: (noteId: string, folderId: string | null) => void;
 }
 
@@ -2117,6 +2288,7 @@ function NoteTreeRow({
   onPublish,
   onUnpublish,
   onSyncToCloud,
+  onCloudToLocal,
   onMove,
 }: NoteTreeRowProps) {
   const [hover, setHover] = useState(false);
@@ -2235,6 +2407,10 @@ function NoteTreeRow({
           onSyncToCloud={() => {
             setMenuOpen(false);
             onSyncToCloud(note.id);
+          }}
+          onCloudToLocal={() => {
+            setMenuOpen(false);
+            onCloudToLocal(note.id);
           }}
           onPublish={() => {
             setMenuOpen(false);
@@ -2473,6 +2649,7 @@ interface NoteRowProps {
   onUnpublish: (id: string) => void;
   onEncrypt: (id: string) => void;
   onSyncToCloud: (id: string) => void;
+  onCloudToLocal: (id: string) => void;
   onMove: (noteId: string, folderId: string | null) => void;
 }
 
@@ -2492,11 +2669,12 @@ const NoteRow = memo(NoteRowImpl, (prev, next) => {
     prev.onUnpublish === next.onUnpublish &&
     prev.onEncrypt === next.onEncrypt &&
     prev.onSyncToCloud === next.onSyncToCloud &&
+    prev.onCloudToLocal === next.onCloudToLocal &&
     prev.onMove === next.onMove
   );
 });
 
-function NoteRowImpl({ note, active, folders, onSelect, onDelete, onPublish, onUnpublish, onSyncToCloud, onMove }: NoteRowProps) {
+function NoteRowImpl({ note, active, folders, onSelect, onDelete, onPublish, onUnpublish, onSyncToCloud, onCloudToLocal, onMove }: NoteRowProps) {
   const [hover, setHover] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pubStatus, setPubStatus] = useState<PublishStatus | null>(null);
@@ -2762,6 +2940,10 @@ function NoteRowImpl({ note, active, folders, onSelect, onDelete, onPublish, onU
             setMenuOpen(false);
             onSyncToCloud(note.id);
           }}
+          onCloudToLocal={() => {
+            setMenuOpen(false);
+            onCloudToLocal(note.id);
+          }}
           onPublish={() => {
             setMenuOpen(false);
             onPublish(note.id);
@@ -2801,13 +2983,14 @@ interface RowDropdownProps {
   folders: Folder[];
   currentFolderId: string | null | undefined;
   onSyncToCloud: () => void;
+  onCloudToLocal: () => void;
   onPublish: () => void;
   onUnpublish: () => void;
   onDelete: () => void;
   onMove: (folderId: string | null) => void;
 }
 
-function RowDropdown({ isLocal, published, folders, currentFolderId, onSyncToCloud, onPublish, onUnpublish, onDelete, onMove }: RowDropdownProps) {
+function RowDropdown({ isLocal, published, folders, currentFolderId, onSyncToCloud, onCloudToLocal, onPublish, onUnpublish, onDelete, onMove }: RowDropdownProps) {
   return (
     <div
       className="fadein"
@@ -2828,9 +3011,14 @@ function RowDropdown({ isLocal, published, folders, currentFolderId, onSyncToClo
         animationDuration: '140ms',
       }}
     >
+      {/* Phase 0.11 — explicit current-status header + symmetric
+          state-switch UX. Local notes can move ↑ to cloud; cloud notes
+          can publish, unpublish (back to private), or move ↓ back to
+          local-only. Two clicks max for any state transition.
+       */}
       {isLocal ? (
         <>
-          <DropdownLabel>Sync</DropdownLabel>
+          <DropdownLabel>Currently · Local-only</DropdownLabel>
           <DropdownItem
             icon={<LinkIcon />}
             label="Sync to cloud"
@@ -2838,21 +3026,39 @@ function RowDropdown({ isLocal, published, folders, currentFolderId, onSyncToClo
           />
           <DropdownDivider />
         </>
-      ) : (
+      ) : published ? (
         <>
-          <DropdownLabel>Sharing</DropdownLabel>
+          <DropdownLabel>Currently · Public link</DropdownLabel>
           <DropdownItem
             icon={<LinkIcon />}
-            label={published ? 'Copy public link' : 'Share to web'}
+            label="Copy public link"
             onClick={onPublish}
           />
-          {published && (
-            <DropdownItem
-              icon={<UnlinkIcon />}
-              label="Make private"
-              onClick={onUnpublish}
-            />
-          )}
+          <DropdownItem
+            icon={<UnlinkIcon />}
+            label="Make private (cloud only)"
+            onClick={onUnpublish}
+          />
+          <DropdownItem
+            icon={<UnlinkIcon />}
+            label="Move to local-only"
+            onClick={onCloudToLocal}
+          />
+          <DropdownDivider />
+        </>
+      ) : (
+        <>
+          <DropdownLabel>Currently · Synced to cloud</DropdownLabel>
+          <DropdownItem
+            icon={<LinkIcon />}
+            label="Share to web"
+            onClick={onPublish}
+          />
+          <DropdownItem
+            icon={<UnlinkIcon />}
+            label="Move to local-only"
+            onClick={onCloudToLocal}
+          />
           <DropdownDivider />
         </>
       )}

@@ -102,6 +102,71 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
     el.volume = muted ? 0 : volume
   }, [volume, muted, isActive])
 
+  // Phase 0.13 — MediaSession integration. Surfaces the active podcast in
+  // macOS Control Center / Now Playing / TouchBar / lock screen so the
+  // user can play/pause/scrub WITHOUT switching back to the tab.
+  // Only the actively-playing card publishes metadata; switching cards
+  // resets the previous one (cleanup runs in the deps-driven effect).
+  useEffect(() => {
+    if (!isActive) return
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+    const ms = navigator.mediaSession
+    ms.metadata = new window.MediaMetadata({
+      title: podcast.title,
+      artist: 'druz9',
+      album: 'Codex podcast',
+      artwork: podcast.cover_url
+        ? [{ src: podcast.cover_url, sizes: '512x512', type: 'image/png' }]
+        : undefined,
+    })
+    const safeSet = (action: MediaSessionAction, handler: (() => void) | null) => {
+      try { ms.setActionHandler(action, handler) } catch { /* unsupported on this UA */ }
+    }
+    safeSet('play', () => {
+      const el = audioRef.current
+      if (!el) return
+      void el.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+    })
+    safeSet('pause', () => {
+      const el = audioRef.current
+      if (!el) return
+      el.pause()
+      setPlaying(false)
+    })
+    safeSet('seekbackward', () => skip(-15))
+    safeSet('seekforward', () => skip(30))
+    return () => {
+      // Clear handlers on unmount / card-switch so the OS doesn't keep
+      // calling stale ones after this card has been unmounted.
+      ;['play', 'pause', 'seekbackward', 'seekforward'].forEach((a) =>
+        safeSet(a as MediaSessionAction, null),
+      )
+    }
+    // skip is closured but stable enough — depending only on the
+    // podcast id keeps this effect from re-running on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, podcast.id, podcast.title, podcast.cover_url])
+
+  // Position state — drives the OS scrubber bar. Update on every
+  // throttled timeupdate; cheap enough.
+  useEffect(() => {
+    if (!isActive) return
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+    const ms = navigator.mediaSession
+    if (typeof ms.setPositionState !== 'function') return
+    if (!Number.isFinite(duration) || duration <= 0) return
+    try {
+      ms.setPositionState({
+        duration,
+        playbackRate: 1,
+        position: Math.max(0, Math.min(currentTime, duration)),
+      })
+    } catch {
+      /* Safari throws if duration drifts mid-update; ignore. */
+    }
+    ms.playbackState = playing ? 'playing' : 'paused'
+  }, [isActive, currentTime, duration, playing])
+
   function handleTimeUpdate() {
     const el = audioRef.current
     if (!el) return

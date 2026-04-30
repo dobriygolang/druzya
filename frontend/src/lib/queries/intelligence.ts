@@ -25,12 +25,32 @@ export interface BriefRecommendation {
   target_id?: string
 }
 
+// CoachSeverity — Phase 4.4 wire enum, mirrors druz9.v1.InsightSeverity.
+// Empty / unknown сервер кодирует как 'cruise' через мап ниже.
+export type CoachSeverity = 'cruise' | 'nudge' | 'warn' | 'critical'
+
 export interface DailyBrief {
   brief_id?: string
   headline: string
   narrative: string
   recommendations: BriefRecommendation[]
   generated_at?: string
+  // Wire variants:
+  //   - chi-direct handler отдаёт raw string ('cruise' | 'warn' | …)
+  //   - vanguard transcoder отдаёт proto enum имя ('INSIGHT_SEVERITY_WARN')
+  //   - legacy / отсутствие → undefined
+  // Хелпер normalizeSeverity ниже маппит всё в CoachSeverity.
+  severity?: string
+  severity_reason?: string
+}
+
+export function normalizeSeverity(s: string | undefined): CoachSeverity {
+  if (!s) return 'cruise'
+  const v = s.toLowerCase()
+  if (v.includes('critical')) return 'critical'
+  if (v.includes('warn')) return 'warn'
+  if (v.includes('nudge')) return 'nudge'
+  return 'cruise'
 }
 
 const STALE_MS = 10 * 60 * 1000

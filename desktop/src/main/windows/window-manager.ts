@@ -27,6 +27,10 @@ const STEALTHED_WINDOWS: ReadonlySet<WindowName> = new Set([
   'history',
   'picker',
   'area-overlay',
+  // Wave 6.2 — English polish window: same stealth treatment as the
+  // compact/expanded so screen-share viewers don't see «AI is editing
+  // my message».
+  'english-polish',
 ]);
 
 // Persisted stealth state. `true` (default) = окна спрятаны от capture'а.
@@ -167,6 +171,16 @@ function createManagedWindow(
     win.on('move', scheduleSave);
   }
 
+  // English polish — Wave 6.2: same stealth + always-on-top treatment
+  // as compact, so it sits cleanly on top of an IDE / Slack / email and
+  // doesn't show up on a screen share. Single-shot use, blur-to-hide
+  // mirrors the picker pattern (clicking elsewhere dismisses the panel).
+  if (name === 'english-polish') {
+    win.setContentProtection(stealthEnabled);
+    win.setAlwaysOnTop(true, 'floating', 1);
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
+
   // Compact + expanded + history are stealth by default. Settings /
   // onboarding render system-level prompts, so we leave them visible
   // to the viewer.
@@ -215,6 +229,7 @@ function createManagedWindow(
     picker: '#/picker',
     toast: '#/toast',
     'tray-popup': '#/tray-popup',
+    'english-polish': '#/english-polish',
   };
   const url = options.initialURL ?? `${opts.rendererURL}${hashFor[name]}`;
   void win.loadURL(url);
@@ -752,6 +767,26 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         hasShadow: true,
         resizable: false,
         movable: false,
+        skipTaskbar: true,
+        alwaysOnTop: true,
+        focusable: true,
+        roundedCorners: true,
+        show: false,
+      });
+    }
+    case 'english-polish': {
+      // Wave 6.2 — Cue English mode panel. Resizable так что юзер может
+      // развернуть его если pasted text длинный. Focusable: true — мы
+      // ждём что юзер кликает по issues row'ам и копирует suggestions.
+      return new BrowserWindow({
+        ...base,
+        width: 480,
+        height: 540,
+        frame: false,
+        transparent: true,
+        hasShadow: true,
+        resizable: true,
+        movable: true,
         skipTaskbar: true,
         alwaysOnTop: true,
         focusable: true,

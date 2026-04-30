@@ -37,7 +37,8 @@ func PickModel(user UserContext, taskModel enums.LLMModel, section enums.Section
 	//    we can audit it via `exhaustive`.
 	switch section {
 	case enums.SectionAlgorithms, enums.SectionSQL, enums.SectionGo,
-		enums.SectionSystemDesign, enums.SectionBehavioral:
+		enums.SectionSystemDesign, enums.SectionBehavioral,
+		enums.SectionEnglishHR, enums.SectionSystemDesignSenior, enums.SectionTechLeadEM:
 		// No per-section overrides yet. Intentional no-op.
 	}
 	// 4. Company override.
@@ -70,6 +71,23 @@ func PickModel(user UserContext, taskModel enums.LLMModel, section enums.Section
 // fed to the LLM — it MUST NEVER be persisted into mock_messages as a
 // user/assistant message or logged.
 func BuildSystemPrompt(s Session, t TaskWithHint, user UserContext, company CompanyContext, elapsed time.Duration, stress StressProfile, currentCode string) string {
+	// English HR rounds have no algorithmic task and a different rubric;
+	// delegate to the dedicated builder. Keeping the entry point unified
+	// so callers (send_message.buildLLMMessages, worker.report) don't have
+	// to branch on Section themselves.
+	if IsEnglishHRSection(s.Section) {
+		return BuildEnglishHRSystemPrompt(s, user, company, elapsed)
+	}
+	// Senior SD rounds — same treatment as English HR (no task, different
+	// rubric), different prompt voice (architectural pushback).
+	if IsSystemDesignSeniorSection(s.Section) {
+		return BuildSystemDesignSeniorSystemPrompt(s, user, company, elapsed)
+	}
+	// Tech Lead / EM behavioral STAR rounds — free-form people scenarios.
+	if IsTechLeadEMSection(s.Section) {
+		return BuildTechLeadSystemPrompt(s, user, company, elapsed)
+	}
+
 	var b strings.Builder
 
 	lang := user.ResponseLanguage
@@ -131,6 +149,20 @@ func BuildSystemPrompt(s Session, t TaskWithHint, user UserContext, company Comp
 // LLM is asked to return JSON matching ReportDraft; a strict schema is listed
 // inside the prompt.
 func BuildReportPrompt(s Session, t TaskWithHint, stress StressProfile) string {
+	// English HR uses a different rubric (clarity / accuracy / range /
+	// fluency) — see BuildEnglishHRReportPrompt for the JSON shape.
+	if IsEnglishHRSection(s.Section) {
+		return BuildEnglishHRReportPrompt(s)
+	}
+	// Senior SD uses depth / tradeoffs / failure_modes / pragmatism.
+	if IsSystemDesignSeniorSection(s.Section) {
+		return BuildSystemDesignSeniorReportPrompt(s)
+	}
+	// Tech Lead / EM uses structure / ownership / impact / learning.
+	if IsTechLeadEMSection(s.Section) {
+		return BuildTechLeadReportPrompt(s)
+	}
+
 	var b strings.Builder
 	b.WriteString("# ROLE\n")
 	b.WriteString("You are the grader for a mock interview that just finished. Produce an objective assessment.\n\n")

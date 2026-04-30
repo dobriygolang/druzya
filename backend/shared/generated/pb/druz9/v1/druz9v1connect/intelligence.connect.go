@@ -61,6 +61,12 @@ const (
 	// IntelligenceServiceGetMemoryStatsProcedure is the fully-qualified name of the
 	// IntelligenceService's GetMemoryStats RPC.
 	IntelligenceServiceGetMemoryStatsProcedure = "/druz9.v1.IntelligenceService/GetMemoryStats"
+	// IntelligenceServiceListInsightsProcedure is the fully-qualified name of the IntelligenceService's
+	// ListInsights RPC.
+	IntelligenceServiceListInsightsProcedure = "/druz9.v1.IntelligenceService/ListInsights"
+	// IntelligenceServiceAckInsightProcedure is the fully-qualified name of the IntelligenceService's
+	// AckInsight RPC.
+	IntelligenceServiceAckInsightProcedure = "/druz9.v1.IntelligenceService/AckInsight"
 )
 
 // IntelligenceServiceClient is a client for the druz9.v1.IntelligenceService service.
@@ -69,6 +75,8 @@ type IntelligenceServiceClient interface {
 	AskNotes(context.Context, *connect.Request[v1.AskNotesRequest]) (*connect.Response[v1.AskAnswer], error)
 	AckRecommendation(context.Context, *connect.Request[v1.AckRecommendationRequest]) (*connect.Response[v1.AckRecommendationResponse], error)
 	GetMemoryStats(context.Context, *connect.Request[v1.GetMemoryStatsRequest]) (*connect.Response[v1.MemoryStats], error)
+	ListInsights(context.Context, *connect.Request[v1.ListInsightsRequest]) (*connect.Response[v1.ListInsightsResponse], error)
+	AckInsight(context.Context, *connect.Request[v1.AckInsightRequest]) (*connect.Response[v1.AckInsightResponse], error)
 }
 
 // NewIntelligenceServiceClient constructs a client for the druz9.v1.IntelligenceService service. By
@@ -106,6 +114,18 @@ func NewIntelligenceServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(intelligenceServiceMethods.ByName("GetMemoryStats")),
 			connect.WithClientOptions(opts...),
 		),
+		listInsights: connect.NewClient[v1.ListInsightsRequest, v1.ListInsightsResponse](
+			httpClient,
+			baseURL+IntelligenceServiceListInsightsProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("ListInsights")),
+			connect.WithClientOptions(opts...),
+		),
+		ackInsight: connect.NewClient[v1.AckInsightRequest, v1.AckInsightResponse](
+			httpClient,
+			baseURL+IntelligenceServiceAckInsightProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("AckInsight")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -115,6 +135,8 @@ type intelligenceServiceClient struct {
 	askNotes          *connect.Client[v1.AskNotesRequest, v1.AskAnswer]
 	ackRecommendation *connect.Client[v1.AckRecommendationRequest, v1.AckRecommendationResponse]
 	getMemoryStats    *connect.Client[v1.GetMemoryStatsRequest, v1.MemoryStats]
+	listInsights      *connect.Client[v1.ListInsightsRequest, v1.ListInsightsResponse]
+	ackInsight        *connect.Client[v1.AckInsightRequest, v1.AckInsightResponse]
 }
 
 // GetDailyBrief calls druz9.v1.IntelligenceService.GetDailyBrief.
@@ -137,12 +159,24 @@ func (c *intelligenceServiceClient) GetMemoryStats(ctx context.Context, req *con
 	return c.getMemoryStats.CallUnary(ctx, req)
 }
 
+// ListInsights calls druz9.v1.IntelligenceService.ListInsights.
+func (c *intelligenceServiceClient) ListInsights(ctx context.Context, req *connect.Request[v1.ListInsightsRequest]) (*connect.Response[v1.ListInsightsResponse], error) {
+	return c.listInsights.CallUnary(ctx, req)
+}
+
+// AckInsight calls druz9.v1.IntelligenceService.AckInsight.
+func (c *intelligenceServiceClient) AckInsight(ctx context.Context, req *connect.Request[v1.AckInsightRequest]) (*connect.Response[v1.AckInsightResponse], error) {
+	return c.ackInsight.CallUnary(ctx, req)
+}
+
 // IntelligenceServiceHandler is an implementation of the druz9.v1.IntelligenceService service.
 type IntelligenceServiceHandler interface {
 	GetDailyBrief(context.Context, *connect.Request[v1.GetDailyBriefRequest]) (*connect.Response[v1.DailyBrief], error)
 	AskNotes(context.Context, *connect.Request[v1.AskNotesRequest]) (*connect.Response[v1.AskAnswer], error)
 	AckRecommendation(context.Context, *connect.Request[v1.AckRecommendationRequest]) (*connect.Response[v1.AckRecommendationResponse], error)
 	GetMemoryStats(context.Context, *connect.Request[v1.GetMemoryStatsRequest]) (*connect.Response[v1.MemoryStats], error)
+	ListInsights(context.Context, *connect.Request[v1.ListInsightsRequest]) (*connect.Response[v1.ListInsightsResponse], error)
+	AckInsight(context.Context, *connect.Request[v1.AckInsightRequest]) (*connect.Response[v1.AckInsightResponse], error)
 }
 
 // NewIntelligenceServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -176,6 +210,18 @@ func NewIntelligenceServiceHandler(svc IntelligenceServiceHandler, opts ...conne
 		connect.WithSchema(intelligenceServiceMethods.ByName("GetMemoryStats")),
 		connect.WithHandlerOptions(opts...),
 	)
+	intelligenceServiceListInsightsHandler := connect.NewUnaryHandler(
+		IntelligenceServiceListInsightsProcedure,
+		svc.ListInsights,
+		connect.WithSchema(intelligenceServiceMethods.ByName("ListInsights")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceAckInsightHandler := connect.NewUnaryHandler(
+		IntelligenceServiceAckInsightProcedure,
+		svc.AckInsight,
+		connect.WithSchema(intelligenceServiceMethods.ByName("AckInsight")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.IntelligenceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IntelligenceServiceGetDailyBriefProcedure:
@@ -186,6 +232,10 @@ func NewIntelligenceServiceHandler(svc IntelligenceServiceHandler, opts ...conne
 			intelligenceServiceAckRecommendationHandler.ServeHTTP(w, r)
 		case IntelligenceServiceGetMemoryStatsProcedure:
 			intelligenceServiceGetMemoryStatsHandler.ServeHTTP(w, r)
+		case IntelligenceServiceListInsightsProcedure:
+			intelligenceServiceListInsightsHandler.ServeHTTP(w, r)
+		case IntelligenceServiceAckInsightProcedure:
+			intelligenceServiceAckInsightHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -209,4 +259,12 @@ func (UnimplementedIntelligenceServiceHandler) AckRecommendation(context.Context
 
 func (UnimplementedIntelligenceServiceHandler) GetMemoryStats(context.Context, *connect.Request[v1.GetMemoryStatsRequest]) (*connect.Response[v1.MemoryStats], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetMemoryStats is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) ListInsights(context.Context, *connect.Request[v1.ListInsightsRequest]) (*connect.Response[v1.ListInsightsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.ListInsights is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) AckInsight(context.Context, *connect.Request[v1.AckInsightRequest]) (*connect.Response[v1.AckInsightResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.AckInsight is not implemented"))
 }

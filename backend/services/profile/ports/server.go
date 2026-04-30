@@ -401,12 +401,57 @@ func (s *ProfileServer) GetPublicProfile(
 	return connect.NewResponse(toProfilePublicProto(v)), nil
 }
 
+// GetUserTracks implements (/profile/me/tracks).
+func (s *ProfileServer) GetUserTracks(
+	ctx context.Context,
+	_ *connect.Request[pb.GetUserTracksRequest],
+) (*connect.Response[pb.UserTracks], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.H.GetUserTracks == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tracks UC not wired"))
+	}
+	items, err := s.H.GetUserTracks.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("profile.GetUserTracks: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toUserTracksProto(items)), nil
+}
+
+// SetUserTracks implements (/profile/me/tracks PUT). Replaces the user's
+// track list atomically. Empty list and missing primary are 400's.
+func (s *ProfileServer) SetUserTracks(
+	ctx context.Context,
+	req *connect.Request[pb.SetUserTracksRequest],
+) (*connect.Response[pb.UserTracks], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.H.SetUserTracks == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tracks UC not wired"))
+	}
+	items, err := tracksFromProto(req.Msg.Items)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	out, err := s.H.SetUserTracks.Do(ctx, uid, items)
+	if err != nil {
+		return nil, fmt.Errorf("profile.SetUserTracks: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toUserTracksProto(out)), nil
+}
+
 // ── error mapping ──────────────────────────────────────────────────────────
 
 func (s *ProfileServer) toConnectErr(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
+	case errors.Is(err, domain.ErrInvalidTracks):
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	default:
 		s.H.Log.Error("profile: unexpected error", slog.Any("err", err))
 		return connect.NewError(connect.CodeInternal, errors.New("profile failure"))
@@ -696,7 +741,7 @@ func fromSettingsProto(req *pb.ProfileSettings) domain.Settings {
 // ── enum adapters ──────────────────────────────────────────────────────────
 
 func sectionToProto(s enums.Section) pb.Section {
-	switch s {
+	switch s { //nolint:exhaustive // free-form sections fall through to default
 	case enums.SectionAlgorithms:
 		return pb.Section_SECTION_ALGORITHMS
 	case enums.SectionSQL:
@@ -815,4 +860,81 @@ func isDecaying(last *time.Time, now time.Time) bool {
 		return false
 	}
 	return now.Sub(*last) > 7*24*time.Hour
+}
+
+// ── tracks converters ──────────────────────────────────────────────────────
+
+func toUserTracksProto(items []domain.UserTrack) *pb.UserTracks {
+	out := &pb.UserTracks{Items: make([]*pb.UserTrack, 0, len(items))}
+	for _, it := range items {
+		out.Items = append(out.Items, &pb.UserTrack{
+			Track:        trackToProto(it.Track),
+			Seniority:    string(it.Seniority),
+			Primary:      it.Primary,
+			StartedAt:    timestamppb.New(it.StartedAt),
+			LastActiveAt: timestamppb.New(it.LastActiveAt),
+		})
+	}
+	return out
+}
+
+// tracksFromProto converts inbound proto items into domain values. The
+// timestamps are intentionally ignored — server-authoritative columns
+// like started_at must not be writable from the client (a forged old
+// started_at would lie to the cohort analysis).
+func tracksFromProto(items []*pb.UserTrack) ([]domain.UserTrack, error) {
+	out := make([]domain.UserTrack, 0, len(items))
+	for i, it := range items {
+		if it == nil {
+			return nil, fmt.Errorf("items[%d]: nil", i)
+		}
+		t, err := trackFromProto(it.Track)
+		if err != nil {
+			return nil, fmt.Errorf("items[%d]: %w", i, err)
+		}
+		out = append(out, domain.UserTrack{
+			Track:     t,
+			Seniority: domain.Seniority(it.Seniority),
+			Primary:   it.Primary,
+		})
+	}
+	return out, nil
+}
+
+func trackToProto(t domain.Track) pb.Track {
+	switch t {
+	case domain.TrackDev:
+		return pb.Track_TRACK_DEV
+	case domain.TrackDevSenior:
+		return pb.Track_TRACK_DEV_SENIOR
+	case domain.TrackSysanalyst:
+		return pb.Track_TRACK_SYSANALYST
+	case domain.TrackProductAnalyst:
+		return pb.Track_TRACK_PRODUCT_ANALYST
+	case domain.TrackQA:
+		return pb.Track_TRACK_QA
+	case domain.TrackEnglish:
+		return pb.Track_TRACK_ENGLISH
+	default:
+		return pb.Track_TRACK_UNSPECIFIED
+	}
+}
+
+func trackFromProto(t pb.Track) (domain.Track, error) {
+	switch t { //nolint:exhaustive // TRACK_UNSPECIFIED is rejected via default branch with a friendly error
+	case pb.Track_TRACK_DEV:
+		return domain.TrackDev, nil
+	case pb.Track_TRACK_DEV_SENIOR:
+		return domain.TrackDevSenior, nil
+	case pb.Track_TRACK_SYSANALYST:
+		return domain.TrackSysanalyst, nil
+	case pb.Track_TRACK_PRODUCT_ANALYST:
+		return domain.TrackProductAnalyst, nil
+	case pb.Track_TRACK_QA:
+		return domain.TrackQA, nil
+	case pb.Track_TRACK_ENGLISH:
+		return domain.TrackEnglish, nil
+	default:
+		return "", fmt.Errorf("unknown track %v", t)
+	}
 }

@@ -31,6 +31,10 @@ import { MockQuestionsPanel } from './MockQuestionsPanel'
 import { MockStrictnessPanel } from './MockStrictnessPanel'
 import { QuotasPanel } from './QuotasPanel'
 import { CopilotPlansPanel } from './CopilotPlansPanel'
+import { TracksObservabilityPanel } from './TracksObservabilityPanel'
+import { EnglishHRObservabilityPanel } from './EnglishHRObservabilityPanel'
+import { MockBlockObservabilityPanel } from './MockBlockObservabilityPanel'
+import { IntelligenceObservabilityPanel } from './IntelligenceObservabilityPanel'
 
 export default function AdminPage() {
   const profile = useProfileQuery()
@@ -97,7 +101,15 @@ export default function AdminPage() {
                                       ? 'Subscription · квоты'
                                       : tab === 'copilot_plans'
                                         ? 'Copilot · тарифы'
-                                        : 'AI Modельки'}
+                                        : tab === 'obs_tracks'
+                                          ? 'Observability · tracks'
+                                          : tab === 'obs_english_hr'
+                                            ? 'Observability · English HR'
+                                            : tab === 'obs_mock_block'
+                                              ? 'Observability · mock-block'
+                                              : tab === 'obs_intelligence'
+                                                ? 'Observability · coach'
+                                                : 'AI Modельки'}
             </h1>
             <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
           </div>
@@ -118,6 +130,10 @@ export default function AdminPage() {
         {tab === 'mock_strictness' && <MockStrictnessPanel />}
         {tab === 'quotas' && <QuotasPanel />}
         {tab === 'copilot_plans' && <CopilotPlansPanel />}
+        {tab === 'obs_tracks' && <TracksObservabilityPanel />}
+        {tab === 'obs_english_hr' && <EnglishHRObservabilityPanel />}
+        {tab === 'obs_mock_block' && <MockBlockObservabilityPanel />}
+        {tab === 'obs_intelligence' && <IntelligenceObservabilityPanel />}
       </main>
     </div>
   )

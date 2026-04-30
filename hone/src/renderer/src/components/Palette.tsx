@@ -19,6 +19,12 @@ export type PageId =
   | 'editor'
   | 'shared_boards' // единый boards-флоу (private/public — кому отдан URL)
   | 'events'
+  | 'coach' // Phase 5 — лента past briefs
+  | 'reading' // Wave 4 — English Reading-модуль (library + reader + SRS)
+  | 'writing' // Wave 4.4 — English Writing-as-Focus draft + AI feedback
+  | 'assignments' // Wave 5.1d — pending tutor-pushed assignments
+  | 'listening' // Wave 6.1 — English Listening with transcript + click-on-word
+  | 'code_review' // Wave 3.6 — Code-review-coaching: paste diff + review, AI grades
   | 'settings';
 // PaletteAction — то, что палетка может попросить App'а сделать.
 // `standup` — переходит на Today page (banner там сам решит показываться
@@ -59,6 +65,18 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
         run: () => onOpen('shared_boards'),
       },
       { id: 'events', label: 'Events', icon: 'calendar', shortcut: ['V'], run: () => onOpen('events') },
+      // Phase 5 — Coach feed: лента past briefs за месяц.
+      { id: 'coach', label: 'Coach feed', icon: 'sparkle', shortcut: ['C'], run: () => onOpen('coach') },
+      // Wave 4 — English Reading-модуль: library + reader + click-on-word + SRS.
+      { id: 'reading', label: 'Reading', icon: 'note', shortcut: ['R'], run: () => onOpen('reading') },
+      // Wave 4.4 — English Writing-as-Focus: draft + AI inline feedback.
+      { id: 'writing', label: 'Writing', icon: 'note', shortcut: ['W'], run: () => onOpen('writing') },
+      // Wave 5.1d — pending assignments from your tutor.
+      { id: 'assignments', label: 'Assignments', icon: 'sparkle', shortcut: ['A'], run: () => onOpen('assignments') },
+      // Wave 6.1 — English Listening: audio + transcript + click-on-word.
+      { id: 'listening', label: 'Listening', icon: 'headphones', shortcut: ['L'], run: () => onOpen('listening') },
+      // Wave 3.6 — Code-review-coaching: paste diff + review, AI grades.
+      { id: 'code_review', label: 'Code review', icon: 'note', shortcut: ['G'], run: () => onOpen('code_review') },
       { id: 'podcasts', label: 'Podcasts', icon: 'headphones', shortcut: ['P'], run: () => onOpen('podcasts') },
       { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'], run: () => onOpen('stats') },
       { id: 'settings', label: 'Settings', icon: 'settings', shortcut: [','], run: () => onOpen('settings') },

@@ -120,7 +120,7 @@ func TestDailyServer_GetKata_Unauthenticated(t *testing.T) {
 	}
 }
 
-func TestDailyServer_GetKata_NoTasks_Internal(t *testing.T) {
+func TestDailyServer_GetKata_NoTasks_NotFound(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	tasks := mocks.NewMockTaskRepo(ctrl)
@@ -130,14 +130,18 @@ func TestDailyServer_GetKata_NoTasks_Internal(t *testing.T) {
 	skills.EXPECT().WeakestNode(gomock.Any(), uid).Return(domain.NodeWeakness{
 		Section: enums.SectionAlgorithms, Difficulty: enums.DifficultyEasy,
 	}, nil)
+	// Empty pool for all three difficulties — every fallback also misses.
+	// Expect three calls (easy preferred, then medium and hard fallbacks),
+	// not just one. Order is deterministic per get_kata.go's fallback
+	// loop: easy is skipped (already tried), then medium, then hard.
 	tasks.EXPECT().ListActiveBySectionDifficulty(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(nil, nil)
+		Return(nil, nil).Times(3)
 	srv := newTestDailyServer(t, tasks, skills, katas, nil, time.Now().UTC(), true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	_, err := srv.GetKata(ctx, connect.NewRequest(&pb.GetDailyKataRequest{}))
 	var ce *connect.Error
-	if !errors.As(err, &ce) || ce.Code() != connect.CodeInternal {
-		t.Fatalf("expected Internal, got %v", err)
+	if !errors.As(err, &ce) || ce.Code() != connect.CodeNotFound {
+		t.Fatalf("expected NotFound, got %v", err)
 	}
 }
 

@@ -756,6 +756,10 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
       sendAwarenessRef.current = null
       sendSnapshotRef.current = null
     }
+    // guestToken/myDisplayName/myUserId зашиваются в WS-handshake +
+    // awareness снапшот; пересоздавать сессию на их смене дороже чем reload —
+    // соавторские поля обновляются отдельным awareness-эффектом.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room])
 
   const handleChange = useCallback((elements: readonly unknown[]) => {
@@ -940,6 +944,7 @@ function openWs(
     }
   })()
   const log = (...args: unknown[]) => {
+    // eslint-disable-next-line no-console -- gated by hone:debug:ws localStorage flag
     if (dbg) console.log('[wb.ws]', ...args)
   }
 

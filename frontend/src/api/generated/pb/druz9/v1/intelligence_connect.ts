@@ -19,7 +19,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AckRecommendationRequest, AckRecommendationResponse, AskAnswer, AskNotesRequest, DailyBrief, GetDailyBriefRequest, GetMemoryStatsRequest, MemoryStats } from "./intelligence_pb.js";
+import { AckInsightRequest, AckInsightResponse, AckRecommendationRequest, AckRecommendationResponse, AskAnswer, AskNotesRequest, DailyBrief, GetDailyBriefRequest, GetMemoryStatsRequest, ListInsightsRequest, ListInsightsResponse, MemoryStats } from "./intelligence_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -62,6 +62,24 @@ export const IntelligenceService = {
       name: "GetMemoryStats",
       I: GetMemoryStatsRequest,
       O: MemoryStats,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.ListInsights
+     */
+    listInsights: {
+      name: "ListInsights",
+      I: ListInsightsRequest,
+      O: ListInsightsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.AckInsight
+     */
+    ackInsight: {
+      name: "AckInsight",
+      I: AckInsightRequest,
+      O: AckInsightResponse,
       kind: MethodKind.Unary,
     },
   }

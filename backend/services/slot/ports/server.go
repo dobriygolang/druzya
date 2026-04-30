@@ -342,7 +342,7 @@ func toBookingProto(b domain.Booking) *pb.Booking {
 // ── enum adapters ─────────────────────────────────────────────────────────
 
 func sectionToProtoSlot(s enums.Section) pb.Section {
-	switch s {
+	switch s { //nolint:exhaustive // free-form sections fall through to default
 	case enums.SectionAlgorithms:
 		return pb.Section_SECTION_ALGORITHMS
 	case enums.SectionSQL:
@@ -359,7 +359,7 @@ func sectionToProtoSlot(s enums.Section) pb.Section {
 }
 
 func sectionFromProtoSlot(s pb.Section) enums.Section {
-	switch s {
+	switch s { //nolint:exhaustive // free-form proto sections fall through to default
 	case pb.Section_SECTION_ALGORITHMS:
 		return enums.SectionAlgorithms
 	case pb.Section_SECTION_SQL:

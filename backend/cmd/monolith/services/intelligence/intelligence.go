@@ -68,6 +68,9 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	calR := intelInfra.NewCalendarReader(d.Pool)
 	mockMsgR := intelInfra.NewMockMessagesReader(d.Pool)
 	codexR := intelInfra.NewCodexReader(d.Pool)
+	trackR := intelInfra.NewTrackReader(d.Pool)
+	goalsR := intelInfra.NewGoalsReader(d.Pool)
+	clubsR := intelInfra.NewClubReader(d.Pool)
 
 	embedder := newIntelEmbedder(d)
 
@@ -110,6 +113,20 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		Now:      d.Now,
 	}
 
+	// Phase 1.5 — Insights stream. Repo is pgx-backed; the use cases
+	// are nil-safe wrapped (port checks for nil) so this stays robust
+	// even before the periodic generator is wired.
+	//
+	// Phase 1.5b — generator is constructed BEFORE GetDailyBrief so we
+	// can pass it as the optional Insights dependency: the brief
+	// use-case then shares its prompt-input snapshot with the generator
+	// in a detached goroutine, keeping both surfaces synchronised
+	// without re-fetching readers.
+	insightsRepo := intelInfra.NewInsightsPostgres(d.Pool)
+	listInsightsUC := &intelApp.ListInsights{Repo: insightsRepo}
+	ackInsightUC := &intelApp.AckInsight{Repo: insightsRepo}
+	generateInsightsUC := &intelApp.GenerateInsights{Repo: insightsRepo, Now: d.Now}
+
 	h := intelApp.NewHandler(intelApp.Handler{
 		GetDailyBrief: &intelApp.GetDailyBrief{
 			Briefs:      briefs,
@@ -129,7 +146,12 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			DailyNotes:   dailyR,
 			Calendar:     calR,
 			MockMessages: mockMsgR,
+			Tracks:       trackR,
+			Goals:        goalsR,
+			Clubs:        clubsR,
 			Codex:        codexR,
+			// Phase 1.5b — share snapshot with the insight stream.
+			Insights: generateInsightsUC,
 		},
 		AskNotes: &intelApp.AskNotes{
 			Notes:    notesR,
@@ -141,7 +163,7 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		Log: d.Log,
 	})
 
-	server := intelPorts.NewIntelligenceServer(h, memory)
+	server := intelPorts.NewIntelligenceServer(h, memory, listInsightsUC, ackInsightUC)
 	connectPath, connectHandler := druz9v1connect.NewIntelligenceServiceHandler(
 		server,
 		connect.WithInterceptors(metrics.ConnectInterceptor()),
@@ -163,6 +185,13 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		Now:      d.Now,
 	}
 
+	// Phase 1.5b — hourly sweep of expired insight rows. Bounded
+	// retention symmetric with MemoryRetention.
+	insightsSweep := &intelApp.InsightsSweeper{
+		Repo: insightsRepo,
+		Log:  d.Log,
+	}
+
 	return IntelligenceModule{
 		Module: &monolithServices.Module{
 			ConnectPath:        connectPath,
@@ -180,10 +209,26 @@ func New(d monolithServices.Deps) IntelligenceModule {
 				r.Post("/intelligence/ask-notes", transcoder.ServeHTTP)
 				r.Post("/intelligence/brief/ack", transcoder.ServeHTTP)
 				r.Get("/intelligence/memory/stats", transcoder.ServeHTTP)
+				// Phase 1.5 insight stream.
+				r.Get("/intelligence/insights", transcoder.ServeHTTP)
+				r.Post("/intelligence/insights/{id}/ack", transcoder.ServeHTTP)
+				// Phase 5 — Hone /coach feed: last N days briefs newest-first.
+				recentBriefs := newRecentBriefsHandler(briefs, d.Log)
+				r.Get("/intelligence/briefs/recent", recentBriefs)
+				// Phase 5 — admin /intelligence dashboard. Role check inside.
+				adminStats := newAdminStatsHandler(d.Pool, d.Log)
+				r.Get("/admin/intelligence/stats", adminStats)
+				// Phase 4.3 — goals CRUD chi-direct (user-scoped via Bearer auth).
+				goalsList, goalsCreate, goalsStatus, goalsDelete := newGoalsHandlers(goalsR, d.Log)
+				r.Get("/goals", goalsList)
+				r.Post("/goals", goalsCreate)
+				r.Post("/goals/{id}/status", goalsStatus)
+				r.Delete("/goals/{id}", goalsDelete)
 			},
 			Background: []func(context.Context){
 				func(ctx context.Context) { go worker.Run(ctx) },
 				func(ctx context.Context) { go retention.Run(ctx) },
+				func(ctx context.Context) { go insightsSweep.Run(ctx) },
 			},
 		},
 		Memory:   memory,

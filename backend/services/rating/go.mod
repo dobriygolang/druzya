@@ -7,6 +7,7 @@ require (
 	druz9/shared v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
+	github.com/pgvector/pgvector-go v0.3.0
 	github.com/redis/go-redis/v9 v9.6.1
 	go.uber.org/mock v0.6.0
 	golang.org/x/sync v0.20.0
@@ -23,15 +24,12 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/pgvector/pgvector-go v0.3.0 // indirect
 	github.com/prometheus/client_golang v1.20.5 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
-	golang.org/x/tools v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
 )
 

@@ -69,6 +69,11 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 		log:           d.Log,
 	}
 
+	// Observability handler — Wave 3.5.x admin panels (Tracks /
+	// English HR / Mock-block). Chi-direct read-only surface, mirrors
+	// AtlasAdminHandler's pattern in profile/.
+	observ := adminPorts.NewObservabilityHandler(adminInfra.NewObservability(d.Pool), d.Log)
+
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
@@ -96,6 +101,12 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 			// /companies — read-only listing for any authenticated user.
 			// Powers the EditDateModal company picker on /calendar.
 			r.Get("/companies", ch.list)
+
+			// Wave 3.5.x admin observability — admin-only read-only
+			// aggregations. Role check happens INSIDE each handler.
+			r.Get("/admin/observability/tracks", observ.HandleTracks)
+			r.Get("/admin/observability/english-hr", observ.HandleEnglishHR)
+			r.Get("/admin/observability/mock-block", observ.HandleMockBlock)
 		},
 	}
 }

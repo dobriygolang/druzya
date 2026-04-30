@@ -81,15 +81,24 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		synthesiser      honeDomain.PlanSynthesizer
 		critiqueStreamer honeDomain.CritiqueStreamer
 		embedder         honeDomain.Embedder
+		summaryGrader    honeDomain.SummaryGrader
+		writingGrader    honeDomain.WritingGrader
+		reviewGrader     honeDomain.CodeReviewGrader
 	)
 	if d.LLMChain != nil {
 		synthesiser = honeInfra.NewLLMChainPlanSynthesiser(d.LLMChain, d.Log)
 		critiqueStreamer = honeInfra.NewLLMChainCritiqueStreamer(d.LLMChain, d.Log)
-		d.Log.Info("hone: LLM adapters wired (plan synthesis + whiteboard critique)")
+		summaryGrader = honeInfra.NewLLMChainSummaryGrader(d.LLMChain, d.Log)
+		writingGrader = honeInfra.NewLLMChainWritingGrader(d.LLMChain, d.Log)
+		reviewGrader = honeInfra.NewLLMChainCodeReviewGrader(d.LLMChain, d.Log)
+		d.Log.Info("hone: LLM adapters wired (plan synthesis + whiteboard critique + summary grader + writing grader + code-review grader)")
 	} else {
 		synthesiser = honeInfra.NewNoLLMPlanSynthesiser()
 		critiqueStreamer = honeInfra.NewNoLLMCritiqueStreamer()
-		d.Log.Warn("hone: llmchain not configured — AI features (plan / critique) will return 503")
+		summaryGrader = honeInfra.NewNoLLMSummaryGrader()
+		writingGrader = honeInfra.NewNoLLMWritingGrader()
+		reviewGrader = honeInfra.NewNoLLMCodeReviewGrader()
+		d.Log.Warn("hone: llmchain not configured — AI features (plan / critique / summary / writing / code-review graders) will return 503")
 	}
 
 	// Embedder wired off OLLAMA_HOST independently of the chain — the embed
@@ -358,6 +367,40 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	h.ShareToWeb = &honeApp.ShareToWeb{Repo: publishRepo, Publisher: d.SyncEventBroker, Log: d.Log}
 	h.MakePrivate = &honeApp.MakePrivate{Repo: publishRepo, Publisher: d.SyncEventBroker, Log: d.Log}
 
+	// Reading-модуль (Wave 4 of docs/feature/english.md). Library, reader
+	// sessions, Leitner SRS vocab. Repo backed by hone_reading_* tables
+	// (migration 00013); free-form English content owned by Hone.
+	readingRepo := honeInfra.NewReadingRepo(d.Pool)
+	h.AddReadingMaterial = &honeApp.AddReadingMaterial{Repo: readingRepo}
+	h.GetReadingMaterial = &honeApp.GetReadingMaterial{Repo: readingRepo}
+	h.ListReadingMaterials = &honeApp.ListReadingMaterials{Repo: readingRepo}
+	h.ArchiveReadingMaterial = &honeApp.ArchiveReadingMaterial{Repo: readingRepo, Now: d.Now}
+	h.StartReadingSession = &honeApp.StartReadingSession{Repo: readingRepo}
+	// Wave 4.3: EndReadingSession optionally calls the LLM-backed grader
+	// inline. nil-safe — useCase swallows errors so a slow / down provider
+	// just leaves ai_summary_score NULL.
+	h.EndReadingSession = &honeApp.EndReadingSession{Repo: readingRepo, Grader: summaryGrader, Log: d.Log, Now: d.Now}
+	h.AddVocab = &honeApp.AddVocab{Repo: readingRepo}
+	h.ReviewVocab = &honeApp.ReviewVocab{Repo: readingRepo, Now: d.Now}
+	h.ListVocabDue = &honeApp.ListVocabDue{Repo: readingRepo, Now: d.Now}
+
+	// Wave 4.4: Writing-as-Focus AI grader. nil-safe — when llmchain is
+	// not configured, writingGrader is the floor adapter that returns
+	// ErrLLMUnavailable, which the handler translates to 503.
+	h.GradeEnglishWriting = &honeApp.GradeEnglishWriting{Grader: writingGrader}
+
+	// Wave 3.6: Code-review-coaching grader. Same nil-safety as above.
+	h.GradeCodeReview = &honeApp.GradeCodeReview{Grader: reviewGrader}
+
+	// Wave 6.1: Listening-модуль (audio + transcript library). Click-on-
+	// word reuses the AddVocab use case wired above; vocab queue is
+	// shared across Reading + Listening surfaces.
+	listeningRepo := honeInfra.NewListeningRepo(d.Pool)
+	h.AddListeningMaterial = &honeApp.AddListeningMaterial{Repo: listeningRepo}
+	h.GetListeningMaterial = &honeApp.GetListeningMaterial{Repo: listeningRepo}
+	h.ListListeningMaterials = &honeApp.ListListeningMaterials{Repo: listeningRepo}
+	h.ArchiveListeningMaterial = &honeApp.ArchiveListeningMaterial{Repo: listeningRepo, Now: d.Now}
+
 	cursorSSE := &cursorSSEHandler{bus: cursorBus, log: d.Log}
 
 	prevMount := mod.MountREST
@@ -381,6 +424,25 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Post("/notes/{id}/share-to-web", transcoder.ServeHTTP)
 		r.Post("/notes/{id}/make-private", transcoder.ServeHTTP)
 		r.Get("/notes/meta", transcoder.ServeHTTP)
+		// Reading-модуль REST aliases (Wave 4).
+		r.Post("/hone/reading/materials", transcoder.ServeHTTP)
+		r.Get("/hone/reading/materials", transcoder.ServeHTTP)
+		r.Get("/hone/reading/materials/{id}", transcoder.ServeHTTP)
+		r.Post("/hone/reading/materials/{id}/archive", transcoder.ServeHTTP)
+		r.Post("/hone/reading/sessions/start", transcoder.ServeHTTP)
+		r.Post("/hone/reading/sessions/end", transcoder.ServeHTTP)
+		r.Post("/hone/reading/vocab", transcoder.ServeHTTP)
+		r.Post("/hone/reading/vocab/review", transcoder.ServeHTTP)
+		r.Get("/hone/reading/vocab/due", transcoder.ServeHTTP)
+		// Writing-as-Focus REST alias (Wave 4.4).
+		r.Post("/hone/writing/grade", transcoder.ServeHTTP)
+		// Code-review-coaching REST alias (Wave 3.6).
+		r.Post("/hone/code-review/grade", transcoder.ServeHTTP)
+		// Listening-модуль REST aliases (Wave 6.1).
+		r.Post("/hone/listening/materials", transcoder.ServeHTTP)
+		r.Get("/hone/listening/materials", transcoder.ServeHTTP)
+		r.Get("/hone/listening/materials/{id}", transcoder.ServeHTTP)
+		r.Post("/hone/listening/materials/{id}/archive", transcoder.ServeHTTP)
 		cursorSSE.Mount(r)
 	}
 

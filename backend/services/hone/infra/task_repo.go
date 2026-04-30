@@ -52,6 +52,9 @@ func (r *TaskRepo) Create(ctx context.Context, t domain.Task) (domain.Task, erro
 		s := t.SkillKey
 		skillKey = &s
 	}
+	if t.RecommendedReading == nil {
+		t.RecommendedReading = []string{}
+	}
 	row := r.pool.QueryRow(ctx, `
         INSERT INTO hone_tasks (
             id, user_id, status, kind, source, title, brief_md,

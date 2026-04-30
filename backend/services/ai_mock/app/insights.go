@@ -27,6 +27,10 @@ type InsightsOverviewOutput struct {
 	RecurringPatterns []domain.RecurringPattern
 	ScoreTrajectory   []domain.ScoreTrajectoryPoint
 	Headline          domain.PipelineHeadline
+	// English HR aggregation (Wave 1 of docs/feature/english.md).
+	// Zero-value EnglishHRTrend{} when the user has no English HR
+	// sessions in the window — frontend then hides the card.
+	EnglishHR domain.EnglishHRTrend
 }
 
 // InsightsOverview is the use-case.
@@ -66,6 +70,11 @@ func (uc *InsightsOverview) Run(ctx context.Context, in InsightsOverviewInput) (
 		uc.partial(ctx, "headline", err)
 	} else {
 		out.Headline = h
+	}
+	if t, err := uc.Repo.EnglishHRTrend(ctx, in.UserID, in.WindowDays, in.ScoreLimit); err != nil {
+		uc.partial(ctx, "english_hr_trend", err)
+	} else {
+		out.EnglishHR = t
 	}
 	return out, nil
 }

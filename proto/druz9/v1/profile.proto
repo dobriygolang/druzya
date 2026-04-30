@@ -449,6 +449,24 @@ service ProfileService {
       body: "*"
     };
   }
+
+  // GetUserTracks returns the caller's active tracks (multi-track Atlas,
+  // см docs/feature/tracks.md). New users get an empty list and must
+  // pass through onboarding-fork; existing users were backfilled in
+  // migration 00006_user_tracks.sql with a primary `dev` track.
+  rpc GetUserTracks(GetUserTracksRequest) returns (UserTracks) {
+    option (google.api.http) = {get: "/api/v1/profile/me/tracks"};
+  }
+
+  // SetUserTracks replaces the caller's track list atomically. Exactly
+  // one item must have primary=true. Empty list is rejected — to leave
+  // a track, send the new full list without it.
+  rpc SetUserTracks(SetUserTracksRequest) returns (UserTracks) {
+    option (google.api.http) = {
+      put: "/api/v1/profile/me/tracks"
+      body: "*"
+    };
+  }
 }
 
 message AllocateAtlasSkillRequest {
@@ -525,4 +543,41 @@ message ApproveInterviewerApplicationRequest {
 message RejectInterviewerApplicationRequest {
   string application_id = 1;
   string note = 2;
+}
+
+// Track mirrors the `track_kind` Postgres enum from migration 00006. Wire
+// names use the TRACK_ prefix; the server maps to/from lowercase DB values.
+// Adding a new value: extend the DB enum + this message + per-track wiring
+// (Atlas seed, mock persona, Insights — see docs/feature/tracks.md).
+enum Track {
+  TRACK_UNSPECIFIED = 0;
+  TRACK_DEV = 1;
+  TRACK_DEV_SENIOR = 2;
+  TRACK_SYSANALYST = 3;
+  TRACK_PRODUCT_ANALYST = 4;
+  TRACK_QA = 5;
+  TRACK_ENGLISH = 6;
+}
+
+// UserTrack mirrors a row in `user_tracks`. seniority is "junior"|"middle"|
+// "senior"|"lead" for engineering/analyst tracks; empty for english (the
+// only cross-cutting track without level distinction in MVP).
+message UserTrack {
+  Track track = 1;
+  string seniority = 2;
+  bool primary = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp last_active_at = 5;
+}
+
+message UserTracks {
+  repeated UserTrack items = 1;
+}
+
+message GetUserTracksRequest {}
+
+message SetUserTracksRequest {
+  // The full new list. Replaces existing rows atomically. Must contain
+  // at least one item; exactly one item must have primary=true.
+  repeated UserTrack items = 1;
 }

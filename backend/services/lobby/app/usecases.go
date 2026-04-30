@@ -30,6 +30,10 @@ var ErrInvalidInput = errors.New("lobby: invalid input")
 // ── CreateLobby ────────────────────────────────────────────────────────────
 
 // CreateLobbyInput — параметры создания лобби.
+//
+// SkillFilter — Phase 2c-2. Применяется только при Mode=solo: список Atlas
+// node keys, по которым task picker фильтрует tasks. Non-solo lobby
+// игнорирует поле молча (чтобы фронт мог переиспользовать единый input).
 type CreateLobbyInput struct {
 	OwnerID      uuid.UUID
 	Mode         domain.Mode
@@ -39,7 +43,12 @@ type CreateLobbyInput struct {
 	MaxMembers   int
 	AIAllowed    bool
 	TimeLimitMin int
+	SkillFilter  []string
 }
+
+// MaxSkillFilterKeys — soft cap чтобы не пускать unbounded payload в БД.
+// 10 покрывает любой реалистичный track step (обычно 1-3 skill_keys).
+const MaxSkillFilterKeys = 10
 
 // CreateLobby use case.
 type CreateLobby struct {
@@ -70,13 +79,21 @@ func (uc *CreateLobby) Do(ctx context.Context, in CreateLobbyInput) (domain.Lobb
 		return domain.Lobby{}, fmt.Errorf("lobby.Create: invalid visibility %q: %w", in.Visibility, ErrInvalidInput)
 	}
 	maxSlots := domain.MaxSlotsForMode(in.Mode)
+	minSlots := 2
+	if in.Mode == domain.ModeSolo {
+		// Solo lobby — single-player drill room. Force max=1 даже если
+		// фронт прислал что-то другое — wire-shape честнее, чем тихо
+		// игнорить.
+		in.MaxMembers = 1
+		minSlots = 1
+	}
 	if in.MaxMembers <= 0 {
 		in.MaxMembers = maxSlots
 	}
-	if in.MaxMembers < 2 || in.MaxMembers > maxSlots {
+	if in.MaxMembers < minSlots || in.MaxMembers > maxSlots {
 		return domain.Lobby{}, fmt.Errorf(
-			"lobby.Create: max_members=%d out of [2..%d] for mode %s: %w",
-			in.MaxMembers, maxSlots, in.Mode, ErrInvalidInput,
+			"lobby.Create: max_members=%d out of [%d..%d] for mode %s: %w",
+			in.MaxMembers, minSlots, maxSlots, in.Mode, ErrInvalidInput,
 		)
 	}
 	if strings.TrimSpace(in.Section) == "" {
@@ -91,6 +108,18 @@ func (uc *CreateLobby) Do(ctx context.Context, in CreateLobbyInput) (domain.Lobb
 	if in.TimeLimitMin < 5 || in.TimeLimitMin > 180 {
 		return domain.Lobby{}, fmt.Errorf("lobby.Create: time_limit_min=%d out of [5..180]: %w", in.TimeLimitMin, ErrInvalidInput)
 	}
+	skillFilter := normalizeSkillFilterApp(in.SkillFilter)
+	if len(skillFilter) > MaxSkillFilterKeys {
+		return domain.Lobby{}, fmt.Errorf("lobby.Create: skill_filter has %d keys, max %d: %w",
+			len(skillFilter), MaxSkillFilterKeys, ErrInvalidInput)
+	}
+	if in.Mode != domain.ModeSolo && len(skillFilter) > 0 {
+		// SkillFilter имеет смысл только для solo — для 1v1 матчмейкер
+		// уже работает по section/difficulty. Не падаем, просто чистим:
+		// фронт пишет один и тот же input для всех режимов, не хочется
+		// заставлять ветвиться там где можно молча сбросить.
+		skillFilter = nil
+	}
 
 	now := time.Now().UTC()
 	l := domain.Lobby{
@@ -104,6 +133,7 @@ func (uc *CreateLobby) Do(ctx context.Context, in CreateLobbyInput) (domain.Lobb
 		AIAllowed:    in.AIAllowed,
 		TimeLimitMin: in.TimeLimitMin,
 		Status:       domain.StatusOpen,
+		SkillFilter:  skillFilter,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
@@ -112,6 +142,29 @@ func (uc *CreateLobby) Do(ctx context.Context, in CreateLobbyInput) (domain.Lobb
 		return domain.Lobby{}, fmt.Errorf("lobby.Create: %w", err)
 	}
 	return out, nil
+}
+
+// normalizeSkillFilterApp — trim/lower-case + dedupe. Holds dispatch
+// invariants ("bfs" == "BFS"), keeps wire-shape predictable, and prevents
+// CHECK constraint surprises (empty strings sneaking into the array).
+func normalizeSkillFilterApp(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, k := range in {
+		k = strings.ToLower(strings.TrimSpace(k))
+		if k == "" {
+			continue
+		}
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, k)
+	}
+	return out
 }
 
 // ── ListPublicLobbies ──────────────────────────────────────────────────────
@@ -245,15 +298,11 @@ func (uc *JoinLobby) DoByID(ctx context.Context, lobbyID, userID uuid.UUID) (dom
 	if count >= l.MaxMembers {
 		return domain.Lobby{}, domain.ErrFull
 	}
-	team := 1
-	if l.Mode == domain.Mode2v2 && count >= 2 {
-		team = 2
-	}
 	if err := uc.Repo.AddMember(ctx, domain.Member{
 		LobbyID:  lobbyID,
 		UserID:   userID,
 		Role:     domain.RoleMember,
-		Team:     team,
+		Team:     1, // 1v1-only since Phase 1.7
 		JoinedAt: time.Now().UTC(),
 	}); err != nil {
 		return domain.Lobby{}, fmt.Errorf("lobby.Join: add: %w", err)
@@ -368,14 +417,21 @@ func (uc *StartLobby) Do(ctx context.Context, lobbyID, userID uuid.UUID) (domain
 	if err != nil {
 		return domain.Lobby{}, fmt.Errorf("lobby.Start: members: %w", err)
 	}
-	if len(members) < 2 {
-		return domain.Lobby{}, fmt.Errorf("lobby.Start: need at least 2 members, got %d: %w", len(members), ErrInvalidInput)
+	minMembers := 2
+	if l.Mode == domain.ModeSolo {
+		minMembers = 1
+	}
+	if len(members) < minMembers {
+		return domain.Lobby{}, fmt.Errorf(
+			"lobby.Start: need at least %d members, got %d: %w",
+			minMembers, len(members), ErrInvalidInput,
+		)
 	}
 	ids := make([]uuid.UUID, 0, len(members))
 	for _, m := range members {
 		ids = append(ids, m.UserID)
 	}
-	matchID, err := uc.Matches.CreateMatch(ctx, l.Mode, l.Section, l.Difficulty, ids)
+	matchID, err := uc.Matches.CreateMatch(ctx, l.Mode, l.Section, l.Difficulty, ids, l.SkillFilter)
 	if err != nil {
 		return domain.Lobby{}, fmt.Errorf("lobby.Start: arena.CreateMatch: %w", err)
 	}

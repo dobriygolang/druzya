@@ -38,6 +38,9 @@ import {
   type NoteSummary,
 } from '../api/hone';
 import { invalidateDailyBriefCache } from '../api/intelligence';
+import { listInsights, ackInsight, type Insight as CoachInsight } from '../api/insights';
+import { activeTrack, type ActiveTrack } from '../api/tracks';
+import { nextClubSession, type UpcomingClubSession } from '../api/clubs';
 
 export interface StartFocusArgs {
   planItemId?: string;
@@ -302,6 +305,18 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
         <div className="mono" style={{ fontSize: 10, letterSpacing: '0.24em', color: 'var(--ink-40)' }}>
           {header}
         </div>
+
+        {/* Phase 2e — active learning-track chip. Один pill: «track:
+            <name> · step N/M». Empty silently when юзер не enrolled. */}
+        <ActiveTrackChip />
+
+        {/* Phase 3 final — next club session chip. Empty silently when
+            нет RSVP'd_yes сессии в ближайшие 14 дней. */}
+        <ClubChip />
+
+        {/* Phase 1.5b — atomic insight cards. Top-3 from the today
+            surface. Empty silently so the page stays minimal. */}
+        <CoachInsightsStrip />
 
         {/* Static H1 — не вопрос. Notion-like заголовок страницы. */}
         <h1
@@ -819,6 +834,334 @@ function DeleteButton({
         <line x1="18" y1="6" x2="6" y2="18" />
       </svg>
     </button>
+  );
+}
+
+// ─── Active learning-track chip (Phase 2e) ─────────────────────────────────
+
+// ActiveTrackChip — один pill с активным треком юзера: «track: <name> ·
+// step N/M». Без active enrolment ничего не рендерим — chip тут lives
+// рядом с UpcomingEventsChip и не должен занимать место впустую.
+function ActiveTrackChip() {
+  const [track, setTrack] = useState<ActiveTrack | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void activeTrack().then((t) => {
+      if (cancelled) return;
+      setTrack(t);
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (!loaded || !track) return null;
+  const stepLabel = `${track.currentStep}/${track.stepsTotal}`;
+  return (
+    <div
+      className="fadein"
+      style={{
+        marginTop: 6,
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
+        animationDuration: '220ms',
+      }}
+    >
+      <span
+        className="mono"
+        title={`Track: ${track.name} · step ${stepLabel}`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 10px',
+          borderRadius: 999,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          fontSize: 10.5,
+          letterSpacing: '0.06em',
+          color: 'var(--ink-60)',
+          maxWidth: 320,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background: track.accentColor,
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ color: 'var(--ink-40)' }}>track:</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {track.name}
+        </span>
+        <span style={{ color: 'var(--ink-40)' }}>· step {stepLabel}</span>
+      </span>
+    </div>
+  );
+}
+
+// ─── Club session chip (Phase 3 final) ─────────────────────────────────────
+
+// ClubChip — pill «club: <name> · через N ч». Полностью silent если нет
+// RSVP'd_yes сессии — chip lives рядом с ActiveTrackChip и не должен
+// занимать место впустую. Click → web /clubs/:slug (внешний браузер
+// через openExternalLink, like UpcomingEventsChip раньше делал).
+function ClubChip() {
+  const [item, setItem] = useState<UpcomingClubSession | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void nextClubSession().then((s) => {
+      if (cancelled) return;
+      setItem(s);
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (!loaded || !item) return null;
+
+  // Format «через N ч» / «через N дн» — coarse, нам не нужны минуты.
+  const hours = item.hoursFromNow;
+  const when =
+    hours <= 0
+      ? 'идёт'
+      : hours < 24
+        ? `через ${hours} ч`
+        : `через ${Math.round(hours / 24)} дн`;
+
+  const href = `${window.location.origin.replace(/\/$/, '')}/clubs/${encodeURIComponent(item.clubSlug)}`;
+
+  return (
+    <div
+      className="fadein"
+      style={{
+        marginTop: 6,
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
+        animationDuration: '220ms',
+      }}
+    >
+      <a
+        className="mono"
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        title={`${item.clubName}: ${item.topicTitle}`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 10px',
+          borderRadius: 999,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          fontSize: 10.5,
+          letterSpacing: '0.06em',
+          color: 'var(--ink-60)',
+          textDecoration: 'none',
+          maxWidth: 320,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: '#A78BFA', flexShrink: 0 }} />
+        <span style={{ color: 'var(--ink-40)' }}>club:</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.clubName}</span>
+        <span style={{ color: 'var(--ink-40)' }}>· {when}</span>
+      </a>
+    </div>
+  );
+}
+
+// ─── Coach insights strip (Phase 1.5b) ─────────────────────────────────────
+
+// CoachInsightsStrip — top-3 atomic insights from /intelligence/insights.
+// One card = one fact + lever. Click ✓ marks acted; ✕ dismisses.
+// Both are optimistic-removed from local state; backend persists state
+// idempotently so a retry after offline doesn't re-resurrect the card.
+function CoachInsightsStrip() {
+  const [items, setItems] = useState<CoachInsight[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void listInsights('today', 3).then((rows) => {
+      if (cancelled) return;
+      setItems(rows);
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!loaded || items.length === 0) return null;
+
+  const handleAck = (id: string, action: 'follow' | 'dismiss') => {
+    setItems((prev) => prev.filter((it) => it.id !== id));
+    void ackInsight(id, action);
+  };
+
+  return (
+    <div
+      className="fadein"
+      style={{
+        marginTop: 18,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        animationDuration: '220ms',
+      }}
+    >
+      <div
+        className="mono"
+        style={{
+          fontSize: 9.5,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-40)',
+        }}
+      >
+        AI insights
+      </div>
+      {items.map((ins) => (
+        <CoachInsightCard key={ins.id} insight={ins} onAck={handleAck} />
+      ))}
+    </div>
+  );
+}
+
+function CoachInsightCard({
+  insight,
+  onAck,
+}: {
+  insight: CoachInsight;
+  onAck: (id: string, action: 'follow' | 'dismiss') => void;
+}) {
+  const dotColor =
+    insight.severity === 'critical'
+      ? '#FF3B30'
+      : insight.severity === 'warn'
+        ? '#FFA500'
+        : 'var(--ink-40)';
+  return (
+    <div
+      style={{
+        padding: '12px 14px',
+        borderRadius: 10,
+        border: '1px solid rgba(255,255,255,0.07)',
+        background: 'rgba(255,255,255,0.025)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span
+          aria-hidden
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background: dotColor,
+            flexShrink: 0,
+          }}
+        />
+        <span
+          className="mono"
+          style={{
+            fontSize: 9.5,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-40)',
+          }}
+        >
+          {insight.severity} · {insight.anchor}
+        </span>
+      </div>
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.35 }}>
+        {insight.headline}
+      </div>
+      {insight.evidence && (
+        <div style={{ fontSize: 12, color: 'var(--ink-60)', lineHeight: 1.4 }}>
+          {insight.evidence}
+        </div>
+      )}
+      {insight.lever && (
+        <div style={{ fontSize: 12.5, color: 'var(--ink)', lineHeight: 1.4 }}>
+          {insight.lever}
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+        {insight.deepLink ? (
+          <a
+            href={insight.deepLink}
+            className="mono"
+            style={{
+              fontSize: 10.5,
+              letterSpacing: '0.1em',
+              textDecoration: 'none',
+              color: 'var(--ink-60)',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
+          >
+            Open →
+          </a>
+        ) : (
+          <span aria-hidden />
+        )}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => onAck(insight.id, 'follow')}
+            title="Followed"
+            aria-label="Followed"
+            style={{
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.02)',
+              borderRadius: 6,
+              padding: '3px 8px',
+              fontSize: 10,
+              color: 'var(--ink-60)',
+              cursor: 'pointer',
+            }}
+          >
+            ✓
+          </button>
+          <button
+            type="button"
+            onClick={() => onAck(insight.id, 'dismiss')}
+            title="Dismiss"
+            aria-label="Dismiss"
+            style={{
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.02)',
+              borderRadius: 6,
+              padding: '3px 8px',
+              fontSize: 10,
+              color: 'var(--ink-60)',
+              cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

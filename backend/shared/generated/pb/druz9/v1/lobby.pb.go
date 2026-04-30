@@ -34,21 +34,24 @@ const (
 // status) stay strings so wire shape matches what existing clients send;
 // validation is server-side via lobbyDomain.<Type>.IsValid().
 type Lobby struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	OwnerId       string                 `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
-	Mode          string                 `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"` // "1v1" | "2v2"
-	Section       string                 `protobuf:"bytes,5,opt,name=section,proto3" json:"section,omitempty"`
-	Difficulty    string                 `protobuf:"bytes,6,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
-	Visibility    string                 `protobuf:"bytes,7,opt,name=visibility,proto3" json:"visibility,omitempty"` // "public" | "private"
-	MaxMembers    int32                  `protobuf:"varint,8,opt,name=max_members,json=maxMembers,proto3" json:"max_members,omitempty"`
-	AiAllowed     bool                   `protobuf:"varint,9,opt,name=ai_allowed,json=aiAllowed,proto3" json:"ai_allowed,omitempty"`
-	TimeLimitMin  int32                  `protobuf:"varint,10,opt,name=time_limit_min,json=timeLimitMin,proto3" json:"time_limit_min,omitempty"`
-	Status        string                 `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`                                  // "open" | "starting" | "started" | "cancelled"
-	MatchId       string                 `protobuf:"bytes,12,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`                 // empty until Start
-	MembersCount  int32                  `protobuf:"varint,13,opt,name=members_count,json=membersCount,proto3" json:"members_count,omitempty"` // 0 in list view, real count in detail view
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Code         string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	OwnerId      string                 `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	Mode         string                 `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"` // "1v1" | "solo" | "2v2" (legacy)
+	Section      string                 `protobuf:"bytes,5,opt,name=section,proto3" json:"section,omitempty"`
+	Difficulty   string                 `protobuf:"bytes,6,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
+	Visibility   string                 `protobuf:"bytes,7,opt,name=visibility,proto3" json:"visibility,omitempty"` // "public" | "private"
+	MaxMembers   int32                  `protobuf:"varint,8,opt,name=max_members,json=maxMembers,proto3" json:"max_members,omitempty"`
+	AiAllowed    bool                   `protobuf:"varint,9,opt,name=ai_allowed,json=aiAllowed,proto3" json:"ai_allowed,omitempty"`
+	TimeLimitMin int32                  `protobuf:"varint,10,opt,name=time_limit_min,json=timeLimitMin,proto3" json:"time_limit_min,omitempty"`
+	Status       string                 `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`                                  // "open" | "starting" | "started" | "cancelled"
+	MatchId      string                 `protobuf:"bytes,12,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`                 // empty until Start
+	MembersCount int32                  `protobuf:"varint,13,opt,name=members_count,json=membersCount,proto3" json:"members_count,omitempty"` // 0 in list view, real count in detail view
+	CreatedAt    *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// Phase 2c-2 — non-empty for solo drill rooms; the task picker matches
+	// tasks.skill_keys && skill_filter. Atlas node keys ("bfs", "lru-cache").
+	SkillFilter   []string `protobuf:"bytes,15,rep,name=skill_filter,json=skillFilter,proto3" json:"skill_filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -177,6 +180,13 @@ func (x *Lobby) GetMembersCount() int32 {
 func (x *Lobby) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Lobby) GetSkillFilter() []string {
+	if x != nil {
+		return x.SkillFilter
 	}
 	return nil
 }
@@ -502,14 +512,17 @@ func (x *GetLobbyByCodeRequest) GetCode() string {
 }
 
 type CreateLobbyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Mode          string                 `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`
-	Section       string                 `protobuf:"bytes,2,opt,name=section,proto3" json:"section,omitempty"`
-	Difficulty    string                 `protobuf:"bytes,3,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
-	Visibility    string                 `protobuf:"bytes,4,opt,name=visibility,proto3" json:"visibility,omitempty"`
-	MaxMembers    int32                  `protobuf:"varint,5,opt,name=max_members,json=maxMembers,proto3" json:"max_members,omitempty"`
-	AiAllowed     bool                   `protobuf:"varint,6,opt,name=ai_allowed,json=aiAllowed,proto3" json:"ai_allowed,omitempty"`
-	TimeLimitMin  int32                  `protobuf:"varint,7,opt,name=time_limit_min,json=timeLimitMin,proto3" json:"time_limit_min,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Mode         string                 `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`
+	Section      string                 `protobuf:"bytes,2,opt,name=section,proto3" json:"section,omitempty"`
+	Difficulty   string                 `protobuf:"bytes,3,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
+	Visibility   string                 `protobuf:"bytes,4,opt,name=visibility,proto3" json:"visibility,omitempty"`
+	MaxMembers   int32                  `protobuf:"varint,5,opt,name=max_members,json=maxMembers,proto3" json:"max_members,omitempty"`
+	AiAllowed    bool                   `protobuf:"varint,6,opt,name=ai_allowed,json=aiAllowed,proto3" json:"ai_allowed,omitempty"`
+	TimeLimitMin int32                  `protobuf:"varint,7,opt,name=time_limit_min,json=timeLimitMin,proto3" json:"time_limit_min,omitempty"`
+	// Phase 2c-2 — only honoured when mode='solo'. Up to 10 skill keys
+	// (Atlas node keys) restricting the task picker. Empty = no filter.
+	SkillFilter   []string `protobuf:"bytes,8,rep,name=skill_filter,json=skillFilter,proto3" json:"skill_filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -591,6 +604,13 @@ func (x *CreateLobbyRequest) GetTimeLimitMin() int32 {
 		return x.TimeLimitMin
 	}
 	return 0
+}
+
+func (x *CreateLobbyRequest) GetSkillFilter() []string {
+	if x != nil {
+		return x.SkillFilter
+	}
+	return nil
 }
 
 type JoinLobbyRequest struct {
@@ -981,7 +1001,7 @@ var File_druz9_v1_lobby_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_lobby_proto_rawDesc = "" +
 	"\n" +
-	"\x14druz9/v1/lobby.proto\x12\bdruz9.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xad\x03\n" +
+	"\x14druz9/v1/lobby.proto\x12\bdruz9.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd0\x03\n" +
 	"\x05Lobby\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x19\n" +
@@ -1004,7 +1024,8 @@ const file_druz9_v1_lobby_proto_rawDesc = "" +
 	"\bmatch_id\x18\f \x01(\tR\amatchId\x12#\n" +
 	"\rmembers_count\x18\r \x01(\x05R\fmembersCount\x129\n" +
 	"\n" +
-	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x87\x01\n" +
+	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12!\n" +
+	"\fskill_filter\x18\x0f \x03(\tR\vskillFilter\"\x87\x01\n" +
 	"\vLobbyMember\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
 	"\x04role\x18\x02 \x01(\tR\x04role\x12\x12\n" +
@@ -1025,7 +1046,7 @@ const file_druz9_v1_lobby_proto_rawDesc = "" +
 	"\x0fGetLobbyRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"+\n" +
 	"\x15GetLobbyByCodeRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"\xe8\x01\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\"\x8b\x02\n" +
 	"\x12CreateLobbyRequest\x12\x12\n" +
 	"\x04mode\x18\x01 \x01(\tR\x04mode\x12\x18\n" +
 	"\asection\x18\x02 \x01(\tR\asection\x12\x1e\n" +
@@ -1039,7 +1060,8 @@ const file_druz9_v1_lobby_proto_rawDesc = "" +
 	"maxMembers\x12\x1d\n" +
 	"\n" +
 	"ai_allowed\x18\x06 \x01(\bR\taiAllowed\x12$\n" +
-	"\x0etime_limit_min\x18\a \x01(\x05R\ftimeLimitMin\"\"\n" +
+	"\x0etime_limit_min\x18\a \x01(\x05R\ftimeLimitMin\x12!\n" +
+	"\fskill_filter\x18\b \x03(\tR\vskillFilter\"\"\n" +
 	"\x10JoinLobbyRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"R\n" +
 	"\x11JoinLobbyResponse\x12\x16\n" +

@@ -105,9 +105,16 @@ message GetMockLeaderboardResponse {
 // CreatePipeline — заводит новый pipeline. company_id опционально
 // (empty = первая активная компания из списка). ai_assist=true помечает
 // прохождение как "с подсказками AI" → не учитывается в leaderboard'е.
+//
+// Phase 1.6 — sections фильтрует stage skeleton. Empty / nil = full
+// pipeline (all 5 stages). При [hr,algo] оркестратор пропускает coding,
+// sysdesign и behavioral. Backend валидирует имена против известных
+// stage_kind значений; неизвестные отбрасываются (вместо 400 — мягкий
+// fallback на full-pipeline, anti-strict policy).
 message CreateMockPipelineRequest {
   string company_id = 1;
   bool ai_assist = 2;
+  repeated string sections = 3;
 }
 
 message CancelMockPipelineRequest {

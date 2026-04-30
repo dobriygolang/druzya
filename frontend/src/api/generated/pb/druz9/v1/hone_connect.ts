@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddQueueItemRequest, AddTaskCommentRequest, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, ImportCueSessionRequest, ListCueSessionsRequest, ListCueSessionsResponse, ListFoldersRequest, ListFoldersResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, Stats, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
+import { AddListeningMaterialRequest, AddQueueItemRequest, AddReadingMaterialRequest, AddTaskCommentRequest, AddVocabRequest, ArchiveListeningMaterialRequest, ArchiveListeningMaterialResponse, ArchiveReadingMaterialRequest, ArchiveReadingMaterialResponse, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, EndReadingSessionRequest, EndReadingSessionResponse, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetListeningMaterialRequest, GetNoteConnectionsRequest, GetNoteRequest, GetReadingMaterialRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, GradeCodeReviewRequest, GradeCodeReviewResponse, GradeEnglishWritingRequest, GradeEnglishWritingResponse, ImportCueSessionRequest, ListCueSessionsRequest, ListCueSessionsResponse, ListeningMaterial, ListFoldersRequest, ListFoldersResponse, ListListeningMaterialsRequest, ListListeningMaterialsResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListReadingMaterialsRequest, ListReadingMaterialsResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListVocabDueRequest, ListVocabDueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, ReadingMaterial, ReadingSession, RecordStandupRequest, RecordStandupResponse, ReviewVocabRequest, SaveCritiqueAsNoteRequest, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, StartReadingSessionRequest, Stats, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, VocabEntry, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -492,6 +492,157 @@ export const HoneService = {
       name: "BulkNotesMeta",
       I: BulkNotesMetaRequest,
       O: BulkNotesMetaResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.AddReadingMaterial
+     */
+    addReadingMaterial: {
+      name: "AddReadingMaterial",
+      I: AddReadingMaterialRequest,
+      O: ReadingMaterial,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ListReadingMaterials
+     */
+    listReadingMaterials: {
+      name: "ListReadingMaterials",
+      I: ListReadingMaterialsRequest,
+      O: ListReadingMaterialsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.GetReadingMaterial
+     */
+    getReadingMaterial: {
+      name: "GetReadingMaterial",
+      I: GetReadingMaterialRequest,
+      O: ReadingMaterial,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ArchiveReadingMaterial
+     */
+    archiveReadingMaterial: {
+      name: "ArchiveReadingMaterial",
+      I: ArchiveReadingMaterialRequest,
+      O: ArchiveReadingMaterialResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.StartReadingSession
+     */
+    startReadingSession: {
+      name: "StartReadingSession",
+      I: StartReadingSessionRequest,
+      O: ReadingSession,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.EndReadingSession
+     */
+    endReadingSession: {
+      name: "EndReadingSession",
+      I: EndReadingSessionRequest,
+      O: EndReadingSessionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.AddVocab
+     */
+    addVocab: {
+      name: "AddVocab",
+      I: AddVocabRequest,
+      O: VocabEntry,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ReviewVocab
+     */
+    reviewVocab: {
+      name: "ReviewVocab",
+      I: ReviewVocabRequest,
+      O: VocabEntry,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ListVocabDue
+     */
+    listVocabDue: {
+      name: "ListVocabDue",
+      I: ListVocabDueRequest,
+      O: ListVocabDueResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Listening-модуль (Wave 6.1) ─────────────────────────────────
+     * User-owned library of audio + transcript materials. Click-on-word
+     * reuses the AddVocab RPC (vocab queue is shared with Reading).
+     *
+     * @generated from rpc druz9.v1.HoneService.AddListeningMaterial
+     */
+    addListeningMaterial: {
+      name: "AddListeningMaterial",
+      I: AddListeningMaterialRequest,
+      O: ListeningMaterial,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ListListeningMaterials
+     */
+    listListeningMaterials: {
+      name: "ListListeningMaterials",
+      I: ListListeningMaterialsRequest,
+      O: ListListeningMaterialsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.GetListeningMaterial
+     */
+    getListeningMaterial: {
+      name: "GetListeningMaterial",
+      I: GetListeningMaterialRequest,
+      O: ListeningMaterial,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ArchiveListeningMaterial
+     */
+    archiveListeningMaterial: {
+      name: "ArchiveListeningMaterial",
+      I: ArchiveListeningMaterialRequest,
+      O: ArchiveListeningMaterialResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Writing-as-Focus (Wave 4.4) ─────────────────────────────────
+     * GradeEnglishWriting — request-scoped: take a draft, return a
+     * structured list of grammar / vocab / style issues + an overall
+     * 0..100 score. No persistence layer; if the user wants to keep the
+     * text they save it via CreateNote.
+     *
+     * @generated from rpc druz9.v1.HoneService.GradeEnglishWriting
+     */
+    gradeEnglishWriting: {
+      name: "GradeEnglishWriting",
+      I: GradeEnglishWritingRequest,
+      O: GradeEnglishWritingResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Code-review-coaching (Wave 3.6) ─────────────────────────────
+     * GradeCodeReview — user pastes a unified diff + their PR-style
+     * review; we grade the review across correctness/completeness/
+     * clarity/tone. Same one-shot, no-persistence pattern as the
+     * writing grader.
+     *
+     * @generated from rpc druz9.v1.HoneService.GradeCodeReview
+     */
+    gradeCodeReview: {
+      name: "GradeCodeReview",
+      I: GradeCodeReviewRequest,
+      O: GradeCodeReviewResponse,
       kind: MethodKind.Unary,
     },
   }

@@ -233,6 +233,26 @@ message ScoreTrajectoryPoint {
   string verdict = 4;
 }
 
+// EnglishHRTrendPoint — Wave 1 of docs/feature/english.md. One finished
+// English HR mock as a sparkline datapoint. SessionID enables deep-link
+// from the Insights card back to the per-round result page.
+message EnglishHRTrendPoint {
+  string session_id = 1;
+  string finished_at = 2; // RFC3339 UTC
+  int32 score = 3;
+}
+
+// EnglishHRTrend — aggregated stats for the user's English HR mocks
+// over the trailing window. total_sessions == 0 is the empty state
+// (frontend hides the widget rather than rendering a zero-card).
+message EnglishHRTrend {
+  int32 total_sessions = 1;
+  int32 avg_score = 2;
+  int32 last_score = 3;
+  string last_finished_at = 4; // RFC3339 UTC, empty when total_sessions==0
+  repeated EnglishHRTrendPoint trajectory = 5;
+}
+
 message InsightsOverview {
   int32 window_days = 1;
   repeated StagePerformance stage_performance = 2;
@@ -241,4 +261,7 @@ message InsightsOverview {
   int32 total_sessions_30d = 5;
   int32 pipeline_pass_rate_30d = 6;
   string summary = 7;
+  // English HR-specific aggregation. Optional in the wire — old clients
+  // that ignore the field still render the engineering panel correctly.
+  EnglishHRTrend english_hr = 8;
 }

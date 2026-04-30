@@ -64,9 +64,19 @@ func (uc *CreateSession) Do(ctx context.Context, in CreateSessionInput) (domain.
 		return domain.Session{}, fmt.Errorf("mock.CreateSession: company: %w", err)
 	}
 
-	task, err := uc.Tasks.PickForSession(ctx, in.Section.String(), in.Difficulty.String())
-	if err != nil {
-		return domain.Session{}, fmt.Errorf("mock.CreateSession: pick task: %w", err)
+	// Free-form sections (English HR, senior SD) have no algorithmic
+	// task — pure conversation. Skip the task pick and leave
+	// TaskID = uuid.Nil; downstream loaders (send_message.loadContext,
+	// get_session, worker.runReport) all branch on TaskID == uuid.Nil.
+	// Switching from IsEnglishHRSection to IsTaskBased keeps the gate
+	// extensible — a new free-form section flips one bool, not 4 sites.
+	var taskID uuid.UUID
+	if in.Section.IsTaskBased() {
+		task, taskErr := uc.Tasks.PickForSession(ctx, in.Section.String(), in.Difficulty.String())
+		if taskErr != nil {
+			return domain.Session{}, fmt.Errorf("mock.CreateSession: pick task: %w", taskErr)
+		}
+		taskID = task.ID
 	}
 
 	model := domain.PickModel(user, "", in.Section, company, uc.DefaultModelFree, uc.DefaultModelPaid)
@@ -80,7 +90,7 @@ func (uc *CreateSession) Do(ctx context.Context, in CreateSessionInput) (domain.
 	s := domain.Session{
 		UserID:         in.UserID,
 		CompanyID:      in.CompanyID,
-		TaskID:         task.ID,
+		TaskID:         taskID,
 		Section:        in.Section,
 		Difficulty:     in.Difficulty,
 		Status:         enums.MockStatusCreated,

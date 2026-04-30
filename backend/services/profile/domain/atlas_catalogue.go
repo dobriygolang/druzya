@@ -24,7 +24,7 @@ var ErrConflict = errors.New("profile: conflict")
 type AtlasCatalogueNode struct {
 	ID          string
 	Title       string
-	Section     string // enums.Section string (algorithms / sql / go / system_design / behavioral / data_structures / concurrency)
+	Section     string // enums.Section string (algorithms / sql / go / system_design / behavioral / data_structures / concurrency / english_hr)
 	Kind        string // hub | keystone | notable | small
 	Cluster     string // visual cluster id (typically == Section but kept separate)
 	Description string
@@ -33,6 +33,11 @@ type AtlasCatalogueNode struct {
 	PosY        *int
 	SortOrder   int
 	IsActive    bool
+	// TrackKind groups nodes by user-facing track persona: dev / dev_senior /
+	// sysanalyst / product_analyst / qa / english. Mirrors the Postgres
+	// `track_kind` enum from migration 00007_skill_atlas_tracks.sql. Empty
+	// string is treated as 'dev' by the catalogue read path (column default).
+	TrackKind string
 }
 
 // AtlasCatalogueEdge mirrors a row in atlas_edges.

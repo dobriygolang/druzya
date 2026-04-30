@@ -101,6 +101,61 @@ func (BriefRecommendationKind) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{0}
 }
 
+type InsightSeverity int32
+
+const (
+	InsightSeverity_INSIGHT_SEVERITY_UNSPECIFIED InsightSeverity = 0
+	InsightSeverity_INSIGHT_SEVERITY_CRUISE      InsightSeverity = 1
+	InsightSeverity_INSIGHT_SEVERITY_NUDGE       InsightSeverity = 2
+	InsightSeverity_INSIGHT_SEVERITY_WARN        InsightSeverity = 3
+	InsightSeverity_INSIGHT_SEVERITY_CRITICAL    InsightSeverity = 4
+)
+
+// Enum value maps for InsightSeverity.
+var (
+	InsightSeverity_name = map[int32]string{
+		0: "INSIGHT_SEVERITY_UNSPECIFIED",
+		1: "INSIGHT_SEVERITY_CRUISE",
+		2: "INSIGHT_SEVERITY_NUDGE",
+		3: "INSIGHT_SEVERITY_WARN",
+		4: "INSIGHT_SEVERITY_CRITICAL",
+	}
+	InsightSeverity_value = map[string]int32{
+		"INSIGHT_SEVERITY_UNSPECIFIED": 0,
+		"INSIGHT_SEVERITY_CRUISE":      1,
+		"INSIGHT_SEVERITY_NUDGE":       2,
+		"INSIGHT_SEVERITY_WARN":        3,
+		"INSIGHT_SEVERITY_CRITICAL":    4,
+	}
+)
+
+func (x InsightSeverity) Enum() *InsightSeverity {
+	p := new(InsightSeverity)
+	*p = x
+	return p
+}
+
+func (x InsightSeverity) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (InsightSeverity) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_intelligence_proto_enumTypes[1].Descriptor()
+}
+
+func (InsightSeverity) Type() protoreflect.EnumType {
+	return &file_druz9_v1_intelligence_proto_enumTypes[1]
+}
+
+func (x InsightSeverity) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use InsightSeverity.Descriptor instead.
+func (InsightSeverity) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{1}
+}
+
 // BriefRecommendation — one actionable suggestion in DailyBrief.
 type BriefRecommendation struct {
 	state     protoimpl.MessageState  `protogen:"open.v1"`
@@ -181,9 +236,20 @@ type DailyBrief struct {
 	GeneratedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
 	// brief_id — UUID для AckRecommendation. Phase A briefs (без memory)
 	// отдают пустую строку.
-	BriefId       string `protobuf:"bytes,5,opt,name=brief_id,json=briefId,proto3" json:"brief_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	BriefId string `protobuf:"bytes,5,opt,name=brief_id,json=briefId,proto3" json:"brief_id,omitempty"`
+	// Phase 4.4 — severity drives the colour-strip on the brief panel:
+	//
+	//	cruise   → muted
+	//	nudge    → blue
+	//	warn     → amber
+	//	critical → red
+	//
+	// Reason — short English fragment used in tooltips ("interview Friday
+	// in 2 days"). Computed deterministically server-side, не от LLM.
+	Severity       InsightSeverity `protobuf:"varint,6,opt,name=severity,proto3,enum=druz9.v1.InsightSeverity" json:"severity,omitempty"`
+	SeverityReason string          `protobuf:"bytes,7,opt,name=severity_reason,json=severityReason,proto3" json:"severity_reason,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *DailyBrief) Reset() {
@@ -247,6 +313,20 @@ func (x *DailyBrief) GetGeneratedAt() *timestamppb.Timestamp {
 func (x *DailyBrief) GetBriefId() string {
 	if x != nil {
 		return x.BriefId
+	}
+	return ""
+}
+
+func (x *DailyBrief) GetSeverity() InsightSeverity {
+	if x != nil {
+		return x.Severity
+	}
+	return InsightSeverity_INSIGHT_SEVERITY_UNSPECIFIED
+}
+
+func (x *DailyBrief) GetSeverityReason() string {
+	if x != nil {
+		return x.SeverityReason
 	}
 	return ""
 }
@@ -651,6 +731,357 @@ func (x *AskNotesRequest) GetQuestion() string {
 	return ""
 }
 
+type Insight struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Surface       string                 `protobuf:"bytes,2,opt,name=surface,proto3" json:"surface,omitempty"` // 'today'|'arena'|'mock'|'codex'
+	Severity      InsightSeverity        `protobuf:"varint,3,opt,name=severity,proto3,enum=druz9.v1.InsightSeverity" json:"severity,omitempty"`
+	Anchor        string                 `protobuf:"bytes,4,opt,name=anchor,proto3" json:"anchor,omitempty"`                     // stable "what about" id
+	Headline      string                 `protobuf:"bytes,5,opt,name=headline,proto3" json:"headline,omitempty"`                 // ≤80 char glanceable fact
+	Evidence      string                 `protobuf:"bytes,6,opt,name=evidence,proto3" json:"evidence,omitempty"`                 // 1 sentence with numbers
+	Interpret     string                 `protobuf:"bytes,7,opt,name=interpret,proto3" json:"interpret,omitempty"`               // 1 sentence pattern claim
+	Lever         string                 `protobuf:"bytes,8,opt,name=lever,proto3" json:"lever,omitempty"`                       // 1 sentence today's action
+	DeepLink      string                 `protobuf:"bytes,9,opt,name=deep_link,json=deepLink,proto3" json:"deep_link,omitempty"` // in-app route, optional
+	EventId       string                 `protobuf:"bytes,10,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`   // forward-FK to personal_events
+	SkillKey      string                 `protobuf:"bytes,11,opt,name=skill_key,json=skillKey,proto3" json:"skill_key,omitempty"`
+	CodexSlug     string                 `protobuf:"bytes,12,opt,name=codex_slug,json=codexSlug,proto3" json:"codex_slug,omitempty"`
+	TrackId       string                 `protobuf:"bytes,13,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
+	GeneratedAt   *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Insight) Reset() {
+	*x = Insight{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Insight) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Insight) ProtoMessage() {}
+
+func (x *Insight) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Insight.ProtoReflect.Descriptor instead.
+func (*Insight) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *Insight) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Insight) GetSurface() string {
+	if x != nil {
+		return x.Surface
+	}
+	return ""
+}
+
+func (x *Insight) GetSeverity() InsightSeverity {
+	if x != nil {
+		return x.Severity
+	}
+	return InsightSeverity_INSIGHT_SEVERITY_UNSPECIFIED
+}
+
+func (x *Insight) GetAnchor() string {
+	if x != nil {
+		return x.Anchor
+	}
+	return ""
+}
+
+func (x *Insight) GetHeadline() string {
+	if x != nil {
+		return x.Headline
+	}
+	return ""
+}
+
+func (x *Insight) GetEvidence() string {
+	if x != nil {
+		return x.Evidence
+	}
+	return ""
+}
+
+func (x *Insight) GetInterpret() string {
+	if x != nil {
+		return x.Interpret
+	}
+	return ""
+}
+
+func (x *Insight) GetLever() string {
+	if x != nil {
+		return x.Lever
+	}
+	return ""
+}
+
+func (x *Insight) GetDeepLink() string {
+	if x != nil {
+		return x.DeepLink
+	}
+	return ""
+}
+
+func (x *Insight) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *Insight) GetSkillKey() string {
+	if x != nil {
+		return x.SkillKey
+	}
+	return ""
+}
+
+func (x *Insight) GetCodexSlug() string {
+	if x != nil {
+		return x.CodexSlug
+	}
+	return ""
+}
+
+func (x *Insight) GetTrackId() string {
+	if x != nil {
+		return x.TrackId
+	}
+	return ""
+}
+
+func (x *Insight) GetGeneratedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GeneratedAt
+	}
+	return nil
+}
+
+func (x *Insight) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+type ListInsightsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// surface MUST be one of the closed set; empty defaults to 'today'.
+	Surface       string `protobuf:"bytes,1,opt,name=surface,proto3" json:"surface,omitempty"`
+	Limit         int32  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (10)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListInsightsRequest) Reset() {
+	*x = ListInsightsRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInsightsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInsightsRequest) ProtoMessage() {}
+
+func (x *ListInsightsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInsightsRequest.ProtoReflect.Descriptor instead.
+func (*ListInsightsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListInsightsRequest) GetSurface() string {
+	if x != nil {
+		return x.Surface
+	}
+	return ""
+}
+
+func (x *ListInsightsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListInsightsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*Insight             `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListInsightsResponse) Reset() {
+	*x = ListInsightsResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInsightsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInsightsResponse) ProtoMessage() {}
+
+func (x *ListInsightsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInsightsResponse.ProtoReflect.Descriptor instead.
+func (*ListInsightsResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListInsightsResponse) GetItems() []*Insight {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// AckInsightRequest — user feedback. action 'follow' marks acted_at,
+// 'dismiss' marks dismissed_at. Both idempotent on the server.
+type AckInsightRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Action        string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"` // 'follow' | 'dismiss'
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AckInsightRequest) Reset() {
+	*x = AckInsightRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AckInsightRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AckInsightRequest) ProtoMessage() {}
+
+func (x *AckInsightRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AckInsightRequest.ProtoReflect.Descriptor instead.
+func (*AckInsightRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AckInsightRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AckInsightRequest) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+type AckInsightResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AckInsightResponse) Reset() {
+	*x = AckInsightResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AckInsightResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AckInsightResponse) ProtoMessage() {}
+
+func (x *AckInsightResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AckInsightResponse.ProtoReflect.Descriptor instead.
+func (*AckInsightResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AckInsightResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
 var File_druz9_v1_intelligence_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_intelligence_proto_rawDesc = "" +
@@ -660,14 +1091,16 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\x0e2!.druz9.v1.BriefRecommendationKindR\x04kind\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1c\n" +
 	"\trationale\x18\x03 \x01(\tR\trationale\x12\x1b\n" +
-	"\ttarget_id\x18\x04 \x01(\tR\btargetId\"\xe9\x01\n" +
+	"\ttarget_id\x18\x04 \x01(\tR\btargetId\"\xc9\x02\n" +
 	"\n" +
 	"DailyBrief\x12\x1a\n" +
 	"\bheadline\x18\x01 \x01(\tR\bheadline\x12\x1c\n" +
 	"\tnarrative\x18\x02 \x01(\tR\tnarrative\x12G\n" +
 	"\x0frecommendations\x18\x03 \x03(\v2\x1d.druz9.v1.BriefRecommendationR\x0frecommendations\x12=\n" +
 	"\fgenerated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\x12\x19\n" +
-	"\bbrief_id\x18\x05 \x01(\tR\abriefId\"g\n" +
+	"\bbrief_id\x18\x05 \x01(\tR\abriefId\x125\n" +
+	"\bseverity\x18\x06 \x01(\x0e2\x19.druz9.v1.InsightSeverityR\bseverity\x12'\n" +
+	"\x0fseverity_reason\x18\a \x01(\tR\x0eseverityReason\"g\n" +
 	"\x18AckRecommendationRequest\x12\x19\n" +
 	"\bbrief_id\x18\x01 \x01(\tR\abriefId\x12\x14\n" +
 	"\x05index\x18\x02 \x01(\x05R\x05index\x12\x1a\n" +
@@ -691,18 +1124,56 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\tanswer_md\x18\x01 \x01(\tR\banswerMd\x120\n" +
 	"\tcitations\x18\x02 \x03(\v2\x12.druz9.v1.CitationR\tcitations\"-\n" +
 	"\x0fAskNotesRequest\x12\x1a\n" +
-	"\bquestion\x18\x01 \x01(\tR\bquestion*\xe7\x01\n" +
+	"\bquestion\x18\x01 \x01(\tR\bquestion\"\xf7\x03\n" +
+	"\aInsight\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\asurface\x18\x02 \x01(\tR\asurface\x125\n" +
+	"\bseverity\x18\x03 \x01(\x0e2\x19.druz9.v1.InsightSeverityR\bseverity\x12\x16\n" +
+	"\x06anchor\x18\x04 \x01(\tR\x06anchor\x12\x1a\n" +
+	"\bheadline\x18\x05 \x01(\tR\bheadline\x12\x1a\n" +
+	"\bevidence\x18\x06 \x01(\tR\bevidence\x12\x1c\n" +
+	"\tinterpret\x18\a \x01(\tR\tinterpret\x12\x14\n" +
+	"\x05lever\x18\b \x01(\tR\x05lever\x12\x1b\n" +
+	"\tdeep_link\x18\t \x01(\tR\bdeepLink\x12\x19\n" +
+	"\bevent_id\x18\n" +
+	" \x01(\tR\aeventId\x12\x1b\n" +
+	"\tskill_key\x18\v \x01(\tR\bskillKey\x12\x1d\n" +
+	"\n" +
+	"codex_slug\x18\f \x01(\tR\tcodexSlug\x12\x19\n" +
+	"\btrack_id\x18\r \x01(\tR\atrackId\x12=\n" +
+	"\fgenerated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\x129\n" +
+	"\n" +
+	"expires_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"E\n" +
+	"\x13ListInsightsRequest\x12\x18\n" +
+	"\asurface\x18\x01 \x01(\tR\asurface\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"?\n" +
+	"\x14ListInsightsResponse\x12'\n" +
+	"\x05items\x18\x01 \x03(\v2\x11.druz9.v1.InsightR\x05items\";\n" +
+	"\x11AckInsightRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\tR\x06action\"$\n" +
+	"\x12AckInsightResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok*\xe7\x01\n" +
 	"\x17BriefRecommendationKind\x12)\n" +
 	"%BRIEF_RECOMMENDATION_KIND_UNSPECIFIED\x10\x00\x12'\n" +
 	"#BRIEF_RECOMMENDATION_KIND_TINY_TASK\x10\x01\x12&\n" +
 	"\"BRIEF_RECOMMENDATION_KIND_SCHEDULE\x10\x02\x12)\n" +
 	"%BRIEF_RECOMMENDATION_KIND_REVIEW_NOTE\x10\x03\x12%\n" +
-	"!BRIEF_RECOMMENDATION_KIND_UNBLOCK\x10\x042\xef\x03\n" +
+	"!BRIEF_RECOMMENDATION_KIND_UNBLOCK\x10\x04*\xa6\x01\n" +
+	"\x0fInsightSeverity\x12 \n" +
+	"\x1cINSIGHT_SEVERITY_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17INSIGHT_SEVERITY_CRUISE\x10\x01\x12\x1a\n" +
+	"\x16INSIGHT_SEVERITY_NUDGE\x10\x02\x12\x19\n" +
+	"\x15INSIGHT_SEVERITY_WARN\x10\x03\x12\x1d\n" +
+	"\x19INSIGHT_SEVERITY_CRITICAL\x10\x042\xe1\x05\n" +
 	"\x13IntelligenceService\x12r\n" +
 	"\rGetDailyBrief\x12\x1e.druz9.v1.GetDailyBriefRequest\x1a\x14.druz9.v1.DailyBrief\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/intelligence/daily-brief\x12e\n" +
 	"\bAskNotes\x12\x19.druz9.v1.AskNotesRequest\x1a\x13.druz9.v1.AskAnswer\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/intelligence/ask-notes\x12\x87\x01\n" +
 	"\x11AckRecommendation\x12\".druz9.v1.AckRecommendationRequest\x1a#.druz9.v1.AckRecommendationResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/intelligence/brief/ack\x12s\n" +
-	"\x0eGetMemoryStats\x12\x1f.druz9.v1.GetMemoryStatsRequest\x1a\x15.druz9.v1.MemoryStats\")\x82\xd3\xe4\x93\x02#\x12!/api/v1/intelligence/memory/statsB\x8e\x01\n" +
+	"\x0eGetMemoryStats\x12\x1f.druz9.v1.GetMemoryStatsRequest\x1a\x15.druz9.v1.MemoryStats\")\x82\xd3\xe4\x93\x02#\x12!/api/v1/intelligence/memory/stats\x12t\n" +
+	"\fListInsights\x12\x1d.druz9.v1.ListInsightsRequest\x1a\x1e.druz9.v1.ListInsightsResponse\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/v1/intelligence/insights\x12z\n" +
+	"\n" +
+	"AckInsight\x12\x1b.druz9.v1.AckInsightRequest\x1a\x1c.druz9.v1.AckInsightResponse\"1\x82\xd3\xe4\x93\x02+:\x01*\"&/api/v1/intelligence/insights/{id}/ackB\x8e\x01\n" +
 	"\fcom.druz9.v1B\x11IntelligenceProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -717,42 +1188,57 @@ func file_druz9_v1_intelligence_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_intelligence_proto_rawDescData
 }
 
-var file_druz9_v1_intelligence_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_druz9_v1_intelligence_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_druz9_v1_intelligence_proto_goTypes = []any{
 	(BriefRecommendationKind)(0),      // 0: druz9.v1.BriefRecommendationKind
-	(*BriefRecommendation)(nil),       // 1: druz9.v1.BriefRecommendation
-	(*DailyBrief)(nil),                // 2: druz9.v1.DailyBrief
-	(*AckRecommendationRequest)(nil),  // 3: druz9.v1.AckRecommendationRequest
-	(*AckRecommendationResponse)(nil), // 4: druz9.v1.AckRecommendationResponse
-	(*MemoryStats)(nil),               // 5: druz9.v1.MemoryStats
-	(*GetMemoryStatsRequest)(nil),     // 6: druz9.v1.GetMemoryStatsRequest
-	(*GetDailyBriefRequest)(nil),      // 7: druz9.v1.GetDailyBriefRequest
-	(*Citation)(nil),                  // 8: druz9.v1.Citation
-	(*AskAnswer)(nil),                 // 9: druz9.v1.AskAnswer
-	(*AskNotesRequest)(nil),           // 10: druz9.v1.AskNotesRequest
-	nil,                               // 11: druz9.v1.MemoryStats.ByKindEntry
-	(*timestamppb.Timestamp)(nil),     // 12: google.protobuf.Timestamp
+	(InsightSeverity)(0),              // 1: druz9.v1.InsightSeverity
+	(*BriefRecommendation)(nil),       // 2: druz9.v1.BriefRecommendation
+	(*DailyBrief)(nil),                // 3: druz9.v1.DailyBrief
+	(*AckRecommendationRequest)(nil),  // 4: druz9.v1.AckRecommendationRequest
+	(*AckRecommendationResponse)(nil), // 5: druz9.v1.AckRecommendationResponse
+	(*MemoryStats)(nil),               // 6: druz9.v1.MemoryStats
+	(*GetMemoryStatsRequest)(nil),     // 7: druz9.v1.GetMemoryStatsRequest
+	(*GetDailyBriefRequest)(nil),      // 8: druz9.v1.GetDailyBriefRequest
+	(*Citation)(nil),                  // 9: druz9.v1.Citation
+	(*AskAnswer)(nil),                 // 10: druz9.v1.AskAnswer
+	(*AskNotesRequest)(nil),           // 11: druz9.v1.AskNotesRequest
+	(*Insight)(nil),                   // 12: druz9.v1.Insight
+	(*ListInsightsRequest)(nil),       // 13: druz9.v1.ListInsightsRequest
+	(*ListInsightsResponse)(nil),      // 14: druz9.v1.ListInsightsResponse
+	(*AckInsightRequest)(nil),         // 15: druz9.v1.AckInsightRequest
+	(*AckInsightResponse)(nil),        // 16: druz9.v1.AckInsightResponse
+	nil,                               // 17: druz9.v1.MemoryStats.ByKindEntry
+	(*timestamppb.Timestamp)(nil),     // 18: google.protobuf.Timestamp
 }
 var file_druz9_v1_intelligence_proto_depIdxs = []int32{
 	0,  // 0: druz9.v1.BriefRecommendation.kind:type_name -> druz9.v1.BriefRecommendationKind
-	1,  // 1: druz9.v1.DailyBrief.recommendations:type_name -> druz9.v1.BriefRecommendation
-	12, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
-	11, // 3: druz9.v1.MemoryStats.by_kind:type_name -> druz9.v1.MemoryStats.ByKindEntry
-	8,  // 4: druz9.v1.AskAnswer.citations:type_name -> druz9.v1.Citation
-	7,  // 5: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
-	10, // 6: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
-	3,  // 7: druz9.v1.IntelligenceService.AckRecommendation:input_type -> druz9.v1.AckRecommendationRequest
-	6,  // 8: druz9.v1.IntelligenceService.GetMemoryStats:input_type -> druz9.v1.GetMemoryStatsRequest
-	2,  // 9: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
-	9,  // 10: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
-	4,  // 11: druz9.v1.IntelligenceService.AckRecommendation:output_type -> druz9.v1.AckRecommendationResponse
-	5,  // 12: druz9.v1.IntelligenceService.GetMemoryStats:output_type -> druz9.v1.MemoryStats
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	2,  // 1: druz9.v1.DailyBrief.recommendations:type_name -> druz9.v1.BriefRecommendation
+	18, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
+	1,  // 3: druz9.v1.DailyBrief.severity:type_name -> druz9.v1.InsightSeverity
+	17, // 4: druz9.v1.MemoryStats.by_kind:type_name -> druz9.v1.MemoryStats.ByKindEntry
+	9,  // 5: druz9.v1.AskAnswer.citations:type_name -> druz9.v1.Citation
+	1,  // 6: druz9.v1.Insight.severity:type_name -> druz9.v1.InsightSeverity
+	18, // 7: druz9.v1.Insight.generated_at:type_name -> google.protobuf.Timestamp
+	18, // 8: druz9.v1.Insight.expires_at:type_name -> google.protobuf.Timestamp
+	12, // 9: druz9.v1.ListInsightsResponse.items:type_name -> druz9.v1.Insight
+	8,  // 10: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
+	11, // 11: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
+	4,  // 12: druz9.v1.IntelligenceService.AckRecommendation:input_type -> druz9.v1.AckRecommendationRequest
+	7,  // 13: druz9.v1.IntelligenceService.GetMemoryStats:input_type -> druz9.v1.GetMemoryStatsRequest
+	13, // 14: druz9.v1.IntelligenceService.ListInsights:input_type -> druz9.v1.ListInsightsRequest
+	15, // 15: druz9.v1.IntelligenceService.AckInsight:input_type -> druz9.v1.AckInsightRequest
+	3,  // 16: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
+	10, // 17: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
+	5,  // 18: druz9.v1.IntelligenceService.AckRecommendation:output_type -> druz9.v1.AckRecommendationResponse
+	6,  // 19: druz9.v1.IntelligenceService.GetMemoryStats:output_type -> druz9.v1.MemoryStats
+	14, // 20: druz9.v1.IntelligenceService.ListInsights:output_type -> druz9.v1.ListInsightsResponse
+	16, // 21: druz9.v1.IntelligenceService.AckInsight:output_type -> druz9.v1.AckInsightResponse
+	16, // [16:22] is the sub-list for method output_type
+	10, // [10:16] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_intelligence_proto_init() }
@@ -765,8 +1251,8 @@ func file_druz9_v1_intelligence_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_intelligence_proto_rawDesc), len(file_druz9_v1_intelligence_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   11,
+			NumEnums:      2,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

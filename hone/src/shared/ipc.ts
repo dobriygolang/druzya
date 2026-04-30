@@ -25,6 +25,11 @@ export const invokeChannels = {
   vaultPassLoad: 'vault:pass-load',
   vaultPassSave: 'vault:pass-save',
   vaultPassClear: 'vault:pass-clear',
+  // Phase 2.5 — Hone tray. Renderer pushes a compact status string
+  // ("25:00", "Focus 12:34") + optional pinned-task subtitle, main
+  // process renders it into the macOS menubar tray title/tooltip.
+  // Empty string clears the title (tray becomes icon-only).
+  trayUpdate: 'tray:update',
 } as const;
 
 export const eventChannels = {
@@ -110,6 +115,15 @@ export interface HoneAPI {
      * визуально чистым по дефолту.
      */
     setTrafficLights: (visible: boolean) => Promise<void>;
+  };
+  /** Phase 2.5 — push status to the macOS menubar tray. */
+  tray: {
+    /**
+     * title — short text rendered next to the icon ("25:00", "Focus 12:34").
+     * Empty string clears the title (icon-only).
+     * tooltip — longer hover text (pinned task, track step). Empty allowed.
+     */
+    update: (title: string, tooltip: string) => Promise<void>;
   };
   vault: {
     /** Read OS-encrypted vault passphrase (returns null if not saved). */

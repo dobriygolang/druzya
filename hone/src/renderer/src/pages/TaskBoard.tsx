@@ -478,6 +478,11 @@ function TaskCardView({ task, onClick, onCtxMenu }: TaskCardViewProps): JSX.Elem
 
   return (
     <article
+      // data-task-id — anchor для AICursor overlay'а: компонент ищет
+      // карточку через document.querySelector('[data-task-id="..."]')
+      // и центрирует курсор в её bounding-box. Без этого атрибута SSE
+      // сработает (event придёт), но визуально курсор не переместится.
+      data-task-id={task.id}
       draggable
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}

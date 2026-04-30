@@ -162,7 +162,7 @@ func toProgressProto(v app.ProgressView) *pb.PodcastProgress {
 // ── enum adapters (local copies — each domain ports module is separate) ──
 
 func sectionToProtoPodcast(s enums.Section) pb.Section {
-	switch s {
+	switch s { //nolint:exhaustive // free-form sections fall through to default
 	case enums.SectionAlgorithms:
 		return pb.Section_SECTION_ALGORITHMS
 	case enums.SectionSQL:
@@ -179,7 +179,7 @@ func sectionToProtoPodcast(s enums.Section) pb.Section {
 }
 
 func sectionFromProtoPodcast(s pb.Section) enums.Section {
-	switch s {
+	switch s { //nolint:exhaustive // free-form proto sections fall through to default
 	case pb.Section_SECTION_UNSPECIFIED:
 		return ""
 	case pb.Section_SECTION_ALGORITHMS:

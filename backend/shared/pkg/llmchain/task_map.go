@@ -198,6 +198,90 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
 	},
+	TaskEnglishMockHR: {
+		// English HR-mock — пользователь говорит / пишет на английском с
+		// AI-собеседующим. Latency не критична (это диалог, не auto-suggest);
+		// качество прозы и грамматического контроля — основной критерий.
+		// 70B-class на всех cloud-провайдерах. Ollama 7B сохранён как
+		// floor-fallback, но качество ESL-feedback'а на 7B заметно хуже
+		// (модель плодит canned phrases вместо real HR pushback).
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskSystemDesignSeniorMock: {
+		// Senior SD multi-turn dialogue — long context, deep reasoning.
+		// Same model class as TaskSysDesignCritique (which grades a single
+		// diagram), but distinct entry: critique is one-shot evaluation,
+		// this is interactive multi-turn pushback. 70B на всех cloud
+		// провайдерах. Ollama 7B floor — качество senior pushback'а на
+		// 7B плохое (модель «соглашается» вместо «давит»), но 503-fail
+		// хуже чем degraded UX.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskTechLeadMock: {
+		// Tech Lead / EM behavioral STAR-mock. Same 70B-class story —
+		// quality of probing (refuses generic answers, demands specific
+		// numbers / outcomes / lessons) requires reasoning depth.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskTutorPreSessionBrief: {
+		// Tutor pre-session brief — narrative prose over aggregated
+		// numbers, ~250 words, Russian. Quality > latency (tutor reads
+		// it once before a 1:1). 70B-class on cloud; Ollama 7B floor
+		// for offline / quota-exhausted fallback.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskHoneSummaryGrade: {
+		// Reading summary grader — strict JSON, small surface, fast
+		// turnaround (user-blocking). 8B-class is enough; the work is
+		// "compare two short pieces of text, return a number". 70B
+		// would be overkill and burn the latency budget. Mistral
+		// remains a fallback for when groq/cerebras free tiers throttle.
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderMistral:    "mistral-small-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskHoneWritingFeedback: {
+		// Writing-as-Focus inline feedback — user-blocking JSON list.
+		// Same latency-vs-quality tradeoff as summary grading; the work
+		// is "find the bad bits in this 200-word draft". 8B handles
+		// surface grammar; the 120B free-tier OpenRouter route is the
+		// quality fallback when the 8B misses subtler stylistic issues.
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderMistral:    "mistral-small-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskHoneCodeReviewGrade: {
+		// Code-review grading — comparing a user review to a diff
+		// requires reasoning about what the patch actually does, what
+		// it misses, and whether the reviewer's comments are technically
+		// sound. 70B-class on cloud; 7B Ollama floor for offline work.
+		// Worth the extra latency vs the 8B used in writing feedback.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
 }
 
 // Clone returns a deep copy so callers can mutate without affecting
