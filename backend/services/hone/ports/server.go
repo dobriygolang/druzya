@@ -1369,6 +1369,33 @@ func (s *HoneServer) ListVocabDue(
 	return connect.NewResponse(out), nil
 }
 
+// ListVocabBySourceMaterial — Wave 4.2 reverse cross-link.
+func (s *HoneServer) ListVocabBySourceMaterial(
+	ctx context.Context,
+	req *connect.Request[pb.ListVocabBySourceMaterialRequest],
+) (*connect.Response[pb.ListVocabDueResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.ListVocabBySourceMaterial == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListVocabBySourceMaterial not wired"))
+	}
+	mid, perr := uuid.Parse(req.Msg.MaterialId)
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("material_id: %w", perr))
+	}
+	items, err := s.H.ListVocabBySourceMaterial.Do(ctx, uid, mid, int(req.Msg.Limit))
+	if err != nil {
+		return nil, fmt.Errorf("hone.ListVocabBySourceMaterial: %w", s.toConnectErr(err))
+	}
+	out := &pb.ListVocabDueResponse{Items: make([]*pb.VocabEntry, 0, len(items))}
+	for _, v := range items {
+		out.Items = append(out.Items, toVocabProto(v))
+	}
+	return connect.NewResponse(out), nil
+}
+
 // GradeEnglishWriting — Wave 4.4. One-shot grader; no persistence.
 // Returns 503-ish (CodeUnavailable) via toConnectErr when llmchain
 // isn't wired (the floor adapter surfaces ErrLLMUnavailable).

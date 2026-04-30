@@ -300,6 +300,42 @@ func (p *Postgres) ListTutorStudents(ctx context.Context, tutorID uuid.UUID) ([]
 	return out, nil
 }
 
+// ListStudentTutors — Wave 9.4 multi-tutor surface. Same shape as
+// ListTutorStudents but filtered by student_id. Hits the existing
+// idx_tutor_students_student_started index.
+func (p *Postgres) ListStudentTutors(ctx context.Context, studentID uuid.UUID) ([]domain.Relationship, error) {
+	rows, err := p.pool.Query(ctx, `
+		SELECT id, tutor_id, student_id, invite_id, started_at, ended_at, note
+		FROM tutor_students
+		WHERE student_id = $1 AND ended_at IS NULL
+		ORDER BY started_at DESC`,
+		pgUUID(studentID),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListStudentTutors: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Relationship, 0, 4)
+	for rows.Next() {
+		var r domain.Relationship
+		var idRaw, tutorIDRaw, studentIDRaw, inviteIDRaw pgtype.UUID
+		var startedAt, endedAt pgtype.Timestamptz
+		if err := rows.Scan(&idRaw, &tutorIDRaw, &studentIDRaw, &inviteIDRaw, &startedAt, &endedAt, &r.Note); err != nil {
+			return nil, fmt.Errorf("tutor.ListStudentTutors: scan: %w", err)
+		}
+		r.ID = uuidFrom(idRaw)
+		r.TutorID = uuidFrom(tutorIDRaw)
+		r.StudentID = uuidFrom(studentIDRaw)
+		r.InviteID = nullableUUID(inviteIDRaw)
+		if startedAt.Valid {
+			r.StartedAt = startedAt.Time
+		}
+		r.EndedAt = nullableTime(endedAt)
+		out = append(out, r)
+	}
+	return out, nil
+}
+
 // EndRelationship soft-ends an active relationship.
 func (p *Postgres) EndRelationship(ctx context.Context, tutorID, studentID uuid.UUID, now time.Time) error {
 	tag, err := p.pool.Exec(ctx, `

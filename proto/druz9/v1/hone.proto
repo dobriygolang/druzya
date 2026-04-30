@@ -686,6 +686,12 @@ service HoneService {
   rpc ListVocabDue(ListVocabDueRequest) returns (ListVocabDueResponse) {
     option (google.api.http) = {get: "/api/v1/hone/reading/vocab/due"};
   }
+  // Wave 4.2 reverse cross-link — list vocab entries the user saved
+  // while reading a specific material. Powers the reader sidebar
+  // «words you've saved here».
+  rpc ListVocabBySourceMaterial(ListVocabBySourceMaterialRequest) returns (ListVocabDueResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/reading/materials/{material_id}/vocab"};
+  }
 
   // ─── Listening-модуль (Wave 6.1) ─────────────────────────────────
   // User-owned library of audio + transcript materials. Click-on-word
@@ -1100,6 +1106,11 @@ message ListVocabDueRequest {
 
 message ListVocabDueResponse {
   repeated VocabEntry items = 1;
+}
+
+message ListVocabBySourceMaterialRequest {
+  string material_id = 1;
+  int32  limit       = 2; // 0 → server default (50)
 }
 
 // ─── Listening-модуль messages (Wave 6.1) ─────────────────────────

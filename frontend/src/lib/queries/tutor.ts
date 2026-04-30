@@ -94,6 +94,14 @@ export type TutorStudentSnapshot = {
   english_mocks_last_score: number
   weak_spots: TutorWeakSpot[]
   notes_count: number
+  // English-track activity from Hone (extended snapshot — Wave 4 + 6.1).
+  reading_sessions_count: number
+  reading_minutes_window: number
+  reading_materials_total: number
+  writing_grades_count: number
+  listening_materials_total: number
+  vocab_queue_total: number
+  vocab_due_today: number
 }
 
 export type TutorPreSessionBrief = {
@@ -329,3 +337,395 @@ export function useBroadcastAssignmentMutation() {
     },
   })
 }
+
+// ── Events (Wave 5.2b) ────────────────────────────────────────────────
+
+export type TutorEventStatus = 'scheduled' | 'cancelled' | 'completed' | string
+
+export type TutorEvent = {
+  id: string
+  tutor_id: string
+  /** Set for 1-on-1 events. Empty when this is a circle (group) event. */
+  student_id: string
+  /** V2 group classes. Empty in V1. */
+  circle_id: string
+  title: string
+  body_md: string
+  scheduled_at?: string
+  duration_min: number
+  meet_url: string
+  /** Only meaningful for circle events; 0 = unlimited / not applicable. */
+  capacity: number
+  status: TutorEventStatus
+  cancellation_reason: string
+  /** Wave 5.2d — non-empty iff status='completed'. Tutor's session write-up. */
+  session_note: string
+  created_at?: string
+  updated_at?: string
+}
+
+// ── Tutor analytics (Wave 9.5) ────────────────────────────────────────
+
+export type TutorActivity = {
+  window_days: number
+  active_student_count: number
+  events_completed: number
+  events_cancelled: number
+  events_scheduled: number
+  minutes_taught: number
+  /** 0..1; 0 when no events in window. */
+  cancellation_rate: number
+}
+
+/** Tutor dashboard analytics — counters + minutes taught + cancellation rate. */
+export function useTutorActivityQuery(windowDays = 30) {
+  return useQuery({
+    queryKey: ['tutor', 'activity', windowDays] as const,
+    queryFn: () => api<TutorActivity>(`/tutor/activity?window_days=${windowDays}`),
+    staleTime: 60_000,
+  })
+}
+
+/** Tutor's full calendar list — all statuses, most-recently-scheduled first. */
+export function useTutorEventsQuery() {
+  return useQuery({
+    queryKey: ['tutor', 'events'] as const,
+    queryFn: () => api<{ items: TutorEvent[] }>('/tutor/events'),
+    staleTime: 30_000,
+  })
+}
+
+/** Student-side: scheduled events whose end time hasn't passed yet,
+ *  earliest-first. Drives Hone's Calendar page + HomePage chip. */
+export function useUpcomingEventsQuery() {
+  return useQuery({
+    queryKey: ['tutor', 'events', 'upcoming'] as const,
+    queryFn: () => api<{ items: TutorEvent[] }>('/tutor/events/upcoming'),
+    staleTime: 30_000,
+  })
+}
+
+/** Tutor schedules a calendar event for one student.
+ *  - `scheduled_at` must be in the future (server enforces a 5-min slack).
+ *  - `duration_min` 1..480.
+ *  - `meet_url` optional; we don't validate the protocol/host server-side. */
+export function useCreateEventMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: {
+      student_id: string
+      title: string
+      body_md: string
+      scheduled_at: string // ISO 8601
+      duration_min: number
+      meet_url: string
+    }) =>
+      api<TutorEvent>('/tutor/events', {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'events'] })
+    },
+  })
+}
+
+/** Tutor cancels an event with a reason. Server requires a non-empty reason
+ *  (CHECK constraint mirrors a deliberate UX rule — no silent cancellations). */
+export function useCancelEventMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { event_id: string; reason: string }) =>
+      api<Record<string, never>>(
+        `/tutor/events/${encodeURIComponent(vars.event_id)}/cancel`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            event_id: vars.event_id,
+            reason: vars.reason,
+          }),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'events'] })
+    },
+  })
+}
+
+/** Tutor schedules a GROUP event on a circle (Wave 5.2). The circle must
+ *  be one the tutor owns or admins; capacity is required and capped at 200. */
+export function useCreateGroupEventMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: {
+      circle_id: string
+      title: string
+      body_md: string
+      scheduled_at: string
+      duration_min: number
+      meet_url: string
+      capacity: number
+    }) =>
+      api<TutorEvent>('/tutor/events/group', {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'events'] })
+    },
+  })
+}
+
+/** Group events the student can see via circle membership but hasn't joined yet. */
+export function useUpcomingGroupEventsQuery() {
+  return useQuery({
+    queryKey: ['tutor', 'events', 'upcoming-group'] as const,
+    queryFn: () => api<{ items: TutorEvent[] }>('/tutor/events/upcoming/group'),
+    staleTime: 30_000,
+  })
+}
+
+export function useEventRSVPCountQuery(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['tutor', 'events', eventId, 'rsvp-count'] as const,
+    queryFn: () =>
+      api<{ count: number }>(
+        `/tutor/events/${encodeURIComponent(eventId!)}/rsvp-count`,
+      ),
+    enabled: Boolean(eventId),
+    staleTime: 15_000,
+  })
+}
+
+export function useJoinEventMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (event_id: string) =>
+      api<Record<string, never>>(
+        `/tutor/events/${encodeURIComponent(event_id)}/join`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'events'] })
+    },
+  })
+}
+
+export function useLeaveEventMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (event_id: string) =>
+      api<Record<string, never>>(
+        `/tutor/events/${encodeURIComponent(event_id)}/leave`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'events'] })
+    },
+  })
+}
+
+/** Tutor marks an event complete with a session note (Wave 5.2d). Server
+ *  requires a non-empty note — completion without recording outcomes is
+ *  a deliberate UX dead-end. Already-terminal events return
+ *  FailedPrecondition; we surface it as a no-op refetch on the caller side. */
+export function useCompleteEventMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { event_id: string; session_note: string }) =>
+      api<Record<string, never>>(
+        `/tutor/events/${encodeURIComponent(vars.event_id)}/complete`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            event_id: vars.event_id,
+            session_note: vars.session_note,
+          }),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'events'] })
+    },
+  })
+}
+
+// ── Wave 9.1 marketplace listings (Boosty-only payment) ───────────────
+// Boosty handles all money flow — we only route the click outbound via
+// `boosty_url`. Browse/detail endpoints live under /marketplace and are
+// public (no auth gate); manage endpoints under /tutor/listings require
+// the bearer.
+
+export type TutorListing = {
+  id: string
+  tutor_id: string
+  slug: string
+  title: string
+  summary: string
+  body_md: string
+  track_kind: string
+  languages: string[]
+  hourly_rate_minor: number
+  currency: string
+  boosty_url: string
+  published_at: string
+  archived_at: string
+  created_at: string
+  updated_at: string
+}
+
+export type TutorListingPackage = {
+  id: string
+  listing_id: string
+  kind: string
+  hours: number
+  price_minor: number
+  description: string
+  archived_at: string
+  created_at: string
+}
+
+export type TutorListingDetail = {
+  listing: TutorListing
+  packages: TutorListingPackage[]
+  tutor_display: string
+}
+
+export function useBrowseListingsQuery(filter: {
+  track_kinds?: string[]
+  max_rate_minor?: number
+  languages?: string[]
+  limit?: number
+}) {
+  return useQuery({
+    queryKey: ["marketplace", "browse", filter] as const,
+    queryFn: () => {
+      const params = new URLSearchParams()
+      filter.track_kinds?.forEach((t) => params.append("track_kinds", t))
+      filter.languages?.forEach((l) => params.append("languages", l))
+      if (filter.max_rate_minor) params.set("max_rate_minor", String(filter.max_rate_minor))
+      if (filter.limit) params.set("limit", String(filter.limit))
+      const qs = params.toString()
+      return api<{ items: TutorListing[] }>(`/marketplace/listings${qs ? "?" + qs : ""}`)
+    },
+    staleTime: 60_000,
+  })
+}
+
+export function useListingBySlugQuery(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["marketplace", "listing", slug] as const,
+    queryFn: () => api<TutorListingDetail>(`/marketplace/listings/${encodeURIComponent(slug!)}`),
+    enabled: Boolean(slug),
+  })
+}
+
+export function useMyListingsQuery() {
+  return useQuery({
+    queryKey: ["tutor", "listings"] as const,
+    queryFn: () => api<{ items: TutorListing[] }>("/tutor/listings"),
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateListingMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: {
+      slug: string
+      title: string
+      summary: string
+      body_md: string
+      track_kind: string
+      languages: string[]
+      hourly_rate_minor: number
+      currency: string
+      boosty_url: string
+    }) => api<TutorListing>("/tutor/listings", { method: "POST", body: JSON.stringify(vars) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tutor", "listings"] }),
+  })
+}
+
+export function useUpdateListingMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: {
+      listing_id: string
+      slug: string
+      title: string
+      summary: string
+      body_md: string
+      track_kind: string
+      languages: string[]
+      hourly_rate_minor: number
+      currency: string
+      boosty_url: string
+    }) =>
+      api<TutorListing>(`/tutor/listings/${encodeURIComponent(vars.listing_id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tutor", "listings"] }),
+  })
+}
+
+export function usePublishListingMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (listing_id: string) =>
+      api<Record<string, never>>(
+        `/tutor/listings/${encodeURIComponent(listing_id)}/publish`,
+        { method: "POST" },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tutor", "listings"] }),
+  })
+}
+
+export function useArchiveListingMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (listing_id: string) =>
+      api<Record<string, never>>(
+        `/tutor/listings/${encodeURIComponent(listing_id)}/archive`,
+        { method: "POST" },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tutor", "listings"] }),
+  })
+}
+
+export function useAddListingPackageMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: {
+      listing_id: string
+      kind: string
+      hours: number
+      price_minor: number
+      description: string
+    }) =>
+      api<TutorListingPackage>(
+        `/tutor/listings/${encodeURIComponent(vars.listing_id)}/packages`,
+        { method: "POST", body: JSON.stringify(vars) },
+      ),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["marketplace", "listing"] })
+      qc.invalidateQueries({ queryKey: ["tutor", "listings"] })
+      void vars
+    },
+  })
+}
+
+export function useArchiveListingPackageMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (package_id: string) =>
+      api<Record<string, never>>(
+        `/tutor/packages/${encodeURIComponent(package_id)}/archive`,
+        { method: "POST" },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["marketplace", "listing"] })
+      qc.invalidateQueries({ queryKey: ["tutor", "listings"] })
+    },
+  })
+}
+

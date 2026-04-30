@@ -24,6 +24,7 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { Palette, type PageId, type PaletteAction } from './components/Palette';
 import { Copilot } from './components/Copilot';
 import { DailyBriefPanel } from './components/DailyBriefPanel';
+import { TutorAssignmentsBanner } from './components/TutorAssignmentsBanner';
 // StandupOverlay удалён — standup переехал в morning banner на Today page
 // (см. components/TodayStandupBanner.tsx).
 import { UpdateToast } from './components/UpdateToast';
@@ -40,6 +41,8 @@ import { PodcastsPage } from './pages/Podcasts';
 import { SharedBoardsPage } from './pages/SharedBoards';
 import { EditorPage } from './pages/Editor';
 import { BoardsTabsChrome } from './components/BoardsTabsChrome';
+import { EnglishTabsChrome, type EnglishTab } from './components/EnglishTabsChrome';
+import { TutorTabsChrome, type TutorTab } from './components/TutorTabsChrome';
 import { EventsPage } from './pages/Events';
 import { CoachPage } from './pages/Coach';
 import { ReadingPage } from './pages/Reading';
@@ -47,6 +50,8 @@ import { WritingPage } from './pages/Writing';
 import { TutorAssignmentsPage } from './pages/TutorAssignments';
 import { ListeningPage } from './pages/Listening';
 import { CodeReviewPage } from './pages/CodeReview';
+import { CalendarPage } from './pages/Calendar';
+import { UpcomingEventChip } from './components/UpcomingEventChip';
 import { SettingsPage, readStoredTheme, readPomodoroSeconds } from './pages/Settings';
 import { useSessionStore } from './stores/session';
 import { startFocusSession, endFocusSession } from './api/hone';
@@ -152,6 +157,11 @@ export default function App() {
     void import('./offline/wire').then((m) => m.wireOutboxExecutors());
     void import('./offline/ydoc-migrate').then((m) => m.installYDocMigrationHook());
     void import('./offline/outbox').then((m) => m.installOutboxAutoDrain());
+    // Wave 5.2c — tutor-event reminders (T-24h / T-1h / T-now). Reuses
+    // the OS notify() primitive; dedup persists in localStorage so
+    // reopening Hone doesn't replay old reminders. Single-flight inside
+    // the module so accidental double-import is safe.
+    void import('./api/eventReminders').then((m) => m.installEventReminders());
     const bridge = typeof window !== 'undefined' ? window.hone : undefined;
     if (!bridge) return;
 
@@ -607,6 +617,7 @@ export default function App() {
       else if (code === 'KeyA') toggleTo('assignments');
       else if (code === 'KeyL') toggleTo('listening');
       else if (code === 'KeyG') toggleTo('code_review');
+      else if (code === 'KeyM') toggleTo('calendar');
       else if (code === 'Comma') toggleTo('settings');
     };
     window.addEventListener('keydown', onKey);
@@ -749,6 +760,24 @@ export default function App() {
           }}
         />
       )}
+      {/* Tutor-pushed assignments — most-urgent pending shown on Home
+          (Wave 5.1 → Hone HomePage integration). Hidden during running
+          focus sessions to keep the canvas quiet; the banner self-polls
+          every 60s + on window focus. */}
+      {page === 'home' && (
+        <TutorAssignmentsBanner
+          running={running}
+          onOpenAll={() => setPage('assignments')}
+        />
+      )}
+      {/* Wave 5.2b — next tutor-scheduled session. Top-right chip; only
+          surfaces within 24h (or while live). Click → /calendar page. */}
+      {page === 'home' && (
+        <UpcomingEventChip
+          running={running}
+          onOpenCalendar={() => setPage('calendar')}
+        />
+      )}
       {page === 'home' && (
         <HomePage
           running={running}
@@ -810,6 +839,22 @@ export default function App() {
           onChange={(t) => openImpl(t)}
         />
       )}
+      {/* English-loop hub chrome — surfaces R/W/L страницы как один
+          логический hub. Palette сейчас один entry «English · Read ·
+          Write · Listen», конкретный child выбирается через табы. */}
+      {(page === 'reading' || page === 'writing' || page === 'listening') && (
+        <EnglishTabsChrome
+          current={page as EnglishTab}
+          onChange={(t) => openImpl(t)}
+        />
+      )}
+      {/* Tutor hub chrome — same pattern, tasks + calendar. */}
+      {(page === 'assignments' || page === 'calendar') && (
+        <TutorTabsChrome
+          current={page as TutorTab}
+          onChange={(t) => openImpl(t)}
+        />
+      )}
       {page === 'home' && (
         <AnimatedStatsOverlay open={statsOpen} onClose={() => setStatsOpen(false)} />
       )}
@@ -844,6 +889,7 @@ export default function App() {
       {page === 'assignments' && <TutorAssignmentsPage />}
       {page === 'listening' && <ListeningPage />}
       {page === 'code_review' && <CodeReviewPage />}
+      {page === 'calendar' && <CalendarPage />}
 
       <Dock
         onMenu={() => setPaletteOpen(true)}

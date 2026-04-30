@@ -238,6 +238,13 @@ export async function reviewVocab(word: string, correct: boolean): Promise<Vocab
   return unwrapVocab(resp as unknown as ProtoVocab);
 }
 
+/** Wave 4.2 — vocab entries saved from a specific source material.
+ *  Powers the «words you've saved here» reader sidebar. */
+export async function listVocabBySourceMaterial(materialId: string, limit = 50): Promise<VocabEntry[]> {
+  const resp = await client.listVocabBySourceMaterial({ materialId, limit });
+  return resp.items.map((v) => unwrapVocab(v as unknown as ProtoVocab));
+}
+
 export async function listVocabDue(limit = 20): Promise<VocabEntry[]> {
   const resp = await client.listVocabDue({ limit });
   return resp.items.map((v) => unwrapVocab(v as unknown as ProtoVocab));

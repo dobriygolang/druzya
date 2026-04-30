@@ -146,6 +146,14 @@ type ReadingRepo interface {
 	// `correct` distinguishes graduating (box+1) from regressing
 	// (box=0). LearnedAt is stamped when box reaches 5.
 	AdvanceVocab(ctx context.Context, userID uuid.UUID, word string, correct bool, now time.Time) (VocabEntry, error)
+
+	// ListVocabBySourceMaterial — Wave 4.2 reverse cross-link. Returns
+	// every vocab entry whose `source_material` points to materialID,
+	// scoped to the user. Reader UI shows «vocab you've saved from this
+	// material» sidebar; without this method that surface would require
+	// the client to fetch the entire vocab queue and filter.
+	// limit caps the result; 0 → server default (50).
+	ListVocabBySourceMaterial(ctx context.Context, userID, materialID uuid.UUID, limit int) ([]VocabEntry, error)
 }
 
 // SummaryGrader scores a user-written summary against the source

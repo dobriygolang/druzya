@@ -41,6 +41,19 @@ type StudentSnapshot struct {
 	// engaging beyond just clicking through the UI». Not displayed
 	// directly; surfaces in the LLM brief.
 	NotesCount int
+
+	// English-track activity sourced from Hone (Wave 4 + 6.1).
+	// All counts are bounded by WindowDays; vocab numbers reflect the
+	// CURRENT queue state (not windowed) since SRS is stateful — a
+	// «5 cards due today» counter is what the tutor actually wants to
+	// see, not «5 cards added in the last 7 days».
+	ReadingSessionsCount    int // hone_reading_sessions started inside the window
+	ReadingMinutesWindow    int // sum(ended_at - started_at), rounded to minutes
+	ReadingMaterialsTotal   int // active rows in hone_reading_materials (not windowed — total library size)
+	WritingGradesCount      int // hone_reading_sessions with ai_summary_score IS NOT NULL inside the window (proxy for graded pieces — Writing surface itself doesn't persist)
+	ListeningMaterialsTotal int // active hone_listening_materials (total, not windowed)
+	VocabQueueTotal         int // active hone_vocab_queue rows (learned_at IS NULL)
+	VocabDueToday           int // active rows with next_review_at <= now
 }
 
 // WeakSpot is one row in StudentSnapshot.WeakSpots — a sub-skill the

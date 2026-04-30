@@ -27,6 +27,7 @@ import {
   endReadingSession,
   getReadingMaterial,
   listReadingMaterials,
+  listVocabBySourceMaterial,
   listVocabDue,
   reviewVocab,
   startReadingSession,
@@ -592,8 +593,24 @@ function Reader({ material, session, onExit }: ReaderProps) {
   const [popover, setPopover] = useState<VocabPopover | null>(null);
   const [summary, setSummary] = useState('');
   const [grading, setGrading] = useState<GradingState>({ kind: 'idle' });
+  // Wave 4.2 — vocab saved from THIS material. Refetched on mount + after
+  // each successful popover save so the «saved here» panel stays current.
+  const [savedVocab, setSavedVocab] = useState<VocabEntry[]>([]);
   const charsReadRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const refreshSavedVocab = useCallback(async () => {
+    try {
+      const items = await listVocabBySourceMaterial(material.id);
+      setSavedVocab(items);
+    } catch {
+      // Non-critical surface; silently keep the previous snapshot.
+    }
+  }, [material.id]);
+
+  useEffect(() => {
+    void refreshSavedVocab();
+  }, [refreshSavedVocab]);
 
   // Estimate chars_read из scroll position. body height ~ totalChars (rough),
   // scroll fraction × totalChars даёт upper bound прочитанного. Save в ref'е,
@@ -694,12 +711,16 @@ function Reader({ material, session, onExit }: ReaderProps) {
           contextMd: popover.context,
           sourceMaterial: material.id,
         });
+        // Wave 4.2 — refresh sidebar so the «saved here» panel reflects
+        // the new entry without waiting for the user to navigate away
+        // and back.
+        void refreshSavedVocab();
       } catch {
         /* silent — UI не блокируется на vocab fail'е */
       }
       setPopover(null);
     },
-    [popover, material.id],
+    [popover, material.id, refreshSavedVocab],
   );
 
   return (
@@ -758,6 +779,8 @@ function Reader({ material, session, onExit }: ReaderProps) {
           </header>
 
           <ReaderBody bodyMd={material.bodyMd} onWordClick={handleWordClick} />
+
+          {savedVocab.length > 0 && <SavedVocabPanel items={savedVocab} />}
 
           <section style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <div
@@ -827,6 +850,80 @@ function Reader({ material, session, onExit }: ReaderProps) {
         />
       )}
     </>
+  );
+}
+
+// SavedVocabPanel — Wave 4.2 reverse cross-link. Shown below the
+// reader body when the user has previously saved any words from THIS
+// material. Pure read-only surface; click → open SRS review widget
+// is a future hook (currently the daily-review widget in the library
+// pane covers it).
+function SavedVocabPanel({ items }: { items: VocabEntry[] }) {
+  return (
+    <section
+      style={{
+        marginTop: 32,
+        padding: '14px 16px 12px',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+      }}
+    >
+      <div
+        className="mono"
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.18em',
+          color: 'var(--ink-40)',
+          marginBottom: 10,
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 8,
+        }}
+      >
+        <span>WORDS YOU&apos;VE SAVED HERE</span>
+        <span style={{ color: 'var(--ink-60)' }}>· {items.length}</span>
+      </div>
+      <ul
+        style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: 0,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 8,
+        }}
+      >
+        {items.map((v) => (
+          <li
+            key={v.word}
+            title={v.translation || ''}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 999,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              fontSize: 12,
+              color: 'var(--ink)',
+              cursor: 'help',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span>{v.word}</span>
+            <span
+              className="mono"
+              style={{
+                fontSize: 9,
+                color: 'var(--ink-40)',
+                letterSpacing: '0.08em',
+              }}
+            >
+              box {v.box}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

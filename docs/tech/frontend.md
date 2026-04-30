@@ -66,7 +66,10 @@ hone/
 │           ├── components/   CanvasBg, Chrome, Dock, Palette, Copilot, ...
 │           ├── pages/        Home, Today, Focus, Notes, Whiteboard, Stats,
 │           │                 Podcasts, Editor, BoardsHub, SharedBoards,
-│           │                 Events, Coach (read-only past briefs feed)
+│           │                 Events, Coach (read-only past briefs feed),
+│           │                 Reading (R), Writing (W), Listening (L),
+│           │                 CodeReview (G), TutorAssignments (A),
+│           │                 Calendar (M)
 │           ├── stores/       zustand (session, focus, ...)
 │           └── styles/globals.css
 └── resources/                Icons, splash images
@@ -74,7 +77,7 @@ hone/
 
 **Принципы:**
 
-- **Не делает stealth.** Никаких `setContentProtection`, никаких global hotkeys. Только in-focus shortcuts (`T`, `F`, `N`, ...).
+- **Не делает stealth.** Никаких `setContentProtection`, никаких global hotkeys. Только in-focus letter-shortcuts: `T` Today, `N` Notes, `B` Boards, `C` Code editor, `E` Events, `S` Stats, `P` Podcasts, `R` Reading, `W` Writing, `L` Listening, `A` Assignments (от тутора), `M` Calendar (тутор-сессии), `G` Code review, `,` Settings. ⌘K — palette, ⌘S — sidebar toggle. На канвасных страницах (boards/editor) plain-letter shortcuts отключены, только палитра.
 - **Без `keytar`.** Токены через Electron `safeStorage` (без native build).
 - **Auth через Telegram code flow** в main-process (без drush9:// browser dance).
 - **strict TypeScript.** `@ts-nocheck` запрещён.
@@ -121,7 +124,8 @@ desktop/
 │       │   ├── picker/     Floating persona/model picker
 │       │   ├── settings/   Документы (RAG attach)
 │       │   ├── area-overlay/  Screenshot area-selector
-│       │   └── toast/      Floating error/info
+│       │   ├── toast/      Floating error/info
+│       │   └── english-polish/ Wave 6.2 — ⌃⇧L: clipboard → AI feedback
 │       └── stores/         audio-capture, coach, session, conversation, persona, documents
 ```
 

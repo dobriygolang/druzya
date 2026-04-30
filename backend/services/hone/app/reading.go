@@ -274,6 +274,25 @@ func (uc *ListVocabDue) Do(ctx context.Context, userID uuid.UUID, limit int) ([]
 	return out, nil
 }
 
+// ListVocabBySourceMaterial — Wave 4.2 reverse cross-link. Surface the
+// vocab entries the user previously saved while reading THIS material,
+// so the reader sidebar can render «words you've saved here» without
+// pulling the entire queue.
+type ListVocabBySourceMaterial struct {
+	Repo domain.ReadingRepo
+}
+
+func (uc *ListVocabBySourceMaterial) Do(ctx context.Context, userID, materialID uuid.UUID, limit int) ([]domain.VocabEntry, error) {
+	if userID == uuid.Nil || materialID == uuid.Nil {
+		return nil, fmt.Errorf("hone.ListVocabBySourceMaterial: ids required")
+	}
+	out, err := uc.Repo.ListVocabBySourceMaterial(ctx, userID, materialID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("hone.ListVocabBySourceMaterial: %w", err)
+	}
+	return out, nil
+}
+
 // nowOr — Hone's app/ already has multiple usecases referencing
 // time.Now via injectable funcs; we duplicate the helper here
 // instead of poking package internals.

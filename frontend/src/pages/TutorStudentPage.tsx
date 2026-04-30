@@ -173,6 +173,60 @@ function SnapshotBody({ snapshot }: { snapshot: TutorStudentSnapshot }) {
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          English-track activity (Hone)
+        </div>
+        {hasNoEnglishActivity(snapshot) ? (
+          <p className="text-sm text-text-secondary">
+            Студент пока не пользовался Hone-английским (Reading / Listening / vocab).
+            На сессии можно показать как загружать материалы — hotkey R / L.
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Stat
+                label="Reading min"
+                value={String(snapshot.reading_minutes_window)}
+                sub={snapshot.window_days ? `за ${snapshot.window_days}d` : ''}
+              />
+              <Stat
+                label="Reading sess"
+                value={String(snapshot.reading_sessions_count)}
+                sub={snapshot.window_days ? `за ${snapshot.window_days}d` : ''}
+              />
+              <Stat
+                label="Library"
+                value={String(snapshot.reading_materials_total)}
+                sub="всего"
+              />
+              <Stat
+                label="Listening"
+                value={String(snapshot.listening_materials_total)}
+                sub="всего"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <Stat
+                label="Vocab queue"
+                value={String(snapshot.vocab_queue_total)}
+                sub="active"
+              />
+              <Stat
+                label="Due today"
+                value={String(snapshot.vocab_due_today)}
+                tier={snapshot.vocab_due_today > 0 ? 'mid' : undefined}
+              />
+              <Stat
+                label="Graded summaries"
+                value={String(snapshot.writing_grades_count)}
+                sub={snapshot.window_days ? `за ${snapshot.window_days}d` : ''}
+              />
+            </div>
+          </>
+        )}
+      </Card>
+
+      <Card className="flex-col gap-3 p-4" interactive={false}>
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
           Weak spots {snapshot.weak_spots.length > 0 ? `· ${snapshot.weak_spots.length}` : ''}
         </div>
         {snapshot.weak_spots.length === 0 ? (
@@ -189,6 +243,21 @@ function SnapshotBody({ snapshot }: { snapshot: TutorStudentSnapshot }) {
         )}
       </Card>
     </section>
+  )
+}
+
+// True iff every English-track activity counter is zero. Lets us replace
+// the «5 zeros across 7 stats» grid with a one-line «not yet engaged»
+// message — saves the tutor's eyes when a brand-new student loads.
+function hasNoEnglishActivity(s: TutorStudentSnapshot): boolean {
+  return (
+    s.reading_sessions_count === 0 &&
+    s.reading_minutes_window === 0 &&
+    s.reading_materials_total === 0 &&
+    s.writing_grades_count === 0 &&
+    s.listening_materials_total === 0 &&
+    s.vocab_queue_total === 0 &&
+    s.vocab_due_today === 0
   )
 }
 

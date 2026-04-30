@@ -32,14 +32,22 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) *monolithServices.Module
 	// we pass it to both use-case slots without an adapter.
 	getSnapshot := &tutorApp.GetStudentSnapshot{Repo: repo, Now: d.Now}
 	server := &tutorPorts.TutorServer{
-		CreateInviteUC:    &tutorApp.CreateInvite{Repo: repo, Now: d.Now},
-		RevokeInviteUC:    &tutorApp.RevokeInvite{Repo: repo, Now: d.Now},
-		AcceptInviteUC:    &tutorApp.AcceptInvite{Repo: repo, Now: d.Now},
-		ListInvitesUC:     &tutorApp.ListInvites{Repo: repo},
-		ListStudentsUC:    &tutorApp.ListStudents{Repo: repo},
-		PeekInviteUC:      &tutorApp.PeekInvite{Repo: repo, Now: d.Now},
-		EndRelationshipUC: &tutorApp.EndRelationship{Repo: repo, Now: d.Now},
-		GetSnapshotUC:     getSnapshot,
+		CreateInviteUC:     &tutorApp.CreateInvite{Repo: repo, Now: d.Now},
+		RevokeInviteUC:     &tutorApp.RevokeInvite{Repo: repo, Now: d.Now},
+		AcceptInviteUC:     &tutorApp.AcceptInvite{Repo: repo, Now: d.Now},
+		ListInvitesUC:      &tutorApp.ListInvites{Repo: repo},
+		ListStudentsUC:     &tutorApp.ListStudents{Repo: repo},
+		ListMyTutorsUC:     &tutorApp.ListMyTutors{Repo: repo},
+		GetTutorActivityUC: &tutorApp.GetTutorActivity{Repo: repo, Now: d.Now},
+		// Wave 5.2 group events on circles.
+		CreateGroupEventUC:                  &tutorApp.CreateGroupEvent{Repo: repo, Now: d.Now},
+		JoinEventUC:                         &tutorApp.JoinEvent{Repo: repo, Now: d.Now},
+		LeaveEventUC:                        &tutorApp.LeaveEvent{Repo: repo},
+		ListUpcomingGroupEventsForStudentUC: &tutorApp.ListUpcomingGroupEventsForStudent{Repo: repo, Now: d.Now},
+		GetEventRSVPCountUC:                 &tutorApp.GetEventRSVPCount{Repo: repo},
+		PeekInviteUC:                        &tutorApp.PeekInvite{Repo: repo, Now: d.Now},
+		EndRelationshipUC:                   &tutorApp.EndRelationship{Repo: repo, Now: d.Now},
+		GetSnapshotUC:                       getSnapshot,
 		GenerateBriefUC: &tutorApp.GeneratePreSessionBrief{
 			Snapshot: getSnapshot,
 			Briefer:  tdeps.Briefer,
@@ -59,6 +67,27 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) *monolithServices.Module
 			Assignments: repo,
 			Now:         d.Now,
 		},
+		// Wave 5.2b — calendar events. *Postgres satisfies EventRepo
+		// (one struct now satisfies four interfaces: Repo + SnapshotRepo
+		// + AssignmentRepo + EventRepo).
+		CreateEventUC:                  &tutorApp.CreateEvent{Repo: repo, Now: d.Now},
+		CancelEventUC:                  &tutorApp.CancelEvent{Repo: repo, Now: d.Now},
+		CompleteEventUC:                &tutorApp.CompleteEvent{Repo: repo, Now: d.Now},
+		ListEventsForTutorUC:           &tutorApp.ListEventsForTutor{Repo: repo},
+		ListUpcomingEventsForStudentUC: &tutorApp.ListUpcomingEventsForStudent{Repo: repo, Now: d.Now},
+
+		// Wave 9.1 — Boosty-only marketplace. *Postgres now satisfies
+		// ListingRepo as its 5th interface (Repo + SnapshotRepo +
+		// AssignmentRepo + EventRepo + ListingRepo).
+		CreateListingUC:         &tutorApp.CreateListing{Repo: repo, Now: d.Now},
+		UpdateListingUC:         &tutorApp.UpdateListing{Repo: repo, Now: d.Now},
+		PublishListingUC:        &tutorApp.PublishListing{Repo: repo, Now: d.Now},
+		ArchiveListingUC:        &tutorApp.ArchiveListing{Repo: repo, Now: d.Now},
+		ListMyListingsUC:        &tutorApp.ListMyListings{Repo: repo},
+		BrowseListingsUC:        &tutorApp.BrowseListings{Repo: repo},
+		GetListingBySlugUC:      &tutorApp.GetListingBySlug{Repo: repo},
+		AddListingPackageUC:     &tutorApp.AddListingPackage{Repo: repo},
+		ArchiveListingPackageUC: &tutorApp.ArchiveListingPackage{Repo: repo, Now: d.Now},
 
 		TutorDisplay: tdeps.TutorDisplay,
 		Log:          d.Log,
@@ -78,6 +107,14 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) *monolithServices.Module
 			r.Post("/tutor/invites/accept", transcoder.ServeHTTP)
 			r.Get("/tutor/invites/peek/{code}", transcoder.ServeHTTP) // PUBLIC
 			r.Get("/tutor/students", transcoder.ServeHTTP)
+			r.Get("/tutor/my-tutors", transcoder.ServeHTTP) // Wave 9.4
+			r.Get("/tutor/activity", transcoder.ServeHTTP)  // Wave 9.5
+			// Wave 5.2 group events.
+			r.Post("/tutor/events/group", transcoder.ServeHTTP)
+			r.Post("/tutor/events/{event_id}/join", transcoder.ServeHTTP)
+			r.Post("/tutor/events/{event_id}/leave", transcoder.ServeHTTP)
+			r.Get("/tutor/events/upcoming/group", transcoder.ServeHTTP)
+			r.Get("/tutor/events/{event_id}/rsvp-count", transcoder.ServeHTTP)
 			r.Post("/tutor/students/{student_id}/end", transcoder.ServeHTTP)
 			r.Get("/tutor/students/{student_id}/snapshot", transcoder.ServeHTTP)
 			r.Get("/tutor/students/{student_id}/brief", transcoder.ServeHTTP)
@@ -88,6 +125,28 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) *monolithServices.Module
 			r.Post("/tutor/assignments/{assignment_id}/complete", transcoder.ServeHTTP)
 			r.Post("/tutor/assignments/{assignment_id}/archive", transcoder.ServeHTTP)
 			r.Post("/tutor/assignments/broadcast", transcoder.ServeHTTP) // Wave 5.2a
+			// Wave 5.2b — events REST aliases.
+			r.Post("/tutor/events", transcoder.ServeHTTP)
+			r.Get("/tutor/events", transcoder.ServeHTTP)
+			r.Get("/tutor/events/upcoming", transcoder.ServeHTTP)
+			r.Post("/tutor/events/{event_id}/cancel", transcoder.ServeHTTP)
+			r.Post("/tutor/events/{event_id}/complete", transcoder.ServeHTTP) // Wave 5.2d
+			// Wave 9.1 — marketplace listing management (tutor-side).
+			r.Post("/tutor/listings", transcoder.ServeHTTP)
+			r.Get("/tutor/listings", transcoder.ServeHTTP)
+			r.Patch("/tutor/listings/{listing_id}", transcoder.ServeHTTP)
+			r.Post("/tutor/listings/{listing_id}/publish", transcoder.ServeHTTP)
+			r.Post("/tutor/listings/{listing_id}/archive", transcoder.ServeHTTP)
+			r.Post("/tutor/listings/{listing_id}/packages", transcoder.ServeHTTP)
+			r.Post("/tutor/packages/{package_id}/archive", transcoder.ServeHTTP)
+		},
+		// Wave 9.1 — marketplace browse + per-slug detail are PUBLIC.
+		// Mounted outside the auth gate so anonymous browsers can window-
+		// shop tutors before sign-up. Boosty handles the actual checkout
+		// — we just route the click outbound.
+		MountPublicREST: func(r chi.Router) {
+			r.Get("/marketplace/listings", transcoder.ServeHTTP)
+			r.Get("/marketplace/listings/{slug}", transcoder.ServeHTTP)
 		},
 	}
 }

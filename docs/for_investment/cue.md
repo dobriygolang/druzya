@@ -29,6 +29,7 @@ Cue убирает все шаги:
 - **RAG over CV/JD/URL** — `/documents` extract → embed → injected into prompt.
 - **Невидимость при screen-share** — `setContentProtection(true)`. Zoom/Meet/Teams/OBS не видят окно.
 - **Mock-block protocol** — во время strict mock-сессии на druz9.online Cue автоматически отказывает в подсказках. Сервер блокирует на уровне API (defense-in-depth), нельзя обойти модификацией клиента.
+- **English Polish** — `⌃⇧L` читает буфер обмена → шлёт в Hone Writing-grader → stealth-окно с structured фидбэком (grammar / vocab / style / clarity) + one-click «Copy fix» → paste обратно в Slack/email/IDE-comment. Stealth то же что и compact (content-protection + always-on-top floating).
 
 ## Кому полезен и как используется
 

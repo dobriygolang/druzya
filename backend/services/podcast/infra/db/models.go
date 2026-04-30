@@ -1706,6 +1706,30 @@ type TutorAssignment struct {
 	ArchivedAt  pgtype.Timestamptz
 }
 
+type TutorEvent struct {
+	ID                 pgtype.UUID
+	TutorID            pgtype.UUID
+	StudentID          pgtype.UUID
+	CircleID           pgtype.UUID
+	Title              string
+	BodyMd             string
+	ScheduledAt        pgtype.Timestamptz
+	DurationMin        int32
+	MeetUrl            string
+	Capacity           pgtype.Int4
+	Status             string
+	CancellationReason string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	SessionNote        string
+}
+
+type TutorEventRsvp struct {
+	EventID   pgtype.UUID
+	StudentID pgtype.UUID
+	JoinedAt  pgtype.Timestamptz
+}
+
 type TutorInvite struct {
 	ID         pgtype.UUID
 	TutorID    pgtype.UUID
@@ -1716,6 +1740,35 @@ type TutorInvite struct {
 	AcceptedBy pgtype.UUID
 	AcceptedAt pgtype.Timestamptz
 	RevokedAt  pgtype.Timestamptz
+}
+
+type TutorListing struct {
+	ID              pgtype.UUID
+	TutorID         pgtype.UUID
+	Slug            string
+	Title           string
+	Summary         string
+	BodyMd          string
+	TrackKind       TrackKind
+	Languages       []string
+	HourlyRateMinor int32
+	Currency        string
+	BoostyUrl       string
+	PublishedAt     pgtype.Timestamptz
+	ArchivedAt      pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+type TutorListingPackage struct {
+	ID          pgtype.UUID
+	ListingID   pgtype.UUID
+	Kind        string
+	Hours       int32
+	PriceMinor  int32
+	Description string
+	ArchivedAt  pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
 }
 
 type TutorStudent struct {

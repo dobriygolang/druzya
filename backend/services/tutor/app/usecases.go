@@ -141,6 +141,24 @@ func (uc *ListStudents) Do(ctx context.Context, tutorID uuid.UUID) ([]domain.Rel
 	return out, nil
 }
 
+// ListMyTutors — Wave 9.4. Student lists their active tutors. Multiple
+// concurrent tutors are supported by the schema; the use case is a thin
+// pass-through with the standard zero-id guard.
+type ListMyTutors struct {
+	Repo domain.Repo
+}
+
+func (uc *ListMyTutors) Do(ctx context.Context, studentID uuid.UUID) ([]domain.Relationship, error) {
+	if studentID == uuid.Nil {
+		return nil, fmt.Errorf("tutor.ListMyTutors: %w", domain.ErrInvalidInput)
+	}
+	out, err := uc.Repo.ListStudentTutors(ctx, studentID)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListMyTutors: %w", err)
+	}
+	return out, nil
+}
+
 // PeekInvite — public landing «what does this code open?». Returns
 // the invite + a derived status. Used by the /invite/{code} page to
 // decide whether to render «Accept» CTA, «expired», or «already

@@ -189,6 +189,26 @@ const (
 	// Same latency tier as summary grader — user is waiting in front of
 	// a textarea — so 8B-class with 70B fallback.
 	TaskHoneWritingFeedback Task = "hone_writing_feedback"
+	// TaskSysanalystMock — Wave 7. Free-form interview round для системного
+	// аналитика. Same in-session-prompt → on-end-grader split as TaskTechLeadMock /
+	// TaskEnglishMockHR. AI plays a senior interviewer, picks 4-5 scenarios
+	// across requirements engineering / modeling / integration / data /
+	// process axes, adapts follow-ups. Reasoning-heavy round (data design,
+	// API contract critique) — 70B-class.
+	TaskSysanalystMock Task = "sysanalyst_mock"
+	// TaskProductAnalystMock — Wave 8. Product analyst track interview.
+	// Metrics-heavy thinking (DAU/retention/funnel/A/B/CUPED) + SQL-on-the-board
+	// + prioritisation framework reasoning. Same 70B-class as Sysanalyst.
+	TaskProductAnalystMock Task = "product_analyst_mock"
+	// TaskQAMock — Wave 9.2. QA / тестировщик free-form interview round.
+	// Reasoning-heavy on edge cases (boundary / equivalence / decision-table),
+	// API contracts, root-cause analysis. 70B-class same as other free-form
+	// tracks.
+	TaskQAMock Task = "qa_mock"
+	// TaskDevOpsMock — Wave 9.3. DevOps / SRE free-form round. Reasoning
+	// on infra tradeoffs (k8s vs ECS, push vs pull metrics, CI/CD topology),
+	// incident response runbooks. 70B-class.
+	TaskDevOpsMock Task = "devops_mock"
 	// TaskHoneCodeReviewGrade — Wave 3.6 of docs/feature/plan.md
 	// (Code-review-coaching). User pastes a unified diff + writes
 	// their PR-style review; we grade the review against the diff and

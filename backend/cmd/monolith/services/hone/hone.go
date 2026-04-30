@@ -383,6 +383,8 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	h.AddVocab = &honeApp.AddVocab{Repo: readingRepo}
 	h.ReviewVocab = &honeApp.ReviewVocab{Repo: readingRepo, Now: d.Now}
 	h.ListVocabDue = &honeApp.ListVocabDue{Repo: readingRepo, Now: d.Now}
+	// Wave 4.2 reverse cross-link.
+	h.ListVocabBySourceMaterial = &honeApp.ListVocabBySourceMaterial{Repo: readingRepo}
 
 	// Wave 4.4: Writing-as-Focus AI grader. nil-safe — when llmchain is
 	// not configured, writingGrader is the floor adapter that returns
@@ -434,6 +436,8 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Post("/hone/reading/vocab", transcoder.ServeHTTP)
 		r.Post("/hone/reading/vocab/review", transcoder.ServeHTTP)
 		r.Get("/hone/reading/vocab/due", transcoder.ServeHTTP)
+		// Wave 4.2 — reverse cross-link reader → saved vocab.
+		r.Get("/hone/reading/materials/{material_id}/vocab", transcoder.ServeHTTP)
 		// Writing-as-Focus REST alias (Wave 4.4).
 		r.Post("/hone/writing/grade", transcoder.ServeHTTP)
 		// Code-review-coaching REST alias (Wave 3.6).

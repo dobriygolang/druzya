@@ -205,6 +205,9 @@ const (
 	// HoneServiceListVocabDueProcedure is the fully-qualified name of the HoneService's ListVocabDue
 	// RPC.
 	HoneServiceListVocabDueProcedure = "/druz9.v1.HoneService/ListVocabDue"
+	// HoneServiceListVocabBySourceMaterialProcedure is the fully-qualified name of the HoneService's
+	// ListVocabBySourceMaterial RPC.
+	HoneServiceListVocabBySourceMaterialProcedure = "/druz9.v1.HoneService/ListVocabBySourceMaterial"
 	// HoneServiceAddListeningMaterialProcedure is the fully-qualified name of the HoneService's
 	// AddListeningMaterial RPC.
 	HoneServiceAddListeningMaterialProcedure = "/druz9.v1.HoneService/AddListeningMaterial"
@@ -304,6 +307,10 @@ type HoneServiceClient interface {
 	AddVocab(context.Context, *connect.Request[v1.AddVocabRequest]) (*connect.Response[v1.VocabEntry], error)
 	ReviewVocab(context.Context, *connect.Request[v1.ReviewVocabRequest]) (*connect.Response[v1.VocabEntry], error)
 	ListVocabDue(context.Context, *connect.Request[v1.ListVocabDueRequest]) (*connect.Response[v1.ListVocabDueResponse], error)
+	// Wave 4.2 reverse cross-link — list vocab entries the user saved
+	// while reading a specific material. Powers the reader sidebar
+	// «words you've saved here».
+	ListVocabBySourceMaterial(context.Context, *connect.Request[v1.ListVocabBySourceMaterialRequest]) (*connect.Response[v1.ListVocabDueResponse], error)
 	// ─── Listening-модуль (Wave 6.1) ─────────────────────────────────
 	// User-owned library of audio + transcript materials. Click-on-word
 	// reuses the AddVocab RPC (vocab queue is shared with Reading).
@@ -678,6 +685,12 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("ListVocabDue")),
 			connect.WithClientOptions(opts...),
 		),
+		listVocabBySourceMaterial: connect.NewClient[v1.ListVocabBySourceMaterialRequest, v1.ListVocabDueResponse](
+			httpClient,
+			baseURL+HoneServiceListVocabBySourceMaterialProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListVocabBySourceMaterial")),
+			connect.WithClientOptions(opts...),
+		),
 		addListeningMaterial: connect.NewClient[v1.AddListeningMaterialRequest, v1.ListeningMaterial](
 			httpClient,
 			baseURL+HoneServiceAddListeningMaterialProcedure,
@@ -719,69 +732,70 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // honeServiceClient implements HoneServiceClient.
 type honeServiceClient struct {
-	generateDailyPlan        *connect.Client[v1.GenerateDailyPlanRequest, v1.Plan]
-	getDailyPlan             *connect.Client[v1.GetDailyPlanRequest, v1.Plan]
-	dismissPlanItem          *connect.Client[v1.DismissPlanItemRequest, v1.Plan]
-	completePlanItem         *connect.Client[v1.CompletePlanItemRequest, v1.Plan]
-	startFocusSession        *connect.Client[v1.StartFocusSessionRequest, v1.FocusSession]
-	endFocusSession          *connect.Client[v1.EndFocusSessionRequest, v1.FocusSession]
-	getStats                 *connect.Client[v1.GetStatsRequest, v1.Stats]
-	listQueue                *connect.Client[v1.ListQueueRequest, v1.ListQueueResponse]
-	addQueueItem             *connect.Client[v1.AddQueueItemRequest, v1.QueueItem]
-	updateQueueItemStatus    *connect.Client[v1.UpdateQueueItemStatusRequest, v1.QueueItem]
-	deleteQueueItem          *connect.Client[v1.DeleteQueueItemRequest, v1.DeleteQueueItemResponse]
-	createNote               *connect.Client[v1.CreateNoteRequest, v1.Note]
-	updateNote               *connect.Client[v1.UpdateNoteRequest, v1.Note]
-	getNote                  *connect.Client[v1.GetNoteRequest, v1.Note]
-	listNotes                *connect.Client[v1.ListNotesRequest, v1.ListNotesResponse]
-	deleteNote               *connect.Client[v1.DeleteNoteRequest, v1.DeleteNoteResponse]
-	moveNote                 *connect.Client[v1.MoveNoteRequest, v1.Note]
-	getNoteConnections       *connect.Client[v1.GetNoteConnectionsRequest, v1.Connection]
-	createFolder             *connect.Client[v1.CreateFolderRequest, v1.Folder]
-	listFolders              *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
-	deleteFolder             *connect.Client[v1.DeleteFolderRequest, v1.DeleteFolderResponse]
-	createWhiteboard         *connect.Client[v1.CreateWhiteboardRequest, v1.Whiteboard]
-	updateWhiteboard         *connect.Client[v1.UpdateWhiteboardRequest, v1.Whiteboard]
-	getWhiteboard            *connect.Client[v1.GetWhiteboardRequest, v1.Whiteboard]
-	listWhiteboards          *connect.Client[v1.ListWhiteboardsRequest, v1.ListWhiteboardsResponse]
-	deleteWhiteboard         *connect.Client[v1.DeleteWhiteboardRequest, v1.DeleteWhiteboardResponse]
-	critiqueWhiteboard       *connect.Client[v1.CritiqueWhiteboardRequest, v1.CritiquePacket]
-	saveCritiqueAsNote       *connect.Client[v1.SaveCritiqueAsNoteRequest, v1.Note]
-	recordStandup            *connect.Client[v1.RecordStandupRequest, v1.RecordStandupResponse]
-	getTodayStandup          *connect.Client[v1.GetTodayStandupRequest, v1.GetTodayStandupResponse]
-	importCueSession         *connect.Client[v1.ImportCueSessionRequest, v1.CueSession]
-	listCueSessions          *connect.Client[v1.ListCueSessionsRequest, v1.ListCueSessionsResponse]
-	getCueSession            *connect.Client[v1.GetCueSessionRequest, v1.CueSession]
-	updateCueSession         *connect.Client[v1.UpdateCueSessionRequest, v1.CueSession]
-	deleteCueSession         *connect.Client[v1.DeleteCueSessionRequest, v1.DeleteCueSessionResponse]
-	sendCueSessionToTelegram *connect.Client[v1.SendCueSessionToTelegramRequest, v1.SendCueSessionToTelegramResponse]
-	listTasks                *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
-	createTask               *connect.Client[v1.CreateTaskRequest, v1.Task]
-	moveTaskStatus           *connect.Client[v1.MoveTaskStatusRequest, v1.Task]
-	deleteTask               *connect.Client[v1.DeleteTaskRequest, v1.DeleteTaskResponse]
-	listTaskComments         *connect.Client[v1.ListTaskCommentsRequest, v1.ListTaskCommentsResponse]
-	addTaskComment           *connect.Client[v1.AddTaskCommentRequest, v1.TaskComment]
-	publishNote              *connect.Client[v1.PublishNoteRequest, v1.PublishNoteResponse]
-	unpublishNote            *connect.Client[v1.UnpublishNoteRequest, v1.UnpublishNoteResponse]
-	publishStatus            *connect.Client[v1.PublishStatusRequest, v1.PublishStatusResponse]
-	shareToWeb               *connect.Client[v1.ShareToWebRequest, v1.ShareToWebResponse]
-	makePrivate              *connect.Client[v1.MakePrivateRequest, v1.MakePrivateResponse]
-	bulkNotesMeta            *connect.Client[v1.BulkNotesMetaRequest, v1.BulkNotesMetaResponse]
-	addReadingMaterial       *connect.Client[v1.AddReadingMaterialRequest, v1.ReadingMaterial]
-	listReadingMaterials     *connect.Client[v1.ListReadingMaterialsRequest, v1.ListReadingMaterialsResponse]
-	getReadingMaterial       *connect.Client[v1.GetReadingMaterialRequest, v1.ReadingMaterial]
-	archiveReadingMaterial   *connect.Client[v1.ArchiveReadingMaterialRequest, v1.ArchiveReadingMaterialResponse]
-	startReadingSession      *connect.Client[v1.StartReadingSessionRequest, v1.ReadingSession]
-	endReadingSession        *connect.Client[v1.EndReadingSessionRequest, v1.EndReadingSessionResponse]
-	addVocab                 *connect.Client[v1.AddVocabRequest, v1.VocabEntry]
-	reviewVocab              *connect.Client[v1.ReviewVocabRequest, v1.VocabEntry]
-	listVocabDue             *connect.Client[v1.ListVocabDueRequest, v1.ListVocabDueResponse]
-	addListeningMaterial     *connect.Client[v1.AddListeningMaterialRequest, v1.ListeningMaterial]
-	listListeningMaterials   *connect.Client[v1.ListListeningMaterialsRequest, v1.ListListeningMaterialsResponse]
-	getListeningMaterial     *connect.Client[v1.GetListeningMaterialRequest, v1.ListeningMaterial]
-	archiveListeningMaterial *connect.Client[v1.ArchiveListeningMaterialRequest, v1.ArchiveListeningMaterialResponse]
-	gradeEnglishWriting      *connect.Client[v1.GradeEnglishWritingRequest, v1.GradeEnglishWritingResponse]
-	gradeCodeReview          *connect.Client[v1.GradeCodeReviewRequest, v1.GradeCodeReviewResponse]
+	generateDailyPlan         *connect.Client[v1.GenerateDailyPlanRequest, v1.Plan]
+	getDailyPlan              *connect.Client[v1.GetDailyPlanRequest, v1.Plan]
+	dismissPlanItem           *connect.Client[v1.DismissPlanItemRequest, v1.Plan]
+	completePlanItem          *connect.Client[v1.CompletePlanItemRequest, v1.Plan]
+	startFocusSession         *connect.Client[v1.StartFocusSessionRequest, v1.FocusSession]
+	endFocusSession           *connect.Client[v1.EndFocusSessionRequest, v1.FocusSession]
+	getStats                  *connect.Client[v1.GetStatsRequest, v1.Stats]
+	listQueue                 *connect.Client[v1.ListQueueRequest, v1.ListQueueResponse]
+	addQueueItem              *connect.Client[v1.AddQueueItemRequest, v1.QueueItem]
+	updateQueueItemStatus     *connect.Client[v1.UpdateQueueItemStatusRequest, v1.QueueItem]
+	deleteQueueItem           *connect.Client[v1.DeleteQueueItemRequest, v1.DeleteQueueItemResponse]
+	createNote                *connect.Client[v1.CreateNoteRequest, v1.Note]
+	updateNote                *connect.Client[v1.UpdateNoteRequest, v1.Note]
+	getNote                   *connect.Client[v1.GetNoteRequest, v1.Note]
+	listNotes                 *connect.Client[v1.ListNotesRequest, v1.ListNotesResponse]
+	deleteNote                *connect.Client[v1.DeleteNoteRequest, v1.DeleteNoteResponse]
+	moveNote                  *connect.Client[v1.MoveNoteRequest, v1.Note]
+	getNoteConnections        *connect.Client[v1.GetNoteConnectionsRequest, v1.Connection]
+	createFolder              *connect.Client[v1.CreateFolderRequest, v1.Folder]
+	listFolders               *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
+	deleteFolder              *connect.Client[v1.DeleteFolderRequest, v1.DeleteFolderResponse]
+	createWhiteboard          *connect.Client[v1.CreateWhiteboardRequest, v1.Whiteboard]
+	updateWhiteboard          *connect.Client[v1.UpdateWhiteboardRequest, v1.Whiteboard]
+	getWhiteboard             *connect.Client[v1.GetWhiteboardRequest, v1.Whiteboard]
+	listWhiteboards           *connect.Client[v1.ListWhiteboardsRequest, v1.ListWhiteboardsResponse]
+	deleteWhiteboard          *connect.Client[v1.DeleteWhiteboardRequest, v1.DeleteWhiteboardResponse]
+	critiqueWhiteboard        *connect.Client[v1.CritiqueWhiteboardRequest, v1.CritiquePacket]
+	saveCritiqueAsNote        *connect.Client[v1.SaveCritiqueAsNoteRequest, v1.Note]
+	recordStandup             *connect.Client[v1.RecordStandupRequest, v1.RecordStandupResponse]
+	getTodayStandup           *connect.Client[v1.GetTodayStandupRequest, v1.GetTodayStandupResponse]
+	importCueSession          *connect.Client[v1.ImportCueSessionRequest, v1.CueSession]
+	listCueSessions           *connect.Client[v1.ListCueSessionsRequest, v1.ListCueSessionsResponse]
+	getCueSession             *connect.Client[v1.GetCueSessionRequest, v1.CueSession]
+	updateCueSession          *connect.Client[v1.UpdateCueSessionRequest, v1.CueSession]
+	deleteCueSession          *connect.Client[v1.DeleteCueSessionRequest, v1.DeleteCueSessionResponse]
+	sendCueSessionToTelegram  *connect.Client[v1.SendCueSessionToTelegramRequest, v1.SendCueSessionToTelegramResponse]
+	listTasks                 *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
+	createTask                *connect.Client[v1.CreateTaskRequest, v1.Task]
+	moveTaskStatus            *connect.Client[v1.MoveTaskStatusRequest, v1.Task]
+	deleteTask                *connect.Client[v1.DeleteTaskRequest, v1.DeleteTaskResponse]
+	listTaskComments          *connect.Client[v1.ListTaskCommentsRequest, v1.ListTaskCommentsResponse]
+	addTaskComment            *connect.Client[v1.AddTaskCommentRequest, v1.TaskComment]
+	publishNote               *connect.Client[v1.PublishNoteRequest, v1.PublishNoteResponse]
+	unpublishNote             *connect.Client[v1.UnpublishNoteRequest, v1.UnpublishNoteResponse]
+	publishStatus             *connect.Client[v1.PublishStatusRequest, v1.PublishStatusResponse]
+	shareToWeb                *connect.Client[v1.ShareToWebRequest, v1.ShareToWebResponse]
+	makePrivate               *connect.Client[v1.MakePrivateRequest, v1.MakePrivateResponse]
+	bulkNotesMeta             *connect.Client[v1.BulkNotesMetaRequest, v1.BulkNotesMetaResponse]
+	addReadingMaterial        *connect.Client[v1.AddReadingMaterialRequest, v1.ReadingMaterial]
+	listReadingMaterials      *connect.Client[v1.ListReadingMaterialsRequest, v1.ListReadingMaterialsResponse]
+	getReadingMaterial        *connect.Client[v1.GetReadingMaterialRequest, v1.ReadingMaterial]
+	archiveReadingMaterial    *connect.Client[v1.ArchiveReadingMaterialRequest, v1.ArchiveReadingMaterialResponse]
+	startReadingSession       *connect.Client[v1.StartReadingSessionRequest, v1.ReadingSession]
+	endReadingSession         *connect.Client[v1.EndReadingSessionRequest, v1.EndReadingSessionResponse]
+	addVocab                  *connect.Client[v1.AddVocabRequest, v1.VocabEntry]
+	reviewVocab               *connect.Client[v1.ReviewVocabRequest, v1.VocabEntry]
+	listVocabDue              *connect.Client[v1.ListVocabDueRequest, v1.ListVocabDueResponse]
+	listVocabBySourceMaterial *connect.Client[v1.ListVocabBySourceMaterialRequest, v1.ListVocabDueResponse]
+	addListeningMaterial      *connect.Client[v1.AddListeningMaterialRequest, v1.ListeningMaterial]
+	listListeningMaterials    *connect.Client[v1.ListListeningMaterialsRequest, v1.ListListeningMaterialsResponse]
+	getListeningMaterial      *connect.Client[v1.GetListeningMaterialRequest, v1.ListeningMaterial]
+	archiveListeningMaterial  *connect.Client[v1.ArchiveListeningMaterialRequest, v1.ArchiveListeningMaterialResponse]
+	gradeEnglishWriting       *connect.Client[v1.GradeEnglishWritingRequest, v1.GradeEnglishWritingResponse]
+	gradeCodeReview           *connect.Client[v1.GradeCodeReviewRequest, v1.GradeCodeReviewResponse]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -1069,6 +1083,11 @@ func (c *honeServiceClient) ListVocabDue(ctx context.Context, req *connect.Reque
 	return c.listVocabDue.CallUnary(ctx, req)
 }
 
+// ListVocabBySourceMaterial calls druz9.v1.HoneService.ListVocabBySourceMaterial.
+func (c *honeServiceClient) ListVocabBySourceMaterial(ctx context.Context, req *connect.Request[v1.ListVocabBySourceMaterialRequest]) (*connect.Response[v1.ListVocabDueResponse], error) {
+	return c.listVocabBySourceMaterial.CallUnary(ctx, req)
+}
+
 // AddListeningMaterial calls druz9.v1.HoneService.AddListeningMaterial.
 func (c *honeServiceClient) AddListeningMaterial(ctx context.Context, req *connect.Request[v1.AddListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error) {
 	return c.addListeningMaterial.CallUnary(ctx, req)
@@ -1178,6 +1197,10 @@ type HoneServiceHandler interface {
 	AddVocab(context.Context, *connect.Request[v1.AddVocabRequest]) (*connect.Response[v1.VocabEntry], error)
 	ReviewVocab(context.Context, *connect.Request[v1.ReviewVocabRequest]) (*connect.Response[v1.VocabEntry], error)
 	ListVocabDue(context.Context, *connect.Request[v1.ListVocabDueRequest]) (*connect.Response[v1.ListVocabDueResponse], error)
+	// Wave 4.2 reverse cross-link — list vocab entries the user saved
+	// while reading a specific material. Powers the reader sidebar
+	// «words you've saved here».
+	ListVocabBySourceMaterial(context.Context, *connect.Request[v1.ListVocabBySourceMaterialRequest]) (*connect.Response[v1.ListVocabDueResponse], error)
 	// ─── Listening-модуль (Wave 6.1) ─────────────────────────────────
 	// User-owned library of audio + transcript materials. Click-on-word
 	// reuses the AddVocab RPC (vocab queue is shared with Reading).
@@ -1548,6 +1571,12 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("ListVocabDue")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceListVocabBySourceMaterialHandler := connect.NewUnaryHandler(
+		HoneServiceListVocabBySourceMaterialProcedure,
+		svc.ListVocabBySourceMaterial,
+		connect.WithSchema(honeServiceMethods.ByName("ListVocabBySourceMaterial")),
+		connect.WithHandlerOptions(opts...),
+	)
 	honeServiceAddListeningMaterialHandler := connect.NewUnaryHandler(
 		HoneServiceAddListeningMaterialProcedure,
 		svc.AddListeningMaterial,
@@ -1700,6 +1729,8 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceReviewVocabHandler.ServeHTTP(w, r)
 		case HoneServiceListVocabDueProcedure:
 			honeServiceListVocabDueHandler.ServeHTTP(w, r)
+		case HoneServiceListVocabBySourceMaterialProcedure:
+			honeServiceListVocabBySourceMaterialHandler.ServeHTTP(w, r)
 		case HoneServiceAddListeningMaterialProcedure:
 			honeServiceAddListeningMaterialHandler.ServeHTTP(w, r)
 		case HoneServiceListListeningMaterialsProcedure:
@@ -1947,6 +1978,10 @@ func (UnimplementedHoneServiceHandler) ReviewVocab(context.Context, *connect.Req
 
 func (UnimplementedHoneServiceHandler) ListVocabDue(context.Context, *connect.Request[v1.ListVocabDueRequest]) (*connect.Response[v1.ListVocabDueResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListVocabDue is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListVocabBySourceMaterial(context.Context, *connect.Request[v1.ListVocabBySourceMaterialRequest]) (*connect.Response[v1.ListVocabDueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListVocabBySourceMaterial is not implemented"))
 }
 
 func (UnimplementedHoneServiceHandler) AddListeningMaterial(context.Context, *connect.Request[v1.AddListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error) {

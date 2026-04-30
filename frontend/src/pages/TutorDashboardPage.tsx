@@ -21,16 +21,24 @@ import { Card } from '../components/Card'
 import { ApiError } from '../lib/apiClient'
 import {
   useBroadcastAssignmentMutation,
+  useCancelEventMutation,
+  useCompleteEventMutation,
+  useCreateEventMutation,
+  useCreateGroupEventMutation,
   useCreateInviteMutation,
   useEndRelationshipMutation,
   useRevokeInviteMutation,
+  useTutorActivityQuery,
+  useTutorEventsQuery,
   useTutorInvitesQuery,
   useTutorStudentsQuery,
   type TutorBroadcastResult,
+  type TutorEvent,
   type TutorInvite,
   type TutorInviteStatus,
   type TutorRelationship,
 } from '../lib/queries/tutor'
+import { useMyCirclesQuery } from '../lib/queries/circles'
 
 const STATUS_LABEL: Record<TutorInviteStatus, string> = {
   INVITE_STATUS_UNSPECIFIED: '—',
@@ -63,15 +71,522 @@ export default function TutorDashboardPage() {
           </p>
         </header>
 
+        <ActivityPane />
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <InvitesPane />
           <StudentsPane />
         </div>
 
         <BroadcastPane />
+        <EventsPane />
       </div>
     </div>
   )
+}
+
+// ── Activity pane (Wave 9.5) ───────────────────────────────────────────
+
+function ActivityPane() {
+  const q = useTutorActivityQuery(30)
+  const a = q.data
+  return (
+    <section className="flex flex-col gap-3">
+      <header className="flex items-center justify-between">
+        <h2 className="font-display text-xl font-semibold">Активность · 30d</h2>
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          {q.isPending ? 'loading…' : 'tutor analytics'}
+        </span>
+      </header>
+      <Card className="flex-col gap-3 p-4" interactive={false}>
+        {a ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <Stat label="Active students" value={String(a.active_student_count)} />
+            <Stat label="Completed" value={String(a.events_completed)} accent="success" />
+            <Stat label="Scheduled" value={String(a.events_scheduled)} />
+            <Stat
+              label="Cancelled"
+              value={String(a.events_cancelled)}
+              accent={a.events_cancelled > 0 ? 'warn' : undefined}
+            />
+            <Stat label="Min taught" value={String(a.minutes_taught)} />
+          </div>
+        ) : (
+          <p className="text-[13px] text-text-secondary">
+            Недостаточно данных для аналитики. Создай первое событие.
+          </p>
+        )}
+        {a && a.events_completed + a.events_cancelled > 0 && (
+          <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            Cancellation rate · {(a.cancellation_rate * 100).toFixed(0)}%
+          </div>
+        )}
+      </Card>
+    </section>
+  )
+}
+
+function Stat({
+  label,
+  value,
+  accent,
+}: {
+  label: string
+  value: string
+  accent?: 'success' | 'warn' | 'danger'
+}) {
+  const valueCls =
+    accent === 'success'
+      ? 'text-success'
+      : accent === 'warn'
+        ? 'text-warn'
+        : accent === 'danger'
+          ? 'text-danger'
+          : 'text-text-primary'
+  return (
+    <div className="rounded-lg border border-border bg-surface-2 px-3 py-2.5">
+      <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{label}</div>
+      <div className={`mt-0.5 text-lg font-semibold tabular-nums ${valueCls}`}>{value}</div>
+    </div>
+  )
+}
+
+// ── Events pane (Wave 5.2b) ────────────────────────────────────────────
+
+function EventsPane() {
+  const studentsQ = useTutorStudentsQuery()
+  const circlesQ = useMyCirclesQuery()
+  const eventsQ = useTutorEventsQuery()
+  const create = useCreateEventMutation()
+  const createGroup = useCreateGroupEventMutation()
+  const cancel = useCancelEventMutation()
+  const complete = useCompleteEventMutation()
+
+  const [mode, setMode] = useState<'1on1' | 'group'>('1on1')
+  const [studentId, setStudentId] = useState('')
+  const [circleId, setCircleId] = useState('')
+  const [capacity, setCapacity] = useState(10)
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [whenLocal, setWhenLocal] = useState('')
+  const [duration, setDuration] = useState(60)
+  const [meetURL, setMeetURL] = useState('')
+
+  const students = studentsQ.data?.items ?? []
+  const events = eventsQ.data?.items ?? []
+  // Tutor can only schedule on circles they own (server also re-checks);
+  // we filter client-side for a less-confusing dropdown.
+  const ownedCircles = (circlesQ.data ?? []).filter((c) => c.owner_id)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const titleTrim = title.trim()
+    if (!titleTrim || !whenLocal) return
+    // <input type="datetime-local"> emits TZ-naive; New Date() interprets
+    // as local TZ → toISOString() emits UTC, which is what the proto
+    // expects (server stores UTC, frontend re-renders in viewer's TZ).
+    const scheduledAt = new Date(whenLocal).toISOString()
+    const reset = () => {
+      setTitle('')
+      setBody('')
+      setWhenLocal('')
+      setMeetURL('')
+    }
+    if (mode === 'group') {
+      if (!circleId) return
+      createGroup.mutate(
+        {
+          circle_id: circleId,
+          title: titleTrim,
+          body_md: body.trim(),
+          scheduled_at: scheduledAt,
+          duration_min: duration,
+          meet_url: meetURL.trim(),
+          capacity,
+        },
+        { onSuccess: reset },
+      )
+      return
+    }
+    if (!studentId) return
+    create.mutate(
+      {
+        student_id: studentId,
+        title: titleTrim,
+        body_md: body.trim(),
+        scheduled_at: scheduledAt,
+        duration_min: duration,
+        meet_url: meetURL.trim(),
+      },
+      { onSuccess: reset },
+    )
+  }
+  const submitting = mode === 'group' ? createGroup.isPending : create.isPending
+  const submitErr = mode === 'group' ? createGroup.error : create.error
+  const submitIsErr = mode === 'group' ? createGroup.isError : create.isError
+
+  return (
+    <section className="flex flex-col gap-4">
+      <header className="flex items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-display text-xl font-semibold">Events</h2>
+          <p className="text-[13px] text-text-secondary">
+            Назначай уроки 1-на-1 — студент увидит их у себя в Hone Calendar.
+          </p>
+        </div>
+      </header>
+
+      <Card className="flex-col gap-3 p-4" interactive={false}>
+        <div className="flex items-center gap-2 text-[12px]">
+          <button
+            type="button"
+            onClick={() => setMode('1on1')}
+            className={`rounded-md border px-2.5 py-1 ${mode === '1on1' ? 'border-text-primary text-text-primary' : 'border-border text-text-muted'}`}
+          >
+            1-on-1
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('group')}
+            className={`rounded-md border px-2.5 py-1 ${mode === 'group' ? 'border-text-primary text-text-primary' : 'border-border text-text-muted'}`}
+          >
+            Group (circle)
+          </button>
+        </div>
+        <form onSubmit={submit} className="flex flex-col gap-3">
+          {mode === '1on1' ? (
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                Student
+              </span>
+              <select
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                required
+                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-text-primary focus:outline-none"
+              >
+                <option value="">— выбери студента —</option>
+                {students.map((rel) => (
+                  <option key={rel.id} value={rel.student_id}>
+                    student-{rel.student_id.slice(0, 8)}
+                    {rel.note ? ` · ${rel.note}` : ''}
+                  </option>
+                ))}
+              </select>
+              {students.length === 0 && (
+                <span className="text-[11px] text-text-muted">
+                  Нет активных студентов. Сначала разошли инвайт.
+                </span>
+              )}
+            </label>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                  Circle
+                </span>
+                <select
+                  value={circleId}
+                  onChange={(e) => setCircleId(e.target.value)}
+                  required
+                  className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-text-primary focus:outline-none"
+                >
+                  <option value="">— выбери circle —</option>
+                  {ownedCircles.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} · {c.member_count} member{c.member_count === 1 ? '' : 's'}
+                    </option>
+                  ))}
+                </select>
+                {ownedCircles.length === 0 && (
+                  <span className="text-[11px] text-text-muted">
+                    Нет circles, которыми ты владеешь. Сначала создай circle.
+                  </span>
+                )}
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                  Capacity
+                </span>
+                <input
+                  type="number"
+                  value={capacity}
+                  onChange={(e) => {
+                    const n = Number(e.target.value)
+                    setCapacity(Number.isFinite(n) ? n : 10)
+                  }}
+                  min={1}
+                  max={200}
+                  required
+                  className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary"
+                />
+              </label>
+            </div>
+          )}
+
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Weekly 1-on-1 — review chapter 4"
+            maxLength={240}
+            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+            required
+          />
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Optional agenda, prep notes, links to materials…"
+            rows={3}
+            maxLength={4000}
+            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+          />
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                Scheduled at
+              </span>
+              <input
+                type="datetime-local"
+                value={whenLocal}
+                onChange={(e) => setWhenLocal(e.target.value)}
+                required
+                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                Duration (min)
+              </span>
+              <input
+                type="number"
+                value={duration}
+                onChange={(e) => {
+                  const n = Number(e.target.value)
+                  setDuration(Number.isFinite(n) ? n : 60)
+                }}
+                min={1}
+                max={480}
+                step={5}
+                required
+                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary"
+              />
+            </label>
+          </div>
+
+          <input
+            type="url"
+            value={meetURL}
+            onChange={(e) => setMeetURL(e.target.value)}
+            placeholder="Optional meet link (Zoom / Meet / Telegram voice)"
+            maxLength={2000}
+            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+          />
+
+          <div className="flex items-center gap-3">
+            <Button
+              type="submit"
+              disabled={
+                submitting ||
+                title.trim() === '' ||
+                whenLocal === '' ||
+                (mode === '1on1' ? studentId === '' : circleId === '')
+              }
+            >
+              {submitting ? 'Создаём…' : mode === 'group' ? 'Schedule group event' : 'Schedule event'}
+            </Button>
+            {submitIsErr && (
+              <span className="text-[12px] text-danger">
+                {submitErr instanceof ApiError ? submitErr.body : 'Не получилось'}
+              </span>
+            )}
+          </div>
+        </form>
+      </Card>
+
+      <div className="flex flex-col gap-2">
+        {eventsQ.isPending ? (
+          <Card className="flex-row items-center gap-2 p-4 text-text-secondary" interactive={false}>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Загружаем…</span>
+          </Card>
+        ) : events.length === 0 ? (
+          <Card className="flex-col gap-1 p-4" interactive={false}>
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              Пока ни одного события. Создай первое — оно сразу появится у студента в Hone Calendar.
+            </p>
+          </Card>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {events.map((ev) => (
+              <li key={ev.id}>
+                <EventRow
+                  event={ev}
+                  onCancel={(reason) =>
+                    cancel.mutate({ event_id: ev.id, reason })
+                  }
+                  onComplete={(note) =>
+                    complete.mutate({ event_id: ev.id, session_note: note })
+                  }
+                  cancelling={cancel.isPending}
+                  completing={complete.isPending}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function EventRow({
+  event,
+  onCancel,
+  onComplete,
+  cancelling,
+  completing,
+}: {
+  event: TutorEvent
+  onCancel: (reason: string) => void
+  onComplete: (note: string) => void
+  cancelling: boolean
+  completing: boolean
+}) {
+  const status = eventDisplayStatus(event)
+  const badge =
+    status === 'cancelled'
+      ? { label: 'cancelled', cls: 'border-danger/40 bg-danger/10 text-danger' }
+      : status === 'completed'
+        ? { label: 'completed', cls: 'border-success/40 bg-success/10 text-success' }
+        : status === 'past'
+          ? { label: 'past · awaiting close', cls: 'border-warn/40 bg-warn/5 text-warn' }
+          : status === 'live'
+            ? { label: 'live now', cls: 'border-success/40 bg-success/10 text-success' }
+            : { label: 'scheduled', cls: 'border-warn/40 bg-warn/10 text-warn' }
+
+  const sched = event.scheduled_at ? new Date(event.scheduled_at) : null
+  // Completable in any state where the session has happened or is happening,
+  // and not already terminal. «past» (slot ended without close) is the
+  // primary case; «live» also OK so a tutor can close mid-session if needed.
+  const isCompletable = status === 'past' || status === 'live'
+  // Cancellable only before the slot is over.
+  const isCancellable = status === 'scheduled' || status === 'live'
+
+  return (
+    <Card
+      className={`flex-col gap-2 p-4 ${status === 'cancelled' || status === 'completed' ? 'opacity-70' : ''}`}
+      interactive={false}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium text-text-primary">{event.title}</div>
+          {event.body_md && (
+            <pre className="mt-1 whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-text-secondary">
+              {event.body_md}
+            </pre>
+          )}
+          {event.cancellation_reason && (
+            <div className="mt-1 text-[12px] italic text-danger">
+              cancelled: {event.cancellation_reason}
+            </div>
+          )}
+          {event.session_note && (
+            <div className="mt-2 rounded-md border border-success/30 bg-success/5 px-2.5 py-1.5">
+              <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-success/80">
+                Session note
+              </div>
+              <pre className="mt-0.5 whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-text-secondary">
+                {event.session_note}
+              </pre>
+            </div>
+          )}
+        </div>
+        <span
+          className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider ${badge.cls}`}
+        >
+          {badge.label}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+        {sched && (
+          <span>
+            {sched.toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </span>
+        )}
+        <span>· {event.duration_min} min</span>
+        <span>· student-{event.student_id.slice(0, 8)}</span>
+        {event.meet_url && (
+          <a
+            href={event.meet_url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-text-secondary hover:text-text-primary"
+          >
+            join →
+          </a>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          {isCompletable && (
+            <button
+              type="button"
+              onClick={() => {
+                // window.prompt is plenty for the V1 surface — short notes,
+                // nothing fancy. If we want rich Markdown later (links to
+                // Hone Notes etc.), swap to a modal with a <textarea>.
+                const note = window.prompt(
+                  'Session note (what was covered, next steps):',
+                )
+                if (note && note.trim()) {
+                  onComplete(note.trim())
+                }
+              }}
+              disabled={completing}
+              className="rounded-md border border-success/40 bg-success/5 px-2 py-0.5 text-success hover:bg-success/10 disabled:opacity-50"
+            >
+              ✓ Mark complete
+            </button>
+          )}
+          {isCancellable && (
+            <button
+              type="button"
+              onClick={() => {
+                const reason = window.prompt('Reason for cancelling:')
+                if (reason && reason.trim()) {
+                  onCancel(reason.trim())
+                }
+              }}
+              disabled={cancelling}
+              className="rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn hover:bg-warn/10 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// Display status combines the persisted `status` field with time-based
+// derivations: a 'scheduled' event whose end time has passed is shown
+// as «past» (the tutor can still see it in the list, but cancel is hidden).
+function eventDisplayStatus(
+  e: TutorEvent,
+): 'scheduled' | 'live' | 'past' | 'cancelled' | 'completed' {
+  if (e.status === 'cancelled') return 'cancelled'
+  if (e.status === 'completed') return 'completed'
+  if (!e.scheduled_at) return 'scheduled'
+  const start = new Date(e.scheduled_at).getTime()
+  const end = start + e.duration_min * 60_000
+  const now = Date.now()
+  if (now > end) return 'past'
+  if (now >= start) return 'live'
+  return 'scheduled'
 }
 
 // ── Broadcast pane (Wave 5.2a) ─────────────────────────────────────────

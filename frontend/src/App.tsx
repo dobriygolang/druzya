@@ -63,6 +63,9 @@ const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage'))
 // backend gates per-row, so an unauthorised viewer just sees an empty list.
 const TutorDashboardPage = lazy(() => import('./pages/TutorDashboardPage'))
 const TutorStudentPage = lazy(() => import('./pages/TutorStudentPage'))
+const TutorListingsPage = lazy(() => import('./pages/TutorListingsPage'))
+const MarketplacePage = lazy(() => import('./pages/MarketplacePage'))
+const MarketplaceListingPage = lazy(() => import('./pages/MarketplaceListingPage'))
 // Wave-10 onboarding flow (design-review v3 part A) — 5-step gated flow
 // living under /onboarding/{welcome,class,skill,task}. Step 5 is a tour
 // overlay on /sanctum (mounted via ?tour=1 query param).
@@ -209,6 +212,11 @@ export default function App() {
             anonymous viewers see empty lists (no 403 surface). */}
         <Route path="/tutor" element={<TutorDashboardPage />} />
         <Route path="/tutor/students/:id" element={<TutorStudentPage />} />
+        {/* Wave 9.1 — Boosty marketplace. /marketplace is public; the
+            backend whitelists GET /api/v1/marketplace/listings(/{slug}). */}
+        <Route path="/tutor/listings" element={<TutorListingsPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/marketplace/:slug" element={<MarketplaceListingPage />} />
         <Route path="/onboarding/class" element={<OnbStep2 />} />
         <Route path="/onboarding/skill" element={<OnbStep3 />} />
         <Route path="/onboarding/task" element={<OnbStep4 />} />

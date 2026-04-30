@@ -180,5 +180,80 @@ func (p *Postgres) GetStudentSnapshot(
 		out.NotesCount = 0
 	}
 
+	// 5) English-track activity from Hone (Wave 4 + 6.1).
+	//
+	// Each block is independently fail-soft: an env without the new
+	// tables (older deployment, fresh test setup) shouldn't black out
+	// the whole snapshot. On error the relevant fields stay at their
+	// zero values and the dashboard renders "0".
+
+	// 5a) Reading sessions + minutes inside the window. Mirrors the
+	//     focus block — same EXTRACT(EPOCH ...) / 60 pattern.
+	var (
+		readingMinutes pgtype.Float8
+		readingCount   int
+		lastReadEnd    pgtype.Timestamptz
+	)
+	if err := p.pool.QueryRow(ctx, `
+		SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (ended_at - started_at)) / 60.0), 0) AS minutes,
+		       COUNT(*)                                                              AS sessions,
+		       MAX(ended_at)                                                         AS last_end
+		  FROM hone_reading_sessions
+		 WHERE user_id = $1
+		   AND ended_at IS NOT NULL
+		   AND ended_at >= $2`,
+		pgUUID(studentID),
+		pgtype.Timestamptz{Time: now.AddDate(0, 0, -windowDays), Valid: true},
+	).Scan(&readingMinutes, &readingCount, &lastReadEnd); err == nil {
+		if readingMinutes.Valid {
+			out.ReadingMinutesWindow = int(readingMinutes.Float64 + 0.5)
+		}
+		out.ReadingSessionsCount = readingCount
+		if lastReadEnd.Valid && lastReadEnd.Time.After(out.LastActiveAt) {
+			out.LastActiveAt = lastReadEnd.Time
+		}
+	}
+
+	// 5b) Active library size — total, not windowed. Tutor cares «what's
+	//     in their library right now», not «what they added this week».
+	_ = p.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM hone_reading_materials
+		 WHERE user_id = $1 AND archived_at IS NULL`,
+		pgUUID(studentID),
+	).Scan(&out.ReadingMaterialsTotal)
+
+	// 5c) Writing-grades proxy. Wave 4.4 Writing surface itself doesn't
+	//     persist (one-shot grader), so the closest tractable signal is
+	//     reading sessions where the user submitted a summary AND it got
+	//     graded. Reasonable approximation of «pieces of writing the
+	//     student let the AI critique».
+	_ = p.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM hone_reading_sessions
+		 WHERE user_id = $1
+		   AND ai_summary_score IS NOT NULL
+		   AND ended_at >= now() - ($2 || ' days')::interval`,
+		pgUUID(studentID), winStr,
+	).Scan(&out.WritingGradesCount)
+
+	// 5d) Listening library size. Same total-not-windowed pattern.
+	_ = p.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM hone_listening_materials
+		 WHERE user_id = $1 AND archived_at IS NULL`,
+		pgUUID(studentID),
+	).Scan(&out.ListeningMaterialsTotal)
+
+	// 5e) Vocab queue state. Active = not graduated. Due-today = active
+	//     AND next_review_at <= now. Both are point-in-time numbers, not
+	//     windowed — SRS is stateful, the tutor wants to see «cards due
+	//     in this conversation», not «cards added in the last 7 days».
+	_ = p.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FILTER (WHERE learned_at IS NULL) AS total,
+		       COUNT(*) FILTER (WHERE learned_at IS NULL AND next_review_at <= $2) AS due
+		  FROM hone_vocab_queue
+		 WHERE user_id = $1`,
+		pgUUID(studentID),
+		pgtype.Timestamptz{Time: now, Valid: true},
+	).Scan(&out.VocabQueueTotal, &out.VocabDueToday)
+
 	return out, nil
 }

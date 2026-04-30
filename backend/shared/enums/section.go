@@ -29,12 +29,35 @@ const (
 	// where the AI plays a hiring panel and adapts questions to
 	// candidate's answers.
 	SectionTechLeadEM Section = "tech_lead_em"
+	// SectionSysanalyst — Wave 7 of docs/feature/plan.md. Free-form
+	// interview round для системного аналитика — requirements
+	// engineering, UML/BPMN modeling, integration patterns
+	// (REST/SOAP/Kafka/sagas/idempotency), SQL data design, process
+	// (Agile/BABOK basics). Non-engineering surface (don't gate ELO);
+	// non-task-based (no `tasks` table pick at session create).
+	SectionSysanalyst Section = "sysanalyst"
+	// SectionProductAnalyst — Wave 8. Product analyst track — metrics
+	// (DAU/retention/funnel/NSM), SQL для analytics, A/B testing
+	// fundamentals (sample size / MDE / CUPED), prioritisation
+	// frameworks (RICE/JTBD), insight communication. Same gating as
+	// SectionSysanalyst — non-engineering, non-task-based.
+	SectionProductAnalyst Section = "product_analyst"
+	// SectionQA — Wave 9.2 of docs/feature/plan.md. QA / тестировщик
+	// free-form interview: test design, API testing, automation, bug
+	// analysis, process. Same gating as Sysanalyst — non-engineering,
+	// non-task-based.
+	SectionQA Section = "qa"
+	// SectionDevOps — Wave 9.3. DevOps / SRE free-form interview:
+	// infra, observability, CI/CD, incident response, security.
+	SectionDevOps Section = "devops"
 )
 
 func (s Section) IsValid() bool {
 	switch s {
 	case SectionAlgorithms, SectionSQL, SectionGo, SectionSystemDesign, SectionBehavioral,
-		SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM:
+		SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
+		SectionSysanalyst, SectionProductAnalyst,
+		SectionQA, SectionDevOps:
 		return true
 	}
 	return false
@@ -42,13 +65,16 @@ func (s Section) IsValid() bool {
 
 // IsEngineering reports whether the section gates engineering tables
 // (ratings, ELO, tasks, arena, slots). English HR + senior SD + Tech
-// Lead/EM — non-engineering — нет ELO или rating data.
+// Lead/EM + Sysanalyst + Product analyst — non-engineering — no ELO
+// or rating data flows into those tables for these sections.
 // Callers that touch those tables should branch on this method.
 func (s Section) IsEngineering() bool {
 	switch s {
 	case SectionAlgorithms, SectionSQL, SectionGo, SectionSystemDesign, SectionBehavioral:
 		return true
-	case SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM:
+	case SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
+		SectionSysanalyst, SectionProductAnalyst,
+		SectionQA, SectionDevOps:
 		return false
 	}
 	return false
@@ -56,15 +82,17 @@ func (s Section) IsEngineering() bool {
 
 // IsTaskBased reports whether sessions in this section pair with a
 // concrete task from the `tasks` table. Free-form sections (English HR,
-// senior SD, Tech Lead/EM) skip the task-pick step at session creation.
-// This is a stricter check than IsEngineering — они used to coincide,
-// но senior SD is engineering yet free-form, так что call sites which
-// gate task lookup must use IsTaskBased instead.
+// senior SD, Tech Lead/EM, Sysanalyst, Product analyst) skip the
+// task-pick step at session creation. Stricter check than IsEngineering
+// — senior SD is engineering yet free-form, so call sites that gate
+// task lookup must use IsTaskBased instead.
 func (s Section) IsTaskBased() bool {
 	switch s {
 	case SectionAlgorithms, SectionSQL, SectionGo, SectionSystemDesign, SectionBehavioral:
 		return true
-	case SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM:
+	case SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
+		SectionSysanalyst, SectionProductAnalyst,
+		SectionQA, SectionDevOps:
 		return false
 	}
 	return false
@@ -76,5 +104,7 @@ func AllSections() []Section {
 	return []Section{
 		SectionAlgorithms, SectionSQL, SectionGo, SectionSystemDesign, SectionBehavioral,
 		SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
+		SectionSysanalyst, SectionProductAnalyst,
+		SectionQA, SectionDevOps,
 	}
 }

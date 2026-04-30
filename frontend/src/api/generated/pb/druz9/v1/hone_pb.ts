@@ -5175,6 +5175,51 @@ export class ListVocabDueResponse extends Message<ListVocabDueResponse> {
 }
 
 /**
+ * @generated from message druz9.v1.ListVocabBySourceMaterialRequest
+ */
+export class ListVocabBySourceMaterialRequest extends Message<ListVocabBySourceMaterialRequest> {
+  /**
+   * @generated from field: string material_id = 1;
+   */
+  materialId = "";
+
+  /**
+   * 0 → server default (50)
+   *
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListVocabBySourceMaterialRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListVocabBySourceMaterialRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "material_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListVocabBySourceMaterialRequest {
+    return new ListVocabBySourceMaterialRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListVocabBySourceMaterialRequest {
+    return new ListVocabBySourceMaterialRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListVocabBySourceMaterialRequest {
+    return new ListVocabBySourceMaterialRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListVocabBySourceMaterialRequest | PlainMessage<ListVocabBySourceMaterialRequest> | undefined, b: ListVocabBySourceMaterialRequest | PlainMessage<ListVocabBySourceMaterialRequest> | undefined): boolean {
+    return proto3.util.equals(ListVocabBySourceMaterialRequest, a, b);
+  }
+}
+
+/**
  * @generated from message druz9.v1.ListeningMaterial
  */
 export class ListeningMaterial extends Message<ListeningMaterial> {

@@ -215,6 +215,10 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// code-lookup paths (/lobby/{id}, /lobby/code/{code}) are also
 		// public — see isPublic prefix check below.
 		"/api/v1/lobby/list": {},
+		// Wave 9.1 marketplace browse — public storefront. Per-listing
+		// detail at /api/v1/marketplace/listings/{slug} handled via the
+		// prefix check below so any future detail sub-paths stay public.
+		"/api/v1/marketplace/listings": {},
 	}
 	isPublic := func(_, p string) bool {
 		if _, ok := publicPaths[p]; ok {
@@ -239,6 +243,12 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 			!strings.HasPrefix(p, "/api/v1/vacancies/saved") &&
 			p != "/api/v1/vacancies/analyze" &&
 			!strings.HasSuffix(p, "/save") {
+			return true
+		}
+		// /api/v1/marketplace/listings/{slug} — public listing detail
+		// (Wave 9.1). Browse list itself is in publicPaths; detail uses
+		// a prefix check so future read-only sub-paths stay open.
+		if strings.HasPrefix(p, "/api/v1/marketplace/listings/") {
 			return true
 		}
 		// /api/v1/lobby/{id} (GET detail) and /api/v1/lobby/code/{code} —

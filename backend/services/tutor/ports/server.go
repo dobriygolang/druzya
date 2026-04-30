@@ -33,15 +33,26 @@ var _ druz9v1connect.TutorServiceHandler = (*TutorServer)(nil)
 type TutorDisplayLookup func(ctx context.Context, tutorID uuid.UUID) string
 
 type TutorServer struct {
-	CreateInviteUC    *app.CreateInvite
-	RevokeInviteUC    *app.RevokeInvite
-	AcceptInviteUC    *app.AcceptInvite
-	ListInvitesUC     *app.ListInvites
-	ListStudentsUC    *app.ListStudents
-	PeekInviteUC      *app.PeekInvite
-	EndRelationshipUC *app.EndRelationship
-	GetSnapshotUC     *app.GetStudentSnapshot
-	GenerateBriefUC   *app.GeneratePreSessionBrief
+	CreateInviteUC *app.CreateInvite
+	RevokeInviteUC *app.RevokeInvite
+	AcceptInviteUC *app.AcceptInvite
+	ListInvitesUC  *app.ListInvites
+	ListStudentsUC *app.ListStudents
+	// Wave 9.4 — student-side multi-tutor list.
+	ListMyTutorsUC *app.ListMyTutors
+	// Wave 9.5 — tutor analytics aggregate.
+	GetTutorActivityUC *app.GetTutorActivity
+
+	// Wave 5.2 — group events on circles.
+	CreateGroupEventUC                  *app.CreateGroupEvent
+	JoinEventUC                         *app.JoinEvent
+	LeaveEventUC                        *app.LeaveEvent
+	ListUpcomingGroupEventsForStudentUC *app.ListUpcomingGroupEventsForStudent
+	GetEventRSVPCountUC                 *app.GetEventRSVPCount
+	PeekInviteUC                        *app.PeekInvite
+	EndRelationshipUC                   *app.EndRelationship
+	GetSnapshotUC                       *app.GetStudentSnapshot
+	GenerateBriefUC                     *app.GeneratePreSessionBrief
 
 	// Wave 5.1 — assignments. Nil-safe per-handler (each method
 	// rejects with Unimplemented when its UC isn't wired).
@@ -54,6 +65,25 @@ type TutorServer struct {
 	// Wave 5.2a — broadcast a single assignment to all of a tutor's
 	// active students. Same nil-safe pattern.
 	BroadcastAssignmentUC *app.BroadcastAssignment
+
+	// Wave 5.2b — calendar events. Same nil-safe pattern.
+	CreateEventUC                  *app.CreateEvent
+	CancelEventUC                  *app.CancelEvent
+	ListEventsForTutorUC           *app.ListEventsForTutor
+	ListUpcomingEventsForStudentUC *app.ListUpcomingEventsForStudent
+	// Wave 5.2d — event completion + session notes.
+	CompleteEventUC *app.CompleteEvent
+
+	// Wave 9.1 — Boosty-only marketplace listings.
+	CreateListingUC         *app.CreateListing
+	UpdateListingUC         *app.UpdateListing
+	PublishListingUC        *app.PublishListing
+	ArchiveListingUC        *app.ArchiveListing
+	ListMyListingsUC        *app.ListMyListings
+	BrowseListingsUC        *app.BrowseListings
+	GetListingBySlugUC      *app.GetListingBySlug
+	AddListingPackageUC     *app.AddListingPackage
+	ArchiveListingPackageUC *app.ArchiveListingPackage
 
 	TutorDisplay TutorDisplayLookup
 	Log          *slog.Logger
@@ -170,6 +200,29 @@ func (s *TutorServer) ListStudents(
 	items, err := s.ListStudentsUC.Do(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("tutor.ListStudents: %w", s.toConnectErr(err))
+	}
+	out := &pb.TutorListStudentsResponse{Items: make([]*pb.TutorRelationship, 0, len(items))}
+	for _, rel := range items {
+		out.Items = append(out.Items, toRelationshipProto(rel))
+	}
+	return connect.NewResponse(out), nil
+}
+
+// ListMyTutors — Wave 9.4 student-side endpoint.
+func (s *TutorServer) ListMyTutors(
+	ctx context.Context,
+	_ *connect.Request[pb.TutorListMyTutorsRequest],
+) (*connect.Response[pb.TutorListStudentsResponse], error) {
+	if s.ListMyTutorsUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListMyTutors not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	items, err := s.ListMyTutorsUC.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListMyTutors: %w", s.toConnectErr(err))
 	}
 	out := &pb.TutorListStudentsResponse{Items: make([]*pb.TutorRelationship, 0, len(items))}
 	for _, rel := range items {
@@ -424,6 +477,567 @@ func (s *TutorServer) BroadcastAssignment(
 	return connect.NewResponse(resp), nil
 }
 
+// ── Events (Wave 5.2b) ──────────────────────────────────────────────
+
+func (s *TutorServer) CreateEvent(
+	ctx context.Context,
+	req *connect.Request[pb.TutorCreateEventRequest],
+) (*connect.Response[pb.TutorEvent], error) {
+	if s.CreateEventUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("CreateEvent not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	studentID, err := uuid.Parse(req.Msg.StudentId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("student_id: %w", err))
+	}
+	in := app.CreateEventInput{
+		TutorID:     uid,
+		StudentID:   studentID,
+		Title:       req.Msg.Title,
+		BodyMD:      req.Msg.BodyMd,
+		DurationMin: int(req.Msg.DurationMin),
+		MeetURL:     req.Msg.MeetUrl,
+	}
+	if req.Msg.ScheduledAt != nil {
+		in.ScheduledAt = req.Msg.ScheduledAt.AsTime()
+	}
+	out, err := s.CreateEventUC.Do(ctx, in)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.CreateEvent: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toEventProto(out)), nil
+}
+
+func (s *TutorServer) CancelEvent(
+	ctx context.Context,
+	req *connect.Request[pb.TutorCancelEventRequest],
+) (*connect.Response[pb.TutorCancelEventResponse], error) {
+	if s.CancelEventUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("CancelEvent not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	eid, err := uuid.Parse(req.Msg.EventId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("event_id: %w", err))
+	}
+	if err := s.CancelEventUC.Do(ctx, app.CancelEventInput{
+		TutorID: uid,
+		EventID: eid,
+		Reason:  req.Msg.Reason,
+	}); err != nil {
+		return nil, fmt.Errorf("tutor.CancelEvent: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorCancelEventResponse{}), nil
+}
+
+func (s *TutorServer) CompleteEvent(
+	ctx context.Context,
+	req *connect.Request[pb.TutorCompleteEventRequest],
+) (*connect.Response[pb.TutorCompleteEventResponse], error) {
+	if s.CompleteEventUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("CompleteEvent not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	eid, err := uuid.Parse(req.Msg.EventId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("event_id: %w", err))
+	}
+	if err := s.CompleteEventUC.Do(ctx, app.CompleteEventInput{
+		TutorID:     uid,
+		EventID:     eid,
+		SessionNote: req.Msg.SessionNote,
+	}); err != nil {
+		return nil, fmt.Errorf("tutor.CompleteEvent: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorCompleteEventResponse{}), nil
+}
+
+func (s *TutorServer) ListEventsForTutor(
+	ctx context.Context,
+	req *connect.Request[pb.TutorListEventsRequest],
+) (*connect.Response[pb.TutorListEventsResponse], error) {
+	if s.ListEventsForTutorUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListEventsForTutor not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	items, err := s.ListEventsForTutorUC.Do(ctx, uid, int(req.Msg.Limit))
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListEventsForTutor: %w", s.toConnectErr(err))
+	}
+	resp := &pb.TutorListEventsResponse{Items: make([]*pb.TutorEvent, 0, len(items))}
+	for _, ev := range items {
+		resp.Items = append(resp.Items, toEventProto(ev))
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *TutorServer) ListUpcomingEventsForStudent(
+	ctx context.Context,
+	req *connect.Request[pb.TutorListUpcomingEventsRequest],
+) (*connect.Response[pb.TutorListEventsResponse], error) {
+	if s.ListUpcomingEventsForStudentUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListUpcomingEventsForStudent not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	items, err := s.ListUpcomingEventsForStudentUC.Do(ctx, uid, int(req.Msg.Limit))
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListUpcomingEventsForStudent: %w", s.toConnectErr(err))
+	}
+	resp := &pb.TutorListEventsResponse{Items: make([]*pb.TutorEvent, 0, len(items))}
+	for _, ev := range items {
+		resp.Items = append(resp.Items, toEventProto(ev))
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// GetTutorActivity — Wave 9.5 analytics aggregate.
+func (s *TutorServer) GetTutorActivity(
+	ctx context.Context,
+	req *connect.Request[pb.TutorGetActivityRequest],
+) (*connect.Response[pb.TutorActivityResponse], error) {
+	if s.GetTutorActivityUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetTutorActivity not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	out, err := s.GetTutorActivityUC.Do(ctx, uid, int(req.Msg.WindowDays))
+	if err != nil {
+		return nil, fmt.Errorf("tutor.GetTutorActivity: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorActivityResponse{
+		WindowDays:         int32(out.WindowDays),
+		ActiveStudentCount: int32(out.ActiveStudentCount),
+		EventsCompleted:    int32(out.EventsCompleted),
+		EventsCancelled:    int32(out.EventsCancelled),
+		EventsScheduled:    int32(out.EventsScheduled),
+		MinutesTaught:      int32(out.MinutesTaught),
+		CancellationRate:   out.CancellationRate,
+	}), nil
+}
+
+// ── Group events (Wave 5.2) ────────────────────────────────────────
+
+func (s *TutorServer) CreateGroupEvent(
+	ctx context.Context,
+	req *connect.Request[pb.TutorCreateGroupEventRequest],
+) (*connect.Response[pb.TutorEvent], error) {
+	if s.CreateGroupEventUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("CreateGroupEvent not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	circleID, err := uuid.Parse(req.Msg.CircleId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("circle_id: %w", err))
+	}
+	in := app.CreateGroupEventInput{
+		TutorID:     uid,
+		CircleID:    circleID,
+		Title:       req.Msg.Title,
+		BodyMD:      req.Msg.BodyMd,
+		DurationMin: int(req.Msg.DurationMin),
+		MeetURL:     req.Msg.MeetUrl,
+		Capacity:    int(req.Msg.Capacity),
+	}
+	if req.Msg.ScheduledAt != nil {
+		in.ScheduledAt = req.Msg.ScheduledAt.AsTime()
+	}
+	out, err := s.CreateGroupEventUC.Do(ctx, in)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.CreateGroupEvent: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toEventProto(out)), nil
+}
+
+func (s *TutorServer) JoinEvent(
+	ctx context.Context,
+	req *connect.Request[pb.TutorJoinEventRequest],
+) (*connect.Response[pb.TutorJoinEventResponse], error) {
+	if s.JoinEventUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("JoinEvent not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	eid, err := uuid.Parse(req.Msg.EventId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("event_id: %w", err))
+	}
+	if err := s.JoinEventUC.Do(ctx, uid, eid); err != nil {
+		return nil, fmt.Errorf("tutor.JoinEvent: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorJoinEventResponse{}), nil
+}
+
+func (s *TutorServer) LeaveEvent(
+	ctx context.Context,
+	req *connect.Request[pb.TutorLeaveEventRequest],
+) (*connect.Response[pb.TutorLeaveEventResponse], error) {
+	if s.LeaveEventUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("LeaveEvent not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	eid, err := uuid.Parse(req.Msg.EventId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("event_id: %w", err))
+	}
+	if err := s.LeaveEventUC.Do(ctx, uid, eid); err != nil {
+		return nil, fmt.Errorf("tutor.LeaveEvent: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorLeaveEventResponse{}), nil
+}
+
+func (s *TutorServer) ListUpcomingGroupEventsForStudent(
+	ctx context.Context,
+	req *connect.Request[pb.TutorListUpcomingGroupEventsRequest],
+) (*connect.Response[pb.TutorListEventsResponse], error) {
+	if s.ListUpcomingGroupEventsForStudentUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListUpcomingGroupEventsForStudent not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	items, err := s.ListUpcomingGroupEventsForStudentUC.Do(ctx, uid, int(req.Msg.Limit))
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListUpcomingGroupEventsForStudent: %w", s.toConnectErr(err))
+	}
+	resp := &pb.TutorListEventsResponse{Items: make([]*pb.TutorEvent, 0, len(items))}
+	for _, ev := range items {
+		resp.Items = append(resp.Items, toEventProto(ev))
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *TutorServer) GetEventRSVPCount(
+	ctx context.Context,
+	req *connect.Request[pb.TutorGetEventRSVPCountRequest],
+) (*connect.Response[pb.TutorGetEventRSVPCountResponse], error) {
+	if s.GetEventRSVPCountUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetEventRSVPCount not wired"))
+	}
+	if _, ok := sharedMw.UserIDFromContext(ctx); !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	eid, err := uuid.Parse(req.Msg.EventId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("event_id: %w", err))
+	}
+	count, err := s.GetEventRSVPCountUC.Do(ctx, eid)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.GetEventRSVPCount: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorGetEventRSVPCountResponse{Count: int32(count)}), nil
+}
+
+// ── Listings (Wave 9.1) ──────────────────────────────────────────────
+
+func (s *TutorServer) CreateListing(
+	ctx context.Context,
+	req *connect.Request[pb.TutorCreateListingRequest],
+) (*connect.Response[pb.TutorListing], error) {
+	if s.CreateListingUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("CreateListing not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	out, err := s.CreateListingUC.Do(ctx, app.CreateListingInput{
+		TutorID:         uid,
+		Slug:            req.Msg.Slug,
+		Title:           req.Msg.Title,
+		Summary:         req.Msg.Summary,
+		BodyMD:          req.Msg.BodyMd,
+		TrackKind:       domain.TrackKind(req.Msg.TrackKind),
+		Languages:       req.Msg.Languages,
+		HourlyRateMinor: req.Msg.HourlyRateMinor,
+		Currency:        domain.Currency(req.Msg.Currency),
+		BoostyURL:       req.Msg.BoostyUrl,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("tutor.CreateListing: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toListingProto(out)), nil
+}
+
+func (s *TutorServer) UpdateListing(
+	ctx context.Context,
+	req *connect.Request[pb.TutorUpdateListingRequest],
+) (*connect.Response[pb.TutorListing], error) {
+	if s.UpdateListingUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("UpdateListing not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	lid, err := uuid.Parse(req.Msg.ListingId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("listing_id: %w", err))
+	}
+	out, err := s.UpdateListingUC.Do(ctx, app.UpdateListingInput{
+		TutorID:         uid,
+		ListingID:       lid,
+		Slug:            req.Msg.Slug,
+		Title:           req.Msg.Title,
+		Summary:         req.Msg.Summary,
+		BodyMD:          req.Msg.BodyMd,
+		TrackKind:       domain.TrackKind(req.Msg.TrackKind),
+		Languages:       req.Msg.Languages,
+		HourlyRateMinor: req.Msg.HourlyRateMinor,
+		Currency:        domain.Currency(req.Msg.Currency),
+		BoostyURL:       req.Msg.BoostyUrl,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("tutor.UpdateListing: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toListingProto(out)), nil
+}
+
+func (s *TutorServer) PublishListing(
+	ctx context.Context,
+	req *connect.Request[pb.TutorPublishListingRequest],
+) (*connect.Response[pb.TutorPublishListingResponse], error) {
+	if s.PublishListingUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("PublishListing not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	lid, err := uuid.Parse(req.Msg.ListingId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("listing_id: %w", err))
+	}
+	if err := s.PublishListingUC.Do(ctx, uid, lid); err != nil {
+		return nil, fmt.Errorf("tutor.PublishListing: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorPublishListingResponse{}), nil
+}
+
+func (s *TutorServer) ArchiveListing(
+	ctx context.Context,
+	req *connect.Request[pb.TutorArchiveListingRequest],
+) (*connect.Response[pb.TutorArchiveListingResponse], error) {
+	if s.ArchiveListingUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ArchiveListing not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	lid, err := uuid.Parse(req.Msg.ListingId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("listing_id: %w", err))
+	}
+	if err := s.ArchiveListingUC.Do(ctx, uid, lid); err != nil {
+		return nil, fmt.Errorf("tutor.ArchiveListing: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorArchiveListingResponse{}), nil
+}
+
+func (s *TutorServer) ListMyListings(
+	ctx context.Context,
+	_ *connect.Request[pb.TutorListMyListingsRequest],
+) (*connect.Response[pb.TutorListListingsResponse], error) {
+	if s.ListMyListingsUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListMyListings not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	rows, err := s.ListMyListingsUC.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListMyListings: %w", s.toConnectErr(err))
+	}
+	resp := &pb.TutorListListingsResponse{Items: make([]*pb.TutorListing, 0, len(rows))}
+	for _, l := range rows {
+		resp.Items = append(resp.Items, toListingProto(l))
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// BrowseListings is PUBLIC — no auth gate. The REST whitelist in the
+// monolith opens GET /marketplace/listings unconditionally.
+func (s *TutorServer) BrowseListings(
+	ctx context.Context,
+	req *connect.Request[pb.TutorBrowseListingsRequest],
+) (*connect.Response[pb.TutorListListingsResponse], error) {
+	if s.BrowseListingsUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("BrowseListings not wired"))
+	}
+	tracks := make([]domain.TrackKind, 0, len(req.Msg.TrackKinds))
+	for _, t := range req.Msg.TrackKinds {
+		tracks = append(tracks, domain.TrackKind(t))
+	}
+	rows, err := s.BrowseListingsUC.Do(ctx, domain.BrowseFilter{
+		TrackKinds:   tracks,
+		MaxRateMinor: req.Msg.MaxRateMinor,
+		Languages:    req.Msg.Languages,
+		Limit:        int(req.Msg.Limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("tutor.BrowseListings: %w", s.toConnectErr(err))
+	}
+	resp := &pb.TutorListListingsResponse{Items: make([]*pb.TutorListing, 0, len(rows))}
+	for _, l := range rows {
+		resp.Items = append(resp.Items, toListingProto(l))
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// GetListingBySlug is also public.
+func (s *TutorServer) GetListingBySlug(
+	ctx context.Context,
+	req *connect.Request[pb.TutorGetListingBySlugRequest],
+) (*connect.Response[pb.TutorListingDetail], error) {
+	if s.GetListingBySlugUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetListingBySlug not wired"))
+	}
+	res, err := s.GetListingBySlugUC.Do(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.GetListingBySlug: %w", s.toConnectErr(err))
+	}
+	display := ""
+	if s.TutorDisplay != nil {
+		display = s.TutorDisplay(ctx, res.Listing.TutorID)
+	}
+	out := &pb.TutorListingDetail{
+		Listing:      toListingProto(res.Listing),
+		Packages:     make([]*pb.TutorListingPackage, 0, len(res.Packages)),
+		TutorDisplay: display,
+	}
+	for _, p := range res.Packages {
+		out.Packages = append(out.Packages, toListingPackageProto(p))
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *TutorServer) AddListingPackage(
+	ctx context.Context,
+	req *connect.Request[pb.TutorAddListingPackageRequest],
+) (*connect.Response[pb.TutorListingPackage], error) {
+	if s.AddListingPackageUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("AddListingPackage not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	lid, err := uuid.Parse(req.Msg.ListingId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("listing_id: %w", err))
+	}
+	out, err := s.AddListingPackageUC.Do(ctx, app.AddListingPackageInput{
+		TutorID:     uid,
+		ListingID:   lid,
+		Kind:        domain.PackageKind(req.Msg.Kind),
+		Hours:       int(req.Msg.Hours),
+		PriceMinor:  req.Msg.PriceMinor,
+		Description: req.Msg.Description,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("tutor.AddListingPackage: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toListingPackageProto(out)), nil
+}
+
+func (s *TutorServer) ArchiveListingPackage(
+	ctx context.Context,
+	req *connect.Request[pb.TutorArchiveListingPackageRequest],
+) (*connect.Response[pb.TutorArchiveListingPackageResponse], error) {
+	if s.ArchiveListingPackageUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ArchiveListingPackage not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	pid, err := uuid.Parse(req.Msg.PackageId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("package_id: %w", err))
+	}
+	if err := s.ArchiveListingPackageUC.Do(ctx, uid, pid); err != nil {
+		return nil, fmt.Errorf("tutor.ArchiveListingPackage: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorArchiveListingPackageResponse{}), nil
+}
+
+// toListingProto converts domain.Listing → pb. Timestamps as RFC3339
+// strings (empty when nil/zero) so the generated TS shape stays simple.
+func toListingProto(l domain.Listing) *pb.TutorListing {
+	out := &pb.TutorListing{
+		Id:              l.ID.String(),
+		TutorId:         l.TutorID.String(),
+		Slug:            l.Slug,
+		Title:           l.Title,
+		Summary:         l.Summary,
+		BodyMd:          l.BodyMD,
+		TrackKind:       string(l.TrackKind),
+		Languages:       l.Languages,
+		HourlyRateMinor: l.HourlyRateMinor,
+		Currency:        string(l.Currency),
+		BoostyUrl:       l.BoostyURL,
+	}
+	if !l.CreatedAt.IsZero() {
+		out.CreatedAt = l.CreatedAt.Format(time.RFC3339)
+	}
+	if !l.UpdatedAt.IsZero() {
+		out.UpdatedAt = l.UpdatedAt.Format(time.RFC3339)
+	}
+	if l.PublishedAt != nil {
+		out.PublishedAt = l.PublishedAt.Format(time.RFC3339)
+	}
+	if l.ArchivedAt != nil {
+		out.ArchivedAt = l.ArchivedAt.Format(time.RFC3339)
+	}
+	return out
+}
+
+func toListingPackageProto(p domain.ListingPackage) *pb.TutorListingPackage {
+	out := &pb.TutorListingPackage{
+		Id:          p.ID.String(),
+		ListingId:   p.ListingID.String(),
+		Kind:        string(p.Kind),
+		Hours:       int32(p.Hours),
+		PriceMinor:  p.PriceMinor,
+		Description: p.Description,
+	}
+	if !p.CreatedAt.IsZero() {
+		out.CreatedAt = p.CreatedAt.Format(time.RFC3339)
+	}
+	if p.ArchivedAt != nil {
+		out.ArchivedAt = p.ArchivedAt.Format(time.RFC3339)
+	}
+	return out
+}
+
 // ── error mapping ────────────────────────────────────────────────────
 
 func (s *TutorServer) toConnectErr(err error) error {
@@ -434,7 +1048,8 @@ func (s *TutorServer) toConnectErr(err error) error {
 		errors.Is(err, domain.ErrInviteRevoked),
 		errors.Is(err, domain.ErrInviteAccepted),
 		errors.Is(err, domain.ErrAlreadyEnrolled),
-		errors.Is(err, domain.ErrAlreadyCompleted):
+		errors.Is(err, domain.ErrAlreadyCompleted),
+		errors.Is(err, domain.ErrCapacityFull):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, domain.ErrSelfInvite),
 		errors.Is(err, domain.ErrInvalidInput):
@@ -488,6 +1103,39 @@ func toRelationshipProto(r domain.Relationship) *pb.TutorRelationship {
 	return out
 }
 
+func toEventProto(e domain.Event) *pb.TutorEvent {
+	out := &pb.TutorEvent{
+		Id:                 e.ID.String(),
+		TutorId:            e.TutorID.String(),
+		Title:              e.Title,
+		BodyMd:             e.BodyMD,
+		DurationMin:        int32(e.DurationMin),
+		MeetUrl:            e.MeetURL,
+		Status:             string(e.Status),
+		CancellationReason: e.CancellationReason,
+		SessionNote:        e.SessionNote,
+	}
+	if e.StudentID != nil {
+		out.StudentId = e.StudentID.String()
+	}
+	if e.CircleID != nil {
+		out.CircleId = e.CircleID.String()
+	}
+	if !e.ScheduledAt.IsZero() {
+		out.ScheduledAt = timestamppb.New(e.ScheduledAt.UTC())
+	}
+	if e.Capacity != nil {
+		out.Capacity = int32(*e.Capacity)
+	}
+	if !e.CreatedAt.IsZero() {
+		out.CreatedAt = timestamppb.New(e.CreatedAt.UTC())
+	}
+	if !e.UpdatedAt.IsZero() {
+		out.UpdatedAt = timestamppb.New(e.UpdatedAt.UTC())
+	}
+	return out
+}
+
 func toAssignmentProto(a domain.Assignment) *pb.TutorAssignment {
 	out := &pb.TutorAssignment{
 		Id:        a.ID.String(),
@@ -532,15 +1180,22 @@ func domainNow() time.Time { return time.Now().UTC() }
 
 func toSnapshotProto(s domain.StudentSnapshot) *pb.TutorStudentSnapshot {
 	out := &pb.TutorStudentSnapshot{
-		StudentId:             s.StudentID.String(),
-		WindowDays:            int32(s.WindowDays),
-		FocusMinutesWindow:    int32(s.FocusMinutesWindow),
-		FocusSessionsCount:    int32(s.FocusSessionsCount),
-		EnglishMocksCount:     int32(s.EnglishMocksCount),
-		EnglishMocksAvgScore:  int32(s.EnglishMocksAvgScore),
-		EnglishMocksLastScore: int32(s.EnglishMocksLastScore),
-		NotesCount:            int32(s.NotesCount),
-		WeakSpots:             make([]*pb.TutorWeakSpot, 0, len(s.WeakSpots)),
+		StudentId:               s.StudentID.String(),
+		WindowDays:              int32(s.WindowDays),
+		FocusMinutesWindow:      int32(s.FocusMinutesWindow),
+		FocusSessionsCount:      int32(s.FocusSessionsCount),
+		EnglishMocksCount:       int32(s.EnglishMocksCount),
+		EnglishMocksAvgScore:    int32(s.EnglishMocksAvgScore),
+		EnglishMocksLastScore:   int32(s.EnglishMocksLastScore),
+		NotesCount:              int32(s.NotesCount),
+		ReadingSessionsCount:    int32(s.ReadingSessionsCount),
+		ReadingMinutesWindow:    int32(s.ReadingMinutesWindow),
+		ReadingMaterialsTotal:   int32(s.ReadingMaterialsTotal),
+		WritingGradesCount:      int32(s.WritingGradesCount),
+		ListeningMaterialsTotal: int32(s.ListeningMaterialsTotal),
+		VocabQueueTotal:         int32(s.VocabQueueTotal),
+		VocabDueToday:           int32(s.VocabDueToday),
+		WeakSpots:               make([]*pb.TutorWeakSpot, 0, len(s.WeakSpots)),
 	}
 	if !s.LastActiveAt.IsZero() {
 		out.LastActiveAt = timestamppb.New(s.LastActiveAt)

@@ -81,6 +81,50 @@ export enum Section {
    * @generated from enum value: SECTION_TECH_LEAD_EM = 8;
    */
   TECH_LEAD_EM = 8,
+
+  /**
+   * Sysanalyst (системный аналитик) — Wave 7. Free-form interview round
+   * covering requirements engineering, UML/BPMN modeling, integration
+   * patterns (REST/SOAP/Kafka/sagas/idempotency), SQL data design and
+   * process basics (Agile/BABOK). No algorithmic task; rubric scores
+   * requirements/modeling/integration/data/process axes.
+   *
+   * @generated from enum value: SECTION_SYSANALYST = 9;
+   */
+  SYSANALYST = 9,
+
+  /**
+   * Product analyst — Wave 8. Free-form interview round covering
+   * product metrics (DAU/retention/funnel/NSM), SQL for analytics,
+   * A/B testing fundamentals (sample size / MDE / CUPED), prioritisation
+   * frameworks (RICE/JTBD), and insight communication. No algorithmic
+   * task; rubric scores metrics/SQL/experimentation/frameworks/communication.
+   *
+   * @generated from enum value: SECTION_PRODUCT_ANALYST = 10;
+   */
+  PRODUCT_ANALYST = 10,
+
+  /**
+   * QA / тестировщик — Wave 9.2. Free-form interview round covering
+   * test design (boundary / equivalence / decision tables), API testing
+   * (REST schemas, contract tests), automation (Selenium/Playwright/
+   * pytest), bug analysis (root-cause + reproduction steps), and process
+   * (test plans, coverage strategy, exploratory vs scripted balance).
+   *
+   * @generated from enum value: SECTION_QA = 11;
+   */
+  QA = 11,
+
+  /**
+   * DevOps / SRE — Wave 9.3. Free-form interview round on infrastructure
+   * (containers, k8s, IaC), observability (metrics/tracing/logs/SLO),
+   * CI/CD (pipelines, blue-green, canary), incident response (runbooks,
+   * post-mortems, error budgets), and security (secrets, auth, network
+   * policy).
+   *
+   * @generated from enum value: SECTION_DEVOPS = 12;
+   */
+  DEVOPS = 12,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Section)
 proto3.util.setEnumType(Section, "druz9.v1.Section", [
@@ -93,6 +137,10 @@ proto3.util.setEnumType(Section, "druz9.v1.Section", [
   { no: 6, name: "SECTION_ENGLISH_HR" },
   { no: 7, name: "SECTION_SYSTEM_DESIGN_SENIOR" },
   { no: 8, name: "SECTION_TECH_LEAD_EM" },
+  { no: 9, name: "SECTION_SYSANALYST" },
+  { no: 10, name: "SECTION_PRODUCT_ANALYST" },
+  { no: 11, name: "SECTION_QA" },
+  { no: 12, name: "SECTION_DEVOPS" },
 ]);
 
 /**

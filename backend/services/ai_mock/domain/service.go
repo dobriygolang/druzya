@@ -38,7 +38,9 @@ func PickModel(user UserContext, taskModel enums.LLMModel, section enums.Section
 	switch section {
 	case enums.SectionAlgorithms, enums.SectionSQL, enums.SectionGo,
 		enums.SectionSystemDesign, enums.SectionBehavioral,
-		enums.SectionEnglishHR, enums.SectionSystemDesignSenior, enums.SectionTechLeadEM:
+		enums.SectionEnglishHR, enums.SectionSystemDesignSenior, enums.SectionTechLeadEM,
+		enums.SectionSysanalyst, enums.SectionProductAnalyst,
+		enums.SectionQA, enums.SectionDevOps:
 		// No per-section overrides yet. Intentional no-op.
 	}
 	// 4. Company override.
@@ -86,6 +88,22 @@ func BuildSystemPrompt(s Session, t TaskWithHint, user UserContext, company Comp
 	// Tech Lead / EM behavioral STAR rounds — free-form people scenarios.
 	if IsTechLeadEMSection(s.Section) {
 		return BuildTechLeadSystemPrompt(s, user, company, elapsed)
+	}
+	// Sysanalyst free-form round (Wave 7).
+	if IsSysanalystSection(s.Section) {
+		return BuildSysanalystSystemPrompt(s, user, company, elapsed)
+	}
+	// Product analyst free-form round (Wave 8).
+	if IsProductAnalystSection(s.Section) {
+		return BuildProductAnalystSystemPrompt(s, user, company, elapsed)
+	}
+	// QA free-form round (Wave 9.2).
+	if IsQASection(s.Section) {
+		return BuildQASystemPrompt(s, user, company, elapsed)
+	}
+	// DevOps / SRE free-form round (Wave 9.3).
+	if IsDevOpsSection(s.Section) {
+		return BuildDevOpsSystemPrompt(s, user, company, elapsed)
 	}
 
 	var b strings.Builder
@@ -161,6 +179,22 @@ func BuildReportPrompt(s Session, t TaskWithHint, stress StressProfile) string {
 	// Tech Lead / EM uses structure / ownership / impact / learning.
 	if IsTechLeadEMSection(s.Section) {
 		return BuildTechLeadReportPrompt(s)
+	}
+	// Sysanalyst — requirements / modeling / integration / data / process.
+	if IsSysanalystSection(s.Section) {
+		return BuildSysanalystReportPrompt(s)
+	}
+	// Product analyst — metrics / sql / experimentation / frameworks / communication.
+	if IsProductAnalystSection(s.Section) {
+		return BuildProductAnalystReportPrompt(s)
+	}
+	// QA — test_design / api / automation / bug_analysis / process.
+	if IsQASection(s.Section) {
+		return BuildQAReportPrompt(s)
+	}
+	// DevOps / SRE — infra / observability / cicd / incident / security.
+	if IsDevOpsSection(s.Section) {
+		return BuildDevOpsReportPrompt(s)
 	}
 
 	var b strings.Builder

@@ -201,6 +201,154 @@ function SystemDesignSeniorPanel() {
   )
 }
 
+// Sysanalyst — Wave 7. Free-form interview. Same panel pattern as
+// SystemDesignSeniorPanel; rubric mirrors BuildSysanalystReportPrompt
+// (requirements / modeling / integration / data / process).
+function SysanalystPanel() {
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+        SYSTEMS ANALYST
+      </span>
+      <h3 className="font-display text-lg font-bold text-text-primary break-words">
+        Free-form working session
+      </h3>
+      <p className="text-[13px] leading-relaxed text-text-secondary break-words">
+        Без алгоритмической задачи. AI ведёт 4-6 сценариев по requirements →
+        UML/BPMN → integration patterns → data design → process. Push for
+        SQL on the whiteboard, isolation levels by name, broker semantics.
+      </p>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        {[
+          ['requirements', 'NFR + Gherkin'],
+          ['modeling', 'UML / BPMN / C4'],
+          ['integration', 'sagas + idempotency'],
+          ['data', 'SQL + isolation'],
+          ['process', 'DoR/DoD + RACI'],
+        ].map(([key, ru]) => (
+          <div
+            key={key}
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+          >
+            <div className="text-text-primary">{key}</div>
+            <div className="text-text-muted">{ru}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+// Product analyst — Wave 8. Same shape; rubric mirrors
+// BuildProductAnalystReportPrompt (metrics / sql / experimentation /
+// frameworks / communication).
+function ProductAnalystPanel() {
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+        PRODUCT ANALYST
+      </span>
+      <h3 className="font-display text-lg font-bold text-text-primary break-words">
+        Free-form analytics interview
+      </h3>
+      <p className="text-[13px] leading-relaxed text-text-secondary break-words">
+        Без задачи в редакторе. AI ведёт разговор по metrics → SQL → A/B
+        testing → frameworks → insight comm. Готовься писать SQL, обосновывать
+        sample size и защищать выбор North Star метрики.
+      </p>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        {[
+          ['metrics', 'DAU/retention/NSM'],
+          ['sql', 'window + cohort'],
+          ['experimentation', 'CUPED + MDE'],
+          ['frameworks', 'RICE / JTBD'],
+          ['communication', 'insight memo'],
+        ].map(([key, ru]) => (
+          <div
+            key={key}
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+          >
+            <div className="text-text-primary">{key}</div>
+            <div className="text-text-muted">{ru}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+// QA / тестировщик — Wave 9.2.
+function QAPanel() {
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+        QA / SDET
+      </span>
+      <h3 className="font-display text-lg font-bold text-text-primary break-words">
+        Free-form QA working session
+      </h3>
+      <p className="text-[13px] leading-relaxed text-text-secondary break-words">
+        Без алгоритмической задачи. AI ведёт 4-6 сценариев: test design →
+        API testing → automation → bug analysis → process. Готовься защищать
+        конкретные assertions и flake-диагностику.
+      </p>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        {[
+          ['test_design', 'boundary + decision'],
+          ['api', 'contracts + idempotency'],
+          ['automation', 'flake hunting'],
+          ['bug_analysis', 'RCA + severity'],
+          ['process', 'risk-based'],
+        ].map(([key, ru]) => (
+          <div
+            key={key}
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+          >
+            <div className="text-text-primary">{key}</div>
+            <div className="text-text-muted">{ru}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+// DevOps / SRE — Wave 9.3.
+function DevOpsPanel() {
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+        DEVOPS / SRE
+      </span>
+      <h3 className="font-display text-lg font-bold text-text-primary break-words">
+        Free-form platform interview
+      </h3>
+      <p className="text-[13px] leading-relaxed text-text-secondary break-words">
+        Без задачи в редакторе. AI ведёт диалог по infra → observability →
+        CI/CD → incident response → security. Защищай PromQL, alarm
+        thresholds, IAM action strings, runbook timelines.
+      </p>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        {[
+          ['infra', 'k8s + IaC'],
+          ['observability', 'SLO + cardinality'],
+          ['cicd', 'blue-green + rollback'],
+          ['incident', 'runbooks + budgets'],
+          ['security', 'secrets + netpol'],
+        ].map(([key, ru]) => (
+          <div
+            key={key}
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+          >
+            <div className="text-text-primary">{key}</div>
+            <div className="text-text-muted">{ru}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 // English HR rounds have no algorithmic task. The left panel still
 // frames the round so the candidate isn't dropped into a blank chat;
 // content is static (rubric + ground rules) and aligned to the prompt
@@ -491,7 +639,12 @@ export default function MockSessionPage() {
   const isEnglishHR = session?.section === 'english_hr'
   const isSeniorSD = session?.section === 'system_design_senior'
   const isTechLead = session?.section === 'tech_lead_em'
-  const isFreeform = isEnglishHR || isSeniorSD || isTechLead
+  const isSysanalyst = session?.section === 'sysanalyst'
+  const isProductAnalyst = session?.section === 'product_analyst'
+  const isQA = session?.section === 'qa'
+  const isDevOps = session?.section === 'devops'
+  const isFreeform =
+    isEnglishHR || isSeniorSD || isTechLead || isSysanalyst || isProductAnalyst || isQA || isDevOps
   const qTitle = session?.task?.title ?? (isLoading ? 'Загрузка задачи…' : 'Задача')
   const qDesc = session?.task?.description ?? (isLoading ? 'Подождите немного, загружаем условие интервью.' : 'Подождите AI-собеседника.')
 
@@ -544,6 +697,14 @@ export default function MockSessionPage() {
             <SystemDesignSeniorPanel />
           ) : isTechLead ? (
             <TechLeadEMPanel />
+          ) : isSysanalyst ? (
+            <SysanalystPanel />
+          ) : isProductAnalyst ? (
+            <ProductAnalystPanel />
+          ) : isQA ? (
+            <QAPanel />
+          ) : isDevOps ? (
+            <DevOpsPanel />
           ) : (
             <QuestionPanel title={qTitle} description={qDesc} />
           )}

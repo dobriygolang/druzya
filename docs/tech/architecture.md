@@ -166,9 +166,12 @@ Backend-сервис `backend/services/sync/` обслуживает CRDT-син
 - `services/sync/` — Yjs CRDT relay для multi-device Hone.
 - `services/intelligence/` — AI-coach: daily brief + atomic insights + severity grader + persona/variant overlays + weekly memory consolidation + goal-aware briefs.
 - `services/tracks/` — curated learning programmes (Phase 2). Web `/atlas` теперь Tracks ribbon, старый skill-graph под `/atlas/explore`.
-- `services/tutor/` — Tier 1 invite/accept flow + per-student snapshot + AI pre-session brief (Wave 2).
+- `services/tutor/` — полный tutor-стек: Tier 1 invite/accept (Wave 2) + per-student snapshot с агрегированной English activity (2.4b/c) + AI pre-session brief (2.5) + assignments + broadcast (5.1/5.2a) + 1-on-1 events с reminders + session notes (5.2b/c/d). Один `*Postgres` satisfies 4 интерфейса (Repo/SnapshotRepo/AssignmentRepo/EventRepo).
 - `services/clubs/` — Phase 3 MVP. Public catalogue + sessions + RSVP. **REST chi-direct** (read-mostly + одна mutation, не proto).
 
 **Расширены:**
 - `services/lobby/` — solo mode + skill_filter (Phase 2c-2): Practice CTA на TrackDetailPage создаёт single-player drill room.
-- `services/hone/` — English Reading-loop: materials + sessions + vocab queue (Leitner SRS) + summary grader + writing grader (Wave 4).
+- `services/hone/` — English learning surface: Reading + sessions + Leitner-SRS vocab + AI summary grader (Wave 4) + Writing-as-Focus grader (4.4) + Listening materials с transcript (6.1) + Code-review-coaching grader (3.6). Все LLM-grader'ы — отдельные ports (`SummaryGrader`/`WritingGrader`/`CodeReviewGrader`) с `LLMChain*` real adapter + `NoLLM*` floor (returns ErrLLMUnavailable → 503). Free-tier providers only (Groq/Cerebras/Mistral/OpenRouter/Ollama).
+- `services/ai_mock/` — Sysanalyst (Wave 7), Product analyst (Wave 8), QA (Wave 9.2), DevOps/SRE (Wave 9.3). Free-form mock'и с per-section prompts (`domain/{sysanalyst,product_analyst,qa,devops}.go`) и section-specific rubric'ами в `BuildReportPrompt`. Section dispatcher в `service.go` покрывает 7 free-form секций: english_hr, system_design_senior, tech_lead_em, sysanalyst, product_analyst, qa, devops.
+- `services/tutor/` — Wave 9.4 multi-tutor (`ListStudentTutors` repo + `ListMyTutors` UC + RPC `/api/v1/tutor/my-tutors`); Wave 9.5 analytics aggregate (`TutorEventStats` repo + `GetTutorActivity` UC + RPC `/api/v1/tutor/activity` — active students / completed / cancelled / minutes_taught / cancellation_rate over trailing window).
+- Migrations: `00018_analyst_atlas_seed.sql` (Sysanalyst + Product analyst nodes), `00019_qa_devops_atlas_seed.sql` (QA + DevOps + adds `'devops'` to `track_kind` enum), `00020_tutor_event_rsvps.sql` (group-event RSVPs scaffold), `00021_tutor_listings_scaffold.sql` (marketplace schema scaffold).

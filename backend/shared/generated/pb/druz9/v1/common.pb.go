@@ -58,20 +58,48 @@ const (
 	// SECTION_BEHAVIORAL: that one pairs with concrete behavioral tasks;
 	// this one is open conversation with the AI as a hiring panel.
 	Section_SECTION_TECH_LEAD_EM Section = 8
+	// Sysanalyst (системный аналитик) — Wave 7. Free-form interview round
+	// covering requirements engineering, UML/BPMN modeling, integration
+	// patterns (REST/SOAP/Kafka/sagas/idempotency), SQL data design and
+	// process basics (Agile/BABOK). No algorithmic task; rubric scores
+	// requirements/modeling/integration/data/process axes.
+	Section_SECTION_SYSANALYST Section = 9
+	// Product analyst — Wave 8. Free-form interview round covering
+	// product metrics (DAU/retention/funnel/NSM), SQL for analytics,
+	// A/B testing fundamentals (sample size / MDE / CUPED), prioritisation
+	// frameworks (RICE/JTBD), and insight communication. No algorithmic
+	// task; rubric scores metrics/SQL/experimentation/frameworks/communication.
+	Section_SECTION_PRODUCT_ANALYST Section = 10
+	// QA / тестировщик — Wave 9.2. Free-form interview round covering
+	// test design (boundary / equivalence / decision tables), API testing
+	// (REST schemas, contract tests), automation (Selenium/Playwright/
+	// pytest), bug analysis (root-cause + reproduction steps), and process
+	// (test plans, coverage strategy, exploratory vs scripted balance).
+	Section_SECTION_QA Section = 11
+	// DevOps / SRE — Wave 9.3. Free-form interview round on infrastructure
+	// (containers, k8s, IaC), observability (metrics/tracing/logs/SLO),
+	// CI/CD (pipelines, blue-green, canary), incident response (runbooks,
+	// post-mortems, error budgets), and security (secrets, auth, network
+	// policy).
+	Section_SECTION_DEVOPS Section = 12
 )
 
 // Enum value maps for Section.
 var (
 	Section_name = map[int32]string{
-		0: "SECTION_UNSPECIFIED",
-		1: "SECTION_ALGORITHMS",
-		2: "SECTION_SQL",
-		3: "SECTION_GO",
-		4: "SECTION_SYSTEM_DESIGN",
-		5: "SECTION_BEHAVIORAL",
-		6: "SECTION_ENGLISH_HR",
-		7: "SECTION_SYSTEM_DESIGN_SENIOR",
-		8: "SECTION_TECH_LEAD_EM",
+		0:  "SECTION_UNSPECIFIED",
+		1:  "SECTION_ALGORITHMS",
+		2:  "SECTION_SQL",
+		3:  "SECTION_GO",
+		4:  "SECTION_SYSTEM_DESIGN",
+		5:  "SECTION_BEHAVIORAL",
+		6:  "SECTION_ENGLISH_HR",
+		7:  "SECTION_SYSTEM_DESIGN_SENIOR",
+		8:  "SECTION_TECH_LEAD_EM",
+		9:  "SECTION_SYSANALYST",
+		10: "SECTION_PRODUCT_ANALYST",
+		11: "SECTION_QA",
+		12: "SECTION_DEVOPS",
 	}
 	Section_value = map[string]int32{
 		"SECTION_UNSPECIFIED":          0,
@@ -83,6 +111,10 @@ var (
 		"SECTION_ENGLISH_HR":           6,
 		"SECTION_SYSTEM_DESIGN_SENIOR": 7,
 		"SECTION_TECH_LEAD_EM":         8,
+		"SECTION_SYSANALYST":           9,
+		"SECTION_PRODUCT_ANALYST":      10,
+		"SECTION_QA":                   11,
+		"SECTION_DEVOPS":               12,
 	}
 )
 
@@ -1236,7 +1268,7 @@ var File_druz9_v1_common_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x15druz9/v1/common.proto\x12\bdruz9.v1*\xe2\x01\n" +
+	"\x15druz9/v1/common.proto\x12\bdruz9.v1*\xbb\x02\n" +
 	"\aSection\x12\x17\n" +
 	"\x13SECTION_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SECTION_ALGORITHMS\x10\x01\x12\x0f\n" +
@@ -1247,7 +1279,13 @@ const file_druz9_v1_common_proto_rawDesc = "" +
 	"\x12SECTION_BEHAVIORAL\x10\x05\x12\x16\n" +
 	"\x12SECTION_ENGLISH_HR\x10\x06\x12 \n" +
 	"\x1cSECTION_SYSTEM_DESIGN_SENIOR\x10\a\x12\x18\n" +
-	"\x14SECTION_TECH_LEAD_EM\x10\b*i\n" +
+	"\x14SECTION_TECH_LEAD_EM\x10\b\x12\x16\n" +
+	"\x12SECTION_SYSANALYST\x10\t\x12\x1b\n" +
+	"\x17SECTION_PRODUCT_ANALYST\x10\n" +
+	"\x12\x0e\n" +
+	"\n" +
+	"SECTION_QA\x10\v\x12\x12\n" +
+	"\x0eSECTION_DEVOPS\x10\f*i\n" +
 	"\n" +
 	"Difficulty\x12\x1a\n" +
 	"\x16DIFFICULTY_UNSPECIFIED\x10\x00\x12\x13\n" +

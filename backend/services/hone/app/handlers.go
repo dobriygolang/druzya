@@ -102,6 +102,8 @@ type Handler struct {
 	AddVocab               *AddVocab
 	ReviewVocab            *ReviewVocab
 	ListVocabDue           *ListVocabDue
+	// Wave 4.2 — reverse cross-link reader → vocab.
+	ListVocabBySourceMaterial *ListVocabBySourceMaterial
 
 	// Writing-as-Focus (Wave 4.4). One-shot LLM grader, no persistence.
 	GradeEnglishWriting *GradeEnglishWriting

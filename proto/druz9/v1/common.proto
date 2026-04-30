@@ -37,6 +37,30 @@ enum Section {
   // SECTION_BEHAVIORAL: that one pairs with concrete behavioral tasks;
   // this one is open conversation with the AI as a hiring panel.
   SECTION_TECH_LEAD_EM = 8;
+  // Sysanalyst (системный аналитик) — Wave 7. Free-form interview round
+  // covering requirements engineering, UML/BPMN modeling, integration
+  // patterns (REST/SOAP/Kafka/sagas/idempotency), SQL data design and
+  // process basics (Agile/BABOK). No algorithmic task; rubric scores
+  // requirements/modeling/integration/data/process axes.
+  SECTION_SYSANALYST = 9;
+  // Product analyst — Wave 8. Free-form interview round covering
+  // product metrics (DAU/retention/funnel/NSM), SQL for analytics,
+  // A/B testing fundamentals (sample size / MDE / CUPED), prioritisation
+  // frameworks (RICE/JTBD), and insight communication. No algorithmic
+  // task; rubric scores metrics/SQL/experimentation/frameworks/communication.
+  SECTION_PRODUCT_ANALYST = 10;
+  // QA / тестировщик — Wave 9.2. Free-form interview round covering
+  // test design (boundary / equivalence / decision tables), API testing
+  // (REST schemas, contract tests), automation (Selenium/Playwright/
+  // pytest), bug analysis (root-cause + reproduction steps), and process
+  // (test plans, coverage strategy, exploratory vs scripted balance).
+  SECTION_QA = 11;
+  // DevOps / SRE — Wave 9.3. Free-form interview round on infrastructure
+  // (containers, k8s, IaC), observability (metrics/tracing/logs/SLO),
+  // CI/CD (pipelines, blue-green, canary), incident response (runbooks,
+  // post-mortems, error budgets), and security (secrets, auth, network
+  // policy).
+  SECTION_DEVOPS = 12;
 }
 
 // Difficulty mirrors shared/enums.Difficulty.

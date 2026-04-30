@@ -275,7 +275,12 @@ export default function MockResultPage() {
   const isEnglishHR = session?.section === 'english_hr'
   const isSeniorSD = session?.section === 'system_design_senior'
   const isTechLead = session?.section === 'tech_lead_em'
-  const isFreeform = isEnglishHR || isSeniorSD || isTechLead
+  const isSysanalyst = session?.section === 'sysanalyst'
+  const isProductAnalyst = session?.section === 'product_analyst'
+  const isQA = session?.section === 'qa'
+  const isDevOps = session?.section === 'devops'
+  const isFreeform =
+    isEnglishHR || isSeniorSD || isTechLead || isSysanalyst || isProductAnalyst || isQA || isDevOps
   const isProcessing = normalizeMockReportStatus(report?.status) === 'processing' || (!report && isLoading)
 
   // Empty / fallback values keep the page rendering coherently while the
@@ -303,6 +308,33 @@ export default function MockResultPage() {
   const ownershipCell = sections['ownership'] ?? { score: 0, comment: '—' }
   const impactCell = sections['impact'] ?? { score: 0, comment: '—' }
   const learningCell = sections['learning'] ?? { score: 0, comment: '—' }
+  // Sysanalyst (Wave 7). Keys mirror BuildSysanalystReportPrompt.
+  const requirementsCell = sections['requirements'] ?? { score: 0, comment: '—' }
+  const modelingCell = sections['modeling'] ?? { score: 0, comment: '—' }
+  const integrationCell = sections['integration'] ?? { score: 0, comment: '—' }
+  const dataCell = sections['data'] ?? { score: 0, comment: '—' }
+  const processCell = sections['process'] ?? { score: 0, comment: '—' }
+  // Product analyst (Wave 8). Keys mirror BuildProductAnalystReportPrompt.
+  const metricsCell = sections['metrics'] ?? { score: 0, comment: '—' }
+  const sqlCell = sections['sql'] ?? { score: 0, comment: '—' }
+  const experimentationCell = sections['experimentation'] ?? { score: 0, comment: '—' }
+  const frameworksCell = sections['frameworks'] ?? { score: 0, comment: '—' }
+  // `communication` is reused — engineering rubric also has it (cm); rename
+  // here to avoid shadowing.
+  const paCommunicationCell = sections['communication'] ?? { score: 0, comment: '—' }
+  // QA (Wave 9.2). Keys mirror BuildQAReportPrompt.
+  const testDesignCell = sections['test_design'] ?? { score: 0, comment: '—' }
+  const apiCell = sections['api'] ?? { score: 0, comment: '—' }
+  const automationCell = sections['automation'] ?? { score: 0, comment: '—' }
+  const bugAnalysisCell = sections['bug_analysis'] ?? { score: 0, comment: '—' }
+  // QA also has `process` — same key as Sysanalyst (`processCell` already
+  // declared above), so we reuse it.
+  // DevOps (Wave 9.3). Keys mirror BuildDevOpsReportPrompt.
+  const infraCell = sections['infra'] ?? { score: 0, comment: '—' }
+  const observabilityCell = sections['observability'] ?? { score: 0, comment: '—' }
+  const cicdCell = sections['cicd'] ?? { score: 0, comment: '—' }
+  const incidentCell = sections['incident'] ?? { score: 0, comment: '—' }
+  const securityCell = sections['security'] ?? { score: 0, comment: '—' }
   const strengths = report?.strengths ?? []
   const weaknesses = report?.weaknesses ?? []
   const recs = (report?.recommendations ?? []).map((r, i) => ({ p: i < 2 ? 'P1' : 'P2', text: r.title }))
@@ -402,6 +434,40 @@ export default function MockResultPage() {
               <SectionCard label="Ownership" value={ownershipCell.score} variant={ownershipCell.score >= 70 ? 'success' : 'warn'} comment={ownershipCell.comment} />
               <SectionCard label="Impact"    value={impactCell.score}    variant={impactCell.score    >= 70 ? 'success' : 'warn'} comment={impactCell.comment} />
               <SectionCard label="Learning"  value={learningCell.score}  variant={learningCell.score  >= 70 ? 'success' : 'warn'} comment={learningCell.comment} />
+            </>
+          ) : isSysanalyst ? (
+            // Sysanalyst — 5 axes; we render 4 in the main grid and the
+            // 5th in a slim sub-row to keep the responsive layout tight.
+            <>
+              <SectionCard label="Requirements" value={requirementsCell.score} variant={requirementsCell.score >= 70 ? 'success' : 'warn'} comment={requirementsCell.comment} />
+              <SectionCard label="Modeling"     value={modelingCell.score}     variant={modelingCell.score     >= 70 ? 'success' : 'warn'} comment={modelingCell.comment} />
+              <SectionCard label="Integration"  value={integrationCell.score}  variant={integrationCell.score  >= 70 ? 'success' : 'warn'} comment={integrationCell.comment} />
+              <SectionCard label="Data"         value={dataCell.score}         variant={dataCell.score         >= 70 ? 'success' : 'warn'} comment={dataCell.comment} />
+              <SectionCard label="Process"      value={processCell.score}      variant={processCell.score      >= 70 ? 'success' : 'warn'} comment={processCell.comment} />
+            </>
+          ) : isProductAnalyst ? (
+            <>
+              <SectionCard label="Metrics"         value={metricsCell.score}          variant={metricsCell.score          >= 70 ? 'success' : 'warn'} comment={metricsCell.comment} />
+              <SectionCard label="SQL"             value={sqlCell.score}              variant={sqlCell.score              >= 70 ? 'success' : 'warn'} comment={sqlCell.comment} />
+              <SectionCard label="Experimentation" value={experimentationCell.score}  variant={experimentationCell.score  >= 70 ? 'success' : 'warn'} comment={experimentationCell.comment} />
+              <SectionCard label="Frameworks"      value={frameworksCell.score}       variant={frameworksCell.score       >= 70 ? 'success' : 'warn'} comment={frameworksCell.comment} />
+              <SectionCard label="Communication"   value={paCommunicationCell.score}  variant={paCommunicationCell.score  >= 70 ? 'success' : 'warn'} comment={paCommunicationCell.comment} />
+            </>
+          ) : isQA ? (
+            <>
+              <SectionCard label="Test Design"  value={testDesignCell.score}  variant={testDesignCell.score  >= 70 ? 'success' : 'warn'} comment={testDesignCell.comment} />
+              <SectionCard label="API"          value={apiCell.score}         variant={apiCell.score         >= 70 ? 'success' : 'warn'} comment={apiCell.comment} />
+              <SectionCard label="Automation"   value={automationCell.score}  variant={automationCell.score  >= 70 ? 'success' : 'warn'} comment={automationCell.comment} />
+              <SectionCard label="Bug Analysis" value={bugAnalysisCell.score} variant={bugAnalysisCell.score >= 70 ? 'success' : 'warn'} comment={bugAnalysisCell.comment} />
+              <SectionCard label="Process"      value={processCell.score}     variant={processCell.score     >= 70 ? 'success' : 'warn'} comment={processCell.comment} />
+            </>
+          ) : isDevOps ? (
+            <>
+              <SectionCard label="Infra"         value={infraCell.score}         variant={infraCell.score         >= 70 ? 'success' : 'warn'} comment={infraCell.comment} />
+              <SectionCard label="Observability" value={observabilityCell.score} variant={observabilityCell.score >= 70 ? 'success' : 'warn'} comment={observabilityCell.comment} />
+              <SectionCard label="CI/CD"         value={cicdCell.score}          variant={cicdCell.score          >= 70 ? 'success' : 'warn'} comment={cicdCell.comment} />
+              <SectionCard label="Incident"      value={incidentCell.score}      variant={incidentCell.score      >= 70 ? 'success' : 'warn'} comment={incidentCell.comment} />
+              <SectionCard label="Security"      value={securityCell.score}      variant={securityCell.score      >= 70 ? 'success' : 'warn'} comment={securityCell.comment} />
             </>
           ) : (
             <>

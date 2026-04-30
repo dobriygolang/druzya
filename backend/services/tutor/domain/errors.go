@@ -13,4 +13,6 @@ var (
 	ErrAlreadyEnrolled  = errors.New("tutor: already enrolled with this tutor")
 	ErrInvalidInput     = errors.New("tutor: invalid input")
 	ErrAlreadyCompleted = errors.New("tutor: assignment already completed")
+	// Wave 5.2 group events.
+	ErrCapacityFull = errors.New("tutor: event capacity full")
 )

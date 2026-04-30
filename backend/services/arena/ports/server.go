@@ -418,6 +418,14 @@ func sectionToProto(s enums.Section) pb.Section {
 		return pb.Section_SECTION_SYSTEM_DESIGN_SENIOR
 	case enums.SectionTechLeadEM:
 		return pb.Section_SECTION_TECH_LEAD_EM
+	case enums.SectionSysanalyst:
+		return pb.Section_SECTION_SYSANALYST
+	case enums.SectionProductAnalyst:
+		return pb.Section_SECTION_PRODUCT_ANALYST
+	case enums.SectionQA:
+		return pb.Section_SECTION_QA
+	case enums.SectionDevOps:
+		return pb.Section_SECTION_DEVOPS
 	default:
 		return pb.Section_SECTION_UNSPECIFIED
 	}
@@ -441,6 +449,14 @@ func sectionFromProto(s pb.Section) enums.Section {
 		return enums.SectionSystemDesignSenior
 	case pb.Section_SECTION_TECH_LEAD_EM:
 		return enums.SectionTechLeadEM
+	case pb.Section_SECTION_SYSANALYST:
+		return enums.SectionSysanalyst
+	case pb.Section_SECTION_PRODUCT_ANALYST:
+		return enums.SectionProductAnalyst
+	case pb.Section_SECTION_QA:
+		return enums.SectionQA
+	case pb.Section_SECTION_DEVOPS:
+		return enums.SectionDevOps
 	case pb.Section_SECTION_UNSPECIFIED:
 		return ""
 	default:

@@ -15,17 +15,18 @@ import (
 // matches the rest of the Hone test suite). Each closure satisfies
 // one method; nil = «test will fail loudly when this surface is hit».
 type fakeReadingRepo struct {
-	create     func(context.Context, domain.ReadingMaterial) (domain.ReadingMaterial, error)
-	get        func(context.Context, uuid.UUID, uuid.UUID) (domain.ReadingMaterial, error)
-	list       func(context.Context, uuid.UUID, int) ([]domain.ReadingMaterial, error)
-	archive    func(context.Context, uuid.UUID, uuid.UUID, time.Time) error
-	startSess  func(context.Context, uuid.UUID, uuid.UUID) (domain.ReadingSession, error)
-	endSess    func(context.Context, uuid.UUID, uuid.UUID, int, string, time.Time) error
-	getSess    func(context.Context, uuid.UUID, uuid.UUID) (domain.ReadingSession, error)
-	setScore   func(context.Context, uuid.UUID, uuid.UUID, int) error
-	listVocab  func(context.Context, uuid.UUID, time.Time, int) ([]domain.VocabEntry, error)
-	upsertVoc  func(context.Context, domain.VocabEntry) (domain.VocabEntry, error)
-	advanceVoc func(context.Context, uuid.UUID, string, bool, time.Time) (domain.VocabEntry, error)
+	create            func(context.Context, domain.ReadingMaterial) (domain.ReadingMaterial, error)
+	get               func(context.Context, uuid.UUID, uuid.UUID) (domain.ReadingMaterial, error)
+	list              func(context.Context, uuid.UUID, int) ([]domain.ReadingMaterial, error)
+	archive           func(context.Context, uuid.UUID, uuid.UUID, time.Time) error
+	startSess         func(context.Context, uuid.UUID, uuid.UUID) (domain.ReadingSession, error)
+	endSess           func(context.Context, uuid.UUID, uuid.UUID, int, string, time.Time) error
+	getSess           func(context.Context, uuid.UUID, uuid.UUID) (domain.ReadingSession, error)
+	setScore          func(context.Context, uuid.UUID, uuid.UUID, int) error
+	listVocab         func(context.Context, uuid.UUID, time.Time, int) ([]domain.VocabEntry, error)
+	upsertVoc         func(context.Context, domain.VocabEntry) (domain.VocabEntry, error)
+	advanceVoc        func(context.Context, uuid.UUID, string, bool, time.Time) (domain.VocabEntry, error)
+	listVocabBySource func(context.Context, uuid.UUID, uuid.UUID, int) ([]domain.VocabEntry, error)
 }
 
 func (f fakeReadingRepo) CreateMaterial(ctx context.Context, m domain.ReadingMaterial) (domain.ReadingMaterial, error) {
@@ -70,6 +71,13 @@ func (f fakeReadingRepo) UpsertVocab(ctx context.Context, e domain.VocabEntry) (
 
 func (f fakeReadingRepo) AdvanceVocab(ctx context.Context, u uuid.UUID, w string, c bool, n time.Time) (domain.VocabEntry, error) {
 	return f.advanceVoc(ctx, u, w, c, n)
+}
+
+func (f fakeReadingRepo) ListVocabBySourceMaterial(ctx context.Context, u, m uuid.UUID, l int) ([]domain.VocabEntry, error) {
+	if f.listVocabBySource == nil {
+		return nil, nil
+	}
+	return f.listVocabBySource(ctx, u, m, l)
 }
 
 // ─────────────────────────────────────────────────────────────────

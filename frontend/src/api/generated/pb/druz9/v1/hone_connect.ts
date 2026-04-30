@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddListeningMaterialRequest, AddQueueItemRequest, AddReadingMaterialRequest, AddTaskCommentRequest, AddVocabRequest, ArchiveListeningMaterialRequest, ArchiveListeningMaterialResponse, ArchiveReadingMaterialRequest, ArchiveReadingMaterialResponse, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, EndReadingSessionRequest, EndReadingSessionResponse, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetListeningMaterialRequest, GetNoteConnectionsRequest, GetNoteRequest, GetReadingMaterialRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, GradeCodeReviewRequest, GradeCodeReviewResponse, GradeEnglishWritingRequest, GradeEnglishWritingResponse, ImportCueSessionRequest, ListCueSessionsRequest, ListCueSessionsResponse, ListeningMaterial, ListFoldersRequest, ListFoldersResponse, ListListeningMaterialsRequest, ListListeningMaterialsResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListReadingMaterialsRequest, ListReadingMaterialsResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListVocabDueRequest, ListVocabDueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, ReadingMaterial, ReadingSession, RecordStandupRequest, RecordStandupResponse, ReviewVocabRequest, SaveCritiqueAsNoteRequest, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, StartReadingSessionRequest, Stats, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, VocabEntry, Whiteboard } from "./hone_pb.js";
+import { AddListeningMaterialRequest, AddQueueItemRequest, AddReadingMaterialRequest, AddTaskCommentRequest, AddVocabRequest, ArchiveListeningMaterialRequest, ArchiveListeningMaterialResponse, ArchiveReadingMaterialRequest, ArchiveReadingMaterialResponse, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, EndReadingSessionRequest, EndReadingSessionResponse, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetListeningMaterialRequest, GetNoteConnectionsRequest, GetNoteRequest, GetReadingMaterialRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, GradeCodeReviewRequest, GradeCodeReviewResponse, GradeEnglishWritingRequest, GradeEnglishWritingResponse, ImportCueSessionRequest, ListCueSessionsRequest, ListCueSessionsResponse, ListeningMaterial, ListFoldersRequest, ListFoldersResponse, ListListeningMaterialsRequest, ListListeningMaterialsResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListReadingMaterialsRequest, ListReadingMaterialsResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListVocabBySourceMaterialRequest, ListVocabDueRequest, ListVocabDueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, ReadingMaterial, ReadingSession, RecordStandupRequest, RecordStandupResponse, ReviewVocabRequest, SaveCritiqueAsNoteRequest, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, StartReadingSessionRequest, Stats, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, VocabEntry, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -572,6 +572,19 @@ export const HoneService = {
     listVocabDue: {
       name: "ListVocabDue",
       I: ListVocabDueRequest,
+      O: ListVocabDueResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Wave 4.2 reverse cross-link — list vocab entries the user saved
+     * while reading a specific material. Powers the reader sidebar
+     * «words you've saved here».
+     *
+     * @generated from rpc druz9.v1.HoneService.ListVocabBySourceMaterial
+     */
+    listVocabBySourceMaterial: {
+      name: "ListVocabBySourceMaterial",
+      I: ListVocabBySourceMaterialRequest,
       O: ListVocabDueResponse,
       kind: MethodKind.Unary,
     },

@@ -235,6 +235,40 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
 	},
+	TaskSysanalystMock: {
+		// Sysanalyst free-form mock. Reasoning over data design + API
+		// contract critique + integration patterns — 70B-class.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskProductAnalystMock: {
+		// Product analyst free-form mock. Stats reasoning (sample size,
+		// CUPED, MDE) + SQL critique on the conversation — 70B-class.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskQAMock: {
+		// QA free-form mock — edge-case reasoning + automation design.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskDevOpsMock: {
+		// DevOps / SRE mock — infra tradeoffs + incident response.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
 	TaskTutorPreSessionBrief: {
 		// Tutor pre-session brief — narrative prose over aggregated
 		// numbers, ~250 words, Russian. Quality > latency (tutor reads

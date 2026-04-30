@@ -25,6 +25,7 @@ export type PageId =
   | 'assignments' // Wave 5.1d — pending tutor-pushed assignments
   | 'listening' // Wave 6.1 — English Listening with transcript + click-on-word
   | 'code_review' // Wave 3.6 — Code-review-coaching: paste diff + review, AI grades
+  | 'calendar' // Wave 5.2b — upcoming tutor-scheduled events
   | 'settings';
 // PaletteAction — то, что палетка может попросить App'а сделать.
 // `standup` — переходит на Today page (banner там сам решит показываться
@@ -67,14 +68,25 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
       { id: 'events', label: 'Events', icon: 'calendar', shortcut: ['V'], run: () => onOpen('events') },
       // Phase 5 — Coach feed: лента past briefs за месяц.
       { id: 'coach', label: 'Coach feed', icon: 'sparkle', shortcut: ['C'], run: () => onOpen('coach') },
-      // Wave 4 — English Reading-модуль: library + reader + click-on-word + SRS.
-      { id: 'reading', label: 'Reading', icon: 'note', shortcut: ['R'], run: () => onOpen('reading') },
-      // Wave 4.4 — English Writing-as-Focus: draft + AI inline feedback.
-      { id: 'writing', label: 'Writing', icon: 'note', shortcut: ['W'], run: () => onOpen('writing') },
-      // Wave 5.1d — pending assignments from your tutor.
-      { id: 'assignments', label: 'Assignments', icon: 'sparkle', shortcut: ['A'], run: () => onOpen('assignments') },
-      // Wave 6.1 — English Listening: audio + transcript + click-on-word.
-      { id: 'listening', label: 'Listening', icon: 'headphones', shortcut: ['L'], run: () => onOpen('listening') },
+      // English-loop hub (Reading / Writing / Listening). Палитра-entry
+      // схлопывает три страницы в одну логическую группу — visual hub
+      // через `EnglishTabsChrome` внутри. Хоткеи R/W/L работают
+      // напрямую (см. App.tsx letter-shortcut switch).
+      {
+        id: 'reading',
+        label: 'English · Read · Write · Listen',
+        icon: 'note',
+        shortcut: ['R', 'W', 'L'],
+        run: () => onOpen('reading'),
+      },
+      // Tutor hub (Tasks / Calendar). Same composition pattern as English.
+      {
+        id: 'assignments',
+        label: 'Tutor · Tasks · Calendar',
+        icon: 'sparkle',
+        shortcut: ['A', 'M'],
+        run: () => onOpen('assignments'),
+      },
       // Wave 3.6 — Code-review-coaching: paste diff + review, AI grades.
       { id: 'code_review', label: 'Code review', icon: 'note', shortcut: ['G'], run: () => onOpen('code_review') },
       { id: 'podcasts', label: 'Podcasts', icon: 'headphones', shortcut: ['P'], run: () => onOpen('podcasts') },

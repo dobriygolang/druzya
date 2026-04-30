@@ -330,23 +330,30 @@ function Tracks() {
     {
       id: 'sysanalyst',
       title: 'Системный аналитик',
-      sub: 'BPMN · use-cases · SQL · requirements gathering. Свитчерам из dev.',
-      tags: ['Mock с экспертом', 'Atlas (TBD)'],
-      status: 'soon',
+      sub: 'Requirements · UML/BPMN · integration · SQL · process. Свитчерам из dev.',
+      tags: ['Free-form mock', '6-узловой Atlas', 'Live'],
+      status: 'live',
     },
     {
       id: 'product_analyst',
       title: 'Product analyst',
-      sub: 'Метрики · A/B · SQL · dashboards. Дешевле GoPractice.',
-      tags: ['Mock с экспертом', 'Atlas (TBD)'],
-      status: 'soon',
+      sub: 'Метрики · A/B + CUPED · SQL · RICE/JTBD · insight comm. Дешевле GoPractice.',
+      tags: ['Free-form mock', '6-узловой Atlas', 'Live'],
+      status: 'live',
     },
     {
       id: 'qa',
       title: 'QA / тестировщик',
-      sub: 'Тест-дизайн · API-тестирование · автотесты.',
-      tags: ['Year 2'],
-      status: 'soon',
+      sub: 'Test design · API testing · automation · bug RCA · process. Без эксперт-content.',
+      tags: ['Free-form mock', '7-узловой Atlas', 'Live'],
+      status: 'live',
+    },
+    {
+      id: 'devops',
+      title: 'DevOps / SRE',
+      sub: 'Infra · observability · CI/CD · incident · security. Whiteboard-precision интервью.',
+      tags: ['Free-form mock', '7-узловой Atlas', 'Live'],
+      status: 'live',
     },
   ]
   return (
@@ -356,7 +363,7 @@ function Tracks() {
         margin: '16px 0 0', fontSize: 'clamp(34px, 5vw, 56px)', fontWeight: 400,
         letterSpacing: '-0.025em', lineHeight: 1.05,
       }}>
-        Один продукт.<br />Шесть треков.
+        Один продукт.<br />Семь треков.
       </h2>
       <p style={{ margin: '18px 0 0', fontSize: 15, color: 'var(--ink-60)', maxWidth: 620, lineHeight: 1.55 }}>
         Multi-track Atlas: можно держать «Senior dev + English» как

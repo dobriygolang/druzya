@@ -15,7 +15,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { TutorAcceptInviteRequest, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorAssignment, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCreateInviteRequest, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorGenerateBriefRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListInvitesRequest, TutorListInvitesResponse, TutorListPendingAssignmentsRequest, TutorListStudentsRequest, TutorListStudentsResponse, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPushAssignmentRequest, TutorRelationship, TutorRevokeInviteRequest, TutorStudentSnapshot } from "./tutor_pb.js";
+import { TutorAcceptInviteRequest, TutorActivityResponse, TutorAddListingPackageRequest, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorArchiveListingPackageRequest, TutorArchiveListingPackageResponse, TutorArchiveListingRequest, TutorArchiveListingResponse, TutorAssignment, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorBrowseListingsRequest, TutorCancelEventRequest, TutorCancelEventResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCompleteEventRequest, TutorCompleteEventResponse, TutorCreateEventRequest, TutorCreateGroupEventRequest, TutorCreateInviteRequest, TutorCreateListingRequest, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorEvent, TutorGenerateBriefRequest, TutorGetActivityRequest, TutorGetEventRSVPCountRequest, TutorGetEventRSVPCountResponse, TutorGetListingBySlugRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorJoinEventRequest, TutorJoinEventResponse, TutorLeaveEventRequest, TutorLeaveEventResponse, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListEventsRequest, TutorListEventsResponse, TutorListing, TutorListingDetail, TutorListingPackage, TutorListInvitesRequest, TutorListInvitesResponse, TutorListListingsResponse, TutorListMyListingsRequest, TutorListMyTutorsRequest, TutorListPendingAssignmentsRequest, TutorListStudentsRequest, TutorListStudentsResponse, TutorListUpcomingEventsRequest, TutorListUpcomingGroupEventsRequest, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPublishListingRequest, TutorPublishListingResponse, TutorPushAssignmentRequest, TutorRelationship, TutorRevokeInviteRequest, TutorStudentSnapshot, TutorUpdateListingRequest } from "./tutor_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -91,6 +91,21 @@ export const TutorService = {
     listStudents: {
       name: "ListStudents",
       I: TutorListStudentsRequest,
+      O: TutorListStudentsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListMyTutors — Wave 9.4 multi-tutor support. Student-side endpoint
+     * that returns all active tutors of the caller. Schema already allows
+     * a student to have multiple tutors concurrently (e.g. English-tutor +
+     * Math-tutor); this RPC is what the student-facing UI calls to surface
+     * them. Reuses the TutorListStudents response shape (relationships).
+     *
+     * @generated from rpc druz9.v1.TutorService.ListMyTutors
+     */
+    listMyTutors: {
+      name: "ListMyTutors",
+      I: TutorListMyTutorsRequest,
       O: TutorListStudentsResponse,
       kind: MethodKind.Unary,
     },
@@ -204,6 +219,228 @@ export const TutorService = {
       name: "BroadcastAssignment",
       I: TutorBroadcastAssignmentRequest,
       O: TutorBroadcastAssignmentResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── Wave 5.2b — scheduled events ─────────────────────────────────
+     * CreateEvent — tutor schedules a calendar event for one student.
+     * V1 supports the 1-on-1 (student_id) flow; circle (group) events
+     * are wired into the schema (migration 00016) for V2.
+     *
+     * @generated from rpc druz9.v1.TutorService.CreateEvent
+     */
+    createEvent: {
+      name: "CreateEvent",
+      I: TutorCreateEventRequest,
+      O: TutorEvent,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * CancelEvent — tutor cancels a scheduled event with a reason.
+     * Already-terminal events return FailedPrecondition.
+     *
+     * @generated from rpc druz9.v1.TutorService.CancelEvent
+     */
+    cancelEvent: {
+      name: "CancelEvent",
+      I: TutorCancelEventRequest,
+      O: TutorCancelEventResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * CompleteEvent — tutor stamps status=completed with a session note.
+     * Already-terminal events return FailedPrecondition. Session note is
+     * required (mirrors SQL CHECK).
+     *
+     * @generated from rpc druz9.v1.TutorService.CompleteEvent
+     */
+    completeEvent: {
+      name: "CompleteEvent",
+      I: TutorCompleteEventRequest,
+      O: TutorCompleteEventResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListEventsForTutor — tutor's calendar list, all statuses included.
+     *
+     * @generated from rpc druz9.v1.TutorService.ListEventsForTutor
+     */
+    listEventsForTutor: {
+      name: "ListEventsForTutor",
+      I: TutorListEventsRequest,
+      O: TutorListEventsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListUpcomingEventsForStudent — student-side feed: scheduled events
+     * whose end time hasn't passed yet, earliest-first.
+     *
+     * @generated from rpc druz9.v1.TutorService.ListUpcomingEventsForStudent
+     */
+    listUpcomingEventsForStudent: {
+      name: "ListUpcomingEventsForStudent",
+      I: TutorListUpcomingEventsRequest,
+      O: TutorListEventsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetTutorActivity — Wave 9.5 dashboard analytics. Active student
+     * count + event counters + minutes taught + cancellation rate over
+     * the trailing window (default 30 days).
+     *
+     * @generated from rpc druz9.v1.TutorService.GetTutorActivity
+     */
+    getTutorActivity: {
+      name: "GetTutorActivity",
+      I: TutorGetActivityRequest,
+      O: TutorActivityResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── Wave 5.2 group events on circles ──────────────────────────────
+     * CreateGroupEvent — tutor schedules a calendar event bound to a
+     * circle (group class). Tutor must own / admin the circle.
+     *
+     * @generated from rpc druz9.v1.TutorService.CreateGroupEvent
+     */
+    createGroupEvent: {
+      name: "CreateGroupEvent",
+      I: TutorCreateGroupEventRequest,
+      O: TutorEvent,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * JoinEvent — student RSVPs to a group event. Capacity-respecting;
+     * returns FailedPrecondition (CapacityFull) when at limit.
+     *
+     * @generated from rpc druz9.v1.TutorService.JoinEvent
+     */
+    joinEvent: {
+      name: "JoinEvent",
+      I: TutorJoinEventRequest,
+      O: TutorJoinEventResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * LeaveEvent — student withdraws RSVP. Idempotent.
+     *
+     * @generated from rpc druz9.v1.TutorService.LeaveEvent
+     */
+    leaveEvent: {
+      name: "LeaveEvent",
+      I: TutorLeaveEventRequest,
+      O: TutorLeaveEventResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListUpcomingGroupEvents — student-side feed of group events on
+     * circles they're a member of. Excludes 1-on-1 (those flow through
+     * ListUpcomingEventsForStudent).
+     *
+     * @generated from rpc druz9.v1.TutorService.ListUpcomingGroupEventsForStudent
+     */
+    listUpcomingGroupEventsForStudent: {
+      name: "ListUpcomingGroupEventsForStudent",
+      I: TutorListUpcomingGroupEventsRequest,
+      O: TutorListEventsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetEventRSVPCount — current RSVP tally for a group event. Both
+     * tutor (their own) and student (events they can see) read this.
+     *
+     * @generated from rpc druz9.v1.TutorService.GetEventRSVPCount
+     */
+    getEventRSVPCount: {
+      name: "GetEventRSVPCount",
+      I: TutorGetEventRSVPCountRequest,
+      O: TutorGetEventRSVPCountResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── Wave 9.1 marketplace listings (Boosty-only payment) ──
+     *
+     * @generated from rpc druz9.v1.TutorService.CreateListing
+     */
+    createListing: {
+      name: "CreateListing",
+      I: TutorCreateListingRequest,
+      O: TutorListing,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.UpdateListing
+     */
+    updateListing: {
+      name: "UpdateListing",
+      I: TutorUpdateListingRequest,
+      O: TutorListing,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.PublishListing
+     */
+    publishListing: {
+      name: "PublishListing",
+      I: TutorPublishListingRequest,
+      O: TutorPublishListingResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.ArchiveListing
+     */
+    archiveListing: {
+      name: "ArchiveListing",
+      I: TutorArchiveListingRequest,
+      O: TutorArchiveListingResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.ListMyListings
+     */
+    listMyListings: {
+      name: "ListMyListings",
+      I: TutorListMyListingsRequest,
+      O: TutorListListingsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * BrowseListings — public marketplace. The HTTP gate whitelists this
+     * path so unauthenticated browsers can window-shop tutors.
+     *
+     * @generated from rpc druz9.v1.TutorService.BrowseListings
+     */
+    browseListings: {
+      name: "BrowseListings",
+      I: TutorBrowseListingsRequest,
+      O: TutorListListingsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.GetListingBySlug
+     */
+    getListingBySlug: {
+      name: "GetListingBySlug",
+      I: TutorGetListingBySlugRequest,
+      O: TutorListingDetail,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.AddListingPackage
+     */
+    addListingPackage: {
+      name: "AddListingPackage",
+      I: TutorAddListingPackageRequest,
+      O: TutorListingPackage,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.ArchiveListingPackage
+     */
+    archiveListingPackage: {
+      name: "ArchiveListingPackage",
+      I: TutorArchiveListingPackageRequest,
+      O: TutorArchiveListingPackageResponse,
       kind: MethodKind.Unary,
     },
   }

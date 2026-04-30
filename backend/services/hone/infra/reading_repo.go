@@ -316,6 +316,44 @@ func (p *ReadingRepoPG) ListVocabDue(ctx context.Context, userID uuid.UUID, now 
 	return out, nil
 }
 
+// ListVocabBySourceMaterial — Wave 4.2 reverse cross-link. Returns every
+// vocab entry whose source_material points to materialID, scoped by user.
+// Used by the Hone reader sidebar to surface «words I saved from this
+// material» without forcing the renderer to fetch + filter the whole
+// vocab queue. Indexed lookup by source_material would be preferable for
+// large queues; current schema doesn't have that idx but at typical user
+// scale (a few hundred vocab rows max) sequential scan is fine.
+func (p *ReadingRepoPG) ListVocabBySourceMaterial(ctx context.Context, userID, materialID uuid.UUID, limit int) ([]domain.VocabEntry, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := p.pool.Query(ctx, `
+		SELECT user_id, word, translation, context_md, source_material,
+		       box, next_review_at, reviewed_count, learned_at, created_at
+		FROM hone_vocab_queue
+		WHERE user_id = $1 AND source_material = $2
+		ORDER BY created_at DESC
+		LIMIT $3`,
+		sharedpg.UUID(userID), sharedpg.UUID(materialID), limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("hone.ListVocabBySourceMaterial: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.VocabEntry, 0, 16)
+	for rows.Next() {
+		v, err := scanVocab(rows)
+		if err != nil {
+			return nil, fmt.Errorf("hone.ListVocabBySourceMaterial: scan: %w", err)
+		}
+		out = append(out, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.ListVocabBySourceMaterial: %w", err)
+	}
+	return out, nil
+}
+
 func (p *ReadingRepoPG) UpsertVocab(ctx context.Context, e domain.VocabEntry) (domain.VocabEntry, error) {
 	if strings.TrimSpace(e.Word) == "" {
 		return domain.VocabEntry{}, fmt.Errorf("hone.UpsertVocab: word required")

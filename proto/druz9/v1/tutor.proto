@@ -61,6 +61,53 @@ message TutorListInvitesRequest   { int32  limit = 1; } // 0 → server default 
 message TutorListInvitesResponse  { repeated TutorInvite items = 1; }
 message TutorListStudentsRequest  {}
 message TutorListStudentsResponse { repeated TutorRelationship items = 1; }
+message TutorListMyTutorsRequest  {}
+
+// ─── Tutor activity (Wave 9.5) ──────────────────────────────────────
+
+message TutorGetActivityRequest {
+  int32 window_days = 1; // 0 → server default (30)
+}
+
+message TutorActivityResponse {
+  int32  window_days           = 1;
+  int32  active_student_count  = 2;
+  int32  events_completed      = 3;
+  int32  events_cancelled      = 4;
+  int32  events_scheduled      = 5;
+  int32  minutes_taught        = 6;
+  // 0..1; 0 when no events in window.
+  double cancellation_rate     = 7;
+}
+
+// ─── Group events (Wave 5.2) ───────────────────────────────────────
+
+message TutorCreateGroupEventRequest {
+  string circle_id    = 1;
+  string title        = 2;
+  string body_md      = 3;
+  google.protobuf.Timestamp scheduled_at = 4;
+  int32  duration_min = 5;
+  string meet_url     = 6;
+  int32  capacity     = 7; // 1..200
+}
+
+message TutorJoinEventRequest   { string event_id = 1; }
+message TutorJoinEventResponse  {}
+message TutorLeaveEventRequest  { string event_id = 1; }
+message TutorLeaveEventResponse {}
+
+message TutorListUpcomingGroupEventsRequest {
+  int32 limit = 1; // 0 → server default (25)
+}
+
+message TutorGetEventRSVPCountRequest {
+  string event_id = 1;
+}
+
+message TutorGetEventRSVPCountResponse {
+  int32 count = 1;
+}
 message TutorEndRelationshipRequest { string student_id = 1; }
 message TutorEndRelationshipResponse {}
 
@@ -86,6 +133,16 @@ message TutorStudentSnapshot {
   int32  english_mocks_last_score  = 8; // 0..100
   repeated TutorWeakSpot weak_spots = 9;
   int32  notes_count = 10;
+
+  // English-track activity from Hone (Wave 4 + 6.1). Counts in `_window`
+  // honour `window_days`; library/vocab numbers are point-in-time.
+  int32 reading_sessions_count    = 11;
+  int32 reading_minutes_window    = 12;
+  int32 reading_materials_total   = 13;
+  int32 writing_grades_count      = 14;
+  int32 listening_materials_total = 15;
+  int32 vocab_queue_total         = 16; // active rows (learned_at IS NULL)
+  int32 vocab_due_today           = 17; // active rows with next_review_at <= now
 }
 
 message TutorGetStudentSnapshotRequest {
@@ -171,6 +228,73 @@ message TutorBroadcastAssignmentResponse {
   repeated TutorBroadcastFailure failed = 2;
 }
 
+// ─── Events (Wave 5.2b) ─────────────────────────────────────────────
+
+// TutorEvent mirrors a row in tutor_events. Exactly one of (student_id,
+// circle_id) is set — V1 always uses student_id; V2 group classes use
+// circle_id with capacity > 0.
+message TutorEvent {
+  string id        = 1;
+  string tutor_id  = 2;
+  // For 1-on-1 events. Empty when this is a circle event (V2).
+  string student_id = 3;
+  // For group events bound to a circle. Empty in V1.
+  string circle_id  = 4;
+  string title      = 5;
+  string body_md    = 6;
+  google.protobuf.Timestamp scheduled_at = 7;
+  int32  duration_min = 8;
+  string meet_url     = 9;
+  // Optional. Only set for circle (group) events. Zero = unlimited /
+  // not applicable.
+  int32  capacity     = 10;
+  // 'scheduled' | 'cancelled' | 'completed'. Wire it as a free string
+  // so older clients don't break when we add 'rescheduled' etc.
+  string status              = 11;
+  string cancellation_reason = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+  // Wave 5.2d — tutor's post-session write-up. Non-empty iff
+  // status=='completed'. Visible to both tutor + student.
+  string session_note = 15;
+}
+
+message TutorCreateEventRequest {
+  string student_id = 1; // V1: required
+  string title      = 2;
+  string body_md    = 3;
+  // Future-only. Past timestamps (>5 min ago) rejected by the use case.
+  google.protobuf.Timestamp scheduled_at = 4;
+  int32  duration_min = 5;
+  string meet_url     = 6;
+}
+
+message TutorCancelEventRequest {
+  string event_id = 1;
+  string reason   = 2;
+}
+
+message TutorCancelEventResponse {}
+
+message TutorCompleteEventRequest {
+  string event_id     = 1;
+  string session_note = 2;
+}
+
+message TutorCompleteEventResponse {}
+
+message TutorListEventsRequest {
+  int32 limit = 1; // 0 → server default (50)
+}
+
+message TutorListUpcomingEventsRequest {
+  int32 limit = 1; // 0 → server default (25)
+}
+
+message TutorListEventsResponse {
+  repeated TutorEvent items = 1;
+}
+
 // TutorPeekInviteResponse mirrors domain.PeekInviteResult — the invite
 // itself plus the derived status, so the landing page renders the
 // right CTA without recomputing the timestamps.
@@ -224,6 +348,15 @@ service TutorService {
   // ListStudents — tutor's active students.
   rpc ListStudents(TutorListStudentsRequest) returns (TutorListStudentsResponse) {
     option (google.api.http) = {get: "/api/v1/tutor/students"};
+  }
+
+  // ListMyTutors — Wave 9.4 multi-tutor support. Student-side endpoint
+  // that returns all active tutors of the caller. Schema already allows
+  // a student to have multiple tutors concurrently (e.g. English-tutor +
+  // Math-tutor); this RPC is what the student-facing UI calls to surface
+  // them. Reuses the TutorListStudents response shape (relationships).
+  rpc ListMyTutors(TutorListMyTutorsRequest) returns (TutorListStudentsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/my-tutors"};
   }
 
   // EndRelationship — tutor soft-ends a relationship.
@@ -298,4 +431,212 @@ service TutorService {
       body: "*"
     };
   }
+
+  // ── Wave 5.2b — scheduled events ─────────────────────────────────
+  // CreateEvent — tutor schedules a calendar event for one student.
+  // V1 supports the 1-on-1 (student_id) flow; circle (group) events
+  // are wired into the schema (migration 00016) for V2.
+  rpc CreateEvent(TutorCreateEventRequest) returns (TutorEvent) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/events"
+      body: "*"
+    };
+  }
+
+  // CancelEvent — tutor cancels a scheduled event with a reason.
+  // Already-terminal events return FailedPrecondition.
+  rpc CancelEvent(TutorCancelEventRequest) returns (TutorCancelEventResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/events/{event_id}/cancel"
+      body: "*"
+    };
+  }
+
+  // CompleteEvent — tutor stamps status=completed with a session note.
+  // Already-terminal events return FailedPrecondition. Session note is
+  // required (mirrors SQL CHECK).
+  rpc CompleteEvent(TutorCompleteEventRequest) returns (TutorCompleteEventResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/events/{event_id}/complete"
+      body: "*"
+    };
+  }
+
+  // ListEventsForTutor — tutor's calendar list, all statuses included.
+  rpc ListEventsForTutor(TutorListEventsRequest) returns (TutorListEventsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/events"};
+  }
+
+  // ListUpcomingEventsForStudent — student-side feed: scheduled events
+  // whose end time hasn't passed yet, earliest-first.
+  rpc ListUpcomingEventsForStudent(TutorListUpcomingEventsRequest) returns (TutorListEventsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/events/upcoming"};
+  }
+
+  // GetTutorActivity — Wave 9.5 dashboard analytics. Active student
+  // count + event counters + minutes taught + cancellation rate over
+  // the trailing window (default 30 days).
+  rpc GetTutorActivity(TutorGetActivityRequest) returns (TutorActivityResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/activity"};
+  }
+
+  // ── Wave 5.2 group events on circles ──────────────────────────────
+  // CreateGroupEvent — tutor schedules a calendar event bound to a
+  // circle (group class). Tutor must own / admin the circle.
+  rpc CreateGroupEvent(TutorCreateGroupEventRequest) returns (TutorEvent) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/events/group"
+      body: "*"
+    };
+  }
+  // JoinEvent — student RSVPs to a group event. Capacity-respecting;
+  // returns FailedPrecondition (CapacityFull) when at limit.
+  rpc JoinEvent(TutorJoinEventRequest) returns (TutorJoinEventResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/events/{event_id}/join"
+      body: "*"
+    };
+  }
+  // LeaveEvent — student withdraws RSVP. Idempotent.
+  rpc LeaveEvent(TutorLeaveEventRequest) returns (TutorLeaveEventResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/events/{event_id}/leave"
+      body: "*"
+    };
+  }
+  // ListUpcomingGroupEvents — student-side feed of group events on
+  // circles they're a member of. Excludes 1-on-1 (those flow through
+  // ListUpcomingEventsForStudent).
+  rpc ListUpcomingGroupEventsForStudent(TutorListUpcomingGroupEventsRequest) returns (TutorListEventsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/events/upcoming/group"};
+  }
+  // GetEventRSVPCount — current RSVP tally for a group event. Both
+  // tutor (their own) and student (events they can see) read this.
+  rpc GetEventRSVPCount(TutorGetEventRSVPCountRequest) returns (TutorGetEventRSVPCountResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/events/{event_id}/rsvp-count"};
+  }
+
+  // ── Wave 9.1 marketplace listings (Boosty-only payment) ──
+  rpc CreateListing(TutorCreateListingRequest) returns (TutorListing) {
+    option (google.api.http) = {post: "/api/v1/tutor/listings" body: "*"};
+  }
+  rpc UpdateListing(TutorUpdateListingRequest) returns (TutorListing) {
+    option (google.api.http) = {patch: "/api/v1/tutor/listings/{listing_id}" body: "*"};
+  }
+  rpc PublishListing(TutorPublishListingRequest) returns (TutorPublishListingResponse) {
+    option (google.api.http) = {post: "/api/v1/tutor/listings/{listing_id}/publish"};
+  }
+  rpc ArchiveListing(TutorArchiveListingRequest) returns (TutorArchiveListingResponse) {
+    option (google.api.http) = {post: "/api/v1/tutor/listings/{listing_id}/archive"};
+  }
+  rpc ListMyListings(TutorListMyListingsRequest) returns (TutorListListingsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/listings"};
+  }
+  // BrowseListings — public marketplace. The HTTP gate whitelists this
+  // path so unauthenticated browsers can window-shop tutors.
+  rpc BrowseListings(TutorBrowseListingsRequest) returns (TutorListListingsResponse) {
+    option (google.api.http) = {get: "/api/v1/marketplace/listings"};
+  }
+  rpc GetListingBySlug(TutorGetListingBySlugRequest) returns (TutorListingDetail) {
+    option (google.api.http) = {get: "/api/v1/marketplace/listings/{slug}"};
+  }
+  rpc AddListingPackage(TutorAddListingPackageRequest) returns (TutorListingPackage) {
+    option (google.api.http) = {post: "/api/v1/tutor/listings/{listing_id}/packages" body: "*"};
+  }
+  rpc ArchiveListingPackage(TutorArchiveListingPackageRequest) returns (TutorArchiveListingPackageResponse) {
+    option (google.api.http) = {post: "/api/v1/tutor/packages/{package_id}/archive"};
+  }
 }
+
+// ── Wave 9.1 marketplace messages ──
+message TutorListing {
+  string id = 1;
+  string tutor_id = 2;
+  string slug = 3;
+  string title = 4;
+  string summary = 5;
+  string body_md = 6;
+  string track_kind = 7;
+  repeated string languages = 8;
+  int64 hourly_rate_minor = 9;
+  string currency = 10;
+  string boosty_url = 11;
+  string published_at = 12; // RFC3339, empty when draft
+  string archived_at = 13;
+  string created_at = 14;
+  string updated_at = 15;
+}
+
+message TutorListingPackage {
+  string id = 1;
+  string listing_id = 2;
+  string kind = 3;
+  int32 hours = 4;
+  int64 price_minor = 5;
+  string description = 6;
+  string archived_at = 7;
+  string created_at = 8;
+}
+
+message TutorListingDetail {
+  TutorListing listing = 1;
+  repeated TutorListingPackage packages = 2;
+  // Tutor display name resolved from users table — public surface
+  // shouldn't leak UUIDs.
+  string tutor_display = 3;
+}
+
+message TutorCreateListingRequest {
+  string slug = 1;
+  string title = 2;
+  string summary = 3;
+  string body_md = 4;
+  string track_kind = 5;
+  repeated string languages = 6;
+  int64 hourly_rate_minor = 7;
+  string currency = 8;
+  string boosty_url = 9;
+}
+
+message TutorUpdateListingRequest {
+  string listing_id = 1;
+  string slug = 2;
+  string title = 3;
+  string summary = 4;
+  string body_md = 5;
+  string track_kind = 6;
+  repeated string languages = 7;
+  int64 hourly_rate_minor = 8;
+  string currency = 9;
+  string boosty_url = 10;
+}
+
+message TutorPublishListingRequest  { string listing_id = 1; }
+message TutorPublishListingResponse {}
+message TutorArchiveListingRequest  { string listing_id = 1; }
+message TutorArchiveListingResponse {}
+
+message TutorListMyListingsRequest {}
+message TutorListListingsResponse {
+  repeated TutorListing items = 1;
+}
+
+message TutorBrowseListingsRequest {
+  repeated string track_kinds = 1;
+  int64 max_rate_minor = 2;
+  repeated string languages = 3;
+  int32 limit = 4;
+}
+
+message TutorGetListingBySlugRequest { string slug = 1; }
+
+message TutorAddListingPackageRequest {
+  string listing_id = 1;
+  string kind = 2;
+  int32 hours = 3;
+  int64 price_minor = 4;
+  string description = 5;
+}
+
+message TutorArchiveListingPackageRequest  { string package_id = 1; }
+message TutorArchiveListingPackageResponse {}

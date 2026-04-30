@@ -65,3 +65,130 @@ export async function listPendingAssignments(limit = 25): Promise<TutorAssignmen
 export async function completeAssignment(assignmentId: string): Promise<void> {
   await client.completeAssignment({ assignmentId });
 }
+
+// ── Events (Wave 5.2b) ────────────────────────────────────────────────
+
+export type TutorEventStatus = 'scheduled' | 'cancelled' | 'completed' | string;
+
+export interface TutorEvent {
+  id: string;
+  tutorId: string;
+  studentId: string; // empty for circle (group) events — V1 always set
+  circleId: string;  // V2; always empty in V1
+  title: string;
+  bodyMd: string;
+  scheduledAt: Date | null;
+  durationMin: number;
+  meetUrl: string;
+  capacity: number;
+  status: TutorEventStatus;
+  cancellationReason: string;
+  /** Wave 5.2d — non-empty iff status='completed'. Tutor's session
+   *  write-up; visible to the student so they can review what was
+   *  covered. ListUpcomingEvents excludes completed events server-side,
+   *  so this field is empty on the Calendar feed — kept on the type
+   *  for forward-compat with a future «past sessions» endpoint. */
+  sessionNote: string;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+type ProtoEvent = {
+  id: string;
+  tutorId: string;
+  studentId: string;
+  circleId: string;
+  title: string;
+  bodyMd: string;
+  scheduledAt?: { seconds: bigint; nanos: number };
+  durationMin: number;
+  meetUrl: string;
+  capacity: number;
+  status: string;
+  cancellationReason: string;
+  sessionNote: string;
+  createdAt?: { seconds: bigint; nanos: number };
+  updatedAt?: { seconds: bigint; nanos: number };
+};
+
+function unwrapEvent(e: ProtoEvent): TutorEvent {
+  return {
+    id: e.id,
+    tutorId: e.tutorId,
+    studentId: e.studentId,
+    circleId: e.circleId,
+    title: e.title,
+    bodyMd: e.bodyMd,
+    scheduledAt: protoTs(e.scheduledAt),
+    durationMin: e.durationMin,
+    meetUrl: e.meetUrl,
+    capacity: e.capacity,
+    status: e.status,
+    cancellationReason: e.cancellationReason,
+    sessionNote: e.sessionNote,
+    createdAt: protoTs(e.createdAt),
+    updatedAt: protoTs(e.updatedAt),
+  };
+}
+
+// ── Multi-tutor (Wave 9.4) ────────────────────────────────────────────
+
+export interface MyTutor {
+  relationshipId: string;
+  tutorId: string;
+  startedAt: Date | null;
+  note: string;
+}
+
+type ProtoRelationship = {
+  id: string;
+  tutorId: string;
+  studentId: string;
+  inviteId: string;
+  startedAt?: { seconds: bigint; nanos: number };
+  endedAt?: { seconds: bigint; nanos: number };
+  note: string;
+};
+
+/** Student-side: list active tutors (multi-tutor support). */
+export async function listMyTutors(): Promise<MyTutor[]> {
+  const resp = await client.listMyTutors({});
+  return resp.items.map((r) => {
+    const proto = r as unknown as ProtoRelationship;
+    return {
+      relationshipId: proto.id,
+      tutorId: proto.tutorId,
+      startedAt: protoTs(proto.startedAt),
+      note: proto.note,
+    };
+  });
+}
+
+/** Student-side: scheduled events whose end time hasn't passed yet. */
+export async function listUpcomingEvents(limit = 25): Promise<TutorEvent[]> {
+  const resp = await client.listUpcomingEventsForStudent({ limit });
+  return resp.items.map((ev) => unwrapEvent(ev as unknown as ProtoEvent));
+}
+
+// ── Group events (Wave 5.2) ──────────────────────────────────────────
+
+/** Student-side group event feed: events on circles the student is a
+ *  member of. They render with JOIN buttons; once joined, the row also
+ *  appears in listUpcomingEvents through the rsvp UNION. */
+export async function listUpcomingGroupEvents(): Promise<TutorEvent[]> {
+  const resp = await client.listUpcomingGroupEventsForStudent({});
+  return resp.items.map((ev) => unwrapEvent(ev as unknown as ProtoEvent));
+}
+
+export async function joinEvent(eventId: string): Promise<void> {
+  await client.joinEvent({ eventId });
+}
+
+export async function leaveEvent(eventId: string): Promise<void> {
+  await client.leaveEvent({ eventId });
+}
+
+export async function getEventRSVPCount(eventId: string): Promise<number> {
+  const resp = await client.getEventRSVPCount({ eventId });
+  return resp.count;
+}

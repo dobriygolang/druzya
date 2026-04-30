@@ -229,6 +229,9 @@ func (f fakeStudentsRepo) ListTutorStudents(ctx context.Context, t uuid.UUID) ([
 	}
 	return f.listStudents(ctx, t)
 }
+func (f fakeStudentsRepo) ListStudentTutors(_ context.Context, _ uuid.UUID) ([]domain.Relationship, error) {
+	return nil, errors.New("not implemented")
+}
 func (f fakeStudentsRepo) EndRelationship(_ context.Context, _, _ uuid.UUID, _ time.Time) error {
 	return errors.New("not implemented")
 }

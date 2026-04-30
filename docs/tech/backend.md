@@ -68,7 +68,7 @@ tutor            vacancies       whiteboard_rooms
 | `review` | Code review поток |
 | `tg_coach` | Telegram-бот команды (`/streak` etc) |
 | `tracks` | Curated learning programmes (catalogue + per-user enrolment) |
-| `tutor` | Tier 1 tutor invite/accept/list — distribution channel (Wave 2 of docs/feature/tutor.md) |
+| `tutor` | Полный tutor-стек: invites/accept/list (Wave 2), snapshot + AI brief (2.4b/2.5), assignments + broadcast (5.1/5.2a), 1-on-1 events с session_note и reminders (5.2b/c/d). `*Postgres` сейчас satisfies 4 интерфейса: `Repo` + `SnapshotRepo` + `AssignmentRepo` + `EventRepo` |
 | `clubs` | Phase 3 MVP — структурированная витрина TG-mirror в circles. Catalogue + sessions + RSVP. **REST chi-direct** (не proto — read-mostly + одна mutation, см `cmd/monolith/services/clubs/clubs.go`) |
 | `admin` | Admin-панель |
 
