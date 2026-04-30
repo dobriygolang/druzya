@@ -144,6 +144,11 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/profile/me/atlas/allocate", transcoder.ServeHTTP)
 			r.Get("/profile/me/ai-vacancies-model", transcoder.ServeHTTP)
 			r.Put("/profile/me/ai-vacancies-model", transcoder.ServeHTTP)
+			// Multi-track persona (Wave 9.4) — GET читает текущий набор,
+			// PUT целиком заменяет (idempotent set-based update). Связано
+			// с onboarding Step0 + Welcome track-cards.
+			r.Get("/profile/me/tracks", transcoder.ServeHTTP)
+			r.Put("/profile/me/tracks", transcoder.ServeHTTP)
 			r.Get("/profile/me/report", transcoder.ServeHTTP)
 			r.Put("/profile/me/settings", transcoder.ServeHTTP)
 			r.Post("/profile/me/become-interviewer", transcoder.ServeHTTP)
