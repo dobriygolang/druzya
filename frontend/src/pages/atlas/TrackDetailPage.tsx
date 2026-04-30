@@ -107,7 +107,7 @@ export default function TrackDetailPage() {
   const onPractice = async () => {
     if (!nextStep) return
     setPracticeError(null)
-    const skillKeys = nextStep.skill_keys.length > 0 ? nextStep.skill_keys : []
+    const skillKeys = (nextStep.skill_keys ?? []).length > 0 ? (nextStep.skill_keys ?? []) : []
     const fallbackUrl =
       skillKeys.length > 0
         ? `/arena/kata?skill=${encodeURIComponent(skillKeys.join(','))}`
@@ -221,10 +221,10 @@ function Hero({
           <span>{track.estimated_weeks} нед</span>
           <span>·</span>
           <span>{difficultyLabel(track.difficulty)}</span>
-          {track.company_focus.length > 0 && (
+          {(track.company_focus ?? []).length > 0 && (
             <>
               <span>·</span>
-              <span>{track.company_focus.join(' / ')}</span>
+              <span>{(track.company_focus ?? []).join(' / ')}</span>
             </>
           )}
         </div>
@@ -331,9 +331,9 @@ function StepCard({
             {step.description_md}
           </p>
         )}
-        {step.skill_keys.length > 0 && (
+        {(step.skill_keys ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {step.skill_keys.map((k) => (
+            {(step.skill_keys ?? []).map((k) => (
               <span
                 key={k}
                 className="rounded-full border border-border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-text-muted"
@@ -545,7 +545,7 @@ function PreReads({ steps }: { steps: TrackStep[] }) {
     const seen = new Set<string>()
     const out: { slug: string; stepIdx: number }[] = []
     for (const step of steps) {
-      for (const slug of step.recommended_reading) {
+      for (const slug of step.recommended_reading ?? []) {
         if (!slug || seen.has(slug)) continue
         seen.add(slug)
         out.push({ slug, stepIdx: step.step_index })

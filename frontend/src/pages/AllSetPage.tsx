@@ -3,7 +3,24 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, Trophy, Zap, Unlock, ArrowRight } from 'lucide-react'
 import { Button } from '../components/Button'
-import { OnboardingTopBar } from './OnboardingPage'
+
+// Inline minimal top-bar — `OnboardingPage` was deleted along with the
+// deprecated 3-step flow. AllSet is the celebratory exit screen; we only
+// need the logo + a thin border. Step indicator stripped because all
+// steps are «done» at this point — visual signal redundant with the
+// trophy artwork below.
+function AllSetTopBar() {
+  return (
+    <header className="flex h-[72px] items-center border-b border-border bg-bg px-4 sm:px-8 lg:px-20">
+      <Link to="/welcome" className="flex items-center gap-2.5">
+        <span className="grid h-8 w-8 place-items-center rounded-md border border-border-strong bg-surface-2 font-display text-lg font-extrabold text-text-primary">
+          9
+        </span>
+        <span className="font-display text-lg font-bold text-text-primary">druz9</span>
+      </Link>
+    </header>
+  )
+}
 
 function Confetti() {
   const pieces = [
@@ -65,7 +82,7 @@ export default function AllSetPage() {
     <div className="min-h-screen bg-bg text-text-primary">
       {/* Onboarding теперь 3-шаговый (бывший step 1 — OAuth — переехал в /login).
           allDone={true} включает галочки для всех шагов. */}
-      <OnboardingTopBar current={3} allDone showSkip={false} />
+      <AllSetTopBar />
       <main
         className="flex flex-col items-center justify-center px-4 py-8 sm:px-8 lg:px-16 lg:py-14"
         style={{ gap: 28 }}

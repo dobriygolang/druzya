@@ -309,8 +309,8 @@ function Tracks() {
     {
       id: 'dev',
       title: 'Разработчик',
-      sub: 'Алгоритмы · SQL · Go · System Design · Behavioral. Стартовая точка для middle.',
-      tags: ['Mock-сессии', 'Skill Atlas', 'ELO арена'],
+      sub: 'Алгоритмы · SQL · Go · System Design · Behavioral. Стартовая точка для middle. С отвилкой ML Platform (K8s deep, Airflow, model serving, at-least-once).',
+      tags: ['Mock-сессии', 'Skill Atlas', 'ELO арена', 'ML Platform cluster'],
       status: 'live',
     },
     {

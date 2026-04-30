@@ -56,7 +56,6 @@ const LegalTermsPage = lazy(() => import('./pages/LegalTermsPage'))
 const LegalPrivacyPage = lazy(() => import('./pages/LegalPrivacyPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AuthCallbackYandexPage = lazy(() => import('./pages/AuthCallbackYandexPage'))
-const OnboardingPage = lazy(() => import('./pages/OnboardingPage'))
 const AllSetPage = lazy(() => import('./pages/AllSetPage'))
 const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage'))
 // Wave 2.6 — tutor dashboard. Both routes are tutor-authenticated; the
@@ -197,7 +196,10 @@ export default function App() {
         <Route path="/legal/privacy" element={<LegalPrivacyPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback/yandex" element={<AuthCallbackYandexPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
+        {/* Bare /onboarding redirects to the Wave-10 entry step. The old
+            OnboardingPage (3-step ?step=N flow) was deprecated in favour
+            of the per-step routes below — a bare hit was rendering empty. */}
+        <Route path="/onboarding" element={<Navigate to="/onboarding/tracks" replace />} />
         <Route path="/onboarding/done" element={<AllSetPage />} />
         {/* Wave-10 onboarding (design-review v3) — 4 step pages.
             Phase-2 ADR-001: Sanctum tour overlay removed alongside

@@ -44,12 +44,10 @@ import { BoardsTabsChrome } from './components/BoardsTabsChrome';
 import { EnglishTabsChrome, type EnglishTab } from './components/EnglishTabsChrome';
 import { TutorTabsChrome, type TutorTab } from './components/TutorTabsChrome';
 import { EventsPage } from './pages/Events';
-import { CoachPage } from './pages/Coach';
 import { ReadingPage } from './pages/Reading';
 import { WritingPage } from './pages/Writing';
 import { TutorAssignmentsPage } from './pages/TutorAssignments';
 import { ListeningPage } from './pages/Listening';
-import { CodeReviewPage } from './pages/CodeReview';
 import { CalendarPage } from './pages/Calendar';
 import { UpcomingEventChip } from './components/UpcomingEventChip';
 import { SettingsPage, readStoredTheme, readPomodoroSeconds } from './pages/Settings';
@@ -616,7 +614,6 @@ export default function App() {
       else if (code === 'KeyW') toggleTo('writing');
       else if (code === 'KeyA') toggleTo('assignments');
       else if (code === 'KeyL') toggleTo('listening');
-      else if (code === 'KeyG') toggleTo('code_review');
       else if (code === 'KeyM') toggleTo('calendar');
       else if (code === 'Comma') toggleTo('settings');
     };
@@ -883,12 +880,10 @@ export default function App() {
         />
       )}
 
-      {page === 'coach' && <CoachPage />}
       {page === 'reading' && <ReadingPage />}
       {page === 'writing' && <WritingPage />}
       {page === 'assignments' && <TutorAssignmentsPage />}
       {page === 'listening' && <ListeningPage />}
-      {page === 'code_review' && <CodeReviewPage />}
       {page === 'calendar' && <CalendarPage />}
 
       <Dock

@@ -19,12 +19,10 @@ export type PageId =
   | 'editor'
   | 'shared_boards' // единый boards-флоу (private/public — кому отдан URL)
   | 'events'
-  | 'coach' // Phase 5 — лента past briefs
   | 'reading' // Wave 4 — English Reading-модуль (library + reader + SRS)
   | 'writing' // Wave 4.4 — English Writing-as-Focus draft + AI feedback
   | 'assignments' // Wave 5.1d — pending tutor-pushed assignments
   | 'listening' // Wave 6.1 — English Listening with transcript + click-on-word
-  | 'code_review' // Wave 3.6 — Code-review-coaching: paste diff + review, AI grades
   | 'calendar' // Wave 5.2b — upcoming tutor-scheduled events
   | 'settings';
 // PaletteAction — то, что палетка может попросить App'а сделать.
@@ -44,6 +42,8 @@ interface PaletteItem {
   icon: IconName;
   shortcut: string[]; // массив букв; рендерим каждую отдельным «чипом»
   run: () => void;
+  /** Group label for visual section header. Items with same `section` cluster together. */
+  section?: string;
 }
 
 export function Palette({ onClose, onOpen }: PaletteProps) {
@@ -51,47 +51,49 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
   const [q, setQ] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Sections group related entries with a sub-header. Order = render order.
+  // Дополнения здесь = одно место правды (хоткеи R/W/L и A/M по-прежнему
+  // работают напрямую через App.tsx letter-switch — палитра только хост).
   const items: PaletteItem[] = useMemo(
     () => [
-      { id: 'today', label: 'Today', icon: 'sun', shortcut: ['T'], run: () => onOpen('today') },
-      { id: 'notes', label: 'Notes', icon: 'note', shortcut: ['N'], run: () => onOpen('notes') },
-      // Boards = единый collaboration-surface (Excalidraw + Yjs + WS).
-      // Каждая комната private до момента шаринга URL. Code rooms — тот
-      // же концепт для кода. Hotkeys: D/B → Boards, E → Code rooms.
+      { id: 'today', label: 'Today', icon: 'sun', shortcut: ['T'], section: 'Daily', run: () => onOpen('today') },
+
+      { id: 'notes', label: 'Notes', icon: 'note', shortcut: ['N'], section: 'Capture', run: () => onOpen('notes') },
       {
         id: 'shared_boards',
         label: 'Boards · Code rooms',
         icon: 'grid',
         shortcut: ['D', 'B', 'E'],
+        section: 'Capture',
         run: () => onOpen('shared_boards'),
       },
-      { id: 'events', label: 'Events', icon: 'calendar', shortcut: ['V'], run: () => onOpen('events') },
-      // Phase 5 — Coach feed: лента past briefs за месяц.
-      { id: 'coach', label: 'Coach feed', icon: 'sparkle', shortcut: ['C'], run: () => onOpen('coach') },
-      // English-loop hub (Reading / Writing / Listening). Палитра-entry
-      // схлопывает три страницы в одну логическую группу — visual hub
-      // через `EnglishTabsChrome` внутри. Хоткеи R/W/L работают
-      // напрямую (см. App.tsx letter-shortcut switch).
-      {
-        id: 'reading',
-        label: 'English · Read · Write · Listen',
-        icon: 'note',
-        shortcut: ['R', 'W', 'L'],
-        run: () => onOpen('reading'),
-      },
-      // Tutor hub (Tasks / Calendar). Same composition pattern as English.
+
+      { id: 'events', label: 'Events', icon: 'calendar', shortcut: ['V'], section: 'Sessions', run: () => onOpen('events') },
       {
         id: 'assignments',
         label: 'Tutor · Tasks · Calendar',
         icon: 'sparkle',
         shortcut: ['A', 'M'],
+        section: 'Sessions',
         run: () => onOpen('assignments'),
       },
-      // Wave 3.6 — Code-review-coaching: paste diff + review, AI grades.
-      { id: 'code_review', label: 'Code review', icon: 'note', shortcut: ['G'], run: () => onOpen('code_review') },
-      { id: 'podcasts', label: 'Podcasts', icon: 'headphones', shortcut: ['P'], run: () => onOpen('podcasts') },
-      { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'], run: () => onOpen('stats') },
-      { id: 'settings', label: 'Settings', icon: 'settings', shortcut: [','], run: () => onOpen('settings') },
+
+      // English-loop hub (Reading / Writing / Listening). Палитра-entry
+      // схлопывает три страницы в одну логическую группу — visual hub
+      // через `EnglishTabsChrome` внутри.
+      {
+        id: 'reading',
+        label: 'English · Read · Write · Listen',
+        icon: 'note',
+        shortcut: ['R', 'W', 'L'],
+        section: 'Learning',
+        run: () => onOpen('reading'),
+      },
+      { id: 'podcasts', label: 'Podcasts', icon: 'headphones', shortcut: ['P'], section: 'Learning', run: () => onOpen('podcasts') },
+
+      { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'], section: 'Insights', run: () => onOpen('stats') },
+
+      { id: 'settings', label: 'Settings', icon: 'settings', shortcut: [','], section: 'System', run: () => onOpen('settings') },
     ],
     [onOpen],
   );
@@ -194,9 +196,28 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
         <div style={{ padding: '4px 0' }}>
           {filtered.map((it, i) => {
             const active = i === idx;
+            // Render a section header before the first item of each new
+            // group. We hide headers when the user is searching (filter
+            // narrows results — the grouping carries less signal then).
+            const prev = filtered[i - 1];
+            const showHeader = !q.trim() && it.section && it.section !== prev?.section;
             return (
+              <div key={it.id}>
+                {showHeader && (
+                  <div
+                    className="mono"
+                    style={{
+                      padding: '10px 14px 4px',
+                      fontSize: 9,
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
+                      color: 'var(--ink-40)',
+                    }}
+                  >
+                    {it.section}
+                  </div>
+                )}
               <button
-                key={it.id}
                 onMouseEnter={() => setIdx(i)}
                 onClick={() => {
                   it.run();
@@ -262,6 +283,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
                   ))}
                 </span>
               </button>
+              </div>
             );
           })}
           {filtered.length === 0 && (
