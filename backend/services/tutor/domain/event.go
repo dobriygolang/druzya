@@ -208,4 +208,9 @@ type TutorActivity struct {
 	EventsScheduled    int     // status='scheduled' inside window (regardless of past/future)
 	MinutesTaught      int     // SUM(duration_min) over completed events
 	CancellationRate   float64 // cancelled / (completed + cancelled), 0 when no events
+	// Phase 8 — rolling daily counts (window-length series) for sparkline UI.
+	// Day-buckets oldest → newest. Length = WindowDays. Counts == completed
+	// events per day; minutes — SUM(duration) per day.
+	DailyCompleted []int
+	DailyMinutes   []int
 }

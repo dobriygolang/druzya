@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"druz9/notify/domain"
-	sharedDomain "druz9/shared/domain"
 
 	"github.com/google/uuid"
 )
@@ -109,119 +108,6 @@ func NewFeedHandlers(repo domain.UserNotificationRepo, prefs domain.Notification
 		panic("notify.app.NewFeedHandlers: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &FeedHandlers{Repo: repo, Prefs: prefs, Log: log}
-}
-
-// OnArenaMatchCompleted — пишет win/lose в каналах wins/match.
-func (h *FeedHandlers) OnArenaMatchCompleted(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.MatchCompleted)
-	if !ok {
-		return nil
-	}
-	// Победителю.
-	if !h.shouldDeliver(ctx, e.WinnerID, "wins") {
-		// silence/disabled — пропускаем
-	} else {
-		_, err := h.Repo.Insert(ctx, domain.UserNotification{
-			UserID:  e.WinnerID,
-			Channel: "wins",
-			Type:    "win",
-			Title:   "Победа",
-			Body:    fmt.Sprintf("Победа в матче · +%d ELO", elo(e, e.WinnerID)),
-			Payload: map[string]any{
-				"match_id": e.MatchID.String(),
-				"section":  string(e.Section),
-				"elo":      elo(e, e.WinnerID),
-			},
-			Priority: 1,
-		})
-		if err != nil {
-			h.Log.WarnContext(ctx, "notify.feed.OnMatchCompleted: insert win failed", slog.Any("err", err))
-		}
-	}
-	// Проигравшим.
-	for _, l := range e.LoserIDs {
-		if !h.shouldDeliver(ctx, l, "match") {
-			continue
-		}
-		_, err := h.Repo.Insert(ctx, domain.UserNotification{
-			UserID:  l,
-			Channel: "match",
-			Type:    "loss",
-			Title:   "Поражение",
-			Body:    fmt.Sprintf("Матч завершён · %d ELO", elo(e, l)),
-			Payload: map[string]any{
-				"match_id": e.MatchID.String(),
-				"section":  string(e.Section),
-				"elo":      elo(e, l),
-			},
-		})
-		if err != nil {
-			h.Log.WarnContext(ctx, "notify.feed.OnMatchCompleted: insert loss failed", slog.Any("err", err))
-		}
-	}
-	return nil
-}
-
-func elo(e sharedDomain.MatchCompleted, uid uuid.UUID) int {
-	if e.EloDeltas == nil {
-		return 0
-	}
-	return e.EloDeltas[uid]
-}
-
-// OnDailyKataMissed — system channel: streak under attack.
-func (h *FeedHandlers) OnDailyKataMissed(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.DailyKataMissed)
-	if !ok {
-		return nil
-	}
-	if !h.shouldDeliver(ctx, e.UserID, "system") {
-		return nil
-	}
-	body := fmt.Sprintf("Ты пропустил Daily · streak сброшен (-%d дней)", e.StreakLost)
-	if e.FreezeUsed {
-		body = "Streak Freeze активирован автоматически"
-	}
-	_, err := h.Repo.Insert(ctx, domain.UserNotification{
-		UserID:  e.UserID,
-		Channel: "system",
-		Type:    "streak_at_risk",
-		Title:   "Streak под угрозой",
-		Body:    body,
-	})
-	if err != nil {
-		return fmt.Errorf("notify.feed.OnDailyKataMissed: %w", err)
-	}
-	return nil
-}
-
-// OnDailyKataCompleted — wins channel + streak milestones.
-func (h *FeedHandlers) OnDailyKataCompletedFeed(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.DailyKataCompleted)
-	if !ok {
-		return nil
-	}
-	if !h.shouldDeliver(ctx, e.UserID, "wins") {
-		return nil
-	}
-	title := "Daily решён"
-	body := fmt.Sprintf("+%d XP · streak %d", e.XPEarned, e.StreakNew)
-	switch e.StreakNew {
-	case 7, 30, 100:
-		title = fmt.Sprintf("Streak %d дней!", e.StreakNew)
-	}
-	_, err := h.Repo.Insert(ctx, domain.UserNotification{
-		UserID:  e.UserID,
-		Channel: "wins",
-		Type:    "daily_done",
-		Title:   title,
-		Body:    body,
-		Payload: map[string]any{"streak": e.StreakNew, "xp": e.XPEarned},
-	})
-	if err != nil {
-		return fmt.Errorf("notify.feed.OnDailyKataCompleted: %w", err)
-	}
-	return nil
 }
 
 // shouldDeliver — true если канал не выключен и не silenced.

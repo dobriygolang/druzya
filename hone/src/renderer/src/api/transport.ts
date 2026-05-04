@@ -54,11 +54,18 @@ const authInterceptor: Interceptor = (next) => async (req) => {
         apply();
         return await next(req);
       }
-      // Refresh не получился (нет refresh_token / refresh expired / 401 from
-      // refresh endpoint). Только если у нас БЫЛ access-token — иначе мы
-      // и так ещё не залогинены, и clear бессмыслен.
+      // Refresh не получился. Раньше: clear() для force re-login. Но
+      // некоторые backend endpoints возвращают Unauthenticated на role-
+      // mismatch (tutor-only RPC от user-role) — это НЕ auth-expiry,
+      // одно failed RPC сносило всю сессию. Теперь clear только когда
+      // backend explicit'но сказал что refresh is invalid (raw message
+      // contains "refresh" / "session expired"); иначе просто бросаем
+      // error и сессия живёт.
+      const raw = err.rawMessage ?? '';
+      const isAuthExpired =
+        /refresh|session.*expired|token.*expired|invalid.*token/i.test(raw);
       const hadToken = !!useSessionStore.getState().accessToken;
-      if (hadToken) {
+      if (hadToken && isAuthExpired) {
         void useSessionStore.getState().clear();
       }
     }

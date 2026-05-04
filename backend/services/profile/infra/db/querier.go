@@ -16,7 +16,6 @@ type Querier interface {
 	// остаётся в proto-shape но возвращает 0 — TODO выпилить из proto после
 	// следующего gen-cycle.
 	CountWeeklyActivity(ctx context.Context, arg CountWeeklyActivityParams) (CountWeeklyActivityRow, error)
-	EnsureAICredits(ctx context.Context, userID pgtype.UUID) error
 	EnsureNotificationPrefs(ctx context.Context, userID pgtype.UUID) error
 	EnsureProfile(ctx context.Context, userID pgtype.UUID) error
 	EnsureSubscription(ctx context.Context, userID pgtype.UUID) error
@@ -42,7 +41,6 @@ type Querier interface {
 	// (the partial unique index would otherwise fire 23505). Approved/
 	// rejected history rows do not block re-application.
 	SubmitInterviewerApplication(ctx context.Context, arg SubmitInterviewerApplicationParams) (InterviewerApplication, error)
-	UpdateCareerStage(ctx context.Context, arg UpdateCareerStageParams) error
 	// v2: xp/level live in user_xp table now (audit log in xp_events).
 	UpdateProfileXPLevel(ctx context.Context, arg UpdateProfileXPLevelParams) error
 }

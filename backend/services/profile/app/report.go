@@ -72,13 +72,10 @@ type GetReport struct {
 //
 // Aggregates loaded:
 //   - 7-day activity counters (matches won, XP, time)
-//   - Per-section win/loss/XP breakdown (strong / weak sections)
-//   - Last 4 weeks XP comparison (for the "Последние 4 недели" widget)
 //   - Current/best streak (active days)
 //
-// Repo errors на necheckpath-методах (ListMatchAggregatesSince/ListWeeklyXPSince/
-// GetStreaks) НЕ роняют запрос — без этих агрегатов отчёт деградирует к
-// «нет данных», но базовые метрики продолжают работать.
+// Streak repo error НЕ ronит запрос — отчёт деградирует к нулям,
+// но базовые метрики продолжают работать.
 func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (ReportView, error) {
 	end := now.UTC().Truncate(24 * time.Hour)
 	start := end.Add(-7 * 24 * time.Hour)
@@ -102,18 +99,6 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 		}},
 	}
 
-	if aggs, aerr := uc.Repo.ListMatchAggregatesSince(ctx, userID, start); aerr == nil {
-		strong, weak := domain.AggregateBySection(aggs)
-		view.StrongSections = strong
-		view.WeakSections = weak
-		view.ActionsCount = len(aggs)
-	}
-	if xp, xerr := uc.Repo.ListWeeklyXPSince(ctx, userID, end, 4); xerr == nil {
-		view.WeeklyXP = domain.BuildWeeklyComparison(xp)
-		if len(xp) >= 2 {
-			view.PrevXPEarned = xp[1]
-		}
-	}
 	if cur, best, serr := uc.Repo.GetStreaks(ctx, userID); serr == nil {
 		view.StreakDays = cur
 		view.BestStreak = best
@@ -162,25 +147,12 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 // InsightPayload the LLM consumes. weekEnd is the (UTC, midnight) end of the
 // 7-day window — formatted as ISO week string for the cache key.
 func buildInsightPayload(v ReportView, weekEnd time.Time, model string) InsightPayload {
-	winRates := make(map[string]int, len(v.StrongSections)+len(v.WeakSections))
-	for _, s := range v.StrongSections {
-		winRates[s.Section.String()] = s.WinRatePct
-	}
-	for _, s := range v.WeakSections {
-		winRates[s.Section.String()] = s.WinRatePct
-	}
-	weakest := ""
-	if len(v.WeakSections) > 0 {
-		weakest = v.WeakSections[0].Section.String()
-	}
 	year, week := weekEnd.ISOWeek()
 	return InsightPayload{
-		WeekISO:          fmt.Sprintf("%04d-W%02d", year, week),
-		EloDelta:         v.Metrics.RatingChange,
-		WinRateBySection: winRates,
-		HoursStudied:     float64(v.Metrics.TimeMinutes) / 60.0,
-		Streak:           v.StreakDays,
-		WeakestSection:   weakest,
-		Model:            model,
+		WeekISO:      fmt.Sprintf("%04d-W%02d", year, week),
+		EloDelta:     v.Metrics.RatingChange,
+		HoursStudied: float64(v.Metrics.TimeMinutes) / 60.0,
+		Streak:       v.StreakDays,
+		Model:        model,
 	}
 }

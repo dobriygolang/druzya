@@ -135,7 +135,7 @@ export default function Step0Tracks() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+      <div className="stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
         {CARDS.map((c) => {
           const selected = state.picked.has(c.wire)
           const isPrimary = state.primary === c.wire

@@ -56,9 +56,12 @@ func (d *Devices) Register(ctx context.Context, in domain.DeviceRegistration) (d
 	// for backward compatibility but is no longer persisted.
 	out := domain.Device{UserID: in.UserID, Name: in.Name, Platform: in.Platform}
 	if err := tx.QueryRow(ctx,
+		// last_seen_at без DEFAULT в schema → NULL пока user не heartbeat'нет.
+		// COALESCE → созданный device immediately имеет last_seen ≈ created_at,
+		// иначе pgx ругается «cannot scan NULL into *time.Time».
 		`INSERT INTO devices (user_id, name, platform)
 		 VALUES ($1, $2, $3)
-		 RETURNING id, name, platform, last_seen_at, created_at`,
+		 RETURNING id, name, platform, COALESCE(last_seen_at, created_at), created_at`,
 		in.UserID, in.Name, in.Platform,
 	).Scan(&out.ID, &out.Name, &out.Platform, &out.LastSeenAt, &out.CreatedAt); err != nil {
 		return domain.Device{}, fmt.Errorf("sync.Devices.Register: insert: %w", err)
@@ -74,10 +77,10 @@ func (d *Devices) Register(ctx context.Context, in domain.DeviceRegistration) (d
 func (d *Devices) List(ctx context.Context, userID uuid.UUID) ([]domain.Device, error) {
 	// v2: app_version column dropped — wire field stays empty.
 	rows, err := d.pool.Query(ctx,
-		`SELECT id, name, platform, last_seen_at, created_at
+		`SELECT id, name, platform, COALESCE(last_seen_at, created_at), created_at
 		   FROM devices
 		  WHERE user_id=$1 AND revoked_at IS NULL
-		  ORDER BY last_seen_at DESC`,
+		  ORDER BY COALESCE(last_seen_at, created_at) DESC`,
 		userID,
 	)
 	if err != nil {

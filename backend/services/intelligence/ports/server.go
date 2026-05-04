@@ -13,6 +13,7 @@ import (
 
 	"druz9/intelligence/app"
 	"druz9/intelligence/domain"
+	lsDomain "druz9/learning_state/domain"
 	pb "druz9/shared/generated/pb/druz9/v1"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/llmchain"
@@ -316,6 +317,10 @@ func (s *IntelligenceServer) toConnectErr(err error) error {
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, domain.ErrInvalidInput):
 		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, lsDomain.ErrInvalidTransition):
+		// SetLearningMode: commit/deep требуют active track. Frontend
+		// должен показать tooltip «pick a track first», а не «server error».
+		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, domain.ErrRateLimited):
 		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, llmchain.ErrTierRequired):

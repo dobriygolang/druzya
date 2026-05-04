@@ -25,9 +25,6 @@ func TestGetProfile_Do_HappyPath(t *testing.T) {
 		},
 		Subscription: domain.Subscription{Plan: enums.SubscriptionPlanFree},
 		AICredits:    5,
-		Ratings: []domain.SectionRating{
-			{Section: enums.SectionAlgorithms, Elo: 1500},
-		},
 	}
 	repo.EXPECT().GetByUserID(gomock.Any(), uid).Return(bundle, nil)
 
@@ -35,9 +32,6 @@ func TestGetProfile_Do_HappyPath(t *testing.T) {
 	v, err := uc.Do(context.Background(), uid)
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
-	}
-	if v.GlobalPowerScore == 0 {
-		t.Fatal("expected GlobalPowerScore to be derived")
 	}
 	if v.XPToNext != domain.XPToNext(3) {
 		t.Fatalf("XPToNext mismatch: got %d, want %d", v.XPToNext, domain.XPToNext(3))
@@ -88,19 +82,12 @@ func TestGetPublic_Do_HappyPath(t *testing.T) {
 	pub := domain.PublicBundle{
 		User:    domain.User{ID: uid, Username: "bob"},
 		Profile: domain.Profile{UserID: uid, Level: 2},
-		Ratings: []domain.SectionRating{
-			{Section: enums.SectionGo, Elo: 1700},
-		},
 	}
 	repo.EXPECT().GetPublic(gomock.Any(), "bob").Return(pub, nil)
 
 	uc := &GetPublic{Repo: repo}
-	v, err := uc.Do(context.Background(), "bob")
-	if err != nil {
+	if _, err := uc.Do(context.Background(), "bob"); err != nil {
 		t.Fatalf("unexpected: %v", err)
-	}
-	if v.GlobalPowerScore == 0 {
-		t.Fatal("expected derived score")
 	}
 }
 

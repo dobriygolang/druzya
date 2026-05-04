@@ -365,21 +365,16 @@ func TestCachedRepo_UncachedPassthroughs(t *testing.T) {
 	mock := mocks.NewMockProfileRepo(ctrl)
 	uid := uuid.New()
 
-	mock.EXPECT().ListRatings(gomock.Any(), uid).Return([]domain.SectionRating{{Elo: 1500}}, nil)
 	mock.EXPECT().ListSkillNodes(gomock.Any(), uid).Return([]domain.SkillNode{{NodeKey: "x"}}, nil)
 	mock.EXPECT().GetSettings(gomock.Any(), uid).Return(domain.Settings{Locale: "en"}, nil)
 	mock.EXPECT().CountRecentActivity(gomock.Any(), uid, gomock.Any()).Return(domain.Activity{TasksSolved: 3}, nil)
 	mock.EXPECT().EnsureDefaults(gomock.Any(), uid).Return(nil)
 	mock.EXPECT().ApplyXPDelta(gomock.Any(), uid, 10, 2, int64(50)).Return(nil)
-	mock.EXPECT().UpdateCareerStage(gomock.Any(), uid, domain.CareerStageMiddle).Return(nil)
 
 	kv := newMemKV()
 	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 	ctx := context.Background()
 
-	if _, err := repo.ListRatings(ctx, uid); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := repo.ListSkillNodes(ctx, uid); err != nil {
 		t.Fatal(err)
 	}
@@ -393,9 +388,6 @@ func TestCachedRepo_UncachedPassthroughs(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := repo.ApplyXPDelta(ctx, uid, 10, 2, 50); err != nil {
-		t.Fatal(err)
-	}
-	if err := repo.UpdateCareerStage(ctx, uid, domain.CareerStageMiddle); err != nil {
 		t.Fatal(err)
 	}
 }

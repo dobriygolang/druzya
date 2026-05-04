@@ -10,6 +10,7 @@ import (
 	lsDomain "druz9/learning_state/domain"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // learningStateAdapter — implements intelPorts.LearningStateMutator поверх
@@ -22,6 +23,16 @@ type learningStateAdapter struct {
 	setMode *lsApp.SetMode
 	setFork *lsApp.SetFork
 	get     *lsApp.GetState
+	// pool — для auto-pick первого enrolled track когда commit/deep без
+	// явного trackID (Sergey 2026-05-05: «нажал commit — само возьми
+	// текущий track из user_tracks»).
+	pool poolForAdapter
+}
+
+// poolForAdapter — narrow shim над *pgxpool.Pool. Bootstrap прокидывает
+// d.Pool (concrete type) — *pgxpool.Pool implementing this interface.
+type poolForAdapter interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
 func (a *learningStateAdapter) SetMode(
@@ -30,6 +41,19 @@ func (a *learningStateAdapter) SetMode(
 	mode string,
 	trackID *uuid.UUID,
 ) (intelPorts.LearningStateSnapshot, error) {
+	// Auto-pick first enrolled track для commit/deep when frontend не sends
+	// trackID. UX: юзер enrolled на 1 track при онбординге → нажатие
+	// commit/deep should just work, no «pick track first» friction.
+	if (mode == "commit" || mode == "deep") && trackID == nil && a.pool != nil {
+		var picked uuid.UUID
+		err := a.pool.QueryRow(ctx,
+			`SELECT track_id FROM user_tracks WHERE user_id=$1
+			 ORDER BY joined_at DESC LIMIT 1`, userID,
+		).Scan(&picked)
+		if err == nil {
+			trackID = &picked
+		}
+	}
 	state, err := a.setMode.Execute(ctx, lsApp.SetModeInput{
 		UserID:  userID,
 		Mode:    lsDomain.Mode(mode),

@@ -249,7 +249,7 @@ function Badge({
 }) {
   const tones: Record<typeof tone, { bg: string; fg: string }> = {
     plan: { bg: 'rgba(52, 199, 89, 0.12)', fg: 'var(--d9-ok)' },
-    locked: { bg: 'oklch(0.80 0.15 210 / 0.18)', fg: 'var(--d9-cyan)' },
+    locked: { bg: 'rgba(255,255,255,0.06)', fg: 'rgba(255,255,255,0.85)' },
   };
   const s = tones[tone];
   return (

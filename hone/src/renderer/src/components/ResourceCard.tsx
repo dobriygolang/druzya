@@ -94,7 +94,7 @@ export function ResourceCard({
         ...(hover ? { borderColor: 'rgba(255,255,255,0.15)' } : null),
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
         <a
           href={resource.url}
           target="_blank"
@@ -105,6 +105,11 @@ export function ResourceCard({
             textDecoration: 'none',
             borderBottom: '1px dashed rgba(255,255,255,0.18)',
             paddingBottom: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: '100%',
           }}
         >
           {resource.title || resource.url}
@@ -120,6 +125,7 @@ export function ResourceCard({
               padding: '1px 6px',
               borderRadius: 999,
               border: '1px solid rgba(255,255,255,0.12)',
+              flexShrink: 0,
             }}
           >
             yours
@@ -144,11 +150,10 @@ export function ResourceCard({
         <div
           className="mono"
           style={{
-            position: 'absolute',
-            right: 8,
-            top: 8,
             display: 'flex',
             gap: 4,
+            marginTop: 8,
+            flexWrap: 'wrap',
             fontSize: 9,
             letterSpacing: '.08em',
             textTransform: 'uppercase',

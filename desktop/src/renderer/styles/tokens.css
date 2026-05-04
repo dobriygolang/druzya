@@ -32,11 +32,13 @@
   --d9-ink-mute:    rgba(255, 255, 255, 0.60);
   --d9-ink-ghost:   rgba(255, 255, 255, 0.40);
 
-  /* ── Accent — Cyan #4fc3f7 (Cue brand) ──────────────────────── */
-  --d9-accent:      #4fc3f7;
-  --d9-accent-hi:   #81d4fa;
-  --d9-accent-lo:   #0288d1;
-  --d9-accent-glow: rgba(79, 195, 247, 0.22);
+  /* ── Accent — B/W rule (см memory/feedback_color_rule.md). Single
+     red #FF3B30 signal-dot, остальное — white-alpha. Cyan brand removed
+     2026-05-05 to align Cue with Hone + web monochrome. */
+  --d9-accent:      #FF3B30;
+  --d9-accent-hi:   #FFFFFF;
+  --d9-accent-lo:   rgba(255, 255, 255, 0.85);
+  --d9-accent-glow: rgba(255, 255, 255, 0.10);
 
   /* Jewel tones (personas) — toned down for pure-black canvas.
      Deliberately NOT pure oklch extremes: on #000 the fully-saturated
@@ -96,8 +98,8 @@
     0 1px 0 rgba(0,0,0,.35),
     0 0 0 .5px rgba(255,255,255,.08);
 
-  /* Focus — cyan ring. */
-  --d9-ring: 0 0 0 1.5px var(--d9-accent), 0 0 0 4px var(--d9-accent-glow);
+  /* Focus — white ring on black, single hairline. B/W rule. */
+  --d9-ring: 0 0 0 1.5px rgba(255,255,255,0.85), 0 0 0 4px rgba(255,255,255,0.08);
 
   /* Motion */
   --d9-dur-hover: 120ms;
@@ -149,9 +151,9 @@
   --d-accent-soft: var(--d9-accent-glow);
   --d-accent-2: var(--d9-cyan);
   --d-accent-2-soft: oklch(0.78 0.12 210 / 0.18);
-  /* Hero gradient: cyan → teal (matches Cue accent). */
-  --d-gradient-hero: linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-teal) 100%);
-  --d-gradient-hero-soft: linear-gradient(135deg, var(--d9-accent-glow) 0%, oklch(0.74 0.11 180 / 0.18) 100%);
+  /* Hero gradient: B/W ramp (red signal kept for hero accent only). */
+  --d-gradient-hero: linear-gradient(135deg, #FFFFFF 0%, rgba(255,255,255,0.4) 100%);
+  --d-gradient-hero-soft: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.04) 100%);
 
   --d-green: var(--d9-ok);
   --d-yellow: var(--d9-warn);

@@ -544,8 +544,8 @@ function KeyPill({ children, lit }: { children: React.ReactNode; lit?: boolean }
   return (
     <span
       style={{
-        border: `1px solid ${lit ? 'rgba(79,195,247,0.4)' : 'var(--d9-hairline-b)'}`,
-        background: lit ? 'rgba(79,195,247,0.08)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${lit ? 'rgba(255,255,255,0.4)' : 'var(--d9-hairline-b)'}`,
+        background: lit ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
         color: lit ? 'var(--d9-accent)' : 'var(--d9-ink-ghost)',
         fontFamily: 'var(--d9-font-mono)',
         fontSize: 11,

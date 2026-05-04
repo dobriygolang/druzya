@@ -1006,8 +1006,13 @@ type TutorActivityResponse struct {
 	MinutesTaught      int32                  `protobuf:"varint,6,opt,name=minutes_taught,json=minutesTaught,proto3" json:"minutes_taught,omitempty"`
 	// 0..1; 0 when no events in window.
 	CancellationRate float64 `protobuf:"fixed64,7,opt,name=cancellation_rate,json=cancellationRate,proto3" json:"cancellation_rate,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Phase 8 — rolling daily series for sparkline UI. Length == window_days,
+	// oldest → newest. daily_completed = completed-event count per day;
+	// daily_minutes = SUM(duration_min) per day.
+	DailyCompleted []int32 `protobuf:"varint,8,rep,packed,name=daily_completed,json=dailyCompleted,proto3" json:"daily_completed,omitempty"`
+	DailyMinutes   []int32 `protobuf:"varint,9,rep,packed,name=daily_minutes,json=dailyMinutes,proto3" json:"daily_minutes,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TutorActivityResponse) Reset() {
@@ -1087,6 +1092,20 @@ func (x *TutorActivityResponse) GetCancellationRate() float64 {
 		return x.CancellationRate
 	}
 	return 0
+}
+
+func (x *TutorActivityResponse) GetDailyCompleted() []int32 {
+	if x != nil {
+		return x.DailyCompleted
+	}
+	return nil
+}
+
+func (x *TutorActivityResponse) GetDailyMinutes() []int32 {
+	if x != nil {
+		return x.DailyMinutes
+	}
+	return nil
 }
 
 type TutorCreateGroupEventRequest struct {
@@ -3747,7 +3766,7 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\x18TutorListMyTutorsRequest\":\n" +
 	"\x17TutorGetActivityRequest\x12\x1f\n" +
 	"\vwindow_days\x18\x01 \x01(\x05R\n" +
-	"windowDays\"\xbf\x02\n" +
+	"windowDays\"\x8d\x03\n" +
 	"\x15TutorActivityResponse\x12\x1f\n" +
 	"\vwindow_days\x18\x01 \x01(\x05R\n" +
 	"windowDays\x120\n" +
@@ -3756,7 +3775,9 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\x10events_cancelled\x18\x04 \x01(\x05R\x0feventsCancelled\x12)\n" +
 	"\x10events_scheduled\x18\x05 \x01(\x05R\x0feventsScheduled\x12%\n" +
 	"\x0eminutes_taught\x18\x06 \x01(\x05R\rminutesTaught\x12+\n" +
-	"\x11cancellation_rate\x18\a \x01(\x01R\x10cancellationRate\"\x83\x02\n" +
+	"\x11cancellation_rate\x18\a \x01(\x01R\x10cancellationRate\x12'\n" +
+	"\x0fdaily_completed\x18\b \x03(\x05R\x0edailyCompleted\x12#\n" +
+	"\rdaily_minutes\x18\t \x03(\x05R\fdailyMinutes\"\x83\x02\n" +
 	"\x1cTutorCreateGroupEventRequest\x12\x1b\n" +
 	"\tcircle_id\x18\x01 \x01(\tR\bcircleId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x17\n" +

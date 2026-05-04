@@ -141,21 +141,6 @@ func (mr *MockCompanyRepoMockRecorder) List(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockCompanyRepo)(nil).List), ctx)
 }
 
-// Upsert mocks base method.
-func (m *MockCompanyRepo) Upsert(ctx context.Context, in domain.CompanyUpsert) (domain.AdminCompany, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Upsert", ctx, in)
-	ret0, _ := ret[0].(domain.AdminCompany)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Upsert indicates an expected call of Upsert.
-func (mr *MockCompanyRepoMockRecorder) Upsert(ctx, in any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upsert", reflect.TypeOf((*MockCompanyRepo)(nil).Upsert), ctx, in)
-}
-
 // MockConfigRepo is a mock of ConfigRepo interface.
 type MockConfigRepo struct {
 	ctrl     *gomock.Controller
@@ -263,41 +248,3 @@ func (mr *MockConfigBroadcasterMockRecorder) Publish(ctx, entry any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockConfigBroadcaster)(nil).Publish), ctx, entry)
 }
 
-// MockAnticheatRepo is a mock of AnticheatRepo interface.
-type MockAnticheatRepo struct {
-	ctrl     *gomock.Controller
-	recorder *MockAnticheatRepoMockRecorder
-	isgomock struct{}
-}
-
-// MockAnticheatRepoMockRecorder is the mock recorder for MockAnticheatRepo.
-type MockAnticheatRepoMockRecorder struct {
-	mock *MockAnticheatRepo
-}
-
-// NewMockAnticheatRepo creates a new mock instance.
-func NewMockAnticheatRepo(ctrl *gomock.Controller) *MockAnticheatRepo {
-	mock := &MockAnticheatRepo{ctrl: ctrl}
-	mock.recorder = &MockAnticheatRepoMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockAnticheatRepo) EXPECT() *MockAnticheatRepoMockRecorder {
-	return m.recorder
-}
-
-// List mocks base method.
-func (m *MockAnticheatRepo) List(ctx context.Context, f domain.AnticheatFilter) ([]domain.AnticheatSignal, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", ctx, f)
-	ret0, _ := ret[0].([]domain.AnticheatSignal)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// List indicates an expected call of List.
-func (mr *MockAnticheatRepoMockRecorder) List(ctx, f any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockAnticheatRepo)(nil).List), ctx, f)
-}

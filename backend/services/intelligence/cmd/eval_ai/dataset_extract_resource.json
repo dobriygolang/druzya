@@ -1,0 +1,40 @@
+[
+  {
+    "name": "ml_blog_post_extracted",
+    "task": "extract_resource_content",
+    "input": {
+      "url": "https://sebastianraschka.com/blog/2023/llm-evaluation.html",
+      "fetched_text": "Evaluating LLMs is non-trivial. Reference-free metrics like BLEU fail for generation. Modern evaluation uses pairwise human comparison, automated judge models, and benchmark suites like MMLU, HumanEval, MT-Bench. This post walks through hands-on examples of each."
+    },
+    "raw_response": "{\"title\":\"Evaluating LLMs · methods and benchmarks\",\"author\":\"Sebastian Raschka\",\"kind\":\"article\",\"minutes\":15,\"level\":\"C\",\"priority\":\"supplement\",\"why\":\"survey of LLM eval methods grounded in concrete benchmarks\",\"topics_covered\":[\"ml_llm_eval\"],\"prereqs\":[\"ml_classical\"],\"summary\":\"Walks through reference-free vs reference-based eval. Covers MMLU, HumanEval, MT-Bench. Pairs human eval with judge-model automation.\",\"depth\":\"intuition\",\"format_notes\":\"\"}",
+    "regression": {
+      "all_urls_absolute": false,
+      "all_why_non_empty": true,
+      "all_kinds_valid": false
+    }
+  },
+  {
+    "name": "youtube_video_extracted",
+    "task": "extract_resource_content",
+    "input": {
+      "url": "https://www.youtube.com/watch?v=abc12345678",
+      "fetched_text": "transcript: today we walk through CDC patterns from postgres to clickhouse. We use logical decoding via wal2json then ship through Kafka."
+    },
+    "raw_response": "{\"title\":\"CDC postgres → clickhouse via Kafka\",\"author\":\"\",\"kind\":\"video\",\"minutes\":35,\"level\":\"C\",\"priority\":\"core\",\"why\":\"end-to-end CDC pipeline walkthrough at production scale\",\"topics_covered\":[\"de_cdc\",\"de_streaming\"],\"prereqs\":[\"de_etl_pipelines\"],\"summary\":\"CDC patterns from Postgres to ClickHouse via Kafka. Covers logical decoding, schema evolution, exactly-once.\",\"depth\":\"deep\",\"format_notes\":\"video-no-transcript-needed\"}",
+    "regression": {
+      "all_why_non_empty": true
+    }
+  },
+  {
+    "name": "manual_fallback_empty_text",
+    "task": "extract_resource_content",
+    "input": {
+      "url": "https://paywalled.example/article",
+      "fetched_text": ""
+    },
+    "raw_response": "{\"title\":\"\",\"author\":\"\",\"kind\":\"article\",\"minutes\":0,\"level\":\"B\",\"priority\":\"supplement\",\"why\":\"user-curated\",\"topics_covered\":[],\"prereqs\":[],\"summary\":\"\",\"depth\":\"\",\"format_notes\":\"paywalled\"}",
+    "regression": {
+      "all_why_non_empty": true
+    }
+  }
+]

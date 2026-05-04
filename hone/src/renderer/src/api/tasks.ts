@@ -43,13 +43,33 @@ export interface TaskComment {
   createdAt: string;
 }
 
+// normalizeTask — proto-enum constants («TASK_STATUS_TODO») → domain
+// strings («todo»). Backend сейчас возвращает proto enum names в JSON
+// (vanguard transcoder + connect protobuf default); frontend ожидает
+// snake_case. Без этого TaskBoard column filter не находит cards.
+function normEnum(prefix: string, v: string | undefined): string {
+  if (!v) return ''
+  const s = String(v).toUpperCase()
+  if (s.startsWith(prefix)) return s.slice(prefix.length).toLowerCase()
+  return s.toLowerCase()
+}
+
+function normalizeTask(t: TaskCard): TaskCard {
+  return {
+    ...t,
+    status: normEnum('TASK_STATUS_', t.status as string) as TaskStatus,
+    kind: normEnum('TASK_KIND_', t.kind as string) as TaskKind,
+    source: normEnum('TASK_SOURCE_', t.source as string) as TaskCard['source'],
+  }
+}
+
 export async function listTasks(): Promise<TaskCard[]> {
   const resp = await fetch(`${API_BASE_URL}/api/v1/hone/tasks`, {
     headers: authHeaders(),
   });
   if (!resp.ok) throw new Error(`listTasks: ${resp.status}`);
   const j = (await resp.json()) as { tasks: TaskCard[] };
-  return j.tasks ?? [];
+  return (j.tasks ?? []).map(normalizeTask);
 }
 
 export async function createTask(input: {
@@ -65,7 +85,7 @@ export async function createTask(input: {
     body: JSON.stringify(input),
   });
   if (!resp.ok) throw new Error(`createTask: ${resp.status}`);
-  return (await resp.json()) as TaskCard;
+  return normalizeTask((await resp.json()) as TaskCard);
 }
 
 export async function moveTaskStatus(taskId: string, status: TaskStatus): Promise<TaskCard> {
@@ -75,7 +95,7 @@ export async function moveTaskStatus(taskId: string, status: TaskStatus): Promis
     body: JSON.stringify({ status }),
   });
   if (!resp.ok) throw new Error(`moveTaskStatus: ${resp.status}`);
-  return (await resp.json()) as TaskCard;
+  return normalizeTask((await resp.json()) as TaskCard);
 }
 
 export async function deleteTask(taskId: string): Promise<void> {

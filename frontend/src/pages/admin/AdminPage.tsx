@@ -34,6 +34,8 @@ import { TracksObservabilityPanel } from './TracksObservabilityPanel'
 import { EnglishHRObservabilityPanel } from './EnglishHRObservabilityPanel'
 import { MockBlockObservabilityPanel } from './MockBlockObservabilityPanel'
 import { IntelligenceObservabilityPanel } from './IntelligenceObservabilityPanel'
+import { LLMObservabilityPanel } from './LLMObservabilityPanel'
+import { RoomsPanel } from './RoomsPanel'
 
 export default function AdminPage() {
   const profile = useProfileQuery()
@@ -130,6 +132,8 @@ export default function AdminPage() {
         {tab === 'obs_english_hr' && <EnglishHRObservabilityPanel />}
         {tab === 'obs_mock_block' && <MockBlockObservabilityPanel />}
         {tab === 'obs_intelligence' && <IntelligenceObservabilityPanel />}
+        {tab === 'obs_llm' && <LLMObservabilityPanel />}
+        {tab === 'rooms' && <RoomsPanel />}
       </main>
     </div>
   )

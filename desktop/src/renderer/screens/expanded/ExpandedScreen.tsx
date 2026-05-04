@@ -566,7 +566,7 @@ export function ExpandedScreen() {
             alignItems: 'center',
             gap: 8,
             background: 'rgba(255,255,255,0.04)',
-            border: `1px solid ${focused ? 'rgba(79,195,247,0.4)' : 'transparent'}`,
+            border: `1px solid ${focused ? 'rgba(255,255,255,0.4)' : 'transparent'}`,
             borderRadius: 10,
             padding: '8px 8px 8px 14px',
             transition: 'border-color 150ms',
@@ -626,8 +626,8 @@ export function ExpandedScreen() {
               userSelect: 'none',
               padding: '4px 6px',
               borderRadius: 6,
-              background: autoSendEnabled ? 'rgba(79,195,247,0.10)' : 'transparent',
-              border: `1px solid ${autoSendEnabled ? 'rgba(79,195,247,0.35)' : 'var(--d9-hairline)'}`,
+              background: autoSendEnabled ? 'rgba(255,255,255,0.10)' : 'transparent',
+              border: `1px solid ${autoSendEnabled ? 'rgba(255,255,255,0.35)' : 'var(--d9-hairline)'}`,
             }}
           >
             <input
@@ -644,7 +644,7 @@ export function ExpandedScreen() {
           >
             <D9IconCamera size={14} />
           </IconButton>
-          {/* Send button — cyan accent circle */}
+          {/* Send button — red signal circle (B/W rule). */}
           <button
             type="button"
             title="Отправить (Enter)"
@@ -656,14 +656,14 @@ export function ExpandedScreen() {
               borderRadius: '50%',
               border: 0,
               cursor: streaming || (!draft.trim() && !haveVoiceText) ? 'not-allowed' : 'pointer',
-              background: streaming || (!draft.trim() && !haveVoiceText) ? 'rgba(79,195,247,0.25)' : 'var(--d9-accent)',
-              color: '#001218',
+              background: streaming || (!draft.trim() && !haveVoiceText) ? 'rgba(255,255,255,0.20)' : 'var(--d9-accent)',
+              color: '#ffffff',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
               transition: 'transform 120ms, filter 120ms, background 120ms',
-              boxShadow: !streaming && (draft.trim() || haveVoiceText) ? '0 0 12px rgba(79,195,247,0.35)' : 'none',
+              boxShadow: !streaming && (draft.trim() || haveVoiceText) ? '0 0 12px rgba(255,255,255,0.35)' : 'none',
             }}
           >
             <IconSend size={14} />

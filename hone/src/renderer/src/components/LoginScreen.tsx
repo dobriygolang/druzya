@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { TelegramStart } from '@shared/ipc';
 import { Wordmark } from './Chrome';
 import { useSessionStore } from '../stores/session';
+import { API_BASE_URL } from '../api/config';
 
 const POLL_INTERVAL_MS = 2000;
 // Max time юзер может ждать в `awaiting` перед тем как мы скажем «бот не
@@ -33,9 +34,54 @@ type Phase =
 
 export function LoginScreen() {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  const [devUsername, setDevUsername] = useState('sergey');
+  const [devBusy, setDevBusy] = useState(false);
   const pollTimer = useRef<number | null>(null);
   const pollEpochRef = useRef(0);
   const cancelledRef = useRef(false);
+
+  // Dev login: hits POST /api/v1/auth/dev/login when DEV_AUTH=true on
+  // backend. INSECURE — bypass'ом TG-flow для local testing. Production
+  // backend без DEV_AUTH=true вернёт 404 — кнопка просто не сработает.
+  async function devLogin() {
+    setDevBusy(true);
+    try {
+      const resp = await fetch(`${API_BASE_URL}/api/v1/auth/dev/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: devUsername.trim() || 'sergey' }),
+      });
+      if (!resp.ok) {
+        if (resp.status === 404) {
+          setPhase({ kind: 'error', message: 'DEV_AUTH not enabled on backend (set DEV_AUTH=true in .env)' });
+          return;
+        }
+        const txt = await resp.text();
+        setPhase({ kind: 'error', message: `dev login: ${resp.status} ${txt.slice(0, 140)}` });
+        return;
+      }
+      const data = (await resp.json()) as {
+        access_token: string;
+        refresh_token: string;
+        expires_in: number;
+        user: { id: string };
+      };
+      // Hone main-process owns the session keychain in production. Для
+      // dev-flow обходим main и hydrate'им store напрямую — main IPC
+      // sync на следующей page load всё равно подхватит.
+      useSessionStore.getState().hydrate({
+        userId: data.user.id,
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: Date.now() + data.expires_in * 1000,
+      });
+    } catch (e) {
+      setPhase({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setDevBusy(false);
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -213,6 +259,75 @@ export function LoginScreen() {
           <p className="mono" style={{ marginTop: 16, fontSize: 11, color: 'var(--red)' }}>
             {phase.message}
           </p>
+        )}
+
+        {/* Dev login bypass — visible only в development build. INSECURE,
+         * требует backend DEV_AUTH=true. Hidden в prod automated by
+         * import.meta.env.DEV gate. */}
+        {import.meta.env.DEV && (
+          <div
+            style={{
+              marginTop: 40,
+              paddingTop: 20,
+              borderTop: '1px dashed rgba(255,255,255,0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <div
+              className="mono"
+              style={{
+                fontSize: 9.5,
+                letterSpacing: '.2em',
+                color: 'rgba(255,255,255,0.35)',
+                textTransform: 'uppercase',
+              }}
+            >
+              dev only · insecure · local backend with DEV_AUTH=true
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <input
+                type="text"
+                value={devUsername}
+                onChange={(e) => setDevUsername(e.target.value)}
+                placeholder="username"
+                disabled={devBusy}
+                className="focus-ring"
+                style={{
+                  width: 140,
+                  padding: '6px 10px',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: 5,
+                  color: 'rgba(255,255,255,0.92)',
+                  fontSize: 12,
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <button
+                onClick={() => void devLogin()}
+                disabled={devBusy || !devUsername.trim()}
+                className="focus-ring mono"
+                style={{
+                  padding: '6px 14px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  color: 'rgba(255,255,255,0.85)',
+                  borderRadius: 5,
+                  fontSize: 10.5,
+                  letterSpacing: '.08em',
+                  textTransform: 'uppercase',
+                  cursor: devBusy ? 'progress' : 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {devBusy ? 'signing in…' : 'dev login'}
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

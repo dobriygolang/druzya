@@ -15,11 +15,11 @@ import (
 )
 
 type ConfusionEvent struct {
-	UserID         string
-	AtlasNodeID    string
-	ResourceURL    string
-	ConfusionText  string
-	OccurredAt     time.Time
+	UserID        string
+	AtlasNodeID   string
+	ResourceURL   string
+	ConfusionText string
+	OccurredAt    time.Time
 }
 
 func FromConfusionPickup(events []ConfusionEvent, now time.Time) []domain.Insight {

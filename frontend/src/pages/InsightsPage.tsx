@@ -24,16 +24,18 @@ import {
 // pill = badge background+text. Critical = red, warn = amber, nudge =
 // blue, cruise = muted. Pill только показывается на non-cruise чтобы
 // не визуально шуметь на спокойных днях.
+// B/W rule: только critical держит #FF3B30 (signal), остальные —
+// ink-ramp. Severity передаётся textом + opacity, не hue.
 const SEVERITY_STRIP: Record<CoachSeverity, string> = {
- critical: 'rgb(239 68 68)',
- warn: 'rgb(245 158 11)',
- nudge: 'rgb(59 130 246)',
+ critical: '#FF3B30',
+ warn: 'rgba(255,255,255,0.55)',
+ nudge: 'rgba(255,255,255,0.35)',
  cruise: 'transparent',
 }
 const SEVERITY_PILL: Record<CoachSeverity, string> = {
  critical: 'border-danger/40 bg-danger/10 text-danger',
- warn: 'border-warn/40 bg-warn/10 text-warn',
- nudge: 'border-blue-500/40 bg-blue-500/10 text-blue-400',
+ warn: 'border-white/20 bg-white/10 text-text-primary',
+ nudge: 'border-white/15 bg-white/5 text-text-secondary',
  cruise: 'border-border bg-surface-2 text-text-muted',
 }
 
@@ -660,7 +662,7 @@ function LeaderboardCard() {
  {items.map((e) => (
  <li
   key={e.user_id}
-  className="grid grid-cols-[2rem_1fr_auto_auto] items-center gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2"
+  className="grid grid-cols-[2rem_1fr] items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface-2 px-3 py-2 sm:grid-cols-[2rem_1fr_auto_auto]"
  >
  <span className="font-mono text-[11px] tabular-nums text-text-muted">
  #{e.rank}

@@ -1,0 +1,42 @@
+[
+  {
+    "name": "specific_takeaways_high_quality",
+    "task": "reflection_grade",
+    "input": {
+      "takeaways": [
+        "logical decoding в postgres держит WAL slot до consume — slot lag → WAL не очистится",
+        "debezium это слой над wal2json который пишет в kafka, упрощает но добавляет третью точку отказа",
+        "exactly-once на CH достигается через VersionedCollapsingMergeTree — без него получаешь at-least-once"
+      ],
+      "confusion_text": "",
+      "expected_topics": ["de_cdc", "de_streaming"],
+      "allowed_atlas_node_ids": ["de_cdc", "de_streaming", "de_etl_pipelines"]
+    },
+    "raw_response": "{\"quality_score\":0.88,\"extracted_topics\":[\"de_cdc\",\"de_streaming\"],\"confusion_flag\":false}",
+    "regression": {}
+  },
+  {
+    "name": "generic_takeaways_low_quality",
+    "task": "reflection_grade",
+    "input": {
+      "takeaways": ["interesting", "got it", "useful"],
+      "confusion_text": "",
+      "expected_topics": ["ml_classical"],
+      "allowed_atlas_node_ids": ["ml_classical"]
+    },
+    "raw_response": "{\"quality_score\":0.15,\"extracted_topics\":[],\"confusion_flag\":false}",
+    "regression": {}
+  },
+  {
+    "name": "confusion_flagged",
+    "task": "reflection_grade",
+    "input": {
+      "takeaways": ["прочитал про gradient descent"],
+      "confusion_text": "не понял зачем там learning rate scheduling — так-то descent уже сходится",
+      "expected_topics": ["ml_classical"],
+      "allowed_atlas_node_ids": ["ml_classical", "ml_optimization"]
+    },
+    "raw_response": "{\"quality_score\":0.42,\"extracted_topics\":[\"ml_classical\"],\"confusion_flag\":true}",
+    "regression": {}
+  }
+]

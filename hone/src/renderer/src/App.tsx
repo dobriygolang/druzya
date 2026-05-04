@@ -12,12 +12,12 @@
 // task + post-finish reflection). Backend StartFocusSession /
 // EndFocusSession теперь оркестрируется отсюда, не из удалённой страницы,
 // чтобы streak-механика продолжала наполняться (bible §6 sync).
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CueSessionAnalysis } from '@shared/ipc';
 
 import { CanvasBg, type CanvasMode, type ThemeId } from './components/CanvasBg';
 import { Wordmark, Versionmark } from './components/Chrome';
-import { TrackSwitcher } from './components/TrackSwitcher';
+// TrackSwitcher import retired — Sergey 2026-05-05 hide legacy general/dev/go.
 import { TrafficLightsHover } from './components/TrafficLightsHover';
 import { Dock } from './components/Dock';
 import { LoginScreen } from './components/LoginScreen';
@@ -46,7 +46,6 @@ import { EditorPage } from './pages/Editor';
 import { BoardsTabsChrome } from './components/BoardsTabsChrome';
 import { EnglishTabsChrome, type EnglishTab } from './components/EnglishTabsChrome';
 import { TutorTabsChrome, type TutorTab } from './components/TutorTabsChrome';
-import { EventsPage } from './pages/Events';
 import { ReadingPage } from './pages/Reading';
 import { WritingPage } from './pages/Writing';
 import { TutorAssignmentsPage } from './pages/TutorAssignments';
@@ -85,6 +84,23 @@ export default function App() {
   // surface'а. Toggle в Settings.
   const englishActive = useTrackStore((s) => s.englishActive);
   const hydrateTrack = useTrackStore((s) => s.hydrate);
+  // englishVisible = settings.englishActive || onboarding stack === 'english'.
+  // Если юзер выбрал English-track в onboarding'е, мы показываем module даже
+  // если backend ещё не получил setEnglishActive(true) (network/offline).
+  // Sergey 2026-05-04: English — opt-in, не должен светиться в палитре по
+  // умолчанию.
+  const profileStackIsEnglish = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const raw = window.localStorage.getItem('hone:profile:v2');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as { stack?: string };
+      return parsed?.stack === 'english';
+    } catch {
+      return false;
+    }
+  }, [status]);
+  const englishVisible = englishActive || profileStackIsEnglish;
   useEffect(() => {
     void hydrateTrack();
   }, [hydrateTrack]);
@@ -168,11 +184,6 @@ export default function App() {
     void import('./offline/wire').then((m) => m.wireOutboxExecutors());
     void import('./offline/ydoc-migrate').then((m) => m.installYDocMigrationHook());
     void import('./offline/outbox').then((m) => m.installOutboxAutoDrain());
-    // Wave 5.2c — tutor-event reminders (T-24h / T-1h / T-now). Reuses
-    // the OS notify() primitive; dedup persists in localStorage so
-    // reopening Hone doesn't replay old reminders. Single-flight inside
-    // the module so accidental double-import is safe.
-    void import('./api/eventReminders').then((m) => m.installEventReminders());
     const bridge = typeof window !== 'undefined' ? window.hone : undefined;
     if (!bridge) return;
 
@@ -297,33 +308,12 @@ export default function App() {
     window.addEventListener('focus', onFocus);
     window.addEventListener('online', onOnline);
 
-    // Phase C-6.2 — SSE push channel. На каждое событие от server'а
-    // триггерим immediate pull (мгновенный sync вместо 30s lag).
-    // EventSource auto-reconnects на disconnect.
-    let sseClose: (() => void) | null = null;
-    void import('./api/syncEvents').then(({ openSyncEventStream }) => {
-      if (stopped) return;
-      const stream = openSyncEventStream({
-        onEvent: (ev) => {
-          void runPull();
-          // Bridge для page-level компонентов (Notes, Whiteboards) —
-          // даём знать что данные изменились извне, чтобы они могли
-          // re-fetch свои listings без отдельного polling. Дешевле
-          // чем zustand-store reactivity для одного use-case'а.
-          window.dispatchEvent(
-            new CustomEvent('hone:sync-changed', { detail: ev }),
-          );
-        },
-      });
-      sseClose = stream.close;
-    });
 
     return () => {
       stopped = true;
       if (timer !== null) window.clearInterval(timer);
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('online', onOnline);
-      if (sseClose) sseClose();
     };
   }, [status, userId]);
 
@@ -482,10 +472,9 @@ export default function App() {
         return;
       }
       if (id === 'stats') {
-        // Phase 4 — Stats теперь full page. Overlay (peek) остаётся
-        // через single-S-key с Home.
-        setStatsOpen(false);
-        setPage('stats');
+        // Sergey 2026-05-05: full Stats page удалён (duplicate с overlay).
+        // Palette S → выдвижной StatsOverlay.
+        setStatsOpen(true);
         return;
       }
       // 'standup' palette command удалён — banner был раньше на Today page,
@@ -621,20 +610,19 @@ export default function App() {
       else if (code === 'KeyN') toggleTo('notes');
       else if (code === 'KeyB') toggleTo('shared_boards');
       else if (code === 'KeyC') toggleTo('editor');
-      else if (code === 'KeyE') toggleTo('events');
       else if (code === 'KeyS') toggleTo('stats');
       else if (code === 'KeyP') toggleTo('podcasts');
-      else if (code === 'KeyR') toggleTo('reading');
-      else if (code === 'KeyW') toggleTo('writing');
+      else if (code === 'KeyR' && englishVisible) toggleTo('reading');
+      else if (code === 'KeyW' && englishVisible) toggleTo('writing');
       else if (code === 'KeyA') toggleTo('assignments');
-      else if (code === 'KeyL') toggleTo('listening');
+      else if (code === 'KeyL' && englishVisible) toggleTo('listening');
       else if (code === 'KeyM') toggleTo('calendar');
       else if (code === 'Comma') toggleTo('settings');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paletteOpen, copilotOpen, onboardingOpen, page, statsOpen]);
+  }, [paletteOpen, copilotOpen, onboardingOpen, page, statsOpen, englishVisible]);
 
   // ── Trackpad horizontal swipe — Mac-style 2-finger gesture ─────────────
   // 2-finger swipe ВЛЕВО (deltaX > 0, content scroll'ит вправо) → открыть
@@ -739,7 +727,11 @@ export default function App() {
       />
       <TrafficLightsHover />
       <Wordmark />
-      <TrackSwitcher />
+      {/* TrackSwitcher (general/dev/go) скрыт — Sergey 2026-05-05.
+       * Identity 3-track (Go senior · ML · English) определяется в onboarding
+       * stack + Settings.englishActive, а legacy «general/dev/go» triple
+       * confusing для юзера и duplicate'ит state. Если track-aware filtering
+       * нужно — добавим как Settings dropdown, не header chip. */}
       {/* Versionmark скрываем в editor'е: CodeMirror использует Escape для
           своих UI-affordances (закрытие autocomplete, выход из каретки), а
           лишний "esc HOME" hint в углу шумит. На остальных страницах он
@@ -856,7 +848,7 @@ export default function App() {
       {/* English-loop hub chrome — surfaces R/W/L страницы как один
           логический hub. Palette сейчас один entry «English · Read ·
           Write · Listen», конкретный child выбирается через табы. */}
-      {englishActive && (page === 'reading' || page === 'writing' || page === 'listening' || page === 'english_overview') && (
+      {englishVisible && (page === 'reading' || page === 'writing' || page === 'listening' || page === 'english_overview') && (
         <EnglishTabsChrome
           current={page as EnglishTab}
           onChange={(t) => openImpl(t)}
@@ -884,21 +876,9 @@ export default function App() {
           }}
         />
       )}
-      {page === 'events' && (
-        <EventsPage
-          onJumpToEditor={(roomId) => {
-            setInitialEditorRoom(roomId);
-            setPage('editor');
-          }}
-          onJumpToBoard={(roomId) => {
-            setInitialBoardRoom(roomId);
-            setPage('shared_boards');
-          }}
-        />
-      )}
 
       {(page === 'english_overview' || page === 'reading' || page === 'writing' || page === 'listening') &&
-        (englishActive ? (
+        (englishVisible ? (
           <>
             {page === 'english_overview' && <EnglishOverviewPage onOpen={openImpl} />}
             {page === 'reading' && <ReadingPage />}
@@ -932,7 +912,7 @@ export default function App() {
       />
 
       {paletteOpen && (
-        <Palette onClose={() => setPaletteOpen(false)} onOpen={(id) => open(id)} />
+        <Palette onClose={() => setPaletteOpen(false)} onOpen={(id) => open(id)} englishVisible={englishVisible} />
       )}
       {copilotOpen && <Copilot onClose={() => setCopilotOpen(false)} />}
       {onboardingOpen && <OnboardingModal onClose={dismissOnboarding} />}

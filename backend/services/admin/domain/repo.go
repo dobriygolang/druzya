@@ -39,7 +39,6 @@ type TaskRepo interface {
 // CompanyRepo persists companies rows.
 type CompanyRepo interface {
 	List(ctx context.Context) ([]AdminCompany, error)
-	Upsert(ctx context.Context, in CompanyUpsert) (AdminCompany, error)
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -60,11 +59,3 @@ type ConfigBroadcaster interface {
 	Publish(ctx context.Context, entry ConfigEntry) error
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Anticheat
-// ─────────────────────────────────────────────────────────────────────────
-
-// AnticheatRepo serves the anticheat dashboard.
-type AnticheatRepo interface {
-	List(ctx context.Context, f AnticheatFilter) ([]AnticheatSignal, error)
-}

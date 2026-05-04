@@ -67,16 +67,8 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 		CharClass:   enums.CharClass(row.CharClass),
 		Level:       int(row.Level),
 		XP:          row.TotalXp,
-		Title:       pgText(row.Title),
-		AvatarFrame: pgText(row.AvatarFrame),
 		CareerStage: domain.CareerStage(row.CareerStage),
-		Attributes: domain.Attributes{
-			Intellect: int(row.Intellect),
-			Strength:  int(row.Strength),
-			Dexterity: int(row.Dexterity),
-			Will:      int(row.Will),
-		},
-		UpdatedAt: row.UpdatedAt.Time,
+		UpdatedAt:   row.UpdatedAt.Time,
 	}
 	if row.Plan.Valid {
 		b.Subscription = domain.Subscription{
@@ -92,14 +84,6 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 		b.Subscription.Plan = enums.SubscriptionPlanFree
 		b.Subscription.Status = "active"
 	}
-	if row.Balance.Valid {
-		b.AICredits = int(row.Balance.Int32)
-	}
-	ratings, err := p.ListRatings(ctx, userID)
-	if err != nil {
-		return domain.Bundle{}, fmt.Errorf("profile.Postgres.GetByUserID: ratings: %w", err)
-	}
-	b.Ratings = ratings
 	return b, nil
 }
 
@@ -124,14 +108,7 @@ func (p *Postgres) GetPublic(ctx context.Context, username string) (domain.Publi
 		CharClass:   enums.CharClass(row.CharClass),
 		Level:       int(row.Level),
 		XP:          row.TotalXp,
-		Title:       pgText(row.Title),
-		AvatarFrame: pgText(row.AvatarFrame),
 		CareerStage: domain.CareerStage(row.CareerStage),
-	}
-	if ratings, err := p.ListRatings(ctx, b.User.ID); err != nil {
-		return domain.PublicBundle{}, fmt.Errorf("profile.Postgres.GetPublic: ratings: %w", err)
-	} else {
-		b.Ratings = ratings
 	}
 	if nodes, err := p.ListSkillNodes(ctx, b.User.ID); err != nil {
 		return domain.PublicBundle{}, fmt.Errorf("profile.Postgres.GetPublic: nodes: %w", err)
@@ -141,7 +118,7 @@ func (p *Postgres) GetPublic(ctx context.Context, username string) (domain.Publi
 	return b, nil
 }
 
-// EnsureDefaults seeds profile/subscription/ai_credits/prefs and daily_streaks.
+// EnsureDefaults seeds profile/subscription/prefs and daily_streaks.
 // daily_streaks lives in a different domain (daily) but the MVP creates it here
 // so new users don't 404 on first GET /daily/streak.
 func (p *Postgres) EnsureDefaults(ctx context.Context, userID uuid.UUID) error {
@@ -158,9 +135,6 @@ func (p *Postgres) EnsureDefaults(ctx context.Context, userID uuid.UUID) error {
 	}
 	if err := qtx.EnsureSubscription(ctx, uid); err != nil {
 		return fmt.Errorf("profile.Postgres.EnsureDefaults: subscription: %w", err)
-	}
-	if err := qtx.EnsureAICredits(ctx, uid); err != nil {
-		return fmt.Errorf("profile.Postgres.EnsureDefaults: ai_credits: %w", err)
 	}
 	if err := qtx.EnsureNotificationPrefs(ctx, uid); err != nil {
 		return fmt.Errorf("profile.Postgres.EnsureDefaults: prefs: %w", err)
@@ -212,19 +186,6 @@ func (p *Postgres) RecordXPEvent(ctx context.Context, userID uuid.UUID, amount i
 	return nil
 }
 
-// UpdateCareerStage writes back the derived seniority.
-func (p *Postgres) UpdateCareerStage(ctx context.Context, userID uuid.UUID, stage domain.CareerStage) error {
-	if !stage.IsValid() {
-		return fmt.Errorf("profile.Postgres.UpdateCareerStage: invalid stage %q", stage)
-	}
-	if err := p.q.UpdateCareerStage(ctx, profiledb.UpdateCareerStageParams{
-		UserID:      sharedpg.UUID(userID),
-		CareerStage: stage.String(),
-	}); err != nil {
-		return fmt.Errorf("profile.Postgres.UpdateCareerStage: %w", err)
-	}
-	return nil
-}
 
 // ── helpers ────────────────────────────────────────────────────────────────
 

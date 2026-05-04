@@ -463,25 +463,15 @@ func (s *ProfileServer) toConnectErr(err error) error {
 func toProfileFullProto(v app.ProfileView) *pb.ProfileFull {
 	b := v.Bundle
 	out := &pb.ProfileFull{
-		Id:               b.User.ID.String(),
-		Username:         b.User.Username,
-		DisplayName:      b.User.DisplayName,
-		Email:            b.User.Email,
-		AvatarFrame:      b.Profile.AvatarFrame,
-		Title:            b.Profile.Title,
-		Level:            int32(b.Profile.Level),
-		Xp:               int32(b.Profile.XP),
-		XpToNext:         int32(v.XPToNext),
-		CharClass:        charClassToProto(b.Profile.CharClass),
-		GlobalPowerScore: int32(v.GlobalPowerScore),
-		CareerStage:      b.Profile.CareerStage.String(),
-		AiCredits:        int32(b.AICredits),
-		Attributes: &pb.Attributes{
-			Intellect: int32(v.Attributes.Intellect),
-			Strength:  int32(v.Attributes.Strength),
-			Dexterity: int32(v.Attributes.Dexterity),
-			Will:      int32(v.Attributes.Will),
-		},
+		Id:          b.User.ID.String(),
+		Username:    b.User.Username,
+		DisplayName: b.User.DisplayName,
+		Email:       b.User.Email,
+		Level:       int32(b.Profile.Level),
+		Xp:          int32(b.Profile.XP),
+		XpToNext:    int32(v.XPToNext),
+		CharClass:   charClassToProto(b.Profile.CharClass),
+		CareerStage: b.Profile.CareerStage.String(),
 		Subscription: &pb.ProfileSubscription{
 			Plan: subscriptionPlanToProto(b.Subscription.Plan),
 		},
@@ -518,32 +508,13 @@ func userRoleToProto(r enums.UserRole) pb.UserRole {
 
 func toProfilePublicProto(v app.PublicView) *pb.ProfilePublic {
 	b := v.PublicBundle
-	out := &pb.ProfilePublic{
-		Username:         b.User.Username,
-		DisplayName:      b.User.DisplayName,
-		Title:            b.Profile.Title,
-		Level:            int32(b.Profile.Level),
-		CharClass:        charClassToProto(b.Profile.CharClass),
-		CareerStage:      b.Profile.CareerStage.String(),
-		GlobalPowerScore: int32(v.GlobalPowerScore),
+	return &pb.ProfilePublic{
+		Username:    b.User.Username,
+		DisplayName: b.User.DisplayName,
+		Level:       int32(b.Profile.Level),
+		CharClass:   charClassToProto(b.Profile.CharClass),
+		CareerStage: b.Profile.CareerStage.String(),
 	}
-	now := time.Now()
-	for _, r := range b.Ratings {
-		out.Ratings = append(out.Ratings, &pb.ProfileSectionRating{
-			Section:      sectionToProto(r.Section),
-			Elo:          int32(r.Elo),
-			MatchesCount: int32(r.MatchesCount),
-			// Percentile is intentionally 0 here: the public profile lives in
-			// the profile service and does not call into rating to keep the
-			// service boundary clean. Frontends should treat 0 as "not
-			// available on this surface" and prefer GET /rating/me when the
-			// caller is the profile owner. Anti-fallback: do NOT invent a
-			// stand-in median value (the previous 50 was misleading UX).
-			Percentile: 0,
-			Decaying:   isDecaying(r.LastMatchAt, now),
-		})
-	}
-	return out
 }
 
 func toAtlasProto(v app.AtlasView) *pb.SkillAtlas {
@@ -610,39 +581,10 @@ func toReportProto(r app.ReportView) *pb.WeeklyReport {
 		},
 		Strengths:      append([]string{}, r.Strengths...),
 		StressAnalysis: r.StressAnalysis,
-		ActionsCount:   int32(r.ActionsCount),
 		StreakDays:     int32(r.StreakDays),
 		BestStreak:     int32(r.BestStreak),
-		PrevXpEarned:   int32(r.PrevXPEarned),
 		AiInsight:      r.AIInsight,
 		FeaturedMetric: r.FeaturedMetric,
-	}
-	for _, s := range r.StrongSections {
-		out.StrongSections = append(out.StrongSections, &pb.SectionBreakdown{
-			Section:    sectionToProto(s.Section),
-			Matches:    int32(s.Matches),
-			Wins:       int32(s.Wins),
-			Losses:     int32(s.Losses),
-			XpDelta:    int32(s.XPDelta),
-			WinRatePct: int32(s.WinRatePct),
-		})
-	}
-	for _, s := range r.WeakSections {
-		out.WeakSections = append(out.WeakSections, &pb.SectionBreakdown{
-			Section:    sectionToProto(s.Section),
-			Matches:    int32(s.Matches),
-			Wins:       int32(s.Wins),
-			Losses:     int32(s.Losses),
-			XpDelta:    int32(s.XPDelta),
-			WinRatePct: int32(s.WinRatePct),
-		})
-	}
-	for _, w := range r.WeeklyXP {
-		out.WeeklyXp = append(out.WeeklyXp, &pb.WeekComparison{
-			Label: w.Label,
-			Xp:    int32(w.XP),
-			Pct:   int32(w.Pct),
-		})
 	}
 	if len(r.Heatmap) > 0 {
 		out.Heatmap = make([]int32, 0, len(r.Heatmap))

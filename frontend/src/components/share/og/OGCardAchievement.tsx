@@ -11,12 +11,13 @@ import {
 } from './ogPrimitives'
 import type { OGCardCommon } from './OGCardXP'
 
-// Tier → gradient (от пары пина→cyan для эпиков, тёплая для золота, и т.п.).
+// Tier → gradient. B/W only (см memory/feedback_color_rule.md). Legendary
+// держит #FF3B30 как единственный signal-accent; остальные — grey ramp.
 const TIER_GRAD: Record<string, [string, string]> = {
-  bronze: ['#D97706', '#92400E'],
-  silver: ['#94A3B8', '#475569'],
-  gold: ['#FBBF24', '#B45309'],
-  platinum: ['#FFFFFF', '#0E7490'],
+  bronze: ['#A6A6A6', '#595959'],
+  silver: ['#D4D4D4', '#737373'],
+  gold: ['#FFFFFF', '#A6A6A6'],
+  platinum: ['#FFFFFF', '#FFFFFF'],
   epic: ['#FFFFFF', '#FFFFFF'],
   legendary: ['#FF3B30', '#FFFFFF'],
 }
@@ -67,7 +68,7 @@ export function OGCardAchievement({
                 style={{
                   inset: 36,
                   background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`,
-                  boxShadow: '0 24px 60px -12px rgba(88,44,255,0.4)',
+                  boxShadow: '0 24px 60px -12px rgba(0,0,0,0.6)',
                 }}
               >
                 <span

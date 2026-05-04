@@ -39,6 +39,7 @@ import {
 } from '../api/vault';
 import { useTrackStore } from '../stores/track';
 import { DeveloperToolsSection } from '../components/DeveloperToolsSection';
+import { ResourceLibrarySection } from '../components/ResourceLibrarySection';
 
 interface HoneSettings {
   pomodoroMinutes: number;
@@ -301,6 +302,8 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
               <ShortcutRow keys={['↦', '2-finger']} label="Swipe right → Close" />
             </div>
           </Section>
+
+          <ResourceLibrarySection />
 
           <DeveloperToolsSection />
 

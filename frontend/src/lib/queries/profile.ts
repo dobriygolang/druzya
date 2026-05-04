@@ -280,47 +280,6 @@ export function normalizeInterviewerStatus(raw: string | undefined | null): Inte
   }
 }
 
-// useBecomeInterviewer wraps POST /api/v1/profile/me/become-interviewer.
-// Backend now creates a *pending* application instead of flipping the
-// role directly — admin moderation lives in /admin/interviewers.
-// Idempotent: re-applying while pending returns the existing row.
-export function useBecomeInterviewer() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (motivation: string = '') =>
-      api<InterviewerApplication>('/profile/me/become-interviewer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ motivation }),
-      }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: profileQueryKeys.myInterviewerApp() })
-    },
-  })
-}
-
-// useMyInterviewerApplicationQuery — GET /profile/me/interviewer-application.
-// Backend returns status="not_submitted" for the empty state. Map it to
-// null so existing call-sites that check `data == null` keep working.
-// Legacy 404 still mapped for back-compat with older deploys.
-export function useMyInterviewerApplicationQuery() {
-  return useQuery({
-    queryKey: profileQueryKeys.myInterviewerApp(),
-    queryFn: async () => {
-      try {
-        const app = await api<InterviewerApplication>('/profile/me/interviewer-application')
-        if (app && normalizeInterviewerStatus((app as { status?: string }).status) === 'not_submitted') return null
-        return app
-      } catch (err) {
-        const status = (err as { status?: number } | null)?.status
-        if (status === 404) return null
-        throw err
-      }
-    },
-    staleTime: 30_000,
-  })
-}
-
 // interviewerStatusToProtoName — caller передаёт canonical, мы шлём proto
 // enum NAME (vanguard transcoder парсит NAME либо int; lowercase больше
 // не валиден после Phase enum-migration).
@@ -550,14 +509,6 @@ export function useWeeklyReportQuery() {
     staleTime: PROFILE_STALE_MS,
     gcTime: PROFILE_GC_MS,
   })
-}
-
-// useInvalidateProfile returns a callable that busts every cached profile
-// view (own + public). Mutations that change profile shape (settings save,
-// avatar update, etc.) should call this on success.
-export function useInvalidateProfile() {
-  const qc = useQueryClient()
-  return () => qc.invalidateQueries({ queryKey: profileQueryKeys.all })
 }
 
 // ── Phase C: weekly-report public share link ────────────────────────────────

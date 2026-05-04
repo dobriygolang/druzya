@@ -447,15 +447,16 @@ function WebHeroAchievement({
   achievement: AchievementBrief
 }) {
   const tier = (achievement.tier ?? '').toLowerCase()
+  // B/W ramp; legendary keeps the #FF3B30 signal accent.
   const grad =
     tier === 'gold'
-      ? ['#FBBF24', '#B45309']
+      ? ['#FFFFFF', '#A6A6A6']
       : tier === 'silver'
-        ? ['#94A3B8', '#475569']
+        ? ['#D4D4D4', '#737373']
         : tier === 'bronze'
-          ? ['#D97706', '#92400E']
+          ? ['#A6A6A6', '#595959']
           : tier === 'legendary'
-            ? ['#FFFFFF', '#A6A6A6']
+            ? ['#FF3B30', '#FFFFFF']
             : ['#FFFFFF', '#595959']
   const xp = report.metrics.xp_earned ?? 0
   const ratingDelta = report.metrics.rating_change ?? 0
@@ -493,7 +494,7 @@ function WebHeroAchievement({
             style={{
               background: 'rgb(var(--color-bg))',
               border: '1px solid rgb(var(--color-border-strong))',
-              color: '#FBBF24',
+              color: 'rgb(var(--color-text-primary))',
             }}
           >
             {achievement.tier}

@@ -66,6 +66,12 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 	// AtlasAdminHandler's pattern in profile/.
 	observ := adminPorts.NewObservabilityHandler(adminInfra.NewObservability(d.Pool), d.Log)
 
+	// Phase 12.5 — /admin/rooms (Path C low-key moderation) +
+	// /admin/observability/llm (per-task rollups). Chi-direct, role-gate
+	// upstream router'ом — same pattern что у tracks/english-hr/mock-block.
+	roomsHandler := adminPorts.NewAdminRoomsHandler(&adminApp.AdminRoomsReader{Pool: d.Pool}, d.Log)
+	llmObservHandler := adminPorts.NewAdminObservabilityLLMHandler(&adminApp.ObservabilityReader{Pool: d.Pool}, d.Log)
+
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
@@ -99,6 +105,13 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 			r.Get("/admin/observability/tracks", observ.HandleTracks)
 			r.Get("/admin/observability/english-hr", observ.HandleEnglishHR)
 			r.Get("/admin/observability/mock-block", observ.HandleMockBlock)
+
+			// Phase 12.5 — rooms moderation + LLM rollups.
+			r.Get("/admin/rooms", roomsHandler.HandleList)
+			r.Get("/admin/rooms/top-creators", roomsHandler.HandleTopCreators)
+			r.Post("/admin/rooms/bulk-archive", roomsHandler.HandleBulkArchive)
+			r.Get("/admin/observability/llm", llmObservHandler.HandleRollups)
+			r.Get("/admin/observability/eval-runs", llmObservHandler.HandleEvalRuns)
 		},
 	}
 }

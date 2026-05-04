@@ -68,41 +68,6 @@ var _ domain.TemplateStore = (*Templates)(nil)
 //
 // Payload contract per type is documented alongside each entry.
 var rawTemplates = map[enums.NotificationType]map[string]string{
-	// payload: {Streak:int, XP:int, Milestone:string optional}
-	enums.NotificationTypeDailyKata: {
-		"ru": `{{if .MissedStreak}}❄️ Пропустил Kata — streak сгорит в полночь. Использовать freeze-токен?{{else}}✨ Streak {{.Streak}} дней! +{{.XP}} XP.{{if .Milestone}} {{.Milestone}}{{end}}{{end}}`,
-		"en": `{{if .MissedStreak}}❄️ Missed today's Kata — streak burns at midnight. Use a freeze token?{{else}}✨ Streak {{.Streak}} days! +{{.XP}} XP.{{if .Milestone}} {{.Milestone}}{{end}}{{end}}`,
-	},
-	// payload: {Section:string, EloDelta:int, Won:bool}
-	enums.NotificationTypeMatchResult: {
-		"ru": `{{if .Won}}⚔ Победа в арене · {{.Section}} · +{{.EloDelta}} ELO{{else}}Защита не удалась · {{.Section}} · {{.EloDelta}} ELO{{end}}`,
-		"en": `{{if .Won}}⚔ Arena victory · {{.Section}} · +{{.EloDelta}} ELO{{else}}Defense failed · {{.Section}} · {{.EloDelta}} ELO{{end}}`,
-	},
-	// payload: {Section:string, TaskTitle:string}
-	enums.NotificationTypeMatchFound: {
-		"ru": `🎯 Матч найден! {{.Section}}. Заходи быстрее — противник ждёт.`,
-		"en": `🎯 Match found! {{.Section}}. Hurry — your opponent is waiting.`,
-	},
-	// payload: {NodeKey:string, DaysInactive:int}
-	enums.NotificationTypeSkillDecay: {
-		"ru": `⚠ Skill «{{.NodeKey}}» начинает угасать — {{.DaysInactive}} дн без практики.`,
-		"en": `⚠ Skill «{{.NodeKey}}» is decaying — {{.DaysInactive}} days without practice.`,
-	},
-	// payload: {Until:string (formatted)}
-	enums.NotificationTypeSeasonEnding: {
-		"ru": `⏳ Сезон заканчивается {{.Until}}. Успей получить награды!`,
-		"en": `⏳ Season ends {{.Until}}. Don't miss your rewards!`,
-	},
-	// payload: {Plan:string, Until:string (formatted)}
-	enums.NotificationTypeSubscriptionActivated: {
-		"ru": `🎉 Подписка активирована! План: {{.Plan}}, действует до {{.Until}}.`,
-		"en": `🎉 Subscription activated! Plan: {{.Plan}}, active until {{.Until}}.`,
-	},
-	// payload: {StartsAt:string, Interviewer:string}
-	enums.NotificationTypeSlotReminder: {
-		"ru": `📅 Слот забронирован на {{.StartsAt}} с {{.Interviewer}}.`,
-		"en": `📅 Slot booked for {{.StartsAt}} with {{.Interviewer}}.`,
-	},
 	// payload: {Summary:string, Period:string}
 	enums.NotificationTypeWeeklyReport: {
 		"ru": `📊 Еженедельный отчёт ({{.Period}}):\n{{.Summary}}`,

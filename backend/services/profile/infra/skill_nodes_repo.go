@@ -95,13 +95,3 @@ func (p *Postgres) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKe
 	return sn, nil
 }
 
-// ListRatings — pivot 2026-05-01: arena/rating tables dropped. Stub
-// returns empty slice; domain.SectionRating callers (DeriveAttributes,
-// GlobalPowerScore) корректно обрабатывают пустой вход. Полное удаление
-// SectionRating из profile/domain — отдельная волна (cascading impact на
-// proto + frontend).
-func (p *Postgres) ListRatings(ctx context.Context, userID uuid.UUID) ([]domain.SectionRating, error) {
-	_ = ctx
-	_ = userID
-	return nil, nil
-}

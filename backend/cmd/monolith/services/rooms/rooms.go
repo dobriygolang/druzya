@@ -25,9 +25,11 @@ func NewRooms(d monolithServices.Deps) *monolithServices.Module {
 	repo := roomsInfra.NewRooms(d.Pool)
 	quota := roomsInfra.NewQuota(d.Pool)
 
+	abuse := roomsInfra.NewAbuseChecker(d.Pool)
 	createUC := &roomsApp.CreateRoom{
 		Repo: repo, Quota: quota, Now: d.Now,
 		PublicBaseURL: d.Cfg.Notify.PublicBaseURL,
+		Abuse:         abuse,
 	}
 	listUC := &roomsApp.ListMyRooms{Repo: repo}
 	extendUC := &roomsApp.ExtendRoom{Repo: repo, Quota: quota, Now: d.Now}
@@ -74,25 +76,27 @@ func NewSweepCron(d monolithServices.Deps) *monolithServices.Module {
 	return &monolithServices.Module{
 		Background: []func(ctx context.Context){
 			func(ctx context.Context) {
-				ticker := time.NewTicker(1 * time.Hour)
-				defer ticker.Stop()
-				// Initial sweep at boot (catches rooms что expired пока сервис
-				// был down). Idempotent — re-archive existing archived = no-op.
-				if archived, err := runner.Run(ctx); err == nil {
-					d.Log.Info("rooms: TTL sweep initial", "archived", archived)
-				}
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case <-ticker.C:
-						if archived, err := runner.Run(ctx); err != nil {
-							d.Log.Warn("rooms: TTL sweep failed", "err", err)
-						} else if archived > 0 {
-							d.Log.Info("rooms: TTL sweep", "archived", archived)
+				// Bootstrap calls Background entries SYNCHRONOUSLY — must
+				// spawn own goroutine, иначе блокирует ListenAndServe.
+				go func() {
+					ticker := time.NewTicker(1 * time.Hour)
+					defer ticker.Stop()
+					if archived, err := runner.Run(ctx); err == nil {
+						d.Log.Info("rooms: TTL sweep initial", "archived", archived)
+					}
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						case <-ticker.C:
+							if archived, err := runner.Run(ctx); err != nil {
+								d.Log.Warn("rooms: TTL sweep failed", "err", err)
+							} else if archived > 0 {
+								d.Log.Info("rooms: TTL sweep", "archived", archived)
+							}
 						}
 					}
-				}
+				}()
 			},
 		},
 	}

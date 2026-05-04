@@ -197,7 +197,7 @@ export function ReflectionModal({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {takeaways.map((t, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <span className="mono" style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', width: 16 }}>
                 {i + 1}.
               </span>
@@ -221,6 +221,7 @@ export function ReflectionModal({
                 }}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   padding: '8px 10px',
                   fontSize: 13,
                   background: 'rgba(255,255,255,0.03)',

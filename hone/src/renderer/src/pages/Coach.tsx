@@ -42,6 +42,7 @@ interface CoachProps {
 
 export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
   const [mode, setMode] = useState<Mode>('explore');
+  const [modeError, setModeError] = useState<string | null>(null);
   const [next, setNext] = useState<NextAction | null>(null);
   const [nextLoading, setNextLoading] = useState(true);
   const [nextError, setNextError] = useState<string | null>(null);
@@ -203,15 +204,24 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
   const onModeClick = async (next: Mode) => {
     if (next === mode) return;
     setMode(next); // optimistic
+    setModeError(null);
     try {
       const updated = await rpcSetMode(next);
       // Refresh fork data — exploreWeekIndex может пересчитаться.
       if (next === 'explore') {
         setFork((prev) => (prev ? { ...prev, exploreWeekIndex: updated.exploreWeekIndex } : prev));
       }
-    } catch {
-      // Backend reject (e.g. commit без trackID) — revert.
+    } catch (err) {
+      // Backend reject — show inline message + revert. FailedPrecondition
+      // (commit/deep без track) — типичный case; raw err.message содержит
+      // user-friendly «commit requires track_id». Auto-clear через 4s.
+      const msg = err instanceof Error ? err.message : String(err);
+      const friendly = /track_id|track id|requires track/i.test(msg)
+        ? 'Pick a track first (open Atlas → enrol).'
+        : msg.replace(/^\[\w+\]\s*/, '').replace(/learningStateAdapter\.SetMode:\s*/, '');
+      setModeError(friendly);
       setMode(mode);
+      window.setTimeout(() => setModeError(null), 4000);
     }
   };
 
@@ -228,6 +238,26 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
             modeIdx={modeIdx}
             exploreWeek={fork?.exploreWeekIndex}
           />
+
+          {modeError && (
+            <div
+              role="alert"
+              style={{
+                margin: '12px 0',
+                padding: '8px 12px',
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.85)',
+                background: 'rgba(255,59,48,0.08)',
+                border: '1px solid rgba(255,59,48,0.35)',
+                borderLeft: '2px solid #FF3B30',
+                borderRadius: 4,
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                letterSpacing: '0.02em',
+              }}
+            >
+              {modeError}
+            </div>
+          )}
 
           <div style={grid} className="coach-stagger">
             <HeroCard
@@ -349,14 +379,29 @@ const HeroCard: React.FC<{
       </div>
 
       <div style={heroActions}>
-        <button style={btnPrimary} disabled={loading || !action} onClick={onStart}>
+        <button
+          style={btnPrimary}
+          disabled={loading || !action}
+          onClick={onStart}
+          title="Pin this task and start a focus session"
+        >
           {loading ? 'loading…' : `start ${action?.estimatedMinutes ?? 25} min`}
         </button>
-        <button style={btnGhost} disabled={loading} onClick={onSkip}>
-          skip
+        <button
+          style={btnGhost}
+          disabled={loading}
+          onClick={onSkip}
+          title="Mark this resource as skipped — AI proposes the next one"
+        >
+          not now
         </button>
-        <button style={btnGhost} disabled={loading} onClick={onSuggestOther}>
-          suggest other
+        <button
+          style={btnGhost}
+          disabled={loading}
+          onClick={onSuggestOther}
+          title="Ask AI for an alternative recommendation"
+        >
+          try another
         </button>
       </div>
     </section>

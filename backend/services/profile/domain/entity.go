@@ -28,19 +28,8 @@ type Profile struct {
 	CharClass   enums.CharClass
 	Level       int
 	XP          int64
-	Title       string
-	AvatarFrame string
 	CareerStage CareerStage
-	Attributes  Attributes
 	UpdatedAt   time.Time
-}
-
-// Attributes — блок RPG-статов в стиле dark fantasy, выводимый из истории рейтинга.
-type Attributes struct {
-	Intellect int
-	Strength  int
-	Dexterity int
-	Will      int
 }
 
 // Subscription — текущий тарифный план пользователя.
@@ -49,14 +38,6 @@ type Subscription struct {
 	Plan             enums.SubscriptionPlan
 	Status           string
 	CurrentPeriodEnd *time.Time
-}
-
-// SectionRating — строка ELO по одной секции.
-type SectionRating struct {
-	Section      enums.Section
-	Elo          int
-	MatchesCount int
-	LastMatchAt  *time.Time
 }
 
 // SkillNode — строка прогресса пользователя в атласе навыков.
@@ -122,20 +103,6 @@ var AllowedFocusClasses = map[string]struct{}{
 	"system":      {},
 	"concurrency": {},
 	"ds":          {},
-}
-
-// EloPoint — дневной snapshot ELO в одной секции.
-type EloPoint struct {
-	Date    time.Time
-	Elo     int
-	Section enums.Section
-}
-
-// PercentileView — три перцентиля пользователя (0..100).
-type PercentileView struct {
-	InTier    int
-	InFriends int
-	InGlobal  int
 }
 
 // ShareToken — выпущенный токен публичной ссылки на отчёт.

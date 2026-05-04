@@ -49,7 +49,7 @@ func TestReportCache_HitSecondCall(t *testing.T) {
 func TestReportCache_MissTriggersLoader(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
-	loader := &stubLoader{view: app.ReportView{ActionsCount: 47}}
+	loader := &stubLoader{view: app.ReportView{StreakDays: 47}}
 	kv := newMemKV()
 	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 
@@ -57,8 +57,8 @@ func TestReportCache_MissTriggersLoader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if got.ActionsCount != 47 {
-		t.Fatalf("actions=%d", got.ActionsCount)
+	if got.StreakDays != 47 {
+		t.Fatalf("actions=%d", got.StreakDays)
 	}
 	if loader.calls.Load() != 1 {
 		t.Fatalf("expected 1 loader call, got %d", loader.calls.Load())
@@ -94,7 +94,7 @@ func TestReportCache_RedisGetErrorPropagates(t *testing.T) {
 func TestReportCache_InvalidateBustsKey(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
-	loader := &stubLoader{view: app.ReportView{ActionsCount: 1}}
+	loader := &stubLoader{view: app.ReportView{StreakDays: 1}}
 	kv := newMemKV()
 	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 	_, _ = rc.Get(context.Background(), uid)
@@ -110,7 +110,7 @@ func TestReportCache_InvalidateBustsKey(t *testing.T) {
 func TestReportCache_TTLExpiry(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
-	loader := &stubLoader{view: app.ReportView{ActionsCount: 9}}
+	loader := &stubLoader{view: app.ReportView{StreakDays: 9}}
 	kv := newMemKV()
 	now := time.Now()
 	kv.now = func() time.Time { return now }
@@ -153,7 +153,7 @@ func TestReportCache_DefaultTTLApplied(t *testing.T) {
 func TestReportCache_CorruptEntryRefreshes(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
-	loader := &stubLoader{view: app.ReportView{ActionsCount: 5}}
+	loader := &stubLoader{view: app.ReportView{StreakDays: 5}}
 	kv := newMemKV()
 	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 	// Inject corrupt JSON under the report key.
@@ -162,7 +162,7 @@ func TestReportCache_CorruptEntryRefreshes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if got.ActionsCount != 5 {
-		t.Fatalf("expected fresh load, got actions=%d", got.ActionsCount)
+	if got.StreakDays != 5 {
+		t.Fatalf("expected fresh load, got actions=%d", got.StreakDays)
 	}
 }

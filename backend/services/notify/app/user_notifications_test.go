@@ -2,14 +2,11 @@ package app
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"sync"
 	"testing"
 	"time"
 
 	"druz9/notify/domain"
-	sharedDomain "druz9/shared/domain"
 
 	"github.com/google/uuid"
 )
@@ -110,52 +107,6 @@ func (s *stubPrefsRepo) Upsert(_ context.Context, p domain.NotificationPrefs) (d
 	p.UpdatedAt = time.Now()
 	s.m[p.UserID] = p
 	return p, nil
-}
-
-func TestFeedHandlers_OnArenaMatchCompleted_WriteWinAndLoss(t *testing.T) {
-	repo := newStubRepo()
-	prefs := newStubPrefsRepo()
-	h := NewFeedHandlers(repo, prefs, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	winner := uuid.New()
-	loser := uuid.New()
-	ev := sharedDomain.MatchCompleted{
-		MatchID: uuid.New(), WinnerID: winner, LoserIDs: []uuid.UUID{loser},
-		EloDeltas: map[uuid.UUID]int{winner: +18, loser: -16},
-	}
-	if err := h.OnArenaMatchCompleted(context.Background(), ev); err != nil {
-		t.Fatalf("handle: %v", err)
-	}
-	rows, _ := repo.ListByUser(context.Background(), winner, domain.NotificationFilter{})
-	if len(rows) != 1 || rows[0].Channel != "wins" {
-		t.Fatalf("winner row mismatch: %+v", rows)
-	}
-	rows, _ = repo.ListByUser(context.Background(), loser, domain.NotificationFilter{})
-	if len(rows) != 1 || rows[0].Channel != "match" {
-		t.Fatalf("loser row mismatch: %+v", rows)
-	}
-}
-
-func TestFeedHandlers_RespectsSilence(t *testing.T) {
-	repo := newStubRepo()
-	prefs := newStubPrefsRepo()
-	uid := uuid.New()
-	silence := time.Now().Add(time.Hour)
-	_, _ = prefs.Upsert(context.Background(), domain.NotificationPrefs{
-		UserID:       uid,
-		SilenceUntil: &silence,
-	})
-	h := NewFeedHandlers(repo, prefs, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	ev := sharedDomain.MatchCompleted{
-		MatchID: uuid.New(), WinnerID: uid,
-		EloDeltas: map[uuid.UUID]int{uid: +20},
-	}
-	if err := h.OnArenaMatchCompleted(context.Background(), ev); err != nil {
-		t.Fatalf("handle: %v", err)
-	}
-	rows, _ := repo.ListByUser(context.Background(), uid, domain.NotificationFilter{})
-	if len(rows) != 0 {
-		t.Fatalf("silenced user should not get rows: %+v", rows)
-	}
 }
 
 func TestMarkRead_AndCount(t *testing.T) {

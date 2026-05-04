@@ -47,16 +47,18 @@ export function OfflineBanner() {
     await drainAll();
   }
 
+  // B/W rule: только `dead` (оператор должен дёрнуться) держит #FF3B30,
+  // остальное — ink-ramp на чёрном. Severity передаётся текстом + opacity.
   if (!online) {
     return (
-      <BannerStrip color="#ffaa55">
+      <BannerStrip tone="muted">
         ● Offline · {pendingCount > 0 ? `${pendingCount} change(s) queued` : 'sharing & sync paused'}
       </BannerStrip>
     );
   }
   if (deadCount > 0) {
     return (
-      <BannerStrip color="#ff6b6b" interactive>
+      <BannerStrip tone="danger" interactive>
         <span>⚠ {deadCount} change{deadCount === 1 ? '' : 's'} stuck</span>
         <button onClick={() => void manualRetry()} style={retryBtn}>retry</button>
       </BannerStrip>
@@ -64,14 +66,14 @@ export function OfflineBanner() {
   }
   if (pendingCount > 0) {
     return (
-      <BannerStrip color="#7fa8d4">
+      <BannerStrip tone="ink">
         ⟳ Syncing {pendingCount} change{pendingCount === 1 ? '' : 's'}…
       </BannerStrip>
     );
   }
   if (lastSyncAt !== null && Date.now() - lastSyncAt < 3000) {
     return (
-      <BannerStrip color="#7fc89a">
+      <BannerStrip tone="ink-dim">
         ✓ Synced
       </BannerStrip>
     );
@@ -82,9 +84,9 @@ export function OfflineBanner() {
 const retryBtn: React.CSSProperties = {
   marginLeft: 10,
   padding: '2px 10px',
-  background: 'rgba(0,0,0,0.18)',
-  border: '1px solid rgba(0,0,0,0.25)',
-  color: '#0f0f10',
+  background: 'rgba(255,255,255,0.18)',
+  border: '1px solid rgba(255,255,255,0.30)',
+  color: '#FFFFFF',
   borderRadius: 3,
   fontSize: 10,
   fontFamily: 'inherit',
@@ -94,12 +96,21 @@ const retryBtn: React.CSSProperties = {
   pointerEvents: 'auto',
 };
 
+type BannerTone = 'muted' | 'ink' | 'ink-dim' | 'danger';
+
+const TONE_BG: Record<BannerTone, string> = {
+  muted: 'rgba(255,255,255,0.10)',
+  ink: 'rgba(255,255,255,0.16)',
+  'ink-dim': 'rgba(255,255,255,0.08)',
+  danger: '#FF3B30',
+};
+
 function BannerStrip({
-  color,
+  tone,
   children,
   interactive = false,
 }: {
-  color: string;
+  tone: BannerTone;
   children: React.ReactNode;
   interactive?: boolean;
 }) {
@@ -116,9 +127,11 @@ function BannerStrip({
         fontSize: 10.5,
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
-        color: '#0f0f10',
-        background: color,
-        borderBottom: '1px solid rgba(0,0,0,0.15)',
+        color: '#FFFFFF',
+        background: TONE_BG[tone],
+        backdropFilter: tone === 'danger' ? 'none' : 'blur(8px)',
+        WebkitBackdropFilter: tone === 'danger' ? 'none' : 'blur(8px)',
+        borderBottom: '1px solid rgba(255,255,255,0.10)',
         zIndex: 1000,
         pointerEvents: interactive ? 'auto' : 'none',
         animationDuration: '180ms',

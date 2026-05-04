@@ -4,21 +4,18 @@
 -- v2: email column dropped from users; xp/level moved to user_xp.
 SELECT u.id, u.username, u.role, u.locale, u.display_name, u.created_at,
        p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
-       p.title, p.avatar_frame,
-       p.career_stage, p.intellect, p.strength, p.dexterity, p.will, p.updated_at,
-       s.plan, s.status, s.current_period_end,
-       c.balance
+       p.career_stage, p.updated_at,
+       s.plan, s.status, s.current_period_end
   FROM users u
   JOIN profiles p           ON p.user_id = u.id
   LEFT JOIN user_xp ux      ON ux.user_id = u.id
   LEFT JOIN subscriptions s ON s.user_id = u.id
-  LEFT JOIN ai_credits c    ON c.user_id = u.id
  WHERE u.id = $1;
 
 -- name: GetProfilePublic :one
 SELECT u.id, u.username, u.display_name, u.created_at,
        p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
-       p.title, p.avatar_frame, p.career_stage
+       p.career_stage
   FROM users u
   JOIN profiles p      ON p.user_id = u.id
   LEFT JOIN user_xp ux ON ux.user_id = u.id
@@ -29,10 +26,6 @@ INSERT INTO profiles(user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING;
 
 -- name: EnsureSubscription :exec
 INSERT INTO subscriptions(user_id, plan, status) VALUES ($1, 'free', 'active')
-  ON CONFLICT (user_id) DO NOTHING;
-
--- name: EnsureAICredits :exec
-INSERT INTO ai_credits(user_id, balance) VALUES ($1, 0)
   ON CONFLICT (user_id) DO NOTHING;
 
 -- name: EnsureNotificationPrefs :exec
@@ -55,9 +48,6 @@ VALUES ($1, $2, $3, $4);
 UPDATE user_xp
    SET level = $2, total_xp = $3, last_xp_at = now(), updated_at = now()
  WHERE user_id = $1;
-
--- name: UpdateCareerStage :exec
-UPDATE profiles SET career_stage = $2, updated_at = now() WHERE user_id = $1;
 
 -- name: ListSkillNodes :many
 SELECT node_key, progress, unlocked_at, decayed_at, updated_at

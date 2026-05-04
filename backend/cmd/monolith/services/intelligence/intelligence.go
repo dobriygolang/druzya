@@ -60,6 +60,8 @@ type IntelligenceModule struct {
 	// notes + embed enqueue) ещё не существует на момент New(). Bootstrap
 	// после honeServices.NewHone пишет mod.LogResourceUC.NoteCreator = ...
 	LogResourceUC *intelApp.LogResource
+	// InsightsRepo — public для curation_producers_cron (Phase 3.5d).
+	InsightsRepo *intelInfra.InsightsPostgres
 }
 
 func New(d monolithServices.Deps) IntelligenceModule {
@@ -205,6 +207,7 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		setMode: &lsApp.SetMode{Repo: lsRepo},
 		setFork: &lsApp.SetFork{Repo: lsRepo},
 		get:     &lsApp.GetState{Repo: lsRepo},
+		pool:    d.Pool,
 	}
 
 	// Phase 2 finishers — activity stream + skill radar.
@@ -315,5 +318,6 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		SkillReader:    skillR,
 		LinkSuggester:  &intelApp.SuggestNoteLinks{Chain: d.LLMChain},
 		LogResourceUC:  server.LogResourceUC,
+		InsightsRepo:   insightsRepo,
 	}
 }

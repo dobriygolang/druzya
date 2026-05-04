@@ -110,6 +110,11 @@ message TutorActivityResponse {
   int32  minutes_taught        = 6;
   // 0..1; 0 when no events in window.
   double cancellation_rate     = 7;
+  // Phase 8 — rolling daily series for sparkline UI. Length == window_days,
+  // oldest → newest. daily_completed = completed-event count per day;
+  // daily_minutes = SUM(duration_min) per day.
+  repeated int32 daily_completed = 8;
+  repeated int32 daily_minutes   = 9;
 }
 
 // ─── Group events (Wave 5.2) ───────────────────────────────────────

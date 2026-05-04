@@ -105,29 +105,3 @@ func (h *OnXPGained) Handle(ctx context.Context, ev sharedDomain.Event) error {
 	return nil
 }
 
-// OnRatingChanged recomputes career_stage from the refreshed ratings set.
-type OnRatingChanged struct {
-	Repo domain.ProfileRepo
-	Log  *slog.Logger
-}
-
-// Handle implements domain.Handler.
-func (h *OnRatingChanged) Handle(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.RatingChanged)
-	if !ok {
-		return fmt.Errorf("profile.OnRatingChanged: unexpected event %T", ev)
-	}
-	ratings, err := h.Repo.ListRatings(ctx, e.UserID)
-	if err != nil {
-		return fmt.Errorf("profile.OnRatingChanged: list ratings: %w", err)
-	}
-	score := domain.GlobalPowerScore(ratings)
-	stage := domain.CareerStageFromPowerScore(score)
-	if !stage.IsValid() {
-		return fmt.Errorf("profile.OnRatingChanged: invalid derived stage %q", stage)
-	}
-	if err := h.Repo.UpdateCareerStage(ctx, e.UserID, stage); err != nil {
-		return fmt.Errorf("profile.OnRatingChanged: persist stage: %w", err)
-	}
-	return nil
-}

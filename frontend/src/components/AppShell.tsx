@@ -4,6 +4,7 @@ import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, He
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { MobileBottomNav } from './MobileBottomNav'
+import { Palette } from './Palette'
 import { Avatar } from './Avatar'
 import { DegradedBanner } from './global-error/DegradedBanner'
 import { NotificationsBell } from './notifications/NotificationsBell'
@@ -225,7 +226,7 @@ function UserMenu({ onClose }: { onClose: () => void }) {
           {it.badge === 'new' && (
             <span
               className="rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider text-white"
-              style={{ background: 'linear-gradient(135deg, rgb(124,92,255), rgb(76,139,255))' }}
+              style={{ background: '#FF3B30' }}
             >
               NEW
             </span>
@@ -246,7 +247,11 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   )
 }
 
-function TopNav({ onOpenNotifications, unreadCount }: { onOpenNotifications: () => void; unreadCount: number }) {
+function TopNav({ onOpenNotifications, unreadCount, onOpenPalette }: {
+  onOpenNotifications: () => void
+  unreadCount: number
+  onOpenPalette: () => void
+}) {
   const { t } = useTranslation('common')
   const NAV_ITEMS = useNavItems()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -276,14 +281,24 @@ function TopNav({ onOpenNotifications, unreadCount }: { onOpenNotifications: () 
         </nav>
       </div>
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <div className="hidden h-9 w-[240px] items-center gap-2 rounded-md border border-border bg-surface-2 px-3 lg:flex">
-          <Search className="h-4 w-4 shrink-0 text-text-muted" />
-          <span className="truncate font-sans text-[13px] text-text-muted">{t('labels.search_placeholder')}</span>
-        </div>
         <button
           type="button"
+          onClick={onOpenPalette}
+          className="hidden h-9 w-[240px] items-center gap-2 rounded-md border border-border bg-surface-2 px-3 text-left transition-colors hover:border-border-strong lg:flex"
+          aria-label={t('labels.search_placeholder')}
+          title="⌘K"
+        >
+          <Search className="h-4 w-4 shrink-0 text-text-muted" />
+          <span className="flex-1 truncate font-sans text-[13px] text-text-muted">
+            {t('labels.search_placeholder')}
+          </span>
+          <span className="font-mono text-[10px] text-text-muted">⌘K</span>
+        </button>
+        <button
+          type="button"
+          onClick={onOpenPalette}
           className="grid h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2 lg:hidden"
-          aria-label="Search"
+          aria-label="Open command palette"
         >
           <Search className="h-5 w-5" />
         </button>
@@ -376,6 +391,7 @@ export function AppShellV2({ children }: { children: ReactNode }) {
   const location = useLocation()
   const reduced = useReducedMotion()
   const [notifOpen, setNotifOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   // Unread count drives both the header bell badge and the mobile-nav profile
   // tab badge. The hook polls every 60s and degrades to 0 on errors so a
   // backend outage doesn't surface a misleading count.
@@ -393,6 +409,20 @@ export function AppShellV2({ children }: { children: ReactNode }) {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [location.pathname])
 
+  // Cmd+K (Ctrl+K on Linux/Win) toggles the command palette. Mirrors the
+  // Hone shortcut so muscle memory transfers between web and desktop.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey
+      if (isMod && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((p) => !p)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const motionProps = reduced
     ? {}
     : {
@@ -408,8 +438,13 @@ export function AppShellV2({ children }: { children: ReactNode }) {
           top of the page. Mounts when the apiClient routes a 5xx through
           degradedBus.report(). Renders nothing in the happy path. */}
       <DegradedBanner />
-      <TopNav onOpenNotifications={() => setNotifOpen(true)} unreadCount={unreadCount} />
+      <TopNav
+        onOpenNotifications={() => setNotifOpen(true)}
+        unreadCount={unreadCount}
+        onOpenPalette={() => setPaletteOpen(true)}
+      />
       <NotificationsDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
+      {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
       <SessionExpiredToast />
       <AnimatePresence mode="wait">
         <motion.main

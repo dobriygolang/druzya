@@ -318,10 +318,6 @@ func TestGetWeeklyShare_HappyPath(t *testing.T) {
 	// → отчёт деградирует, но запрос проходит.
 	repo.EXPECT().CountRecentActivity(gomock.Any(), uid, gomock.Any()).
 		Return(domain.Activity{XPEarned: 100, MatchesWon: 3}, nil)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).
-		Return(nil, errors.New("ignored"))
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).
-		Return(nil, errors.New("ignored"))
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).
 		Return(0, 0, errors.New("ignored"))
 

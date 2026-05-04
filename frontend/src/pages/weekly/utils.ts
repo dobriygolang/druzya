@@ -22,7 +22,7 @@ export const SECTION_COLORS: Record<string, string> = {
   sql: '#D4D4D4',
   go: '#A3A3A3',
   system_design: '#8A8A8A',
-  behavioral: '#FBBF24',
+  behavioral: '#FFFFFF',
   graphs: '#6B6B6B',
 }
 export const FALLBACK_COLOR = '#525252'

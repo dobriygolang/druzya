@@ -3,8 +3,6 @@ package domain
 import (
 	"sync"
 	"testing"
-
-	"druz9/shared/enums"
 )
 
 func TestXPToNext(t *testing.T) {
@@ -77,144 +75,17 @@ func TestApplyXP_HardCapAt100(t *testing.T) {
 	}
 }
 
-func TestGlobalPowerScore(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name string
-		in   []SectionRating
-		want int
-	}{
-		{
-			name: "two-sections-others-baseline",
-			in: []SectionRating{
-				{Section: enums.SectionAlgorithms, Elo: 1500},
-				{Section: enums.SectionSQL, Elo: 1200},
-			},
-			want: 1140, // (1500 + 1200 + 1000 + 1000 + 1000)/5
-		},
-		{
-			name: "all-baseline",
-			in:   nil,
-			want: 1000,
-		},
-		{
-			name: "invalid-section-ignored",
-			in: []SectionRating{
-				{Section: enums.Section("garbage"), Elo: 9999},
-			},
-			want: 1000,
-		},
-		{
-			name: "all-sections-set",
-			in: []SectionRating{
-				{Section: enums.SectionAlgorithms, Elo: 1600},
-				{Section: enums.SectionSQL, Elo: 1400},
-				{Section: enums.SectionGo, Elo: 1500},
-				{Section: enums.SectionSystemDesign, Elo: 1300},
-				{Section: enums.SectionBehavioral, Elo: 1200},
-			},
-			want: 1400,
-		},
-	}
-	for _, c := range cases {
-		c := c
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			if got := GlobalPowerScore(c.in); got != c.want {
-				t.Fatalf("GlobalPowerScore = %d, want %d", got, c.want)
-			}
-		})
-	}
-}
-
-func TestCareerStageFromPowerScore(t *testing.T) {
-	t.Parallel()
-	cases := map[int]CareerStage{
-		0:    CareerStageJunior,
-		900:  CareerStageJunior,
-		1099: CareerStageJunior,
-		1100: CareerStageMiddle,
-		1299: CareerStageMiddle,
-		1300: CareerStageSenior,
-		1499: CareerStageSenior,
-		1500: CareerStageStaff,
-		1799: CareerStageStaff,
-		1800: CareerStagePrincipal,
-		2400: CareerStagePrincipal,
-	}
-	for score, want := range cases {
-		if got := CareerStageFromPowerScore(score); got != want {
-			t.Errorf("CareerStageFromPowerScore(%d) = %q, want %q", score, got, want)
-		}
-		if !want.IsValid() {
-			t.Errorf("derived stage %q must satisfy IsValid()", want)
-		}
-	}
-}
-
-func TestDeriveAttributes_BoundsAndMapping(t *testing.T) {
-	t.Parallel()
-	// ELO 800 → 0; 2200 → 100; mid → 50.
-	in := []SectionRating{
-		{Section: enums.SectionAlgorithms, Elo: 800},
-		{Section: enums.SectionSystemDesign, Elo: 2200},
-		{Section: enums.SectionSQL, Elo: 1500},
-		{Section: enums.SectionGo, Elo: 1800},
-		{Section: enums.SectionBehavioral, Elo: 1500},
-	}
-	a := DeriveAttributes(in)
-	if a.Intellect != 0 {
-		t.Errorf("Intellect = %d, want 0", a.Intellect)
-	}
-	if a.Strength != 100 {
-		t.Errorf("Strength = %d, want 100", a.Strength)
-	}
-	if a.Dexterity < 70 || a.Dexterity > 75 {
-		// 1800 maps to (1800-800)*100/1400 = 71
-		t.Errorf("Dexterity = %d, want ~71", a.Dexterity)
-	}
-	if a.Will < 49 || a.Will > 51 {
-		t.Errorf("Will = %d, want ~50", a.Will)
-	}
-}
-
-func TestDeriveAttributes_BelowFloorClamps(t *testing.T) {
-	t.Parallel()
-	in := []SectionRating{{Section: enums.SectionAlgorithms, Elo: 100}}
-	a := DeriveAttributes(in)
-	if a.Intellect != 0 {
-		t.Fatalf("expected Intellect=0 for sub-floor ELO, got %d", a.Intellect)
-	}
-}
-
-func TestDeriveAttributes_AboveCeilingClamps(t *testing.T) {
-	t.Parallel()
-	in := []SectionRating{{Section: enums.SectionAlgorithms, Elo: 9999}}
-	a := DeriveAttributes(in)
-	if a.Intellect != 100 {
-		t.Fatalf("expected Intellect=100 for sky-high ELO, got %d", a.Intellect)
-	}
-}
-
-// TestPureFunctions_ConcurrentSafe asserts the pure score/attribute helpers
-// don't share mutable state (caught early if anyone introduces a global
-// memoization cache without a mutex).
+// TestPureFunctions_ConcurrentSafe asserts XPToNext doesn't share mutable
+// state (caught early if anyone introduces a global memoization cache
+// without a mutex).
 func TestPureFunctions_ConcurrentSafe(t *testing.T) {
 	t.Parallel()
-	in := []SectionRating{
-		{Section: enums.SectionAlgorithms, Elo: 1500},
-		{Section: enums.SectionSQL, Elo: 1300},
-	}
 	const N = 200
 	var wg sync.WaitGroup
 	wg.Add(N)
 	for i := 0; i < N; i++ {
 		go func() {
 			defer wg.Done()
-			if got := GlobalPowerScore(in); got <= 0 {
-				t.Errorf("unexpected GPS %d", got)
-			}
-			_ = DeriveAttributes(in)
 			_ = XPToNext(7)
 		}()
 	}

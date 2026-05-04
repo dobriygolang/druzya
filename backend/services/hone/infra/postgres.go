@@ -575,7 +575,11 @@ func (s *Streaks) RecomputeDay(ctx context.Context, userID uuid.UUID, day time.T
 // RangeDays returns days in [from, to] inclusive.
 func (s *Streaks) RangeDays(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.StreakDay, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT day, focused_seconds, sessions_count, qualifies_streak, updated_at
+		// `hone_streak_days` schema (00001_baseline.sql) не имеет
+		// updated_at — только day/focused_seconds/sessions_count/qualifies.
+		// Возвращаем zero-time для UpdatedAt; consumers только used'ят
+		// его для display, кэш не зависит.
+		`SELECT day, focused_seconds, sessions_count, qualifies_streak
 		   FROM hone_streak_days
 		  WHERE user_id=$1 AND day BETWEEN $2 AND $3
 		  ORDER BY day ASC`,
@@ -594,9 +598,8 @@ func (s *Streaks) RangeDays(ctx context.Context, userID uuid.UUID, from, to time
 			focusedSeconds  int32
 			sessionsCount   int32
 			qualifiesStreak bool
-			updatedAt       time.Time
 		)
-		if err := rows.Scan(&day, &focusedSeconds, &sessionsCount, &qualifiesStreak, &updatedAt); err != nil {
+		if err := rows.Scan(&day, &focusedSeconds, &sessionsCount, &qualifiesStreak); err != nil {
 			return nil, fmt.Errorf("hone.Streaks.RangeDays: scan: %w", err)
 		}
 		out = append(out, domain.StreakDay{
@@ -605,7 +608,6 @@ func (s *Streaks) RangeDays(ctx context.Context, userID uuid.UUID, from, to time
 			FocusedSeconds:  int(focusedSeconds),
 			SessionsCount:   int(sessionsCount),
 			QualifiesStreak: qualifiesStreak,
-			UpdatedAt:       updatedAt,
 		})
 	}
 	if err := rows.Err(); err != nil {

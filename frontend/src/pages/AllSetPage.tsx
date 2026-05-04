@@ -1,7 +1,7 @@
 // TODO i18n
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, Trophy, Zap, Unlock, ArrowRight } from 'lucide-react'
+import { Check, Sparkles, Map as MapIcon, MessageSquare, ArrowRight } from 'lucide-react'
 import { Button } from '../components/Button'
 
 // Inline minimal top-bar — `OnboardingPage` was deleted along with the
@@ -23,12 +23,13 @@ function AllSetTopBar() {
 }
 
 function Confetti() {
+  // B/W only — single #FF3B30 spark for the Hone-red signal accent.
   const pieces = [
-    { top: -20, left: -40, color: '#FBBF24', rot: 12 },
-    { top: 30, left: -70, color: '#FFFFFF', rot: -18 },
+    { top: -20, left: -40, color: '#FFFFFF', rot: 12 },
+    { top: 30, left: -70, color: 'rgba(255,255,255,0.6)', rot: -18 },
     { top: 140, left: -50, color: '#FFFFFF', rot: 30 },
     { top: -10, left: 180, color: '#FF3B30', rot: -10 },
-    { top: 60, left: 200, color: '#FBBF24', rot: 22 },
+    { top: 60, left: 200, color: 'rgba(255,255,255,0.4)', rot: 22 },
     { top: 150, left: 180, color: '#FFFFFF', rot: -25 },
   ]
   return (
@@ -90,13 +91,13 @@ export default function AllSetPage() {
         <div className="relative">
           <Confetti />
           <div
-            className="grid place-items-center text-text-primary border border-success/40"
+            className="grid place-items-center text-text-primary"
             style={{
               width: 160,
               height: 160,
               borderRadius: 80,
-              background: '#10B981',
-              boxShadow: '0 8px 40px rgba(16,185,129,0.5)',
+              background: '#FFFFFF',
+              boxShadow: '0 8px 40px rgba(255,255,255,0.18)',
             }}
           >
             <Check className="h-20 w-20 text-bg" strokeWidth={3} />
@@ -107,27 +108,27 @@ export default function AllSetPage() {
           Готово!
         </h1>
         <p className="max-w-[640px] text-center text-[16px] text-text-secondary">
-          Аккаунт создан, стек настроен, первая kata пройдена. Добро пожаловать в druz9, @dima 🎉
+          Трек выбран, Atlas построен. Дальше — первый mock и AI-coach с памятью.
         </p>
 
         <div className="flex flex-col gap-4 sm:flex-row">
           <RewardCard
-            icon={<Trophy className="h-6 w-6 text-warn" />}
-            iconBg="bg-warn/15"
-            title="Первая кровь"
-            sub="Достижение разблокировано"
+            icon={<Sparkles className="h-6 w-6 text-text-primary" />}
+            iconBg="bg-text-primary/10"
+            title="Mock unlocked"
+            sub="Strict + AI-режимы доступны"
           />
           <RewardCard
-            icon={<Zap className="h-6 w-6 text-text-secondary" />}
+            icon={<MapIcon className="h-6 w-6 text-text-secondary" />}
             iconBg="bg-text-primary/10"
-            title="+500 XP"
-            sub="Бонус за онбординг"
+            title="Skill Atlas"
+            sub="Карта прогресса по треку"
           />
           <RewardCard
-            icon={<Unlock className="h-6 w-6 text-text-primary" />}
+            icon={<MessageSquare className="h-6 w-6 text-text-primary" />}
             iconBg="bg-text-primary/10"
-            title="Ranked unlock"
-            sub="Доступ к 1v1-аренам"
+            title="AI-coach"
+            sub="Помнит твой контекст"
           />
         </div>
 
@@ -139,19 +140,19 @@ export default function AllSetPage() {
         >
           <div className="flex flex-col gap-1">
             <span className="font-display text-[22px] font-bold text-text-primary">
-              Найди первого соперника
+              Запусти первый mock
             </span>
             <span className="text-[13px] text-text-secondary">
-              Очередь подбирает противника твоего уровня — обычно 30 секунд
+              Strict-режим без AI с watermark — честная оценка готовности за 25 минут
             </span>
           </div>
-          <Link to="/atlas">
+          <Link to="/mock">
             <Button
               variant="primary"
               iconRight={<ArrowRight className="h-4 w-4" />}
               className="!bg-white !text-bg shadow-none hover:!bg-white/90 hover:shadow-none"
             >
-              В очередь
+              Запустить
             </Button>
           </Link>
         </div>
@@ -161,19 +162,19 @@ export default function AllSetPage() {
             to="/atlas"
             className="rounded-full border border-border bg-surface-1 px-4 py-2 text-[13px] font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
-            Daily kata
+            Открыть Atlas
           </Link>
           <Link
-            to="/atlas"
+            to="/tutor"
             className="rounded-full border border-border bg-surface-1 px-4 py-2 text-[13px] font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
-            Изучить режимы
+            Поговорить с coach
           </Link>
           <Link
-            to="/atlas"
+            to="/codex"
             className="rounded-full border border-border bg-surface-1 px-4 py-2 text-[13px] font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
-            Найти друзей
+            Прочитать Codex
           </Link>
         </div>
       </main>

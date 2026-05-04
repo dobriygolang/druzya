@@ -42,40 +42,7 @@ func (c *Companies) List(ctx context.Context) ([]domain.AdminCompany, error) {
 	return out, nil
 }
 
-// Upsert creates or refreshes a company row keyed by slug.
-func (c *Companies) Upsert(ctx context.Context, in domain.CompanyUpsert) (domain.AdminCompany, error) {
-	logo := pgText(in.LogoURL)
-	row, err := c.q.UpsertCompany(ctx, admindb.UpsertCompanyParams{
-		Slug:        in.Slug,
-		Name:        in.Name,
-		LogoUrl:     logo,
-		Description: in.Description,
-		Active:      in.Active,
-	})
-	if err != nil {
-		return domain.AdminCompany{}, fmt.Errorf("admin.Companies.Upsert: %w", mapUniqueErr(err))
-	}
-	return companyFromUpsertRow(row), nil
-}
-
 func companyFromListRow(r admindb.ListCompaniesRow) domain.AdminCompany {
-	logo := ""
-	if r.LogoUrl.Valid {
-		logo = r.LogoUrl.String
-	}
-	return domain.AdminCompany{
-		ID:          sharedpg.UUIDFrom(r.ID),
-		Slug:        r.Slug,
-		Name:        r.Name,
-		LogoURL:     logo,
-		Description: r.Description,
-		Active:      r.Active,
-		SortOrder:   int(r.SortOrder),
-		CreatedAt:   r.CreatedAt.Time,
-	}
-}
-
-func companyFromUpsertRow(r admindb.UpsertCompanyRow) domain.AdminCompany {
 	logo := ""
 	if r.LogoUrl.Valid {
 		logo = r.LogoUrl.String

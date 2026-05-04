@@ -127,15 +127,6 @@ type AdminCompany struct {
 	CreatedAt   time.Time
 }
 
-// CompanyUpsert is the curator-supplied payload for POST /admin/companies.
-type CompanyUpsert struct {
-	Slug        string
-	Name        string
-	LogoURL     string
-	Description string
-	Active      bool
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // Dynamic config
 // ─────────────────────────────────────────────────────────────────────────
@@ -176,26 +167,3 @@ type ConfigEntry struct {
 	UpdatedBy   *uuid.UUID
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Anticheat
-// ─────────────────────────────────────────────────────────────────────────
-
-// AnticheatSignal mirrors anticheat_signals joined against users for the
-// username dashboard column.
-type AnticheatSignal struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	Username  string
-	MatchID   *uuid.UUID
-	Type      enums.AnticheatSignalType
-	Severity  enums.SeverityLevel
-	Metadata  []byte
-	CreatedAt time.Time
-}
-
-// AnticheatFilter is the optional set of predicates on GET /admin/anticheat.
-type AnticheatFilter struct {
-	Severity *enums.SeverityLevel
-	From     *time.Time
-	Limit    int
-}

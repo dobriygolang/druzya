@@ -19,19 +19,18 @@ import (
 
 // AdminDashboard is the live counters payload served by the /admin landing.
 type AdminDashboard struct {
-	UsersTotal          int64
-	UsersActiveToday    int64
-	UsersActiveWeek     int64
-	UsersActiveMonth    int64
-	UsersBanned         int64
-	MatchesToday        int64
-	MatchesWeek         int64
-	KatasToday          int64
-	KatasWeek           int64
-	ActiveMockSessions  int64
-	ReportsPending      int64
-	AnticheatSignals24h int64
-	GeneratedAt         time.Time
+	UsersTotal         int64
+	UsersActiveToday   int64
+	UsersActiveWeek    int64
+	UsersActiveMonth   int64
+	UsersBanned        int64
+	MatchesToday       int64
+	MatchesWeek        int64
+	KatasToday         int64
+	KatasWeek          int64
+	ActiveMockSessions int64
+	ReportsPending     int64
+	GeneratedAt        time.Time
 }
 
 // DashboardRepo serves admin dashboard counters.

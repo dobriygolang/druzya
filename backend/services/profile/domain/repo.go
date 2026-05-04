@@ -32,9 +32,6 @@ type ProfileRepo interface {
 	// с ApplyXPDelta так что credit и audit всегда в паре.
 	RecordXPEvent(ctx context.Context, userID uuid.UUID, amount int, source string, sourceID *uuid.UUID) error
 
-	// UpdateCareerStage writes back the derived seniority label.
-	UpdateCareerStage(ctx context.Context, userID uuid.UUID, stage CareerStage) error
-
 	// Settings operations.
 	GetSettings(ctx context.Context, userID uuid.UUID) (Settings, error)
 	UpdateSettings(ctx context.Context, userID uuid.UUID, s Settings) error
@@ -60,40 +57,12 @@ type ProfileRepo interface {
 	// Returns ErrNotFound if the node_key does not exist in atlas_nodes.
 	UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKey string, progress int) (SkillNode, error)
 
-	// Ratings snapshot for score derivation.
-	ListRatings(ctx context.Context, userID uuid.UUID) ([]SectionRating, error)
-
 	// Activity snapshots for the weekly report.
 	CountRecentActivity(ctx context.Context, userID uuid.UUID, since time.Time) (Activity, error)
-
-	// ListMatchAggregatesSince возвращает плоский список матчей пользователя
-	// за последние `since…now` (только finished); используется в /report для
-	// строй сильных/слабых секций. Если в БД нет таблицы с XP-дельтой на
-	// матч, реализация вправе вернуть пустой список — отчёт деградирует
-	// безопасно (фронт покажет «нет данных»).
-	ListMatchAggregatesSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]MatchAggregate, error)
-
-	// ListWeeklyXPSince возвращает массив XP за каждую из последних N
-	// календарных недель (от last → past). Длина массива = N. weeks=4 →
-	// `[этa, минус-1, минус-2, минус-3]`.
-	ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error)
 
 	// GetStreaks возвращает текущую серию активности (дни) и личный рекорд.
 	// Реализация может вернуть (0, 0), если не поддерживает streak-таблицу.
 	GetStreaks(ctx context.Context, userID uuid.UUID) (current, best int, err error)
-
-	// ── Phase A killer-stats ─────────────────────────────────────────────
-	// ListHourlyActivitySince возвращает 168-элементный массив (dow*24+hour)
-	// активности (count матчей) за окно [since, now]. Пустые ячейки = 0.
-	ListHourlyActivitySince(ctx context.Context, userID uuid.UUID, since time.Time) ([168]int, error)
-
-	// ListEloSnapshotsSince возвращает дневные snapshot-точки из
-	// elo_snapshots_daily, отсортированные по дате ASC.
-	ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]EloPoint, error)
-
-	// GetPercentiles считает три перцентиля пользователя на дату weekEnd
-	// (in_tier по elo-bucket'у, in_friends среди принятых дружб, in_global).
-	GetPercentiles(ctx context.Context, userID uuid.UUID, weekEnd time.Time) (PercentileView, error)
 
 	// IssueShareToken создаёт строку в weekly_share_tokens с TTL 30 дней.
 	IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (ShareToken, error)
@@ -120,15 +89,12 @@ type Bundle struct {
 	User         User
 	Profile      Profile
 	Subscription Subscription
-	AICredits    int
-	Ratings      []SectionRating
 }
 
 // PublicBundle omits email/settings (exposed by /profile/{username}).
 type PublicBundle struct {
 	User    User
 	Profile Profile
-	Ratings []SectionRating
 	Atlas   []SkillNode
 }
 

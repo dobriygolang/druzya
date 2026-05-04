@@ -106,34 +106,6 @@ func difficultyFromProtoAdmin(d pb.Difficulty) enums.Difficulty {
 	}
 }
 
-func severityToProto(s enums.SeverityLevel) pb.SeverityLevel {
-	switch s {
-	case enums.SeverityLow:
-		return pb.SeverityLevel_SEVERITY_LEVEL_LOW
-	case enums.SeverityMedium:
-		return pb.SeverityLevel_SEVERITY_LEVEL_MEDIUM
-	case enums.SeverityHigh:
-		return pb.SeverityLevel_SEVERITY_LEVEL_HIGH
-	default:
-		return pb.SeverityLevel_SEVERITY_LEVEL_UNSPECIFIED
-	}
-}
-
-func severityFromProto(s pb.SeverityLevel) enums.SeverityLevel {
-	switch s {
-	case pb.SeverityLevel_SEVERITY_LEVEL_UNSPECIFIED:
-		return ""
-	case pb.SeverityLevel_SEVERITY_LEVEL_LOW:
-		return enums.SeverityLow
-	case pb.SeverityLevel_SEVERITY_LEVEL_MEDIUM:
-		return enums.SeverityMedium
-	case pb.SeverityLevel_SEVERITY_LEVEL_HIGH:
-		return enums.SeverityHigh
-	default:
-		return ""
-	}
-}
-
 func configTypeToProto(t domain.ConfigType) pb.ConfigEntryType {
 	switch t {
 	case domain.ConfigTypeInt:

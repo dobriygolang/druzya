@@ -456,10 +456,10 @@ function DevLoginPane({ onSuccess, onError }: DevLoginPaneProps) {
   return (
     <form
       onSubmit={submit}
-      className="rounded-lg border border-yellow-500/40 bg-yellow-500/5 px-4 py-3"
+      className="rounded-lg border border-white/20 bg-white/5 px-4 py-3"
     >
-      <div className="mb-2 flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-yellow-300">
-        <span>⚠</span> DEV-only · DEV_AUTH=true
+      <div className="mb-2 flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-text-secondary">
+        <span style={{ color: '#FF3B30' }}>●</span> DEV-only · DEV_AUTH=true
       </div>
       <div className="flex gap-2">
         <input

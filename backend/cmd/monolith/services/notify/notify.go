@@ -184,24 +184,11 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 			},
 			Subscribers: []func(*eventbus.InProcess){
 				func(b *eventbus.InProcess) {
-					b.Subscribe(sharedDomain.DailyKataCompleted{}.Topic(), handlers.OnDailyKataCompleted)
-					b.Subscribe(sharedDomain.DailyKataMissed{}.Topic(), handlers.OnDailyKataMissed)
-					b.Subscribe(sharedDomain.MatchStarted{}.Topic(), handlers.OnMatchStarted)
-					b.Subscribe(sharedDomain.MatchCompleted{}.Topic(), handlers.OnMatchCompleted)
-					b.Subscribe(sharedDomain.SubscriptionActivated{}.Topic(), handlers.OnSubscriptionActivated)
-					b.Subscribe(sharedDomain.SkillDecayed{}.Topic(), handlers.OnSkillDecayed)
 					b.Subscribe(sharedDomain.UserRegistered{}.Topic(), handlers.OnUserRegistered)
-					b.Subscribe(sharedDomain.SlotBooked{}.Topic(), handlers.OnSlotBooked)
 					b.Subscribe(notifyDomain.WeeklyReportDue{}.Topic(), handlers.OnWeeklyReportDue)
-					b.Subscribe(sharedDomain.EventStartingSoon{}.Topic(), handlers.OnEventStartingSoon)
 					// Legitimate path привязки telegram_chat_id: auth публикует
 					// TelegramChatLinked после криптографически-безопасного /start <code>.
 					b.Subscribe(sharedDomain.TelegramChatLinked{}.Topic(), handlers.OnTelegramChatLinked)
-
-					// In-app notifications feed (NotificationsPage).
-					b.Subscribe(sharedDomain.MatchCompleted{}.Topic(), feedHandlers.OnArenaMatchCompleted)
-					b.Subscribe(sharedDomain.DailyKataMissed{}.Topic(), feedHandlers.OnDailyKataMissed)
-					b.Subscribe(sharedDomain.DailyKataCompleted{}.Topic(), feedHandlers.OnDailyKataCompletedFeed)
 				},
 			},
 			Background: []func(ctx context.Context){

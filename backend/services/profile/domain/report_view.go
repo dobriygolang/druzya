@@ -18,16 +18,8 @@ type ReportView struct {
 	StressAnalysis  string
 	Recommendations []Recommendation
 
-	// Поля ниже — расширения для /report (WeeklyReportPage). Заполняются
-	// агрегациями из дополнительных запросов; на старых клиентах безопасно
-	// игнорируются (proto3 default values).
-	ActionsCount   int
-	StreakDays     int
-	BestStreak     int
-	PrevXPEarned   int
-	StrongSections []SectionBreakdown
-	WeakSections   []SectionBreakdown
-	WeeklyXP       []WeekComparison
+	StreakDays int
+	BestStreak int
 
 	// AIInsight — Phase B: 2-paragraph Russian narrative produced by the
 	// OpenRouter insight client. Empty string when the LLM is disabled

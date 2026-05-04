@@ -671,6 +671,14 @@ func (s *TutorServer) GetTutorActivity(
 	if err != nil {
 		return nil, fmt.Errorf("tutor.GetTutorActivity: %w", s.toConnectErr(err))
 	}
+	dailyC := make([]int32, len(out.DailyCompleted))
+	for i, v := range out.DailyCompleted {
+		dailyC[i] = int32(v)
+	}
+	dailyM := make([]int32, len(out.DailyMinutes))
+	for i, v := range out.DailyMinutes {
+		dailyM[i] = int32(v)
+	}
 	return connect.NewResponse(&pb.TutorActivityResponse{
 		WindowDays:         int32(out.WindowDays),
 		ActiveStudentCount: int32(out.ActiveStudentCount),
@@ -679,6 +687,8 @@ func (s *TutorServer) GetTutorActivity(
 		EventsScheduled:    int32(out.EventsScheduled),
 		MinutesTaught:      int32(out.MinutesTaught),
 		CancellationRate:   out.CancellationRate,
+		DailyCompleted:     dailyC,
+		DailyMinutes:       dailyM,
 	}), nil
 }
 

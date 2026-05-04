@@ -62,8 +62,7 @@ func (uc *SendNotification) Do(ctx context.Context, in SendInput) error {
 		lastSent = recent[0].SentAt
 	}
 
-	force := in.Force || domain.MustForceDelivery(in.Type)
-	ok, reason := domain.ShouldNotify(pref, in.Type, now, lastSent, force)
+	ok, reason := domain.ShouldNotify(pref, in.Type, now, lastSent, in.Force)
 	if !ok {
 		uc.Log.InfoContext(ctx, "notify.skip",
 			slog.String("user_id", in.UserID.String()),
@@ -94,7 +93,7 @@ func (uc *SendNotification) Do(ctx context.Context, in SendInput) error {
 		Locale:        locale,
 		Payload:       in.Payload,
 		CreatedAt:     now,
-		ForceDelivery: force,
+		ForceDelivery: in.Force,
 	}
 	if err := uc.Queue.Enqueue(ctx, n); err != nil {
 		return fmt.Errorf("notify.SendNotification: enqueue: %w", err)

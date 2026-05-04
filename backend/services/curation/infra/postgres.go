@@ -100,7 +100,10 @@ ORDER BY created_at ASC
 		ov.Action = app.OverrideAction(action)
 		out = append(out, ov)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("curation.Overrides.List rows: %w", err)
+	}
+	return out, nil
 }
 
 func (r *Overrides) DeleteByURL(ctx context.Context, userID uuid.UUID, t app.Target, url string, action app.OverrideAction) error {
@@ -164,11 +167,11 @@ WHERE url = $1
 
 // PromoteCandidates — для auto_promote producer'а.
 type PromotionCandidate struct {
-	URL              string
-	AtlasNodeID      string
-	UserCount        int
-	AvgQuality       float32
-	LastUserAddedAt  string
+	URL             string
+	AtlasNodeID     string
+	UserCount       int
+	AvgQuality      float32
+	LastUserAddedAt string
 }
 
 func (p *Promotion) Candidates(ctx context.Context, minUsers int, minQuality float32) ([]PromotionCandidate, error) {

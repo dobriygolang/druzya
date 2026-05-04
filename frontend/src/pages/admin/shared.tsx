@@ -30,6 +30,8 @@ export type Tab =
   | 'obs_english_hr'
   | 'obs_mock_block'
   | 'obs_intelligence'
+  | 'obs_llm'
+  | 'rooms'
 
 type Item = { id: Tab; label: string; chip?: string; chipColor?: string }
 type Group = { id: string; label: string; defaultOpen: boolean; items: Item[] }
@@ -121,6 +123,15 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
         { id: 'obs_english_hr', label: 'English HR · health' },
         { id: 'obs_mock_block', label: 'Mock-block · strictness' },
         { id: 'obs_intelligence', label: 'Intelligence · coach' },
+        { id: 'obs_llm', label: 'LLM · per-task rollups' },
+      ],
+    },
+    {
+      id: 'collab',
+      label: 'Collab rooms',
+      defaultOpen: false,
+      items: [
+        { id: 'rooms', label: 'Rooms · moderation' },
       ],
     },
   ]

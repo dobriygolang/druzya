@@ -586,32 +586,6 @@ func (ns NullUserGoalStatus) Value() (driver.Value, error) {
 	return string(ns.UserGoalStatus), nil
 }
 
-// Append-only audit-trail для admin-write endpoints. Phase 12.5 — middleware на /api/v1/admin/* пишет одну row per request.
-type AdminAuditLog struct {
-	ID          pgtype.UUID
-	AdminUserID pgtype.UUID
-	// Verb-form: approve | reject | bump | toggle | force_set | edit | delete.
-	Action     string
-	TargetKind string
-	TargetID   string
-	// Action-specific JSON. Должен содержать diff (before/after где применимо), но shape не enforced — admin UI парсит per-kind.
-	Payload    []byte
-	OccurredAt pgtype.Timestamptz
-}
-
-// Per-user daily quota usage для LLM-задач: chat / suggestions / coach. Reset через INSERT ... ON CONFLICT.
-type AiChatQuotum struct {
-	UserID    pgtype.UUID
-	QuotaDate pgtype.Date
-	// Suммарное число LLM-вызовов за день. Inc при каждом успешном TaskAssistantNextAction / TaskAITutorML / etc.
-	Count int32
-	// Above this — UI badge «approaching limit». Ниже hard_limit.
-	SoftLimit int32
-	// Above this — UC отказывает с 429-like ошибкой. Admin может поднять per-user.
-	HardLimit int32
-	UpdatedAt pgtype.Timestamptz
-}
-
 type AiCredit struct {
 	UserID    pgtype.UUID
 	Balance   int32
@@ -726,7 +700,6 @@ type AtlasNode struct {
 type Circle struct {
 	ID          pgtype.UUID
 	Name        string
-	Slug        pgtype.Text
 	Description string
 	OwnerID     pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
@@ -1290,16 +1263,6 @@ type LearningState struct {
 	UpdatedAt        pgtype.Timestamptz
 }
 
-type LlmConfig struct {
-	ID          pgtype.UUID
-	ScopeType   string
-	ScopeID     pgtype.Text
-	Model       string
-	Temperature pgtype.Numeric
-	MaxTokens   int32
-	CreatedAt   pgtype.Timestamptz
-}
-
 type LlmModel struct {
 	ID                 int64
 	ModelID            string
@@ -1330,19 +1293,6 @@ type LlmRuntimeConfig struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
-type MentorSession struct {
-	ID          pgtype.UUID
-	MenteeID    pgtype.UUID
-	MentorID    pgtype.UUID
-	SlotAt      pgtype.Timestamptz
-	DurationMin int32
-	Status      string
-	EscrowState string
-	PriceCents  int32
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-}
-
 type MockMessage struct {
 	ID             pgtype.UUID
 	SessionID      pgtype.UUID
@@ -1358,8 +1308,6 @@ type MockPipeline struct {
 	ID              pgtype.UUID
 	UserID          pgtype.UUID
 	CompanyID       pgtype.UUID
-	RoleLabel       string
-	Section         string
 	AiAssist        bool
 	CurrentStageIdx int16
 	Verdict         MockPipelineVerdict
@@ -1367,7 +1315,6 @@ type MockPipeline struct {
 	StartedAt       pgtype.Timestamptz
 	FinishedAt      pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
 }
 
 type MockSession struct {
@@ -1451,14 +1398,6 @@ type OauthAccount struct {
 	CreatedAt       pgtype.Timestamptz
 }
 
-type OnboardingProgress struct {
-	UserID      pgtype.UUID
-	Step        int32
-	Answers     []byte
-	CompletedAt pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-}
-
 type Persona struct {
 	ID            string
 	Label         string
@@ -1496,13 +1435,6 @@ type PersonalEvent struct {
 	Source           string
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
-}
-
-type PersonalEventRemindersSent struct {
-	EventID pgtype.UUID
-	Horizon PersonalEventReminderHorizon
-	Channel string
-	SentAt  pgtype.Timestamptz
 }
 
 type PipelineAttempt struct {
@@ -1560,21 +1492,16 @@ type PodcastProgress struct {
 }
 
 type Profile struct {
-	UserID           pgtype.UUID
-	CharClass        string
-	Title            pgtype.Text
-	AvatarFrame      pgtype.Text
-	CareerStage      string
-	Intellect        int32
-	Strength         int32
-	Dexterity        int32
-	Will             int32
-	IsMentor         bool
-	MentorHourlyRate int32
-	MentorBio        string
-	MentorLanguages  []string
-	MentorVerified   bool
-	UpdatedAt        pgtype.Timestamptz
+	UserID      pgtype.UUID
+	CharClass   string
+	Title       pgtype.Text
+	AvatarFrame pgtype.Text
+	CareerStage string
+	Intellect   int32
+	Strength    int32
+	Dexterity   int32
+	Will        int32
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type ProviderLink struct {
@@ -1607,11 +1534,6 @@ type SavedVacancy struct {
 	Notes        pgtype.Text
 	SavedAt      pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
-}
-
-type SessionDocument struct {
-	SessionID  pgtype.UUID
-	DocumentID pgtype.UUID
 }
 
 type SkillNode struct {
@@ -1777,17 +1699,6 @@ type TutorAssignment struct {
 	CompletedAt   pgtype.Timestamptz
 	ArchivedAt    pgtype.Timestamptz
 	DueNotifiedAt pgtype.Timestamptz
-}
-
-// Tutor-shared frozen snapshot of student brief (Phase 8). Public read by slug + expiry; tutor-write only.
-type TutorBriefShareLink struct {
-	// URL-safe short id, generated client-side (≥10 chars random base62). Hash collisions blocked by PK.
-	Slug      string
-	TutorID   pgtype.UUID
-	StudentID pgtype.UUID
-	BriefMd   string
-	ExpiresAt pgtype.Timestamptz
-	CreatedAt pgtype.Timestamptz
 }
 
 type TutorEvent struct {

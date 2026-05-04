@@ -8,7 +8,6 @@ import (
 
 	"druz9/profile/domain"
 	"druz9/profile/domain/mocks"
-	"druz9/shared/enums"
 
 	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
@@ -22,17 +21,12 @@ func expectActivity(repo *mocks.MockProfileRepo, uid uuid.UUID) {
 	}, nil)
 }
 
-func TestGetReport_HappyPathPopulatesAggregates(t *testing.T) {
+func TestGetReport_HappyPath(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	repo := mocks.NewMockProfileRepo(ctrl)
 	uid := uuid.New()
 	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return([]domain.MatchAggregate{
-		{Section: enums.SectionAlgorithms, Win: true, XPDelta: 120},
-		{Section: enums.SectionSQL, Win: false, XPDelta: -40},
-	}, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{2480, 1690, 2010, 1240}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(7, 47, nil)
 
 	uc := &GetReport{Repo: repo}
@@ -43,46 +37,8 @@ func TestGetReport_HappyPathPopulatesAggregates(t *testing.T) {
 	if v.Metrics.MatchesWon != 12 {
 		t.Fatalf("metrics not propagated, %+v", v.Metrics)
 	}
-	if len(v.StrongSections) != 1 || v.StrongSections[0].Section != enums.SectionAlgorithms {
-		t.Fatalf("strong sections mismatch: %+v", v.StrongSections)
-	}
-	if len(v.WeakSections) != 1 || v.WeakSections[0].Section != enums.SectionSQL {
-		t.Fatalf("weak sections mismatch: %+v", v.WeakSections)
-	}
-	if len(v.WeeklyXP) != 4 {
-		t.Fatalf("expected 4 weekly entries, got %d", len(v.WeeklyXP))
-	}
-	if v.WeeklyXP[0].Pct != 100 {
-		t.Fatalf("expected pct=100 for biggest week, got %d", v.WeeklyXP[0].Pct)
-	}
 	if v.StreakDays != 7 || v.BestStreak != 47 {
 		t.Fatalf("streak mismatch cur=%d best=%d", v.StreakDays, v.BestStreak)
-	}
-	if v.PrevXPEarned != 1690 {
-		t.Fatalf("prev xp mismatch: %d", v.PrevXPEarned)
-	}
-	if v.ActionsCount != 2 {
-		t.Fatalf("expected actions_count=2, got %d", v.ActionsCount)
-	}
-}
-
-func TestGetReport_AggregateRepoErrorIsTolerant(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	repo := mocks.NewMockProfileRepo(ctrl)
-	uid := uuid.New()
-	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, errors.New("pg down"))
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
-	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
-
-	uc := &GetReport{Repo: repo}
-	v, err := uc.Do(context.Background(), uid, time.Now())
-	if err != nil {
-		t.Fatalf("aggregate failure should be silenced, got %v", err)
-	}
-	if len(v.StrongSections) != 0 {
-		t.Fatalf("expected empty strong sections on aggregate error")
 	}
 }
 
@@ -96,26 +52,6 @@ func TestGetReport_ActivityErrorPropagated(t *testing.T) {
 	uc := &GetReport{Repo: repo}
 	if _, err := uc.Do(context.Background(), uid, time.Now()); err == nil {
 		t.Fatal("expected propagation of activity error")
-	}
-}
-
-func TestGetReport_WeeklyXPErrorTolerated(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	repo := mocks.NewMockProfileRepo(ctrl)
-	uid := uuid.New()
-	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return(nil, errors.New("ouch"))
-	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
-
-	uc := &GetReport{Repo: repo}
-	v, err := uc.Do(context.Background(), uid, time.Now())
-	if err != nil {
-		t.Fatalf("weekly xp failure should not bubble: %v", err)
-	}
-	if len(v.WeeklyXP) != 0 {
-		t.Fatalf("expected empty WeeklyXP on error, got %d", len(v.WeeklyXP))
 	}
 }
 
@@ -133,8 +69,6 @@ func TestGetReport_WindowIs7Days(t *testing.T) {
 			}
 			return domain.Activity{}, nil
 		})
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
 
 	uc := &GetReport{Repo: repo}
@@ -149,8 +83,6 @@ func TestGetReport_RecommendationFallback(t *testing.T) {
 	repo := mocks.NewMockProfileRepo(ctrl)
 	uid := uuid.New()
 	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
 
 	uc := &GetReport{Repo: repo}
@@ -169,8 +101,6 @@ func TestGetReport_HeatmapDefaultsToZeros(t *testing.T) {
 	repo := mocks.NewMockProfileRepo(ctrl)
 	uid := uuid.New()
 	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
 
 	uc := &GetReport{Repo: repo}
@@ -206,13 +136,7 @@ func TestGetReport_AIInsight_PopulatedWhenClientConfigured(t *testing.T) {
 	repo.EXPECT().CountRecentActivity(gomock.Any(), uid, gomock.Any()).Return(domain.Activity{
 		MatchesWon: 5, XPEarned: 1200, TimeMinutes: 240, RatingChange: 35,
 	}, nil)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return([]domain.MatchAggregate{
-		{Section: enums.SectionAlgorithms, Win: true, XPDelta: 200},
-		{Section: enums.SectionSQL, Win: false, XPDelta: -80},
-	}, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{1200, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(3, 9, nil)
-	// Per-user AI Coach model lookup (00032). Empty model ⇒ infra-default.
 	repo.EXPECT().GetSettings(gomock.Any(), uid).Return(domain.Settings{}, nil)
 
 	stub := &stubInsight{out: "AI-generated coaching narrative."}
@@ -242,9 +166,6 @@ func TestGetReport_AIInsight_PopulatedWhenClientConfigured(t *testing.T) {
 	if stub.lastPayload.Streak != 3 {
 		t.Fatalf("Streak mismatch: %d", stub.lastPayload.Streak)
 	}
-	if stub.lastPayload.WeakestSection != enums.SectionSQL.String() {
-		t.Fatalf("WeakestSection mismatch: %q", stub.lastPayload.WeakestSection)
-	}
 }
 
 func TestGetReport_AIInsight_ErrorIsSwallowed(t *testing.T) {
@@ -253,8 +174,6 @@ func TestGetReport_AIInsight_ErrorIsSwallowed(t *testing.T) {
 	repo := mocks.NewMockProfileRepo(ctrl)
 	uid := uuid.New()
 	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
 	repo.EXPECT().GetSettings(gomock.Any(), uid).Return(domain.Settings{}, nil)
 
@@ -269,17 +188,12 @@ func TestGetReport_AIInsight_ErrorIsSwallowed(t *testing.T) {
 	}
 }
 
-// FeaturedMetric — server picks the headline metric for the share card.
-// Three cases cover the full decision tree: achievement > streak > xp.
-
-func TestGetReport_FeaturedMetric_StreakWhenNoAchievementAndStreakHigh(t *testing.T) {
+func TestGetReport_FeaturedMetric_StreakWhenStreakHigh(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	repo := mocks.NewMockProfileRepo(ctrl)
 	uid := uuid.New()
 	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(7, 12, nil)
 
 	uc := &GetReport{Repo: repo}
@@ -298,9 +212,6 @@ func TestGetReport_FeaturedMetric_DefaultXP(t *testing.T) {
 	repo := mocks.NewMockProfileRepo(ctrl)
 	uid := uuid.New()
 	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
-	// Streak below the 7-day threshold AND no new achievements ⇒ default xp.
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(3, 12, nil)
 
 	uc := &GetReport{Repo: repo}
@@ -319,8 +230,6 @@ func TestGetReport_StreakErrorTolerated(t *testing.T) {
 	repo := mocks.NewMockProfileRepo(ctrl)
 	uid := uuid.New()
 	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, errors.New("streak table missing"))
 
 	uc := &GetReport{Repo: repo}

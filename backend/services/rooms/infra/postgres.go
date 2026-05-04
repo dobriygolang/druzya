@@ -147,6 +147,8 @@ FROM whiteboard_rooms WHERE owner_id=$1
 				if active {
 					continue
 				}
+			case domain.StatusAll:
+				// no filter
 			}
 			out = append(out, room)
 		}
@@ -161,8 +163,10 @@ func (r *Rooms) ExtendExpiry(ctx interface{}, kind domain.Kind, id uuid.UUID, ne
 	if err != nil {
 		return err
 	}
-	_, err = r.pool.Exec(c, `UPDATE `+tbl+` SET expires_at=$2 WHERE id=$1`, id, newExpiry)
-	return err
+	if _, err := r.pool.Exec(c, `UPDATE `+tbl+` SET expires_at=$2 WHERE id=$1`, id, newExpiry); err != nil {
+		return fmt.Errorf("rooms.ExtendExpiry: %w", err)
+	}
+	return nil
 }
 
 func (r *Rooms) Archive(ctx interface{}, kind domain.Kind, id uuid.UUID, at time.Time) error {
@@ -171,8 +175,10 @@ func (r *Rooms) Archive(ctx interface{}, kind domain.Kind, id uuid.UUID, at time
 	if err != nil {
 		return err
 	}
-	_, err = r.pool.Exec(c, `UPDATE `+tbl+` SET archived_at=$2 WHERE id=$1 AND archived_at IS NULL`, id, at)
-	return err
+	if _, err := r.pool.Exec(c, `UPDATE `+tbl+` SET archived_at=$2 WHERE id=$1 AND archived_at IS NULL`, id, at); err != nil {
+		return fmt.Errorf("rooms.Archive: %w", err)
+	}
+	return nil
 }
 
 func (r *Rooms) Restore(ctx interface{}, kind domain.Kind, id uuid.UUID) error {
@@ -181,8 +187,10 @@ func (r *Rooms) Restore(ctx interface{}, kind domain.Kind, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	_, err = r.pool.Exec(c, `UPDATE `+tbl+` SET archived_at=NULL WHERE id=$1`, id)
-	return err
+	if _, err := r.pool.Exec(c, `UPDATE `+tbl+` SET archived_at=NULL WHERE id=$1`, id); err != nil {
+		return fmt.Errorf("rooms.Restore: %w", err)
+	}
+	return nil
 }
 
 func (r *Rooms) ListExpiredCandidates(ctx interface{}, before time.Time, limit int) ([]domain.Room, error) {
@@ -203,7 +211,7 @@ func (r *Rooms) ListExpiredCandidates(ctx interface{}, before time.Time, limit i
 			r := domain.Room{Kind: kind}
 			if err := rows.Scan(&r.ID, &r.OwnerID, &r.ExpiresAt, &r.FreeTier); err != nil {
 				rows.Close()
-				return nil, err
+				return nil, fmt.Errorf("rooms.ListExpiredCandidates scan: %w", err)
 			}
 			out = append(out, r)
 		}
@@ -248,27 +256,33 @@ FROM user_room_quota WHERE user_id=$1
 
 func (q *Quota) Increment(ctx interface{}, userID uuid.UUID, tier string) error {
 	c := ctx.(context.Context)
-	_, err := q.pool.Exec(c, `
+	if _, err := q.pool.Exec(c, `
 INSERT INTO user_room_quota (user_id, active_count, tier)
 VALUES ($1, 1, $2)
 ON CONFLICT (user_id) DO UPDATE SET active_count = user_room_quota.active_count + 1
-`, userID, tier)
-	return err
+`, userID, tier); err != nil {
+		return fmt.Errorf("rooms.Quota.Increment: %w", err)
+	}
+	return nil
 }
 
 func (q *Quota) Decrement(ctx interface{}, userID uuid.UUID) error {
 	c := ctx.(context.Context)
-	_, err := q.pool.Exec(c, `
+	if _, err := q.pool.Exec(c, `
 UPDATE user_room_quota SET active_count = GREATEST(active_count - 1, 0) WHERE user_id=$1
-`, userID)
-	return err
+`, userID); err != nil {
+		return fmt.Errorf("rooms.Quota.Decrement: %w", err)
+	}
+	return nil
 }
 
 func (q *Quota) Recompute(ctx interface{}, userID uuid.UUID, count int) error {
 	c := ctx.(context.Context)
-	_, err := q.pool.Exec(c, `
+	if _, err := q.pool.Exec(c, `
 INSERT INTO user_room_quota (user_id, active_count) VALUES ($1, $2)
 ON CONFLICT (user_id) DO UPDATE SET active_count = $2
-`, userID, count)
-	return err
+`, userID, count); err != nil {
+		return fmt.Errorf("rooms.Quota.Recompute: %w", err)
+	}
+	return nil
 }

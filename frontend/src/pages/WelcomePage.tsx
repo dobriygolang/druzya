@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { HoneDemo, CueDemo, EnglishMockDemo, DemoModal } from './welcome/demos'
+import { HoneDemo, CueDemo, MockWatermarkDemo, DemoModal } from './welcome/demos'
 
 /**
  * WelcomePage — публичный лендинг druz9.
@@ -108,9 +108,10 @@ function Nav() {
         </a>
         <nav className="hidden md:flex" style={{ gap: 24 }}>
           <NavLink href="#tracks">Треки</NavLink>
-          <NavLink href="#arena">Arena</NavLink>
+          <NavLink href="#atlas">Mock</NavLink>
           <NavLink href="#hone">Hone</NavLink>
           <NavLink href="#cue">Cue</NavLink>
+          <NavLink href="#insights">Insights</NavLink>
           <NavLink href="#pricing">Тарифы</NavLink>
           <NavLink href="#faq">FAQ</NavLink>
         </nav>
@@ -119,11 +120,17 @@ function Nav() {
                 style={{ fontSize: 13, color: 'var(--ink-60)', textDecoration: 'none' }}>
             Войти
           </Link>
-          <Link to="/login"
+          <Link to="/login" className="hidden md:inline-flex"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 13px',
                   borderRadius: 999, background: '#fff', color: '#000',
                   fontSize: 12.5, fontWeight: 500, textDecoration: 'none' }}>
             Начать бесплатно <Icon name="arrow" size={11} />
+          </Link>
+          <Link to="/login" className="md:hidden"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px',
+                  borderRadius: 999, background: '#fff', color: '#000',
+                  fontSize: 12.5, fontWeight: 500, textDecoration: 'none' }}>
+            Старт <Icon name="arrow" size={11} />
           </Link>
           <button onClick={() => setOpen((o) => !o)} className="md:hidden"
                   style={{ color: 'rgb(var(--ink))', marginLeft: 4 }}>
@@ -134,14 +141,20 @@ function Nav() {
       {open && (
         <div className="md:hidden" style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 4, paddingBottom: 10 }}>
           {[
-            ['tracks', 'Треки'], ['arena', 'Arena'], ['hone', 'Hone'], ['cue', 'Cue'],
-            ['pricing', 'Тарифы'], ['faq', 'FAQ'],
+            ['tracks', 'Треки'], ['atlas', 'Mock'], ['hone', 'Hone'], ['cue', 'Cue'],
+            ['insights', 'Insights'], ['pricing', 'Тарифы'], ['faq', 'FAQ'],
           ].map(([h, label]) => (
             <a key={h} href={`#${h}`} onClick={() => setOpen(false)}
                style={{ padding: '8px 0', fontSize: 14, color: 'var(--ink-60)', textDecoration: 'none' }}>
               {label}
             </a>
           ))}
+          <Link to="/login" onClick={() => setOpen(false)}
+                style={{ marginTop: 6, padding: '8px 0', fontSize: 14,
+                  color: 'rgb(var(--ink))', textDecoration: 'none',
+                  borderTop: '1px solid var(--hair)' }}>
+            Войти
+          </Link>
         </div>
       )}
     </header>
@@ -161,7 +174,7 @@ function NavLink({ href, children }: { href: string; children: ReactNode }) {
 /* ────────────────────────── Section shell ─────────────────── */
 function Section({ id, children, style }: { id?: string; children: ReactNode; style?: CSSProperties }) {
   return (
-    <section id={id} style={{ position: 'relative', padding: '128px 28px', borderTop: '1px solid var(--hair)', ...style }}>
+    <section id={id} style={{ position: 'relative', padding: '96px 28px', borderTop: '1px solid var(--hair)', ...style }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative' }}>{children}</div>
     </section>
   )
@@ -171,6 +184,58 @@ function Eyebrow({ children }: { children: ReactNode }) {
     <div className="mono"
          style={{ fontSize: 10.5, letterSpacing: '.28em', color: 'var(--ink-40)', textTransform: 'uppercase' }}>
       {children}
+    </div>
+  )
+}
+
+/* ────────────────────────── Mock watermark preview ─────────
+   Тихая статичная демка main hero-аргумента: «strict mock — без AI,
+   честный score; AI mock — отдельной колонкой». Watermark разносит две
+   валюты готовности. Live-данных не врём — это illustrative preview, а
+   не фейковая статистика. */
+function MockWatermarkPreview() {
+  return (
+    <div style={{ maxWidth: 520, margin: '0 auto',
+                  border: '1px solid var(--hair)', borderRadius: 14,
+                  padding: '18px 22px', background: 'rgba(10,10,10,0.55)',
+                  backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
+      <div className="mono"
+           style={{ fontSize: 9.5, letterSpacing: '.22em', color: 'var(--ink-40)',
+                    textTransform: 'uppercase', display: 'flex',
+                    justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>SAMPLE · MOCK RESULT</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span className="red-pulse"
+                style={{ width: 5, height: 5, borderRadius: 99, background: 'var(--red)' }} />
+          WATERMARK
+        </span>
+      </div>
+      <div style={{ marginTop: 16, display: 'grid',
+                    gridTemplateColumns: '1fr 1px 1fr', gap: 18, alignItems: 'center' }}>
+        <div style={{ textAlign: 'left' }}>
+          <div className="mono" style={{ fontSize: 10, letterSpacing: '.18em',
+                                          color: 'var(--ink-40)' }}>STRICT · NO AI</div>
+          <div className="mono" style={{ marginTop: 6, fontSize: 38, fontWeight: 300,
+                                          letterSpacing: '-0.03em', lineHeight: 1 }}>78</div>
+          <div className="mono" style={{ marginTop: 6, fontSize: 11,
+                                          color: 'var(--ink-60)' }}>честная валюта</div>
+        </div>
+        <div style={{ width: 1, height: 60, background: 'var(--hair-2)' }} />
+        <div style={{ textAlign: 'left' }}>
+          <div className="mono" style={{ fontSize: 10, letterSpacing: '.18em',
+                                          color: 'var(--ink-40)' }}>AI-MODE</div>
+          <div className="mono" style={{ marginTop: 6, fontSize: 38, fontWeight: 300,
+                                          letterSpacing: '-0.03em', lineHeight: 1,
+                                          color: 'var(--ink-60)' }}>92</div>
+          <div className="mono" style={{ marginTop: 6, fontSize: 11,
+                                          color: 'var(--ink-60)' }}>тренировка</div>
+        </div>
+      </div>
+      <div style={{ marginTop: 14, fontSize: 12, color: 'var(--ink-60)',
+                    lineHeight: 1.5, textAlign: 'left' }}>
+        Две колонки — две валюты. Strict-режим запускает Cue в block-mode на сервере,
+        обойти модификацией клиента нельзя.
+      </div>
     </div>
   )
 }
@@ -192,36 +257,49 @@ function Hero() {
         </div>
         <h1 style={{ margin: 0, fontSize: 'clamp(44px, 7vw, 84px)', fontWeight: 400,
                      letterSpacing: '-0.035em', lineHeight: 1.02 }}>
-          Затачивай ремесло.
+          Готов к собесу?
           <br />
-          <span style={{ color: 'var(--ink-60)' }}>Каждый день.</span>
+          <span style={{ color: 'var(--ink-60)' }}>Узнай честно.</span>
         </h1>
-        <p style={{ margin: '26px auto 0', maxWidth: 560, fontSize: 16,
+        <p style={{ margin: '26px auto 0', maxWidth: 580, fontSize: 16,
                     color: 'var(--ink-60)', lineHeight: 1.55 }}>
-          Экосистема для разработчиков, которые растут каждый день.
-          Три инструмента. Один ритуал. Одна подписка.
+          Strict mock с watermark, AI-coach с памятью, Skill Atlas.
+          Для senior IT — у кого есть база, нужна объективная оценка готовности.
         </p>
         <div style={{ marginTop: 36, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/login"
+          <Link to="/login?next=/mock"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 20px',
                   borderRadius: 999, background: '#fff', color: '#000',
                   fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-            Начать бесплатно <Icon name="arrow" size={12} />
+            Запустить mock <Icon name="arrow" size={12} />
           </Link>
-          <a href="#ritual"
+          <a href="#tracks"
              style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 20px',
                borderRadius: 999, border: '1px solid var(--hair-2)', color: 'rgb(var(--ink))',
                fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-            Как это работает
+            Выбрать трек
           </a>
+          <Link to="/login?next=/tutor"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 20px',
+                  borderRadius: 999, border: '1px solid var(--hair)', color: 'var(--ink-60)',
+                  fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+            Я тутор
+          </Link>
         </div>
-        <div style={{ marginTop: 64, display: 'inline-flex', alignItems: 'center', gap: 0,
+        <div style={{ marginTop: 56 }}>
+          <MockWatermarkPreview />
+        </div>
+        <div className="hero-pill-row"
+             style={{ marginTop: 36, display: 'inline-flex', alignItems: 'center',
+                      gap: 0, flexWrap: 'wrap', justifyContent: 'center', maxWidth: '100%',
                       padding: '6px 8px', border: '1px solid var(--hair)', borderRadius: 999,
                       background: 'rgba(10,10,10,0.6)', backdropFilter: 'blur(12px)' }}>
-          <ProductPill name="druz9.ru" tag="Arena" />
-          <span style={{ width: 1, height: 14, background: 'var(--hair-2)', margin: '0 4px' }} />
+          <ProductPill name="druz9.online" tag="Mock + Atlas" />
+          <span className="hero-pill-sep"
+                style={{ width: 1, height: 14, background: 'var(--hair-2)', margin: '0 4px' }} />
           <ProductPill name="Hone" tag="Focus" />
-          <span style={{ width: 1, height: 14, background: 'var(--hair-2)', margin: '0 4px' }} />
+          <span className="hero-pill-sep"
+                style={{ width: 1, height: 14, background: 'var(--hair-2)', margin: '0 4px' }} />
           <ProductPill name="Cue" tag="Copilot" />
         </div>
       </div>
@@ -370,7 +448,7 @@ function Tracks() {
         sticky combo. Каждый трек — свой mock-rubric, свои Insights, свой
         Atlas-подграф. Primary-трек определяет дефолт; остальные живут рядом.
       </p>
-      <div className="md-grid"
+      <div className="md-grid stagger"
            style={{ marginTop: 60, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
         {tracks.map((t) => (
           <div key={t.id}
@@ -419,10 +497,11 @@ function StatusPill({ status }: { status: 'live' | 'soon' }) {
   if (status === 'live') {
     return (
       <span className="mono" style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
         fontSize: 9, letterSpacing: '.18em', padding: '3px 7px',
-        borderRadius: 999, border: '1px solid rgba(140,255,170,0.35)',
-        background: 'rgba(40,200,120,0.08)', color: 'rgb(140,240,170)',
+        borderRadius: 999, border: '1px solid var(--hair-2)', color: 'var(--ink-60)',
       }}>
+        <span style={{ width: 5, height: 5, borderRadius: 99, background: '#fff' }} />
         LIVE
       </span>
     )
@@ -481,6 +560,84 @@ function ProductRow({ id, sideLeft = true, name, tag, title, desc, bullets, cta,
 }
 
 
+/* ────────────────────────── Insights ──────────────────────── */
+// The single ecosystem moat — analytics layer over web + Hone + Cue.
+// Sits between product rows and Pricing so the reader sees «зачем три»
+// before paying.
+function Insights() {
+  return (
+    <Section id="insights">
+      <Eyebrow>Insights · ecosystem</Eyebrow>
+      <h2 style={{ margin: '16px 0 0', fontSize: 'clamp(34px, 5vw, 56px)', fontWeight: 400,
+                   letterSpacing: '-0.025em', lineHeight: 1.05 }}>
+        Один слой<br />над тремя продуктами.
+      </h2>
+      <p style={{ margin: '18px 0 0', fontSize: 15, color: 'var(--ink-60)', maxWidth: 560, lineHeight: 1.55 }}>
+        Focus-часы из Hone, mock-результаты с druz9.online, паттерны застреваний из Cue —
+        в одной аналитике. Watermark «честно vs с AI» делает прогресс
+        объективным, а не самооценочным.
+      </p>
+      <div className="md-grid stagger"
+           style={{ marginTop: 56, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <InsightCard
+          eyebrow="WEEKLY DIGEST"
+          metric="14h"
+          delta="+2h к прошлой неделе"
+          note="Focus-часы из Hone + mock-сессии с druz9.online. Без догадок."
+        />
+        <InsightCard
+          eyebrow="MOCK · STRICT 2 / 3"
+          metric="78"
+          delta="watermark · честно"
+          note="Strict-mock без AI. Cue выключается на сервере — обойти модификацией клиента нельзя."
+        />
+        <InsightCard
+          eyebrow="READINESS · SD"
+          metric="62"
+          delta="weak · нужно +3 mock"
+          note="Skill Atlas обновляется от solves и mock-rubric. Видишь, куда копать."
+        />
+      </div>
+      <div className="mono"
+           style={{ marginTop: 56, fontSize: 12, color: 'var(--ink-40)',
+             letterSpacing: '.12em', textAlign: 'center' }}>
+        АГРЕГИРУЕТ ТРИ КЛИЕНТА · ОБНОВЛЯЕТСЯ ЕЖЕЧАСНО · ОТКРЫТО В БРАУЗЕРЕ
+      </div>
+    </Section>
+  )
+}
+function InsightCard({ eyebrow, metric, delta, note }: {
+  eyebrow: string; metric: string; delta: string; note: string
+}) {
+  return (
+    <div style={{
+      padding: '24px 22px 22px',
+      border: '1px solid var(--hair-2)',
+      borderRadius: 14,
+      background: '#000',
+    }}>
+      <div className="mono"
+           style={{ fontSize: 9.5, letterSpacing: '.22em', color: 'var(--ink-40)',
+             textTransform: 'uppercase' }}>
+        {eyebrow}
+      </div>
+      <div className="mono"
+           style={{ marginTop: 14, fontSize: 44, fontWeight: 300,
+             letterSpacing: '-0.03em', lineHeight: 1 }}>
+        {metric}
+      </div>
+      <div className="mono"
+           style={{ marginTop: 6, fontSize: 11, color: 'var(--ink-60)',
+             letterSpacing: '.06em' }}>
+        {delta}
+      </div>
+      <div style={{ marginTop: 18, fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
+        {note}
+      </div>
+    </div>
+  )
+}
+
 /* ────────────────────────── Pricing ───────────────────────── */
 function Pricing() {
   return (
@@ -495,10 +652,10 @@ function Pricing() {
         <PlanCard
           name="Free" price="0 ₽" tag="навсегда · без карты"
           features={[
-            'Arena basic · 3 дуэли в день',
+            '1 mock-сессия в неделю',
+            'Skill Atlas + Codex',
             'Hone без AI-планирования',
-            'Публичная статистика',
-            'Доступ в комьюнити',
+            'Tutor toolkit для преподавателей',
           ]}
           cta="Создать аккаунт"
         />
@@ -507,10 +664,10 @@ function Pricing() {
           name="druz9 Pro" price="990 ₽" priceSuffix="/ месяц" tag="всё внутри"
           features={[
             'Безлимит mock-сессий (AI / strict)',
+            'AI-tutor с памятью (4 layers)',
             'Hone с AI-планом и связями',
             'Cue copilot · без лимита',
             'Multi-track Atlas + Insights',
-            'English HR-round + сценарии тутора',
             'Всё, что появится в будущем',
           ]}
           cta="14 дней бесплатно"
@@ -532,9 +689,16 @@ function PlanCard({ name, price, priceSuffix, tag, features, cta, featured }: {
       background: featured ? 'rgba(255,255,255,0.03)' : 'transparent' }}>
       {featured && (
         <div className="mono"
-             style={{ position: 'absolute', top: -10, right: 24, padding: '3px 10px',
-               borderRadius: 999, fontSize: 9.5, letterSpacing: '.2em',
-               background: 'var(--red)', color: '#fff' }}>РЕКОМЕНДУЕМ</div>
+             style={{ position: 'absolute', top: -10, right: 24,
+               display: 'inline-flex', alignItems: 'center', gap: 6,
+               padding: '3px 10px', borderRadius: 999,
+               fontSize: 9.5, letterSpacing: '.2em',
+               background: '#000', border: '1px solid var(--hair-2)',
+               color: 'rgb(var(--ink))' }}>
+          <span className="red-pulse"
+                style={{ width: 5, height: 5, borderRadius: 99, background: 'var(--red)' }} />
+          РЕКОМЕНДУЕМ
+        </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span className="mono" style={{ fontSize: 18, fontWeight: 500, letterSpacing: '-0.01em' }}>{name}</span>
@@ -579,15 +743,23 @@ function FAQ() {
   const [open, setOpen] = useState(0)
   const items = [
     { q: 'Почему три приложения, а не одно?',
-      a: 'У каждого режима работы — своё ментальное пространство. Арена шумная: соревнование, дуэли, рейтинг. Cockpit тихий: твой план, твои заметки. Шёпот невидимый: помощь, не ломая флоу. Если их слить, каждый размоется.' },
+      a: 'У каждого режима работы — своё ментальное пространство. Web шумный: mock, atlas, аналитика, Codex. Cockpit тихий: твой план, твои заметки, фокус. Шёпот невидимый: помощь, не ломая флоу. Если их слить, каждый размоется.' },
     { q: 'Нужны ли все три?',
-      a: 'Нет. Начни с druz9.ru и реши пару дуэлей. Hone подключай, когда серия станет важной. Cue — когда первый раз застрянешь на реальном собеседовании.' },
-    { q: 'Windows?',
-      a: 'Сначала macOS, потом Windows v2. Linux community-порт отслеживается на GitHub.' },
+      a: 'Нет. Начни с druz9.online — пройди первый strict mock. Hone подключай, когда дневной ритуал станет важным. Cue — когда первый раз застрянешь на реальном собеседовании.' },
+    { q: 'Что входит в free и где начинается Pro?',
+      a: 'Free навсегда: 1 mock-сессия в неделю, базовый Atlas, Codex, tutor toolkit для преподавателей. Pro (990 ₽/мес) включает безлимит mock-сессий, AI-tutor с памятью, AI-план в Hone, Cue без лимита и Insights. Cue требует Pro on launch — это главный платящий хук.' },
+    { q: 'Чем отличается AI-mock от strict-mock?',
+      a: 'AI-режим — справа чат-помощник, кнопка «подсказать», как тренировка. Strict-режим — только ты, задачи, таймер; Cue в это время блокируется на уровне сервера. Watermark на результате делит «честно» и «с AI» — это превращает результат в объективную метрику готовности.' },
+    { q: 'Как работает 14-дневный trial?',
+      a: 'Карту привязывать не нужно. Открывает все Pro-фичи: безлимит mock, AI-планер, Cue. По истечении — автоматический откат на Free. Никаких dark-patterns с «забыл отменить — списали».' },
+    { q: 'Windows / Linux?',
+      a: 'Сейчас macOS (arm64 + x64), notarized DMG. Windows-порт — Q3 2026. Linux community-порт отслеживается на GitHub. На сайте druz9.online всё работает в браузере без установки.' },
     { q: 'Cue легален на работе?',
-      a: 'Зависит от твоего договора и от встречи. Нашу позицию по proctored-собесам и pair-programming публикуем в блоге. По умолчанию — относись как к любому productivity-инструменту.' },
+      a: 'Зависит от твоего договора и от встречи. Stealth-фича есть для законных сценариев: open-plan офис, помощь себе на сложном этапе, запись своих встреч для review. На strict-mock-сессиях Cue блокируется на уровне сервера — это часть честности экосистемы. ToS прямо описывает ответственность пользователя.' },
     { q: 'Где хранятся данные?',
-      a: 'Первичное хранение в Москве, 152-ФЗ. EU-реплика для скорости, если команда за рубежом.' },
+      a: 'Первичное хранение в Москве, 152-ФЗ. EU-реплика для скорости, если команда за рубежом. Notes и Whiteboard в Hone живут локально по умолчанию — на сервер уходит только если ты сам нажмёшь sync.' },
+    { q: 'Можно отменить подписку?',
+      a: 'В любой момент из Settings. Доступ остаётся до конца оплаченного периода. Refund в течение первых 14 дней — пиши в t.me/druz9.' },
   ]
   return (
     <Section id="faq">
@@ -668,24 +840,25 @@ function FooterLink({ href, children, router }: {
 }
 
 /* ────────────────────────── App ───────────────────────────── */
-type ExpandedDemo = 'hone' | 'cue' | 'english' | null
+type ExpandedDemo = 'hone' | 'cue' | 'watermark' | null
 
 export default function WelcomePage() {
   const [expanded, setExpanded] = useState<ExpandedDemo>(null)
 
   // body must lose .v2 here — landing wants pure black, not the v2 token bg.
-  // Also disable horizontal overflow guard inherited from .v2.
   useEffect(() => {
     const had = document.body.classList.contains('v2')
     document.body.classList.remove('v2')
     document.body.style.background = '#000'
     document.body.style.color = '#fff'
+    document.body.style.overflowX = 'hidden'
     const prev = document.documentElement.style.scrollBehavior
     document.documentElement.style.scrollBehavior = 'smooth'
     return () => {
       if (had) document.body.classList.add('v2')
       document.body.style.background = ''
       document.body.style.color = ''
+      document.body.style.overflowX = ''
       document.documentElement.style.scrollBehavior = prev
     }
   }, [])
@@ -713,19 +886,27 @@ export default function WelcomePage() {
 
       <ProductRow
         id="atlas" sideLeft
-        name="druz9.online" tag="Продукт · Web"
-        title="Mock + Atlas + AI tutor."
-        desc="Сборник реальных собесных задач + AI-mock с честным watermark'ом. Multi-track Atlas: Senior dev, English, Sysanalyst, ML Platform — у каждого свой mock и свои метрики. Tutor distribution через Boosty + AI-tutors 24/7."
-        bullets={['Real interview tasks pool', 'AI-mock с rubric report', 'Skill Atlas — карта прогресса', 'Tutor (human / AI)']}
+        name="druz9.online" tag="Продукт · Web · mock + аналитика"
+        title="Mock с watermark."
+        desc="Решаешь задачу дважды: strict (без AI, Cue выключен на сервере) и AI-mode (с подсказками). Watermark зашивает delta в результат — это объективная валюта готовности, а не самооценка. Multi-track Atlas, AI tutor 24/7, Codex как голос команды."
+        bullets={['Strict mock с watermark', 'AI-mode для тренировки', 'Skill Atlas — карта прогресса', 'AI tutor (Senior dev, English, …)']}
         cta={
-          <Link to="/atlas"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
-                  borderRadius: 999, background: '#fff', color: '#000',
-                  fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-            В Atlas <Icon name="arrow" size={12} />
-          </Link>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Link to="/login?next=/mock"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
+                    borderRadius: 999, background: '#fff', color: '#000',
+                    fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+              Запустить mock <Icon name="arrow" size={12} />
+            </Link>
+            <Link to="/atlas"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
+                    borderRadius: 999, border: '1px solid var(--hair-2)', color: 'rgb(var(--ink))',
+                    fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+              Открыть Atlas
+            </Link>
+          </div>
         }
-        mock={<EnglishMockDemo onExpand={() => setExpanded('english')} />}
+        mock={<MockWatermarkDemo onExpand={() => setExpanded('watermark')} />}
       />
 
       <ProductRow
@@ -735,12 +916,12 @@ export default function WelcomePage() {
         desc="Минималистичное desktop-приложение для тихой работы. AI планирует день, считает серии, не лезет под руку. Чистый чёрный. Клавиатура. Без шума."
         bullets={['AI-план на сегодня', 'Pomodoro-фокус', 'Приватные заметки + AI-связи', 'Доска + AI-критика']}
         cta={
-          <a href="#"
-             style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
-               borderRadius: 999, background: '#fff', color: '#000',
-               fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+          <Link to="/login?next=/profile"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
+                  borderRadius: 999, background: '#fff', color: '#000',
+                  fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
             <Icon name="apple" size={14} /> Скачать для macOS
-          </a>
+          </Link>
         }
         mock={<HoneDemo onExpand={() => setExpanded('hone')} />}
       />
@@ -753,19 +934,19 @@ export default function WelcomePage() {
         bullets={['Глобальный хоткей', 'Видит экран', 'Скрыт от захвата', 'Работает везде']}
         cta={
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <a href="#"
-               style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
-                 borderRadius: 999, background: '#fff', color: '#000',
-                 fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+            <Link to="/pricing"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
+                    borderRadius: 999, background: '#fff', color: '#000',
+                    fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
               <Icon name="apple" size={14} /> Скачать Cue
-            </a>
+            </Link>
             <span className="mono"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 8,
                     padding: '6px 10px', borderRadius: 999,
-                    border: '1px solid rgba(140,255,170,0.24)',
-                    background: 'rgba(40,200,120,0.06)',
-                    fontSize: 11, color: 'rgb(140,240,170)' }}>
-              <span style={{ width: 5, height: 5, borderRadius: 99, background: 'rgb(100,230,140)' }} />
+                    border: '1px solid var(--hair-2)',
+                    background: 'transparent',
+                    fontSize: 11, color: 'var(--ink-60)' }}>
+              <span style={{ width: 5, height: 5, borderRadius: 99, background: '#fff' }} />
               Тестировано в Zoom · Meet · Chrome
             </span>
           </div>
@@ -773,6 +954,7 @@ export default function WelcomePage() {
         mock={<CueDemo onExpand={() => setExpanded('cue')} />}
       />
 
+      <Insights />
       <Pricing />
       <FAQ />
       <Footer />
@@ -796,12 +978,12 @@ export default function WelcomePage() {
         </div>
       </DemoModal>
       <DemoModal
-        open={expanded === 'english'}
+        open={expanded === 'watermark'}
         onClose={() => setExpanded(null)}
-        title="DRUZ9.ONLINE · ENGLISH HR-MOCK"
+        title="DRUZ9.ONLINE · MOCK · WATERMARK"
       >
         <div style={{ aspectRatio: '4/3', maxHeight: '70vh' }}>
-          <EnglishMockDemo />
+          <MockWatermarkDemo />
         </div>
       </DemoModal>
     </div>

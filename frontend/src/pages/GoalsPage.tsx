@@ -180,7 +180,7 @@ function GoalCard({ goal }: { goal: UserGoal }) {
                   goal.status === 'active'
                     ? 'border border-success/40 bg-success/10 text-success'
                     : goal.status === 'done'
-                      ? 'border border-blue-500/40 bg-blue-500/10 text-blue-400'
+                      ? 'border border-white/20 bg-white/10 text-text-primary'
                       : goal.status === 'paused'
                         ? 'border border-warn/40 bg-warn/10 text-warn'
                         : 'border border-border bg-surface-2 text-text-muted',

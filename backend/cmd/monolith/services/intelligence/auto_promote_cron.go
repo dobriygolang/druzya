@@ -52,21 +52,25 @@ func NewAutoPromoteCron(d monolithServices.Deps) *monolithServices.Module {
 	return &monolithServices.Module{
 		Background: []func(ctx context.Context){
 			func(ctx context.Context) {
-				ticker := time.NewTicker(24 * time.Hour)
-				defer ticker.Stop()
-				if err := runner.Run(ctx); err != nil {
-					d.Log.Warn("intelligence.auto_promote: initial run", "err", err)
-				}
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case <-ticker.C:
-						if err := runner.Run(ctx); err != nil {
-							d.Log.Warn("intelligence.auto_promote: tick", "err", err)
+				// Bootstrap calls Background entries synchronously — нужно
+				// spawn'ить goroutine иначе блокирует ListenAndServe.
+				go func() {
+					ticker := time.NewTicker(24 * time.Hour)
+					defer ticker.Stop()
+					if err := runner.Run(ctx); err != nil {
+						d.Log.Warn("intelligence.auto_promote: initial run", "err", err)
+					}
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						case <-ticker.C:
+							if err := runner.Run(ctx); err != nil {
+								d.Log.Warn("intelligence.auto_promote: tick", "err", err)
+							}
 						}
 					}
-				}
+				}()
 			},
 		},
 	}

@@ -46,7 +46,7 @@ func TestShouldNotify_QuietHoursBlocks(t *testing.T) {
 	p := DefaultPreferences()
 	p.Quiet = QuietHours{From: hm(22, 0), To: hm(8, 0), Set: true}
 	// 23:00 inside wrap window → blocked.
-	ok, reason := ShouldNotify(p, enums.NotificationTypeDailyKata, hm(23, 0), nil, false)
+	ok, reason := ShouldNotify(p, enums.NotificationTypeWelcome, hm(23, 0), nil, false)
 	if ok {
 		t.Fatalf("expected blocked, got ok")
 	}
@@ -58,7 +58,7 @@ func TestShouldNotify_QuietHoursBlocks(t *testing.T) {
 func TestShouldNotify_ForceBypassesQuiet(t *testing.T) {
 	p := DefaultPreferences()
 	p.Quiet = QuietHours{From: hm(22, 0), To: hm(8, 0), Set: true}
-	ok, _ := ShouldNotify(p, enums.NotificationTypeMatchFound, hm(23, 0), nil, true)
+	ok, _ := ShouldNotify(p, enums.NotificationTypeWeeklyReport, hm(23, 0), nil, true)
 	if !ok {
 		t.Fatalf("expected delivery with force=true")
 	}
@@ -69,7 +69,7 @@ func TestShouldNotify_DedupWindow(t *testing.T) {
 	recent := hm(12, 0)
 	// now is 10 min after → within 30 min window → blocked.
 	now := recent.Add(10 * time.Minute)
-	ok, reason := ShouldNotify(p, enums.NotificationTypeMatchResult, now, &recent, false)
+	ok, reason := ShouldNotify(p, enums.NotificationTypeAssignmentDueSoon, now, &recent, false)
 	if ok {
 		t.Fatalf("expected dedup block")
 	}
@@ -78,7 +78,7 @@ func TestShouldNotify_DedupWindow(t *testing.T) {
 	}
 
 	// 31 min after → allowed.
-	ok, _ = ShouldNotify(p, enums.NotificationTypeMatchResult, recent.Add(31*time.Minute), &recent, false)
+	ok, _ = ShouldNotify(p, enums.NotificationTypeAssignmentDueSoon, recent.Add(31*time.Minute), &recent, false)
 	if !ok {
 		t.Fatalf("expected allow after dedup window")
 	}
@@ -96,18 +96,9 @@ func TestShouldNotify_WeeklyReportOptOut(t *testing.T) {
 	}
 }
 
-func TestShouldNotify_SkillDecayOptOut(t *testing.T) {
-	p := DefaultPreferences()
-	p.SkillDecayWarningsEnabled = false
-	ok, reason := ShouldNotify(p, enums.NotificationTypeSkillDecay, hm(10, 0), nil, false)
-	if ok || reason != "skill_decay_disabled" {
-		t.Fatalf("want blocked with skill_decay_disabled, got %v/%s", ok, reason)
-	}
-}
-
 func TestShouldNotify_NoChannels(t *testing.T) {
 	p := Preferences{} // zero value, no channels
-	ok, reason := ShouldNotify(p, enums.NotificationTypeDailyKata, hm(10, 0), nil, false)
+	ok, reason := ShouldNotify(p, enums.NotificationTypeWelcome, hm(10, 0), nil, false)
 	if ok {
 		t.Fatalf("expected block")
 	}

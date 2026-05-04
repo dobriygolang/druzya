@@ -60,9 +60,9 @@ type ctxValue = interface{} // type-alias чтобы не тянуть context i
 type Status string
 
 const (
-	StatusActive   Status = "active"   // expires_at > now() AND archived_at IS NULL
-	StatusPast     Status = "past"     // archived_at IS NOT NULL OR expires_at <= now()
-	StatusAll      Status = "all"
+	StatusActive Status = "active" // expires_at > now() AND archived_at IS NULL
+	StatusPast   Status = "past"   // archived_at IS NOT NULL OR expires_at <= now()
+	StatusAll    Status = "all"
 )
 
 // QuotaRepo — per-user `user_room_quota`.

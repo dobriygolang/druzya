@@ -5,14 +5,14 @@
 ```
 ┌──────────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
 │  druz9.online (web)      │   │   Hone (desktop)     │   │   Cue (desktop)      │
-│  «Арена + аналитика»     │   │   «Тихий кокпит»     │   │   «Наушник тренера»  │
+│  «AI-coach + arena»      │   │   «Тихий кокпит»     │   │   «Наушник тренера»  │
 │                          │   │                      │   │                      │
-│  • Mock-собеседования    │   │  • План дня от AI    │   │  • Невидим при       │
-│  • 1v1 / 2v2 арена       │   │  • Pomodoro + focus  │   │    screen-share      │
-│  • Insights (агрегат)    │   │  • Заметки с AI      │   │  • Live-транскрипт   │
-│  • Codex (статьи)        │   │  • Whiteboard + AI   │   │    встреч            │
-│  • Vacancies, Slots      │   │  • Editor / Boards   │   │  • RAG по CV/JD      │
-│                          │   │  • Подкасты, ивенты  │   │  • Подсказки 3-4с    │
+│  • AI mock-собеседования │   │  • План дня от AI    │   │  • Невидим при       │
+│  • 5-axis radar /        │   │  • Pomodoro + focus  │   │    screen-share      │
+│    rubric per track      │   │  • Заметки с AI-link │   │  • Live-транскрипт   │
+│  • Skill Atlas + tracks  │   │  • Whiteboard + AI   │   │    встреч            │
+│  • Codex opinion-pieces  │   │  • TaskBoard         │   │  • RAG по CV/JD      │
+│  • AI-tutor 4-layer mem  │   │  • English hub (R/W/L)│   │  • Подсказки 3-4с    │
 └────────────┬─────────────┘   └──────────┬───────────┘   └──────────┬───────────┘
              │                            │                          │
              └────────────────────────────┼──────────────────────────┘
@@ -26,7 +26,7 @@
 
 ## Аудитория
 
-Middle / senior разработчик в РФ. Готовится к собесу, хочет расти каждый день, устал собирать продуктивность из Notion + Todoist + LeetCode + Obsidian + Cal + Cluely.
+Middle / senior разработчик в РФ. Готовится к собесу OR растёт по треку (Go senior / ML engineering / English B2+). Устал собирать продуктивность из Notion + Todoist + LeetCode + Obsidian.
 
 ## Ценностное предложение
 
@@ -34,28 +34,37 @@ Middle / senior разработчик в РФ. Готовится к собес
 
 | Состояние | Когда | Чем закрываем |
 |---|---|---|
-| **«Хочу соревноваться / готовиться»** | вечер, выходной | druz9.online — арена + mock + аналитика |
+| **«Хочу подготовиться / расти»** | вечер, выходной | druz9.online — AI-coach + mock + atlas |
 | **«Хочу спокойно поработать»** | утро / день | Hone — план + фокус + заметки |
 | **«Я застрял здесь и сейчас»** | в IDE, на звонке | Cue — невидимый AI поверх ОС |
 
-Разные триггеры → не конкурируют, дополняют. Пользователь не выбирает между ними, он просто всегда в одном из трёх.
+Разные триггеры → не конкурируют, дополняют. Пользователь не выбирает между ними — он всегда в одном из трёх.
 
 ## Как они связаны
 
 - **Один аккаунт** (Yandex / Telegram OAuth) и одна подписка `druz9 Pro` открывают AI-фичи везде.
-- **Skill Atlas** живёт на сайте, читается Hone'ом для AI-плана и Cue'ем для контекста подсказок.
-- **Insights** на сайте — единая аналитика, агрегирует focus-time из Hone + match results с арены + паттерны застреваний из Cue.
-- **Mock-block протокол**: во время strict mock-сессии (без подсказок) Cue автоматически блокируется. Watermark «честно vs с AI» — объективная метрика готовности.
+- **Skill Atlas** живёт на сайте — Hone читает для AI-плана и AI-link заметок, Cue читает для контекста подсказок.
+- **Coach memory** (4-layer: snapshot / facts / summary / episodes) — общая для AI-mock и AI-tutor; Hone reflection events feeding обратно.
+- **Mock-block протокол** — во время strict mock-сессии Cue автоматически блокируется. Watermark «честно vs с AI» — объективная метрика готовности.
+- **Curation = ranking-proxy.** druz9 не создаёт content — линкует на Strang / mlcourse / DDIA / Kaggle / NeetCode через `external_resources` jsonb. Unique слой: AI-mock + Codex + AI-tutor + Hone + Intelligence.
 
 ## Правило несаморазмывания
 
 Разделение ответственностей жёсткое — иначе три продукта схлопываются в один:
 
-- **Web производит контент** (создаёт ивенты, mock-сессии, лендинги, аналитику).
-- **Hone потребляет** + добавляет focus-слой и приватные артефакты (заметки, доски). Не делает stealth.
-- **Cue ситуативный** — не хранит состояние основного продукта, не имеет dock-иконки.
+- **Web производит контент** (создаёт mock-сессии, atlas-узлы, codex-articles, аналитику).
+- **Hone потребляет** + добавляет focus-слой и приватные артефакты (заметки, доски, taskboard). Не делает stealth.
+- **Cue ситуативный** — не хранит state основного продукта, не имеет dock-иконки.
 
 Если в одном появляется фича другого — режем.
+
+## 3 трека (Sergey identity 2026-05-04)
+
+druz9 — AI-coach с памятью + free tutor-toolkit + Hone для подготовки senior IT-разрабов. **3 трека:** Go senior · ML engineering · English (opt-in toggle). НЕ LeetCode / НЕ Skyeng / НЕ paid marketplace.
+
+## Двусторонний рынок без денежного шага
+
+Тутор приходит бесплатно с AI-toolkit (assignment push, shared atlas, tutor-rail в TaskBoard) → приводит студентов через invite-код → студенты apply на free Hone → ApAI-coach сужает gap до собеса. Нет marketplace fees — выручка с Pro-подписок студентов.
 
 ## Монетизация
 
@@ -63,20 +72,22 @@ Middle / senior разработчик в РФ. Готовится к собес
 
 | Поверхность | Free | Pro |
 |---|---|---|
-| druz9.online | Базовая арена, общий Atlas, подкасты | Mock-сессии, расширенный Atlas, Insights |
-| Hone | Canvas, Pomodoro, Notes без AI, Stats | AI-планер, AI-связи заметок, AI-критика досок |
+| druz9.online | Базовая arena, общий Atlas, AI-mock 1/нед | Безлимитный AI-mock, расширенный Atlas, AI-tutor с памятью, Insights |
+| Hone | Canvas, Pomodoro, Notes без AI-link, базовый Stats | AI-планер, AI-link заметок, AI-критика досок, AI auto-categorise TaskBoard |
 | Cue | — (требует Pro) | Все фичи включены |
 
-**Free Hone — привычка до оплаты.** **Cue — главный платящий хук:** без Pro он не запускается. Web — воронка через mock-сессии и Insights.
+**Free Hone — привычка до оплаты.** **Cue — главный платящий хук:** без Pro он не запускается. Web — воронка через AI-mock и Atlas.
+
+**Дополнительно (Phase 9a, Sergey 2026-05-04 Path C low-key):** standalone collab rooms (code/whiteboard) — discovery только через Settings → Developer tools / tutor / mock / club. NO top-level surface. Free 3 active · 24h TTL · 3 ppl max.
 
 Будущие SKU: Teams (~3 000 ₽/мес/место) и Enterprise (договорные, on-prem) — Year 2+.
 
 ## Почему сейчас
 
 - **РФ-рынок без стратегического конкурента.** LeetCode без AI, Cluely без интеграций под РФ-собес, Notion / Linear не учат расти как разработчик.
-- **AI-стек дешёвый.** Free-tier у Groq / Cerebras / Mistral / OpenRouter покрывает 90% задач без копейки на инференс. Маржинальность изначально позитивная.
+- **AI-стек дешёвый.** Free-tier у Groq / Cerebras / Google / Cloudflare / Z.ai / Mistral / OpenRouter покрывает 90% задач без копейки на инференс. Маржинальность изначально позитивная.
 - **Stealth-моат закрывается.** Apple может прикрыть `setContentProtection` через 1-2 релиза macOS — у нас окно 12-18 месяцев на захват ниши.
-- **Шаблон «арена + кокпит + наушник» нигде не реализован.** В этом дифференциация.
+- **Шаблон «AI-coach + кокпит + наушник» нигде не реализован.** В этом дифференциация.
 
 ## Целевые показатели Year 1
 
@@ -90,6 +101,6 @@ Middle / senior разработчик в РФ. Готовится к собес
 
 ## Подробнее по продуктам
 
-- [druz9.md](./druz9.md) — веб-продукт (арена + аналитика).
+- [druz9.md](./druz9.md) — веб-продукт (AI-coach + arena + atlas).
 - [hone.md](./hone.md) — desktop-кокпит для ежедневного ритуала.
 - [cue.md](./cue.md) — невидимый AI-помощник для звонков и работы.

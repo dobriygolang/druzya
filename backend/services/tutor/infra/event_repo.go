@@ -269,6 +269,49 @@ func (p *Postgres) TutorEventStats(ctx context.Context, tutorID uuid.UUID, windo
 	if denom > 0 {
 		out.CancellationRate = float64(out.EventsCancelled) / float64(denom)
 	}
+
+	// 4) Phase 8 — daily rolling series для sparkline UI. Inclusive
+	// window: [now - windowDays, now]. generate_series даёт пустой ряд
+	// дней без events чтобы фронт получил массив фиксированной длины.
+	out.DailyCompleted = make([]int, windowDays)
+	out.DailyMinutes = make([]int, windowDays)
+	rows, err := p.pool.Query(ctx, `
+		WITH days AS (
+		  SELECT generate_series(
+		    (CURRENT_DATE - ($2::int - 1) * INTERVAL '1 day')::date,
+		    CURRENT_DATE,
+		    INTERVAL '1 day'
+		  )::date AS day
+		),
+		buckets AS (
+		  SELECT (created_at AT TIME ZONE 'UTC')::date AS day,
+		         COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+		         COALESCE(SUM(duration_min) FILTER (WHERE status = 'completed'), 0) AS minutes
+		  FROM tutor_events
+		  WHERE tutor_id = $1
+		    AND created_at >= CURRENT_DATE - ($2::int - 1) * INTERVAL '1 day'
+		  GROUP BY day
+		)
+		SELECT d.day,
+		       COALESCE(b.completed, 0)::int,
+		       COALESCE(b.minutes, 0)::int
+		FROM days d LEFT JOIN buckets b ON b.day = d.day
+		ORDER BY d.day ASC`,
+		pgUUID(tutorID), windowDays,
+	)
+	if err == nil {
+		defer rows.Close()
+		idx := 0
+		for rows.Next() && idx < windowDays {
+			var day time.Time
+			var completed, minutes int
+			if scanErr := rows.Scan(&day, &completed, &minutes); scanErr == nil {
+				out.DailyCompleted[idx] = completed
+				out.DailyMinutes[idx] = minutes
+			}
+			idx++
+		}
+	}
 	return out, nil
 }
 

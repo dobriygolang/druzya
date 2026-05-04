@@ -35,3 +35,7 @@ require (
 replace druz9/shared => ../../shared
 
 replace druz9/curation => ../curation
+
+require druz9/learning_state v0.0.0
+
+replace druz9/learning_state => ../learning_state

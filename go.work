@@ -24,8 +24,8 @@ use (
 	./backend/services/subscription
 	./backend/services/sync
 	./backend/services/tracks
-	./backend/services/tutor
 	./backend/services/transcription
+	./backend/services/tutor
 	./backend/services/vacancies
 	./backend/services/whiteboard_rooms
 	./backend/shared

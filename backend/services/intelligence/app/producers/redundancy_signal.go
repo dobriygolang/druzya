@@ -15,9 +15,9 @@ import (
 )
 
 type RedundancyCluster struct {
-	Topic        string  // atlas_node_id
-	Resources    []string // URLs
-	AvgQuality   float32
+	Topic      string   // atlas_node_id
+	Resources  []string // URLs
+	AvgQuality float32
 }
 
 func FromRedundancySignal(clusters []RedundancyCluster, now time.Time) []domain.Insight {

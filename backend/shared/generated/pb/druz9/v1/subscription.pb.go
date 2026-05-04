@@ -270,182 +270,6 @@ func (x *QuotaSnapshot) GetUsage() *QuotaUsage {
 	return nil
 }
 
-type LinkBoostyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BoostyUserId  string                 `protobuf:"bytes,1,opt,name=boosty_user_id,json=boostyUserId,proto3" json:"boosty_user_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LinkBoostyRequest) Reset() {
-	*x = LinkBoostyRequest{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LinkBoostyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LinkBoostyRequest) ProtoMessage() {}
-
-func (x *LinkBoostyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LinkBoostyRequest.ProtoReflect.Descriptor instead.
-func (*LinkBoostyRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *LinkBoostyRequest) GetBoostyUserId() string {
-	if x != nil {
-		return x.BoostyUserId
-	}
-	return ""
-}
-
-type LinkBoostyResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
-	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LinkBoostyResponse) Reset() {
-	*x = LinkBoostyResponse{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LinkBoostyResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LinkBoostyResponse) ProtoMessage() {}
-
-func (x *LinkBoostyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LinkBoostyResponse.ProtoReflect.Descriptor instead.
-func (*LinkBoostyResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *LinkBoostyResponse) GetOk() bool {
-	if x != nil {
-		return x.Ok
-	}
-	return false
-}
-
-func (x *LinkBoostyResponse) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-type AdminBoostySyncRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AdminBoostySyncRequest) Reset() {
-	*x = AdminBoostySyncRequest{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AdminBoostySyncRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AdminBoostySyncRequest) ProtoMessage() {}
-
-func (x *AdminBoostySyncRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AdminBoostySyncRequest.ProtoReflect.Descriptor instead.
-func (*AdminBoostySyncRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{6}
-}
-
-type AdminBoostySyncResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Updated       int32                  `protobuf:"varint,1,opt,name=updated,proto3" json:"updated,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AdminBoostySyncResponse) Reset() {
-	*x = AdminBoostySyncResponse{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AdminBoostySyncResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AdminBoostySyncResponse) ProtoMessage() {}
-
-func (x *AdminBoostySyncResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AdminBoostySyncResponse.ProtoReflect.Descriptor instead.
-func (*AdminBoostySyncResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *AdminBoostySyncResponse) GetUpdated() int32 {
-	if x != nil {
-		return x.Updated
-	}
-	return 0
-}
-
 type GetMyTierRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -454,7 +278,7 @@ type GetMyTierRequest struct {
 
 func (x *GetMyTierRequest) Reset() {
 	*x = GetMyTierRequest{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[8]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -466,7 +290,7 @@ func (x *GetMyTierRequest) String() string {
 func (*GetMyTierRequest) ProtoMessage() {}
 
 func (x *GetMyTierRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[8]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -479,7 +303,7 @@ func (x *GetMyTierRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyTierRequest.ProtoReflect.Descriptor instead.
 func (*GetMyTierRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{8}
+	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{4}
 }
 
 type GetMyTierResponse struct {
@@ -495,7 +319,7 @@ type GetMyTierResponse struct {
 
 func (x *GetMyTierResponse) Reset() {
 	*x = GetMyTierResponse{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[9]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -507,7 +331,7 @@ func (x *GetMyTierResponse) String() string {
 func (*GetMyTierResponse) ProtoMessage() {}
 
 func (x *GetMyTierResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[9]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -520,7 +344,7 @@ func (x *GetMyTierResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyTierResponse.ProtoReflect.Descriptor instead.
 func (*GetMyTierResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{9}
+	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetMyTierResponse) GetTier() string {
@@ -567,7 +391,7 @@ type GetTierByUserIDRequest struct {
 
 func (x *GetTierByUserIDRequest) Reset() {
 	*x = GetTierByUserIDRequest{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[10]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -579,7 +403,7 @@ func (x *GetTierByUserIDRequest) String() string {
 func (*GetTierByUserIDRequest) ProtoMessage() {}
 
 func (x *GetTierByUserIDRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[10]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -592,7 +416,7 @@ func (x *GetTierByUserIDRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTierByUserIDRequest.ProtoReflect.Descriptor instead.
 func (*GetTierByUserIDRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{10}
+	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetTierByUserIDRequest) GetUserId() string {
@@ -611,7 +435,7 @@ type GetTierByUserIDResponse struct {
 
 func (x *GetTierByUserIDResponse) Reset() {
 	*x = GetTierByUserIDResponse{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[11]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -623,7 +447,7 @@ func (x *GetTierByUserIDResponse) String() string {
 func (*GetTierByUserIDResponse) ProtoMessage() {}
 
 func (x *GetTierByUserIDResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[11]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -636,7 +460,7 @@ func (x *GetTierByUserIDResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTierByUserIDResponse.ProtoReflect.Descriptor instead.
 func (*GetTierByUserIDResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{11}
+	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetTierByUserIDResponse) GetTier() string {
@@ -658,7 +482,7 @@ type AdminSetTierRequest struct {
 
 func (x *AdminSetTierRequest) Reset() {
 	*x = AdminSetTierRequest{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[12]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -670,7 +494,7 @@ func (x *AdminSetTierRequest) String() string {
 func (*AdminSetTierRequest) ProtoMessage() {}
 
 func (x *AdminSetTierRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[12]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -683,7 +507,7 @@ func (x *AdminSetTierRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminSetTierRequest.ProtoReflect.Descriptor instead.
 func (*AdminSetTierRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{12}
+	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AdminSetTierRequest) GetUserId() string {
@@ -723,7 +547,7 @@ type AdminSetTierResponse struct {
 
 func (x *AdminSetTierResponse) Reset() {
 	*x = AdminSetTierResponse{}
-	mi := &file_druz9_v1_subscription_proto_msgTypes[13]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -735,7 +559,7 @@ func (x *AdminSetTierResponse) String() string {
 func (*AdminSetTierResponse) ProtoMessage() {}
 
 func (x *AdminSetTierResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_subscription_proto_msgTypes[13]
+	mi := &file_druz9_v1_subscription_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -748,7 +572,7 @@ func (x *AdminSetTierResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminSetTierResponse.ProtoReflect.Descriptor instead.
 func (*AdminSetTierResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{13}
+	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AdminSetTierResponse) GetOk() bool {
@@ -780,15 +604,7 @@ const file_druz9_v1_subscription_proto_rawDesc = "" +
 	"\rQuotaSnapshot\x12\x12\n" +
 	"\x04tier\x18\x01 \x01(\tR\x04tier\x12-\n" +
 	"\x06policy\x18\x02 \x01(\v2\x15.druz9.v1.QuotaPolicyR\x06policy\x12*\n" +
-	"\x05usage\x18\x03 \x01(\v2\x14.druz9.v1.QuotaUsageR\x05usage\"9\n" +
-	"\x11LinkBoostyRequest\x12$\n" +
-	"\x0eboosty_user_id\x18\x01 \x01(\tR\fboostyUserId\"<\n" +
-	"\x12LinkBoostyResponse\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\"\x18\n" +
-	"\x16AdminBoostySyncRequest\"3\n" +
-	"\x17AdminBoostySyncResponse\x12\x18\n" +
-	"\aupdated\x18\x01 \x01(\x05R\aupdated\"\x12\n" +
+	"\x05usage\x18\x03 \x01(\v2\x14.druz9.v1.QuotaUsageR\x05usage\"\x12\n" +
 	"\x10GetMyTierRequest\"\xe2\x01\n" +
 	"\x11GetMyTierResponse\x12\x12\n" +
 	"\x04tier\x18\x01 \x01(\tR\x04tier\x12\x16\n" +
@@ -827,37 +643,33 @@ func file_druz9_v1_subscription_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_subscription_proto_rawDescData
 }
 
-var file_druz9_v1_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_druz9_v1_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_druz9_v1_subscription_proto_goTypes = []any{
 	(*QuotaPolicy)(nil),             // 0: druz9.v1.QuotaPolicy
 	(*QuotaUsage)(nil),              // 1: druz9.v1.QuotaUsage
 	(*GetQuotaRequest)(nil),         // 2: druz9.v1.GetQuotaRequest
 	(*QuotaSnapshot)(nil),           // 3: druz9.v1.QuotaSnapshot
-	(*LinkBoostyRequest)(nil),       // 4: druz9.v1.LinkBoostyRequest
-	(*LinkBoostyResponse)(nil),      // 5: druz9.v1.LinkBoostyResponse
-	(*AdminBoostySyncRequest)(nil),  // 6: druz9.v1.AdminBoostySyncRequest
-	(*AdminBoostySyncResponse)(nil), // 7: druz9.v1.AdminBoostySyncResponse
-	(*GetMyTierRequest)(nil),        // 8: druz9.v1.GetMyTierRequest
-	(*GetMyTierResponse)(nil),       // 9: druz9.v1.GetMyTierResponse
-	(*GetTierByUserIDRequest)(nil),  // 10: druz9.v1.GetTierByUserIDRequest
-	(*GetTierByUserIDResponse)(nil), // 11: druz9.v1.GetTierByUserIDResponse
-	(*AdminSetTierRequest)(nil),     // 12: druz9.v1.AdminSetTierRequest
-	(*AdminSetTierResponse)(nil),    // 13: druz9.v1.AdminSetTierResponse
-	(*timestamppb.Timestamp)(nil),   // 14: google.protobuf.Timestamp
+	(*GetMyTierRequest)(nil),        // 4: druz9.v1.GetMyTierRequest
+	(*GetMyTierResponse)(nil),       // 5: druz9.v1.GetMyTierResponse
+	(*GetTierByUserIDRequest)(nil),  // 6: druz9.v1.GetTierByUserIDRequest
+	(*GetTierByUserIDResponse)(nil), // 7: druz9.v1.GetTierByUserIDResponse
+	(*AdminSetTierRequest)(nil),     // 8: druz9.v1.AdminSetTierRequest
+	(*AdminSetTierResponse)(nil),    // 9: druz9.v1.AdminSetTierResponse
+	(*timestamppb.Timestamp)(nil),   // 10: google.protobuf.Timestamp
 }
 var file_druz9_v1_subscription_proto_depIdxs = []int32{
 	0,  // 0: druz9.v1.QuotaSnapshot.policy:type_name -> druz9.v1.QuotaPolicy
 	1,  // 1: druz9.v1.QuotaSnapshot.usage:type_name -> druz9.v1.QuotaUsage
-	14, // 2: druz9.v1.GetMyTierResponse.current_period_end:type_name -> google.protobuf.Timestamp
-	14, // 3: druz9.v1.GetMyTierResponse.grace_until:type_name -> google.protobuf.Timestamp
-	14, // 4: druz9.v1.AdminSetTierRequest.current_period_end:type_name -> google.protobuf.Timestamp
-	8,  // 5: druz9.v1.SubscriptionService.GetMyTier:input_type -> druz9.v1.GetMyTierRequest
-	10, // 6: druz9.v1.SubscriptionService.GetTierByUserID:input_type -> druz9.v1.GetTierByUserIDRequest
-	12, // 7: druz9.v1.SubscriptionService.AdminSetTier:input_type -> druz9.v1.AdminSetTierRequest
+	10, // 2: druz9.v1.GetMyTierResponse.current_period_end:type_name -> google.protobuf.Timestamp
+	10, // 3: druz9.v1.GetMyTierResponse.grace_until:type_name -> google.protobuf.Timestamp
+	10, // 4: druz9.v1.AdminSetTierRequest.current_period_end:type_name -> google.protobuf.Timestamp
+	4,  // 5: druz9.v1.SubscriptionService.GetMyTier:input_type -> druz9.v1.GetMyTierRequest
+	6,  // 6: druz9.v1.SubscriptionService.GetTierByUserID:input_type -> druz9.v1.GetTierByUserIDRequest
+	8,  // 7: druz9.v1.SubscriptionService.AdminSetTier:input_type -> druz9.v1.AdminSetTierRequest
 	2,  // 8: druz9.v1.SubscriptionService.GetQuota:input_type -> druz9.v1.GetQuotaRequest
-	9,  // 9: druz9.v1.SubscriptionService.GetMyTier:output_type -> druz9.v1.GetMyTierResponse
-	11, // 10: druz9.v1.SubscriptionService.GetTierByUserID:output_type -> druz9.v1.GetTierByUserIDResponse
-	13, // 11: druz9.v1.SubscriptionService.AdminSetTier:output_type -> druz9.v1.AdminSetTierResponse
+	5,  // 9: druz9.v1.SubscriptionService.GetMyTier:output_type -> druz9.v1.GetMyTierResponse
+	7,  // 10: druz9.v1.SubscriptionService.GetTierByUserID:output_type -> druz9.v1.GetTierByUserIDResponse
+	9,  // 11: druz9.v1.SubscriptionService.AdminSetTier:output_type -> druz9.v1.AdminSetTierResponse
 	3,  // 12: druz9.v1.SubscriptionService.GetQuota:output_type -> druz9.v1.QuotaSnapshot
 	9,  // [9:13] is the sub-list for method output_type
 	5,  // [5:9] is the sub-list for method input_type
@@ -877,7 +689,7 @@ func file_druz9_v1_subscription_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_subscription_proto_rawDesc), len(file_druz9_v1_subscription_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

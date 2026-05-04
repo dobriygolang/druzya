@@ -20,6 +20,7 @@ import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { TutorOnboardingModal, isTutorOnboarded } from '../components/TutorOnboardingModal'
 import { SharedReadingPane } from '../components/SharedReadingPane'
+import { Sparkline } from '../components/Sparkline'
 import { ApiError } from '../lib/apiClient'
 import {
   useBroadcastAssignmentMutation,
@@ -156,6 +157,10 @@ export default function TutorDashboardPage() {
 function ActivityPane() {
   const q = useTutorActivityQuery(30)
   const a = q.data
+  // Phase 8 — daily series, fall back to empty array if backend pre-rollup.
+  const daily = (a as { daily_completed?: number[]; daily_minutes?: number[] } | undefined)
+  const dailyCompleted = daily?.daily_completed ?? []
+  const dailyMinutes = daily?.daily_minutes ?? []
   return (
     <section className="flex flex-col gap-3">
       <header className="flex items-center justify-between">
@@ -168,14 +173,14 @@ function ActivityPane() {
         {a ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Stat label="Active students" value={String(a.active_student_count)} />
-            <Stat label="Completed" value={String(a.events_completed)} accent="success" />
+            <Stat label="Completed" value={String(a.events_completed)} accent="success" sparkline={dailyCompleted} />
             <Stat label="Scheduled" value={String(a.events_scheduled)} />
             <Stat
               label="Cancelled"
               value={String(a.events_cancelled)}
               accent={a.events_cancelled > 0 ? 'warn' : undefined}
             />
-            <Stat label="Min taught" value={String(a.minutes_taught)} />
+            <Stat label="Min taught" value={String(a.minutes_taught)} sparkline={dailyMinutes} />
           </div>
         ) : (
           <p className="text-[13px] text-text-secondary">
@@ -196,10 +201,12 @@ function Stat({
   label,
   value,
   accent,
+  sparkline,
 }: {
   label: string
   value: string
   accent?: 'success' | 'warn' | 'danger'
+  sparkline?: number[]
 }) {
   const valueCls =
     accent === 'success'
@@ -209,10 +216,21 @@ function Stat({
         : accent === 'danger'
           ? 'text-danger'
           : 'text-text-primary'
+  const hasSpark = sparkline && sparkline.length > 1 && sparkline.some((v) => v > 0)
   return (
     <div className="rounded-lg border border-border bg-surface-2 px-3 py-2.5">
       <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{label}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${valueCls}`}>{value}</div>
+      {hasSpark && (
+        <Sparkline
+          values={sparkline}
+          height={18}
+          stroke="rgba(255,255,255,0.5)"
+          fill="rgba(255,255,255,0.06)"
+          style={{ marginTop: 4, display: 'block' }}
+          ariaLabel={`${label} trend ${sparkline.length}d`}
+        />
+      )}
     </div>
   )
 }

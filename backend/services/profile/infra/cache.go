@@ -324,15 +324,6 @@ func (c *CachedRepo) RecordXPEvent(ctx context.Context, userID uuid.UUID, amount
 	return nil
 }
 
-// UpdateCareerStage forwards then invalidates.
-func (c *CachedRepo) UpdateCareerStage(ctx context.Context, userID uuid.UUID, stage domain.CareerStage) error {
-	if err := c.delegate.UpdateCareerStage(ctx, userID, stage); err != nil {
-		return fmt.Errorf("profile.cache.UpdateCareerStage: %w", err)
-	}
-	c.Invalidate(ctx, userID)
-	return nil
-}
-
 // GetSettings is uncached — settings are written rarely but read on the
 // settings page only, so the cost/benefit doesn't pencil out today.
 // TODO Phase 2: cache settings under profile:v1:settings:<uid> if hot.
@@ -436,16 +427,6 @@ func (c *CachedRepo) UpsertSkillNode(ctx context.Context, userID uuid.UUID, node
 	return out, nil
 }
 
-// ListRatings — uncached pass-through; ratings are joined into the bundle and
-// cached together, so direct callers (event handlers) always read fresh.
-func (c *CachedRepo) ListRatings(ctx context.Context, userID uuid.UUID) ([]domain.SectionRating, error) {
-	out, err := c.delegate.ListRatings(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("profile.cache.ListRatings: %w", err)
-	}
-	return out, nil
-}
-
 // CountRecentActivity — uncached; report endpoint is its own cache concern.
 func (c *CachedRepo) CountRecentActivity(ctx context.Context, userID uuid.UUID, since time.Time) (domain.Activity, error) {
 	a, err := c.delegate.CountRecentActivity(ctx, userID, since)
@@ -455,26 +436,6 @@ func (c *CachedRepo) CountRecentActivity(ctx context.Context, userID uuid.UUID, 
 	return a, nil
 }
 
-// ListMatchAggregatesSince — uncached pass-through. Хитов мало
-// (вызывается только из /report), а агрегат строится в одном SQL — отдельный
-// cache-layer не оправдан.
-func (c *CachedRepo) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.MatchAggregate, error) {
-	out, err := c.delegate.ListMatchAggregatesSince(ctx, userID, since)
-	if err != nil {
-		return nil, fmt.Errorf("profile.cache.ListMatchAggregatesSince: %w", err)
-	}
-	return out, nil
-}
-
-// ListWeeklyXPSince — uncached pass-through.
-func (c *CachedRepo) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error) {
-	out, err := c.delegate.ListWeeklyXPSince(ctx, userID, now, weeks)
-	if err != nil {
-		return nil, fmt.Errorf("profile.cache.ListWeeklyXPSince: %w", err)
-	}
-	return out, nil
-}
-
 // GetStreaks — uncached pass-through.
 func (c *CachedRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
 	cur, best, err := c.delegate.GetStreaks(ctx, userID)
@@ -482,35 +443,6 @@ func (c *CachedRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int
 		return 0, 0, fmt.Errorf("profile.cache.GetStreaks: %w", err)
 	}
 	return cur, best, nil
-}
-
-// GetPercentiles — uncached pass-through. Window-function queries are
-// already fast at current user scale; caching adds invalidation complexity
-// for marginal gain. Revisit if we hit 10k+ concurrent /weekly views.
-func (c *CachedRepo) GetPercentiles(ctx context.Context, userID uuid.UUID, weekEnd time.Time) (domain.PercentileView, error) {
-	p, err := c.delegate.GetPercentiles(ctx, userID, weekEnd)
-	if err != nil {
-		return p, fmt.Errorf("profile.cache.GetPercentiles: %w", err)
-	}
-	return p, nil
-}
-
-// ListHourlyActivitySince — uncached pass-through (scan per /weekly load).
-func (c *CachedRepo) ListHourlyActivitySince(ctx context.Context, userID uuid.UUID, since time.Time) ([168]int, error) {
-	h, err := c.delegate.ListHourlyActivitySince(ctx, userID, since)
-	if err != nil {
-		return h, fmt.Errorf("profile.cache.ListHourlyActivitySince: %w", err)
-	}
-	return h, nil
-}
-
-// ListEloSnapshotsSince — uncached pass-through.
-func (c *CachedRepo) ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.EloPoint, error) {
-	pts, err := c.delegate.ListEloSnapshotsSince(ctx, userID, since)
-	if err != nil {
-		return pts, fmt.Errorf("profile.cache.ListEloSnapshotsSince: %w", err)
-	}
-	return pts, nil
 }
 
 // IssueShareToken — write pass-through, no caching (each issuance is unique).

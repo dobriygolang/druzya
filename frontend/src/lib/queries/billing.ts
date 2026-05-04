@@ -262,22 +262,6 @@ export function useSubscriptionQuotaQuery() {
   })
 }
 
-// Bind a Boosty username to the caller's account. Backend matches
-// boosty subs against users via this row in the next sync tick.
-export function useLinkBoostyMutation() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (boosty_username: string) =>
-      api<{ ok: boolean }>('/subscription/boosty/link', {
-        method: 'POST',
-        body: JSON.stringify({ boosty_username }),
-      }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['subscription', 'quota'] })
-    },
-  })
-}
-
 // Admin-only dev shortcut: flip own (or another user's) tier without
 // running the full Boosty round-trip. Caller must have role=admin.
 export function useDevSetTierMutation() {

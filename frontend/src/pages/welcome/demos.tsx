@@ -458,14 +458,14 @@ function CueIdeBackdrop({ dim = false }: { dim?: boolean }) {
   return (
     <div style={{ position: 'absolute', inset: 0, padding: '46px 24px 24px', opacity: dim ? 0.4 : 1, transition: 'opacity .3s' }}>
       <div className="mono" style={{ fontSize: 11, color: 'var(--ink-40)', lineHeight: 1.6 }}>
-        <span style={{ color: 'rgb(180,140,255)' }}>func</span>{' '}
+        <span style={{ color: 'var(--ink-60)' }}>func</span>{' '}
         <span style={{ color: '#fff' }}>acquireLock</span>(ctx, key) {'{'}
         <br />
-        {'  '}<span style={{ color: 'var(--ink-60)' }}>// SETNX → if 1, lock acquired</span><br />
+        {'  '}<span style={{ color: 'var(--ink-40)' }}>// SETNX → if 1, lock acquired</span><br />
         {'  '}ok, _ := redis.SetNX(ctx, key, val, 0)<br />
         {'  '}if !ok {'{'} return ErrLocked {'}'}<br />
         {'  '}redis.Expire(ctx, key, ttl)<br />
-        {'  '}<span style={{ color: 'rgb(255,140,140)' }}>// race: lock can outlive ttl</span><br />
+        {'  '}<span style={{ color: 'var(--ink-40)', borderLeft: '2px solid var(--red)', paddingLeft: 6, marginLeft: -8 }}>// race: lock can outlive ttl</span><br />
         {'  '}return nil<br />
         {'}'}
       </div>
@@ -619,6 +619,187 @@ export function EnglishMockDemo({ onExpand }: { onExpand?: () => void }) {
     <DemoFrame onHoverChange={setPaused} visibilityRef={ref} onExpand={onExpand}>
       <DemoStyleTag />
       <ChromeBar label="DRUZ9.ONLINE · MOCK" sub="ENGLISH HR" />
+      <div key={index} style={{ position: 'absolute', inset: 0 }}>
+        {frames[index].render}
+      </div>
+    </DemoFrame>
+  )
+}
+
+// ── Mock watermark demo ───────────────────────────────────────────────
+//
+// The main druz9.online moat per docs/for_investment/druz9.md: same task
+// solved twice — once in strict-mode (Cue blocked), once in AI-mode —
+// produces a watermarked delta. That delta is "honest readiness" — the
+// metric the rest of the market doesn't have.
+//
+// Loop (≈10s):
+//   0 (3s): the task statement — "Sliding window: longest substring..."
+//   1 (3.5s): two columns appear — STRICT and AI-MODE — both running
+//   2 (3.5s): rubric appears with watermark delta + readiness score
+
+function mockWatermarkFrames(): Frame[] {
+  return [
+    { delayMs: 3_000, render: <MockFrameTask /> },
+    { delayMs: 3_500, render: <MockFrameDual /> },
+    { delayMs: 3_500, render: <MockFrameWatermark /> },
+  ]
+}
+
+function MockFrameTask() {
+  return (
+    <div style={{ position: 'absolute', inset: 0, padding: '52px 28px 28px' }}>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 14 }}>
+        MOCK · ALGO · MEDIUM
+      </div>
+      <div style={{ fontSize: 18, letterSpacing: '-0.01em', lineHeight: 1.45, marginBottom: 16 }}>
+        Sliding window<span style={{ color: 'var(--ink-40)' }}> — </span>
+        <span style={{ color: 'var(--ink-60)' }}>
+          longest substring without repeating characters.
+        </span>
+      </div>
+      <div style={{ ...monoStyle, fontSize: 11, color: 'var(--ink-60)', lineHeight: 1.6,
+        padding: 12, border: '1px solid var(--hair)', borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
+        Input: "abcabcbb"<br />
+        Output: 3  // "abc"
+      </div>
+      <div className="mono" style={{ marginTop: 22, fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)' }}>
+        ВЫБИРАЕШЬ РЕЖИМ <CursorBlink height={10} />
+      </div>
+    </div>
+  )
+}
+
+function MockFrameDual() {
+  return (
+    <div style={{ position: 'absolute', inset: 0, padding: '52px 24px 24px' }}>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 16 }}>
+        SAME TASK · TWO RUNS
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <DualColumn
+          title="STRICT"
+          sub="без AI · Cue выключен"
+          time="14:22"
+          status="Решено"
+          dotColor="#fff"
+          delay={0}
+        />
+        <DualColumn
+          title="AI MODE"
+          sub="с подсказками"
+          time="06:48"
+          status="Решено"
+          dotColor="var(--ink-60)"
+          delay={0.25}
+        />
+      </div>
+      <div className="mono" style={{ marginTop: 18, fontSize: 10, letterSpacing: '.18em',
+        color: 'var(--ink-40)', textAlign: 'center' }}>
+        WATERMARK ЗАШИВАЕТ В РЕЗУЛЬТАТ
+      </div>
+    </div>
+  )
+}
+
+function DualColumn({ title, sub, time, status, dotColor, delay }: {
+  title: string; sub: string; time: string; status: string; dotColor: string; delay: number
+}) {
+  return (
+    <div style={{
+      padding: 14,
+      border: '1px solid var(--hair-2)',
+      borderRadius: 10,
+      background: '#000',
+      opacity: 0,
+      animation: 'demo-pop 0.4s ease-out forwards',
+      animationDelay: `${delay}s`,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <span style={{ width: 5, height: 5, borderRadius: 99, background: dotColor }} />
+        <span className="mono" style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-60)' }}>
+          {title}
+        </span>
+      </div>
+      <div className="mono" style={{ fontSize: 9, color: 'var(--ink-40)', letterSpacing: '.06em', marginBottom: 12 }}>
+        {sub}
+      </div>
+      <div className="mono" style={{ fontSize: 22, letterSpacing: '-0.02em', lineHeight: 1 }}>
+        {time}
+      </div>
+      <div className="mono" style={{ marginTop: 6, fontSize: 10, color: 'var(--ink-60)' }}>
+        {status}
+      </div>
+    </div>
+  )
+}
+
+function MockFrameWatermark() {
+  return (
+    <div style={{ position: 'absolute', inset: 0, padding: '52px 28px 28px' }}>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 14 }}>
+        WATERMARK · READINESS DELTA
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 18 }}>
+        <span className="mono" style={{ fontSize: 56, fontWeight: 300, letterSpacing: '-0.03em', lineHeight: 1 }}>
+          78
+        </span>
+        <span className="mono" style={{ fontSize: 13, color: 'var(--ink-60)', letterSpacing: '.04em' }}>
+          honest readiness · /100
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <WatermarkRow label="STRICT TIME" v="14:22" hint="без AI · окно собеса" delay={0} />
+        <WatermarkRow label="AI TIME" v="06:48" hint="с подсказками" delay={0.12} />
+        <WatermarkRow label="DELTA" v="+7:34" hint="на сколько ты медленнее без AI" delay={0.24} highlight />
+      </div>
+      <div className="mono" style={{ marginTop: 18, fontSize: 10, color: 'var(--ink-40)',
+        letterSpacing: '.16em' }}>
+        OБЪЕКТИВНАЯ ВАЛЮТА · НЕ САМООЦЕНКА
+      </div>
+    </div>
+  )
+}
+
+function WatermarkRow({ label, v, hint, delay, highlight }: {
+  label: string; v: string; hint: string; delay: number; highlight?: boolean
+}) {
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '92px 70px 1fr',
+      alignItems: 'center', gap: 10,
+      paddingTop: 6, paddingBottom: 6,
+      borderTop: '1px solid var(--hair)',
+      opacity: 0,
+      animation: 'demo-pop 0.35s ease-out forwards',
+      animationDelay: `${delay}s`,
+    }}>
+      <span className="mono" style={{ fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)' }}>
+        {label}
+      </span>
+      <span style={{
+        ...monoStyle, fontSize: 16, letterSpacing: '-0.02em', textAlign: 'right',
+        color: highlight ? '#fff' : 'var(--ink-60)',
+        fontWeight: highlight ? 500 : 400,
+      }}>
+        {v}
+      </span>
+      <span style={{ fontSize: 11.5, color: 'var(--ink-60)' }}>{hint}</span>
+    </div>
+  )
+}
+
+export function MockWatermarkDemo({ onExpand }: { onExpand?: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [paused, setPaused] = useState(false)
+  const visible = useVisible(ref)
+  const frames = mockWatermarkFrames()
+  const { index } = useDemoTimeline(frames, paused, visible)
+  return (
+    <DemoFrame onHoverChange={setPaused} visibilityRef={ref} onExpand={onExpand}>
+      <DemoStyleTag />
+      <ChromeBar label="DRUZ9.ONLINE · MOCK" sub="ALGO · WATERMARK" />
       <div key={index} style={{ position: 'absolute', inset: 0 }}>
         {frames[index].render}
       </div>

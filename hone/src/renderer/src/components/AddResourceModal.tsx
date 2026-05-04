@@ -175,7 +175,7 @@ export function AddResourceModal({
           </div>
         )}
 
-        <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+        <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
           <input
             ref={urlRef}
             type="url"
@@ -184,7 +184,8 @@ export function AddResourceModal({
             onChange={(e) => setUrl(e.target.value)}
             disabled={phase !== 'url'}
             style={{
-              flex: 1,
+              flex: '1 1 200px',
+              minWidth: 0,
               padding: '8px 10px',
               fontSize: 13,
               background: 'rgba(255,255,255,0.03)',
@@ -284,7 +285,7 @@ export function AddResourceModal({
                 placeholder="2-3 sentences"
                 multiline
               />
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Field
                   label="depth"
                   value={resource.depth}
@@ -367,7 +368,7 @@ function Field({
   multiline?: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: '1 1 140px', minWidth: 0 }}>
       <span className="mono" style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)', letterSpacing: '.12em', textTransform: 'uppercase' }}>
         {label}
       </span>

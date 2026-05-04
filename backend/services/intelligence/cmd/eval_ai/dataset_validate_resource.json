@@ -1,0 +1,35 @@
+[
+  {
+    "name": "reputable_on_topic",
+    "task": "validate_resource",
+    "input": {
+      "url": "https://martinfowler.com/articles/microservice-trade-offs.html",
+      "atlas_node_id": "distributed_systems_design",
+      "node_description": "service decomposition trade-offs and failure-mode analysis"
+    },
+    "raw_response": "{\"reputable\":true,\"on_topic\":true,\"score\":0.92,\"reason\":\"author authority + direct topic match\"}",
+    "regression": {}
+  },
+  {
+    "name": "off_topic_low_score",
+    "task": "validate_resource",
+    "input": {
+      "url": "https://medium.com/random-blog/10-ways-to-cook-pasta",
+      "atlas_node_id": "ml_classical",
+      "node_description": "classical machine learning fundamentals"
+    },
+    "raw_response": "{\"reputable\":false,\"on_topic\":false,\"score\":0.05,\"reason\":\"unrelated content domain\"}",
+    "regression": {}
+  },
+  {
+    "name": "blogspam_unreputable",
+    "task": "validate_resource",
+    "input": {
+      "url": "https://buzzy-affiliate.test/best-ml-courses-2025-click-here",
+      "atlas_node_id": "ml_classical",
+      "node_description": "classical ML"
+    },
+    "raw_response": "{\"reputable\":false,\"on_topic\":true,\"score\":0.18,\"reason\":\"affiliate-heavy, low signal-to-noise ratio\"}",
+    "regression": {}
+  }
+]

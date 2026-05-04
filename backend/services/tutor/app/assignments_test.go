@@ -241,6 +241,12 @@ func (f fakeStudentsRepo) ListStudentTutors(_ context.Context, _ uuid.UUID) ([]d
 func (f fakeStudentsRepo) EndRelationship(_ context.Context, _, _ uuid.UUID, _ time.Time) error {
 	return errors.New("not implemented")
 }
+func (f fakeStudentsRepo) FindUserByUsername(_ context.Context, _ string) (uuid.UUID, error) {
+	return uuid.Nil, errors.New("not implemented")
+}
+func (f fakeStudentsRepo) ListPendingInvitesForUser(_ context.Context, _ uuid.UUID, _ time.Time) ([]domain.Invite, error) {
+	return nil, errors.New("not implemented")
+}
 
 func TestBroadcastAssignment_HappyPath(t *testing.T) {
 	t.Parallel()

@@ -73,16 +73,6 @@ func (q *Queries) CountWeeklyActivity(ctx context.Context, arg CountWeeklyActivi
 	return i, err
 }
 
-const ensureAICredits = `-- name: EnsureAICredits :exec
-INSERT INTO ai_credits(user_id, balance) VALUES ($1, 0)
-  ON CONFLICT (user_id) DO NOTHING
-`
-
-func (q *Queries) EnsureAICredits(ctx context.Context, userID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, ensureAICredits, userID)
-	return err
-}
-
 const ensureNotificationPrefs = `-- name: EnsureNotificationPrefs :exec
 INSERT INTO notification_prefs(user_id) VALUES ($1)
   ON CONFLICT (user_id) DO NOTHING
@@ -172,15 +162,12 @@ const getProfileBundle = `-- name: GetProfileBundle :one
 
 SELECT u.id, u.username, u.role, u.locale, u.display_name, u.created_at,
        p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
-       p.title, p.avatar_frame,
-       p.career_stage, p.intellect, p.strength, p.dexterity, p.will, p.updated_at,
-       s.plan, s.status, s.current_period_end,
-       c.balance
+       p.career_stage, p.updated_at,
+       s.plan, s.status, s.current_period_end
   FROM users u
   JOIN profiles p           ON p.user_id = u.id
   LEFT JOIN user_xp ux      ON ux.user_id = u.id
   LEFT JOIN subscriptions s ON s.user_id = u.id
-  LEFT JOIN ai_credits c    ON c.user_id = u.id
  WHERE u.id = $1
 `
 
@@ -194,18 +181,11 @@ type GetProfileBundleRow struct {
 	CharClass        string
 	Level            int32
 	TotalXp          int64
-	Title            pgtype.Text
-	AvatarFrame      pgtype.Text
 	CareerStage      string
-	Intellect        int32
-	Strength         int32
-	Dexterity        int32
-	Will             int32
 	UpdatedAt        pgtype.Timestamptz
 	Plan             pgtype.Text
 	Status           pgtype.Text
 	CurrentPeriodEnd pgtype.Timestamptz
-	Balance          pgtype.Int4
 }
 
 // Queries consumed by sqlc; mirror the hand-rolled pgx code in infra/postgres.go.
@@ -223,18 +203,11 @@ func (q *Queries) GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProf
 		&i.CharClass,
 		&i.Level,
 		&i.TotalXp,
-		&i.Title,
-		&i.AvatarFrame,
 		&i.CareerStage,
-		&i.Intellect,
-		&i.Strength,
-		&i.Dexterity,
-		&i.Will,
 		&i.UpdatedAt,
 		&i.Plan,
 		&i.Status,
 		&i.CurrentPeriodEnd,
-		&i.Balance,
 	)
 	return i, err
 }
@@ -242,7 +215,7 @@ func (q *Queries) GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProf
 const getProfilePublic = `-- name: GetProfilePublic :one
 SELECT u.id, u.username, u.display_name, u.created_at,
        p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
-       p.title, p.avatar_frame, p.career_stage
+       p.career_stage
   FROM users u
   JOIN profiles p      ON p.user_id = u.id
   LEFT JOIN user_xp ux ON ux.user_id = u.id
@@ -257,8 +230,6 @@ type GetProfilePublicRow struct {
 	CharClass   string
 	Level       int32
 	TotalXp     int64
-	Title       pgtype.Text
-	AvatarFrame pgtype.Text
 	CareerStage string
 }
 
@@ -273,8 +244,6 @@ func (q *Queries) GetProfilePublic(ctx context.Context, username string) (GetPro
 		&i.CharClass,
 		&i.Level,
 		&i.TotalXp,
-		&i.Title,
-		&i.AvatarFrame,
 		&i.CareerStage,
 	)
 	return i, err
@@ -464,20 +433,6 @@ func (q *Queries) SubmitInterviewerApplication(ctx context.Context, arg SubmitIn
 		&i.CreatedAt,
 	)
 	return i, err
-}
-
-const updateCareerStage = `-- name: UpdateCareerStage :exec
-UPDATE profiles SET career_stage = $2, updated_at = now() WHERE user_id = $1
-`
-
-type UpdateCareerStageParams struct {
-	UserID      pgtype.UUID
-	CareerStage string
-}
-
-func (q *Queries) UpdateCareerStage(ctx context.Context, arg UpdateCareerStageParams) error {
-	_, err := q.db.Exec(ctx, updateCareerStage, arg.UserID, arg.CareerStage)
-	return err
 }
 
 const updateProfileXPLevel = `-- name: UpdateProfileXPLevel :exec

@@ -397,7 +397,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	// The Connect server (services/hone/ports) already implements ListTasks /
 	// CreateTask / MoveTaskStatus / DeleteTask / Add+ListTaskComments and
 	// vanguard transcodes /api/v1/hone/tasks/* into them.
-	h.CreateTask = &honeApp.CreateTask{Tasks: tasksRepo, Log: d.Log, Categoriser: categoriser}
+	h.CreateTask = &honeApp.CreateTask{Tasks: tasksRepo, Log: d.Log, Categoriser: categoriser, CursorBus: cursorBus}
 	h.ListTasks = &honeApp.ListTasks{Tasks: tasksRepo}
 	h.MoveTaskStatus = &honeApp.MoveTaskStatus{Tasks: tasksRepo, Log: d.Log}
 	h.DeleteTask = &honeApp.DeleteTask{Tasks: tasksRepo}

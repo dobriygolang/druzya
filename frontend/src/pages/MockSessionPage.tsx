@@ -95,7 +95,7 @@ function MatchHeader({
 
 function InterviewerPanel() {
   return (
-    <Card className="h-[320px] flex-col gap-3 p-4" interactive={false}>
+    <Card className="h-[240px] sm:h-[320px] flex-col gap-3 p-4" interactive={false}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Avatar size="md" gradient="cyan-violet" initials="AI" status="online" />
@@ -712,7 +712,7 @@ export default function MockSessionPage() {
             <InterviewerPanel />
           </div>
         </div>
-        <div className="flex min-h-[400px] min-w-0 flex-1 flex-col gap-4">
+        <div className="flex min-h-[300px] min-w-0 flex-1 flex-col gap-4 sm:min-h-[400px]">
           {!isFreeform && <EditorPlaceholder />}
           <TranscriptCard messages={liveLines} pending={sendMutation.isPending && !streamingDelta} />
           <MessageBox

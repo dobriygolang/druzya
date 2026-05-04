@@ -86,7 +86,7 @@ func NewVacancies(d monolithServices.Deps) *monolithServices.Module {
 	profilePG := profileInfra.NewPostgres(d.Pool)
 	atlasCat := profileInfra.NewAtlasCataloguePostgres(d.Pool)
 	resolver := vacInfra.NewUserSkillsResolver(
-		ratingsAdapter{repo: profilePG},
+		nil,
 		newAtlasMasteryAdapter(profilePG, atlasCat, d.Log),
 		d.Log,
 	)
@@ -151,29 +151,6 @@ func (a vacanciesModelAdapter) ResolveVacanciesModel(ctx context.Context, userID
 		return "", fmt.Errorf("services.vacancies.vacanciesModelAdapter: %w", err)
 	}
 	return s, nil
-}
-
-// ratingsAdapter bridges profile.Postgres → vacancies infra. Two domains,
-// two struct shapes — adapter copies the four fields we care about.
-type ratingsAdapter struct {
-	repo *profileInfra.Postgres
-}
-
-func (a ratingsAdapter) ListRatings(ctx context.Context, userID uuid.UUID) ([]vacInfra.SectionRating, error) {
-	rs, err := a.repo.ListRatings(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("services.vacancies.ratingsAdapter: %w", err)
-	}
-	out := make([]vacInfra.SectionRating, 0, len(rs))
-	for _, r := range rs {
-		out = append(out, vacInfra.SectionRating{
-			Section:      string(r.Section),
-			Elo:          r.Elo,
-			MatchesCount: r.MatchesCount,
-			LastMatchAt:  r.LastMatchAt,
-		})
-	}
-	return out, nil
 }
 
 // atlasMasteryAdapter bridges (skill_nodes + atlas_nodes.section) into the

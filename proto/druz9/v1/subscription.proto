@@ -35,9 +35,6 @@ service SubscriptionService {
   rpc GetQuota(GetQuotaRequest) returns (QuotaSnapshot) {
     option (google.api.http) = {get: "/api/v1/subscription/quota"};
   }
-
-  // Pivot 2026-05-01: Boosty marketplace выпилен. LinkBoosty +
-  // AdminBoostySync RPCs удалены вместе с handler'ами и UC'ами.
 }
 
 message QuotaPolicy {
@@ -61,21 +58,6 @@ message QuotaSnapshot {
   string tier = 1;
   QuotaPolicy policy = 2;
   QuotaUsage usage = 3;
-}
-
-message LinkBoostyRequest {
-  string boosty_user_id = 1;
-}
-
-message LinkBoostyResponse {
-  bool ok = 1;
-  string status = 2;
-}
-
-message AdminBoostySyncRequest {}
-
-message AdminBoostySyncResponse {
-  int32 updated = 1;
 }
 
 message GetMyTierRequest {}

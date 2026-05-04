@@ -45,7 +45,7 @@ const (
 // var _ druz9v1connect.HoneServiceHandler = (*HoneServer)(nil)
 
 // Silence unused-import warning until the interface-guard above is enabled.
-var _ = druz9v1connect.NewDailyServiceHandler
+var _ = druz9v1connect.NewHoneServiceHandler
 
 // HoneServer adapts hone use cases to Connect.
 type HoneServer struct {

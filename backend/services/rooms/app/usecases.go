@@ -1,11 +1,11 @@
 // Package app — Phase 9a rooms UCs.
 //
-//   CreateRoom    — free-tier guard + INSERT в editor_rooms / whiteboard_rooms
-//                   (выбор по kind) + INCREMENT quota. Returns share URL.
-//   ListMyRooms   — split active vs past.
-//   ExtendRoom    — pro-only.
-//   RestoreRoom   — undelete если в 30d window.
-//   DeleteRoom    — soft-delete (archived_at).
+//	CreateRoom    — free-tier guard + INSERT в editor_rooms / whiteboard_rooms
+//	                (выбор по kind) + INCREMENT quota. Returns share URL.
+//	ListMyRooms   — split active vs past.
+//	ExtendRoom    — pro-only.
+//	RestoreRoom   — undelete если в 30d window.
+//	DeleteRoom    — soft-delete (archived_at).
 //
 // Все UCs — pure functional, repo-abstracted.
 package app
@@ -156,7 +156,7 @@ func (uc *ExtendRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kind
 	}
 	r, err := uc.Repo.Get(ctx, kind, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("rooms.ExtendRoom: %w", err)
 	}
 	if r.OwnerID != userID {
 		return domain.ErrNotOwner
@@ -169,7 +169,10 @@ func (uc *ExtendRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kind
 	if newExpiry.Before(now) {
 		newExpiry = now.Add(time.Duration(hours) * time.Hour)
 	}
-	return uc.Repo.ExtendExpiry(ctx, kind, id, newExpiry)
+	if err := uc.Repo.ExtendExpiry(ctx, kind, id, newExpiry); err != nil {
+		return fmt.Errorf("rooms.ExtendRoom: %w", err)
+	}
+	return nil
 }
 
 // ─── DeleteRoom (soft-delete) ─────────────────────────────────────────────
@@ -183,7 +186,7 @@ type DeleteRoom struct {
 func (uc *DeleteRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kind, id uuid.UUID) error {
 	r, err := uc.Repo.Get(ctx, kind, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("rooms.DeleteRoom: %w", err)
 	}
 	if r.OwnerID != userID {
 		return domain.ErrNotOwner
@@ -196,7 +199,7 @@ func (uc *DeleteRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kind
 		now = uc.Now().UTC()
 	}
 	if err := uc.Repo.Archive(ctx, kind, id, now); err != nil {
-		return err
+		return fmt.Errorf("rooms.DeleteRoom archive: %w", err)
 	}
 	if r.FreeTier {
 		_ = uc.Quota.Decrement(ctx, userID)
@@ -215,7 +218,7 @@ type RestoreRoom struct {
 func (uc *RestoreRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kind, id uuid.UUID) error {
 	r, err := uc.Repo.Get(ctx, kind, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("rooms.RestoreRoom: %w", err)
 	}
 	if r.OwnerID != userID {
 		return domain.ErrNotOwner
@@ -230,7 +233,7 @@ func (uc *RestoreRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kin
 	if now.Sub(*r.ArchivedAt) > domain.RestoreWindow {
 		return fmt.Errorf("rooms.RestoreRoom: outside %dd restore window", int(domain.RestoreWindow/(24*time.Hour)))
 	}
-	// Free-tier quota check на restore — ресторе тоже выжирает slot.
+	// Free-tier quota check на restore — restore тоже выжирает slot.
 	if r.FreeTier {
 		q, qerr := uc.Quota.Get(ctx, userID)
 		if qerr == nil && q.Tier == "free" && q.ActiveCount >= domain.FreeMaxActive {
@@ -238,7 +241,7 @@ func (uc *RestoreRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kin
 		}
 	}
 	if err := uc.Repo.Restore(ctx, kind, id); err != nil {
-		return err
+		return fmt.Errorf("rooms.RestoreRoom restore: %w", err)
 	}
 	if r.FreeTier {
 		_ = uc.Quota.Increment(ctx, userID, "free")

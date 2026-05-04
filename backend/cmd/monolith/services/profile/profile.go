@@ -136,7 +136,6 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 
 	onUserRegistered := &profileApp.OnUserRegistered{Repo: cached, Log: d.Log}
 	onXPGained := &profileApp.OnXPGained{Repo: cached, Bus: d.Bus, Log: d.Log}
-	onRatingChanged := &profileApp.OnRatingChanged{Repo: cached, Log: d.Log}
 
 	connectPath, connectHandler := druz9v1connect.NewProfileServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("profile", connectPath, connectHandler)
@@ -193,21 +192,9 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 			func(b *eventbus.InProcess) {
 				b.Subscribe(sharedDomain.UserRegistered{}.Topic(), onUserRegistered.Handle)
 				b.Subscribe(sharedDomain.XPGained{}.Topic(), onXPGained.Handle)
-				b.Subscribe(sharedDomain.RatingChanged{}.Topic(), onRatingChanged.Handle)
 				// Invalidate cached weekly report when underlying activity
-				// changes — match end или прирост XP/level. Без этого фронт
-				// видел бы 5-минутный устаревший отчёт после нового матча.
-				b.Subscribe(sharedDomain.MatchCompleted{}.Topic(), func(ctx context.Context, e sharedDomain.Event) error {
-					ev, ok := e.(sharedDomain.MatchCompleted)
-					if !ok {
-						return nil
-					}
-					reportCache.Invalidate(ctx, ev.WinnerID)
-					for _, l := range ev.LoserIDs {
-						reportCache.Invalidate(ctx, l)
-					}
-					return nil
-				})
+				// changes — XP gain. Без этого фронт видел бы 5-минутный
+				// устаревший отчёт.
 				b.Subscribe(sharedDomain.XPGained{}.Topic(), func(ctx context.Context, e sharedDomain.Event) error {
 					ev, ok := e.(sharedDomain.XPGained)
 					if !ok {

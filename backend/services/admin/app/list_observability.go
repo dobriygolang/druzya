@@ -22,14 +22,14 @@ type ObservabilityReader struct {
 
 // TaskRollup — one row per LLM task (TaskCurateResource / TaskAITutorML / ...).
 type TaskRollup struct {
-	Task            string
-	Calls           int64
-	TokensIn        int64
-	TokensOut       int64
-	AvgLatencyMs    int64
-	ErrorRate       float32 // 0..1
-	EstCostCents    float32 // best-effort из tokens × per-provider rate
-	LastBucketDay   time.Time
+	Task          string
+	Calls         int64
+	TokensIn      int64
+	TokensOut     int64
+	AvgLatencyMs  int64
+	ErrorRate     float32 // 0..1
+	EstCostCents  float32 // best-effort из tokens × per-provider rate
+	LastBucketDay time.Time
 }
 
 // EvalRunSnapshot — latest eval suite result.

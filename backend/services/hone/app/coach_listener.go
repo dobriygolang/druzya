@@ -62,70 +62,12 @@ func xpAmountForKind(k domain.TaskKind) int {
 // Register subscribes the listener to every relevant topic. Should be
 // called once at boot, after the bus and TaskRepo are constructed.
 func (l *CoachListener) Register(bus sharedDomain.Bus) {
-	bus.Subscribe(sharedDomain.MatchCompleted{}.Topic(), l.OnMatchCompleted)
-	bus.Subscribe(sharedDomain.DailyKataCompleted{}.Topic(), l.OnDailyKataCompleted)
-	bus.Subscribe(sharedDomain.DailyKataMissed{}.Topic(), l.OnDailyKataMissed)
-	bus.Subscribe(sharedDomain.SkillDecayed{}.Topic(), l.OnSkillDecayed)
-	bus.Subscribe(sharedDomain.SkillNodeUnlocked{}.Topic(), l.OnSkillNodeUnlocked)
 	bus.Subscribe(sharedDomain.MockPipelineFinished{}.Topic(), l.OnMockPipelineFinished)
-	bus.Subscribe(sharedDomain.QuizSessionCompleted{}.Topic(), l.OnQuizSessionCompleted)
 	bus.Subscribe(sharedDomain.CodexArticleRead{}.Topic(), l.OnCodexArticleRead)
 	bus.Subscribe(sharedDomain.CopilotAnalysisCompleted{}.Topic(), l.OnCopilotAnalysisCompleted)
 }
 
 // ── Handlers ─────────────────────────────────────────────────────────────
-
-// OnMatchCompleted: an algo task in arena finished. Win → mark matching
-// `algo` task done; loss → back to in_progress with a "try again" note.
-func (l *CoachListener) OnMatchCompleted(ctx context.Context, e sharedDomain.Event) error {
-	ev, ok := e.(sharedDomain.MatchCompleted)
-	if !ok {
-		return fmt.Errorf("hone.CoachListener.OnMatchCompleted: unexpected %T", e)
-	}
-	skillKey := skillKeyForArenaSection(ev.Section)
-	for uid, delta := range ev.EloDeltas {
-		won := uid == ev.WinnerID
-		if won {
-			l.settle(ctx, uid, skillKey, "✓ Прошёл arena-матч ("+ev.Section.String()+", +"+itoa(delta)+" ELO). Засчитал в статистику.", true)
-		} else {
-			l.regress(ctx, uid, skillKey, "Не прошёл матч в "+ev.Section.String()+". Прочти codex по теме и попробуй ещё раз.")
-		}
-	}
-	return nil
-}
-
-// OnDailyKataCompleted: daily reading habit signal. Marks `kind=reading`
-// or `kind=algo` task with `skill_key=daily_kata` done.
-func (l *CoachListener) OnDailyKataCompleted(ctx context.Context, e sharedDomain.Event) error {
-	ev, ok := e.(sharedDomain.DailyKataCompleted)
-	if !ok {
-		return fmt.Errorf("hone.CoachListener.OnDailyKataCompleted: unexpected %T", e)
-	}
-	l.settle(ctx, ev.UserID, "daily_kata", "✓ Daily Kata взята. Streak держится.", true)
-	return nil
-}
-
-// OnDailyKataMissed: don't regress an open task — habit signal goes into
-// the generator instead. We log so the AI generator's next sweep notices.
-func (l *CoachListener) OnDailyKataMissed(ctx context.Context, e sharedDomain.Event) error {
-	if l.Log != nil {
-		l.Log.InfoContext(ctx, "hone.coach.OnDailyKataMissed: signal noted")
-	}
-	return nil
-}
-
-// OnSkillDecayed: noise signal — generator may spawn a refresh task. No
-// in-place transition; we just stamp the skill in coach memory via log.
-func (l *CoachListener) OnSkillDecayed(_ context.Context, _ sharedDomain.Event) error {
-	return nil
-}
-
-// OnSkillNodeUnlocked: positive milestone. If a `done` algo task exists
-// on this node, no-op; if not, also no-op — the unlock itself is the
-// reward (DailyBrief picks it up).
-func (l *CoachListener) OnSkillNodeUnlocked(_ context.Context, _ sharedDomain.Event) error {
-	return nil
-}
 
 // OnMockPipelineFinished: sysdesign / mixed pipeline result. Passed →
 // settle matching `sysdesign` task done; failed → back to in_progress.
@@ -141,30 +83,6 @@ func (l *CoachListener) OnMockPipelineFinished(ctx context.Context, e sharedDoma
 	} else {
 		l.regress(ctx, ev.UserID, skillKey,
 			fmt.Sprintf("Score %d/100, не прошёл. Перечитай раздел %s в codex и пройди ещё раз.", ev.Score, ev.Section))
-	}
-	return nil
-}
-
-// OnQuizSessionCompleted: quiz pass = settle `kind=quiz` task. The
-// session is keyed by source ('codex' / 'mock_interview' / 'mixed') so we
-// look up by deep_link substring; no real harm if no match found — the
-// user's just freshening up outside a planned task.
-func (l *CoachListener) OnQuizSessionCompleted(ctx context.Context, e sharedDomain.Event) error {
-	ev, ok := e.(sharedDomain.QuizSessionCompleted)
-	if !ok {
-		return fmt.Errorf("hone.CoachListener.OnQuizSessionCompleted: unexpected %T", e)
-	}
-	if ev.Total == 0 {
-		return nil
-	}
-	pct := (ev.Correct * 100) / ev.Total
-	skillKey := "quiz_" + ev.Source
-	if pct >= 70 {
-		l.settle(ctx, ev.UserID, skillKey,
-			fmt.Sprintf("✓ Quiz: %d/%d правильных (%d%%).", ev.Correct, ev.Total, pct), true)
-	} else {
-		l.regress(ctx, ev.UserID, skillKey,
-			fmt.Sprintf("Quiz: %d/%d (%d%%). Меньше 70%% — пересмотри материал.", ev.Correct, ev.Total, pct))
 	}
 	return nil
 }

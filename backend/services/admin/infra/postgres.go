@@ -68,10 +68,9 @@ var _ = json.Marshal
 
 // stable sentinels referenced for compile-time verification.
 var (
-	_ domain.TaskRepo      = (*Tasks)(nil)
-	_ domain.CompanyRepo   = (*Companies)(nil)
-	_ domain.ConfigRepo    = (*Config)(nil)
-	_ domain.AnticheatRepo = (*Anticheat)(nil)
+	_ domain.TaskRepo    = (*Tasks)(nil)
+	_ domain.CompanyRepo = (*Companies)(nil)
+	_ domain.ConfigRepo  = (*Config)(nil)
 )
 
 // compile-time assertion that the adapter respects time.Time semantics.

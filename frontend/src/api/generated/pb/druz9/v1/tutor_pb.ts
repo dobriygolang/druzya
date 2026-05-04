@@ -860,6 +860,20 @@ export class TutorActivityResponse extends Message<TutorActivityResponse> {
    */
   cancellationRate = 0;
 
+  /**
+   * Phase 8 — rolling daily series for sparkline UI. Length == window_days,
+   * oldest → newest. daily_completed = completed-event count per day;
+   * daily_minutes = SUM(duration_min) per day.
+   *
+   * @generated from field: repeated int32 daily_completed = 8;
+   */
+  dailyCompleted: number[] = [];
+
+  /**
+   * @generated from field: repeated int32 daily_minutes = 9;
+   */
+  dailyMinutes: number[] = [];
+
   constructor(data?: PartialMessage<TutorActivityResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -875,6 +889,8 @@ export class TutorActivityResponse extends Message<TutorActivityResponse> {
     { no: 5, name: "events_scheduled", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "minutes_taught", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 7, name: "cancellation_rate", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+    { no: 8, name: "daily_completed", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
+    { no: 9, name: "daily_minutes", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorActivityResponse {

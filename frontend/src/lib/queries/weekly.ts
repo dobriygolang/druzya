@@ -1,17 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../apiClient'
-import type {
-  AchievementBrief,
-  EloPoint,
-  PercentileView,
-  SectionBreakdown,
-  WeeklyReport as ProfileWeeklyReport,
-} from './profile'
+import type { WeeklyReport as ProfileWeeklyReport } from './profile'
 
-// WeeklyReport — финальная shape, которую рендерит WeeklyReportPage. Теперь
-// читается напрямую из /profile/me/report (тот же RPC, что и для профиля), а
-// поля адаптируются под существующий UI прямо в queryFn. Раньше тут был
-// отдельный mock-эндпоинт /report/weekly с захардкоженными данными.
+// WeeklyReport — финальная shape, которую рендерит WeeklyReportPage. Читается
+// напрямую из /profile/me/report, поля адаптируются под существующий UI прямо
+// в queryFn. Удалённые поля (strong/weak_sections, weekly_xp, hourly_heatmap,
+// elo_series, percentiles, achievements_this_week) бэк больше не наполняет —
+// соответствующие виджеты убраны из WeeklyReportPage.
 export type WeeklyReport = {
   period: string
   actions_count: number
@@ -25,25 +20,11 @@ export type WeeklyReport = {
   weak_sections: { id: string; name: string; sub: string; xp: string; tone: string }[]
   stress_pattern: string
   actions: { p: string; text: string; sub: string }[]
-  podcast: { title: string; duration: string; sub: string }
-  compare_weeks: { label: string; xp: number; w: string }[]
-  // Heatmap для тепловой карты (24*7 = 168 ячеек, 0..4). Бэк пока отдаёт
-  // 7 ячеек (по дням недели) — фронт fallback-ит на старый псевдо-pattern.
   heatmap: number[]
-  // Phase A killer-stats поля прокидываем «как есть», без перепаковки —
-  // новые SVG-визуализации читают их напрямую (см. WeeklyReportPage).
   week_start: string
   week_end: string
-  hourly_heatmap: number[]
-  elo_series: EloPoint[]
-  percentiles: PercentileView
   ai_insight: string
-  achievements_this_week: AchievementBrief[]
   share_token: string
-  // match_aggregates = strong + weak секции в одном списке для bar-chart.
-  // Дедуп по section (бэк гарантирует, что одна секция не попадёт в оба
-  // списка одновременно), порядок: strong → weak.
-  match_aggregates: SectionBreakdown[]
 }
 
 const SECTION_NAMES: Record<string, string> = {
@@ -89,8 +70,6 @@ function fmtPeriod(weekStart: string, weekEnd: string): string {
 function adapt(raw: ProfileWeeklyReport): WeeklyReport {
   const m = raw.metrics
   const wins = m.matches_won ?? 0
-  // matches_total = wins + losses; losses не приходят отдельно, считаем как
-  // tasks_solved - wins (best-effort) или 0.
   const matchesTotal = m.tasks_solved && m.tasks_solved >= wins ? m.tasks_solved : wins
   const losses = Math.max(matchesTotal - wins, 0)
   const xpEarned = m.xp_earned ?? 0
@@ -113,15 +92,10 @@ function adapt(raw: ProfileWeeklyReport): WeeklyReport {
     xp: `${s.xp_delta >= 0 ? '+' : ''}${s.xp_delta} XP`,
     tone: idx === 0 ? 'danger' : 'warn',
   }))
-  const compare = (raw.weekly_xp ?? []).map((w) => ({
-    label: w.label,
-    xp: w.xp,
-    w: `${w.pct}%`,
-  }))
   const actions = (raw.recommendations ?? []).slice(0, 3).map((r, idx) => ({
     p: idx === 0 ? 'P1' : idx === 1 ? 'P1' : 'P2',
     text: r.title,
-    sub: '', // recommendation.description in proto, mapped through if present
+    sub: '',
   }))
 
   return {
@@ -137,18 +111,11 @@ function adapt(raw: ProfileWeeklyReport): WeeklyReport {
     weak_sections: weak,
     stress_pattern: raw.stress_analysis ?? '',
     actions,
-    podcast: { title: '', duration: '', sub: '' },
-    compare_weeks: compare,
     heatmap: raw.heatmap ?? [],
     week_start: raw.week_start,
     week_end: raw.week_end,
-    hourly_heatmap: raw.hourly_heatmap ?? [],
-    elo_series: raw.elo_series ?? [],
-    percentiles: raw.percentiles ?? { in_tier: 0, in_friends: 0, in_global: 0 },
     ai_insight: raw.ai_insight ?? '',
-    achievements_this_week: raw.achievements_this_week ?? [],
     share_token: raw.share_token ?? '',
-    match_aggregates: [...(raw.strong_sections ?? []), ...(raw.weak_sections ?? [])],
   }
 }
 
@@ -159,8 +126,6 @@ export function useWeeklyReportQuery() {
       const raw = await api<ProfileWeeklyReport>('/profile/me/report')
       return adapt(raw)
     },
-    // Бэк держит 5-мин Redis-кеш; на фронте 30s достаточно, чтобы не дёргать
-    // зря и при этом не показывать старые данные после нового матча.
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   })

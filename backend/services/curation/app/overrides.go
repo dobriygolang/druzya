@@ -4,13 +4,13 @@
 // (optional) DomainReputationRepo. Каждая UC одна операция:
 //
 //   - AddResource     — user добавляет свой ресурс (full Resource shape).
-//                       Bumps promotion_signals + domain_reputation.
+//     Bumps promotion_signals + domain_reputation.
 //   - HideResource    — скрыть curated ресурс из своего списка.
 //   - MarkUnhelpful   — flag + бамп reputation.
 //   - ReplaceResource — atomic hide(original) + add(replacement).
 //   - ReorderResource — change ordering relative to siblings.
 //   - ApplyOverrides  — merge curated.external_resources с user overrides
-//                       в один ordered list per user.
+//     в один ordered list per user.
 package app
 
 import (
@@ -51,14 +51,14 @@ func (t Target) Valid() bool {
 
 // Override — row in user_resource_overrides.
 type Override struct {
-	ID              uuid.UUID
-	UserID          uuid.UUID
-	Target          Target
-	URL             string
-	Action          OverrideAction
-	Payload         []byte // raw JSON
-	AutoPromotedAt  *time.Time
-	CreatedAt       time.Time
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	Target         Target
+	URL            string
+	Action         OverrideAction
+	Payload        []byte // raw JSON
+	AutoPromotedAt *time.Time
+	CreatedAt      time.Time
 }
 
 // OverrideRepo — write-side для user_resource_overrides.
@@ -82,9 +82,9 @@ type DomainReputationRepo interface {
 
 // AddResource UC.
 type AddResource struct {
-	Repo       OverrideRepo
-	Promotion  PromotionTracker
-	Now        func() time.Time
+	Repo      OverrideRepo
+	Promotion PromotionTracker
+	Now       func() time.Time
 }
 
 // AddResourceInput.
@@ -195,11 +195,11 @@ type ReplaceResource struct {
 }
 
 type ReplaceResourceInput struct {
-	UserID         uuid.UUID
-	Target         Target
-	OriginalURL    string
-	Replacement    domain.Resource
-	Reason         string
+	UserID      uuid.UUID
+	Target      Target
+	OriginalURL string
+	Replacement domain.Resource
+	Reason      string
 }
 
 func (uc *ReplaceResource) Do(ctx context.Context, in ReplaceResourceInput) error {
@@ -292,6 +292,10 @@ func (uc *ApplyOverrides) Do(ctx context.Context, userID uuid.UUID, target Targe
 				continue
 			}
 			added = append(added, list[0])
+		case ActionReordered, ActionUnhelpful:
+			// reordered: MVP не применяется (UI sends ordered IDs).
+			// unhelpful: UX-сигнал, не фильтрует список.
+			continue
 		}
 	}
 	out := make(domain.ResourceList, 0, len(base)+len(added))

@@ -24,16 +24,16 @@ type AdminRoomsReader struct {
 
 // AdminRoomRow — flat row для table view.
 type AdminRoomRow struct {
-	ID          uuid.UUID
-	OwnerID     uuid.UUID
-	OwnerLogin  string
-	Kind        string  // code|whiteboard
-	Title       string
-	FreeTier    bool
-	ExpiresAt   time.Time
-	ArchivedAt  *time.Time
-	CreatedAt   time.Time
-	Status      string  // active|expired|archived
+	ID         uuid.UUID
+	OwnerID    uuid.UUID
+	OwnerLogin string
+	Kind       string // code|whiteboard
+	Title      string
+	FreeTier   bool
+	ExpiresAt  time.Time
+	ArchivedAt *time.Time
+	CreatedAt  time.Time
+	Status     string // active|expired|archived
 }
 
 type AdminRoomsFilter struct {

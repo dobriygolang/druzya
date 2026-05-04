@@ -1,21 +1,14 @@
 // /settings/billing — реальная вкладка биллинга подключённая к бэку:
 //   - GET  /api/v1/subscription/quota         — текущий tier + лимиты + usage
-//   - POST /api/v1/subscription/boosty/link   — привязать Boosty username
 //   - POST /api/v1/admin/subscriptions/set-tier — dev-shortcut (admin only)
-//
-// Phase 1 simplification: убрали stub'ы CancelModal / Invoices, потому что
-// для Boosty-flow эти UI не имеют backend'а — оплата идёт через Boosty,
-// а инвойсы там же. Когда появится свой биллинг — добавим обратно.
 
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ExternalLink, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { useProfileQuery } from '../../lib/queries/profile'
 import {
   useDevSetTierMutation,
-  useLinkBoostyMutation,
   useSubscriptionQuotaQuery,
   type QuotaSnapshot,
   type SubscriptionTier,
@@ -40,7 +33,6 @@ export function BillingTab() {
     <div className="flex flex-col gap-5">
       <CurrentTierCard />
       <QuotaUsageCard />
-      <BoostyLinkCard />
       {isAdmin && <DevTierSwitchCard />}
     </div>
   )
@@ -135,59 +127,6 @@ function UsageRow({ label, used, quota }: { label: string; used: number; quota: 
         />
       </div>
     </div>
-  )
-}
-
-function BoostyLinkCard() {
-  const mut = useLinkBoostyMutation()
-  const [username, setUsername] = useState('')
-  const [feedback, setFeedback] = useState<string | null>(null)
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setFeedback(null)
-    if (!username.trim()) return
-    try {
-      await mut.mutateAsync(username.trim())
-      setFeedback('Привязка сохранена. Sync подхватит подписку в течение 30 минут.')
-      setUsername('')
-    } catch (err) {
-      setFeedback(err instanceof Error ? err.message : 'Не удалось привязать.')
-    }
-  }
-  return (
-    <Card className="flex-col gap-3 p-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg font-bold text-text-primary">Boosty</h3>
-        <a
-          href="https://boosty.to"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 font-mono text-[11px] text-text-muted hover:text-text-primary"
-        >
-          boosty.to <ExternalLink className="h-3 w-3" />
-        </a>
-      </div>
-      <p className="text-[13px] text-text-secondary">
-        Подписка идёт через Boosty. Привяжи свой никнейм там, чтобы система
-        матчила платную подписку с твоим аккаунтом — sync проходит каждые 30 минут.
-      </p>
-      <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="boosty username"
-          className="flex-1 rounded-lg border border-border bg-surface-1 px-3 py-2 text-[14px] text-text-primary placeholder:text-text-muted/60"
-        />
-        <Button type="submit" variant="primary" size="md" loading={mut.isPending} disabled={!username.trim()}>
-          Привязать
-        </Button>
-      </form>
-      {feedback && (
-        <p className="rounded-md border border-border bg-surface-2 px-3 py-2 text-[12px] text-text-secondary">
-          {feedback}
-        </p>
-      )}
-    </Card>
   )
 }
 

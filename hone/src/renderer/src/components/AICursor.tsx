@@ -102,8 +102,8 @@ export function AICursor({ events }: AICursorProps): JSX.Element | null {
         </circle>
         <path
           d="M10 8 L10 22 L14 18 L17 24 L19 23 L16 17 L22 17 Z"
-          fill="#7c5cff"
-          stroke="#ffffff"
+          fill="#FFFFFF"
+          stroke="rgba(0,0,0,0.4)"
           strokeWidth="0.8"
         />
       </svg>

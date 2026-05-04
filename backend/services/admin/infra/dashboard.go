@@ -54,7 +54,6 @@ func (d *Dashboard) Snapshot(ctx context.Context, now time.Time) (domain.AdminDa
 		{&out.KatasWeek, `SELECT COUNT(*)::bigint FROM daily_kata_history WHERE submitted_at >= now() - interval '7 days' AND passed = TRUE`},
 		{&out.ActiveMockSessions, `SELECT COUNT(*)::bigint FROM mock_sessions WHERE status = 'in_progress'`},
 		{&out.ReportsPending, `SELECT COUNT(*)::bigint FROM user_reports WHERE status = 'pending'`},
-		{&out.AnticheatSignals24h, `SELECT COUNT(*)::bigint FROM anticheat_signals WHERE created_at >= now() - interval '24 hours'`},
 	}
 	for _, q := range queries {
 		if err := d.pool.QueryRow(ctx, q.sql).Scan(q.dst); err != nil {

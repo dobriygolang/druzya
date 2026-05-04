@@ -136,7 +136,7 @@ export function DeveloperToolsSection() {
                 : 'loading…'}
             </div>
 
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => void doCreate('code')}
@@ -221,6 +221,8 @@ function RoomRow({
         background: 'rgba(255,255,255,0.02)',
         border: '1px solid rgba(255,255,255,0.05)',
         borderRadius: 4,
+        flexWrap: 'wrap',
+        minWidth: 0,
       }}
     >
       <span className="mono" style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
@@ -236,6 +238,7 @@ function RoomRow({
           textDecoration: 'none',
           borderBottom: '1px dashed rgba(255,255,255,0.18)',
           flex: 1,
+          minWidth: 0,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',

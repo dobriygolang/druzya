@@ -14,16 +14,17 @@
 | 3 — Atlas customization | ✅ done | DB v64: AtlasNode.is_user_owned + "your todo" badge; SetAtlasNodePref RPC + pin/hide buttons на AtlasDrawer; user_atlas_node_prefs table; SkillNode.pinned/hidden поля в proto + GetAtlas joins prefs; AtlasExplorePage filters hidden + PinnedRibbon |
 | 4 — Stats apply | ✅ done | Hone Stats.tsx full page (range picker / 4 KPI cards / 7-day heatmap / top topics / external activity feed / + log session modal через ExternalActivityModal); StatsOverlay (peek через S) остался. Palette → page; reuses GetStats + GetCoachStats + ListExternalActivity, no new RPCs. |
 | 3.5 — Personal resource library + adaptive AI | ✅ done | DB v65 (overrides + promotion + reputation + log extension); fetcher.go (5 strategies); 3 LLM tasks (TaskExtractResourceContent / TaskReflectionGrade / TaskValidateResource) + UCs; 5 producers (coverage / gap / redundancy / confusion / auto_promote); curation Connect-RPC (8 methods) + REST aliases; bootstrap wired; build clean. **Notify Sergey hookup в bootstrap для auto_promote — TODO в follow-up**. |
-| 5 — Notes + AI-link | ✅ done | Phase 5 native: SuggestNoteLinks RPC + AI-suggested panel + reflection note auto-create + embed. Phase 5 5a-c: ReflectionModal (multi-takeaway + voice input + ⌘⏎) + AddResourceModal (URL→preview→confirm) + ResourceCard (hover hide/unhelpful/replace). **Drop-in компоненты — интеграция в StepUI / Coach / atlas-detail TODO в follow-up.** |
+| 5 — Notes + AI-link | ✅ done | Phase 5 native: SuggestNoteLinks RPC + AI-suggested panel + reflection note auto-create + embed. Phase 5 5a-c: ReflectionModal + AddResourceModal + ResourceCard. **ResourceLibrarySection** mounted в Settings — manual add-resource entry-point (Path C low-key). Coach / step-UI auto-trigger flow — TODO follow-up. |
 | 11 — Polish + palette | partial | 11a palette cleanup ✅ (7 native-only items). 11b offline UI states (disabled tooltips для AI-mock / AI-tutor) — pending. Stagger / shimmer / View Transitions — pending. |
 | 6 — Onboarding v2 | ✅ done | 3-step wizard: pick stack (Go/ML/DE/English/Other) → pick mode (Explore/Commit/Deep) → shortcuts tour. localStorage `hone:profile:v2` + `hone:onboarded:v2`. Recovery в Settings «open onboarding again». |
 | 7 — Settings + vault wizard | partial | «Open onboarding again» recovery ✅. **§7a Developer tools section ✅** — DeveloperToolsSection (collapsed-by-default, room create CTAs, active+past lists, share link, restore, free-tier counter). Vault wizard полный mockup re-apply (sections layout, sidebar nav, tabs) — deferred. |
 | 9 — Web Editor cursor labels + standalone rooms | partial | **§9a standalone rooms backend ✅** (Path C low-key): DB v66 (archived_at + free_tier + user_room_quota) · services/rooms (Create/List/Extend/Delete/Restore + SweepExpired) · RoomService Connect-RPC + REST aliases · TTL daemon hourly cron в bootstrap modules. Cursor labels (Yjs awareness) — deferred per-session (web). |
 | 8 — Tutor pages | deferred | Frontend (web) `TutorDashboardPage.tsx` + `TutorStudentPage.tsx` — full mockup re-apply (585 LOC mockup → 1116 LOC existing). Per-session work. |
 | 9 — Web Editor cursor labels | deferred | Frontend (web) `EditorRoomSharePage.tsx` — full mockup re-apply (543 LOC mockup). Per-session work. |
-| 10 — TaskBoard auto-categorise | partial | UC `CategoriseTask` уже был в [services/hone/app](../../backend/services/hone/app/categorise_task.go); wire'нут в Handler + bootstrap. Caller-gate (когда звать LLM) — TODO в frontend integration. |
+| 10 — TaskBoard auto-categorise | ✅ done | UC `CategoriseTask` wired в Handler + bootstrap. **Caller-gate в CreateTask UC** — fire-and-forget goroutine после Create вызывает Categoriser + SetStatus. **AICursor SSE event publish** при auto-move — frontend AICursor рендерит animation card→column. Mockup full re-apply (1234 LOC kanban) deferred. |
 | 12 — Welcome ship | deferred | Frontend (web) `WelcomePage.tsx` — full mockup re-apply (504 LOC mockup → 809 LOC existing). Per-session. |
-| 12.5 — Admin extensions | partial | DB v60 (observability) + v63 (audit log) ✅ ранее. `ObservabilityReader` (LLM task rollups + latest eval runs) ✅. **`AdminRoomsReader` ✅** — list by user/kind/status (active/expired/archived), TopCreators (free-tier breach detect), BulkArchiveExpired admin-override. Admin UI pages (curation overrides view, atlas custom-nodes, onboarding versions, rooms moderation page) — deferred. |
+| 12.5 — Admin extensions | partial | DB v60 (observability) + v63 (audit log) ✅. `ObservabilityReader` + `AdminRoomsReader` ✅. **REST endpoints wired:** `GET /admin/rooms` (filters: user_id/kind/status/limit) · `GET /admin/rooms/top-creators` · `POST /admin/rooms/bulk-archive` · `GET /admin/observability/llm` (task rollups) · `GET /admin/observability/eval-runs`. Admin UI frontend pages — deferred (no mockups in bundle). |
+| 12 — Welcome | n/a | `frontend/src/pages/onboarding/Step0Tracks.tsx` уже работает с пo-tier picking + seniority + primary track flow. Mockup web-welcome.html — simplified 3-card alternative; replacement отнесёт ломки backend wiring. Not applied. |
 | 5–12 | pending | UI mockup applies |
 | 12.5 — Admin extensions | partial | DB v63 audit_log + observability tables; admin UI pages pending |
 
@@ -31,7 +32,7 @@
 
 | Артефакт | Где |
 |---|---|
-| Research doc | [docs/feature/learning-companion-research.md](learning-companion-research.md) |
+| Identity doc (current) | [docs/feature/identity.md](identity.md) |
 | Claude design bundle (13 экранов) | [docs/mocks/druz9-hone-bundle/](../mocks/druz9-hone-bundle/) — coach · stats · taskboard · welcome · logo-lab · notes · settings · web-editor · tutor · onboarding · english-hub · events · podcasts |
 | Bundle delta analysis | [bundle-deltas.md](bundle-deltas.md) |
 
@@ -116,7 +117,7 @@ CLI tool `cmd/seed_resources/main.go`:
 6. Hone /coach mobile — **desktop only MVP**
 7. Dead outbox ops UX — **visible с retry button**
 
-Выход: записать решения в `learning-companion-research.md` рядом с questions.
+Выход: решения зафиксированы в [identity.md](identity.md) (Sergey 2026-05-04).
 
 ---
 
@@ -1025,7 +1026,7 @@ Phase 14 (Monitor)             ←── continuous
 ## Что брать в новый чат cold-start
 
 1. Этот файл (план)
-2. [learning-companion-research.md](learning-companion-research.md) (research)
+2. [identity.md](identity.md) (current product identity)
 3. [docs/mocks/druz9-hone-bundle/](../mocks/druz9-hone-bundle/) — **полный bundle Claude design** на 13 экранов (для Phase 1.5 анализ + всех UI-phases)
 4. `docs/feature/bundle-deltas.md` — после Phase 1.5 (этот файл создаётся в нём)
 5. [CLAUDE.md](../../CLAUDE.md) (orientation)

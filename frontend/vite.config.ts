@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
@@ -8,6 +9,12 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  // Vitest exclude e2e dir — playwright runs туда через `npm run test:e2e`
+  // отдельно. Без этого `npm test` (vitest) пытается load'ить
+  // @playwright/test модуль который требует playwright runtime context.
+  test: {
+    exclude: ['tests/e2e/**', 'node_modules/**', 'dist/**'],
   },
   build: {
     // manualChunks убран намеренно: ручное разделение разделяло react в свой

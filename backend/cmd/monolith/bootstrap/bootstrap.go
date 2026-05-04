@@ -253,6 +253,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		roomsServices.NewSweepCron(deps),
 		intelligenceMod.Module,
 		intelligenceService.NewAutoPromoteCron(deps),
+		intelligenceService.NewCurationProducersCron(deps, intelligenceMod.InsightsRepo),
 		whiteboardRoomsServices.NewWhiteboardRooms(deps),
 		circlesMod.Module,
 		aiMockServices.NewMockInterview(deps),

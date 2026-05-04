@@ -180,9 +180,8 @@ func dashboardToProto(d domain.AdminDashboard) *pb.AdminDashboard {
 		UsersBanned:          d.UsersBanned,
 		KatasToday:           d.KatasToday,
 		KatasWeek:            d.KatasWeek,
-		ActiveMockSessions:   d.ActiveMockSessions,
-		ReportsPending:       d.ReportsPending,
-		AnticheatSignals_24H: d.AnticheatSignals24h,
+		ActiveMockSessions: d.ActiveMockSessions,
+		ReportsPending:     d.ReportsPending,
 	}
 	if !d.GeneratedAt.IsZero() {
 		out.GeneratedAt = timestamppb.New(d.GeneratedAt.UTC())

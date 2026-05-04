@@ -37,7 +37,8 @@ const MaxInTodoPerUser = 7
 type CreateTask struct {
 	Tasks       domain.TaskRepo
 	Log         *slog.Logger
-	Categoriser *CategoriseTask // optional · nil → skip auto-place
+	Categoriser *CategoriseTask     // optional · nil → skip auto-place
+	CursorBus   domain.CursorEventBus // optional · nil → skip SSE publish
 }
 
 // CreateTaskInput.
@@ -98,6 +99,19 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 			if newStatus := domain.TaskStatus(out.Column); newStatus.IsValid() && newStatus != domain.TaskStatusToDo {
 				if _, err := uc.Tasks.SetStatus(catCtx, in.UserID, created.ID, newStatus); err != nil && uc.Log != nil {
 					uc.Log.Warn("hone.CreateTask: categorise SetStatus", "err", err, "task_id", created.ID)
+					return
+				}
+				// Phase 10 — publish AICursor event так чтобы frontend
+				// показал animation «AI moves card». Skip если bus nil.
+				if uc.CursorBus != nil {
+					uc.CursorBus.Publish(catCtx, domain.CursorEvent{
+						Kind:       domain.CardMove,
+						UserID:     in.UserID,
+						TaskID:     created.ID,
+						FromColumn: domain.TaskStatusToDo,
+						ToColumn:   newStatus,
+						OccurredAt: time.Now().UTC(),
+					})
 				}
 			}
 		}()

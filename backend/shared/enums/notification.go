@@ -21,26 +21,14 @@ func (c NotificationChannel) String() string { return string(c) }
 type NotificationType string
 
 const (
-	NotificationTypeSlotReminder          NotificationType = "slot_reminder"
-	NotificationTypeMatchFound            NotificationType = "match_found"
-	NotificationTypeMatchResult           NotificationType = "match_result"
-	NotificationTypeWeeklyReport          NotificationType = "weekly_report"
-	NotificationTypeSkillDecay            NotificationType = "skill_decay"
-	NotificationTypeSeasonEnding          NotificationType = "season_ending"
-	NotificationTypeDailyKata             NotificationType = "daily_kata"
-	NotificationTypeSubscriptionActivated NotificationType = "subscription_activated"
-	NotificationTypeWelcome               NotificationType = "welcome"
-	NotificationTypeEventStartingSoon     NotificationType = "event_starting_soon"
-	NotificationTypeAssignmentDueSoon     NotificationType = "assignment_due_soon"
+	NotificationTypeWeeklyReport      NotificationType = "weekly_report"
+	NotificationTypeWelcome           NotificationType = "welcome"
+	NotificationTypeAssignmentDueSoon NotificationType = "assignment_due_soon"
 )
 
 func (t NotificationType) IsValid() bool {
 	switch t {
-	case NotificationTypeSlotReminder, NotificationTypeMatchFound, NotificationTypeMatchResult,
-		NotificationTypeWeeklyReport, NotificationTypeSkillDecay,
-		NotificationTypeSeasonEnding, NotificationTypeDailyKata,
-		NotificationTypeSubscriptionActivated, NotificationTypeWelcome,
-		NotificationTypeEventStartingSoon, NotificationTypeAssignmentDueSoon:
+	case NotificationTypeWeeklyReport, NotificationTypeWelcome, NotificationTypeAssignmentDueSoon:
 		return true
 	}
 	return false

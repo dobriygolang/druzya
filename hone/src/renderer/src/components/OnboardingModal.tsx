@@ -161,7 +161,7 @@ function StackPicker({ selected, onPick }: { selected: Stack | null; onPick: (s:
       <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
         what are you preparing for? pick one — you can always change later in settings.
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
         {STACKS.map((s) => (
           <button
             key={s.k}
@@ -188,7 +188,7 @@ function ModePicker({ selected, onPick }: { selected: Mode | null; onPick: (m: M
       <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
         mode shapes coach behavior · daily UI · what gets pinned to today.
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
         {MODES.map((m) => (
           <button
             key={m.k}
@@ -270,6 +270,7 @@ function Footer({
         display: 'flex',
         alignItems: 'center',
         gap: 10,
+        flexWrap: 'wrap',
         background: 'rgba(255,255,255,0.02)',
       }}
     >

@@ -47,10 +47,6 @@ func ShouldNotify(pref Preferences, typ enums.NotificationType, now time.Time, l
 		if !pref.WeeklyReportEnabled {
 			return false, "weekly_report_disabled"
 		}
-	case enums.NotificationTypeSkillDecay:
-		if !pref.SkillDecayWarningsEnabled {
-			return false, "skill_decay_disabled"
-		}
 	}
 
 	// Dedup window — skip if we sent this same type recently.
@@ -117,12 +113,3 @@ func ValidateChannels(chs []enums.NotificationChannel) error {
 	return nil
 }
 
-// MustForceDelivery lists the types that bypass quiet hours because the
-// event is time-sensitive (cannot be queued until morning). Bible §3.11.
-func MustForceDelivery(typ enums.NotificationType) bool {
-	switch typ { //nolint:exhaustive
-	case enums.NotificationTypeMatchFound:
-		return true
-	}
-	return false
-}

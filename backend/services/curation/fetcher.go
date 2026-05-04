@@ -215,22 +215,26 @@ func (f *Fetcher) fetchGitHubReadme(ctx context.Context, u *url.URL, res FetchRe
 func (f *Fetcher) get(ctx context.Context, rawURL string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("curation.fetcher.get build req: %w", err)
 	}
 	req.Header.Set("User-Agent", "druz9-curation-fetcher/1.0")
 	resp, err := f.HTTPClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("curation.fetcher.get http: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status %d", resp.StatusCode)
+		return nil, fmt.Errorf("curation.fetcher.get: status %d", resp.StatusCode)
 	}
 	limit := f.MaxBytes
 	if limit <= 0 {
 		limit = 10 * 1024 * 1024
 	}
-	return io.ReadAll(io.LimitReader(resp.Body, limit))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+	if err != nil {
+		return nil, fmt.Errorf("curation.fetcher.get read: %w", err)
+	}
+	return body, nil
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────

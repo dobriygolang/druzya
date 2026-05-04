@@ -20,14 +20,14 @@ import (
 )
 
 type CurationServer struct {
-	Add             *app.AddResource
-	Hide            *app.HideResource
-	Unhelpful       *app.MarkUnhelpful
-	Replace         *app.ReplaceResource
-	Reorder         *app.ReorderResource
-	Apply           *app.ApplyOverrides
-	Extract         *app.ExtractResourceContent
-	Grade           *app.ReflectionGrade
+	Add       *app.AddResource
+	Hide      *app.HideResource
+	Unhelpful *app.MarkUnhelpful
+	Replace   *app.ReplaceResource
+	Reorder   *app.ReorderResource
+	Apply     *app.ApplyOverrides
+	Extract   *app.ExtractResourceContent
+	Grade     *app.ReflectionGrade
 	// ReflectionLogUpdater — write-back в user_resource_log после grade.
 	// Optional: nil → skip update (UI всё равно видит quality_score в
 	// response). Caller (bootstrap) wires postgres impl.
@@ -60,9 +60,9 @@ func (s *CurationServer) PreviewResource(
 		return nil, fmt.Errorf("curation.PreviewResource: %w", err)
 	}
 	resp := &pb.PreviewResourceResponse{
-		Preview:        toResourceProto(out.Preview),
-		Manual:         out.Manual,
-		FetchStrategy:  out.FetchInfo.Strategy,
+		Preview:       toResourceProto(out.Preview),
+		Manual:        out.Manual,
+		FetchStrategy: out.FetchInfo.Strategy,
 	}
 	if out.FetchInfo.Error != nil {
 		resp.FetchError = out.FetchInfo.Error.Error()

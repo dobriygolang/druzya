@@ -19,7 +19,6 @@ export type PageId =
   | 'podcasts'
   | 'editor'
   | 'shared_boards' // единый boards-флоу (private/public — кому отдан URL)
-  | 'events'
   | 'english_overview' // Hub overview: stats + recent + due vocab
   | 'reading' // Wave 4 — English Reading-модуль (library + reader + SRS)
   | 'writing' // Wave 4.4 — English Writing-as-Focus draft + AI feedback
@@ -36,6 +35,10 @@ export type PaletteAction = PageId | 'copilot';
 interface PaletteProps {
   onClose: () => void;
   onOpen: (id: PaletteAction) => void;
+  /** Whether the English-track entry should appear in the palette.
+   * True when settings.englishActive OR onboarding stack === 'english'.
+   * Drilled from App.tsx so the palette stays a pure surface. */
+  englishVisible?: boolean;
 }
 
 interface PaletteItem {
@@ -48,7 +51,7 @@ interface PaletteItem {
   section?: string;
 }
 
-export function Palette({ onClose, onOpen }: PaletteProps) {
+export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProps) {
   const [idx, setIdx] = useState(0);
   const [q, setQ] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -78,18 +81,22 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
         run: () => onOpen('shared_boards'),
       },
 
-      {
-        id: 'english_overview',
-        label: 'English',
-        icon: 'note',
-        shortcut: ['E'],
-        section: 'Learning',
-        run: () => onOpen('english_overview'),
-      },
+      ...(englishVisible
+        ? [
+            {
+              id: 'english_overview',
+              label: 'English',
+              icon: 'note' as IconName,
+              shortcut: ['E'],
+              section: 'Learning',
+              run: () => onOpen('english_overview'),
+            },
+          ]
+        : []),
 
       { id: 'settings', label: 'Settings', icon: 'settings', shortcut: [','], section: 'System', run: () => onOpen('settings') },
     ],
-    [onOpen],
+    [onOpen, englishVisible],
   );
 
   const filtered = useMemo(() => {

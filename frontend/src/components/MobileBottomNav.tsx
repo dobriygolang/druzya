@@ -1,6 +1,8 @@
-// MobileBottomNav — fixed bottom-bar with 3 tabs (atlas / tasks /
-// profile). Replaces hamburger-slide-over anti-pattern on phones. Pivot
-// 2026-05-01 убрал FAB и arena-related tabs.
+// MobileBottomNav — fixed bottom-bar. 3 tabs aligned to identity:
+//   atlas (карта)  ·  mock (PRIMARY · centred, larger)  ·  tutor (coach)
+// Profile / Settings / Notifications живут в hamburger-меню AppShell — на
+// mobile они не нужны как top-level CTA, потому что главное действие —
+// «запусти mock» (identity 2026-05-04: главный продукт = AI-mock).
 //
 // Hide-rules (HIDE_ON regex list):
 //   /onboarding/*  — guided flow shouldn't have escape hatches
@@ -12,18 +14,15 @@
 // Safe-area: paddingBottom uses env(safe-area-inset-bottom) so the bar
 // stays above the iPhone home indicator.
 
-import { Home, Map as MapIcon, User } from 'lucide-react'
+import { Map as MapIcon, MessageSquare, Sparkles } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 
-// Pivot 2026-05-01: arena выпилен. Home → /atlas (главный landing для
-// авторизованного юзера, см RootRedirect в App.tsx). Insights / Tasks
-// добавлены на mobile навигацию вместо отсутствующего «home».
 const TABS = [
   { to: '/atlas', icon: MapIcon, label: 'atlas' },
-  { to: '/tasks', icon: Home, label: 'tasks' },
-  { to: '/profile', icon: User, label: 'profile' },
+  { to: '/mock', icon: Sparkles, label: 'mock', primary: true },
+  { to: '/tutor', icon: MessageSquare, label: 'coach' },
 ] as const
 
 // Order matters — we use prefix match. Add new immersive routes here
@@ -62,17 +61,18 @@ export function MobileBottomNav({ showLabels = false, unreadCount = 0 }: MobileB
       )}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      {/* Pivot 2026-05-01: arena/matchmaking-FAB выпилен. Простой 3-tab
-          layout: atlas / tasks / profile. */}
+      {/* 3-tab layout: atlas / mock (primary) / tutor.
+          Notification badge moved to mock tab — mock is the only screen
+          where new-result counts matter on mobile. */}
       <div className="grid grid-cols-3 items-center pt-2 pb-1.5">
         <Tab {...TABS[0]} showLabels={showLabels} />
-        <Tab {...TABS[1]} showLabels={showLabels} />
         <Tab
-          {...TABS[2]}
+          {...TABS[1]}
           showLabels={showLabels}
           badge={unreadCount}
           unreadAria={t('mobileNav.unread', { count: unreadCount })}
         />
+        <Tab {...TABS[2]} showLabels={showLabels} />
       </div>
     </nav>
   )
@@ -85,13 +85,15 @@ function Tab({
   showLabels,
   badge,
   unreadAria,
+  primary,
 }: {
   to: string
-  icon: typeof Home
+  icon: typeof MapIcon
   label: string
   showLabels?: boolean
   badge?: number
   unreadAria?: string
+  primary?: boolean
 }) {
   return (
     <NavLink
@@ -116,8 +118,23 @@ function Tab({
     >
       {({ isActive }) => (
         <>
-          <div className="relative">
-            <Icon className={showLabels ? 'h-6 w-6' : 'h-[22px] w-[22px]'} strokeWidth={2} />
+          <div
+            className={cn(
+              'relative grid place-items-center',
+              primary &&
+                'rounded-full border border-border-strong bg-surface-2 h-9 w-9 -mt-2',
+            )}
+          >
+            <Icon
+              className={
+                primary
+                  ? 'h-[18px] w-[18px]'
+                  : showLabels
+                    ? 'h-6 w-6'
+                    : 'h-[22px] w-[22px]'
+              }
+              strokeWidth={primary ? 2.2 : 2}
+            />
             {!!badge && (
               <span
                 className={cn(

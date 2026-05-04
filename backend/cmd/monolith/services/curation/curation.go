@@ -9,16 +9,15 @@ package curation
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 
 	monolithServices "druz9/cmd/monolith/services"
-	curationApp "druz9/curation/app"
 	"druz9/curation"
+	curationApp "druz9/curation/app"
 	curationInfra "druz9/curation/infra"
 	curationPorts "druz9/curation/ports"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 
-	"connectrpc.com/connect"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -56,12 +55,12 @@ func NewCuration(d monolithServices.Deps) *monolithServices.Module {
 		Apply:                applyUC,
 		Extract:              extractUC,
 		Grade:                gradeUC,
-		ReflectionLogUpdater: newReflectionLogUpdater(d),
+		ReflectionLogUpdater: newReflectionLogUpdater(d, promotion),
 	})
 
 	connectPath, connectHandler := druz9v1connect.NewCurationServiceHandler(server)
 
-	mod := &monolithServices.Module{
+	return &monolithServices.Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     connectHandler,
 		RequireConnectAuth: true,
@@ -76,57 +75,62 @@ func NewCuration(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/curation/reflection", connectHandler.ServeHTTP)
 		},
 	}
-	_ = mod
-	_ = http.MethodPost
-	return mod
 }
 
-// reflectionLogUpdater — bounded context boundary: curation НЕ владеет
+// pgxAdapter — bounded context boundary: curation НЕ владеет
 // user_resource_log (intelligence-таблица). Bridge через intel-injected
-// updater. Если intelligence module ещё не wired (порядок bootstrap'а) —
-// nil → curation fail-softly skip'ает UPDATE, UI всё равно получает grade.
-type reflectionLogUpdater struct {
-	pool poolExec
+// updater. После UPDATE'а log-row адаптер также:
+//   - bumps resource_promotion_signals.avg_quality (running average)
+//     если quality > 0 — это закрывает loop «user submits reflection →
+//     auto_promote sees quality signal».
+// nil-safe: при d.Pool==nil вся ветка skip'ается.
+type pgxAdapter struct {
+	d         monolithServices.Deps
+	promotion *curationInfra.Promotion
 }
-
-type poolExec interface {
-	Exec(ctx context.Context, sql string, args ...any) (commandTag, error)
-}
-type commandTag interface{}
-
-// inline pgx wrapper.
-type pgxAdapter struct{ d monolithServices.Deps }
 
 func (a *pgxAdapter) UpdateReflection(ctx context.Context, logID uuid.UUID,
-	takeaways []string, quality float32, extracted []string, confusion bool) error {
+	takeaways []string, quality float32, extracted []string, confusion bool,
+) error {
 	if a.d.Pool == nil {
 		return nil
 	}
-	// pgx encoded в JSONB; pq массивов через text[].
 	takeawaysJSON, err := marshalStringArrayJSON(takeaways)
 	if err != nil {
-		return err
+		return fmt.Errorf("curation.UpdateReflection marshal: %w", err)
 	}
-	_, err = a.d.Pool.Exec(ctx, `
+	// UPDATE + RETURNING resource_url чтобы потом bump promotion.avg_quality.
+	var resourceURL string
+	if err := a.d.Pool.QueryRow(ctx, `
 UPDATE user_resource_log
 SET reflection_takeaways=$2,
     reflection_quality_score=$3,
     extracted_topics=$4,
     confusion_flag=$5
 WHERE id=$1
-`, logID, takeawaysJSON, quality, extracted, confusion)
-	return err
+RETURNING resource_url
+`, logID, takeawaysJSON, quality, extracted, confusion).Scan(&resourceURL); err != nil {
+		return fmt.Errorf("curation.UpdateReflection exec: %w", err)
+	}
+	// Phase 3.5d closed-loop: feed quality back into promotion signals.
+	// Best-effort — promotion_signals row может не существовать (resource
+	// был добавлен tutor'ом, не user'ом → не bump'ался AddResource'ом).
+	if quality > 0 && resourceURL != "" && a.promotion != nil {
+		_ = a.promotion.UpdateQuality(ctx, resourceURL, quality)
+	}
+	return nil
 }
 
-func newReflectionLogUpdater(d monolithServices.Deps) curationPorts.ReflectionLogUpdater {
-	return &pgxAdapter{d: d}
+func newReflectionLogUpdater(d monolithServices.Deps, promotion *curationInfra.Promotion) curationPorts.ReflectionLogUpdater {
+	return &pgxAdapter{d: d, promotion: promotion}
 }
 
+// marshalStringArrayJSON — minimal encoder без external json lib (одно
+// место использования, не оправдывает import). Escapes ", \\, \n.
 func marshalStringArrayJSON(s []string) ([]byte, error) {
 	if s == nil {
 		return []byte("[]"), nil
 	}
-	// тривиальная JSON encoding без external deps.
 	out := []byte{'['}
 	for i, v := range s {
 		if i > 0 {
@@ -148,8 +152,3 @@ func marshalStringArrayJSON(s []string) ([]byte, error) {
 	out = append(out, ']')
 	return out, nil
 }
-
-// Compile-time guards для unused imports.
-var (
-	_ = connect.NewError
-)

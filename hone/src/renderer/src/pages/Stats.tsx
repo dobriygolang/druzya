@@ -26,7 +26,7 @@ export const Stats: React.FC = () => {
   const [stats, setStats] = useState<HoneStats | null>(null);
   const [coach, setCoach] = useState<CoachStats | null>(null);
   const [activity, setActivity] = useState<ExternalActivity[]>([]);
-  const [logOpen, setLogOpen] = useState(false);
+  // logOpen state retired — Sergey 2026-05-05: no manual logging button.
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export const Stats: React.FC = () => {
       <StatsStyles />
       <div style={shell} className="stats-page-enter">
         <div style={innerWrap}>
-          <Header range={range} setRange={setRange} onLog={() => setLogOpen(true)} />
+          <Header range={range} setRange={setRange} />
 
           <div style={kpiRow} className="stats-stagger">
             <KpiCard
@@ -119,17 +119,18 @@ export const Stats: React.FC = () => {
 
           <ActivityFeed
             items={activity}
-            onLog={() => setLogOpen(true)}
             onDeleted={() => setReload((n) => n + 1)}
           />
         </div>
       </div>
 
-      {logOpen && (
+      {/* ExternalActivityModal removed — Sergey 2026-05-05: no manual logging.
+        Activity feed populates from auto-tracked events (focus sessions,
+        atlas resource clicks, reflection submissions, tutor assignments). */}
+      {false && (
         <ExternalActivityModal
-          onClose={() => setLogOpen(false)}
+          onClose={() => undefined}
           onSaved={() => {
-            setLogOpen(false);
             setReload((n) => n + 1);
           }}
         />
@@ -143,8 +144,7 @@ export const Stats: React.FC = () => {
 const Header: React.FC<{
   range: Range;
   setRange: (r: Range) => void;
-  onLog: () => void;
-}> = ({ range, setRange, onLog }) => (
+}> = ({ range, setRange }) => (
   <header style={headerWrap}>
     <span
       style={{
@@ -173,9 +173,6 @@ const Header: React.FC<{
         </button>
       ))}
     </div>
-    <button style={btnGhost} onClick={onLog}>
-      + log session
-    </button>
   </header>
 );
 
@@ -343,9 +340,8 @@ const TopTopicsCard: React.FC<{ topics: Topic[] }> = ({ topics }) => (
 
 const ActivityFeed: React.FC<{
   items: ExternalActivity[];
-  onLog: () => void;
   onDeleted: () => void;
-}> = ({ items, onLog, onDeleted }) => {
+}> = ({ items, onDeleted }) => {
   void onDeleted; // delete UC wired в following iteration
   return (
     <section style={feedCard} className="stats-stagger">
@@ -358,9 +354,10 @@ const ActivityFeed: React.FC<{
         }}
       >
         <h2 style={cardTitle}>recent external activity</h2>
-        <button style={btnGhost} onClick={onLog}>
-          + log
-        </button>
+        {/* Manual «+ log» button удалён — Sergey 2026-05-05: AI должен
+         * сам анализировать поведение, не просить юзера логать руками.
+         * Existing data-feed: tutor-pushed assignments + atlas resource
+         * clicks via user_resource_log + reflection submissions. */}
       </div>
 
       {items.length === 0 ? (
@@ -486,16 +483,7 @@ const rangeBtn: React.CSSProperties = {
   fontFamily: monoFont,
 };
 
-const btnGhost: React.CSSProperties = {
-  background: 'transparent',
-  color: 'rgba(255,255,255,0.7)',
-  fontSize: 12,
-  fontFamily: monoFont,
-  padding: '6px 14px',
-  borderRadius: 6,
-  border: '1px solid rgba(255,255,255,0.07)',
-  cursor: 'pointer',
-};
+// btnGhost retired with manual log button (Sergey 2026-05-05).
 
 const kpiRow: React.CSSProperties = {
   display: 'grid',
