@@ -23,13 +23,18 @@ import (
 type Server struct {
 	druz9v1connect.UnimplementedTracksServiceHandler
 
-	List     *tracksApp.ListCatalog
-	Get      *tracksApp.GetTrack
-	ListUser *tracksApp.ListUserTracks
-	Join     *tracksApp.JoinTrack
-	Advance  *tracksApp.AdvanceStep
-	Pause    *tracksApp.PauseTrack
-	Leave    *tracksApp.LeaveTrack
+	List       *tracksApp.ListCatalog
+	Get        *tracksApp.GetTrack
+	ListUser   *tracksApp.ListUserTracks
+	Join       *tracksApp.JoinTrack
+	Advance    *tracksApp.AdvanceStep
+	Pause      *tracksApp.PauseTrack
+	Leave      *tracksApp.LeaveTrack
+	CustomPath *tracksApp.GenerateCustomPath
+
+	// Phase 2 step UX (2026-05-04). nil-safe.
+	StartCheckpointUC  *tracksApp.StartCheckpoint
+	SubmitCheckpointUC *tracksApp.SubmitCheckpoint
 
 	Log *slog.Logger
 }
@@ -286,4 +291,119 @@ func stepKindToProto(k tracksDomain.StepKind) pb.TrackStepKind {
 		return pb.TrackStepKind_TRACK_STEP_KIND_FOCUS_BLOCK
 	}
 	return pb.TrackStepKind_TRACK_STEP_KIND_UNSPECIFIED
+}
+
+// GenerateCustomPath — onboarding custom-track flow. Auth required.
+func (s *Server) GenerateCustomPath(
+	ctx context.Context,
+	req *connect.Request[pb.GenerateCustomPathRequest],
+) (*connect.Response[pb.GenerateCustomPathResponse], error) {
+	if _, err := requireUser(ctx); err != nil {
+		return nil, err
+	}
+	if s.CustomPath == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("custom path llm not wired"))
+	}
+	res, err := s.CustomPath.Do(ctx, tracksApp.GenerateCustomPathInput{Goal: req.Msg.Goal})
+	if err != nil {
+		return nil, s.toConnectErr("GenerateCustomPath", err)
+	}
+	out := &pb.GenerateCustomPathResponse{Nodes: make([]*pb.CustomPathNode, 0, len(res.Nodes))}
+	for _, n := range res.Nodes {
+		out.Nodes = append(out.Nodes, &pb.CustomPathNode{
+			Id:    n.ID,
+			Title: n.Title,
+			Group: n.Group,
+			Hint:  n.Hint,
+		})
+	}
+	return connect.NewResponse(out), nil
+}
+
+// ── Phase 2 step UX (2026-05-04) ─────────────────────────────────────────
+
+// StartCheckpoint — открыть checkpoint quiz CTA на step.
+func (s *Server) StartCheckpoint(
+	ctx context.Context,
+	req *connect.Request[pb.StartCheckpointRequest],
+) (*connect.Response[pb.StartCheckpointResponse], error) {
+	if s.StartCheckpointUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("tracks.StartCheckpoint: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	trackID, err := uuid.Parse(req.Msg.GetTrackId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("track_id: %w", err))
+	}
+	out, err := s.StartCheckpointUC.Do(ctx, tracksApp.StartCheckpointInput{
+		UserID: uid, TrackID: trackID, StepIndex: int(req.Msg.GetStepIndex()),
+	})
+	if err != nil {
+		return nil, s.toConnectErr("StartCheckpoint", err)
+	}
+	return connect.NewResponse(&pb.StartCheckpointResponse{
+		StepTitle:               out.Step.Title,
+		SkillKeys:               out.Step.SkillKeys,
+		CheckpointSkillKeys:     out.CheckpointSkills,
+		AlreadyPassed:           out.AlreadyPassed,
+		ReflectionRequired:      out.Step.ReflectionRequired,
+		GraduationMockSection:   out.Step.GraduationMockSection,
+	}), nil
+}
+
+// SubmitCheckpoint — принять answers + grade через TaskCheckpointGrade.
+func (s *Server) SubmitCheckpoint(
+	ctx context.Context,
+	req *connect.Request[pb.SubmitCheckpointRequest],
+) (*connect.Response[pb.SubmitCheckpointResponse], error) {
+	if s.SubmitCheckpointUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("tracks.SubmitCheckpoint: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	trackID, err := uuid.Parse(req.Msg.GetTrackId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("track_id: %w", err))
+	}
+	answers := make([]tracksApp.QuestionAnswer, 0, len(req.Msg.GetAnswers()))
+	for _, a := range req.Msg.GetAnswers() {
+		answers = append(answers, tracksApp.QuestionAnswer{
+			QuestionID:  a.GetQuestionId(),
+			Question:    a.GetQuestion(),
+			UserAnswer:  a.GetUserAnswer(),
+			ModelAnswer: a.GetModelAnswer(),
+		})
+	}
+	out, err := s.SubmitCheckpointUC.Do(ctx, tracksApp.SubmitCheckpointInput{
+		UserID: uid, TrackID: trackID, StepIndex: int(req.Msg.GetStepIndex()),
+		Answers: answers,
+	})
+	if err != nil {
+		return nil, s.toConnectErr("SubmitCheckpoint", err)
+	}
+	resp := &pb.SubmitCheckpointResponse{
+		Score:     int32(out.Score),
+		Passed:    out.Passed,
+		AttemptId: out.Attempt.ID.String(),
+	}
+	for _, a := range out.Attempts {
+		resp.Attempts = append(resp.Attempts, &pb.GradedAnswer{
+			QuestionId:  a.QuestionID,
+			UserAnswer:  a.UserAnswer,
+			ModelAnswer: a.ModelAnswer,
+			Correct:     a.Correct,
+			Comment:     a.Comment,
+		})
+	}
+	if out.Attempt.PassedAt != nil {
+		resp.PassedAt = timestamppb.New(*out.Attempt.PassedAt)
+	}
+	return connect.NewResponse(resp), nil
 }

@@ -44,6 +44,10 @@ type NotifyModule struct {
 	// Read by the calendar dispatcher to honour the user's opt-out for
 	// the 'calendar' notification category.
 	ChannelPrefs notifyDomain.NotificationPrefsRepo
+	// Send — direct access to the SendNotification use case. Used by
+	// cross-domain crons (e.g. tutor AssignmentDueSoonWorker) что хотят
+	// шлёпнуть notification без event-bus round-trip.
+	Send *notifyApp.SendNotification
 }
 
 // NewNotify wires notifications: prefs CRUD, the multi-channel sender,
@@ -153,6 +157,7 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 		// Phase 1.8c — expose the per-channel toggle store so the
 		// calendar reminder dispatcher can honour the 'calendar' opt-out.
 		ChannelPrefs: prefsPg,
+		Send:         send,
 		Module: monolithServices.Module{
 			ConnectPath:        connectPath,
 			ConnectHandler:     transcoder,

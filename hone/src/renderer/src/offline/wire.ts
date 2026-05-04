@@ -139,4 +139,69 @@ export function wireOutboxExecutors(): void {
       throw rpcError('whiteboard.delete_room', resp.status);
     }
   });
+
+  // ── Phase 3.5 curation overrides ──────────────────────────────────────
+  // Backend OverrideRepo.Insert использует ON CONFLICT DO NOTHING +
+  // partial UNIQUE indexes (user, target, url, action) — replay безопасен.
+  // Idempotency-Key header опционален — гарантия идёт от DB-constraint'а.
+
+  registerExecutor('resource.add', async (payload, opId) => {
+    const resp = await fetch(`${API_BASE_URL}/api/v1/curation/add-resource`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'idempotency-key': opId },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw rpcError('resource.add', resp.status);
+  });
+
+  registerExecutor('resource.hide', async (payload, opId) => {
+    const resp = await fetch(`${API_BASE_URL}/api/v1/curation/hide-resource`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'idempotency-key': opId },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw rpcError('resource.hide', resp.status);
+  });
+
+  registerExecutor('resource.unhelpful', async (payload, opId) => {
+    const resp = await fetch(`${API_BASE_URL}/api/v1/curation/mark-unhelpful`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'idempotency-key': opId },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw rpcError('resource.unhelpful', resp.status);
+  });
+
+  registerExecutor('resource.replace', async (payload, opId) => {
+    const resp = await fetch(`${API_BASE_URL}/api/v1/curation/replace-resource`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'idempotency-key': opId },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw rpcError('resource.replace', resp.status);
+  });
+
+  // ── Phase 5 5a reflection.submit ──────────────────────────────────────
+  // Local fallback grade пишется сразу (наивная эвристика, см
+  // ReflectionModal). Server overwrite через UPDATE user_resource_log
+  // idempotent — quality_score scalar (overwrite, не accumulate).
+  registerExecutor('reflection.submit', async (payload, opId) => {
+    const resp = await fetch(`${API_BASE_URL}/api/v1/curation/reflection`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'idempotency-key': opId },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw rpcError('reflection.submit', resp.status);
+  });
+
+  // ── Phase 4 external_activity.log ─────────────────────────────────────
+  // Backend идемпотентен через source+occurred_at+topic uniqueness.
+  registerExecutor('external_activity.log', async (payload, opId) => {
+    const resp = await fetch(`${API_BASE_URL}/api/v1/hone/external-activity`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'idempotency-key': opId },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw rpcError('external_activity.log', resp.status);
+  });
 }

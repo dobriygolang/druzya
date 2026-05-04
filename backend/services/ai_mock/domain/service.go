@@ -40,7 +40,7 @@ func PickModel(user UserContext, taskModel enums.LLMModel, section enums.Section
 		enums.SectionSystemDesign, enums.SectionBehavioral,
 		enums.SectionEnglishHR, enums.SectionSystemDesignSenior, enums.SectionTechLeadEM,
 		enums.SectionSysanalyst, enums.SectionProductAnalyst,
-		enums.SectionQA, enums.SectionDevOps:
+		enums.SectionQA, enums.SectionDevOps, enums.SectionMLEng, enums.SectionDE:
 		// No per-section overrides yet. Intentional no-op.
 	}
 	// 4. Company override.
@@ -104,6 +104,14 @@ func BuildSystemPrompt(s Session, t TaskWithHint, user UserContext, company Comp
 	// DevOps / SRE free-form round (Wave 9.3).
 	if IsDevOpsSection(s.Section) {
 		return BuildDevOpsSystemPrompt(s, user, company, elapsed)
+	}
+	// ML engineering free-form round (pivot 2026-05-01).
+	if IsMLEngSection(s.Section) {
+		return BuildMLEngSystemPrompt(s, user, company, elapsed)
+	}
+	// Data engineering free-form round (Phase 1c · 2026-05-04).
+	if IsDESection(s.Section) {
+		return BuildDESystemPrompt(s, user, company, elapsed)
 	}
 
 	var b strings.Builder
@@ -195,6 +203,16 @@ func BuildReportPrompt(s Session, t TaskWithHint, stress StressProfile) string {
 	// DevOps / SRE — infra / observability / cicd / incident / security.
 	if IsDevOpsSection(s.Section) {
 		return BuildDevOpsReportPrompt(s)
+	}
+	// ML engineering — theoretical_depth / practical_implementation /
+	// ml_system_design / data_intuition / production_awareness.
+	if IsMLEngSection(s.Section) {
+		return BuildMLEngReportPrompt(s)
+	}
+	// Data engineering — etl_design / distributed / sql_modeling /
+	// streaming / production_ops.
+	if IsDESection(s.Section) {
+		return BuildDEReportPrompt(s)
 	}
 
 	var b strings.Builder

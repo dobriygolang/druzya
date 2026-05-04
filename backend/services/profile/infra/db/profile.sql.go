@@ -47,9 +47,7 @@ func (q *Queries) ApproveInterviewerApplication(ctx context.Context, arg Approve
 const countWeeklyActivity = `-- name: CountWeeklyActivity :one
 SELECT
   (SELECT COUNT(*)::int FROM daily_kata_history dkh WHERE dkh.user_id = $1 AND dkh.passed = true AND dkh.submitted_at >= $2)::int AS katas_passed,
-  (SELECT COUNT(*)::int FROM arena_matches m
-     JOIN arena_participants ap ON ap.match_id = m.id
-    WHERE ap.user_id = $1 AND m.winner_id = $1 AND m.finished_at >= $2)::int AS matches_won,
+  0::int AS matches_won,
   (SELECT COALESCE(SUM(ms.duration_min),0)::int FROM mock_sessions ms
     WHERE ms.user_id = $1 AND ms.finished_at >= $2)::int AS mock_minutes
 `
@@ -65,6 +63,9 @@ type CountWeeklyActivityRow struct {
 	MockMinutes int32
 }
 
+// Pivot 2026-05-01: arena_matches/participants дропнуты. matches_won
+// остаётся в proto-shape но возвращает 0 — TODO выпилить из proto после
+// следующего gen-cycle.
 func (q *Queries) CountWeeklyActivity(ctx context.Context, arg CountWeeklyActivityParams) (CountWeeklyActivityRow, error) {
 	row := q.db.QueryRow(ctx, countWeeklyActivity, arg.UserID, arg.SubmittedAt)
 	var i CountWeeklyActivityRow
@@ -350,43 +351,6 @@ func (q *Queries) ListInterviewerApplications(ctx context.Context, status string
 			&i.CreatedAt,
 			&i.UserUsername,
 			&i.UserDisplayName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listRatings = `-- name: ListRatings :many
-SELECT section, elo, matches_count, last_match_at
-  FROM ratings WHERE user_id = $1
-`
-
-type ListRatingsRow struct {
-	Section      string
-	Elo          int32
-	MatchesCount int32
-	LastMatchAt  pgtype.Timestamptz
-}
-
-func (q *Queries) ListRatings(ctx context.Context, userID pgtype.UUID) ([]ListRatingsRow, error) {
-	rows, err := q.db.Query(ctx, listRatings, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListRatingsRow{}
-	for rows.Next() {
-		var i ListRatingsRow
-		if err := rows.Scan(
-			&i.Section,
-			&i.Elo,
-			&i.MatchesCount,
-			&i.LastMatchAt,
 		); err != nil {
 			return nil, err
 		}

@@ -122,6 +122,58 @@ message LeaveTrackRequest {
 }
 message LeaveTrackResponse { bool ok = 1; }
 
+// ── Phase 2 step UX flow (учитывает миграцию 00050 + 00056) ─────────────
+
+// StartCheckpointRequest — UI хочет открыть checkpoint quiz CTA.
+message StartCheckpointRequest {
+  string track_id  = 1;
+  int32  step_index = 2;
+}
+
+// StartCheckpointResponse — backend возвращает skill_keys (handler уже
+// pull'ит 5 questions из mock_pool by these keys) + признак passed.
+message StartCheckpointResponse {
+  string step_title             = 1;
+  repeated string skill_keys    = 2; // step.skill_keys
+  repeated string checkpoint_skill_keys = 3; // что quizz'им
+  bool already_passed           = 4;
+  bool reflection_required      = 5;
+  string graduation_mock_section = 6; // '' если closed by checkpoint
+}
+
+// CheckpointAnswer — single Q+A pair от UI.
+message CheckpointAnswer {
+  string question_id   = 1;
+  string question      = 2;
+  string user_answer   = 3;
+  string model_answer  = 4; // optional reference для grader
+}
+
+// SubmitCheckpointRequest — submit answers для grading.
+message SubmitCheckpointRequest {
+  string track_id              = 1;
+  int32  step_index            = 2;
+  repeated CheckpointAnswer answers = 3;
+}
+
+// GradedAnswer — per-question result из TaskCheckpointGrade.
+message GradedAnswer {
+  string question_id   = 1;
+  string user_answer   = 2;
+  string model_answer  = 3;
+  bool   correct       = 4;
+  string comment       = 5;
+}
+
+// SubmitCheckpointResponse — score + per-question detail.
+message SubmitCheckpointResponse {
+  int32  score                    = 1; // 0..100
+  bool   passed                   = 2; // score >= 70
+  repeated GradedAnswer attempts  = 3;
+  string attempt_id               = 4;
+  google.protobuf.Timestamp passed_at = 5; // null если not passed
+}
+
 service TracksService {
   rpc ListTracks(ListTracksRequest) returns (ListTracksResponse) {
     option (google.api.http) = {get: "/api/v1/tracks"};
@@ -156,4 +208,44 @@ service TracksService {
       body: "*"
     };
   }
+
+  // GenerateCustomPath — onboarding wizard «Свой путь». LLM генерит
+  // initial карту тем (8-15 nodes) из юзерской цели в свободной форме.
+  rpc GenerateCustomPath(GenerateCustomPathRequest) returns (GenerateCustomPathResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tracks/custom-path/generate"
+      body: "*"
+    };
+  }
+
+  // StartCheckpoint — Phase 2 step UX. Returns step skill_keys + has_passed.
+  rpc StartCheckpoint(StartCheckpointRequest) returns (StartCheckpointResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tracks/{track_id}/steps/{step_index}/checkpoint/start"
+      body: "*"
+    };
+  }
+
+  // SubmitCheckpoint — Phase 2 step UX. Grades answers via TaskCheckpointGrade.
+  rpc SubmitCheckpoint(SubmitCheckpointRequest) returns (SubmitCheckpointResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tracks/{track_id}/steps/{step_index}/checkpoint/submit"
+      body: "*"
+    };
+  }
+}
+
+message GenerateCustomPathRequest {
+  string goal = 1;
+}
+
+message CustomPathNode {
+  string id    = 1;
+  string title = 2;
+  string group = 3;
+  string hint  = 4;
+}
+
+message GenerateCustomPathResponse {
+  repeated CustomPathNode nodes = 1;
 }

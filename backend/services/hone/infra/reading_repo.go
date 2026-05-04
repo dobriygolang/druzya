@@ -60,13 +60,21 @@ func (p *ReadingRepoPG) CreateMaterial(ctx context.Context, m domain.ReadingMate
 	}
 	totalChars := len([]rune(m.BodyMD))
 	const q = `
-		INSERT INTO hone_reading_materials (user_id, source_kind, source_url, title, body_md, total_chars)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO hone_reading_materials (user_id, source_kind, source_url, title, body_md, total_chars, book_chapter, book_total_chapters)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, created_at, updated_at`
 	var id pgtype.UUID
 	var createdAt, updatedAt pgtype.Timestamptz
+	var bookCh, bookTotal pgtype.Int4
+	if m.BookChapter != nil {
+		bookCh = pgtype.Int4{Int32: int32(*m.BookChapter), Valid: true}
+	}
+	if m.BookTotalChapters != nil {
+		bookTotal = pgtype.Int4{Int32: int32(*m.BookTotalChapters), Valid: true}
+	}
 	err := p.pool.QueryRow(ctx, q,
 		sharedpg.UUID(m.UserID), string(m.SourceKind), m.SourceURL, m.Title, m.BodyMD, totalChars,
+		bookCh, bookTotal,
 	).Scan(&id, &createdAt, &updatedAt)
 	if err != nil {
 		return domain.ReadingMaterial{}, fmt.Errorf("hone.CreateMaterial: %w", err)
@@ -85,6 +93,7 @@ func (p *ReadingRepoPG) CreateMaterial(ctx context.Context, m domain.ReadingMate
 func (p *ReadingRepoPG) GetMaterial(ctx context.Context, userID, materialID uuid.UUID) (domain.ReadingMaterial, error) {
 	const q = `
 		SELECT id, user_id, source_kind, source_url, title, body_md, total_chars,
+		       book_chapter, book_total_chapters,
 		       archived_at, created_at, updated_at
 		FROM hone_reading_materials
 		WHERE id = $1 AND user_id = $2`
@@ -105,6 +114,7 @@ func (p *ReadingRepoPG) ListMaterials(ctx context.Context, userID uuid.UUID, lim
 	}
 	const q = `
 		SELECT id, user_id, source_kind, source_url, title, body_md, total_chars,
+		       book_chapter, book_total_chapters,
 		       archived_at, created_at, updated_at
 		FROM hone_reading_materials
 		WHERE user_id = $1 AND archived_at IS NULL
@@ -125,6 +135,35 @@ func (p *ReadingRepoPG) ListMaterials(ctx context.Context, userID uuid.UUID, lim
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("hone.ListMaterials: iterate: %w", err)
+	}
+	return out, nil
+}
+
+func (p *ReadingRepoPG) UpdateBookProgress(
+	ctx context.Context, userID, materialID uuid.UUID, chapter, total *int,
+) (domain.ReadingMaterial, error) {
+	var bookCh, bookTotal pgtype.Int4
+	if chapter != nil {
+		bookCh = pgtype.Int4{Int32: int32(*chapter), Valid: true}
+	}
+	if total != nil {
+		bookTotal = pgtype.Int4{Int32: int32(*total), Valid: true}
+	}
+	const q = `
+		UPDATE hone_reading_materials
+		SET book_chapter = $3, book_total_chapters = $4, updated_at = now()
+		WHERE id = $1 AND user_id = $2 AND archived_at IS NULL
+		RETURNING id, user_id, source_kind, source_url, title, body_md, total_chars,
+		          book_chapter, book_total_chapters, archived_at, created_at, updated_at`
+	row := p.pool.QueryRow(ctx, q,
+		sharedpg.UUID(materialID), sharedpg.UUID(userID), bookCh, bookTotal,
+	)
+	out, err := scanReadingMaterial(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ReadingMaterial{}, fmt.Errorf("hone.UpdateBookProgress: %w", domain.ErrNotFound)
+		}
+		return domain.ReadingMaterial{}, fmt.Errorf("hone.UpdateBookProgress: %w", err)
 	}
 	return out, nil
 }
@@ -465,15 +504,25 @@ func scanReadingMaterial(s readingScanner) (domain.ReadingMaterial, error) {
 		createdAt  pgtype.Timestamptz
 		updatedAt  pgtype.Timestamptz
 		sourceKind string
+		bookCh     pgtype.Int4
+		bookTotal  pgtype.Int4
 		out        domain.ReadingMaterial
 	)
 	if err := s.Scan(&id, &userID, &sourceKind, &out.SourceURL, &out.Title, &out.BodyMD,
-		&out.TotalChars, &archivedAt, &createdAt, &updatedAt); err != nil {
+		&out.TotalChars, &bookCh, &bookTotal, &archivedAt, &createdAt, &updatedAt); err != nil {
 		return domain.ReadingMaterial{}, fmt.Errorf("hone.reading_repo.scanMaterial: %w", err)
 	}
 	out.ID = sharedpg.UUIDFrom(id)
 	out.UserID = sharedpg.UUIDFrom(userID)
 	out.SourceKind = domain.ReadingSourceKind(sourceKind)
+	if bookCh.Valid {
+		v := int(bookCh.Int32)
+		out.BookChapter = &v
+	}
+	if bookTotal.Valid {
+		v := int(bookTotal.Int32)
+		out.BookTotalChapters = &v
+	}
 	if archivedAt.Valid {
 		t := archivedAt.Time
 		out.ArchivedAt = &t

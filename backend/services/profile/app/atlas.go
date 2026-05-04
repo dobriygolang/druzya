@@ -45,6 +45,14 @@ type AtlasNode struct {
 	TotalCount      int
 	LastSolvedAt    *time.Time
 	RecommendedKata []KataRef
+	// IsUserOwned — true для узлов из user_atlas_nodes (Phase 3.1
+	// classify-flow). Frontend рендерит "your TODO" badge + drag/hide
+	// affordances per memory/project_hone.md «AI-cursor pattern».
+	IsUserOwned bool
+	// Phase 3 — per-user overlay (user_atlas_node_prefs, мig 00064).
+	// Mutually exclusive (DB CHECK). Frontend filters hidden + ribbons pinned.
+	Pinned bool
+	Hidden bool
 }
 
 // KataRef — лёгкий референс на рекомендованную ката (см. proto KataRef).
@@ -89,6 +97,11 @@ type AtlasView struct {
 type GetAtlas struct {
 	Repo      domain.ProfileRepo
 	Catalogue domain.AtlasCatalogueRepo // optional; nil → static fallback
+	// UserAtlas (Phase 3.1) — user-driven atlas nodes. nil-safe: when wired,
+	// каждый GetAtlas merge'ит curated + user-owned узлы в один view.
+	UserAtlas domain.UserAtlasRepo
+	// Prefs (Phase 3) — per-user pin/hide overlay. nil-safe.
+	Prefs domain.AtlasNodePrefsRepo
 }
 
 // Do merges catalogue + per-user progress.
@@ -151,6 +164,47 @@ func (uc *GetAtlas) Do(ctx context.Context, userID uuid.UUID) (AtlasView, error)
 			LastSolvedAt:    lastSolved,
 			RecommendedKata: append([]KataRef(nil), recommendedKataByNode[cn.Key]...),
 		})
+	}
+	// Phase 3.1 — append user-driven atlas nodes (owned by this user).
+	// Edges из этих узлов до curated мы пока не строим — nodes лежат
+	// «облаком» в своём cluster'е (фронт авто-раскладывает unpinned).
+	if uc.UserAtlas != nil {
+		userNodes2, err := uc.UserAtlas.ListByUser(ctx, userID.String())
+		if err != nil {
+			return AtlasView{}, fmt.Errorf("profile.GetAtlas: user-atlas: %w", err)
+		}
+		for _, un := range userNodes2 {
+			out.Nodes = append(out.Nodes, AtlasNode{
+				Key:         un.NodeKey,
+				Title:       un.Title,
+				Description: un.Description,
+				Section:     enums.Section(un.Section),
+				Kind:        un.Kind,
+				Cluster:     un.Cluster,
+				// User-added nodes начинают с zero progress; юзер сам
+				// allocate'ит их через atlas/allocate flow.
+				Progress:    0,
+				Unlocked:    false,
+				Reachable:   true, // показываем сразу — это его собственная тема
+				IsUserOwned: true,
+			})
+		}
+	}
+	// Phase 3 — overlay pinned/hidden prefs. Best-effort: nil repo / read
+	// error → no annotation, не валим atlas.
+	if uc.Prefs != nil {
+		if prefs, err := uc.Prefs.ListByUser(ctx, userID.String()); err == nil {
+			byKey := make(map[string]domain.AtlasNodePref, len(prefs))
+			for _, p := range prefs {
+				byKey[p.NodeKey] = p
+			}
+			for i := range out.Nodes {
+				if p, ok := byKey[out.Nodes[i].Key]; ok {
+					out.Nodes[i].Pinned = p.Pinned
+					out.Nodes[i].Hidden = p.Hidden
+				}
+			}
+		}
 	}
 	// PoE allocation semantics — compute reachability after the slice is
 	// fully populated (we need the set of mastered keys + edge graph to

@@ -78,8 +78,11 @@ func (r *MockReader) LastNFinished(ctx context.Context, userID uuid.UUID, n int)
 		if finishedAt != nil {
 			s.FinishedAt = *finishedAt
 		}
-		// Best-effort parse ai_report.{score, weak_topics}.
+		// Best-effort parse ai_report.{score, weak_topics}. Raw bytes
+		// сохраняем для consumer'ов которым нужен per-axis breakdown
+		// (skill radar и т.п.).
 		if len(report) > 0 {
+			s.AIReportRaw = append(s.AIReportRaw, report...)
 			var raw struct {
 				Score      int      `json:"score"`
 				WeakTopics []string `json:"weak_topics"`
@@ -1041,3 +1044,323 @@ func nullableDate(t *time.Time) any {
 	}
 	return *t
 }
+
+// ── ExternalActivityReader: services/hone external_activity (миграция 00037) ──
+
+// ExternalActivityReader реализует domain.ExternalActivityReader поверх
+// external_activity-таблицы. Используется DailyBrief'ом и ai_tutor
+// SnapshotProvider'ом для cross-track recall (Sergey учится SQL на
+// LeetCode, math на Coursera, python где-то ещё — coach должен видеть).
+type ExternalActivityReader struct{ pool *pgxpool.Pool }
+
+func NewExternalActivityReader(pool *pgxpool.Pool) *ExternalActivityReader {
+	return &ExternalActivityReader{pool: pool}
+}
+
+func (r *ExternalActivityReader) SummaryWindow(
+	ctx context.Context,
+	userID uuid.UUID,
+	days int,
+) (domain.ExternalActivitySummary, error) {
+	if days <= 0 || days > 90 {
+		days = 7
+	}
+	since := time.Now().UTC().Add(-time.Duration(days) * 24 * time.Hour)
+
+	// Single row aggregate + 2 small lists. Делать один JOIN ради
+	// «top topics» дороже чем три коротких запроса по индексу
+	// idx_external_activity_user_date.
+	const aggSQL = `
+		SELECT
+		    COALESCE(SUM(duration_min), 0)::int AS total_min,
+		    COALESCE(array_agg(DISTINCT source) FILTER (WHERE source IS NOT NULL), '{}') AS sources
+		FROM external_activity
+		WHERE user_id = $1 AND occurred_at >= $2`
+	out := domain.ExternalActivitySummary{}
+	err := r.pool.QueryRow(ctx, aggSQL, pgtype.UUID{Bytes: userID, Valid: true}, since).
+		Scan(&out.MinutesWindow, &out.Sources)
+	if err != nil {
+		return domain.ExternalActivitySummary{}, fmt.Errorf("ExternalActivityReader.SummaryWindow agg: %w", err)
+	}
+	if out.MinutesWindow == 0 {
+		return out, nil
+	}
+
+	// Top-3 topics: prefer atlas-node title (JOIN на atlas_nodes для
+	// title); если ничего, fallback на topic_free_text. Группируем по
+	// (atlas_node_id, free_text), сортируем по total minutes за окно.
+	const topicsSQL = `
+		SELECT COALESCE(an.title, e.topic_free_text) AS label,
+		       SUM(e.duration_min) AS mins
+		FROM external_activity e
+		LEFT JOIN atlas_nodes an ON an.id = e.topic_atlas_node_id
+		WHERE e.user_id = $1 AND e.occurred_at >= $2
+		GROUP BY label
+		ORDER BY mins DESC
+		LIMIT 3`
+	rows, err := r.pool.Query(ctx, topicsSQL, pgtype.UUID{Bytes: userID, Valid: true}, since)
+	if err != nil {
+		return out, fmt.Errorf("ExternalActivityReader.SummaryWindow topics: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var label string
+		var mins int
+		if err := rows.Scan(&label, &mins); err != nil {
+			return out, fmt.Errorf("ExternalActivityReader.SummaryWindow topics scan: %w", err)
+		}
+		if label == "" {
+			continue
+		}
+		out.TopTopics = append(out.TopTopics, label)
+	}
+	return out, rows.Err()
+}
+
+// ── ResourceEngagementReader: services/learning-companion user_resource_log (00055) ──
+//
+// Phase 1.7c. Источник для RESOURCE TRAIL prompt block + resource_engagement
+// producer (Phase 1.7d). _ = json чтобы не дёргать драйверов (см ниже:
+// reflection_text — обычная text-колонка, не jsonb).
+
+type ResourceEngagementReader struct{ pool *pgxpool.Pool }
+
+func NewResourceEngagementReader(pool *pgxpool.Pool) *ResourceEngagementReader {
+	return &ResourceEngagementReader{pool: pool}
+}
+
+func (r *ResourceEngagementReader) EngagementWindow(
+	ctx context.Context,
+	userID uuid.UUID,
+	days, keepRecent int,
+) (domain.ResourceEngagement, error) {
+	if days <= 0 {
+		days = 7
+	}
+	if keepRecent <= 0 || keepRecent > 25 {
+		keepRecent = 5
+	}
+	since := time.Now().Add(-time.Duration(days) * 24 * time.Hour)
+
+	out := domain.ResourceEngagement{}
+
+	// Per-kind sweep — single query, фильтруем по kind на app уровне.
+	const eventsSQL = `
+		SELECT resource_url, COALESCE(atlas_node_id, ''), kind, occurred_at,
+		       COALESCE(reflection_text, '')
+		  FROM user_resource_log
+		 WHERE user_id = $1 AND occurred_at >= $2
+		 ORDER BY occurred_at DESC`
+	rows, err := r.pool.Query(ctx, eventsSQL, sharedpg.UUID(userID), since)
+	if err != nil {
+		return domain.ResourceEngagement{}, fmt.Errorf("ResourceEngagementReader.EngagementWindow: %w", err)
+	}
+	defer rows.Close()
+
+	now := time.Now()
+	clickedURLs := make(map[string]struct{})
+	finishedURLs := make(map[string]struct{})
+	skippedURLs := make(map[string]struct{})
+
+	for rows.Next() {
+		var (
+			url, nodeID, kind, refl string
+			occ                     time.Time
+		)
+		if err := rows.Scan(&url, &nodeID, &kind, &occ, &refl); err != nil {
+			return domain.ResourceEngagement{}, fmt.Errorf("ResourceEngagementReader scan: %w", err)
+		}
+		touch := domain.ResourceTouch{
+			URL:         url,
+			AtlasNodeID: nodeID,
+			Kind:        kind,
+			OccurredAt:  occ,
+			HoursAgo:    int(now.Sub(occ).Hours()),
+			Reflection:  refl,
+		}
+		switch kind {
+		case "clicked":
+			clickedURLs[url] = struct{}{}
+		case "finished":
+			finishedURLs[url] = struct{}{}
+			if len(out.FinishedRecent) < keepRecent {
+				out.FinishedRecent = append(out.FinishedRecent, touch)
+			}
+		case "skipped":
+			skippedURLs[url] = struct{}{}
+		case "unhelpful":
+			if len(out.MarkedUnhelpful) < keepRecent {
+				out.MarkedUnhelpful = append(out.MarkedUnhelpful, touch)
+			}
+		case "reflection_submitted":
+			if refl != "" && len(out.RecentReflections) < keepRecent {
+				out.RecentReflections = append(out.RecentReflections, touch)
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return domain.ResourceEngagement{}, fmt.Errorf("ResourceEngagementReader rows: %w", err)
+	}
+
+	// UnfinishedCount: clicked но не finished/skipped в окне.
+	for url := range clickedURLs {
+		if _, fin := finishedURLs[url]; fin {
+			continue
+		}
+		if _, sk := skippedURLs[url]; sk {
+			continue
+		}
+		out.UnfinishedCount++
+	}
+	return out, nil
+}
+
+// ── ForkProgressReader: services/learning_state + mock_sessions cross-ref ──
+//
+// Phase 1.7c. Источник для FORK STATUS prompt block (только при mode=='explore')
+// + fork_progress producer (Phase 1.7d) + admin learning-state tab.
+//
+// Branch scoring rule:
+//   - "mle": mock_sessions.section IN ('ml_eng')
+//   - "de":  mock_sessions.section IN ('de')
+// Voluntary-deep-dive count — number of distinct atlas_nodes под fork-cluster
+// touched через user_resource_log (kind='clicked'|'finished') за explore окно.
+//
+// _ = json (no jsonb-decode здесь).
+
+type ForkProgressReader struct{ pool *pgxpool.Pool }
+
+func NewForkProgressReader(pool *pgxpool.Pool) *ForkProgressReader {
+	return &ForkProgressReader{pool: pool}
+}
+
+func (r *ForkProgressReader) Snapshot(
+	ctx context.Context,
+	userID uuid.UUID,
+) (domain.ForkProgressSnapshot, error) {
+	out := domain.ForkProgressSnapshot{}
+
+	// learning_state row (lazy-create в services/learning_state). Здесь
+	// читаем напрямую — UC может быть не вызван ещё.
+	var (
+		mode             string
+		fork             *string
+		exploreStartedAt time.Time
+	)
+	err := r.pool.QueryRow(ctx,
+		`SELECT mode, fork_branch, explore_started_at
+		   FROM learning_state WHERE user_id = $1`,
+		sharedpg.UUID(userID),
+	).Scan(&mode, &fork, &exploreStartedAt)
+	if err != nil {
+		// Если строки нет — юзер default-explore, ExploreWeekIndex=1.
+		// Проще вернуть empty snapshot чем валить prompt.
+		if strings.Contains(err.Error(), "no rows") {
+			return domain.ForkProgressSnapshot{
+				Mode:             "explore",
+				ExploreWeekIndex: 1,
+			}, nil
+		}
+		return domain.ForkProgressSnapshot{}, fmt.Errorf("ForkProgressReader.Snapshot learning_state: %w", err)
+	}
+	out.Mode = mode
+	if fork != nil {
+		out.CurrentBranch = *fork
+	}
+	if mode == "explore" {
+		weeks := int(time.Since(exploreStartedAt).Hours()/(24*7)) + 1
+		if weeks < 1 {
+			weeks = 1
+		}
+		out.ExploreWeekIndex = weeks
+	}
+
+	// Per-branch mock scores — последние finished mock_sessions с section
+	// 'ml_eng' / 'de'. ai_report.overall_score сохраняем как float (0..100).
+	const mocksSQL = `
+		SELECT section, COALESCE((ai_report->>'overall_score')::float, 0) AS score
+		  FROM mock_sessions
+		 WHERE user_id = $1
+		   AND status = 'finished'
+		   AND section IN ('ml_eng', 'de')`
+	rows, err := r.pool.Query(ctx, mocksSQL, sharedpg.UUID(userID))
+	if err != nil {
+		return out, fmt.Errorf("ForkProgressReader mocks: %w", err)
+	}
+	defer rows.Close()
+
+	branchScores := map[string]*domain.ForkBranchScore{
+		"mle": {Branch: "mle"},
+		"de":  {Branch: "de"},
+	}
+	for rows.Next() {
+		var section string
+		var score float64
+		if err := rows.Scan(&section, &score); err != nil {
+			return out, fmt.Errorf("ForkProgressReader mocks scan: %w", err)
+		}
+		key := "mle"
+		if section == "de" {
+			key = "de"
+		}
+		bs := branchScores[key]
+		bs.MockCount++
+		bs.AvgScore += score
+	}
+	if err := rows.Err(); err != nil {
+		return out, fmt.Errorf("ForkProgressReader mocks iter: %w", err)
+	}
+
+	// Voluntary deep-dives — distinct atlas-nodes под cluster (ml/de),
+	// touched через user_resource_log за explore окно.
+	const dedupSQL = `
+		SELECT COALESCE(an.cluster, ''), COUNT(DISTINCT url.atlas_node_id) AS dives
+		  FROM user_resource_log url
+		  JOIN atlas_nodes an ON an.id = url.atlas_node_id
+		 WHERE url.user_id = $1
+		   AND url.kind IN ('clicked', 'finished')
+		   AND url.occurred_at >= $2
+		   AND an.cluster IN ('ml', 'de', 'ml_platform')
+		 GROUP BY an.cluster`
+	since := exploreStartedAt
+	if mode != "explore" {
+		since = time.Now().Add(-30 * 24 * time.Hour) // последний месяц для commit/deep
+	}
+	dRows, err := r.pool.Query(ctx, dedupSQL, sharedpg.UUID(userID), since)
+	if err != nil {
+		return out, fmt.Errorf("ForkProgressReader deep-dives: %w", err)
+	}
+	defer dRows.Close()
+	for dRows.Next() {
+		var cluster string
+		var dives int
+		if err := dRows.Scan(&cluster, &dives); err != nil {
+			return out, fmt.Errorf("ForkProgressReader deep-dives scan: %w", err)
+		}
+		key := "mle"
+		if cluster == "de" {
+			key = "de"
+		}
+		// ml + ml_platform оба считаются под "mle".
+		branchScores[key].VoluntaryDeepDives += dives
+	}
+	if err := dRows.Err(); err != nil {
+		return out, fmt.Errorf("ForkProgressReader deep-dives iter: %w", err)
+	}
+
+	// Финализируем avg + ordering.
+	for _, bs := range branchScores {
+		if bs.MockCount > 0 {
+			bs.AvgScore /= float64(bs.MockCount)
+		}
+	}
+	out.ScoresByBranch = []domain.ForkBranchScore{
+		*branchScores["mle"],
+		*branchScores["de"],
+	}
+	return out, nil
+}
+
+// keep unused import _ = json в reach (на случай если в reader'ах далее
+// добавим jsonb-decode); не дёргает компилятор.
+var _ = json.RawMessage(nil)

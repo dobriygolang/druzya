@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { cn } from '../../lib/cn'
-import { useRatingMeQuery } from '../../lib/queries/rating'
-import { useStreakQuery } from '../../lib/queries/daily'
 import {
   PROFILE_TABS_OWN,
   PROFILE_TABS_PUBLIC,
@@ -14,11 +12,7 @@ import {
 
 export function Hero({ vm }: { vm: ProfileViewModel }) {
   const { t } = useTranslation('profile')
-  const { data: rating } = useRatingMeQuery()
-  const { data: streak } = useStreakQuery()
-  const algo = rating?.ratings?.find((r) => r.section === 'algorithms')
-  const matches = algo?.matches_count ?? 0
-  const streakCur = streak?.current ?? 0
+  const matches = 0  // pivot 2026-05-01: rating service удалён, matches counter dead
   return (
     <div
       className="relative flex flex-col items-start justify-between gap-5 border-b border-border bg-surface-1 px-4 py-6 sm:px-8 lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:py-0"
@@ -38,7 +32,6 @@ export function Hero({ vm }: { vm: ProfileViewModel }) {
           <div className="mt-2 flex flex-wrap items-center gap-4 lg:gap-6">
             <HeroStat label={t('rank')} value={vm.title} sub={`Lv ${vm.level}`} />
             <HeroStat label={t('gps')} value={`${vm.globalPowerScore}`} sub={t('matches', { count: matches })} />
-            {vm.isOwn && <HeroStat label={t('streak')} value={`${streakCur} 🔥`} sub={t('days')} />}
             <HeroStat label={t('class')} value={vm.charClass} sub={vm.careerStage} />
           </div>
         </div>

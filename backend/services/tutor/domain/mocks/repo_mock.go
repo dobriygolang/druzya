@@ -87,6 +87,21 @@ func (mr *MockRepoMockRecorder) EndRelationship(ctx, tutorID, studentID, now any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EndRelationship", reflect.TypeOf((*MockRepo)(nil).EndRelationship), ctx, tutorID, studentID, now)
 }
 
+// FindUserByUsername mocks base method.
+func (m *MockRepo) FindUserByUsername(ctx context.Context, username string) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindUserByUsername", ctx, username)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindUserByUsername indicates an expected call of FindUserByUsername.
+func (mr *MockRepoMockRecorder) FindUserByUsername(ctx, username any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUserByUsername", reflect.TypeOf((*MockRepo)(nil).FindUserByUsername), ctx, username)
+}
+
 // GetInviteByCode mocks base method.
 func (m *MockRepo) GetInviteByCode(ctx context.Context, code string) (domain.Invite, error) {
 	m.ctrl.T.Helper()
@@ -100,6 +115,21 @@ func (m *MockRepo) GetInviteByCode(ctx context.Context, code string) (domain.Inv
 func (mr *MockRepoMockRecorder) GetInviteByCode(ctx, code any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInviteByCode", reflect.TypeOf((*MockRepo)(nil).GetInviteByCode), ctx, code)
+}
+
+// ListPendingInvitesForUser mocks base method.
+func (m *MockRepo) ListPendingInvitesForUser(ctx context.Context, userID uuid.UUID, now time.Time) ([]domain.Invite, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListPendingInvitesForUser", ctx, userID, now)
+	ret0, _ := ret[0].([]domain.Invite)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListPendingInvitesForUser indicates an expected call of ListPendingInvitesForUser.
+func (mr *MockRepoMockRecorder) ListPendingInvitesForUser(ctx, userID, now any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPendingInvitesForUser", reflect.TypeOf((*MockRepo)(nil).ListPendingInvitesForUser), ctx, userID, now)
 }
 
 // ListStudentTutors mocks base method.

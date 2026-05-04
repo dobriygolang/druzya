@@ -24,6 +24,7 @@ import {
 } from '../api/tasks';
 import { AICursor } from '../components/AICursor';
 import { useSessionStore } from '../stores/session';
+import { useTrackStore } from '../stores/track';
 
 // ── Config ─────────────────────────────────────────────────────────────
 
@@ -164,15 +165,26 @@ export function TaskBoardPage(): JSX.Element {
     return () => close();
   }, [accessToken, refresh]);
 
+  // Active study mode filter — задачи с skill_key вне выбранного track'а
+  // скрываем. Mode 'general' = passthrough.
+  const itemMatchesActive = useTrackStore((s) => s.itemMatchesActive);
+  const loadAtlasTracks = useTrackStore((s) => s.loadAtlasTracks);
+  useEffect(() => {
+    void loadAtlasTracks();
+  }, [loadAtlasTracks]);
+
   // Filter pipeline
   const visibleTasks = useMemo(() => {
-    if (tab !== 'week') return tasks;
-    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return tasks.filter((t) => {
-      const ts = Date.parse(t.updatedAt || t.createdAt);
-      return Number.isFinite(ts) && ts >= cutoff;
-    });
-  }, [tasks, tab]);
+    let arr = tasks.filter((t) => itemMatchesActive(t.skillKey ?? ''));
+    if (tab === 'week') {
+      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      arr = arr.filter((t) => {
+        const ts = Date.parse(t.updatedAt || t.createdAt);
+        return Number.isFinite(ts) && ts >= cutoff;
+      });
+    }
+    return arr;
+  }, [tasks, tab, itemMatchesActive]);
 
   const colsToShow = COLUMNS.filter((c) => c.status !== 'dismissed');
 

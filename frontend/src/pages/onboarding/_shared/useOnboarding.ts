@@ -25,8 +25,24 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/apiClient'
 
 export const ONBOARDING_LS_KEY = 'druz9.onboarding.step'
+export const ONBOARDING_FOCUS_LS_KEY = 'druz9.onboarding.focus'
 
 export type FocusClass = 'algo' | 'backend' | 'system' | 'concurrency' | 'ds'
+
+/** Read the focus class chosen on Step 2. Used by Step 3 to pick which
+ *  core-skill cards to render. Returns 'algo' as a safe default when
+ *  nothing was stored (skip-flow on Step 2). */
+export function readFocusClass(): FocusClass {
+  try {
+    const raw = localStorage.getItem(ONBOARDING_FOCUS_LS_KEY)
+    if (raw === 'algo' || raw === 'backend' || raw === 'system' || raw === 'concurrency' || raw === 'ds') {
+      return raw
+    }
+  } catch {
+    /* noop */
+  }
+  return 'algo'
+}
 
 export function useOnboarding() {
   const qc = useQueryClient()
@@ -52,11 +68,20 @@ export function useOnboarding() {
   }, [])
 
   const setFocusClass = useMutation({
-    mutationFn: (focusClass: FocusClass) =>
-      api<unknown>('/profile/me/settings', {
+    mutationFn: async (focusClass: FocusClass) => {
+      // Persist locally first so the next step renders class-appropriate
+      // content even if the backend write 404s (current state — endpoint
+      // may not exist yet).
+      try {
+        localStorage.setItem(ONBOARDING_FOCUS_LS_KEY, focusClass)
+      } catch {
+        /* noop */
+      }
+      return api<unknown>('/profile/me/settings', {
         method: 'PUT',
         body: JSON.stringify({ settings: { focus_class: focusClass } }),
-      }).catch(() => null), // tolerate 404 — endpoint may not exist yet
+      }).catch(() => null)
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['profile', 'me'] }),
   })
 

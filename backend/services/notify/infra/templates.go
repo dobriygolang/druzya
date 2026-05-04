@@ -108,6 +108,11 @@ var rawTemplates = map[enums.NotificationType]map[string]string{
 		"ru": `📊 Еженедельный отчёт ({{.Period}}):\n{{.Summary}}`,
 		"en": `📊 Weekly report ({{.Period}}):\n{{.Summary}}`,
 	},
+	// payload: {Title:string, Hours:int, TutorName:string}
+	enums.NotificationTypeAssignmentDueSoon: {
+		"ru": `⏰ Дедлайн через {{.Hours}}ч: «{{.Title}}» от {{.TutorName}}.`,
+		"en": `⏰ Due in {{.Hours}}h: "{{.Title}}" from {{.TutorName}}.`,
+	},
 	// payload: {Username:string optional}
 	enums.NotificationTypeWelcome: {
 		"ru": `👋 Добро пожаловать в druz9{{if .Username}}, {{.Username}}{{end}}! Открой сайт и выбери первую Kata — путь начинается здесь.`,

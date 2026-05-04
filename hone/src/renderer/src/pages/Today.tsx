@@ -40,7 +40,8 @@ import {
 import { invalidateDailyBriefCache } from '../api/intelligence';
 import { listInsights, ackInsight, type Insight as CoachInsight } from '../api/insights';
 import { activeTrack, type ActiveTrack } from '../api/tracks';
-import { nextClubSession, type UpcomingClubSession } from '../api/clubs';
+import { ExternalActivityModal } from '../components/ExternalActivityModal';
+import { useTrackStore } from '../stores/track';
 
 export interface StartFocusArgs {
   planItemId?: string;
@@ -279,9 +280,19 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
     }
   }, [refetch]);
 
-  const inProgress = state.items.filter((i) => i.status === 'in_progress');
-  const todo = state.items.filter((i) => i.status === 'todo');
-  const done = state.items.filter((i) => i.status === 'done');
+  // Active study mode filter — узлы вне выбранного track'а скрываем.
+  // Mode 'general' = passthrough. Hydrate atlas-track map один раз на mount.
+  const itemMatchesActive = useTrackStore((s) => s.itemMatchesActive);
+  const loadAtlasTracks = useTrackStore((s) => s.loadAtlasTracks);
+  const activeTrack = useTrackStore((s) => s.activeTrack);
+  useEffect(() => {
+    void loadAtlasTracks();
+  }, [loadAtlasTracks]);
+  const visible = state.items.filter((i) => itemMatchesActive(i.skillKey));
+  const inProgress = visible.filter((i) => i.status === 'in_progress');
+  const todo = visible.filter((i) => i.status === 'todo');
+  const done = visible.filter((i) => i.status === 'done');
+  void activeTrack;
 
   const header = formatHeader(new Date());
   const empty = state.status === 'ok' && state.items.length === 0 && !adding;
@@ -310,9 +321,11 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
             <name> · step N/M». Empty silently when юзер не enrolled. */}
         <ActiveTrackChip />
 
-        {/* Phase 3 final — next club session chip. Empty silently when
-            нет RSVP'd_yes сессии в ближайшие 14 дней. */}
-        <ClubChip />
+        {/* External activity logger button — structured form modal,
+            не чат (Sergey 2026-05-01: чат-ассоциация с GPT плохая). */}
+        <ExternalActivityChip />
+
+
 
         {/* Phase 1.5b — atomic insight cards. Top-3 from the today
             surface. Empty silently so the page stays minimal. */}
@@ -909,83 +922,6 @@ function ActiveTrackChip() {
   );
 }
 
-// ─── Club session chip (Phase 3 final) ─────────────────────────────────────
-
-// ClubChip — pill «club: <name> · через N ч». Полностью silent если нет
-// RSVP'd_yes сессии — chip lives рядом с ActiveTrackChip и не должен
-// занимать место впустую. Click → web /clubs/:slug (внешний браузер
-// через openExternalLink, like UpcomingEventsChip раньше делал).
-function ClubChip() {
-  const [item, setItem] = useState<UpcomingClubSession | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    void nextClubSession().then((s) => {
-      if (cancelled) return;
-      setItem(s);
-      setLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  if (!loaded || !item) return null;
-
-  // Format «через N ч» / «через N дн» — coarse, нам не нужны минуты.
-  const hours = item.hoursFromNow;
-  const when =
-    hours <= 0
-      ? 'идёт'
-      : hours < 24
-        ? `через ${hours} ч`
-        : `через ${Math.round(hours / 24)} дн`;
-
-  const href = `${window.location.origin.replace(/\/$/, '')}/clubs/${encodeURIComponent(item.clubSlug)}`;
-
-  return (
-    <div
-      className="fadein"
-      style={{
-        marginTop: 6,
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 6,
-        animationDuration: '220ms',
-      }}
-    >
-      <a
-        className="mono"
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        title={`${item.clubName}: ${item.topicTitle}`}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '4px 10px',
-          borderRadius: 999,
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          fontSize: 10.5,
-          letterSpacing: '0.06em',
-          color: 'var(--ink-60)',
-          textDecoration: 'none',
-          maxWidth: 320,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}
-      >
-        <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: '#A78BFA', flexShrink: 0 }} />
-        <span style={{ color: 'var(--ink-40)' }}>club:</span>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.clubName}</span>
-        <span style={{ color: 'var(--ink-40)' }}>· {when}</span>
-      </a>
-    </div>
-  );
-}
-
 // ─── Coach insights strip (Phase 1.5b) ─────────────────────────────────────
 
 // CoachInsightsStrip — top-3 atomic insights from /intelligence/insights.
@@ -1180,4 +1116,49 @@ function errorHeadline(code: Code | null): string {
     default:
       return 'Could not load today’s tasks.';
   }
+}
+
+// ─── External activity chip (structured form trigger) ────────────────────
+//
+// Тонкий pill «+ занятие» в верхней части Today: открывает modal
+// `ExternalActivityModal`. После успешного save — closes modal. Sergey
+// сейчас учится SQL на LeetCode + math на Coursera + Python где-то ещё —
+// этот surface ловит эти эпизоды без чата.
+
+function ExternalActivityChip() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mono focus-ring fadein"
+        style={{
+          marginTop: 6,
+          padding: '4px 10px',
+          fontSize: 10,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-90)',
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.18)',
+          borderRadius: 999,
+          cursor: 'pointer',
+          alignSelf: 'flex-start',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          animationDuration: '220ms',
+        }}
+      >
+        + занятие
+      </button>
+      {open && (
+        <ExternalActivityModal
+          onClose={() => setOpen(false)}
+          onSaved={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
 }

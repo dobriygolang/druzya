@@ -269,6 +269,14 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
 	},
+	TaskMLEngMock: {
+		// ML engineering mock — math depth + ml-system-design.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
 	TaskTutorPreSessionBrief: {
 		// Tutor pre-session brief — narrative prose over aggregated
 		// numbers, ~250 words, Russian. Quality > latency (tutor reads
@@ -310,6 +318,177 @@ var DefaultTaskModelMap = TaskModelMap{
 		// it misses, and whether the reviewer's comments are technically
 		// sound. 70B-class on cloud; 7B Ollama floor for offline work.
 		// Worth the extra latency vs the 8B used in writing feedback.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskAITutorChat: {
+		// AI-tutor chat — open-ended dialogue с 4-layer memory injection.
+		// Quality > latency (студент готов подождать 2-3s на coach reply).
+		// Russian-first контент → Groq Llama 3 70B верхний приоритет.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskAITutorCompact: {
+		// Compaction — small structured task, 8B хватает. Latency не
+		// важна (background trigger, не user-blocking).
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderMistral:    "mistral-small-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskAITutorAssignment: {
+		// Daily assignment generation — structured JSON output. 70B
+		// чтобы качественно подобрать задачу под текущую слабость
+		// студента из snapshot.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskCustomPathGenerate: {
+		// Custom path generation — JSON list of 8-15 topics from
+		// free-form goal. 70B для качественной categorization.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskAtlasClassify: {
+		// Atlas classification — single TODO → JSON {match | new node}.
+		// Дешёвая classification, 8B хватит.
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderMistral:    "mistral-small-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskCurateResource: {
+		// External resource curation — 3-5 best free links per atlas node
+		// со shape {url, title, author, kind, minutes, level, priority,
+		// why}. Background, не user-blocking, но quality > speed: плохой
+		// `why` или мусорный URL = ручная правка Sergey'ем. 70B-class.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskAssistantNextAction: {
+		// Coach hero «one daily action» — structured JSON под user's
+		// state. User-blocking но cached 1/day, quality > latency. 70B.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskAssistantForkAnalysis: {
+		// Weekly fork-analysis (MLE vs DE lean) — confidence-bearing JSON.
+		// Background cron, 70B для качества reasoning под branch scores.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskAssistantRereroll: {
+		// Dismiss-flow alternative action — light JSON gen, latency-bound.
+		// 8B хватает: тот же signals input, нужна только variation.
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderMistral:    "mistral-small-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskNotesLinkSuggest: {
+		// Embed-based candidate retrieval + LLM rerank → JSON list. Quality
+		// > latency (предложения накапливаются, не блокируют typing). 70B
+		// для consistency rerank'а.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskTaskboardCategorise: {
+		// New task → column + tag (today/week/backlog). Light classification,
+		// latency-sensitive (drag-drop UI ждёт), 8B-class.
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderMistral:    "mistral-small-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskAITutorML: {
+		// ml-coach chat — 4-layer memory injection, ML reasoning depth.
+		// 70B-class — те же модели что TaskAITutorChat.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskAITutorDE: {
+		// de-mentor chat — DE reasoning (SQL plans / streaming /
+		// distributed compute). 70B-class.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskCheckpointGrade: {
+		// 5-question quiz grading с rubric — ≥70% unlock'ает следующий
+		// step. Quality важно (false-pass = юзер идёт в гору без базы).
+		// 70B-class.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskReflectionExtract: {
+		// reflection_text + expected concepts → mentioned/missed atlas
+		// node ids. Classification, 8B хватит. Cached per text-hash.
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderMistral:    "mistral-small-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskExtractResourceContent: {
+		// URL+text → full Resource shape (topics, summary, depth, level).
+		// Quality важно — извлечение topics_covered определяет совпадение
+		// с atlas-узлами. 70B-class. Cached per URL hash 7d.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskReflectionGrade: {
+		// takeaways[] + expected topics → quality_score + extracted_topics
+		// + confusion_flag. Latency-sensitive (modal blocks user). Cerebras
+		// 8B-fast preferred (~150 tok/s).
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderMistral:    "mistral-small-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskValidateResource: {
+		// URL + atlas_node desc → alive/reputable/on_topic/score.
+		// Cron-driven, не latency-sensitive. 70B качества для on_topic
+		// judgement.
 		ProviderGroq:       "llama-3.3-70b-versatile",
 		ProviderCerebras:   "llama3.3-70b",
 		ProviderMistral:    "mistral-large-latest",

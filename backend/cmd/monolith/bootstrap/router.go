@@ -182,6 +182,7 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		"/api/v1/auth/telegram":           {},
 		"/api/v1/auth/telegram/start":     {},
 		"/api/v1/auth/telegram/poll":      {},
+		"/api/v1/auth/dev/login":          {}, // INSECURE — only when DEV_AUTH=true
 		"/api/v1/auth/refresh":            {},
 		"/api/v1/stats/public":            {},
 		"/api/v1/languages":               {},
@@ -211,14 +212,12 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// Persona catalogue used by /copilot before sign-in (public hero
 		// shows persona picker even for anonymous visitors).
 		"/api/v1/personas": {},
-		// /api/v1/lobby/list — public discovery for /lobbies. Detail and
-		// code-lookup paths (/lobby/{id}, /lobby/code/{code}) are also
-		// public — see isPublic prefix check below.
-		"/api/v1/lobby/list": {},
-		// Wave 9.1 marketplace browse — public storefront. Per-listing
-		// detail at /api/v1/marketplace/listings/{slug} handled via the
-		// prefix check below so any future detail sub-paths stay public.
-		"/api/v1/marketplace/listings": {},
+		// AI-tutor persona catalogue (см docs/feature/ai-tutor.md) —
+		// public, рендерится на /tutor (Hone) до auth.
+		"/api/v1/ai-tutor/personas": {},
+		// Pivot 2026-05-01: lobby + marketplace выпилены, whitelist-rules
+		// удалены. Если в будущем landing'у понадобятся public-paths —
+		// добавим явно через новые ключи.
 	}
 	isPublic := func(_, p string) bool {
 		if _, ok := publicPaths[p]; ok {
@@ -245,23 +244,10 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 			!strings.HasSuffix(p, "/save") {
 			return true
 		}
-		// /api/v1/marketplace/listings/{slug} — public listing detail
-		// (Wave 9.1). Browse list itself is in publicPaths; detail uses
-		// a prefix check so future read-only sub-paths stay open.
-		if strings.HasPrefix(p, "/api/v1/marketplace/listings/") {
-			return true
-		}
-		// /api/v1/lobby/{id} (GET detail) and /api/v1/lobby/code/{code} —
-		// public read-only paths. POST /lobby itself plus mutation suffixes
-		// (/join, /leave, /start, /cancel) stay gated. We special-case
-		// the bare /lobby pattern by requiring at least one extra segment.
-		if strings.HasPrefix(p, "/api/v1/lobby/") &&
-			!strings.HasSuffix(p, "/join") &&
-			!strings.HasSuffix(p, "/leave") &&
-			!strings.HasSuffix(p, "/start") &&
-			!strings.HasSuffix(p, "/cancel") {
-			return true
-		}
+		// Pivot 2026-05-01: lobby + marketplace prefix-rules выпилены
+		// вместе с сервисами. Намеренно НЕ добавляем catch-all — любая
+		// будущая ручка под /api/v1/lobby/* или /api/v1/marketplace/*
+		// будет приватной по умолчанию.
 		return false
 	}
 	return func(next http.Handler) http.Handler {

@@ -290,17 +290,18 @@ function PrepDrawer({ onClose, missing }: { onClose: () => void; missing: string
           ) : (
             <>
               <p className="text-sm text-text-secondary">
-                Рекомендуем ежедневные ката на эти технологии:
+                Не закрытые требования — поработай над ними в mock-собесе или
+                добавь в атлас своей подготовки:
               </p>
               <ul className="flex flex-col gap-2">
                 {missing.map((s) => (
-                  <li key={s}>
-                    <Link
-                      to={`/arena/kata?skill=${encodeURIComponent(s)}`}
-                      className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary hover:border-border-strong"
-                    >
-                      <span className="font-mono">{s}</span>
-                      <span className="text-xs text-text-primary">Ката →</span>
+                  <li
+                    key={s}
+                    className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary"
+                  >
+                    <span className="font-mono">{s}</span>
+                    <Link to="/mock" className="text-xs text-accent hover:underline">
+                      mock →
                     </Link>
                   </li>
                 ))}

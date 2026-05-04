@@ -91,7 +91,36 @@ type Step struct {
 	RequiredCount      int
 	RecommendedReading []string
 	EstimatedMinutes   int
+
+	// Phase 1a step UX flow (миграция 00050):
+	// CheckpointSkillKeys — какие skill-теги юзаются для 5-question
+	// checkpoint quiz из mock_pool. Empty = step без checkpoint (e.g.
+	// сам step — mock).
+	CheckpointSkillKeys []string
+	// ReflectionRequired — обязать reflection после core resource
+	// (auto-creates Note + auto-link на atlas-node через
+	// TaskReflectionExtract в Phase 5).
+	ReflectionRequired bool
+	// GraduationMockSection — enums.Section value для optional
+	// graduation AI-mock после step. Empty = closed by checkpoint.
+	GraduationMockSection string
 }
+
+// CheckpointAttempt — Phase 2/2 step UX. Запись в step_checkpoint_attempts
+// (миграция 00056).
+type CheckpointAttempt struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	TrackID    uuid.UUID
+	StepIndex  int
+	Score      int    // 0..100
+	Attempts   []byte // raw JSON: array of {question_id, user_answer, model_answer, correct, comment}
+	PassedAt   *time.Time
+	CreatedAt  time.Time
+}
+
+// CheckpointPassThreshold — score >= 70 unlocks следующий step.
+const CheckpointPassThreshold = 70
 
 // TrackWithSteps is the read projection used by Track-detail page.
 type TrackWithSteps struct {

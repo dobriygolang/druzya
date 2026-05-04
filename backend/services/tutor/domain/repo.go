@@ -56,4 +56,14 @@ type Repo interface {
 	// EndRelationship soft-ends the relationship. Used by tutor («I'm
 	// no longer working with this student») or by admin moderation.
 	EndRelationship(ctx context.Context, tutorID, studentID uuid.UUID, now time.Time) error
+
+	// FindUserByUsername resolves @username → user_id. ErrNotFound если
+	// нет такого юзера. Используется InviteByUsername UC чтобы pre-bind
+	// invite к конкретному юзеру.
+	FindUserByUsername(ctx context.Context, username string) (uuid.UUID, error)
+
+	// ListPendingInvitesForUser возвращает все active invites где
+	// target_user_id = userID. Используется на student-side («тебя
+	// пригласили N туторов»).
+	ListPendingInvitesForUser(ctx context.Context, userID uuid.UUID, now time.Time) ([]Invite, error)
 }

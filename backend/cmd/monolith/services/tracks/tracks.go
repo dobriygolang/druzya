@@ -3,8 +3,11 @@
 package tracks
 
 import (
+	"context"
+
 	monolithServices "druz9/cmd/monolith/services"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
+	"druz9/shared/pkg/llmchain"
 	tracksApp "druz9/tracks/app"
 	tracksInfra "druz9/tracks/infra"
 	tracksPorts "druz9/tracks/ports"
@@ -25,6 +28,29 @@ func NewTracks(d monolithServices.Deps) *monolithServices.Module {
 		&tracksApp.LeaveTrack{Members: repo},
 		d.Log,
 	)
+	// Phase 3.2 — AI-generated custom path. nil-safe: без llmchain endpoint
+	// возвращает Unimplemented, фронт показывает «coming soon» баннер.
+	if d.LLMChain != nil {
+		server.CustomPath = &tracksApp.GenerateCustomPath{
+			LLM: &customPathLLMAdapter{chain: d.LLMChain},
+		}
+	}
+
+	// Phase 2 step UX (2026-05-04). StartCheckpoint работает без LLM
+	// (только catalog read), Submit требует chain — wire'им оба только
+	// когда llmchain доступен, чтобы не отдавать broken Submit.
+	server.StartCheckpointUC = &tracksApp.StartCheckpoint{
+		Catalog:     repo,
+		Checkpoints: repo,
+	}
+	if d.LLMChain != nil {
+		server.SubmitCheckpointUC = &tracksApp.SubmitCheckpoint{
+			Catalog:     repo,
+			Checkpoints: repo,
+			Chain:       d.LLMChain,
+		}
+	}
+
 	connectPath, connectHandler := druz9v1connect.NewTracksServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("tracks", connectPath, connectHandler)
 	return &monolithServices.Module{
@@ -32,11 +58,6 @@ func NewTracks(d monolithServices.Deps) *monolithServices.Module {
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			// /tracks (catalogue read) is auth-required at the chain level
-			// because catalogue cards show "joined / not joined" — without
-			// auth there's no user-context to render. If a public preview
-			// is needed later, lift to MountPublicREST and split the use
-			// cases that require auth.
 			r.Get("/tracks", transcoder.ServeHTTP)
 			r.Get("/tracks/me", transcoder.ServeHTTP)
 			r.Get("/tracks/{slug}", transcoder.ServeHTTP)
@@ -44,6 +65,34 @@ func NewTracks(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/tracks/{track_id}/advance", transcoder.ServeHTTP)
 			r.Post("/tracks/{track_id}/pause", transcoder.ServeHTTP)
 			r.Post("/tracks/{track_id}/leave", transcoder.ServeHTTP)
+			r.Post("/tracks/custom-path/generate", transcoder.ServeHTTP)
+			// Phase 2 step UX REST-aliases.
+			r.Post("/tracks/{track_id}/steps/{step_index}/checkpoint/start", transcoder.ServeHTTP)
+			r.Post("/tracks/{track_id}/steps/{step_index}/checkpoint/submit", transcoder.ServeHTTP)
 		},
 	}
+}
+
+// customPathLLMAdapter — adapter llmchain.ChatClient → tracksApp.PathLLMDispatcher.
+type customPathLLMAdapter struct{ chain llmchain.ChatClient }
+
+func (a *customPathLLMAdapter) GenerateCustomPath(ctx context.Context, goal string) ([]tracksApp.CustomPathNode, error) {
+	if a == nil || a.chain == nil {
+		return nil, nil
+	}
+	prompt := tracksApp.PromptCustomPath(goal)
+	resp, err := a.chain.Chat(ctx, llmchain.Request{
+		Task: llmchain.TaskCustomPathGenerate,
+		Messages: []llmchain.Message{
+			{Role: llmchain.RoleSystem, Content: "Ты — coach по подготовке к собесу. Возвращай ТОЛЬКО валидный JSON."},
+			{Role: llmchain.RoleUser, Content: prompt},
+		},
+		Temperature: 0.4,
+		MaxTokens:   1500,
+		JSONMode:    true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tracksApp.ParseLLMResponse(resp.Content)
 }

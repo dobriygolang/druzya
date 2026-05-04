@@ -1000,6 +1000,585 @@ func (x *LeaveTrackResponse) GetOk() bool {
 	return false
 }
 
+// StartCheckpointRequest — UI хочет открыть checkpoint quiz CTA.
+type StartCheckpointRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TrackId       string                 `protobuf:"bytes,1,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
+	StepIndex     int32                  `protobuf:"varint,2,opt,name=step_index,json=stepIndex,proto3" json:"step_index,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartCheckpointRequest) Reset() {
+	*x = StartCheckpointRequest{}
+	mi := &file_druz9_v1_tracks_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartCheckpointRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartCheckpointRequest) ProtoMessage() {}
+
+func (x *StartCheckpointRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tracks_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartCheckpointRequest.ProtoReflect.Descriptor instead.
+func (*StartCheckpointRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tracks_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *StartCheckpointRequest) GetTrackId() string {
+	if x != nil {
+		return x.TrackId
+	}
+	return ""
+}
+
+func (x *StartCheckpointRequest) GetStepIndex() int32 {
+	if x != nil {
+		return x.StepIndex
+	}
+	return 0
+}
+
+// StartCheckpointResponse — backend возвращает skill_keys (handler уже
+// pull'ит 5 questions из mock_pool by these keys) + признак passed.
+type StartCheckpointResponse struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	StepTitle             string                 `protobuf:"bytes,1,opt,name=step_title,json=stepTitle,proto3" json:"step_title,omitempty"`
+	SkillKeys             []string               `protobuf:"bytes,2,rep,name=skill_keys,json=skillKeys,proto3" json:"skill_keys,omitempty"`                                 // step.skill_keys
+	CheckpointSkillKeys   []string               `protobuf:"bytes,3,rep,name=checkpoint_skill_keys,json=checkpointSkillKeys,proto3" json:"checkpoint_skill_keys,omitempty"` // что quizz'им
+	AlreadyPassed         bool                   `protobuf:"varint,4,opt,name=already_passed,json=alreadyPassed,proto3" json:"already_passed,omitempty"`
+	ReflectionRequired    bool                   `protobuf:"varint,5,opt,name=reflection_required,json=reflectionRequired,proto3" json:"reflection_required,omitempty"`
+	GraduationMockSection string                 `protobuf:"bytes,6,opt,name=graduation_mock_section,json=graduationMockSection,proto3" json:"graduation_mock_section,omitempty"` // '' если closed by checkpoint
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *StartCheckpointResponse) Reset() {
+	*x = StartCheckpointResponse{}
+	mi := &file_druz9_v1_tracks_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartCheckpointResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartCheckpointResponse) ProtoMessage() {}
+
+func (x *StartCheckpointResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tracks_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartCheckpointResponse.ProtoReflect.Descriptor instead.
+func (*StartCheckpointResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tracks_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *StartCheckpointResponse) GetStepTitle() string {
+	if x != nil {
+		return x.StepTitle
+	}
+	return ""
+}
+
+func (x *StartCheckpointResponse) GetSkillKeys() []string {
+	if x != nil {
+		return x.SkillKeys
+	}
+	return nil
+}
+
+func (x *StartCheckpointResponse) GetCheckpointSkillKeys() []string {
+	if x != nil {
+		return x.CheckpointSkillKeys
+	}
+	return nil
+}
+
+func (x *StartCheckpointResponse) GetAlreadyPassed() bool {
+	if x != nil {
+		return x.AlreadyPassed
+	}
+	return false
+}
+
+func (x *StartCheckpointResponse) GetReflectionRequired() bool {
+	if x != nil {
+		return x.ReflectionRequired
+	}
+	return false
+}
+
+func (x *StartCheckpointResponse) GetGraduationMockSection() string {
+	if x != nil {
+		return x.GraduationMockSection
+	}
+	return ""
+}
+
+// CheckpointAnswer — single Q+A pair от UI.
+type CheckpointAnswer struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	QuestionId    string                 `protobuf:"bytes,1,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
+	Question      string                 `protobuf:"bytes,2,opt,name=question,proto3" json:"question,omitempty"`
+	UserAnswer    string                 `protobuf:"bytes,3,opt,name=user_answer,json=userAnswer,proto3" json:"user_answer,omitempty"`
+	ModelAnswer   string                 `protobuf:"bytes,4,opt,name=model_answer,json=modelAnswer,proto3" json:"model_answer,omitempty"` // optional reference для grader
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckpointAnswer) Reset() {
+	*x = CheckpointAnswer{}
+	mi := &file_druz9_v1_tracks_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckpointAnswer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckpointAnswer) ProtoMessage() {}
+
+func (x *CheckpointAnswer) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tracks_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckpointAnswer.ProtoReflect.Descriptor instead.
+func (*CheckpointAnswer) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tracks_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *CheckpointAnswer) GetQuestionId() string {
+	if x != nil {
+		return x.QuestionId
+	}
+	return ""
+}
+
+func (x *CheckpointAnswer) GetQuestion() string {
+	if x != nil {
+		return x.Question
+	}
+	return ""
+}
+
+func (x *CheckpointAnswer) GetUserAnswer() string {
+	if x != nil {
+		return x.UserAnswer
+	}
+	return ""
+}
+
+func (x *CheckpointAnswer) GetModelAnswer() string {
+	if x != nil {
+		return x.ModelAnswer
+	}
+	return ""
+}
+
+// SubmitCheckpointRequest — submit answers для grading.
+type SubmitCheckpointRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TrackId       string                 `protobuf:"bytes,1,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
+	StepIndex     int32                  `protobuf:"varint,2,opt,name=step_index,json=stepIndex,proto3" json:"step_index,omitempty"`
+	Answers       []*CheckpointAnswer    `protobuf:"bytes,3,rep,name=answers,proto3" json:"answers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubmitCheckpointRequest) Reset() {
+	*x = SubmitCheckpointRequest{}
+	mi := &file_druz9_v1_tracks_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubmitCheckpointRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubmitCheckpointRequest) ProtoMessage() {}
+
+func (x *SubmitCheckpointRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tracks_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubmitCheckpointRequest.ProtoReflect.Descriptor instead.
+func (*SubmitCheckpointRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tracks_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *SubmitCheckpointRequest) GetTrackId() string {
+	if x != nil {
+		return x.TrackId
+	}
+	return ""
+}
+
+func (x *SubmitCheckpointRequest) GetStepIndex() int32 {
+	if x != nil {
+		return x.StepIndex
+	}
+	return 0
+}
+
+func (x *SubmitCheckpointRequest) GetAnswers() []*CheckpointAnswer {
+	if x != nil {
+		return x.Answers
+	}
+	return nil
+}
+
+// GradedAnswer — per-question result из TaskCheckpointGrade.
+type GradedAnswer struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	QuestionId    string                 `protobuf:"bytes,1,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
+	UserAnswer    string                 `protobuf:"bytes,2,opt,name=user_answer,json=userAnswer,proto3" json:"user_answer,omitempty"`
+	ModelAnswer   string                 `protobuf:"bytes,3,opt,name=model_answer,json=modelAnswer,proto3" json:"model_answer,omitempty"`
+	Correct       bool                   `protobuf:"varint,4,opt,name=correct,proto3" json:"correct,omitempty"`
+	Comment       string                 `protobuf:"bytes,5,opt,name=comment,proto3" json:"comment,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GradedAnswer) Reset() {
+	*x = GradedAnswer{}
+	mi := &file_druz9_v1_tracks_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GradedAnswer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GradedAnswer) ProtoMessage() {}
+
+func (x *GradedAnswer) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tracks_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GradedAnswer.ProtoReflect.Descriptor instead.
+func (*GradedAnswer) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tracks_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GradedAnswer) GetQuestionId() string {
+	if x != nil {
+		return x.QuestionId
+	}
+	return ""
+}
+
+func (x *GradedAnswer) GetUserAnswer() string {
+	if x != nil {
+		return x.UserAnswer
+	}
+	return ""
+}
+
+func (x *GradedAnswer) GetModelAnswer() string {
+	if x != nil {
+		return x.ModelAnswer
+	}
+	return ""
+}
+
+func (x *GradedAnswer) GetCorrect() bool {
+	if x != nil {
+		return x.Correct
+	}
+	return false
+}
+
+func (x *GradedAnswer) GetComment() string {
+	if x != nil {
+		return x.Comment
+	}
+	return ""
+}
+
+// SubmitCheckpointResponse — score + per-question detail.
+type SubmitCheckpointResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Score         int32                  `protobuf:"varint,1,opt,name=score,proto3" json:"score,omitempty"`   // 0..100
+	Passed        bool                   `protobuf:"varint,2,opt,name=passed,proto3" json:"passed,omitempty"` // score >= 70
+	Attempts      []*GradedAnswer        `protobuf:"bytes,3,rep,name=attempts,proto3" json:"attempts,omitempty"`
+	AttemptId     string                 `protobuf:"bytes,4,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
+	PassedAt      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=passed_at,json=passedAt,proto3" json:"passed_at,omitempty"` // null если not passed
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubmitCheckpointResponse) Reset() {
+	*x = SubmitCheckpointResponse{}
+	mi := &file_druz9_v1_tracks_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubmitCheckpointResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubmitCheckpointResponse) ProtoMessage() {}
+
+func (x *SubmitCheckpointResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tracks_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubmitCheckpointResponse.ProtoReflect.Descriptor instead.
+func (*SubmitCheckpointResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tracks_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SubmitCheckpointResponse) GetScore() int32 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
+}
+
+func (x *SubmitCheckpointResponse) GetPassed() bool {
+	if x != nil {
+		return x.Passed
+	}
+	return false
+}
+
+func (x *SubmitCheckpointResponse) GetAttempts() []*GradedAnswer {
+	if x != nil {
+		return x.Attempts
+	}
+	return nil
+}
+
+func (x *SubmitCheckpointResponse) GetAttemptId() string {
+	if x != nil {
+		return x.AttemptId
+	}
+	return ""
+}
+
+func (x *SubmitCheckpointResponse) GetPassedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PassedAt
+	}
+	return nil
+}
+
+type GenerateCustomPathRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Goal          string                 `protobuf:"bytes,1,opt,name=goal,proto3" json:"goal,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateCustomPathRequest) Reset() {
+	*x = GenerateCustomPathRequest{}
+	mi := &file_druz9_v1_tracks_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateCustomPathRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateCustomPathRequest) ProtoMessage() {}
+
+func (x *GenerateCustomPathRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tracks_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateCustomPathRequest.ProtoReflect.Descriptor instead.
+func (*GenerateCustomPathRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tracks_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GenerateCustomPathRequest) GetGoal() string {
+	if x != nil {
+		return x.Goal
+	}
+	return ""
+}
+
+type CustomPathNode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Group         string                 `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Hint          string                 `protobuf:"bytes,4,opt,name=hint,proto3" json:"hint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomPathNode) Reset() {
+	*x = CustomPathNode{}
+	mi := &file_druz9_v1_tracks_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomPathNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomPathNode) ProtoMessage() {}
+
+func (x *CustomPathNode) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tracks_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomPathNode.ProtoReflect.Descriptor instead.
+func (*CustomPathNode) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tracks_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *CustomPathNode) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CustomPathNode) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *CustomPathNode) GetGroup() string {
+	if x != nil {
+		return x.Group
+	}
+	return ""
+}
+
+func (x *CustomPathNode) GetHint() string {
+	if x != nil {
+		return x.Hint
+	}
+	return ""
+}
+
+type GenerateCustomPathResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Nodes         []*CustomPathNode      `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateCustomPathResponse) Reset() {
+	*x = GenerateCustomPathResponse{}
+	mi := &file_druz9_v1_tracks_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateCustomPathResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateCustomPathResponse) ProtoMessage() {}
+
+func (x *GenerateCustomPathResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tracks_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateCustomPathResponse.ProtoReflect.Descriptor instead.
+func (*GenerateCustomPathResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tracks_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GenerateCustomPathResponse) GetNodes() []*CustomPathNode {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
 var File_druz9_v1_tracks_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_tracks_proto_rawDesc = "" +
@@ -1073,14 +1652,63 @@ const file_druz9_v1_tracks_proto_rawDesc = "" +
 	"\x11LeaveTrackRequest\x12\x19\n" +
 	"\btrack_id\x18\x01 \x01(\tR\atrackId\"$\n" +
 	"\x12LeaveTrackResponse\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok*\xc0\x01\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"R\n" +
+	"\x16StartCheckpointRequest\x12\x19\n" +
+	"\btrack_id\x18\x01 \x01(\tR\atrackId\x12\x1d\n" +
+	"\n" +
+	"step_index\x18\x02 \x01(\x05R\tstepIndex\"\x9b\x02\n" +
+	"\x17StartCheckpointResponse\x12\x1d\n" +
+	"\n" +
+	"step_title\x18\x01 \x01(\tR\tstepTitle\x12\x1d\n" +
+	"\n" +
+	"skill_keys\x18\x02 \x03(\tR\tskillKeys\x122\n" +
+	"\x15checkpoint_skill_keys\x18\x03 \x03(\tR\x13checkpointSkillKeys\x12%\n" +
+	"\x0ealready_passed\x18\x04 \x01(\bR\ralreadyPassed\x12/\n" +
+	"\x13reflection_required\x18\x05 \x01(\bR\x12reflectionRequired\x126\n" +
+	"\x17graduation_mock_section\x18\x06 \x01(\tR\x15graduationMockSection\"\x93\x01\n" +
+	"\x10CheckpointAnswer\x12\x1f\n" +
+	"\vquestion_id\x18\x01 \x01(\tR\n" +
+	"questionId\x12\x1a\n" +
+	"\bquestion\x18\x02 \x01(\tR\bquestion\x12\x1f\n" +
+	"\vuser_answer\x18\x03 \x01(\tR\n" +
+	"userAnswer\x12!\n" +
+	"\fmodel_answer\x18\x04 \x01(\tR\vmodelAnswer\"\x89\x01\n" +
+	"\x17SubmitCheckpointRequest\x12\x19\n" +
+	"\btrack_id\x18\x01 \x01(\tR\atrackId\x12\x1d\n" +
+	"\n" +
+	"step_index\x18\x02 \x01(\x05R\tstepIndex\x124\n" +
+	"\aanswers\x18\x03 \x03(\v2\x1a.druz9.v1.CheckpointAnswerR\aanswers\"\xa7\x01\n" +
+	"\fGradedAnswer\x12\x1f\n" +
+	"\vquestion_id\x18\x01 \x01(\tR\n" +
+	"questionId\x12\x1f\n" +
+	"\vuser_answer\x18\x02 \x01(\tR\n" +
+	"userAnswer\x12!\n" +
+	"\fmodel_answer\x18\x03 \x01(\tR\vmodelAnswer\x12\x18\n" +
+	"\acorrect\x18\x04 \x01(\bR\acorrect\x12\x18\n" +
+	"\acomment\x18\x05 \x01(\tR\acomment\"\xd4\x01\n" +
+	"\x18SubmitCheckpointResponse\x12\x14\n" +
+	"\x05score\x18\x01 \x01(\x05R\x05score\x12\x16\n" +
+	"\x06passed\x18\x02 \x01(\bR\x06passed\x122\n" +
+	"\battempts\x18\x03 \x03(\v2\x16.druz9.v1.GradedAnswerR\battempts\x12\x1d\n" +
+	"\n" +
+	"attempt_id\x18\x04 \x01(\tR\tattemptId\x127\n" +
+	"\tpassed_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bpassedAt\"/\n" +
+	"\x19GenerateCustomPathRequest\x12\x12\n" +
+	"\x04goal\x18\x01 \x01(\tR\x04goal\"`\n" +
+	"\x0eCustomPathNode\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
+	"\x05group\x18\x03 \x01(\tR\x05group\x12\x12\n" +
+	"\x04hint\x18\x04 \x01(\tR\x04hint\"L\n" +
+	"\x1aGenerateCustomPathResponse\x12.\n" +
+	"\x05nodes\x18\x01 \x03(\v2\x18.druz9.v1.CustomPathNodeR\x05nodes*\xc0\x01\n" +
 	"\rTrackStepKind\x12\x1f\n" +
 	"\x1bTRACK_STEP_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14TRACK_STEP_KIND_KATA\x10\x01\x12\x19\n" +
 	"\x15TRACK_STEP_KIND_ARENA\x10\x02\x12\x18\n" +
 	"\x14TRACK_STEP_KIND_MOCK\x10\x03\x12\x1e\n" +
 	"\x1aTRACK_STEP_KIND_CODEX_READ\x10\x04\x12\x1f\n" +
-	"\x1bTRACK_STEP_KIND_FOCUS_BLOCK\x10\x052\xa3\x06\n" +
+	"\x1bTRACK_STEP_KIND_FOCUS_BLOCK\x10\x052\xff\t\n" +
 	"\rTracksService\x12_\n" +
 	"\n" +
 	"ListTracks\x12\x1b.druz9.v1.ListTracksRequest\x1a\x1c.druz9.v1.ListTracksResponse\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/api/v1/tracks\x12`\n" +
@@ -1091,7 +1719,10 @@ const file_druz9_v1_tracks_proto_rawDesc = "" +
 	"\n" +
 	"PauseTrack\x12\x1b.druz9.v1.PauseTrackRequest\x1a .druz9.v1.LearningTrackEnrolment\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/tracks/{track_id}/pause\x12s\n" +
 	"\n" +
-	"LeaveTrack\x12\x1b.druz9.v1.LeaveTrackRequest\x1a\x1c.druz9.v1.LeaveTrackResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/tracks/{track_id}/leaveB\x88\x01\n" +
+	"LeaveTrack\x12\x1b.druz9.v1.LeaveTrackRequest\x1a\x1c.druz9.v1.LeaveTrackResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/tracks/{track_id}/leave\x12\x8f\x01\n" +
+	"\x12GenerateCustomPath\x12#.druz9.v1.GenerateCustomPathRequest\x1a$.druz9.v1.GenerateCustomPathResponse\".\x82\xd3\xe4\x93\x02(:\x01*\"#/api/v1/tracks/custom-path/generate\x12\xa0\x01\n" +
+	"\x0fStartCheckpoint\x12 .druz9.v1.StartCheckpointRequest\x1a!.druz9.v1.StartCheckpointResponse\"H\x82\xd3\xe4\x93\x02B:\x01*\"=/api/v1/tracks/{track_id}/steps/{step_index}/checkpoint/start\x12\xa4\x01\n" +
+	"\x10SubmitCheckpoint\x12!.druz9.v1.SubmitCheckpointRequest\x1a\".druz9.v1.SubmitCheckpointResponse\"I\x82\xd3\xe4\x93\x02C:\x01*\">/api/v1/tracks/{track_id}/steps/{step_index}/checkpoint/submitB\x88\x01\n" +
 	"\fcom.druz9.v1B\vTracksProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -1107,58 +1738,77 @@ func file_druz9_v1_tracks_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_tracks_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_druz9_v1_tracks_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_druz9_v1_tracks_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_druz9_v1_tracks_proto_goTypes = []any{
-	(TrackStepKind)(0),             // 0: druz9.v1.TrackStepKind
-	(*LearningTrack)(nil),          // 1: druz9.v1.LearningTrack
-	(*TrackStep)(nil),              // 2: druz9.v1.TrackStep
-	(*LearningTrackEnrolment)(nil), // 3: druz9.v1.LearningTrackEnrolment
-	(*LearningTrackProgress)(nil),  // 4: druz9.v1.LearningTrackProgress
-	(*ListTracksRequest)(nil),      // 5: druz9.v1.ListTracksRequest
-	(*ListTracksResponse)(nil),     // 6: druz9.v1.ListTracksResponse
-	(*GetTrackRequest)(nil),        // 7: druz9.v1.GetTrackRequest
-	(*GetTrackResponse)(nil),       // 8: druz9.v1.GetTrackResponse
-	(*ListUserTracksRequest)(nil),  // 9: druz9.v1.ListUserTracksRequest
-	(*ListUserTracksResponse)(nil), // 10: druz9.v1.ListUserTracksResponse
-	(*JoinTrackRequest)(nil),       // 11: druz9.v1.JoinTrackRequest
-	(*AdvanceStepRequest)(nil),     // 12: druz9.v1.AdvanceStepRequest
-	(*PauseTrackRequest)(nil),      // 13: druz9.v1.PauseTrackRequest
-	(*LeaveTrackRequest)(nil),      // 14: druz9.v1.LeaveTrackRequest
-	(*LeaveTrackResponse)(nil),     // 15: druz9.v1.LeaveTrackResponse
-	(*timestamppb.Timestamp)(nil),  // 16: google.protobuf.Timestamp
+	(TrackStepKind)(0),                 // 0: druz9.v1.TrackStepKind
+	(*LearningTrack)(nil),              // 1: druz9.v1.LearningTrack
+	(*TrackStep)(nil),                  // 2: druz9.v1.TrackStep
+	(*LearningTrackEnrolment)(nil),     // 3: druz9.v1.LearningTrackEnrolment
+	(*LearningTrackProgress)(nil),      // 4: druz9.v1.LearningTrackProgress
+	(*ListTracksRequest)(nil),          // 5: druz9.v1.ListTracksRequest
+	(*ListTracksResponse)(nil),         // 6: druz9.v1.ListTracksResponse
+	(*GetTrackRequest)(nil),            // 7: druz9.v1.GetTrackRequest
+	(*GetTrackResponse)(nil),           // 8: druz9.v1.GetTrackResponse
+	(*ListUserTracksRequest)(nil),      // 9: druz9.v1.ListUserTracksRequest
+	(*ListUserTracksResponse)(nil),     // 10: druz9.v1.ListUserTracksResponse
+	(*JoinTrackRequest)(nil),           // 11: druz9.v1.JoinTrackRequest
+	(*AdvanceStepRequest)(nil),         // 12: druz9.v1.AdvanceStepRequest
+	(*PauseTrackRequest)(nil),          // 13: druz9.v1.PauseTrackRequest
+	(*LeaveTrackRequest)(nil),          // 14: druz9.v1.LeaveTrackRequest
+	(*LeaveTrackResponse)(nil),         // 15: druz9.v1.LeaveTrackResponse
+	(*StartCheckpointRequest)(nil),     // 16: druz9.v1.StartCheckpointRequest
+	(*StartCheckpointResponse)(nil),    // 17: druz9.v1.StartCheckpointResponse
+	(*CheckpointAnswer)(nil),           // 18: druz9.v1.CheckpointAnswer
+	(*SubmitCheckpointRequest)(nil),    // 19: druz9.v1.SubmitCheckpointRequest
+	(*GradedAnswer)(nil),               // 20: druz9.v1.GradedAnswer
+	(*SubmitCheckpointResponse)(nil),   // 21: druz9.v1.SubmitCheckpointResponse
+	(*GenerateCustomPathRequest)(nil),  // 22: druz9.v1.GenerateCustomPathRequest
+	(*CustomPathNode)(nil),             // 23: druz9.v1.CustomPathNode
+	(*GenerateCustomPathResponse)(nil), // 24: druz9.v1.GenerateCustomPathResponse
+	(*timestamppb.Timestamp)(nil),      // 25: google.protobuf.Timestamp
 }
 var file_druz9_v1_tracks_proto_depIdxs = []int32{
-	16, // 0: druz9.v1.LearningTrack.created_at:type_name -> google.protobuf.Timestamp
-	16, // 1: druz9.v1.LearningTrack.updated_at:type_name -> google.protobuf.Timestamp
+	25, // 0: druz9.v1.LearningTrack.created_at:type_name -> google.protobuf.Timestamp
+	25, // 1: druz9.v1.LearningTrack.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: druz9.v1.TrackStep.required_kind:type_name -> druz9.v1.TrackStepKind
-	16, // 3: druz9.v1.LearningTrackEnrolment.joined_at:type_name -> google.protobuf.Timestamp
-	16, // 4: druz9.v1.LearningTrackEnrolment.paused_at:type_name -> google.protobuf.Timestamp
-	16, // 5: druz9.v1.LearningTrackEnrolment.completed_at:type_name -> google.protobuf.Timestamp
+	25, // 3: druz9.v1.LearningTrackEnrolment.joined_at:type_name -> google.protobuf.Timestamp
+	25, // 4: druz9.v1.LearningTrackEnrolment.paused_at:type_name -> google.protobuf.Timestamp
+	25, // 5: druz9.v1.LearningTrackEnrolment.completed_at:type_name -> google.protobuf.Timestamp
 	3,  // 6: druz9.v1.LearningTrackProgress.enrolment:type_name -> druz9.v1.LearningTrackEnrolment
 	1,  // 7: druz9.v1.LearningTrackProgress.track:type_name -> druz9.v1.LearningTrack
 	1,  // 8: druz9.v1.ListTracksResponse.items:type_name -> druz9.v1.LearningTrack
 	1,  // 9: druz9.v1.GetTrackResponse.track:type_name -> druz9.v1.LearningTrack
 	2,  // 10: druz9.v1.GetTrackResponse.steps:type_name -> druz9.v1.TrackStep
 	4,  // 11: druz9.v1.ListUserTracksResponse.items:type_name -> druz9.v1.LearningTrackProgress
-	5,  // 12: druz9.v1.TracksService.ListTracks:input_type -> druz9.v1.ListTracksRequest
-	7,  // 13: druz9.v1.TracksService.GetTrack:input_type -> druz9.v1.GetTrackRequest
-	9,  // 14: druz9.v1.TracksService.ListUserTracks:input_type -> druz9.v1.ListUserTracksRequest
-	11, // 15: druz9.v1.TracksService.JoinTrack:input_type -> druz9.v1.JoinTrackRequest
-	12, // 16: druz9.v1.TracksService.AdvanceStep:input_type -> druz9.v1.AdvanceStepRequest
-	13, // 17: druz9.v1.TracksService.PauseTrack:input_type -> druz9.v1.PauseTrackRequest
-	14, // 18: druz9.v1.TracksService.LeaveTrack:input_type -> druz9.v1.LeaveTrackRequest
-	6,  // 19: druz9.v1.TracksService.ListTracks:output_type -> druz9.v1.ListTracksResponse
-	8,  // 20: druz9.v1.TracksService.GetTrack:output_type -> druz9.v1.GetTrackResponse
-	10, // 21: druz9.v1.TracksService.ListUserTracks:output_type -> druz9.v1.ListUserTracksResponse
-	3,  // 22: druz9.v1.TracksService.JoinTrack:output_type -> druz9.v1.LearningTrackEnrolment
-	3,  // 23: druz9.v1.TracksService.AdvanceStep:output_type -> druz9.v1.LearningTrackEnrolment
-	3,  // 24: druz9.v1.TracksService.PauseTrack:output_type -> druz9.v1.LearningTrackEnrolment
-	15, // 25: druz9.v1.TracksService.LeaveTrack:output_type -> druz9.v1.LeaveTrackResponse
-	19, // [19:26] is the sub-list for method output_type
-	12, // [12:19] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	18, // 12: druz9.v1.SubmitCheckpointRequest.answers:type_name -> druz9.v1.CheckpointAnswer
+	20, // 13: druz9.v1.SubmitCheckpointResponse.attempts:type_name -> druz9.v1.GradedAnswer
+	25, // 14: druz9.v1.SubmitCheckpointResponse.passed_at:type_name -> google.protobuf.Timestamp
+	23, // 15: druz9.v1.GenerateCustomPathResponse.nodes:type_name -> druz9.v1.CustomPathNode
+	5,  // 16: druz9.v1.TracksService.ListTracks:input_type -> druz9.v1.ListTracksRequest
+	7,  // 17: druz9.v1.TracksService.GetTrack:input_type -> druz9.v1.GetTrackRequest
+	9,  // 18: druz9.v1.TracksService.ListUserTracks:input_type -> druz9.v1.ListUserTracksRequest
+	11, // 19: druz9.v1.TracksService.JoinTrack:input_type -> druz9.v1.JoinTrackRequest
+	12, // 20: druz9.v1.TracksService.AdvanceStep:input_type -> druz9.v1.AdvanceStepRequest
+	13, // 21: druz9.v1.TracksService.PauseTrack:input_type -> druz9.v1.PauseTrackRequest
+	14, // 22: druz9.v1.TracksService.LeaveTrack:input_type -> druz9.v1.LeaveTrackRequest
+	22, // 23: druz9.v1.TracksService.GenerateCustomPath:input_type -> druz9.v1.GenerateCustomPathRequest
+	16, // 24: druz9.v1.TracksService.StartCheckpoint:input_type -> druz9.v1.StartCheckpointRequest
+	19, // 25: druz9.v1.TracksService.SubmitCheckpoint:input_type -> druz9.v1.SubmitCheckpointRequest
+	6,  // 26: druz9.v1.TracksService.ListTracks:output_type -> druz9.v1.ListTracksResponse
+	8,  // 27: druz9.v1.TracksService.GetTrack:output_type -> druz9.v1.GetTrackResponse
+	10, // 28: druz9.v1.TracksService.ListUserTracks:output_type -> druz9.v1.ListUserTracksResponse
+	3,  // 29: druz9.v1.TracksService.JoinTrack:output_type -> druz9.v1.LearningTrackEnrolment
+	3,  // 30: druz9.v1.TracksService.AdvanceStep:output_type -> druz9.v1.LearningTrackEnrolment
+	3,  // 31: druz9.v1.TracksService.PauseTrack:output_type -> druz9.v1.LearningTrackEnrolment
+	15, // 32: druz9.v1.TracksService.LeaveTrack:output_type -> druz9.v1.LeaveTrackResponse
+	24, // 33: druz9.v1.TracksService.GenerateCustomPath:output_type -> druz9.v1.GenerateCustomPathResponse
+	17, // 34: druz9.v1.TracksService.StartCheckpoint:output_type -> druz9.v1.StartCheckpointResponse
+	21, // 35: druz9.v1.TracksService.SubmitCheckpoint:output_type -> druz9.v1.SubmitCheckpointResponse
+	26, // [26:36] is the sub-list for method output_type
+	16, // [16:26] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_tracks_proto_init() }
@@ -1172,7 +1822,7 @@ func file_druz9_v1_tracks_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_tracks_proto_rawDesc), len(file_druz9_v1_tracks_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   15,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

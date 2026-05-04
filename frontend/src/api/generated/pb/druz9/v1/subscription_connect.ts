@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AdminBoostySyncRequest, AdminBoostySyncResponse, AdminSetTierRequest, AdminSetTierResponse, GetMyTierRequest, GetMyTierResponse, GetQuotaRequest, GetTierByUserIDRequest, GetTierByUserIDResponse, LinkBoostyRequest, LinkBoostyResponse, QuotaSnapshot } from "./subscription_pb.js";
+import { AdminSetTierRequest, AdminSetTierResponse, GetMyTierRequest, GetMyTierResponse, GetQuotaRequest, GetTierByUserIDRequest, GetTierByUserIDResponse, QuotaSnapshot } from "./subscription_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -66,29 +66,6 @@ export const SubscriptionService = {
       name: "GetQuota",
       I: GetQuotaRequest,
       O: QuotaSnapshot,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * LinkBoosty starts the OAuth handshake / saves a manual cookie so we
-     * can sync the user's Boosty subscription tier later.
-     *
-     * @generated from rpc druz9.v1.SubscriptionService.LinkBoosty
-     */
-    linkBoosty: {
-      name: "LinkBoosty",
-      I: LinkBoostyRequest,
-      O: LinkBoostyResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * AdminBoostySync triggers the bulk-resolve job. role=admin required.
-     *
-     * @generated from rpc druz9.v1.SubscriptionService.AdminBoostySync
-     */
-    adminBoostySync: {
-      name: "AdminBoostySync",
-      I: AdminBoostySyncRequest,
-      O: AdminBoostySyncResponse,
       kind: MethodKind.Unary,
     },
   }

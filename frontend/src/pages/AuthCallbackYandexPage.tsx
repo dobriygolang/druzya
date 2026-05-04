@@ -89,7 +89,22 @@ export default function AuthCallbackYandexPage() {
         ) {
           return
         }
-        navigate(isNewUser ? '/onboarding' : '/arena', { replace: true })
+        // Recover ?next= proxied through sessionStorage (LoginPage.tsx stashes
+        // it before the Yandex redirect — URL params don't survive the round
+        // trip). New users always land on /onboarding regardless of `next`,
+        // returning users go to `next` if set, else /today (pivot 2026-05-03:
+        // landing — action-driven dashboard).
+        let dest = isNewUser ? '/onboarding' : '/today'
+        try {
+          const stashedNext = sessionStorage.getItem('oauth_next')
+          if (stashedNext) {
+            sessionStorage.removeItem('oauth_next')
+            if (!isNewUser) dest = stashedNext
+          }
+        } catch {
+          /* private mode — fall through */
+        }
+        navigate(dest, { replace: true })
       } catch (e) {
         if (cancelled) return
         const msg = e instanceof Error ? e.message : String(e)

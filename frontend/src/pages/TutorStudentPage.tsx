@@ -10,9 +10,9 @@
 // The brief is expensive (LLM round-trip) so we don't auto-fetch — only
 // when the tutor opens the Brief tab. Stale-time 60s + window-focus refetch
 // off so opening the page repeatedly doesn't burn provider quota.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -20,6 +20,8 @@ import { ApiError } from '../lib/apiClient'
 import {
   useArchiveAssignmentMutation,
   usePushAssignmentMutation,
+  useSaveSessionNotesMutation,
+  useSessionNotesQuery,
   useStudentBriefQuery,
   useStudentSnapshotQuery,
   useTutorAssignmentsQuery,
@@ -28,7 +30,7 @@ import {
   type TutorWeakSpot,
 } from '../lib/queries/tutor'
 
-type Tab = 'snapshot' | 'brief' | 'assignments'
+type Tab = 'snapshot' | 'brief' | 'assignments' | 'english' | 'notes'
 
 export default function TutorStudentPage() {
   const { id: studentId } = useParams<{ id: string }>()
@@ -66,11 +68,19 @@ export default function TutorStudentPage() {
           <TabButton active={tab === 'assignments'} onClick={() => setTab('assignments')}>
             Assignments
           </TabButton>
+          <TabButton active={tab === 'english'} onClick={() => setTab('english')}>
+            English
+          </TabButton>
+          <TabButton active={tab === 'notes'} onClick={() => setTab('notes')}>
+            Notes
+          </TabButton>
         </div>
 
         {tab === 'snapshot' && <SnapshotPane studentId={studentId} />}
         {tab === 'brief' && <BriefPane studentId={studentId} />}
         {tab === 'assignments' && <AssignmentsPane studentId={studentId} />}
+        {tab === 'english' && <EnglishPane studentId={studentId} />}
+        {tab === 'notes' && <NotesPane studentId={studentId} />}
       </div>
     </div>
   )
@@ -607,4 +617,237 @@ function assignmentStatus(a: TutorAssignment): 'open' | 'overdue' | 'completed' 
   if (a.completed_at) return 'completed'
   if (a.due_at && new Date(a.due_at).getTime() < Date.now()) return 'overdue'
   return 'open'
+}
+
+// ── English pane (Wave pivot 2026-05-03) ──────────────────────────────
+//
+// Тутор-side focused dashboard для English-track студента. Reads existing
+// TutorStudentSnapshot и показывает ТОЛЬКО English axes (Reading /
+// Vocabulary / Writing / Listening / English mocks) — без шума focus
+// minutes / weak spots / notes которые на Snapshot tab.
+//
+// Если студент пока не пользовался Hone-английским — показываем onboarding
+// hints для тутора («покажи как загрузить материал hotkey R»).
+
+function EnglishPane({ studentId }: { studentId: string | undefined }) {
+  const q = useStudentSnapshotQuery(studentId)
+  if (!studentId) return <ErrorCard message="Student id не указан в URL." />
+  if (q.isPending) return <PendingCard label="Загружаем English-снапшот…" />
+  if (q.isError) {
+    const status = q.error instanceof ApiError ? q.error.status : 0
+    return (
+      <ErrorCard
+        message={
+          status === 403 || status === 404
+            ? 'Этот студент не привязан к тебе.'
+            : 'Не удалось загрузить snapshot.'
+        }
+      />
+    )
+  }
+  if (!q.data) return null
+  const s = q.data
+  const window = s.window_days ? `за ${s.window_days}d` : ''
+  const noActivity =
+    s.reading_minutes_window === 0 &&
+    s.reading_materials_total === 0 &&
+    s.listening_materials_total === 0 &&
+    s.vocab_queue_total === 0 &&
+    s.writing_grades_count === 0 &&
+    s.english_mocks_count === 0
+
+  return (
+    <section className="flex flex-col gap-4">
+      <Card className="flex-col gap-3 p-4" interactive={false}>
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          English mocks (HR)
+        </div>
+        {s.english_mocks_count === 0 ? (
+          <p className="text-sm text-text-secondary">
+            Нет HR-моков за окно. На сессии — предложи запустить первый.
+          </p>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="Count" value={String(s.english_mocks_count)} />
+            <Stat
+              label="Avg"
+              value={`${s.english_mocks_avg_score}/100`}
+              tier={scoreTier(s.english_mocks_avg_score)}
+            />
+            <Stat
+              label="Last"
+              value={`${s.english_mocks_last_score}/100`}
+              tier={scoreTier(s.english_mocks_last_score)}
+            />
+          </div>
+        )}
+      </Card>
+
+      <Card className="flex-col gap-3 p-4" interactive={false}>
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          Reading
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <Stat label="Минут" value={String(s.reading_minutes_window)} sub={window} />
+          <Stat label="Sessions" value={String(s.reading_sessions_count)} sub={window} />
+          <Stat label="Library" value={String(s.reading_materials_total)} sub="всего материалов" />
+        </div>
+      </Card>
+
+      <Card className="flex-col gap-3 p-4" interactive={false}>
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          Vocabulary (SRS)
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label="В очереди" value={String(s.vocab_queue_total)} />
+          <Stat label="Due сегодня" value={String(s.vocab_due_today)} />
+        </div>
+      </Card>
+
+      <Card className="flex-col gap-3 p-4" interactive={false}>
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          Writing & Listening
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label="Writing grades" value={String(s.writing_grades_count)} sub={window} />
+          <Stat label="Listening lib" value={String(s.listening_materials_total)} sub="всего" />
+        </div>
+      </Card>
+
+      {noActivity && (
+        <div className="rounded-xl border border-warn/30 bg-warn/5 p-4">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-warn">
+            Студент пока не пользуется Hone English
+          </div>
+          <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
+            На сессии покажи hotkey'и: <b>R</b> (Reading), <b>L</b> (Listening). Загружай
+            paste/PDF/URL — кликом на слово сохраняется vocab. Через <b>Reading library</b>
+            на dashboard'е можешь шарнуть материалы сразу всем студентам.
+          </p>
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ── Notes pane (Phase 3.3) ─────────────────────────────────────────────
+//
+// Tutor's private notepad для каждого студента: «работали над present
+// perfect, дома — IELTS task 1». Студент свои notes не видит. Auto-save
+// по дебаунсу 1.5s от последнего keystroke. Empty body разрешён.
+function NotesPane({ studentId }: { studentId: string | undefined }) {
+  const q = useSessionNotesQuery(studentId)
+  const m = useSaveSessionNotesMutation(studentId)
+  const [draft, setDraft] = useState<string>('')
+  const [savedAt, setSavedAt] = useState<string | null>(null)
+  // Initialise draft из server state — только один раз когда query
+  // зарезолвилась. Дальнейшие сетевые ответы не перетирают локальное
+  // состояние (избегаем «прыжка» каретки во время typing'а).
+  const initRef = useRef(false)
+  useEffect(() => {
+    if (initRef.current) return
+    if (q.data) {
+      setDraft(q.data.body_md ?? '')
+      setSavedAt(q.data.updated_at ?? null)
+      initRef.current = true
+    }
+  }, [q.data])
+
+  // Debounced auto-save. mountedRef защищает setSavedAt от вызова на
+  // unmounted-компоненте (если юзер перешёл на другую вкладку/студента
+  // в момент in-flight PUT) — иначе React выдаст warning.
+  const lastSavedBody = useRef<string>('')
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+  useEffect(() => {
+    if (!initRef.current) return
+    if (draft === lastSavedBody.current) return
+    const t = setTimeout(() => {
+      lastSavedBody.current = draft
+      m.mutate(draft, {
+        onSuccess: (res) => {
+          if (!mountedRef.current) return
+          setSavedAt(res.updated_at ?? new Date().toISOString())
+        },
+      })
+    }, 1500)
+    return () => clearTimeout(t)
+    // m намеренно не в deps — он стабилен per-render (react-query),
+    // включение спровоцирует бесконечную re-debounce-петлю.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft])
+
+  if (!studentId) return <ErrorCard message="Student id не указан в URL." />
+  if (q.isPending) return <PendingCard label="Загружаем notes…" />
+  if (q.isError) {
+    const status = q.error instanceof ApiError ? q.error.status : 0
+    return (
+      <ErrorCard
+        message={
+          status === 403
+            ? 'Этот студент не привязан к тебе.'
+            : 'Не удалось загрузить notes.'
+        }
+      />
+    )
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <Card className="flex-col gap-3 p-4" interactive={false}>
+        <div className="flex items-center justify-between">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+            Личные заметки тутора
+          </div>
+          <SaveStatus pending={m.isPending} savedAt={savedAt} />
+        </div>
+        <p className="text-[12px] leading-relaxed text-text-secondary">
+          Только для тебя. Студент эти заметки не видит. Markdown поддерживается
+          (заголовки, списки, **bold**). Auto-save раз в 1.5 секунды.
+        </p>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={16}
+          placeholder={
+            '## 2026-05-04 1:1\n- Прошли present perfect (текущая боль — for/since)\n- Домашка: IELTS task 1, 2 примера\n- Запросил TED talk на B2 уровне\n'
+          }
+          className="w-full resize-y rounded-md border border-border bg-surface-2 px-3 py-2 font-mono text-[13px] leading-relaxed text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+      </Card>
+    </section>
+  )
+}
+
+function SaveStatus({
+  pending,
+  savedAt,
+}: {
+  pending: boolean
+  savedAt: string | null
+}) {
+  if (pending) {
+    return (
+      <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+        <Loader2 className="h-3 w-3 animate-spin" /> save…
+      </span>
+    )
+  }
+  if (!savedAt) {
+    return (
+      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+        не сохранено
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+      <Check className="h-3 w-3 text-accent" /> {formatRelative(savedAt)}
+    </span>
+  )
 }

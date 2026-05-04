@@ -250,3 +250,75 @@ func newInviteCode(length int) (string, error) {
 	}
 	return string(out), nil
 }
+
+// ─── InviteByUsername (Wave «Invite by @username») ────────────────────────
+
+// InviteByUsername — alternative entry для CreateInvite. Тутор передаёт
+// @username студента (не e-mail / не код out-of-band). UC резолвит
+// username → user_id, mints invite с pre-bound target_user_id. Студент
+// видит «pending invite» на /profile + accept одним кликом без копи-вставки.
+//
+// Если username не найден → ErrNotFound; если user — сам тутор → InvalidInput.
+type InviteByUsername struct {
+	Repo domain.Repo
+	Now  func() time.Time
+}
+
+type InviteByUsernameInput struct {
+	TutorID  uuid.UUID
+	Username string
+	Note     string
+}
+
+func (uc *InviteByUsername) Do(ctx context.Context, in InviteByUsernameInput) (domain.Invite, error) {
+	if in.TutorID == uuid.Nil {
+		return domain.Invite{}, fmt.Errorf("tutor.InviteByUsername: %w: tutor_id required", domain.ErrInvalidInput)
+	}
+	username := in.Username
+	if username == "" {
+		return domain.Invite{}, fmt.Errorf("tutor.InviteByUsername: %w: username required", domain.ErrInvalidInput)
+	}
+	targetID, err := uc.Repo.FindUserByUsername(ctx, username)
+	if err != nil {
+		return domain.Invite{}, fmt.Errorf("tutor.InviteByUsername: %w", err)
+	}
+	if targetID == in.TutorID {
+		return domain.Invite{}, fmt.Errorf("tutor.InviteByUsername: %w: cannot invite yourself", domain.ErrInvalidInput)
+	}
+	now := nowOr(uc.Now)
+	code, err := newInviteCode(domain.InviteCodeLength)
+	if err != nil {
+		return domain.Invite{}, fmt.Errorf("tutor.InviteByUsername: code: %w", err)
+	}
+	saved, err := uc.Repo.CreateInvite(ctx, domain.Invite{
+		TutorID:      in.TutorID,
+		Code:         code,
+		Note:         in.Note,
+		CreatedAt:    now,
+		ExpiresAt:    now.Add(domain.DefaultInviteTTL),
+		TargetUserID: &targetID,
+	})
+	if err != nil {
+		return domain.Invite{}, fmt.Errorf("tutor.InviteByUsername: %w", err)
+	}
+	return saved, nil
+}
+
+// ListPendingInvitesForMe — student-side. Возвращает invites где
+// target_user_id == студент, ещё не accepted/revoked/expired. Используется
+// на /profile для отображения «N туторов хотят с тобой работать».
+type ListPendingInvitesForMe struct {
+	Repo domain.Repo
+	Now  func() time.Time
+}
+
+func (uc *ListPendingInvitesForMe) Do(ctx context.Context, studentID uuid.UUID) ([]domain.Invite, error) {
+	if studentID == uuid.Nil {
+		return nil, fmt.Errorf("tutor.ListPendingInvitesForMe: %w", domain.ErrInvalidInput)
+	}
+	out, err := uc.Repo.ListPendingInvitesForUser(ctx, studentID, nowOr(uc.Now))
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListPendingInvitesForMe: %w", err)
+	}
+	return out, nil
+}

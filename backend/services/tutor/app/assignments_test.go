@@ -68,6 +68,12 @@ func (f fakeAssignmentRepo) ArchiveAssignment(ctx context.Context, t, a uuid.UUI
 	}
 	return f.archive(ctx, t, a, now)
 }
+func (f fakeAssignmentRepo) DueWithinNeedsNotify(ctx context.Context, now time.Time, window time.Duration, limit int) ([]domain.Assignment, error) {
+	return nil, nil
+}
+func (f fakeAssignmentRepo) MarkDueNotified(ctx context.Context, a uuid.UUID, now time.Time) error {
+	return nil
+}
 
 // ── PushAssignment ────────────────────────────────────────────────
 

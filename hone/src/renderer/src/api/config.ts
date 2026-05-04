@@ -2,19 +2,29 @@
 //
 // Прод-инфраструктура: один хост `druz9.online` отдаёт и web, и
 // Connect-RPC (nginx проксирует /druz9.v1.* → monolith). Отдельного
-// `api.*` поддомена нет. druz9.ru → 301 на druz9.online (плановый,
-// сейчас закомментирован в nginx до выпуска сертификата — см
-// infra/nginx/nginx.prod.conf).
+// `api.*` поддомена нет. druz9.ru → 301 на druz9.online.
 //
-// Если когда-нибудь понадобится staging / локальный monolith — верни
-// import.meta.env.VITE_DRUZ9_API_BASE обратно и выставляй через
-// electron-vite.
+// Dev (npm run dev): по умолчанию бьём в локальный monolith на
+// http://localhost:8080. Override через VITE_DRUZ9_API_BASE, если
+// нужен staging / другой host.
 
-export const API_BASE_URL = 'https://druz9.online';
+const DEV_API_DEFAULT = 'http://localhost:8080';
+const PROD_API = 'https://druz9.online';
+
+const envBase = (import.meta.env.VITE_DRUZ9_API_BASE as string | undefined)?.trim();
+
+export const API_BASE_URL =
+  envBase && envBase.length > 0
+    ? envBase.replace(/\/$/, '')
+    : import.meta.env.DEV
+      ? DEV_API_DEFAULT
+      : PROD_API;
 
 // Публичный web — LoginScreen открывает `${WEB_BASE_URL}/login?desktop=…`
-// в системном браузере для OAuth flow.
-export const WEB_BASE_URL = 'https://druz9.online';
+// в системном браузере для OAuth flow. В dev — локальный Vite (5173).
+export const WEB_BASE_URL =
+  (import.meta.env.VITE_DRUZ9_WEB_BASE as string | undefined)?.trim() ||
+  (import.meta.env.DEV ? 'http://localhost:5173' : PROD_API);
 
 // DEV_BEARER_TOKEN — хатч для debug'а без OAuth flow. В стандартном
 // юзер-сценарии логин через LoginScreen → druz9://auth deep-link.

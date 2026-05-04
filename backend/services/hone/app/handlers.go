@@ -42,6 +42,7 @@ type Handler struct {
 	DeleteNote         *DeleteNote
 	MoveNote           *MoveNote
 	GetNoteConnections *GetNoteConnections
+	SuggestNoteLinks   *SuggestNoteLinks
 
 	// Folders
 	CreateFolder *CreateFolder
@@ -82,6 +83,10 @@ type Handler struct {
 	DeleteTask       *DeleteTask
 	AddTaskComment   *AddTaskComment
 	ListTaskComments *ListTaskComments
+	// Phase 10 — AI auto-place. Optional (nil-safe в Handler.New). Когда
+	// присутствует — handler/CreateTask может зовать UC чтобы инфер'ить
+	// column/tags. Caller-side gate (не каждый task стоит LLM-call'а).
+	CategoriseTask *CategoriseTask
 
 	// Publish-to-web (everything except the HTML viewer at /p/{slug}).
 	PublishNote     *PublishNote
@@ -117,6 +122,22 @@ type Handler struct {
 	GetListeningMaterial     *GetListeningMaterial
 	ListListeningMaterials   *ListListeningMaterials
 	ArchiveListeningMaterial *ArchiveListeningMaterial
+	IngestYouTubeListening   *IngestYouTubeListening
+
+	// Reading: Book-source progress (Wave 2026-05-03).
+	UpdateBookProgress *UpdateBookProgress
+
+	// User settings (active study mode).
+	GetUserSettings  *GetUserSettings
+	SetActiveTrack   *SetActiveTrack
+	SetEnglishActive *SetEnglishActive
+
+	// External activity (structured form, не чат).
+	AddExternalActivity    *AddExternalActivity
+	ListExternalActivity   *ListExternalActivity
+	DeleteExternalActivity *DeleteExternalActivity
+	SearchAtlasTopics      *SearchAtlasTopics
+	ListAtlasNodeTracks    *ListAtlasNodeTracks
 
 	Log *slog.Logger
 	Now func() time.Time

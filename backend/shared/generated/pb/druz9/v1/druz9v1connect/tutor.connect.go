@@ -48,6 +48,12 @@ const (
 	// TutorServiceCreateInviteProcedure is the fully-qualified name of the TutorService's CreateInvite
 	// RPC.
 	TutorServiceCreateInviteProcedure = "/druz9.v1.TutorService/CreateInvite"
+	// TutorServiceInviteByUsernameProcedure is the fully-qualified name of the TutorService's
+	// InviteByUsername RPC.
+	TutorServiceInviteByUsernameProcedure = "/druz9.v1.TutorService/InviteByUsername"
+	// TutorServiceListPendingInvitesForMeProcedure is the fully-qualified name of the TutorService's
+	// ListPendingInvitesForMe RPC.
+	TutorServiceListPendingInvitesForMeProcedure = "/druz9.v1.TutorService/ListPendingInvitesForMe"
 	// TutorServiceRevokeInviteProcedure is the fully-qualified name of the TutorService's RevokeInvite
 	// RPC.
 	TutorServiceRevokeInviteProcedure = "/druz9.v1.TutorService/RevokeInvite"
@@ -92,6 +98,12 @@ const (
 	// TutorServiceBroadcastAssignmentProcedure is the fully-qualified name of the TutorService's
 	// BroadcastAssignment RPC.
 	TutorServiceBroadcastAssignmentProcedure = "/druz9.v1.TutorService/BroadcastAssignment"
+	// TutorServicePushSharedReadingProcedure is the fully-qualified name of the TutorService's
+	// PushSharedReading RPC.
+	TutorServicePushSharedReadingProcedure = "/druz9.v1.TutorService/PushSharedReading"
+	// TutorServiceListSharedReadingProcedure is the fully-qualified name of the TutorService's
+	// ListSharedReading RPC.
+	TutorServiceListSharedReadingProcedure = "/druz9.v1.TutorService/ListSharedReading"
 	// TutorServiceCreateEventProcedure is the fully-qualified name of the TutorService's CreateEvent
 	// RPC.
 	TutorServiceCreateEventProcedure = "/druz9.v1.TutorService/CreateEvent"
@@ -123,39 +135,25 @@ const (
 	// TutorServiceGetEventRSVPCountProcedure is the fully-qualified name of the TutorService's
 	// GetEventRSVPCount RPC.
 	TutorServiceGetEventRSVPCountProcedure = "/druz9.v1.TutorService/GetEventRSVPCount"
-	// TutorServiceCreateListingProcedure is the fully-qualified name of the TutorService's
-	// CreateListing RPC.
-	TutorServiceCreateListingProcedure = "/druz9.v1.TutorService/CreateListing"
-	// TutorServiceUpdateListingProcedure is the fully-qualified name of the TutorService's
-	// UpdateListing RPC.
-	TutorServiceUpdateListingProcedure = "/druz9.v1.TutorService/UpdateListing"
-	// TutorServicePublishListingProcedure is the fully-qualified name of the TutorService's
-	// PublishListing RPC.
-	TutorServicePublishListingProcedure = "/druz9.v1.TutorService/PublishListing"
-	// TutorServiceArchiveListingProcedure is the fully-qualified name of the TutorService's
-	// ArchiveListing RPC.
-	TutorServiceArchiveListingProcedure = "/druz9.v1.TutorService/ArchiveListing"
-	// TutorServiceListMyListingsProcedure is the fully-qualified name of the TutorService's
-	// ListMyListings RPC.
-	TutorServiceListMyListingsProcedure = "/druz9.v1.TutorService/ListMyListings"
-	// TutorServiceBrowseListingsProcedure is the fully-qualified name of the TutorService's
-	// BrowseListings RPC.
-	TutorServiceBrowseListingsProcedure = "/druz9.v1.TutorService/BrowseListings"
-	// TutorServiceGetListingBySlugProcedure is the fully-qualified name of the TutorService's
-	// GetListingBySlug RPC.
-	TutorServiceGetListingBySlugProcedure = "/druz9.v1.TutorService/GetListingBySlug"
-	// TutorServiceAddListingPackageProcedure is the fully-qualified name of the TutorService's
-	// AddListingPackage RPC.
-	TutorServiceAddListingPackageProcedure = "/druz9.v1.TutorService/AddListingPackage"
-	// TutorServiceArchiveListingPackageProcedure is the fully-qualified name of the TutorService's
-	// ArchiveListingPackage RPC.
-	TutorServiceArchiveListingPackageProcedure = "/druz9.v1.TutorService/ArchiveListingPackage"
+	// TutorServiceGetSessionNotesProcedure is the fully-qualified name of the TutorService's
+	// GetSessionNotes RPC.
+	TutorServiceGetSessionNotesProcedure = "/druz9.v1.TutorService/GetSessionNotes"
+	// TutorServiceSaveSessionNotesProcedure is the fully-qualified name of the TutorService's
+	// SaveSessionNotes RPC.
+	TutorServiceSaveSessionNotesProcedure = "/druz9.v1.TutorService/SaveSessionNotes"
 )
 
 // TutorServiceClient is a client for the druz9.v1.TutorService service.
 type TutorServiceClient interface {
 	// CreateInvite — tutor-authenticated. tutor_id taken from bearer.
 	CreateInvite(context.Context, *connect.Request[v1.TutorCreateInviteRequest]) (*connect.Response[v1.TutorInvite], error)
+	// InviteByUsername — pre-binds invite к конкретному юзеру (вместо
+	// out-of-band отправки кода). Студент видит pending invite на /profile
+	// через ListPendingInvitesForMe + accept одним кликом.
+	InviteByUsername(context.Context, *connect.Request[v1.TutorInviteByUsernameRequest]) (*connect.Response[v1.TutorInvite], error)
+	// ListPendingInvitesForMe — student-side. Возвращает invites
+	// адресованные мне (target_user_id == me).
+	ListPendingInvitesForMe(context.Context, *connect.Request[v1.TutorListPendingInvitesForMeRequest]) (*connect.Response[v1.TutorListPendingInvitesForMeResponse], error)
 	// RevokeInvite — tutor-only; verifies tutor owns the invite.
 	RevokeInvite(context.Context, *connect.Request[v1.TutorRevokeInviteRequest]) (*connect.Response[v1.TutorInvite], error)
 	// ListInvites — tutor's own invites, recent first.
@@ -207,6 +205,12 @@ type TutorServiceClient interface {
 	// arrays so the UI can show «Pushed to 5 / 6 students» and let the
 	// tutor retry the one that failed.
 	BroadcastAssignment(context.Context, *connect.Request[v1.TutorBroadcastAssignmentRequest]) (*connect.Response[v1.TutorBroadcastAssignmentResponse], error)
+	// ── Reading library (Wave pivot 2026-05-02) ──────────────────────
+	// Tutor отправляет recommended-reading сразу всем студентам И persist'ит
+	// запись в history. Под капотом — BroadcastAssignment + INSERT в
+	// tutor_shared_materials. UI: SharedReadingPane на TutorDashboard.
+	PushSharedReading(context.Context, *connect.Request[v1.TutorPushSharedReadingRequest]) (*connect.Response[v1.TutorPushSharedReadingResponse], error)
+	ListSharedReading(context.Context, *connect.Request[v1.TutorListSharedReadingRequest]) (*connect.Response[v1.TutorListSharedReadingResponse], error)
 	// ── Wave 5.2b — scheduled events ─────────────────────────────────
 	// CreateEvent — tutor schedules a calendar event for one student.
 	// V1 supports the 1-on-1 (student_id) flow; circle (group) events
@@ -244,18 +248,13 @@ type TutorServiceClient interface {
 	// GetEventRSVPCount — current RSVP tally for a group event. Both
 	// tutor (their own) and student (events they can see) read this.
 	GetEventRSVPCount(context.Context, *connect.Request[v1.TutorGetEventRSVPCountRequest]) (*connect.Response[v1.TutorGetEventRSVPCountResponse], error)
-	// ── Wave 9.1 marketplace listings (Boosty-only payment) ──
-	CreateListing(context.Context, *connect.Request[v1.TutorCreateListingRequest]) (*connect.Response[v1.TutorListing], error)
-	UpdateListing(context.Context, *connect.Request[v1.TutorUpdateListingRequest]) (*connect.Response[v1.TutorListing], error)
-	PublishListing(context.Context, *connect.Request[v1.TutorPublishListingRequest]) (*connect.Response[v1.TutorPublishListingResponse], error)
-	ArchiveListing(context.Context, *connect.Request[v1.TutorArchiveListingRequest]) (*connect.Response[v1.TutorArchiveListingResponse], error)
-	ListMyListings(context.Context, *connect.Request[v1.TutorListMyListingsRequest]) (*connect.Response[v1.TutorListListingsResponse], error)
-	// BrowseListings — public marketplace. The HTTP gate whitelists this
-	// path so unauthenticated browsers can window-shop tutors.
-	BrowseListings(context.Context, *connect.Request[v1.TutorBrowseListingsRequest]) (*connect.Response[v1.TutorListListingsResponse], error)
-	GetListingBySlug(context.Context, *connect.Request[v1.TutorGetListingBySlugRequest]) (*connect.Response[v1.TutorListingDetail], error)
-	AddListingPackage(context.Context, *connect.Request[v1.TutorAddListingPackageRequest]) (*connect.Response[v1.TutorListingPackage], error)
-	ArchiveListingPackage(context.Context, *connect.Request[v1.TutorArchiveListingPackageRequest]) (*connect.Response[v1.TutorArchiveListingPackageResponse], error)
+	// GetSessionNotes (Phase 3.3) — tutor reads его собственные заметки
+	// про студента. body — empty string если notes ещё не создавались.
+	// Студент свои notes не видит (доступ tutor-only).
+	GetSessionNotes(context.Context, *connect.Request[v1.TutorGetSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error)
+	// SaveSessionNotes — upsert markdown-блока. Empty body разрешён
+	// («очистил блок»). Auto-save из UI по дебаунсу 1.5s.
+	SaveSessionNotes(context.Context, *connect.Request[v1.TutorSaveSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error)
 }
 
 // NewTutorServiceClient constructs a client for the druz9.v1.TutorService service. By default, it
@@ -273,6 +272,18 @@ func NewTutorServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+TutorServiceCreateInviteProcedure,
 			connect.WithSchema(tutorServiceMethods.ByName("CreateInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		inviteByUsername: connect.NewClient[v1.TutorInviteByUsernameRequest, v1.TutorInvite](
+			httpClient,
+			baseURL+TutorServiceInviteByUsernameProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("InviteByUsername")),
+			connect.WithClientOptions(opts...),
+		),
+		listPendingInvitesForMe: connect.NewClient[v1.TutorListPendingInvitesForMeRequest, v1.TutorListPendingInvitesForMeResponse](
+			httpClient,
+			baseURL+TutorServiceListPendingInvitesForMeProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ListPendingInvitesForMe")),
 			connect.WithClientOptions(opts...),
 		),
 		revokeInvite: connect.NewClient[v1.TutorRevokeInviteRequest, v1.TutorInvite](
@@ -365,6 +376,18 @@ func NewTutorServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(tutorServiceMethods.ByName("BroadcastAssignment")),
 			connect.WithClientOptions(opts...),
 		),
+		pushSharedReading: connect.NewClient[v1.TutorPushSharedReadingRequest, v1.TutorPushSharedReadingResponse](
+			httpClient,
+			baseURL+TutorServicePushSharedReadingProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("PushSharedReading")),
+			connect.WithClientOptions(opts...),
+		),
+		listSharedReading: connect.NewClient[v1.TutorListSharedReadingRequest, v1.TutorListSharedReadingResponse](
+			httpClient,
+			baseURL+TutorServiceListSharedReadingProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ListSharedReading")),
+			connect.WithClientOptions(opts...),
+		),
 		createEvent: connect.NewClient[v1.TutorCreateEventRequest, v1.TutorEvent](
 			httpClient,
 			baseURL+TutorServiceCreateEventProcedure,
@@ -431,58 +454,16 @@ func NewTutorServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(tutorServiceMethods.ByName("GetEventRSVPCount")),
 			connect.WithClientOptions(opts...),
 		),
-		createListing: connect.NewClient[v1.TutorCreateListingRequest, v1.TutorListing](
+		getSessionNotes: connect.NewClient[v1.TutorGetSessionNotesRequest, v1.TutorSessionNotes](
 			httpClient,
-			baseURL+TutorServiceCreateListingProcedure,
-			connect.WithSchema(tutorServiceMethods.ByName("CreateListing")),
+			baseURL+TutorServiceGetSessionNotesProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("GetSessionNotes")),
 			connect.WithClientOptions(opts...),
 		),
-		updateListing: connect.NewClient[v1.TutorUpdateListingRequest, v1.TutorListing](
+		saveSessionNotes: connect.NewClient[v1.TutorSaveSessionNotesRequest, v1.TutorSessionNotes](
 			httpClient,
-			baseURL+TutorServiceUpdateListingProcedure,
-			connect.WithSchema(tutorServiceMethods.ByName("UpdateListing")),
-			connect.WithClientOptions(opts...),
-		),
-		publishListing: connect.NewClient[v1.TutorPublishListingRequest, v1.TutorPublishListingResponse](
-			httpClient,
-			baseURL+TutorServicePublishListingProcedure,
-			connect.WithSchema(tutorServiceMethods.ByName("PublishListing")),
-			connect.WithClientOptions(opts...),
-		),
-		archiveListing: connect.NewClient[v1.TutorArchiveListingRequest, v1.TutorArchiveListingResponse](
-			httpClient,
-			baseURL+TutorServiceArchiveListingProcedure,
-			connect.WithSchema(tutorServiceMethods.ByName("ArchiveListing")),
-			connect.WithClientOptions(opts...),
-		),
-		listMyListings: connect.NewClient[v1.TutorListMyListingsRequest, v1.TutorListListingsResponse](
-			httpClient,
-			baseURL+TutorServiceListMyListingsProcedure,
-			connect.WithSchema(tutorServiceMethods.ByName("ListMyListings")),
-			connect.WithClientOptions(opts...),
-		),
-		browseListings: connect.NewClient[v1.TutorBrowseListingsRequest, v1.TutorListListingsResponse](
-			httpClient,
-			baseURL+TutorServiceBrowseListingsProcedure,
-			connect.WithSchema(tutorServiceMethods.ByName("BrowseListings")),
-			connect.WithClientOptions(opts...),
-		),
-		getListingBySlug: connect.NewClient[v1.TutorGetListingBySlugRequest, v1.TutorListingDetail](
-			httpClient,
-			baseURL+TutorServiceGetListingBySlugProcedure,
-			connect.WithSchema(tutorServiceMethods.ByName("GetListingBySlug")),
-			connect.WithClientOptions(opts...),
-		),
-		addListingPackage: connect.NewClient[v1.TutorAddListingPackageRequest, v1.TutorListingPackage](
-			httpClient,
-			baseURL+TutorServiceAddListingPackageProcedure,
-			connect.WithSchema(tutorServiceMethods.ByName("AddListingPackage")),
-			connect.WithClientOptions(opts...),
-		),
-		archiveListingPackage: connect.NewClient[v1.TutorArchiveListingPackageRequest, v1.TutorArchiveListingPackageResponse](
-			httpClient,
-			baseURL+TutorServiceArchiveListingPackageProcedure,
-			connect.WithSchema(tutorServiceMethods.ByName("ArchiveListingPackage")),
+			baseURL+TutorServiceSaveSessionNotesProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("SaveSessionNotes")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -491,6 +472,8 @@ func NewTutorServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 // tutorServiceClient implements TutorServiceClient.
 type tutorServiceClient struct {
 	createInvite                      *connect.Client[v1.TutorCreateInviteRequest, v1.TutorInvite]
+	inviteByUsername                  *connect.Client[v1.TutorInviteByUsernameRequest, v1.TutorInvite]
+	listPendingInvitesForMe           *connect.Client[v1.TutorListPendingInvitesForMeRequest, v1.TutorListPendingInvitesForMeResponse]
 	revokeInvite                      *connect.Client[v1.TutorRevokeInviteRequest, v1.TutorInvite]
 	listInvites                       *connect.Client[v1.TutorListInvitesRequest, v1.TutorListInvitesResponse]
 	peekInvite                        *connect.Client[v1.TutorPeekInviteRequest, v1.TutorPeekInviteResponse]
@@ -506,6 +489,8 @@ type tutorServiceClient struct {
 	completeAssignment                *connect.Client[v1.TutorCompleteAssignmentRequest, v1.TutorCompleteAssignmentResponse]
 	archiveAssignment                 *connect.Client[v1.TutorArchiveAssignmentRequest, v1.TutorArchiveAssignmentResponse]
 	broadcastAssignment               *connect.Client[v1.TutorBroadcastAssignmentRequest, v1.TutorBroadcastAssignmentResponse]
+	pushSharedReading                 *connect.Client[v1.TutorPushSharedReadingRequest, v1.TutorPushSharedReadingResponse]
+	listSharedReading                 *connect.Client[v1.TutorListSharedReadingRequest, v1.TutorListSharedReadingResponse]
 	createEvent                       *connect.Client[v1.TutorCreateEventRequest, v1.TutorEvent]
 	cancelEvent                       *connect.Client[v1.TutorCancelEventRequest, v1.TutorCancelEventResponse]
 	completeEvent                     *connect.Client[v1.TutorCompleteEventRequest, v1.TutorCompleteEventResponse]
@@ -517,20 +502,23 @@ type tutorServiceClient struct {
 	leaveEvent                        *connect.Client[v1.TutorLeaveEventRequest, v1.TutorLeaveEventResponse]
 	listUpcomingGroupEventsForStudent *connect.Client[v1.TutorListUpcomingGroupEventsRequest, v1.TutorListEventsResponse]
 	getEventRSVPCount                 *connect.Client[v1.TutorGetEventRSVPCountRequest, v1.TutorGetEventRSVPCountResponse]
-	createListing                     *connect.Client[v1.TutorCreateListingRequest, v1.TutorListing]
-	updateListing                     *connect.Client[v1.TutorUpdateListingRequest, v1.TutorListing]
-	publishListing                    *connect.Client[v1.TutorPublishListingRequest, v1.TutorPublishListingResponse]
-	archiveListing                    *connect.Client[v1.TutorArchiveListingRequest, v1.TutorArchiveListingResponse]
-	listMyListings                    *connect.Client[v1.TutorListMyListingsRequest, v1.TutorListListingsResponse]
-	browseListings                    *connect.Client[v1.TutorBrowseListingsRequest, v1.TutorListListingsResponse]
-	getListingBySlug                  *connect.Client[v1.TutorGetListingBySlugRequest, v1.TutorListingDetail]
-	addListingPackage                 *connect.Client[v1.TutorAddListingPackageRequest, v1.TutorListingPackage]
-	archiveListingPackage             *connect.Client[v1.TutorArchiveListingPackageRequest, v1.TutorArchiveListingPackageResponse]
+	getSessionNotes                   *connect.Client[v1.TutorGetSessionNotesRequest, v1.TutorSessionNotes]
+	saveSessionNotes                  *connect.Client[v1.TutorSaveSessionNotesRequest, v1.TutorSessionNotes]
 }
 
 // CreateInvite calls druz9.v1.TutorService.CreateInvite.
 func (c *tutorServiceClient) CreateInvite(ctx context.Context, req *connect.Request[v1.TutorCreateInviteRequest]) (*connect.Response[v1.TutorInvite], error) {
 	return c.createInvite.CallUnary(ctx, req)
+}
+
+// InviteByUsername calls druz9.v1.TutorService.InviteByUsername.
+func (c *tutorServiceClient) InviteByUsername(ctx context.Context, req *connect.Request[v1.TutorInviteByUsernameRequest]) (*connect.Response[v1.TutorInvite], error) {
+	return c.inviteByUsername.CallUnary(ctx, req)
+}
+
+// ListPendingInvitesForMe calls druz9.v1.TutorService.ListPendingInvitesForMe.
+func (c *tutorServiceClient) ListPendingInvitesForMe(ctx context.Context, req *connect.Request[v1.TutorListPendingInvitesForMeRequest]) (*connect.Response[v1.TutorListPendingInvitesForMeResponse], error) {
+	return c.listPendingInvitesForMe.CallUnary(ctx, req)
 }
 
 // RevokeInvite calls druz9.v1.TutorService.RevokeInvite.
@@ -608,6 +596,16 @@ func (c *tutorServiceClient) BroadcastAssignment(ctx context.Context, req *conne
 	return c.broadcastAssignment.CallUnary(ctx, req)
 }
 
+// PushSharedReading calls druz9.v1.TutorService.PushSharedReading.
+func (c *tutorServiceClient) PushSharedReading(ctx context.Context, req *connect.Request[v1.TutorPushSharedReadingRequest]) (*connect.Response[v1.TutorPushSharedReadingResponse], error) {
+	return c.pushSharedReading.CallUnary(ctx, req)
+}
+
+// ListSharedReading calls druz9.v1.TutorService.ListSharedReading.
+func (c *tutorServiceClient) ListSharedReading(ctx context.Context, req *connect.Request[v1.TutorListSharedReadingRequest]) (*connect.Response[v1.TutorListSharedReadingResponse], error) {
+	return c.listSharedReading.CallUnary(ctx, req)
+}
+
 // CreateEvent calls druz9.v1.TutorService.CreateEvent.
 func (c *tutorServiceClient) CreateEvent(ctx context.Context, req *connect.Request[v1.TutorCreateEventRequest]) (*connect.Response[v1.TutorEvent], error) {
 	return c.createEvent.CallUnary(ctx, req)
@@ -663,55 +661,27 @@ func (c *tutorServiceClient) GetEventRSVPCount(ctx context.Context, req *connect
 	return c.getEventRSVPCount.CallUnary(ctx, req)
 }
 
-// CreateListing calls druz9.v1.TutorService.CreateListing.
-func (c *tutorServiceClient) CreateListing(ctx context.Context, req *connect.Request[v1.TutorCreateListingRequest]) (*connect.Response[v1.TutorListing], error) {
-	return c.createListing.CallUnary(ctx, req)
+// GetSessionNotes calls druz9.v1.TutorService.GetSessionNotes.
+func (c *tutorServiceClient) GetSessionNotes(ctx context.Context, req *connect.Request[v1.TutorGetSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error) {
+	return c.getSessionNotes.CallUnary(ctx, req)
 }
 
-// UpdateListing calls druz9.v1.TutorService.UpdateListing.
-func (c *tutorServiceClient) UpdateListing(ctx context.Context, req *connect.Request[v1.TutorUpdateListingRequest]) (*connect.Response[v1.TutorListing], error) {
-	return c.updateListing.CallUnary(ctx, req)
-}
-
-// PublishListing calls druz9.v1.TutorService.PublishListing.
-func (c *tutorServiceClient) PublishListing(ctx context.Context, req *connect.Request[v1.TutorPublishListingRequest]) (*connect.Response[v1.TutorPublishListingResponse], error) {
-	return c.publishListing.CallUnary(ctx, req)
-}
-
-// ArchiveListing calls druz9.v1.TutorService.ArchiveListing.
-func (c *tutorServiceClient) ArchiveListing(ctx context.Context, req *connect.Request[v1.TutorArchiveListingRequest]) (*connect.Response[v1.TutorArchiveListingResponse], error) {
-	return c.archiveListing.CallUnary(ctx, req)
-}
-
-// ListMyListings calls druz9.v1.TutorService.ListMyListings.
-func (c *tutorServiceClient) ListMyListings(ctx context.Context, req *connect.Request[v1.TutorListMyListingsRequest]) (*connect.Response[v1.TutorListListingsResponse], error) {
-	return c.listMyListings.CallUnary(ctx, req)
-}
-
-// BrowseListings calls druz9.v1.TutorService.BrowseListings.
-func (c *tutorServiceClient) BrowseListings(ctx context.Context, req *connect.Request[v1.TutorBrowseListingsRequest]) (*connect.Response[v1.TutorListListingsResponse], error) {
-	return c.browseListings.CallUnary(ctx, req)
-}
-
-// GetListingBySlug calls druz9.v1.TutorService.GetListingBySlug.
-func (c *tutorServiceClient) GetListingBySlug(ctx context.Context, req *connect.Request[v1.TutorGetListingBySlugRequest]) (*connect.Response[v1.TutorListingDetail], error) {
-	return c.getListingBySlug.CallUnary(ctx, req)
-}
-
-// AddListingPackage calls druz9.v1.TutorService.AddListingPackage.
-func (c *tutorServiceClient) AddListingPackage(ctx context.Context, req *connect.Request[v1.TutorAddListingPackageRequest]) (*connect.Response[v1.TutorListingPackage], error) {
-	return c.addListingPackage.CallUnary(ctx, req)
-}
-
-// ArchiveListingPackage calls druz9.v1.TutorService.ArchiveListingPackage.
-func (c *tutorServiceClient) ArchiveListingPackage(ctx context.Context, req *connect.Request[v1.TutorArchiveListingPackageRequest]) (*connect.Response[v1.TutorArchiveListingPackageResponse], error) {
-	return c.archiveListingPackage.CallUnary(ctx, req)
+// SaveSessionNotes calls druz9.v1.TutorService.SaveSessionNotes.
+func (c *tutorServiceClient) SaveSessionNotes(ctx context.Context, req *connect.Request[v1.TutorSaveSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error) {
+	return c.saveSessionNotes.CallUnary(ctx, req)
 }
 
 // TutorServiceHandler is an implementation of the druz9.v1.TutorService service.
 type TutorServiceHandler interface {
 	// CreateInvite — tutor-authenticated. tutor_id taken from bearer.
 	CreateInvite(context.Context, *connect.Request[v1.TutorCreateInviteRequest]) (*connect.Response[v1.TutorInvite], error)
+	// InviteByUsername — pre-binds invite к конкретному юзеру (вместо
+	// out-of-band отправки кода). Студент видит pending invite на /profile
+	// через ListPendingInvitesForMe + accept одним кликом.
+	InviteByUsername(context.Context, *connect.Request[v1.TutorInviteByUsernameRequest]) (*connect.Response[v1.TutorInvite], error)
+	// ListPendingInvitesForMe — student-side. Возвращает invites
+	// адресованные мне (target_user_id == me).
+	ListPendingInvitesForMe(context.Context, *connect.Request[v1.TutorListPendingInvitesForMeRequest]) (*connect.Response[v1.TutorListPendingInvitesForMeResponse], error)
 	// RevokeInvite — tutor-only; verifies tutor owns the invite.
 	RevokeInvite(context.Context, *connect.Request[v1.TutorRevokeInviteRequest]) (*connect.Response[v1.TutorInvite], error)
 	// ListInvites — tutor's own invites, recent first.
@@ -763,6 +733,12 @@ type TutorServiceHandler interface {
 	// arrays so the UI can show «Pushed to 5 / 6 students» and let the
 	// tutor retry the one that failed.
 	BroadcastAssignment(context.Context, *connect.Request[v1.TutorBroadcastAssignmentRequest]) (*connect.Response[v1.TutorBroadcastAssignmentResponse], error)
+	// ── Reading library (Wave pivot 2026-05-02) ──────────────────────
+	// Tutor отправляет recommended-reading сразу всем студентам И persist'ит
+	// запись в history. Под капотом — BroadcastAssignment + INSERT в
+	// tutor_shared_materials. UI: SharedReadingPane на TutorDashboard.
+	PushSharedReading(context.Context, *connect.Request[v1.TutorPushSharedReadingRequest]) (*connect.Response[v1.TutorPushSharedReadingResponse], error)
+	ListSharedReading(context.Context, *connect.Request[v1.TutorListSharedReadingRequest]) (*connect.Response[v1.TutorListSharedReadingResponse], error)
 	// ── Wave 5.2b — scheduled events ─────────────────────────────────
 	// CreateEvent — tutor schedules a calendar event for one student.
 	// V1 supports the 1-on-1 (student_id) flow; circle (group) events
@@ -800,18 +776,13 @@ type TutorServiceHandler interface {
 	// GetEventRSVPCount — current RSVP tally for a group event. Both
 	// tutor (their own) and student (events they can see) read this.
 	GetEventRSVPCount(context.Context, *connect.Request[v1.TutorGetEventRSVPCountRequest]) (*connect.Response[v1.TutorGetEventRSVPCountResponse], error)
-	// ── Wave 9.1 marketplace listings (Boosty-only payment) ──
-	CreateListing(context.Context, *connect.Request[v1.TutorCreateListingRequest]) (*connect.Response[v1.TutorListing], error)
-	UpdateListing(context.Context, *connect.Request[v1.TutorUpdateListingRequest]) (*connect.Response[v1.TutorListing], error)
-	PublishListing(context.Context, *connect.Request[v1.TutorPublishListingRequest]) (*connect.Response[v1.TutorPublishListingResponse], error)
-	ArchiveListing(context.Context, *connect.Request[v1.TutorArchiveListingRequest]) (*connect.Response[v1.TutorArchiveListingResponse], error)
-	ListMyListings(context.Context, *connect.Request[v1.TutorListMyListingsRequest]) (*connect.Response[v1.TutorListListingsResponse], error)
-	// BrowseListings — public marketplace. The HTTP gate whitelists this
-	// path so unauthenticated browsers can window-shop tutors.
-	BrowseListings(context.Context, *connect.Request[v1.TutorBrowseListingsRequest]) (*connect.Response[v1.TutorListListingsResponse], error)
-	GetListingBySlug(context.Context, *connect.Request[v1.TutorGetListingBySlugRequest]) (*connect.Response[v1.TutorListingDetail], error)
-	AddListingPackage(context.Context, *connect.Request[v1.TutorAddListingPackageRequest]) (*connect.Response[v1.TutorListingPackage], error)
-	ArchiveListingPackage(context.Context, *connect.Request[v1.TutorArchiveListingPackageRequest]) (*connect.Response[v1.TutorArchiveListingPackageResponse], error)
+	// GetSessionNotes (Phase 3.3) — tutor reads его собственные заметки
+	// про студента. body — empty string если notes ещё не создавались.
+	// Студент свои notes не видит (доступ tutor-only).
+	GetSessionNotes(context.Context, *connect.Request[v1.TutorGetSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error)
+	// SaveSessionNotes — upsert markdown-блока. Empty body разрешён
+	// («очистил блок»). Auto-save из UI по дебаунсу 1.5s.
+	SaveSessionNotes(context.Context, *connect.Request[v1.TutorSaveSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error)
 }
 
 // NewTutorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -825,6 +796,18 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 		TutorServiceCreateInviteProcedure,
 		svc.CreateInvite,
 		connect.WithSchema(tutorServiceMethods.ByName("CreateInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceInviteByUsernameHandler := connect.NewUnaryHandler(
+		TutorServiceInviteByUsernameProcedure,
+		svc.InviteByUsername,
+		connect.WithSchema(tutorServiceMethods.ByName("InviteByUsername")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceListPendingInvitesForMeHandler := connect.NewUnaryHandler(
+		TutorServiceListPendingInvitesForMeProcedure,
+		svc.ListPendingInvitesForMe,
+		connect.WithSchema(tutorServiceMethods.ByName("ListPendingInvitesForMe")),
 		connect.WithHandlerOptions(opts...),
 	)
 	tutorServiceRevokeInviteHandler := connect.NewUnaryHandler(
@@ -917,6 +900,18 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(tutorServiceMethods.ByName("BroadcastAssignment")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tutorServicePushSharedReadingHandler := connect.NewUnaryHandler(
+		TutorServicePushSharedReadingProcedure,
+		svc.PushSharedReading,
+		connect.WithSchema(tutorServiceMethods.ByName("PushSharedReading")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceListSharedReadingHandler := connect.NewUnaryHandler(
+		TutorServiceListSharedReadingProcedure,
+		svc.ListSharedReading,
+		connect.WithSchema(tutorServiceMethods.ByName("ListSharedReading")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tutorServiceCreateEventHandler := connect.NewUnaryHandler(
 		TutorServiceCreateEventProcedure,
 		svc.CreateEvent,
@@ -983,64 +978,26 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(tutorServiceMethods.ByName("GetEventRSVPCount")),
 		connect.WithHandlerOptions(opts...),
 	)
-	tutorServiceCreateListingHandler := connect.NewUnaryHandler(
-		TutorServiceCreateListingProcedure,
-		svc.CreateListing,
-		connect.WithSchema(tutorServiceMethods.ByName("CreateListing")),
+	tutorServiceGetSessionNotesHandler := connect.NewUnaryHandler(
+		TutorServiceGetSessionNotesProcedure,
+		svc.GetSessionNotes,
+		connect.WithSchema(tutorServiceMethods.ByName("GetSessionNotes")),
 		connect.WithHandlerOptions(opts...),
 	)
-	tutorServiceUpdateListingHandler := connect.NewUnaryHandler(
-		TutorServiceUpdateListingProcedure,
-		svc.UpdateListing,
-		connect.WithSchema(tutorServiceMethods.ByName("UpdateListing")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tutorServicePublishListingHandler := connect.NewUnaryHandler(
-		TutorServicePublishListingProcedure,
-		svc.PublishListing,
-		connect.WithSchema(tutorServiceMethods.ByName("PublishListing")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tutorServiceArchiveListingHandler := connect.NewUnaryHandler(
-		TutorServiceArchiveListingProcedure,
-		svc.ArchiveListing,
-		connect.WithSchema(tutorServiceMethods.ByName("ArchiveListing")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tutorServiceListMyListingsHandler := connect.NewUnaryHandler(
-		TutorServiceListMyListingsProcedure,
-		svc.ListMyListings,
-		connect.WithSchema(tutorServiceMethods.ByName("ListMyListings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tutorServiceBrowseListingsHandler := connect.NewUnaryHandler(
-		TutorServiceBrowseListingsProcedure,
-		svc.BrowseListings,
-		connect.WithSchema(tutorServiceMethods.ByName("BrowseListings")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tutorServiceGetListingBySlugHandler := connect.NewUnaryHandler(
-		TutorServiceGetListingBySlugProcedure,
-		svc.GetListingBySlug,
-		connect.WithSchema(tutorServiceMethods.ByName("GetListingBySlug")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tutorServiceAddListingPackageHandler := connect.NewUnaryHandler(
-		TutorServiceAddListingPackageProcedure,
-		svc.AddListingPackage,
-		connect.WithSchema(tutorServiceMethods.ByName("AddListingPackage")),
-		connect.WithHandlerOptions(opts...),
-	)
-	tutorServiceArchiveListingPackageHandler := connect.NewUnaryHandler(
-		TutorServiceArchiveListingPackageProcedure,
-		svc.ArchiveListingPackage,
-		connect.WithSchema(tutorServiceMethods.ByName("ArchiveListingPackage")),
+	tutorServiceSaveSessionNotesHandler := connect.NewUnaryHandler(
+		TutorServiceSaveSessionNotesProcedure,
+		svc.SaveSessionNotes,
+		connect.WithSchema(tutorServiceMethods.ByName("SaveSessionNotes")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.TutorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TutorServiceCreateInviteProcedure:
 			tutorServiceCreateInviteHandler.ServeHTTP(w, r)
+		case TutorServiceInviteByUsernameProcedure:
+			tutorServiceInviteByUsernameHandler.ServeHTTP(w, r)
+		case TutorServiceListPendingInvitesForMeProcedure:
+			tutorServiceListPendingInvitesForMeHandler.ServeHTTP(w, r)
 		case TutorServiceRevokeInviteProcedure:
 			tutorServiceRevokeInviteHandler.ServeHTTP(w, r)
 		case TutorServiceListInvitesProcedure:
@@ -1071,6 +1028,10 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 			tutorServiceArchiveAssignmentHandler.ServeHTTP(w, r)
 		case TutorServiceBroadcastAssignmentProcedure:
 			tutorServiceBroadcastAssignmentHandler.ServeHTTP(w, r)
+		case TutorServicePushSharedReadingProcedure:
+			tutorServicePushSharedReadingHandler.ServeHTTP(w, r)
+		case TutorServiceListSharedReadingProcedure:
+			tutorServiceListSharedReadingHandler.ServeHTTP(w, r)
 		case TutorServiceCreateEventProcedure:
 			tutorServiceCreateEventHandler.ServeHTTP(w, r)
 		case TutorServiceCancelEventProcedure:
@@ -1093,24 +1054,10 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 			tutorServiceListUpcomingGroupEventsForStudentHandler.ServeHTTP(w, r)
 		case TutorServiceGetEventRSVPCountProcedure:
 			tutorServiceGetEventRSVPCountHandler.ServeHTTP(w, r)
-		case TutorServiceCreateListingProcedure:
-			tutorServiceCreateListingHandler.ServeHTTP(w, r)
-		case TutorServiceUpdateListingProcedure:
-			tutorServiceUpdateListingHandler.ServeHTTP(w, r)
-		case TutorServicePublishListingProcedure:
-			tutorServicePublishListingHandler.ServeHTTP(w, r)
-		case TutorServiceArchiveListingProcedure:
-			tutorServiceArchiveListingHandler.ServeHTTP(w, r)
-		case TutorServiceListMyListingsProcedure:
-			tutorServiceListMyListingsHandler.ServeHTTP(w, r)
-		case TutorServiceBrowseListingsProcedure:
-			tutorServiceBrowseListingsHandler.ServeHTTP(w, r)
-		case TutorServiceGetListingBySlugProcedure:
-			tutorServiceGetListingBySlugHandler.ServeHTTP(w, r)
-		case TutorServiceAddListingPackageProcedure:
-			tutorServiceAddListingPackageHandler.ServeHTTP(w, r)
-		case TutorServiceArchiveListingPackageProcedure:
-			tutorServiceArchiveListingPackageHandler.ServeHTTP(w, r)
+		case TutorServiceGetSessionNotesProcedure:
+			tutorServiceGetSessionNotesHandler.ServeHTTP(w, r)
+		case TutorServiceSaveSessionNotesProcedure:
+			tutorServiceSaveSessionNotesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1122,6 +1069,14 @@ type UnimplementedTutorServiceHandler struct{}
 
 func (UnimplementedTutorServiceHandler) CreateInvite(context.Context, *connect.Request[v1.TutorCreateInviteRequest]) (*connect.Response[v1.TutorInvite], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.CreateInvite is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) InviteByUsername(context.Context, *connect.Request[v1.TutorInviteByUsernameRequest]) (*connect.Response[v1.TutorInvite], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.InviteByUsername is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) ListPendingInvitesForMe(context.Context, *connect.Request[v1.TutorListPendingInvitesForMeRequest]) (*connect.Response[v1.TutorListPendingInvitesForMeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ListPendingInvitesForMe is not implemented"))
 }
 
 func (UnimplementedTutorServiceHandler) RevokeInvite(context.Context, *connect.Request[v1.TutorRevokeInviteRequest]) (*connect.Response[v1.TutorInvite], error) {
@@ -1184,6 +1139,14 @@ func (UnimplementedTutorServiceHandler) BroadcastAssignment(context.Context, *co
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.BroadcastAssignment is not implemented"))
 }
 
+func (UnimplementedTutorServiceHandler) PushSharedReading(context.Context, *connect.Request[v1.TutorPushSharedReadingRequest]) (*connect.Response[v1.TutorPushSharedReadingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.PushSharedReading is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) ListSharedReading(context.Context, *connect.Request[v1.TutorListSharedReadingRequest]) (*connect.Response[v1.TutorListSharedReadingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ListSharedReading is not implemented"))
+}
+
 func (UnimplementedTutorServiceHandler) CreateEvent(context.Context, *connect.Request[v1.TutorCreateEventRequest]) (*connect.Response[v1.TutorEvent], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.CreateEvent is not implemented"))
 }
@@ -1228,38 +1191,10 @@ func (UnimplementedTutorServiceHandler) GetEventRSVPCount(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.GetEventRSVPCount is not implemented"))
 }
 
-func (UnimplementedTutorServiceHandler) CreateListing(context.Context, *connect.Request[v1.TutorCreateListingRequest]) (*connect.Response[v1.TutorListing], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.CreateListing is not implemented"))
+func (UnimplementedTutorServiceHandler) GetSessionNotes(context.Context, *connect.Request[v1.TutorGetSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.GetSessionNotes is not implemented"))
 }
 
-func (UnimplementedTutorServiceHandler) UpdateListing(context.Context, *connect.Request[v1.TutorUpdateListingRequest]) (*connect.Response[v1.TutorListing], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.UpdateListing is not implemented"))
-}
-
-func (UnimplementedTutorServiceHandler) PublishListing(context.Context, *connect.Request[v1.TutorPublishListingRequest]) (*connect.Response[v1.TutorPublishListingResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.PublishListing is not implemented"))
-}
-
-func (UnimplementedTutorServiceHandler) ArchiveListing(context.Context, *connect.Request[v1.TutorArchiveListingRequest]) (*connect.Response[v1.TutorArchiveListingResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ArchiveListing is not implemented"))
-}
-
-func (UnimplementedTutorServiceHandler) ListMyListings(context.Context, *connect.Request[v1.TutorListMyListingsRequest]) (*connect.Response[v1.TutorListListingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ListMyListings is not implemented"))
-}
-
-func (UnimplementedTutorServiceHandler) BrowseListings(context.Context, *connect.Request[v1.TutorBrowseListingsRequest]) (*connect.Response[v1.TutorListListingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.BrowseListings is not implemented"))
-}
-
-func (UnimplementedTutorServiceHandler) GetListingBySlug(context.Context, *connect.Request[v1.TutorGetListingBySlugRequest]) (*connect.Response[v1.TutorListingDetail], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.GetListingBySlug is not implemented"))
-}
-
-func (UnimplementedTutorServiceHandler) AddListingPackage(context.Context, *connect.Request[v1.TutorAddListingPackageRequest]) (*connect.Response[v1.TutorListingPackage], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.AddListingPackage is not implemented"))
-}
-
-func (UnimplementedTutorServiceHandler) ArchiveListingPackage(context.Context, *connect.Request[v1.TutorArchiveListingPackageRequest]) (*connect.Response[v1.TutorArchiveListingPackageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ArchiveListingPackage is not implemented"))
+func (UnimplementedTutorServiceHandler) SaveSessionNotes(context.Context, *connect.Request[v1.TutorSaveSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.SaveSessionNotes is not implemented"))
 }

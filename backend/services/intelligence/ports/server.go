@@ -36,12 +36,54 @@ type IntelligenceServer struct {
 	// generator is wired separately by a periodic worker.
 	ListInsightsUC *app.ListInsights
 	AckInsightUC   *app.AckInsight
+
+	// Phase 2 learning-companion (2026-05-04). Все nil-safe — handlers
+	// возвращают Unavailable до wiring'а в bootstrap.
+	NextActionUC      *app.GetNextAction
+	NextActionContext NextActionContextLoader // optional pre-load для UC.Input
+	ForkSnapshotUC    *app.GetForkSnapshot
+	LogResourceUC     *app.LogResource
+
+	// LearningStateMutator — DI-injected handler в bootstrap, который
+	// делегирует в learning_state.app.SetMode / SetFork. Вынесен в
+	// interface чтобы intelligence не импортировал learning_state
+	// напрямую (cross-service boundary).
+	LearningState LearningStateMutator
+
+	// Phase 2 finishers (2026-05-04).
+	ResourceTrailReader domain.ResourceEngagementReader
+	SkillRadarUC        *app.GetSkillRadar
+	CoachStatsUC        *app.GetCoachStats
+}
+
+// LearningStateMutator — handler-injected port для SetLearningMode +
+// SetForkBranch RPCs. Bootstrap'ом обёртывает learning_state UCs.
+type LearningStateMutator interface {
+	SetMode(ctx context.Context, userID uuid.UUID, mode string, trackID *uuid.UUID) (LearningStateSnapshot, error)
+	SetFork(ctx context.Context, userID uuid.UUID, branch string) (LearningStateSnapshot, error)
+}
+
+// LearningStateSnapshot — wire-shape после mutation. Mirror'ит
+// learning_state.domain.State минус timestamp поля (UI не нужны).
+type LearningStateSnapshot struct {
+	Mode             string
+	ForkBranch       string
+	ExploreWeekIndex int
+	CommittedTrackID string
+}
+
+// NextActionContextLoader — caller-injected loader, который собирает
+// NextActionInput из readers. Вынесен в interface чтобы handler не
+// импортировал readers напрямую (DI через bootstrap).
+type NextActionContextLoader interface {
+	LoadNextActionContext(ctx context.Context, userID uuid.UUID) (app.NextActionInput, error)
 }
 
 // NewIntelligenceServer wires a server around the Handler. mem может
 // быть nil — тогда AckRecommendation / GetMemoryStats возвращают
 // Unavailable (memory layer ещё не зарегистрирован). insightList /
 // insightAck — Phase 1.5; могут быть nil до полного rollout'а.
+// Phase 2 UCs (next/fork/log) — также optional до wiring.
 func NewIntelligenceServer(
 	h *app.Handler,
 	mem *app.Memory,
@@ -341,4 +383,278 @@ func toAskAnswerProto(a domain.AskAnswer) *pb.AskAnswer {
 		})
 	}
 	return out
+}
+
+// ── Phase 2 learning-companion handlers ─────────────────────────────────
+
+// GetNextAction implements druz9.v1.IntelligenceService/GetNextAction.
+func (s *IntelligenceServer) GetNextAction(
+	ctx context.Context,
+	_ *connect.Request[pb.GetNextActionRequest],
+) (*connect.Response[pb.NextAction], error) {
+	if s.NextActionUC == nil || s.NextActionContext == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("intelligence.GetNextAction: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	in, err := s.NextActionContext.LoadNextActionContext(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetNextAction load: %w", s.toConnectErr(err))
+	}
+	in.UserID = uid
+	out, err := s.NextActionUC.Do(ctx, in)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetNextAction: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.NextAction{
+		ActionKind:       out.ActionKind,
+		Target:           out.Target,
+		Rationale:        out.Rationale,
+		EstimatedMinutes: int32(out.EstimatedMinutes),
+	}), nil
+}
+
+// GetForkSnapshot implements druz9.v1.IntelligenceService/GetForkSnapshot.
+func (s *IntelligenceServer) GetForkSnapshot(
+	ctx context.Context,
+	_ *connect.Request[pb.GetForkSnapshotRequest],
+) (*connect.Response[pb.ForkSnapshot], error) {
+	if s.ForkSnapshotUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("intelligence.GetForkSnapshot: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.ForkSnapshotUC.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetForkSnapshot: %w", s.toConnectErr(err))
+	}
+	resp := &pb.ForkSnapshot{
+		Mode:             out.Mode,
+		ExploreWeekIndex: int32(out.ExploreWeekIndex),
+		CurrentBranch:    out.CurrentBranch,
+		LeanBranch:       out.LeanBranch,
+		Confidence:       out.Confidence,
+	}
+	for _, b := range out.Branches {
+		resp.Branches = append(resp.Branches, &pb.ForkBranchView{
+			Branch:             b.Branch,
+			MockCount:          int32(b.MockCount),
+			AvgScore:           b.AvgScore,
+			VoluntaryDeepDives: int32(b.VoluntaryDeepDives),
+			CompositeScore:     b.CompositeScore,
+		})
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// LogResource implements druz9.v1.IntelligenceService/LogResource.
+func (s *IntelligenceServer) LogResource(
+	ctx context.Context,
+	req *connect.Request[pb.LogResourceRequest],
+) (*connect.Response[pb.LogResourceResponse], error) {
+	if s.LogResourceUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("intelligence.LogResource: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.LogResourceUC.Do(ctx, app.LogResourceInput{
+		UserID:         uid,
+		ResourceURL:    req.Msg.GetResourceUrl(),
+		AtlasNodeID:    req.Msg.GetAtlasNodeId(),
+		Kind:           req.Msg.GetKind(),
+		ReflectionText: req.Msg.GetReflectionText(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.LogResource: %w", s.toConnectErr(err))
+	}
+	resp := &pb.LogResourceResponse{
+		Id:               out.Entry.ID.String(),
+		NoteCreateFailed: out.NoteCreateFailed,
+	}
+	if out.ReflectionNoteID != nil {
+		resp.ReflectionNoteId = out.ReflectionNoteID.String()
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// SetLearningMode implements druz9.v1.IntelligenceService/SetLearningMode.
+func (s *IntelligenceServer) SetLearningMode(
+	ctx context.Context,
+	req *connect.Request[pb.SetLearningModeRequest],
+) (*connect.Response[pb.LearningStateView], error) {
+	if s.LearningState == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("intelligence.SetLearningMode: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	mode := strings.TrimSpace(req.Msg.GetMode())
+	if mode == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("mode required"))
+	}
+	var trackID *uuid.UUID
+	if t := strings.TrimSpace(req.Msg.GetTrackId()); t != "" {
+		parsed, perr := uuid.Parse(t)
+		if perr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("track_id: %w", perr))
+		}
+		trackID = &parsed
+	}
+	snap, err := s.LearningState.SetMode(ctx, uid, mode, trackID)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.SetLearningMode: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toLearningStateView(snap)), nil
+}
+
+// SetForkBranch implements druz9.v1.IntelligenceService/SetForkBranch.
+func (s *IntelligenceServer) SetForkBranch(
+	ctx context.Context,
+	req *connect.Request[pb.SetForkBranchRequest],
+) (*connect.Response[pb.LearningStateView], error) {
+	if s.LearningState == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("intelligence.SetForkBranch: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	branch := strings.TrimSpace(req.Msg.GetBranch())
+	snap, err := s.LearningState.SetFork(ctx, uid, branch)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.SetForkBranch: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toLearningStateView(snap)), nil
+}
+
+func toLearningStateView(s LearningStateSnapshot) *pb.LearningStateView {
+	return &pb.LearningStateView{
+		Mode:              s.Mode,
+		ForkBranch:        s.ForkBranch,
+		ExploreWeekIndex:  int32(s.ExploreWeekIndex),
+		CommittedTrackId:  s.CommittedTrackID,
+	}
+}
+
+// GetResourceTrail implements druz9.v1.IntelligenceService/GetResourceTrail.
+func (s *IntelligenceServer) GetResourceTrail(
+	ctx context.Context,
+	req *connect.Request[pb.GetResourceTrailRequest],
+) (*connect.Response[pb.ResourceTrail], error) {
+	if s.ResourceTrailReader == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("intelligence.GetResourceTrail: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	days := int(req.Msg.GetDays())
+	keepRecent := int(req.Msg.GetKeepRecent())
+	trail, err := s.ResourceTrailReader.EngagementWindow(ctx, uid, days, keepRecent)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetResourceTrail: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toResourceTrailProto(trail)), nil
+}
+
+// GetSkillRadar implements druz9.v1.IntelligenceService/GetSkillRadar.
+func (s *IntelligenceServer) GetSkillRadar(
+	ctx context.Context,
+	req *connect.Request[pb.GetSkillRadarRequest],
+) (*connect.Response[pb.SkillRadar], error) {
+	if s.SkillRadarUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("intelligence.GetSkillRadar: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.SkillRadarUC.Do(ctx, app.GetSkillRadarInput{
+		UserID: uid,
+		Rubric: strings.TrimSpace(req.Msg.GetRubric()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetSkillRadar: %w", s.toConnectErr(err))
+	}
+	resp := &pb.SkillRadar{Rubric: out.Rubric}
+	for _, ax := range out.Axes {
+		resp.Axes = append(resp.Axes, &pb.SkillRadarAxis{
+			Key:       ax.Key,
+			Label:     ax.Label,
+			Score:     ax.Score,
+			MockCount: int32(ax.MockCount),
+		})
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func toResourceTrailProto(t domain.ResourceEngagement) *pb.ResourceTrail {
+	out := &pb.ResourceTrail{
+		UnfinishedCount: int32(t.UnfinishedCount),
+	}
+	for _, r := range t.FinishedRecent {
+		out.FinishedRecent = append(out.FinishedRecent, toResourceTouchProto(r))
+	}
+	for _, r := range t.MarkedUnhelpful {
+		out.MarkedUnhelpful = append(out.MarkedUnhelpful, toResourceTouchProto(r))
+	}
+	for _, r := range t.RecentReflections {
+		out.RecentReflections = append(out.RecentReflections, toResourceTouchProto(r))
+	}
+	return out
+}
+
+func toResourceTouchProto(r domain.ResourceTouch) *pb.ResourceTouch {
+	out := &pb.ResourceTouch{
+		Url:            r.URL,
+		AtlasNodeId:    r.AtlasNodeID,
+		Kind:           r.Kind,
+		HoursAgo:       int32(r.HoursAgo),
+		ReflectionText: r.Reflection,
+	}
+	if !r.OccurredAt.IsZero() {
+		out.OccurredAt = timestamppb.New(r.OccurredAt.UTC())
+	}
+	return out
+}
+
+// GetCoachStats implements druz9.v1.IntelligenceService/GetCoachStats.
+func (s *IntelligenceServer) GetCoachStats(
+	ctx context.Context,
+	_ *connect.Request[pb.GetCoachStatsRequest],
+) (*connect.Response[pb.CoachStats], error) {
+	if s.CoachStatsUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("intelligence.GetCoachStats: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.CoachStatsUC.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetCoachStats: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.CoachStats{
+		StreakDays:      int32(out.StreakDays),
+		FocusTodayMin:   int32(out.FocusTodayMin),
+		LastMockScore:   int32(out.LastMockScore),
+		LastMockSection: out.LastMockSection,
+		NextMockInDays:  int32(out.NextMockInDays),
+		NextMockCompany: out.NextMockCompany,
+	}), nil
 }

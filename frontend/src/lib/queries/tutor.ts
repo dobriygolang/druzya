@@ -118,6 +118,43 @@ export function useTutorInvitesQuery() {
   })
 }
 
+/** Pending invite адресованный текущему юзеру (target_user_id == me). */
+export type TutorPendingInvite = {
+  id: string
+  code: string
+  note: string
+  created_at?: string
+  expires_at?: string
+  tutor_id: string
+  tutor_username?: string
+  tutor_display_name?: string
+  tutor_display_avatar?: string
+}
+
+export function usePendingInvitesForMeQuery() {
+  return useQuery({
+    queryKey: ['tutor', 'invites', 'pending-for-me'] as const,
+    queryFn: () =>
+      api<{ items: TutorPendingInvite[] }>('/tutor/invites/pending-for-me'),
+    staleTime: 30_000,
+  })
+}
+
+/** Tutor pre-binds invite к @username. Студент видит его в pending-for-me. */
+export function useInviteByUsernameMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { username: string; note?: string }) =>
+      api<TutorInvite>('/tutor/invites/by-username', {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'invites'] })
+    },
+  })
+}
+
 /** CreateInvite — tutor mints a new code. Optional `note` is for the tutor's own bookkeeping. */
 export function useCreateInviteMutation() {
   const qc = useQueryClient()
@@ -149,6 +186,29 @@ export function useRevokeInviteMutation() {
 }
 
 /** ListStudents — tutor's active relationships. */
+// useMyTutorsQuery — student-side endpoint. Возвращает all active
+// tutor↔student relationships где caller = student. Включает human-туторов
+// и AI (у AI tutor_id = ai_user_id персоны). Для отображения display_name
+// нужен отдельный lookup; для текущего UI показываем tutor_id и opaque.
+export type TutorRelationshipWithDisplay = {
+  id: string
+  tutor_id: string
+  student_id: string
+  started_at?: string
+  display_username?: string
+  display_name?: string
+  display_avatar_url?: string
+}
+
+export function useMyTutorsQuery() {
+  return useQuery({
+    queryKey: ['tutor', 'my-tutors'] as const,
+    queryFn: () =>
+      api<{ items: TutorRelationshipWithDisplay[] }>('/tutor/my-tutors'),
+    staleTime: 30_000,
+  })
+}
+
 export function useTutorStudentsQuery() {
   return useQuery({
     queryKey: ['tutor', 'students'] as const,
@@ -333,6 +393,50 @@ export function useBroadcastAssignmentMutation() {
     onSuccess: () => {
       // Invalidate every per-student assignment query — different students
       // get fresh rows and the dashboard can reflect them on next visit.
+      qc.invalidateQueries({ queryKey: ['tutor', 'students'] })
+    },
+  })
+}
+
+// ── Shared reading library (Wave pivot 2026-05-02) ────────────────────
+
+export type TutorSharedMaterial = {
+  id: string
+  tutor_id: string
+  title: string
+  source_url: string
+  body_md: string
+  student_count: number
+  created_at?: string
+}
+
+export function useTutorSharedReadingQuery(limit = 30) {
+  return useQuery({
+    queryKey: ['tutor', 'shared-reading', limit] as const,
+    queryFn: () =>
+      api<{ items: TutorSharedMaterial[] }>(`/tutor/shared-reading?limit=${limit}`),
+    staleTime: 30_000,
+  })
+}
+
+export function usePushSharedReadingMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { title: string; source_url?: string; note?: string }) =>
+      api<{
+        material: TutorSharedMaterial
+        pushed_count: number
+        failed_count: number
+      }>(`/tutor/shared-reading`, {
+        method: 'POST',
+        body: JSON.stringify({
+          title: vars.title,
+          source_url: vars.source_url ?? '',
+          note: vars.note ?? '',
+        }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'shared-reading'] })
       qc.invalidateQueries({ queryKey: ['tutor', 'students'] })
     },
   })
@@ -549,182 +653,46 @@ export function useCompleteEventMutation() {
   })
 }
 
-// ── Wave 9.1 marketplace listings (Boosty-only payment) ───────────────
-// Boosty handles all money flow — we only route the click outbound via
-// `boosty_url`. Browse/detail endpoints live under /marketplace and are
-// public (no auth gate); manage endpoints under /tutor/listings require
-// the bearer.
+// ── Phase 3.3: tutor session notes-pad ──────────────────────────────
 
-export type TutorListing = {
-  id: string
-  tutor_id: string
-  slug: string
-  title: string
-  summary: string
+export type TutorSessionNotes = {
+  student_id: string
   body_md: string
-  track_kind: string
-  languages: string[]
-  hourly_rate_minor: number
-  currency: string
-  boosty_url: string
-  published_at: string
-  archived_at: string
-  created_at: string
-  updated_at: string
+  updated_at?: string
 }
 
-export type TutorListingPackage = {
-  id: string
-  listing_id: string
-  kind: string
-  hours: number
-  price_minor: number
-  description: string
-  archived_at: string
-  created_at: string
-}
+const sessionNotesKey = (studentId: string) =>
+  ['tutor', 'session-notes', studentId] as const
 
-export type TutorListingDetail = {
-  listing: TutorListing
-  packages: TutorListingPackage[]
-  tutor_display: string
-}
-
-export function useBrowseListingsQuery(filter: {
-  track_kinds?: string[]
-  max_rate_minor?: number
-  languages?: string[]
-  limit?: number
-}) {
+/** Read tutor's private notepad for this student. body_md == '' is a
+ *  valid «no notes yet» state (server returns empty string, not 404). */
+export function useSessionNotesQuery(studentId: string | undefined) {
   return useQuery({
-    queryKey: ["marketplace", "browse", filter] as const,
-    queryFn: () => {
-      const params = new URLSearchParams()
-      filter.track_kinds?.forEach((t) => params.append("track_kinds", t))
-      filter.languages?.forEach((l) => params.append("languages", l))
-      if (filter.max_rate_minor) params.set("max_rate_minor", String(filter.max_rate_minor))
-      if (filter.limit) params.set("limit", String(filter.limit))
-      const qs = params.toString()
-      return api<{ items: TutorListing[] }>(`/marketplace/listings${qs ? "?" + qs : ""}`)
-    },
+    queryKey: sessionNotesKey(studentId ?? ''),
+    queryFn: () =>
+      api<TutorSessionNotes>(
+        `/tutor/students/${encodeURIComponent(studentId!)}/notes`,
+      ),
+    enabled: Boolean(studentId),
     staleTime: 60_000,
   })
 }
 
-export function useListingBySlugQuery(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["marketplace", "listing", slug] as const,
-    queryFn: () => api<TutorListingDetail>(`/marketplace/listings/${encodeURIComponent(slug!)}`),
-    enabled: Boolean(slug),
-  })
-}
-
-export function useMyListingsQuery() {
-  return useQuery({
-    queryKey: ["tutor", "listings"] as const,
-    queryFn: () => api<{ items: TutorListing[] }>("/tutor/listings"),
-    staleTime: 30_000,
-  })
-}
-
-export function useCreateListingMutation() {
+/** Upsert markdown notepad. Empty body allowed (= cleared). Caller
+ *  should debounce ~1.5s to avoid thrashing on every keystroke. */
+export function useSaveSessionNotesMutation(studentId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: {
-      slug: string
-      title: string
-      summary: string
-      body_md: string
-      track_kind: string
-      languages: string[]
-      hourly_rate_minor: number
-      currency: string
-      boosty_url: string
-    }) => api<TutorListing>("/tutor/listings", { method: "POST", body: JSON.stringify(vars) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tutor", "listings"] }),
-  })
-}
-
-export function useUpdateListingMutation() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (vars: {
-      listing_id: string
-      slug: string
-      title: string
-      summary: string
-      body_md: string
-      track_kind: string
-      languages: string[]
-      hourly_rate_minor: number
-      currency: string
-      boosty_url: string
-    }) =>
-      api<TutorListing>(`/tutor/listings/${encodeURIComponent(vars.listing_id)}`, {
-        method: "PATCH",
-        body: JSON.stringify(vars),
-      }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tutor", "listings"] }),
-  })
-}
-
-export function usePublishListingMutation() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (listing_id: string) =>
-      api<Record<string, never>>(
-        `/tutor/listings/${encodeURIComponent(listing_id)}/publish`,
-        { method: "POST" },
+    mutationFn: (bodyMd: string) =>
+      api<TutorSessionNotes>(
+        `/tutor/students/${encodeURIComponent(studentId!)}/notes`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ student_id: studentId, body_md: bodyMd }),
+        },
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tutor", "listings"] }),
-  })
-}
-
-export function useArchiveListingMutation() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (listing_id: string) =>
-      api<Record<string, never>>(
-        `/tutor/listings/${encodeURIComponent(listing_id)}/archive`,
-        { method: "POST" },
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tutor", "listings"] }),
-  })
-}
-
-export function useAddListingPackageMutation() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (vars: {
-      listing_id: string
-      kind: string
-      hours: number
-      price_minor: number
-      description: string
-    }) =>
-      api<TutorListingPackage>(
-        `/tutor/listings/${encodeURIComponent(vars.listing_id)}/packages`,
-        { method: "POST", body: JSON.stringify(vars) },
-      ),
-    onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["marketplace", "listing"] })
-      qc.invalidateQueries({ queryKey: ["tutor", "listings"] })
-      void vars
-    },
-  })
-}
-
-export function useArchiveListingPackageMutation() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (package_id: string) =>
-      api<Record<string, never>>(
-        `/tutor/packages/${encodeURIComponent(package_id)}/archive`,
-        { method: "POST" },
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["marketplace", "listing"] })
-      qc.invalidateQueries({ queryKey: ["tutor", "listings"] })
+    onSuccess: (data) => {
+      if (studentId) qc.setQueryData(sessionNotesKey(studentId), data)
     },
   })
 }

@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addVocab } from '../api/reading';
 import {
   addListeningMaterial,
+  ingestYouTubeListening,
   archiveListeningMaterial,
   getListeningMaterial,
   listListeningMaterials,
@@ -326,11 +327,43 @@ function WelcomePane({ onAdd }: { onAdd: () => void }) {
 // ─── Add form ──────────────────────────────────────────────────────────
 
 function AddForm({ onCancel, onAdded }: { onCancel: () => void; onAdded: () => void }) {
+  // Source-tab: 'youtube' (default — самый частый источник) или 'manual'
+  // (paste audio URL + transcript). Раньше был только manual — Sergey
+  // 2026-05-03: «listening странный, надо самому транскрибацию искать
+  // хотя видео из тюба». Backend yt-dlp pulls auto-captions.
+  const [source, setSource] = useState<'youtube' | 'manual'>('youtube');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [title, setTitle] = useState('');
   const [audioURL, setAudioURL] = useState('');
   const [transcript, setTranscript] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const submitYoutube = useCallback(async () => {
+    setError(null);
+    const url = youtubeUrl.trim();
+    if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(url)) {
+      setError('Нужен URL вида https://youtube.com/... или https://youtu.be/...');
+      return;
+    }
+    setBusy(true);
+    try {
+      await ingestYouTubeListening(url);
+      onAdded();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'unknown';
+      // Тонкое сообщение для типовых ошибок.
+      if (msg.includes('no captions')) {
+        setError('У этого видео нет субтитров. Переключись на Manual и вставь транскрипт сам.');
+      } else if (msg.includes('not wired')) {
+        setError('Backend не настроен (нет yt-dlp). Используй Manual paste.');
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [youtubeUrl, onAdded]);
 
   const submit = useCallback(async () => {
     setError(null);
@@ -362,7 +395,8 @@ function AddForm({ onCancel, onAdded }: { onCancel: () => void; onAdded: () => v
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        void submit();
+        if (source === 'youtube') void submitYoutube();
+        else void submit();
       }}
       style={{ width: 720, maxWidth: '92%', margin: '32px auto 0', padding: '0 24px' }}
     >
@@ -384,53 +418,115 @@ function AddForm({ onCancel, onAdded }: { onCancel: () => void; onAdded: () => v
         New audio
       </h1>
 
-      <label style={labelStyle}>
-        <span style={labelTextStyle}>TITLE</span>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Lex Fridman ep 400 — Sam Altman"
-          style={inputStyle}
-          required
-        />
-      </label>
-
-      <label style={labelStyle}>
-        <span style={labelTextStyle}>AUDIO URL</span>
-        <input
-          type="url"
-          value={audioURL}
-          onChange={(e) => setAudioURL(e.target.value)}
-          placeholder="https://example.com/ep400.mp3"
-          style={inputStyle}
-          required
-        />
-      </label>
-
-      <label style={labelStyle}>
-        <span style={labelTextStyle}>TRANSCRIPT (markdown)</span>
-        <textarea
-          value={transcript}
-          onChange={(e) => setTranscript(e.target.value)}
-          placeholder="Paste the full transcript here…"
-          rows={14}
-          style={{ ...inputStyle, fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 13, lineHeight: 1.6 }}
-          required
-        />
-      </label>
-
-      {error && <p style={{ color: 'rgb(248, 113, 113)', fontSize: 12, marginTop: 12 }}>{error}</p>}
-
-      <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
-        <button type="submit" disabled={busy} style={primaryBtnStyle}>
-          {busy ? 'Saving…' : 'Save'}
-        </button>
-        <button type="button" onClick={onCancel} disabled={busy} style={secondaryBtnStyle}>
-          Cancel
-        </button>
+      {/* Source tabs: YouTube (auto-captions) vs Manual (paste URL+transcript) */}
+      <div style={{ marginTop: 18, display: 'flex', gap: 4 }}>
+        <SourceTab active={source === 'youtube'} onClick={() => setSource('youtube')}>
+          🎥 YouTube
+        </SourceTab>
+        <SourceTab active={source === 'manual'} onClick={() => setSource('manual')}>
+          ✍ Manual
+        </SourceTab>
       </div>
+
+      {source === 'youtube' ? (
+        <>
+          <label style={labelStyle}>
+            <span style={labelTextStyle}>YOUTUBE URL</span>
+            <input
+              type="url"
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              style={inputStyle}
+              required
+            />
+          </label>
+          <p style={{ marginTop: 8, fontSize: 12, color: 'var(--ink-40)', lineHeight: 1.5 }}>
+            Paste YouTube ссылку — backend pull'нет auto-captions через yt-dlp.
+            Title + transcript заполнятся автоматически. Если у видео нет
+            субтитров — переключись на Manual.
+          </p>
+          {error && <p style={{ color: 'rgb(248, 113, 113)', fontSize: 12, marginTop: 12 }}>{error}</p>}
+          <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
+            <button type="submit" disabled={busy} style={primaryBtnStyle}>
+              {busy ? 'Pulling…' : 'Pull from YouTube'}
+            </button>
+            <button type="button" onClick={onCancel} disabled={busy} style={secondaryBtnStyle}>
+              Cancel
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <label style={labelStyle}>
+            <span style={labelTextStyle}>TITLE</span>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Lex Fridman ep 400 — Sam Altman"
+              style={inputStyle}
+              required
+            />
+          </label>
+
+          <label style={labelStyle}>
+            <span style={labelTextStyle}>AUDIO URL</span>
+            <input
+              type="url"
+              value={audioURL}
+              onChange={(e) => setAudioURL(e.target.value)}
+              placeholder="https://example.com/ep400.mp3"
+              style={inputStyle}
+              required
+            />
+          </label>
+
+          <label style={labelStyle}>
+            <span style={labelTextStyle}>TRANSCRIPT (markdown)</span>
+            <textarea
+              value={transcript}
+              onChange={(e) => setTranscript(e.target.value)}
+              placeholder="Paste the full transcript here…"
+              rows={14}
+              style={{ ...inputStyle, fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 13, lineHeight: 1.6 }}
+              required
+            />
+          </label>
+
+          {error && <p style={{ color: 'rgb(248, 113, 113)', fontSize: 12, marginTop: 12 }}>{error}</p>}
+
+          <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
+            <button type="submit" disabled={busy} style={primaryBtnStyle}>
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" onClick={onCancel} disabled={busy} style={secondaryBtnStyle}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
     </form>
+  );
+}
+
+function SourceTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '6px 14px',
+        fontSize: 12,
+        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+        border: '1px solid rgba(255,255,255,0.12)',
+        borderRadius: 999,
+        color: active ? 'var(--ink-90)' : 'var(--ink-60)',
+        cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

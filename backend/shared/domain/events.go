@@ -132,6 +132,21 @@ type MockSessionFinished struct {
 
 func (MockSessionFinished) Topic() string { return "mock.SessionFinished" }
 
+// MockReportReady — emitted by ai_mock ReportWorker AFTER the LLM grading
+// finishes and ai_report jsonb is persisted. Carries the parsed
+// overall_score + weaknesses list, so subscribers can react to bad scores
+// (AI-tutor: trigger proactive assignment when overall_score<70).
+type MockReportReady struct {
+	base
+	SessionID    uuid.UUID     `json:"session_id"`
+	UserID       uuid.UUID     `json:"user_id"`
+	Section      enums.Section `json:"section"`
+	OverallScore int           `json:"overall_score"`
+	Weaknesses   []string      `json:"weaknesses"`
+}
+
+func (MockReportReady) Topic() string { return "mock.ReportReady" }
+
 // ─────────────────────────────────────────────────────────────────────────
 // AI Native Round
 // ─────────────────────────────────────────────────────────────────────────

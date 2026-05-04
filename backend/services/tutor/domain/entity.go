@@ -24,6 +24,10 @@ type Invite struct {
 	AcceptedBy *uuid.UUID
 	AcceptedAt *time.Time
 	RevokedAt  *time.Time
+	// TargetUserID — pre-bound юзер: тутор пригласил кого-то конкретного
+	// по @username. nil = классический «открытый» invite по коду. См
+	// migration 00041.
+	TargetUserID *uuid.UUID
 }
 
 // IsActive reports whether the invite can still be redeemed.

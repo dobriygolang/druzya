@@ -17,6 +17,7 @@ import (
 	sharedDomain "druz9/shared/domain"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/eventbus"
+	"druz9/shared/pkg/llmchain"
 	sharedMw "druz9/shared/pkg/middleware"
 
 	"github.com/go-chi/chi/v5"
@@ -59,6 +60,8 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 	pg := profileInfra.NewPostgres(d.Pool)
 	kv := profileInfra.NewRedisKV(d.Redis)
 	atlasCat := profileInfra.NewAtlasCataloguePostgres(d.Pool)
+	userAtlas := profileInfra.NewUserAtlasPostgres(d.Pool)
+	atlasPrefs := profileInfra.NewAtlasNodePrefsPostgres(d.Pool)
 	cached := profileInfra.NewCachedRepo(
 		pg,
 		kv,
@@ -100,7 +103,7 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 	h := profilePorts.NewHandler(profilePorts.Handler{
 		GetProfile:     getProfile,
 		GetPublic:      &profileApp.GetPublic{Repo: cached},
-		GetAtlas:       &profileApp.GetAtlas{Repo: cached, Catalogue: atlasCat},
+		GetAtlas:       &profileApp.GetAtlas{Repo: cached, Catalogue: atlasCat, UserAtlas: userAtlas, Prefs: atlasPrefs},
 		GetReport:      getReport,
 		GetSettings:    &profileApp.GetSettings{Repo: cached},
 		UpdateSettings: &profileApp.UpdateSettings{Repo: cached},
@@ -111,6 +114,9 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 		RejectAppUC:    &profileApp.RejectInterviewerApplication{Repo: cached},
 		AllocateAtlas:  profileApp.NewAllocateAtlasNode(cached, d.Log),
 		VacanciesModel: pg, // non-cached: setting flips at most once/week
+		// Phase 3.1 — user-driven atlas. nil-safe: без llmchain endpoint
+		// возвращает Unimplemented, фронт прячет UI.
+		ClassifyAtlasTodo: buildClassifyAtlasTodo(d, atlasCat, userAtlas),
 		// Multi-track UCs hit Postgres directly — there's no payoff to
 		// caching since the response is read once on onboarding/settings
 		// load and the dataset per user is at most 6 rows.
@@ -118,6 +124,7 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 		SetUserTracks: &profileApp.SetUserTracks{Repo: pg},
 		ReportFetcher: reportCache,
 		Repo:          cached,
+		Pool:          d.Pool,
 		Log:           d.Log,
 	})
 	server := profilePorts.NewProfileServer(h)
@@ -142,6 +149,8 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 			r.Get("/profile/me", transcoder.ServeHTTP)
 			r.Get("/profile/me/atlas", transcoder.ServeHTTP)
 			r.Post("/profile/me/atlas/allocate", transcoder.ServeHTTP)
+			r.Post("/profile/me/atlas/todo", transcoder.ServeHTTP)
+			r.Post("/profile/me/atlas/pref", transcoder.ServeHTTP)
 			r.Get("/profile/me/ai-vacancies-model", transcoder.ServeHTTP)
 			r.Put("/profile/me/ai-vacancies-model", transcoder.ServeHTTP)
 			// Multi-track persona (Wave 9.4) — GET читает текущий набор,
@@ -266,4 +275,51 @@ func deleteAccountHandler(uc *profileApp.DeleteAccount, log *slog.Logger) http.H
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	}
+}
+
+// ── Phase 3.1: classify-atlas-todo wiring ─────────────────────────────
+
+// buildClassifyAtlasTodo возвращает UC только когда LLM сконфигурён;
+// иначе nil → handler ответит Unimplemented, а фронт спрячет UI.
+func buildClassifyAtlasTodo(
+	d monolithServices.Deps,
+	cat profileDomain.AtlasCatalogueRepo,
+	user profileDomain.UserAtlasRepo,
+) *profileApp.ClassifyAtlasTodo {
+	if d.LLMChain == nil {
+		return nil
+	}
+	return &profileApp.ClassifyAtlasTodo{
+		Catalogue: cat,
+		UserAtlas: user,
+		LLM:       &atlasClassifierAdapter{chain: d.LLMChain},
+	}
+}
+
+// atlasClassifierAdapter — llmchain.ChatClient → app.AtlasClassifier.
+type atlasClassifierAdapter struct{ chain llmchain.ChatClient }
+
+func (a *atlasClassifierAdapter) Classify(
+	ctx context.Context,
+	todo string,
+	cands []profileApp.AtlasClassifyCandidate,
+) (profileApp.AtlasClassifyResult, error) {
+	if a == nil || a.chain == nil {
+		return profileApp.AtlasClassifyResult{}, errors.New("atlas classifier: nil chain")
+	}
+	system := profileApp.PromptAtlasClassify(cands)
+	resp, err := a.chain.Chat(ctx, llmchain.Request{
+		Task: llmchain.TaskAtlasClassify,
+		Messages: []llmchain.Message{
+			{Role: llmchain.RoleSystem, Content: system},
+			{Role: llmchain.RoleUser, Content: todo},
+		},
+		Temperature: 0.2,
+		MaxTokens:   400,
+		JSONMode:    true,
+	})
+	if err != nil {
+		return profileApp.AtlasClassifyResult{}, err
+	}
+	return profileApp.ParseAtlasClassifyResponse(resp.Content)
 }

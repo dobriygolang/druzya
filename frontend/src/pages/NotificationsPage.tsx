@@ -291,10 +291,9 @@ export default function NotificationsPage() {
       key={n.id}
       n={n}
       onMarkRead={() => markRead.mutate(n.id)}
-      // ArenaMatchPage at /arena/match/:matchId reads `?replay=1` to enter
-      // replay mode (see MatchEndPage). The bare /…/replay segment is not
-      // a registered route — fall through to NotFoundPage in production.
-      onOpenReplay={(matchID) => navigate(`/arena/match/${matchID}?replay=1`)}
+      // arena removed post-pivot 2026-05-01; replay no-op (любые
+      // stale rating/match-уведомления просто не имеют куда вести).
+      onOpenReplay={() => { /* arena removed */ }}
       onOpenPlan={() => navigate('/weekly')}
     />
   )

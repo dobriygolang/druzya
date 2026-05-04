@@ -7,10 +7,38 @@
 
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Clock, Flame, X } from 'lucide-react'
+import { ArrowRight, BookOpen, Clock, Flame, Target, X } from 'lucide-react'
 import type { Atlas, AtlasNode, KataRef } from '../../lib/queries/profile'
+import { useSetAtlasNodePrefMutation } from '../../lib/queries/profile'
 import { humanizeDifficulty } from '../../lib/labels'
 import { Button } from '../../components/Button'
+import { AICoachPill } from '../../components/AICoachPill'
+import { useActiveStudyModeQuery, type ActiveTrack } from '../../lib/queries/honeSettings'
+
+// pickPersonaForNode — выбирает AI-coach персону. mode='go' выигрывает над
+// section'ом (юзер явно сказал что в go-режиме). Иначе — по section'у узла.
+function pickPersonaForNode(
+  node: AtlasNode,
+  activeTrack: ActiveTrack,
+): { slug: string; name: string } {
+  if (activeTrack === 'go') {
+    return { slug: 'go-coach', name: 'Гоша · Go-коуч' }
+  }
+  switch (node.section) {
+    case 'algorithms':
+      return { slug: 'algo-coach', name: 'Алёша · алго-коуч' }
+    case 'system_design':
+      return { slug: 'sysdesign-guru', name: 'Кирилл · sysdesign-guru' }
+    case 'sql':
+    case 'databases':
+      return { slug: 'sql-mentor', name: 'Лена · SQL-ментор' }
+    case 'english_hr':
+    case 'english':
+      return { slug: 'english-coach', name: 'Maria · English coach' }
+    default:
+      return { slug: 'algo-coach', name: 'Алёша · алго-коуч' }
+  }
+}
 import {
   STATE_LABEL,
   computePct,
@@ -39,6 +67,8 @@ export function AtlasDrawer({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const activeTrack = useActiveStudyModeQuery().data?.activeTrack ?? 'general'
+  const setPref = useSetAtlasNodePrefMutation()
   const state = nodeState(node)
   const days = daysSince(node.last_solved_at)
   const solved = node.solved_count ?? 0
@@ -82,13 +112,47 @@ export function AtlasDrawer({
         </div>
 
         <div className="flex flex-col gap-5 p-5">
-          <div>
-            <h2 className="font-display text-[22px] font-bold leading-tight text-text-primary">
-              {node.title}
-            </h2>
-            <span className="mt-0.5 block font-mono text-xs text-text-muted">
-              {sectionLabel(node.section)} · {node.kind}
-            </span>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-[22px] font-bold leading-tight text-text-primary">
+                {node.title}
+              </h2>
+              <span className="mt-0.5 block font-mono text-xs text-text-muted">
+                {sectionLabel(node.section)} · {node.kind}
+                {node.is_user_owned && (
+                  <span
+                    className="ml-2 inline-block rounded-sm border border-border bg-surface-3 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-text-muted"
+                    title="узел добавлен тобой через classify-flow"
+                  >
+                    your todo
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  setPref.mutate({ nodeKey: node.key, pinned: true, hidden: false })
+                }
+                disabled={setPref.isPending}
+                title="закрепить узел в /atlas ribbon"
+                className="rounded-sm border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-text-primary disabled:opacity-50"
+              >
+                pin
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setPref.mutate({ nodeKey: node.key, pinned: false, hidden: true })
+                }
+                disabled={setPref.isPending}
+                title="скрыть узел из канваса (можно вернуть)"
+                className="rounded-sm border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-text-primary disabled:opacity-50"
+              >
+                hide
+              </button>
+            </div>
           </div>
 
           {node.description && (
@@ -96,6 +160,47 @@ export function AtlasDrawer({
               {node.description}
             </p>
           )}
+
+          {/* Command-center: 3 действия с этим узлом. Главный CTA — взять
+              mock с фокусом на этой теме (передаём node.id + section в
+              query — MockCompanyPicker pre-select'ит matching section'ы и
+              покажет banner). 2nd action — coach pill (открывается inline).
+              3rd — Codex с фильтром по теме. */}
+          {(() => {
+            const persona = pickPersonaForNode(node, activeTrack)
+            const ctx = `Студент изучает узел «${node.title}» (${sectionLabel(node.section)}). Прогресс: ${pctLabel}${total > 0 ? `, ${solved} из ${total} задач решено` : ''}. Состояние: ${STATE_LABEL[state]}.`
+            const mockHref = `/mock?focus=${encodeURIComponent(node.key)}&section=${encodeURIComponent(node.section)}&title=${encodeURIComponent(node.title)}`
+            const codexHref = `/codex?topic=${encodeURIComponent(node.section)}`
+            return (
+              <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-2 p-3">
+                <Link to={mockHref} className="block">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    icon={<Target className="h-4 w-4" />}
+                    iconRight={<ArrowRight className="h-4 w-4" />}
+                    className="w-full justify-between"
+                  >
+                    Mock с фокусом на эту тему
+                  </Button>
+                </Link>
+                <div className="flex">
+                  <AICoachPill
+                    personaSlug={persona.slug}
+                    coachName={persona.name}
+                    contextNote={ctx}
+                    label="Спросить coach’а"
+                  />
+                </div>
+                <Link
+                  to={codexHref}
+                  className="inline-flex items-center gap-2 self-start rounded-md px-2 py-1 font-mono text-[11px] uppercase tracking-[0.16em] text-text-secondary hover:text-text-primary"
+                >
+                  <BookOpen className="h-3.5 w-3.5" /> Что почитать
+                </Link>
+              </div>
+            )
+          })()}
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
@@ -151,7 +256,7 @@ export function AtlasDrawer({
             </div>
           )}
 
-          {recommended.length > 0 ? (
+          {recommended.length > 0 && (
             <div className="flex flex-col gap-2">
               <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                 Рекомендованные ката
@@ -161,23 +266,6 @@ export function AtlasDrawer({
                   <KataItem key={k.id} k={k} />
                 ))}
               </ul>
-              <Link to={`/arena/kata/${encodeURIComponent(recommended[0].id)}`} className="block">
-                <Button
-                  size="md"
-                  iconRight={<ArrowRight className="h-4 w-4" />}
-                  className="w-full"
-                >
-                  Решить рекомендованное сейчас
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="rounded-lg bg-surface-2 p-3 text-xs text-text-muted">
-              Каталог ката для этой темы ещё не размечен — попробуй открыть{' '}
-              <Link to="/arena" className="text-text-primary hover:underline">
-                Арену с фильтром по теме
-              </Link>
-              .
             </div>
           )}
 

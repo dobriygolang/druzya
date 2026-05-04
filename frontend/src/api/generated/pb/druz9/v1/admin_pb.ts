@@ -1288,12 +1288,18 @@ export class AdminDashboard extends Message<AdminDashboard> {
   usersBanned = protoInt64.zero;
 
   /**
-   * @generated from field: int64 matches_today = 6;
+   * pivot 2026-05-01: arena dropped
+   *
+   * @generated from field: int64 matches_today = 6 [deprecated = true];
+   * @deprecated
    */
   matchesToday = protoInt64.zero;
 
   /**
-   * @generated from field: int64 matches_week = 7;
+   * pivot 2026-05-01: arena dropped
+   *
+   * @generated from field: int64 matches_week = 7 [deprecated = true];
+   * @deprecated
    */
   matchesWeek = protoInt64.zero;
 
@@ -1311,11 +1317,6 @@ export class AdminDashboard extends Message<AdminDashboard> {
    * @generated from field: int64 active_mock_sessions = 10;
    */
   activeMockSessions = protoInt64.zero;
-
-  /**
-   * @generated from field: int64 active_arena_matches = 11;
-   */
-  activeArenaMatches = protoInt64.zero;
 
   /**
    * @generated from field: int64 reports_pending = 12;
@@ -1352,7 +1353,6 @@ export class AdminDashboard extends Message<AdminDashboard> {
     { no: 8, name: "katas_today", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 9, name: "katas_week", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 10, name: "active_mock_sessions", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 11, name: "active_arena_matches", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 12, name: "reports_pending", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 13, name: "anticheat_signals_24h", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 14, name: "generated_at", kind: "message", T: Timestamp },

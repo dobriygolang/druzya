@@ -13,12 +13,14 @@ import { Icon, type IconName } from './primitives/Icon';
 export type PageId =
   | 'home'
   | 'today'
+  | 'coach' // Phase 2 (2026-05-04) — learning-companion surface (mode switcher + fork + hero next-action)
   | 'notes'
   | 'stats'
   | 'podcasts'
   | 'editor'
   | 'shared_boards' // единый boards-флоу (private/public — кому отдан URL)
   | 'events'
+  | 'english_overview' // Hub overview: stats + recent + due vocab
   | 'reading' // Wave 4 — English Reading-модуль (library + reader + SRS)
   | 'writing' // Wave 4.4 — English Writing-as-Focus draft + AI feedback
   | 'assignments' // Wave 5.1d — pending tutor-pushed assignments
@@ -51,47 +53,39 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
   const [q, setQ] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sections group related entries with a sub-header. Order = render order.
-  // Дополнения здесь = одно место правды (хоткеи R/W/L и A/M по-прежнему
-  // работают напрямую через App.tsx letter-switch — палитра только хост).
+  // Phase 11 (Sergey 2026-05-04) — Hone-native only. Palette = focus
+  // cockpit shortcuts; web-pages открываются через контекстные deeplinks
+  // на конкретных surfaces (Coach hero «start mock», Today step «practice»,
+  // step UI «graduation», TaskBoard tutor-card, Notes resource-link, Atlas
+  // chip). См memory/project_hone — «Hone consumes, Web produces».
+  //
+  // Removed: Tutor (assignments + sessions, A·M), Boards · Code rooms (D·B·E),
+  // Group events (V), Podcasts (P), «Stats dashboard» duplicate (G·S).
+  // English-hub переименован в «English» (палитра ведёт на overview tab).
   const items: PaletteItem[] = useMemo(
     () => [
       { id: 'today', label: 'Today', icon: 'sun', shortcut: ['T'], section: 'Daily', run: () => onOpen('today') },
+      { id: 'coach', label: 'Coach', icon: 'sparkle', shortcut: ['C'], section: 'Daily', run: () => onOpen('coach') },
+      { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'], section: 'Daily', run: () => onOpen('stats') },
 
       { id: 'notes', label: 'Notes', icon: 'note', shortcut: ['N'], section: 'Capture', run: () => onOpen('notes') },
       {
         id: 'shared_boards',
-        label: 'Boards · Code rooms',
+        label: 'TaskBoard',
         icon: 'grid',
-        shortcut: ['D', 'B', 'E'],
+        shortcut: ['B'],
         section: 'Capture',
         run: () => onOpen('shared_boards'),
       },
 
-      { id: 'events', label: 'Events', icon: 'calendar', shortcut: ['V'], section: 'Sessions', run: () => onOpen('events') },
       {
-        id: 'assignments',
-        label: 'Tutor · Tasks · Calendar',
-        icon: 'sparkle',
-        shortcut: ['A', 'M'],
-        section: 'Sessions',
-        run: () => onOpen('assignments'),
-      },
-
-      // English-loop hub (Reading / Writing / Listening). Палитра-entry
-      // схлопывает три страницы в одну логическую группу — visual hub
-      // через `EnglishTabsChrome` внутри.
-      {
-        id: 'reading',
-        label: 'English · Read · Write · Listen',
+        id: 'english_overview',
+        label: 'English',
         icon: 'note',
-        shortcut: ['R', 'W', 'L'],
+        shortcut: ['E'],
         section: 'Learning',
-        run: () => onOpen('reading'),
+        run: () => onOpen('english_overview'),
       },
-      { id: 'podcasts', label: 'Podcasts', icon: 'headphones', shortcut: ['P'], section: 'Learning', run: () => onOpen('podcasts') },
-
-      { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'], section: 'Insights', run: () => onOpen('stats') },
 
       { id: 'settings', label: 'Settings', icon: 'settings', shortcut: [','], section: 'System', run: () => onOpen('settings') },
     ],
@@ -196,27 +190,11 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
         <div style={{ padding: '4px 0' }}>
           {filtered.map((it, i) => {
             const active = i === idx;
-            // Render a section header before the first item of each new
-            // group. We hide headers when the user is searching (filter
-            // narrows results — the grouping carries less signal then).
-            const prev = filtered[i - 1];
-            const showHeader = !q.trim() && it.section && it.section !== prev?.section;
+            // Sergey 2026-05-03: «убрать названия Capture / Daily и так
+            // далее» — категории-заголовки убраны, palette теперь flat
+            // search-list (fuzzy уже фильтрует по labels).
             return (
               <div key={it.id}>
-                {showHeader && (
-                  <div
-                    className="mono"
-                    style={{
-                      padding: '10px 14px 4px',
-                      fontSize: 9,
-                      letterSpacing: '0.22em',
-                      textTransform: 'uppercase',
-                      color: 'var(--ink-40)',
-                    }}
-                  >
-                    {it.section}
-                  </div>
-                )}
               <button
                 onMouseEnter={() => setIdx(i)}
                 onClick={() => {

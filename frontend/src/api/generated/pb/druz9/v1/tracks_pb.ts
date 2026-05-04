@@ -824,3 +824,495 @@ export class LeaveTrackResponse extends Message<LeaveTrackResponse> {
   }
 }
 
+/**
+ * StartCheckpointRequest — UI хочет открыть checkpoint quiz CTA.
+ *
+ * @generated from message druz9.v1.StartCheckpointRequest
+ */
+export class StartCheckpointRequest extends Message<StartCheckpointRequest> {
+  /**
+   * @generated from field: string track_id = 1;
+   */
+  trackId = "";
+
+  /**
+   * @generated from field: int32 step_index = 2;
+   */
+  stepIndex = 0;
+
+  constructor(data?: PartialMessage<StartCheckpointRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.StartCheckpointRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "track_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "step_index", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StartCheckpointRequest {
+    return new StartCheckpointRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): StartCheckpointRequest {
+    return new StartCheckpointRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): StartCheckpointRequest {
+    return new StartCheckpointRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: StartCheckpointRequest | PlainMessage<StartCheckpointRequest> | undefined, b: StartCheckpointRequest | PlainMessage<StartCheckpointRequest> | undefined): boolean {
+    return proto3.util.equals(StartCheckpointRequest, a, b);
+  }
+}
+
+/**
+ * StartCheckpointResponse — backend возвращает skill_keys (handler уже
+ * pull'ит 5 questions из mock_pool by these keys) + признак passed.
+ *
+ * @generated from message druz9.v1.StartCheckpointResponse
+ */
+export class StartCheckpointResponse extends Message<StartCheckpointResponse> {
+  /**
+   * @generated from field: string step_title = 1;
+   */
+  stepTitle = "";
+
+  /**
+   * step.skill_keys
+   *
+   * @generated from field: repeated string skill_keys = 2;
+   */
+  skillKeys: string[] = [];
+
+  /**
+   * что quizz'им
+   *
+   * @generated from field: repeated string checkpoint_skill_keys = 3;
+   */
+  checkpointSkillKeys: string[] = [];
+
+  /**
+   * @generated from field: bool already_passed = 4;
+   */
+  alreadyPassed = false;
+
+  /**
+   * @generated from field: bool reflection_required = 5;
+   */
+  reflectionRequired = false;
+
+  /**
+   * '' если closed by checkpoint
+   *
+   * @generated from field: string graduation_mock_section = 6;
+   */
+  graduationMockSection = "";
+
+  constructor(data?: PartialMessage<StartCheckpointResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.StartCheckpointResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "step_title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "skill_keys", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 3, name: "checkpoint_skill_keys", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 4, name: "already_passed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 5, name: "reflection_required", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "graduation_mock_section", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StartCheckpointResponse {
+    return new StartCheckpointResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): StartCheckpointResponse {
+    return new StartCheckpointResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): StartCheckpointResponse {
+    return new StartCheckpointResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: StartCheckpointResponse | PlainMessage<StartCheckpointResponse> | undefined, b: StartCheckpointResponse | PlainMessage<StartCheckpointResponse> | undefined): boolean {
+    return proto3.util.equals(StartCheckpointResponse, a, b);
+  }
+}
+
+/**
+ * CheckpointAnswer — single Q+A pair от UI.
+ *
+ * @generated from message druz9.v1.CheckpointAnswer
+ */
+export class CheckpointAnswer extends Message<CheckpointAnswer> {
+  /**
+   * @generated from field: string question_id = 1;
+   */
+  questionId = "";
+
+  /**
+   * @generated from field: string question = 2;
+   */
+  question = "";
+
+  /**
+   * @generated from field: string user_answer = 3;
+   */
+  userAnswer = "";
+
+  /**
+   * optional reference для grader
+   *
+   * @generated from field: string model_answer = 4;
+   */
+  modelAnswer = "";
+
+  constructor(data?: PartialMessage<CheckpointAnswer>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CheckpointAnswer";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "question_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "question", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "user_answer", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "model_answer", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CheckpointAnswer {
+    return new CheckpointAnswer().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CheckpointAnswer {
+    return new CheckpointAnswer().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CheckpointAnswer {
+    return new CheckpointAnswer().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CheckpointAnswer | PlainMessage<CheckpointAnswer> | undefined, b: CheckpointAnswer | PlainMessage<CheckpointAnswer> | undefined): boolean {
+    return proto3.util.equals(CheckpointAnswer, a, b);
+  }
+}
+
+/**
+ * SubmitCheckpointRequest — submit answers для grading.
+ *
+ * @generated from message druz9.v1.SubmitCheckpointRequest
+ */
+export class SubmitCheckpointRequest extends Message<SubmitCheckpointRequest> {
+  /**
+   * @generated from field: string track_id = 1;
+   */
+  trackId = "";
+
+  /**
+   * @generated from field: int32 step_index = 2;
+   */
+  stepIndex = 0;
+
+  /**
+   * @generated from field: repeated druz9.v1.CheckpointAnswer answers = 3;
+   */
+  answers: CheckpointAnswer[] = [];
+
+  constructor(data?: PartialMessage<SubmitCheckpointRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SubmitCheckpointRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "track_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "step_index", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "answers", kind: "message", T: CheckpointAnswer, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SubmitCheckpointRequest {
+    return new SubmitCheckpointRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SubmitCheckpointRequest {
+    return new SubmitCheckpointRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SubmitCheckpointRequest {
+    return new SubmitCheckpointRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SubmitCheckpointRequest | PlainMessage<SubmitCheckpointRequest> | undefined, b: SubmitCheckpointRequest | PlainMessage<SubmitCheckpointRequest> | undefined): boolean {
+    return proto3.util.equals(SubmitCheckpointRequest, a, b);
+  }
+}
+
+/**
+ * GradedAnswer — per-question result из TaskCheckpointGrade.
+ *
+ * @generated from message druz9.v1.GradedAnswer
+ */
+export class GradedAnswer extends Message<GradedAnswer> {
+  /**
+   * @generated from field: string question_id = 1;
+   */
+  questionId = "";
+
+  /**
+   * @generated from field: string user_answer = 2;
+   */
+  userAnswer = "";
+
+  /**
+   * @generated from field: string model_answer = 3;
+   */
+  modelAnswer = "";
+
+  /**
+   * @generated from field: bool correct = 4;
+   */
+  correct = false;
+
+  /**
+   * @generated from field: string comment = 5;
+   */
+  comment = "";
+
+  constructor(data?: PartialMessage<GradedAnswer>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GradedAnswer";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "question_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "user_answer", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "model_answer", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "correct", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 5, name: "comment", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GradedAnswer {
+    return new GradedAnswer().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GradedAnswer {
+    return new GradedAnswer().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GradedAnswer {
+    return new GradedAnswer().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GradedAnswer | PlainMessage<GradedAnswer> | undefined, b: GradedAnswer | PlainMessage<GradedAnswer> | undefined): boolean {
+    return proto3.util.equals(GradedAnswer, a, b);
+  }
+}
+
+/**
+ * SubmitCheckpointResponse — score + per-question detail.
+ *
+ * @generated from message druz9.v1.SubmitCheckpointResponse
+ */
+export class SubmitCheckpointResponse extends Message<SubmitCheckpointResponse> {
+  /**
+   * 0..100
+   *
+   * @generated from field: int32 score = 1;
+   */
+  score = 0;
+
+  /**
+   * score >= 70
+   *
+   * @generated from field: bool passed = 2;
+   */
+  passed = false;
+
+  /**
+   * @generated from field: repeated druz9.v1.GradedAnswer attempts = 3;
+   */
+  attempts: GradedAnswer[] = [];
+
+  /**
+   * @generated from field: string attempt_id = 4;
+   */
+  attemptId = "";
+
+  /**
+   * null если not passed
+   *
+   * @generated from field: google.protobuf.Timestamp passed_at = 5;
+   */
+  passedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<SubmitCheckpointResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SubmitCheckpointResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "passed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "attempts", kind: "message", T: GradedAnswer, repeated: true },
+    { no: 4, name: "attempt_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "passed_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SubmitCheckpointResponse {
+    return new SubmitCheckpointResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SubmitCheckpointResponse {
+    return new SubmitCheckpointResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SubmitCheckpointResponse {
+    return new SubmitCheckpointResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SubmitCheckpointResponse | PlainMessage<SubmitCheckpointResponse> | undefined, b: SubmitCheckpointResponse | PlainMessage<SubmitCheckpointResponse> | undefined): boolean {
+    return proto3.util.equals(SubmitCheckpointResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GenerateCustomPathRequest
+ */
+export class GenerateCustomPathRequest extends Message<GenerateCustomPathRequest> {
+  /**
+   * @generated from field: string goal = 1;
+   */
+  goal = "";
+
+  constructor(data?: PartialMessage<GenerateCustomPathRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GenerateCustomPathRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "goal", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GenerateCustomPathRequest {
+    return new GenerateCustomPathRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GenerateCustomPathRequest {
+    return new GenerateCustomPathRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GenerateCustomPathRequest {
+    return new GenerateCustomPathRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GenerateCustomPathRequest | PlainMessage<GenerateCustomPathRequest> | undefined, b: GenerateCustomPathRequest | PlainMessage<GenerateCustomPathRequest> | undefined): boolean {
+    return proto3.util.equals(GenerateCustomPathRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.CustomPathNode
+ */
+export class CustomPathNode extends Message<CustomPathNode> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string group = 3;
+   */
+  group = "";
+
+  /**
+   * @generated from field: string hint = 4;
+   */
+  hint = "";
+
+  constructor(data?: PartialMessage<CustomPathNode>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CustomPathNode";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "group", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "hint", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CustomPathNode {
+    return new CustomPathNode().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CustomPathNode {
+    return new CustomPathNode().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CustomPathNode {
+    return new CustomPathNode().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CustomPathNode | PlainMessage<CustomPathNode> | undefined, b: CustomPathNode | PlainMessage<CustomPathNode> | undefined): boolean {
+    return proto3.util.equals(CustomPathNode, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GenerateCustomPathResponse
+ */
+export class GenerateCustomPathResponse extends Message<GenerateCustomPathResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.CustomPathNode nodes = 1;
+   */
+  nodes: CustomPathNode[] = [];
+
+  constructor(data?: PartialMessage<GenerateCustomPathResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GenerateCustomPathResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "nodes", kind: "message", T: CustomPathNode, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GenerateCustomPathResponse {
+    return new GenerateCustomPathResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GenerateCustomPathResponse {
+    return new GenerateCustomPathResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GenerateCustomPathResponse {
+    return new GenerateCustomPathResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GenerateCustomPathResponse | PlainMessage<GenerateCustomPathResponse> | undefined, b: GenerateCustomPathResponse | PlainMessage<GenerateCustomPathResponse> | undefined): boolean {
+    return proto3.util.equals(GenerateCustomPathResponse, a, b);
+  }
+}
+

@@ -122,6 +122,15 @@ message SkillNode {
   // the hub to this node. Frontend uses this to dim/lock unreachable
   // branches during planning. Computed server-side per-user.
   bool reachable = 18;
+
+  // is_user_owned — true для узлов из user_atlas_nodes (Phase 3.1
+  // classify-flow). Frontend рендерит "your TODO" badge.
+  bool is_user_owned = 19;
+
+  // Phase 3 — per-user overlay (table user_atlas_node_prefs, мig 00064).
+  // Mutually exclusive — DB CHECK гарантирует.
+  bool pinned = 20;
+  bool hidden = 21;
 }
 
 // KataRef — лёгкий референс на ката для UI рекомендаций. Title/difficulty
@@ -467,10 +476,67 @@ service ProfileService {
       body: "*"
     };
   }
+
+  // ClassifyAtlasTodo (Phase 3.1) — юзер пишет TODO в свободной форме
+  // («изучить транзакции в Postgres»); LLM либо матчит в существующий
+  // curated узел атласа, либо создаёт новый user_atlas_nodes row.
+  // Возвращает либо matched_key (узел уже был), либо new_node (новый).
+  rpc ClassifyAtlasTodo(ClassifyAtlasTodoRequest) returns (ClassifyAtlasTodoResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/profile/me/atlas/todo"
+      body: "*"
+    };
+  }
+
+  // SetAtlasNodePref — Phase 3 pin/hide actions per atlas node.
+  rpc SetAtlasNodePref(SetAtlasNodePrefRequest) returns (SetAtlasNodePrefResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/profile/me/atlas/pref"
+      body: "*"
+    };
+  }
 }
 
 message AllocateAtlasSkillRequest {
   string skill_id = 1;
+}
+
+// ClassifyAtlasTodoRequest — free-form TODO от юзера.
+message ClassifyAtlasTodoRequest {
+  string todo = 1;
+}
+
+// UserAtlasNode — один user_atlas_nodes row, возвращаемый когда LLM
+// решил создать новую тему (а не матчить в curated).
+message UserAtlasNode {
+  string node_key    = 1;
+  string title       = 2;
+  string description = 3;
+  string section     = 4;
+  string kind        = 5; // hub | keystone | notable | small
+  string cluster     = 6;
+  string source_text = 7; // оригинальный TODO для аудита
+  string created_at  = 8; // RFC3339
+}
+
+// ClassifyAtlasTodoResponse — ровно одно из полей не-пусто:
+//   matched_key — TODO замэтчился в curated узел атласа.
+//   new_node    — был создан новый user_atlas_nodes row.
+message ClassifyAtlasTodoResponse {
+  string matched_key       = 1;
+  UserAtlasNode new_node   = 2;
+}
+
+// SetAtlasNodePrefRequest — Phase 3 pin/hide overlay над atlas (table
+// user_atlas_node_prefs, миграция 00064).
+message SetAtlasNodePrefRequest {
+  string node_key = 1;
+  bool   pinned   = 2;
+  bool   hidden   = 3;
+}
+
+message SetAtlasNodePrefResponse {
+  bool ok = 1;
 }
 
 message AllocateAtlasSkillResponse {

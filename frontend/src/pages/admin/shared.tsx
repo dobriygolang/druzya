@@ -20,7 +20,6 @@ export type Tab =
   | 'llm_chain'
   | 'personas'
   | 'atlas'
-  | 'arena_tasks'
   | 'mock_companies'
   | 'mock_tasks'
   | 'mock_questions'
@@ -83,12 +82,6 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
         { id: 'mock_questions', label: 'Вопросы' },
         { id: 'mock_strictness', label: 'Строгость AI' },
       ],
-    },
-    {
-      id: 'arena',
-      label: 'Arena',
-      defaultOpen: false,
-      items: [{ id: 'arena_tasks', label: 'Задачи' }],
     },
     {
       id: 'content',

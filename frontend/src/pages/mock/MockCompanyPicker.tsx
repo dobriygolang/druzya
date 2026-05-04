@@ -19,9 +19,9 @@
 //     `mock_pipeline.coming_soon` and we render the EmptyState that links
 //     to the existing single-shot /voice-mock so users still have a path.
 
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Bot, Check } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Bot, Check, Target } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
 import { EmptyState } from '../../components/EmptyState'
 import { CompanyCard } from '../../components/mock/CompanyCard'
@@ -55,6 +55,31 @@ const SECTION_OPTIONS: { id: string; label: string; hint: string }[] = [
 
 const MOCK_SECTIONS_STORAGE_KEY = 'druz9.mock.sections'
 
+// atlasSectionToMockSections — Atlas node.section ('algorithms', 'sql',
+// 'system_design', 'english_hr', 'ml_eng', 'databases', …) → подмножество
+// mock-секций (hr/algo/coding/sysdesign/behavioral). Используется когда
+// юзер пришёл с /atlas?focus=<node> — pre-select'аем матчинг секции.
+function atlasSectionToMockSections(s: string): string[] {
+  switch (s) {
+    case 'algorithms':
+      return ['algo']
+    case 'system_design':
+      return ['sysdesign']
+    case 'sql':
+    case 'databases':
+      return ['coding']
+    case 'english_hr':
+    case 'english':
+      return ['hr']
+    case 'ml_eng':
+      return ['algo', 'coding']
+    case 'behavioral':
+      return ['behavioral']
+    default:
+      return []
+  }
+}
+
 function loadInitialSections(): string[] {
   try {
     if (typeof window === 'undefined') return []
@@ -70,10 +95,26 @@ function loadInitialSections(): string[] {
 
 export default function MockCompanyPicker() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const companies = useMockCompaniesQuery()
   const create = useCreateMockPipelineMutation()
   const [aiAssist, setAiAssist] = useState<boolean>(loadInitialAiAssist)
   const [selectedSections, setSelectedSections] = useState<string[]>(loadInitialSections)
+
+  // ?focus=<atlas_node_id>&section=<atlas_section>&title=<node_title> —
+  // пришли из Atlas drawer. Pre-select'аем mock-секции под этот узел и
+  // показываем banner. Только при первом mount, чтобы не override'ить
+  // юзера если он манипулирует чипами.
+  const focusNodeId = searchParams.get('focus') ?? ''
+  const focusSection = searchParams.get('section') ?? ''
+  const focusTitle = searchParams.get('title') ?? ''
+  useEffect(() => {
+    if (!focusSection) return
+    const mapped = atlasSectionToMockSections(focusSection)
+    if (mapped.length === 0) return
+    persistSections(mapped)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot
+  }, [])
 
   const persistAiAssist = (next: boolean) => {
     setAiAssist(next)
@@ -133,6 +174,24 @@ export default function MockCompanyPicker() {
             доской) → behavioral. На каждой секции ставится оценка, в конце — отчёт.
           </p>
         </header>
+
+        {focusNodeId && focusTitle && (
+          <div className="flex items-start gap-3 rounded-xl border border-accent/40 bg-accent/5 p-4">
+            <Target className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+            <div className="flex-1">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                Mock с фокусом из Atlas
+              </div>
+              <div className="mt-0.5 text-[14px] font-medium text-text-primary">
+                Тема: «{focusTitle}»
+              </div>
+              <p className="mt-1 text-[12px] text-text-secondary">
+                Секции pre-select'нуты под эту тему. Можешь оставить как есть или
+                изменить вручную ниже.
+              </p>
+            </div>
+          </div>
+        )}
 
         <FirstRunSteps />
 
@@ -204,7 +263,7 @@ export default function MockCompanyPicker() {
             title="Multi-stage Mock Interview"
             body="Запускается в Wave-12. Сейчас доступен одиночный mock /voice-mock — голосовая нейрока без многоступенчатого пайплайна."
             cta={{ label: 'Открыть /voice-mock', onClick: () => navigate('/voice-mock') }}
-            secondaryCta={{ label: 'Назад в Arena', onClick: () => navigate('/arena') }}
+            secondaryCta={{ label: 'Назад в Atlas', onClick: () => navigate('/atlas') }}
           />
         )}
 

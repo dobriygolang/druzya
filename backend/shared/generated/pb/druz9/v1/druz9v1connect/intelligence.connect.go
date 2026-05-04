@@ -67,16 +67,60 @@ const (
 	// IntelligenceServiceAckInsightProcedure is the fully-qualified name of the IntelligenceService's
 	// AckInsight RPC.
 	IntelligenceServiceAckInsightProcedure = "/druz9.v1.IntelligenceService/AckInsight"
+	// IntelligenceServiceGetNextActionProcedure is the fully-qualified name of the
+	// IntelligenceService's GetNextAction RPC.
+	IntelligenceServiceGetNextActionProcedure = "/druz9.v1.IntelligenceService/GetNextAction"
+	// IntelligenceServiceGetForkSnapshotProcedure is the fully-qualified name of the
+	// IntelligenceService's GetForkSnapshot RPC.
+	IntelligenceServiceGetForkSnapshotProcedure = "/druz9.v1.IntelligenceService/GetForkSnapshot"
+	// IntelligenceServiceLogResourceProcedure is the fully-qualified name of the IntelligenceService's
+	// LogResource RPC.
+	IntelligenceServiceLogResourceProcedure = "/druz9.v1.IntelligenceService/LogResource"
+	// IntelligenceServiceSetLearningModeProcedure is the fully-qualified name of the
+	// IntelligenceService's SetLearningMode RPC.
+	IntelligenceServiceSetLearningModeProcedure = "/druz9.v1.IntelligenceService/SetLearningMode"
+	// IntelligenceServiceSetForkBranchProcedure is the fully-qualified name of the
+	// IntelligenceService's SetForkBranch RPC.
+	IntelligenceServiceSetForkBranchProcedure = "/druz9.v1.IntelligenceService/SetForkBranch"
+	// IntelligenceServiceGetResourceTrailProcedure is the fully-qualified name of the
+	// IntelligenceService's GetResourceTrail RPC.
+	IntelligenceServiceGetResourceTrailProcedure = "/druz9.v1.IntelligenceService/GetResourceTrail"
+	// IntelligenceServiceGetSkillRadarProcedure is the fully-qualified name of the
+	// IntelligenceService's GetSkillRadar RPC.
+	IntelligenceServiceGetSkillRadarProcedure = "/druz9.v1.IntelligenceService/GetSkillRadar"
+	// IntelligenceServiceGetCoachStatsProcedure is the fully-qualified name of the
+	// IntelligenceService's GetCoachStats RPC.
+	IntelligenceServiceGetCoachStatsProcedure = "/druz9.v1.IntelligenceService/GetCoachStats"
 )
 
 // IntelligenceServiceClient is a client for the druz9.v1.IntelligenceService service.
 type IntelligenceServiceClient interface {
 	GetDailyBrief(context.Context, *connect.Request[v1.GetDailyBriefRequest]) (*connect.Response[v1.DailyBrief], error)
+	// AskNotes — RAG над корпусом нот пользователя. Используется AskNotesModal
+	// в Hone Notes (frontend-аудит этот caller пропустил).
 	AskNotes(context.Context, *connect.Request[v1.AskNotesRequest]) (*connect.Response[v1.AskAnswer], error)
+	// AckRecommendation / GetMemoryStats — feedback и trust indicator для
+	// DailyBriefPanel в Hone.
 	AckRecommendation(context.Context, *connect.Request[v1.AckRecommendationRequest]) (*connect.Response[v1.AckRecommendationResponse], error)
 	GetMemoryStats(context.Context, *connect.Request[v1.GetMemoryStatsRequest]) (*connect.Response[v1.MemoryStats], error)
 	ListInsights(context.Context, *connect.Request[v1.ListInsightsRequest]) (*connect.Response[v1.ListInsightsResponse], error)
 	AckInsight(context.Context, *connect.Request[v1.AckInsightRequest]) (*connect.Response[v1.AckInsightResponse], error)
+	// GetNextAction — Phase 2 Coach hero «one daily action».
+	GetNextAction(context.Context, *connect.Request[v1.GetNextActionRequest]) (*connect.Response[v1.NextAction], error)
+	// GetForkSnapshot — Phase 2 fork view (active when mode='explore').
+	GetForkSnapshot(context.Context, *connect.Request[v1.GetForkSnapshotRequest]) (*connect.Response[v1.ForkSnapshot], error)
+	// LogResource — Phase 2 user_resource_log event ingest.
+	LogResource(context.Context, *connect.Request[v1.LogResourceRequest]) (*connect.Response[v1.LogResourceResponse], error)
+	// SetLearningMode — Phase 2 mode persistence из Coach.
+	SetLearningMode(context.Context, *connect.Request[v1.SetLearningModeRequest]) (*connect.Response[v1.LearningStateView], error)
+	// SetForkBranch — Phase 2 fork branch declaration.
+	SetForkBranch(context.Context, *connect.Request[v1.SetForkBranchRequest]) (*connect.Response[v1.LearningStateView], error)
+	// GetResourceTrail — Phase 2 activity stream (last N days).
+	GetResourceTrail(context.Context, *connect.Request[v1.GetResourceTrailRequest]) (*connect.Response[v1.ResourceTrail], error)
+	// GetSkillRadar — Phase 2 5-axis radar derived from mock_sessions.ai_report.
+	GetSkillRadar(context.Context, *connect.Request[v1.GetSkillRadarRequest]) (*connect.Response[v1.SkillRadar], error)
+	// GetCoachStats — Phase 2 snapshot KPIs (streak / focus today / last mock / next mock).
+	GetCoachStats(context.Context, *connect.Request[v1.GetCoachStatsRequest]) (*connect.Response[v1.CoachStats], error)
 }
 
 // NewIntelligenceServiceClient constructs a client for the druz9.v1.IntelligenceService service. By
@@ -126,6 +170,54 @@ func NewIntelligenceServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(intelligenceServiceMethods.ByName("AckInsight")),
 			connect.WithClientOptions(opts...),
 		),
+		getNextAction: connect.NewClient[v1.GetNextActionRequest, v1.NextAction](
+			httpClient,
+			baseURL+IntelligenceServiceGetNextActionProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GetNextAction")),
+			connect.WithClientOptions(opts...),
+		),
+		getForkSnapshot: connect.NewClient[v1.GetForkSnapshotRequest, v1.ForkSnapshot](
+			httpClient,
+			baseURL+IntelligenceServiceGetForkSnapshotProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GetForkSnapshot")),
+			connect.WithClientOptions(opts...),
+		),
+		logResource: connect.NewClient[v1.LogResourceRequest, v1.LogResourceResponse](
+			httpClient,
+			baseURL+IntelligenceServiceLogResourceProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("LogResource")),
+			connect.WithClientOptions(opts...),
+		),
+		setLearningMode: connect.NewClient[v1.SetLearningModeRequest, v1.LearningStateView](
+			httpClient,
+			baseURL+IntelligenceServiceSetLearningModeProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("SetLearningMode")),
+			connect.WithClientOptions(opts...),
+		),
+		setForkBranch: connect.NewClient[v1.SetForkBranchRequest, v1.LearningStateView](
+			httpClient,
+			baseURL+IntelligenceServiceSetForkBranchProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("SetForkBranch")),
+			connect.WithClientOptions(opts...),
+		),
+		getResourceTrail: connect.NewClient[v1.GetResourceTrailRequest, v1.ResourceTrail](
+			httpClient,
+			baseURL+IntelligenceServiceGetResourceTrailProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GetResourceTrail")),
+			connect.WithClientOptions(opts...),
+		),
+		getSkillRadar: connect.NewClient[v1.GetSkillRadarRequest, v1.SkillRadar](
+			httpClient,
+			baseURL+IntelligenceServiceGetSkillRadarProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GetSkillRadar")),
+			connect.WithClientOptions(opts...),
+		),
+		getCoachStats: connect.NewClient[v1.GetCoachStatsRequest, v1.CoachStats](
+			httpClient,
+			baseURL+IntelligenceServiceGetCoachStatsProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GetCoachStats")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -137,6 +229,14 @@ type intelligenceServiceClient struct {
 	getMemoryStats    *connect.Client[v1.GetMemoryStatsRequest, v1.MemoryStats]
 	listInsights      *connect.Client[v1.ListInsightsRequest, v1.ListInsightsResponse]
 	ackInsight        *connect.Client[v1.AckInsightRequest, v1.AckInsightResponse]
+	getNextAction     *connect.Client[v1.GetNextActionRequest, v1.NextAction]
+	getForkSnapshot   *connect.Client[v1.GetForkSnapshotRequest, v1.ForkSnapshot]
+	logResource       *connect.Client[v1.LogResourceRequest, v1.LogResourceResponse]
+	setLearningMode   *connect.Client[v1.SetLearningModeRequest, v1.LearningStateView]
+	setForkBranch     *connect.Client[v1.SetForkBranchRequest, v1.LearningStateView]
+	getResourceTrail  *connect.Client[v1.GetResourceTrailRequest, v1.ResourceTrail]
+	getSkillRadar     *connect.Client[v1.GetSkillRadarRequest, v1.SkillRadar]
+	getCoachStats     *connect.Client[v1.GetCoachStatsRequest, v1.CoachStats]
 }
 
 // GetDailyBrief calls druz9.v1.IntelligenceService.GetDailyBrief.
@@ -169,14 +269,74 @@ func (c *intelligenceServiceClient) AckInsight(ctx context.Context, req *connect
 	return c.ackInsight.CallUnary(ctx, req)
 }
 
+// GetNextAction calls druz9.v1.IntelligenceService.GetNextAction.
+func (c *intelligenceServiceClient) GetNextAction(ctx context.Context, req *connect.Request[v1.GetNextActionRequest]) (*connect.Response[v1.NextAction], error) {
+	return c.getNextAction.CallUnary(ctx, req)
+}
+
+// GetForkSnapshot calls druz9.v1.IntelligenceService.GetForkSnapshot.
+func (c *intelligenceServiceClient) GetForkSnapshot(ctx context.Context, req *connect.Request[v1.GetForkSnapshotRequest]) (*connect.Response[v1.ForkSnapshot], error) {
+	return c.getForkSnapshot.CallUnary(ctx, req)
+}
+
+// LogResource calls druz9.v1.IntelligenceService.LogResource.
+func (c *intelligenceServiceClient) LogResource(ctx context.Context, req *connect.Request[v1.LogResourceRequest]) (*connect.Response[v1.LogResourceResponse], error) {
+	return c.logResource.CallUnary(ctx, req)
+}
+
+// SetLearningMode calls druz9.v1.IntelligenceService.SetLearningMode.
+func (c *intelligenceServiceClient) SetLearningMode(ctx context.Context, req *connect.Request[v1.SetLearningModeRequest]) (*connect.Response[v1.LearningStateView], error) {
+	return c.setLearningMode.CallUnary(ctx, req)
+}
+
+// SetForkBranch calls druz9.v1.IntelligenceService.SetForkBranch.
+func (c *intelligenceServiceClient) SetForkBranch(ctx context.Context, req *connect.Request[v1.SetForkBranchRequest]) (*connect.Response[v1.LearningStateView], error) {
+	return c.setForkBranch.CallUnary(ctx, req)
+}
+
+// GetResourceTrail calls druz9.v1.IntelligenceService.GetResourceTrail.
+func (c *intelligenceServiceClient) GetResourceTrail(ctx context.Context, req *connect.Request[v1.GetResourceTrailRequest]) (*connect.Response[v1.ResourceTrail], error) {
+	return c.getResourceTrail.CallUnary(ctx, req)
+}
+
+// GetSkillRadar calls druz9.v1.IntelligenceService.GetSkillRadar.
+func (c *intelligenceServiceClient) GetSkillRadar(ctx context.Context, req *connect.Request[v1.GetSkillRadarRequest]) (*connect.Response[v1.SkillRadar], error) {
+	return c.getSkillRadar.CallUnary(ctx, req)
+}
+
+// GetCoachStats calls druz9.v1.IntelligenceService.GetCoachStats.
+func (c *intelligenceServiceClient) GetCoachStats(ctx context.Context, req *connect.Request[v1.GetCoachStatsRequest]) (*connect.Response[v1.CoachStats], error) {
+	return c.getCoachStats.CallUnary(ctx, req)
+}
+
 // IntelligenceServiceHandler is an implementation of the druz9.v1.IntelligenceService service.
 type IntelligenceServiceHandler interface {
 	GetDailyBrief(context.Context, *connect.Request[v1.GetDailyBriefRequest]) (*connect.Response[v1.DailyBrief], error)
+	// AskNotes — RAG над корпусом нот пользователя. Используется AskNotesModal
+	// в Hone Notes (frontend-аудит этот caller пропустил).
 	AskNotes(context.Context, *connect.Request[v1.AskNotesRequest]) (*connect.Response[v1.AskAnswer], error)
+	// AckRecommendation / GetMemoryStats — feedback и trust indicator для
+	// DailyBriefPanel в Hone.
 	AckRecommendation(context.Context, *connect.Request[v1.AckRecommendationRequest]) (*connect.Response[v1.AckRecommendationResponse], error)
 	GetMemoryStats(context.Context, *connect.Request[v1.GetMemoryStatsRequest]) (*connect.Response[v1.MemoryStats], error)
 	ListInsights(context.Context, *connect.Request[v1.ListInsightsRequest]) (*connect.Response[v1.ListInsightsResponse], error)
 	AckInsight(context.Context, *connect.Request[v1.AckInsightRequest]) (*connect.Response[v1.AckInsightResponse], error)
+	// GetNextAction — Phase 2 Coach hero «one daily action».
+	GetNextAction(context.Context, *connect.Request[v1.GetNextActionRequest]) (*connect.Response[v1.NextAction], error)
+	// GetForkSnapshot — Phase 2 fork view (active when mode='explore').
+	GetForkSnapshot(context.Context, *connect.Request[v1.GetForkSnapshotRequest]) (*connect.Response[v1.ForkSnapshot], error)
+	// LogResource — Phase 2 user_resource_log event ingest.
+	LogResource(context.Context, *connect.Request[v1.LogResourceRequest]) (*connect.Response[v1.LogResourceResponse], error)
+	// SetLearningMode — Phase 2 mode persistence из Coach.
+	SetLearningMode(context.Context, *connect.Request[v1.SetLearningModeRequest]) (*connect.Response[v1.LearningStateView], error)
+	// SetForkBranch — Phase 2 fork branch declaration.
+	SetForkBranch(context.Context, *connect.Request[v1.SetForkBranchRequest]) (*connect.Response[v1.LearningStateView], error)
+	// GetResourceTrail — Phase 2 activity stream (last N days).
+	GetResourceTrail(context.Context, *connect.Request[v1.GetResourceTrailRequest]) (*connect.Response[v1.ResourceTrail], error)
+	// GetSkillRadar — Phase 2 5-axis radar derived from mock_sessions.ai_report.
+	GetSkillRadar(context.Context, *connect.Request[v1.GetSkillRadarRequest]) (*connect.Response[v1.SkillRadar], error)
+	// GetCoachStats — Phase 2 snapshot KPIs (streak / focus today / last mock / next mock).
+	GetCoachStats(context.Context, *connect.Request[v1.GetCoachStatsRequest]) (*connect.Response[v1.CoachStats], error)
 }
 
 // NewIntelligenceServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -222,6 +382,54 @@ func NewIntelligenceServiceHandler(svc IntelligenceServiceHandler, opts ...conne
 		connect.WithSchema(intelligenceServiceMethods.ByName("AckInsight")),
 		connect.WithHandlerOptions(opts...),
 	)
+	intelligenceServiceGetNextActionHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGetNextActionProcedure,
+		svc.GetNextAction,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GetNextAction")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceGetForkSnapshotHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGetForkSnapshotProcedure,
+		svc.GetForkSnapshot,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GetForkSnapshot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceLogResourceHandler := connect.NewUnaryHandler(
+		IntelligenceServiceLogResourceProcedure,
+		svc.LogResource,
+		connect.WithSchema(intelligenceServiceMethods.ByName("LogResource")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceSetLearningModeHandler := connect.NewUnaryHandler(
+		IntelligenceServiceSetLearningModeProcedure,
+		svc.SetLearningMode,
+		connect.WithSchema(intelligenceServiceMethods.ByName("SetLearningMode")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceSetForkBranchHandler := connect.NewUnaryHandler(
+		IntelligenceServiceSetForkBranchProcedure,
+		svc.SetForkBranch,
+		connect.WithSchema(intelligenceServiceMethods.ByName("SetForkBranch")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceGetResourceTrailHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGetResourceTrailProcedure,
+		svc.GetResourceTrail,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GetResourceTrail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceGetSkillRadarHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGetSkillRadarProcedure,
+		svc.GetSkillRadar,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GetSkillRadar")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceGetCoachStatsHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGetCoachStatsProcedure,
+		svc.GetCoachStats,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GetCoachStats")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.IntelligenceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IntelligenceServiceGetDailyBriefProcedure:
@@ -236,6 +444,22 @@ func NewIntelligenceServiceHandler(svc IntelligenceServiceHandler, opts ...conne
 			intelligenceServiceListInsightsHandler.ServeHTTP(w, r)
 		case IntelligenceServiceAckInsightProcedure:
 			intelligenceServiceAckInsightHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGetNextActionProcedure:
+			intelligenceServiceGetNextActionHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGetForkSnapshotProcedure:
+			intelligenceServiceGetForkSnapshotHandler.ServeHTTP(w, r)
+		case IntelligenceServiceLogResourceProcedure:
+			intelligenceServiceLogResourceHandler.ServeHTTP(w, r)
+		case IntelligenceServiceSetLearningModeProcedure:
+			intelligenceServiceSetLearningModeHandler.ServeHTTP(w, r)
+		case IntelligenceServiceSetForkBranchProcedure:
+			intelligenceServiceSetForkBranchHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGetResourceTrailProcedure:
+			intelligenceServiceGetResourceTrailHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGetSkillRadarProcedure:
+			intelligenceServiceGetSkillRadarHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGetCoachStatsProcedure:
+			intelligenceServiceGetCoachStatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -267,4 +491,36 @@ func (UnimplementedIntelligenceServiceHandler) ListInsights(context.Context, *co
 
 func (UnimplementedIntelligenceServiceHandler) AckInsight(context.Context, *connect.Request[v1.AckInsightRequest]) (*connect.Response[v1.AckInsightResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.AckInsight is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GetNextAction(context.Context, *connect.Request[v1.GetNextActionRequest]) (*connect.Response[v1.NextAction], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetNextAction is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GetForkSnapshot(context.Context, *connect.Request[v1.GetForkSnapshotRequest]) (*connect.Response[v1.ForkSnapshot], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetForkSnapshot is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) LogResource(context.Context, *connect.Request[v1.LogResourceRequest]) (*connect.Response[v1.LogResourceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.LogResource is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) SetLearningMode(context.Context, *connect.Request[v1.SetLearningModeRequest]) (*connect.Response[v1.LearningStateView], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.SetLearningMode is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) SetForkBranch(context.Context, *connect.Request[v1.SetForkBranchRequest]) (*connect.Response[v1.LearningStateView], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.SetForkBranch is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GetResourceTrail(context.Context, *connect.Request[v1.GetResourceTrailRequest]) (*connect.Response[v1.ResourceTrail], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetResourceTrail is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GetSkillRadar(context.Context, *connect.Request[v1.GetSkillRadarRequest]) (*connect.Response[v1.SkillRadar], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetSkillRadar is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GetCoachStats(context.Context, *connect.Request[v1.GetCoachStatsRequest]) (*connect.Response[v1.CoachStats], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetCoachStats is not implemented"))
 }

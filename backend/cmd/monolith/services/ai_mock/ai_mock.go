@@ -50,6 +50,7 @@ func NewAIMock(d monolithServices.Deps) *monolithServices.Module {
 	reportWorker.Messages = messages
 	reportWorker.Tasks = tasks
 	reportWorker.LLM = llm
+	reportWorker.Bus = d.Bus
 
 	createSession := &aimockApp.CreateSession{
 		Sessions: sessions, Tasks: tasks, Users: users, Companies: companies,

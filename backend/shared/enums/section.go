@@ -50,6 +50,20 @@ const (
 	// SectionDevOps — Wave 9.3. DevOps / SRE free-form interview:
 	// infra, observability, CI/CD, incident response, security.
 	SectionDevOps Section = "devops"
+	// SectionMLEng — pivot 2026-05-01. ML engineering free-form interview
+	// для middle/senior ML позиций: classical ML basics, deep learning
+	// fundamentals (backprop, CNN/RNN/transformers), LLM/GenAI (RAG,
+	// fine-tuning, embeddings), MLOps (registry, A/B serving, observa-
+	// bility), evaluation + production awareness. Non-engineering
+	// gate (как остальные free-form), non-task-based (нет codetest).
+	SectionMLEng Section = "ml_eng"
+	// SectionDE — Phase 1c (learning-companion 2026-05-04). Data
+	// engineering free-form interview под senior DE-роли: ETL/ELT
+	// pipelines, warehouses, streaming (Kafka/exactly-once), SQL
+	// optimization, dimensional modeling, Spark/distributed compute,
+	// data quality, orchestration, governance. Same gating как другие
+	// free-form: non-engineering (no ELO/rating), non-task-based.
+	SectionDE Section = "de"
 )
 
 func (s Section) IsValid() bool {
@@ -57,7 +71,7 @@ func (s Section) IsValid() bool {
 	case SectionAlgorithms, SectionSQL, SectionGo, SectionSystemDesign, SectionBehavioral,
 		SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
 		SectionSysanalyst, SectionProductAnalyst,
-		SectionQA, SectionDevOps:
+		SectionQA, SectionDevOps, SectionMLEng, SectionDE:
 		return true
 	}
 	return false
@@ -74,7 +88,7 @@ func (s Section) IsEngineering() bool {
 		return true
 	case SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
 		SectionSysanalyst, SectionProductAnalyst,
-		SectionQA, SectionDevOps:
+		SectionQA, SectionDevOps, SectionMLEng, SectionDE:
 		return false
 	}
 	return false
@@ -92,7 +106,7 @@ func (s Section) IsTaskBased() bool {
 		return true
 	case SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
 		SectionSysanalyst, SectionProductAnalyst,
-		SectionQA, SectionDevOps:
+		SectionQA, SectionDevOps, SectionMLEng, SectionDE:
 		return false
 	}
 	return false
@@ -105,6 +119,6 @@ func AllSections() []Section {
 		SectionAlgorithms, SectionSQL, SectionGo, SectionSystemDesign, SectionBehavioral,
 		SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
 		SectionSysanalyst, SectionProductAnalyst,
-		SectionQA, SectionDevOps,
+		SectionQA, SectionDevOps, SectionMLEng, SectionDE,
 	}
 }

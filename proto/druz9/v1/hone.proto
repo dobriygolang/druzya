@@ -297,6 +297,38 @@ message GetNoteConnectionsRequest {
 // (notes corpus, tasks, PR metadata) — first packet should arrive while the
 // slower source is still searching.
 
+// ─── AI link suggestions (Phase 5) ────────────────────────────────────────
+//
+// SuggestNoteLinks — embed-based candidate retrieval reranked by an LLM
+// (TaskNotesLinkSuggest). Returns a small list (≤5) of suggested edges
+// with a per-edge `reason` string used by the Notes UI to surface "why".
+//
+// Distinction vs GetNoteConnections:
+//   GetNoteConnections — fast streaming cosine-only fan-out (similarity
+//                        score, no reasoning). Cheap, runs on every open.
+//   SuggestNoteLinks   — slower (LLM-rerank), called on demand from the
+//                        Connections panel "AI suggestions" section.
+//
+// Rate-limit / cache: handler caches per (note_id + candidate-set hash)
+// in Redis with 6h TTL — second call on unchanged corpus returns instantly.
+
+message NoteLinkSuggestion {
+  string target_note_id = 1;
+  string target_title   = 2;
+  string snippet        = 3;          // first 200 chars of target body
+  float  score          = 4;          // 0..1 — LLM-assigned relevance
+  string reason         = 5;          // 1 sentence, used in toast + tooltip
+}
+
+message SuggestNoteLinksRequest {
+  string note_id = 1;
+  int32  max     = 2;                 // default 5, max 10
+}
+
+message SuggestNoteLinksResponse {
+  repeated NoteLinkSuggestion suggestions = 1;
+}
+
 // ─── Whiteboard ────────────────────────────────────────────────────────────
 
 message Whiteboard {
@@ -473,6 +505,12 @@ service HoneService {
   // Server-streaming: first results (in-corpus notes) arrive fast, while
   // cross-domain edges (PRs, tasks) trail by a few hundred ms.
   rpc GetNoteConnections(GetNoteConnectionsRequest) returns (stream Connection);
+  rpc SuggestNoteLinks(SuggestNoteLinksRequest) returns (SuggestNoteLinksResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/notes/suggest-links"
+      body: "*"
+    };
+  }
 
   // ─── Folders ────────────────────────────────────────────────────────
   rpc CreateFolder(CreateFolderRequest) returns (Folder) {
@@ -647,6 +685,12 @@ service HoneService {
       body: "*"
     };
   }
+  rpc UpdateBookProgress(UpdateBookProgressRequest) returns (ReadingMaterial) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/reading/materials/{id}/book-progress"
+      body: "*"
+    };
+  }
   rpc ListReadingMaterials(ListReadingMaterialsRequest) returns (ListReadingMaterialsResponse) {
     option (google.api.http) = {get: "/api/v1/hone/reading/materials"};
   }
@@ -702,6 +746,16 @@ service HoneService {
       body: "*"
     };
   }
+  // IngestYouTubeListening — paste YouTube URL, backend extract'ит auto-
+  // captions через yt-dlp + создаёт ListeningMaterial. Sergey 2026-05-03:
+  // «listening странный, надо самому искать транскрибацию хотя видео из
+  // тюба». Если captions нет — возвращает ErrInvalidInput с подсказкой.
+  rpc IngestYouTubeListening(IngestYouTubeListeningRequest) returns (ListeningMaterial) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/listening/youtube"
+      body: "*"
+    };
+  }
   rpc ListListeningMaterials(ListListeningMaterialsRequest) returns (ListListeningMaterialsResponse) {
     option (google.api.http) = {get: "/api/v1/hone/listening/materials"};
   }
@@ -723,6 +777,57 @@ service HoneService {
   rpc GradeEnglishWriting(GradeEnglishWritingRequest) returns (GradeEnglishWritingResponse) {
     option (google.api.http) = {
       post: "/api/v1/hone/writing/grade"
+      body: "*"
+    };
+  }
+
+  // ─── External activity log (structured form, Hone Stats) ────────
+  // Юзер логирует обучение вне druz9 (LeetCode / Coursera / YouTube /
+  // книги). Без чата — structured form, source dropdown + topic
+  // autocomplete по atlas-узлам. Intelligence-service подтягивает
+  // эти записи в snapshot для AI-tutor recall.
+  rpc AddExternalActivity(AddExternalActivityRequest) returns (ExternalActivity) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/external-activity"
+      body: "*"
+    };
+  }
+  rpc ListExternalActivity(ListExternalActivityRequest) returns (ListExternalActivityResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/external-activity"};
+  }
+  rpc DeleteExternalActivity(DeleteExternalActivityRequest) returns (DeleteExternalActivityResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/external-activity/delete"
+      body: "*"
+    };
+  }
+  // Atlas-node autocomplete для topic-поля. Возвращает top-N узлов по
+  // similarity к prefix'у. Нет ML — fast trigram / LIKE на title.
+  rpc SearchAtlasTopics(SearchAtlasTopicsRequest) returns (SearchAtlasTopicsResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/external-activity/atlas-topics"};
+  }
+  // Lookup table {atlas_node_id → track_kind} для client-side фильтра
+  // Plan / Tasks / Queue по active_track. Маленький payload (~50-100
+  // узлов), кешируется на 5 мин.
+  rpc ListAtlasNodeTracks(ListAtlasNodeTracksRequest) returns (ListAtlasNodeTracksResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/atlas-node-tracks"};
+  }
+
+  // ─── User settings (active study mode) ───────────────────────────
+  // Active track gates content surfaces (Plan / Tasks / Reading / AI-tutor
+  // thread) per-user. Values: general | dev | ml | english | go.
+  rpc GetUserSettings(GetUserSettingsRequest) returns (UserSettings) {
+    option (google.api.http) = {get: "/api/v1/hone/settings"};
+  }
+  rpc SetActiveTrack(SetActiveTrackRequest) returns (UserSettings) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/settings/active-track"
+      body: "*"
+    };
+  }
+  rpc SetEnglishActive(SetEnglishActiveRequest) returns (UserSettings) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/settings/english-active"
       body: "*"
     };
   }
@@ -805,6 +910,95 @@ message BulkNotesMetaRequest {}
 
 message BulkNotesMetaResponse {
   repeated NoteMeta notes = 1;
+}
+
+// ─── External activity messages ─────────────────────────────────────────────
+
+message ExternalActivity {
+  string id = 1;
+  // source: leetcode | coursera | hackerrank | youtube | book | article | course | other
+  string source = 2;
+  // Empty when activity is free-form (not mapped to atlas).
+  string topic_atlas_node_id = 3;
+  string topic_free_text = 4;
+  int32  duration_min = 5;
+  string notes = 6;
+  google.protobuf.Timestamp occurred_at = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message AddExternalActivityRequest {
+  string source = 1;
+  string topic_atlas_node_id = 2;        // optional
+  string topic_free_text = 3;            // required if no atlas node
+  int32  duration_min = 4;
+  string notes = 5;                      // optional
+  // Empty = backend uses now(). Otherwise RFC3339.
+  string occurred_at_iso = 6;
+}
+
+message ListExternalActivityRequest {
+  // Empty = no filter. Otherwise filter by source.
+  string source = 1;
+  // Default 50, max 200.
+  int32 limit = 2;
+}
+
+message ListExternalActivityResponse {
+  repeated ExternalActivity items = 1;
+}
+
+message DeleteExternalActivityRequest {
+  string id = 1;
+}
+message DeleteExternalActivityResponse {}
+
+message AtlasTopicSuggestion {
+  string atlas_node_id = 1;
+  string title = 2;
+  string section = 3;
+}
+
+message SearchAtlasTopicsRequest {
+  string prefix = 1;                     // case-insensitive
+  int32 limit = 2;                       // default 10
+}
+
+message SearchAtlasTopicsResponse {
+  repeated AtlasTopicSuggestion items = 1;
+}
+
+message AtlasNodeTrack {
+  string atlas_node_id = 1;
+  // track_kind: 'dev' | 'dev_senior' | 'ml' | 'english' | 'sysanalyst' | 'product_analyst' | 'qa'
+  string track_kind = 2;
+}
+
+message ListAtlasNodeTracksRequest {}
+
+message ListAtlasNodeTracksResponse {
+  repeated AtlasNodeTrack items = 1;
+}
+
+// ─── User settings messages ─────────────────────────────────────────────────
+
+message UserSettings {
+  // active_track: general | dev | ml | english | go
+  string active_track = 1;
+  google.protobuf.Timestamp updated_at = 2;
+  // English как orthogonal modifier (Sergey 2026-05-03). Если false —
+  // English-surfaces в Hone (Reading / Writing / Listening) скрыты.
+  bool english_active = 3;
+}
+
+message GetUserSettingsRequest {}
+
+message SetActiveTrackRequest {
+  string active_track = 1;
+}
+
+message SetEnglishActiveRequest {
+  bool active = 1;
 }
 
 // ─── TaskBoard messages ─────────────────────────────────────────────────────
@@ -1006,7 +1200,7 @@ message GetTodayStandupResponse {
 message ReadingMaterial {
   string id           = 1;
   string user_id      = 2;
-  string source_kind  = 3; // "paste" | "url" | "pdf" | "epub"
+  string source_kind  = 3; // "paste" | "url" | "pdf" | "epub" | "book"
   string source_url   = 4; // empty for paste
   string title        = 5;
   string body_md      = 6; // omitted from list responses to save bandwidth
@@ -1014,6 +1208,13 @@ message ReadingMaterial {
   google.protobuf.Timestamp archived_at = 8; // zero when active
   google.protobuf.Timestamp created_at  = 9;
   google.protobuf.Timestamp updated_at  = 10;
+  // Book-only progress (Wave 2026-05-03). 0 when not set / not a book.
+  // has_book_chapter / has_book_total signal whether the value is meaningful
+  // (proto3 zero-int нельзя отличить от «не задано»).
+  int32 book_chapter        = 11;
+  bool  has_book_chapter    = 12;
+  int32 book_total_chapters = 13;
+  bool  has_book_total      = 14;
 }
 
 message ReadingSession {
@@ -1050,6 +1251,19 @@ message AddReadingMaterialRequest {
   string source_url  = 2;
   string title       = 3;
   string body_md     = 4;
+  // Book-only fields. 0 + has_*=false means «not set».
+  int32 book_chapter        = 5;
+  bool  has_book_chapter    = 6;
+  int32 book_total_chapters = 7;
+  bool  has_book_total      = 8;
+}
+
+message UpdateBookProgressRequest {
+  string id                 = 1;
+  int32  book_chapter       = 2;
+  bool   has_book_chapter   = 3;
+  int32  book_total_chapters = 4;
+  bool   has_book_total     = 5;
 }
 
 message ListReadingMaterialsRequest {
@@ -1133,6 +1347,13 @@ message AddListeningMaterialRequest {
   string title         = 1;
   string audio_url     = 2;
   string transcript_md = 3;
+}
+
+message IngestYouTubeListeningRequest {
+  string url = 1;
+  // language_hint — preferred caption language ('en', 'ru'). Если пусто →
+  // backend пробует en, потом ru, потом любой available.
+  string language_hint = 2;
 }
 
 message ListListeningMaterialsRequest {

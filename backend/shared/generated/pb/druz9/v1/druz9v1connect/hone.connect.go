@@ -97,6 +97,9 @@ const (
 	// HoneServiceGetNoteConnectionsProcedure is the fully-qualified name of the HoneService's
 	// GetNoteConnections RPC.
 	HoneServiceGetNoteConnectionsProcedure = "/druz9.v1.HoneService/GetNoteConnections"
+	// HoneServiceSuggestNoteLinksProcedure is the fully-qualified name of the HoneService's
+	// SuggestNoteLinks RPC.
+	HoneServiceSuggestNoteLinksProcedure = "/druz9.v1.HoneService/SuggestNoteLinks"
 	// HoneServiceCreateFolderProcedure is the fully-qualified name of the HoneService's CreateFolder
 	// RPC.
 	HoneServiceCreateFolderProcedure = "/druz9.v1.HoneService/CreateFolder"
@@ -183,6 +186,9 @@ const (
 	// HoneServiceAddReadingMaterialProcedure is the fully-qualified name of the HoneService's
 	// AddReadingMaterial RPC.
 	HoneServiceAddReadingMaterialProcedure = "/druz9.v1.HoneService/AddReadingMaterial"
+	// HoneServiceUpdateBookProgressProcedure is the fully-qualified name of the HoneService's
+	// UpdateBookProgress RPC.
+	HoneServiceUpdateBookProgressProcedure = "/druz9.v1.HoneService/UpdateBookProgress"
 	// HoneServiceListReadingMaterialsProcedure is the fully-qualified name of the HoneService's
 	// ListReadingMaterials RPC.
 	HoneServiceListReadingMaterialsProcedure = "/druz9.v1.HoneService/ListReadingMaterials"
@@ -211,6 +217,9 @@ const (
 	// HoneServiceAddListeningMaterialProcedure is the fully-qualified name of the HoneService's
 	// AddListeningMaterial RPC.
 	HoneServiceAddListeningMaterialProcedure = "/druz9.v1.HoneService/AddListeningMaterial"
+	// HoneServiceIngestYouTubeListeningProcedure is the fully-qualified name of the HoneService's
+	// IngestYouTubeListening RPC.
+	HoneServiceIngestYouTubeListeningProcedure = "/druz9.v1.HoneService/IngestYouTubeListening"
 	// HoneServiceListListeningMaterialsProcedure is the fully-qualified name of the HoneService's
 	// ListListeningMaterials RPC.
 	HoneServiceListListeningMaterialsProcedure = "/druz9.v1.HoneService/ListListeningMaterials"
@@ -223,6 +232,30 @@ const (
 	// HoneServiceGradeEnglishWritingProcedure is the fully-qualified name of the HoneService's
 	// GradeEnglishWriting RPC.
 	HoneServiceGradeEnglishWritingProcedure = "/druz9.v1.HoneService/GradeEnglishWriting"
+	// HoneServiceAddExternalActivityProcedure is the fully-qualified name of the HoneService's
+	// AddExternalActivity RPC.
+	HoneServiceAddExternalActivityProcedure = "/druz9.v1.HoneService/AddExternalActivity"
+	// HoneServiceListExternalActivityProcedure is the fully-qualified name of the HoneService's
+	// ListExternalActivity RPC.
+	HoneServiceListExternalActivityProcedure = "/druz9.v1.HoneService/ListExternalActivity"
+	// HoneServiceDeleteExternalActivityProcedure is the fully-qualified name of the HoneService's
+	// DeleteExternalActivity RPC.
+	HoneServiceDeleteExternalActivityProcedure = "/druz9.v1.HoneService/DeleteExternalActivity"
+	// HoneServiceSearchAtlasTopicsProcedure is the fully-qualified name of the HoneService's
+	// SearchAtlasTopics RPC.
+	HoneServiceSearchAtlasTopicsProcedure = "/druz9.v1.HoneService/SearchAtlasTopics"
+	// HoneServiceListAtlasNodeTracksProcedure is the fully-qualified name of the HoneService's
+	// ListAtlasNodeTracks RPC.
+	HoneServiceListAtlasNodeTracksProcedure = "/druz9.v1.HoneService/ListAtlasNodeTracks"
+	// HoneServiceGetUserSettingsProcedure is the fully-qualified name of the HoneService's
+	// GetUserSettings RPC.
+	HoneServiceGetUserSettingsProcedure = "/druz9.v1.HoneService/GetUserSettings"
+	// HoneServiceSetActiveTrackProcedure is the fully-qualified name of the HoneService's
+	// SetActiveTrack RPC.
+	HoneServiceSetActiveTrackProcedure = "/druz9.v1.HoneService/SetActiveTrack"
+	// HoneServiceSetEnglishActiveProcedure is the fully-qualified name of the HoneService's
+	// SetEnglishActive RPC.
+	HoneServiceSetEnglishActiveProcedure = "/druz9.v1.HoneService/SetEnglishActive"
 	// HoneServiceGradeCodeReviewProcedure is the fully-qualified name of the HoneService's
 	// GradeCodeReview RPC.
 	HoneServiceGradeCodeReviewProcedure = "/druz9.v1.HoneService/GradeCodeReview"
@@ -254,6 +287,7 @@ type HoneServiceClient interface {
 	// Server-streaming: first results (in-corpus notes) arrive fast, while
 	// cross-domain edges (PRs, tasks) trail by a few hundred ms.
 	GetNoteConnections(context.Context, *connect.Request[v1.GetNoteConnectionsRequest]) (*connect.ServerStreamForClient[v1.Connection], error)
+	SuggestNoteLinks(context.Context, *connect.Request[v1.SuggestNoteLinksRequest]) (*connect.Response[v1.SuggestNoteLinksResponse], error)
 	// ─── Folders ────────────────────────────────────────────────────────
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.Folder], error)
 	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
@@ -299,6 +333,7 @@ type HoneServiceClient interface {
 	MakePrivate(context.Context, *connect.Request[v1.MakePrivateRequest]) (*connect.Response[v1.MakePrivateResponse], error)
 	BulkNotesMeta(context.Context, *connect.Request[v1.BulkNotesMetaRequest]) (*connect.Response[v1.BulkNotesMetaResponse], error)
 	AddReadingMaterial(context.Context, *connect.Request[v1.AddReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error)
+	UpdateBookProgress(context.Context, *connect.Request[v1.UpdateBookProgressRequest]) (*connect.Response[v1.ReadingMaterial], error)
 	ListReadingMaterials(context.Context, *connect.Request[v1.ListReadingMaterialsRequest]) (*connect.Response[v1.ListReadingMaterialsResponse], error)
 	GetReadingMaterial(context.Context, *connect.Request[v1.GetReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error)
 	ArchiveReadingMaterial(context.Context, *connect.Request[v1.ArchiveReadingMaterialRequest]) (*connect.Response[v1.ArchiveReadingMaterialResponse], error)
@@ -315,6 +350,11 @@ type HoneServiceClient interface {
 	// User-owned library of audio + transcript materials. Click-on-word
 	// reuses the AddVocab RPC (vocab queue is shared with Reading).
 	AddListeningMaterial(context.Context, *connect.Request[v1.AddListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error)
+	// IngestYouTubeListening — paste YouTube URL, backend extract'ит auto-
+	// captions через yt-dlp + создаёт ListeningMaterial. Sergey 2026-05-03:
+	// «listening странный, надо самому искать транскрибацию хотя видео из
+	// тюба». Если captions нет — возвращает ErrInvalidInput с подсказкой.
+	IngestYouTubeListening(context.Context, *connect.Request[v1.IngestYouTubeListeningRequest]) (*connect.Response[v1.ListeningMaterial], error)
 	ListListeningMaterials(context.Context, *connect.Request[v1.ListListeningMaterialsRequest]) (*connect.Response[v1.ListListeningMaterialsResponse], error)
 	GetListeningMaterial(context.Context, *connect.Request[v1.GetListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error)
 	ArchiveListeningMaterial(context.Context, *connect.Request[v1.ArchiveListeningMaterialRequest]) (*connect.Response[v1.ArchiveListeningMaterialResponse], error)
@@ -324,6 +364,27 @@ type HoneServiceClient interface {
 	// 0..100 score. No persistence layer; if the user wants to keep the
 	// text they save it via CreateNote.
 	GradeEnglishWriting(context.Context, *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error)
+	// ─── External activity log (structured form, Hone Stats) ────────
+	// Юзер логирует обучение вне druz9 (LeetCode / Coursera / YouTube /
+	// книги). Без чата — structured form, source dropdown + topic
+	// autocomplete по atlas-узлам. Intelligence-service подтягивает
+	// эти записи в snapshot для AI-tutor recall.
+	AddExternalActivity(context.Context, *connect.Request[v1.AddExternalActivityRequest]) (*connect.Response[v1.ExternalActivity], error)
+	ListExternalActivity(context.Context, *connect.Request[v1.ListExternalActivityRequest]) (*connect.Response[v1.ListExternalActivityResponse], error)
+	DeleteExternalActivity(context.Context, *connect.Request[v1.DeleteExternalActivityRequest]) (*connect.Response[v1.DeleteExternalActivityResponse], error)
+	// Atlas-node autocomplete для topic-поля. Возвращает top-N узлов по
+	// similarity к prefix'у. Нет ML — fast trigram / LIKE на title.
+	SearchAtlasTopics(context.Context, *connect.Request[v1.SearchAtlasTopicsRequest]) (*connect.Response[v1.SearchAtlasTopicsResponse], error)
+	// Lookup table {atlas_node_id → track_kind} для client-side фильтра
+	// Plan / Tasks / Queue по active_track. Маленький payload (~50-100
+	// узлов), кешируется на 5 мин.
+	ListAtlasNodeTracks(context.Context, *connect.Request[v1.ListAtlasNodeTracksRequest]) (*connect.Response[v1.ListAtlasNodeTracksResponse], error)
+	// ─── User settings (active study mode) ───────────────────────────
+	// Active track gates content surfaces (Plan / Tasks / Reading / AI-tutor
+	// thread) per-user. Values: general | dev | ml | english | go.
+	GetUserSettings(context.Context, *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.UserSettings], error)
+	SetActiveTrack(context.Context, *connect.Request[v1.SetActiveTrackRequest]) (*connect.Response[v1.UserSettings], error)
+	SetEnglishActive(context.Context, *connect.Request[v1.SetEnglishActiveRequest]) (*connect.Response[v1.UserSettings], error)
 	// ─── Code-review-coaching (Wave 3.6) ─────────────────────────────
 	// GradeCodeReview — user pastes a unified diff + their PR-style
 	// review; we grade the review across correctness/completeness/
@@ -449,6 +510,12 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+HoneServiceGetNoteConnectionsProcedure,
 			connect.WithSchema(honeServiceMethods.ByName("GetNoteConnections")),
+			connect.WithClientOptions(opts...),
+		),
+		suggestNoteLinks: connect.NewClient[v1.SuggestNoteLinksRequest, v1.SuggestNoteLinksResponse](
+			httpClient,
+			baseURL+HoneServiceSuggestNoteLinksProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("SuggestNoteLinks")),
 			connect.WithClientOptions(opts...),
 		),
 		createFolder: connect.NewClient[v1.CreateFolderRequest, v1.Folder](
@@ -637,6 +704,12 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("AddReadingMaterial")),
 			connect.WithClientOptions(opts...),
 		),
+		updateBookProgress: connect.NewClient[v1.UpdateBookProgressRequest, v1.ReadingMaterial](
+			httpClient,
+			baseURL+HoneServiceUpdateBookProgressProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("UpdateBookProgress")),
+			connect.WithClientOptions(opts...),
+		),
 		listReadingMaterials: connect.NewClient[v1.ListReadingMaterialsRequest, v1.ListReadingMaterialsResponse](
 			httpClient,
 			baseURL+HoneServiceListReadingMaterialsProcedure,
@@ -697,6 +770,12 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("AddListeningMaterial")),
 			connect.WithClientOptions(opts...),
 		),
+		ingestYouTubeListening: connect.NewClient[v1.IngestYouTubeListeningRequest, v1.ListeningMaterial](
+			httpClient,
+			baseURL+HoneServiceIngestYouTubeListeningProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("IngestYouTubeListening")),
+			connect.WithClientOptions(opts...),
+		),
 		listListeningMaterials: connect.NewClient[v1.ListListeningMaterialsRequest, v1.ListListeningMaterialsResponse](
 			httpClient,
 			baseURL+HoneServiceListListeningMaterialsProcedure,
@@ -719,6 +798,54 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+HoneServiceGradeEnglishWritingProcedure,
 			connect.WithSchema(honeServiceMethods.ByName("GradeEnglishWriting")),
+			connect.WithClientOptions(opts...),
+		),
+		addExternalActivity: connect.NewClient[v1.AddExternalActivityRequest, v1.ExternalActivity](
+			httpClient,
+			baseURL+HoneServiceAddExternalActivityProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("AddExternalActivity")),
+			connect.WithClientOptions(opts...),
+		),
+		listExternalActivity: connect.NewClient[v1.ListExternalActivityRequest, v1.ListExternalActivityResponse](
+			httpClient,
+			baseURL+HoneServiceListExternalActivityProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListExternalActivity")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteExternalActivity: connect.NewClient[v1.DeleteExternalActivityRequest, v1.DeleteExternalActivityResponse](
+			httpClient,
+			baseURL+HoneServiceDeleteExternalActivityProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("DeleteExternalActivity")),
+			connect.WithClientOptions(opts...),
+		),
+		searchAtlasTopics: connect.NewClient[v1.SearchAtlasTopicsRequest, v1.SearchAtlasTopicsResponse](
+			httpClient,
+			baseURL+HoneServiceSearchAtlasTopicsProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("SearchAtlasTopics")),
+			connect.WithClientOptions(opts...),
+		),
+		listAtlasNodeTracks: connect.NewClient[v1.ListAtlasNodeTracksRequest, v1.ListAtlasNodeTracksResponse](
+			httpClient,
+			baseURL+HoneServiceListAtlasNodeTracksProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListAtlasNodeTracks")),
+			connect.WithClientOptions(opts...),
+		),
+		getUserSettings: connect.NewClient[v1.GetUserSettingsRequest, v1.UserSettings](
+			httpClient,
+			baseURL+HoneServiceGetUserSettingsProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GetUserSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		setActiveTrack: connect.NewClient[v1.SetActiveTrackRequest, v1.UserSettings](
+			httpClient,
+			baseURL+HoneServiceSetActiveTrackProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("SetActiveTrack")),
+			connect.WithClientOptions(opts...),
+		),
+		setEnglishActive: connect.NewClient[v1.SetEnglishActiveRequest, v1.UserSettings](
+			httpClient,
+			baseURL+HoneServiceSetEnglishActiveProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("SetEnglishActive")),
 			connect.WithClientOptions(opts...),
 		),
 		gradeCodeReview: connect.NewClient[v1.GradeCodeReviewRequest, v1.GradeCodeReviewResponse](
@@ -750,6 +877,7 @@ type honeServiceClient struct {
 	deleteNote                *connect.Client[v1.DeleteNoteRequest, v1.DeleteNoteResponse]
 	moveNote                  *connect.Client[v1.MoveNoteRequest, v1.Note]
 	getNoteConnections        *connect.Client[v1.GetNoteConnectionsRequest, v1.Connection]
+	suggestNoteLinks          *connect.Client[v1.SuggestNoteLinksRequest, v1.SuggestNoteLinksResponse]
 	createFolder              *connect.Client[v1.CreateFolderRequest, v1.Folder]
 	listFolders               *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
 	deleteFolder              *connect.Client[v1.DeleteFolderRequest, v1.DeleteFolderResponse]
@@ -781,6 +909,7 @@ type honeServiceClient struct {
 	makePrivate               *connect.Client[v1.MakePrivateRequest, v1.MakePrivateResponse]
 	bulkNotesMeta             *connect.Client[v1.BulkNotesMetaRequest, v1.BulkNotesMetaResponse]
 	addReadingMaterial        *connect.Client[v1.AddReadingMaterialRequest, v1.ReadingMaterial]
+	updateBookProgress        *connect.Client[v1.UpdateBookProgressRequest, v1.ReadingMaterial]
 	listReadingMaterials      *connect.Client[v1.ListReadingMaterialsRequest, v1.ListReadingMaterialsResponse]
 	getReadingMaterial        *connect.Client[v1.GetReadingMaterialRequest, v1.ReadingMaterial]
 	archiveReadingMaterial    *connect.Client[v1.ArchiveReadingMaterialRequest, v1.ArchiveReadingMaterialResponse]
@@ -791,10 +920,19 @@ type honeServiceClient struct {
 	listVocabDue              *connect.Client[v1.ListVocabDueRequest, v1.ListVocabDueResponse]
 	listVocabBySourceMaterial *connect.Client[v1.ListVocabBySourceMaterialRequest, v1.ListVocabDueResponse]
 	addListeningMaterial      *connect.Client[v1.AddListeningMaterialRequest, v1.ListeningMaterial]
+	ingestYouTubeListening    *connect.Client[v1.IngestYouTubeListeningRequest, v1.ListeningMaterial]
 	listListeningMaterials    *connect.Client[v1.ListListeningMaterialsRequest, v1.ListListeningMaterialsResponse]
 	getListeningMaterial      *connect.Client[v1.GetListeningMaterialRequest, v1.ListeningMaterial]
 	archiveListeningMaterial  *connect.Client[v1.ArchiveListeningMaterialRequest, v1.ArchiveListeningMaterialResponse]
 	gradeEnglishWriting       *connect.Client[v1.GradeEnglishWritingRequest, v1.GradeEnglishWritingResponse]
+	addExternalActivity       *connect.Client[v1.AddExternalActivityRequest, v1.ExternalActivity]
+	listExternalActivity      *connect.Client[v1.ListExternalActivityRequest, v1.ListExternalActivityResponse]
+	deleteExternalActivity    *connect.Client[v1.DeleteExternalActivityRequest, v1.DeleteExternalActivityResponse]
+	searchAtlasTopics         *connect.Client[v1.SearchAtlasTopicsRequest, v1.SearchAtlasTopicsResponse]
+	listAtlasNodeTracks       *connect.Client[v1.ListAtlasNodeTracksRequest, v1.ListAtlasNodeTracksResponse]
+	getUserSettings           *connect.Client[v1.GetUserSettingsRequest, v1.UserSettings]
+	setActiveTrack            *connect.Client[v1.SetActiveTrackRequest, v1.UserSettings]
+	setEnglishActive          *connect.Client[v1.SetEnglishActiveRequest, v1.UserSettings]
 	gradeCodeReview           *connect.Client[v1.GradeCodeReviewRequest, v1.GradeCodeReviewResponse]
 }
 
@@ -886,6 +1024,11 @@ func (c *honeServiceClient) MoveNote(ctx context.Context, req *connect.Request[v
 // GetNoteConnections calls druz9.v1.HoneService.GetNoteConnections.
 func (c *honeServiceClient) GetNoteConnections(ctx context.Context, req *connect.Request[v1.GetNoteConnectionsRequest]) (*connect.ServerStreamForClient[v1.Connection], error) {
 	return c.getNoteConnections.CallServerStream(ctx, req)
+}
+
+// SuggestNoteLinks calls druz9.v1.HoneService.SuggestNoteLinks.
+func (c *honeServiceClient) SuggestNoteLinks(ctx context.Context, req *connect.Request[v1.SuggestNoteLinksRequest]) (*connect.Response[v1.SuggestNoteLinksResponse], error) {
+	return c.suggestNoteLinks.CallUnary(ctx, req)
 }
 
 // CreateFolder calls druz9.v1.HoneService.CreateFolder.
@@ -1043,6 +1186,11 @@ func (c *honeServiceClient) AddReadingMaterial(ctx context.Context, req *connect
 	return c.addReadingMaterial.CallUnary(ctx, req)
 }
 
+// UpdateBookProgress calls druz9.v1.HoneService.UpdateBookProgress.
+func (c *honeServiceClient) UpdateBookProgress(ctx context.Context, req *connect.Request[v1.UpdateBookProgressRequest]) (*connect.Response[v1.ReadingMaterial], error) {
+	return c.updateBookProgress.CallUnary(ctx, req)
+}
+
 // ListReadingMaterials calls druz9.v1.HoneService.ListReadingMaterials.
 func (c *honeServiceClient) ListReadingMaterials(ctx context.Context, req *connect.Request[v1.ListReadingMaterialsRequest]) (*connect.Response[v1.ListReadingMaterialsResponse], error) {
 	return c.listReadingMaterials.CallUnary(ctx, req)
@@ -1093,6 +1241,11 @@ func (c *honeServiceClient) AddListeningMaterial(ctx context.Context, req *conne
 	return c.addListeningMaterial.CallUnary(ctx, req)
 }
 
+// IngestYouTubeListening calls druz9.v1.HoneService.IngestYouTubeListening.
+func (c *honeServiceClient) IngestYouTubeListening(ctx context.Context, req *connect.Request[v1.IngestYouTubeListeningRequest]) (*connect.Response[v1.ListeningMaterial], error) {
+	return c.ingestYouTubeListening.CallUnary(ctx, req)
+}
+
 // ListListeningMaterials calls druz9.v1.HoneService.ListListeningMaterials.
 func (c *honeServiceClient) ListListeningMaterials(ctx context.Context, req *connect.Request[v1.ListListeningMaterialsRequest]) (*connect.Response[v1.ListListeningMaterialsResponse], error) {
 	return c.listListeningMaterials.CallUnary(ctx, req)
@@ -1111,6 +1264,46 @@ func (c *honeServiceClient) ArchiveListeningMaterial(ctx context.Context, req *c
 // GradeEnglishWriting calls druz9.v1.HoneService.GradeEnglishWriting.
 func (c *honeServiceClient) GradeEnglishWriting(ctx context.Context, req *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error) {
 	return c.gradeEnglishWriting.CallUnary(ctx, req)
+}
+
+// AddExternalActivity calls druz9.v1.HoneService.AddExternalActivity.
+func (c *honeServiceClient) AddExternalActivity(ctx context.Context, req *connect.Request[v1.AddExternalActivityRequest]) (*connect.Response[v1.ExternalActivity], error) {
+	return c.addExternalActivity.CallUnary(ctx, req)
+}
+
+// ListExternalActivity calls druz9.v1.HoneService.ListExternalActivity.
+func (c *honeServiceClient) ListExternalActivity(ctx context.Context, req *connect.Request[v1.ListExternalActivityRequest]) (*connect.Response[v1.ListExternalActivityResponse], error) {
+	return c.listExternalActivity.CallUnary(ctx, req)
+}
+
+// DeleteExternalActivity calls druz9.v1.HoneService.DeleteExternalActivity.
+func (c *honeServiceClient) DeleteExternalActivity(ctx context.Context, req *connect.Request[v1.DeleteExternalActivityRequest]) (*connect.Response[v1.DeleteExternalActivityResponse], error) {
+	return c.deleteExternalActivity.CallUnary(ctx, req)
+}
+
+// SearchAtlasTopics calls druz9.v1.HoneService.SearchAtlasTopics.
+func (c *honeServiceClient) SearchAtlasTopics(ctx context.Context, req *connect.Request[v1.SearchAtlasTopicsRequest]) (*connect.Response[v1.SearchAtlasTopicsResponse], error) {
+	return c.searchAtlasTopics.CallUnary(ctx, req)
+}
+
+// ListAtlasNodeTracks calls druz9.v1.HoneService.ListAtlasNodeTracks.
+func (c *honeServiceClient) ListAtlasNodeTracks(ctx context.Context, req *connect.Request[v1.ListAtlasNodeTracksRequest]) (*connect.Response[v1.ListAtlasNodeTracksResponse], error) {
+	return c.listAtlasNodeTracks.CallUnary(ctx, req)
+}
+
+// GetUserSettings calls druz9.v1.HoneService.GetUserSettings.
+func (c *honeServiceClient) GetUserSettings(ctx context.Context, req *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.UserSettings], error) {
+	return c.getUserSettings.CallUnary(ctx, req)
+}
+
+// SetActiveTrack calls druz9.v1.HoneService.SetActiveTrack.
+func (c *honeServiceClient) SetActiveTrack(ctx context.Context, req *connect.Request[v1.SetActiveTrackRequest]) (*connect.Response[v1.UserSettings], error) {
+	return c.setActiveTrack.CallUnary(ctx, req)
+}
+
+// SetEnglishActive calls druz9.v1.HoneService.SetEnglishActive.
+func (c *honeServiceClient) SetEnglishActive(ctx context.Context, req *connect.Request[v1.SetEnglishActiveRequest]) (*connect.Response[v1.UserSettings], error) {
+	return c.setEnglishActive.CallUnary(ctx, req)
 }
 
 // GradeCodeReview calls druz9.v1.HoneService.GradeCodeReview.
@@ -1144,6 +1337,7 @@ type HoneServiceHandler interface {
 	// Server-streaming: first results (in-corpus notes) arrive fast, while
 	// cross-domain edges (PRs, tasks) trail by a few hundred ms.
 	GetNoteConnections(context.Context, *connect.Request[v1.GetNoteConnectionsRequest], *connect.ServerStream[v1.Connection]) error
+	SuggestNoteLinks(context.Context, *connect.Request[v1.SuggestNoteLinksRequest]) (*connect.Response[v1.SuggestNoteLinksResponse], error)
 	// ─── Folders ────────────────────────────────────────────────────────
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.Folder], error)
 	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
@@ -1189,6 +1383,7 @@ type HoneServiceHandler interface {
 	MakePrivate(context.Context, *connect.Request[v1.MakePrivateRequest]) (*connect.Response[v1.MakePrivateResponse], error)
 	BulkNotesMeta(context.Context, *connect.Request[v1.BulkNotesMetaRequest]) (*connect.Response[v1.BulkNotesMetaResponse], error)
 	AddReadingMaterial(context.Context, *connect.Request[v1.AddReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error)
+	UpdateBookProgress(context.Context, *connect.Request[v1.UpdateBookProgressRequest]) (*connect.Response[v1.ReadingMaterial], error)
 	ListReadingMaterials(context.Context, *connect.Request[v1.ListReadingMaterialsRequest]) (*connect.Response[v1.ListReadingMaterialsResponse], error)
 	GetReadingMaterial(context.Context, *connect.Request[v1.GetReadingMaterialRequest]) (*connect.Response[v1.ReadingMaterial], error)
 	ArchiveReadingMaterial(context.Context, *connect.Request[v1.ArchiveReadingMaterialRequest]) (*connect.Response[v1.ArchiveReadingMaterialResponse], error)
@@ -1205,6 +1400,11 @@ type HoneServiceHandler interface {
 	// User-owned library of audio + transcript materials. Click-on-word
 	// reuses the AddVocab RPC (vocab queue is shared with Reading).
 	AddListeningMaterial(context.Context, *connect.Request[v1.AddListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error)
+	// IngestYouTubeListening — paste YouTube URL, backend extract'ит auto-
+	// captions через yt-dlp + создаёт ListeningMaterial. Sergey 2026-05-03:
+	// «listening странный, надо самому искать транскрибацию хотя видео из
+	// тюба». Если captions нет — возвращает ErrInvalidInput с подсказкой.
+	IngestYouTubeListening(context.Context, *connect.Request[v1.IngestYouTubeListeningRequest]) (*connect.Response[v1.ListeningMaterial], error)
 	ListListeningMaterials(context.Context, *connect.Request[v1.ListListeningMaterialsRequest]) (*connect.Response[v1.ListListeningMaterialsResponse], error)
 	GetListeningMaterial(context.Context, *connect.Request[v1.GetListeningMaterialRequest]) (*connect.Response[v1.ListeningMaterial], error)
 	ArchiveListeningMaterial(context.Context, *connect.Request[v1.ArchiveListeningMaterialRequest]) (*connect.Response[v1.ArchiveListeningMaterialResponse], error)
@@ -1214,6 +1414,27 @@ type HoneServiceHandler interface {
 	// 0..100 score. No persistence layer; if the user wants to keep the
 	// text they save it via CreateNote.
 	GradeEnglishWriting(context.Context, *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error)
+	// ─── External activity log (structured form, Hone Stats) ────────
+	// Юзер логирует обучение вне druz9 (LeetCode / Coursera / YouTube /
+	// книги). Без чата — structured form, source dropdown + topic
+	// autocomplete по atlas-узлам. Intelligence-service подтягивает
+	// эти записи в snapshot для AI-tutor recall.
+	AddExternalActivity(context.Context, *connect.Request[v1.AddExternalActivityRequest]) (*connect.Response[v1.ExternalActivity], error)
+	ListExternalActivity(context.Context, *connect.Request[v1.ListExternalActivityRequest]) (*connect.Response[v1.ListExternalActivityResponse], error)
+	DeleteExternalActivity(context.Context, *connect.Request[v1.DeleteExternalActivityRequest]) (*connect.Response[v1.DeleteExternalActivityResponse], error)
+	// Atlas-node autocomplete для topic-поля. Возвращает top-N узлов по
+	// similarity к prefix'у. Нет ML — fast trigram / LIKE на title.
+	SearchAtlasTopics(context.Context, *connect.Request[v1.SearchAtlasTopicsRequest]) (*connect.Response[v1.SearchAtlasTopicsResponse], error)
+	// Lookup table {atlas_node_id → track_kind} для client-side фильтра
+	// Plan / Tasks / Queue по active_track. Маленький payload (~50-100
+	// узлов), кешируется на 5 мин.
+	ListAtlasNodeTracks(context.Context, *connect.Request[v1.ListAtlasNodeTracksRequest]) (*connect.Response[v1.ListAtlasNodeTracksResponse], error)
+	// ─── User settings (active study mode) ───────────────────────────
+	// Active track gates content surfaces (Plan / Tasks / Reading / AI-tutor
+	// thread) per-user. Values: general | dev | ml | english | go.
+	GetUserSettings(context.Context, *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.UserSettings], error)
+	SetActiveTrack(context.Context, *connect.Request[v1.SetActiveTrackRequest]) (*connect.Response[v1.UserSettings], error)
+	SetEnglishActive(context.Context, *connect.Request[v1.SetEnglishActiveRequest]) (*connect.Response[v1.UserSettings], error)
 	// ─── Code-review-coaching (Wave 3.6) ─────────────────────────────
 	// GradeCodeReview — user pastes a unified diff + their PR-style
 	// review; we grade the review across correctness/completeness/
@@ -1335,6 +1556,12 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		HoneServiceGetNoteConnectionsProcedure,
 		svc.GetNoteConnections,
 		connect.WithSchema(honeServiceMethods.ByName("GetNoteConnections")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceSuggestNoteLinksHandler := connect.NewUnaryHandler(
+		HoneServiceSuggestNoteLinksProcedure,
+		svc.SuggestNoteLinks,
+		connect.WithSchema(honeServiceMethods.ByName("SuggestNoteLinks")),
 		connect.WithHandlerOptions(opts...),
 	)
 	honeServiceCreateFolderHandler := connect.NewUnaryHandler(
@@ -1523,6 +1750,12 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("AddReadingMaterial")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceUpdateBookProgressHandler := connect.NewUnaryHandler(
+		HoneServiceUpdateBookProgressProcedure,
+		svc.UpdateBookProgress,
+		connect.WithSchema(honeServiceMethods.ByName("UpdateBookProgress")),
+		connect.WithHandlerOptions(opts...),
+	)
 	honeServiceListReadingMaterialsHandler := connect.NewUnaryHandler(
 		HoneServiceListReadingMaterialsProcedure,
 		svc.ListReadingMaterials,
@@ -1583,6 +1816,12 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("AddListeningMaterial")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceIngestYouTubeListeningHandler := connect.NewUnaryHandler(
+		HoneServiceIngestYouTubeListeningProcedure,
+		svc.IngestYouTubeListening,
+		connect.WithSchema(honeServiceMethods.ByName("IngestYouTubeListening")),
+		connect.WithHandlerOptions(opts...),
+	)
 	honeServiceListListeningMaterialsHandler := connect.NewUnaryHandler(
 		HoneServiceListListeningMaterialsProcedure,
 		svc.ListListeningMaterials,
@@ -1605,6 +1844,54 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		HoneServiceGradeEnglishWritingProcedure,
 		svc.GradeEnglishWriting,
 		connect.WithSchema(honeServiceMethods.ByName("GradeEnglishWriting")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceAddExternalActivityHandler := connect.NewUnaryHandler(
+		HoneServiceAddExternalActivityProcedure,
+		svc.AddExternalActivity,
+		connect.WithSchema(honeServiceMethods.ByName("AddExternalActivity")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListExternalActivityHandler := connect.NewUnaryHandler(
+		HoneServiceListExternalActivityProcedure,
+		svc.ListExternalActivity,
+		connect.WithSchema(honeServiceMethods.ByName("ListExternalActivity")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceDeleteExternalActivityHandler := connect.NewUnaryHandler(
+		HoneServiceDeleteExternalActivityProcedure,
+		svc.DeleteExternalActivity,
+		connect.WithSchema(honeServiceMethods.ByName("DeleteExternalActivity")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceSearchAtlasTopicsHandler := connect.NewUnaryHandler(
+		HoneServiceSearchAtlasTopicsProcedure,
+		svc.SearchAtlasTopics,
+		connect.WithSchema(honeServiceMethods.ByName("SearchAtlasTopics")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListAtlasNodeTracksHandler := connect.NewUnaryHandler(
+		HoneServiceListAtlasNodeTracksProcedure,
+		svc.ListAtlasNodeTracks,
+		connect.WithSchema(honeServiceMethods.ByName("ListAtlasNodeTracks")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceGetUserSettingsHandler := connect.NewUnaryHandler(
+		HoneServiceGetUserSettingsProcedure,
+		svc.GetUserSettings,
+		connect.WithSchema(honeServiceMethods.ByName("GetUserSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceSetActiveTrackHandler := connect.NewUnaryHandler(
+		HoneServiceSetActiveTrackProcedure,
+		svc.SetActiveTrack,
+		connect.WithSchema(honeServiceMethods.ByName("SetActiveTrack")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceSetEnglishActiveHandler := connect.NewUnaryHandler(
+		HoneServiceSetEnglishActiveProcedure,
+		svc.SetEnglishActive,
+		connect.WithSchema(honeServiceMethods.ByName("SetEnglishActive")),
 		connect.WithHandlerOptions(opts...),
 	)
 	honeServiceGradeCodeReviewHandler := connect.NewUnaryHandler(
@@ -1651,6 +1938,8 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceMoveNoteHandler.ServeHTTP(w, r)
 		case HoneServiceGetNoteConnectionsProcedure:
 			honeServiceGetNoteConnectionsHandler.ServeHTTP(w, r)
+		case HoneServiceSuggestNoteLinksProcedure:
+			honeServiceSuggestNoteLinksHandler.ServeHTTP(w, r)
 		case HoneServiceCreateFolderProcedure:
 			honeServiceCreateFolderHandler.ServeHTTP(w, r)
 		case HoneServiceListFoldersProcedure:
@@ -1713,6 +2002,8 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceBulkNotesMetaHandler.ServeHTTP(w, r)
 		case HoneServiceAddReadingMaterialProcedure:
 			honeServiceAddReadingMaterialHandler.ServeHTTP(w, r)
+		case HoneServiceUpdateBookProgressProcedure:
+			honeServiceUpdateBookProgressHandler.ServeHTTP(w, r)
 		case HoneServiceListReadingMaterialsProcedure:
 			honeServiceListReadingMaterialsHandler.ServeHTTP(w, r)
 		case HoneServiceGetReadingMaterialProcedure:
@@ -1733,6 +2024,8 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceListVocabBySourceMaterialHandler.ServeHTTP(w, r)
 		case HoneServiceAddListeningMaterialProcedure:
 			honeServiceAddListeningMaterialHandler.ServeHTTP(w, r)
+		case HoneServiceIngestYouTubeListeningProcedure:
+			honeServiceIngestYouTubeListeningHandler.ServeHTTP(w, r)
 		case HoneServiceListListeningMaterialsProcedure:
 			honeServiceListListeningMaterialsHandler.ServeHTTP(w, r)
 		case HoneServiceGetListeningMaterialProcedure:
@@ -1741,6 +2034,22 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceArchiveListeningMaterialHandler.ServeHTTP(w, r)
 		case HoneServiceGradeEnglishWritingProcedure:
 			honeServiceGradeEnglishWritingHandler.ServeHTTP(w, r)
+		case HoneServiceAddExternalActivityProcedure:
+			honeServiceAddExternalActivityHandler.ServeHTTP(w, r)
+		case HoneServiceListExternalActivityProcedure:
+			honeServiceListExternalActivityHandler.ServeHTTP(w, r)
+		case HoneServiceDeleteExternalActivityProcedure:
+			honeServiceDeleteExternalActivityHandler.ServeHTTP(w, r)
+		case HoneServiceSearchAtlasTopicsProcedure:
+			honeServiceSearchAtlasTopicsHandler.ServeHTTP(w, r)
+		case HoneServiceListAtlasNodeTracksProcedure:
+			honeServiceListAtlasNodeTracksHandler.ServeHTTP(w, r)
+		case HoneServiceGetUserSettingsProcedure:
+			honeServiceGetUserSettingsHandler.ServeHTTP(w, r)
+		case HoneServiceSetActiveTrackProcedure:
+			honeServiceSetActiveTrackHandler.ServeHTTP(w, r)
+		case HoneServiceSetEnglishActiveProcedure:
+			honeServiceSetEnglishActiveHandler.ServeHTTP(w, r)
 		case HoneServiceGradeCodeReviewProcedure:
 			honeServiceGradeCodeReviewHandler.ServeHTTP(w, r)
 		default:
@@ -1822,6 +2131,10 @@ func (UnimplementedHoneServiceHandler) MoveNote(context.Context, *connect.Reques
 
 func (UnimplementedHoneServiceHandler) GetNoteConnections(context.Context, *connect.Request[v1.GetNoteConnectionsRequest], *connect.ServerStream[v1.Connection]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetNoteConnections is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) SuggestNoteLinks(context.Context, *connect.Request[v1.SuggestNoteLinksRequest]) (*connect.Response[v1.SuggestNoteLinksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.SuggestNoteLinks is not implemented"))
 }
 
 func (UnimplementedHoneServiceHandler) CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.Folder], error) {
@@ -1948,6 +2261,10 @@ func (UnimplementedHoneServiceHandler) AddReadingMaterial(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddReadingMaterial is not implemented"))
 }
 
+func (UnimplementedHoneServiceHandler) UpdateBookProgress(context.Context, *connect.Request[v1.UpdateBookProgressRequest]) (*connect.Response[v1.ReadingMaterial], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.UpdateBookProgress is not implemented"))
+}
+
 func (UnimplementedHoneServiceHandler) ListReadingMaterials(context.Context, *connect.Request[v1.ListReadingMaterialsRequest]) (*connect.Response[v1.ListReadingMaterialsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListReadingMaterials is not implemented"))
 }
@@ -1988,6 +2305,10 @@ func (UnimplementedHoneServiceHandler) AddListeningMaterial(context.Context, *co
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddListeningMaterial is not implemented"))
 }
 
+func (UnimplementedHoneServiceHandler) IngestYouTubeListening(context.Context, *connect.Request[v1.IngestYouTubeListeningRequest]) (*connect.Response[v1.ListeningMaterial], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.IngestYouTubeListening is not implemented"))
+}
+
 func (UnimplementedHoneServiceHandler) ListListeningMaterials(context.Context, *connect.Request[v1.ListListeningMaterialsRequest]) (*connect.Response[v1.ListListeningMaterialsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListListeningMaterials is not implemented"))
 }
@@ -2002,6 +2323,38 @@ func (UnimplementedHoneServiceHandler) ArchiveListeningMaterial(context.Context,
 
 func (UnimplementedHoneServiceHandler) GradeEnglishWriting(context.Context, *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GradeEnglishWriting is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) AddExternalActivity(context.Context, *connect.Request[v1.AddExternalActivityRequest]) (*connect.Response[v1.ExternalActivity], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddExternalActivity is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListExternalActivity(context.Context, *connect.Request[v1.ListExternalActivityRequest]) (*connect.Response[v1.ListExternalActivityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListExternalActivity is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) DeleteExternalActivity(context.Context, *connect.Request[v1.DeleteExternalActivityRequest]) (*connect.Response[v1.DeleteExternalActivityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.DeleteExternalActivity is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) SearchAtlasTopics(context.Context, *connect.Request[v1.SearchAtlasTopicsRequest]) (*connect.Response[v1.SearchAtlasTopicsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.SearchAtlasTopics is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListAtlasNodeTracks(context.Context, *connect.Request[v1.ListAtlasNodeTracksRequest]) (*connect.Response[v1.ListAtlasNodeTracksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListAtlasNodeTracks is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GetUserSettings(context.Context, *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.UserSettings], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetUserSettings is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) SetActiveTrack(context.Context, *connect.Request[v1.SetActiveTrackRequest]) (*connect.Response[v1.UserSettings], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.SetActiveTrack is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) SetEnglishActive(context.Context, *connect.Request[v1.SetEnglishActiveRequest]) (*connect.Response[v1.UserSettings], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.SetEnglishActive is not implemented"))
 }
 
 func (UnimplementedHoneServiceHandler) GradeCodeReview(context.Context, *connect.Request[v1.GradeCodeReviewRequest]) (*connect.Response[v1.GradeCodeReviewResponse], error) {

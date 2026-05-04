@@ -11,7 +11,7 @@ import type { PageId } from './Palette';
 
 // EnglishTab — public alias на подмножество PageId'ов, входящих в hub.
 // Используется App.tsx чтобы сузить тип в callback'е onChange.
-export type EnglishTab = Extract<PageId, 'reading' | 'writing' | 'listening'>;
+export type EnglishTab = Extract<PageId, 'reading' | 'writing' | 'listening' | 'english_overview'>;
 
 interface Props {
   current: EnglishTab;
@@ -47,6 +47,9 @@ export function EnglishTabsChrome({ current, onChange }: Props) {
           WebkitAppRegion: 'no-drag',
         }}
       >
+        <TabBtn active={current === 'english_overview'} onClick={() => onChange('english_overview')} kbd="·">
+          Overview
+        </TabBtn>
         <TabBtn active={current === 'reading'} onClick={() => onChange('reading')} kbd="R">
           Reading
         </TabBtn>

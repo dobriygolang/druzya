@@ -47,12 +47,12 @@ func (d *Dashboard) Snapshot(ctx context.Context, now time.Time) (domain.AdminDa
 		{&out.UsersBanned, `SELECT COUNT(*)::bigint FROM user_bans
 		                     WHERE lifted_at IS NULL
 		                       AND (expires_at IS NULL OR expires_at > now())`},
-		{&out.MatchesToday, `SELECT COUNT(*)::bigint FROM arena_matches WHERE created_at >= now() - interval '24 hours'`},
-		{&out.MatchesWeek, `SELECT COUNT(*)::bigint FROM arena_matches WHERE created_at >= now() - interval '7 days'`},
+		// Pivot 2026-05-01: MatchesToday/Week и ActiveArenaMatches удалены
+		// (arena_matches таблица дропнута). Поля останутся в proto как 0
+		// для wire-compat, потом deprecate'нём окончательно.
 		{&out.KatasToday, `SELECT COUNT(*)::bigint FROM daily_kata_history WHERE submitted_at >= now() - interval '24 hours' AND passed = TRUE`},
 		{&out.KatasWeek, `SELECT COUNT(*)::bigint FROM daily_kata_history WHERE submitted_at >= now() - interval '7 days' AND passed = TRUE`},
 		{&out.ActiveMockSessions, `SELECT COUNT(*)::bigint FROM mock_sessions WHERE status = 'in_progress'`},
-		{&out.ActiveArenaMatches, `SELECT COUNT(*)::bigint FROM arena_matches WHERE status IN ('searching','confirming','active')`},
 		{&out.ReportsPending, `SELECT COUNT(*)::bigint FROM user_reports WHERE status = 'pending'`},
 		{&out.AnticheatSignals24h, `SELECT COUNT(*)::bigint FROM anticheat_signals WHERE created_at >= now() - interval '24 hours'`},
 	}

@@ -27,13 +27,14 @@ const adminRole = "admin"
 var _ druz9v1connect.SubscriptionServiceHandler = (*SubscriptionServer)(nil)
 
 // SubscriptionServer адаптирует use-case'ы на Connect-RPC.
+//
+// Pivot 2026-05-01: LinkBoostyUC + SyncBoostyUC удалены вместе с
+// Boosty marketplace.
 type SubscriptionServer struct {
-	GetTierUC    *app.GetTier
-	SetTierUC    *app.SetTier
-	GetQuotaUC   *app.GetQuota
-	LinkBoostyUC *app.LinkBoosty
-	SyncBoostyUC *app.SyncBoosty
-	Log          *slog.Logger
+	GetTierUC  *app.GetTier
+	SetTierUC  *app.SetTier
+	GetQuotaUC *app.GetQuota
+	Log        *slog.Logger
 }
 
 // NewSubscriptionServer — конструктор.

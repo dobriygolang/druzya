@@ -807,15 +807,12 @@ const file_druz9_v1_subscription_proto_rawDesc = "" +
 	"\x12current_period_end\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\x12\x16\n" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\"&\n" +
 	"\x14AdminSetTierResponse\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok2\xbd\x05\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok2\xba\x03\n" +
 	"\x13SubscriptionService\x12g\n" +
 	"\tGetMyTier\x12\x1a.druz9.v1.GetMyTierRequest\x1a\x1b.druz9.v1.GetMyTierResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/subscription/tier\x12V\n" +
 	"\x0fGetTierByUserID\x12 .druz9.v1.GetTierByUserIDRequest\x1a!.druz9.v1.GetTierByUserIDResponse\x12~\n" +
 	"\fAdminSetTier\x12\x1d.druz9.v1.AdminSetTierRequest\x1a\x1e.druz9.v1.AdminSetTierResponse\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/v1/admin/subscriptions/set-tier\x12b\n" +
-	"\bGetQuota\x12\x19.druz9.v1.GetQuotaRequest\x1a\x17.druz9.v1.QuotaSnapshot\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/v1/subscription/quota\x12t\n" +
-	"\n" +
-	"LinkBoosty\x12\x1b.druz9.v1.LinkBoostyRequest\x1a\x1c.druz9.v1.LinkBoostyResponse\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/subscription/boosty/link\x12\x8a\x01\n" +
-	"\x0fAdminBoostySync\x12 .druz9.v1.AdminBoostySyncRequest\x1a!.druz9.v1.AdminBoostySyncResponse\"2\x82\xd3\xe4\x93\x02,:\x01*\"'/api/v1/admin/subscriptions/boosty/syncB\x8e\x01\n" +
+	"\bGetQuota\x12\x19.druz9.v1.GetQuotaRequest\x1a\x17.druz9.v1.QuotaSnapshot\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/v1/subscription/quotaB\x8e\x01\n" +
 	"\fcom.druz9.v1B\x11SubscriptionProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -858,16 +855,12 @@ var file_druz9_v1_subscription_proto_depIdxs = []int32{
 	10, // 6: druz9.v1.SubscriptionService.GetTierByUserID:input_type -> druz9.v1.GetTierByUserIDRequest
 	12, // 7: druz9.v1.SubscriptionService.AdminSetTier:input_type -> druz9.v1.AdminSetTierRequest
 	2,  // 8: druz9.v1.SubscriptionService.GetQuota:input_type -> druz9.v1.GetQuotaRequest
-	4,  // 9: druz9.v1.SubscriptionService.LinkBoosty:input_type -> druz9.v1.LinkBoostyRequest
-	6,  // 10: druz9.v1.SubscriptionService.AdminBoostySync:input_type -> druz9.v1.AdminBoostySyncRequest
-	9,  // 11: druz9.v1.SubscriptionService.GetMyTier:output_type -> druz9.v1.GetMyTierResponse
-	11, // 12: druz9.v1.SubscriptionService.GetTierByUserID:output_type -> druz9.v1.GetTierByUserIDResponse
-	13, // 13: druz9.v1.SubscriptionService.AdminSetTier:output_type -> druz9.v1.AdminSetTierResponse
-	3,  // 14: druz9.v1.SubscriptionService.GetQuota:output_type -> druz9.v1.QuotaSnapshot
-	5,  // 15: druz9.v1.SubscriptionService.LinkBoosty:output_type -> druz9.v1.LinkBoostyResponse
-	7,  // 16: druz9.v1.SubscriptionService.AdminBoostySync:output_type -> druz9.v1.AdminBoostySyncResponse
-	11, // [11:17] is the sub-list for method output_type
-	5,  // [5:11] is the sub-list for method input_type
+	9,  // 9: druz9.v1.SubscriptionService.GetMyTier:output_type -> druz9.v1.GetMyTierResponse
+	11, // 10: druz9.v1.SubscriptionService.GetTierByUserID:output_type -> druz9.v1.GetTierByUserIDResponse
+	13, // 11: druz9.v1.SubscriptionService.AdminSetTier:output_type -> druz9.v1.AdminSetTierResponse
+	3,  // 12: druz9.v1.SubscriptionService.GetQuota:output_type -> druz9.v1.QuotaSnapshot
+	9,  // [9:13] is the sub-list for method output_type
+	5,  // [5:9] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name

@@ -294,6 +294,99 @@ type BriefPromptInput struct {
 	// RSVP'd_yes но статус остался rsvp_yes (никто не проставил
 	// attended). Сигнал disengagement → severity=nudge.
 	GhostedClubs []GhostedClubSession
+
+	// External — обучение вне druz9 (LeetCode / Coursera / книги). Coach
+	// видит «вчера 60 мин на Coursera» и не предлагает ту же тему в
+	// today's plan. Empty struct когда юзер ничего не логирует.
+	External ExternalActivitySummary
+
+	// ── Phase 1.7e learning-companion prompt sections (2026-05-04) ──
+
+	// Fork — snapshot ForkProgressReader (см repo.go ForkProgressSnapshot).
+	// Prompt-block FORK STATUS активен только когда Mode == "explore".
+	Fork ForkProgressSnapshot
+
+	// ResourceTrail — engagement signals из user_resource_log за окно.
+	// Prompt-block RESOURCE TRAIL активен когда total events > 0.
+	ResourceTrail ResourceEngagement
+}
+
+// ExternalActivitySummary — 7-дневная агрегация external_activity записей.
+// Поля плоские чтобы prompt-builder мог их печатать без нестинга.
+type ExternalActivitySummary struct {
+	// MinutesWindow — sum(duration_min) за последние 7 дней.
+	MinutesWindow int
+	// Sources — distinct sources за окно ('leetcode', 'coursera', …).
+	Sources []string
+	// TopTopics — top-3 atlas-node titles + free_text-метки. Coach
+	// использует чтобы понять «что юзер прошёл сам».
+	TopTopics []string
+}
+
+// ExternalActivityReader — pgx adapter поверх external_activity (миграция
+// 00037). Используется DailyBrief'ом и AI-tutor SnapshotProvider'ом.
+type ExternalActivityReader interface {
+	// SummaryWindow возвращает агрегацию за last N days. Empty struct
+	// если ничего не записано (это ОК — большинство юзеров поначалу
+	// ничего не логируют).
+	SummaryWindow(ctx context.Context, userID uuid.UUID, days int) (ExternalActivitySummary, error)
+}
+
+// ── Phase 1.7c readers (learning-companion 2026-05-04) ──
+
+// ResourceTouch — single event from user_resource_log (00055).
+type ResourceTouch struct {
+	URL          string
+	AtlasNodeID  string // optional ("" если ресурс был cross-cluster suggestion)
+	Kind         string // clicked | finished | skipped | unhelpful | reflection_submitted
+	OccurredAt   time.Time
+	HoursAgo     int    // pre-computed для prompt'а
+	Reflection   string // непустое только когда kind=reflection_submitted
+}
+
+// ResourceEngagement — агрегация для RESOURCE TRAIL prompt block.
+type ResourceEngagement struct {
+	// FinishedRecent — last N finished ресурсы (newest first).
+	FinishedRecent []ResourceTouch
+	// UnfinishedCount — clicked но не finished/skipped за окно.
+	UnfinishedCount int
+	// MarkedUnhelpful — last N unhelpful-marks за окно.
+	MarkedUnhelpful []ResourceTouch
+	// RecentReflections — last N reflection_submitted touches с непустым text.
+	RecentReflections []ResourceTouch
+}
+
+// ResourceEngagementReader реализует чтения над user_resource_log (00055):
+// RESOURCE TRAIL prompt-block, resource_engagement producer (Phase 1.7d),
+// admin curation analytics (Phase 12.5).
+type ResourceEngagementReader interface {
+	// EngagementWindow возвращает агрегацию событий за last N дней.
+	// keepRecent ограничивает FinishedRecent / RecentReflections / MarkedUnhelpful.
+	EngagementWindow(ctx context.Context, userID uuid.UUID, days, keepRecent int) (ResourceEngagement, error)
+}
+
+// ForkBranchScore — per-branch агрегация mock-результатов.
+type ForkBranchScore struct {
+	Branch       string  // "de" | "mle"
+	MockCount    int
+	AvgScore     float64
+	VoluntaryDeepDives int   // counted from atlas/resource log signals
+}
+
+// ForkProgressSnapshot — input для FORK STATUS prompt-block + fork_progress
+// producer (Phase 1.7d). Только когда learning_state.mode=='explore'.
+type ForkProgressSnapshot struct {
+	Mode               string // explore | commit | deep
+	ExploreWeekIndex   int    // 1-based; 0 если mode != explore
+	CurrentBranch      string // current learning_state.fork_branch ("" if NULL)
+	ScoresByBranch     []ForkBranchScore
+}
+
+// ForkProgressReader читает learning_state + cross-refs mock_sessions + atlas
+// activity. Используется FORK STATUS prompt block + fork_progress producer
+// (Phase 1.7d) + admin learning-state tab (Phase 12.5).
+type ForkProgressReader interface {
+	Snapshot(ctx context.Context, userID uuid.UUID) (ForkProgressSnapshot, error)
 }
 
 // GhostedClubSession — projection used by deriveSeverity. Pre-computed

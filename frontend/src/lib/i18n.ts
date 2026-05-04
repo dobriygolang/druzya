@@ -1,10 +1,11 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
+// Pivot 2026-05-04: arena/daily namespaces — arena/daily features
+// выпилены, t('arena:*') / t('daily:*') нигде не используются. Bundles
+// удалены ради bundle-size + чтобы не путать новые AI-агенты.
 import ruCommon from '../locales/ru/common.json'
-import ruArena from '../locales/ru/arena.json'
 import ruProfile from '../locales/ru/profile.json'
-import ruDaily from '../locales/ru/daily.json'
 import ruWelcome from '../locales/ru/welcome.json'
 import ruOnboarding from '../locales/ru/onboarding.json'
 import ruSettings from '../locales/ru/settings.json'
@@ -14,9 +15,7 @@ import ruPages from '../locales/ru/pages.json'
 import ruWave10 from '../locales/ru/wave10.json'
 
 import enCommon from '../locales/en/common.json'
-import enArena from '../locales/en/arena.json'
 import enProfile from '../locales/en/profile.json'
-import enDaily from '../locales/en/daily.json'
 import enWelcome from '../locales/en/welcome.json'
 import enOnboarding from '../locales/en/onboarding.json'
 import enSettings from '../locales/en/settings.json'
@@ -33,9 +32,7 @@ import enWave10 from '../locales/en/wave10.json'
 // WAVE-13 — Ukrainian (ua) locale removed by product decision; LANG_LIST
 // no longer surfaces it and the locales/ua/ directory has been deleted.
 import kzCommon from '../locales/kz/common.json'
-import kzArena from '../locales/kz/arena.json'
 import kzProfile from '../locales/kz/profile.json'
-import kzDaily from '../locales/kz/daily.json'
 import kzWelcome from '../locales/kz/welcome.json'
 import kzOnboarding from '../locales/kz/onboarding.json'
 import kzSettings from '../locales/kz/settings.json'
@@ -50,9 +47,7 @@ export type Lang = 'ru' | 'en' | 'kz'
 
 export const NAMESPACES = [
   'common',
-  'arena',
   'profile',
-  'daily',
   'welcome',
   'onboarding',
   'settings',
@@ -65,9 +60,7 @@ export const NAMESPACES = [
 export const resources = {
   ru: {
     common: ruCommon,
-    arena: ruArena,
     profile: ruProfile,
-    daily: ruDaily,
     welcome: ruWelcome,
     onboarding: ruOnboarding,
     settings: ruSettings,
@@ -78,9 +71,7 @@ export const resources = {
   },
   en: {
     common: enCommon,
-    arena: enArena,
     profile: enProfile,
-    daily: enDaily,
     welcome: enWelcome,
     onboarding: enOnboarding,
     settings: enSettings,
@@ -91,9 +82,7 @@ export const resources = {
   },
   kz: {
     common: kzCommon,
-    arena: kzArena,
     profile: kzProfile,
-    daily: kzDaily,
     welcome: kzWelcome,
     onboarding: kzOnboarding,
     settings: kzSettings,

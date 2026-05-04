@@ -63,16 +63,13 @@ UPDATE profiles SET career_stage = $2, updated_at = now() WHERE user_id = $1;
 SELECT node_key, progress, unlocked_at, decayed_at, updated_at
   FROM skill_nodes WHERE user_id = $1;
 
--- name: ListRatings :many
-SELECT section, elo, matches_count, last_match_at
-  FROM ratings WHERE user_id = $1;
-
 -- name: CountWeeklyActivity :one
+-- Pivot 2026-05-01: arena_matches/participants дропнуты. matches_won
+-- остаётся в proto-shape но возвращает 0 — TODO выпилить из proto после
+-- следующего gen-cycle.
 SELECT
   (SELECT COUNT(*)::int FROM daily_kata_history dkh WHERE dkh.user_id = $1 AND dkh.passed = true AND dkh.submitted_at >= $2)::int AS katas_passed,
-  (SELECT COUNT(*)::int FROM arena_matches m
-     JOIN arena_participants ap ON ap.match_id = m.id
-    WHERE ap.user_id = $1 AND m.winner_id = $1 AND m.finished_at >= $2)::int AS matches_won,
+  0::int AS matches_won,
   (SELECT COALESCE(SUM(ms.duration_min),0)::int FROM mock_sessions ms
     WHERE ms.user_id = $1 AND ms.finished_at >= $2)::int AS mock_minutes;
 

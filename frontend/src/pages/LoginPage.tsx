@@ -24,9 +24,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, Loader2, Send, X, Copy, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
+  devLogin,
   pollTelegramAuth,
   startTelegramAuth,
   persistAuthTokens,
+  type PollSuccess,
   type TelegramStartResponse,
 } from '../lib/queries/auth'
 
@@ -90,7 +92,9 @@ export default function LoginPage() {
   const { t } = useTranslation('welcome')
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const nextHref = params.get('next') ?? '/arena'
+  // Pivot 2026-05-03: landing → /today (action-driven dashboard) вместо
+  // /atlas. См RootRedirect в App.tsx.
+  const nextHref = params.get('next') ?? '/today'
   // ?reason=expired — выставляется apiClient'ом после неудачного refresh,
   // чтобы пользователь увидел осмысленное сообщение, а не «просто кинуло
   // на логин».
@@ -205,6 +209,22 @@ export default function LoginPage() {
     }
   }
 
+  // Stash `?next=` в sessionStorage перед стартом OAuth — иначе после
+  // редиректа Яндекса параметр теряется (callback URL содержит только
+  // ?code=&state=). Читается в AuthCallbackYandexPage. Исключаем /onboarding
+  // как `next`, чтобы новые юзеры не зацикливались.
+  const oauthNext =
+    nextHref && nextHref !== '/onboarding' && !nextHref.startsWith('/auth/')
+      ? nextHref
+      : null
+  if (oauthNext) {
+    try {
+      sessionStorage.setItem('oauth_next', oauthNext)
+    } catch {
+      /* private mode — fall through to default /arena */
+    }
+  }
+
   const yandexHref = buildYandexAuthorizeURL()
 
   return (
@@ -280,6 +300,24 @@ export default function LoginPage() {
         <p className="text-center text-[13px] text-text-muted">
           Первый раз? Просто нажми Yandex или Telegram — мы создадим профиль автоматически.
         </p>
+
+        {/* DEV-ONLY login. Endpoint доступен ТОЛЬКО когда backend стартует
+            с DEV_AUTH=true (response 404 иначе). Не показываем в production
+            build — VITE_DEV_AUTH=true в .env.local включает UI. */}
+        {import.meta.env.VITE_DEV_AUTH === 'true' && (
+          <DevLoginPane
+            onError={setError}
+            onSuccess={(r) => {
+              persistAuthTokens({
+                access_token: r.access_token,
+                refresh_token: r.refresh_token,
+                expires_in: r.expires_in,
+              })
+              const dest = r.is_new_user ? '/onboarding' : nextHref
+              navigate(dest, { replace: true })
+            }}
+          />
+        )}
       </main>
 
       {tgFlow && (
@@ -381,5 +419,68 @@ function TelegramCodeModal({
         </button>
       </div>
     </div>
+  )
+}
+
+// ─── DevLoginPane (INSECURE, DEV-only) ───────────────────────────────────
+//
+// Локальный bypass auth-flow. Завязан на backend env DEV_AUTH=true — если
+// бэк production-собран без флага, endpoint 404 и onError получит понятное
+// сообщение. UI скрыт за VITE_DEV_AUTH=true (см usage в LoginPage main).
+
+interface DevLoginPaneProps {
+  onSuccess: (r: PollSuccess) => void
+  onError: (msg: string) => void
+}
+
+function DevLoginPane({ onSuccess, onError }: DevLoginPaneProps) {
+  const [username, setUsername] = useState('sergey')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const u = username.trim()
+    if (!u) return
+    setBusy(true)
+    onError('')
+    try {
+      const r = await devLogin(u)
+      onSuccess(r)
+    } catch (err) {
+      onError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="rounded-lg border border-yellow-500/40 bg-yellow-500/5 px-4 py-3"
+    >
+      <div className="mb-2 flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-yellow-300">
+        <span>⚠</span> DEV-only · DEV_AUTH=true
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="username"
+          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+          disabled={busy}
+        />
+        <button
+          type="submit"
+          disabled={!username.trim() || busy}
+          className="rounded-md bg-text-primary px-4 py-2 text-[13px] font-semibold text-bg disabled:opacity-50"
+        >
+          {busy ? '…' : 'Войти'}
+        </button>
+      </div>
+      <p className="mt-2 text-[11px] text-text-muted">
+        Никаких паролей. Создаёт/пере-логинит юзера по имени. Видно только
+        локально — на проде 404.
+      </p>
+    </form>
   )
 }

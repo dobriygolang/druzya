@@ -567,6 +567,27 @@ export class SkillNode extends Message<SkillNode> {
    */
   reachable = false;
 
+  /**
+   * is_user_owned — true для узлов из user_atlas_nodes (Phase 3.1
+   * classify-flow). Frontend рендерит "your TODO" badge.
+   *
+   * @generated from field: bool is_user_owned = 19;
+   */
+  isUserOwned = false;
+
+  /**
+   * Phase 3 — per-user overlay (table user_atlas_node_prefs, мig 00064).
+   * Mutually exclusive — DB CHECK гарантирует.
+   *
+   * @generated from field: bool pinned = 20;
+   */
+  pinned = false;
+
+  /**
+   * @generated from field: bool hidden = 21;
+   */
+  hidden = false;
+
   constructor(data?: PartialMessage<SkillNode>) {
     super();
     proto3.util.initPartial(data, this);
@@ -593,6 +614,9 @@ export class SkillNode extends Message<SkillNode> {
     { no: 16, name: "pos_y", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 17, name: "pos_set", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 18, name: "reachable", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 19, name: "is_user_owned", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 20, name: "pinned", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 21, name: "hidden", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SkillNode {
@@ -1865,6 +1889,269 @@ export class AllocateAtlasSkillRequest extends Message<AllocateAtlasSkillRequest
 
   static equals(a: AllocateAtlasSkillRequest | PlainMessage<AllocateAtlasSkillRequest> | undefined, b: AllocateAtlasSkillRequest | PlainMessage<AllocateAtlasSkillRequest> | undefined): boolean {
     return proto3.util.equals(AllocateAtlasSkillRequest, a, b);
+  }
+}
+
+/**
+ * ClassifyAtlasTodoRequest — free-form TODO от юзера.
+ *
+ * @generated from message druz9.v1.ClassifyAtlasTodoRequest
+ */
+export class ClassifyAtlasTodoRequest extends Message<ClassifyAtlasTodoRequest> {
+  /**
+   * @generated from field: string todo = 1;
+   */
+  todo = "";
+
+  constructor(data?: PartialMessage<ClassifyAtlasTodoRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ClassifyAtlasTodoRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "todo", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ClassifyAtlasTodoRequest {
+    return new ClassifyAtlasTodoRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ClassifyAtlasTodoRequest {
+    return new ClassifyAtlasTodoRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ClassifyAtlasTodoRequest {
+    return new ClassifyAtlasTodoRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ClassifyAtlasTodoRequest | PlainMessage<ClassifyAtlasTodoRequest> | undefined, b: ClassifyAtlasTodoRequest | PlainMessage<ClassifyAtlasTodoRequest> | undefined): boolean {
+    return proto3.util.equals(ClassifyAtlasTodoRequest, a, b);
+  }
+}
+
+/**
+ * UserAtlasNode — один user_atlas_nodes row, возвращаемый когда LLM
+ * решил создать новую тему (а не матчить в curated).
+ *
+ * @generated from message druz9.v1.UserAtlasNode
+ */
+export class UserAtlasNode extends Message<UserAtlasNode> {
+  /**
+   * @generated from field: string node_key = 1;
+   */
+  nodeKey = "";
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description = "";
+
+  /**
+   * @generated from field: string section = 4;
+   */
+  section = "";
+
+  /**
+   * hub | keystone | notable | small
+   *
+   * @generated from field: string kind = 5;
+   */
+  kind = "";
+
+  /**
+   * @generated from field: string cluster = 6;
+   */
+  cluster = "";
+
+  /**
+   * оригинальный TODO для аудита
+   *
+   * @generated from field: string source_text = 7;
+   */
+  sourceText = "";
+
+  /**
+   * RFC3339
+   *
+   * @generated from field: string created_at = 8;
+   */
+  createdAt = "";
+
+  constructor(data?: PartialMessage<UserAtlasNode>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UserAtlasNode";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "node_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "section", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "cluster", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "source_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UserAtlasNode {
+    return new UserAtlasNode().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UserAtlasNode {
+    return new UserAtlasNode().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UserAtlasNode {
+    return new UserAtlasNode().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UserAtlasNode | PlainMessage<UserAtlasNode> | undefined, b: UserAtlasNode | PlainMessage<UserAtlasNode> | undefined): boolean {
+    return proto3.util.equals(UserAtlasNode, a, b);
+  }
+}
+
+/**
+ * ClassifyAtlasTodoResponse — ровно одно из полей не-пусто:
+ *   matched_key — TODO замэтчился в curated узел атласа.
+ *   new_node    — был создан новый user_atlas_nodes row.
+ *
+ * @generated from message druz9.v1.ClassifyAtlasTodoResponse
+ */
+export class ClassifyAtlasTodoResponse extends Message<ClassifyAtlasTodoResponse> {
+  /**
+   * @generated from field: string matched_key = 1;
+   */
+  matchedKey = "";
+
+  /**
+   * @generated from field: druz9.v1.UserAtlasNode new_node = 2;
+   */
+  newNode?: UserAtlasNode;
+
+  constructor(data?: PartialMessage<ClassifyAtlasTodoResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ClassifyAtlasTodoResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "matched_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "new_node", kind: "message", T: UserAtlasNode },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ClassifyAtlasTodoResponse {
+    return new ClassifyAtlasTodoResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ClassifyAtlasTodoResponse {
+    return new ClassifyAtlasTodoResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ClassifyAtlasTodoResponse {
+    return new ClassifyAtlasTodoResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ClassifyAtlasTodoResponse | PlainMessage<ClassifyAtlasTodoResponse> | undefined, b: ClassifyAtlasTodoResponse | PlainMessage<ClassifyAtlasTodoResponse> | undefined): boolean {
+    return proto3.util.equals(ClassifyAtlasTodoResponse, a, b);
+  }
+}
+
+/**
+ * SetAtlasNodePrefRequest — Phase 3 pin/hide overlay над atlas (table
+ * user_atlas_node_prefs, миграция 00064).
+ *
+ * @generated from message druz9.v1.SetAtlasNodePrefRequest
+ */
+export class SetAtlasNodePrefRequest extends Message<SetAtlasNodePrefRequest> {
+  /**
+   * @generated from field: string node_key = 1;
+   */
+  nodeKey = "";
+
+  /**
+   * @generated from field: bool pinned = 2;
+   */
+  pinned = false;
+
+  /**
+   * @generated from field: bool hidden = 3;
+   */
+  hidden = false;
+
+  constructor(data?: PartialMessage<SetAtlasNodePrefRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SetAtlasNodePrefRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "node_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "pinned", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "hidden", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetAtlasNodePrefRequest {
+    return new SetAtlasNodePrefRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetAtlasNodePrefRequest {
+    return new SetAtlasNodePrefRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetAtlasNodePrefRequest {
+    return new SetAtlasNodePrefRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetAtlasNodePrefRequest | PlainMessage<SetAtlasNodePrefRequest> | undefined, b: SetAtlasNodePrefRequest | PlainMessage<SetAtlasNodePrefRequest> | undefined): boolean {
+    return proto3.util.equals(SetAtlasNodePrefRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SetAtlasNodePrefResponse
+ */
+export class SetAtlasNodePrefResponse extends Message<SetAtlasNodePrefResponse> {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  constructor(data?: PartialMessage<SetAtlasNodePrefResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SetAtlasNodePrefResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetAtlasNodePrefResponse {
+    return new SetAtlasNodePrefResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetAtlasNodePrefResponse {
+    return new SetAtlasNodePrefResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetAtlasNodePrefResponse {
+    return new SetAtlasNodePrefResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetAtlasNodePrefResponse | PlainMessage<SetAtlasNodePrefResponse> | undefined, b: SetAtlasNodePrefResponse | PlainMessage<SetAtlasNodePrefResponse> | undefined): boolean {
+    return proto3.util.equals(SetAtlasNodePrefResponse, a, b);
   }
 }
 

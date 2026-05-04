@@ -27,11 +27,11 @@ export default function Step4Task() {
   const runAndGo = () => {
     // Sandbox: NO POST to match-history, NO ELO update.
     setStep(5)
-    nav('/sanctum?tour=1')
+    nav('/atlas?tour=1')
   }
   const skip = () => {
     setStep(5)
-    nav('/sanctum?tour=1&skipped=task')
+    nav('/atlas?tour=1&skipped=task')
   }
 
   return (

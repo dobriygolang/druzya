@@ -67,6 +67,10 @@ type GetDailyBrief struct {
 	// (юзер RSVP'нул, не дошёл). nil-safe.
 	Clubs domain.ClubReader
 
+	// External — обучение вне druz9 (LeetCode / Coursera / книги).
+	// nil-safe: пустой reader → секция просто отсутствует в prompt'е.
+	External domain.ExternalActivityReader
+
 	// Insights — Phase 1.5b. nil-safe. When set, the brief use-case
 	// passes the same prompt-input snapshot to the insight generator
 	// after synthesise — so both surfaces (full DailyBrief + atomic
@@ -193,6 +197,7 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		goals           []domain.UserGoal
 		ghostedClubs    []domain.GhostedClubSession
 		abandonedRecent int
+		external        domain.ExternalActivitySummary
 	)
 
 	var optionalWG sync.WaitGroup
@@ -329,6 +334,17 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 			}
 		}()
 	}
+	if uc.External != nil {
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.External.SummaryWindow(ctx, in.UserID, 7); err == nil {
+				external = v
+			} else {
+				warnReader(uc.Log, "external_activity", err)
+			}
+		}()
+	}
 	optionalWG.Wait()
 	recent = freshRecentNotesForBrief(recent, today)
 	dailyNotes = freshDailyNotesForBrief(dailyNotes, today)
@@ -426,6 +442,7 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		PendingFollowups:    pendingFollowups,
 		ActiveGoals:         goals,
 		GhostedClubs:        ghostedClubs,
+		External:            external,
 	}
 	brief, err := uc.Synthesiser.Synthesise(ctx, snapshot)
 	if err != nil {
@@ -822,7 +839,18 @@ func computePendingFollowups(past []domain.Episode, now time.Time, windowHours i
 			RecKind  string `json:"rec_kind"`
 			TargetID string `json:"target_id"`
 		}
-		_ = json.Unmarshal(ep.Payload, &p)
+		// Skip episodes with malformed payloads (free-tier LLM occasionally
+		// emits broken JSON). Previously parse errors were discarded into
+		// `_` and the downstream kind-check silently dropped them anyway —
+		// equivalent behaviour, but explicit `continue` makes the intent
+		// readable and decouples us from the kind-check happening to
+		// catch empty `p`.
+		if err := json.Unmarshal(ep.Payload, &p); err != nil {
+			slog.Default().Warn("daily_brief: skip episode with bad payload",
+				slog.String("episode_id", ep.ID.String()),
+				slog.Any("err", err))
+			continue
+		}
 		kind := domain.RecommendationKind(strings.TrimSpace(p.RecKind))
 		if kind != domain.RecommendationReviewNote && kind != domain.RecommendationTinyTask {
 			continue

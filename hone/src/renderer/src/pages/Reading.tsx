@@ -36,6 +36,9 @@ import {
   type ReadingSourceKind,
   type VocabEntry,
 } from '../api/reading';
+import { AICoachPill } from '../components/AICoachPill';
+import { ReadingSelectionPill } from '../components/ReadingSelectionPill';
+import { useTrackStore } from '../stores/track';
 
 type Mode =
   | { kind: 'library' }
@@ -388,6 +391,8 @@ function AddMaterialForm({ onCancel, onAdded }: AddMaterialFormProps) {
   const [title, setTitle] = useState('');
   const [bodyMd, setBodyMd] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
+  const [bookChapter, setBookChapter] = useState<string>('');
+  const [bookTotal, setBookTotal] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -395,12 +400,19 @@ function AddMaterialForm({ onCancel, onAdded }: AddMaterialFormProps) {
     setError(null);
     setBusy(true);
     try {
-      await addReadingMaterial({
+      const args: Parameters<typeof addReadingMaterial>[0] = {
         sourceKind,
         title: title.trim(),
         bodyMd: bodyMd.trim(),
         sourceUrl: sourceUrl.trim(),
-      });
+      };
+      if (sourceKind === 'book') {
+        const ch = parseInt(bookChapter, 10);
+        const tot = parseInt(bookTotal, 10);
+        if (Number.isFinite(ch)) args.bookChapter = ch;
+        if (Number.isFinite(tot)) args.bookTotalChapters = tot;
+      }
+      await addReadingMaterial(args);
       onAdded();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'unknown';
@@ -408,7 +420,7 @@ function AddMaterialForm({ onCancel, onAdded }: AddMaterialFormProps) {
     } finally {
       setBusy(false);
     }
-  }, [sourceKind, title, bodyMd, sourceUrl, onAdded]);
+  }, [sourceKind, title, bodyMd, sourceUrl, bookChapter, bookTotal, onAdded]);
 
   return (
     <form
@@ -449,7 +461,7 @@ function AddMaterialForm({ onCancel, onAdded }: AddMaterialFormProps) {
           SOURCE
         </legend>
         <div style={{ display: 'flex', gap: 6 }}>
-          {(['paste', 'url'] as ReadingSourceKind[]).map((k) => (
+          {(['paste', 'url', 'book'] as ReadingSourceKind[]).map((k) => (
             <button
               key={k}
               type="button"
@@ -499,15 +511,48 @@ function AddMaterialForm({ onCancel, onAdded }: AddMaterialFormProps) {
         </label>
       )}
 
+      {sourceKind === 'book' && (
+        <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
+          <label style={{ flex: 1 }}>
+            <span style={labelTextStyle}>CURRENT CHAPTER</span>
+            <input
+              type="number"
+              min={0}
+              value={bookChapter}
+              onChange={(e) => setBookChapter(e.target.value)}
+              placeholder="3"
+              style={inputStyle}
+            />
+          </label>
+          <label style={{ flex: 1 }}>
+            <span style={labelTextStyle}>TOTAL CHAPTERS</span>
+            <input
+              type="number"
+              min={1}
+              value={bookTotal}
+              onChange={(e) => setBookTotal(e.target.value)}
+              placeholder="20"
+              style={inputStyle}
+            />
+          </label>
+        </div>
+      )}
+
       <label style={labelStyle}>
-        <span style={labelTextStyle}>BODY (markdown)</span>
+        <span style={labelTextStyle}>
+          {sourceKind === 'book' ? 'NOTES (optional)' : 'BODY (markdown)'}
+        </span>
         <textarea
           value={bodyMd}
           onChange={(e) => setBodyMd(e.target.value)}
-          placeholder="Paste the full text here…"
-          rows={14}
+          placeholder={
+            sourceKind === 'book'
+              ? 'Заметки по книге — что важно запомнить (можно оставить пустым)'
+              : 'Paste the full text here…'
+          }
+          rows={sourceKind === 'book' ? 6 : 14}
           style={{ ...inputStyle, fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 13, lineHeight: 1.6 }}
-          required
+          required={sourceKind !== 'book'}
         />
       </label>
 
@@ -778,7 +823,10 @@ function Reader({ material, session, onExit }: ReaderProps) {
             )}
           </header>
 
+          <ReaderPillRow material={material} />
+
           <ReaderBody bodyMd={material.bodyMd} onWordClick={handleWordClick} />
+          <ReadingSelectionPill containerRef={scrollRef} materialTitle={material.title} />
 
           {savedVocab.length > 0 && <SavedVocabPanel items={savedVocab} />}
 
@@ -1327,4 +1375,53 @@ function SrsReviewWidget({ onChanged }: SrsReviewWidgetProps) {
       )}
     </div>
   );
+}
+
+// ─── Reader pill row (Wave: AI-coach inline) ──────────────────────────────
+//
+// Pill «Спросить coach'а про этот текст» в reading-режиме. Persona по
+// active study mode: 'go' → go-coach, 'english' → english-coach, иначе
+// algo-coach как универсальный senior-dev фронт. Context-note включает
+// тайтл и first-paragraph excerpt, чтобы LLM имел attachment к материалу
+// без подгрузки всего body (8KB+ — слишком).
+
+interface ReaderPillRowProps {
+  material: ReadingMaterial;
+}
+
+function ReaderPillRow({ material }: ReaderPillRowProps) {
+  const activeTrack = useTrackStore((s) => s.activeTrack);
+  const persona = pickPersonaForReading(activeTrack);
+  // First ~600 chars дают coach'у достаточный «taste» материала; больше
+  // не имеет смысла — он всё равно не помнит весь body на середине thread'а.
+  const excerpt = material.bodyMd.replace(/\s+/g, ' ').trim().slice(0, 600);
+  const ctx = `Студент читает: «${material.title}». Источник: ${material.sourceKind}. Excerpt: ${excerpt}${
+    material.bodyMd.length > 600 ? '…' : ''
+  }`;
+  return (
+    <div style={{ marginBottom: 24, display: 'flex' }}>
+      <AICoachPill
+        personaSlug={persona.slug}
+        coachName={persona.name}
+        contextNote={ctx}
+        label="Спросить coach’а про этот текст"
+      />
+    </div>
+  );
+}
+
+function pickPersonaForReading(
+  activeTrack: 'general' | 'dev' | 'ml' | 'english' | 'go',
+): { slug: string; name: string } {
+  switch (activeTrack) {
+    case 'go':
+      return { slug: 'go-coach', name: 'Гоша · Go-коуч' };
+    case 'english':
+      return { slug: 'english-coach', name: 'Maria · English coach' };
+    case 'ml':
+      // ML reading материалы — всё ещё нет ml-персоны; fallback на sysdesign.
+      return { slug: 'sysdesign-guru', name: 'Кирилл · sysdesign-guru' };
+    default:
+      return { slug: 'algo-coach', name: 'Алёша · алго-коуч' };
+  }
 }

@@ -396,6 +396,8 @@ func sectionToProtoMock(s enums.Section) pb.Section {
 		return pb.Section_SECTION_QA
 	case enums.SectionDevOps:
 		return pb.Section_SECTION_DEVOPS
+	case enums.SectionMLEng:
+		return pb.Section_SECTION_ML_ENG
 	default:
 		return pb.Section_SECTION_UNSPECIFIED
 	}
@@ -429,6 +431,8 @@ func sectionFromProtoMock(s pb.Section) enums.Section {
 		return enums.SectionQA
 	case pb.Section_SECTION_DEVOPS:
 		return enums.SectionDevOps
+	case pb.Section_SECTION_ML_ENG:
+		return enums.SectionMLEng
 	default:
 		return ""
 	}

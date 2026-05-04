@@ -16,13 +16,14 @@
 // app layer and the hint never appears in a response body.
 //
 // The handler implementation is split across this directory by resource:
-//   - tasks.go      ListTasks / CreateTask / UpdateTask
-//   - companies.go  ListCompanies / CreateCompany
 //   - config.go     ListConfig / UpdateConfig + structpb helpers
-//   - anticheat.go  ListAnticheat
-//   - enums.go      proto<->domain enum adapters
 //   - dashboard.go  GetDashboard / ListUsers / BanUser / UnbanUser / ListReports
 //   - status.go     GetStatus
+//   - enums.go      proto<->domain enum adapters
+//
+// Pivot 2026-05-04: tasks.go / companies.go / anticheat.go удалены вместе
+// с RPC'ами из admin.proto. ListCompanies UC сохранён — используется
+// /companies (chi-direct) на фронте picker'а компаний.
 package ports
 
 import (
@@ -56,14 +57,8 @@ var _ druz9v1connect.AdminServiceHandler = (*AdminServer)(nil)
 // and the handler returns CodeUnimplemented when a UC isn't bound. The
 // monolith's services/admin.go always sets every field.
 type AdminServer struct {
-	ListTasksUC     *app.ListTasks
-	CreateTaskUC    *app.CreateTask
-	UpdateTaskUC    *app.UpdateTask
-	ListCompaniesUC *app.ListCompanies
-	UpsertCompanyUC *app.UpsertCompany
-	ListConfigUC    *app.ListConfig
-	UpdateConfigUC  *app.UpdateConfig
-	ListAnticheatUC *app.ListAnticheat
+	ListConfigUC   *app.ListConfig
+	UpdateConfigUC *app.UpdateConfig
 
 	// Dashboard / users / reports / status surfaces (Group B).
 	GetDashboardUC *app.GetDashboard
@@ -78,22 +73,14 @@ type AdminServer struct {
 
 // NewAdminServer wires an AdminServer.
 func NewAdminServer(
-	listTasks *app.ListTasks,
-	createTask *app.CreateTask,
-	updateTask *app.UpdateTask,
-	listCompanies *app.ListCompanies,
-	upsertCompany *app.UpsertCompany,
 	listConfig *app.ListConfig,
 	updateConfig *app.UpdateConfig,
-	listAnticheat *app.ListAnticheat,
 	log *slog.Logger,
 ) *AdminServer {
 	return &AdminServer{
-		ListTasksUC: listTasks, CreateTaskUC: createTask, UpdateTaskUC: updateTask,
-		ListCompaniesUC: listCompanies, UpsertCompanyUC: upsertCompany,
-		ListConfigUC: listConfig, UpdateConfigUC: updateConfig,
-		ListAnticheatUC: listAnticheat,
-		Log:             log,
+		ListConfigUC:   listConfig,
+		UpdateConfigUC: updateConfig,
+		Log:            log,
 	}
 }
 

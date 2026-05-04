@@ -50,3 +50,19 @@ type MembershipRepo interface {
 	// my mind, this isn't for me" — distinct from pause.
 	Leave(ctx context.Context, userID, trackID uuid.UUID) error
 }
+
+// CheckpointRepo — Phase 2 step UX flow (учитывает миграцию 00056).
+// Owns step_checkpoint_attempts.
+type CheckpointRepo interface {
+	// Insert записывает результат attempt'а. ID + CreatedAt выставляются
+	// репозиторием.
+	Insert(ctx context.Context, in CheckpointAttempt) (CheckpointAttempt, error)
+
+	// LatestForStep возвращает последнюю попытку юзера на (track, step).
+	// ErrNotFound если попыток ещё не было.
+	LatestForStep(ctx context.Context, userID, trackID uuid.UUID, stepIndex int) (CheckpointAttempt, error)
+
+	// HasPassed — true если хотя бы одна passed_at IS NOT NULL для (user,
+	// track, step). Используется для unlock-gate.
+	HasPassed(ctx context.Context, userID, trackID uuid.UUID, stepIndex int) (bool, error)
+}

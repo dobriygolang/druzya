@@ -9,7 +9,7 @@ import { transport } from './transport';
 
 // ─── Domain-shaped POJOs ───────────────────────────────────────────────────
 
-export type ReadingSourceKind = 'paste' | 'url' | 'pdf' | 'epub';
+export type ReadingSourceKind = 'paste' | 'url' | 'pdf' | 'epub' | 'book';
 
 export interface ReadingMaterial {
   id: string;
@@ -21,6 +21,9 @@ export interface ReadingMaterial {
   archivedAt: Date | null;
   createdAt: Date | null;
   updatedAt: Date | null;
+  // Book-only progress (Sergey 2026-05-03). null когда не задано.
+  bookChapter: number | null;
+  bookTotalChapters: number | null;
 }
 
 export interface ReadingSession {
@@ -63,6 +66,7 @@ function normalizeSourceKind(k: string): ReadingSourceKind {
     case 'url':
     case 'pdf':
     case 'epub':
+    case 'book':
       return k;
     default:
       return 'paste';
@@ -79,6 +83,10 @@ type ProtoMaterial = {
   archivedAt?: { seconds: bigint; nanos: number };
   createdAt?: { seconds: bigint; nanos: number };
   updatedAt?: { seconds: bigint; nanos: number };
+  bookChapter?: number;
+  hasBookChapter?: boolean;
+  bookTotalChapters?: number;
+  hasBookTotal?: boolean;
 };
 
 function unwrapMaterial(m: ProtoMaterial): ReadingMaterial {
@@ -92,6 +100,8 @@ function unwrapMaterial(m: ProtoMaterial): ReadingMaterial {
     archivedAt: protoTs(m.archivedAt),
     createdAt: protoTs(m.createdAt),
     updatedAt: protoTs(m.updatedAt),
+    bookChapter: m.hasBookChapter ? (m.bookChapter ?? 0) : null,
+    bookTotalChapters: m.hasBookTotal ? (m.bookTotalChapters ?? 0) : null,
   };
 }
 
@@ -163,12 +173,33 @@ export async function addReadingMaterial(args: {
   title: string;
   bodyMd: string;
   sourceUrl?: string;
+  bookChapter?: number;
+  bookTotalChapters?: number;
 }): Promise<ReadingMaterial> {
   const resp = await client.addReadingMaterial({
     sourceKind: args.sourceKind,
     title: args.title,
     bodyMd: args.bodyMd,
     sourceUrl: args.sourceUrl ?? '',
+    bookChapter: args.bookChapter ?? 0,
+    hasBookChapter: typeof args.bookChapter === 'number',
+    bookTotalChapters: args.bookTotalChapters ?? 0,
+    hasBookTotal: typeof args.bookTotalChapters === 'number',
+  });
+  return unwrapMaterial(resp as unknown as ProtoMaterial);
+}
+
+export async function updateBookProgress(args: {
+  id: string;
+  bookChapter?: number;
+  bookTotalChapters?: number;
+}): Promise<ReadingMaterial> {
+  const resp = await client.updateBookProgress({
+    id: args.id,
+    bookChapter: args.bookChapter ?? 0,
+    hasBookChapter: typeof args.bookChapter === 'number',
+    bookTotalChapters: args.bookTotalChapters ?? 0,
+    hasBookTotal: typeof args.bookTotalChapters === 'number',
   });
   return unwrapMaterial(resp as unknown as ProtoMaterial);
 }

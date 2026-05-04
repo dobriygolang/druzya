@@ -100,6 +100,49 @@ func (ns NullClubSessionStatus) Value() (driver.Value, error) {
 	return string(ns.ClubSessionStatus), nil
 }
 
+type ForkBranch string
+
+const (
+	ForkBranchDe   ForkBranch = "de"
+	ForkBranchMle  ForkBranch = "mle"
+	ForkBranchNone ForkBranch = "none"
+)
+
+func (e *ForkBranch) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ForkBranch(s)
+	case string:
+		*e = ForkBranch(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ForkBranch: %T", src)
+	}
+	return nil
+}
+
+type NullForkBranch struct {
+	ForkBranch ForkBranch
+	Valid      bool // Valid is true if ForkBranch is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullForkBranch) Scan(value interface{}) error {
+	if value == nil {
+		ns.ForkBranch, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ForkBranch.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullForkBranch) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ForkBranch), nil
+}
+
 type InsightSeverity string
 
 const (
@@ -142,6 +185,49 @@ func (ns NullInsightSeverity) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.InsightSeverity), nil
+}
+
+type LearningMode string
+
+const (
+	LearningModeExplore LearningMode = "explore"
+	LearningModeCommit  LearningMode = "commit"
+	LearningModeDeep    LearningMode = "deep"
+)
+
+func (e *LearningMode) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = LearningMode(s)
+	case string:
+		*e = LearningMode(s)
+	default:
+		return fmt.Errorf("unsupported scan type for LearningMode: %T", src)
+	}
+	return nil
+}
+
+type NullLearningMode struct {
+	LearningMode LearningMode
+	Valid        bool // Valid is true if LearningMode is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullLearningMode) Scan(value interface{}) error {
+	if value == nil {
+		ns.LearningMode, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.LearningMode.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullLearningMode) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.LearningMode), nil
 }
 
 type MockPipelineVerdict string
@@ -500,6 +586,32 @@ func (ns NullUserGoalStatus) Value() (driver.Value, error) {
 	return string(ns.UserGoalStatus), nil
 }
 
+// Append-only audit-trail для admin-write endpoints. Phase 12.5 — middleware на /api/v1/admin/* пишет одну row per request.
+type AdminAuditLog struct {
+	ID          pgtype.UUID
+	AdminUserID pgtype.UUID
+	// Verb-form: approve | reject | bump | toggle | force_set | edit | delete.
+	Action     string
+	TargetKind string
+	TargetID   string
+	// Action-specific JSON. Должен содержать diff (before/after где применимо), но shape не enforced — admin UI парсит per-kind.
+	Payload    []byte
+	OccurredAt pgtype.Timestamptz
+}
+
+// Per-user daily quota usage для LLM-задач: chat / suggestions / coach. Reset через INSERT ... ON CONFLICT.
+type AiChatQuotum struct {
+	UserID    pgtype.UUID
+	QuotaDate pgtype.Date
+	// Suммарное число LLM-вызовов за день. Inc при каждом успешном TaskAssistantNextAction / TaskAITutorML / etc.
+	Count int32
+	// Above this — UI badge «approaching limit». Ниже hard_limit.
+	SoftLimit int32
+	// Above this — UC отказывает с 429-like ошибкой. Admin может поднять per-user.
+	HardLimit int32
+	UpdatedAt pgtype.Timestamptz
+}
+
 type AiCredit struct {
 	UserID    pgtype.UUID
 	Balance   int32
@@ -520,6 +632,61 @@ type AiStrictnessProfile struct {
 	UpdatedAt            pgtype.Timestamptz
 }
 
+type AiTutorEpisode struct {
+	ID         pgtype.UUID
+	ThreadID   pgtype.UUID
+	Role       string
+	Content    string
+	ModelUsed  string
+	TokensIn   int32
+	TokensOut  int32
+	OccurredAt pgtype.Timestamptz
+}
+
+type AiTutorFact struct {
+	ID              pgtype.UUID
+	ThreadID        pgtype.UUID
+	FactKey         string
+	FactValue       string
+	Confidence      float64
+	SourceEpisodeID pgtype.UUID
+	LastUsedAt      pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+}
+
+type AiTutorPersona struct {
+	ID             pgtype.UUID
+	Slug           string
+	DisplayName    string
+	ScopeTrackKind interface{}
+	PromptTemplate string
+	PacePerWeek    int32
+	LlmTaskKind    string
+	Active         bool
+	AiUserID       pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type AiTutorProcessedMock struct {
+	SessionID   pgtype.UUID
+	PersonaID   pgtype.UUID
+	ProcessedAt pgtype.Timestamptz
+}
+
+type AiTutorThread struct {
+	ID                pgtype.UUID
+	StudentID         pgtype.UUID
+	PersonaID         pgtype.UUID
+	SummaryMd         string
+	MessageCount      int32
+	LastCompactedAt   pgtype.Timestamptz
+	DailyMsgCount     int32
+	DailyMsgResetDate pgtype.Date
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+}
+
 type AnticheatSignal struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID
@@ -528,30 +695,6 @@ type AnticheatSignal struct {
 	Severity  string
 	Metadata  []byte
 	CreatedAt pgtype.Timestamptz
-}
-
-type ArenaMatch struct {
-	ID            pgtype.UUID
-	TaskID        pgtype.UUID
-	TaskVersion   int32
-	Section       string
-	Mode          string
-	Status        string
-	WinnerID      pgtype.UUID
-	WinningTeamID pgtype.Int2
-	StartedAt     pgtype.Timestamptz
-	FinishedAt    pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
-}
-
-type ArenaParticipant struct {
-	MatchID        pgtype.UUID
-	UserID         pgtype.UUID
-	Team           int32
-	EloBefore      int32
-	EloAfter       pgtype.Int4
-	SuspicionScore pgtype.Numeric
-	SubmittedAt    pgtype.Timestamptz
 }
 
 type AtlasEdge struct {
@@ -576,15 +719,8 @@ type AtlasNode struct {
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 	TrackKind   TrackKind
-}
-
-type Booking struct {
-	ID          pgtype.UUID
-	SlotID      pgtype.UUID
-	CandidateID pgtype.UUID
-	MeetUrl     pgtype.Text
-	Status      string
-	CreatedAt   pgtype.Timestamptz
+	// Curated external resources for this skill (Strang, mlcourse, DDIA, etc.). Shape: array of {url, title, author, kind, minutes, level, priority, why}. See services/curation for validation.
+	ExternalResources []byte
 }
 
 type Circle struct {
@@ -602,63 +738,6 @@ type CircleMember struct {
 	UserID   pgtype.UUID
 	Role     string
 	JoinedAt pgtype.Timestamptz
-}
-
-type Club struct {
-	ID              pgtype.UUID
-	CircleID        pgtype.UUID
-	Slug            string
-	Name            string
-	TopicTag        string
-	CuratorUserID   pgtype.UUID
-	CurriculumMd    string
-	ScheduleKind    string
-	DefaultZoomLink string
-	TgAnchorUrl     string
-	CoverImageUrl   string
-	IsPublic        bool
-	IsActive        bool
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
-}
-
-type ClubAttendee struct {
-	SessionID pgtype.UUID
-	UserID    pgtype.UUID
-	Status    ClubAttendeeStatus
-	NotesMd   string
-	RsvpAt    pgtype.Timestamptz
-}
-
-type ClubMaterial struct {
-	ID        pgtype.UUID
-	SessionID pgtype.UUID
-	Kind      string
-	Label     string
-	Url       string
-	SortOrder int32
-	CreatedAt pgtype.Timestamptz
-}
-
-type ClubSession struct {
-	ID                 pgtype.UUID
-	ClubID             pgtype.UUID
-	ScheduledAt        pgtype.Timestamptz
-	DurationMin        int32
-	TopicTitle         string
-	TopicMd            string
-	PresenterHandle    string
-	ZoomLink           string
-	TgPostUrl          string
-	RecordingUrl       string
-	PreReadMd          string
-	SummaryMd          string
-	TakeawaysMd        string
-	Status             ClubSessionStatus
-	AttachedCodexSlugs []string
-	AttachedEventIds   []pgtype.UUID
-	CreatedAt          pgtype.Timestamptz
-	UpdatedAt          pgtype.Timestamptz
 }
 
 type CoachEpisode struct {
@@ -729,10 +808,15 @@ type CompanyQuestion struct {
 }
 
 type CompanyStage struct {
-	ID        pgtype.UUID
-	CompanyID pgtype.UUID
-	Name      string
-	SortOrder int32
+	CompanyID             pgtype.UUID
+	StageKind             string
+	Ordinal               int32
+	Optional              bool
+	LanguagePool          []interface{}
+	TaskPoolIds           []pgtype.UUID
+	AiStrictnessProfileID pgtype.UUID
+	DefaultQuestionLimit  pgtype.Int4
+	CompanyQuestionLimit  pgtype.Int4
 }
 
 type CopilotConversation struct {
@@ -855,6 +939,14 @@ type Document struct {
 	UpdatedAt    pgtype.Timestamptz
 }
 
+type DomainReputation struct {
+	Domain         string
+	ReportsCount   int32
+	UnhelpfulCount int32
+	Blocked        bool
+	LastSeen       pgtype.Timestamptz
+}
+
 type DynamicConfig struct {
 	Key         string
 	Value       []byte
@@ -862,6 +954,23 @@ type DynamicConfig struct {
 	Description pgtype.Text
 	UpdatedAt   pgtype.Timestamptz
 	UpdatedBy   pgtype.UUID
+}
+
+// Per-task per-provider per-day rolling counters. Source for admin LLMChainPanel cost breakdown + IntelligenceObservabilityPanel latency charts.
+type DynamicConfigMetric struct {
+	ID           pgtype.UUID
+	Task         string
+	BucketDay    pgtype.Date
+	Provider     string
+	Calls        int32
+	TokensInSum  int64
+	TokensOutSum int64
+	CostUsdCents int32
+	LatencyP50Ms int32
+	LatencyP95Ms int32
+	LatencyP99Ms int32
+	ErrorCount   int32
+	UpdatedAt    pgtype.Timestamptz
 }
 
 type EditorParticipant struct {
@@ -881,14 +990,8 @@ type EditorRoom struct {
 	ExpiresAt  pgtype.Timestamptz
 	Visibility string
 	CreatedAt  pgtype.Timestamptz
-}
-
-type EloSnapshotsDaily struct {
-	UserID        pgtype.UUID
-	Section       string
-	SnapshotDate  pgtype.Date
-	Elo           int32
-	MatchesPlayed int32
+	ArchivedAt pgtype.Timestamptz
+	FreeTier   bool
 }
 
 type EmbeddingModel struct {
@@ -897,31 +1000,30 @@ type EmbeddingModel struct {
 	Dim  int32
 }
 
-type Event struct {
+// Snapshot results from make eval-ai / eval-coach runs. Admin views latest scores per dataset; CI compares against threshold для regression alerting.
+type EvalRun struct {
+	ID          pgtype.UUID
+	DatasetName string
+	Task        string
+	TriggeredBy string
+	Summary     []byte
+	ParsedTotal int32
+	ParsedOk    int32
+	DurationMs  int32
+	GitCommit   string
+	OccurredAt  pgtype.Timestamptz
+}
+
+type ExternalActivity struct {
 	ID               pgtype.UUID
-	CircleID         pgtype.UUID
-	Title            string
-	Description      string
-	StartsAt         pgtype.Timestamptz
+	UserID           pgtype.UUID
+	Source           string
+	TopicAtlasNodeID pgtype.Text
+	TopicFreeText    string
 	DurationMin      int32
-	EditorRoomID     pgtype.UUID
-	WhiteboardRoomID pgtype.UUID
-	RecurrenceRule   pgtype.Text
-	CreatedBy        pgtype.UUID
+	Notes            string
+	OccurredAt       pgtype.Timestamptz
 	CreatedAt        pgtype.Timestamptz
-}
-
-type EventNotificationSent struct {
-	EventID pgtype.UUID
-	UserID  pgtype.UUID
-	Kind    string
-	SentAt  pgtype.Timestamptz
-}
-
-type EventParticipant struct {
-	EventID  pgtype.UUID
-	UserID   pgtype.UUID
-	JoinedAt pgtype.Timestamptz
 }
 
 type FollowUpQuestion struct {
@@ -1029,16 +1131,18 @@ type HoneQueueItem struct {
 }
 
 type HoneReadingMaterial struct {
-	ID         pgtype.UUID
-	UserID     pgtype.UUID
-	SourceKind string
-	SourceUrl  string
-	Title      string
-	BodyMd     string
-	TotalChars int32
-	ArchivedAt pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	ID                pgtype.UUID
+	UserID            pgtype.UUID
+	SourceKind        string
+	SourceUrl         string
+	Title             string
+	BodyMd            string
+	TotalChars        int32
+	ArchivedAt        pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	BookChapter       pgtype.Int4
+	BookTotalChapters pgtype.Int4
 }
 
 type HoneReadingSession struct {
@@ -1094,6 +1198,15 @@ type HoneTaskComment struct {
 	AuthorKind string
 	BodyMd     string
 	CreatedAt  pgtype.Timestamptz
+}
+
+type HoneUserSetting struct {
+	UserID        pgtype.UUID
+	ActiveTrack   string
+	UpdatedAt     pgtype.Timestamptz
+	EnglishActive bool
+	// Phase 6 onboarding wizard version completed by user. 0 = never finished; 1 = finished v2; future increments reset wizard для existing юзеров при major refresh.
+	OnboardingVersion int32
 }
 
 type HoneVocabQueue struct {
@@ -1162,6 +1275,21 @@ type InterviewerApplication struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+// Per-user learning mode + fork branch for intelligence FORK STATUS prompt and admin distribution view.
+type LearningState struct {
+	UserID pgtype.UUID
+	// explore = trying multiple tracks; commit = one track chosen; deep = focused mastery on committed track.
+	Mode LearningMode
+	// Cross-cutting specialization within dev_senior: de (data-engineering), mle (ml-engineering), none (declined fork). NULL = not chosen yet.
+	ForkBranch NullForkBranch
+	// When current explore window opened — used for "week N of 6" in FORK STATUS prompt.
+	ExploreStartedAt pgtype.Timestamptz
+	CommittedTrackID pgtype.UUID
+	CommittedAt      pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
 type LlmConfig struct {
 	ID          pgtype.UUID
 	ScopeType   string
@@ -1200,32 +1328,6 @@ type LlmRuntimeConfig struct {
 	VirtualChains []byte
 	Version       int32
 	UpdatedAt     pgtype.Timestamptz
-}
-
-type Lobby struct {
-	ID           pgtype.UUID
-	Code         string
-	OwnerID      pgtype.UUID
-	Mode         string
-	Section      string
-	Difficulty   string
-	Visibility   string
-	MaxMembers   int16
-	AiAllowed    bool
-	TimeLimitMin int16
-	Status       string
-	MatchID      pgtype.UUID
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
-	SkillFilter  []string
-}
-
-type LobbyMember struct {
-	LobbyID  pgtype.UUID
-	UserID   pgtype.UUID
-	JoinedAt pgtype.Timestamptz
-	Role     string
-	Team     int16
 }
 
 type MentorSession struct {
@@ -1485,25 +1587,14 @@ type ProviderLink struct {
 	UpdatedAt    pgtype.Timestamptz
 }
 
-type Rating struct {
-	UserID       pgtype.UUID
-	Section      string
-	Elo          int32
-	MatchesCount int32
-	LastMatchAt  pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
-}
-
-type Review struct {
-	BookingID     pgtype.UUID
-	Direction     string
-	ReviewerID    pgtype.UUID
-	InterviewerID pgtype.UUID
-	SubjectID     pgtype.UUID
-	Rating        int32
-	Feedback      pgtype.Text
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+type ResourcePromotionSignal struct {
+	Url             string
+	AtlasNodeID     string
+	UserCount       int32
+	AvgQuality      pgtype.Float4
+	LastUserAddedAt pgtype.Timestamptz
+	PromotedAt      pgtype.Timestamptz
+	BlockedReason   pgtype.Text
 }
 
 type SavedVacancy struct {
@@ -1532,20 +1623,6 @@ type SkillNode struct {
 	UpdatedAt  pgtype.Timestamptz
 }
 
-type Slot struct {
-	ID            pgtype.UUID
-	InterviewerID pgtype.UUID
-	StartsAt      pgtype.Timestamptz
-	DurationMin   int32
-	Section       string
-	Difficulty    pgtype.Text
-	Language      string
-	PriceRub      int32
-	Status        string
-	CreatedAt     pgtype.Timestamptz
-	MeetUrl       pgtype.Text
-}
-
 type StageDefaultQuestion struct {
 	ID                pgtype.UUID
 	StageKind         string
@@ -1555,6 +1632,20 @@ type StageDefaultQuestion struct {
 	Active            bool
 	SortOrder         int32
 	CreatedAt         pgtype.Timestamptz
+}
+
+// Per-attempt results of step checkpoint quiz (5 questions из mock_pool по track_steps.checkpoint_skill_keys, AI-graded via TaskCheckpointGrade).
+type StepCheckpointAttempt struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	TrackID   pgtype.UUID
+	StepIndex int16
+	Score     int32
+	// Per-question results: array of {question_id, user_answer, model_answer, correct, comment}.
+	Attempts []byte
+	// Set when score >= 70. NULL = failed/not yet graded. Latest passed_at IS NOT NULL row gates next-step unlock.
+	PassedAt  pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
 }
 
 type Subscription struct {
@@ -1621,13 +1712,6 @@ type TaskQuestion struct {
 	CreatedAt         pgtype.Timestamptz
 }
 
-type TaskRating struct {
-	TaskID    pgtype.UUID
-	UserID    pgtype.UUID
-	Stars     int32
-	CreatedAt pgtype.Timestamptz
-}
-
 type TaskTemplate struct {
 	TaskID      pgtype.UUID
 	Language    string
@@ -1641,26 +1725,6 @@ type TestCase struct {
 	ExpectedOutput string
 	IsHidden       bool
 	OrderNum       int32
-}
-
-type TgLinkToken struct {
-	Token     string
-	UserID    pgtype.UUID
-	CreatedAt pgtype.Timestamptz
-	ExpiresAt pgtype.Timestamptz
-	UsedAt    pgtype.Timestamptz
-}
-
-type TgUserLink struct {
-	UserID      pgtype.UUID
-	ChatID      int64
-	TgUsername  pgtype.Text
-	LinkedAt    pgtype.Timestamptz
-	Locale      string
-	PushLocalHh int32
-	PushTz      string
-	PausedUntil pgtype.Timestamptz
-	LastSeenAt  pgtype.Timestamptz
 }
 
 type Track struct {
@@ -1692,18 +1756,38 @@ type TrackStep struct {
 	RequiredCount      int32
 	RecommendedReading []string
 	EstimatedMinutes   int32
+	// Skill tags для checkpoint quiz (5 questions из mock_pool). Empty = step без checkpoint (e.g. сам step — mock).
+	CheckpointSkillKeys []string
+	// Если true — после core resource UI открывает 1-line reflection-modal. Submit auto-creates Note linked на atlas-node.
+	ReflectionRequired bool
+	// enums.Section value для optional graduation AI-mock после step. NULL = closed by checkpoint.
+	GraduationMockSection pgtype.Text
+	// Sequence of curated resources to complete this step. Same shape as atlas_nodes.external_resources.
+	ExternalResources []byte
 }
 
 type TutorAssignment struct {
-	ID          pgtype.UUID
-	TutorID     pgtype.UUID
-	StudentID   pgtype.UUID
-	Title       string
-	BodyMd      string
-	DueAt       pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
-	CompletedAt pgtype.Timestamptz
-	ArchivedAt  pgtype.Timestamptz
+	ID            pgtype.UUID
+	TutorID       pgtype.UUID
+	StudentID     pgtype.UUID
+	Title         string
+	BodyMd        string
+	DueAt         pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	CompletedAt   pgtype.Timestamptz
+	ArchivedAt    pgtype.Timestamptz
+	DueNotifiedAt pgtype.Timestamptz
+}
+
+// Tutor-shared frozen snapshot of student brief (Phase 8). Public read by slug + expiry; tutor-write only.
+type TutorBriefShareLink struct {
+	// URL-safe short id, generated client-side (≥10 chars random base62). Hash collisions blocked by PK.
+	Slug      string
+	TutorID   pgtype.UUID
+	StudentID pgtype.UUID
+	BriefMd   string
+	ExpiresAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
 }
 
 type TutorEvent struct {
@@ -1731,44 +1815,33 @@ type TutorEventRsvp struct {
 }
 
 type TutorInvite struct {
-	ID         pgtype.UUID
-	TutorID    pgtype.UUID
-	Code       string
-	Note       string
-	CreatedAt  pgtype.Timestamptz
-	ExpiresAt  pgtype.Timestamptz
-	AcceptedBy pgtype.UUID
-	AcceptedAt pgtype.Timestamptz
-	RevokedAt  pgtype.Timestamptz
+	ID           pgtype.UUID
+	TutorID      pgtype.UUID
+	Code         string
+	Note         string
+	CreatedAt    pgtype.Timestamptz
+	ExpiresAt    pgtype.Timestamptz
+	AcceptedBy   pgtype.UUID
+	AcceptedAt   pgtype.Timestamptz
+	RevokedAt    pgtype.Timestamptz
+	TargetUserID pgtype.UUID
 }
 
-type TutorListing struct {
-	ID              pgtype.UUID
-	TutorID         pgtype.UUID
-	Slug            string
-	Title           string
-	Summary         string
-	BodyMd          string
-	TrackKind       TrackKind
-	Languages       []string
-	HourlyRateMinor int32
-	Currency        string
-	BoostyUrl       string
-	PublishedAt     pgtype.Timestamptz
-	ArchivedAt      pgtype.Timestamptz
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+type TutorSessionNote struct {
+	TutorID   pgtype.UUID
+	StudentID pgtype.UUID
+	BodyMd    string
+	UpdatedAt pgtype.Timestamptz
 }
 
-type TutorListingPackage struct {
-	ID          pgtype.UUID
-	ListingID   pgtype.UUID
-	Kind        string
-	Hours       int32
-	PriceMinor  int32
-	Description string
-	ArchivedAt  pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
+type TutorSharedMaterial struct {
+	ID           pgtype.UUID
+	TutorID      pgtype.UUID
+	Title        string
+	SourceUrl    string
+	BodyMd       string
+	StudentCount int32
+	CreatedAt    pgtype.Timestamptz
 }
 
 type TutorStudent struct {
@@ -1799,6 +1872,28 @@ type User struct {
 	VaultKdfSalt          []byte
 	CreatedAt             pgtype.Timestamptz
 	UpdatedAt             pgtype.Timestamptz
+}
+
+type UserAtlasNode struct {
+	UserID      pgtype.UUID
+	NodeKey     string
+	Title       string
+	Description string
+	Section     string
+	Kind        string
+	Cluster     string
+	SourceText  string
+	CreatedAt   pgtype.Timestamptz
+}
+
+// Per-user overlay над atlas: pin/hide actions per-card. Phase 3 (2026-05-04).
+type UserAtlasNodePref struct {
+	UserID pgtype.UUID
+	// Matches atlas_nodes.id или user_atlas_nodes.node_key (text key, не uuid).
+	NodeKey   string
+	Pinned    bool
+	Hidden    bool
+	UpdatedAt pgtype.Timestamptz
 }
 
 type UserBan struct {
@@ -1861,6 +1956,45 @@ type UserReport struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+// Per-event log of user interactions with external (curated) resources. Source for ResourceEngagementReader + reflection auto-link flow.
+type UserResourceLog struct {
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	ResourceUrl string
+	AtlasNodeID pgtype.Text
+	// clicked = opened url; finished = marked complete; skipped = explicitly dismissed; unhelpful = marked bad; reflection_submitted = wrote 1-line reflection after core resource.
+	Kind       string
+	OccurredAt pgtype.Timestamptz
+	// 1-line user takeaway (kind=reflection_submitted). Input для TaskReflectionExtract вместе с Resource.topics_covered.
+	ReflectionText pgtype.Text
+	// FK на hone_notes — auto-created при reflection-submission. NULL допустим если Note-create отложен/упал; UC retry-job создаст связь позже.
+	ReflectionNoteID       pgtype.UUID
+	ReflectionTakeaways    []byte
+	ReflectionQualityScore pgtype.Float4
+	ExtractedTopics        []string
+	ConfusionFlag          bool
+}
+
+type UserResourceOverride struct {
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	AtlasNodeID    pgtype.Text
+	StepTrackID    pgtype.UUID
+	StepIndex      pgtype.Int2
+	Url            string
+	Action         string
+	Payload        []byte
+	AutoPromotedAt pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+}
+
+type UserRoomQuotum struct {
+	UserID      pgtype.UUID
+	ActiveCount int32
+	Tier        string
+	PeriodStart pgtype.Timestamptz
+}
+
 type UserTrack struct {
 	UserID      pgtype.UUID
 	TrackID     pgtype.UUID
@@ -1898,6 +2032,8 @@ type WhiteboardRoom struct {
 	Visibility string
 	CreatedAt  pgtype.Timestamptz
 	UpdatedAt  pgtype.Timestamptz
+	ArchivedAt pgtype.Timestamptz
+	FreeTier   bool
 }
 
 type WhiteboardRoomParticipant struct {

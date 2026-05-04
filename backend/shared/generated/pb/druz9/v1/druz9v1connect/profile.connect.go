@@ -89,6 +89,12 @@ const (
 	// ProfileServiceSetUserTracksProcedure is the fully-qualified name of the ProfileService's
 	// SetUserTracks RPC.
 	ProfileServiceSetUserTracksProcedure = "/druz9.v1.ProfileService/SetUserTracks"
+	// ProfileServiceClassifyAtlasTodoProcedure is the fully-qualified name of the ProfileService's
+	// ClassifyAtlasTodo RPC.
+	ProfileServiceClassifyAtlasTodoProcedure = "/druz9.v1.ProfileService/ClassifyAtlasTodo"
+	// ProfileServiceSetAtlasNodePrefProcedure is the fully-qualified name of the ProfileService's
+	// SetAtlasNodePref RPC.
+	ProfileServiceSetAtlasNodePrefProcedure = "/druz9.v1.ProfileService/SetAtlasNodePref"
 )
 
 // ProfileServiceClient is a client for the druz9.v1.ProfileService service.
@@ -148,6 +154,13 @@ type ProfileServiceClient interface {
 	// one item must have primary=true. Empty list is rejected — to leave
 	// a track, send the new full list without it.
 	SetUserTracks(context.Context, *connect.Request[v1.SetUserTracksRequest]) (*connect.Response[v1.UserTracks], error)
+	// ClassifyAtlasTodo (Phase 3.1) — юзер пишет TODO в свободной форме
+	// («изучить транзакции в Postgres»); LLM либо матчит в существующий
+	// curated узел атласа, либо создаёт новый user_atlas_nodes row.
+	// Возвращает либо matched_key (узел уже был), либо new_node (новый).
+	ClassifyAtlasTodo(context.Context, *connect.Request[v1.ClassifyAtlasTodoRequest]) (*connect.Response[v1.ClassifyAtlasTodoResponse], error)
+	// SetAtlasNodePref — Phase 3 pin/hide actions per atlas node.
+	SetAtlasNodePref(context.Context, *connect.Request[v1.SetAtlasNodePrefRequest]) (*connect.Response[v1.SetAtlasNodePrefResponse], error)
 }
 
 // NewProfileServiceClient constructs a client for the druz9.v1.ProfileService service. By default,
@@ -257,6 +270,18 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("SetUserTracks")),
 			connect.WithClientOptions(opts...),
 		),
+		classifyAtlasTodo: connect.NewClient[v1.ClassifyAtlasTodoRequest, v1.ClassifyAtlasTodoResponse](
+			httpClient,
+			baseURL+ProfileServiceClassifyAtlasTodoProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("ClassifyAtlasTodo")),
+			connect.WithClientOptions(opts...),
+		),
+		setAtlasNodePref: connect.NewClient[v1.SetAtlasNodePrefRequest, v1.SetAtlasNodePrefResponse](
+			httpClient,
+			baseURL+ProfileServiceSetAtlasNodePrefProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("SetAtlasNodePref")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -278,6 +303,8 @@ type profileServiceClient struct {
 	setAIVacanciesModel           *connect.Client[v1.SetAIVacanciesModelRequest, v1.AIVacanciesModel]
 	getUserTracks                 *connect.Client[v1.GetUserTracksRequest, v1.UserTracks]
 	setUserTracks                 *connect.Client[v1.SetUserTracksRequest, v1.UserTracks]
+	classifyAtlasTodo             *connect.Client[v1.ClassifyAtlasTodoRequest, v1.ClassifyAtlasTodoResponse]
+	setAtlasNodePref              *connect.Client[v1.SetAtlasNodePrefRequest, v1.SetAtlasNodePrefResponse]
 }
 
 // GetMyProfile calls druz9.v1.ProfileService.GetMyProfile.
@@ -360,6 +387,16 @@ func (c *profileServiceClient) SetUserTracks(ctx context.Context, req *connect.R
 	return c.setUserTracks.CallUnary(ctx, req)
 }
 
+// ClassifyAtlasTodo calls druz9.v1.ProfileService.ClassifyAtlasTodo.
+func (c *profileServiceClient) ClassifyAtlasTodo(ctx context.Context, req *connect.Request[v1.ClassifyAtlasTodoRequest]) (*connect.Response[v1.ClassifyAtlasTodoResponse], error) {
+	return c.classifyAtlasTodo.CallUnary(ctx, req)
+}
+
+// SetAtlasNodePref calls druz9.v1.ProfileService.SetAtlasNodePref.
+func (c *profileServiceClient) SetAtlasNodePref(ctx context.Context, req *connect.Request[v1.SetAtlasNodePrefRequest]) (*connect.Response[v1.SetAtlasNodePrefResponse], error) {
+	return c.setAtlasNodePref.CallUnary(ctx, req)
+}
+
 // ProfileServiceHandler is an implementation of the druz9.v1.ProfileService service.
 type ProfileServiceHandler interface {
 	// GetMyProfile returns the rich profile for the authenticated caller.
@@ -417,6 +454,13 @@ type ProfileServiceHandler interface {
 	// one item must have primary=true. Empty list is rejected — to leave
 	// a track, send the new full list without it.
 	SetUserTracks(context.Context, *connect.Request[v1.SetUserTracksRequest]) (*connect.Response[v1.UserTracks], error)
+	// ClassifyAtlasTodo (Phase 3.1) — юзер пишет TODO в свободной форме
+	// («изучить транзакции в Postgres»); LLM либо матчит в существующий
+	// curated узел атласа, либо создаёт новый user_atlas_nodes row.
+	// Возвращает либо matched_key (узел уже был), либо new_node (новый).
+	ClassifyAtlasTodo(context.Context, *connect.Request[v1.ClassifyAtlasTodoRequest]) (*connect.Response[v1.ClassifyAtlasTodoResponse], error)
+	// SetAtlasNodePref — Phase 3 pin/hide actions per atlas node.
+	SetAtlasNodePref(context.Context, *connect.Request[v1.SetAtlasNodePrefRequest]) (*connect.Response[v1.SetAtlasNodePrefResponse], error)
 }
 
 // NewProfileServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -522,6 +566,18 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		connect.WithSchema(profileServiceMethods.ByName("SetUserTracks")),
 		connect.WithHandlerOptions(opts...),
 	)
+	profileServiceClassifyAtlasTodoHandler := connect.NewUnaryHandler(
+		ProfileServiceClassifyAtlasTodoProcedure,
+		svc.ClassifyAtlasTodo,
+		connect.WithSchema(profileServiceMethods.ByName("ClassifyAtlasTodo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profileServiceSetAtlasNodePrefHandler := connect.NewUnaryHandler(
+		ProfileServiceSetAtlasNodePrefProcedure,
+		svc.SetAtlasNodePref,
+		connect.WithSchema(profileServiceMethods.ByName("SetAtlasNodePref")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProfileServiceGetMyProfileProcedure:
@@ -556,6 +612,10 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceGetUserTracksHandler.ServeHTTP(w, r)
 		case ProfileServiceSetUserTracksProcedure:
 			profileServiceSetUserTracksHandler.ServeHTTP(w, r)
+		case ProfileServiceClassifyAtlasTodoProcedure:
+			profileServiceClassifyAtlasTodoHandler.ServeHTTP(w, r)
+		case ProfileServiceSetAtlasNodePrefProcedure:
+			profileServiceSetAtlasNodePrefHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -627,4 +687,12 @@ func (UnimplementedProfileServiceHandler) GetUserTracks(context.Context, *connec
 
 func (UnimplementedProfileServiceHandler) SetUserTracks(context.Context, *connect.Request[v1.SetUserTracksRequest]) (*connect.Response[v1.UserTracks], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.SetUserTracks is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) ClassifyAtlasTodo(context.Context, *connect.Request[v1.ClassifyAtlasTodoRequest]) (*connect.Response[v1.ClassifyAtlasTodoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.ClassifyAtlasTodo is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) SetAtlasNodePref(context.Context, *connect.Request[v1.SetAtlasNodePrefRequest]) (*connect.Response[v1.SetAtlasNodePrefResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.SetAtlasNodePref is not implemented"))
 }

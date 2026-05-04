@@ -216,3 +216,57 @@ func pgWriteTime(t *time.Time) pgtype.Timestamptz {
 	}
 	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
+
+// DueWithinNeedsNotify implements domain.AssignmentRepo.
+func (p *Postgres) DueWithinNeedsNotify(
+	ctx context.Context,
+	now time.Time,
+	window time.Duration,
+	limit int,
+) ([]domain.Assignment, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	upper := now.Add(window)
+	rows, err := p.pool.Query(ctx, `
+		SELECT id, tutor_id, student_id, title, body_md, due_at, created_at, completed_at, archived_at
+		FROM tutor_assignments
+		WHERE due_at IS NOT NULL
+		  AND due_at >  $1
+		  AND due_at <= $2
+		  AND due_notified_at IS NULL
+		  AND completed_at IS NULL
+		  AND archived_at IS NULL
+		ORDER BY due_at
+		LIMIT $3`,
+		now.UTC(), upper.UTC(), limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.DueWithinNeedsNotify: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Assignment, 0, limit)
+	for rows.Next() {
+		a, scanErr := scanAssignment(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// MarkDueNotified implements domain.AssignmentRepo.
+func (p *Postgres) MarkDueNotified(ctx context.Context, assignmentID uuid.UUID, now time.Time) error {
+	_, err := p.pool.Exec(ctx, `
+		UPDATE tutor_assignments
+		SET due_notified_at = $2
+		WHERE id = $1`,
+		pgtype.UUID{Bytes: assignmentID, Valid: true},
+		pgtype.Timestamptz{Time: now.UTC(), Valid: true},
+	)
+	if err != nil {
+		return fmt.Errorf("tutor.MarkDueNotified: %w", err)
+	}
+	return nil
+}

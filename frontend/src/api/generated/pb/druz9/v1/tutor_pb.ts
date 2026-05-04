@@ -16,7 +16,7 @@
 // @ts-nocheck
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Message, proto3, protoInt64, Timestamp } from "@bufbuild/protobuf";
+import { Message, proto3, Timestamp } from "@bufbuild/protobuf";
 
 /**
  * InviteStatus mirrors domain.InviteStatus. Computed server-side
@@ -202,6 +202,26 @@ export class TutorRelationship extends Message<TutorRelationship> {
    */
   note = "";
 
+  /**
+   * ── Display info (server-filled) ─────────────────────────────────
+   * ListMyTutors заполняет полями ТЬЮТОРА (это ученик смотрит на тьютора).
+   * ListStudents заполняет полями СТУДЕНТА (тьютор смотрит на студентов).
+   * Без active wiring — пустые строки.
+   *
+   * @generated from field: string display_username = 8;
+   */
+  displayUsername = "";
+
+  /**
+   * @generated from field: string display_name = 9;
+   */
+  displayName = "";
+
+  /**
+   * @generated from field: string display_avatar_url = 10;
+   */
+  displayAvatarUrl = "";
+
   constructor(data?: PartialMessage<TutorRelationship>) {
     super();
     proto3.util.initPartial(data, this);
@@ -217,6 +237,9 @@ export class TutorRelationship extends Message<TutorRelationship> {
     { no: 5, name: "started_at", kind: "message", T: Timestamp },
     { no: 6, name: "ended_at", kind: "message", T: Timestamp },
     { no: 7, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "display_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "display_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorRelationship {
@@ -270,6 +293,206 @@ export class TutorCreateInviteRequest extends Message<TutorCreateInviteRequest> 
 
   static equals(a: TutorCreateInviteRequest | PlainMessage<TutorCreateInviteRequest> | undefined, b: TutorCreateInviteRequest | PlainMessage<TutorCreateInviteRequest> | undefined): boolean {
     return proto3.util.equals(TutorCreateInviteRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorInviteByUsernameRequest
+ */
+export class TutorInviteByUsernameRequest extends Message<TutorInviteByUsernameRequest> {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string note = 2;
+   */
+  note = "";
+
+  constructor(data?: PartialMessage<TutorInviteByUsernameRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorInviteByUsernameRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorInviteByUsernameRequest {
+    return new TutorInviteByUsernameRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorInviteByUsernameRequest {
+    return new TutorInviteByUsernameRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorInviteByUsernameRequest {
+    return new TutorInviteByUsernameRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorInviteByUsernameRequest | PlainMessage<TutorInviteByUsernameRequest> | undefined, b: TutorInviteByUsernameRequest | PlainMessage<TutorInviteByUsernameRequest> | undefined): boolean {
+    return proto3.util.equals(TutorInviteByUsernameRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListPendingInvitesForMeRequest
+ */
+export class TutorListPendingInvitesForMeRequest extends Message<TutorListPendingInvitesForMeRequest> {
+  constructor(data?: PartialMessage<TutorListPendingInvitesForMeRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListPendingInvitesForMeRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListPendingInvitesForMeRequest {
+    return new TutorListPendingInvitesForMeRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListPendingInvitesForMeRequest {
+    return new TutorListPendingInvitesForMeRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListPendingInvitesForMeRequest {
+    return new TutorListPendingInvitesForMeRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListPendingInvitesForMeRequest | PlainMessage<TutorListPendingInvitesForMeRequest> | undefined, b: TutorListPendingInvitesForMeRequest | PlainMessage<TutorListPendingInvitesForMeRequest> | undefined): boolean {
+    return proto3.util.equals(TutorListPendingInvitesForMeRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListPendingInvitesForMeResponse
+ */
+export class TutorListPendingInvitesForMeResponse extends Message<TutorListPendingInvitesForMeResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TutorPendingInvite items = 1;
+   */
+  items: TutorPendingInvite[] = [];
+
+  constructor(data?: PartialMessage<TutorListPendingInvitesForMeResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListPendingInvitesForMeResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: TutorPendingInvite, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListPendingInvitesForMeResponse {
+    return new TutorListPendingInvitesForMeResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListPendingInvitesForMeResponse {
+    return new TutorListPendingInvitesForMeResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListPendingInvitesForMeResponse {
+    return new TutorListPendingInvitesForMeResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListPendingInvitesForMeResponse | PlainMessage<TutorListPendingInvitesForMeResponse> | undefined, b: TutorListPendingInvitesForMeResponse | PlainMessage<TutorListPendingInvitesForMeResponse> | undefined): boolean {
+    return proto3.util.equals(TutorListPendingInvitesForMeResponse, a, b);
+  }
+}
+
+/**
+ * TutorPendingInvite — invite + display-info тьютора (student-side
+ * surface на /profile). Code оставляем как есть — accept-button
+ * шлёт его в существующий AcceptInvite RPC.
+ *
+ * @generated from message druz9.v1.TutorPendingInvite
+ */
+export class TutorPendingInvite extends Message<TutorPendingInvite> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string code = 2;
+   */
+  code = "";
+
+  /**
+   * @generated from field: string note = 3;
+   */
+  note = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 4;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expires_at = 5;
+   */
+  expiresAt?: Timestamp;
+
+  /**
+   * @generated from field: string tutor_id = 6;
+   */
+  tutorId = "";
+
+  /**
+   * @generated from field: string tutor_username = 7;
+   */
+  tutorUsername = "";
+
+  /**
+   * @generated from field: string tutor_display_name = 8;
+   */
+  tutorDisplayName = "";
+
+  /**
+   * @generated from field: string tutor_display_avatar = 9;
+   */
+  tutorDisplayAvatar = "";
+
+  constructor(data?: PartialMessage<TutorPendingInvite>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorPendingInvite";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "created_at", kind: "message", T: Timestamp },
+    { no: 5, name: "expires_at", kind: "message", T: Timestamp },
+    { no: 6, name: "tutor_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "tutor_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "tutor_display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "tutor_display_avatar", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorPendingInvite {
+    return new TutorPendingInvite().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorPendingInvite {
+    return new TutorPendingInvite().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorPendingInvite {
+    return new TutorPendingInvite().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorPendingInvite | PlainMessage<TutorPendingInvite> | undefined, b: TutorPendingInvite | PlainMessage<TutorPendingInvite> | undefined): boolean {
+    return proto3.util.equals(TutorPendingInvite, a, b);
   }
 }
 
@@ -1903,6 +2126,251 @@ export class TutorBroadcastFailure extends Message<TutorBroadcastFailure> {
 }
 
 /**
+ * @generated from message druz9.v1.TutorSharedMaterial
+ */
+export class TutorSharedMaterial extends Message<TutorSharedMaterial> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string tutor_id = 2;
+   */
+  tutorId = "";
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string source_url = 4;
+   */
+  sourceUrl = "";
+
+  /**
+   * @generated from field: string body_md = 5;
+   */
+  bodyMd = "";
+
+  /**
+   * @generated from field: int32 student_count = 6;
+   */
+  studentCount = 0;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp;
+
+  constructor(data?: PartialMessage<TutorSharedMaterial>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorSharedMaterial";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "tutor_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "source_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "student_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "created_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorSharedMaterial {
+    return new TutorSharedMaterial().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorSharedMaterial {
+    return new TutorSharedMaterial().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorSharedMaterial {
+    return new TutorSharedMaterial().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorSharedMaterial | PlainMessage<TutorSharedMaterial> | undefined, b: TutorSharedMaterial | PlainMessage<TutorSharedMaterial> | undefined): boolean {
+    return proto3.util.equals(TutorSharedMaterial, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorPushSharedReadingRequest
+ */
+export class TutorPushSharedReadingRequest extends Message<TutorPushSharedReadingRequest> {
+  /**
+   * @generated from field: string title = 1;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string source_url = 2;
+   */
+  sourceUrl = "";
+
+  /**
+   * @generated from field: string note = 3;
+   */
+  note = "";
+
+  constructor(data?: PartialMessage<TutorPushSharedReadingRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorPushSharedReadingRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "source_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorPushSharedReadingRequest {
+    return new TutorPushSharedReadingRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorPushSharedReadingRequest {
+    return new TutorPushSharedReadingRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorPushSharedReadingRequest {
+    return new TutorPushSharedReadingRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorPushSharedReadingRequest | PlainMessage<TutorPushSharedReadingRequest> | undefined, b: TutorPushSharedReadingRequest | PlainMessage<TutorPushSharedReadingRequest> | undefined): boolean {
+    return proto3.util.equals(TutorPushSharedReadingRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorPushSharedReadingResponse
+ */
+export class TutorPushSharedReadingResponse extends Message<TutorPushSharedReadingResponse> {
+  /**
+   * @generated from field: druz9.v1.TutorSharedMaterial material = 1;
+   */
+  material?: TutorSharedMaterial;
+
+  /**
+   * @generated from field: int32 pushed_count = 2;
+   */
+  pushedCount = 0;
+
+  /**
+   * @generated from field: int32 failed_count = 3;
+   */
+  failedCount = 0;
+
+  constructor(data?: PartialMessage<TutorPushSharedReadingResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorPushSharedReadingResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "material", kind: "message", T: TutorSharedMaterial },
+    { no: 2, name: "pushed_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "failed_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorPushSharedReadingResponse {
+    return new TutorPushSharedReadingResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorPushSharedReadingResponse {
+    return new TutorPushSharedReadingResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorPushSharedReadingResponse {
+    return new TutorPushSharedReadingResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorPushSharedReadingResponse | PlainMessage<TutorPushSharedReadingResponse> | undefined, b: TutorPushSharedReadingResponse | PlainMessage<TutorPushSharedReadingResponse> | undefined): boolean {
+    return proto3.util.equals(TutorPushSharedReadingResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListSharedReadingRequest
+ */
+export class TutorListSharedReadingRequest extends Message<TutorListSharedReadingRequest> {
+  /**
+   * @generated from field: int32 limit = 1;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<TutorListSharedReadingRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListSharedReadingRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListSharedReadingRequest {
+    return new TutorListSharedReadingRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListSharedReadingRequest {
+    return new TutorListSharedReadingRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListSharedReadingRequest {
+    return new TutorListSharedReadingRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListSharedReadingRequest | PlainMessage<TutorListSharedReadingRequest> | undefined, b: TutorListSharedReadingRequest | PlainMessage<TutorListSharedReadingRequest> | undefined): boolean {
+    return proto3.util.equals(TutorListSharedReadingRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListSharedReadingResponse
+ */
+export class TutorListSharedReadingResponse extends Message<TutorListSharedReadingResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TutorSharedMaterial items = 1;
+   */
+  items: TutorSharedMaterial[] = [];
+
+  constructor(data?: PartialMessage<TutorListSharedReadingResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListSharedReadingResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: TutorSharedMaterial, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListSharedReadingResponse {
+    return new TutorListSharedReadingResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListSharedReadingResponse {
+    return new TutorListSharedReadingResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListSharedReadingResponse {
+    return new TutorListSharedReadingResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListSharedReadingResponse | PlainMessage<TutorListSharedReadingResponse> | undefined, b: TutorListSharedReadingResponse | PlainMessage<TutorListSharedReadingResponse> | undefined): boolean {
+    return proto3.util.equals(TutorListSharedReadingResponse, a, b);
+  }
+}
+
+/**
  * @generated from message druz9.v1.TutorBroadcastAssignmentResponse
  */
 export class TutorBroadcastAssignmentResponse extends Message<TutorBroadcastAssignmentResponse> {
@@ -2469,859 +2937,139 @@ export class TutorPeekInviteResponse extends Message<TutorPeekInviteResponse> {
 }
 
 /**
- * ── Wave 9.1 marketplace messages ──
+ * TutorGetSessionNotesRequest — tutor читает свои заметки про студента.
  *
- * @generated from message druz9.v1.TutorListing
+ * @generated from message druz9.v1.TutorGetSessionNotesRequest
  */
-export class TutorListing extends Message<TutorListing> {
+export class TutorGetSessionNotesRequest extends Message<TutorGetSessionNotesRequest> {
   /**
-   * @generated from field: string id = 1;
+   * @generated from field: string student_id = 1;
    */
-  id = "";
+  studentId = "";
+
+  constructor(data?: PartialMessage<TutorGetSessionNotesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorGetSessionNotesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "student_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorGetSessionNotesRequest {
+    return new TutorGetSessionNotesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorGetSessionNotesRequest {
+    return new TutorGetSessionNotesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorGetSessionNotesRequest {
+    return new TutorGetSessionNotesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorGetSessionNotesRequest | PlainMessage<TutorGetSessionNotesRequest> | undefined, b: TutorGetSessionNotesRequest | PlainMessage<TutorGetSessionNotesRequest> | undefined): boolean {
+    return proto3.util.equals(TutorGetSessionNotesRequest, a, b);
+  }
+}
+
+/**
+ * TutorSaveSessionNotesRequest — upsert. body может быть пустой строкой.
+ *
+ * @generated from message druz9.v1.TutorSaveSessionNotesRequest
+ */
+export class TutorSaveSessionNotesRequest extends Message<TutorSaveSessionNotesRequest> {
+  /**
+   * @generated from field: string student_id = 1;
+   */
+  studentId = "";
 
   /**
-   * @generated from field: string tutor_id = 2;
+   * @generated from field: string body_md = 2;
    */
-  tutorId = "";
+  bodyMd = "";
+
+  constructor(data?: PartialMessage<TutorSaveSessionNotesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorSaveSessionNotesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "student_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorSaveSessionNotesRequest {
+    return new TutorSaveSessionNotesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorSaveSessionNotesRequest {
+    return new TutorSaveSessionNotesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorSaveSessionNotesRequest {
+    return new TutorSaveSessionNotesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorSaveSessionNotesRequest | PlainMessage<TutorSaveSessionNotesRequest> | undefined, b: TutorSaveSessionNotesRequest | PlainMessage<TutorSaveSessionNotesRequest> | undefined): boolean {
+    return proto3.util.equals(TutorSaveSessionNotesRequest, a, b);
+  }
+}
+
+/**
+ * TutorSessionNotes — текущее состояние notepad'а.
+ *
+ * @generated from message druz9.v1.TutorSessionNotes
+ */
+export class TutorSessionNotes extends Message<TutorSessionNotes> {
+  /**
+   * @generated from field: string student_id = 1;
+   */
+  studentId = "";
 
   /**
-   * @generated from field: string slug = 3;
-   */
-  slug = "";
-
-  /**
-   * @generated from field: string title = 4;
-   */
-  title = "";
-
-  /**
-   * @generated from field: string summary = 5;
-   */
-  summary = "";
-
-  /**
-   * @generated from field: string body_md = 6;
+   * @generated from field: string body_md = 2;
    */
   bodyMd = "";
 
   /**
-   * @generated from field: string track_kind = 7;
-   */
-  trackKind = "";
-
-  /**
-   * @generated from field: repeated string languages = 8;
-   */
-  languages: string[] = [];
-
-  /**
-   * @generated from field: int64 hourly_rate_minor = 9;
-   */
-  hourlyRateMinor = protoInt64.zero;
-
-  /**
-   * @generated from field: string currency = 10;
-   */
-  currency = "";
-
-  /**
-   * @generated from field: string boosty_url = 11;
-   */
-  boostyUrl = "";
-
-  /**
-   * RFC3339, empty when draft
+   * RFC3339, empty если row ещё нет
    *
-   * @generated from field: string published_at = 12;
-   */
-  publishedAt = "";
-
-  /**
-   * @generated from field: string archived_at = 13;
-   */
-  archivedAt = "";
-
-  /**
-   * @generated from field: string created_at = 14;
-   */
-  createdAt = "";
-
-  /**
-   * @generated from field: string updated_at = 15;
+   * @generated from field: string updated_at = 3;
    */
   updatedAt = "";
 
-  constructor(data?: PartialMessage<TutorListing>) {
+  constructor(data?: PartialMessage<TutorSessionNotes>) {
     super();
     proto3.util.initPartial(data, this);
   }
 
   static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorListing";
+  static readonly typeName = "druz9.v1.TutorSessionNotes";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "tutor_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "summary", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 6, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 7, name: "track_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 8, name: "languages", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 9, name: "hourly_rate_minor", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 10, name: "currency", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 11, name: "boosty_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 12, name: "published_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 13, name: "archived_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 14, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 15, name: "updated_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "student_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "updated_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListing {
-    return new TutorListing().fromBinary(bytes, options);
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorSessionNotes {
+    return new TutorSessionNotes().fromBinary(bytes, options);
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListing {
-    return new TutorListing().fromJson(jsonValue, options);
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorSessionNotes {
+    return new TutorSessionNotes().fromJson(jsonValue, options);
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListing {
-    return new TutorListing().fromJsonString(jsonString, options);
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorSessionNotes {
+    return new TutorSessionNotes().fromJsonString(jsonString, options);
   }
 
-  static equals(a: TutorListing | PlainMessage<TutorListing> | undefined, b: TutorListing | PlainMessage<TutorListing> | undefined): boolean {
-    return proto3.util.equals(TutorListing, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorListingPackage
- */
-export class TutorListingPackage extends Message<TutorListingPackage> {
-  /**
-   * @generated from field: string id = 1;
-   */
-  id = "";
-
-  /**
-   * @generated from field: string listing_id = 2;
-   */
-  listingId = "";
-
-  /**
-   * @generated from field: string kind = 3;
-   */
-  kind = "";
-
-  /**
-   * @generated from field: int32 hours = 4;
-   */
-  hours = 0;
-
-  /**
-   * @generated from field: int64 price_minor = 5;
-   */
-  priceMinor = protoInt64.zero;
-
-  /**
-   * @generated from field: string description = 6;
-   */
-  description = "";
-
-  /**
-   * @generated from field: string archived_at = 7;
-   */
-  archivedAt = "";
-
-  /**
-   * @generated from field: string created_at = 8;
-   */
-  createdAt = "";
-
-  constructor(data?: PartialMessage<TutorListingPackage>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorListingPackage";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "listing_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "hours", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 5, name: "price_minor", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 6, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 7, name: "archived_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 8, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListingPackage {
-    return new TutorListingPackage().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListingPackage {
-    return new TutorListingPackage().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListingPackage {
-    return new TutorListingPackage().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorListingPackage | PlainMessage<TutorListingPackage> | undefined, b: TutorListingPackage | PlainMessage<TutorListingPackage> | undefined): boolean {
-    return proto3.util.equals(TutorListingPackage, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorListingDetail
- */
-export class TutorListingDetail extends Message<TutorListingDetail> {
-  /**
-   * @generated from field: druz9.v1.TutorListing listing = 1;
-   */
-  listing?: TutorListing;
-
-  /**
-   * @generated from field: repeated druz9.v1.TutorListingPackage packages = 2;
-   */
-  packages: TutorListingPackage[] = [];
-
-  /**
-   * Tutor display name resolved from users table — public surface
-   * shouldn't leak UUIDs.
-   *
-   * @generated from field: string tutor_display = 3;
-   */
-  tutorDisplay = "";
-
-  constructor(data?: PartialMessage<TutorListingDetail>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorListingDetail";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "listing", kind: "message", T: TutorListing },
-    { no: 2, name: "packages", kind: "message", T: TutorListingPackage, repeated: true },
-    { no: 3, name: "tutor_display", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListingDetail {
-    return new TutorListingDetail().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListingDetail {
-    return new TutorListingDetail().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListingDetail {
-    return new TutorListingDetail().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorListingDetail | PlainMessage<TutorListingDetail> | undefined, b: TutorListingDetail | PlainMessage<TutorListingDetail> | undefined): boolean {
-    return proto3.util.equals(TutorListingDetail, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorCreateListingRequest
- */
-export class TutorCreateListingRequest extends Message<TutorCreateListingRequest> {
-  /**
-   * @generated from field: string slug = 1;
-   */
-  slug = "";
-
-  /**
-   * @generated from field: string title = 2;
-   */
-  title = "";
-
-  /**
-   * @generated from field: string summary = 3;
-   */
-  summary = "";
-
-  /**
-   * @generated from field: string body_md = 4;
-   */
-  bodyMd = "";
-
-  /**
-   * @generated from field: string track_kind = 5;
-   */
-  trackKind = "";
-
-  /**
-   * @generated from field: repeated string languages = 6;
-   */
-  languages: string[] = [];
-
-  /**
-   * @generated from field: int64 hourly_rate_minor = 7;
-   */
-  hourlyRateMinor = protoInt64.zero;
-
-  /**
-   * @generated from field: string currency = 8;
-   */
-  currency = "";
-
-  /**
-   * @generated from field: string boosty_url = 9;
-   */
-  boostyUrl = "";
-
-  constructor(data?: PartialMessage<TutorCreateListingRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorCreateListingRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "summary", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "track_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 6, name: "languages", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 7, name: "hourly_rate_minor", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 8, name: "currency", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 9, name: "boosty_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorCreateListingRequest {
-    return new TutorCreateListingRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorCreateListingRequest {
-    return new TutorCreateListingRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorCreateListingRequest {
-    return new TutorCreateListingRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorCreateListingRequest | PlainMessage<TutorCreateListingRequest> | undefined, b: TutorCreateListingRequest | PlainMessage<TutorCreateListingRequest> | undefined): boolean {
-    return proto3.util.equals(TutorCreateListingRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorUpdateListingRequest
- */
-export class TutorUpdateListingRequest extends Message<TutorUpdateListingRequest> {
-  /**
-   * @generated from field: string listing_id = 1;
-   */
-  listingId = "";
-
-  /**
-   * @generated from field: string slug = 2;
-   */
-  slug = "";
-
-  /**
-   * @generated from field: string title = 3;
-   */
-  title = "";
-
-  /**
-   * @generated from field: string summary = 4;
-   */
-  summary = "";
-
-  /**
-   * @generated from field: string body_md = 5;
-   */
-  bodyMd = "";
-
-  /**
-   * @generated from field: string track_kind = 6;
-   */
-  trackKind = "";
-
-  /**
-   * @generated from field: repeated string languages = 7;
-   */
-  languages: string[] = [];
-
-  /**
-   * @generated from field: int64 hourly_rate_minor = 8;
-   */
-  hourlyRateMinor = protoInt64.zero;
-
-  /**
-   * @generated from field: string currency = 9;
-   */
-  currency = "";
-
-  /**
-   * @generated from field: string boosty_url = 10;
-   */
-  boostyUrl = "";
-
-  constructor(data?: PartialMessage<TutorUpdateListingRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorUpdateListingRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "listing_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "summary", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 6, name: "track_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 7, name: "languages", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 8, name: "hourly_rate_minor", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 9, name: "currency", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 10, name: "boosty_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorUpdateListingRequest {
-    return new TutorUpdateListingRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorUpdateListingRequest {
-    return new TutorUpdateListingRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorUpdateListingRequest {
-    return new TutorUpdateListingRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorUpdateListingRequest | PlainMessage<TutorUpdateListingRequest> | undefined, b: TutorUpdateListingRequest | PlainMessage<TutorUpdateListingRequest> | undefined): boolean {
-    return proto3.util.equals(TutorUpdateListingRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorPublishListingRequest
- */
-export class TutorPublishListingRequest extends Message<TutorPublishListingRequest> {
-  /**
-   * @generated from field: string listing_id = 1;
-   */
-  listingId = "";
-
-  constructor(data?: PartialMessage<TutorPublishListingRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorPublishListingRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "listing_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorPublishListingRequest {
-    return new TutorPublishListingRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorPublishListingRequest {
-    return new TutorPublishListingRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorPublishListingRequest {
-    return new TutorPublishListingRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorPublishListingRequest | PlainMessage<TutorPublishListingRequest> | undefined, b: TutorPublishListingRequest | PlainMessage<TutorPublishListingRequest> | undefined): boolean {
-    return proto3.util.equals(TutorPublishListingRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorPublishListingResponse
- */
-export class TutorPublishListingResponse extends Message<TutorPublishListingResponse> {
-  constructor(data?: PartialMessage<TutorPublishListingResponse>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorPublishListingResponse";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorPublishListingResponse {
-    return new TutorPublishListingResponse().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorPublishListingResponse {
-    return new TutorPublishListingResponse().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorPublishListingResponse {
-    return new TutorPublishListingResponse().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorPublishListingResponse | PlainMessage<TutorPublishListingResponse> | undefined, b: TutorPublishListingResponse | PlainMessage<TutorPublishListingResponse> | undefined): boolean {
-    return proto3.util.equals(TutorPublishListingResponse, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorArchiveListingRequest
- */
-export class TutorArchiveListingRequest extends Message<TutorArchiveListingRequest> {
-  /**
-   * @generated from field: string listing_id = 1;
-   */
-  listingId = "";
-
-  constructor(data?: PartialMessage<TutorArchiveListingRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorArchiveListingRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "listing_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorArchiveListingRequest {
-    return new TutorArchiveListingRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorArchiveListingRequest {
-    return new TutorArchiveListingRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorArchiveListingRequest {
-    return new TutorArchiveListingRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorArchiveListingRequest | PlainMessage<TutorArchiveListingRequest> | undefined, b: TutorArchiveListingRequest | PlainMessage<TutorArchiveListingRequest> | undefined): boolean {
-    return proto3.util.equals(TutorArchiveListingRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorArchiveListingResponse
- */
-export class TutorArchiveListingResponse extends Message<TutorArchiveListingResponse> {
-  constructor(data?: PartialMessage<TutorArchiveListingResponse>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorArchiveListingResponse";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorArchiveListingResponse {
-    return new TutorArchiveListingResponse().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorArchiveListingResponse {
-    return new TutorArchiveListingResponse().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorArchiveListingResponse {
-    return new TutorArchiveListingResponse().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorArchiveListingResponse | PlainMessage<TutorArchiveListingResponse> | undefined, b: TutorArchiveListingResponse | PlainMessage<TutorArchiveListingResponse> | undefined): boolean {
-    return proto3.util.equals(TutorArchiveListingResponse, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorListMyListingsRequest
- */
-export class TutorListMyListingsRequest extends Message<TutorListMyListingsRequest> {
-  constructor(data?: PartialMessage<TutorListMyListingsRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorListMyListingsRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListMyListingsRequest {
-    return new TutorListMyListingsRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListMyListingsRequest {
-    return new TutorListMyListingsRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListMyListingsRequest {
-    return new TutorListMyListingsRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorListMyListingsRequest | PlainMessage<TutorListMyListingsRequest> | undefined, b: TutorListMyListingsRequest | PlainMessage<TutorListMyListingsRequest> | undefined): boolean {
-    return proto3.util.equals(TutorListMyListingsRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorListListingsResponse
- */
-export class TutorListListingsResponse extends Message<TutorListListingsResponse> {
-  /**
-   * @generated from field: repeated druz9.v1.TutorListing items = 1;
-   */
-  items: TutorListing[] = [];
-
-  constructor(data?: PartialMessage<TutorListListingsResponse>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorListListingsResponse";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "items", kind: "message", T: TutorListing, repeated: true },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListListingsResponse {
-    return new TutorListListingsResponse().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListListingsResponse {
-    return new TutorListListingsResponse().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListListingsResponse {
-    return new TutorListListingsResponse().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorListListingsResponse | PlainMessage<TutorListListingsResponse> | undefined, b: TutorListListingsResponse | PlainMessage<TutorListListingsResponse> | undefined): boolean {
-    return proto3.util.equals(TutorListListingsResponse, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorBrowseListingsRequest
- */
-export class TutorBrowseListingsRequest extends Message<TutorBrowseListingsRequest> {
-  /**
-   * @generated from field: repeated string track_kinds = 1;
-   */
-  trackKinds: string[] = [];
-
-  /**
-   * @generated from field: int64 max_rate_minor = 2;
-   */
-  maxRateMinor = protoInt64.zero;
-
-  /**
-   * @generated from field: repeated string languages = 3;
-   */
-  languages: string[] = [];
-
-  /**
-   * @generated from field: int32 limit = 4;
-   */
-  limit = 0;
-
-  constructor(data?: PartialMessage<TutorBrowseListingsRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorBrowseListingsRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "track_kinds", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 2, name: "max_rate_minor", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 3, name: "languages", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 4, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorBrowseListingsRequest {
-    return new TutorBrowseListingsRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorBrowseListingsRequest {
-    return new TutorBrowseListingsRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorBrowseListingsRequest {
-    return new TutorBrowseListingsRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorBrowseListingsRequest | PlainMessage<TutorBrowseListingsRequest> | undefined, b: TutorBrowseListingsRequest | PlainMessage<TutorBrowseListingsRequest> | undefined): boolean {
-    return proto3.util.equals(TutorBrowseListingsRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorGetListingBySlugRequest
- */
-export class TutorGetListingBySlugRequest extends Message<TutorGetListingBySlugRequest> {
-  /**
-   * @generated from field: string slug = 1;
-   */
-  slug = "";
-
-  constructor(data?: PartialMessage<TutorGetListingBySlugRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorGetListingBySlugRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorGetListingBySlugRequest {
-    return new TutorGetListingBySlugRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorGetListingBySlugRequest {
-    return new TutorGetListingBySlugRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorGetListingBySlugRequest {
-    return new TutorGetListingBySlugRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorGetListingBySlugRequest | PlainMessage<TutorGetListingBySlugRequest> | undefined, b: TutorGetListingBySlugRequest | PlainMessage<TutorGetListingBySlugRequest> | undefined): boolean {
-    return proto3.util.equals(TutorGetListingBySlugRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorAddListingPackageRequest
- */
-export class TutorAddListingPackageRequest extends Message<TutorAddListingPackageRequest> {
-  /**
-   * @generated from field: string listing_id = 1;
-   */
-  listingId = "";
-
-  /**
-   * @generated from field: string kind = 2;
-   */
-  kind = "";
-
-  /**
-   * @generated from field: int32 hours = 3;
-   */
-  hours = 0;
-
-  /**
-   * @generated from field: int64 price_minor = 4;
-   */
-  priceMinor = protoInt64.zero;
-
-  /**
-   * @generated from field: string description = 5;
-   */
-  description = "";
-
-  constructor(data?: PartialMessage<TutorAddListingPackageRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorAddListingPackageRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "listing_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "hours", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 4, name: "price_minor", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
-    { no: 5, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorAddListingPackageRequest {
-    return new TutorAddListingPackageRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorAddListingPackageRequest {
-    return new TutorAddListingPackageRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorAddListingPackageRequest {
-    return new TutorAddListingPackageRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorAddListingPackageRequest | PlainMessage<TutorAddListingPackageRequest> | undefined, b: TutorAddListingPackageRequest | PlainMessage<TutorAddListingPackageRequest> | undefined): boolean {
-    return proto3.util.equals(TutorAddListingPackageRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorArchiveListingPackageRequest
- */
-export class TutorArchiveListingPackageRequest extends Message<TutorArchiveListingPackageRequest> {
-  /**
-   * @generated from field: string package_id = 1;
-   */
-  packageId = "";
-
-  constructor(data?: PartialMessage<TutorArchiveListingPackageRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorArchiveListingPackageRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "package_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorArchiveListingPackageRequest {
-    return new TutorArchiveListingPackageRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorArchiveListingPackageRequest {
-    return new TutorArchiveListingPackageRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorArchiveListingPackageRequest {
-    return new TutorArchiveListingPackageRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorArchiveListingPackageRequest | PlainMessage<TutorArchiveListingPackageRequest> | undefined, b: TutorArchiveListingPackageRequest | PlainMessage<TutorArchiveListingPackageRequest> | undefined): boolean {
-    return proto3.util.equals(TutorArchiveListingPackageRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.TutorArchiveListingPackageResponse
- */
-export class TutorArchiveListingPackageResponse extends Message<TutorArchiveListingPackageResponse> {
-  constructor(data?: PartialMessage<TutorArchiveListingPackageResponse>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.TutorArchiveListingPackageResponse";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorArchiveListingPackageResponse {
-    return new TutorArchiveListingPackageResponse().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorArchiveListingPackageResponse {
-    return new TutorArchiveListingPackageResponse().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorArchiveListingPackageResponse {
-    return new TutorArchiveListingPackageResponse().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: TutorArchiveListingPackageResponse | PlainMessage<TutorArchiveListingPackageResponse> | undefined, b: TutorArchiveListingPackageResponse | PlainMessage<TutorArchiveListingPackageResponse> | undefined): boolean {
-    return proto3.util.equals(TutorArchiveListingPackageResponse, a, b);
+  static equals(a: TutorSessionNotes | PlainMessage<TutorSessionNotes> | undefined, b: TutorSessionNotes | PlainMessage<TutorSessionNotes> | undefined): boolean {
+    return proto3.util.equals(TutorSessionNotes, a, b);
   }
 }
 

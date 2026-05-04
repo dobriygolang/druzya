@@ -48,26 +48,11 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AdminServiceListTasksProcedure is the fully-qualified name of the AdminService's ListTasks RPC.
-	AdminServiceListTasksProcedure = "/druz9.v1.AdminService/ListTasks"
-	// AdminServiceCreateTaskProcedure is the fully-qualified name of the AdminService's CreateTask RPC.
-	AdminServiceCreateTaskProcedure = "/druz9.v1.AdminService/CreateTask"
-	// AdminServiceUpdateTaskProcedure is the fully-qualified name of the AdminService's UpdateTask RPC.
-	AdminServiceUpdateTaskProcedure = "/druz9.v1.AdminService/UpdateTask"
-	// AdminServiceListCompaniesProcedure is the fully-qualified name of the AdminService's
-	// ListCompanies RPC.
-	AdminServiceListCompaniesProcedure = "/druz9.v1.AdminService/ListCompanies"
-	// AdminServiceCreateCompanyProcedure is the fully-qualified name of the AdminService's
-	// CreateCompany RPC.
-	AdminServiceCreateCompanyProcedure = "/druz9.v1.AdminService/CreateCompany"
 	// AdminServiceListConfigProcedure is the fully-qualified name of the AdminService's ListConfig RPC.
 	AdminServiceListConfigProcedure = "/druz9.v1.AdminService/ListConfig"
 	// AdminServiceUpdateConfigProcedure is the fully-qualified name of the AdminService's UpdateConfig
 	// RPC.
 	AdminServiceUpdateConfigProcedure = "/druz9.v1.AdminService/UpdateConfig"
-	// AdminServiceListAnticheatProcedure is the fully-qualified name of the AdminService's
-	// ListAnticheat RPC.
-	AdminServiceListAnticheatProcedure = "/druz9.v1.AdminService/ListAnticheat"
 	// AdminServiceGetAdminDashboardProcedure is the fully-qualified name of the AdminService's
 	// GetAdminDashboard RPC.
 	AdminServiceGetAdminDashboardProcedure = "/druz9.v1.AdminService/GetAdminDashboard"
@@ -87,18 +72,9 @@ const (
 
 // AdminServiceClient is a client for the druz9.v1.AdminService service.
 type AdminServiceClient interface {
-	// ── Tasks ───────────────────────────────────────────────────────────
-	ListTasks(context.Context, *connect.Request[v1.ListAdminTasksRequest]) (*connect.Response[v1.AdminTaskList], error)
-	CreateTask(context.Context, *connect.Request[v1.CreateAdminTaskRequest]) (*connect.Response[v1.AdminTask], error)
-	UpdateTask(context.Context, *connect.Request[v1.UpdateAdminTaskRequest]) (*connect.Response[v1.AdminTask], error)
-	// ── Companies ───────────────────────────────────────────────────────
-	ListCompanies(context.Context, *connect.Request[v1.ListCompaniesRequest]) (*connect.Response[v1.CompanyList], error)
-	CreateCompany(context.Context, *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.Company], error)
 	// ── Dynamic config ──────────────────────────────────────────────────
 	ListConfig(context.Context, *connect.Request[v1.ListConfigRequest]) (*connect.Response[v1.ConfigEntryList], error)
 	UpdateConfig(context.Context, *connect.Request[v1.UpdateConfigRequest]) (*connect.Response[v1.ConfigEntry], error)
-	// ── Anticheat ───────────────────────────────────────────────────────
-	ListAnticheat(context.Context, *connect.Request[v1.ListAnticheatRequest]) (*connect.Response[v1.AnticheatSignalList], error)
 	// ── Dashboard ───────────────────────────────────────────────────────
 	GetAdminDashboard(context.Context, *connect.Request[v1.GetAdminDashboardRequest]) (*connect.Response[v1.AdminDashboard], error)
 	// ── User management ─────────────────────────────────────────────────
@@ -126,36 +102,6 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 	baseURL = strings.TrimRight(baseURL, "/")
 	adminServiceMethods := v1.File_druz9_v1_admin_proto.Services().ByName("AdminService").Methods()
 	return &adminServiceClient{
-		listTasks: connect.NewClient[v1.ListAdminTasksRequest, v1.AdminTaskList](
-			httpClient,
-			baseURL+AdminServiceListTasksProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("ListTasks")),
-			connect.WithClientOptions(opts...),
-		),
-		createTask: connect.NewClient[v1.CreateAdminTaskRequest, v1.AdminTask](
-			httpClient,
-			baseURL+AdminServiceCreateTaskProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("CreateTask")),
-			connect.WithClientOptions(opts...),
-		),
-		updateTask: connect.NewClient[v1.UpdateAdminTaskRequest, v1.AdminTask](
-			httpClient,
-			baseURL+AdminServiceUpdateTaskProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("UpdateTask")),
-			connect.WithClientOptions(opts...),
-		),
-		listCompanies: connect.NewClient[v1.ListCompaniesRequest, v1.CompanyList](
-			httpClient,
-			baseURL+AdminServiceListCompaniesProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("ListCompanies")),
-			connect.WithClientOptions(opts...),
-		),
-		createCompany: connect.NewClient[v1.CreateCompanyRequest, v1.Company](
-			httpClient,
-			baseURL+AdminServiceCreateCompanyProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("CreateCompany")),
-			connect.WithClientOptions(opts...),
-		),
 		listConfig: connect.NewClient[v1.ListConfigRequest, v1.ConfigEntryList](
 			httpClient,
 			baseURL+AdminServiceListConfigProcedure,
@@ -166,12 +112,6 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+AdminServiceUpdateConfigProcedure,
 			connect.WithSchema(adminServiceMethods.ByName("UpdateConfig")),
-			connect.WithClientOptions(opts...),
-		),
-		listAnticheat: connect.NewClient[v1.ListAnticheatRequest, v1.AnticheatSignalList](
-			httpClient,
-			baseURL+AdminServiceListAnticheatProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("ListAnticheat")),
 			connect.WithClientOptions(opts...),
 		),
 		getAdminDashboard: connect.NewClient[v1.GetAdminDashboardRequest, v1.AdminDashboard](
@@ -215,45 +155,14 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // adminServiceClient implements AdminServiceClient.
 type adminServiceClient struct {
-	listTasks         *connect.Client[v1.ListAdminTasksRequest, v1.AdminTaskList]
-	createTask        *connect.Client[v1.CreateAdminTaskRequest, v1.AdminTask]
-	updateTask        *connect.Client[v1.UpdateAdminTaskRequest, v1.AdminTask]
-	listCompanies     *connect.Client[v1.ListCompaniesRequest, v1.CompanyList]
-	createCompany     *connect.Client[v1.CreateCompanyRequest, v1.Company]
 	listConfig        *connect.Client[v1.ListConfigRequest, v1.ConfigEntryList]
 	updateConfig      *connect.Client[v1.UpdateConfigRequest, v1.ConfigEntry]
-	listAnticheat     *connect.Client[v1.ListAnticheatRequest, v1.AnticheatSignalList]
 	getAdminDashboard *connect.Client[v1.GetAdminDashboardRequest, v1.AdminDashboard]
 	listUsers         *connect.Client[v1.ListAdminUsersRequest, v1.AdminUserList]
 	banUser           *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
 	unbanUser         *connect.Client[v1.UnbanUserRequest, v1.BanUserResponse]
 	listReports       *connect.Client[v1.ListAdminReportsRequest, v1.AdminReportList]
 	getStatusPage     *connect.Client[v1.GetStatusPageRequest, v1.StatusPage]
-}
-
-// ListTasks calls druz9.v1.AdminService.ListTasks.
-func (c *adminServiceClient) ListTasks(ctx context.Context, req *connect.Request[v1.ListAdminTasksRequest]) (*connect.Response[v1.AdminTaskList], error) {
-	return c.listTasks.CallUnary(ctx, req)
-}
-
-// CreateTask calls druz9.v1.AdminService.CreateTask.
-func (c *adminServiceClient) CreateTask(ctx context.Context, req *connect.Request[v1.CreateAdminTaskRequest]) (*connect.Response[v1.AdminTask], error) {
-	return c.createTask.CallUnary(ctx, req)
-}
-
-// UpdateTask calls druz9.v1.AdminService.UpdateTask.
-func (c *adminServiceClient) UpdateTask(ctx context.Context, req *connect.Request[v1.UpdateAdminTaskRequest]) (*connect.Response[v1.AdminTask], error) {
-	return c.updateTask.CallUnary(ctx, req)
-}
-
-// ListCompanies calls druz9.v1.AdminService.ListCompanies.
-func (c *adminServiceClient) ListCompanies(ctx context.Context, req *connect.Request[v1.ListCompaniesRequest]) (*connect.Response[v1.CompanyList], error) {
-	return c.listCompanies.CallUnary(ctx, req)
-}
-
-// CreateCompany calls druz9.v1.AdminService.CreateCompany.
-func (c *adminServiceClient) CreateCompany(ctx context.Context, req *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.Company], error) {
-	return c.createCompany.CallUnary(ctx, req)
 }
 
 // ListConfig calls druz9.v1.AdminService.ListConfig.
@@ -264,11 +173,6 @@ func (c *adminServiceClient) ListConfig(ctx context.Context, req *connect.Reques
 // UpdateConfig calls druz9.v1.AdminService.UpdateConfig.
 func (c *adminServiceClient) UpdateConfig(ctx context.Context, req *connect.Request[v1.UpdateConfigRequest]) (*connect.Response[v1.ConfigEntry], error) {
 	return c.updateConfig.CallUnary(ctx, req)
-}
-
-// ListAnticheat calls druz9.v1.AdminService.ListAnticheat.
-func (c *adminServiceClient) ListAnticheat(ctx context.Context, req *connect.Request[v1.ListAnticheatRequest]) (*connect.Response[v1.AnticheatSignalList], error) {
-	return c.listAnticheat.CallUnary(ctx, req)
 }
 
 // GetAdminDashboard calls druz9.v1.AdminService.GetAdminDashboard.
@@ -303,18 +207,9 @@ func (c *adminServiceClient) GetStatusPage(ctx context.Context, req *connect.Req
 
 // AdminServiceHandler is an implementation of the druz9.v1.AdminService service.
 type AdminServiceHandler interface {
-	// ── Tasks ───────────────────────────────────────────────────────────
-	ListTasks(context.Context, *connect.Request[v1.ListAdminTasksRequest]) (*connect.Response[v1.AdminTaskList], error)
-	CreateTask(context.Context, *connect.Request[v1.CreateAdminTaskRequest]) (*connect.Response[v1.AdminTask], error)
-	UpdateTask(context.Context, *connect.Request[v1.UpdateAdminTaskRequest]) (*connect.Response[v1.AdminTask], error)
-	// ── Companies ───────────────────────────────────────────────────────
-	ListCompanies(context.Context, *connect.Request[v1.ListCompaniesRequest]) (*connect.Response[v1.CompanyList], error)
-	CreateCompany(context.Context, *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.Company], error)
 	// ── Dynamic config ──────────────────────────────────────────────────
 	ListConfig(context.Context, *connect.Request[v1.ListConfigRequest]) (*connect.Response[v1.ConfigEntryList], error)
 	UpdateConfig(context.Context, *connect.Request[v1.UpdateConfigRequest]) (*connect.Response[v1.ConfigEntry], error)
-	// ── Anticheat ───────────────────────────────────────────────────────
-	ListAnticheat(context.Context, *connect.Request[v1.ListAnticheatRequest]) (*connect.Response[v1.AnticheatSignalList], error)
 	// ── Dashboard ───────────────────────────────────────────────────────
 	GetAdminDashboard(context.Context, *connect.Request[v1.GetAdminDashboardRequest]) (*connect.Response[v1.AdminDashboard], error)
 	// ── User management ─────────────────────────────────────────────────
@@ -338,36 +233,6 @@ type AdminServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	adminServiceMethods := v1.File_druz9_v1_admin_proto.Services().ByName("AdminService").Methods()
-	adminServiceListTasksHandler := connect.NewUnaryHandler(
-		AdminServiceListTasksProcedure,
-		svc.ListTasks,
-		connect.WithSchema(adminServiceMethods.ByName("ListTasks")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminServiceCreateTaskHandler := connect.NewUnaryHandler(
-		AdminServiceCreateTaskProcedure,
-		svc.CreateTask,
-		connect.WithSchema(adminServiceMethods.ByName("CreateTask")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminServiceUpdateTaskHandler := connect.NewUnaryHandler(
-		AdminServiceUpdateTaskProcedure,
-		svc.UpdateTask,
-		connect.WithSchema(adminServiceMethods.ByName("UpdateTask")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminServiceListCompaniesHandler := connect.NewUnaryHandler(
-		AdminServiceListCompaniesProcedure,
-		svc.ListCompanies,
-		connect.WithSchema(adminServiceMethods.ByName("ListCompanies")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminServiceCreateCompanyHandler := connect.NewUnaryHandler(
-		AdminServiceCreateCompanyProcedure,
-		svc.CreateCompany,
-		connect.WithSchema(adminServiceMethods.ByName("CreateCompany")),
-		connect.WithHandlerOptions(opts...),
-	)
 	adminServiceListConfigHandler := connect.NewUnaryHandler(
 		AdminServiceListConfigProcedure,
 		svc.ListConfig,
@@ -378,12 +243,6 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		AdminServiceUpdateConfigProcedure,
 		svc.UpdateConfig,
 		connect.WithSchema(adminServiceMethods.ByName("UpdateConfig")),
-		connect.WithHandlerOptions(opts...),
-	)
-	adminServiceListAnticheatHandler := connect.NewUnaryHandler(
-		AdminServiceListAnticheatProcedure,
-		svc.ListAnticheat,
-		connect.WithSchema(adminServiceMethods.ByName("ListAnticheat")),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceGetAdminDashboardHandler := connect.NewUnaryHandler(
@@ -424,22 +283,10 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 	)
 	return "/druz9.v1.AdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case AdminServiceListTasksProcedure:
-			adminServiceListTasksHandler.ServeHTTP(w, r)
-		case AdminServiceCreateTaskProcedure:
-			adminServiceCreateTaskHandler.ServeHTTP(w, r)
-		case AdminServiceUpdateTaskProcedure:
-			adminServiceUpdateTaskHandler.ServeHTTP(w, r)
-		case AdminServiceListCompaniesProcedure:
-			adminServiceListCompaniesHandler.ServeHTTP(w, r)
-		case AdminServiceCreateCompanyProcedure:
-			adminServiceCreateCompanyHandler.ServeHTTP(w, r)
 		case AdminServiceListConfigProcedure:
 			adminServiceListConfigHandler.ServeHTTP(w, r)
 		case AdminServiceUpdateConfigProcedure:
 			adminServiceUpdateConfigHandler.ServeHTTP(w, r)
-		case AdminServiceListAnticheatProcedure:
-			adminServiceListAnticheatHandler.ServeHTTP(w, r)
 		case AdminServiceGetAdminDashboardProcedure:
 			adminServiceGetAdminDashboardHandler.ServeHTTP(w, r)
 		case AdminServiceListUsersProcedure:
@@ -461,36 +308,12 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 // UnimplementedAdminServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdminServiceHandler struct{}
 
-func (UnimplementedAdminServiceHandler) ListTasks(context.Context, *connect.Request[v1.ListAdminTasksRequest]) (*connect.Response[v1.AdminTaskList], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.ListTasks is not implemented"))
-}
-
-func (UnimplementedAdminServiceHandler) CreateTask(context.Context, *connect.Request[v1.CreateAdminTaskRequest]) (*connect.Response[v1.AdminTask], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.CreateTask is not implemented"))
-}
-
-func (UnimplementedAdminServiceHandler) UpdateTask(context.Context, *connect.Request[v1.UpdateAdminTaskRequest]) (*connect.Response[v1.AdminTask], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.UpdateTask is not implemented"))
-}
-
-func (UnimplementedAdminServiceHandler) ListCompanies(context.Context, *connect.Request[v1.ListCompaniesRequest]) (*connect.Response[v1.CompanyList], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.ListCompanies is not implemented"))
-}
-
-func (UnimplementedAdminServiceHandler) CreateCompany(context.Context, *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.Company], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.CreateCompany is not implemented"))
-}
-
 func (UnimplementedAdminServiceHandler) ListConfig(context.Context, *connect.Request[v1.ListConfigRequest]) (*connect.Response[v1.ConfigEntryList], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.ListConfig is not implemented"))
 }
 
 func (UnimplementedAdminServiceHandler) UpdateConfig(context.Context, *connect.Request[v1.UpdateConfigRequest]) (*connect.Response[v1.ConfigEntry], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.UpdateConfig is not implemented"))
-}
-
-func (UnimplementedAdminServiceHandler) ListAnticheat(context.Context, *connect.Request[v1.ListAnticheatRequest]) (*connect.Response[v1.AnticheatSignalList], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.ListAnticheat is not implemented"))
 }
 
 func (UnimplementedAdminServiceHandler) GetAdminDashboard(context.Context, *connect.Request[v1.GetAdminDashboardRequest]) (*connect.Response[v1.AdminDashboard], error) {

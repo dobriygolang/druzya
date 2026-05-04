@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	authApp "druz9/auth/app"
@@ -115,6 +116,23 @@ func NewAuth(d monolithServices.Deps, encKey string) (*AuthModule, error) {
 	codeFlow := authPorts.NewCodeFlowHandler(startCode, pollCode, server, d.Log)
 	yandexStart := authPorts.NewYandexStartHandler(startYandex, d.Log)
 
+	// DEV_AUTH=true gate — INSECURE bypass для local development.
+	// Production deploy с этим флагом = угон любого аккаунта через имя.
+	// См services/auth/app/dev_login.go.
+	var devLogin *authPorts.DevLoginHandler
+	if os.Getenv("DEV_AUTH") == "true" {
+		devUC := &authApp.DevLogin{
+			Users:      pg,
+			Sessions:   sessions,
+			Bus:        d.Bus,
+			Issuer:     issuer,
+			RefreshTTL: time.Duration(d.Cfg.Auth.RefreshTokenTTL) * time.Second,
+			Log:        d.Log,
+		}
+		devLogin = authPorts.NewDevLoginHandler(devUC, server, d.Log)
+		d.Log.Warn("auth: DEV_AUTH=true — INSECURE bypass /api/v1/auth/dev/login enabled (do NOT use in production)")
+	}
+
 	connectPath, connectHandler := druz9v1connect.NewAuthServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("auth", connectPath, connectHandler)
 
@@ -135,6 +153,11 @@ func NewAuth(d monolithServices.Deps, encKey string) (*AuthModule, error) {
 				// Yandex OAuth start — выдаёт authorize-URL с server-side
 				// сгенерированными state+PKCE challenge.
 				r.Post("/auth/yandex/start", yandexStart.ServeHTTP)
+				// Dev login (INSECURE, gated за DEV_AUTH=true). nil-handler
+				// возвращает 404 — production safe by default.
+				if devLogin != nil {
+					r.Post("/auth/dev/login", devLogin.ServeHTTP)
+				}
 			},
 		},
 		Issuer:        issuer,

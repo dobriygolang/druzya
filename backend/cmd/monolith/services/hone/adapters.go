@@ -15,9 +15,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	honeApp "druz9/hone/app"
 	honeDomain "druz9/hone/domain"
 	honeInfra "druz9/hone/infra"
+	intelligenceApp "druz9/intelligence/app"
 	notifyDomain "druz9/notify/domain"
 	notifyInfra "druz9/notify/infra"
 
@@ -161,4 +164,157 @@ func slugifyForFilename(s string) string {
 		res = res[:80]
 	}
 	return res
+}
+
+// ─── CoachEpisodeAppender adapter (hone external_activity → coach memory) ──
+
+// honeCoachEpisodeAppender adapts intelligence Memory.AppendAsync to the
+// hone-domain CoachEpisodeAppender interface. Each AddExternalActivity call
+// fires a fire-and-forget episode write so AI-tutor recall + DailyBrief
+// see external learning as part of coach memory.
+type honeCoachEpisodeAppender struct {
+	memory honeMemoryAppender
+}
+
+// honeMemoryAppender — narrow shim around intelligence app.Memory (only
+// AppendAsync needed). Defined as interface чтобы adapters.go не
+// импортил intelligence/app напрямую — bootstrap.go хранит конкретный
+// тип и conform'ит к этому при wiring'е.
+type honeMemoryAppender interface {
+	AppendExternal(ctx context.Context, userID uuid.UUID, summary string, payload map[string]any, occurredAt time.Time)
+}
+
+// NewHoneCoachEpisodeAppender wraps a memory-appender shim into the
+// hone CoachEpisodeAppender interface. nil-safe: when m == nil (intelligence
+// not wired), every call is a no-op.
+func NewHoneCoachEpisodeAppender(m honeMemoryAppender) honeDomain.CoachEpisodeAppender {
+	return &honeCoachEpisodeAppender{memory: m}
+}
+
+func (a *honeCoachEpisodeAppender) AppendExternalActivity(
+	ctx context.Context,
+	userID uuid.UUID,
+	summary string,
+	payload map[string]any,
+	occurredAt time.Time,
+) error {
+	if a == nil || a.memory == nil {
+		return nil
+	}
+	a.memory.AppendExternal(ctx, userID, summary, payload, occurredAt)
+	return nil
+}
+
+// ─── LinkSuggester adapter (hone Notes → intelligence rerank UC) ───────────
+
+// honeLinkSuggester adapts intelligence app.SuggestNoteLinks (the LLM
+// rerank UC) onto hone.app.LinkSuggester so the Notes panel's
+// "AI suggestions" can run a per-edge `reason` re-rank without hone
+// importing intelligence directly. Pure pass-through — no caching here
+// (UC owns its own determinism via CacheKey, caller wraps if needed).
+type honeLinkSuggester struct {
+	uc *intelligenceApp.SuggestNoteLinks
+}
+
+// NewHoneLinkSuggester returns nil-safe адаптер. uc == nil ⇒ Rerank
+// возвращает (nil, fmt-error) → UC fallback'нет на embedding-only ranking.
+func NewHoneLinkSuggester(uc *intelligenceApp.SuggestNoteLinks) honeApp.LinkSuggester {
+	return &honeLinkSuggester{uc: uc}
+}
+
+func (a *honeLinkSuggester) Rerank(ctx context.Context, req honeApp.LinkSuggestReq) ([]honeApp.LinkSuggestion, error) {
+	if a == nil || a.uc == nil {
+		return nil, errors.New("hone.LinkSuggester: not configured")
+	}
+	cands := make([]intelligenceApp.NotesLinkCandidate, len(req.Candidates))
+	for i, c := range req.Candidates {
+		cands[i] = intelligenceApp.NotesLinkCandidate{
+			NoteID:          c.NoteID,
+			Title:           c.Title,
+			Snippet:         c.Snippet,
+			SimilarityScore: float64(c.Similarity),
+		}
+	}
+	suggs, err := a.uc.Do(ctx, intelligenceApp.SuggestNoteLinksInput{
+		TargetNoteID:   req.TargetNoteID,
+		TargetTitle:    req.TargetTitle,
+		TargetSnippet:  req.TargetSnippet,
+		Candidates:     cands,
+		MaxSuggestions: req.Max,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.LinkSuggester.Rerank: %w", err)
+	}
+	out := make([]honeApp.LinkSuggestion, 0, len(suggs))
+	for _, s := range suggs {
+		out = append(out, honeApp.LinkSuggestion{
+			TargetNoteID: s.TargetNoteID,
+			Score:        float32(s.Score),
+			Reason:       s.Reason,
+		})
+	}
+	return out, nil
+}
+
+// ─── ReflectionNoteCreator (intelligence LogResource → hone_notes) ─────────
+
+// NewHoneReflectionNoteCreator returns an intelApp.NoteCreator hook that
+// creates a hone_notes row from a reflection-submitted event and triggers
+// the standard embed-job — so the new reflection note enters the corpus
+// for cosine similarity (GetNoteConnections + SuggestNoteLinks).
+//
+// Title format: "reflection · YYYY-MM-DD HH:MM" + atlas-node hint when
+// present. Body = reflection text as-is. UC LogResource then writes the
+// resource_log entry with the returned note_id (FK).
+//
+// Failure semantics:
+//   - notes.Create error → returned to LogResource, which sets
+//     NoteCreateFailed=true and still persists the resource_log entry
+//     without note_id. Retry job (TODO) closes later.
+//   - embedFn is fire-and-forget — failure там не блокирует Create.
+func NewHoneReflectionNoteCreator(
+	notes honeDomain.NoteRepo,
+	embedFn func(ctx context.Context, userID, noteID uuid.UUID, text string),
+	log honeReflectionLogger,
+	now func() time.Time,
+) func(ctx context.Context, userID uuid.UUID, atlasNodeID, reflection string) (uuid.UUID, error) {
+	if now == nil {
+		now = time.Now
+	}
+	return func(ctx context.Context, userID uuid.UUID, atlasNodeID, reflection string) (uuid.UUID, error) {
+		ts := now().UTC()
+		title := "reflection · " + ts.Format("2006-01-02 15:04")
+		if atlasNodeID != "" {
+			title = title + " · " + atlasNodeID
+		}
+		n := honeDomain.Note{
+			UserID:    userID,
+			Title:     title,
+			BodyMD:    reflection,
+			SizeBytes: len(reflection),
+			CreatedAt: ts,
+			UpdatedAt: ts,
+		}
+		created, err := notes.Create(ctx, n)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("hone.ReflectionNoteCreator: %w", err)
+		}
+		if embedFn != nil {
+			embedFn(ctx, userID, created.ID, created.Title+"\n\n"+created.BodyMD)
+		}
+		if log != nil {
+			log.Info("hone: reflection note auto-created",
+				"user_id", userID.String(),
+				"note_id", created.ID.String(),
+				"atlas_node", atlasNodeID,
+			)
+		}
+		return created.ID, nil
+	}
+}
+
+// honeReflectionLogger — narrow shim над *slog.Logger для типизации без
+// import'а log/slog (adapters.go уже не импортит его). nil-safe.
+type honeReflectionLogger interface {
+	Info(msg string, args ...any)
 }

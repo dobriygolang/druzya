@@ -29,7 +29,6 @@ type AdminDashboard struct {
 	KatasToday          int64
 	KatasWeek           int64
 	ActiveMockSessions  int64
-	ActiveArenaMatches  int64
 	ReportsPending      int64
 	AnticheatSignals24h int64
 	GeneratedAt         time.Time

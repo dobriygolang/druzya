@@ -8,7 +8,7 @@
 // intentionally hidden during the in-call phase (immersion).
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useProfileQuery } from '../lib/queries/profile'
 import { isPremiumTTSAvailable, type TTSVoice } from '../lib/voice'
 import { PreCallScreen, type PreCallConfig } from './voice-mock/PreCallScreen'
@@ -25,7 +25,6 @@ interface DebriefData {
 
 export default function VoiceMockPage() {
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>()
-  const navigate = useNavigate()
   const { data: profile } = useProfileQuery()
   const tier = profile?.tier ?? 'free'
   const premiumOk = isPremiumTTSAvailable(tier)
@@ -102,7 +101,16 @@ export default function VoiceMockPage() {
                 setConfig(null)
                 setPhase('pre')
               }}
-              onShare={() => navigate('/share/last-voice-mock')}
+              onShare={() => {
+                // Share-surface ещё не построен — копируем транскрипт в
+                // буфер обмена как honest fallback, чтобы юзер мог сам
+                // отправить кому хочет. Раньше тут был navigate на
+                // несуществующий /share/last-voice-mock → 404.
+                const text = debriefData.transcript
+                  .map((t) => `${t.who === 'me' ? 'YOU' : 'AI'}: ${t.text}`)
+                  .join('\n')
+                void navigator.clipboard?.writeText(text)
+              }}
             />
           </motion.div>
         )}

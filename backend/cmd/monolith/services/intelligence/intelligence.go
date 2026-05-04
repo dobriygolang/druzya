@@ -9,6 +9,8 @@ import (
 	intelDomain "druz9/intelligence/domain"
 	intelInfra "druz9/intelligence/infra"
 	intelPorts "druz9/intelligence/ports"
+	lsApp "druz9/learning_state/app"
+	lsInfra "druz9/learning_state/infra"
 	miDomain "druz9/mock_interview/domain"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/metrics"
@@ -41,6 +43,23 @@ type IntelligenceModule struct {
 	Memory   *intelApp.Memory
 	Hook     honeDomain.MemoryHook
 	MockHook miDomain.MemoryHook
+	// Cross-product reader handles re-exposed для AI-tutor wiring (нужно
+	// snapshot'у tutor'а). Bootstrap.go дёргает их при инициализации
+	// aiTutor service.
+	ExternalReader *intelInfra.ExternalActivityReader
+	FocusReader    *intelInfra.FocusReader
+	MockReader     *intelInfra.MockReader
+	SkillReader    *intelInfra.SkillReader
+	// LinkSuggester — Phase 5 LLM-rerank UC. Public, чтобы hone-bootstrap
+	// мог прокинуть его через adapter в honeApp.SuggestNoteLinks.
+	// nil-safe: при d.LLMChain == nil выставляется, но Do возвращает
+	// ErrLLMUnavailable — caller fallback'нет на embedding-only.
+	LinkSuggester *intelApp.SuggestNoteLinks
+	// LogResourceUC — public для late-binding NoteCreator из hone bootstrap.
+	// intelligence создаётся раньше hone, и NoteCreator (hone-репозиторий
+	// notes + embed enqueue) ещё не существует на момент New(). Bootstrap
+	// после honeServices.NewHone пишет mod.LogResourceUC.NoteCreator = ...
+	LogResourceUC *intelApp.LogResource
 }
 
 func New(d monolithServices.Deps) IntelligenceModule {
@@ -55,6 +74,7 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	focusR := intelInfra.NewFocusReader(d.Pool)
 	planR := intelInfra.NewPlanReader(d.Pool)
 	notesR := intelInfra.NewNotesReader(d.Pool)
+	externalR := intelInfra.NewExternalActivityReader(d.Pool)
 	// Cross-product readers — все опциональные. Coach prompt получает
 	// сигналы и из Hone, и из druz9 (mocks/arena/kata) и из user'ского
 	// Today (queue, daily notes). См. domain/repo.go BriefPromptInput
@@ -164,6 +184,52 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	})
 
 	server := intelPorts.NewIntelligenceServer(h, memory, listInsightsUC, ackInsightUC)
+
+	// ── Phase 2 learning-companion (2026-05-04) ───────────────────────
+	resourceEngagementR := intelInfra.NewResourceEngagementReader(d.Pool)
+	forkProgressR := intelInfra.NewForkProgressReader(d.Pool)
+	resourceLogRepo := intelInfra.NewResourceLogPostgres(d.Pool)
+
+	server.ForkSnapshotUC = &intelApp.GetForkSnapshot{Reader: forkProgressR}
+	server.LogResourceUC = &intelApp.LogResource{
+		Repo: resourceLogRepo,
+		// NoteCreator wiring — in Phase 5 (Notes apply). Сейчас nil →
+		// reflection-flow пишется без auto-link, hone notes создаются
+		// клиентом отдельно.
+		NoteCreator: nil,
+	}
+
+	// Phase 2 mode persistence — learning_state mutator через adapter.
+	lsRepo := lsInfra.NewPostgresRepo(d.Pool)
+	server.LearningState = &learningStateAdapter{
+		setMode: &lsApp.SetMode{Repo: lsRepo},
+		setFork: &lsApp.SetFork{Repo: lsRepo},
+		get:     &lsApp.GetState{Repo: lsRepo},
+	}
+
+	// Phase 2 finishers — activity stream + skill radar.
+	server.ResourceTrailReader = resourceEngagementR
+	server.SkillRadarUC = &intelApp.GetSkillRadar{Mocks: mockR}
+	server.CoachStatsUC = &intelApp.GetCoachStats{
+		Focus:    focusR,
+		Mocks:    mockR,
+		Kata:     kataR,
+		Calendar: calR,
+	}
+	if d.LLMChain != nil {
+		server.NextActionUC = &intelApp.GetNextAction{
+			Chain: d.LLMChain,
+			Log:   d.Log,
+		}
+		server.NextActionContext = &nextActionLoader{
+			fork:          forkProgressR,
+			resourceTrail: resourceEngagementR,
+			mocks:         mockR,
+			calendar:      calR,
+			tracks:        trackR,
+		}
+	}
+
 	connectPath, connectHandler := druz9v1connect.NewIntelligenceServiceHandler(
 		server,
 		connect.WithInterceptors(metrics.ConnectInterceptor()),
@@ -212,6 +278,15 @@ func New(d monolithServices.Deps) IntelligenceModule {
 				// Phase 1.5 insight stream.
 				r.Get("/intelligence/insights", transcoder.ServeHTTP)
 				r.Post("/intelligence/insights/{id}/ack", transcoder.ServeHTTP)
+				// Phase 2 learning-companion REST aliases.
+				r.Post("/intelligence/next-action", transcoder.ServeHTTP)
+				r.Get("/intelligence/fork-snapshot", transcoder.ServeHTTP)
+				r.Post("/intelligence/resource-log", transcoder.ServeHTTP)
+				r.Post("/intelligence/learning-mode", transcoder.ServeHTTP)
+				r.Post("/intelligence/fork-branch", transcoder.ServeHTTP)
+				r.Get("/intelligence/resource-trail", transcoder.ServeHTTP)
+				r.Get("/intelligence/skill-radar", transcoder.ServeHTTP)
+				r.Get("/intelligence/coach-stats", transcoder.ServeHTTP)
 				// Phase 5 — Hone /coach feed: last N days briefs newest-first.
 				recentBriefs := newRecentBriefsHandler(briefs, d.Log)
 				r.Get("/intelligence/briefs/recent", recentBriefs)
@@ -231,8 +306,14 @@ func New(d monolithServices.Deps) IntelligenceModule {
 				func(ctx context.Context) { go insightsSweep.Run(ctx) },
 			},
 		},
-		Memory:   memory,
-		Hook:     newIntelligenceMemoryHook(memory, d.Log),
-		MockHook: newMockMemoryHook(memory, d.Log),
+		Memory:         memory,
+		Hook:           newIntelligenceMemoryHook(memory, d.Log),
+		MockHook:       newMockMemoryHook(memory, d.Log),
+		ExternalReader: externalR,
+		FocusReader:    focusR,
+		MockReader:     mockR,
+		SkillReader:    skillR,
+		LinkSuggester:  &intelApp.SuggestNoteLinks{Chain: d.LLMChain},
+		LogResourceUC:  server.LogResourceUC,
 	}
 }

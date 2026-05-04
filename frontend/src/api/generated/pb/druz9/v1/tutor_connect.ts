@@ -15,7 +15,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { TutorAcceptInviteRequest, TutorActivityResponse, TutorAddListingPackageRequest, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorArchiveListingPackageRequest, TutorArchiveListingPackageResponse, TutorArchiveListingRequest, TutorArchiveListingResponse, TutorAssignment, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorBrowseListingsRequest, TutorCancelEventRequest, TutorCancelEventResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCompleteEventRequest, TutorCompleteEventResponse, TutorCreateEventRequest, TutorCreateGroupEventRequest, TutorCreateInviteRequest, TutorCreateListingRequest, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorEvent, TutorGenerateBriefRequest, TutorGetActivityRequest, TutorGetEventRSVPCountRequest, TutorGetEventRSVPCountResponse, TutorGetListingBySlugRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorJoinEventRequest, TutorJoinEventResponse, TutorLeaveEventRequest, TutorLeaveEventResponse, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListEventsRequest, TutorListEventsResponse, TutorListing, TutorListingDetail, TutorListingPackage, TutorListInvitesRequest, TutorListInvitesResponse, TutorListListingsResponse, TutorListMyListingsRequest, TutorListMyTutorsRequest, TutorListPendingAssignmentsRequest, TutorListStudentsRequest, TutorListStudentsResponse, TutorListUpcomingEventsRequest, TutorListUpcomingGroupEventsRequest, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPublishListingRequest, TutorPublishListingResponse, TutorPushAssignmentRequest, TutorRelationship, TutorRevokeInviteRequest, TutorStudentSnapshot, TutorUpdateListingRequest } from "./tutor_pb.js";
+import { TutorAcceptInviteRequest, TutorActivityResponse, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorAssignment, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorCancelEventRequest, TutorCancelEventResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCompleteEventRequest, TutorCompleteEventResponse, TutorCreateEventRequest, TutorCreateGroupEventRequest, TutorCreateInviteRequest, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorEvent, TutorGenerateBriefRequest, TutorGetActivityRequest, TutorGetEventRSVPCountRequest, TutorGetEventRSVPCountResponse, TutorGetSessionNotesRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorInviteByUsernameRequest, TutorJoinEventRequest, TutorJoinEventResponse, TutorLeaveEventRequest, TutorLeaveEventResponse, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListEventsRequest, TutorListEventsResponse, TutorListInvitesRequest, TutorListInvitesResponse, TutorListMyTutorsRequest, TutorListPendingAssignmentsRequest, TutorListPendingInvitesForMeRequest, TutorListPendingInvitesForMeResponse, TutorListSharedReadingRequest, TutorListSharedReadingResponse, TutorListStudentsRequest, TutorListStudentsResponse, TutorListUpcomingEventsRequest, TutorListUpcomingGroupEventsRequest, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPushAssignmentRequest, TutorPushSharedReadingRequest, TutorPushSharedReadingResponse, TutorRelationship, TutorRevokeInviteRequest, TutorSaveSessionNotesRequest, TutorSessionNotes, TutorStudentSnapshot } from "./tutor_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -33,6 +33,31 @@ export const TutorService = {
       name: "CreateInvite",
       I: TutorCreateInviteRequest,
       O: TutorInvite,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * InviteByUsername — pre-binds invite к конкретному юзеру (вместо
+     * out-of-band отправки кода). Студент видит pending invite на /profile
+     * через ListPendingInvitesForMe + accept одним кликом.
+     *
+     * @generated from rpc druz9.v1.TutorService.InviteByUsername
+     */
+    inviteByUsername: {
+      name: "InviteByUsername",
+      I: TutorInviteByUsernameRequest,
+      O: TutorInvite,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListPendingInvitesForMe — student-side. Возвращает invites
+     * адресованные мне (target_user_id == me).
+     *
+     * @generated from rpc druz9.v1.TutorService.ListPendingInvitesForMe
+     */
+    listPendingInvitesForMe: {
+      name: "ListPendingInvitesForMe",
+      I: TutorListPendingInvitesForMeRequest,
+      O: TutorListPendingInvitesForMeResponse,
       kind: MethodKind.Unary,
     },
     /**
@@ -222,6 +247,29 @@ export const TutorService = {
       kind: MethodKind.Unary,
     },
     /**
+     * ── Reading library (Wave pivot 2026-05-02) ──────────────────────
+     * Tutor отправляет recommended-reading сразу всем студентам И persist'ит
+     * запись в history. Под капотом — BroadcastAssignment + INSERT в
+     * tutor_shared_materials. UI: SharedReadingPane на TutorDashboard.
+     *
+     * @generated from rpc druz9.v1.TutorService.PushSharedReading
+     */
+    pushSharedReading: {
+      name: "PushSharedReading",
+      I: TutorPushSharedReadingRequest,
+      O: TutorPushSharedReadingResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.ListSharedReading
+     */
+    listSharedReading: {
+      name: "ListSharedReading",
+      I: TutorListSharedReadingRequest,
+      O: TutorListSharedReadingResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
      * ── Wave 5.2b — scheduled events ─────────────────────────────────
      * CreateEvent — tutor schedules a calendar event for one student.
      * V1 supports the 1-on-1 (student_id) flow; circle (group) events
@@ -358,89 +406,28 @@ export const TutorService = {
       kind: MethodKind.Unary,
     },
     /**
-     * ── Wave 9.1 marketplace listings (Boosty-only payment) ──
+     * GetSessionNotes (Phase 3.3) — tutor reads его собственные заметки
+     * про студента. body — empty string если notes ещё не создавались.
+     * Студент свои notes не видит (доступ tutor-only).
      *
-     * @generated from rpc druz9.v1.TutorService.CreateListing
+     * @generated from rpc druz9.v1.TutorService.GetSessionNotes
      */
-    createListing: {
-      name: "CreateListing",
-      I: TutorCreateListingRequest,
-      O: TutorListing,
+    getSessionNotes: {
+      name: "GetSessionNotes",
+      I: TutorGetSessionNotesRequest,
+      O: TutorSessionNotes,
       kind: MethodKind.Unary,
     },
     /**
-     * @generated from rpc druz9.v1.TutorService.UpdateListing
-     */
-    updateListing: {
-      name: "UpdateListing",
-      I: TutorUpdateListingRequest,
-      O: TutorListing,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc druz9.v1.TutorService.PublishListing
-     */
-    publishListing: {
-      name: "PublishListing",
-      I: TutorPublishListingRequest,
-      O: TutorPublishListingResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc druz9.v1.TutorService.ArchiveListing
-     */
-    archiveListing: {
-      name: "ArchiveListing",
-      I: TutorArchiveListingRequest,
-      O: TutorArchiveListingResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc druz9.v1.TutorService.ListMyListings
-     */
-    listMyListings: {
-      name: "ListMyListings",
-      I: TutorListMyListingsRequest,
-      O: TutorListListingsResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * BrowseListings — public marketplace. The HTTP gate whitelists this
-     * path so unauthenticated browsers can window-shop tutors.
+     * SaveSessionNotes — upsert markdown-блока. Empty body разрешён
+     * («очистил блок»). Auto-save из UI по дебаунсу 1.5s.
      *
-     * @generated from rpc druz9.v1.TutorService.BrowseListings
+     * @generated from rpc druz9.v1.TutorService.SaveSessionNotes
      */
-    browseListings: {
-      name: "BrowseListings",
-      I: TutorBrowseListingsRequest,
-      O: TutorListListingsResponse,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc druz9.v1.TutorService.GetListingBySlug
-     */
-    getListingBySlug: {
-      name: "GetListingBySlug",
-      I: TutorGetListingBySlugRequest,
-      O: TutorListingDetail,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc druz9.v1.TutorService.AddListingPackage
-     */
-    addListingPackage: {
-      name: "AddListingPackage",
-      I: TutorAddListingPackageRequest,
-      O: TutorListingPackage,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc druz9.v1.TutorService.ArchiveListingPackage
-     */
-    archiveListingPackage: {
-      name: "ArchiveListingPackage",
-      I: TutorArchiveListingPackageRequest,
-      O: TutorArchiveListingPackageResponse,
+    saveSessionNotes: {
+      name: "SaveSessionNotes",
+      I: TutorSaveSessionNotesRequest,
+      O: TutorSessionNotes,
       kind: MethodKind.Unary,
     },
   }

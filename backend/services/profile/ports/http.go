@@ -8,6 +8,7 @@ import (
 	"druz9/profile/domain"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Handler owns the profile use-case pointers. RequireAuth wrapping happens at
@@ -29,6 +30,9 @@ type Handler struct {
 	// ai-vacancies-model RPCs migrated off chi in Phase K.12.
 	AllocateAtlas  *app.AllocateAtlasNode
 	VacanciesModel AIVacanciesModelRepo
+	// ClassifyAtlasTodo (Phase 3.1) — user-driven atlas через free-form
+	// TODO. nil-safe: handler возвращает Unavailable, фронт прячет UI.
+	ClassifyAtlasTodo *app.ClassifyAtlasTodo
 	// Multi-track use cases (см docs/feature/tracks.md). Wired in
 	// cmd/monolith/services/profile.go alongside the rest of the
 	// profile UCs.
@@ -42,6 +46,9 @@ type Handler struct {
 	// выделен (Issue/ResolveShareToken). Может быть nil в тестах, тогда
 	// share-эндпоинты вернут Internal/Unavailable.
 	Repo domain.ProfileRepo
+	// Pool — Phase 3 atlas pin/hide handler делает direct INSERT...ON
+	// CONFLICT в user_atlas_node_prefs. Trivial CRUD, без UC.
+	Pool *pgxpool.Pool
 	Log  *slog.Logger
 }
 

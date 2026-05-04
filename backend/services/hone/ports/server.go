@@ -642,6 +642,48 @@ func (s *HoneServer) GetNoteConnections(
 	return nil
 }
 
+// SuggestNoteLinks implements druz9.v1.HoneService/SuggestNoteLinks.
+//
+// Phase 5: AI-rerank поверх pgvector top-K. Возвращает ≤max suggestions
+// с per-edge `reason` и `score`. Cold-call ≈ embed(50ms) + pgvector(20ms)
+// + LLM rerank(800-1500ms на free-tier). При rate-limit'ах LLM —
+// fallback на embedding-only ranking без reason'а (UC сам решает).
+func (s *HoneServer) SuggestNoteLinks(
+	ctx context.Context,
+	req *connect.Request[pb.SuggestNoteLinksRequest],
+) (*connect.Response[pb.SuggestNoteLinksResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if gerr := s.requirePro(ctx, uid); gerr != nil {
+		return nil, fmt.Errorf("hone.SuggestNoteLinks: %w", s.toConnectErr(gerr))
+	}
+	id, parseErr := uuid.Parse(req.Msg.GetNoteId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid note_id: %w", parseErr))
+	}
+	out, err := s.H.SuggestNoteLinks.Do(ctx, app.SuggestNoteLinksInput{
+		UserID: uid,
+		NoteID: id,
+		Max:    int(req.Msg.GetMax()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.SuggestNoteLinks: %w", s.toConnectErr(err))
+	}
+	resp := &pb.SuggestNoteLinksResponse{Suggestions: make([]*pb.NoteLinkSuggestion, 0, len(out))}
+	for _, o := range out {
+		resp.Suggestions = append(resp.Suggestions, &pb.NoteLinkSuggestion{
+			TargetNoteId: o.NoteID.String(),
+			TargetTitle:  o.Title,
+			Snippet:      o.Snippet,
+			Score:        o.Score,
+			Reason:       o.Reason,
+		})
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // ─── Whiteboards ───────────────────────────────────────────────────────────
 
 // CreateWhiteboard implements druz9.v1.HoneService/CreateWhiteboard.
@@ -1185,15 +1227,52 @@ func (s *HoneServer) AddReadingMaterial(
 	if err != nil {
 		return nil, err
 	}
-	out, err := s.H.AddReadingMaterial.Do(ctx, app.AddReadingMaterialInput{
+	in := app.AddReadingMaterialInput{
 		UserID:     uid,
 		SourceKind: domain.ReadingSourceKind(req.Msg.SourceKind),
 		SourceURL:  req.Msg.SourceUrl,
 		Title:      req.Msg.Title,
 		BodyMD:     req.Msg.BodyMd,
-	})
+	}
+	if req.Msg.HasBookChapter {
+		v := int(req.Msg.BookChapter)
+		in.BookChapter = &v
+	}
+	if req.Msg.HasBookTotal {
+		v := int(req.Msg.BookTotalChapters)
+		in.BookTotalChapters = &v
+	}
+	out, err := s.H.AddReadingMaterial.Do(ctx, in)
 	if err != nil {
 		return nil, fmt.Errorf("hone.AddReadingMaterial: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toReadingMaterialProto(out, true)), nil
+}
+
+func (s *HoneServer) UpdateBookProgress(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateBookProgressRequest],
+) (*connect.Response[pb.ReadingMaterial], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	mid, perr := uuid.Parse(req.Msg.Id)
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id: %w", perr))
+	}
+	in := app.UpdateBookProgressInput{UserID: uid, MaterialID: mid}
+	if req.Msg.HasBookChapter {
+		v := int(req.Msg.BookChapter)
+		in.BookChapter = &v
+	}
+	if req.Msg.HasBookTotal {
+		v := int(req.Msg.BookTotalChapters)
+		in.BookTotalChapters = &v
+	}
+	out, err := s.H.UpdateBookProgress.Do(ctx, in)
+	if err != nil {
+		return nil, fmt.Errorf("hone.UpdateBookProgress: %w", s.toConnectErr(err))
 	}
 	return connect.NewResponse(toReadingMaterialProto(out, true)), nil
 }
@@ -1486,6 +1565,28 @@ func (s *HoneServer) AddListeningMaterial(
 	return connect.NewResponse(toListeningMaterialProto(out, true)), nil
 }
 
+func (s *HoneServer) IngestYouTubeListening(
+	ctx context.Context,
+	req *connect.Request[pb.IngestYouTubeListeningRequest],
+) (*connect.Response[pb.ListeningMaterial], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.IngestYouTubeListening == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("yt-dlp not wired"))
+	}
+	out, err := s.H.IngestYouTubeListening.Do(ctx, app.IngestYouTubeListeningInput{
+		UserID:       uid,
+		URL:          req.Msg.Url,
+		LanguageHint: req.Msg.LanguageHint,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.IngestYouTubeListening: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toListeningMaterialProto(out, true)), nil
+}
+
 func (s *HoneServer) ListListeningMaterials(
 	ctx context.Context,
 	req *connect.Request[pb.ListListeningMaterialsRequest],
@@ -1586,6 +1687,14 @@ func toReadingMaterialProto(m domain.ReadingMaterial, withBody bool) *pb.Reading
 	}
 	if m.ArchivedAt != nil {
 		out.ArchivedAt = timestamppb.New(m.ArchivedAt.UTC())
+	}
+	if m.BookChapter != nil {
+		out.BookChapter = int32(*m.BookChapter)
+		out.HasBookChapter = true
+	}
+	if m.BookTotalChapters != nil {
+		out.BookTotalChapters = int32(*m.BookTotalChapters)
+		out.HasBookTotal = true
 	}
 	return out
 }

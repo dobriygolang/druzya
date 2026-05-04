@@ -23,10 +23,8 @@ import (
 // is also routed through the REST transcoder but whitelisted in
 // router.go's restAuthGate — it bypasses bearer auth entirely.
 func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
-	tasks := adminInfra.NewTasks(d.Pool)
 	companies := adminInfra.NewCompanies(d.Pool)
 	cfg := adminInfra.NewConfig(d.Pool)
-	anticheat := adminInfra.NewAnticheat(d.Pool)
 	broadcaster := adminInfra.NewRedisBroadcaster(d.Redis)
 
 	dashboard := adminInfra.NewDashboard(d.Pool)
@@ -36,14 +34,8 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 	prober := adminInfra.NewStatusProber(d.Pool, d.Redis, incidents)
 
 	server := adminPorts.NewAdminServer(
-		&adminApp.ListTasks{Tasks: tasks},
-		&adminApp.CreateTask{Tasks: tasks},
-		&adminApp.UpdateTask{Tasks: tasks},
-		&adminApp.ListCompanies{Companies: companies},
-		&adminApp.UpsertCompany{Companies: companies},
 		&adminApp.ListConfig{Config: cfg},
 		&adminApp.UpdateConfig{Config: cfg, Broadcaster: broadcaster, Log: d.Log},
-		&adminApp.ListAnticheat{Anticheat: anticheat},
 		d.Log,
 	)
 	server.GetDashboardUC = &adminApp.GetDashboard{Repo: dashboard, Cache: d.Redis, Log: d.Log}
@@ -79,14 +71,14 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			r.Get("/admin/tasks", transcoder.ServeHTTP)
-			r.Post("/admin/tasks", transcoder.ServeHTTP)
-			r.Put("/admin/tasks/{taskId}", transcoder.ServeHTTP)
-			r.Get("/admin/companies", transcoder.ServeHTTP)
-			r.Post("/admin/companies", transcoder.ServeHTTP)
+			// Pivot 2026-05-04: orphan admin REST aliases (no frontend
+			// caller) удалены — /admin/tasks*, /admin/companies*,
+			// /admin/anticheat. Соответствующие proto RPCs остаются в
+			// .proto до планового regen-cleanup'а (низкий приоритет).
+			// /admin/mock/companies / /admin/mock/tasks (живые ручки)
+			// поднимаются из mock_interview/ports.
 			r.Get("/admin/config", transcoder.ServeHTTP)
 			r.Put("/admin/config/{key}", transcoder.ServeHTTP)
-			r.Get("/admin/anticheat", transcoder.ServeHTTP)
 
 			// Group B — dashboard / users / reports.
 			r.Get("/admin/dashboard", transcoder.ServeHTTP)

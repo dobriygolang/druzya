@@ -70,9 +70,9 @@ export default function CheckoutSuccess() {
         </Card>
 
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link to="/arena" className="flex-1 sm:flex-initial">
+          <Link to="/atlas" className="flex-1 sm:flex-initial">
             <Button variant="primary" size="lg" className="w-full sm:w-auto">
-              В sanctum
+              К Atlas
             </Button>
           </Link>
           <Link to="/settings" className="flex-1 sm:flex-initial">

@@ -114,6 +114,13 @@ export type AtlasNode = {
   // PoE allocation: there exists a path of mastered nodes from the hub
   // to this node. Frontend dims unreachable branches during planning.
   reachable?: boolean
+  // Phase 3.1 — true когда узел из user_atlas_nodes (создан через
+  // classify-flow). Frontend рендерит "your TODO" badge.
+  is_user_owned?: boolean
+  // Phase 3 — per-user pin/hide overlay (user_atlas_node_prefs).
+  // Mutually exclusive по DB CHECK.
+  pinned?: boolean
+  hidden?: boolean
 }
 
 export type AtlasEdge = {
@@ -446,6 +453,11 @@ function normalizeAtlas(raw: unknown): Atlas {
         (x.pos_set as boolean | undefined) ??
         (x.posSet as boolean | undefined),
       reachable: x.reachable as boolean | undefined,
+      is_user_owned:
+        (x.is_user_owned as boolean | undefined) ??
+        (x.isUserOwned as boolean | undefined),
+      pinned: x.pinned as boolean | undefined,
+      hidden: x.hidden as boolean | undefined,
     }
   })
   const edges: AtlasEdge[] = rawEdges.map((e) => {
@@ -472,6 +484,62 @@ export function useAtlasQuery() {
     queryFn: async () => normalizeAtlas(await api<unknown>('/profile/me/atlas')),
     staleTime: PROFILE_STALE_MS,
     gcTime: PROFILE_GC_MS,
+  })
+}
+
+// ── Phase 3.1: classify free-form TODO into atlas node ──────────────────
+
+export interface UserAtlasNode {
+  node_key: string
+  title: string
+  description: string
+  section: string
+  kind: string
+  cluster: string
+  source_text: string
+  created_at: string
+}
+
+export interface ClassifyAtlasTodoResponse {
+  matched_key?: string
+  new_node?: UserAtlasNode
+}
+
+/** Classify a free-form TODO («изучить транзакции в Postgres») into either
+ *  an existing curated atlas node (matched_key) or a freshly persisted
+ *  user_atlas_nodes row (new_node). Backend → llmchain (TaskAtlasClassify).
+ *  On success invalidates the atlas cache so the new node appears. */
+export function useClassifyAtlasTodoMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (todo: string) =>
+      api<ClassifyAtlasTodoResponse>('/profile/me/atlas/todo', {
+        method: 'POST',
+        body: JSON.stringify({ todo }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: profileQueryKeys.meAtlas() })
+    },
+  })
+}
+
+// ── Phase 3 — pin/hide overlay (user_atlas_node_prefs, мig 00064) ──────
+
+export function useSetAtlasNodePrefMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { nodeKey: string; pinned: boolean; hidden: boolean }) =>
+      api<{ ok: boolean }>('/profile/me/atlas/pref', {
+        method: 'POST',
+        body: JSON.stringify({
+          node_key: args.nodeKey,
+          pinned: args.pinned,
+          hidden: args.hidden,
+        }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: profileQueryKeys.meAtlas() })
+    },
   })
 }
 

@@ -72,3 +72,16 @@ export async function addListeningMaterial(args: {
 export async function archiveListeningMaterial(id: string): Promise<void> {
   await client.archiveListeningMaterial({ id });
 }
+
+// ingestYouTubeListening — paste YouTube URL → backend yt-dlp pulls
+// auto-captions → готовый ListeningMaterial. Ошибки:
+//   - «no captions for video» / «not a YouTube URL» — UI показывает банер
+//     и предлагает manual paste
+//   - 503 «yt-dlp not wired» — backend контейнер без yt-dlp на PATH
+export async function ingestYouTubeListening(
+  url: string,
+  languageHint = '',
+): Promise<ListeningMaterial> {
+  const resp = await client.ingestYouTubeListening({ url, languageHint });
+  return unwrap(resp as unknown as ProtoMaterial);
+}

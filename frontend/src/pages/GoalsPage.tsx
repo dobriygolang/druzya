@@ -204,7 +204,7 @@ function GoalCard({ goal }: { goal: UserGoal }) {
             <h3 className="font-display text-base font-bold text-text-primary">{goal.title}</h3>
             <span className="font-mono text-[11px] text-text-muted">
               {deadlineLabel}
-              {goal.skill_keys.length > 0 && ` · skills=[${goal.skill_keys.join(', ')}]`}
+              {(goal.skill_keys ?? []).length > 0 && ` · skills=[${(goal.skill_keys ?? []).join(', ')}]`}
             </span>
             {goal.notes_md && (
               <p className="mt-1 max-w-2xl text-sm text-text-secondary whitespace-pre-line">

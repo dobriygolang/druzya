@@ -36,22 +36,8 @@ service SubscriptionService {
     option (google.api.http) = {get: "/api/v1/subscription/quota"};
   }
 
-  // LinkBoosty starts the OAuth handshake / saves a manual cookie so we
-  // can sync the user's Boosty subscription tier later.
-  rpc LinkBoosty(LinkBoostyRequest) returns (LinkBoostyResponse) {
-    option (google.api.http) = {
-      post: "/api/v1/subscription/boosty/link"
-      body: "*"
-    };
-  }
-
-  // AdminBoostySync triggers the bulk-resolve job. role=admin required.
-  rpc AdminBoostySync(AdminBoostySyncRequest) returns (AdminBoostySyncResponse) {
-    option (google.api.http) = {
-      post: "/api/v1/admin/subscriptions/boosty/sync"
-      body: "*"
-    };
-  }
+  // Pivot 2026-05-01: Boosty marketplace выпилен. LinkBoosty +
+  // AdminBoostySync RPCs удалены вместе с handler'ами и UC'ами.
 }
 
 message QuotaPolicy {

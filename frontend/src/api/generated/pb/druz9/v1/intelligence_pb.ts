@@ -904,3 +904,987 @@ export class AckInsightResponse extends Message<AckInsightResponse> {
   }
 }
 
+/**
+ * GetNextActionRequest — empty за исключением user-context, который
+ * middleware распаковывает из сессии. Поля для будущих фильтров.
+ *
+ * @generated from message druz9.v1.GetNextActionRequest
+ */
+export class GetNextActionRequest extends Message<GetNextActionRequest> {
+  /**
+   * Если true — bypass'нуть daily cache (limited 1/h client-side).
+   *
+   * @generated from field: bool force = 1;
+   */
+  force = false;
+
+  constructor(data?: PartialMessage<GetNextActionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetNextActionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "force", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetNextActionRequest {
+    return new GetNextActionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetNextActionRequest {
+    return new GetNextActionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetNextActionRequest {
+    return new GetNextActionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetNextActionRequest | PlainMessage<GetNextActionRequest> | undefined, b: GetNextActionRequest | PlainMessage<GetNextActionRequest> | undefined): boolean {
+    return proto3.util.equals(GetNextActionRequest, a, b);
+  }
+}
+
+/**
+ * NextAction — single concrete next action, formatted из LLM JSON.
+ *
+ * @generated from message druz9.v1.NextAction
+ */
+export class NextAction extends Message<NextAction> {
+  /**
+   * action_kind ∈ focus_block | start_mock | review_resource | reflection |
+   *              checkpoint | graduation_mock
+   *
+   * @generated from field: string action_kind = 1;
+   */
+  actionKind = "";
+
+  /**
+   * target — atlas_node_id / track_step_slug / resource_url, semantics
+   * зависит от action_kind.
+   *
+   * @generated from field: string target = 2;
+   */
+  target = "";
+
+  /**
+   * @generated from field: string rationale = 3;
+   */
+  rationale = "";
+
+  /**
+   * @generated from field: int32 estimated_minutes = 4;
+   */
+  estimatedMinutes = 0;
+
+  constructor(data?: PartialMessage<NextAction>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.NextAction";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "action_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "target", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "rationale", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "estimated_minutes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): NextAction {
+    return new NextAction().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): NextAction {
+    return new NextAction().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): NextAction {
+    return new NextAction().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: NextAction | PlainMessage<NextAction> | undefined, b: NextAction | PlainMessage<NextAction> | undefined): boolean {
+    return proto3.util.equals(NextAction, a, b);
+  }
+}
+
+/**
+ * GetForkSnapshotRequest — empty.
+ *
+ * @generated from message druz9.v1.GetForkSnapshotRequest
+ */
+export class GetForkSnapshotRequest extends Message<GetForkSnapshotRequest> {
+  constructor(data?: PartialMessage<GetForkSnapshotRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetForkSnapshotRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetForkSnapshotRequest {
+    return new GetForkSnapshotRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetForkSnapshotRequest {
+    return new GetForkSnapshotRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetForkSnapshotRequest {
+    return new GetForkSnapshotRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetForkSnapshotRequest | PlainMessage<GetForkSnapshotRequest> | undefined, b: GetForkSnapshotRequest | PlainMessage<GetForkSnapshotRequest> | undefined): boolean {
+    return proto3.util.equals(GetForkSnapshotRequest, a, b);
+  }
+}
+
+/**
+ * ForkBranchView — per-branch projection.
+ *
+ * @generated from message druz9.v1.ForkBranchView
+ */
+export class ForkBranchView extends Message<ForkBranchView> {
+  /**
+   * 'mle' | 'de'
+   *
+   * @generated from field: string branch = 1;
+   */
+  branch = "";
+
+  /**
+   * @generated from field: int32 mock_count = 2;
+   */
+  mockCount = 0;
+
+  /**
+   * @generated from field: double avg_score = 3;
+   */
+  avgScore = 0;
+
+  /**
+   * @generated from field: int32 voluntary_deep_dives = 4;
+   */
+  voluntaryDeepDives = 0;
+
+  /**
+   * @generated from field: double composite_score = 5;
+   */
+  compositeScore = 0;
+
+  constructor(data?: PartialMessage<ForkBranchView>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ForkBranchView";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "branch", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "mock_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "avg_score", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+    { no: 4, name: "voluntary_deep_dives", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "composite_score", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ForkBranchView {
+    return new ForkBranchView().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ForkBranchView {
+    return new ForkBranchView().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ForkBranchView {
+    return new ForkBranchView().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ForkBranchView | PlainMessage<ForkBranchView> | undefined, b: ForkBranchView | PlainMessage<ForkBranchView> | undefined): boolean {
+    return proto3.util.equals(ForkBranchView, a, b);
+  }
+}
+
+/**
+ * ForkSnapshot — Coach fork view (active when mode=='explore').
+ *
+ * @generated from message druz9.v1.ForkSnapshot
+ */
+export class ForkSnapshot extends Message<ForkSnapshot> {
+  /**
+   * 'explore' | 'commit' | 'deep'
+   *
+   * @generated from field: string mode = 1;
+   */
+  mode = "";
+
+  /**
+   * 0 если mode != explore
+   *
+   * @generated from field: int32 explore_week_index = 2;
+   */
+  exploreWeekIndex = 0;
+
+  /**
+   * user's declared lean ('' если none)
+   *
+   * @generated from field: string current_branch = 3;
+   */
+  currentBranch = "";
+
+  /**
+   * @generated from field: repeated druz9.v1.ForkBranchView branches = 4;
+   */
+  branches: ForkBranchView[] = [];
+
+  /**
+   * derived best-scoring branch
+   *
+   * @generated from field: string lean_branch = 5;
+   */
+  leanBranch = "";
+
+  /**
+   * [0..1]
+   *
+   * @generated from field: double confidence = 6;
+   */
+  confidence = 0;
+
+  constructor(data?: PartialMessage<ForkSnapshot>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ForkSnapshot";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "mode", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "explore_week_index", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "current_branch", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "branches", kind: "message", T: ForkBranchView, repeated: true },
+    { no: 5, name: "lean_branch", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "confidence", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ForkSnapshot {
+    return new ForkSnapshot().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ForkSnapshot {
+    return new ForkSnapshot().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ForkSnapshot {
+    return new ForkSnapshot().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ForkSnapshot | PlainMessage<ForkSnapshot> | undefined, b: ForkSnapshot | PlainMessage<ForkSnapshot> | undefined): boolean {
+    return proto3.util.equals(ForkSnapshot, a, b);
+  }
+}
+
+/**
+ * SetLearningModeRequest — пользователь выбрал mode в Coach (explore/commit/deep).
+ * track_id обязателен для commit/deep, игнорируется для explore.
+ *
+ * @generated from message druz9.v1.SetLearningModeRequest
+ */
+export class SetLearningModeRequest extends Message<SetLearningModeRequest> {
+  /**
+   * 'explore' | 'commit' | 'deep'
+   *
+   * @generated from field: string mode = 1;
+   */
+  mode = "";
+
+  /**
+   * optional, required for commit/deep
+   *
+   * @generated from field: string track_id = 2;
+   */
+  trackId = "";
+
+  constructor(data?: PartialMessage<SetLearningModeRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SetLearningModeRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "mode", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "track_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetLearningModeRequest {
+    return new SetLearningModeRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetLearningModeRequest {
+    return new SetLearningModeRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetLearningModeRequest {
+    return new SetLearningModeRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetLearningModeRequest | PlainMessage<SetLearningModeRequest> | undefined, b: SetLearningModeRequest | PlainMessage<SetLearningModeRequest> | undefined): boolean {
+    return proto3.util.equals(SetLearningModeRequest, a, b);
+  }
+}
+
+/**
+ * LearningStateView — текущее состояние юзера.
+ *
+ * @generated from message druz9.v1.LearningStateView
+ */
+export class LearningStateView extends Message<LearningStateView> {
+  /**
+   * @generated from field: string mode = 1;
+   */
+  mode = "";
+
+  /**
+   * '' if not chosen
+   *
+   * @generated from field: string fork_branch = 2;
+   */
+  forkBranch = "";
+
+  /**
+   * @generated from field: int32 explore_week_index = 3;
+   */
+  exploreWeekIndex = 0;
+
+  /**
+   * '' if explore
+   *
+   * @generated from field: string committed_track_id = 4;
+   */
+  committedTrackId = "";
+
+  constructor(data?: PartialMessage<LearningStateView>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.LearningStateView";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "mode", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "fork_branch", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "explore_week_index", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "committed_track_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LearningStateView {
+    return new LearningStateView().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LearningStateView {
+    return new LearningStateView().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LearningStateView {
+    return new LearningStateView().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LearningStateView | PlainMessage<LearningStateView> | undefined, b: LearningStateView | PlainMessage<LearningStateView> | undefined): boolean {
+    return proto3.util.equals(LearningStateView, a, b);
+  }
+}
+
+/**
+ * SetForkBranchRequest — пользователь явно выбрал ветку (de/mle/none).
+ *
+ * @generated from message druz9.v1.SetForkBranchRequest
+ */
+export class SetForkBranchRequest extends Message<SetForkBranchRequest> {
+  /**
+   * 'de' | 'mle' | 'none' | '' to clear
+   *
+   * @generated from field: string branch = 1;
+   */
+  branch = "";
+
+  constructor(data?: PartialMessage<SetForkBranchRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SetForkBranchRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "branch", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetForkBranchRequest {
+    return new SetForkBranchRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetForkBranchRequest {
+    return new SetForkBranchRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetForkBranchRequest {
+    return new SetForkBranchRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetForkBranchRequest | PlainMessage<SetForkBranchRequest> | undefined, b: SetForkBranchRequest | PlainMessage<SetForkBranchRequest> | undefined): boolean {
+    return proto3.util.equals(SetForkBranchRequest, a, b);
+  }
+}
+
+/**
+ * GetResourceTrailRequest — окно для activity stream.
+ *
+ * @generated from message druz9.v1.GetResourceTrailRequest
+ */
+export class GetResourceTrailRequest extends Message<GetResourceTrailRequest> {
+  /**
+   * default 7
+   *
+   * @generated from field: int32 days = 1;
+   */
+  days = 0;
+
+  /**
+   * default 5 — limit per-bucket
+   *
+   * @generated from field: int32 keep_recent = 2;
+   */
+  keepRecent = 0;
+
+  constructor(data?: PartialMessage<GetResourceTrailRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetResourceTrailRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "keep_recent", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetResourceTrailRequest {
+    return new GetResourceTrailRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetResourceTrailRequest {
+    return new GetResourceTrailRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetResourceTrailRequest {
+    return new GetResourceTrailRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetResourceTrailRequest | PlainMessage<GetResourceTrailRequest> | undefined, b: GetResourceTrailRequest | PlainMessage<GetResourceTrailRequest> | undefined): boolean {
+    return proto3.util.equals(GetResourceTrailRequest, a, b);
+  }
+}
+
+/**
+ * ResourceTouch — single event from user_resource_log.
+ *
+ * @generated from message druz9.v1.ResourceTouch
+ */
+export class ResourceTouch extends Message<ResourceTouch> {
+  /**
+   * @generated from field: string url = 1;
+   */
+  url = "";
+
+  /**
+   * @generated from field: string atlas_node_id = 2;
+   */
+  atlasNodeId = "";
+
+  /**
+   * clicked|finished|skipped|unhelpful|reflection_submitted
+   *
+   * @generated from field: string kind = 3;
+   */
+  kind = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp occurred_at = 4;
+   */
+  occurredAt?: Timestamp;
+
+  /**
+   * @generated from field: int32 hours_ago = 5;
+   */
+  hoursAgo = 0;
+
+  /**
+   * @generated from field: string reflection_text = 6;
+   */
+  reflectionText = "";
+
+  constructor(data?: PartialMessage<ResourceTouch>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ResourceTouch";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "atlas_node_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "occurred_at", kind: "message", T: Timestamp },
+    { no: 5, name: "hours_ago", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "reflection_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResourceTouch {
+    return new ResourceTouch().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResourceTouch {
+    return new ResourceTouch().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResourceTouch {
+    return new ResourceTouch().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResourceTouch | PlainMessage<ResourceTouch> | undefined, b: ResourceTouch | PlainMessage<ResourceTouch> | undefined): boolean {
+    return proto3.util.equals(ResourceTouch, a, b);
+  }
+}
+
+/**
+ * ResourceTrail — engagement summary за окно.
+ *
+ * @generated from message druz9.v1.ResourceTrail
+ */
+export class ResourceTrail extends Message<ResourceTrail> {
+  /**
+   * @generated from field: repeated druz9.v1.ResourceTouch finished_recent = 1;
+   */
+  finishedRecent: ResourceTouch[] = [];
+
+  /**
+   * @generated from field: int32 unfinished_count = 2;
+   */
+  unfinishedCount = 0;
+
+  /**
+   * @generated from field: repeated druz9.v1.ResourceTouch marked_unhelpful = 3;
+   */
+  markedUnhelpful: ResourceTouch[] = [];
+
+  /**
+   * @generated from field: repeated druz9.v1.ResourceTouch recent_reflections = 4;
+   */
+  recentReflections: ResourceTouch[] = [];
+
+  constructor(data?: PartialMessage<ResourceTrail>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ResourceTrail";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "finished_recent", kind: "message", T: ResourceTouch, repeated: true },
+    { no: 2, name: "unfinished_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "marked_unhelpful", kind: "message", T: ResourceTouch, repeated: true },
+    { no: 4, name: "recent_reflections", kind: "message", T: ResourceTouch, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResourceTrail {
+    return new ResourceTrail().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResourceTrail {
+    return new ResourceTrail().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResourceTrail {
+    return new ResourceTrail().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResourceTrail | PlainMessage<ResourceTrail> | undefined, b: ResourceTrail | PlainMessage<ResourceTrail> | undefined): boolean {
+    return proto3.util.equals(ResourceTrail, a, b);
+  }
+}
+
+/**
+ * GetSkillRadarRequest — какой rubric (de | dev_senior | mle | english).
+ *
+ * @generated from message druz9.v1.GetSkillRadarRequest
+ */
+export class GetSkillRadarRequest extends Message<GetSkillRadarRequest> {
+  /**
+   * optional override; empty = derive из learning_state
+   *
+   * @generated from field: string rubric = 1;
+   */
+  rubric = "";
+
+  constructor(data?: PartialMessage<GetSkillRadarRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetSkillRadarRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "rubric", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetSkillRadarRequest {
+    return new GetSkillRadarRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetSkillRadarRequest {
+    return new GetSkillRadarRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetSkillRadarRequest {
+    return new GetSkillRadarRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetSkillRadarRequest | PlainMessage<GetSkillRadarRequest> | undefined, b: GetSkillRadarRequest | PlainMessage<GetSkillRadarRequest> | undefined): boolean {
+    return proto3.util.equals(GetSkillRadarRequest, a, b);
+  }
+}
+
+/**
+ * SkillRadarAxis — single axis с score 0..1.
+ *
+ * @generated from message druz9.v1.SkillRadarAxis
+ */
+export class SkillRadarAxis extends Message<SkillRadarAxis> {
+  /**
+   * @generated from field: string key = 1;
+   */
+  key = "";
+
+  /**
+   * @generated from field: string label = 2;
+   */
+  label = "";
+
+  /**
+   * 0..1, normalized из ai_report
+   *
+   * @generated from field: double score = 3;
+   */
+  score = 0;
+
+  /**
+   * сколько mocks внесли вклад в этот axis
+   *
+   * @generated from field: int32 mock_count = 4;
+   */
+  mockCount = 0;
+
+  constructor(data?: PartialMessage<SkillRadarAxis>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SkillRadarAxis";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "score", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+    { no: 4, name: "mock_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SkillRadarAxis {
+    return new SkillRadarAxis().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SkillRadarAxis {
+    return new SkillRadarAxis().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SkillRadarAxis {
+    return new SkillRadarAxis().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SkillRadarAxis | PlainMessage<SkillRadarAxis> | undefined, b: SkillRadarAxis | PlainMessage<SkillRadarAxis> | undefined): boolean {
+    return proto3.util.equals(SkillRadarAxis, a, b);
+  }
+}
+
+/**
+ * SkillRadar — 5-axis snapshot.
+ *
+ * @generated from message druz9.v1.SkillRadar
+ */
+export class SkillRadar extends Message<SkillRadar> {
+  /**
+   * @generated from field: string rubric = 1;
+   */
+  rubric = "";
+
+  /**
+   * @generated from field: repeated druz9.v1.SkillRadarAxis axes = 2;
+   */
+  axes: SkillRadarAxis[] = [];
+
+  constructor(data?: PartialMessage<SkillRadar>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SkillRadar";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "rubric", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "axes", kind: "message", T: SkillRadarAxis, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SkillRadar {
+    return new SkillRadar().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SkillRadar {
+    return new SkillRadar().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SkillRadar {
+    return new SkillRadar().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SkillRadar | PlainMessage<SkillRadar> | undefined, b: SkillRadar | PlainMessage<SkillRadar> | undefined): boolean {
+    return proto3.util.equals(SkillRadar, a, b);
+  }
+}
+
+/**
+ * GetCoachStatsRequest — header snapshot panel.
+ *
+ * @generated from message druz9.v1.GetCoachStatsRequest
+ */
+export class GetCoachStatsRequest extends Message<GetCoachStatsRequest> {
+  constructor(data?: PartialMessage<GetCoachStatsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetCoachStatsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetCoachStatsRequest {
+    return new GetCoachStatsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetCoachStatsRequest {
+    return new GetCoachStatsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetCoachStatsRequest {
+    return new GetCoachStatsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetCoachStatsRequest | PlainMessage<GetCoachStatsRequest> | undefined, b: GetCoachStatsRequest | PlainMessage<GetCoachStatsRequest> | undefined): boolean {
+    return proto3.util.equals(GetCoachStatsRequest, a, b);
+  }
+}
+
+/**
+ * CoachStats — 4 KPI cards для snapshot panel.
+ *
+ * @generated from message druz9.v1.CoachStats
+ */
+export class CoachStats extends Message<CoachStats> {
+  /**
+   * kata streak
+   *
+   * @generated from field: int32 streak_days = 1;
+   */
+  streakDays = 0;
+
+  /**
+   * sum focus minutes today (UTC day)
+   *
+   * @generated from field: int32 focus_today_min = 2;
+   */
+  focusTodayMin = 0;
+
+  /**
+   * 0..100, 0 if no mocks
+   *
+   * @generated from field: int32 last_mock_score = 3;
+   */
+  lastMockScore = 0;
+
+  /**
+   * 'de' | 'algorithms' | etc — '' if none
+   *
+   * @generated from field: string last_mock_section = 4;
+   */
+  lastMockSection = "";
+
+  /**
+   * days to next upcoming interview, -1 if none
+   *
+   * @generated from field: int32 next_mock_in_days = 5;
+   */
+  nextMockInDays = 0;
+
+  /**
+   * @generated from field: string next_mock_company = 6;
+   */
+  nextMockCompany = "";
+
+  constructor(data?: PartialMessage<CoachStats>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CoachStats";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "streak_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "focus_today_min", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "last_mock_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "last_mock_section", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "next_mock_in_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "next_mock_company", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CoachStats {
+    return new CoachStats().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CoachStats {
+    return new CoachStats().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CoachStats {
+    return new CoachStats().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CoachStats | PlainMessage<CoachStats> | undefined, b: CoachStats | PlainMessage<CoachStats> | undefined): boolean {
+    return proto3.util.equals(CoachStats, a, b);
+  }
+}
+
+/**
+ * LogResourceRequest — событие user_resource_log.
+ *
+ * @generated from message druz9.v1.LogResourceRequest
+ */
+export class LogResourceRequest extends Message<LogResourceRequest> {
+  /**
+   * @generated from field: string resource_url = 1;
+   */
+  resourceUrl = "";
+
+  /**
+   * optional
+   *
+   * @generated from field: string atlas_node_id = 2;
+   */
+  atlasNodeId = "";
+
+  /**
+   * kind ∈ clicked | finished | skipped | unhelpful | reflection_submitted
+   *
+   * @generated from field: string kind = 3;
+   */
+  kind = "";
+
+  /**
+   * reflection_text required только если kind=reflection_submitted.
+   *
+   * @generated from field: string reflection_text = 4;
+   */
+  reflectionText = "";
+
+  constructor(data?: PartialMessage<LogResourceRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.LogResourceRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "resource_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "atlas_node_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "reflection_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogResourceRequest {
+    return new LogResourceRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogResourceRequest {
+    return new LogResourceRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogResourceRequest {
+    return new LogResourceRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LogResourceRequest | PlainMessage<LogResourceRequest> | undefined, b: LogResourceRequest | PlainMessage<LogResourceRequest> | undefined): boolean {
+    return proto3.util.equals(LogResourceRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.LogResourceResponse
+ */
+export class LogResourceResponse extends Message<LogResourceResponse> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * empty если note не создана
+   *
+   * @generated from field: string reflection_note_id = 2;
+   */
+  reflectionNoteId = "";
+
+  /**
+   * @generated from field: bool note_create_failed = 3;
+   */
+  noteCreateFailed = false;
+
+  constructor(data?: PartialMessage<LogResourceResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.LogResourceResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "reflection_note_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "note_create_failed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogResourceResponse {
+    return new LogResourceResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogResourceResponse {
+    return new LogResourceResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogResourceResponse {
+    return new LogResourceResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LogResourceResponse | PlainMessage<LogResourceResponse> | undefined, b: LogResourceResponse | PlainMessage<LogResourceResponse> | undefined): boolean {
+    return proto3.util.equals(LogResourceResponse, a, b);
+  }
+}
+

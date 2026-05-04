@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AdvanceStepRequest, GetTrackRequest, GetTrackResponse, JoinTrackRequest, LearningTrackEnrolment, LeaveTrackRequest, LeaveTrackResponse, ListTracksRequest, ListTracksResponse, ListUserTracksRequest, ListUserTracksResponse, PauseTrackRequest } from "./tracks_pb.js";
+import { AdvanceStepRequest, GenerateCustomPathRequest, GenerateCustomPathResponse, GetTrackRequest, GetTrackResponse, JoinTrackRequest, LearningTrackEnrolment, LeaveTrackRequest, LeaveTrackResponse, ListTracksRequest, ListTracksResponse, ListUserTracksRequest, ListUserTracksResponse, PauseTrackRequest, StartCheckpointRequest, StartCheckpointResponse, SubmitCheckpointRequest, SubmitCheckpointResponse } from "./tracks_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -79,6 +79,40 @@ export const TracksService = {
       name: "LeaveTrack",
       I: LeaveTrackRequest,
       O: LeaveTrackResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GenerateCustomPath — onboarding wizard «Свой путь». LLM генерит
+     * initial карту тем (8-15 nodes) из юзерской цели в свободной форме.
+     *
+     * @generated from rpc druz9.v1.TracksService.GenerateCustomPath
+     */
+    generateCustomPath: {
+      name: "GenerateCustomPath",
+      I: GenerateCustomPathRequest,
+      O: GenerateCustomPathResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * StartCheckpoint — Phase 2 step UX. Returns step skill_keys + has_passed.
+     *
+     * @generated from rpc druz9.v1.TracksService.StartCheckpoint
+     */
+    startCheckpoint: {
+      name: "StartCheckpoint",
+      I: StartCheckpointRequest,
+      O: StartCheckpointResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SubmitCheckpoint — Phase 2 step UX. Grades answers via TaskCheckpointGrade.
+     *
+     * @generated from rpc druz9.v1.TracksService.SubmitCheckpoint
+     */
+    submitCheckpoint: {
+      name: "SubmitCheckpoint",
+      I: SubmitCheckpointRequest,
+      O: SubmitCheckpointResponse,
       kind: MethodKind.Unary,
     },
   }

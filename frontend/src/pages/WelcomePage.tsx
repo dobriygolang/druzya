@@ -310,7 +310,7 @@ function Tracks() {
       id: 'dev',
       title: 'Разработчик',
       sub: 'Алгоритмы · SQL · Go · System Design · Behavioral. Стартовая точка для middle. С отвилкой ML Platform (K8s deep, Airflow, model serving, at-least-once).',
-      tags: ['Mock-сессии', 'Skill Atlas', 'ELO арена', 'ML Platform cluster'],
+      tags: ['Mock-сессии', 'Skill Atlas', 'ML Platform cluster'],
       status: 'live',
     },
     {
@@ -712,17 +712,17 @@ export default function WelcomePage() {
       <Tracks />
 
       <ProductRow
-        id="arena" sideLeft
+        id="atlas" sideLeft
         name="druz9.online" tag="Продукт · Web"
-        title="Арена + аналитика."
-        desc="Mock-собесы со честным watermark'ом, 1v1 / 2v2 дуэли, Insights поверх трёх клиентов. С Phase-4 — multi-track Atlas: Senior dev, English, Sysanalyst — у каждого свой mock и свои метрики."
-        bullets={['Mock-сессии (AI / strict)', '1v1 / 2v2 арена', 'Insights · недельный digest', 'Multi-track Skill Atlas']}
+        title="Mock + Atlas + AI tutor."
+        desc="Сборник реальных собесных задач + AI-mock с честным watermark'ом. Multi-track Atlas: Senior dev, English, Sysanalyst, ML Platform — у каждого свой mock и свои метрики. Tutor distribution через Boosty + AI-tutors 24/7."
+        bullets={['Real interview tasks pool', 'AI-mock с rubric report', 'Skill Atlas — карта прогресса', 'Tutor (human / AI)']}
         cta={
-          <Link to="/arena"
+          <Link to="/atlas"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
                   borderRadius: 999, background: '#fff', color: '#000',
                   fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-            На арену <Icon name="arrow" size={12} />
+            В Atlas <Icon name="arrow" size={12} />
           </Link>
         }
         mock={<EnglishMockDemo onExpand={() => setExpanded('english')} />}

@@ -566,6 +566,9 @@ func toAtlasProto(v app.AtlasView) *pb.SkillAtlas {
 			Reachable:   n.Reachable,
 			SolvedCount: int32(n.SolvedCount),
 			TotalCount:  int32(n.TotalCount),
+			IsUserOwned: n.IsUserOwned,
+			Pinned:      n.Pinned,
+			Hidden:      n.Hidden,
 		}
 		if n.PosX != nil && n.PosY != nil {
 			node.PosX = int32(*n.PosX)

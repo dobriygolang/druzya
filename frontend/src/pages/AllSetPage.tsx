@@ -145,7 +145,7 @@ export default function AllSetPage() {
               Очередь подбирает противника твоего уровня — обычно 30 секунд
             </span>
           </div>
-          <Link to="/arena">
+          <Link to="/atlas">
             <Button
               variant="primary"
               iconRight={<ArrowRight className="h-4 w-4" />}
@@ -158,19 +158,19 @@ export default function AllSetPage() {
 
         <div className="flex flex-wrap justify-center gap-3">
           <Link
-            to="/arena"
+            to="/atlas"
             className="rounded-full border border-border bg-surface-1 px-4 py-2 text-[13px] font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
             Daily kata
           </Link>
           <Link
-            to="/arena"
+            to="/atlas"
             className="rounded-full border border-border bg-surface-1 px-4 py-2 text-[13px] font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
             Изучить режимы
           </Link>
           <Link
-            to="/arena"
+            to="/atlas"
             className="rounded-full border border-border bg-surface-1 px-4 py-2 text-[13px] font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
             Найти друзей

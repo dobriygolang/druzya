@@ -75,6 +75,10 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	resistance := honeInfra.NewResistance(d.Pool)
 	queue := honeInfra.NewQueue(d.Pool)
 	cueSessions := honeInfra.NewCueSessions(d.Pool)
+	settings := honeInfra.NewSettingsRepo(d.Pool)
+	external := honeInfra.NewExternalRepo(d.Pool)
+	atlasTopics := honeInfra.NewAtlasTopicSearcher(d.Pool)
+	atlasTracks := honeInfra.NewAtlasNodeTracksReader(d.Pool)
 
 	// LLM adapters — pick real vs floor per config.
 	var (
@@ -151,6 +155,13 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		d.Log.Warn("hone: Redis not configured — embed jobs run in-process (fire-and-forget)")
 	}
 
+	// Phase 10 — Categoriser instance, shared между Handler.CategoriseTask
+	// и CreateTask UC (он использует его как auto-place hook).
+	var categoriser *honeApp.CategoriseTask
+	if d.LLMChain != nil {
+		categoriser = &honeApp.CategoriseTask{Chain: d.LLMChain}
+	}
+
 	h := honeApp.NewHandler(honeApp.Handler{
 		// Plan
 		GeneratePlan:     &honeApp.GeneratePlan{Plans: plans, Skills: skills, Notes: notes, Resistance: resistance, Synthesiser: synthesiser, Queue: queue, Log: d.Log, Now: d.Now},
@@ -177,6 +188,16 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		DeleteNote:         &honeApp.DeleteNote{Notes: notes},
 		MoveNote:           &honeApp.MoveNote{Notes: notes},
 		GetNoteConnections: &honeApp.GetNoteConnections{Notes: notes, Embedder: embedder, Log: d.Log},
+		SuggestNoteLinks: &honeApp.SuggestNoteLinks{
+			Notes:     notes,
+			Embedder:  embedder,
+			Suggester: NewHoneLinkSuggester(d.IntelligenceLinkSuggester),
+			Log:       d.Log,
+		},
+
+		// Phase 10 — AI auto-place TaskBoard. Optional: nil-safe в callers.
+		// Активен когда LLMChain wired (free-tier groq/cerebras 8B).
+		CategoriseTask: categoriser,
 
 		// Folders
 		CreateFolder: &honeApp.CreateFolder{Folders: folders, Now: d.Now},
@@ -204,9 +225,35 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		DeleteCueSession:         &honeApp.DeleteCueSession{Repo: cueSessions},
 		SendCueSessionToTelegram: &honeApp.SendCueSessionToTelegram{Repo: cueSessions, Sender: d.HoneNotificationSender, Log: d.Log},
 
+		// User settings (active study mode).
+		GetUserSettings:  &honeApp.GetUserSettings{Repo: settings},
+		SetActiveTrack:   &honeApp.SetActiveTrack{Repo: settings, Now: d.Now},
+		SetEnglishActive: &honeApp.SetEnglishActive{Repo: settings, Now: d.Now},
+
+		// External activity logging. CoachAppender — nil-safe; задача #4
+		// (intelligence integration) повесит сюда appender который пишет
+		// в coach_episodes для AI-tutor recall + daily-brief mention.
+		AddExternalActivity:    &honeApp.AddExternalActivity{Repo: external, CoachAppender: d.ExternalActivityCoachAppender, Now: d.Now, Log: d.Log},
+		ListExternalActivity:   &honeApp.ListExternalActivity{Repo: external},
+		DeleteExternalActivity: &honeApp.DeleteExternalActivity{Repo: external},
+		SearchAtlasTopics:      &honeApp.SearchAtlasTopics{Searcher: atlasTopics},
+		ListAtlasNodeTracks:    &honeApp.ListAtlasNodeTracks{Reader: atlasTracks},
+
 		Log: d.Log,
 		Now: d.Now,
 	})
+
+	// Phase 5 reflection auto-link: intelligence.LogResource UC получает
+	// NoteCreator hook, который создаёт hone_notes row и enqueue'ит
+	// embedding job. После embedding'а — reflection note сам появляется
+	// в SuggestNoteLinks suggestions для упомянутых атлас-узлов (ничего
+	// LLM-extract не нужно для MVP).
+	if d.IntelligenceLogResource != nil {
+		d.IntelligenceLogResource.NoteCreator = NewHoneReflectionNoteCreator(
+			notes, embedFn, d.Log, d.Now,
+		)
+		d.Log.Info("hone: reflection NoteCreator wired into intelligence.LogResource")
+	}
 
 	server := honePorts.NewHoneServer(h)
 	// Rate-limit GenerateDailyPlan(force=true). Redis-less deployments
@@ -350,7 +397,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	// The Connect server (services/hone/ports) already implements ListTasks /
 	// CreateTask / MoveTaskStatus / DeleteTask / Add+ListTaskComments and
 	// vanguard transcodes /api/v1/hone/tasks/* into them.
-	h.CreateTask = &honeApp.CreateTask{Tasks: tasksRepo, Log: d.Log}
+	h.CreateTask = &honeApp.CreateTask{Tasks: tasksRepo, Log: d.Log, Categoriser: categoriser}
 	h.ListTasks = &honeApp.ListTasks{Tasks: tasksRepo}
 	h.MoveTaskStatus = &honeApp.MoveTaskStatus{Tasks: tasksRepo, Log: d.Log}
 	h.DeleteTask = &honeApp.DeleteTask{Tasks: tasksRepo}
@@ -372,6 +419,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	// (migration 00013); free-form English content owned by Hone.
 	readingRepo := honeInfra.NewReadingRepo(d.Pool)
 	h.AddReadingMaterial = &honeApp.AddReadingMaterial{Repo: readingRepo}
+	h.UpdateBookProgress = &honeApp.UpdateBookProgress{Repo: readingRepo}
 	h.GetReadingMaterial = &honeApp.GetReadingMaterial{Repo: readingRepo}
 	h.ListReadingMaterials = &honeApp.ListReadingMaterials{Repo: readingRepo}
 	h.ArchiveReadingMaterial = &honeApp.ArchiveReadingMaterial{Repo: readingRepo, Now: d.Now}
@@ -402,6 +450,15 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	h.GetListeningMaterial = &honeApp.GetListeningMaterial{Repo: listeningRepo}
 	h.ListListeningMaterials = &honeApp.ListListeningMaterials{Repo: listeningRepo}
 	h.ArchiveListeningMaterial = &honeApp.ArchiveListeningMaterial{Repo: listeningRepo, Now: d.Now}
+	// YouTube transcript ingestion (Sergey 2026-05-03). yt-dlp бинарь должен
+	// быть на PATH api контейнера; если нет — handler вернёт 503 при
+	// первом вызове, фронт показывает «manual paste only». Wave dev:
+	// ставим всегда, real check на runtime.
+	h.IngestYouTubeListening = &honeApp.IngestYouTubeListening{
+		Repo:    listeningRepo,
+		Fetcher: honeInfra.NewYouTubeFetcher(),
+		Now:     d.Now,
+	}
 
 	cursorSSE := &cursorSSEHandler{bus: cursorBus, log: d.Log}
 
@@ -431,6 +488,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Get("/hone/reading/materials", transcoder.ServeHTTP)
 		r.Get("/hone/reading/materials/{id}", transcoder.ServeHTTP)
 		r.Post("/hone/reading/materials/{id}/archive", transcoder.ServeHTTP)
+		r.Post("/hone/reading/materials/{id}/book-progress", transcoder.ServeHTTP)
 		r.Post("/hone/reading/sessions/start", transcoder.ServeHTTP)
 		r.Post("/hone/reading/sessions/end", transcoder.ServeHTTP)
 		r.Post("/hone/reading/vocab", transcoder.ServeHTTP)
@@ -447,6 +505,17 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Get("/hone/listening/materials", transcoder.ServeHTTP)
 		r.Get("/hone/listening/materials/{id}", transcoder.ServeHTTP)
 		r.Post("/hone/listening/materials/{id}/archive", transcoder.ServeHTTP)
+		r.Post("/hone/listening/youtube", transcoder.ServeHTTP)
+		// User settings (active study mode).
+		r.Get("/hone/settings", transcoder.ServeHTTP)
+		r.Post("/hone/settings/active-track", transcoder.ServeHTTP)
+		r.Post("/hone/settings/english-active", transcoder.ServeHTTP)
+		// External activity logging.
+		r.Post("/hone/external-activity", transcoder.ServeHTTP)
+		r.Get("/hone/external-activity", transcoder.ServeHTTP)
+		r.Post("/hone/external-activity/delete", transcoder.ServeHTTP)
+		r.Get("/hone/external-activity/atlas-topics", transcoder.ServeHTTP)
+		r.Get("/hone/atlas-node-tracks", transcoder.ServeHTTP)
 		cursorSSE.Mount(r)
 	}
 

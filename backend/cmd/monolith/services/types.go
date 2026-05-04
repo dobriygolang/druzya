@@ -91,6 +91,25 @@ type Deps struct {
 	// nil-safe; consumers guard.
 	IntelligenceMemory *intelApp.Memory
 
+	// IntelligenceLinkSuggester — Phase 5 LLM-rerank UC. Hone bootstrap
+	// заворачивает его в honeApp.LinkSuggester adapter и подключает в
+	// hone.app.SuggestNoteLinks. nil-safe: hone-adapter руководит fallback.
+	IntelligenceLinkSuggester *intelApp.SuggestNoteLinks
+
+	// IntelligenceLogResource — Phase 5 reflection auto-link bridge. Hone
+	// bootstrap пишет .NoteCreator на этот pointer после построения своих
+	// notes-repo/embed-fn, чтобы reflection-submitted events создавали
+	// hone_notes row + embedding job. nil-safe: при отсутствии hook'а
+	// LogResource просто пишет запись без note_id (retry не требуется —
+	// reflection стоит сама по себе ценность как event).
+	IntelligenceLogResource *intelApp.LogResource
+
+	// ExternalActivityCoachAppender — Phase pivot 2026-05-02. Hone
+	// AddExternalActivity UC дёргает его чтобы записать coach_episode
+	// kind=external_activity для AI-tutor recall + daily-brief mention.
+	// nil-safe (hone проверяет).
+	ExternalActivityCoachAppender honeDomain.CoachEpisodeAppender
+
 	// StorageGate — Phase C quota guard. Hone оборачивает свои
 	// write-routes (notes/whiteboards POST'ы) этим middleware'ом, чтобы
 	// возвращать 413 quota_exceeded при превышении тарифа. nil-safe:

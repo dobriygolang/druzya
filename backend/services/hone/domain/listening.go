@@ -49,3 +49,22 @@ type ListeningRepo interface {
 	// the row doesn't exist or belongs to another user.
 	ArchiveMaterial(ctx context.Context, userID, materialID uuid.UUID, now time.Time) error
 }
+
+// YouTubeFetcher — pulls auto-captions из YouTube видео. Реализуется через
+// yt-dlp бинарь в monolith infra (не FFmpeg / не Whisper). Если у видео
+// нет captions — возвращает ErrInvalidInput с понятным message.
+type YouTubeFetcher interface {
+	Fetch(ctx context.Context, url, languageHint string) (YouTubeFetchResult, error)
+}
+
+// YouTubeFetchResult — результат успешного pull'а.
+type YouTubeFetchResult struct {
+	// Title видео (если удалось extract'нуть).
+	Title string
+	// Transcript — plain-text версия captions, склеенная line-by-line.
+	Transcript string
+	// CanonicalURL — youtube.com/watch?v=<id> формат для embed'а.
+	CanonicalURL string
+	// LanguageDetected — какой captions track в итоге pulled (en/ru/...).
+	LanguageDetected string
+}

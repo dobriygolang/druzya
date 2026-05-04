@@ -57,64 +57,40 @@ func WireSubscriptionQuota(d *monolithServices.Deps) {
 
 func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 	pg := subInfra.NewPostgres(d.Pool)
-	linkRepo := subInfra.NewLinkPostgres(d.Pool)
 	clk := subDomain.RealClock{}
 
 	getTierUC := subApp.NewGetTier(pg, clk)
 	// Reuse pre-wired SetTier (см. WireSubscriptionQuota) если он есть,
 	// чтобы OnTierChanged hook'и которые набросали другие модули
-	// (NewCopilot et al.) сохранялись. Fallback'ом конструируем свой
-	// для standalone-test'ов / нестандартного wire-up'а.
+	// (NewCopilot et al.) сохранялись.
 	setTierUC := d.SetTierUC
 	if setTierUC == nil {
 		setTierUC = subApp.NewSetTier(pg, clk, d.Log)
 	}
-	linkBoostyUC := subApp.NewLinkBoosty(linkRepo, clk, d.Log)
 	usageReader := subInfra.NewQuotaUsageRepo(d.Pool)
 	configReader := subInfra.NewDynConfigRepo(d.Pool)
 	policyResolver := subApp.NewPolicyResolver(configReader)
 	getQuotaUC := subApp.NewGetQuota(getTierUC, usageReader, policyResolver)
-	// NB: эти три присваивания модифицируют ЛОКАЛЬНУЮ копию `d` —
-	// никакого эффекта на другие модули (см. WireSubscriptionQuota
-	// выше про by-value bug). Оставляем для idempotency: если кто-то
-	// в будущем добавит usage внутри THIS модуля закрытие будет
-	// корректным.
 	d.QuotaResolver = policyResolver
 	d.QuotaTierGetter = getTierUC
 	d.QuotaUsageReader = usageReader
 
 	server := subPorts.NewSubscriptionServer(getTierUC, setTierUC, d.Log)
 	server.GetQuotaUC = getQuotaUC
-	server.LinkBoostyUC = linkBoostyUC
 	connectPath, connectHandler := druz9v1connect.NewSubscriptionServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("subscription", connectPath, connectHandler)
-
-	// Boosty sync: optional — только если оператор выставил credentials.
-	boostyClient := subInfra.NewBoostyClient(subInfra.BoostyClientConfig{
-		AccessToken: d.Cfg.Subscription.BoostyAccessToken,
-		BlogSlug:    d.Cfg.Subscription.BoostyBlogSlug,
-	})
-	var syncUC *subApp.SyncBoosty
-	if boostyClient != nil {
-		src := subInfra.NewBoostySourceAdapter(boostyClient)
-		tierMap := subApp.ParseTierMapping(d.Cfg.Subscription.BoostyTierMapping)
-		if len(tierMap) == 0 {
-			d.Log.Warn("subscription.boosty: BOOSTY_TIER_MAPPING empty — sync will skip all " +
-				"(укажи формат 'Поддержка:pro,Вознёсшийся:max')")
-		}
-		syncUC = subApp.NewSyncBoosty(src, linkRepo, setTierUC, tierMap, d.Log)
-	}
-	server.SyncBoostyUC = syncUC // optional — nil-safe
+	// Pivot 2026-05-01: Boosty sync worker / LinkBoosty UC удалены вместе
+	// с marketplace.
 
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			// All four endpoints flow through the same vanguard transcoder
-			// now (proto: GetQuota, LinkBoosty, AdminBoostySync, AdminSetTier).
-			r.Post("/subscription/boosty/link", transcoder.ServeHTTP)
-			r.Post("/admin/subscriptions/boosty/sync", transcoder.ServeHTTP)
+			// Pivot 2026-05-01: Boosty marketplace выпилен. /subscription/
+			// boosty/link и /admin/subscriptions/boosty/sync REST-aliases
+			// удалены; proto RPCs LinkBoosty/AdminBoostySync остаются до
+			// планового regen-cleanup'а.
 			r.Get("/subscription/quota", transcoder.ServeHTTP)
 			r.Post("/admin/subscriptions/set-tier", transcoder.ServeHTTP)
 		},
@@ -123,16 +99,6 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 			// догоняем то, что накопилось пока мы были down.
 			func(ctx context.Context) {
 				go runMarkExpired(ctx, pg, clk, d.Log)
-			},
-			// Boosty sync: раз в 30 мин. Только если syncUC != nil
-			// (credentials выставлены).
-			func(ctx context.Context) {
-				if syncUC == nil {
-					d.Log.Info("subscription.boosty: sync worker disabled — " +
-						"set BOOSTY_ACCESS_TOKEN+BOOSTY_BLOG_SLUG to enable")
-					return
-				}
-				go runBoostySync(ctx, syncUC, d.Log)
 			},
 		},
 	}
@@ -163,32 +129,3 @@ func runMarkExpired(ctx context.Context, pg *subInfra.Postgres, clk subDomain.Cl
 	}
 }
 
-// runBoostySync — 30-мин cron. Первый tick через 2 мин (даёт api и Boosty
-// прогреться после деплоя). При ошибках продолжает цикл — единичные сбои
-// Boosty не должны killить worker.
-func runBoostySync(ctx context.Context, uc *subApp.SyncBoosty, log *slog.Logger) {
-	warmup := time.NewTimer(2 * time.Minute)
-	defer warmup.Stop()
-	select {
-	case <-ctx.Done():
-		return
-	case <-warmup.C:
-	}
-
-	t := time.NewTicker(30 * time.Minute)
-	defer t.Stop()
-	// First real tick сразу после warmup.
-	if _, err := uc.Do(ctx); err != nil {
-		log.WarnContext(ctx, "subscription.cron.BoostySync: initial", "err", err)
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			if _, err := uc.Do(ctx); err != nil {
-				log.WarnContext(ctx, "subscription.cron.BoostySync", "err", err)
-			}
-		}
-	}
-}

@@ -353,3 +353,40 @@ func looksLikeActionOrBlocker(line string) bool {
 	}
 	return false
 }
+
+// ─── External-activity memory appender ────────────────────────────────────
+
+// NewExternalActivityAppender returns a tiny shim consumed by hone's
+// CoachEpisodeAppender adapter. Это узкий interface (single method
+// AppendExternal) чтобы hone wiring не импортил intelligence/app.
+func NewExternalActivityAppender(m *intelApp.Memory) ExternalAppender {
+	return &externalAppender{memory: m}
+}
+
+// ExternalAppender — exported interface for cross-package use.
+type ExternalAppender interface {
+	AppendExternal(ctx context.Context, userID uuid.UUID, summary string, payload map[string]any, occurredAt time.Time)
+}
+
+type externalAppender struct {
+	memory *intelApp.Memory
+}
+
+func (a *externalAppender) AppendExternal(
+	ctx context.Context,
+	userID uuid.UUID,
+	summary string,
+	payload map[string]any,
+	occurredAt time.Time,
+) {
+	if a.memory == nil {
+		return
+	}
+	a.memory.AppendAsync(ctx, intelApp.AppendInput{
+		UserID:     userID,
+		Kind:       intelDomain.EpisodeExternalActivity,
+		Summary:    summary,
+		Payload:    payload,
+		OccurredAt: occurredAt,
+	})
+}

@@ -1082,6 +1082,1121 @@ func (x *AckInsightResponse) GetOk() bool {
 	return false
 }
 
+// GetNextActionRequest — empty за исключением user-context, который
+// middleware распаковывает из сессии. Поля для будущих фильтров.
+type GetNextActionRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Если true — bypass'нуть daily cache (limited 1/h client-side).
+	Force         bool `protobuf:"varint,1,opt,name=force,proto3" json:"force,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetNextActionRequest) Reset() {
+	*x = GetNextActionRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetNextActionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetNextActionRequest) ProtoMessage() {}
+
+func (x *GetNextActionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetNextActionRequest.ProtoReflect.Descriptor instead.
+func (*GetNextActionRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetNextActionRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
+// NextAction — single concrete next action, formatted из LLM JSON.
+type NextAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// action_kind ∈ focus_block | start_mock | review_resource | reflection |
+	//
+	//	checkpoint | graduation_mock
+	ActionKind string `protobuf:"bytes,1,opt,name=action_kind,json=actionKind,proto3" json:"action_kind,omitempty"`
+	// target — atlas_node_id / track_step_slug / resource_url, semantics
+	// зависит от action_kind.
+	Target           string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	Rationale        string `protobuf:"bytes,3,opt,name=rationale,proto3" json:"rationale,omitempty"`
+	EstimatedMinutes int32  `protobuf:"varint,4,opt,name=estimated_minutes,json=estimatedMinutes,proto3" json:"estimated_minutes,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *NextAction) Reset() {
+	*x = NextAction{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NextAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NextAction) ProtoMessage() {}
+
+func (x *NextAction) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NextAction.ProtoReflect.Descriptor instead.
+func (*NextAction) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *NextAction) GetActionKind() string {
+	if x != nil {
+		return x.ActionKind
+	}
+	return ""
+}
+
+func (x *NextAction) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+func (x *NextAction) GetRationale() string {
+	if x != nil {
+		return x.Rationale
+	}
+	return ""
+}
+
+func (x *NextAction) GetEstimatedMinutes() int32 {
+	if x != nil {
+		return x.EstimatedMinutes
+	}
+	return 0
+}
+
+// GetForkSnapshotRequest — empty.
+type GetForkSnapshotRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetForkSnapshotRequest) Reset() {
+	*x = GetForkSnapshotRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetForkSnapshotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetForkSnapshotRequest) ProtoMessage() {}
+
+func (x *GetForkSnapshotRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetForkSnapshotRequest.ProtoReflect.Descriptor instead.
+func (*GetForkSnapshotRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{17}
+}
+
+// ForkBranchView — per-branch projection.
+type ForkBranchView struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Branch             string                 `protobuf:"bytes,1,opt,name=branch,proto3" json:"branch,omitempty"` // 'mle' | 'de'
+	MockCount          int32                  `protobuf:"varint,2,opt,name=mock_count,json=mockCount,proto3" json:"mock_count,omitempty"`
+	AvgScore           float64                `protobuf:"fixed64,3,opt,name=avg_score,json=avgScore,proto3" json:"avg_score,omitempty"`
+	VoluntaryDeepDives int32                  `protobuf:"varint,4,opt,name=voluntary_deep_dives,json=voluntaryDeepDives,proto3" json:"voluntary_deep_dives,omitempty"`
+	CompositeScore     float64                `protobuf:"fixed64,5,opt,name=composite_score,json=compositeScore,proto3" json:"composite_score,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *ForkBranchView) Reset() {
+	*x = ForkBranchView{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForkBranchView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForkBranchView) ProtoMessage() {}
+
+func (x *ForkBranchView) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForkBranchView.ProtoReflect.Descriptor instead.
+func (*ForkBranchView) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ForkBranchView) GetBranch() string {
+	if x != nil {
+		return x.Branch
+	}
+	return ""
+}
+
+func (x *ForkBranchView) GetMockCount() int32 {
+	if x != nil {
+		return x.MockCount
+	}
+	return 0
+}
+
+func (x *ForkBranchView) GetAvgScore() float64 {
+	if x != nil {
+		return x.AvgScore
+	}
+	return 0
+}
+
+func (x *ForkBranchView) GetVoluntaryDeepDives() int32 {
+	if x != nil {
+		return x.VoluntaryDeepDives
+	}
+	return 0
+}
+
+func (x *ForkBranchView) GetCompositeScore() float64 {
+	if x != nil {
+		return x.CompositeScore
+	}
+	return 0
+}
+
+// ForkSnapshot — Coach fork view (active when mode=='explore').
+type ForkSnapshot struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Mode             string                 `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`                                                    // 'explore' | 'commit' | 'deep'
+	ExploreWeekIndex int32                  `protobuf:"varint,2,opt,name=explore_week_index,json=exploreWeekIndex,proto3" json:"explore_week_index,omitempty"` // 0 если mode != explore
+	CurrentBranch    string                 `protobuf:"bytes,3,opt,name=current_branch,json=currentBranch,proto3" json:"current_branch,omitempty"`             // user's declared lean ('' если none)
+	Branches         []*ForkBranchView      `protobuf:"bytes,4,rep,name=branches,proto3" json:"branches,omitempty"`
+	LeanBranch       string                 `protobuf:"bytes,5,opt,name=lean_branch,json=leanBranch,proto3" json:"lean_branch,omitempty"` // derived best-scoring branch
+	Confidence       float64                `protobuf:"fixed64,6,opt,name=confidence,proto3" json:"confidence,omitempty"`                 // [0..1]
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ForkSnapshot) Reset() {
+	*x = ForkSnapshot{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForkSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForkSnapshot) ProtoMessage() {}
+
+func (x *ForkSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForkSnapshot.ProtoReflect.Descriptor instead.
+func (*ForkSnapshot) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ForkSnapshot) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *ForkSnapshot) GetExploreWeekIndex() int32 {
+	if x != nil {
+		return x.ExploreWeekIndex
+	}
+	return 0
+}
+
+func (x *ForkSnapshot) GetCurrentBranch() string {
+	if x != nil {
+		return x.CurrentBranch
+	}
+	return ""
+}
+
+func (x *ForkSnapshot) GetBranches() []*ForkBranchView {
+	if x != nil {
+		return x.Branches
+	}
+	return nil
+}
+
+func (x *ForkSnapshot) GetLeanBranch() string {
+	if x != nil {
+		return x.LeanBranch
+	}
+	return ""
+}
+
+func (x *ForkSnapshot) GetConfidence() float64 {
+	if x != nil {
+		return x.Confidence
+	}
+	return 0
+}
+
+// SetLearningModeRequest — пользователь выбрал mode в Coach (explore/commit/deep).
+// track_id обязателен для commit/deep, игнорируется для explore.
+type SetLearningModeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Mode          string                 `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`                      // 'explore' | 'commit' | 'deep'
+	TrackId       string                 `protobuf:"bytes,2,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"` // optional, required for commit/deep
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetLearningModeRequest) Reset() {
+	*x = SetLearningModeRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetLearningModeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetLearningModeRequest) ProtoMessage() {}
+
+func (x *SetLearningModeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetLearningModeRequest.ProtoReflect.Descriptor instead.
+func (*SetLearningModeRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SetLearningModeRequest) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *SetLearningModeRequest) GetTrackId() string {
+	if x != nil {
+		return x.TrackId
+	}
+	return ""
+}
+
+// LearningStateView — текущее состояние юзера.
+type LearningStateView struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Mode             string                 `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`
+	ForkBranch       string                 `protobuf:"bytes,2,opt,name=fork_branch,json=forkBranch,proto3" json:"fork_branch,omitempty"` // '' if not chosen
+	ExploreWeekIndex int32                  `protobuf:"varint,3,opt,name=explore_week_index,json=exploreWeekIndex,proto3" json:"explore_week_index,omitempty"`
+	CommittedTrackId string                 `protobuf:"bytes,4,opt,name=committed_track_id,json=committedTrackId,proto3" json:"committed_track_id,omitempty"` // '' if explore
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *LearningStateView) Reset() {
+	*x = LearningStateView{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LearningStateView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LearningStateView) ProtoMessage() {}
+
+func (x *LearningStateView) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LearningStateView.ProtoReflect.Descriptor instead.
+func (*LearningStateView) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *LearningStateView) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *LearningStateView) GetForkBranch() string {
+	if x != nil {
+		return x.ForkBranch
+	}
+	return ""
+}
+
+func (x *LearningStateView) GetExploreWeekIndex() int32 {
+	if x != nil {
+		return x.ExploreWeekIndex
+	}
+	return 0
+}
+
+func (x *LearningStateView) GetCommittedTrackId() string {
+	if x != nil {
+		return x.CommittedTrackId
+	}
+	return ""
+}
+
+// SetForkBranchRequest — пользователь явно выбрал ветку (de/mle/none).
+type SetForkBranchRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Branch        string                 `protobuf:"bytes,1,opt,name=branch,proto3" json:"branch,omitempty"` // 'de' | 'mle' | 'none' | '' to clear
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetForkBranchRequest) Reset() {
+	*x = SetForkBranchRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetForkBranchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetForkBranchRequest) ProtoMessage() {}
+
+func (x *SetForkBranchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetForkBranchRequest.ProtoReflect.Descriptor instead.
+func (*SetForkBranchRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SetForkBranchRequest) GetBranch() string {
+	if x != nil {
+		return x.Branch
+	}
+	return ""
+}
+
+// GetResourceTrailRequest — окно для activity stream.
+type GetResourceTrailRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Days          int32                  `protobuf:"varint,1,opt,name=days,proto3" json:"days,omitempty"`                               // default 7
+	KeepRecent    int32                  `protobuf:"varint,2,opt,name=keep_recent,json=keepRecent,proto3" json:"keep_recent,omitempty"` // default 5 — limit per-bucket
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetResourceTrailRequest) Reset() {
+	*x = GetResourceTrailRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetResourceTrailRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetResourceTrailRequest) ProtoMessage() {}
+
+func (x *GetResourceTrailRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetResourceTrailRequest.ProtoReflect.Descriptor instead.
+func (*GetResourceTrailRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetResourceTrailRequest) GetDays() int32 {
+	if x != nil {
+		return x.Days
+	}
+	return 0
+}
+
+func (x *GetResourceTrailRequest) GetKeepRecent() int32 {
+	if x != nil {
+		return x.KeepRecent
+	}
+	return 0
+}
+
+// ResourceTouch — single event from user_resource_log.
+type ResourceTouch struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Url            string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	AtlasNodeId    string                 `protobuf:"bytes,2,opt,name=atlas_node_id,json=atlasNodeId,proto3" json:"atlas_node_id,omitempty"`
+	Kind           string                 `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"` // clicked|finished|skipped|unhelpful|reflection_submitted
+	OccurredAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
+	HoursAgo       int32                  `protobuf:"varint,5,opt,name=hours_ago,json=hoursAgo,proto3" json:"hours_ago,omitempty"`
+	ReflectionText string                 `protobuf:"bytes,6,opt,name=reflection_text,json=reflectionText,proto3" json:"reflection_text,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ResourceTouch) Reset() {
+	*x = ResourceTouch{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResourceTouch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceTouch) ProtoMessage() {}
+
+func (x *ResourceTouch) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceTouch.ProtoReflect.Descriptor instead.
+func (*ResourceTouch) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ResourceTouch) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *ResourceTouch) GetAtlasNodeId() string {
+	if x != nil {
+		return x.AtlasNodeId
+	}
+	return ""
+}
+
+func (x *ResourceTouch) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *ResourceTouch) GetOccurredAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.OccurredAt
+	}
+	return nil
+}
+
+func (x *ResourceTouch) GetHoursAgo() int32 {
+	if x != nil {
+		return x.HoursAgo
+	}
+	return 0
+}
+
+func (x *ResourceTouch) GetReflectionText() string {
+	if x != nil {
+		return x.ReflectionText
+	}
+	return ""
+}
+
+// ResourceTrail — engagement summary за окно.
+type ResourceTrail struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	FinishedRecent    []*ResourceTouch       `protobuf:"bytes,1,rep,name=finished_recent,json=finishedRecent,proto3" json:"finished_recent,omitempty"`
+	UnfinishedCount   int32                  `protobuf:"varint,2,opt,name=unfinished_count,json=unfinishedCount,proto3" json:"unfinished_count,omitempty"`
+	MarkedUnhelpful   []*ResourceTouch       `protobuf:"bytes,3,rep,name=marked_unhelpful,json=markedUnhelpful,proto3" json:"marked_unhelpful,omitempty"`
+	RecentReflections []*ResourceTouch       `protobuf:"bytes,4,rep,name=recent_reflections,json=recentReflections,proto3" json:"recent_reflections,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ResourceTrail) Reset() {
+	*x = ResourceTrail{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResourceTrail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceTrail) ProtoMessage() {}
+
+func (x *ResourceTrail) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceTrail.ProtoReflect.Descriptor instead.
+func (*ResourceTrail) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ResourceTrail) GetFinishedRecent() []*ResourceTouch {
+	if x != nil {
+		return x.FinishedRecent
+	}
+	return nil
+}
+
+func (x *ResourceTrail) GetUnfinishedCount() int32 {
+	if x != nil {
+		return x.UnfinishedCount
+	}
+	return 0
+}
+
+func (x *ResourceTrail) GetMarkedUnhelpful() []*ResourceTouch {
+	if x != nil {
+		return x.MarkedUnhelpful
+	}
+	return nil
+}
+
+func (x *ResourceTrail) GetRecentReflections() []*ResourceTouch {
+	if x != nil {
+		return x.RecentReflections
+	}
+	return nil
+}
+
+// GetSkillRadarRequest — какой rubric (de | dev_senior | mle | english).
+type GetSkillRadarRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rubric        string                 `protobuf:"bytes,1,opt,name=rubric,proto3" json:"rubric,omitempty"` // optional override; empty = derive из learning_state
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSkillRadarRequest) Reset() {
+	*x = GetSkillRadarRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSkillRadarRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSkillRadarRequest) ProtoMessage() {}
+
+func (x *GetSkillRadarRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSkillRadarRequest.ProtoReflect.Descriptor instead.
+func (*GetSkillRadarRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetSkillRadarRequest) GetRubric() string {
+	if x != nil {
+		return x.Rubric
+	}
+	return ""
+}
+
+// SkillRadarAxis — single axis с score 0..1.
+type SkillRadarAxis struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	Score         float64                `protobuf:"fixed64,3,opt,name=score,proto3" json:"score,omitempty"`                         // 0..1, normalized из ai_report
+	MockCount     int32                  `protobuf:"varint,4,opt,name=mock_count,json=mockCount,proto3" json:"mock_count,omitempty"` // сколько mocks внесли вклад в этот axis
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SkillRadarAxis) Reset() {
+	*x = SkillRadarAxis{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SkillRadarAxis) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SkillRadarAxis) ProtoMessage() {}
+
+func (x *SkillRadarAxis) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SkillRadarAxis.ProtoReflect.Descriptor instead.
+func (*SkillRadarAxis) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SkillRadarAxis) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *SkillRadarAxis) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *SkillRadarAxis) GetScore() float64 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
+}
+
+func (x *SkillRadarAxis) GetMockCount() int32 {
+	if x != nil {
+		return x.MockCount
+	}
+	return 0
+}
+
+// SkillRadar — 5-axis snapshot.
+type SkillRadar struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rubric        string                 `protobuf:"bytes,1,opt,name=rubric,proto3" json:"rubric,omitempty"`
+	Axes          []*SkillRadarAxis      `protobuf:"bytes,2,rep,name=axes,proto3" json:"axes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SkillRadar) Reset() {
+	*x = SkillRadar{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SkillRadar) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SkillRadar) ProtoMessage() {}
+
+func (x *SkillRadar) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SkillRadar.ProtoReflect.Descriptor instead.
+func (*SkillRadar) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *SkillRadar) GetRubric() string {
+	if x != nil {
+		return x.Rubric
+	}
+	return ""
+}
+
+func (x *SkillRadar) GetAxes() []*SkillRadarAxis {
+	if x != nil {
+		return x.Axes
+	}
+	return nil
+}
+
+// GetCoachStatsRequest — header snapshot panel.
+type GetCoachStatsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCoachStatsRequest) Reset() {
+	*x = GetCoachStatsRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCoachStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCoachStatsRequest) ProtoMessage() {}
+
+func (x *GetCoachStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCoachStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetCoachStatsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{29}
+}
+
+// CoachStats — 4 KPI cards для snapshot panel.
+type CoachStats struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	StreakDays      int32                  `protobuf:"varint,1,opt,name=streak_days,json=streakDays,proto3" json:"streak_days,omitempty"`                 // kata streak
+	FocusTodayMin   int32                  `protobuf:"varint,2,opt,name=focus_today_min,json=focusTodayMin,proto3" json:"focus_today_min,omitempty"`      // sum focus minutes today (UTC day)
+	LastMockScore   int32                  `protobuf:"varint,3,opt,name=last_mock_score,json=lastMockScore,proto3" json:"last_mock_score,omitempty"`      // 0..100, 0 if no mocks
+	LastMockSection string                 `protobuf:"bytes,4,opt,name=last_mock_section,json=lastMockSection,proto3" json:"last_mock_section,omitempty"` // 'de' | 'algorithms' | etc — '' if none
+	NextMockInDays  int32                  `protobuf:"varint,5,opt,name=next_mock_in_days,json=nextMockInDays,proto3" json:"next_mock_in_days,omitempty"` // days to next upcoming interview, -1 if none
+	NextMockCompany string                 `protobuf:"bytes,6,opt,name=next_mock_company,json=nextMockCompany,proto3" json:"next_mock_company,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CoachStats) Reset() {
+	*x = CoachStats{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CoachStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CoachStats) ProtoMessage() {}
+
+func (x *CoachStats) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CoachStats.ProtoReflect.Descriptor instead.
+func (*CoachStats) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *CoachStats) GetStreakDays() int32 {
+	if x != nil {
+		return x.StreakDays
+	}
+	return 0
+}
+
+func (x *CoachStats) GetFocusTodayMin() int32 {
+	if x != nil {
+		return x.FocusTodayMin
+	}
+	return 0
+}
+
+func (x *CoachStats) GetLastMockScore() int32 {
+	if x != nil {
+		return x.LastMockScore
+	}
+	return 0
+}
+
+func (x *CoachStats) GetLastMockSection() string {
+	if x != nil {
+		return x.LastMockSection
+	}
+	return ""
+}
+
+func (x *CoachStats) GetNextMockInDays() int32 {
+	if x != nil {
+		return x.NextMockInDays
+	}
+	return 0
+}
+
+func (x *CoachStats) GetNextMockCompany() string {
+	if x != nil {
+		return x.NextMockCompany
+	}
+	return ""
+}
+
+// LogResourceRequest — событие user_resource_log.
+type LogResourceRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	ResourceUrl string                 `protobuf:"bytes,1,opt,name=resource_url,json=resourceUrl,proto3" json:"resource_url,omitempty"`
+	AtlasNodeId string                 `protobuf:"bytes,2,opt,name=atlas_node_id,json=atlasNodeId,proto3" json:"atlas_node_id,omitempty"` // optional
+	// kind ∈ clicked | finished | skipped | unhelpful | reflection_submitted
+	Kind string `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	// reflection_text required только если kind=reflection_submitted.
+	ReflectionText string `protobuf:"bytes,4,opt,name=reflection_text,json=reflectionText,proto3" json:"reflection_text,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *LogResourceRequest) Reset() {
+	*x = LogResourceRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogResourceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogResourceRequest) ProtoMessage() {}
+
+func (x *LogResourceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogResourceRequest.ProtoReflect.Descriptor instead.
+func (*LogResourceRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *LogResourceRequest) GetResourceUrl() string {
+	if x != nil {
+		return x.ResourceUrl
+	}
+	return ""
+}
+
+func (x *LogResourceRequest) GetAtlasNodeId() string {
+	if x != nil {
+		return x.AtlasNodeId
+	}
+	return ""
+}
+
+func (x *LogResourceRequest) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *LogResourceRequest) GetReflectionText() string {
+	if x != nil {
+		return x.ReflectionText
+	}
+	return ""
+}
+
+type LogResourceResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ReflectionNoteId string                 `protobuf:"bytes,2,opt,name=reflection_note_id,json=reflectionNoteId,proto3" json:"reflection_note_id,omitempty"` // empty если note не создана
+	NoteCreateFailed bool                   `protobuf:"varint,3,opt,name=note_create_failed,json=noteCreateFailed,proto3" json:"note_create_failed,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *LogResourceResponse) Reset() {
+	*x = LogResourceResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogResourceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogResourceResponse) ProtoMessage() {}
+
+func (x *LogResourceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogResourceResponse.ProtoReflect.Descriptor instead.
+func (*LogResourceResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *LogResourceResponse) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *LogResourceResponse) GetReflectionNoteId() string {
+	if x != nil {
+		return x.ReflectionNoteId
+	}
+	return ""
+}
+
+func (x *LogResourceResponse) GetNoteCreateFailed() bool {
+	if x != nil {
+		return x.NoteCreateFailed
+	}
+	return false
+}
+
 var File_druz9_v1_intelligence_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_intelligence_proto_rawDesc = "" +
@@ -1153,7 +2268,93 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\"$\n" +
 	"\x12AckInsightResponse\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok*\xe7\x01\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\",\n" +
+	"\x14GetNextActionRequest\x12\x14\n" +
+	"\x05force\x18\x01 \x01(\bR\x05force\"\x90\x01\n" +
+	"\n" +
+	"NextAction\x12\x1f\n" +
+	"\vaction_kind\x18\x01 \x01(\tR\n" +
+	"actionKind\x12\x16\n" +
+	"\x06target\x18\x02 \x01(\tR\x06target\x12\x1c\n" +
+	"\trationale\x18\x03 \x01(\tR\trationale\x12+\n" +
+	"\x11estimated_minutes\x18\x04 \x01(\x05R\x10estimatedMinutes\"\x18\n" +
+	"\x16GetForkSnapshotRequest\"\xbf\x01\n" +
+	"\x0eForkBranchView\x12\x16\n" +
+	"\x06branch\x18\x01 \x01(\tR\x06branch\x12\x1d\n" +
+	"\n" +
+	"mock_count\x18\x02 \x01(\x05R\tmockCount\x12\x1b\n" +
+	"\tavg_score\x18\x03 \x01(\x01R\bavgScore\x120\n" +
+	"\x14voluntary_deep_dives\x18\x04 \x01(\x05R\x12voluntaryDeepDives\x12'\n" +
+	"\x0fcomposite_score\x18\x05 \x01(\x01R\x0ecompositeScore\"\xee\x01\n" +
+	"\fForkSnapshot\x12\x12\n" +
+	"\x04mode\x18\x01 \x01(\tR\x04mode\x12,\n" +
+	"\x12explore_week_index\x18\x02 \x01(\x05R\x10exploreWeekIndex\x12%\n" +
+	"\x0ecurrent_branch\x18\x03 \x01(\tR\rcurrentBranch\x124\n" +
+	"\bbranches\x18\x04 \x03(\v2\x18.druz9.v1.ForkBranchViewR\bbranches\x12\x1f\n" +
+	"\vlean_branch\x18\x05 \x01(\tR\n" +
+	"leanBranch\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\x06 \x01(\x01R\n" +
+	"confidence\"G\n" +
+	"\x16SetLearningModeRequest\x12\x12\n" +
+	"\x04mode\x18\x01 \x01(\tR\x04mode\x12\x19\n" +
+	"\btrack_id\x18\x02 \x01(\tR\atrackId\"\xa4\x01\n" +
+	"\x11LearningStateView\x12\x12\n" +
+	"\x04mode\x18\x01 \x01(\tR\x04mode\x12\x1f\n" +
+	"\vfork_branch\x18\x02 \x01(\tR\n" +
+	"forkBranch\x12,\n" +
+	"\x12explore_week_index\x18\x03 \x01(\x05R\x10exploreWeekIndex\x12,\n" +
+	"\x12committed_track_id\x18\x04 \x01(\tR\x10committedTrackId\".\n" +
+	"\x14SetForkBranchRequest\x12\x16\n" +
+	"\x06branch\x18\x01 \x01(\tR\x06branch\"N\n" +
+	"\x17GetResourceTrailRequest\x12\x12\n" +
+	"\x04days\x18\x01 \x01(\x05R\x04days\x12\x1f\n" +
+	"\vkeep_recent\x18\x02 \x01(\x05R\n" +
+	"keepRecent\"\xdc\x01\n" +
+	"\rResourceTouch\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12\"\n" +
+	"\ratlas_node_id\x18\x02 \x01(\tR\vatlasNodeId\x12\x12\n" +
+	"\x04kind\x18\x03 \x01(\tR\x04kind\x12;\n" +
+	"\voccurred_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"occurredAt\x12\x1b\n" +
+	"\thours_ago\x18\x05 \x01(\x05R\bhoursAgo\x12'\n" +
+	"\x0freflection_text\x18\x06 \x01(\tR\x0ereflectionText\"\x88\x02\n" +
+	"\rResourceTrail\x12@\n" +
+	"\x0ffinished_recent\x18\x01 \x03(\v2\x17.druz9.v1.ResourceTouchR\x0efinishedRecent\x12)\n" +
+	"\x10unfinished_count\x18\x02 \x01(\x05R\x0funfinishedCount\x12B\n" +
+	"\x10marked_unhelpful\x18\x03 \x03(\v2\x17.druz9.v1.ResourceTouchR\x0fmarkedUnhelpful\x12F\n" +
+	"\x12recent_reflections\x18\x04 \x03(\v2\x17.druz9.v1.ResourceTouchR\x11recentReflections\".\n" +
+	"\x14GetSkillRadarRequest\x12\x16\n" +
+	"\x06rubric\x18\x01 \x01(\tR\x06rubric\"m\n" +
+	"\x0eSkillRadarAxis\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\x12\x14\n" +
+	"\x05score\x18\x03 \x01(\x01R\x05score\x12\x1d\n" +
+	"\n" +
+	"mock_count\x18\x04 \x01(\x05R\tmockCount\"R\n" +
+	"\n" +
+	"SkillRadar\x12\x16\n" +
+	"\x06rubric\x18\x01 \x01(\tR\x06rubric\x12,\n" +
+	"\x04axes\x18\x02 \x03(\v2\x18.druz9.v1.SkillRadarAxisR\x04axes\"\x16\n" +
+	"\x14GetCoachStatsRequest\"\x80\x02\n" +
+	"\n" +
+	"CoachStats\x12\x1f\n" +
+	"\vstreak_days\x18\x01 \x01(\x05R\n" +
+	"streakDays\x12&\n" +
+	"\x0ffocus_today_min\x18\x02 \x01(\x05R\rfocusTodayMin\x12&\n" +
+	"\x0flast_mock_score\x18\x03 \x01(\x05R\rlastMockScore\x12*\n" +
+	"\x11last_mock_section\x18\x04 \x01(\tR\x0flastMockSection\x12)\n" +
+	"\x11next_mock_in_days\x18\x05 \x01(\x05R\x0enextMockInDays\x12*\n" +
+	"\x11next_mock_company\x18\x06 \x01(\tR\x0fnextMockCompany\"\x98\x01\n" +
+	"\x12LogResourceRequest\x12!\n" +
+	"\fresource_url\x18\x01 \x01(\tR\vresourceUrl\x12\"\n" +
+	"\ratlas_node_id\x18\x02 \x01(\tR\vatlasNodeId\x12\x12\n" +
+	"\x04kind\x18\x03 \x01(\tR\x04kind\x12'\n" +
+	"\x0freflection_text\x18\x04 \x01(\tR\x0ereflectionText\"\x81\x01\n" +
+	"\x13LogResourceResponse\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12,\n" +
+	"\x12reflection_note_id\x18\x02 \x01(\tR\x10reflectionNoteId\x12,\n" +
+	"\x12note_create_failed\x18\x03 \x01(\bR\x10noteCreateFailed*\xe7\x01\n" +
 	"\x17BriefRecommendationKind\x12)\n" +
 	"%BRIEF_RECOMMENDATION_KIND_UNSPECIFIED\x10\x00\x12'\n" +
 	"#BRIEF_RECOMMENDATION_KIND_TINY_TASK\x10\x01\x12&\n" +
@@ -1165,7 +2366,7 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x17INSIGHT_SEVERITY_CRUISE\x10\x01\x12\x1a\n" +
 	"\x16INSIGHT_SEVERITY_NUDGE\x10\x02\x12\x19\n" +
 	"\x15INSIGHT_SEVERITY_WARN\x10\x03\x12\x1d\n" +
-	"\x19INSIGHT_SEVERITY_CRITICAL\x10\x042\xe1\x05\n" +
+	"\x19INSIGHT_SEVERITY_CRITICAL\x10\x042\xa3\r\n" +
 	"\x13IntelligenceService\x12r\n" +
 	"\rGetDailyBrief\x12\x1e.druz9.v1.GetDailyBriefRequest\x1a\x14.druz9.v1.DailyBrief\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/intelligence/daily-brief\x12e\n" +
 	"\bAskNotes\x12\x19.druz9.v1.AskNotesRequest\x1a\x13.druz9.v1.AskAnswer\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/intelligence/ask-notes\x12\x87\x01\n" +
@@ -1173,7 +2374,15 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x0eGetMemoryStats\x12\x1f.druz9.v1.GetMemoryStatsRequest\x1a\x15.druz9.v1.MemoryStats\")\x82\xd3\xe4\x93\x02#\x12!/api/v1/intelligence/memory/stats\x12t\n" +
 	"\fListInsights\x12\x1d.druz9.v1.ListInsightsRequest\x1a\x1e.druz9.v1.ListInsightsResponse\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/v1/intelligence/insights\x12z\n" +
 	"\n" +
-	"AckInsight\x12\x1b.druz9.v1.AckInsightRequest\x1a\x1c.druz9.v1.AckInsightResponse\"1\x82\xd3\xe4\x93\x02+:\x01*\"&/api/v1/intelligence/insights/{id}/ackB\x8e\x01\n" +
+	"AckInsight\x12\x1b.druz9.v1.AckInsightRequest\x1a\x1c.druz9.v1.AckInsightResponse\"1\x82\xd3\xe4\x93\x02+:\x01*\"&/api/v1/intelligence/insights/{id}/ack\x12r\n" +
+	"\rGetNextAction\x12\x1e.druz9.v1.GetNextActionRequest\x1a\x14.druz9.v1.NextAction\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/intelligence/next-action\x12w\n" +
+	"\x0fGetForkSnapshot\x12 .druz9.v1.GetForkSnapshotRequest\x1a\x16.druz9.v1.ForkSnapshot\"*\x82\xd3\xe4\x93\x02$\x12\"/api/v1/intelligence/fork-snapshot\x12x\n" +
+	"\vLogResource\x12\x1c.druz9.v1.LogResourceRequest\x1a\x1d.druz9.v1.LogResourceResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/intelligence/resource-log\x12\x7f\n" +
+	"\x0fSetLearningMode\x12 .druz9.v1.SetLearningModeRequest\x1a\x1b.druz9.v1.LearningStateView\"-\x82\xd3\xe4\x93\x02':\x01*\"\"/api/v1/intelligence/learning-mode\x12y\n" +
+	"\rSetForkBranch\x12\x1e.druz9.v1.SetForkBranchRequest\x1a\x1b.druz9.v1.LearningStateView\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/intelligence/fork-branch\x12{\n" +
+	"\x10GetResourceTrail\x12!.druz9.v1.GetResourceTrailRequest\x1a\x17.druz9.v1.ResourceTrail\"+\x82\xd3\xe4\x93\x02%\x12#/api/v1/intelligence/resource-trail\x12o\n" +
+	"\rGetSkillRadar\x12\x1e.druz9.v1.GetSkillRadarRequest\x1a\x14.druz9.v1.SkillRadar\"(\x82\xd3\xe4\x93\x02\"\x12 /api/v1/intelligence/skill-radar\x12o\n" +
+	"\rGetCoachStats\x12\x1e.druz9.v1.GetCoachStatsRequest\x1a\x14.druz9.v1.CoachStats\"(\x82\xd3\xe4\x93\x02\"\x12 /api/v1/intelligence/coach-statsB\x8e\x01\n" +
 	"\fcom.druz9.v1B\x11IntelligenceProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -1189,7 +2398,7 @@ func file_druz9_v1_intelligence_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_intelligence_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_druz9_v1_intelligence_proto_goTypes = []any{
 	(BriefRecommendationKind)(0),      // 0: druz9.v1.BriefRecommendationKind
 	(InsightSeverity)(0),              // 1: druz9.v1.InsightSeverity
@@ -1208,37 +2417,77 @@ var file_druz9_v1_intelligence_proto_goTypes = []any{
 	(*ListInsightsResponse)(nil),      // 14: druz9.v1.ListInsightsResponse
 	(*AckInsightRequest)(nil),         // 15: druz9.v1.AckInsightRequest
 	(*AckInsightResponse)(nil),        // 16: druz9.v1.AckInsightResponse
-	nil,                               // 17: druz9.v1.MemoryStats.ByKindEntry
-	(*timestamppb.Timestamp)(nil),     // 18: google.protobuf.Timestamp
+	(*GetNextActionRequest)(nil),      // 17: druz9.v1.GetNextActionRequest
+	(*NextAction)(nil),                // 18: druz9.v1.NextAction
+	(*GetForkSnapshotRequest)(nil),    // 19: druz9.v1.GetForkSnapshotRequest
+	(*ForkBranchView)(nil),            // 20: druz9.v1.ForkBranchView
+	(*ForkSnapshot)(nil),              // 21: druz9.v1.ForkSnapshot
+	(*SetLearningModeRequest)(nil),    // 22: druz9.v1.SetLearningModeRequest
+	(*LearningStateView)(nil),         // 23: druz9.v1.LearningStateView
+	(*SetForkBranchRequest)(nil),      // 24: druz9.v1.SetForkBranchRequest
+	(*GetResourceTrailRequest)(nil),   // 25: druz9.v1.GetResourceTrailRequest
+	(*ResourceTouch)(nil),             // 26: druz9.v1.ResourceTouch
+	(*ResourceTrail)(nil),             // 27: druz9.v1.ResourceTrail
+	(*GetSkillRadarRequest)(nil),      // 28: druz9.v1.GetSkillRadarRequest
+	(*SkillRadarAxis)(nil),            // 29: druz9.v1.SkillRadarAxis
+	(*SkillRadar)(nil),                // 30: druz9.v1.SkillRadar
+	(*GetCoachStatsRequest)(nil),      // 31: druz9.v1.GetCoachStatsRequest
+	(*CoachStats)(nil),                // 32: druz9.v1.CoachStats
+	(*LogResourceRequest)(nil),        // 33: druz9.v1.LogResourceRequest
+	(*LogResourceResponse)(nil),       // 34: druz9.v1.LogResourceResponse
+	nil,                               // 35: druz9.v1.MemoryStats.ByKindEntry
+	(*timestamppb.Timestamp)(nil),     // 36: google.protobuf.Timestamp
 }
 var file_druz9_v1_intelligence_proto_depIdxs = []int32{
 	0,  // 0: druz9.v1.BriefRecommendation.kind:type_name -> druz9.v1.BriefRecommendationKind
 	2,  // 1: druz9.v1.DailyBrief.recommendations:type_name -> druz9.v1.BriefRecommendation
-	18, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
+	36, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
 	1,  // 3: druz9.v1.DailyBrief.severity:type_name -> druz9.v1.InsightSeverity
-	17, // 4: druz9.v1.MemoryStats.by_kind:type_name -> druz9.v1.MemoryStats.ByKindEntry
+	35, // 4: druz9.v1.MemoryStats.by_kind:type_name -> druz9.v1.MemoryStats.ByKindEntry
 	9,  // 5: druz9.v1.AskAnswer.citations:type_name -> druz9.v1.Citation
 	1,  // 6: druz9.v1.Insight.severity:type_name -> druz9.v1.InsightSeverity
-	18, // 7: druz9.v1.Insight.generated_at:type_name -> google.protobuf.Timestamp
-	18, // 8: druz9.v1.Insight.expires_at:type_name -> google.protobuf.Timestamp
+	36, // 7: druz9.v1.Insight.generated_at:type_name -> google.protobuf.Timestamp
+	36, // 8: druz9.v1.Insight.expires_at:type_name -> google.protobuf.Timestamp
 	12, // 9: druz9.v1.ListInsightsResponse.items:type_name -> druz9.v1.Insight
-	8,  // 10: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
-	11, // 11: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
-	4,  // 12: druz9.v1.IntelligenceService.AckRecommendation:input_type -> druz9.v1.AckRecommendationRequest
-	7,  // 13: druz9.v1.IntelligenceService.GetMemoryStats:input_type -> druz9.v1.GetMemoryStatsRequest
-	13, // 14: druz9.v1.IntelligenceService.ListInsights:input_type -> druz9.v1.ListInsightsRequest
-	15, // 15: druz9.v1.IntelligenceService.AckInsight:input_type -> druz9.v1.AckInsightRequest
-	3,  // 16: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
-	10, // 17: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
-	5,  // 18: druz9.v1.IntelligenceService.AckRecommendation:output_type -> druz9.v1.AckRecommendationResponse
-	6,  // 19: druz9.v1.IntelligenceService.GetMemoryStats:output_type -> druz9.v1.MemoryStats
-	14, // 20: druz9.v1.IntelligenceService.ListInsights:output_type -> druz9.v1.ListInsightsResponse
-	16, // 21: druz9.v1.IntelligenceService.AckInsight:output_type -> druz9.v1.AckInsightResponse
-	16, // [16:22] is the sub-list for method output_type
-	10, // [10:16] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	20, // 10: druz9.v1.ForkSnapshot.branches:type_name -> druz9.v1.ForkBranchView
+	36, // 11: druz9.v1.ResourceTouch.occurred_at:type_name -> google.protobuf.Timestamp
+	26, // 12: druz9.v1.ResourceTrail.finished_recent:type_name -> druz9.v1.ResourceTouch
+	26, // 13: druz9.v1.ResourceTrail.marked_unhelpful:type_name -> druz9.v1.ResourceTouch
+	26, // 14: druz9.v1.ResourceTrail.recent_reflections:type_name -> druz9.v1.ResourceTouch
+	29, // 15: druz9.v1.SkillRadar.axes:type_name -> druz9.v1.SkillRadarAxis
+	8,  // 16: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
+	11, // 17: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
+	4,  // 18: druz9.v1.IntelligenceService.AckRecommendation:input_type -> druz9.v1.AckRecommendationRequest
+	7,  // 19: druz9.v1.IntelligenceService.GetMemoryStats:input_type -> druz9.v1.GetMemoryStatsRequest
+	13, // 20: druz9.v1.IntelligenceService.ListInsights:input_type -> druz9.v1.ListInsightsRequest
+	15, // 21: druz9.v1.IntelligenceService.AckInsight:input_type -> druz9.v1.AckInsightRequest
+	17, // 22: druz9.v1.IntelligenceService.GetNextAction:input_type -> druz9.v1.GetNextActionRequest
+	19, // 23: druz9.v1.IntelligenceService.GetForkSnapshot:input_type -> druz9.v1.GetForkSnapshotRequest
+	33, // 24: druz9.v1.IntelligenceService.LogResource:input_type -> druz9.v1.LogResourceRequest
+	22, // 25: druz9.v1.IntelligenceService.SetLearningMode:input_type -> druz9.v1.SetLearningModeRequest
+	24, // 26: druz9.v1.IntelligenceService.SetForkBranch:input_type -> druz9.v1.SetForkBranchRequest
+	25, // 27: druz9.v1.IntelligenceService.GetResourceTrail:input_type -> druz9.v1.GetResourceTrailRequest
+	28, // 28: druz9.v1.IntelligenceService.GetSkillRadar:input_type -> druz9.v1.GetSkillRadarRequest
+	31, // 29: druz9.v1.IntelligenceService.GetCoachStats:input_type -> druz9.v1.GetCoachStatsRequest
+	3,  // 30: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
+	10, // 31: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
+	5,  // 32: druz9.v1.IntelligenceService.AckRecommendation:output_type -> druz9.v1.AckRecommendationResponse
+	6,  // 33: druz9.v1.IntelligenceService.GetMemoryStats:output_type -> druz9.v1.MemoryStats
+	14, // 34: druz9.v1.IntelligenceService.ListInsights:output_type -> druz9.v1.ListInsightsResponse
+	16, // 35: druz9.v1.IntelligenceService.AckInsight:output_type -> druz9.v1.AckInsightResponse
+	18, // 36: druz9.v1.IntelligenceService.GetNextAction:output_type -> druz9.v1.NextAction
+	21, // 37: druz9.v1.IntelligenceService.GetForkSnapshot:output_type -> druz9.v1.ForkSnapshot
+	34, // 38: druz9.v1.IntelligenceService.LogResource:output_type -> druz9.v1.LogResourceResponse
+	23, // 39: druz9.v1.IntelligenceService.SetLearningMode:output_type -> druz9.v1.LearningStateView
+	23, // 40: druz9.v1.IntelligenceService.SetForkBranch:output_type -> druz9.v1.LearningStateView
+	27, // 41: druz9.v1.IntelligenceService.GetResourceTrail:output_type -> druz9.v1.ResourceTrail
+	30, // 42: druz9.v1.IntelligenceService.GetSkillRadar:output_type -> druz9.v1.SkillRadar
+	32, // 43: druz9.v1.IntelligenceService.GetCoachStats:output_type -> druz9.v1.CoachStats
+	30, // [30:44] is the sub-list for method output_type
+	16, // [16:30] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_intelligence_proto_init() }
@@ -1252,7 +2501,7 @@ func file_druz9_v1_intelligence_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_intelligence_proto_rawDesc), len(file_druz9_v1_intelligence_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   16,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

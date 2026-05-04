@@ -24,12 +24,16 @@ const (
 	ReadingSourceURL   ReadingSourceKind = "url"
 	ReadingSourcePDF   ReadingSourceKind = "pdf"
 	ReadingSourceEPUB  ReadingSourceKind = "epub"
+	// ReadingSourceBook — физическая книга. body_md обычно пустой
+	// (юзер читает offline), progress трекается через book_chapter +
+	// book_total_chapters.
+	ReadingSourceBook ReadingSourceKind = "book"
 )
 
 // IsValid keeps switches downstream exhaustive.
 func (k ReadingSourceKind) IsValid() bool {
 	switch k {
-	case ReadingSourcePaste, ReadingSourceURL, ReadingSourcePDF, ReadingSourceEPUB:
+	case ReadingSourcePaste, ReadingSourceURL, ReadingSourcePDF, ReadingSourceEPUB, ReadingSourceBook:
 		return true
 	}
 	return false
@@ -46,6 +50,11 @@ type ReadingMaterial struct {
 	Title      string
 	BodyMD     string
 	TotalChars int
+	// Book-only progress tracking (Wave 2026-05-03). Для SourceKind=book
+	// body_md обычно пустой — юзер читает offline; chapter+total_chapters
+	// дают visual progress в UI. Nil для не-book material'ов.
+	BookChapter        *int
+	BookTotalChapters  *int
 	ArchivedAt *time.Time // soft-delete; nil = active
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -110,6 +119,11 @@ type ReadingRepo interface {
 	// ArchiveMaterial soft-deletes a material. Returns ErrNotFound
 	// if the row doesn't exist or belongs to another user.
 	ArchiveMaterial(ctx context.Context, userID, materialID uuid.UUID, now time.Time) error
+
+	// UpdateBookProgress — bumps book_chapter (и optionally
+	// total_chapters если поменял). Только для SourceKind=book.
+	// chapter — nullable для «снять» прогресс. Total — nullable.
+	UpdateBookProgress(ctx context.Context, userID, materialID uuid.UUID, chapter, total *int) (ReadingMaterial, error)
 
 	// StartSession creates a hone_reading_sessions row and returns
 	// it (with ID stamped). chars_total is captured from the

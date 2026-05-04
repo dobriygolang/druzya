@@ -44,6 +44,11 @@ const (
 	// week. Coach reads these instead of raw episode storms beyond the
 	// 7-day fresh window so prompt-bloat stays bounded.
 	EpisodeWeeklyMemorySummary EpisodeKind = "weekly_memory_summary"
+	// EpisodeExternalActivity — структурированный лог обучения вне druz9
+	// (LeetCode / Coursera / YouTube / книги). Пишется hone'ом из
+	// AddExternalActivity UC как fire-and-forget side-effect, чтобы AI-tutor
+	// recall + daily-brief видели эти эпизоды как часть коач-памяти.
+	EpisodeExternalActivity EpisodeKind = "external_activity"
 )
 
 // IsValid powers exhaustive switches and runtime guards.
@@ -55,7 +60,7 @@ func (k EpisodeKind) IsValid() bool {
 		EpisodePlanSkipped, EpisodePlanCompleted,
 		EpisodeNoteCreated, EpisodeFocusSessionDone,
 		EpisodeMockPipelineFinished, EpisodeCodexArticleOpened, EpisodeCueConversationMemory,
-		EpisodeWeeklyMemorySummary:
+		EpisodeWeeklyMemorySummary, EpisodeExternalActivity:
 		return true
 	}
 	return false

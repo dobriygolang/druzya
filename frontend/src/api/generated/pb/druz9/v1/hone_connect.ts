@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddListeningMaterialRequest, AddQueueItemRequest, AddReadingMaterialRequest, AddTaskCommentRequest, AddVocabRequest, ArchiveListeningMaterialRequest, ArchiveListeningMaterialResponse, ArchiveReadingMaterialRequest, ArchiveReadingMaterialResponse, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, EndReadingSessionRequest, EndReadingSessionResponse, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetListeningMaterialRequest, GetNoteConnectionsRequest, GetNoteRequest, GetReadingMaterialRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, GradeCodeReviewRequest, GradeCodeReviewResponse, GradeEnglishWritingRequest, GradeEnglishWritingResponse, ImportCueSessionRequest, ListCueSessionsRequest, ListCueSessionsResponse, ListeningMaterial, ListFoldersRequest, ListFoldersResponse, ListListeningMaterialsRequest, ListListeningMaterialsResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListReadingMaterialsRequest, ListReadingMaterialsResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListVocabBySourceMaterialRequest, ListVocabDueRequest, ListVocabDueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, ReadingMaterial, ReadingSession, RecordStandupRequest, RecordStandupResponse, ReviewVocabRequest, SaveCritiqueAsNoteRequest, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, StartReadingSessionRequest, Stats, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, VocabEntry, Whiteboard } from "./hone_pb.js";
+import { AddExternalActivityRequest, AddListeningMaterialRequest, AddQueueItemRequest, AddReadingMaterialRequest, AddTaskCommentRequest, AddVocabRequest, ArchiveListeningMaterialRequest, ArchiveListeningMaterialResponse, ArchiveReadingMaterialRequest, ArchiveReadingMaterialResponse, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteExternalActivityRequest, DeleteExternalActivityResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, EndReadingSessionRequest, EndReadingSessionResponse, ExternalActivity, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetListeningMaterialRequest, GetNoteConnectionsRequest, GetNoteRequest, GetReadingMaterialRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetUserSettingsRequest, GetWhiteboardRequest, GradeCodeReviewRequest, GradeCodeReviewResponse, GradeEnglishWritingRequest, GradeEnglishWritingResponse, ImportCueSessionRequest, IngestYouTubeListeningRequest, ListAtlasNodeTracksRequest, ListAtlasNodeTracksResponse, ListCueSessionsRequest, ListCueSessionsResponse, ListeningMaterial, ListExternalActivityRequest, ListExternalActivityResponse, ListFoldersRequest, ListFoldersResponse, ListListeningMaterialsRequest, ListListeningMaterialsResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListReadingMaterialsRequest, ListReadingMaterialsResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListVocabBySourceMaterialRequest, ListVocabDueRequest, ListVocabDueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, ReadingMaterial, ReadingSession, RecordStandupRequest, RecordStandupResponse, ReviewVocabRequest, SaveCritiqueAsNoteRequest, SearchAtlasTopicsRequest, SearchAtlasTopicsResponse, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, SetActiveTrackRequest, SetEnglishActiveRequest, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, StartReadingSessionRequest, Stats, SuggestNoteLinksRequest, SuggestNoteLinksResponse, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateBookProgressRequest, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, UserSettings, VocabEntry, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -202,6 +202,15 @@ export const HoneService = {
       I: GetNoteConnectionsRequest,
       O: Connection,
       kind: MethodKind.ServerStreaming,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.SuggestNoteLinks
+     */
+    suggestNoteLinks: {
+      name: "SuggestNoteLinks",
+      I: SuggestNoteLinksRequest,
+      O: SuggestNoteLinksResponse,
+      kind: MethodKind.Unary,
     },
     /**
      * ─── Folders ────────────────────────────────────────────────────────
@@ -504,6 +513,15 @@ export const HoneService = {
       kind: MethodKind.Unary,
     },
     /**
+     * @generated from rpc druz9.v1.HoneService.UpdateBookProgress
+     */
+    updateBookProgress: {
+      name: "UpdateBookProgress",
+      I: UpdateBookProgressRequest,
+      O: ReadingMaterial,
+      kind: MethodKind.Unary,
+    },
+    /**
      * @generated from rpc druz9.v1.HoneService.ListReadingMaterials
      */
     listReadingMaterials: {
@@ -602,6 +620,20 @@ export const HoneService = {
       kind: MethodKind.Unary,
     },
     /**
+     * IngestYouTubeListening — paste YouTube URL, backend extract'ит auto-
+     * captions через yt-dlp + создаёт ListeningMaterial. Sergey 2026-05-03:
+     * «listening странный, надо самому искать транскрибацию хотя видео из
+     * тюба». Если captions нет — возвращает ErrInvalidInput с подсказкой.
+     *
+     * @generated from rpc druz9.v1.HoneService.IngestYouTubeListening
+     */
+    ingestYouTubeListening: {
+      name: "IngestYouTubeListening",
+      I: IngestYouTubeListeningRequest,
+      O: ListeningMaterial,
+      kind: MethodKind.Unary,
+    },
+    /**
      * @generated from rpc druz9.v1.HoneService.ListListeningMaterials
      */
     listListeningMaterials: {
@@ -641,6 +673,95 @@ export const HoneService = {
       name: "GradeEnglishWriting",
       I: GradeEnglishWritingRequest,
       O: GradeEnglishWritingResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── External activity log (structured form, Hone Stats) ────────
+     * Юзер логирует обучение вне druz9 (LeetCode / Coursera / YouTube /
+     * книги). Без чата — structured form, source dropdown + topic
+     * autocomplete по atlas-узлам. Intelligence-service подтягивает
+     * эти записи в snapshot для AI-tutor recall.
+     *
+     * @generated from rpc druz9.v1.HoneService.AddExternalActivity
+     */
+    addExternalActivity: {
+      name: "AddExternalActivity",
+      I: AddExternalActivityRequest,
+      O: ExternalActivity,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ListExternalActivity
+     */
+    listExternalActivity: {
+      name: "ListExternalActivity",
+      I: ListExternalActivityRequest,
+      O: ListExternalActivityResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.DeleteExternalActivity
+     */
+    deleteExternalActivity: {
+      name: "DeleteExternalActivity",
+      I: DeleteExternalActivityRequest,
+      O: DeleteExternalActivityResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Atlas-node autocomplete для topic-поля. Возвращает top-N узлов по
+     * similarity к prefix'у. Нет ML — fast trigram / LIKE на title.
+     *
+     * @generated from rpc druz9.v1.HoneService.SearchAtlasTopics
+     */
+    searchAtlasTopics: {
+      name: "SearchAtlasTopics",
+      I: SearchAtlasTopicsRequest,
+      O: SearchAtlasTopicsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Lookup table {atlas_node_id → track_kind} для client-side фильтра
+     * Plan / Tasks / Queue по active_track. Маленький payload (~50-100
+     * узлов), кешируется на 5 мин.
+     *
+     * @generated from rpc druz9.v1.HoneService.ListAtlasNodeTracks
+     */
+    listAtlasNodeTracks: {
+      name: "ListAtlasNodeTracks",
+      I: ListAtlasNodeTracksRequest,
+      O: ListAtlasNodeTracksResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── User settings (active study mode) ───────────────────────────
+     * Active track gates content surfaces (Plan / Tasks / Reading / AI-tutor
+     * thread) per-user. Values: general | dev | ml | english | go.
+     *
+     * @generated from rpc druz9.v1.HoneService.GetUserSettings
+     */
+    getUserSettings: {
+      name: "GetUserSettings",
+      I: GetUserSettingsRequest,
+      O: UserSettings,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.SetActiveTrack
+     */
+    setActiveTrack: {
+      name: "SetActiveTrack",
+      I: SetActiveTrackRequest,
+      O: UserSettings,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.SetEnglishActive
+     */
+    setEnglishActive: {
+      name: "SetEnglishActive",
+      I: SetEnglishActiveRequest,
+      O: UserSettings,
       kind: MethodKind.Unary,
     },
     /**

@@ -2,35 +2,28 @@ go 1.25.6
 
 use (
 	./backend/cmd/monolith
+	./backend/cmd/seed_resources
 	./backend/services/admin
 	./backend/services/ai_mock
-	./backend/services/arena
+	./backend/services/ai_tutor
 	./backend/services/auth
-	./backend/services/calendar
 	./backend/services/circles
 	./backend/services/copilot
-	./backend/services/daily
+	./backend/services/curation
 	./backend/services/documents
 	./backend/services/editor
-	./backend/services/events
-	./backend/services/feed
 	./backend/services/hone
 	./backend/services/intelligence
-	./backend/services/lobby
+	./backend/services/learning_state
 	./backend/services/mock_interview
 	./backend/services/notify
 	./backend/services/podcast
 	./backend/services/profile
-	./backend/services/quiz
-	./backend/services/rating
-	./backend/services/review
-	./backend/services/slot
+	./backend/services/rooms
 	./backend/services/storage
 	./backend/services/subscription
 	./backend/services/sync
-	./backend/services/clubs
 	./backend/services/tracks
-	./backend/services/tg_coach
 	./backend/services/tutor
 	./backend/services/transcription
 	./backend/services/vacancies

@@ -21,7 +21,7 @@ export default function Step1Welcome() {
     setStep(2)
     nav('/onboarding/class')
   }
-  const defer = () => nav('/sanctum?onboarding=deferred')
+  const defer = () => nav('/atlas?onboarding=deferred')
 
   return (
     <OnboardingLayout step={1}>

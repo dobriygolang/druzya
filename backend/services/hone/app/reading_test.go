@@ -45,6 +45,10 @@ func (f fakeReadingRepo) ArchiveMaterial(ctx context.Context, u, m uuid.UUID, n 
 	return f.archive(ctx, u, m, n)
 }
 
+func (f fakeReadingRepo) UpdateBookProgress(ctx context.Context, u, m uuid.UUID, ch, tot *int) (domain.ReadingMaterial, error) {
+	return domain.ReadingMaterial{ID: m, UserID: u, BookChapter: ch, BookTotalChapters: tot}, nil
+}
+
 func (f fakeReadingRepo) StartSession(ctx context.Context, u, m uuid.UUID) (domain.ReadingSession, error) {
 	return f.startSess(ctx, u, m)
 }

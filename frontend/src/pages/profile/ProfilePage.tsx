@@ -1,6 +1,35 @@
-import { useState } from 'react'
+// ProfilePage — pivot 2026-05-02 redesign.
+//
+// Старая страница строилась под arena rating system (GPS / Vessel / Lv /
+// matches / brones). После pivot 2026-05-01 arena/lobby/rating выпилены —
+// эти carды стали мёртвой UX'ой («у тебя 0 матчей и Lv 24 ни от чего»).
+//
+// Новая identity: AI-coach + free tutor-toolkit + mock prep. Profile —
+// «дашборд подготовки»:
+//   1. Header: имя, аватар, member-since, settings link
+//   2. Active study mode (general / dev / ml / english / go) с CTA сменить
+//   3. AI-tutors — adopted персоны со ссылкой на чат
+//   4. Quick links — /mock, /tasks, /atlas, /codex, /vacancies
+//   5. Weekly report
+//
+// Старые компоненты ProfileHeader/ProfileOverview/ProfilePanels оставлены
+// в директории как legacy (могут пригодиться при реактивации какой-нибудь
+// части); ничего нового на них не вешаем.
+
 import { useTranslation } from 'react-i18next'
 import { useParams, Link } from 'react-router-dom'
+import {
+  ArrowRight,
+  BookOpen,
+  Brain,
+  Briefcase,
+  ListChecks,
+  Map as MapIcon,
+  Settings as SettingsIcon,
+  Sparkles,
+  Target,
+} from 'lucide-react'
+
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
 import {
@@ -9,40 +38,52 @@ import {
   type Profile,
   type PublicProfile,
 } from '../../lib/queries/profile'
-import { useRatingMeQuery } from '../../lib/queries/rating'
+import { useActiveStudyModeQuery, type ActiveTrack } from '../../lib/queries/honeSettings'
+import {
+  useMyAITutorThreadsQuery,
+  useAITutorPersonasQuery,
+  type AITutorPersona,
+} from '../../lib/queries/aiTutor'
+import {
+  useMyTutorsQuery,
+  usePendingInvitesForMeQuery,
+  useAcceptInviteMutation,
+} from '../../lib/queries/tutor'
 import { ApiError } from '../../lib/apiClient'
-import { Hero, ProfileTabBar } from './ProfileHeader'
-import {
-  CohortCard,
-  Leaderboard,
-  SkillsCard,
-} from './ProfileOverview'
-import {
-  CirclesPanel,
-  MatchesPanel,
-  StatsPanel,
-} from './ProfilePanels'
-import { BookingsPanel } from './BookingsPanel'
-import { toViewModel, type ProfileTab } from './viewModel'
+
+const TRACK_LABELS: Record<ActiveTrack, { label: string; hint: string }> = {
+  general: {
+    label: 'General',
+    hint: 'Без фильтра по треку — видишь весь контент Hone и атласа.',
+  },
+  dev: {
+    label: 'Dev (Go senior)',
+    hint: 'Подготовка к собесу на senior Go-разработчика. Algorithms, system design, distributed.',
+  },
+  english: {
+    label: 'English',
+    hint: 'Speaking + writing для tech-собесов. Clarity / accuracy / range / fluency.',
+  },
+  go: {
+    label: 'Go deep',
+    hint: 'Sub-mode для senior Go-разрабов: runtime, scheduler, GC, profiling, distributed.',
+  },
+}
 
 // ── states ─────────────────────────────────────────────────────────────────
 
 function ProfileSkeleton() {
   return (
     <AppShellV2>
-      <div
-        className="px-4 py-6 sm:px-8 lg:px-10"
-        style={{ minHeight: 220, background: '#0A0A0A' }}
-        aria-busy="true"
-        aria-label="loading profile"
-      >
-        <div className="h-24 w-24 animate-pulse rounded-full bg-white/20" />
-        <div className="mt-4 h-6 w-40 animate-pulse rounded bg-white/20" />
-        <div className="mt-2 h-4 w-64 animate-pulse rounded bg-white/15" />
-      </div>
-      <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:flex-row lg:px-10 lg:py-8">
-        <div className="h-72 w-full animate-pulse rounded-xl bg-surface-2 lg:w-[380px]" />
-        <div className="h-72 flex-1 animate-pulse rounded-xl bg-surface-2" />
+      <div className="mx-auto w-full max-w-4xl animate-pulse px-4 py-10 sm:px-8 sm:py-14">
+        <div className="h-24 w-24 rounded-full bg-surface-2" />
+        <div className="mt-5 h-7 w-48 rounded bg-surface-2" />
+        <div className="mt-2 h-4 w-72 rounded bg-surface-2" />
+        <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="h-44 rounded-xl bg-surface-2" />
+          <div className="h-44 rounded-xl bg-surface-2" />
+          <div className="h-44 rounded-xl bg-surface-2 sm:col-span-2" />
+        </div>
       </div>
     </AppShellV2>
   )
@@ -52,13 +93,10 @@ function ProfileError({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation('profile')
   return (
     <AppShellV2>
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-8">
-        <h2 className="font-display text-xl font-bold text-text-primary">
-          {t('error_title')}
-        </h2>
-        <p className="max-w-md text-center text-sm text-text-secondary">{t('load_failed')}</p>
-        <Button variant="primary" onClick={onRetry}>
-          {t('retry')}
+      <div className="mx-auto max-w-md px-6 py-16 text-center">
+        <p className="text-text-secondary">{t('error_load') ?? 'Не удалось загрузить профиль.'}</p>
+        <Button variant="primary" onClick={onRetry} className="mt-4">
+          {t('retry') ?? 'Повторить'}
         </Button>
       </div>
     </AppShellV2>
@@ -66,16 +104,13 @@ function ProfileError({ onRetry }: { onRetry: () => void }) {
 }
 
 function ProfileNotFound({ username }: { username: string }) {
-  const { t } = useTranslation('profile')
   return (
     <AppShellV2>
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-8">
-        <h2 className="font-display text-xl font-bold text-text-primary">
-          {t('not_found_title')}
-        </h2>
-        <p className="max-w-md text-center text-sm text-text-secondary">@{username}</p>
-        <Link to="/arena">
-          <Button variant="primary">{t('back_to_sanctum')}</Button>
+      <div className="mx-auto max-w-md px-6 py-16 text-center">
+        <h1 className="font-display text-2xl font-bold">@{username} не найден</h1>
+        <p className="mt-2 text-sm text-text-secondary">Возможно, юзернейм изменился.</p>
+        <Link to="/atlas" className="mt-6 inline-block">
+          <Button variant="primary">К Atlas</Button>
         </Link>
       </div>
     </AppShellV2>
@@ -87,12 +122,8 @@ function ProfileNotFound({ username }: { username: string }) {
 export default function ProfilePage() {
   const params = useParams<{ username?: string }>()
   const isOwn = !params.username
-  const [tab, setTab] = useState<ProfileTab>('Overview')
-
   const ownQuery = useProfileQuery()
   const publicQuery = usePublicProfileQuery(isOwn ? undefined : params.username)
-  const { data: rating } = useRatingMeQuery()
-
   const active = isOwn ? ownQuery : publicQuery
 
   if (active.isLoading) return <ProfileSkeleton />
@@ -104,35 +135,399 @@ export default function ProfilePage() {
     return <ProfileError onRetry={() => active.refetch()} />
   }
 
-  const vm = toViewModel({
-    isOwn,
-    own: isOwn ? (ownQuery.data as Profile | undefined) : undefined,
-    pub: !isOwn ? (publicQuery.data as PublicProfile | undefined) : undefined,
-    fallbackScore: rating?.global_power_score,
-  })
-  if (!vm) return <ProfileSkeleton />
+  const data = active.data
+  if (!data) return <ProfileSkeleton />
+
+  const username = (data as Profile | PublicProfile).username
+  const displayName = (data as Profile | PublicProfile).display_name ?? username
+  const avatarUrl = (data as Profile).avatar_url ?? ''
+  const createdAt = isOwn ? (data as Profile).created_at : undefined
 
   return (
     <AppShellV2>
-      <Hero vm={vm} />
-      <ProfileTabBar tab={tab} setTab={setTab} isOwn={isOwn} />
-      <div className="px-4 py-6 sm:px-8 lg:px-10 lg:py-8">
-        {tab === 'Overview' && (
-          <div className="flex flex-col gap-6 lg:flex-row">
-            <div className="flex w-full shrink-0 flex-col gap-5 lg:w-[380px]">
-              <SkillsCard />
-              <CohortCard />
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <Leaderboard />
-            </div>
-          </div>
-        )}
-        {tab === 'Matches' && <MatchesPanel />}
-        {tab === 'Circles' && <CirclesPanel />}
-        {tab === 'Stats' && <StatsPanel ownProfile={isOwn ? (ownQuery.data as Profile | undefined) : undefined} />}
-        {tab === 'Bookings' && isOwn && <BookingsPanel />}
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 sm:px-8 sm:py-14">
+        <Header
+          username={username}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          createdAt={createdAt}
+          isOwn={isOwn}
+        />
+        {isOwn ? <OwnProfileBody /> : <PublicProfileBody username={username} />}
       </div>
     </AppShellV2>
   )
+}
+
+// ── header ─────────────────────────────────────────────────────────────────
+
+function Header({
+  username,
+  displayName,
+  avatarUrl,
+  createdAt,
+  isOwn,
+}: {
+  username: string
+  displayName: string
+  avatarUrl?: string
+  createdAt?: string
+  isOwn: boolean
+}) {
+  const initial = (displayName || username).slice(0, 1).toUpperCase()
+  const memberSince = createdAt ? formatMonthYear(createdAt) : null
+  return (
+    <header className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-5">
+        <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-surface-2 font-display text-3xl font-extrabold text-text-primary">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={displayName} className="h-full w-full rounded-full object-cover" />
+          ) : (
+            initial
+          )}
+        </div>
+        <div>
+          <h1 className="font-display text-3xl font-bold leading-tight">@{username}</h1>
+          <div className="mt-1 text-[14px] text-text-secondary">
+            {displayName !== username && <>{displayName}</>}
+            {displayName !== username && memberSince && <> · </>}
+            {memberSince && <>в druz9 с {memberSince}</>}
+          </div>
+        </div>
+      </div>
+      {isOwn && (
+        <Link to="/settings">
+          <Button variant="ghost" size="sm" icon={<SettingsIcon className="h-4 w-4" />}>
+            Настройки
+          </Button>
+        </Link>
+      )}
+    </header>
+  )
+}
+
+// ── own profile body ───────────────────────────────────────────────────────
+
+function OwnProfileBody() {
+  const trackQ = useActiveStudyModeQuery()
+  const activeTrack = trackQ.data?.activeTrack ?? 'general'
+
+  return (
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      <PendingInvitesCard />
+      <ActiveTrackCard track={activeTrack} />
+      <AITutorsCard />
+      <HumanTutorsCard />
+      <QuickLinksCard />
+      <WeeklyReportCard />
+    </div>
+  )
+}
+
+function PublicProfileBody({ username }: { username: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-1 p-6 text-[14px] text-text-secondary">
+      Это публичная страница профиля @{username}. Полная статистика и подготовка
+      доступны только владельцу.
+    </div>
+  )
+}
+
+// ── cards ──────────────────────────────────────────────────────────────────
+
+function Card({
+  icon,
+  title,
+  children,
+  className = '',
+}: {
+  icon?: React.ReactNode
+  title: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <section
+      className={`flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-5 ${className}`}
+    >
+      <header className="flex items-center gap-2">
+        {icon && <span className="text-accent">{icon}</span>}
+        <h2 className="font-display text-base font-bold leading-tight">{title}</h2>
+      </header>
+      {children}
+    </section>
+  )
+}
+
+function ActiveTrackCard({ track }: { track: ActiveTrack }) {
+  const meta = TRACK_LABELS[track]
+  return (
+    <Card icon={<Target className="h-4 w-4" />} title="Активный режим подготовки">
+      <div className="flex flex-col gap-2">
+        <div>
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+            mode
+          </span>
+          <div className="font-display text-2xl font-bold leading-tight">{meta.label}</div>
+        </div>
+        <p className="text-[13px] leading-relaxed text-text-secondary">{meta.hint}</p>
+        <p className="text-[12px] text-text-muted">
+          Сменить можно в Hone или прямо в settings — это влияет на подсветку
+          узлов в Atlas, фильтр TaskBoard и какой AI-coach по умолчанию подсажен
+          к pill'ам на /atlas.
+        </p>
+      </div>
+    </Card>
+  )
+}
+
+function AITutorsCard() {
+  const threadsQ = useMyAITutorThreadsQuery()
+  const personasQ = useAITutorPersonasQuery()
+  const personas: AITutorPersona[] = personasQ.data?.items ?? []
+  const threads = threadsQ.data?.items ?? []
+  const adopted = threads
+    .map((t) => personas.find((p) => p.id === t.persona_id))
+    .filter((p): p is AITutorPersona => Boolean(p))
+
+  return (
+    <Card icon={<Brain className="h-4 w-4" />} title="AI-coach'и">
+      {threadsQ.isPending || personasQ.isPending ? (
+        <div className="text-[12px] text-text-muted">загружаю…</div>
+      ) : adopted.length === 0 ? (
+        <div className="space-y-2">
+          <p className="text-[13px] text-text-secondary">
+            Ты ещё не подключил ни одного AI-coach'а. Они умеют отвечать с памятью
+            твоих прошлых разговоров — не «ещё один чат», а персональный coach
+            по треку.
+          </p>
+          <p className="text-[12px] text-text-muted">
+            Подключаются автоматически при первом клике на coach-pill в Atlas
+            или MockResult.
+          </p>
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {adopted.map((p) => (
+            <li
+              key={p.id}
+              className="flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-[13px] font-medium text-text-primary">
+                  {p.display_name}
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                  {p.scope_track_kind}
+                </div>
+              </div>
+              <Link
+                to={`/tutor/ai/${encodeURIComponent(p.slug)}`}
+                className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-secondary hover:text-text-primary"
+              >
+                открыть →
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  )
+}
+
+function PendingInvitesCard() {
+  const q = usePendingInvitesForMeQuery()
+  const accept = useAcceptInviteMutation()
+  const items = q.data?.items ?? []
+  if (q.isPending || items.length === 0) return null
+  return (
+    <Card icon={<Sparkles className="h-4 w-4" />} title="Тебя пригласили" className="sm:col-span-2">
+      <p className="text-[13px] text-text-secondary">
+        Туторы хотят с тобой работать. После accept'а assignments будут попадать
+        в Hone TaskBoard, а сессии — в Calendar.
+      </p>
+      <ul className="flex flex-col gap-2">
+        {items.map((inv) => {
+          const name = inv.tutor_display_name?.trim() || inv.tutor_username || inv.tutor_id.slice(0, 8)
+          const initial = (inv.tutor_display_name || inv.tutor_username || '?').slice(0, 1).toUpperCase()
+          return (
+            <li
+              key={inv.id}
+              className="flex items-center gap-3 rounded-md border border-accent/30 bg-accent/5 px-3 py-2"
+            >
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-3 text-[12px] font-bold text-text-primary">
+                {inv.tutor_display_avatar ? (
+                  <img src={inv.tutor_display_avatar} alt={name} className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  initial
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] font-medium text-text-primary">{name}</div>
+                {inv.tutor_username && (
+                  <div className="font-mono text-[10px] text-text-muted">@{inv.tutor_username}</div>
+                )}
+                {inv.note && (
+                  <div className="mt-0.5 truncate text-[11.5px] text-text-secondary">«{inv.note}»</div>
+                )}
+              </div>
+              <Button
+                size="sm"
+                disabled={accept.isPending}
+                onClick={() => {
+                  accept.mutate(inv.code)
+                }}
+              >
+                {accept.isPending ? '…' : 'Принять'}
+              </Button>
+            </li>
+          )
+        })}
+      </ul>
+      {accept.isError && (
+        <span className="text-[12px] text-warn">
+          {accept.error instanceof ApiError ? accept.error.body : 'Не удалось принять'}
+        </span>
+      )}
+    </Card>
+  )
+}
+
+function HumanTutorsCard() {
+  const tutorsQ = useMyTutorsQuery()
+  const items = tutorsQ.data?.items ?? []
+  // ListMyTutors включает AI-тутор-relationships (для adopted персон). Они
+  // уже отдельно показаны в AITutorsCard — отфильтруем через username
+  // префикс 'ai-tutor::'. Display-info прилетает с backend (proto.display_*).
+  const humans = items.filter((r) => !(r.display_username ?? '').startsWith('ai-tutor::'))
+  return (
+    <Card title="Human-туторы">
+      {tutorsQ.isPending ? (
+        <div className="text-[12px] text-text-muted">загружаю…</div>
+      ) : humans.length === 0 ? (
+        <div className="space-y-2">
+          <p className="text-[13px] text-text-secondary">
+            У тебя пока нет связки с human-тутором. Получил invite-ссылку — открой
+            её, чтобы accept'нуть relationship.
+          </p>
+          <p className="text-[12px] text-text-muted">
+            После accept'а ассайнменты от тутора будут автоматически попадать в
+            твой Hone TaskBoard, а сессии — в Calendar.
+          </p>
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {humans.map((r) => {
+            const name = r.display_name?.trim() || r.display_username || r.tutor_id.slice(0, 8)
+            const username = r.display_username ?? ''
+            const initial = (r.display_name || r.display_username || '?').slice(0, 1).toUpperCase()
+            return (
+              <li
+                key={r.id}
+                className="flex items-center gap-3 rounded-md bg-surface-2 px-3 py-2"
+              >
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-3 text-[12px] font-bold text-text-primary">
+                  {r.display_avatar_url ? (
+                    <img
+                      src={r.display_avatar_url}
+                      alt={name}
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  ) : (
+                    initial
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-medium text-text-primary">{name}</div>
+                  {username && (
+                    <div className="font-mono text-[10px] text-text-muted">@{username}</div>
+                  )}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Card>
+  )
+}
+
+function QuickLinksCard() {
+  const links: { to: string; label: string; hint: string; icon: React.ReactNode }[] = [
+    {
+      to: '/mock',
+      label: 'Mock-собес',
+      hint: 'Взять mock с AI-интервьюером по выбранной компании.',
+      icon: <Sparkles className="h-4 w-4" />,
+    },
+    {
+      to: '/tasks',
+      label: 'TaskBoard',
+      hint: 'Assignments от тутора + AI-coach + ручные.',
+      icon: <ListChecks className="h-4 w-4" />,
+    },
+    {
+      to: '/atlas',
+      label: 'Atlas',
+      hint: 'Карта тем для подготовки + прогресс.',
+      icon: <MapIcon className="h-4 w-4" />,
+    },
+    {
+      to: '/codex',
+      label: 'Codex',
+      hint: 'Curated reading library.',
+      icon: <BookOpen className="h-4 w-4" />,
+    },
+    {
+      to: '/vacancies',
+      label: 'Вакансии',
+      hint: 'Анализ вакансии → прицельный mock.',
+      icon: <Briefcase className="h-4 w-4" />,
+    },
+  ]
+  return (
+    <Card title="Куда дальше" className="sm:col-span-2">
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {links.map((l) => (
+          <li key={l.to}>
+            <Link
+              to={l.to}
+              className="group flex items-start gap-3 rounded-md border border-border bg-surface-2 px-3 py-2.5 transition-colors hover:bg-surface-3"
+            >
+              <span className="mt-0.5 text-text-secondary group-hover:text-accent">{l.icon}</span>
+              <span className="flex-1">
+                <span className="block text-[13px] font-medium text-text-primary">{l.label}</span>
+                <span className="block text-[11.5px] text-text-muted">{l.hint}</span>
+              </span>
+              <ArrowRight className="mt-1 h-3.5 w-3.5 text-text-muted group-hover:text-text-primary" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  )
+}
+
+function WeeklyReportCard() {
+  return (
+    <Card title="Weekly report" className="sm:col-span-2">
+      <p className="text-[13px] leading-relaxed text-text-secondary">
+        Сводка за неделю — focus минуты, mock'и, weak spots, прогресс по треку.
+        Для долгосрочной траектории.
+      </p>
+      <Link to="/profile/weekly">
+        <Button variant="ghost" size="sm" iconRight={<ArrowRight className="h-3.5 w-3.5" />}>
+          Открыть Weekly
+        </Button>
+      </Link>
+    </Card>
+  )
+}
+
+// ── helpers ────────────────────────────────────────────────────────────────
+
+function formatMonthYear(iso: string): string | null {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
 }

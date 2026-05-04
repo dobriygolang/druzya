@@ -61,6 +61,10 @@ enum Section {
   // post-mortems, error budgets), and security (secrets, auth, network
   // policy).
   SECTION_DEVOPS = 12;
+  // ML engineering — pivot 2026-05-01. Free-form interview round для
+  // middle/senior ML позиций. Classical ML, deep learning, LLM/GenAI,
+  // MLOps, evaluation + production awareness.
+  SECTION_ML_ENG = 13;
 }
 
 // Difficulty mirrors shared/enums.Difficulty.
@@ -124,26 +128,6 @@ enum SubscriptionPlan {
   SUBSCRIPTION_PLAN_MAX = 3;
 }
 
-// MatchStatus mirrors shared/enums.MatchStatus (arena match lifecycle).
-enum MatchStatus {
-  MATCH_STATUS_UNSPECIFIED = 0;
-  MATCH_STATUS_SEARCHING = 1;
-  MATCH_STATUS_CONFIRMING = 2;
-  MATCH_STATUS_ACTIVE = 3;
-  MATCH_STATUS_FINISHED = 4;
-  MATCH_STATUS_CANCELLED = 5;
-}
-
-// ArenaMode mirrors shared/enums.ArenaMode.
-enum ArenaMode {
-  ARENA_MODE_UNSPECIFIED = 0;
-  ARENA_MODE_SOLO_1V1 = 1;
-  ARENA_MODE_DUO_2V2 = 2;
-  ARENA_MODE_RANKED = 3;
-  ARENA_MODE_HARDCORE = 4;
-  ARENA_MODE_CURSED = 5;
-}
-
 // MockStatus mirrors shared/enums.MockStatus (ai_mock session lifecycle).
 enum MockStatus {
   MOCK_STATUS_UNSPECIFIED = 0;
@@ -173,23 +157,6 @@ enum LLMModel {
   LLM_MODEL_MISTRAL_7B = 5;
 }
 
-// ProvenanceKind mirrors shared/enums.ProvenanceKind (ai_native code origin).
-enum ProvenanceKind {
-  PROVENANCE_KIND_UNSPECIFIED = 0;
-  PROVENANCE_KIND_AI_GENERATED = 1;
-  PROVENANCE_KIND_HUMAN_WRITTEN = 2;
-  PROVENANCE_KIND_AI_REVISED_BY_HUMAN = 3;
-  PROVENANCE_KIND_AI_REJECTED = 4;
-}
-
-// NativeAction mirrors ai_native/domain.ActionKind (verify outcomes).
-enum NativeAction {
-  NATIVE_ACTION_UNSPECIFIED = 0;
-  NATIVE_ACTION_ACCEPTED = 1;
-  NATIVE_ACTION_REJECTED = 2;
-  NATIVE_ACTION_REVISED = 3;
-}
-
 // EditorEventType mirrors ai_mock/domain.EditorEventType (stress batch event).
 enum EditorEventType {
   EDITOR_EVENT_TYPE_UNSPECIFIED = 0;
@@ -198,16 +165,6 @@ enum EditorEventType {
   EDITOR_EVENT_TYPE_CHAOTIC_EDIT = 3;
   EDITOR_EVENT_TYPE_PASTE_ATTEMPT = 4;
   EDITOR_EVENT_TYPE_IDLE = 5;
-}
-
-// SlotStatus mirrors shared/enums.SlotStatus (human-mock slot lifecycle).
-enum SlotStatus {
-  SLOT_STATUS_UNSPECIFIED = 0;
-  SLOT_STATUS_AVAILABLE = 1;
-  SLOT_STATUS_BOOKED = 2;
-  SLOT_STATUS_COMPLETED = 3;
-  SLOT_STATUS_CANCELLED = 4;
-  SLOT_STATUS_NO_SHOW = 5;
 }
 
 // DungeonTier mirrors shared/enums.DungeonTier (company difficulty rung).

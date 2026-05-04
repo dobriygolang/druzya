@@ -42,7 +42,23 @@ export type OutboxOpKind =
   | 'editor.delete_room'
   | 'whiteboard.create_room'
   | 'whiteboard.set_visibility'
-  | 'whiteboard.delete_room';
+  | 'whiteboard.delete_room'
+  // Phase 3.5 — personal resource library (curation overrides).
+  // Все кroms backend'у нужен Idempotency-Key header — UC ON CONFLICT
+  // DO NOTHING в Insert делает write idempotent; повторный drain не
+  // создаст duplicate row.
+  | 'resource.add'
+  | 'resource.hide'
+  | 'resource.unhelpful'
+  | 'resource.replace'
+  // Phase 5 5a — multi-takeaway reflection. Local fallback grade
+  // (naiveQuality) пишется сразу; reconnect → server TaskReflectionGrade
+  // overwrite через UPDATE user_resource_log (idempotent — quality_score
+  // is a scalar overwrite, не accumulator).
+  | 'reflection.submit'
+  // Phase 4 (existing). Verify в Phase 4 wire — graceful enqueue если
+  // log session offline.
+  | 'external_activity.log';
 
 export interface OutboxOp {
   id: string; // client-generated uuid v4

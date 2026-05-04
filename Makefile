@@ -283,6 +283,10 @@ check-stubs: ## Warn about STUB comments (CI advisory)
 eval-coach: ## Phase 5 — run offline eval over coach brief parser/sanitizer (no LLM calls)
 	cd backend/services/intelligence && go run ./cmd/eval_coach -dataset cmd/eval_coach/dataset.json
 
+.PHONY: eval-ai
+eval-ai: ## Phase 1.7f — run offline eval over learning-companion AI tasks (next_action / fork_analysis / curate_resource)
+	cd backend/services/intelligence && go run ./cmd/eval_ai -dir cmd/eval_ai
+
 .PHONY: desktop-install
 desktop-install: ## Install desktop app npm dependencies
 	cd desktop && npm install

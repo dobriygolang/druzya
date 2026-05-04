@@ -59,8 +59,8 @@ func nullableTime(p pgtype.Timestamptz) *time.Time {
 // CreateInvite — INSERT. Caller has generated code + expires_at.
 func (p *Postgres) CreateInvite(ctx context.Context, inv domain.Invite) (domain.Invite, error) {
 	const q = `
-		INSERT INTO tutor_invites (id, tutor_id, code, note, created_at, expires_at)
-		VALUES (COALESCE($1, gen_random_uuid()), $2, $3, $4, COALESCE($5, now()), $6)
+		INSERT INTO tutor_invites (id, tutor_id, code, note, created_at, expires_at, target_user_id)
+		VALUES (COALESCE($1, gen_random_uuid()), $2, $3, $4, COALESCE($5, now()), $6, $7)
 		RETURNING id, created_at`
 	var (
 		id        pgtype.UUID
@@ -68,9 +68,14 @@ func (p *Postgres) CreateInvite(ctx context.Context, inv domain.Invite) (domain.
 	)
 	idArg := pgUUID(inv.ID) // Valid=false for uuid.Nil → server generates
 	createdArg := pgtype.Timestamptz{Time: inv.CreatedAt, Valid: !inv.CreatedAt.IsZero()}
+	var targetArg pgtype.UUID
+	if inv.TargetUserID != nil {
+		targetArg = pgUUID(*inv.TargetUserID)
+	}
 	err := p.pool.QueryRow(ctx, q,
 		idArg, pgUUID(inv.TutorID), inv.Code, inv.Note,
 		createdArg, pgtype.Timestamptz{Time: inv.ExpiresAt, Valid: true},
+		targetArg,
 	).Scan(&id, &createdAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -90,7 +95,7 @@ func (p *Postgres) CreateInvite(ctx context.Context, inv domain.Invite) (domain.
 func (p *Postgres) GetInviteByCode(ctx context.Context, code string) (domain.Invite, error) {
 	const q = `
 		SELECT id, tutor_id, code, note, created_at, expires_at,
-		       accepted_by, accepted_at, revoked_at
+		       accepted_by, accepted_at, revoked_at, target_user_id
 		FROM tutor_invites
 		WHERE code = $1`
 	row := p.pool.QueryRow(ctx, q, code)
@@ -108,7 +113,7 @@ func (p *Postgres) GetInviteByCode(ctx context.Context, code string) (domain.Inv
 func (p *Postgres) ListTutorInvites(ctx context.Context, tutorID uuid.UUID, limit int) ([]domain.Invite, error) {
 	q := `
 		SELECT id, tutor_id, code, note, created_at, expires_at,
-		       accepted_by, accepted_at, revoked_at
+		       accepted_by, accepted_at, revoked_at, target_user_id
 		FROM tutor_invites
 		WHERE tutor_id = $1
 		ORDER BY created_at DESC`
@@ -149,7 +154,7 @@ func (p *Postgres) RevokeInvite(ctx context.Context, tutorID, inviteID uuid.UUID
 	var inv domain.Invite
 	row := tx.QueryRow(ctx, `
 		SELECT id, tutor_id, code, note, created_at, expires_at,
-		       accepted_by, accepted_at, revoked_at
+		       accepted_by, accepted_at, revoked_at, target_user_id
 		FROM tutor_invites
 		WHERE id = $1 AND tutor_id = $2
 		FOR UPDATE`, pgUUID(inviteID), pgUUID(tutorID))
@@ -197,7 +202,7 @@ func (p *Postgres) AcceptInvite(ctx context.Context, code string, studentID uuid
 
 	row := tx.QueryRow(ctx, `
 		SELECT id, tutor_id, code, note, created_at, expires_at,
-		       accepted_by, accepted_at, revoked_at
+		       accepted_by, accepted_at, revoked_at, target_user_id
 		FROM tutor_invites
 		WHERE code = $1
 		FOR UPDATE`, code)
@@ -361,26 +366,28 @@ type rowScanner interface {
 
 func scanInvite(s rowScanner) (domain.Invite, error) {
 	var (
-		id         pgtype.UUID
-		tutorID    pgtype.UUID
-		acceptedBy pgtype.UUID
-		createdAt  pgtype.Timestamptz
-		expiresAt  pgtype.Timestamptz
-		acceptedAt pgtype.Timestamptz
-		revokedAt  pgtype.Timestamptz
-		code, note string
+		id           pgtype.UUID
+		tutorID      pgtype.UUID
+		acceptedBy   pgtype.UUID
+		targetUserID pgtype.UUID
+		createdAt    pgtype.Timestamptz
+		expiresAt    pgtype.Timestamptz
+		acceptedAt   pgtype.Timestamptz
+		revokedAt    pgtype.Timestamptz
+		code, note   string
 	)
-	if err := s.Scan(&id, &tutorID, &code, &note, &createdAt, &expiresAt, &acceptedBy, &acceptedAt, &revokedAt); err != nil {
+	if err := s.Scan(&id, &tutorID, &code, &note, &createdAt, &expiresAt, &acceptedBy, &acceptedAt, &revokedAt, &targetUserID); err != nil {
 		return domain.Invite{}, fmt.Errorf("tutor.pg.scanInvite: %w", err)
 	}
 	out := domain.Invite{
-		ID:         uuidFrom(id),
-		TutorID:    uuidFrom(tutorID),
-		Code:       code,
-		Note:       note,
-		AcceptedBy: nullableUUID(acceptedBy),
-		AcceptedAt: nullableTime(acceptedAt),
-		RevokedAt:  nullableTime(revokedAt),
+		ID:           uuidFrom(id),
+		TutorID:      uuidFrom(tutorID),
+		Code:         code,
+		Note:         note,
+		AcceptedBy:   nullableUUID(acceptedBy),
+		AcceptedAt:   nullableTime(acceptedAt),
+		RevokedAt:    nullableTime(revokedAt),
+		TargetUserID: nullableUUID(targetUserID),
 	}
 	if createdAt.Valid {
 		out.CreatedAt = createdAt.Time
@@ -389,4 +396,50 @@ func scanInvite(s rowScanner) (domain.Invite, error) {
 		out.ExpiresAt = expiresAt.Time
 	}
 	return out, nil
+}
+
+// FindUserByUsername implements domain.Repo.
+func (p *Postgres) FindUserByUsername(ctx context.Context, username string) (uuid.UUID, error) {
+	var id pgtype.UUID
+	err := p.pool.QueryRow(ctx,
+		`SELECT id FROM users WHERE username = $1 LIMIT 1`, username,
+	).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, fmt.Errorf("tutor.FindUserByUsername: %w", domain.ErrNotFound)
+		}
+		return uuid.Nil, fmt.Errorf("tutor.FindUserByUsername: %w", err)
+	}
+	return uuidFrom(id), nil
+}
+
+// ListPendingInvitesForUser implements domain.Repo.
+func (p *Postgres) ListPendingInvitesForUser(
+	ctx context.Context, userID uuid.UUID, now time.Time,
+) ([]domain.Invite, error) {
+	rows, err := p.pool.Query(ctx, `
+		SELECT id, tutor_id, code, note, created_at, expires_at,
+		       accepted_by, accepted_at, revoked_at, target_user_id
+		FROM tutor_invites
+		WHERE target_user_id = $1
+		  AND accepted_at IS NULL
+		  AND revoked_at IS NULL
+		  AND expires_at > $2
+		ORDER BY created_at DESC`,
+		pgUUID(userID),
+		pgtype.Timestamptz{Time: now.UTC(), Valid: true},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListPendingInvitesForUser: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Invite, 0, 4)
+	for rows.Next() {
+		inv, scanErr := scanInvite(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		out = append(out, inv)
+	}
+	return out, rows.Err()
 }

@@ -31,6 +31,7 @@ const (
 	NotificationTypeSubscriptionActivated NotificationType = "subscription_activated"
 	NotificationTypeWelcome               NotificationType = "welcome"
 	NotificationTypeEventStartingSoon     NotificationType = "event_starting_soon"
+	NotificationTypeAssignmentDueSoon     NotificationType = "assignment_due_soon"
 )
 
 func (t NotificationType) IsValid() bool {
@@ -39,7 +40,7 @@ func (t NotificationType) IsValid() bool {
 		NotificationTypeWeeklyReport, NotificationTypeSkillDecay,
 		NotificationTypeSeasonEnding, NotificationTypeDailyKata,
 		NotificationTypeSubscriptionActivated, NotificationTypeWelcome,
-		NotificationTypeEventStartingSoon:
+		NotificationTypeEventStartingSoon, NotificationTypeAssignmentDueSoon:
 		return true
 	}
 	return false

@@ -295,6 +295,42 @@ function HeaderStrip({
   )
 }
 
+// PinnedRibbon — Phase 3 horizontal strip с user-pinned узлами.
+// Click → выделяет узел в drawer (тот же flow что click по canvas-node).
+// Mockup pattern: pinned chips компактные, mono-font, hover-lift.
+function PinnedRibbon({
+  nodes,
+  onSelect,
+}: {
+  nodes: Atlas['nodes']
+  onSelect: (key: string) => void
+}) {
+  return (
+    <div
+      role="region"
+      aria-label="pinned atlas nodes"
+      className="border-b border-border-subtle bg-bg-elevated/40 px-4 py-2 sm:px-8 lg:px-20"
+    >
+      <div className="flex items-center gap-3">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+          pinned · {nodes.length}
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {nodes.map((n) => (
+            <button
+              key={n.key}
+              onClick={() => onSelect(n.key)}
+              className="rounded-md border border-border-subtle bg-bg-base px-2.5 py-1 text-[12px] text-text-secondary transition-colors hover:border-border hover:text-text-primary"
+            >
+              {n.title}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function GraphSkeleton() {
   return (
     <div className="relative flex-1" style={{ minHeight: 720 }}>
@@ -331,9 +367,9 @@ function EmptyProgressCTA() {
             рекомендованы.
           </p>
         </div>
-        <Link to="/arena/kata/two-sum">
+        <Link to="/mock">
           <Button size="md" iconRight={<ArrowRight className="h-4 w-4" />}>
-            Начни с Two Sum
+            Начать mock
           </Button>
         </Link>
       </div>
@@ -343,7 +379,19 @@ function EmptyProgressCTA() {
 
 // ── AtlasExplorePage — оркестратор. Мостит filter bar → highlight set → drawer.
 export default function AtlasExplorePage() {
-  const { data: atlas, isError, isLoading, refetch, dataUpdatedAt, isFetching } = useAtlasQuery()
+  const { data: rawAtlas, isError, isLoading, refetch, dataUpdatedAt, isFetching } = useAtlasQuery()
+
+  // Phase 3 — overlay filter: hidden узлы скрыты на canvas. Pinned остаются
+  // в основном графе И surface'ятся в PinnedRibbon выше.
+  const atlas = useMemo<Atlas | undefined>(() => {
+    if (!rawAtlas) return undefined
+    return { ...rawAtlas, nodes: rawAtlas.nodes.filter((n) => !n.hidden) }
+  }, [rawAtlas])
+  const pinnedNodes = useMemo(
+    () => (rawAtlas?.nodes ?? []).filter((n) => n.pinned && !n.hidden),
+    [rawAtlas],
+  )
+
   const total = atlas?.nodes.length ?? 0
   const unlocked = atlas?.nodes.filter((n) => n.unlocked).length ?? 0
 
@@ -391,6 +439,9 @@ export default function AtlasExplorePage() {
           <div className="flex justify-end px-4 pt-2">
             <AtlasV2Toggle on={v2On} onToggle={setV2On} />
           </div>
+        )}
+        {pinnedNodes.length > 0 && (
+          <PinnedRibbon nodes={pinnedNodes} onSelect={setSelectedKey} />
         )}
         {!isLoading && !isError && atlas && atlas.nodes.length > 0 && (
           <AtlasFilters

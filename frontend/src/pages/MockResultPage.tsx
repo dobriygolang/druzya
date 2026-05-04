@@ -20,6 +20,8 @@ import {
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
+import { AICoachPill } from '../components/AICoachPill'
+import { useActiveStudyModeQuery } from '../lib/queries/honeSettings'
 import { useMockReportQuery, useMockSessionQuery, normalizeMockReportStatus } from '../lib/queries/mock'
 import { API_BASE } from '../lib/apiClient'
 
@@ -272,6 +274,7 @@ export default function MockResultPage() {
   // Without this the English HR round would silently show all-zero
   // engineering cards (problem_solving / code_quality / etc).
   const { data: session } = useMockSessionQuery(sessionId)
+  const activeTrack = useActiveStudyModeQuery().data?.activeTrack ?? 'general'
   const isEnglishHR = session?.section === 'english_hr'
   const isSeniorSD = session?.section === 'system_design_senior'
   const isTechLead = session?.section === 'tech_lead_em'
@@ -480,6 +483,28 @@ export default function MockResultPage() {
         </div>
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
           <div className="flex flex-1 flex-col gap-4">
+            {(() => {
+              const sec = session?.section ?? 'algorithms'
+              const persona = activeTrack === 'go'
+                ? { slug: 'go-coach', name: 'Гоша · Go-коуч' }
+                : sec === 'english_hr'
+                  ? { slug: 'english-coach', name: 'Maria · English coach' }
+                  : sec === 'system_design_senior' || sec === 'tech_lead_em'
+                    ? { slug: 'sysdesign-guru', name: 'Кирилл · sysdesign-guru' }
+                    : { slug: 'algo-coach', name: 'Алёша · алго-коуч' }
+              const weakList = (weaknesses ?? []).slice(0, 5).join('; ')
+              const ctx = `Студент только что прошёл mock (${sec}). Overall score: ${overall}. Слабые места: ${weakList || '—'}. Помоги разобрать что именно пошло не так и составить план улучшения.`
+              return (
+                <div className="flex">
+                  <AICoachPill
+                    personaSlug={persona.slug}
+                    coachName={persona.name}
+                    contextNote={ctx}
+                    label="Разобрать с coach’ем"
+                  />
+                </div>
+              )
+            })()}
             {strengths.length > 0 && <StrengthsCard items={strengths} />}
             {weaknesses.length > 0 && <WeaknessesCard items={weaknesses} />}
             {recs.length > 0 && <RecsCard items={recs} />}

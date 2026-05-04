@@ -209,6 +209,11 @@ const (
 	// on infra tradeoffs (k8s vs ECS, push vs pull metrics, CI/CD topology),
 	// incident response runbooks. 70B-class.
 	TaskDevOpsMock Task = "devops_mock"
+	// TaskMLEngMock — pivot 2026-05-01. ML engineering free-form round.
+	// Reasoning-heavy on math (loss/regularisation/architecture choice),
+	// distinguishing memorised от understood, plus production awareness
+	// (latency budgets, retraining, observability). 70B-class.
+	TaskMLEngMock Task = "ml_eng_mock"
 	// TaskHoneCodeReviewGrade — Wave 3.6 of docs/feature/plan.md
 	// (Code-review-coaching). User pastes a unified diff + writes
 	// their PR-style review; we grade the review against the diff and
@@ -219,6 +224,111 @@ const (
 	// already ~15KB), so we lean on 70B-class providers for deeper
 	// reasoning rather than the 8B tier used by writing feedback.
 	TaskHoneCodeReviewGrade Task = "hone_code_review_grade"
+	// TaskAITutorChat — main chat-call для AI-тутора (см
+	// docs/feature/ai-tutor.md). 4-layer memory собирается на каждый ход,
+	// LLM возвращает свободный текст. 70B-class для качества рассуждений
+	// на русском (Groq Llama 3 70B → Cerebras Llama 3.1 → Mistral Large
+	// fallback chain).
+	TaskAITutorChat Task = "ai_tutor_chat"
+	// TaskAITutorCompact — periodic compaction (см entity.go
+	// CompactionMessageThreshold/TokenThreshold). Берёт N recent episodes
+	// + старый summary, возвращает (1) новый summary 3-5 bullets,
+	// (2) до 3 fact-кандидатов в JSON. Можно меньшую модель — 8B
+	// достаточно, summarisation дешёвая.
+	TaskAITutorCompact Task = "ai_tutor_compact"
+	// TaskAITutorAssignment — cron-driven daily assignment generation.
+	// Reads snapshot + facts, авторит 1 assignment в structured JSON.
+	TaskAITutorAssignment Task = "ai_tutor_assignment"
+
+	// TaskCustomPathGenerate — onboarding wizard «Свой путь». Юзер
+	// описал goal в свободной форме («Senior Go в финтех»); LLM
+	// генерит initial карту тем (8-15 nodes) с group-classification.
+	// Strict JSON output. См services/profile/app/generate_custom_path.go.
+	TaskCustomPathGenerate Task = "custom_path_generate"
+
+	// TaskAtlasClassify — Phase 3.1 user-driven atlas. Юзер пишет TODO
+	// («изучить транзакции в Postgres»); LLM classifies в один из
+	// existing curated nodes ИЛИ предлагает новый node (section + cluster
+	// + suggested title). Strict JSON output, 8B-class достаточно.
+	TaskAtlasClassify Task = "atlas_classify"
+
+	// TaskCurateResource — Phase 1b learning-companion (2026-05-04).
+	// Per-atlas-node генерация 3-5 best free external ресурсов
+	// (Strang/mlcourse/DDIA/Kaggle/etc.) с why-обоснованием. Output:
+	// strict JSON-массив curation.Resource. Background-задача (CLI run,
+	// не user-blocking), но 70B чтобы порядок и why были осмысленные.
+	// Кэшируется per-(node_id, kind) — Sergey ревьюит результат, повтор
+	// зовётся редко.
+	TaskCurateResource Task = "curate_resource"
+
+	// TaskAssistantNextAction — Phase 2 (Coach hero «one daily action»).
+	// Input: learning_state + recent mocks + recent resource log + atlas
+	// progress. Output: structured JSON {action_kind, target, rationale,
+	// estimated_minutes}. User-blocking (coach hero), но 1/day per user
+	// cached till midnight — quality > latency.
+	TaskAssistantNextAction Task = "assistant_next_action"
+
+	// TaskAssistantForkAnalysis — Phase 2 weekly cron + on-demand override.
+	// Input: branch scores (MLE vs DE mocks), voluntary deep-dives count,
+	// time spent. Output: {lean_branch, confidence 0..1, severity, signals[]}.
+	// Background-задача, 70B для качества.
+	TaskAssistantForkAnalysis Task = "assistant_fork_analysis"
+
+	// TaskAssistantRereroll — Phase 2 dismiss-flow. Когда юзер dismiss'ит
+	// "next action", LLM генерит alternative action из тех же signals.
+	// Latency-sensitive (UI ждёт), 8B-class достаточно.
+	TaskAssistantRereroll Task = "assistant_rereroll"
+
+	// TaskNotesLinkSuggest — Phase 5 AI-link suggestions для Notes UI.
+	// Embed-based candidate retrieval + LLM rerank. Output: massif
+	// {target_note_id, score, reason}. Cached per (note_id, candidate-hash).
+	TaskNotesLinkSuggest Task = "notes_link_suggest"
+
+	// TaskTaskboardCategorise — Phase 10 TaskBoard auto-place. New task
+	// → AI выбирает column (today/week/backlog) + tag по deadline + kind.
+	// Latency-sensitive, 8B-class.
+	TaskTaskboardCategorise Task = "taskboard_categorise"
+
+	// TaskAITutorML — Phase 1.7b chat с ml-coach personа. 4-layer memory
+	// injection (snapshot/facts/summary/user_message). 70B для качества
+	// рассуждений на ML-математике.
+	TaskAITutorML Task = "ai_tutor_ml"
+
+	// TaskAITutorDE — Phase 1.7b chat с de-mentor personа. Аналогично
+	// TaskAITutorML, но для data-engineering reasoning (SQL plans /
+	// streaming / distributed compute).
+	TaskAITutorDE Task = "ai_tutor_de"
+
+	// TaskCheckpointGrade — Phase 1.7/2 step checkpoint quiz grading.
+	// Input: 5 questions из mock_pool по track_steps.checkpoint_skill_keys
+	// + user answers. Output: {score 0..100, attempts[]: per-question results}.
+	// 70B для качества rubric'а — ≥70% unlock'ает следующий step.
+	TaskCheckpointGrade Task = "checkpoint_grade"
+
+	// TaskReflectionExtract — Phase 1.7/5 reflection auto-link extraction.
+	// Input: reflection_text + Resource.topics_covered (expected concepts).
+	// Output: {mentioned: [atlas_node_id], missed: [atlas_node_id]}.
+	// Cached per text-hash; 8B достаточно (classification, не reasoning).
+	TaskReflectionExtract Task = "reflection_extract"
+
+	// TaskExtractResourceContent — Phase 3.5 add-resource flow. Input:
+	// {url, fetched_text}. Output: full curation.Resource shape (title,
+	// topics_covered, summary, depth, minutes, level). Cached per URL
+	// hash 7d — ресурс не меняется быстро. 70B-class для accurate topic
+	// extraction.
+	TaskExtractResourceContent Task = "extract_resource_content"
+
+	// TaskReflectionGrade — Phase 5 multi-takeaway reflection grading.
+	// Input: {takeaways[], confusion_text, resource.topics_covered}.
+	// Output: {quality_score 0..1, extracted_topics[], confusion_flag}.
+	// User-context — caching не имеет смысла. Latency-sensitive (modal
+	// blocks user); cerebras 8B-fast preferred.
+	TaskReflectionGrade Task = "reflection_grade"
+
+	// TaskValidateResource — Phase 3.5 auto-promote check. Input: {url,
+	// atlas_node.description}. Output: {alive, reputable, on_topic, score}.
+	// Cached per URL daily — promote-cron'у достаточно.
+	TaskValidateResource Task = "validate_resource"
 )
 
 // Role mirrors OpenAI chat roles. Kept as a string (not an enum) because

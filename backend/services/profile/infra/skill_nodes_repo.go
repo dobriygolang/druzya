@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"druz9/profile/domain"
-	"druz9/shared/enums"
 
 	sharedpg "druz9/shared/pkg/pg"
 
@@ -96,24 +95,13 @@ func (p *Postgres) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKe
 	return sn, nil
 }
 
-// ListRatings via sqlc.
+// ListRatings — pivot 2026-05-01: arena/rating tables dropped. Stub
+// returns empty slice; domain.SectionRating callers (DeriveAttributes,
+// GlobalPowerScore) корректно обрабатывают пустой вход. Полное удаление
+// SectionRating из profile/domain — отдельная волна (cascading impact на
+// proto + frontend).
 func (p *Postgres) ListRatings(ctx context.Context, userID uuid.UUID) ([]domain.SectionRating, error) {
-	rows, err := p.q.ListRatings(ctx, sharedpg.UUID(userID))
-	if err != nil {
-		return nil, fmt.Errorf("profile.Postgres.ListRatings: %w", err)
-	}
-	out := make([]domain.SectionRating, 0, len(rows))
-	for _, r := range rows {
-		sr := domain.SectionRating{
-			Section:      enums.Section(r.Section),
-			Elo:          int(r.Elo),
-			MatchesCount: int(r.MatchesCount),
-		}
-		if r.LastMatchAt.Valid {
-			t := r.LastMatchAt.Time
-			sr.LastMatchAt = &t
-		}
-		out = append(out, sr)
-	}
-	return out, nil
+	_ = ctx
+	_ = userID
+	return nil, nil
 }

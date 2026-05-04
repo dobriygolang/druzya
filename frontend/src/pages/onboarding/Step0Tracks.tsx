@@ -62,9 +62,12 @@ function reduceClick(s: PickState, wire: WireTrack): PickState {
     picked.delete(wire)
     seniority.delete(wire)
     if (primary === wire) {
-      // Promote the next-most-recently-picked track. Set iteration
-      // preserves insertion order in JS; first remaining = oldest pick.
-      primary = picked.size > 0 ? picked.values().next().value ?? null : null
+      // Promote the most-recently-picked remaining track. Set iteration
+      // preserves insertion order — последний элемент = самый свежий
+      // pick (раньше брали первый = oldest, что противоречило comment'у
+      // и удивляло юзера).
+      const arr = [...picked]
+      primary = arr.length > 0 ? (arr[arr.length - 1] ?? null) : null
     }
   } else {
     picked.add(wire)

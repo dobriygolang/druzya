@@ -118,6 +118,27 @@ export function persistAccessToken(token: string): void {
   persistTokens(token, null, 0)
 }
 
+// devLogin — INSECURE bypass auth для local dev'а. Endpoint доступен ТОЛЬКО
+// когда backend стартует с DEV_AUTH=true. На production отдаёт 404.
+export async function devLogin(username: string): Promise<PollSuccess> {
+  const res = await fetch(`${API_BASE}/auth/dev/login`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username }),
+  })
+  if (res.status === 404) {
+    throw new Error('DEV_AUTH disabled (set DEV_AUTH=true on backend).')
+  }
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '')
+    throw new Error(`dev login failed: ${res.status} ${txt}`)
+  }
+  const body = (await res.json()) as PollSuccess
+  const refresh = body.refresh_token ?? res.headers.get('X-Refresh-Token') ?? undefined
+  return { ...body, refresh_token: refresh }
+}
+
 /** POST /api/v1/auth/logout. Best-effort: revokes server-side session + clears local tokens. */
 export async function logoutCurrentSession(): Promise<void> {
   const refresh = readRefreshToken()

@@ -161,6 +161,141 @@ message AckInsightRequest {
 }
 message AckInsightResponse { bool ok = 1; }
 
+// ── Phase 2 learning-companion (2026-05-04) ─────────────────────────────
+
+// GetNextActionRequest — empty за исключением user-context, который
+// middleware распаковывает из сессии. Поля для будущих фильтров.
+message GetNextActionRequest {
+  // Если true — bypass'нуть daily cache (limited 1/h client-side).
+  bool force = 1;
+}
+
+// NextAction — single concrete next action, formatted из LLM JSON.
+message NextAction {
+  // action_kind ∈ focus_block | start_mock | review_resource | reflection |
+  //              checkpoint | graduation_mock
+  string action_kind        = 1;
+  // target — atlas_node_id / track_step_slug / resource_url, semantics
+  // зависит от action_kind.
+  string target             = 2;
+  string rationale          = 3;
+  int32  estimated_minutes  = 4;
+}
+
+// GetForkSnapshotRequest — empty.
+message GetForkSnapshotRequest {}
+
+// ForkBranchView — per-branch projection.
+message ForkBranchView {
+  string branch                = 1; // 'mle' | 'de'
+  int32  mock_count            = 2;
+  double avg_score             = 3;
+  int32  voluntary_deep_dives  = 4;
+  double composite_score       = 5;
+}
+
+// ForkSnapshot — Coach fork view (active when mode=='explore').
+message ForkSnapshot {
+  string mode                 = 1; // 'explore' | 'commit' | 'deep'
+  int32  explore_week_index   = 2; // 0 если mode != explore
+  string current_branch       = 3; // user's declared lean ('' если none)
+  repeated ForkBranchView branches = 4;
+  string lean_branch          = 5; // derived best-scoring branch
+  double confidence           = 6; // [0..1]
+}
+
+// SetLearningModeRequest — пользователь выбрал mode в Coach (explore/commit/deep).
+// track_id обязателен для commit/deep, игнорируется для explore.
+message SetLearningModeRequest {
+  string mode      = 1; // 'explore' | 'commit' | 'deep'
+  string track_id  = 2; // optional, required for commit/deep
+}
+
+// LearningStateView — текущее состояние юзера.
+message LearningStateView {
+  string mode                = 1;
+  string fork_branch         = 2; // '' if not chosen
+  int32  explore_week_index  = 3;
+  string committed_track_id  = 4; // '' if explore
+}
+
+// SetForkBranchRequest — пользователь явно выбрал ветку (de/mle/none).
+message SetForkBranchRequest {
+  string branch = 1; // 'de' | 'mle' | 'none' | '' to clear
+}
+
+// GetResourceTrailRequest — окно для activity stream.
+message GetResourceTrailRequest {
+  int32 days         = 1; // default 7
+  int32 keep_recent  = 2; // default 5 — limit per-bucket
+}
+
+// ResourceTouch — single event from user_resource_log.
+message ResourceTouch {
+  string                    url             = 1;
+  string                    atlas_node_id   = 2;
+  string                    kind            = 3; // clicked|finished|skipped|unhelpful|reflection_submitted
+  google.protobuf.Timestamp occurred_at     = 4;
+  int32                     hours_ago       = 5;
+  string                    reflection_text = 6;
+}
+
+// ResourceTrail — engagement summary за окно.
+message ResourceTrail {
+  repeated ResourceTouch finished_recent     = 1;
+  int32                  unfinished_count    = 2;
+  repeated ResourceTouch marked_unhelpful    = 3;
+  repeated ResourceTouch recent_reflections  = 4;
+}
+
+// GetSkillRadarRequest — какой rubric (de | dev_senior | mle | english).
+message GetSkillRadarRequest {
+  string rubric = 1; // optional override; empty = derive из learning_state
+}
+
+// SkillRadarAxis — single axis с score 0..1.
+message SkillRadarAxis {
+  string key       = 1;
+  string label     = 2;
+  double score     = 3; // 0..1, normalized из ai_report
+  int32  mock_count = 4; // сколько mocks внесли вклад в этот axis
+}
+
+// SkillRadar — 5-axis snapshot.
+message SkillRadar {
+  string                  rubric = 1;
+  repeated SkillRadarAxis axes   = 2;
+}
+
+// GetCoachStatsRequest — header snapshot panel.
+message GetCoachStatsRequest {}
+
+// CoachStats — 4 KPI cards для snapshot panel.
+message CoachStats {
+  int32  streak_days        = 1; // kata streak
+  int32  focus_today_min    = 2; // sum focus minutes today (UTC day)
+  int32  last_mock_score    = 3; // 0..100, 0 if no mocks
+  string last_mock_section  = 4; // 'de' | 'algorithms' | etc — '' if none
+  int32  next_mock_in_days  = 5; // days to next upcoming interview, -1 if none
+  string next_mock_company  = 6;
+}
+
+// LogResourceRequest — событие user_resource_log.
+message LogResourceRequest {
+  string resource_url    = 1;
+  string atlas_node_id   = 2; // optional
+  // kind ∈ clicked | finished | skipped | unhelpful | reflection_submitted
+  string kind            = 3;
+  // reflection_text required только если kind=reflection_submitted.
+  string reflection_text = 4;
+}
+
+message LogResourceResponse {
+  string id                    = 1;
+  string reflection_note_id    = 2; // empty если note не создана
+  bool   note_create_failed    = 3;
+}
+
 service IntelligenceService {
   rpc GetDailyBrief(GetDailyBriefRequest) returns (DailyBrief) {
     option (google.api.http) = {
@@ -168,12 +303,16 @@ service IntelligenceService {
       body: "*"
     };
   }
+  // AskNotes — RAG над корпусом нот пользователя. Используется AskNotesModal
+  // в Hone Notes (frontend-аудит этот caller пропустил).
   rpc AskNotes(AskNotesRequest) returns (AskAnswer) {
     option (google.api.http) = {
       post: "/api/v1/intelligence/ask-notes"
       body: "*"
     };
   }
+  // AckRecommendation / GetMemoryStats — feedback и trust indicator для
+  // DailyBriefPanel в Hone.
   rpc AckRecommendation(AckRecommendationRequest) returns (AckRecommendationResponse) {
     option (google.api.http) = {
       post: "/api/v1/intelligence/brief/ack"
@@ -192,5 +331,57 @@ service IntelligenceService {
       post: "/api/v1/intelligence/insights/{id}/ack"
       body: "*"
     };
+  }
+
+  // GetNextAction — Phase 2 Coach hero «one daily action».
+  rpc GetNextAction(GetNextActionRequest) returns (NextAction) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/next-action"
+      body: "*"
+    };
+  }
+
+  // GetForkSnapshot — Phase 2 fork view (active when mode='explore').
+  rpc GetForkSnapshot(GetForkSnapshotRequest) returns (ForkSnapshot) {
+    option (google.api.http) = { get: "/api/v1/intelligence/fork-snapshot" };
+  }
+
+  // LogResource — Phase 2 user_resource_log event ingest.
+  rpc LogResource(LogResourceRequest) returns (LogResourceResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/resource-log"
+      body: "*"
+    };
+  }
+
+  // SetLearningMode — Phase 2 mode persistence из Coach.
+  rpc SetLearningMode(SetLearningModeRequest) returns (LearningStateView) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/learning-mode"
+      body: "*"
+    };
+  }
+
+  // SetForkBranch — Phase 2 fork branch declaration.
+  rpc SetForkBranch(SetForkBranchRequest) returns (LearningStateView) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/fork-branch"
+      body: "*"
+    };
+  }
+
+  // GetResourceTrail — Phase 2 activity stream (last N days).
+  rpc GetResourceTrail(GetResourceTrailRequest) returns (ResourceTrail) {
+    option (google.api.http) = { get: "/api/v1/intelligence/resource-trail" };
+  }
+
+  // GetSkillRadar — Phase 2 5-axis radar derived from mock_sessions.ai_report.
+  rpc GetSkillRadar(GetSkillRadarRequest) returns (SkillRadar) {
+    option (google.api.http) = { get: "/api/v1/intelligence/skill-radar" };
+  }
+
+  // GetCoachStats — Phase 2 snapshot KPIs (streak / focus today / last mock / next mock).
+  rpc GetCoachStats(GetCoachStatsRequest) returns (CoachStats) {
+    option (google.api.http) = { get: "/api/v1/intelligence/coach-stats" };
   }
 }

@@ -140,6 +140,9 @@ type MockSessionSummary struct {
 	WeakTopics  []string  // парсится из ai_report.weak_topics или пусто
 	FinishedAt  time.Time // zero если не finished
 	DurationMin int
+	// AIReportRaw — raw JSONB для consumer'ов которым нужен per-axis breakdown
+	// (см GetSkillRadar UC). Populated by MockReader; nil если row had NULL.
+	AIReportRaw []byte
 }
 
 // KataAttempt — одна daily kata запись из daily_kata_history.

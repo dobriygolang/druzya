@@ -13,11 +13,13 @@
 // unauthorised viewer just sees an empty list rather than someone
 // else's data.
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
+import { TutorOnboardingModal, isTutorOnboarded } from '../components/TutorOnboardingModal'
+import { SharedReadingPane } from '../components/SharedReadingPane'
 import { ApiError } from '../lib/apiClient'
 import {
   useBroadcastAssignmentMutation,
@@ -26,6 +28,7 @@ import {
   useCreateEventMutation,
   useCreateGroupEventMutation,
   useCreateInviteMutation,
+  useInviteByUsernameMutation,
   useEndRelationshipMutation,
   useRevokeInviteMutation,
   useTutorActivityQuery,
@@ -48,9 +51,32 @@ const STATUS_LABEL: Record<TutorInviteStatus, string> = {
   INVITE_STATUS_EXPIRED: 'истёк',
 }
 
+type DashTab = 'overview' | 'students' | 'library' | 'calendar'
+
+const TABS: { id: DashTab; label: string; hint: string }[] = [
+  { id: 'overview', label: 'Обзор', hint: 'Активность за 30 дней + быстрые действия' },
+  { id: 'students', label: 'Студенты', hint: 'Invites + active relationships' },
+  { id: 'library', label: 'Reading library', hint: 'Shared reading material для всех студентов' },
+  { id: 'calendar', label: 'Календарь', hint: 'Sessions + broadcast assignments' },
+]
+
+function isDashTab(s: string | undefined): s is DashTab {
+  return s === 'overview' || s === 'students' || s === 'library' || s === 'calendar'
+}
+
 export default function TutorDashboardPage() {
+  const [onboarding, setOnboarding] = useState(() => !isTutorOnboarded())
+  const params = useParams<{ tab?: string }>()
+  const navigate = useNavigate()
+  const tab: DashTab = isDashTab(params.tab) ? params.tab : 'overview'
+
+  const switchTab = (next: DashTab) => {
+    navigate(`/tutor/${next}`)
+  }
+
   return (
     <div className="min-h-screen bg-bg text-text-primary">
+      {onboarding && <TutorOnboardingModal onClose={() => setOnboarding(false)} />}
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 sm:px-8 sm:py-14">
         <header className="flex flex-col gap-2">
           <Link
@@ -63,23 +89,63 @@ export default function TutorDashboardPage() {
             Tutor · dashboard
           </span>
           <h1 className="font-display text-3xl font-bold leading-tight">
-            Студенты и приглашения
+            Дашборд тутора
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">
-            Создавай инвайт-коды, отслеживай активных студентов и открывай
-            страницу студента, чтобы получить AI-бриф перед сессией.
+            {TABS.find((t) => t.id === tab)?.hint}
           </p>
         </header>
 
-        <ActivityPane />
+        {/* Tab switcher */}
+        <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Dashboard sections">
+          {TABS.map((t) => {
+            const isActive = t.id === tab
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => switchTab(t.id)}
+                aria-pressed={isActive}
+                className={`relative -mb-px px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors ${
+                  isActive
+                    ? 'text-text-primary'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                {t.label}
+                {isActive && (
+                  <span className="absolute inset-x-0 bottom-0 h-[2px] bg-text-primary" />
+                )}
+              </button>
+            )
+          })}
+        </nav>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          <InvitesPane />
-          <StudentsPane />
-        </div>
+        {tab === 'overview' && (
+          <>
+            <ActivityPane />
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+              <InvitesPane />
+              <StudentsPane />
+            </div>
+          </>
+        )}
 
-        <BroadcastPane />
-        <EventsPane />
+        {tab === 'students' && (
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <InvitesPane />
+            <StudentsPane />
+          </div>
+        )}
+
+        {tab === 'library' && <SharedReadingPane />}
+
+        {tab === 'calendar' && (
+          <>
+            <BroadcastPane />
+            <EventsPane />
+          </>
+        )}
       </div>
     </div>
   )
@@ -116,9 +182,9 @@ function ActivityPane() {
             Недостаточно данных для аналитики. Создай первое событие.
           </p>
         )}
-        {a && a.events_completed + a.events_cancelled > 0 && (
+        {a && (a.events_completed ?? 0) + (a.events_cancelled ?? 0) > 0 && (
           <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-            Cancellation rate · {(a.cancellation_rate * 100).toFixed(0)}%
+            Cancellation rate · {((a.cancellation_rate ?? 0) * 100).toFixed(0)}%
           </div>
         )}
       </Card>
@@ -721,9 +787,12 @@ function BroadcastResultCard({ result }: { result: TutorBroadcastResult }) {
 function InvitesPane() {
   const invitesQ = useTutorInvitesQuery()
   const create = useCreateInviteMutation()
+  const inviteByUsername = useInviteByUsernameMutation()
   const revoke = useRevokeInviteMutation()
 
   const [note, setNote] = useState('')
+  const [username, setUsername] = useState('')
+  const [inviteByUsernameMsg, setInviteByUsernameMsg] = useState<string | null>(null)
 
   const items = invitesQ.data?.items ?? []
 
@@ -739,7 +808,54 @@ function InvitesPane() {
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <label className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            Заметка (опционально)
+            Пригласить @username (рекомендуется)
+          </span>
+          <p className="text-[11px] text-text-muted">
+            Если ученик уже зарегистрирован — он увидит приглашение прямо у себя
+            на /profile, без копи-вставки кода.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.replace(/^@/, '').trim())}
+              placeholder="anya123"
+              className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+            />
+            <Button
+              onClick={() => {
+                setInviteByUsernameMsg(null)
+                inviteByUsername.mutate(
+                  { username, note: note.trim() || undefined },
+                  {
+                    onSuccess: () => {
+                      setInviteByUsernameMsg(`Готово — @${username} увидит приглашение на /profile`)
+                      setUsername('')
+                      setNote('')
+                    },
+                  },
+                )
+              }}
+              disabled={!username || inviteByUsername.isPending}
+            >
+              {inviteByUsername.isPending ? 'Шлю…' : 'Пригласить'}
+            </Button>
+          </div>
+          {inviteByUsernameMsg && (
+            <span className="text-[12px] text-success">{inviteByUsernameMsg}</span>
+          )}
+          {inviteByUsername.isError && (
+            <span className="text-[12px] text-danger">
+              {inviteByUsername.error instanceof ApiError
+                ? inviteByUsername.error.body
+                : 'Не получилось — проверь username'}
+            </span>
+          )}
+        </label>
+        <hr className="border-border" />
+        <label className="flex flex-col gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            Открытый код (для отправки out-of-band)
           </span>
           <input
             type="text"
@@ -750,6 +866,7 @@ function InvitesPane() {
           />
         </label>
         <Button
+          variant="ghost"
           onClick={() => {
             create.mutate(note.trim(), {
               onSuccess: () => setNote(''),

@@ -487,6 +487,35 @@ export async function getNoteConnectionsStream(
   }
 }
 
+// suggestNoteLinks — Phase 5: LLM-rerank поверх pgvector top-K. Возвращает
+// ≤max suggestions с per-edge `reason` (1 sentence) — Connections panel
+// рендерит «AI suggestions» секцию с этими reason'ами.
+//
+// Cold call ≈ embed + pgvector + LLM rerank → 1-2s на free-tier. UI
+// показывает skeleton пока ждёт; на rate-limit'е backend сам fallback'нет
+// на embedding-only ranking (reason пустой).
+export interface NoteLinkSuggestion {
+  targetNoteId: string;
+  targetTitle: string;
+  snippet: string;
+  score: number;
+  reason: string;
+}
+
+export async function suggestNoteLinks(
+  noteId: string,
+  max = 5,
+): Promise<NoteLinkSuggestion[]> {
+  const resp = await client.suggestNoteLinks({ noteId, max });
+  return resp.suggestions.map((s) => ({
+    targetNoteId: s.targetNoteId,
+    targetTitle: s.targetTitle,
+    snippet: s.snippet,
+    score: s.score,
+    reason: s.reason,
+  }));
+}
+
 // ─── Whiteboards ────────────────────────────────────────────────────────────
 
 export async function listWhiteboards(): Promise<WhiteboardSummary[]> {
@@ -695,4 +724,42 @@ export interface SendCueSessionToTelegramResult {
 export async function sendCueSessionToTelegram(id: string): Promise<SendCueSessionToTelegramResult> {
   const resp = await client.sendCueSessionToTelegram({ id });
   return { ok: resp.ok, message: resp.message };
+}
+
+// ─── User settings (active study mode) ────────────────────────────────────
+
+// Phase 4.1 (2026-05-04): 'ml' removed. ML стало специализацией внутри
+// dev_senior, не отдельный track.
+export type ActiveTrack = 'general' | 'dev' | 'english' | 'go';
+
+export interface UserSettings {
+  activeTrack: ActiveTrack;
+  englishActive: boolean;
+}
+
+function coerceTrack(t: string): ActiveTrack {
+  switch (t) {
+    case 'dev':
+    case 'english':
+    case 'go':
+      return t;
+    default:
+      // Legacy 'ml' fallback to 'general' (Phase 4.1 ml→dev_senior re-tag).
+      return 'general';
+  }
+}
+
+export async function getUserSettings(): Promise<UserSettings> {
+  const resp = await client.getUserSettings({});
+  return { activeTrack: coerceTrack(resp.activeTrack), englishActive: resp.englishActive };
+}
+
+export async function setActiveTrack(track: ActiveTrack): Promise<UserSettings> {
+  const resp = await client.setActiveTrack({ activeTrack: track });
+  return { activeTrack: coerceTrack(resp.activeTrack), englishActive: resp.englishActive };
+}
+
+export async function setEnglishActive(active: boolean): Promise<UserSettings> {
+  const resp = await client.setEnglishActive({ active });
+  return { activeTrack: coerceTrack(resp.activeTrack), englishActive: resp.englishActive };
 }

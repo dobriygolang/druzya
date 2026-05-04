@@ -16,29 +16,21 @@ import (
 	"os"
 	"time"
 
-	arenaDomain "druz9/arena/domain"
-	arenaPorts "druz9/arena/ports"
 	"druz9/cmd/monolith/services"
 	adminServices "druz9/cmd/monolith/services/admin"
 	aiMockServices "druz9/cmd/monolith/services/ai_mock"
-	arenaServices "druz9/cmd/monolith/services/arena"
+	aiTutorServices "druz9/cmd/monolith/services/ai_tutor"
 	authServices "druz9/cmd/monolith/services/auth"
-	calendarServices "druz9/cmd/monolith/services/calendar"
 	circlesServices "druz9/cmd/monolith/services/circles"
-	clubsServices "druz9/cmd/monolith/services/clubs"
 	copilotServices "druz9/cmd/monolith/services/copilot"
-	dailyServices "druz9/cmd/monolith/services/daily"
 	editorServices "druz9/cmd/monolith/services/editor"
-	eventsServices "druz9/cmd/monolith/services/events"
+	curationServices "druz9/cmd/monolith/services/curation"
 	honeServices "druz9/cmd/monolith/services/hone"
+	roomsServices "druz9/cmd/monolith/services/rooms"
 	intelligenceService "druz9/cmd/monolith/services/intelligence"
 	notifyServices "druz9/cmd/monolith/services/notify"
 	podcastServices "druz9/cmd/monolith/services/podcast"
 	profileServices "druz9/cmd/monolith/services/profile"
-	quizServices "druz9/cmd/monolith/services/quiz"
-	ratingServices "druz9/cmd/monolith/services/rating"
-	reviewServices "druz9/cmd/monolith/services/review"
-	slotServices "druz9/cmd/monolith/services/slot"
 	storageServices "druz9/cmd/monolith/services/storage"
 	subscriptionServices "druz9/cmd/monolith/services/subscription"
 	syncServices "druz9/cmd/monolith/services/sync"
@@ -47,8 +39,6 @@ import (
 	whiteboardRoomsServices "druz9/cmd/monolith/services/whiteboard_rooms"
 	honeApp "druz9/hone/app"
 	honeInfra "druz9/hone/infra"
-	ratingInfra "druz9/rating/infra"
-	"druz9/shared/enums"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
 	"druz9/shared/pkg/killswitch"
@@ -171,7 +161,6 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	}
 	deps.TokenIssuer = auth.Issuer
 
-	rating := ratingServices.NewRating(deps)
 	notify, nerr := notifyServices.NewNotify(deps)
 	if nerr != nil {
 		pool.Close()
@@ -190,10 +179,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 
 	statsMod := adminServices.NewStats(deps)
 
-	// Slot must be wired before Review — review.CreateReview needs slot's
-	// BookingRepo to validate ownership of the booking being reviewed.
-	slotMod, slotBookings := slotServices.NewSlot(deps)
-	reviewMod := reviewServices.NewReview(deps, slotBookings)
+	// Pivot 2026-05-01: slot/rating/events/review services dropped (см
+	// docs/feature/identity.md). Slot booking flow + ELO rating + standalone
+	// events service выпиливаются как dead/redundant с tutor-toolkit pivot'ом.
 	// Circles wired ahead of `modules` so Events can borrow its handlers
 	// for the CircleAuthority gate without a second instantiation.
 	circlesMod := circlesServices.NewCircles(deps)
@@ -217,19 +205,32 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	deps.IntelligenceMemoryHook = intelligenceMod.Hook
 	deps.IntelligenceMockMemoryHook = intelligenceMod.MockHook
 	deps.IntelligenceMemory = intelligenceMod.Memory
+	deps.IntelligenceLinkSuggester = intelligenceMod.LinkSuggester
+	deps.IntelligenceLogResource = intelligenceMod.LogResourceUC
+	// External-activity → coach_episode bridge. Hone AddExternalActivity
+	// UC использует это чтобы AI-tutor recall + daily-brief видели
+	// внешнее обучение (LeetCode / Coursera / books) как часть памяти.
+	deps.ExternalActivityCoachAppender = honeServices.NewHoneCoachEpisodeAppender(
+		intelligenceService.NewExternalActivityAppender(intelligenceMod.Memory),
+	)
+
+	// Tutor wires before its slot in the modules slice because ai_tutor
+	// needs PushAssignment use case to forward proactive triggers
+	// (OnFailedMock → assignment в Hone TaskBoard).
+	tutorMod := tutorServices.NewTutor(deps, tutorServices.TutorDeps{
+		Briefer:    tutorServices.NewBriefer(deps.LLMChain, deps.Log, deps.Now),
+		NotifySend: notify.Send,
+	})
 
 	modules := []*services.Module{
 		&auth.Module,
 		statsMod,
 		profileServices.NewProfile(deps),
-		dailyServices.NewDaily(deps),
-		&rating.Module,
-		arenaServices.NewArena(deps, buildArenaEloFunc(rating.Repo)),
+		// Pivot 2026-05-01: arena (1v1/2v2/match/ELO matchmaker) +
+		// rating + slot + review + events удалены. См
+		// docs/feature/identity.md.
 		aiMockServices.NewAIMock(deps),
 		adminServices.NewAIModels(deps),
-		// Admin CRUD over the canonical `tasks` table (Arena 1v1/2v2 +
-		// Daily Kata pool). Backend for the Arena Tasks tab in /admin.
-		arenaServices.NewAdminArenaTasks(deps),
 		// Codex catalogue (public read + admin CRUD over codex_articles).
 		adminServices.NewCodex(deps),
 		// Admin write surface for `llm_models` (public read = ai_models.go).
@@ -238,57 +239,49 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		// VPS retention sweep — see cleanup_crons.go header for tables/
 		// policies. Pure background, no REST surface.
 		adminServices.NewCleanupCrons(deps),
-		// Phase-4 ADR-001 — `ai_native` removed (NativeRoundPage was a
-		// legacy mock-round flow with no UI entry point); `season` removed
-		// (incomplete season pass, no UI surface). Event publishers in
-		// rating/arena/daily/ai_mock keep firing but no subscriber listens
-		// — that's fine, the bus is fan-out-without-FK.
-		slotMod,
-		reviewMod,
 		// Phase-4 ADR-001 (Wave 2) — `cohort` removed (feature merged into circles).
 		&notify.Module,
 		editorServices.NewEditor(deps),
 		podcastServices.NewPodcast(deps),
-		quizServices.NewQuiz(deps),
 		adminServices.NewAdmin(deps),
-		circlesServices.NewFeed(deps),
 		adminServices.NewVacancies(deps),
 		// Phase-4 ADR-001 — `achievements` removed (gamification cut, no UI surface).
 		// Phase 1.7 — `friends` removed (social graph lives in TG channel + circles).
 		honeServices.NewHone(deps),
+		curationServices.NewCuration(deps),
+		roomsServices.NewRooms(deps),
+		roomsServices.NewSweepCron(deps),
 		intelligenceMod.Module,
+		intelligenceService.NewAutoPromoteCron(deps),
 		whiteboardRoomsServices.NewWhiteboardRooms(deps),
 		circlesMod.Module,
 		aiMockServices.NewMockInterview(deps),
-		eventsServices.NewEvents(deps, circlesMod),
-		// Personal calendar — interviews, deadlines, exams, club_session
-		// reflections. Reads come from intelligence (severity grading) and
-		// the upcoming-events ribbon in Hone Today. The reminder
-		// dispatcher (Phase 1.8b) is wired with notify.Bot as the TG
-		// sender; absence of either dependency makes the dispatcher
-		// idle without breaking the RPC surface.
-		calendarServices.NewCalendar(deps, calendarServices.CalendarDeps{
-			NotifyPrefs:    notify.Prefs,
-			NotifyChannels: notify.ChannelPrefs,
-			NotifySender:   notify.Bot,
-		}),
+		// Pivot 2026-05-04: calendar bounded context выпилен — нулевые
+		// frontend-вызовы /calendar/events*, ribbon на Hone Today
+		// никогда не материализовался. Intelligence.CalendarReader всё
+		// ещё читает personal_events (таблица сохранена), но без
+		// writer'ов всегда возвращает пустой список — graceful degrade.
 		// Phase 2 — curated learning Tracks (bounded context tracks).
 		// Reads are auth-gated so the catalogue can show enrolment state.
 		tracksServices.NewTracks(deps),
-		// Phase 3 — Clubs MVP (catalogue + sessions + RSVP). Curator
-		// CRUD UI отдельной фазой; здесь read-mostly read-mostly + одна
-		// mutation.
-		clubsServices.NewClubs(deps),
 		// Wave 2 of docs/feature/tutor.md — tutor as distribution
 		// channel. Briefer wired via llmchain (Wave 2.5); the
 		// constructor returns nil when LLMChain is nil (offline /
 		// tests) and the use-case falls back to snapshot-only.
 		// TutorDisplay still nil — the profile display-name reader
 		// plugs in alongside /tutor frontend (Wave 2.6).
-		tutorServices.NewTutor(deps, tutorServices.TutorDeps{
-			Briefer: tutorServices.NewBriefer(deps.LLMChain, deps.Log, deps.Now),
+		tutorMod.Module,
+		// AI-tutor (см docs/feature/ai-tutor.md). Reuse'ит существующий
+		// tutor-сервис как relationship-store, использует llmchain для
+		// chat / compaction.
+		aiTutorServices.NewAITutor(deps, aiTutorServices.AITutorDeps{
+			Chain:            deps.LLMChain,
+			ExternalActivity: intelligenceMod.ExternalReader,
+			Focus:            intelligenceMod.FocusReader,
+			Mocks:            intelligenceMod.MockReader,
+			Skills:           intelligenceMod.SkillReader,
+			PushAssignment:   tutorMod.PushAssignment,
 		}),
-		circlesServices.NewLobby(deps),
 		subscriptionServices.NewSubscription(deps),
 		storageMod,
 		syncMod,
@@ -484,25 +477,3 @@ func buildHoneYjsDeps(d services.Deps) honeServices.YjsPersistenceDeps {
 	}
 }
 
-// ── Arena ELO lookup wiring ───────────────────────────────────────────────
-// Bridges rating's per-user ratings list to arena's UserEloFunc port. Lives
-// in bootstrap (not arena/) so arena no longer imports druz9/rating —
-// pre-condition for extracting arena into a separate process later.
-func buildArenaEloFunc(repo *ratingInfra.Postgres) arenaPorts.UserEloFunc {
-	return func(ctx any, userID uuid.UUID, section enums.Section) int {
-		c, _ := ctx.(context.Context)
-		if c == nil {
-			c = context.Background()
-		}
-		list, err := repo.List(c, userID)
-		if err != nil {
-			return arenaDomain.InitialELO
-		}
-		for _, r := range list {
-			if r.Section == section {
-				return r.Elo
-			}
-		}
-		return arenaDomain.InitialELO
-	}
-}

@@ -11,7 +11,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AIVacanciesModel, AllocateAtlasSkillRequest, AllocateAtlasSkillResponse, ApproveInterviewerApplicationRequest, BecomeInterviewerRequest, GetAIVacanciesModelRequest, GetMyAtlasRequest, GetMyInterviewerApplicationRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetUserTracksRequest, GetWeeklyShareRequest, InterviewerApplication, InterviewerApplicationList, ListInterviewerApplicationsRequest, ProfileFull, ProfilePublic, ProfileSettings, RejectInterviewerApplicationRequest, SetAIVacanciesModelRequest, SetUserTracksRequest, SkillAtlas, UpdateProfileSettingsRequest, UserTracks, WeeklyReport } from "./profile_pb.js";
+import { AIVacanciesModel, AllocateAtlasSkillRequest, AllocateAtlasSkillResponse, ApproveInterviewerApplicationRequest, BecomeInterviewerRequest, ClassifyAtlasTodoRequest, ClassifyAtlasTodoResponse, GetAIVacanciesModelRequest, GetMyAtlasRequest, GetMyInterviewerApplicationRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetUserTracksRequest, GetWeeklyShareRequest, InterviewerApplication, InterviewerApplicationList, ListInterviewerApplicationsRequest, ProfileFull, ProfilePublic, ProfileSettings, RejectInterviewerApplicationRequest, SetAIVacanciesModelRequest, SetAtlasNodePrefRequest, SetAtlasNodePrefResponse, SetUserTracksRequest, SkillAtlas, UpdateProfileSettingsRequest, UserTracks, WeeklyReport } from "./profile_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -217,6 +217,31 @@ export const ProfileService = {
       name: "SetUserTracks",
       I: SetUserTracksRequest,
       O: UserTracks,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ClassifyAtlasTodo (Phase 3.1) — юзер пишет TODO в свободной форме
+     * («изучить транзакции в Postgres»); LLM либо матчит в существующий
+     * curated узел атласа, либо создаёт новый user_atlas_nodes row.
+     * Возвращает либо matched_key (узел уже был), либо new_node (новый).
+     *
+     * @generated from rpc druz9.v1.ProfileService.ClassifyAtlasTodo
+     */
+    classifyAtlasTodo: {
+      name: "ClassifyAtlasTodo",
+      I: ClassifyAtlasTodoRequest,
+      O: ClassifyAtlasTodoResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetAtlasNodePref — Phase 3 pin/hide actions per atlas node.
+     *
+     * @generated from rpc druz9.v1.ProfileService.SetAtlasNodePref
+     */
+    setAtlasNodePref: {
+      name: "SetAtlasNodePref",
+      I: SetAtlasNodePrefRequest,
+      O: SetAtlasNodePrefResponse,
       kind: MethodKind.Unary,
     },
   }

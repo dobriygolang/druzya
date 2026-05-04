@@ -291,3 +291,227 @@ export async function listRecentBriefs(days = 30): Promise<RecentBrief[]> {
     return [];
   }
 }
+
+// ── Phase 2 learning-companion (2026-05-04) ────────────────────────────
+
+export type ActionKind =
+  | 'focus_block'
+  | 'start_mock'
+  | 'review_resource'
+  | 'reflection'
+  | 'checkpoint'
+  | 'graduation_mock';
+
+export interface NextAction {
+  actionKind: ActionKind;
+  target: string;
+  rationale: string;
+  estimatedMinutes: number;
+}
+
+export interface ForkBranchView {
+  branch: string;
+  mockCount: number;
+  avgScore: number;
+  voluntaryDeepDives: number;
+  compositeScore: number;
+}
+
+export interface ForkSnapshot {
+  mode: 'explore' | 'commit' | 'deep' | string;
+  exploreWeekIndex: number;
+  currentBranch: string;
+  branches: ForkBranchView[];
+  leanBranch: string;
+  confidence: number;
+}
+
+export type ResourceLogKind =
+  | 'clicked'
+  | 'finished'
+  | 'skipped'
+  | 'unhelpful'
+  | 'reflection_submitted';
+
+export interface LogResourceArgs {
+  resourceUrl: string;
+  atlasNodeId?: string;
+  kind: ResourceLogKind;
+  reflectionText?: string;
+}
+
+export interface LogResourceResult {
+  id: string;
+  reflectionNoteId: string; // empty when no Note created
+  noteCreateFailed: boolean;
+}
+
+// getNextAction — Coach hero «one daily action».
+export async function getNextAction(force = false): Promise<NextAction> {
+  const r = await client.getNextAction({ force });
+  return {
+    actionKind: (r.actionKind as ActionKind) || 'focus_block',
+    target: r.target ?? '',
+    rationale: r.rationale ?? '',
+    estimatedMinutes: r.estimatedMinutes ?? 0,
+  };
+}
+
+// getForkSnapshot — fork view (active when mode='explore').
+export async function getForkSnapshot(): Promise<ForkSnapshot> {
+  const r = await client.getForkSnapshot({});
+  return {
+    mode: r.mode ?? 'explore',
+    exploreWeekIndex: r.exploreWeekIndex ?? 0,
+    currentBranch: r.currentBranch ?? '',
+    branches: (r.branches ?? []).map((b) => ({
+      branch: b.branch ?? '',
+      mockCount: b.mockCount ?? 0,
+      avgScore: b.avgScore ?? 0,
+      voluntaryDeepDives: b.voluntaryDeepDives ?? 0,
+      compositeScore: b.compositeScore ?? 0,
+    })),
+    leanBranch: r.leanBranch ?? '',
+    confidence: r.confidence ?? 0,
+  };
+}
+
+// logResource — fire-and-forget event ingest. Возвращает id; reflection
+// flow возвращает note_id если создана.
+export async function logResource(args: LogResourceArgs): Promise<LogResourceResult> {
+  const r = await client.logResource({
+    resourceUrl: args.resourceUrl,
+    atlasNodeId: args.atlasNodeId ?? '',
+    kind: args.kind,
+    reflectionText: args.reflectionText ?? '',
+  });
+  return {
+    id: r.id ?? '',
+    reflectionNoteId: r.reflectionNoteId ?? '',
+    noteCreateFailed: r.noteCreateFailed ?? false,
+  };
+}
+
+// ── Phase 2 mode persistence ────────────────────────────────────────────
+
+export interface LearningStateView {
+  mode: 'explore' | 'commit' | 'deep' | string;
+  forkBranch: string; // '' if not chosen
+  exploreWeekIndex: number;
+  committedTrackId: string;
+}
+
+export async function setLearningMode(
+  mode: 'explore' | 'commit' | 'deep',
+  trackId?: string,
+): Promise<LearningStateView> {
+  const r = await client.setLearningMode({ mode, trackId: trackId ?? '' });
+  return {
+    mode: r.mode ?? 'explore',
+    forkBranch: r.forkBranch ?? '',
+    exploreWeekIndex: r.exploreWeekIndex ?? 0,
+    committedTrackId: r.committedTrackId ?? '',
+  };
+}
+
+export async function setForkBranch(branch: 'de' | 'mle' | 'none' | ''): Promise<LearningStateView> {
+  const r = await client.setForkBranch({ branch });
+  return {
+    mode: r.mode ?? 'explore',
+    forkBranch: r.forkBranch ?? '',
+    exploreWeekIndex: r.exploreWeekIndex ?? 0,
+    committedTrackId: r.committedTrackId ?? '',
+  };
+}
+
+// ── Phase 2 finishers (resource trail + skill radar) ────────────────────
+
+export type ResourceTouchKind =
+  | 'clicked'
+  | 'finished'
+  | 'skipped'
+  | 'unhelpful'
+  | 'reflection_submitted'
+  | string;
+
+export interface ResourceTouch {
+  url: string;
+  atlasNodeId: string;
+  kind: ResourceTouchKind;
+  occurredAt: Date | null;
+  hoursAgo: number;
+  reflectionText: string;
+}
+
+export interface ResourceTrail {
+  finishedRecent: ResourceTouch[];
+  unfinishedCount: number;
+  markedUnhelpful: ResourceTouch[];
+  recentReflections: ResourceTouch[];
+}
+
+export async function getResourceTrail(days = 7, keepRecent = 5): Promise<ResourceTrail> {
+  const r = await client.getResourceTrail({ days, keepRecent });
+  const map = (t: typeof r.finishedRecent[number]): ResourceTouch => ({
+    url: t.url ?? '',
+    atlasNodeId: t.atlasNodeId ?? '',
+    kind: t.kind ?? 'clicked',
+    occurredAt: t.occurredAt ? t.occurredAt.toDate() : null,
+    hoursAgo: t.hoursAgo ?? 0,
+    reflectionText: t.reflectionText ?? '',
+  });
+  return {
+    finishedRecent: (r.finishedRecent ?? []).map(map),
+    unfinishedCount: r.unfinishedCount ?? 0,
+    markedUnhelpful: (r.markedUnhelpful ?? []).map(map),
+    recentReflections: (r.recentReflections ?? []).map(map),
+  };
+}
+
+export interface SkillRadarAxis {
+  key: string;
+  label: string;
+  score: number; // 0..1
+  mockCount: number;
+}
+
+export interface SkillRadar {
+  rubric: string;
+  axes: SkillRadarAxis[];
+}
+
+export async function getSkillRadar(rubric?: string): Promise<SkillRadar> {
+  const r = await client.getSkillRadar({ rubric: rubric ?? '' });
+  return {
+    rubric: r.rubric ?? '',
+    axes: (r.axes ?? []).map((a) => ({
+      key: a.key ?? '',
+      label: a.label ?? '',
+      score: a.score ?? 0,
+      mockCount: a.mockCount ?? 0,
+    })),
+  };
+}
+
+// ── Phase 2 finalizer: snapshot stats ──────────────────────────────────
+
+export interface CoachStats {
+  streakDays: number;
+  focusTodayMin: number;
+  lastMockScore: number; // 0..100
+  lastMockSection: string;
+  nextMockInDays: number; // -1 if none
+  nextMockCompany: string;
+}
+
+export async function getCoachStats(): Promise<CoachStats> {
+  const r = await client.getCoachStats({});
+  return {
+    streakDays: r.streakDays ?? 0,
+    focusTodayMin: r.focusTodayMin ?? 0,
+    lastMockScore: r.lastMockScore ?? 0,
+    lastMockSection: r.lastMockSection ?? '',
+    nextMockInDays: r.nextMockInDays ?? -1,
+    nextMockCompany: r.nextMockCompany ?? '',
+  };
+}

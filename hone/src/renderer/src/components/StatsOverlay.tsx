@@ -174,6 +174,14 @@ export function StatsOverlay({ onClose: _onClose, closing = false }: { onClose: 
           </BigCard>
         </div>
 
+        {/* 5. External Activity (LeetCode/Coursera/books — за 7 дней) */}
+        <div className={closing ? 'slide-to-right' : 'slide-from-right'} style={{ animationDelay: closing ? '0ms' : '320ms' }}>
+          <BigCard>
+            <CardHead title="External Activity" right={<MetaLabel>LAST 14</MetaLabel>} />
+            <ExternalActivityCard />
+          </BigCard>
+        </div>
+
         {state.status === 'error' && state.errorCode === Code.Unauthenticated && (
           <div
             className={`mono ${closing ? 'slide-to-right' : 'slide-from-right'}`}
@@ -714,3 +722,107 @@ function SimpleStatCell({ value, unit, label, sub }: { value: string; unit?: str
   );
 }
 
+
+// ─── External Activity card ───────────────────────────────────────────────
+//
+// Список последних 14 записей external_activity. Source label + topic +
+// duration + relative time. Empty state — info-line с CTA нажать «+ занятие»
+// на Today (но не link'аем — overlay сам себя не закрывает).
+
+function ExternalActivityCard() {
+  const [items, setItems] = useState<ExternalEntry[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { listExternalActivity } = await import('../api/external');
+        const r = await listExternalActivity({ limit: 14 });
+        if (cancelled) return;
+        setItems(
+          r.map((a) => ({
+            id: a.id,
+            source: a.source,
+            topic: a.topicFreeText || a.topicAtlasNodeId,
+            durationMin: a.durationMin,
+            occurredAt: a.occurredAt,
+          })),
+        );
+      } catch {
+        if (!cancelled) setItems([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (items === null) {
+    return <div style={{ padding: 12, color: 'var(--ink-40)', fontSize: 11 }}>загрузка…</div>;
+  }
+  if (items.length === 0) {
+    return (
+      <div style={{ padding: 12, color: 'var(--ink-40)', fontSize: 11, lineHeight: 1.5 }}>
+        Пока ничего не записано. Нажми «+ занятие» на Today чтобы зачекинить
+        обучение вне druz9 (LeetCode, Coursera, книги).
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0' }}>
+      {items.map((it) => (
+        <div
+          key={it.id}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '6px 10px',
+            borderRadius: 6,
+            background: 'rgba(255,255,255,0.03)',
+            fontSize: 11.5,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <span
+              className="mono"
+              style={{
+                fontSize: 9,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: 'var(--ink-40)',
+                flexShrink: 0,
+              }}
+            >
+              {it.source}
+            </span>
+            <span style={{ color: 'var(--ink-90)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {it.topic || '(без темы)'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 10, color: 'var(--ink-40)', flexShrink: 0 }}>
+            <span>{it.durationMin}m</span>
+            <span>{relativeShort(it.occurredAt)}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+interface ExternalEntry {
+  id: string;
+  source: string;
+  topic: string;
+  durationMin: number;
+  occurredAt: Date | null;
+}
+
+function relativeShort(d: Date | null): string {
+  if (!d) return '';
+  const ms = Date.now() - d.getTime();
+  if (ms < 60_000) return 'now';
+  const m = Math.floor(ms / 60_000);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}

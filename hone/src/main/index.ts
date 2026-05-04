@@ -41,10 +41,14 @@ import { clearVaultPassphrase, loadVaultPassphrase, saveVaultPassphrase } from '
 import { loadPomodoro, savePomodoro } from './pomodoro_store';
 import { checkForUpdates, quitAndInstall, startPeriodicCheck, wireUpdater } from './updater';
 
-// Backend host. Hardcoded prod URL — bible §5: «Домены прода захардкожены»
-// (см. hone/src/renderer/src/api/config.ts). Main can't import the renderer
-// alias due to electron-vite's split bundles, so we duplicate the constant.
-const API_BASE = 'https://druz9.online';
+// Backend host. Main can't import the renderer alias due to electron-vite's
+// split bundles, so we duplicate the resolution logic here.
+//   - Dev (npm run dev → !app.isPackaged): http://localhost:8080.
+//   - Prod (.app/.dmg): https://druz9.online.
+//   - Override через HONE_API_BASE env (для staging / удалённого dev).
+const API_BASE =
+  (process.env.HONE_API_BASE?.trim()) ||
+  (app.isPackaged ? 'https://druz9.online' : 'http://localhost:8080');
 
 // Sentry: main-process handler. DSN приходит из env (HONE_SENTRY_DSN) в
 // prod-билде через electron-builder config; пустая DSN → no-op, что

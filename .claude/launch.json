@@ -29,6 +29,27 @@
         "cd /Users/sedorofeevd/Desktop/druzya/backend/cmd/monolith && exec go run ."
       ],
       "port": 8080
+    },
+    {
+      "name": "mocks",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5180",
+        "--directory",
+        "/Users/sedorofeevd/Desktop/druzya/docs/mocks/druz9-hone-bundle"
+      ],
+      "port": 5180
+    },
+    {
+      "name": "hone-renderer",
+      "autoPort": false,
+      "runtimeExecutable": "sleep",
+      "runtimeArgs": [
+        "999999"
+      ],
+      "port": 5173
     }
   ]
 }

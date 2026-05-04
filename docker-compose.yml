@@ -132,6 +132,9 @@ services:
       # silently no-ops when it isn't — InitTracer logs a warning and continues).
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # DEV_AUTH=true включает /api/v1/auth/dev/login — INSECURE bypass
+      # для local dev'а. См services/auth/app/dev_login.go.
+      DEV_AUTH: ${DEV_AUTH:-}
     ports:
       - "8080:8080"
     networks: [app-net, judge-net]

@@ -125,6 +125,15 @@ export enum Section {
    * @generated from enum value: SECTION_DEVOPS = 12;
    */
   DEVOPS = 12,
+
+  /**
+   * ML engineering — pivot 2026-05-01. Free-form interview round для
+   * middle/senior ML позиций. Classical ML, deep learning, LLM/GenAI,
+   * MLOps, evaluation + production awareness.
+   *
+   * @generated from enum value: SECTION_ML_ENG = 13;
+   */
+  ML_ENG = 13,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Section)
 proto3.util.setEnumType(Section, "druz9.v1.Section", [
@@ -141,6 +150,7 @@ proto3.util.setEnumType(Section, "druz9.v1.Section", [
   { no: 10, name: "SECTION_PRODUCT_ANALYST" },
   { no: 11, name: "SECTION_QA" },
   { no: 12, name: "SECTION_DEVOPS" },
+  { no: 13, name: "SECTION_ML_ENG" },
 ]);
 
 /**
@@ -412,98 +422,6 @@ proto3.util.setEnumType(SubscriptionPlan, "druz9.v1.SubscriptionPlan", [
 ]);
 
 /**
- * MatchStatus mirrors shared/enums.MatchStatus (arena match lifecycle).
- *
- * @generated from enum druz9.v1.MatchStatus
- */
-export enum MatchStatus {
-  /**
-   * @generated from enum value: MATCH_STATUS_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: MATCH_STATUS_SEARCHING = 1;
-   */
-  SEARCHING = 1,
-
-  /**
-   * @generated from enum value: MATCH_STATUS_CONFIRMING = 2;
-   */
-  CONFIRMING = 2,
-
-  /**
-   * @generated from enum value: MATCH_STATUS_ACTIVE = 3;
-   */
-  ACTIVE = 3,
-
-  /**
-   * @generated from enum value: MATCH_STATUS_FINISHED = 4;
-   */
-  FINISHED = 4,
-
-  /**
-   * @generated from enum value: MATCH_STATUS_CANCELLED = 5;
-   */
-  CANCELLED = 5,
-}
-// Retrieve enum metadata with: proto3.getEnumType(MatchStatus)
-proto3.util.setEnumType(MatchStatus, "druz9.v1.MatchStatus", [
-  { no: 0, name: "MATCH_STATUS_UNSPECIFIED" },
-  { no: 1, name: "MATCH_STATUS_SEARCHING" },
-  { no: 2, name: "MATCH_STATUS_CONFIRMING" },
-  { no: 3, name: "MATCH_STATUS_ACTIVE" },
-  { no: 4, name: "MATCH_STATUS_FINISHED" },
-  { no: 5, name: "MATCH_STATUS_CANCELLED" },
-]);
-
-/**
- * ArenaMode mirrors shared/enums.ArenaMode.
- *
- * @generated from enum druz9.v1.ArenaMode
- */
-export enum ArenaMode {
-  /**
-   * @generated from enum value: ARENA_MODE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: ARENA_MODE_SOLO_1V1 = 1;
-   */
-  SOLO_1V1 = 1,
-
-  /**
-   * @generated from enum value: ARENA_MODE_DUO_2V2 = 2;
-   */
-  DUO_2V2 = 2,
-
-  /**
-   * @generated from enum value: ARENA_MODE_RANKED = 3;
-   */
-  RANKED = 3,
-
-  /**
-   * @generated from enum value: ARENA_MODE_HARDCORE = 4;
-   */
-  HARDCORE = 4,
-
-  /**
-   * @generated from enum value: ARENA_MODE_CURSED = 5;
-   */
-  CURSED = 5,
-}
-// Retrieve enum metadata with: proto3.getEnumType(ArenaMode)
-proto3.util.setEnumType(ArenaMode, "druz9.v1.ArenaMode", [
-  { no: 0, name: "ARENA_MODE_UNSPECIFIED" },
-  { no: 1, name: "ARENA_MODE_SOLO_1V1" },
-  { no: 2, name: "ARENA_MODE_DUO_2V2" },
-  { no: 3, name: "ARENA_MODE_RANKED" },
-  { no: 4, name: "ARENA_MODE_HARDCORE" },
-  { no: 5, name: "ARENA_MODE_CURSED" },
-]);
-
-/**
  * MockStatus mirrors shared/enums.MockStatus (ai_mock session lifecycle).
  *
  * @generated from enum druz9.v1.MockStatus
@@ -626,80 +544,6 @@ proto3.util.setEnumType(LLMModel, "druz9.v1.LLMModel", [
 ]);
 
 /**
- * ProvenanceKind mirrors shared/enums.ProvenanceKind (ai_native code origin).
- *
- * @generated from enum druz9.v1.ProvenanceKind
- */
-export enum ProvenanceKind {
-  /**
-   * @generated from enum value: PROVENANCE_KIND_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: PROVENANCE_KIND_AI_GENERATED = 1;
-   */
-  AI_GENERATED = 1,
-
-  /**
-   * @generated from enum value: PROVENANCE_KIND_HUMAN_WRITTEN = 2;
-   */
-  HUMAN_WRITTEN = 2,
-
-  /**
-   * @generated from enum value: PROVENANCE_KIND_AI_REVISED_BY_HUMAN = 3;
-   */
-  AI_REVISED_BY_HUMAN = 3,
-
-  /**
-   * @generated from enum value: PROVENANCE_KIND_AI_REJECTED = 4;
-   */
-  AI_REJECTED = 4,
-}
-// Retrieve enum metadata with: proto3.getEnumType(ProvenanceKind)
-proto3.util.setEnumType(ProvenanceKind, "druz9.v1.ProvenanceKind", [
-  { no: 0, name: "PROVENANCE_KIND_UNSPECIFIED" },
-  { no: 1, name: "PROVENANCE_KIND_AI_GENERATED" },
-  { no: 2, name: "PROVENANCE_KIND_HUMAN_WRITTEN" },
-  { no: 3, name: "PROVENANCE_KIND_AI_REVISED_BY_HUMAN" },
-  { no: 4, name: "PROVENANCE_KIND_AI_REJECTED" },
-]);
-
-/**
- * NativeAction mirrors ai_native/domain.ActionKind (verify outcomes).
- *
- * @generated from enum druz9.v1.NativeAction
- */
-export enum NativeAction {
-  /**
-   * @generated from enum value: NATIVE_ACTION_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: NATIVE_ACTION_ACCEPTED = 1;
-   */
-  ACCEPTED = 1,
-
-  /**
-   * @generated from enum value: NATIVE_ACTION_REJECTED = 2;
-   */
-  REJECTED = 2,
-
-  /**
-   * @generated from enum value: NATIVE_ACTION_REVISED = 3;
-   */
-  REVISED = 3,
-}
-// Retrieve enum metadata with: proto3.getEnumType(NativeAction)
-proto3.util.setEnumType(NativeAction, "druz9.v1.NativeAction", [
-  { no: 0, name: "NATIVE_ACTION_UNSPECIFIED" },
-  { no: 1, name: "NATIVE_ACTION_ACCEPTED" },
-  { no: 2, name: "NATIVE_ACTION_REJECTED" },
-  { no: 3, name: "NATIVE_ACTION_REVISED" },
-]);
-
-/**
  * EditorEventType mirrors ai_mock/domain.EditorEventType (stress batch event).
  *
  * @generated from enum druz9.v1.EditorEventType
@@ -743,52 +587,6 @@ proto3.util.setEnumType(EditorEventType, "druz9.v1.EditorEventType", [
   { no: 3, name: "EDITOR_EVENT_TYPE_CHAOTIC_EDIT" },
   { no: 4, name: "EDITOR_EVENT_TYPE_PASTE_ATTEMPT" },
   { no: 5, name: "EDITOR_EVENT_TYPE_IDLE" },
-]);
-
-/**
- * SlotStatus mirrors shared/enums.SlotStatus (human-mock slot lifecycle).
- *
- * @generated from enum druz9.v1.SlotStatus
- */
-export enum SlotStatus {
-  /**
-   * @generated from enum value: SLOT_STATUS_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: SLOT_STATUS_AVAILABLE = 1;
-   */
-  AVAILABLE = 1,
-
-  /**
-   * @generated from enum value: SLOT_STATUS_BOOKED = 2;
-   */
-  BOOKED = 2,
-
-  /**
-   * @generated from enum value: SLOT_STATUS_COMPLETED = 3;
-   */
-  COMPLETED = 3,
-
-  /**
-   * @generated from enum value: SLOT_STATUS_CANCELLED = 4;
-   */
-  CANCELLED = 4,
-
-  /**
-   * @generated from enum value: SLOT_STATUS_NO_SHOW = 5;
-   */
-  NO_SHOW = 5,
-}
-// Retrieve enum metadata with: proto3.getEnumType(SlotStatus)
-proto3.util.setEnumType(SlotStatus, "druz9.v1.SlotStatus", [
-  { no: 0, name: "SLOT_STATUS_UNSPECIFIED" },
-  { no: 1, name: "SLOT_STATUS_AVAILABLE" },
-  { no: 2, name: "SLOT_STATUS_BOOKED" },
-  { no: 3, name: "SLOT_STATUS_COMPLETED" },
-  { no: 4, name: "SLOT_STATUS_CANCELLED" },
-  { no: 5, name: "SLOT_STATUS_NO_SHOW" },
 ]);
 
 /**

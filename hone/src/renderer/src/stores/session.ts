@@ -34,6 +34,7 @@ interface SessionState {
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
+
   status: 'unknown',
   userId: null,
   accessToken: null,
@@ -43,8 +44,27 @@ export const useSessionStore = create<SessionState>((set) => ({
   bootstrap: async () => {
     const bridge = typeof window !== 'undefined' ? window.hone : undefined;
     if (!bridge) {
-      // Browser-only смоук-тест (без Electron) — guest, dev-token хатч в
-      // transport.ts всё ещё работает.
+      // Browser-only (Vite preview / e2e) — не Electron, нет keychain.
+      // Если VITE_DRUZ9_DEV_TOKEN задан, hydrate'им placeholder signed_in
+      // чтобы preview рендерил protected pages. Иначе — guest.
+      const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
+      const devToken = env?.VITE_DRUZ9_DEV_TOKEN?.trim();
+      if (devToken) {
+        set({
+          status: 'signed_in',
+          userId: 'dev-preview-user',
+          accessToken: devToken,
+          refreshToken: null,
+          expiresAt: 0,
+        });
+        return;
+      }
+      // Без токена в browser-mode — экспонируем store на window
+      // как hatch для preview (eval'нуть useSessionStore из DevTools).
+      if (typeof window !== 'undefined') {
+        (window as unknown as { __honeSession?: typeof useSessionStore }).__honeSession =
+          useSessionStore;
+      }
       set({ status: 'guest' });
       return;
     }

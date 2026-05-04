@@ -109,3 +109,57 @@ func (uc *ArchiveListeningMaterial) Do(ctx context.Context, userID, materialID u
 	}
 	return nil
 }
+
+// IngestYouTubeListening — paste YouTube URL, pull auto-captions через
+// yt-dlp adapter, persist as ListeningMaterial. Sergey 2026-05-03:
+// «listening странный, надо самому транскрибацию искать хотя видео из
+// тюба». Этот UC закрывает gap: один POST /hone/listening/youtube +
+// material with transcript готов через 1-3 секунды.
+type IngestYouTubeListening struct {
+	Repo    domain.ListeningRepo
+	Fetcher domain.YouTubeFetcher
+	Now     func() time.Time
+}
+
+type IngestYouTubeListeningInput struct {
+	UserID       uuid.UUID
+	URL          string
+	LanguageHint string
+}
+
+func (uc *IngestYouTubeListening) Do(ctx context.Context, in IngestYouTubeListeningInput) (domain.ListeningMaterial, error) {
+	if in.UserID == uuid.Nil {
+		return domain.ListeningMaterial{}, fmt.Errorf("hone.IngestYouTubeListening: user_id required")
+	}
+	url := strings.TrimSpace(in.URL)
+	if url == "" {
+		return domain.ListeningMaterial{}, fmt.Errorf("hone.IngestYouTubeListening: url required")
+	}
+	if uc.Fetcher == nil {
+		return domain.ListeningMaterial{}, fmt.Errorf("hone.IngestYouTubeListening: yt-dlp not wired (server-side dependency)")
+	}
+	res, err := uc.Fetcher.Fetch(ctx, url, in.LanguageHint)
+	if err != nil {
+		return domain.ListeningMaterial{}, fmt.Errorf("hone.IngestYouTubeListening: fetch: %w", err)
+	}
+	if strings.TrimSpace(res.Transcript) == "" {
+		return domain.ListeningMaterial{}, fmt.Errorf("hone.IngestYouTubeListening: video has no captions; only manual paste supported for this one")
+	}
+	title := res.Title
+	if title == "" {
+		title = "YouTube · " + url
+	}
+	if len(title) > 200 {
+		title = title[:200]
+	}
+	saved, err := uc.Repo.CreateMaterial(ctx, domain.ListeningMaterial{
+		UserID:       in.UserID,
+		Title:        title,
+		AudioURL:     res.CanonicalURL,
+		TranscriptMD: res.Transcript,
+	})
+	if err != nil {
+		return domain.ListeningMaterial{}, fmt.Errorf("hone.IngestYouTubeListening: persist: %w", err)
+	}
+	return saved, nil
+}

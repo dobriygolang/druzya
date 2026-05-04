@@ -7,28 +7,21 @@ require (
 	connectrpc.com/vanguard v0.3.0
 	druz9/admin v0.0.0-00010101000000-000000000000
 	druz9/ai_mock v0.0.0-00010101000000-000000000000
-	druz9/arena v0.0.0-00010101000000-000000000000
+	druz9/ai_tutor v0.0.0-00010101000000-000000000000
 	druz9/auth v0.0.0-00010101000000-000000000000
-	druz9/calendar v0.0.0
-	druz9/clubs v0.0.0
 	druz9/copilot v0.0.0-00010101000000-000000000000
-	druz9/daily v0.0.0-00010101000000-000000000000
+	druz9/curation v0.0.0-00010101000000-000000000000
 	druz9/documents v0.0.0-00010101000000-000000000000
 	druz9/editor v0.0.0-00010101000000-000000000000
-	druz9/feed v0.0.0-00010101000000-000000000000
 	druz9/hone v0.0.0-00010101000000-000000000000
 	druz9/intelligence v0.0.0-00010101000000-000000000000
-	druz9/lobby v0.0.0
+	druz9/learning_state v0.0.0-00010101000000-000000000000
 	druz9/mock_interview v0.0.0-00010101000000-000000000000
 	druz9/notify v0.0.0-00010101000000-000000000000
 	druz9/podcast v0.0.0-00010101000000-000000000000
 	druz9/profile v0.0.0-00010101000000-000000000000
-	druz9/quiz v0.0.0-00010101000000-000000000000
-	druz9/rating v0.0.0-00010101000000-000000000000
-	druz9/review v0.0.0-00010101000000-000000000000
+	druz9/rooms v0.0.0-00010101000000-000000000000
 	druz9/shared v0.0.0
-	druz9/slot v0.0.0-00010101000000-000000000000
-	druz9/tg_coach v0.0.0-00010101000000-000000000000
 	druz9/tracks v0.0.0
 	druz9/transcription v0.0.0-00010101000000-000000000000
 	druz9/tutor v0.0.0-00010101000000-000000000000
@@ -46,7 +39,6 @@ require github.com/pgvector/pgvector-go v0.3.0 // indirect
 
 require (
 	druz9/circles v0.0.0
-	druz9/events v0.0.0
 	druz9/storage v0.0.0
 	druz9/subscription v0.0.0
 	druz9/sync v0.0.0
@@ -109,19 +101,11 @@ replace druz9/auth => ../../services/auth
 
 replace druz9/profile => ../../services/profile
 
-replace druz9/daily => ../../services/daily
-
-replace druz9/rating => ../../services/rating
-
-replace druz9/arena => ../../services/arena
-
 replace druz9/ai_mock => ../../services/ai_mock
 
+replace druz9/ai_tutor => ../../services/ai_tutor
+
 replace druz9/notify => ../../services/notify
-
-replace druz9/feed => ../../services/feed
-
-replace druz9/slot => ../../services/slot
 
 replace druz9/editor => ../../services/editor
 
@@ -135,17 +119,13 @@ replace druz9/hone => ../../services/hone
 
 replace druz9/intelligence => ../../services/intelligence
 
+replace druz9/learning_state => ../../services/learning_state
+
 replace druz9/copilot => ../../services/copilot
 
 replace druz9/documents => ../../services/documents
 
 replace druz9/transcription => ../../services/transcription
-
-replace druz9/lobby => ../../services/lobby
-
-replace druz9/review => ../../services/review
-
-replace druz9/tg_coach => ../../services/tg_coach
 
 replace druz9/tutor => ../../services/tutor
 
@@ -157,16 +137,12 @@ replace druz9/circles => ../../services/circles
 
 replace druz9/mock_interview => ../../services/mock_interview
 
-replace druz9/events => ../../services/events
-
 replace druz9/sync => ../../services/sync
 
 replace druz9/storage => ../../services/storage
 
-replace druz9/quiz => ../../services/quiz
-
-replace druz9/clubs => ../../services/clubs
-
-replace druz9/calendar => ../../services/calendar
-
 replace druz9/tracks => ../../services/tracks
+
+replace druz9/curation => ../../services/curation
+
+replace druz9/rooms => ../../services/rooms

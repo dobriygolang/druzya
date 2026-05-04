@@ -1555,20 +1555,21 @@ func (x *ListAnticheatRequest) GetLimit() int32 {
 // "active_*" timeframe is computed off users.updated_at (see stats.go for
 // the same proxy used by /stats/public).
 type AdminDashboard struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	UsersTotal           int64                  `protobuf:"varint,1,opt,name=users_total,json=usersTotal,proto3" json:"users_total,omitempty"`
-	UsersActiveToday     int64                  `protobuf:"varint,2,opt,name=users_active_today,json=usersActiveToday,proto3" json:"users_active_today,omitempty"`
-	UsersActiveWeek      int64                  `protobuf:"varint,3,opt,name=users_active_week,json=usersActiveWeek,proto3" json:"users_active_week,omitempty"`
-	UsersActiveMonth     int64                  `protobuf:"varint,4,opt,name=users_active_month,json=usersActiveMonth,proto3" json:"users_active_month,omitempty"`
-	UsersBanned          int64                  `protobuf:"varint,5,opt,name=users_banned,json=usersBanned,proto3" json:"users_banned,omitempty"`
-	MatchesToday         int64                  `protobuf:"varint,6,opt,name=matches_today,json=matchesToday,proto3" json:"matches_today,omitempty"`
-	MatchesWeek          int64                  `protobuf:"varint,7,opt,name=matches_week,json=matchesWeek,proto3" json:"matches_week,omitempty"`
-	KatasToday           int64                  `protobuf:"varint,8,opt,name=katas_today,json=katasToday,proto3" json:"katas_today,omitempty"`
-	KatasWeek            int64                  `protobuf:"varint,9,opt,name=katas_week,json=katasWeek,proto3" json:"katas_week,omitempty"`
-	ActiveMockSessions   int64                  `protobuf:"varint,10,opt,name=active_mock_sessions,json=activeMockSessions,proto3" json:"active_mock_sessions,omitempty"`
-	ActiveArenaMatches   int64                  `protobuf:"varint,11,opt,name=active_arena_matches,json=activeArenaMatches,proto3" json:"active_arena_matches,omitempty"`
-	ReportsPending       int64                  `protobuf:"varint,12,opt,name=reports_pending,json=reportsPending,proto3" json:"reports_pending,omitempty"`
-	AnticheatSignals_24H int64                  `protobuf:"varint,13,opt,name=anticheat_signals_24h,json=anticheatSignals24h,proto3" json:"anticheat_signals_24h,omitempty"`
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	UsersTotal       int64                  `protobuf:"varint,1,opt,name=users_total,json=usersTotal,proto3" json:"users_total,omitempty"`
+	UsersActiveToday int64                  `protobuf:"varint,2,opt,name=users_active_today,json=usersActiveToday,proto3" json:"users_active_today,omitempty"`
+	UsersActiveWeek  int64                  `protobuf:"varint,3,opt,name=users_active_week,json=usersActiveWeek,proto3" json:"users_active_week,omitempty"`
+	UsersActiveMonth int64                  `protobuf:"varint,4,opt,name=users_active_month,json=usersActiveMonth,proto3" json:"users_active_month,omitempty"`
+	UsersBanned      int64                  `protobuf:"varint,5,opt,name=users_banned,json=usersBanned,proto3" json:"users_banned,omitempty"`
+	// Deprecated: Marked as deprecated in druz9/v1/admin.proto.
+	MatchesToday int64 `protobuf:"varint,6,opt,name=matches_today,json=matchesToday,proto3" json:"matches_today,omitempty"` // pivot 2026-05-01: arena dropped
+	// Deprecated: Marked as deprecated in druz9/v1/admin.proto.
+	MatchesWeek          int64 `protobuf:"varint,7,opt,name=matches_week,json=matchesWeek,proto3" json:"matches_week,omitempty"` // pivot 2026-05-01: arena dropped
+	KatasToday           int64 `protobuf:"varint,8,opt,name=katas_today,json=katasToday,proto3" json:"katas_today,omitempty"`
+	KatasWeek            int64 `protobuf:"varint,9,opt,name=katas_week,json=katasWeek,proto3" json:"katas_week,omitempty"`
+	ActiveMockSessions   int64 `protobuf:"varint,10,opt,name=active_mock_sessions,json=activeMockSessions,proto3" json:"active_mock_sessions,omitempty"`
+	ReportsPending       int64 `protobuf:"varint,12,opt,name=reports_pending,json=reportsPending,proto3" json:"reports_pending,omitempty"`
+	AnticheatSignals_24H int64 `protobuf:"varint,13,opt,name=anticheat_signals_24h,json=anticheatSignals24h,proto3" json:"anticheat_signals_24h,omitempty"`
 	// generated_at — when the snapshot was assembled (cache miss timestamp).
 	GeneratedAt   *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1640,6 +1641,7 @@ func (x *AdminDashboard) GetUsersBanned() int64 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in druz9/v1/admin.proto.
 func (x *AdminDashboard) GetMatchesToday() int64 {
 	if x != nil {
 		return x.MatchesToday
@@ -1647,6 +1649,7 @@ func (x *AdminDashboard) GetMatchesToday() int64 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in druz9/v1/admin.proto.
 func (x *AdminDashboard) GetMatchesWeek() int64 {
 	if x != nil {
 		return x.MatchesWeek
@@ -1671,13 +1674,6 @@ func (x *AdminDashboard) GetKatasWeek() int64 {
 func (x *AdminDashboard) GetActiveMockSessions() int64 {
 	if x != nil {
 		return x.ActiveMockSessions
-	}
-	return 0
-}
-
-func (x *AdminDashboard) GetActiveArenaMatches() int64 {
-	if x != nil {
-		return x.ActiveArenaMatches
 	}
 	return 0
 }
@@ -2758,26 +2754,25 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\x14ListAnticheatRequest\x123\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\x17.druz9.v1.SeverityLevelR\bseverity\x12.\n" +
 	"\x04from\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\xe4\x04\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\xc0\x04\n" +
 	"\x0eAdminDashboard\x12\x1f\n" +
 	"\vusers_total\x18\x01 \x01(\x03R\n" +
 	"usersTotal\x12,\n" +
 	"\x12users_active_today\x18\x02 \x01(\x03R\x10usersActiveToday\x12*\n" +
 	"\x11users_active_week\x18\x03 \x01(\x03R\x0fusersActiveWeek\x12,\n" +
 	"\x12users_active_month\x18\x04 \x01(\x03R\x10usersActiveMonth\x12!\n" +
-	"\fusers_banned\x18\x05 \x01(\x03R\vusersBanned\x12#\n" +
-	"\rmatches_today\x18\x06 \x01(\x03R\fmatchesToday\x12!\n" +
-	"\fmatches_week\x18\a \x01(\x03R\vmatchesWeek\x12\x1f\n" +
+	"\fusers_banned\x18\x05 \x01(\x03R\vusersBanned\x12'\n" +
+	"\rmatches_today\x18\x06 \x01(\x03B\x02\x18\x01R\fmatchesToday\x12%\n" +
+	"\fmatches_week\x18\a \x01(\x03B\x02\x18\x01R\vmatchesWeek\x12\x1f\n" +
 	"\vkatas_today\x18\b \x01(\x03R\n" +
 	"katasToday\x12\x1d\n" +
 	"\n" +
 	"katas_week\x18\t \x01(\x03R\tkatasWeek\x120\n" +
 	"\x14active_mock_sessions\x18\n" +
-	" \x01(\x03R\x12activeMockSessions\x120\n" +
-	"\x14active_arena_matches\x18\v \x01(\x03R\x12activeArenaMatches\x12'\n" +
+	" \x01(\x03R\x12activeMockSessions\x12'\n" +
 	"\x0freports_pending\x18\f \x01(\x03R\x0ereportsPending\x122\n" +
 	"\x15anticheat_signals_24h\x18\r \x01(\x03R\x13anticheatSignals24h\x12=\n" +
-	"\fgenerated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\"\x1a\n" +
+	"\fgenerated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAtJ\x04\b\v\x10\f\"\x1a\n" +
 	"\x18GetAdminDashboardRequest\"\xfb\x02\n" +
 	"\fAdminUserRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
@@ -2868,19 +2863,11 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\x1fADMIN_REPORT_STATUS_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bADMIN_REPORT_STATUS_PENDING\x10\x01\x12 \n" +
 	"\x1cADMIN_REPORT_STATUS_RESOLVED\x10\x02\x12!\n" +
-	"\x1dADMIN_REPORT_STATUS_DISMISSED\x10\x032\xea\v\n" +
+	"\x1dADMIN_REPORT_STATUS_DISMISSED\x10\x032\xe4\x06\n" +
 	"\fAdminService\x12b\n" +
-	"\tListTasks\x12\x1f.druz9.v1.ListAdminTasksRequest\x1a\x17.druz9.v1.AdminTaskList\"\x1b\x82\xd3\xe4\x93\x02\x15\x12\x13/api/v1/admin/tasks\x12f\n" +
-	"\n" +
-	"CreateTask\x12 .druz9.v1.CreateAdminTaskRequest\x1a\x13.druz9.v1.AdminTask\"!\x82\xd3\xe4\x93\x02\x1b:\x04task\"\x13/api/v1/admin/tasks\x12p\n" +
-	"\n" +
-	"UpdateTask\x12 .druz9.v1.UpdateAdminTaskRequest\x1a\x13.druz9.v1.AdminTask\"+\x82\xd3\xe4\x93\x02%:\x04task\x1a\x1d/api/v1/admin/tasks/{task_id}\x12g\n" +
-	"\rListCompanies\x12\x1e.druz9.v1.ListCompaniesRequest\x1a\x15.druz9.v1.CompanyList\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/v1/admin/companies\x12l\n" +
-	"\rCreateCompany\x12\x1e.druz9.v1.CreateCompanyRequest\x1a\x11.druz9.v1.Company\"(\x82\xd3\xe4\x93\x02\":\acompany\"\x17/api/v1/admin/companies\x12b\n" +
 	"\n" +
 	"ListConfig\x12\x1b.druz9.v1.ListConfigRequest\x1a\x19.druz9.v1.ConfigEntryList\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/api/v1/admin/config\x12k\n" +
-	"\fUpdateConfig\x12\x1d.druz9.v1.UpdateConfigRequest\x1a\x15.druz9.v1.ConfigEntry\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\x1a\x1a/api/v1/admin/config/{key}\x12o\n" +
-	"\rListAnticheat\x12\x1e.druz9.v1.ListAnticheatRequest\x1a\x1d.druz9.v1.AnticheatSignalList\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/v1/admin/anticheat\x12r\n" +
+	"\fUpdateConfig\x12\x1d.druz9.v1.UpdateConfigRequest\x1a\x15.druz9.v1.ConfigEntry\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\x1a\x1a/api/v1/admin/config/{key}\x12r\n" +
 	"\x11GetAdminDashboard\x12\".druz9.v1.GetAdminDashboardRequest\x1a\x18.druz9.v1.AdminDashboard\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/v1/admin/dashboard\x12b\n" +
 	"\tListUsers\x12\x1f.druz9.v1.ListAdminUsersRequest\x1a\x17.druz9.v1.AdminUserList\"\x1b\x82\xd3\xe4\x93\x02\x15\x12\x13/api/v1/admin/users\x12l\n" +
 	"\aBanUser\x12\x18.druz9.v1.BanUserRequest\x1a\x19.druz9.v1.BanUserResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/admin/users/{user_id}/ban\x12r\n" +
@@ -2995,36 +2982,24 @@ var file_druz9_v1_admin_proto_depIdxs = []int32{
 	33, // 42: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
 	34, // 43: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
 	41, // 44: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
-	7,  // 45: druz9.v1.AdminService.ListTasks:input_type -> druz9.v1.ListAdminTasksRequest
-	8,  // 46: druz9.v1.AdminService.CreateTask:input_type -> druz9.v1.CreateAdminTaskRequest
-	9,  // 47: druz9.v1.AdminService.UpdateTask:input_type -> druz9.v1.UpdateAdminTaskRequest
-	13, // 48: druz9.v1.AdminService.ListCompanies:input_type -> druz9.v1.ListCompaniesRequest
-	14, // 49: druz9.v1.AdminService.CreateCompany:input_type -> druz9.v1.CreateCompanyRequest
-	18, // 50: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
-	17, // 51: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
-	21, // 52: druz9.v1.AdminService.ListAnticheat:input_type -> druz9.v1.ListAnticheatRequest
-	23, // 53: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
-	26, // 54: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
-	27, // 55: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
-	28, // 56: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
-	32, // 57: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
-	36, // 58: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
-	5,  // 59: druz9.v1.AdminService.ListTasks:output_type -> druz9.v1.AdminTaskList
-	4,  // 60: druz9.v1.AdminService.CreateTask:output_type -> druz9.v1.AdminTask
-	4,  // 61: druz9.v1.AdminService.UpdateTask:output_type -> druz9.v1.AdminTask
-	11, // 62: druz9.v1.AdminService.ListCompanies:output_type -> druz9.v1.CompanyList
-	10, // 63: druz9.v1.AdminService.CreateCompany:output_type -> druz9.v1.Company
-	16, // 64: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
-	15, // 65: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
-	20, // 66: druz9.v1.AdminService.ListAnticheat:output_type -> druz9.v1.AnticheatSignalList
-	22, // 67: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
-	25, // 68: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
-	29, // 69: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
-	29, // 70: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
-	31, // 71: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
-	35, // 72: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
-	59, // [59:73] is the sub-list for method output_type
-	45, // [45:59] is the sub-list for method input_type
+	18, // 45: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
+	17, // 46: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
+	23, // 47: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
+	26, // 48: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
+	27, // 49: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
+	28, // 50: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
+	32, // 51: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
+	36, // 52: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
+	16, // 53: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
+	15, // 54: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
+	22, // 55: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
+	25, // 56: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
+	29, // 57: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
+	29, // 58: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
+	31, // 59: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
+	35, // 60: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
+	53, // [53:61] is the sub-list for method output_type
+	45, // [45:53] is the sub-list for method input_type
 	45, // [45:45] is the sub-list for extension type_name
 	45, // [45:45] is the sub-list for extension extendee
 	0,  // [0:45] is the sub-list for field type_name

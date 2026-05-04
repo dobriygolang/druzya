@@ -49,11 +49,43 @@ message TutorRelationship {
   google.protobuf.Timestamp started_at = 5;
   google.protobuf.Timestamp ended_at   = 6;  // zero when active
   string note        = 7;
+  // ── Display info (server-filled) ─────────────────────────────────
+  // ListMyTutors заполняет полями ТЬЮТОРА (это ученик смотрит на тьютора).
+  // ListStudents заполняет полями СТУДЕНТА (тьютор смотрит на студентов).
+  // Без active wiring — пустые строки.
+  string display_username     = 8;
+  string display_name         = 9;
+  string display_avatar_url   = 10;
 }
 
 // ── Requests / responses ─────────────────────────────────────────────
 
 message TutorCreateInviteRequest  { string note = 1; }
+
+message TutorInviteByUsernameRequest {
+  string username = 1;
+  string note     = 2;
+}
+
+message TutorListPendingInvitesForMeRequest {}
+message TutorListPendingInvitesForMeResponse {
+  repeated TutorPendingInvite items = 1;
+}
+
+// TutorPendingInvite — invite + display-info тьютора (student-side
+// surface на /profile). Code оставляем как есть — accept-button
+// шлёт его в существующий AcceptInvite RPC.
+message TutorPendingInvite {
+  string id    = 1;
+  string code  = 2;
+  string note  = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  string tutor_id              = 6;
+  string tutor_username        = 7;
+  string tutor_display_name    = 8;
+  string tutor_display_avatar  = 9;
+}
 message TutorRevokeInviteRequest  { string invite_id = 1; }
 message TutorPeekInviteRequest    { string code = 1; }
 message TutorAcceptInviteRequest  { string code = 1; }
@@ -223,6 +255,36 @@ message TutorBroadcastFailure {
   string error      = 2;
 }
 
+message TutorSharedMaterial {
+  string id = 1;
+  string tutor_id = 2;
+  string title = 3;
+  string source_url = 4;
+  string body_md = 5;
+  int32 student_count = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message TutorPushSharedReadingRequest {
+  string title = 1;
+  string source_url = 2;
+  string note = 3;
+}
+
+message TutorPushSharedReadingResponse {
+  TutorSharedMaterial material = 1;
+  int32 pushed_count = 2;
+  int32 failed_count = 3;
+}
+
+message TutorListSharedReadingRequest {
+  int32 limit = 1;
+}
+
+message TutorListSharedReadingResponse {
+  repeated TutorSharedMaterial items = 1;
+}
+
 message TutorBroadcastAssignmentResponse {
   repeated TutorAssignment      pushed = 1;
   repeated TutorBroadcastFailure failed = 2;
@@ -313,6 +375,22 @@ service TutorService {
       post: "/api/v1/tutor/invites"
       body: "*"
     };
+  }
+
+  // InviteByUsername — pre-binds invite к конкретному юзеру (вместо
+  // out-of-band отправки кода). Студент видит pending invite на /profile
+  // через ListPendingInvitesForMe + accept одним кликом.
+  rpc InviteByUsername(TutorInviteByUsernameRequest) returns (TutorInvite) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/invites/by-username"
+      body: "*"
+    };
+  }
+
+  // ListPendingInvitesForMe — student-side. Возвращает invites
+  // адресованные мне (target_user_id == me).
+  rpc ListPendingInvitesForMe(TutorListPendingInvitesForMeRequest) returns (TutorListPendingInvitesForMeResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/invites/pending-for-me"};
   }
 
   // RevokeInvite — tutor-only; verifies tutor owns the invite.
@@ -432,6 +510,20 @@ service TutorService {
     };
   }
 
+  // ── Reading library (Wave pivot 2026-05-02) ──────────────────────
+  // Tutor отправляет recommended-reading сразу всем студентам И persist'ит
+  // запись в history. Под капотом — BroadcastAssignment + INSERT в
+  // tutor_shared_materials. UI: SharedReadingPane на TutorDashboard.
+  rpc PushSharedReading(TutorPushSharedReadingRequest) returns (TutorPushSharedReadingResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/shared-reading"
+      body: "*"
+    };
+  }
+  rpc ListSharedReading(TutorListSharedReadingRequest) returns (TutorListSharedReadingResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/shared-reading"};
+  }
+
   // ── Wave 5.2b — scheduled events ─────────────────────────────────
   // CreateEvent — tutor schedules a calendar event for one student.
   // V1 supports the 1-on-1 (student_id) flow; circle (group) events
@@ -516,127 +608,38 @@ service TutorService {
     option (google.api.http) = {get: "/api/v1/tutor/events/{event_id}/rsvp-count"};
   }
 
-  // ── Wave 9.1 marketplace listings (Boosty-only payment) ──
-  rpc CreateListing(TutorCreateListingRequest) returns (TutorListing) {
-    option (google.api.http) = {post: "/api/v1/tutor/listings" body: "*"};
+  // GetSessionNotes (Phase 3.3) — tutor reads его собственные заметки
+  // про студента. body — empty string если notes ещё не создавались.
+  // Студент свои notes не видит (доступ tutor-only).
+  rpc GetSessionNotes(TutorGetSessionNotesRequest) returns (TutorSessionNotes) {
+    option (google.api.http) = {get: "/api/v1/tutor/students/{student_id}/notes"};
   }
-  rpc UpdateListing(TutorUpdateListingRequest) returns (TutorListing) {
-    option (google.api.http) = {patch: "/api/v1/tutor/listings/{listing_id}" body: "*"};
-  }
-  rpc PublishListing(TutorPublishListingRequest) returns (TutorPublishListingResponse) {
-    option (google.api.http) = {post: "/api/v1/tutor/listings/{listing_id}/publish"};
-  }
-  rpc ArchiveListing(TutorArchiveListingRequest) returns (TutorArchiveListingResponse) {
-    option (google.api.http) = {post: "/api/v1/tutor/listings/{listing_id}/archive"};
-  }
-  rpc ListMyListings(TutorListMyListingsRequest) returns (TutorListListingsResponse) {
-    option (google.api.http) = {get: "/api/v1/tutor/listings"};
-  }
-  // BrowseListings — public marketplace. The HTTP gate whitelists this
-  // path so unauthenticated browsers can window-shop tutors.
-  rpc BrowseListings(TutorBrowseListingsRequest) returns (TutorListListingsResponse) {
-    option (google.api.http) = {get: "/api/v1/marketplace/listings"};
-  }
-  rpc GetListingBySlug(TutorGetListingBySlugRequest) returns (TutorListingDetail) {
-    option (google.api.http) = {get: "/api/v1/marketplace/listings/{slug}"};
-  }
-  rpc AddListingPackage(TutorAddListingPackageRequest) returns (TutorListingPackage) {
-    option (google.api.http) = {post: "/api/v1/tutor/listings/{listing_id}/packages" body: "*"};
-  }
-  rpc ArchiveListingPackage(TutorArchiveListingPackageRequest) returns (TutorArchiveListingPackageResponse) {
-    option (google.api.http) = {post: "/api/v1/tutor/packages/{package_id}/archive"};
+
+  // SaveSessionNotes — upsert markdown-блока. Empty body разрешён
+  // («очистил блок»). Auto-save из UI по дебаунсу 1.5s.
+  rpc SaveSessionNotes(TutorSaveSessionNotesRequest) returns (TutorSessionNotes) {
+    option (google.api.http) = {
+      put: "/api/v1/tutor/students/{student_id}/notes"
+      body: "*"
+    };
   }
 }
 
-// ── Wave 9.1 marketplace messages ──
-message TutorListing {
-  string id = 1;
-  string tutor_id = 2;
-  string slug = 3;
-  string title = 4;
-  string summary = 5;
-  string body_md = 6;
-  string track_kind = 7;
-  repeated string languages = 8;
-  int64 hourly_rate_minor = 9;
-  string currency = 10;
-  string boosty_url = 11;
-  string published_at = 12; // RFC3339, empty when draft
-  string archived_at = 13;
-  string created_at = 14;
-  string updated_at = 15;
+// TutorGetSessionNotesRequest — tutor читает свои заметки про студента.
+message TutorGetSessionNotesRequest {
+  string student_id = 1;
 }
 
-message TutorListingPackage {
-  string id = 1;
-  string listing_id = 2;
-  string kind = 3;
-  int32 hours = 4;
-  int64 price_minor = 5;
-  string description = 6;
-  string archived_at = 7;
-  string created_at = 8;
+// TutorSaveSessionNotesRequest — upsert. body может быть пустой строкой.
+message TutorSaveSessionNotesRequest {
+  string student_id = 1;
+  string body_md    = 2;
 }
 
-message TutorListingDetail {
-  TutorListing listing = 1;
-  repeated TutorListingPackage packages = 2;
-  // Tutor display name resolved from users table — public surface
-  // shouldn't leak UUIDs.
-  string tutor_display = 3;
+// TutorSessionNotes — текущее состояние notepad'а.
+message TutorSessionNotes {
+  string student_id = 1;
+  string body_md    = 2;
+  string updated_at = 3; // RFC3339, empty если row ещё нет
 }
 
-message TutorCreateListingRequest {
-  string slug = 1;
-  string title = 2;
-  string summary = 3;
-  string body_md = 4;
-  string track_kind = 5;
-  repeated string languages = 6;
-  int64 hourly_rate_minor = 7;
-  string currency = 8;
-  string boosty_url = 9;
-}
-
-message TutorUpdateListingRequest {
-  string listing_id = 1;
-  string slug = 2;
-  string title = 3;
-  string summary = 4;
-  string body_md = 5;
-  string track_kind = 6;
-  repeated string languages = 7;
-  int64 hourly_rate_minor = 8;
-  string currency = 9;
-  string boosty_url = 10;
-}
-
-message TutorPublishListingRequest  { string listing_id = 1; }
-message TutorPublishListingResponse {}
-message TutorArchiveListingRequest  { string listing_id = 1; }
-message TutorArchiveListingResponse {}
-
-message TutorListMyListingsRequest {}
-message TutorListListingsResponse {
-  repeated TutorListing items = 1;
-}
-
-message TutorBrowseListingsRequest {
-  repeated string track_kinds = 1;
-  int64 max_rate_minor = 2;
-  repeated string languages = 3;
-  int32 limit = 4;
-}
-
-message TutorGetListingBySlugRequest { string slug = 1; }
-
-message TutorAddListingPackageRequest {
-  string listing_id = 1;
-  string kind = 2;
-  int32 hours = 3;
-  int64 price_minor = 4;
-  string description = 5;
-}
-
-message TutorArchiveListingPackageRequest  { string package_id = 1; }
-message TutorArchiveListingPackageResponse {}

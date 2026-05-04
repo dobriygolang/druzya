@@ -4,43 +4,70 @@
 // skill so Atlas isn't empty when they arrive. The picked skill becomes
 // the user's first allocated atlas node — the "starting point of gravity".
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { OnboardingLayout } from './_shared/Layout'
-import { useOnboarding } from './_shared/useOnboarding'
+import { readFocusClass, useOnboarding, type FocusClass } from './_shared/useOnboarding'
 import { cn } from '../../lib/cn'
 
-// Hard-coded for now — the production GET /atlas/core endpoint isn't
-// shipped yet. Anti-fallback note: when the endpoint exists, switch to
-// useQuery and render <EmptyState variant="loading" /> while fetching.
-const CORE_SKILLS: { id: string; title: string; blurb: string; hours: number; tasks: number }[] = [
-  {
-    id: 'two-pointers',
-    title: 'Two pointers',
-    blurb: 'Самый простой способ почувствовать массив. 80% sliding-window задач после.',
-    hours: 4,
-    tasks: 12,
+type CoreSkill = { id: string; title: string; blurb: string; hours: number; tasks: number }
+
+// Hard-coded per focus-class until GET /atlas/core lands. Each block has
+// 3 entry-level core nodes that map onto real atlas_nodes ids the
+// allocator can claim. Keep title/blurb in Russian to match the rest of
+// the onboarding copy.
+const CORE_SKILLS_BY_CLASS: Record<FocusClass, { label: string; skills: CoreSkill[] }> = {
+  algo: {
+    label: 'Алгоритмы',
+    skills: [
+      { id: 'two-pointers', title: 'Two pointers', blurb: 'Самый простой способ почувствовать массив. 80% sliding-window задач после.', hours: 4, tasks: 12 },
+      { id: 'sliding-window', title: 'Sliding window', blurb: 'Базовый паттерн для подстрок и подмассивов с динамическими границами.', hours: 6, tasks: 14 },
+      { id: 'binary-search', title: 'Binary search', blurb: 'Не только в массивах — в ответах, на функциях, в boundary-задачах.', hours: 5, tasks: 10 },
+    ],
   },
-  {
-    id: 'sliding-window',
-    title: 'Sliding window',
-    blurb: 'Базовый паттерн для подстрок и подмассивов с динамическими границами.',
-    hours: 6,
-    tasks: 14,
+  backend: {
+    label: 'Бекенд',
+    skills: [
+      { id: 'http-deep', title: 'HTTP deep', blurb: 'Statuses, headers, idempotency, redirects, caching — то, что собес-инженер должен бросить с любой стороны.', hours: 5, tasks: 12 },
+      { id: 'caching-strategies', title: 'Cache strategies', blurb: 'read-through / write-back / write-around — где какая стратегия и чем платишь за выбор.', hours: 6, tasks: 10 },
+      { id: 'api-design', title: 'API design', blurb: 'Версионирование, contract evolution, REST vs gRPC trade-offs.', hours: 5, tasks: 12 },
+    ],
   },
-  {
-    id: 'binary-search',
-    title: 'Binary search',
-    blurb: 'Не только в массивах — в ответах, на функциях, в boundary-задачах.',
-    hours: 5,
-    tasks: 10,
+  system: {
+    label: 'System Design',
+    skills: [
+      { id: 'cap-theorem', title: 'CAP & consistency', blurb: 'Консистентность ↔ доступность под partition. Почему single-master не магия.', hours: 6, tasks: 10 },
+      { id: 'load-balancing', title: 'Load balancing', blurb: 'L4 vs L7, sticky sessions, health-checks, hashing strategies.', hours: 5, tasks: 12 },
+      { id: 'sharding', title: 'Sharding & partitioning', blurb: 'Range / hash / directory — когда какое и как мигрировать.', hours: 7, tasks: 14 },
+    ],
   },
-]
+  concurrency: {
+    label: 'Concurrency',
+    skills: [
+      { id: 'locks-mutex', title: 'Locks & mutex', blurb: 'Mutex vs RWLock, deadlock, lock ordering, lock-free hints.', hours: 5, tasks: 12 },
+      { id: 'channels-csp', title: 'Channels / CSP', blurb: 'Go-style: share by communicating, fan-in/fan-out, cancellation.', hours: 6, tasks: 14 },
+      { id: 'race-conditions', title: 'Race conditions', blurb: 'race detector, memory barriers, happens-before — чтобы не врать на собесе.', hours: 5, tasks: 10 },
+    ],
+  },
+  ds: {
+    label: 'Data Science',
+    skills: [
+      { id: 'sql-windows', title: 'SQL window functions', blurb: 'ROW_NUMBER / LAG / LEAD / partitioned aggregates — must для аналитика.', hours: 5, tasks: 12 },
+      { id: 'ab-testing', title: 'A/B testing', blurb: 'CUPED, SRM, multiple comparisons — что спросят на product analyst.', hours: 6, tasks: 10 },
+      { id: 'probability', title: 'Probability basics', blurb: 'Bayes, conditional, expectation — гигиена для DS-собесов.', hours: 5, tasks: 12 },
+    ],
+  },
+}
 
 export default function Step3Skill() {
   const nav = useNavigate()
   const { setStep, allocateFirstSkill } = useOnboarding()
   const [picked, setPicked] = useState<string | null>(null)
+  // Read class once on mount — Step 2 persists it to localStorage before
+  // routing here, so a re-render can't lose it. Falls back to 'algo' if
+  // user reached this URL directly without going through Step 2.
+  const focusClass = useMemo(() => readFocusClass(), [])
+  const block = CORE_SKILLS_BY_CLASS[focusClass]
 
   const go = async (skillId: string) => {
     await allocateFirstSkill.mutateAsync(skillId)
@@ -50,7 +77,7 @@ export default function Step3Skill() {
 
   // «подберите сами» = pick the middle option deterministically so the
   // Atlas isn't blank but we don't push a recommendation.
-  const autopick = () => go(CORE_SKILLS[Math.floor(CORE_SKILLS.length / 2)].id)
+  const autopick = () => go(block.skills[Math.floor(block.skills.length / 2)].id)
 
   return (
     <OnboardingLayout
@@ -64,7 +91,7 @@ export default function Step3Skill() {
           шаг 3 · первая нода atlas
         </div>
         <h2 className="font-display text-2xl font-bold mb-1.5">
-          С чего начнём качать <span className="text-text-primary">Алгоритмы</span>?
+          С чего начнём качать <span className="text-text-primary">{block.label}</span>?
         </h2>
         <p className="text-[13px] text-text-secondary">
           Выбери одну core-ноду. Она станет активной точкой на Atlas.
@@ -72,7 +99,7 @@ export default function Step3Skill() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        {CORE_SKILLS.map((s) => {
+        {block.skills.map((s) => {
           const sel = picked === s.id
           return (
             <button

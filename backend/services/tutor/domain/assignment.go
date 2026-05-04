@@ -89,4 +89,15 @@ type AssignmentRepo interface {
 	// can call this. Used when the tutor wants to withdraw a stale
 	// assignment without deleting the audit row.
 	ArchiveAssignment(ctx context.Context, tutorID, assignmentID uuid.UUID, now time.Time) error
+
+	// DueWithinNeedsNotify возвращает active assignments чьи due_at
+	// в (now, now+window], ещё не нотифицированные (due_notified_at IS
+	// NULL). Используется AssignmentDueSoonWorker'ом — cron'ом раз в
+	// несколько минут. limit — guard для batch'а; cron вызывает повторно
+	// до пустого результата.
+	DueWithinNeedsNotify(ctx context.Context, now time.Time, window time.Duration, limit int) ([]Assignment, error)
+
+	// MarkDueNotified стампирует due_notified_at = now чтобы тот же
+	// assignment не нотифицировался дважды. Идемпотентно.
+	MarkDueNotified(ctx context.Context, assignmentID uuid.UUID, now time.Time) error
 }

@@ -1,16 +1,15 @@
-// OnboardingModal — двухшаговый wizard при первом заходе signed_in юзера.
+// OnboardingModal v2 — Phase 6 3-step wizard (Sergey 2026-05-04).
 //
-//   Шаг 1 — personalization: стек (frontend/backend/ml/fullstack/other) +
-//            target (собес/рост/петпроекты/other). Ответы сохраняются в
-//            localStorage.hone:profile (ключ читает TodayPage в будущих
-//            итерациях, передаёт синтезайзеру как hint'ы через metadata —
-//            бекенд сейчас их игнорирует, но prompt уже готов расширять).
+// Step 1: pick stack (Go / ML / DE / English / Other-explore)
+// Step 2: pick mode (Explore / Commit / Deep) — shapes coach behavior
+// Step 3: shortcuts tour (⌘K / T / C / F / N)
 //
-//   Шаг 2 — shortcuts tour: ⌘K / T / F / S, как было в v1.
+// Storage:
+//   - localStorage.hone:profile:v2 — { stack, mode, savedAt }
+//   - localStorage.hone:onboarded:v2 = '1' (gate в App.tsx)
 //
-// Флаг hone:onboarded:v2 маркирует прохождение. Esc / «Skip» закрывают
-// без сохранения ответов (но ставят флаг — не хотим возвращаться).
-import { useState } from 'react';
+// Recovery: «Open onboarding again» в Settings → стирает onboarded flag.
+import { useEffect, useState } from 'react';
 
 import { Kbd } from './primitives/Kbd';
 
@@ -18,14 +17,14 @@ interface OnboardingModalProps {
   onClose: () => void;
 }
 
-type Stack = 'frontend' | 'backend' | 'ml' | 'fullstack' | 'mobile' | 'other';
-type Goal = 'interview' | 'growth' | 'pet' | 'other';
+type Stack = 'go' | 'ml' | 'de' | 'english' | 'other';
+type Mode = 'explore' | 'commit' | 'deep';
 
-const PROFILE_KEY = 'hone:profile:v1';
+const PROFILE_KEY = 'hone:profile:v2';
 
 interface HoneProfile {
   stack: Stack | null;
-  goal: Goal | null;
+  mode: Mode | null;
   savedAt: number;
 }
 
@@ -37,360 +36,335 @@ function saveProfile(p: HoneProfile): void {
   }
 }
 
-export function OnboardingModal({ onClose }: OnboardingModalProps) {
-  const [step, setStep] = useState<'profile' | 'shortcuts'>('profile');
-  const [stack, setStack] = useState<Stack | null>(null);
-  const [goal, setGoal] = useState<Goal | null>(null);
+const STACKS: { k: Stack; l: string; d: string; g: string }[] = [
+  { k: 'go', l: 'Go senior', d: 'concurrency · runtime · profiling', g: 'go' },
+  { k: 'ml', l: 'ML engineering', d: 'classical → DL → LLM eval', g: '∞' },
+  { k: 'de', l: 'Data engineering', d: 'pipelines · CDC · streaming', g: '☷' },
+  { k: 'english', l: 'English', d: 'B1 → B2+ for tech professionals', g: 'en' },
+  { k: 'other', l: 'Other / explore', d: 'figure out which fits — 6w fork track', g: '?' },
+];
 
-  const finishProfile = () => {
-    saveProfile({ stack, goal, savedAt: Date.now() });
-    setStep('shortcuts');
-  };
+const MODES: { k: Mode; l: string; d: string; trail: string }[] = [
+  { k: 'explore', l: 'Explore', d: 'try multiple tracks, pick one in 4-6 weeks', trail: 'fork analysis weekly' },
+  { k: 'commit', l: 'Commit', d: 'one track, build depth · 3-6 months', trail: 'milestone tracking' },
+  { k: 'deep', l: 'Deep', d: 'interview prep · 2-4 weeks intensive', trail: 'daily mock dispatch' },
+];
+
+const SHORTCUTS: { k: string; l: string; d: string }[] = [
+  { k: '⌘K', l: 'palette', d: 'jump anywhere · search · run command' },
+  { k: 'T', l: 'today', d: 'main daily surface · plan + focus blocks' },
+  { k: 'C', l: 'coach', d: 'ai companion · single next action · fork view' },
+  { k: 'F', l: 'focus', d: 'start 25-min pomodoro on pinned task' },
+  { k: 'N', l: 'new note', d: 'capture anywhere · auto-link to atlas' },
+];
+
+export function OnboardingModal({ onClose }: OnboardingModalProps) {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [stack, setStack] = useState<Stack | null>(null);
+  const [mode, setMode] = useState<Mode | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  function finish() {
+    saveProfile({ stack, mode, savedAt: Date.now() });
+    onClose();
+  }
 
   return (
     <div
-      className="fadein"
+      role="dialog"
       style={{
-        position: 'absolute',
+        position: 'fixed',
         inset: 0,
-        zIndex: 80,
-        background: 'rgba(0,0,0,0.92)',
-        backdropFilter: 'blur(20px)',
+        background: 'rgba(0,0,0,0.7)',
+        backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        zIndex: 90,
       }}
     >
       <div
         style={{
           width: 640,
-          maxWidth: '90%',
-          padding: '40px 44px 36px',
-          background: 'rgba(8,8,8,0.96)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 16,
+          maxWidth: '92vw',
+          background: '#0a0a0a',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 12,
+          color: 'rgba(255,255,255,0.92)',
+          overflow: 'hidden',
         }}
       >
-        <div
-          className="mono"
-          style={{
-            fontSize: 10,
-            letterSpacing: '.24em',
-            color: 'var(--ink-40)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-          }}
-        >
-          <span>WELCOME TO HONE</span>
-          <span style={{ color: 'var(--ink-60)' }}>
-            · {step === 'profile' ? '1/2' : '2/2'}
-          </span>
+        <StepHeader step={step} />
+        <div style={{ padding: '24px 30px 20px' }}>
+          {step === 1 && (
+            <StackPicker selected={stack} onPick={setStack} />
+          )}
+          {step === 2 && (
+            <ModePicker selected={mode} onPick={setMode} />
+          )}
+          {step === 3 && <ShortcutsTour />}
         </div>
-
-        {step === 'profile' ? (
-          <ProfileStep
-            stack={stack}
-            goal={goal}
-            onStack={setStack}
-            onGoal={setGoal}
-            onNext={finishProfile}
-            onSkip={() => {
-              saveProfile({ stack: null, goal: null, savedAt: Date.now() });
-              setStep('shortcuts');
-            }}
-          />
-        ) : (
-          <ShortcutsStep onClose={onClose} />
-        )}
+        <Footer
+          step={step}
+          canNext={step === 1 ? !!stack : step === 2 ? !!mode : true}
+          onBack={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
+          onNext={() => setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s))}
+          onSkip={onClose}
+          onFinish={finish}
+        />
       </div>
     </div>
   );
 }
 
-interface ProfileStepProps {
-  stack: Stack | null;
-  goal: Goal | null;
-  onStack: (s: Stack) => void;
-  onGoal: (g: Goal) => void;
+function StepHeader({ step }: { step: 1 | 2 | 3 }) {
+  const titles = ['pick stack', 'pick mode', 'shortcuts tour'];
+  return (
+    <div style={{ padding: '20px 30px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10 }}>
+        <span className="mono" style={mono10}>step {step} of 3</span>
+        <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+        <div style={{ display: 'flex', gap: 5 }}>
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 999,
+                background: i === step ? '#fff' : i < step ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.15)',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.01em', margin: '4px 0 16px' }}>
+        {titles[step - 1]}
+      </h2>
+    </div>
+  );
+}
+
+function StackPicker({ selected, onPick }: { selected: Stack | null; onPick: (s: Stack) => void }) {
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
+        what are you preparing for? pick one — you can always change later in settings.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {STACKS.map((s) => (
+          <button
+            key={s.k}
+            onClick={() => onPick(s.k)}
+            style={pickStyle(selected === s.k)}
+          >
+            <div style={glyphStyle()}>{s.g}</div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: selected === s.k ? '#fff' : 'rgba(255,255,255,0.92)' }}>
+                {s.l}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>{s.d}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ModePicker({ selected, onPick }: { selected: Mode | null; onPick: (m: Mode) => void }) {
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
+        mode shapes coach behavior · daily UI · what gets pinned to today.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+        {MODES.map((m) => (
+          <button
+            key={m.k}
+            onClick={() => onPick(m.k)}
+            style={{
+              ...pickStyle(selected === m.k),
+              flexDirection: 'column' as const,
+              alignItems: 'flex-start',
+              gap: 4,
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 600, color: selected === m.k ? '#fff' : 'rgba(255,255,255,0.92)' }}>
+              {m.l}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>{m.d}</div>
+            <div className="mono" style={{ ...mono10, paddingTop: 6, marginTop: 6, borderTop: '1px solid rgba(255,255,255,0.07)', width: '100%' }}>
+              {m.trail}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ShortcutsTour() {
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
+        hone is keyboard-first. these cover ~80% of daily use.
+      </p>
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {SHORTCUTS.map((s) => (
+          <li
+            key={s.k}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '52px 1fr',
+              alignItems: 'center',
+              gap: 14,
+              padding: '10px 14px',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 6,
+              background: 'rgba(255,255,255,0.02)',
+            }}
+          >
+            <Kbd>{s.k}</Kbd>
+            <div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.92)', fontWeight: 500 }}>{s.l}</div>
+              <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>{s.d}</div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Footer({
+  step,
+  canNext,
+  onBack,
+  onNext,
+  onSkip,
+  onFinish,
+}: {
+  step: 1 | 2 | 3;
+  canNext: boolean;
+  onBack: () => void;
   onNext: () => void;
   onSkip: () => void;
-}
-
-const STACKS: { id: Stack; label: string }[] = [
-  { id: 'frontend', label: 'Frontend' },
-  { id: 'backend', label: 'Backend' },
-  { id: 'fullstack', label: 'Full-stack' },
-  { id: 'ml', label: 'ML / data' },
-  { id: 'mobile', label: 'Mobile' },
-  { id: 'other', label: 'Other' },
-];
-
-const GOALS: { id: Goal; label: string; sub: string }[] = [
-  { id: 'interview', label: 'Prepping for interview', sub: 'Plan focuses on mock + solve tasks.' },
-  { id: 'growth', label: 'Daily growth', sub: 'Read + solve + review, balanced.' },
-  { id: 'pet', label: 'Pet project', sub: 'Whiteboard + notes take more weight.' },
-  { id: 'other', label: 'Just exploring', sub: 'Neutral default plan.' },
-];
-
-function ProfileStep({ stack, goal, onStack, onGoal, onNext, onSkip }: ProfileStepProps) {
-  const canNext = stack !== null && goal !== null;
-  return (
-    <>
-      <h2
-        style={{
-          margin: '14px 0 8px',
-          fontSize: 26,
-          fontWeight: 400,
-          letterSpacing: '-0.02em',
-        }}
-      >
-        Two quick questions.
-      </h2>
-      <p
-        style={{
-          fontSize: 14,
-          color: 'var(--ink-60)',
-          lineHeight: 1.6,
-          marginBottom: 26,
-        }}
-      >
-        Today-plan знает про это и тюнит, что подсовывать в списке. Пропусти
-        если не критично — дефолт разумный.
-      </p>
-
-      <div
-        className="mono"
-        style={{ fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)', marginBottom: 8 }}
-      >
-        YOUR STACK
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 22 }}>
-        {STACKS.map((s) => (
-          <ChoiceChip
-            key={s.id}
-            active={stack === s.id}
-            label={s.label}
-            onClick={() => onStack(s.id)}
-          />
-        ))}
-      </div>
-
-      <div
-        className="mono"
-        style={{ fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)', marginBottom: 8 }}
-      >
-        WHERE ARE YOU AIMING
-      </div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 8,
-          marginBottom: 22,
-        }}
-      >
-        {GOALS.map((g) => (
-          <GoalCard
-            key={g.id}
-            active={goal === g.id}
-            label={g.label}
-            sub={g.sub}
-            onClick={() => onGoal(g.id)}
-          />
-        ))}
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 10,
-          alignItems: 'center',
-        }}
-      >
-        <button
-          onClick={onSkip}
-          className="focus-ring mono"
-          style={{
-            padding: '8px 14px',
-            fontSize: 11,
-            letterSpacing: '.1em',
-            color: 'var(--ink-60)',
-            borderRadius: 8,
-          }}
-        >
-          SKIP
-        </button>
-        <button
-          onClick={onNext}
-          disabled={!canNext}
-          className="focus-ring"
-          style={{
-            padding: '10px 22px',
-            borderRadius: 999,
-            background: canNext ? '#fff' : 'rgba(255,255,255,0.08)',
-            color: canNext ? '#000' : 'var(--ink-60)',
-            fontSize: 13,
-            fontWeight: 500,
-          }}
-        >
-          Next →
-        </button>
-      </div>
-    </>
-  );
-}
-
-function ChoiceChip({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
+  onFinish: () => void;
 }) {
-  return (
-    <button
-      onClick={onClick}
-      className="focus-ring"
-      style={{
-        padding: '7px 14px',
-        borderRadius: 999,
-        fontSize: 13,
-        border: active ? '1px solid rgba(255,255,255,0.4)' : '1px solid rgba(255,255,255,0.1)',
-        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
-        color: active ? 'var(--ink)' : 'var(--ink-60)',
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-function GoalCard({
-  active,
-  label,
-  sub,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  sub: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="focus-ring"
-      style={{
-        textAlign: 'left',
-        padding: '12px 14px',
-        borderRadius: 10,
-        border: active ? '1px solid rgba(255,255,255,0.4)' : '1px solid rgba(255,255,255,0.08)',
-        background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
-      }}
-    >
-      <div style={{ fontSize: 14, color: 'var(--ink)' }}>{label}</div>
-      <div style={{ fontSize: 12, color: 'var(--ink-60)', marginTop: 4, lineHeight: 1.45 }}>
-        {sub}
-      </div>
-    </button>
-  );
-}
-
-function ShortcutsStep({ onClose }: { onClose: () => void }) {
-  return (
-    <>
-      <h2
-        style={{
-          margin: '14px 0 8px',
-          fontSize: 26,
-          fontWeight: 400,
-          letterSpacing: '-0.02em',
-        }}
-      >
-        Four keys you’ll use every day.
-      </h2>
-      <p
-        style={{
-          fontSize: 14,
-          color: 'var(--ink-60)',
-          lineHeight: 1.6,
-          marginBottom: 22,
-        }}
-      >
-        Hone is keyboard-first. No menus, no toolbars. Esc returns to home.
-      </p>
-
-      <Row keyHint="⌘K" title="Command palette">
-        One menu, every action. Type to filter — Today, Notes, Stats, Daily
-        standup all live here.
-      </Row>
-      <Row keyHint="T" title="Today">
-        AI-generated daily plan. Each item has a reason — pick one, hit FOCUS.
-      </Row>
-      <Row keyHint="F" title="Focus">
-        Pomodoro-tracked deep work. ␣ pauses, S stops, after each session one
-        line: what did you do?
-      </Row>
-      <Row keyHint="S" title="Stats">
-        Quiet numbers — focus heatmap, streak, last 7 days. No push, no vanity.
-      </Row>
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          marginTop: 22,
-        }}
-      >
-        <button
-          onClick={onClose}
-          className="focus-ring"
-          style={{
-            padding: '10px 22px',
-            borderRadius: 999,
-            background: '#fff',
-            color: '#000',
-            fontSize: 13,
-            fontWeight: 500,
-          }}
-          autoFocus
-        >
-          Got it ↵
-        </button>
-      </div>
-    </>
-  );
-}
-
-interface RowProps {
-  keyHint: string;
-  title: string;
-  children: React.ReactNode;
-}
-
-function Row({ keyHint, title, children }: RowProps) {
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: '60px 1fr',
-        gap: 16,
-        padding: '10px 0',
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        alignItems: 'flex-start',
+        padding: '14px 30px',
+        borderTop: '1px solid rgba(255,255,255,0.07)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        background: 'rgba(255,255,255,0.02)',
       }}
     >
-      <div style={{ paddingTop: 2 }}>
-        <Kbd>{keyHint}</Kbd>
-      </div>
-      <div>
-        <div style={{ fontSize: 14, color: 'var(--ink)', marginBottom: 3 }}>{title}</div>
-        <div style={{ fontSize: 12.5, color: 'var(--ink-60)', lineHeight: 1.5 }}>{children}</div>
-      </div>
+      <button onClick={onSkip} className="mono" style={btnGhost()}>
+        skip
+      </button>
+      <span style={{ flex: 1 }} />
+      {step > 1 && (
+        <button onClick={onBack} className="mono" style={btnGhost()}>
+          back
+        </button>
+      )}
+      {step < 3 ? (
+        <button onClick={onNext} disabled={!canNext} className="mono" style={btnPrimary(!canNext)}>
+          next →
+        </button>
+      ) : (
+        <button onClick={onFinish} className="mono" style={btnPrimary(false)}>
+          finish
+        </button>
+      )}
     </div>
   );
+}
+
+const mono10 = {
+  fontSize: 10,
+  letterSpacing: '.12em',
+  textTransform: 'uppercase' as const,
+  color: 'rgba(255,255,255,0.4)',
+  fontFamily: "'JetBrains Mono', monospace",
+};
+
+function pickStyle(selected: boolean): React.CSSProperties {
+  return {
+    padding: '14px 14px',
+    background: selected ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+    border: selected ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 6,
+    color: 'rgba(255,255,255,0.92)',
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 12,
+    fontFamily: 'inherit',
+    transition: 'border-color 150ms ease',
+  };
+}
+
+function glyphStyle(): React.CSSProperties {
+  return {
+    flexShrink: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 5,
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'rgba(255,255,255,0.85)',
+  };
+}
+
+function btnGhost(): React.CSSProperties {
+  return {
+    padding: '6px 12px',
+    background: 'transparent',
+    border: '1px solid rgba(255,255,255,0.12)',
+    color: 'rgba(255,255,255,0.6)',
+    borderRadius: 5,
+    fontSize: 11,
+    letterSpacing: '.08em',
+    textTransform: 'uppercase',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  };
+}
+
+function btnPrimary(disabled: boolean): React.CSSProperties {
+  return {
+    padding: '6px 14px',
+    background: '#fff',
+    color: '#000',
+    border: 'none',
+    borderRadius: 5,
+    fontSize: 11,
+    letterSpacing: '.08em',
+    textTransform: 'uppercase',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
+    fontFamily: 'inherit',
+  };
 }

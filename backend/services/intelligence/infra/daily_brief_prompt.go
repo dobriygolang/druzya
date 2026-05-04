@@ -232,6 +232,30 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		sb.WriteString("\n")
 	}
 
+	// ── EXTERNAL ACTIVITY (LeetCode / Coursera / books / YouTube) ─────
+	if in.External.MinutesWindow > 0 {
+		fmt.Fprintf(&sb, "External learning last 7 days: %d min total via [%s]",
+			in.External.MinutesWindow, strings.Join(in.External.Sources, ", "))
+		if len(in.External.TopTopics) > 0 {
+			fmt.Fprintf(&sb, "; top topics: %s", strings.Join(in.External.TopTopics, ", "))
+		}
+		sb.WriteString(". (Don't re-suggest these topics in today's plan; coach should mention progress on them.)\n\n")
+	}
+
+	// ── FORK STATUS (Phase 1.7e learning-companion) ──────────────────
+	// Активен только при mode='explore'. Coach использует чтобы:
+	// (a) frame'ить «week N of 6 explore window»,
+	// (b) namet'ить commit когда confidence высокая,
+	// (c) воздерживаться от premature recommendation одной ветки когда
+	//     scores близки.
+	writeForkStatus(&sb, in)
+
+	// ── RESOURCE TRAIL (Phase 1.7e learning-companion) ───────────────
+	// Сигналы из user_resource_log: что закрыто, что открыто, что
+	// маркировано unhelpful. Coach не дублирует «прочитай X» если уже
+	// finished, и видит когда юзер скейпает на новые без reflection.
+	writeResourceTrail(&sb, in)
+
 	// ── HONE FOCUS SIGNALS ────────────────────────────────────────────
 	sb.WriteString("Focus last 7 days (date / seconds_focused / pomodoros):\n")
 	if len(in.FocusDays) == 0 {
@@ -682,4 +706,80 @@ func cuePromptMeta(raw []byte) (outcome, topics string) {
 		return "", ""
 	}
 	return strings.TrimSpace(p.Outcome), strings.Join(p.Topics, ",")
+}
+
+// writeForkStatus — Phase 1.7e learning-companion. Печатает FORK STATUS
+// блок только когда юзер в explore-режиме. См memory/project_state.md
+// «Track step UX flow» + project_curation_model.
+func writeForkStatus(sb *strings.Builder, in domain.BriefPromptInput) {
+	if in.Fork.Mode != "explore" {
+		return
+	}
+	sb.WriteString("FORK STATUS (user is in explore-mode — DO NOT push commit prematurely; mention current lean if confidence is clear):\n")
+	fmt.Fprintf(sb, "  branch: explore · week %d\n", in.Fork.ExploreWeekIndex)
+	if len(in.Fork.ScoresByBranch) > 0 {
+		sb.WriteString("  scores: ")
+		for i, b := range in.Fork.ScoresByBranch {
+			if i > 0 {
+				sb.WriteString(" · ")
+			}
+			fmt.Fprintf(sb, "%s %d mocks (avg %.0f), %d deep-dives",
+				b.Branch, b.MockCount, b.AvgScore, b.VoluntaryDeepDives)
+		}
+		sb.WriteString("\n")
+	}
+	if in.Fork.CurrentBranch != "" {
+		fmt.Fprintf(sb, "  declared lean: %s\n", in.Fork.CurrentBranch)
+	}
+	sb.WriteString("\n")
+}
+
+// writeResourceTrail — Phase 1.7e learning-companion. Daily snapshot user_resource_log
+// для last 7 days. Coach использует чтобы (a) не дублировать ссылки на
+// finished, (b) знать про unfinished open tabs, (c) reflect missed
+// reflections.
+func writeResourceTrail(sb *strings.Builder, in domain.BriefPromptInput) {
+	t := in.ResourceTrail
+	if len(t.FinishedRecent) == 0 && t.UnfinishedCount == 0 && len(t.MarkedUnhelpful) == 0 && len(t.RecentReflections) == 0 {
+		return
+	}
+	sb.WriteString("RESOURCE TRAIL · last 7 days (DON'T re-suggest URLs in `finished`; if `unhelpful` non-empty, prefer recommending alternatives):\n")
+	if len(t.FinishedRecent) > 0 {
+		sb.WriteString("  finished: ")
+		for i, r := range t.FinishedRecent {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			fmt.Fprintf(sb, "%s (%dh ago)", r.URL, r.HoursAgo)
+		}
+		sb.WriteString("\n")
+	}
+	if t.UnfinishedCount > 0 {
+		fmt.Fprintf(sb, "  unfinished count: %d (clicked but not marked finished/skipped)\n", t.UnfinishedCount)
+	}
+	if len(t.MarkedUnhelpful) > 0 {
+		sb.WriteString("  unhelpful: ")
+		for i, r := range t.MarkedUnhelpful {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			fmt.Fprintf(sb, "%s (%dh ago)", r.URL, r.HoursAgo)
+		}
+		sb.WriteString("\n")
+	}
+	if len(t.RecentReflections) > 0 {
+		sb.WriteString("  recent reflections: ")
+		for i, r := range t.RecentReflections {
+			if i > 0 {
+				sb.WriteString(" · ")
+			}
+			snippet := r.Reflection
+			if len(snippet) > 80 {
+				snippet = snippet[:80] + "…"
+			}
+			fmt.Fprintf(sb, "%q", snippet)
+		}
+		sb.WriteString("\n")
+	}
+	sb.WriteString("\n")
 }

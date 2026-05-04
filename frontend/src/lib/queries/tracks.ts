@@ -239,9 +239,38 @@ export function difficultyLabel(d: string): string {
   }
 }
 
-// progressPct — процент пройденных шагов (0-100).
+// progressPct — процент пройденных шагов (0-100). Defensive: vanguard
+// JSON-transcoder опускает int32-поля со значением 0, поэтому
+// `current_step` / `steps_total` могут прийти undefined → `?? 0` стопит
+// NaN-каскад в UI («STEP UNDEFINED/UNDEFINED» + NaN-кругляшки).
 export function progressPct(p: LearningTrackProgress | undefined): number {
-  if (!p || p.steps_total <= 0) return 0
-  const done = Math.min(p.enrolment.current_step, p.steps_total)
-  return Math.round((done / p.steps_total) * 100)
+  const total = p?.steps_total ?? 0
+  if (!p || total <= 0) return 0
+  const cur = p.enrolment.current_step ?? 0
+  const done = Math.min(cur, total)
+  return Math.round((done / total) * 100)
+}
+
+// ── Phase 3.2 — Custom path generation ────────────────────────────
+
+export interface CustomPathNode {
+  id: string
+  title: string
+  group: string
+  hint?: string
+}
+
+interface GenerateCustomPathResponse {
+  nodes: CustomPathNode[]
+}
+
+/** Generate initial atlas from a free-form goal text. Backend → llmchain. */
+export function useGenerateCustomPathMutation() {
+  return useMutation({
+    mutationFn: (goal: string) =>
+      api<GenerateCustomPathResponse>('/tracks/custom-path/generate', {
+        method: 'POST',
+        body: JSON.stringify({ goal }),
+      }),
+  })
 }

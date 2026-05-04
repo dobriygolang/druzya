@@ -8,8 +8,6 @@ import { Avatar } from './Avatar'
 import { DegradedBanner } from './global-error/DegradedBanner'
 import { NotificationsBell } from './notifications/NotificationsBell'
 import { NotificationsDrawer } from './notifications/NotificationsDrawer'
-import { MatchmakingDock } from './matchmaking/MatchmakingDock'
-import { MatchmakingPoller } from './matchmaking/MatchmakingPoller'
 import { cn } from '../lib/cn'
 import { useTheme, getEffectiveTheme } from '../lib/theme'
 import { changeLanguage, currentLanguage, LANG_LIST, type Lang } from '../lib/i18n'
@@ -22,32 +20,22 @@ import { logoutCurrentSession } from '../lib/queries/auth'
 // перегружен (раньше было 8 nav-items + 5 кнопок справа = 13 элементов).
 function useNavItems() {
   return [
-    // WAVE-13 IA refactor:
-    //   - /daily убран, kata теперь живёт как таб внутри /arena (см. ArenaPage).
-    //   - /podcasts merged into /codex (вкладка внутри Codex).
-    //   - /vacancies + /slots — promoted в top-nav (раньше прятались в user-menu).
-    // Порядок зафиксирован в WAVE-13 spec: 7 элементов на 1920 desktop.
-    // Phase-4 ADR-001 hierarchy:
-    //   Arena (active play) → Atlas (skill map) → Insights (Wave 4 —
-    //   weekly digest + readiness forecast, aggregates web/Hone/Cue) →
-    //   Circles (community + events, replaces cohort) → Codex (articles)
-    //   → Vacancies → Slots (mock-interview booking).
-    // Top-nav labels are hardcoded English brand-style names — they read as
-    // product surfaces ("Arena", "Atlas") regardless of the selected UI
-    // language, and mixing translated/untranslated entries felt off.
-    { to: '/arena', label: 'Arena' },
+    // Pivot 2026-05-03: /today первым — action-driven landing для авторизованного
+    // юзера. Atlas остаётся как «карта тем». Insights / Circles / Codex /
+    // Vacancies — secondary surfaces.
+    { to: '/today', label: 'Today' },
     { to: '/atlas', label: 'Atlas' },
+    { to: '/mock', label: 'Mock' },
     { to: '/insights', label: 'Insights' },
-    { to: '/circles', label: 'Circles' },
+    { to: '/tutor', label: 'Tutor' },
     { to: '/codex', label: 'Codex' },
     { to: '/vacancies', label: 'Vacancies' },
-    { to: '/slots', label: 'Slots' },
   ] as const
 }
 
 function Logo() {
   return (
-    <Link to="/arena" className="flex items-center gap-2.5">
+    <Link to="/today" className="flex items-center gap-2.5">
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-lg font-extrabold text-text-primary">
         9
       </span>
@@ -438,12 +426,6 @@ export function AppShellV2({ children }: { children: ReactNode }) {
         </motion.main>
       </AnimatePresence>
       <MobileBottomNav unreadCount={unreadCount} />
-      {/* Wave-13 cross-page matchmaking — both invisible (Poller drives the
-          /arena/match/current poll + auto-navigation when paired) and visual
-          (Dock is the persistent "Searching · MM:SS · ✕" pill bottom-right).
-          Mounted in AppShell so they survive any route change. */}
-      <MatchmakingPoller />
-      <MatchmakingDock />
     </div>
   )
 }

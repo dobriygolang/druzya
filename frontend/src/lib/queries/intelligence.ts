@@ -6,7 +6,7 @@
 //
 // Cache: backend кеширует на сутки. Frontend дополнительно держит
 // staleTime 10 мин чтобы не дёргать на каждый mount InsightsPage.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
 export type RecommendationKind =
@@ -75,17 +75,3 @@ export function useDailyBriefQuery() {
   })
 }
 
-export function useRegenerateDailyBriefMutation() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: () =>
-      api<DailyBrief>('/intelligence/daily-brief', {
-        method: 'POST',
-        body: JSON.stringify({ force: true }),
-        headers: { 'content-type': 'application/json' },
-      }),
-    onSuccess: (data) => {
-      qc.setQueryData(intelligenceKeys.brief(), data)
-    },
-  })
-}

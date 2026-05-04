@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"druz9/ai_mock/domain"
+	sharedDomain "druz9/shared/domain"
 
 	"github.com/google/uuid"
 )
@@ -27,6 +28,10 @@ type ReportWorker struct {
 	Messages domain.MessageRepo
 	Tasks    domain.TaskRepo
 	LLM      domain.LLMProvider
+	// Bus — optional. Когда set, после persist'а ai_report публикуется
+	// MockReportReady event с overall_score + weaknesses, чтобы AI-tutor
+	// (или другие сервисы) могли среагировать на слабый mock.
+	Bus sharedDomain.Bus
 
 	// ReportModel is the model used for the grading call. Falls back to the
 	// session's model if empty.
@@ -141,6 +146,19 @@ func (w *ReportWorker) run(ctx context.Context, sessionID uuid.UUID) error {
 	}
 	if err := w.Sessions.UpdateReport(ctx, sessionID, blob); err != nil {
 		return fmt.Errorf("persist: %w", err)
+	}
+	if w.Bus != nil {
+		if err := w.Bus.Publish(ctx, sharedDomain.MockReportReady{
+			SessionID:    sessionID,
+			UserID:       s.UserID,
+			Section:      s.Section,
+			OverallScore: draft.OverallScore,
+			Weaknesses:   append([]string(nil), draft.Weaknesses...),
+		}); err != nil {
+			w.log.WarnContext(ctx, "mock.ReportWorker: publish MockReportReady",
+				slog.String("session_id", sessionID.String()),
+				slog.Any("err", err))
+		}
 	}
 	return nil
 }

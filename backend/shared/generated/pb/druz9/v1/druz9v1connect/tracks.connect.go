@@ -58,6 +58,15 @@ const (
 	// TracksServiceLeaveTrackProcedure is the fully-qualified name of the TracksService's LeaveTrack
 	// RPC.
 	TracksServiceLeaveTrackProcedure = "/druz9.v1.TracksService/LeaveTrack"
+	// TracksServiceGenerateCustomPathProcedure is the fully-qualified name of the TracksService's
+	// GenerateCustomPath RPC.
+	TracksServiceGenerateCustomPathProcedure = "/druz9.v1.TracksService/GenerateCustomPath"
+	// TracksServiceStartCheckpointProcedure is the fully-qualified name of the TracksService's
+	// StartCheckpoint RPC.
+	TracksServiceStartCheckpointProcedure = "/druz9.v1.TracksService/StartCheckpoint"
+	// TracksServiceSubmitCheckpointProcedure is the fully-qualified name of the TracksService's
+	// SubmitCheckpoint RPC.
+	TracksServiceSubmitCheckpointProcedure = "/druz9.v1.TracksService/SubmitCheckpoint"
 )
 
 // TracksServiceClient is a client for the druz9.v1.TracksService service.
@@ -69,6 +78,13 @@ type TracksServiceClient interface {
 	AdvanceStep(context.Context, *connect.Request[v1.AdvanceStepRequest]) (*connect.Response[v1.LearningTrackEnrolment], error)
 	PauseTrack(context.Context, *connect.Request[v1.PauseTrackRequest]) (*connect.Response[v1.LearningTrackEnrolment], error)
 	LeaveTrack(context.Context, *connect.Request[v1.LeaveTrackRequest]) (*connect.Response[v1.LeaveTrackResponse], error)
+	// GenerateCustomPath — onboarding wizard «Свой путь». LLM генерит
+	// initial карту тем (8-15 nodes) из юзерской цели в свободной форме.
+	GenerateCustomPath(context.Context, *connect.Request[v1.GenerateCustomPathRequest]) (*connect.Response[v1.GenerateCustomPathResponse], error)
+	// StartCheckpoint — Phase 2 step UX. Returns step skill_keys + has_passed.
+	StartCheckpoint(context.Context, *connect.Request[v1.StartCheckpointRequest]) (*connect.Response[v1.StartCheckpointResponse], error)
+	// SubmitCheckpoint — Phase 2 step UX. Grades answers via TaskCheckpointGrade.
+	SubmitCheckpoint(context.Context, *connect.Request[v1.SubmitCheckpointRequest]) (*connect.Response[v1.SubmitCheckpointResponse], error)
 }
 
 // NewTracksServiceClient constructs a client for the druz9.v1.TracksService service. By default, it
@@ -124,18 +140,39 @@ func NewTracksServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(tracksServiceMethods.ByName("LeaveTrack")),
 			connect.WithClientOptions(opts...),
 		),
+		generateCustomPath: connect.NewClient[v1.GenerateCustomPathRequest, v1.GenerateCustomPathResponse](
+			httpClient,
+			baseURL+TracksServiceGenerateCustomPathProcedure,
+			connect.WithSchema(tracksServiceMethods.ByName("GenerateCustomPath")),
+			connect.WithClientOptions(opts...),
+		),
+		startCheckpoint: connect.NewClient[v1.StartCheckpointRequest, v1.StartCheckpointResponse](
+			httpClient,
+			baseURL+TracksServiceStartCheckpointProcedure,
+			connect.WithSchema(tracksServiceMethods.ByName("StartCheckpoint")),
+			connect.WithClientOptions(opts...),
+		),
+		submitCheckpoint: connect.NewClient[v1.SubmitCheckpointRequest, v1.SubmitCheckpointResponse](
+			httpClient,
+			baseURL+TracksServiceSubmitCheckpointProcedure,
+			connect.WithSchema(tracksServiceMethods.ByName("SubmitCheckpoint")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // tracksServiceClient implements TracksServiceClient.
 type tracksServiceClient struct {
-	listTracks     *connect.Client[v1.ListTracksRequest, v1.ListTracksResponse]
-	getTrack       *connect.Client[v1.GetTrackRequest, v1.GetTrackResponse]
-	listUserTracks *connect.Client[v1.ListUserTracksRequest, v1.ListUserTracksResponse]
-	joinTrack      *connect.Client[v1.JoinTrackRequest, v1.LearningTrackEnrolment]
-	advanceStep    *connect.Client[v1.AdvanceStepRequest, v1.LearningTrackEnrolment]
-	pauseTrack     *connect.Client[v1.PauseTrackRequest, v1.LearningTrackEnrolment]
-	leaveTrack     *connect.Client[v1.LeaveTrackRequest, v1.LeaveTrackResponse]
+	listTracks         *connect.Client[v1.ListTracksRequest, v1.ListTracksResponse]
+	getTrack           *connect.Client[v1.GetTrackRequest, v1.GetTrackResponse]
+	listUserTracks     *connect.Client[v1.ListUserTracksRequest, v1.ListUserTracksResponse]
+	joinTrack          *connect.Client[v1.JoinTrackRequest, v1.LearningTrackEnrolment]
+	advanceStep        *connect.Client[v1.AdvanceStepRequest, v1.LearningTrackEnrolment]
+	pauseTrack         *connect.Client[v1.PauseTrackRequest, v1.LearningTrackEnrolment]
+	leaveTrack         *connect.Client[v1.LeaveTrackRequest, v1.LeaveTrackResponse]
+	generateCustomPath *connect.Client[v1.GenerateCustomPathRequest, v1.GenerateCustomPathResponse]
+	startCheckpoint    *connect.Client[v1.StartCheckpointRequest, v1.StartCheckpointResponse]
+	submitCheckpoint   *connect.Client[v1.SubmitCheckpointRequest, v1.SubmitCheckpointResponse]
 }
 
 // ListTracks calls druz9.v1.TracksService.ListTracks.
@@ -173,6 +210,21 @@ func (c *tracksServiceClient) LeaveTrack(ctx context.Context, req *connect.Reque
 	return c.leaveTrack.CallUnary(ctx, req)
 }
 
+// GenerateCustomPath calls druz9.v1.TracksService.GenerateCustomPath.
+func (c *tracksServiceClient) GenerateCustomPath(ctx context.Context, req *connect.Request[v1.GenerateCustomPathRequest]) (*connect.Response[v1.GenerateCustomPathResponse], error) {
+	return c.generateCustomPath.CallUnary(ctx, req)
+}
+
+// StartCheckpoint calls druz9.v1.TracksService.StartCheckpoint.
+func (c *tracksServiceClient) StartCheckpoint(ctx context.Context, req *connect.Request[v1.StartCheckpointRequest]) (*connect.Response[v1.StartCheckpointResponse], error) {
+	return c.startCheckpoint.CallUnary(ctx, req)
+}
+
+// SubmitCheckpoint calls druz9.v1.TracksService.SubmitCheckpoint.
+func (c *tracksServiceClient) SubmitCheckpoint(ctx context.Context, req *connect.Request[v1.SubmitCheckpointRequest]) (*connect.Response[v1.SubmitCheckpointResponse], error) {
+	return c.submitCheckpoint.CallUnary(ctx, req)
+}
+
 // TracksServiceHandler is an implementation of the druz9.v1.TracksService service.
 type TracksServiceHandler interface {
 	ListTracks(context.Context, *connect.Request[v1.ListTracksRequest]) (*connect.Response[v1.ListTracksResponse], error)
@@ -182,6 +234,13 @@ type TracksServiceHandler interface {
 	AdvanceStep(context.Context, *connect.Request[v1.AdvanceStepRequest]) (*connect.Response[v1.LearningTrackEnrolment], error)
 	PauseTrack(context.Context, *connect.Request[v1.PauseTrackRequest]) (*connect.Response[v1.LearningTrackEnrolment], error)
 	LeaveTrack(context.Context, *connect.Request[v1.LeaveTrackRequest]) (*connect.Response[v1.LeaveTrackResponse], error)
+	// GenerateCustomPath — onboarding wizard «Свой путь». LLM генерит
+	// initial карту тем (8-15 nodes) из юзерской цели в свободной форме.
+	GenerateCustomPath(context.Context, *connect.Request[v1.GenerateCustomPathRequest]) (*connect.Response[v1.GenerateCustomPathResponse], error)
+	// StartCheckpoint — Phase 2 step UX. Returns step skill_keys + has_passed.
+	StartCheckpoint(context.Context, *connect.Request[v1.StartCheckpointRequest]) (*connect.Response[v1.StartCheckpointResponse], error)
+	// SubmitCheckpoint — Phase 2 step UX. Grades answers via TaskCheckpointGrade.
+	SubmitCheckpoint(context.Context, *connect.Request[v1.SubmitCheckpointRequest]) (*connect.Response[v1.SubmitCheckpointResponse], error)
 }
 
 // NewTracksServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -233,6 +292,24 @@ func NewTracksServiceHandler(svc TracksServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(tracksServiceMethods.ByName("LeaveTrack")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tracksServiceGenerateCustomPathHandler := connect.NewUnaryHandler(
+		TracksServiceGenerateCustomPathProcedure,
+		svc.GenerateCustomPath,
+		connect.WithSchema(tracksServiceMethods.ByName("GenerateCustomPath")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tracksServiceStartCheckpointHandler := connect.NewUnaryHandler(
+		TracksServiceStartCheckpointProcedure,
+		svc.StartCheckpoint,
+		connect.WithSchema(tracksServiceMethods.ByName("StartCheckpoint")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tracksServiceSubmitCheckpointHandler := connect.NewUnaryHandler(
+		TracksServiceSubmitCheckpointProcedure,
+		svc.SubmitCheckpoint,
+		connect.WithSchema(tracksServiceMethods.ByName("SubmitCheckpoint")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.TracksService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TracksServiceListTracksProcedure:
@@ -249,6 +326,12 @@ func NewTracksServiceHandler(svc TracksServiceHandler, opts ...connect.HandlerOp
 			tracksServicePauseTrackHandler.ServeHTTP(w, r)
 		case TracksServiceLeaveTrackProcedure:
 			tracksServiceLeaveTrackHandler.ServeHTTP(w, r)
+		case TracksServiceGenerateCustomPathProcedure:
+			tracksServiceGenerateCustomPathHandler.ServeHTTP(w, r)
+		case TracksServiceStartCheckpointProcedure:
+			tracksServiceStartCheckpointHandler.ServeHTTP(w, r)
+		case TracksServiceSubmitCheckpointProcedure:
+			tracksServiceSubmitCheckpointHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -284,4 +367,16 @@ func (UnimplementedTracksServiceHandler) PauseTrack(context.Context, *connect.Re
 
 func (UnimplementedTracksServiceHandler) LeaveTrack(context.Context, *connect.Request[v1.LeaveTrackRequest]) (*connect.Response[v1.LeaveTrackResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TracksService.LeaveTrack is not implemented"))
+}
+
+func (UnimplementedTracksServiceHandler) GenerateCustomPath(context.Context, *connect.Request[v1.GenerateCustomPathRequest]) (*connect.Response[v1.GenerateCustomPathResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TracksService.GenerateCustomPath is not implemented"))
+}
+
+func (UnimplementedTracksServiceHandler) StartCheckpoint(context.Context, *connect.Request[v1.StartCheckpointRequest]) (*connect.Response[v1.StartCheckpointResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TracksService.StartCheckpoint is not implemented"))
+}
+
+func (UnimplementedTracksServiceHandler) SubmitCheckpoint(context.Context, *connect.Request[v1.SubmitCheckpointRequest]) (*connect.Response[v1.SubmitCheckpointResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TracksService.SubmitCheckpoint is not implemented"))
 }

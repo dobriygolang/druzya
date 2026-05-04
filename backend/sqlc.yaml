@@ -37,48 +37,6 @@ sql:
         emit_empty_slices: true
 
   - engine: postgresql
-    name: "daily"
-    queries: "services/daily/infra/queries"
-    schema: "migrations"
-    gen:
-      go:
-        package: "dailydb"
-        out: "services/daily/infra/db"
-        sql_package: "pgx/v5"
-        emit_interface: true
-        emit_prepared_queries: false
-        emit_exact_table_names: false
-        emit_empty_slices: true
-
-  - engine: postgresql
-    name: "rating"
-    queries: "services/rating/infra/queries"
-    schema: "migrations"
-    gen:
-      go:
-        package: "ratingdb"
-        out: "services/rating/infra/db"
-        sql_package: "pgx/v5"
-        emit_interface: true
-        emit_prepared_queries: false
-        emit_exact_table_names: false
-        emit_empty_slices: true
-
-  - engine: postgresql
-    name: "arena"
-    queries: "services/arena/infra/queries"
-    schema: "migrations"
-    gen:
-      go:
-        package: "arenadb"
-        out: "services/arena/infra/db"
-        sql_package: "pgx/v5"
-        emit_interface: true
-        emit_prepared_queries: false
-        emit_exact_table_names: false
-        emit_empty_slices: true
-
-  - engine: postgresql
     name: "notify"
     queries: "services/notify/infra/queries"
     schema: "migrations"
@@ -109,33 +67,6 @@ sql:
   # Phase-4 ADR-001 — `ai_native` service removed (NativeRoundPage flow gone).
   # Phase-4 ADR-001 (Wave 2) — `cohort` service removed (merged into circles).
 
-  - engine: postgresql
-    name: "slot"
-    queries: "services/slot/infra/queries"
-    schema: "migrations"
-    gen:
-      go:
-        package: "slotdb"
-        out: "services/slot/infra/db"
-        sql_package: "pgx/v5"
-        emit_interface: true
-        emit_prepared_queries: false
-        emit_exact_table_names: false
-        emit_empty_slices: true
-
-  - engine: postgresql
-    name: "review"
-    queries: "services/review/infra/queries"
-    schema: "migrations"
-    gen:
-      go:
-        package: "reviewdb"
-        out: "services/review/infra/db"
-        sql_package: "pgx/v5"
-        emit_interface: true
-        emit_prepared_queries: false
-        emit_exact_table_names: false
-        emit_empty_slices: true
 
   # Phase-4 ADR-001 — `season` service removed (incomplete season pass).
   - engine: postgresql

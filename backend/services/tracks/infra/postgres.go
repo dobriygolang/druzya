@@ -37,7 +37,9 @@ const trackCols = `id, slug, name, tagline, description_md,
 
 const stepCols = `track_id, step_index, title, description_md,
     skill_keys, required_kind::text, required_count,
-    recommended_reading, estimated_minutes`
+    recommended_reading, estimated_minutes,
+    checkpoint_skill_keys, reflection_required,
+    COALESCE(graduation_mock_section, '')`
 
 // ── CatalogRepo ──────────────────────────────────────────────────────────
 
@@ -362,24 +364,31 @@ func scanStep(row pgx.Row) (domain.Step, error) {
 		requiredCount          int32
 		recReading             []string
 		estMin                 int32
+		checkpointKeys         []string
+		reflectionRequired     bool
+		graduationMockSection  string
 	)
 	if err := row.Scan(
 		&trackID, &stepIndex, &title, &descMD,
 		&skillKeys, &kindStr, &requiredCount,
 		&recReading, &estMin,
+		&checkpointKeys, &reflectionRequired, &graduationMockSection,
 	); err != nil {
 		return domain.Step{}, fmt.Errorf("tracks.pg.scanStep: %w", err)
 	}
 	return domain.Step{
-		TrackID:            sharedpg.UUIDFrom(trackID),
-		StepIndex:          int(stepIndex),
-		Title:              title,
-		DescriptionMD:      descMD,
-		SkillKeys:          skillKeys,
-		RequiredKind:       domain.StepKind(kindStr),
-		RequiredCount:      int(requiredCount),
-		RecommendedReading: recReading,
-		EstimatedMinutes:   int(estMin),
+		TrackID:               sharedpg.UUIDFrom(trackID),
+		StepIndex:             int(stepIndex),
+		Title:                 title,
+		DescriptionMD:         descMD,
+		SkillKeys:             skillKeys,
+		RequiredKind:          domain.StepKind(kindStr),
+		RequiredCount:         int(requiredCount),
+		RecommendedReading:    recReading,
+		EstimatedMinutes:      int(estMin),
+		CheckpointSkillKeys:   checkpointKeys,
+		ReflectionRequired:    reflectionRequired,
+		GraduationMockSection: graduationMockSection,
 	}, nil
 }
 
@@ -497,4 +506,83 @@ func scanUserTrackProgress(row pgx.Row) (domain.UserTrackProgress, error) {
 var (
 	_ domain.CatalogRepo    = (*Postgres)(nil)
 	_ domain.MembershipRepo = (*Postgres)(nil)
+	_ domain.CheckpointRepo = (*Postgres)(nil)
 )
+
+// ── CheckpointRepo (Phase 2 step UX flow, миграция 00056) ────────────────
+
+const checkpointCols = `id, user_id, track_id, step_index, score, attempts, passed_at, created_at`
+
+// Insert записывает результат attempt'а. Caller передаёт CheckpointAttempt
+// без ID/CreatedAt; репо генерирует gen_random_uuid + now().
+func (r *Postgres) Insert(ctx context.Context, in domain.CheckpointAttempt) (domain.CheckpointAttempt, error) {
+	row := r.pool.QueryRow(ctx,
+		`INSERT INTO step_checkpoint_attempts (user_id, track_id, step_index, score, attempts, passed_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 RETURNING `+checkpointCols,
+		sharedpg.UUID(in.UserID), sharedpg.UUID(in.TrackID), int16(in.StepIndex),
+		in.Score, in.Attempts, in.PassedAt,
+	)
+	out, err := scanCheckpoint(row)
+	if err != nil {
+		return domain.CheckpointAttempt{}, fmt.Errorf("tracks.Postgres.Insert checkpoint: %w", err)
+	}
+	return out, nil
+}
+
+func (r *Postgres) LatestForStep(ctx context.Context, userID, trackID uuid.UUID, stepIndex int) (domain.CheckpointAttempt, error) {
+	row := r.pool.QueryRow(ctx,
+		`SELECT `+checkpointCols+`
+		   FROM step_checkpoint_attempts
+		  WHERE user_id = $1 AND track_id = $2 AND step_index = $3
+		  ORDER BY created_at DESC LIMIT 1`,
+		sharedpg.UUID(userID), sharedpg.UUID(trackID), int16(stepIndex),
+	)
+	out, err := scanCheckpoint(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.CheckpointAttempt{}, domain.ErrNotFound
+		}
+		return domain.CheckpointAttempt{}, fmt.Errorf("tracks.Postgres.LatestForStep: %w", err)
+	}
+	return out, nil
+}
+
+func (r *Postgres) HasPassed(ctx context.Context, userID, trackID uuid.UUID, stepIndex int) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(
+		    SELECT 1 FROM step_checkpoint_attempts
+		     WHERE user_id = $1 AND track_id = $2 AND step_index = $3
+		       AND passed_at IS NOT NULL)`,
+		sharedpg.UUID(userID), sharedpg.UUID(trackID), int16(stepIndex),
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("tracks.Postgres.HasPassed: %w", err)
+	}
+	return exists, nil
+}
+
+func scanCheckpoint(row pgx.Row) (domain.CheckpointAttempt, error) {
+	var (
+		id, userID, trackID pgtype.UUID
+		stepIndex           int16
+		score               int32
+		attempts            []byte
+		passedAt            *time.Time
+		createdAt           time.Time
+	)
+	if err := row.Scan(&id, &userID, &trackID, &stepIndex, &score, &attempts, &passedAt, &createdAt); err != nil {
+		return domain.CheckpointAttempt{}, err
+	}
+	return domain.CheckpointAttempt{
+		ID:        sharedpg.UUIDFrom(id),
+		UserID:    sharedpg.UUIDFrom(userID),
+		TrackID:   sharedpg.UUIDFrom(trackID),
+		StepIndex: int(stepIndex),
+		Score:     int(score),
+		Attempts:  attempts,
+		PassedAt:  passedAt,
+		CreatedAt: createdAt,
+	}, nil
+}

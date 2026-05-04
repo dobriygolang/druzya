@@ -12,6 +12,9 @@ import (
 
 type Querier interface {
 	ApproveInterviewerApplication(ctx context.Context, arg ApproveInterviewerApplicationParams) (InterviewerApplication, error)
+	// Pivot 2026-05-01: arena_matches/participants дропнуты. matches_won
+	// остаётся в proto-shape но возвращает 0 — TODO выпилить из proto после
+	// следующего gen-cycle.
 	CountWeeklyActivity(ctx context.Context, arg CountWeeklyActivityParams) (CountWeeklyActivityRow, error)
 	EnsureAICredits(ctx context.Context, userID pgtype.UUID) error
 	EnsureNotificationPrefs(ctx context.Context, userID pgtype.UUID) error
@@ -33,7 +36,6 @@ type Querier interface {
 	// Admin queue. Sorted oldest-first inside a status group so the FIFO
 	// principle is obvious to moderators.
 	ListInterviewerApplications(ctx context.Context, status string) ([]ListInterviewerApplicationsRow, error)
-	ListRatings(ctx context.Context, userID pgtype.UUID) ([]ListRatingsRow, error)
 	ListSkillNodes(ctx context.Context, userID pgtype.UUID) ([]ListSkillNodesRow, error)
 	RejectInterviewerApplication(ctx context.Context, arg RejectInterviewerApplicationParams) (InterviewerApplication, error)
 	// Idempotent: if there's already a pending row for the user, return it

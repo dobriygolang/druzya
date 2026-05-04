@@ -18,64 +18,21 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AdminDashboard, AdminReportList, AdminTask, AdminTaskList, AdminUserList, AnticheatSignalList, BanUserRequest, BanUserResponse, Company, CompanyList, ConfigEntry, ConfigEntryList, CreateAdminTaskRequest, CreateCompanyRequest, GetAdminDashboardRequest, GetStatusPageRequest, ListAdminReportsRequest, ListAdminTasksRequest, ListAdminUsersRequest, ListAnticheatRequest, ListCompaniesRequest, ListConfigRequest, StatusPage, UnbanUserRequest, UpdateAdminTaskRequest, UpdateConfigRequest } from "./admin_pb.js";
+import { AdminDashboard, AdminReportList, AdminUserList, BanUserRequest, BanUserResponse, ConfigEntry, ConfigEntryList, GetAdminDashboardRequest, GetStatusPageRequest, ListAdminReportsRequest, ListAdminUsersRequest, ListConfigRequest, StatusPage, UnbanUserRequest, UpdateConfigRequest } from "./admin_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
+ * Pivot 2026-05-04: orphan RPCs (ListTasks/CreateTask/UpdateTask,
+ * ListCompanies/CreateCompany, ListAnticheat) удалены — нулевые
+ * frontend-вызовы. /companies (chi-direct) продолжает работать через
+ * ListCompanies UC напрямую (см. cmd/monolith/services/admin/admin.go).
+ * /admin/mock/companies + /admin/mock/tasks остаются в mock_interview.
+ *
  * @generated from service druz9.v1.AdminService
  */
 export const AdminService = {
   typeName: "druz9.v1.AdminService",
   methods: {
-    /**
-     * ── Tasks ───────────────────────────────────────────────────────────
-     *
-     * @generated from rpc druz9.v1.AdminService.ListTasks
-     */
-    listTasks: {
-      name: "ListTasks",
-      I: ListAdminTasksRequest,
-      O: AdminTaskList,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc druz9.v1.AdminService.CreateTask
-     */
-    createTask: {
-      name: "CreateTask",
-      I: CreateAdminTaskRequest,
-      O: AdminTask,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc druz9.v1.AdminService.UpdateTask
-     */
-    updateTask: {
-      name: "UpdateTask",
-      I: UpdateAdminTaskRequest,
-      O: AdminTask,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * ── Companies ───────────────────────────────────────────────────────
-     *
-     * @generated from rpc druz9.v1.AdminService.ListCompanies
-     */
-    listCompanies: {
-      name: "ListCompanies",
-      I: ListCompaniesRequest,
-      O: CompanyList,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * @generated from rpc druz9.v1.AdminService.CreateCompany
-     */
-    createCompany: {
-      name: "CreateCompany",
-      I: CreateCompanyRequest,
-      O: Company,
-      kind: MethodKind.Unary,
-    },
     /**
      * ── Dynamic config ──────────────────────────────────────────────────
      *
@@ -94,17 +51,6 @@ export const AdminService = {
       name: "UpdateConfig",
       I: UpdateConfigRequest,
       O: ConfigEntry,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * ── Anticheat ───────────────────────────────────────────────────────
-     *
-     * @generated from rpc druz9.v1.AdminService.ListAnticheat
-     */
-    listAnticheat: {
-      name: "ListAnticheat",
-      I: ListAnticheatRequest,
-      O: AnticheatSignalList,
       kind: MethodKind.Unary,
     },
     /**

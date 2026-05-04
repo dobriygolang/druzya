@@ -16,8 +16,9 @@
 // Empty / error / loading — единая шапка одинакового размера, чтобы layout
 // не прыгал.
 
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Compass, Loader2, Sparkles } from 'lucide-react'
+import { ArrowRight, Compass, Loader2, Plus, Sparkles, Check } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
 import {
@@ -30,6 +31,10 @@ import {
   type LearningTrack,
   type LearningTrackProgress,
 } from '../../lib/queries/tracks'
+import {
+  useClassifyAtlasTodoMutation,
+  type ClassifyAtlasTodoResponse,
+} from '../../lib/queries/profile'
 
 export default function AtlasPage() {
   const catalogue = useTracksCatalogue()
@@ -43,6 +48,8 @@ export default function AtlasPage() {
         <Hero />
         <div className="px-4 py-6 sm:px-8 lg:px-20">
           {active && <ActiveTrackStrip progress={active} />}
+
+          <AddAtlasTodoCard />
 
           <CatalogueHeader
             count={catalogue.data?.length ?? 0}
@@ -97,7 +104,7 @@ function Hero() {
 
 function ActiveTrackStrip({ progress }: { progress: LearningTrackProgress }) {
   const pct = progressPct(progress)
-  const stepLabel = `${progress.enrolment.current_step}/${progress.steps_total}`
+  const stepLabel = `${progress.enrolment.current_step ?? 0}/${progress.steps_total ?? 0}`
   return (
     <Link
       to={`/atlas/track/${encodeURIComponent(progress.track.slug)}`}
@@ -207,7 +214,7 @@ function TrackCard({
   const accent = track.accent_color || '#A78BFA'
   const pct = progressPct(progress)
   const stepLabel = progress
-    ? `${progress.enrolment.current_step}/${progress.steps_total}`
+    ? `${progress.enrolment.current_step ?? 0}/${progress.steps_total ?? 0}`
     : null
 
   return (
@@ -343,5 +350,113 @@ function ErrorBlock({ onRetry }: { onRetry: () => void }) {
         Повторить
       </Button>
     </div>
+  )
+}
+
+// ── Phase 3.1: free-form TODO → atlas node ─────────────────────────────
+//
+// Sergey 2026-05-03: «сейчас изучаю ml и ии сам подхватывает это,
+// дополняет атлас». Юзер пишет «изучить транзакции в Postgres» —
+// бэк (TaskAtlasClassify) либо мэтчит в существующий узел (sql_perf),
+// либо создаёт новый user_atlas_nodes row (cluster='custom'). useAtlasQuery
+// инвалидируется, новый узел появляется в /atlas/explore.
+//
+// nil-safe: backend без LLM возвращает Unimplemented → показываем
+// inline-сообщение «AI пока недоступен», sync-режим не блокируется.
+function AddAtlasTodoCard() {
+  const [todo, setTodo] = useState('')
+  const [result, setResult] = useState<ClassifyAtlasTodoResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const m = useClassifyAtlasTodoMutation()
+
+  const submit = async () => {
+    setError(null)
+    setResult(null)
+    const t = todo.trim()
+    if (t.length < 3) return
+    try {
+      const res = await m.mutateAsync(t)
+      setResult(res)
+      setTodo('')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (/unimplemented/i.test(msg)) {
+        setError('AI-классификатор пока недоступен (LLM не сконфигурён).')
+      } else {
+        setError(msg)
+      }
+    }
+  }
+
+  return (
+    <section className="mb-6 rounded-xl border border-dashed border-border bg-surface-1 p-4">
+      <div className="mb-2 flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-accent" />
+        <h2 className="font-display text-sm font-bold">Добавить тему в атлас</h2>
+      </div>
+      <p className="mb-3 text-[12px] leading-relaxed text-text-secondary">
+        Опиши что хочешь изучить («Транзакции в Postgres», «Diffusion-модели»).
+        AI либо найдёт подходящий узел в curated-атласе, либо заведёт новый
+        в твоём личном слое.
+      </p>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          type="text"
+          value={todo}
+          onChange={(e) => setTodo(e.target.value)}
+          placeholder="Например: транзакции в Postgres"
+          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submit()
+          }}
+        />
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={todo.trim().length < 3 || m.isPending}
+          icon={
+            m.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Plus className="h-3.5 w-3.5" />
+            )
+          }
+          onClick={submit}
+        >
+          Добавить
+        </Button>
+      </div>
+      {error && (
+        <div className="mt-3 rounded-md border border-warn/40 bg-surface-2 px-3 py-2 text-[12px] text-text-secondary">
+          {error}
+        </div>
+      )}
+      {result && (
+        <div className="mt-3 flex items-start gap-2 rounded-md border border-accent/40 bg-surface-2 px-3 py-2 text-[12px]">
+          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+          <div className="text-text-primary">
+            {result.matched_key ? (
+              <>
+                Тема уже есть в атласе:{' '}
+                <code className="font-mono text-[11px] text-accent">
+                  {result.matched_key}
+                </code>
+                . Прогресс по ней пойдёт сразу.
+              </>
+            ) : result.new_node ? (
+              <>
+                Создан новый узел{' '}
+                <b className="text-text-primary">{result.new_node.title}</b>{' '}
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                  · {result.new_node.section} / {result.new_node.cluster}
+                </span>
+              </>
+            ) : (
+              'Готово.'
+            )}
+          </div>
+        </div>
+      )}
+    </section>
   )
 }

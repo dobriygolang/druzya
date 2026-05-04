@@ -224,12 +224,12 @@ message AdminDashboard {
   int64 users_active_week      = 3;
   int64 users_active_month     = 4;
   int64 users_banned           = 5;
-  int64 matches_today          = 6;
-  int64 matches_week           = 7;
+  int64 matches_today          = 6 [deprecated = true]; // pivot 2026-05-01: arena dropped
+  int64 matches_week           = 7 [deprecated = true]; // pivot 2026-05-01: arena dropped
   int64 katas_today            = 8;
   int64 katas_week             = 9;
   int64 active_mock_sessions   = 10;
-  int64 active_arena_matches   = 11;
+  reserved 11; // active_arena_matches (pivot 2026-05-01: arena dropped)
   int64 reports_pending        = 12;
   int64 anticheat_signals_24h  = 13;
   // generated_at — when the snapshot was assembled (cache miss timestamp).
@@ -362,33 +362,11 @@ message GetStatusPageRequest {}
 // ─────────────────────────────────────────────────────────────────────────
 
 service AdminService {
-  // ── Tasks ───────────────────────────────────────────────────────────
-  rpc ListTasks(ListAdminTasksRequest) returns (AdminTaskList) {
-    option (google.api.http) = {get: "/api/v1/admin/tasks"};
-  }
-  rpc CreateTask(CreateAdminTaskRequest) returns (AdminTask) {
-    option (google.api.http) = {
-      post: "/api/v1/admin/tasks"
-      body: "task"
-    };
-  }
-  rpc UpdateTask(UpdateAdminTaskRequest) returns (AdminTask) {
-    option (google.api.http) = {
-      put: "/api/v1/admin/tasks/{task_id}"
-      body: "task"
-    };
-  }
-
-  // ── Companies ───────────────────────────────────────────────────────
-  rpc ListCompanies(ListCompaniesRequest) returns (CompanyList) {
-    option (google.api.http) = {get: "/api/v1/admin/companies"};
-  }
-  rpc CreateCompany(CreateCompanyRequest) returns (Company) {
-    option (google.api.http) = {
-      post: "/api/v1/admin/companies"
-      body: "company"
-    };
-  }
+  // Pivot 2026-05-04: orphan RPCs (ListTasks/CreateTask/UpdateTask,
+  // ListCompanies/CreateCompany, ListAnticheat) удалены — нулевые
+  // frontend-вызовы. /companies (chi-direct) продолжает работать через
+  // ListCompanies UC напрямую (см. cmd/monolith/services/admin/admin.go).
+  // /admin/mock/companies + /admin/mock/tasks остаются в mock_interview.
 
   // ── Dynamic config ──────────────────────────────────────────────────
   rpc ListConfig(ListConfigRequest) returns (ConfigEntryList) {
@@ -399,11 +377,6 @@ service AdminService {
       put: "/api/v1/admin/config/{key}"
       body: "*"
     };
-  }
-
-  // ── Anticheat ───────────────────────────────────────────────────────
-  rpc ListAnticheat(ListAnticheatRequest) returns (AnticheatSignalList) {
-    option (google.api.http) = {get: "/api/v1/admin/anticheat"};
   }
 
   // ── Dashboard ───────────────────────────────────────────────────────

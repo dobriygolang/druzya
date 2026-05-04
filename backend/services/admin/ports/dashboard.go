@@ -178,12 +178,9 @@ func dashboardToProto(d domain.AdminDashboard) *pb.AdminDashboard {
 		UsersActiveWeek:      d.UsersActiveWeek,
 		UsersActiveMonth:     d.UsersActiveMonth,
 		UsersBanned:          d.UsersBanned,
-		MatchesToday:         d.MatchesToday,
-		MatchesWeek:          d.MatchesWeek,
 		KatasToday:           d.KatasToday,
 		KatasWeek:            d.KatasWeek,
 		ActiveMockSessions:   d.ActiveMockSessions,
-		ActiveArenaMatches:   d.ActiveArenaMatches,
 		ReportsPending:       d.ReportsPending,
 		AnticheatSignals_24H: d.AnticheatSignals24h,
 	}

@@ -37,6 +37,8 @@ import {
   subscribe as subscribeVault,
   fetchSalt,
 } from '../api/vault';
+import { useTrackStore } from '../stores/track';
+import { DeveloperToolsSection } from '../components/DeveloperToolsSection';
 
 interface HoneSettings {
   pomodoroMinutes: number;
@@ -231,6 +233,13 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
         </SectionGroup>
 
         {/* ════════════════════════════════════════════════════════
+            LEARNING MODULES — что юзер хочет видеть в Hone. English —
+            opt-in: если off, Reading/Writing/Listening pages скрыты. */}
+        <SectionGroup title="Learning modules">
+          <EnglishToggleSection />
+        </SectionGroup>
+
+        {/* ════════════════════════════════════════════════════════
             ACCOUNT — tier-quota, storage, devices. Всё что про лимиты
             аккаунта и cross-device синхронизацию. */}
         <SectionGroup title="Account">
@@ -291,6 +300,37 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
               <ShortcutRow keys={['↤', '2-finger']} label="Swipe left → Stats" />
               <ShortcutRow keys={['↦', '2-finger']} label="Swipe right → Close" />
             </div>
+          </Section>
+
+          <DeveloperToolsSection />
+
+          <Section title="ONBOARDING" hint="Replay the 3-step wizard (stack · mode · shortcuts).">
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  window.localStorage.removeItem('hone:onboarded:v2');
+                } catch {
+                  /* ignore */
+                }
+                window.location.reload();
+              }}
+              className="mono"
+              style={{
+                padding: '6px 12px',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: 'rgba(255,255,255,0.7)',
+                borderRadius: 5,
+                fontSize: 11,
+                letterSpacing: '.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              open onboarding again
+            </button>
           </Section>
         </SectionGroup>
       </div>
@@ -1320,5 +1360,32 @@ function VaultButton({
     >
       {children}
     </button>
+  );
+}
+
+// EnglishToggleSection — opt-in switch для English-loop'а.
+//
+// Sergey 2026-05-03: «English — не альтернатива dev/ml, а дополнение».
+// Если off → Reading / Writing / Listening pages в Hone скрыты, palette-
+// entries прячутся. По default false (новый юзер не видит English шумa).
+//
+// Состояние читается из useTrackStore (синхронизированный с backend
+// hone_user_settings.english_active) — не из локального settings JSON.
+function EnglishToggleSection() {
+  const englishActive = useTrackStore((s) => s.englishActive);
+  const setEnglishActive = useTrackStore((s) => s.setEnglishActive);
+  return (
+    <Section
+      title="ENGLISH"
+      hint="Reading / Writing / Listening + vocab SRS. Включи если готовишься к English-собесу или подтягиваешь уровень с тутором."
+    >
+      <Toggle
+        value={englishActive}
+        onChange={(b) => {
+          void setEnglishActive(b);
+        }}
+        label={englishActive ? 'on' : 'off'}
+      />
+    </Section>
   );
 }

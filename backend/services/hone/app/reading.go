@@ -41,11 +41,13 @@ type AddReadingMaterial struct {
 }
 
 type AddReadingMaterialInput struct {
-	UserID     uuid.UUID
-	SourceKind domain.ReadingSourceKind
-	SourceURL  string // empty for paste
-	Title      string
-	BodyMD     string
+	UserID            uuid.UUID
+	SourceKind        domain.ReadingSourceKind
+	SourceURL         string // empty for paste
+	Title             string
+	BodyMD            string
+	BookChapter       *int // book-only progress
+	BookTotalChapters *int
 }
 
 func (uc *AddReadingMaterial) Do(ctx context.Context, in AddReadingMaterialInput) (domain.ReadingMaterial, error) {
@@ -60,25 +62,51 @@ func (uc *AddReadingMaterial) Do(ctx context.Context, in AddReadingMaterialInput
 		return domain.ReadingMaterial{}, fmt.Errorf("hone.AddReadingMaterial: title required")
 	}
 	body := strings.TrimSpace(in.BodyMD)
-	if body == "" {
+	// Books — частный случай: body может быть пустым (юзер читает offline,
+	// мы трекаем только chapter). Для остальных source_kind body required.
+	isBook := in.SourceKind == domain.ReadingSourceBook
+	if !isBook && body == "" {
 		return domain.ReadingMaterial{}, fmt.Errorf("hone.AddReadingMaterial: body_md required")
 	}
 	if len(body) > 2_000_000 {
-		// 2 MB body cap — corresponds to ~400k Russian words. Above
-		// that the frontend should chunk into multiple materials.
 		return domain.ReadingMaterial{}, fmt.Errorf("hone.AddReadingMaterial: body too large (>2MB)")
 	}
 	saved, err := uc.Repo.CreateMaterial(ctx, domain.ReadingMaterial{
-		UserID:     in.UserID,
-		SourceKind: in.SourceKind,
-		SourceURL:  strings.TrimSpace(in.SourceURL),
-		Title:      title,
-		BodyMD:     body,
+		UserID:            in.UserID,
+		SourceKind:        in.SourceKind,
+		SourceURL:         strings.TrimSpace(in.SourceURL),
+		Title:             title,
+		BodyMD:            body,
+		BookChapter:       in.BookChapter,
+		BookTotalChapters: in.BookTotalChapters,
 	})
 	if err != nil {
 		return domain.ReadingMaterial{}, fmt.Errorf("hone.AddReadingMaterial: %w", err)
 	}
 	return saved, nil
+}
+
+// UpdateBookProgress — bump chapter / total для book-материалов.
+type UpdateBookProgress struct {
+	Repo domain.ReadingRepo
+}
+
+type UpdateBookProgressInput struct {
+	UserID            uuid.UUID
+	MaterialID        uuid.UUID
+	BookChapter       *int
+	BookTotalChapters *int
+}
+
+func (uc *UpdateBookProgress) Do(ctx context.Context, in UpdateBookProgressInput) (domain.ReadingMaterial, error) {
+	if in.UserID == uuid.Nil || in.MaterialID == uuid.Nil {
+		return domain.ReadingMaterial{}, fmt.Errorf("hone.UpdateBookProgress: ids required")
+	}
+	out, err := uc.Repo.UpdateBookProgress(ctx, in.UserID, in.MaterialID, in.BookChapter, in.BookTotalChapters)
+	if err != nil {
+		return domain.ReadingMaterial{}, fmt.Errorf("hone.UpdateBookProgress: %w", err)
+	}
+	return out, nil
 }
 
 // ListReadingMaterials — library view, most-recent first.

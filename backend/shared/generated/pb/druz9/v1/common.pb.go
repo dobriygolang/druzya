@@ -82,6 +82,10 @@ const (
 	// post-mortems, error budgets), and security (secrets, auth, network
 	// policy).
 	Section_SECTION_DEVOPS Section = 12
+	// ML engineering — pivot 2026-05-01. Free-form interview round для
+	// middle/senior ML позиций. Classical ML, deep learning, LLM/GenAI,
+	// MLOps, evaluation + production awareness.
+	Section_SECTION_ML_ENG Section = 13
 )
 
 // Enum value maps for Section.
@@ -100,6 +104,7 @@ var (
 		10: "SECTION_PRODUCT_ANALYST",
 		11: "SECTION_QA",
 		12: "SECTION_DEVOPS",
+		13: "SECTION_ML_ENG",
 	}
 	Section_value = map[string]int32{
 		"SECTION_UNSPECIFIED":          0,
@@ -115,6 +120,7 @@ var (
 		"SECTION_PRODUCT_ANALYST":      10,
 		"SECTION_QA":                   11,
 		"SECTION_DEVOPS":               12,
+		"SECTION_ML_ENG":               13,
 	}
 )
 
@@ -531,124 +537,6 @@ func (SubscriptionPlan) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_common_proto_rawDescGZIP(), []int{7}
 }
 
-// MatchStatus mirrors shared/enums.MatchStatus (arena match lifecycle).
-type MatchStatus int32
-
-const (
-	MatchStatus_MATCH_STATUS_UNSPECIFIED MatchStatus = 0
-	MatchStatus_MATCH_STATUS_SEARCHING   MatchStatus = 1
-	MatchStatus_MATCH_STATUS_CONFIRMING  MatchStatus = 2
-	MatchStatus_MATCH_STATUS_ACTIVE      MatchStatus = 3
-	MatchStatus_MATCH_STATUS_FINISHED    MatchStatus = 4
-	MatchStatus_MATCH_STATUS_CANCELLED   MatchStatus = 5
-)
-
-// Enum value maps for MatchStatus.
-var (
-	MatchStatus_name = map[int32]string{
-		0: "MATCH_STATUS_UNSPECIFIED",
-		1: "MATCH_STATUS_SEARCHING",
-		2: "MATCH_STATUS_CONFIRMING",
-		3: "MATCH_STATUS_ACTIVE",
-		4: "MATCH_STATUS_FINISHED",
-		5: "MATCH_STATUS_CANCELLED",
-	}
-	MatchStatus_value = map[string]int32{
-		"MATCH_STATUS_UNSPECIFIED": 0,
-		"MATCH_STATUS_SEARCHING":   1,
-		"MATCH_STATUS_CONFIRMING":  2,
-		"MATCH_STATUS_ACTIVE":      3,
-		"MATCH_STATUS_FINISHED":    4,
-		"MATCH_STATUS_CANCELLED":   5,
-	}
-)
-
-func (x MatchStatus) Enum() *MatchStatus {
-	p := new(MatchStatus)
-	*p = x
-	return p
-}
-
-func (x MatchStatus) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (MatchStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[8].Descriptor()
-}
-
-func (MatchStatus) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[8]
-}
-
-func (x MatchStatus) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use MatchStatus.Descriptor instead.
-func (MatchStatus) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{8}
-}
-
-// ArenaMode mirrors shared/enums.ArenaMode.
-type ArenaMode int32
-
-const (
-	ArenaMode_ARENA_MODE_UNSPECIFIED ArenaMode = 0
-	ArenaMode_ARENA_MODE_SOLO_1V1    ArenaMode = 1
-	ArenaMode_ARENA_MODE_DUO_2V2     ArenaMode = 2
-	ArenaMode_ARENA_MODE_RANKED      ArenaMode = 3
-	ArenaMode_ARENA_MODE_HARDCORE    ArenaMode = 4
-	ArenaMode_ARENA_MODE_CURSED      ArenaMode = 5
-)
-
-// Enum value maps for ArenaMode.
-var (
-	ArenaMode_name = map[int32]string{
-		0: "ARENA_MODE_UNSPECIFIED",
-		1: "ARENA_MODE_SOLO_1V1",
-		2: "ARENA_MODE_DUO_2V2",
-		3: "ARENA_MODE_RANKED",
-		4: "ARENA_MODE_HARDCORE",
-		5: "ARENA_MODE_CURSED",
-	}
-	ArenaMode_value = map[string]int32{
-		"ARENA_MODE_UNSPECIFIED": 0,
-		"ARENA_MODE_SOLO_1V1":    1,
-		"ARENA_MODE_DUO_2V2":     2,
-		"ARENA_MODE_RANKED":      3,
-		"ARENA_MODE_HARDCORE":    4,
-		"ARENA_MODE_CURSED":      5,
-	}
-)
-
-func (x ArenaMode) Enum() *ArenaMode {
-	p := new(ArenaMode)
-	*p = x
-	return p
-}
-
-func (x ArenaMode) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ArenaMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[9].Descriptor()
-}
-
-func (ArenaMode) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[9]
-}
-
-func (x ArenaMode) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ArenaMode.Descriptor instead.
-func (ArenaMode) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{9}
-}
-
 // MockStatus mirrors shared/enums.MockStatus (ai_mock session lifecycle).
 type MockStatus int32
 
@@ -689,11 +577,11 @@ func (x MockStatus) String() string {
 }
 
 func (MockStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[10].Descriptor()
+	return file_druz9_v1_common_proto_enumTypes[8].Descriptor()
 }
 
 func (MockStatus) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[10]
+	return &file_druz9_v1_common_proto_enumTypes[8]
 }
 
 func (x MockStatus) Number() protoreflect.EnumNumber {
@@ -702,7 +590,7 @@ func (x MockStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MockStatus.Descriptor instead.
 func (MockStatus) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{10}
+	return file_druz9_v1_common_proto_rawDescGZIP(), []int{8}
 }
 
 // MessageRole mirrors shared/enums.MessageRole (LLM chat roles).
@@ -742,11 +630,11 @@ func (x MessageRole) String() string {
 }
 
 func (MessageRole) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[11].Descriptor()
+	return file_druz9_v1_common_proto_enumTypes[9].Descriptor()
 }
 
 func (MessageRole) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[11]
+	return &file_druz9_v1_common_proto_enumTypes[9]
 }
 
 func (x MessageRole) Number() protoreflect.EnumNumber {
@@ -755,7 +643,7 @@ func (x MessageRole) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MessageRole.Descriptor instead.
 func (MessageRole) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{11}
+	return file_druz9_v1_common_proto_rawDescGZIP(), []int{9}
 }
 
 // LLMModel mirrors shared/enums.LLMModel. The string form used on the wire
@@ -803,11 +691,11 @@ func (x LLMModel) String() string {
 }
 
 func (LLMModel) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[12].Descriptor()
+	return file_druz9_v1_common_proto_enumTypes[10].Descriptor()
 }
 
 func (LLMModel) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[12]
+	return &file_druz9_v1_common_proto_enumTypes[10]
 }
 
 func (x LLMModel) Number() protoreflect.EnumNumber {
@@ -816,116 +704,7 @@ func (x LLMModel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LLMModel.Descriptor instead.
 func (LLMModel) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{12}
-}
-
-// ProvenanceKind mirrors shared/enums.ProvenanceKind (ai_native code origin).
-type ProvenanceKind int32
-
-const (
-	ProvenanceKind_PROVENANCE_KIND_UNSPECIFIED         ProvenanceKind = 0
-	ProvenanceKind_PROVENANCE_KIND_AI_GENERATED        ProvenanceKind = 1
-	ProvenanceKind_PROVENANCE_KIND_HUMAN_WRITTEN       ProvenanceKind = 2
-	ProvenanceKind_PROVENANCE_KIND_AI_REVISED_BY_HUMAN ProvenanceKind = 3
-	ProvenanceKind_PROVENANCE_KIND_AI_REJECTED         ProvenanceKind = 4
-)
-
-// Enum value maps for ProvenanceKind.
-var (
-	ProvenanceKind_name = map[int32]string{
-		0: "PROVENANCE_KIND_UNSPECIFIED",
-		1: "PROVENANCE_KIND_AI_GENERATED",
-		2: "PROVENANCE_KIND_HUMAN_WRITTEN",
-		3: "PROVENANCE_KIND_AI_REVISED_BY_HUMAN",
-		4: "PROVENANCE_KIND_AI_REJECTED",
-	}
-	ProvenanceKind_value = map[string]int32{
-		"PROVENANCE_KIND_UNSPECIFIED":         0,
-		"PROVENANCE_KIND_AI_GENERATED":        1,
-		"PROVENANCE_KIND_HUMAN_WRITTEN":       2,
-		"PROVENANCE_KIND_AI_REVISED_BY_HUMAN": 3,
-		"PROVENANCE_KIND_AI_REJECTED":         4,
-	}
-)
-
-func (x ProvenanceKind) Enum() *ProvenanceKind {
-	p := new(ProvenanceKind)
-	*p = x
-	return p
-}
-
-func (x ProvenanceKind) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ProvenanceKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[13].Descriptor()
-}
-
-func (ProvenanceKind) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[13]
-}
-
-func (x ProvenanceKind) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ProvenanceKind.Descriptor instead.
-func (ProvenanceKind) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{13}
-}
-
-// NativeAction mirrors ai_native/domain.ActionKind (verify outcomes).
-type NativeAction int32
-
-const (
-	NativeAction_NATIVE_ACTION_UNSPECIFIED NativeAction = 0
-	NativeAction_NATIVE_ACTION_ACCEPTED    NativeAction = 1
-	NativeAction_NATIVE_ACTION_REJECTED    NativeAction = 2
-	NativeAction_NATIVE_ACTION_REVISED     NativeAction = 3
-)
-
-// Enum value maps for NativeAction.
-var (
-	NativeAction_name = map[int32]string{
-		0: "NATIVE_ACTION_UNSPECIFIED",
-		1: "NATIVE_ACTION_ACCEPTED",
-		2: "NATIVE_ACTION_REJECTED",
-		3: "NATIVE_ACTION_REVISED",
-	}
-	NativeAction_value = map[string]int32{
-		"NATIVE_ACTION_UNSPECIFIED": 0,
-		"NATIVE_ACTION_ACCEPTED":    1,
-		"NATIVE_ACTION_REJECTED":    2,
-		"NATIVE_ACTION_REVISED":     3,
-	}
-)
-
-func (x NativeAction) Enum() *NativeAction {
-	p := new(NativeAction)
-	*p = x
-	return p
-}
-
-func (x NativeAction) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (NativeAction) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[14].Descriptor()
-}
-
-func (NativeAction) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[14]
-}
-
-func (x NativeAction) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use NativeAction.Descriptor instead.
-func (NativeAction) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{14}
+	return file_druz9_v1_common_proto_rawDescGZIP(), []int{10}
 }
 
 // EditorEventType mirrors ai_mock/domain.EditorEventType (stress batch event).
@@ -971,11 +750,11 @@ func (x EditorEventType) String() string {
 }
 
 func (EditorEventType) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[15].Descriptor()
+	return file_druz9_v1_common_proto_enumTypes[11].Descriptor()
 }
 
 func (EditorEventType) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[15]
+	return &file_druz9_v1_common_proto_enumTypes[11]
 }
 
 func (x EditorEventType) Number() protoreflect.EnumNumber {
@@ -984,66 +763,7 @@ func (x EditorEventType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use EditorEventType.Descriptor instead.
 func (EditorEventType) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{15}
-}
-
-// SlotStatus mirrors shared/enums.SlotStatus (human-mock slot lifecycle).
-type SlotStatus int32
-
-const (
-	SlotStatus_SLOT_STATUS_UNSPECIFIED SlotStatus = 0
-	SlotStatus_SLOT_STATUS_AVAILABLE   SlotStatus = 1
-	SlotStatus_SLOT_STATUS_BOOKED      SlotStatus = 2
-	SlotStatus_SLOT_STATUS_COMPLETED   SlotStatus = 3
-	SlotStatus_SLOT_STATUS_CANCELLED   SlotStatus = 4
-	SlotStatus_SLOT_STATUS_NO_SHOW     SlotStatus = 5
-)
-
-// Enum value maps for SlotStatus.
-var (
-	SlotStatus_name = map[int32]string{
-		0: "SLOT_STATUS_UNSPECIFIED",
-		1: "SLOT_STATUS_AVAILABLE",
-		2: "SLOT_STATUS_BOOKED",
-		3: "SLOT_STATUS_COMPLETED",
-		4: "SLOT_STATUS_CANCELLED",
-		5: "SLOT_STATUS_NO_SHOW",
-	}
-	SlotStatus_value = map[string]int32{
-		"SLOT_STATUS_UNSPECIFIED": 0,
-		"SLOT_STATUS_AVAILABLE":   1,
-		"SLOT_STATUS_BOOKED":      2,
-		"SLOT_STATUS_COMPLETED":   3,
-		"SLOT_STATUS_CANCELLED":   4,
-		"SLOT_STATUS_NO_SHOW":     5,
-	}
-)
-
-func (x SlotStatus) Enum() *SlotStatus {
-	p := new(SlotStatus)
-	*p = x
-	return p
-}
-
-func (x SlotStatus) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (SlotStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[16].Descriptor()
-}
-
-func (SlotStatus) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[16]
-}
-
-func (x SlotStatus) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use SlotStatus.Descriptor instead.
-func (SlotStatus) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{16}
+	return file_druz9_v1_common_proto_rawDescGZIP(), []int{11}
 }
 
 // DungeonTier mirrors shared/enums.DungeonTier (company difficulty rung).
@@ -1083,11 +803,11 @@ func (x DungeonTier) String() string {
 }
 
 func (DungeonTier) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[17].Descriptor()
+	return file_druz9_v1_common_proto_enumTypes[12].Descriptor()
 }
 
 func (DungeonTier) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[17]
+	return &file_druz9_v1_common_proto_enumTypes[12]
 }
 
 func (x DungeonTier) Number() protoreflect.EnumNumber {
@@ -1096,7 +816,7 @@ func (x DungeonTier) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DungeonTier.Descriptor instead.
 func (DungeonTier) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{17}
+	return file_druz9_v1_common_proto_rawDescGZIP(), []int{12}
 }
 
 // EditorRole mirrors shared/enums.EditorRole (per-participant role).
@@ -1139,11 +859,11 @@ func (x EditorRole) String() string {
 }
 
 func (EditorRole) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[18].Descriptor()
+	return file_druz9_v1_common_proto_enumTypes[13].Descriptor()
 }
 
 func (EditorRole) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[18]
+	return &file_druz9_v1_common_proto_enumTypes[13]
 }
 
 func (x EditorRole) Number() protoreflect.EnumNumber {
@@ -1152,7 +872,7 @@ func (x EditorRole) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use EditorRole.Descriptor instead.
 func (EditorRole) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{18}
+	return file_druz9_v1_common_proto_rawDescGZIP(), []int{13}
 }
 
 // SeverityLevel mirrors shared/enums.SeverityLevel (anticheat triage).
@@ -1192,11 +912,11 @@ func (x SeverityLevel) String() string {
 }
 
 func (SeverityLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[19].Descriptor()
+	return file_druz9_v1_common_proto_enumTypes[14].Descriptor()
 }
 
 func (SeverityLevel) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[19]
+	return &file_druz9_v1_common_proto_enumTypes[14]
 }
 
 func (x SeverityLevel) Number() protoreflect.EnumNumber {
@@ -1205,7 +925,7 @@ func (x SeverityLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SeverityLevel.Descriptor instead.
 func (SeverityLevel) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{19}
+	return file_druz9_v1_common_proto_rawDescGZIP(), []int{14}
 }
 
 // AnticheatSignalType mirrors shared/enums.AnticheatSignalType.
@@ -1248,11 +968,11 @@ func (x AnticheatSignalType) String() string {
 }
 
 func (AnticheatSignalType) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[20].Descriptor()
+	return file_druz9_v1_common_proto_enumTypes[15].Descriptor()
 }
 
 func (AnticheatSignalType) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[20]
+	return &file_druz9_v1_common_proto_enumTypes[15]
 }
 
 func (x AnticheatSignalType) Number() protoreflect.EnumNumber {
@@ -1261,14 +981,14 @@ func (x AnticheatSignalType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AnticheatSignalType.Descriptor instead.
 func (AnticheatSignalType) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{20}
+	return file_druz9_v1_common_proto_rawDescGZIP(), []int{15}
 }
 
 var File_druz9_v1_common_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x15druz9/v1/common.proto\x12\bdruz9.v1*\xbb\x02\n" +
+	"\x15druz9/v1/common.proto\x12\bdruz9.v1*\xcf\x02\n" +
 	"\aSection\x12\x17\n" +
 	"\x13SECTION_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SECTION_ALGORITHMS\x10\x01\x12\x0f\n" +
@@ -1285,7 +1005,8 @@ const file_druz9_v1_common_proto_rawDesc = "" +
 	"\x12\x0e\n" +
 	"\n" +
 	"SECTION_QA\x10\v\x12\x12\n" +
-	"\x0eSECTION_DEVOPS\x10\f*i\n" +
+	"\x0eSECTION_DEVOPS\x10\f\x12\x12\n" +
+	"\x0eSECTION_ML_ENG\x10\r*i\n" +
 	"\n" +
 	"Difficulty\x12\x1a\n" +
 	"\x16DIFFICULTY_UNSPECIFIED\x10\x00\x12\x13\n" +
@@ -1326,21 +1047,7 @@ const file_druz9_v1_common_proto_rawDesc = "" +
 	"\x1dSUBSCRIPTION_PLAN_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16SUBSCRIPTION_PLAN_FREE\x10\x01\x12\x19\n" +
 	"\x15SUBSCRIPTION_PLAN_PRO\x10\x02\x12\x19\n" +
-	"\x15SUBSCRIPTION_PLAN_MAX\x10\x03*\xb4\x01\n" +
-	"\vMatchStatus\x12\x1c\n" +
-	"\x18MATCH_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
-	"\x16MATCH_STATUS_SEARCHING\x10\x01\x12\x1b\n" +
-	"\x17MATCH_STATUS_CONFIRMING\x10\x02\x12\x17\n" +
-	"\x13MATCH_STATUS_ACTIVE\x10\x03\x12\x19\n" +
-	"\x15MATCH_STATUS_FINISHED\x10\x04\x12\x1a\n" +
-	"\x16MATCH_STATUS_CANCELLED\x10\x05*\x9f\x01\n" +
-	"\tArenaMode\x12\x1a\n" +
-	"\x16ARENA_MODE_UNSPECIFIED\x10\x00\x12\x17\n" +
-	"\x13ARENA_MODE_SOLO_1V1\x10\x01\x12\x16\n" +
-	"\x12ARENA_MODE_DUO_2V2\x10\x02\x12\x15\n" +
-	"\x11ARENA_MODE_RANKED\x10\x03\x12\x17\n" +
-	"\x13ARENA_MODE_HARDCORE\x10\x04\x12\x15\n" +
-	"\x11ARENA_MODE_CURSED\x10\x05*\x94\x01\n" +
+	"\x15SUBSCRIPTION_PLAN_MAX\x10\x03*\x94\x01\n" +
 	"\n" +
 	"MockStatus\x12\x1b\n" +
 	"\x17MOCK_STATUS_UNSPECIFIED\x10\x00\x12\x17\n" +
@@ -1359,33 +1066,14 @@ const file_druz9_v1_common_proto_rawDesc = "" +
 	"\x10LLM_MODEL_GPT_4O\x10\x02\x12\x1d\n" +
 	"\x19LLM_MODEL_CLAUDE_SONNET_4\x10\x03\x12\x18\n" +
 	"\x14LLM_MODEL_GEMINI_PRO\x10\x04\x12\x18\n" +
-	"\x14LLM_MODEL_MISTRAL_7B\x10\x05*\xc0\x01\n" +
-	"\x0eProvenanceKind\x12\x1f\n" +
-	"\x1bPROVENANCE_KIND_UNSPECIFIED\x10\x00\x12 \n" +
-	"\x1cPROVENANCE_KIND_AI_GENERATED\x10\x01\x12!\n" +
-	"\x1dPROVENANCE_KIND_HUMAN_WRITTEN\x10\x02\x12'\n" +
-	"#PROVENANCE_KIND_AI_REVISED_BY_HUMAN\x10\x03\x12\x1f\n" +
-	"\x1bPROVENANCE_KIND_AI_REJECTED\x10\x04*\x80\x01\n" +
-	"\fNativeAction\x12\x1d\n" +
-	"\x19NATIVE_ACTION_UNSPECIFIED\x10\x00\x12\x1a\n" +
-	"\x16NATIVE_ACTION_ACCEPTED\x10\x01\x12\x1a\n" +
-	"\x16NATIVE_ACTION_REJECTED\x10\x02\x12\x19\n" +
-	"\x15NATIVE_ACTION_REVISED\x10\x03*\xdd\x01\n" +
+	"\x14LLM_MODEL_MISTRAL_7B\x10\x05*\xdd\x01\n" +
 	"\x0fEditorEventType\x12!\n" +
 	"\x1dEDITOR_EVENT_TYPE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17EDITOR_EVENT_TYPE_PAUSE\x10\x01\x12%\n" +
 	"!EDITOR_EVENT_TYPE_BACKSPACE_BURST\x10\x02\x12\"\n" +
 	"\x1eEDITOR_EVENT_TYPE_CHAOTIC_EDIT\x10\x03\x12#\n" +
 	"\x1fEDITOR_EVENT_TYPE_PASTE_ATTEMPT\x10\x04\x12\x1a\n" +
-	"\x16EDITOR_EVENT_TYPE_IDLE\x10\x05*\xab\x01\n" +
-	"\n" +
-	"SlotStatus\x12\x1b\n" +
-	"\x17SLOT_STATUS_UNSPECIFIED\x10\x00\x12\x19\n" +
-	"\x15SLOT_STATUS_AVAILABLE\x10\x01\x12\x16\n" +
-	"\x12SLOT_STATUS_BOOKED\x10\x02\x12\x19\n" +
-	"\x15SLOT_STATUS_COMPLETED\x10\x03\x12\x19\n" +
-	"\x15SLOT_STATUS_CANCELLED\x10\x04\x12\x17\n" +
-	"\x13SLOT_STATUS_NO_SHOW\x10\x05*r\n" +
+	"\x16EDITOR_EVENT_TYPE_IDLE\x10\x05*r\n" +
 	"\vDungeonTier\x12\x1c\n" +
 	"\x18DUNGEON_TIER_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13DUNGEON_TIER_NORMAL\x10\x01\x12\x15\n" +
@@ -1423,7 +1111,7 @@ func file_druz9_v1_common_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_common_proto_rawDescData
 }
 
-var file_druz9_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 21)
+var file_druz9_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 16)
 var file_druz9_v1_common_proto_goTypes = []any{
 	(Section)(0),             // 0: druz9.v1.Section
 	(Difficulty)(0),          // 1: druz9.v1.Difficulty
@@ -1433,19 +1121,14 @@ var file_druz9_v1_common_proto_goTypes = []any{
 	(AuthProvider)(0),        // 5: druz9.v1.AuthProvider
 	(CharClass)(0),           // 6: druz9.v1.CharClass
 	(SubscriptionPlan)(0),    // 7: druz9.v1.SubscriptionPlan
-	(MatchStatus)(0),         // 8: druz9.v1.MatchStatus
-	(ArenaMode)(0),           // 9: druz9.v1.ArenaMode
-	(MockStatus)(0),          // 10: druz9.v1.MockStatus
-	(MessageRole)(0),         // 11: druz9.v1.MessageRole
-	(LLMModel)(0),            // 12: druz9.v1.LLMModel
-	(ProvenanceKind)(0),      // 13: druz9.v1.ProvenanceKind
-	(NativeAction)(0),        // 14: druz9.v1.NativeAction
-	(EditorEventType)(0),     // 15: druz9.v1.EditorEventType
-	(SlotStatus)(0),          // 16: druz9.v1.SlotStatus
-	(DungeonTier)(0),         // 17: druz9.v1.DungeonTier
-	(EditorRole)(0),          // 18: druz9.v1.EditorRole
-	(SeverityLevel)(0),       // 19: druz9.v1.SeverityLevel
-	(AnticheatSignalType)(0), // 20: druz9.v1.AnticheatSignalType
+	(MockStatus)(0),          // 8: druz9.v1.MockStatus
+	(MessageRole)(0),         // 9: druz9.v1.MessageRole
+	(LLMModel)(0),            // 10: druz9.v1.LLMModel
+	(EditorEventType)(0),     // 11: druz9.v1.EditorEventType
+	(DungeonTier)(0),         // 12: druz9.v1.DungeonTier
+	(EditorRole)(0),          // 13: druz9.v1.EditorRole
+	(SeverityLevel)(0),       // 14: druz9.v1.SeverityLevel
+	(AnticheatSignalType)(0), // 15: druz9.v1.AnticheatSignalType
 }
 var file_druz9_v1_common_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -1465,7 +1148,7 @@ func file_druz9_v1_common_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_common_proto_rawDesc), len(file_druz9_v1_common_proto_rawDesc)),
-			NumEnums:      21,
+			NumEnums:      16,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

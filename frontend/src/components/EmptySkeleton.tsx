@@ -4,11 +4,10 @@
 // shift the moment data lands ("CLS" in web-vitals). Skeleton mimics the
 // page's actual structure so when data appears, nothing jumps.
 //
-// 4 layouts cover ~95% of our pages — see B.4 cheat-sheet for which
-// route uses which:
-//   card-grid   → /cohorts /podcasts /achievements (3-col grid of cards)
-//   table       → /matches /leaderboard /history (rows w/ avatar + label)
-//   split-view  → /arena/match (problem on left, editor on right)
+// 4 layouts cover ~95% of our pages:
+//   card-grid   → /podcasts (3-col grid of cards)
+//   table       → /circles /tutor (rows w/ avatar + label)
+//   split-view  → /mock (problem on left, editor on right)
 //   single-card → /settings /profile (form-shaped centered card)
 //
 // Shimmer animation is defined in tailwind.config.ts via keyframes; the

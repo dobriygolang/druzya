@@ -172,13 +172,18 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
                 <ul className="flex flex-col divide-y divide-border">
                   {items.map((n: NotificationItem) => (
                     <li key={n.id}>
+                      {/* arena/achievements удалены post-pivot 2026-05-01;
+                          accept/decline-match и open-achievement переведены
+                          в no-op (карточки match-нотификаций больше не
+                          приходят из бэка, но guard на случай stale-row'ов
+                          в БД). open-insight ведёт на /weekly как раньше. */}
                       <NotificationCard
                         item={n}
                         onMarkRead={(id) => markRead.mutate(id)}
-                        onAcceptMatch={(mid) => navigateAndClose(`/arena/match/${mid}`)}
-                        onDeclineMatch={(mid) => navigateAndClose(`/arena/match/${mid}?decline=1`)}
+                        onAcceptMatch={() => { /* arena removed */ }}
+                        onDeclineMatch={() => { /* arena removed */ }}
                         onOpenInsight={() => navigateAndClose('/weekly')}
-                        onOpenAchievement={() => navigateAndClose('/profile?tab=achievements')}
+                        onOpenAchievement={() => navigateAndClose('/profile')}
                         onOpenSystem={(href) => navigateAndClose(href)}
                       />
                     </li>

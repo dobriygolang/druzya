@@ -45,3 +45,79 @@ export async function activeTrack(): Promise<ActiveTrack | null> {
     return null;
   }
 }
+
+// ── Phase 2 step UX (2026-05-04) ─────────────────────────────────────────
+
+export interface StartCheckpointResult {
+  stepTitle: string;
+  skillKeys: string[];
+  checkpointSkillKeys: string[];
+  alreadyPassed: boolean;
+  reflectionRequired: boolean;
+  graduationMockSection: string;
+}
+
+export interface CheckpointAnswer {
+  questionId: string;
+  question: string;
+  userAnswer: string;
+  modelAnswer?: string;
+}
+
+export interface GradedAnswer {
+  questionId: string;
+  userAnswer: string;
+  modelAnswer: string;
+  correct: boolean;
+  comment: string;
+}
+
+export interface SubmitCheckpointResult {
+  score: number;
+  passed: boolean;
+  attempts: GradedAnswer[];
+  attemptId: string;
+  passedAt: Date | null;
+}
+
+export async function startCheckpoint(trackId: string, stepIndex: number): Promise<StartCheckpointResult> {
+  const r = await client.startCheckpoint({ trackId, stepIndex });
+  return {
+    stepTitle: r.stepTitle ?? '',
+    skillKeys: r.skillKeys ?? [],
+    checkpointSkillKeys: r.checkpointSkillKeys ?? [],
+    alreadyPassed: r.alreadyPassed ?? false,
+    reflectionRequired: r.reflectionRequired ?? false,
+    graduationMockSection: r.graduationMockSection ?? '',
+  };
+}
+
+export async function submitCheckpoint(
+  trackId: string,
+  stepIndex: number,
+  answers: CheckpointAnswer[],
+): Promise<SubmitCheckpointResult> {
+  const r = await client.submitCheckpoint({
+    trackId,
+    stepIndex,
+    answers: answers.map((a) => ({
+      questionId: a.questionId,
+      question: a.question,
+      userAnswer: a.userAnswer,
+      modelAnswer: a.modelAnswer ?? '',
+    })),
+  });
+  return {
+    score: r.score ?? 0,
+    passed: r.passed ?? false,
+    attempts: (r.attempts ?? []).map((a) => ({
+      questionId: a.questionId ?? '',
+      userAnswer: a.userAnswer ?? '',
+      modelAnswer: a.modelAnswer ?? '',
+      correct: a.correct ?? false,
+      comment: a.comment ?? '',
+    })),
+    attemptId: r.attemptId ?? '',
+    passedAt: r.passedAt ? r.passedAt.toDate() : null,
+  };
+}

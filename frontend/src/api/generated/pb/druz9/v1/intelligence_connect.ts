@@ -19,7 +19,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AckInsightRequest, AckInsightResponse, AckRecommendationRequest, AckRecommendationResponse, AskAnswer, AskNotesRequest, DailyBrief, GetDailyBriefRequest, GetMemoryStatsRequest, ListInsightsRequest, ListInsightsResponse, MemoryStats } from "./intelligence_pb.js";
+import { AckInsightRequest, AckInsightResponse, AckRecommendationRequest, AckRecommendationResponse, AskAnswer, AskNotesRequest, CoachStats, DailyBrief, ForkSnapshot, GetCoachStatsRequest, GetDailyBriefRequest, GetForkSnapshotRequest, GetMemoryStatsRequest, GetNextActionRequest, GetResourceTrailRequest, GetSkillRadarRequest, LearningStateView, ListInsightsRequest, ListInsightsResponse, LogResourceRequest, LogResourceResponse, MemoryStats, NextAction, ResourceTrail, SetForkBranchRequest, SetLearningModeRequest, SkillRadar } from "./intelligence_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -38,6 +38,9 @@ export const IntelligenceService = {
       kind: MethodKind.Unary,
     },
     /**
+     * AskNotes — RAG над корпусом нот пользователя. Используется AskNotesModal
+     * в Hone Notes (frontend-аудит этот caller пропустил).
+     *
      * @generated from rpc druz9.v1.IntelligenceService.AskNotes
      */
     askNotes: {
@@ -47,6 +50,9 @@ export const IntelligenceService = {
       kind: MethodKind.Unary,
     },
     /**
+     * AckRecommendation / GetMemoryStats — feedback и trust indicator для
+     * DailyBriefPanel в Hone.
+     *
      * @generated from rpc druz9.v1.IntelligenceService.AckRecommendation
      */
     ackRecommendation: {
@@ -80,6 +86,94 @@ export const IntelligenceService = {
       name: "AckInsight",
       I: AckInsightRequest,
       O: AckInsightResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetNextAction — Phase 2 Coach hero «one daily action».
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.GetNextAction
+     */
+    getNextAction: {
+      name: "GetNextAction",
+      I: GetNextActionRequest,
+      O: NextAction,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetForkSnapshot — Phase 2 fork view (active when mode='explore').
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.GetForkSnapshot
+     */
+    getForkSnapshot: {
+      name: "GetForkSnapshot",
+      I: GetForkSnapshotRequest,
+      O: ForkSnapshot,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * LogResource — Phase 2 user_resource_log event ingest.
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.LogResource
+     */
+    logResource: {
+      name: "LogResource",
+      I: LogResourceRequest,
+      O: LogResourceResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetLearningMode — Phase 2 mode persistence из Coach.
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.SetLearningMode
+     */
+    setLearningMode: {
+      name: "SetLearningMode",
+      I: SetLearningModeRequest,
+      O: LearningStateView,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetForkBranch — Phase 2 fork branch declaration.
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.SetForkBranch
+     */
+    setForkBranch: {
+      name: "SetForkBranch",
+      I: SetForkBranchRequest,
+      O: LearningStateView,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetResourceTrail — Phase 2 activity stream (last N days).
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.GetResourceTrail
+     */
+    getResourceTrail: {
+      name: "GetResourceTrail",
+      I: GetResourceTrailRequest,
+      O: ResourceTrail,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetSkillRadar — Phase 2 5-axis radar derived from mock_sessions.ai_report.
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.GetSkillRadar
+     */
+    getSkillRadar: {
+      name: "GetSkillRadar",
+      I: GetSkillRadarRequest,
+      O: SkillRadar,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetCoachStats — Phase 2 snapshot KPIs (streak / focus today / last mock / next mock).
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.GetCoachStats
+     */
+    getCoachStats: {
+      name: "GetCoachStats",
+      I: GetCoachStatsRequest,
+      O: CoachStats,
       kind: MethodKind.Unary,
     },
   }

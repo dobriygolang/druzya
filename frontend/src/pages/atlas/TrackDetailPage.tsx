@@ -11,9 +11,8 @@
 //   • Bottom: Codex pre-reads — все recommended_reading из всех steps,
 //     дедуп по slug. Пока статичные ссылки (deep-link на /codex).
 //
-// Practice CTA (Phase 2c-2): создаёт solo lobby с skill_filter из step.
-// Старт лобби сразу же → редирект в /arena/match/{matchId}. Если sessions
-// pickup упадёт, fallback на /arena/kata?skill= (старый PoC-путь).
+// Practice CTA (post-pivot 2026-05-01): открывает /mock company picker.
+// Раньше создавалось solo lobby + arena match; lobby/arena сервисы дропнуты.
 
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -29,7 +28,6 @@ import {
 } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
-import { useCreateLobby, useStartLobby } from '../../lib/queries/lobby'
 import {
   difficultyLabel,
   findEnrolment,
@@ -62,12 +60,6 @@ export default function TrackDetailPage() {
   const join = useJoinTrackMutation()
   const advance = useAdvanceStepMutation()
   const pause = usePauseTrackMutation()
-  // Phase 2c-2 — Practice CTA. Создаёт solo lobby с skill_filter из
-  // текущего step, сразу start'ит и навигирует в /arena/match/{id}.
-  // На любую ошибку — fallback на /arena/kata?skill=<keys>, чтобы юзер
-  // никогда не оставался без действия.
-  const createLobby = useCreateLobby()
-  const startLobby = useStartLobby()
   const [practiceError, setPracticeError] = useState<string | null>(null)
 
   if (trackQ.isLoading) {
@@ -102,40 +94,19 @@ export default function TrackDetailPage() {
   const nextStep = enrolled && !completed ? steps[currentIdx] : undefined
 
   const accent = track.accent_color || '#A78BFA'
-  const practiceRunning = createLobby.isPending || startLobby.isPending
+  const practiceRunning = false
 
-  const onPractice = async () => {
+  // Practice ведёт в /mock — там юзер выбирает компанию и стартует pipeline.
+  // skill_keys / step → не используем (dropped lobby/arena), но передаём
+  // через query на случай если /mock начнёт их учитывать.
+  const onPractice = () => {
     if (!nextStep) return
     setPracticeError(null)
-    const skillKeys = (nextStep.skill_keys ?? []).length > 0 ? (nextStep.skill_keys ?? []) : []
-    const fallbackUrl =
-      skillKeys.length > 0
-        ? `/arena/kata?skill=${encodeURIComponent(skillKeys.join(','))}`
-        : '/arena/kata'
-    try {
-      const lobby = await createLobby.mutateAsync({
-        mode: 'solo',
-        section: 'algorithms',
-        difficulty: track.difficulty || 'medium',
-        visibility: 'private',
-        max_members: 1,
-        skill_filter: skillKeys,
-        time_limit_min: Math.max(5, Math.min(180, nextStep.estimated_minutes || 30)),
-      })
-      const started = await startLobby.mutateAsync(lobby.id)
-      const matchId = started.lobby.match_id
-      if (!matchId) {
-        navigate(fallbackUrl)
-        return
-      }
-      navigate(`/arena/match/${matchId}`)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'unknown'
-      setPracticeError(msg)
-      // Не блокируем юзера — даём kata-fallback. Ошибку показываем рядом
-      // с CTA через practiceError.
-      setTimeout(() => navigate(fallbackUrl), 800)
-    }
+    const skillKeys = nextStep.skill_keys ?? []
+    const qs = skillKeys.length > 0
+      ? `?skill=${encodeURIComponent(skillKeys.join(','))}`
+      : ''
+    navigate(`/mock${qs}`)
   }
 
   return (
@@ -236,7 +207,7 @@ function Hero({
         {progress && (
           <div className="mt-3 flex items-center gap-2 max-w-md">
             <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-              {progress.enrolment.current_step}/{progress.steps_total}
+              {progress.enrolment.current_step ?? 0}/{progress.steps_total ?? 0}
             </span>
             <div className="h-1 flex-1 overflow-hidden rounded-full bg-bg">
               <div
@@ -524,7 +495,7 @@ function SidebarCTA({
       {progress && (
         <div className="mt-1 flex items-center gap-2">
           <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-            {progress.enrolment.current_step}/{progress.steps_total}
+            {progress.enrolment.current_step ?? 0}/{progress.steps_total ?? 0}
           </span>
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-bg">
             <div

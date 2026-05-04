@@ -52,12 +52,6 @@ const (
 	// SubscriptionServiceGetQuotaProcedure is the fully-qualified name of the SubscriptionService's
 	// GetQuota RPC.
 	SubscriptionServiceGetQuotaProcedure = "/druz9.v1.SubscriptionService/GetQuota"
-	// SubscriptionServiceLinkBoostyProcedure is the fully-qualified name of the SubscriptionService's
-	// LinkBoosty RPC.
-	SubscriptionServiceLinkBoostyProcedure = "/druz9.v1.SubscriptionService/LinkBoosty"
-	// SubscriptionServiceAdminBoostySyncProcedure is the fully-qualified name of the
-	// SubscriptionService's AdminBoostySync RPC.
-	SubscriptionServiceAdminBoostySyncProcedure = "/druz9.v1.SubscriptionService/AdminBoostySync"
 )
 
 // SubscriptionServiceClient is a client for the druz9.v1.SubscriptionService service.
@@ -75,11 +69,6 @@ type SubscriptionServiceClient interface {
 	// chi handler returned a "degraded" zero snapshot on errors; the proto
 	// RPC keeps that contract.
 	GetQuota(context.Context, *connect.Request[v1.GetQuotaRequest]) (*connect.Response[v1.QuotaSnapshot], error)
-	// LinkBoosty starts the OAuth handshake / saves a manual cookie so we
-	// can sync the user's Boosty subscription tier later.
-	LinkBoosty(context.Context, *connect.Request[v1.LinkBoostyRequest]) (*connect.Response[v1.LinkBoostyResponse], error)
-	// AdminBoostySync triggers the bulk-resolve job. role=admin required.
-	AdminBoostySync(context.Context, *connect.Request[v1.AdminBoostySyncRequest]) (*connect.Response[v1.AdminBoostySyncResponse], error)
 }
 
 // NewSubscriptionServiceClient constructs a client for the druz9.v1.SubscriptionService service. By
@@ -117,18 +106,6 @@ func NewSubscriptionServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(subscriptionServiceMethods.ByName("GetQuota")),
 			connect.WithClientOptions(opts...),
 		),
-		linkBoosty: connect.NewClient[v1.LinkBoostyRequest, v1.LinkBoostyResponse](
-			httpClient,
-			baseURL+SubscriptionServiceLinkBoostyProcedure,
-			connect.WithSchema(subscriptionServiceMethods.ByName("LinkBoosty")),
-			connect.WithClientOptions(opts...),
-		),
-		adminBoostySync: connect.NewClient[v1.AdminBoostySyncRequest, v1.AdminBoostySyncResponse](
-			httpClient,
-			baseURL+SubscriptionServiceAdminBoostySyncProcedure,
-			connect.WithSchema(subscriptionServiceMethods.ByName("AdminBoostySync")),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
@@ -138,8 +115,6 @@ type subscriptionServiceClient struct {
 	getTierByUserID *connect.Client[v1.GetTierByUserIDRequest, v1.GetTierByUserIDResponse]
 	adminSetTier    *connect.Client[v1.AdminSetTierRequest, v1.AdminSetTierResponse]
 	getQuota        *connect.Client[v1.GetQuotaRequest, v1.QuotaSnapshot]
-	linkBoosty      *connect.Client[v1.LinkBoostyRequest, v1.LinkBoostyResponse]
-	adminBoostySync *connect.Client[v1.AdminBoostySyncRequest, v1.AdminBoostySyncResponse]
 }
 
 // GetMyTier calls druz9.v1.SubscriptionService.GetMyTier.
@@ -162,16 +137,6 @@ func (c *subscriptionServiceClient) GetQuota(ctx context.Context, req *connect.R
 	return c.getQuota.CallUnary(ctx, req)
 }
 
-// LinkBoosty calls druz9.v1.SubscriptionService.LinkBoosty.
-func (c *subscriptionServiceClient) LinkBoosty(ctx context.Context, req *connect.Request[v1.LinkBoostyRequest]) (*connect.Response[v1.LinkBoostyResponse], error) {
-	return c.linkBoosty.CallUnary(ctx, req)
-}
-
-// AdminBoostySync calls druz9.v1.SubscriptionService.AdminBoostySync.
-func (c *subscriptionServiceClient) AdminBoostySync(ctx context.Context, req *connect.Request[v1.AdminBoostySyncRequest]) (*connect.Response[v1.AdminBoostySyncResponse], error) {
-	return c.adminBoostySync.CallUnary(ctx, req)
-}
-
 // SubscriptionServiceHandler is an implementation of the druz9.v1.SubscriptionService service.
 type SubscriptionServiceHandler interface {
 	// GetMyTier — эндпоинт для авторизованного пользователя. user_id
@@ -187,11 +152,6 @@ type SubscriptionServiceHandler interface {
 	// chi handler returned a "degraded" zero snapshot on errors; the proto
 	// RPC keeps that contract.
 	GetQuota(context.Context, *connect.Request[v1.GetQuotaRequest]) (*connect.Response[v1.QuotaSnapshot], error)
-	// LinkBoosty starts the OAuth handshake / saves a manual cookie so we
-	// can sync the user's Boosty subscription tier later.
-	LinkBoosty(context.Context, *connect.Request[v1.LinkBoostyRequest]) (*connect.Response[v1.LinkBoostyResponse], error)
-	// AdminBoostySync triggers the bulk-resolve job. role=admin required.
-	AdminBoostySync(context.Context, *connect.Request[v1.AdminBoostySyncRequest]) (*connect.Response[v1.AdminBoostySyncResponse], error)
 }
 
 // NewSubscriptionServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -225,18 +185,6 @@ func NewSubscriptionServiceHandler(svc SubscriptionServiceHandler, opts ...conne
 		connect.WithSchema(subscriptionServiceMethods.ByName("GetQuota")),
 		connect.WithHandlerOptions(opts...),
 	)
-	subscriptionServiceLinkBoostyHandler := connect.NewUnaryHandler(
-		SubscriptionServiceLinkBoostyProcedure,
-		svc.LinkBoosty,
-		connect.WithSchema(subscriptionServiceMethods.ByName("LinkBoosty")),
-		connect.WithHandlerOptions(opts...),
-	)
-	subscriptionServiceAdminBoostySyncHandler := connect.NewUnaryHandler(
-		SubscriptionServiceAdminBoostySyncProcedure,
-		svc.AdminBoostySync,
-		connect.WithSchema(subscriptionServiceMethods.ByName("AdminBoostySync")),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/druz9.v1.SubscriptionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SubscriptionServiceGetMyTierProcedure:
@@ -247,10 +195,6 @@ func NewSubscriptionServiceHandler(svc SubscriptionServiceHandler, opts ...conne
 			subscriptionServiceAdminSetTierHandler.ServeHTTP(w, r)
 		case SubscriptionServiceGetQuotaProcedure:
 			subscriptionServiceGetQuotaHandler.ServeHTTP(w, r)
-		case SubscriptionServiceLinkBoostyProcedure:
-			subscriptionServiceLinkBoostyHandler.ServeHTTP(w, r)
-		case SubscriptionServiceAdminBoostySyncProcedure:
-			subscriptionServiceAdminBoostySyncHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -274,12 +218,4 @@ func (UnimplementedSubscriptionServiceHandler) AdminSetTier(context.Context, *co
 
 func (UnimplementedSubscriptionServiceHandler) GetQuota(context.Context, *connect.Request[v1.GetQuotaRequest]) (*connect.Response[v1.QuotaSnapshot], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.GetQuota is not implemented"))
-}
-
-func (UnimplementedSubscriptionServiceHandler) LinkBoosty(context.Context, *connect.Request[v1.LinkBoostyRequest]) (*connect.Response[v1.LinkBoostyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.LinkBoosty is not implemented"))
-}
-
-func (UnimplementedSubscriptionServiceHandler) AdminBoostySync(context.Context, *connect.Request[v1.AdminBoostySyncRequest]) (*connect.Response[v1.AdminBoostySyncResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.AdminBoostySync is not implemented"))
 }

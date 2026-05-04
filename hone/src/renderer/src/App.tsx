@@ -17,6 +17,7 @@ import type { CueSessionAnalysis } from '@shared/ipc';
 
 import { CanvasBg, type CanvasMode, type ThemeId } from './components/CanvasBg';
 import { Wordmark, Versionmark } from './components/Chrome';
+import { TrackSwitcher } from './components/TrackSwitcher';
 import { TrafficLightsHover } from './components/TrafficLightsHover';
 import { Dock } from './components/Dock';
 import { LoginScreen } from './components/LoginScreen';
@@ -30,6 +31,8 @@ import { TutorAssignmentsBanner } from './components/TutorAssignmentsBanner';
 import { UpdateToast } from './components/UpdateToast';
 import { OfflineBanner } from './components/OfflineBanner';
 import { HomePage } from './pages/Home';
+import { Coach } from './pages/Coach';
+import { Stats } from './pages/Stats';
 import { type StartFocusArgs } from './pages/Today';
 import { TaskBoardPage } from './pages/TaskBoard';
 import { NotesPage } from './pages/Notes';
@@ -48,6 +51,8 @@ import { ReadingPage } from './pages/Reading';
 import { WritingPage } from './pages/Writing';
 import { TutorAssignmentsPage } from './pages/TutorAssignments';
 import { ListeningPage } from './pages/Listening';
+import { EnglishOverviewPage } from './pages/EnglishOverview';
+import { useTrackStore } from './stores/track';
 import { CalendarPage } from './pages/Calendar';
 import { UpcomingEventChip } from './components/UpcomingEventChip';
 import { SettingsPage, readStoredTheme, readPomodoroSeconds } from './pages/Settings';
@@ -75,6 +80,14 @@ export default function App() {
   const bootstrap = useSessionStore((s) => s.bootstrap);
   const hydrate = useSessionStore((s) => s.hydrate);
   const clear = useSessionStore((s) => s.clear);
+  // English как orthogonal modifier (Sergey 2026-05-03). Если false —
+  // English-страницы рендерятся как «English отключён» CTA вместо реального
+  // surface'а. Toggle в Settings.
+  const englishActive = useTrackStore((s) => s.englishActive);
+  const hydrateTrack = useTrackStore((s) => s.hydrate);
+  useEffect(() => {
+    void hydrateTrack();
+  }, [hydrateTrack]);
 
   const [page, setPageRaw] = useState<PageId>('home');
   // setPage обёрнут в View Transitions API — Chromium фиксирует snapshot
@@ -469,9 +482,10 @@ export default function App() {
         return;
       }
       if (id === 'stats') {
-        // Stats overlay поверх Home.
-        setPage('home');
-        setStatsOpen(true);
+        // Phase 4 — Stats теперь full page. Overlay (peek) остаётся
+        // через single-S-key с Home.
+        setStatsOpen(false);
+        setPage('stats');
         return;
       }
       // 'standup' palette command удалён — banner был раньше на Today page,
@@ -725,6 +739,7 @@ export default function App() {
       />
       <TrafficLightsHover />
       <Wordmark />
+      <TrackSwitcher />
       {/* Versionmark скрываем в editor'е: CodeMirror использует Escape для
           своих UI-affordances (закрытие autocomplete, выход из каретки), а
           лишний "esc HOME" hint в углу шумит. На остальных страницах он
@@ -800,6 +815,8 @@ export default function App() {
         />
       )}
       {page === 'today' && <TaskBoardPage />}
+      {page === 'coach' && <Coach onStartFocus={({ pinnedTitle }) => startFocus({ pinnedTitle })} />}
+      {page === 'stats' && <Stats />}
       {page === 'notes' && (
         <VaultUnlockGate>
           <NotesPage
@@ -839,7 +856,7 @@ export default function App() {
       {/* English-loop hub chrome — surfaces R/W/L страницы как один
           логический hub. Palette сейчас один entry «English · Read ·
           Write · Listen», конкретный child выбирается через табы. */}
-      {(page === 'reading' || page === 'writing' || page === 'listening') && (
+      {englishActive && (page === 'reading' || page === 'writing' || page === 'listening' || page === 'english_overview') && (
         <EnglishTabsChrome
           current={page as EnglishTab}
           onChange={(t) => openImpl(t)}
@@ -880,10 +897,18 @@ export default function App() {
         />
       )}
 
-      {page === 'reading' && <ReadingPage />}
-      {page === 'writing' && <WritingPage />}
+      {(page === 'english_overview' || page === 'reading' || page === 'writing' || page === 'listening') &&
+        (englishActive ? (
+          <>
+            {page === 'english_overview' && <EnglishOverviewPage onOpen={openImpl} />}
+            {page === 'reading' && <ReadingPage />}
+            {page === 'writing' && <WritingPage />}
+            {page === 'listening' && <ListeningPage />}
+          </>
+        ) : (
+          <EnglishOffPlaceholder onActivate={() => setPage('settings')} />
+        ))}
       {page === 'assignments' && <TutorAssignmentsPage />}
-      {page === 'listening' && <ListeningPage />}
       {page === 'calendar' && <CalendarPage />}
 
       <Dock
@@ -942,4 +967,80 @@ function AnimatedStatsOverlay({ open, onClose }: { open: boolean; onClose: () =>
 
   if (!mounted) return null;
   return <StatsOverlay onClose={onClose} closing={closing} />;
+}
+
+// EnglishOffPlaceholder — рендерится когда юзер навигирует на Reading /
+// Writing / Listening / Overview, но english_active = false. Sergey
+// 2026-05-03: «если пользователь не выбрал English вектор — нет смысла
+// пихать в Hone». Показываем CTA «активируй» ведущий в Settings.
+function EnglishOffPlaceholder({ onActivate }: { onActivate: () => void }) {
+  return (
+    <div
+      className="fadein"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        animationDuration: '320ms',
+      }}
+    >
+      <div style={{ maxWidth: 460, padding: 32, textAlign: 'center' }}>
+        <div
+          className="mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.24em',
+            color: 'var(--ink-40)',
+            marginBottom: 12,
+          }}
+        >
+          ENGLISH HUB · OFF
+        </div>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 28,
+            fontWeight: 500,
+            letterSpacing: '-0.02em',
+            color: 'var(--ink)',
+          }}
+        >
+          English-loop отключён
+        </h1>
+        <p
+          style={{
+            marginTop: 12,
+            fontSize: 13,
+            lineHeight: 1.55,
+            color: 'var(--ink-60)',
+          }}
+        >
+          Reading / Writing / Listening + vocab SRS — это отдельный модуль.
+          Включи его в Settings, если готовишься к English-собесу или хочешь
+          подтянуть уровень с тутором.
+        </p>
+        <button
+          type="button"
+          onClick={onActivate}
+          className="mono focus-ring"
+          style={{
+            marginTop: 20,
+            padding: '8px 16px',
+            fontSize: 11,
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-90)',
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            borderRadius: 999,
+            cursor: 'pointer',
+          }}
+        >
+          Открыть Settings
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -29,9 +29,15 @@ const MaxInTodoPerUser = 7
 
 // CreateTask — manual user task. Always source='user'; AI tasks are
 // produced via the coach generator (see coach_generator.go).
+//
+// Phase 10 — optional Categoriser hook. Когда LLM available, UC после
+// Create зовёт CategoriseTask UC чтобы AI инфер'ил column placement
+// (todo/doing/done) + tags по deadline/kind. Fail-soft: ошибка LLM не
+// блокирует Create — task остаётся в default todo column.
 type CreateTask struct {
-	Tasks domain.TaskRepo
-	Log   *slog.Logger
+	Tasks       domain.TaskRepo
+	Log         *slog.Logger
+	Categoriser *CategoriseTask // optional · nil → skip auto-place
 }
 
 // CreateTaskInput.
@@ -67,6 +73,36 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("hone.CreateTask: %w", err)
 	}
+
+	// Phase 10 auto-place. Skip когда Categoriser nil (LLM не wired).
+	// Failure не блокирует Create — task уже сохранён, просто остаётся
+	// в default todo column. UI может observe new column через next
+	// ListTasks fetch.
+	if uc.Categoriser != nil {
+		go func() {
+			catCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			out, err := uc.Categoriser.Do(catCtx, CategoriseTaskInput{
+				Title:    in.Title,
+				BriefMD:  in.BriefMD,
+				Kind:     string(kind),
+				SkillKey: in.SkillKey,
+			})
+			if err != nil {
+				if uc.Log != nil {
+					uc.Log.Warn("hone.CreateTask: categorise failed", "err", err, "task_id", created.ID)
+				}
+				return
+			}
+			// Apply column placement если LLM выдал не-default.
+			if newStatus := domain.TaskStatus(out.Column); newStatus.IsValid() && newStatus != domain.TaskStatusToDo {
+				if _, err := uc.Tasks.SetStatus(catCtx, in.UserID, created.ID, newStatus); err != nil && uc.Log != nil {
+					uc.Log.Warn("hone.CreateTask: categorise SetStatus", "err", err, "task_id", created.ID)
+				}
+			}
+		}()
+	}
+
 	return created, nil
 }
 

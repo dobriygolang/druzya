@@ -593,7 +593,14 @@ type SkillNode struct {
 	// reachable — PoE allocation: there exists a path of mastered nodes from
 	// the hub to this node. Frontend uses this to dim/lock unreachable
 	// branches during planning. Computed server-side per-user.
-	Reachable     bool `protobuf:"varint,18,opt,name=reachable,proto3" json:"reachable,omitempty"`
+	Reachable bool `protobuf:"varint,18,opt,name=reachable,proto3" json:"reachable,omitempty"`
+	// is_user_owned — true для узлов из user_atlas_nodes (Phase 3.1
+	// classify-flow). Frontend рендерит "your TODO" badge.
+	IsUserOwned bool `protobuf:"varint,19,opt,name=is_user_owned,json=isUserOwned,proto3" json:"is_user_owned,omitempty"`
+	// Phase 3 — per-user overlay (table user_atlas_node_prefs, мig 00064).
+	// Mutually exclusive — DB CHECK гарантирует.
+	Pinned        bool `protobuf:"varint,20,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	Hidden        bool `protobuf:"varint,21,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -750,6 +757,27 @@ func (x *SkillNode) GetPosSet() bool {
 func (x *SkillNode) GetReachable() bool {
 	if x != nil {
 		return x.Reachable
+	}
+	return false
+}
+
+func (x *SkillNode) GetIsUserOwned() bool {
+	if x != nil {
+		return x.IsUserOwned
+	}
+	return false
+}
+
+func (x *SkillNode) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
+func (x *SkillNode) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
 	}
 	return false
 }
@@ -2239,6 +2267,315 @@ func (x *AllocateAtlasSkillRequest) GetSkillId() string {
 	return ""
 }
 
+// ClassifyAtlasTodoRequest — free-form TODO от юзера.
+type ClassifyAtlasTodoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Todo          string                 `protobuf:"bytes,1,opt,name=todo,proto3" json:"todo,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClassifyAtlasTodoRequest) Reset() {
+	*x = ClassifyAtlasTodoRequest{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClassifyAtlasTodoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClassifyAtlasTodoRequest) ProtoMessage() {}
+
+func (x *ClassifyAtlasTodoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClassifyAtlasTodoRequest.ProtoReflect.Descriptor instead.
+func (*ClassifyAtlasTodoRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ClassifyAtlasTodoRequest) GetTodo() string {
+	if x != nil {
+		return x.Todo
+	}
+	return ""
+}
+
+// UserAtlasNode — один user_atlas_nodes row, возвращаемый когда LLM
+// решил создать новую тему (а не матчить в curated).
+type UserAtlasNode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeKey       string                 `protobuf:"bytes,1,opt,name=node_key,json=nodeKey,proto3" json:"node_key,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Section       string                 `protobuf:"bytes,4,opt,name=section,proto3" json:"section,omitempty"`
+	Kind          string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"` // hub | keystone | notable | small
+	Cluster       string                 `protobuf:"bytes,6,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	SourceText    string                 `protobuf:"bytes,7,opt,name=source_text,json=sourceText,proto3" json:"source_text,omitempty"` // оригинальный TODO для аудита
+	CreatedAt     string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`    // RFC3339
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserAtlasNode) Reset() {
+	*x = UserAtlasNode{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserAtlasNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserAtlasNode) ProtoMessage() {}
+
+func (x *UserAtlasNode) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserAtlasNode.ProtoReflect.Descriptor instead.
+func (*UserAtlasNode) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *UserAtlasNode) GetNodeKey() string {
+	if x != nil {
+		return x.NodeKey
+	}
+	return ""
+}
+
+func (x *UserAtlasNode) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *UserAtlasNode) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *UserAtlasNode) GetSection() string {
+	if x != nil {
+		return x.Section
+	}
+	return ""
+}
+
+func (x *UserAtlasNode) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *UserAtlasNode) GetCluster() string {
+	if x != nil {
+		return x.Cluster
+	}
+	return ""
+}
+
+func (x *UserAtlasNode) GetSourceText() string {
+	if x != nil {
+		return x.SourceText
+	}
+	return ""
+}
+
+func (x *UserAtlasNode) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+// ClassifyAtlasTodoResponse — ровно одно из полей не-пусто:
+//
+//	matched_key — TODO замэтчился в curated узел атласа.
+//	new_node    — был создан новый user_atlas_nodes row.
+type ClassifyAtlasTodoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MatchedKey    string                 `protobuf:"bytes,1,opt,name=matched_key,json=matchedKey,proto3" json:"matched_key,omitempty"`
+	NewNode       *UserAtlasNode         `protobuf:"bytes,2,opt,name=new_node,json=newNode,proto3" json:"new_node,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClassifyAtlasTodoResponse) Reset() {
+	*x = ClassifyAtlasTodoResponse{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClassifyAtlasTodoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClassifyAtlasTodoResponse) ProtoMessage() {}
+
+func (x *ClassifyAtlasTodoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClassifyAtlasTodoResponse.ProtoReflect.Descriptor instead.
+func (*ClassifyAtlasTodoResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ClassifyAtlasTodoResponse) GetMatchedKey() string {
+	if x != nil {
+		return x.MatchedKey
+	}
+	return ""
+}
+
+func (x *ClassifyAtlasTodoResponse) GetNewNode() *UserAtlasNode {
+	if x != nil {
+		return x.NewNode
+	}
+	return nil
+}
+
+// SetAtlasNodePrefRequest — Phase 3 pin/hide overlay над atlas (table
+// user_atlas_node_prefs, миграция 00064).
+type SetAtlasNodePrefRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeKey       string                 `protobuf:"bytes,1,opt,name=node_key,json=nodeKey,proto3" json:"node_key,omitempty"`
+	Pinned        bool                   `protobuf:"varint,2,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	Hidden        bool                   `protobuf:"varint,3,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAtlasNodePrefRequest) Reset() {
+	*x = SetAtlasNodePrefRequest{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAtlasNodePrefRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAtlasNodePrefRequest) ProtoMessage() {}
+
+func (x *SetAtlasNodePrefRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAtlasNodePrefRequest.ProtoReflect.Descriptor instead.
+func (*SetAtlasNodePrefRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *SetAtlasNodePrefRequest) GetNodeKey() string {
+	if x != nil {
+		return x.NodeKey
+	}
+	return ""
+}
+
+func (x *SetAtlasNodePrefRequest) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
+func (x *SetAtlasNodePrefRequest) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
+}
+
+type SetAtlasNodePrefResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAtlasNodePrefResponse) Reset() {
+	*x = SetAtlasNodePrefResponse{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAtlasNodePrefResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAtlasNodePrefResponse) ProtoMessage() {}
+
+func (x *SetAtlasNodePrefResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAtlasNodePrefResponse.ProtoReflect.Descriptor instead.
+func (*SetAtlasNodePrefResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *SetAtlasNodePrefResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
 type AllocateAtlasSkillResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -2252,7 +2589,7 @@ type AllocateAtlasSkillResponse struct {
 
 func (x *AllocateAtlasSkillResponse) Reset() {
 	*x = AllocateAtlasSkillResponse{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[26]
+	mi := &file_druz9_v1_profile_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2264,7 +2601,7 @@ func (x *AllocateAtlasSkillResponse) String() string {
 func (*AllocateAtlasSkillResponse) ProtoMessage() {}
 
 func (x *AllocateAtlasSkillResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[26]
+	mi := &file_druz9_v1_profile_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2277,7 +2614,7 @@ func (x *AllocateAtlasSkillResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AllocateAtlasSkillResponse.ProtoReflect.Descriptor instead.
 func (*AllocateAtlasSkillResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{26}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *AllocateAtlasSkillResponse) GetKey() string {
@@ -2323,7 +2660,7 @@ type GetAIVacanciesModelRequest struct {
 
 func (x *GetAIVacanciesModelRequest) Reset() {
 	*x = GetAIVacanciesModelRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[27]
+	mi := &file_druz9_v1_profile_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2335,7 +2672,7 @@ func (x *GetAIVacanciesModelRequest) String() string {
 func (*GetAIVacanciesModelRequest) ProtoMessage() {}
 
 func (x *GetAIVacanciesModelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[27]
+	mi := &file_druz9_v1_profile_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2348,7 +2685,7 @@ func (x *GetAIVacanciesModelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAIVacanciesModelRequest.ProtoReflect.Descriptor instead.
 func (*GetAIVacanciesModelRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{27}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{32}
 }
 
 type SetAIVacanciesModelRequest struct {
@@ -2360,7 +2697,7 @@ type SetAIVacanciesModelRequest struct {
 
 func (x *SetAIVacanciesModelRequest) Reset() {
 	*x = SetAIVacanciesModelRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[28]
+	mi := &file_druz9_v1_profile_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2372,7 +2709,7 @@ func (x *SetAIVacanciesModelRequest) String() string {
 func (*SetAIVacanciesModelRequest) ProtoMessage() {}
 
 func (x *SetAIVacanciesModelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[28]
+	mi := &file_druz9_v1_profile_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2385,7 +2722,7 @@ func (x *SetAIVacanciesModelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAIVacanciesModelRequest.ProtoReflect.Descriptor instead.
 func (*SetAIVacanciesModelRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{28}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *SetAIVacanciesModelRequest) GetModelId() string {
@@ -2404,7 +2741,7 @@ type AIVacanciesModel struct {
 
 func (x *AIVacanciesModel) Reset() {
 	*x = AIVacanciesModel{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[29]
+	mi := &file_druz9_v1_profile_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2416,7 +2753,7 @@ func (x *AIVacanciesModel) String() string {
 func (*AIVacanciesModel) ProtoMessage() {}
 
 func (x *AIVacanciesModel) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[29]
+	mi := &file_druz9_v1_profile_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2429,7 +2766,7 @@ func (x *AIVacanciesModel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AIVacanciesModel.ProtoReflect.Descriptor instead.
 func (*AIVacanciesModel) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{29}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *AIVacanciesModel) GetModelId() string {
@@ -2450,7 +2787,7 @@ type BecomeInterviewerRequest struct {
 
 func (x *BecomeInterviewerRequest) Reset() {
 	*x = BecomeInterviewerRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[30]
+	mi := &file_druz9_v1_profile_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2462,7 +2799,7 @@ func (x *BecomeInterviewerRequest) String() string {
 func (*BecomeInterviewerRequest) ProtoMessage() {}
 
 func (x *BecomeInterviewerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[30]
+	mi := &file_druz9_v1_profile_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2475,7 +2812,7 @@ func (x *BecomeInterviewerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BecomeInterviewerRequest.ProtoReflect.Descriptor instead.
 func (*BecomeInterviewerRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{30}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *BecomeInterviewerRequest) GetMotivation() string {
@@ -2493,7 +2830,7 @@ type GetMyInterviewerApplicationRequest struct {
 
 func (x *GetMyInterviewerApplicationRequest) Reset() {
 	*x = GetMyInterviewerApplicationRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[31]
+	mi := &file_druz9_v1_profile_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2505,7 +2842,7 @@ func (x *GetMyInterviewerApplicationRequest) String() string {
 func (*GetMyInterviewerApplicationRequest) ProtoMessage() {}
 
 func (x *GetMyInterviewerApplicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[31]
+	mi := &file_druz9_v1_profile_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2518,7 +2855,7 @@ func (x *GetMyInterviewerApplicationRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetMyInterviewerApplicationRequest.ProtoReflect.Descriptor instead.
 func (*GetMyInterviewerApplicationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{31}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{36}
 }
 
 // InterviewerApplication mirrors a row in `interviewer_applications`.
@@ -2542,7 +2879,7 @@ type InterviewerApplication struct {
 
 func (x *InterviewerApplication) Reset() {
 	*x = InterviewerApplication{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[32]
+	mi := &file_druz9_v1_profile_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2554,7 +2891,7 @@ func (x *InterviewerApplication) String() string {
 func (*InterviewerApplication) ProtoMessage() {}
 
 func (x *InterviewerApplication) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[32]
+	mi := &file_druz9_v1_profile_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2567,7 +2904,7 @@ func (x *InterviewerApplication) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterviewerApplication.ProtoReflect.Descriptor instead.
 func (*InterviewerApplication) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{32}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *InterviewerApplication) GetId() string {
@@ -2649,7 +2986,7 @@ type InterviewerApplicationList struct {
 
 func (x *InterviewerApplicationList) Reset() {
 	*x = InterviewerApplicationList{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[33]
+	mi := &file_druz9_v1_profile_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2661,7 +2998,7 @@ func (x *InterviewerApplicationList) String() string {
 func (*InterviewerApplicationList) ProtoMessage() {}
 
 func (x *InterviewerApplicationList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[33]
+	mi := &file_druz9_v1_profile_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2674,7 +3011,7 @@ func (x *InterviewerApplicationList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterviewerApplicationList.ProtoReflect.Descriptor instead.
 func (*InterviewerApplicationList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{33}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *InterviewerApplicationList) GetItems() []*InterviewerApplication {
@@ -2694,7 +3031,7 @@ type ListInterviewerApplicationsRequest struct {
 
 func (x *ListInterviewerApplicationsRequest) Reset() {
 	*x = ListInterviewerApplicationsRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[34]
+	mi := &file_druz9_v1_profile_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2706,7 +3043,7 @@ func (x *ListInterviewerApplicationsRequest) String() string {
 func (*ListInterviewerApplicationsRequest) ProtoMessage() {}
 
 func (x *ListInterviewerApplicationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[34]
+	mi := &file_druz9_v1_profile_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2719,7 +3056,7 @@ func (x *ListInterviewerApplicationsRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ListInterviewerApplicationsRequest.ProtoReflect.Descriptor instead.
 func (*ListInterviewerApplicationsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{34}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ListInterviewerApplicationsRequest) GetStatus() InterviewerApplicationStatus {
@@ -2739,7 +3076,7 @@ type ApproveInterviewerApplicationRequest struct {
 
 func (x *ApproveInterviewerApplicationRequest) Reset() {
 	*x = ApproveInterviewerApplicationRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[35]
+	mi := &file_druz9_v1_profile_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2751,7 +3088,7 @@ func (x *ApproveInterviewerApplicationRequest) String() string {
 func (*ApproveInterviewerApplicationRequest) ProtoMessage() {}
 
 func (x *ApproveInterviewerApplicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[35]
+	mi := &file_druz9_v1_profile_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2764,7 +3101,7 @@ func (x *ApproveInterviewerApplicationRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use ApproveInterviewerApplicationRequest.ProtoReflect.Descriptor instead.
 func (*ApproveInterviewerApplicationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{35}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ApproveInterviewerApplicationRequest) GetApplicationId() string {
@@ -2791,7 +3128,7 @@ type RejectInterviewerApplicationRequest struct {
 
 func (x *RejectInterviewerApplicationRequest) Reset() {
 	*x = RejectInterviewerApplicationRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[36]
+	mi := &file_druz9_v1_profile_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2803,7 +3140,7 @@ func (x *RejectInterviewerApplicationRequest) String() string {
 func (*RejectInterviewerApplicationRequest) ProtoMessage() {}
 
 func (x *RejectInterviewerApplicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[36]
+	mi := &file_druz9_v1_profile_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2816,7 +3153,7 @@ func (x *RejectInterviewerApplicationRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use RejectInterviewerApplicationRequest.ProtoReflect.Descriptor instead.
 func (*RejectInterviewerApplicationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{36}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *RejectInterviewerApplicationRequest) GetApplicationId() string {
@@ -2849,7 +3186,7 @@ type UserTrack struct {
 
 func (x *UserTrack) Reset() {
 	*x = UserTrack{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[37]
+	mi := &file_druz9_v1_profile_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2861,7 +3198,7 @@ func (x *UserTrack) String() string {
 func (*UserTrack) ProtoMessage() {}
 
 func (x *UserTrack) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[37]
+	mi := &file_druz9_v1_profile_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2874,7 +3211,7 @@ func (x *UserTrack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserTrack.ProtoReflect.Descriptor instead.
 func (*UserTrack) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{37}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *UserTrack) GetTrack() Track {
@@ -2921,7 +3258,7 @@ type UserTracks struct {
 
 func (x *UserTracks) Reset() {
 	*x = UserTracks{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[38]
+	mi := &file_druz9_v1_profile_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2933,7 +3270,7 @@ func (x *UserTracks) String() string {
 func (*UserTracks) ProtoMessage() {}
 
 func (x *UserTracks) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[38]
+	mi := &file_druz9_v1_profile_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2946,7 +3283,7 @@ func (x *UserTracks) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserTracks.ProtoReflect.Descriptor instead.
 func (*UserTracks) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{38}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *UserTracks) GetItems() []*UserTrack {
@@ -2964,7 +3301,7 @@ type GetUserTracksRequest struct {
 
 func (x *GetUserTracksRequest) Reset() {
 	*x = GetUserTracksRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[39]
+	mi := &file_druz9_v1_profile_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2976,7 +3313,7 @@ func (x *GetUserTracksRequest) String() string {
 func (*GetUserTracksRequest) ProtoMessage() {}
 
 func (x *GetUserTracksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[39]
+	mi := &file_druz9_v1_profile_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2989,7 +3326,7 @@ func (x *GetUserTracksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserTracksRequest.ProtoReflect.Descriptor instead.
 func (*GetUserTracksRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{39}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{44}
 }
 
 type SetUserTracksRequest struct {
@@ -3003,7 +3340,7 @@ type SetUserTracksRequest struct {
 
 func (x *SetUserTracksRequest) Reset() {
 	*x = SetUserTracksRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[40]
+	mi := &file_druz9_v1_profile_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3015,7 +3352,7 @@ func (x *SetUserTracksRequest) String() string {
 func (*SetUserTracksRequest) ProtoMessage() {}
 
 func (x *SetUserTracksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[40]
+	mi := &file_druz9_v1_profile_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3028,7 +3365,7 @@ func (x *SetUserTracksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetUserTracksRequest.ProtoReflect.Descriptor instead.
 func (*SetUserTracksRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{40}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SetUserTracksRequest) GetItems() []*UserTrack {
@@ -3086,7 +3423,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\n" +
 	"percentile\x18\x04 \x01(\x05R\n" +
 	"percentile\x12\x1a\n" +
-	"\bdecaying\x18\x05 \x01(\bR\bdecaying\"\xe6\x04\n" +
+	"\bdecaying\x18\x05 \x01(\bR\bdecaying\"\xba\x05\n" +
 	"\tSkillNode\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
@@ -3108,7 +3445,10 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x05pos_x\x18\x0f \x01(\x05R\x04posX\x12\x13\n" +
 	"\x05pos_y\x18\x10 \x01(\x05R\x04posY\x12\x17\n" +
 	"\apos_set\x18\x11 \x01(\bR\x06posSet\x12\x1c\n" +
-	"\treachable\x18\x12 \x01(\bR\treachable\"|\n" +
+	"\treachable\x18\x12 \x01(\bR\treachable\x12\"\n" +
+	"\ris_user_owned\x18\x13 \x01(\bR\visUserOwned\x12\x16\n" +
+	"\x06pinned\x18\x14 \x01(\bR\x06pinned\x12\x16\n" +
+	"\x06hidden\x18\x15 \x01(\bR\x06hidden\"|\n" +
 	"\aKataRef\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1e\n" +
@@ -3236,7 +3576,30 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x15GetWeeklyShareRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"6\n" +
 	"\x19AllocateAtlasSkillRequest\x12\x19\n" +
-	"\bskill_id\x18\x01 \x01(\tR\askillId\"\xa6\x01\n" +
+	"\bskill_id\x18\x01 \x01(\tR\askillId\".\n" +
+	"\x18ClassifyAtlasTodoRequest\x12\x12\n" +
+	"\x04todo\x18\x01 \x01(\tR\x04todo\"\xea\x01\n" +
+	"\rUserAtlasNode\x12\x19\n" +
+	"\bnode_key\x18\x01 \x01(\tR\anodeKey\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x18\n" +
+	"\asection\x18\x04 \x01(\tR\asection\x12\x12\n" +
+	"\x04kind\x18\x05 \x01(\tR\x04kind\x12\x18\n" +
+	"\acluster\x18\x06 \x01(\tR\acluster\x12\x1f\n" +
+	"\vsource_text\x18\a \x01(\tR\n" +
+	"sourceText\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\"p\n" +
+	"\x19ClassifyAtlasTodoResponse\x12\x1f\n" +
+	"\vmatched_key\x18\x01 \x01(\tR\n" +
+	"matchedKey\x122\n" +
+	"\bnew_node\x18\x02 \x01(\v2\x17.druz9.v1.UserAtlasNodeR\anewNode\"d\n" +
+	"\x17SetAtlasNodePrefRequest\x12\x19\n" +
+	"\bnode_key\x18\x01 \x01(\tR\anodeKey\x12\x16\n" +
+	"\x06pinned\x18\x02 \x01(\bR\x06pinned\x12\x16\n" +
+	"\x06hidden\x18\x03 \x01(\bR\x06hidden\"*\n" +
+	"\x18SetAtlasNodePrefResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"\xa6\x01\n" +
 	"\x1aAllocateAtlasSkillResponse\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1a\n" +
 	"\bprogress\x18\x02 \x01(\x05R\bprogress\x12\x1a\n" +
@@ -3308,7 +3671,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x10TRACK_SYSANALYST\x10\x03\x12\x19\n" +
 	"\x15TRACK_PRODUCT_ANALYST\x10\x04\x12\f\n" +
 	"\bTRACK_QA\x10\x05\x12\x11\n" +
-	"\rTRACK_ENGLISH\x10\x062\xfe\x10\n" +
+	"\rTRACK_ENGLISH\x10\x062\x8d\x13\n" +
 	"\x0eProfileService\x12`\n" +
 	"\fGetMyProfile\x12\x1d.druz9.v1.GetMyProfileRequest\x1a\x15.druz9.v1.ProfileFull\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/profile/me\x12a\n" +
 	"\n" +
@@ -3326,7 +3689,9 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x13GetAIVacanciesModel\x12$.druz9.v1.GetAIVacanciesModelRequest\x1a\x1a.druz9.v1.AIVacanciesModel\"-\x82\xd3\xe4\x93\x02'\x12%/api/v1/profile/me/ai-vacancies-model\x12\x89\x01\n" +
 	"\x13SetAIVacanciesModel\x12$.druz9.v1.SetAIVacanciesModelRequest\x1a\x1a.druz9.v1.AIVacanciesModel\"0\x82\xd3\xe4\x93\x02*:\x01*\x1a%/api/v1/profile/me/ai-vacancies-model\x12h\n" +
 	"\rGetUserTracks\x12\x1e.druz9.v1.GetUserTracksRequest\x1a\x14.druz9.v1.UserTracks\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/profile/me/tracks\x12k\n" +
-	"\rSetUserTracks\x12\x1e.druz9.v1.SetUserTracksRequest\x1a\x14.druz9.v1.UserTracks\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\x1a\x19/api/v1/profile/me/tracksB\x89\x01\n" +
+	"\rSetUserTracks\x12\x1e.druz9.v1.SetUserTracksRequest\x1a\x14.druz9.v1.UserTracks\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\x1a\x19/api/v1/profile/me/tracks\x12\x86\x01\n" +
+	"\x11ClassifyAtlasTodo\x12\".druz9.v1.ClassifyAtlasTodoRequest\x1a#.druz9.v1.ClassifyAtlasTodoResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/v1/profile/me/atlas/todo\x12\x83\x01\n" +
+	"\x10SetAtlasNodePref\x12!.druz9.v1.SetAtlasNodePrefRequest\x1a\".druz9.v1.SetAtlasNodePrefResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/v1/profile/me/atlas/prefB\x89\x01\n" +
 	"\fcom.druz9.v1B\fProfileProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -3342,7 +3707,7 @@ func file_druz9_v1_profile_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_profile_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
+var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_druz9_v1_profile_proto_goTypes = []any{
 	(InterviewerApplicationStatus)(0),            // 0: druz9.v1.InterviewerApplicationStatus
 	(Track)(0),                                   // 1: druz9.v1.Track
@@ -3372,51 +3737,56 @@ var file_druz9_v1_profile_proto_goTypes = []any{
 	(*GetPublicProfileRequest)(nil),              // 25: druz9.v1.GetPublicProfileRequest
 	(*GetWeeklyShareRequest)(nil),                // 26: druz9.v1.GetWeeklyShareRequest
 	(*AllocateAtlasSkillRequest)(nil),            // 27: druz9.v1.AllocateAtlasSkillRequest
-	(*AllocateAtlasSkillResponse)(nil),           // 28: druz9.v1.AllocateAtlasSkillResponse
-	(*GetAIVacanciesModelRequest)(nil),           // 29: druz9.v1.GetAIVacanciesModelRequest
-	(*SetAIVacanciesModelRequest)(nil),           // 30: druz9.v1.SetAIVacanciesModelRequest
-	(*AIVacanciesModel)(nil),                     // 31: druz9.v1.AIVacanciesModel
-	(*BecomeInterviewerRequest)(nil),             // 32: druz9.v1.BecomeInterviewerRequest
-	(*GetMyInterviewerApplicationRequest)(nil),   // 33: druz9.v1.GetMyInterviewerApplicationRequest
-	(*InterviewerApplication)(nil),               // 34: druz9.v1.InterviewerApplication
-	(*InterviewerApplicationList)(nil),           // 35: druz9.v1.InterviewerApplicationList
-	(*ListInterviewerApplicationsRequest)(nil),   // 36: druz9.v1.ListInterviewerApplicationsRequest
-	(*ApproveInterviewerApplicationRequest)(nil), // 37: druz9.v1.ApproveInterviewerApplicationRequest
-	(*RejectInterviewerApplicationRequest)(nil),  // 38: druz9.v1.RejectInterviewerApplicationRequest
-	(*UserTrack)(nil),                            // 39: druz9.v1.UserTrack
-	(*UserTracks)(nil),                           // 40: druz9.v1.UserTracks
-	(*GetUserTracksRequest)(nil),                 // 41: druz9.v1.GetUserTracksRequest
-	(*SetUserTracksRequest)(nil),                 // 42: druz9.v1.SetUserTracksRequest
-	nil,                                          // 43: druz9.v1.RecommendationAction.ParamsEntry
-	(SubscriptionPlan)(0),                        // 44: druz9.v1.SubscriptionPlan
-	(*timestamppb.Timestamp)(nil),                // 45: google.protobuf.Timestamp
-	(CharClass)(0),                               // 46: druz9.v1.CharClass
-	(UserRole)(0),                                // 47: druz9.v1.UserRole
-	(Section)(0),                                 // 48: druz9.v1.Section
-	(Language)(0),                                // 49: druz9.v1.Language
-	(*NotificationPreferences)(nil),              // 50: druz9.v1.NotificationPreferences
+	(*ClassifyAtlasTodoRequest)(nil),             // 28: druz9.v1.ClassifyAtlasTodoRequest
+	(*UserAtlasNode)(nil),                        // 29: druz9.v1.UserAtlasNode
+	(*ClassifyAtlasTodoResponse)(nil),            // 30: druz9.v1.ClassifyAtlasTodoResponse
+	(*SetAtlasNodePrefRequest)(nil),              // 31: druz9.v1.SetAtlasNodePrefRequest
+	(*SetAtlasNodePrefResponse)(nil),             // 32: druz9.v1.SetAtlasNodePrefResponse
+	(*AllocateAtlasSkillResponse)(nil),           // 33: druz9.v1.AllocateAtlasSkillResponse
+	(*GetAIVacanciesModelRequest)(nil),           // 34: druz9.v1.GetAIVacanciesModelRequest
+	(*SetAIVacanciesModelRequest)(nil),           // 35: druz9.v1.SetAIVacanciesModelRequest
+	(*AIVacanciesModel)(nil),                     // 36: druz9.v1.AIVacanciesModel
+	(*BecomeInterviewerRequest)(nil),             // 37: druz9.v1.BecomeInterviewerRequest
+	(*GetMyInterviewerApplicationRequest)(nil),   // 38: druz9.v1.GetMyInterviewerApplicationRequest
+	(*InterviewerApplication)(nil),               // 39: druz9.v1.InterviewerApplication
+	(*InterviewerApplicationList)(nil),           // 40: druz9.v1.InterviewerApplicationList
+	(*ListInterviewerApplicationsRequest)(nil),   // 41: druz9.v1.ListInterviewerApplicationsRequest
+	(*ApproveInterviewerApplicationRequest)(nil), // 42: druz9.v1.ApproveInterviewerApplicationRequest
+	(*RejectInterviewerApplicationRequest)(nil),  // 43: druz9.v1.RejectInterviewerApplicationRequest
+	(*UserTrack)(nil),                            // 44: druz9.v1.UserTrack
+	(*UserTracks)(nil),                           // 45: druz9.v1.UserTracks
+	(*GetUserTracksRequest)(nil),                 // 46: druz9.v1.GetUserTracksRequest
+	(*SetUserTracksRequest)(nil),                 // 47: druz9.v1.SetUserTracksRequest
+	nil,                                          // 48: druz9.v1.RecommendationAction.ParamsEntry
+	(SubscriptionPlan)(0),                        // 49: druz9.v1.SubscriptionPlan
+	(*timestamppb.Timestamp)(nil),                // 50: google.protobuf.Timestamp
+	(CharClass)(0),                               // 51: druz9.v1.CharClass
+	(UserRole)(0),                                // 52: druz9.v1.UserRole
+	(Section)(0),                                 // 53: druz9.v1.Section
+	(Language)(0),                                // 54: druz9.v1.Language
+	(*NotificationPreferences)(nil),              // 55: druz9.v1.NotificationPreferences
 }
 var file_druz9_v1_profile_proto_depIdxs = []int32{
-	44, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
-	45, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
-	46, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
+	49, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
+	50, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
+	51, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
 	2,  // 3: druz9.v1.ProfileFull.attributes:type_name -> druz9.v1.Attributes
 	3,  // 4: druz9.v1.ProfileFull.subscription:type_name -> druz9.v1.ProfileSubscription
-	45, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
-	47, // 6: druz9.v1.ProfileFull.role:type_name -> druz9.v1.UserRole
-	48, // 7: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
-	48, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
-	45, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
-	45, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
+	50, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
+	52, // 6: druz9.v1.ProfileFull.role:type_name -> druz9.v1.UserRole
+	53, // 7: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
+	53, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
+	50, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
+	50, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
 	7,  // 11: druz9.v1.SkillNode.recommended_kata:type_name -> druz9.v1.KataRef
 	6,  // 12: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
 	8,  // 13: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
-	46, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
+	51, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
 	5,  // 15: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
 	9,  // 16: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
-	43, // 17: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
+	48, // 17: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
 	13, // 18: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
-	48, // 19: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
+	53, // 19: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
 	11, // 20: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
 	12, // 21: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
 	14, // 22: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
@@ -3425,56 +3795,61 @@ var file_druz9_v1_profile_proto_depIdxs = []int32{
 	16, // 25: druz9.v1.WeeklyReport.weekly_xp:type_name -> druz9.v1.WeekComparison
 	17, // 26: druz9.v1.WeeklyReport.elo_series:type_name -> druz9.v1.EloPoint
 	18, // 27: druz9.v1.WeeklyReport.percentiles:type_name -> druz9.v1.PercentileView
-	49, // 28: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
-	50, // 29: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
+	54, // 28: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
+	55, // 29: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
 	20, // 30: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
-	0,  // 31: druz9.v1.InterviewerApplication.status:type_name -> druz9.v1.InterviewerApplicationStatus
-	45, // 32: druz9.v1.InterviewerApplication.reviewed_at:type_name -> google.protobuf.Timestamp
-	45, // 33: druz9.v1.InterviewerApplication.created_at:type_name -> google.protobuf.Timestamp
-	34, // 34: druz9.v1.InterviewerApplicationList.items:type_name -> druz9.v1.InterviewerApplication
-	0,  // 35: druz9.v1.ListInterviewerApplicationsRequest.status:type_name -> druz9.v1.InterviewerApplicationStatus
-	1,  // 36: druz9.v1.UserTrack.track:type_name -> druz9.v1.Track
-	45, // 37: druz9.v1.UserTrack.started_at:type_name -> google.protobuf.Timestamp
-	45, // 38: druz9.v1.UserTrack.last_active_at:type_name -> google.protobuf.Timestamp
-	39, // 39: druz9.v1.UserTracks.items:type_name -> druz9.v1.UserTrack
-	39, // 40: druz9.v1.SetUserTracksRequest.items:type_name -> druz9.v1.UserTrack
-	22, // 41: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
-	23, // 42: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
-	24, // 43: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
-	21, // 44: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
-	25, // 45: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
-	26, // 46: druz9.v1.ProfileService.GetWeeklyShare:input_type -> druz9.v1.GetWeeklyShareRequest
-	32, // 47: druz9.v1.ProfileService.BecomeInterviewer:input_type -> druz9.v1.BecomeInterviewerRequest
-	33, // 48: druz9.v1.ProfileService.GetMyInterviewerApplication:input_type -> druz9.v1.GetMyInterviewerApplicationRequest
-	36, // 49: druz9.v1.ProfileService.ListInterviewerApplications:input_type -> druz9.v1.ListInterviewerApplicationsRequest
-	37, // 50: druz9.v1.ProfileService.ApproveInterviewerApplication:input_type -> druz9.v1.ApproveInterviewerApplicationRequest
-	38, // 51: druz9.v1.ProfileService.RejectInterviewerApplication:input_type -> druz9.v1.RejectInterviewerApplicationRequest
-	27, // 52: druz9.v1.ProfileService.AllocateAtlasSkill:input_type -> druz9.v1.AllocateAtlasSkillRequest
-	29, // 53: druz9.v1.ProfileService.GetAIVacanciesModel:input_type -> druz9.v1.GetAIVacanciesModelRequest
-	30, // 54: druz9.v1.ProfileService.SetAIVacanciesModel:input_type -> druz9.v1.SetAIVacanciesModelRequest
-	41, // 55: druz9.v1.ProfileService.GetUserTracks:input_type -> druz9.v1.GetUserTracksRequest
-	42, // 56: druz9.v1.ProfileService.SetUserTracks:input_type -> druz9.v1.SetUserTracksRequest
-	4,  // 57: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
-	9,  // 58: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
-	19, // 59: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
-	20, // 60: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
-	10, // 61: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
-	19, // 62: druz9.v1.ProfileService.GetWeeklyShare:output_type -> druz9.v1.WeeklyReport
-	34, // 63: druz9.v1.ProfileService.BecomeInterviewer:output_type -> druz9.v1.InterviewerApplication
-	34, // 64: druz9.v1.ProfileService.GetMyInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
-	35, // 65: druz9.v1.ProfileService.ListInterviewerApplications:output_type -> druz9.v1.InterviewerApplicationList
-	34, // 66: druz9.v1.ProfileService.ApproveInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
-	34, // 67: druz9.v1.ProfileService.RejectInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
-	28, // 68: druz9.v1.ProfileService.AllocateAtlasSkill:output_type -> druz9.v1.AllocateAtlasSkillResponse
-	31, // 69: druz9.v1.ProfileService.GetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
-	31, // 70: druz9.v1.ProfileService.SetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
-	40, // 71: druz9.v1.ProfileService.GetUserTracks:output_type -> druz9.v1.UserTracks
-	40, // 72: druz9.v1.ProfileService.SetUserTracks:output_type -> druz9.v1.UserTracks
-	57, // [57:73] is the sub-list for method output_type
-	41, // [41:57] is the sub-list for method input_type
-	41, // [41:41] is the sub-list for extension type_name
-	41, // [41:41] is the sub-list for extension extendee
-	0,  // [0:41] is the sub-list for field type_name
+	29, // 31: druz9.v1.ClassifyAtlasTodoResponse.new_node:type_name -> druz9.v1.UserAtlasNode
+	0,  // 32: druz9.v1.InterviewerApplication.status:type_name -> druz9.v1.InterviewerApplicationStatus
+	50, // 33: druz9.v1.InterviewerApplication.reviewed_at:type_name -> google.protobuf.Timestamp
+	50, // 34: druz9.v1.InterviewerApplication.created_at:type_name -> google.protobuf.Timestamp
+	39, // 35: druz9.v1.InterviewerApplicationList.items:type_name -> druz9.v1.InterviewerApplication
+	0,  // 36: druz9.v1.ListInterviewerApplicationsRequest.status:type_name -> druz9.v1.InterviewerApplicationStatus
+	1,  // 37: druz9.v1.UserTrack.track:type_name -> druz9.v1.Track
+	50, // 38: druz9.v1.UserTrack.started_at:type_name -> google.protobuf.Timestamp
+	50, // 39: druz9.v1.UserTrack.last_active_at:type_name -> google.protobuf.Timestamp
+	44, // 40: druz9.v1.UserTracks.items:type_name -> druz9.v1.UserTrack
+	44, // 41: druz9.v1.SetUserTracksRequest.items:type_name -> druz9.v1.UserTrack
+	22, // 42: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
+	23, // 43: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
+	24, // 44: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
+	21, // 45: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
+	25, // 46: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
+	26, // 47: druz9.v1.ProfileService.GetWeeklyShare:input_type -> druz9.v1.GetWeeklyShareRequest
+	37, // 48: druz9.v1.ProfileService.BecomeInterviewer:input_type -> druz9.v1.BecomeInterviewerRequest
+	38, // 49: druz9.v1.ProfileService.GetMyInterviewerApplication:input_type -> druz9.v1.GetMyInterviewerApplicationRequest
+	41, // 50: druz9.v1.ProfileService.ListInterviewerApplications:input_type -> druz9.v1.ListInterviewerApplicationsRequest
+	42, // 51: druz9.v1.ProfileService.ApproveInterviewerApplication:input_type -> druz9.v1.ApproveInterviewerApplicationRequest
+	43, // 52: druz9.v1.ProfileService.RejectInterviewerApplication:input_type -> druz9.v1.RejectInterviewerApplicationRequest
+	27, // 53: druz9.v1.ProfileService.AllocateAtlasSkill:input_type -> druz9.v1.AllocateAtlasSkillRequest
+	34, // 54: druz9.v1.ProfileService.GetAIVacanciesModel:input_type -> druz9.v1.GetAIVacanciesModelRequest
+	35, // 55: druz9.v1.ProfileService.SetAIVacanciesModel:input_type -> druz9.v1.SetAIVacanciesModelRequest
+	46, // 56: druz9.v1.ProfileService.GetUserTracks:input_type -> druz9.v1.GetUserTracksRequest
+	47, // 57: druz9.v1.ProfileService.SetUserTracks:input_type -> druz9.v1.SetUserTracksRequest
+	28, // 58: druz9.v1.ProfileService.ClassifyAtlasTodo:input_type -> druz9.v1.ClassifyAtlasTodoRequest
+	31, // 59: druz9.v1.ProfileService.SetAtlasNodePref:input_type -> druz9.v1.SetAtlasNodePrefRequest
+	4,  // 60: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
+	9,  // 61: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
+	19, // 62: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
+	20, // 63: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
+	10, // 64: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
+	19, // 65: druz9.v1.ProfileService.GetWeeklyShare:output_type -> druz9.v1.WeeklyReport
+	39, // 66: druz9.v1.ProfileService.BecomeInterviewer:output_type -> druz9.v1.InterviewerApplication
+	39, // 67: druz9.v1.ProfileService.GetMyInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
+	40, // 68: druz9.v1.ProfileService.ListInterviewerApplications:output_type -> druz9.v1.InterviewerApplicationList
+	39, // 69: druz9.v1.ProfileService.ApproveInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
+	39, // 70: druz9.v1.ProfileService.RejectInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
+	33, // 71: druz9.v1.ProfileService.AllocateAtlasSkill:output_type -> druz9.v1.AllocateAtlasSkillResponse
+	36, // 72: druz9.v1.ProfileService.GetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
+	36, // 73: druz9.v1.ProfileService.SetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
+	45, // 74: druz9.v1.ProfileService.GetUserTracks:output_type -> druz9.v1.UserTracks
+	45, // 75: druz9.v1.ProfileService.SetUserTracks:output_type -> druz9.v1.UserTracks
+	30, // 76: druz9.v1.ProfileService.ClassifyAtlasTodo:output_type -> druz9.v1.ClassifyAtlasTodoResponse
+	32, // 77: druz9.v1.ProfileService.SetAtlasNodePref:output_type -> druz9.v1.SetAtlasNodePrefResponse
+	60, // [60:78] is the sub-list for method output_type
+	42, // [42:60] is the sub-list for method input_type
+	42, // [42:42] is the sub-list for extension type_name
+	42, // [42:42] is the sub-list for extension extendee
+	0,  // [0:42] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_profile_proto_init() }
@@ -3491,7 +3866,7 @@ func file_druz9_v1_profile_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_profile_proto_rawDesc), len(file_druz9_v1_profile_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   42,
+			NumMessages:   47,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
