@@ -53,11 +53,14 @@ type ColumnDef = {
   Icon: typeof CircleDashed
 }
 
+// B/W rule: column-status dots — ink-ramp (4 уровня opacity вместо 4 hue).
+// Различение по позиции + label, не цвету. Identity: technical, no
+// gamification — kanban не должен выглядеть как radio-color-coded.
 const COLS: ColumnDef[] = [
-  { id: 'todo', name: 'To Do', dotClass: 'bg-violet-400 shadow-[0_0_5px] shadow-violet-400/80', Icon: CircleDashed },
-  { id: 'in_progress', name: 'In Progress', dotClass: 'bg-orange-400 shadow-[0_0_5px] shadow-orange-400/80', Icon: Loader2 },
-  { id: 'in_review', name: 'In Review', dotClass: 'bg-sky-400 shadow-[0_0_5px] shadow-sky-400/80', Icon: Eye },
-  { id: 'done', name: 'Done', dotClass: 'bg-emerald-400 shadow-[0_0_5px] shadow-emerald-400/80', Icon: CircleCheck },
+  { id: 'todo', name: 'To Do', dotClass: 'bg-white/40 shadow-[0_0_5px] shadow-white/30', Icon: CircleDashed },
+  { id: 'in_progress', name: 'In Progress', dotClass: 'bg-white shadow-[0_0_5px] shadow-white/60', Icon: Loader2 },
+  { id: 'in_review', name: 'In Review', dotClass: 'bg-white/70 shadow-[0_0_5px] shadow-white/40', Icon: Eye },
+  { id: 'done', name: 'Done', dotClass: 'bg-white/55 shadow-[0_0_5px] shadow-white/30', Icon: CircleCheck },
   { id: 'dismissed', name: 'Dismissed', dotClass: 'bg-neutral-500', Icon: CircleX },
 ]
 
@@ -68,14 +71,17 @@ type KindDef = {
   Icon: typeof Code2
 }
 
+// Kind taxonomy — иконка + label несут смысл; цвет нулевой. Strip всегда
+// ink, text всегда text-secondary. Если хочется выделить kind — делается
+// иконкой в колонке, не цветной строкой.
 const KINDS: Record<TaskKindCanonical, KindDef> = {
-  algo: { label: 'Algorithm', text: 'text-violet-400', strip: 'bg-violet-400', Icon: Code2 },
-  sysdesign: { label: 'System Design', text: 'text-cyan-400', strip: 'bg-cyan-400', Icon: Network },
-  quiz: { label: 'Quiz', text: 'text-emerald-400', strip: 'bg-emerald-400', Icon: CircleHelp },
-  reflection: { label: 'Reflection', text: 'text-amber-400', strip: 'bg-amber-400', Icon: Brain },
-  reading: { label: 'Reading', text: 'text-slate-400', strip: 'bg-slate-400', Icon: BookOpen },
-  custom: { label: 'Custom', text: 'text-neutral-400', strip: 'bg-neutral-500', Icon: Sparkles },
-  unspecified: { label: '—', text: 'text-neutral-400', strip: 'bg-neutral-500', Icon: Sparkles },
+  algo: { label: 'Algorithm', text: 'text-text-secondary', strip: 'bg-white/40', Icon: Code2 },
+  sysdesign: { label: 'System Design', text: 'text-text-secondary', strip: 'bg-white/40', Icon: Network },
+  quiz: { label: 'Quiz', text: 'text-text-secondary', strip: 'bg-white/40', Icon: CircleHelp },
+  reflection: { label: 'Reflection', text: 'text-text-secondary', strip: 'bg-white/40', Icon: Brain },
+  reading: { label: 'Reading', text: 'text-text-secondary', strip: 'bg-white/40', Icon: BookOpen },
+  custom: { label: 'Custom', text: 'text-text-muted', strip: 'bg-neutral-500', Icon: Sparkles },
+  unspecified: { label: '—', text: 'text-text-muted', strip: 'bg-neutral-500', Icon: Sparkles },
 }
 
 type FilterMode = 'all' | 'ai' | 'my'
@@ -481,7 +487,7 @@ function TaskCard({
           )}
           <span className="text-[10px] text-text-muted">{relativeAge(task.createdAt)}</span>
           {task.source === 'ai' ? (
-            <span className="rounded-[3px] bg-violet-400/[0.12] px-1.5 py-px text-[8px] font-bold tracking-wider text-violet-400">
+            <span className="rounded-[3px] bg-white/10 px-1.5 py-px text-[8px] font-bold tracking-wider text-text-primary">
               AI
             </span>
           ) : (
@@ -500,7 +506,7 @@ function TaskCard({
         </div>
       </div>
       {aiPulse && (
-        <span className="pointer-events-none absolute inset-0 rounded-[7px] bg-sky-400 opacity-[0.04] motion-safe:animate-pulse" />
+        <span className="pointer-events-none absolute inset-0 rounded-[7px] bg-white opacity-[0.04] motion-safe:animate-pulse" />
       )}
     </div>
   )
@@ -578,12 +584,30 @@ function ContextMenu({
 }
 
 // ── Clock ──────────────────────────────────────────────────────────────
+// Phase R3 cooldown — was a 1Hz setInterval / setState that re-rendered the
+// board header every second. Since the only thing rendered is HH:MM (no
+// seconds), 60s cadence is sufficient. We also align to the next minute
+// boundary so the displayed time flips at :00 instead of an arbitrary
+// offset, which used to make the clock look "stuck" if the board mounted
+// at :59.
 
 function Clock() {
   const [t, setT] = useState(new Date())
   useEffect(() => {
-    const id = setInterval(() => setT(new Date()), 1000)
-    return () => clearInterval(id)
+    let timer: number | undefined
+    const tick = () => {
+      setT(new Date())
+      // Re-arm on the next minute boundary instead of a fixed 60_000 ms
+      // interval — keeps the clock honest on Macs that throttle background
+      // timers.
+      const msToNextMinute = 60_000 - (Date.now() % 60_000)
+      timer = window.setTimeout(tick, msToNextMinute)
+    }
+    const msToNextMinute = 60_000 - (Date.now() % 60_000)
+    timer = window.setTimeout(tick, msToNextMinute)
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
   }, [])
   return (
     <span className="min-w-[56px] text-xs tabular-nums text-text-muted">

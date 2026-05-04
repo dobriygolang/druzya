@@ -33,7 +33,10 @@ import {
 } from '../lib/queries/auth'
 
 const YANDEX_CLIENT_ID = import.meta.env.VITE_YANDEX_CLIENT_ID as string | undefined
-const POLL_INTERVAL_MS = 2000
+// Phase R3 cooldown — bumped 2000 → 3000ms. The TG bot side typically
+// confirms a code in 5–15s; faster polling just spammed the auth backend
+// during long-tail flows (user fishing the t.me link out of the spam tab).
+const POLL_INTERVAL_MS = 3000
 const yandexRedirectURI = () => `${window.location.origin}/auth/callback/yandex`
 const DESKTOP_RETURN_KEY = 'desktop_return_url'
 
@@ -254,7 +257,7 @@ export default function LoginPage() {
         </p>
 
         {error && (
-          <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-[13px] text-red-300">
+          <div className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-danger">
             {error}
           </div>
         )}

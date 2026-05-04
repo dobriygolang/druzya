@@ -34,9 +34,24 @@ export function MaintenanceOverlay({ active, startsAt, endsAt, message }: Mainte
   const [now, setNow] = useState<Date>(new Date())
   useEffect(() => {
     if (!active) return
-    const id = window.setInterval(() => setNow(new Date()), 1000)
+    // Phase R3 cooldown — only tick while at least one boundary is still
+    // ahead of us. Once both starts/ends are in the past the countdown is
+    // a fixed "—" so a 1Hz re-render is pure heat.
+    const id = window.setInterval(() => {
+      setNow((prev) => {
+        const next = new Date()
+        const startPast = startsAt ? next >= startsAt : true
+        const endPast = endsAt ? next >= endsAt : true
+        if (startPast && endPast) {
+          window.clearInterval(id)
+        }
+        // Equal-time noop: avoid setting state when nothing changed (e.g.
+        // multiple components sharing the same overlay won't bump siblings).
+        return prev.getTime() === next.getTime() ? prev : next
+      })
+    }, 1000)
     return () => window.clearInterval(id)
-  }, [active])
+  }, [active, startsAt, endsAt])
 
   if (!active) return null
 

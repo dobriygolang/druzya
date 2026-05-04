@@ -8,7 +8,7 @@
 // Минимальный inline create — без отдельной модалки чтобы оставить
 // flow прямым.
 
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { Loader2, Pause, Play, Plus, Star, Trash2, X, Check } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -25,9 +25,10 @@ import {
   type UserGoalKind,
 } from '../lib/queries/goals'
 
+// B/W rule: critical → #FF3B30 signal, warn → ink-ramp, cruise → transparent.
 const SEV_STRIPE: Record<'critical' | 'warn' | 'cruise', string> = {
-  critical: 'rgb(239 68 68)',
-  warn: 'rgb(245 158 11)',
+  critical: '#FF3B30',
+  warn: 'rgba(255,255,255,0.55)',
   cruise: 'transparent',
 }
 
@@ -35,9 +36,20 @@ export default function GoalsPage() {
   const goalsQ = useGoalsQuery()
   const items = goalsQ.data ?? []
 
-  const active = items.filter((g) => g.status === 'active')
-  const paused = items.filter((g) => g.status === 'paused')
-  const archive = items.filter((g) => g.status === 'done' || g.status === 'abandoned')
+  // Phase R3 — single-pass partition memoised by items reference. Avoids
+  // 3 full scans on every parent re-render (e.g. when an unrelated query
+  // settles and bubbles a state change).
+  const { active, paused, archive } = useMemo(() => {
+    const a: UserGoal[] = []
+    const p: UserGoal[] = []
+    const ar: UserGoal[] = []
+    for (const g of items) {
+      if (g.status === 'active') a.push(g)
+      else if (g.status === 'paused') p.push(g)
+      else if (g.status === 'done' || g.status === 'abandoned') ar.push(g)
+    }
+    return { active: a, paused: p, archive: ar }
+  }, [items])
 
   return (
     <AppShellV2>
