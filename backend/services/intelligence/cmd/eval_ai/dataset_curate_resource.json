@@ -1,0 +1,91 @@
+[
+  {
+    "name": "ml_classical_5_resources",
+    "task": "curate_resource",
+    "input": {
+      "atlas_node_id": "ml_classical",
+      "title": "Classical ML",
+      "kind": "theory",
+      "count": 5
+    },
+    "raw_response": "[{\"url\":\"https://mlcourse.ai/book/topic03/topic03_decision_trees.html\",\"title\":\"Topic 3 · Decision Trees\",\"author\":\"ods.ai\",\"kind\":\"course\",\"minutes\":45,\"level\":\"B\",\"priority\":\"core\",\"why\":\"best free intuition for impurity-based splitting without code\",\"topics_covered\":[\"ml_classical\"],\"prereqs\":[\"ml_data_intuition\"],\"summary\":\"Decision tree fundamentals: entropy, information gain, gini, regularization. Pairs well with sklearn API walkthroughs.\",\"depth\":\"intuition\"},{\"url\":\"https://mlcourse.ai/book/topic04/topic04_linear_models.html\",\"title\":\"Topic 4 · Linear Models\",\"author\":\"ods.ai\",\"kind\":\"course\",\"minutes\":50,\"level\":\"B\",\"priority\":\"core\",\"why\":\"linear regression vs logistic geometry without dropping derivations\",\"topics_covered\":[\"ml_classical\"],\"prereqs\":[],\"summary\":\"Linear and logistic regression with full derivations of gradient and regularization terms.\",\"depth\":\"deep\"},{\"url\":\"https://www.deeplearningbook.org/contents/ml.html\",\"title\":\"Deep Learning · ML Basics\",\"author\":\"Goodfellow\",\"kind\":\"book\",\"minutes\":120,\"level\":\"C\",\"priority\":\"supplement\",\"why\":\"frames classical ML in terms that help bridge to DL\",\"topics_covered\":[\"ml_classical\"],\"prereqs\":[],\"summary\":\"Chapter 5 of DL book — ML fundamentals from a deep-learning perspective.\",\"depth\":\"deep\"},{\"url\":\"https://sebastianraschka.com/blog/2020/intro-to-dl-ch01.html\",\"title\":\"Intro to ML\",\"author\":\"Raschka\",\"kind\":\"article\",\"minutes\":25,\"level\":\"A\",\"priority\":\"optional\",\"why\":\"warm-up if rusty\",\"topics_covered\":[\"ml_classical\"],\"prereqs\":[],\"summary\":\"Short overview of ML taxonomy.\",\"depth\":\"intro\"},{\"url\":\"https://github.com/rasbt/mlxtend\",\"title\":\"mlxtend\",\"author\":\"Raschka\",\"kind\":\"tool\",\"minutes\":0,\"level\":\"B\",\"priority\":\"optional\",\"why\":\"sklearn-compatible utilities for ensembles\",\"topics_covered\":[\"ml_classical\"],\"prereqs\":[],\"summary\":\"Library with ensemble utilities + plotting helpers.\",\"depth\":\"reference\"}]",
+    "regression": {
+      "min_resources": 3,
+      "max_resources": 7,
+      "all_urls_absolute": true,
+      "all_why_non_empty": true,
+      "all_kinds_valid": true
+    }
+  },
+  {
+    "name": "de_etl_practice",
+    "task": "curate_resource",
+    "input": {
+      "atlas_node_id": "de_etl_pipelines",
+      "title": "ETL / ELT pipelines",
+      "kind": "practice",
+      "count": 3
+    },
+    "raw_response": "[{\"url\":\"https://www.kaggle.com/code/dansbecker/handling-missing-values\",\"title\":\"Handling Missing Values\",\"author\":\"Kaggle\",\"kind\":\"kata\",\"minutes\":30,\"level\":\"B\",\"priority\":\"core\",\"why\":\"hands-on data cleaning workflow\",\"topics_covered\":[\"de_etl_pipelines\",\"de_data_quality\"],\"prereqs\":[],\"summary\":\"Imputation strategies and pandas idioms.\",\"depth\":\"intro\"},{\"url\":\"https://www.databricks.com/learn/training\",\"title\":\"Databricks Academy\",\"author\":\"Databricks\",\"kind\":\"course\",\"minutes\":120,\"level\":\"C\",\"priority\":\"supplement\",\"why\":\"covers Delta Lake CDC patterns at production scale\",\"topics_covered\":[\"de_etl_pipelines\",\"de_streaming\"],\"prereqs\":[],\"summary\":\"Free track covering pipelines, Delta Lake, and orchestration.\",\"depth\":\"deep\"},{\"url\":\"https://leetcode.com/study-plan/sql/\",\"title\":\"SQL Study Plan\",\"author\":\"LeetCode\",\"kind\":\"kata\",\"minutes\":300,\"level\":\"B\",\"priority\":\"supplement\",\"why\":\"SQL fundamentals you'll use to validate ETL output\",\"topics_covered\":[\"de_sql_optimization\"],\"prereqs\":[],\"summary\":\"75 SQL questions across joins, aggregations, window functions.\",\"depth\":\"reference\"}]",
+    "regression": {
+      "min_resources": 3,
+      "max_resources": 7,
+      "all_urls_absolute": true,
+      "all_why_non_empty": true,
+      "all_kinds_valid": true
+    }
+  },
+  {
+    "name": "too_few_resources_should_fail",
+    "task": "curate_resource",
+    "input": {
+      "atlas_node_id": "ml_evaluation",
+      "title": "Evaluation & metrics",
+      "kind": "theory",
+      "count": 5
+    },
+    "raw_response": "[{\"url\":\"https://en.wikipedia.org/wiki/Precision_and_recall\",\"title\":\"Wikipedia\",\"author\":\"Wikipedia\",\"kind\":\"article\",\"minutes\":15,\"level\":\"A\",\"priority\":\"optional\",\"why\":\"definition\",\"topics_covered\":[],\"prereqs\":[],\"summary\":\"\",\"depth\":\"reference\"}]",
+    "regression": {
+      "min_resources": 3,
+      "expected_to_fail": true
+    }
+  },
+  {
+    "name": "invalid_url_should_fail",
+    "task": "curate_resource",
+    "input": {
+      "atlas_node_id": "ml_classical",
+      "title": "Classical ML",
+      "kind": "theory",
+      "count": 3
+    },
+    "raw_response": "[{\"url\":\"/relative/path\",\"title\":\"X\",\"author\":\"y\",\"kind\":\"course\",\"minutes\":10,\"level\":\"B\",\"priority\":\"core\",\"why\":\"reason\"},{\"url\":\"https://valid.com\",\"title\":\"Z\",\"author\":\"a\",\"kind\":\"book\",\"minutes\":20,\"level\":\"B\",\"priority\":\"core\",\"why\":\"reason\"},{\"url\":\"https://valid2.com\",\"title\":\"W\",\"author\":\"b\",\"kind\":\"video\",\"minutes\":30,\"level\":\"B\",\"priority\":\"supplement\",\"why\":\"reason\"}]",
+    "regression": {
+      "all_urls_absolute": true,
+      "expected_to_fail": true
+    }
+  },
+  {
+    "name": "empty_why_should_fail",
+    "task": "curate_resource",
+    "input": {"atlas_node_id": "ml_classical", "title": "ML"},
+    "raw_response": "[{\"url\":\"https://a.com\",\"title\":\"a\",\"author\":\"x\",\"kind\":\"course\",\"minutes\":10,\"level\":\"B\",\"priority\":\"core\",\"why\":\"\"},{\"url\":\"https://b.com\",\"title\":\"b\",\"author\":\"y\",\"kind\":\"course\",\"minutes\":10,\"level\":\"B\",\"priority\":\"core\",\"why\":\"\"},{\"url\":\"https://c.com\",\"title\":\"c\",\"author\":\"z\",\"kind\":\"course\",\"minutes\":10,\"level\":\"B\",\"priority\":\"core\",\"why\":\"\"}]",
+    "regression": {
+      "all_why_non_empty": true,
+      "expected_to_fail": true
+    }
+  },
+  {
+    "name": "rich_metadata_passes",
+    "task": "curate_resource",
+    "input": {"atlas_node_id": "de_streaming", "title": "Streaming"},
+    "raw_response": "[{\"url\":\"https://kafka.apache.org/documentation/\",\"title\":\"Kafka docs\",\"author\":\"Apache\",\"kind\":\"article\",\"minutes\":120,\"level\":\"C\",\"priority\":\"core\",\"why\":\"canonical reference for exactly-once semantics\",\"topics_covered\":[\"de_streaming\"],\"prereqs\":[\"de_etl_pipelines\"],\"summary\":\"Official Kafka documentation including transaction protocol details.\",\"depth\":\"reference\"},{\"url\":\"https://www.confluent.io/blog/exactly-once-semantics-are-possible-heres-how-apache-kafka-does-it/\",\"title\":\"Exactly-once in Kafka\",\"author\":\"Confluent\",\"kind\":\"article\",\"minutes\":40,\"level\":\"C\",\"priority\":\"core\",\"why\":\"deep dive into idempotent producer math\",\"topics_covered\":[\"de_streaming\"],\"prereqs\":[\"de_etl_pipelines\"],\"summary\":\"Walkthrough of producer epoch + idempotent send + transactional semantics.\",\"depth\":\"deep\"},{\"url\":\"https://nightlies.apache.org/flink/flink-docs-stable/\",\"title\":\"Flink docs\",\"author\":\"Apache\",\"kind\":\"article\",\"minutes\":150,\"level\":\"C\",\"priority\":\"supplement\",\"why\":\"watermark + windowing reference\",\"topics_covered\":[\"de_streaming\"],\"prereqs\":[],\"summary\":\"Comprehensive streaming concepts reference.\",\"depth\":\"reference\"}]",
+    "regression": {
+      "min_resources": 3,
+      "max_resources": 7,
+      "all_urls_absolute": true,
+      "all_why_non_empty": true,
+      "all_kinds_valid": true
+    }
+  }
+]

@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>druz9 · Hone TaskBoard</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#000;
+      --surface-1:#0a0a0a; --surface-2:#111; --surface-3:#161616;
+      --hair:rgba(255,255,255,0.07); --hair-2:rgba(255,255,255,0.12);
+      --ink-100:#fff; --ink-92:rgba(255,255,255,0.92); --ink-70:rgba(255,255,255,0.7);
+      --ink-50:rgba(255,255,255,0.5); --ink-30:rgba(255,255,255,0.3); --ink-15:rgba(255,255,255,0.15);
+      --accent:#FF3B30;
+      --t-fast:150ms; --t-base:220ms; --ease:cubic-bezier(0.2,0.7,0.2,1);
+    }
+    *{box-sizing:border-box}
+    html,body{
+      background:var(--bg); color:var(--ink-92);
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+      letter-spacing:-0.005em; -webkit-font-smoothing:antialiased;
+    }
+    .mono{font-family:'JetBrains Mono',ui-monospace,monospace; letter-spacing:-0.01em}
+    .surface{background:var(--surface-1)} .surface-2{background:var(--surface-2)} .surface-3{background:var(--surface-3)}
+    .hair-b{border:1px solid var(--hair)} .hair2-b{border:1px solid var(--hair-2)}
+    .dim{color:var(--ink-50)} .dim-2{color:var(--ink-30)}
+    .hairline{height:1px;background:var(--hair);width:100%}
+
+    .canvas-bg{
+      background:radial-gradient(circle at 10% -5%, rgba(255,255,255,0.02), transparent 55%), var(--bg);
+    }
+
+    @keyframes pageFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .page-enter{animation:pageFade 220ms var(--ease) both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+    .stagger>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .stagger>*:nth-child(1){animation-delay:60ms}
+    .stagger>*:nth-child(2){animation-delay:130ms}
+    .stagger>*:nth-child(3){animation-delay:200ms}
+    .stagger>*:nth-child(4){animation-delay:270ms}
+    .stagger>*:nth-child(5){animation-delay:340ms}
+
+    .col-stagger>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .col-stagger>*:nth-child(1){animation-delay:80ms}
+    .col-stagger>*:nth-child(2){animation-delay:150ms}
+    .col-stagger>*:nth-child(3){animation-delay:220ms}
+    .col-stagger>*:nth-child(4){animation-delay:290ms}
+    .col-stagger>*:nth-child(5){animation-delay:360ms}
+    .col-stagger>*:nth-child(6){animation-delay:430ms}
+    .col-stagger>*:nth-child(7){animation-delay:500ms}
+    .col-stagger>*:nth-child(8){animation-delay:570ms}
+
+    /* card flow / position transitions */
+    .flip-anim{
+      transition: transform 380ms var(--ease),
+                  opacity   var(--t-base) var(--ease);
+    }
+
+    .lift{transition:transform var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),background-color var(--t-fast) var(--ease)}
+    .lift:hover{transform:translateY(-1px); border-color:var(--hair-2)}
+    .btn-primary{background:#fff;color:#000;transition:transform var(--t-fast) var(--ease),background-color var(--t-fast) var(--ease)}
+    .btn-primary:hover{transform:translateY(-1px); background:rgba(255,255,255,0.92)}
+
+    @keyframes fillBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    .fill-bar{transform-origin:left;animation:fillBar 1100ms ease-out forwards;animation-delay:240ms}
+
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;
+      border:1px solid var(--hair); background:var(--surface-2);
+      font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;
+      color:var(--ink-50); font-family:'JetBrains Mono',ui-monospace,monospace}
+    .chip.live{color:var(--ink-70)}
+    .chip.live::before{content:'';width:6px;height:6px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 2px rgba(255,59,48,0.18)}
+    .kbd{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;
+      border:1px solid var(--hair-2); background:var(--surface-3);
+      font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-70); line-height:1.4}
+
+    button:focus-visible{outline:1px solid var(--ink-70);outline-offset:2px}
+    ::selection{background:rgba(255,255,255,0.18); color:#fff}
+    ::-webkit-scrollbar{width:6px;height:6px}
+    ::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:3px}
+
+    .no-select{-webkit-user-select:none;user-select:none}
+
+    .card{
+      position:relative;
+      background:var(--surface-2);
+      border:1px solid var(--hair);
+      border-radius:8px;
+      padding:12px 13px;
+      cursor:grab;
+      transition: transform var(--t-fast) var(--ease),
+                  border-color var(--t-fast) var(--ease),
+                  background-color var(--t-fast) var(--ease),
+                  box-shadow var(--t-fast) var(--ease),
+                  opacity var(--t-base) var(--ease);
+      will-change: transform;
+    }
+    .card:hover{transform:translateY(-1px); border-color:var(--hair-2)}
+    .card:active{cursor:grabbing}
+    .card.now{
+      border-color:var(--hair-2);
+      background:var(--surface-3);
+    }
+    .card.now::before{
+      content:''; position:absolute; left:0; top:0; bottom:0; width:1.5px;
+      background:var(--accent); border-radius:8px 0 0 8px;
+    }
+
+    /* placeholder slot during drag */
+    .placeholder{
+      border:1px dashed var(--hair-2);
+      border-radius:8px;
+      background:rgba(255,255,255,0.015);
+      transition: height 220ms var(--ease), opacity var(--t-base) var(--ease);
+    }
+
+    /* dragging state */
+    .card.dragging{
+      cursor:grabbing;
+      opacity:0.96;
+      z-index:80;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.6),
+                  0 2px 8px rgba(0,0,0,0.4);
+      border-color:var(--hair-2);
+      transform: rotate(-1.2deg) scale(1.02);
+      transition: box-shadow 180ms var(--ease);
+    }
+    .card.ai-grabbed{
+      box-shadow: 0 18px 40px rgba(0,0,0,0.6),
+                  0 0 0 1px rgba(255,255,255,0.18),
+                  0 2px 8px rgba(0,0,0,0.4);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    /* column drop highlight */
+    .col-body.drop-hot{
+      background: rgba(255,255,255,0.025);
+      transition: background 180ms var(--ease);
+    }
+    .col-body{
+      transition: background 180ms var(--ease);
+    }
+
+    /* ai cursor */
+    .ai-cursor{
+      position:fixed; left:0; top:0; width:18px; height:18px;
+      pointer-events:none; z-index:100;
+      transform: translate3d(-100px,-100px,0);
+      transition: transform 520ms cubic-bezier(0.45,0.05,0.2,1);
+    }
+    .ai-cursor svg{display:block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7))}
+    .ai-cursor.fast{transition-duration: 360ms}
+    .ai-cursor.slow{transition-duration: 720ms}
+    .ai-pulse{
+      position:absolute; left:-3px; top:-3px; width:24px; height:24px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.5);
+      opacity:0;
+      animation: aiPulse 900ms var(--ease) infinite;
+    }
+    @keyframes aiPulse{
+      0%   { transform: scale(0.6); opacity: 0.85; }
+      100% { transform: scale(1.7); opacity: 0;    }
+    }
+    .ai-label{
+      position:fixed; pointer-events:none; z-index:100;
+      transform: translate3d(-100px,-100px,0);
+      transition: transform 520ms cubic-bezier(0.45,0.05,0.2,1), opacity 220ms var(--ease);
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size:10px; letter-spacing:0.06em; text-transform:uppercase;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.96);
+      color:#000;
+      border-radius: 4px;
+      white-space:nowrap;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    /* toast log for AI actions */
+    .ai-log{
+      position:fixed; left:50%; bottom:20px; transform:translateX(-50%);
+      display:flex; gap:8px; align-items:center;
+      background: var(--surface-2); border:1px solid var(--hair-2);
+      border-radius:8px; padding:8px 12px;
+      font-family:'JetBrains Mono', ui-monospace, monospace;
+      font-size:10px; letter-spacing:0.06em; text-transform:uppercase;
+      color:var(--ink-70);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index:60;
+      transition: opacity var(--t-base) var(--ease), transform var(--t-base) var(--ease);
+    }
+    .ai-log .dot{
+      width:6px; height:6px; border-radius:999px; background:var(--accent);
+      box-shadow: 0 0 0 2px rgba(255,59,48,0.18);
+    }
+
+    /* drop pulse — flashes on a column when ai drops a card */
+    @keyframes dropPulse{
+      0% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0.3); }
+      100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0); }
+    }
+
+    .tweaks{
+      position:fixed;right:20px;bottom:20px;width:280px;
+      background:var(--surface-2); border:1px solid var(--hair-2);
+      border-radius:10px; padding:14px; z-index:50; font-size:12px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.6);
+    }
+
+    /* accept-row reveal */
+    @keyframes acceptIn{
+      from { transform: translateY(8px); opacity: 0; }
+      to   { transform: translateY(0);   opacity: 1; }
+    }
+    .accept-in{animation: acceptIn 280ms var(--ease) both}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "groupBy": "status",
+      "showTutorRail": true,
+      "filter": "all",
+      "aiAuto": true,
+      "aiSpeed": "normal"
+    }/*EDITMODE-END*/;
+
+    /* ===== mock data ===== */
+    const COLUMNS = [
+      { key:'todo',   label:'todo',         sub:'queued by AI-coach', wip:null },
+      { key:'doing',  label:'in flight',    sub:'one at a time',      wip:1 },
+      { key:'review', label:'tutor review', sub:'awaits sign-off',    wip:null },
+      { key:'done',   label:'done',         sub:'last 7 days',        wip:null },
+    ];
+
+    const TUTORS = [
+      { id:'lena',  name:'Лена',  role:'sql · de mentor',     avail:'~2h' },
+      { id:'mark',  name:'Mark',  role:'distributed systems', avail:'idle' },
+      { id:'aigul', name:'Айгюль', role:'mle · embeddings',    avail:'busy' },
+    ];
+
+    const INITIAL_TASKS = [
+      { id:'t1', col:'doing', title:'Backfill orchestration через Airflow',
+        track:'DE', est:25, due:'today', tutor:'lena',
+        progress:0.6, now:true, kind:'focus',
+        notes:'idempotency · sla 30m' },
+      { id:'t2', col:'todo', title:'Streaming user events с idempotency',
+        track:'DE', est:50, due:'tomorrow', tutor:'lena',
+        kind:'reading', notes:'kafka semantics · dedup window' },
+      { id:'t3', col:'todo', title:'CDC postgres → clickhouse · схема',
+        track:'DE', est:25, due:'wed', tutor:null,
+        kind:'design', notes:'auto-suggested by coach' },
+      { id:'t4', col:'todo', title:'Quality scoring для ai_mock ответов',
+        track:'MLE', est:40, due:'thu', tutor:'aigul',
+        kind:'eval', notes:'recall@10 baseline' },
+      { id:'t5', col:'todo', title:'Two-phase commit reasoning · drill',
+        track:'BE', est:25, due:'fri', tutor:'mark',
+        kind:'mock', notes:'last mock weak axis' },
+      { id:'t6', col:'review', title:'Daily metrics pipeline (PG → CH)',
+        track:'DE', est:'-', due:'lena · 1d', tutor:'lena',
+        kind:'review', notes:'PR-style · awaits comments',
+        reviewLines:'+128 −34' },
+      { id:'t7', col:'review', title:'RAG offline eval — recall@10',
+        track:'MLE', est:'-', due:'aigul · 4h', tutor:'aigul',
+        kind:'review', notes:'rejected once · iterating',
+        reviewLines:'+62 −12', flagged:true },
+      { id:'t8', col:'done', title:'Embedding-based semantic search',
+        track:'MLE', est:120, due:'mon', tutor:'aigul', kind:'reading' },
+      { id:'t9', col:'done', title:'Window functions over partition',
+        track:'DE', est:25, due:'tue', tutor:'lena', kind:'note' },
+      { id:'t10', col:'done', title:'Distributed transactions deep-dive · pt 1',
+        track:'BE', est:50, due:'wed', tutor:'mark', kind:'reading' },
+    ];
+
+    const KIND_GLYPH = {
+      focus:'◐', reading:'↗', design:'◇', eval:'⌘',
+      mock:'◳', review:'⤿', note:'•',
+    };
+
+    /* ===== atoms ===== */
+    const Chip = ({ children, live=false }) => (
+      <span className={`chip ${live?'live':''}`}>{children}</span>
+    );
+    const Kbd = ({ children }) => <span className="kbd">{children}</span>;
+
+    function TutorAvatar({ tutor, size=18 }) {
+      if (!tutor) return null;
+      const t = TUTORS.find(x => x.id === tutor);
+      if (!t) return null;
+      return (
+        <span className="inline-flex items-center justify-center mono font-semibold rounded-full hair2-b"
+              style={{
+                width:size, height:size, fontSize: size>22?11:9,
+                background:'var(--surface-3)', color:'var(--ink-92)'
+              }}>
+          {t.name.slice(0,1).toUpperCase()}
+        </span>
+      );
+    }
+
+    /* ===== drag context ===== */
+    const DragCtx = React.createContext(null);
+
+    /* ===== card ===== */
+    const Card = React.forwardRef(function Card({ task, onPointerDown, isDragging, isAiGrabbed, asGhost, draggingHeight }, ref) {
+      const tutor = TUTORS.find(t => t.id === task.tutor);
+      return (
+        <div
+          ref={ref}
+          data-task-id={task.id}
+          className={`card ${task.now?'now':''} ${isDragging?'dragging':''} ${isAiGrabbed?'ai-grabbed':''}`}
+          onPointerDown={onPointerDown}
+          style={asGhost ? {
+            position:'fixed',
+            left:0, top:0,
+            width: draggingHeight?.width || 'auto',
+            pointerEvents:'none',
+          } : undefined}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="mono text-[10px] dim-2 uppercase tracking-wider">{task.track}</span>
+              <span className="dim-2 text-[10px]">·</span>
+              <span className="mono text-[10px] dim-2">{KIND_GLYPH[task.kind] || '·'} {task.kind}</span>
+            </div>
+            {task.flagged && (
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <path d="M2 2 L8 8 M8 2 L2 8" stroke="var(--accent)" strokeWidth="1.5"/>
+              </svg>
+            )}
+          </div>
+
+          <div className="text-[13px] leading-snug mb-3" style={{color:'var(--ink-92)'}}>
+            {task.title}
+          </div>
+
+          {typeof task.progress === 'number' && (
+            <div className="mb-3">
+              <div className="h-1 surface-3 rounded-full overflow-hidden">
+                <div className="fill-bar h-full"
+                     style={{width:`${task.progress*100}%`, background:'#fff'}}/>
+              </div>
+            </div>
+          )}
+
+          {task.notes && (
+            <div className="mono text-[10px] dim-2 mb-3 leading-relaxed">
+              {task.notes}
+            </div>
+          )}
+
+          <div className="hairline mb-2.5"/>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {tutor && <TutorAvatar tutor={tutor.id}/>}
+              <span className="mono text-[10px] dim uppercase tracking-wider">
+                {task.due}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {task.reviewLines && <span className="mono text-[10px] dim-2">{task.reviewLines}</span>}
+              {typeof task.est === 'number' && (
+                <span className="mono text-[10px] dim">{task.est}m</span>
+              )}
+              {task.now && <span className="chip live">live</span>}
+            </div>
+          </div>
+        </div>
+      );
+    });
+
+    /* ===== column ===== */
+    function Column({ col, tasks, drag, registerColEl }) {
+      const bodyRef = useRef(null);
+      useEffect(() => { registerColEl(col.key, bodyRef.current); }, [col.key]);
+
+      const isHover = drag.dragging && drag.hoverCol === col.key;
+      const placeholderH = drag.dragging && isHover ? (drag.draggingSize?.height || 80) : 0;
+
+      const visibleTasks = drag.dragging && drag.task?.col === col.key
+        ? tasks.filter(t => t.id !== drag.task.id)
+        : tasks;
+
+      // figure where placeholder sits in this column (only for hover col)
+      const dropIndex = isHover ? drag.dropIndex ?? visibleTasks.length : -1;
+
+      const items = [];
+      visibleTasks.forEach((t, i) => {
+        if (i === dropIndex) {
+          items.push(
+            <div
+              key="placeholder"
+              className="placeholder"
+              style={{height: placeholderH, marginBottom: 0}}
+            />
+          );
+        }
+        items.push(
+          <CardWithFlip
+            key={t.id}
+            task={t}
+            drag={drag}
+          />
+        );
+      });
+      if (dropIndex >= visibleTasks.length) {
+        items.push(
+          <div key="placeholder" className="placeholder" style={{height: placeholderH}}/>
+        );
+      }
+
+      return (
+        <div className="surface hair-b rounded-xl flex flex-col min-h-[520px]">
+          <div className="px-4 pt-4 pb-3 flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="mono text-[11px] uppercase tracking-wider"
+                      style={{color:'var(--ink-92)'}}>{col.label}</span>
+                <span className="mono text-[11px] dim-2">{tasks.length}</span>
+              </div>
+              <div className="mono text-[10px] dim-2 mt-0.5 uppercase tracking-wider">{col.sub}</div>
+            </div>
+            {col.wip && (
+              <span className="chip">wip {tasks.length}/{col.wip}</span>
+            )}
+          </div>
+          <div className="hairline"/>
+          <div
+            ref={bodyRef}
+            data-col={col.key}
+            className={`col-body p-3 flex-1 flex flex-col gap-2.5 ${isHover?'drop-hot':''}`}
+          >
+            {items}
+            {tasks.length === 0 && !isHover && (
+              <div className="text-[11px] dim-2 mono uppercase tracking-wider px-2 py-4">empty</div>
+            )}
+            <button className="lift hair-b mono uppercase tracking-wider text-[10px] dim
+                               py-2 rounded-md mt-auto"
+                    style={{background:'var(--surface-2)'}}>
+              + add task <Kbd>N</Kbd>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    /* ===== card with FLIP transitions ===== */
+    function CardWithFlip({ task, drag }) {
+      const ref = useRef(null);
+      const lastRectRef = useRef(null);
+
+      // record rect each render for FLIP
+      useLayoutEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        const newRect = el.getBoundingClientRect();
+        const prev = lastRectRef.current;
+        if (prev) {
+          const dx = prev.left - newRect.left;
+          const dy = prev.top - newRect.top;
+          if (dx || dy) {
+            el.style.transition = 'none';
+            el.style.transform = `translate(${dx}px, ${dy}px)`;
+            // force layout
+            el.getBoundingClientRect();
+            requestAnimationFrame(() => {
+              el.style.transition = 'transform 380ms cubic-bezier(0.2,0.7,0.2,1)';
+              el.style.transform = '';
+            });
+          }
+        }
+        lastRectRef.current = newRect;
+      });
+
+      const onPointerDown = (e) => {
+        if (e.button !== 0) return;
+        if (drag.aiActive) return;
+        const el = ref.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        drag.start({
+          task,
+          el,
+          offsetX: e.clientX - rect.left,
+          offsetY: e.clientY - rect.top,
+          width: rect.width,
+          height: rect.height,
+          x: e.clientX,
+          y: e.clientY,
+        });
+        e.preventDefault();
+      };
+
+      const isAiGrabbed = drag.aiActive && drag.task?.id === task.id;
+
+      return (
+        <Card
+          ref={ref}
+          task={task}
+          onPointerDown={onPointerDown}
+          isDragging={false}
+          isAiGrabbed={isAiGrabbed}
+        />
+      );
+    }
+
+    /* ===== ghost card (follows pointer / ai cursor) ===== */
+    function Ghost({ drag }) {
+      if (!drag.dragging || !drag.task) return null;
+      const left = drag.x - drag.offsetX;
+      const top = drag.y - drag.offsetY;
+      return (
+        <div
+          style={{
+            position:'fixed',
+            left:0, top:0,
+            transform:`translate3d(${left}px, ${top}px, 0)`,
+            width: drag.draggingSize?.width || 240,
+            pointerEvents:'none',
+            zIndex: 90,
+            transition: drag.aiActive
+              ? 'transform 520ms cubic-bezier(0.45,0.05,0.2,1)'
+              : 'none',
+          }}
+        >
+          <div className={`card ${drag.aiActive?'ai-grabbed':'dragging'}`}
+               style={{cursor:'grabbing'}}>
+            <CardInner task={drag.task}/>
+          </div>
+        </div>
+      );
+    }
+
+    function CardInner({ task }) {
+      const tutor = TUTORS.find(t => t.id === task.tutor);
+      return (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="mono text-[10px] dim-2 uppercase tracking-wider">{task.track}</span>
+              <span className="dim-2 text-[10px]">·</span>
+              <span className="mono text-[10px] dim-2">{KIND_GLYPH[task.kind] || '·'} {task.kind}</span>
+            </div>
+            {task.flagged && (
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <path d="M2 2 L8 8 M8 2 L2 8" stroke="var(--accent)" strokeWidth="1.5"/>
+              </svg>
+            )}
+          </div>
+          <div className="text-[13px] leading-snug mb-3" style={{color:'var(--ink-92)'}}>{task.title}</div>
+          {typeof task.progress === 'number' && (
+            <div className="mb-3">
+              <div className="h-1 surface-3 rounded-full overflow-hidden">
+                <div className="h-full" style={{width:`${task.progress*100}%`, background:'#fff'}}/>
+              </div>
+            </div>
+          )}
+          {task.notes && (
+            <div className="mono text-[10px] dim-2 mb-3 leading-relaxed">{task.notes}</div>
+          )}
+          <div className="hairline mb-2.5"/>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {tutor && <TutorAvatar tutor={tutor.id}/>}
+              <span className="mono text-[10px] dim uppercase tracking-wider">{task.due}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {task.reviewLines && <span className="mono text-[10px] dim-2">{task.reviewLines}</span>}
+              {typeof task.est === 'number' && (
+                <span className="mono text-[10px] dim">{task.est}m</span>
+              )}
+              {task.now && <span className="chip live">live</span>}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    /* ===== ai cursor ===== */
+    function AiCursor({ ai }) {
+      if (!ai.visible) return null;
+      return (
+        <>
+          <div className={`ai-cursor ${ai.speed||''}`}
+               style={{transform:`translate3d(${ai.x}px, ${ai.y}px, 0)`}}>
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path d="M2 2 L2 14 L6 11 L8.5 16 L10.5 15 L8 10.5 L13 10 Z"
+                    fill="#fff" stroke="#000" strokeWidth="0.8" strokeLinejoin="round"/>
+            </svg>
+            {ai.pulsing && <span className="ai-pulse"/>}
+          </div>
+          {ai.label && (
+            <div className="ai-label"
+                 style={{transform:`translate3d(${ai.x + 22}px, ${ai.y + 14}px, 0)`,
+                         opacity: ai.label ? 1 : 0}}>
+              {ai.label}
+            </div>
+          )}
+        </>
+      );
+    }
+
+    /* ===== ai action log ===== */
+    function AiLog({ message }) {
+      if (!message) return null;
+      return (
+        <div className="ai-log accept-in">
+          <span className="dot"></span>
+          <span>ai-coach</span>
+          <span className="dim-2">·</span>
+          <span style={{color:'var(--ink-92)'}}>{message}</span>
+        </div>
+      );
+    }
+
+    /* ===== drag state hook ===== */
+    function useDrag(tasks, setTasks, colElsRef) {
+      const [state, setState] = useState({
+        dragging:false, task:null, x:0, y:0,
+        offsetX:0, offsetY:0,
+        draggingSize:null,
+        hoverCol:null, dropIndex:null,
+        aiActive:false,
+      });
+      const stateRef = useRef(state);
+      stateRef.current = state;
+
+      const computeDrop = (clientX, clientY) => {
+        // find which column element contains the point
+        let hoverCol = null;
+        for (const [key, el] of Object.entries(colElsRef.current)) {
+          if (!el) continue;
+          const r = el.getBoundingClientRect();
+          if (clientX >= r.left && clientX <= r.right && clientY >= r.top - 40 && clientY <= r.bottom + 40) {
+            hoverCol = key;
+            break;
+          }
+        }
+        if (!hoverCol) return { hoverCol:null, dropIndex:null };
+
+        // find drop index by iterating cards in that column
+        const colEl = colElsRef.current[hoverCol];
+        const cardEls = colEl.querySelectorAll('[data-task-id]');
+        let dropIndex = cardEls.length;
+        for (let i=0; i<cardEls.length; i++) {
+          const id = cardEls[i].getAttribute('data-task-id');
+          if (stateRef.current.task && id === stateRef.current.task.id) continue;
+          const r = cardEls[i].getBoundingClientRect();
+          if (clientY < r.top + r.height/2) {
+            dropIndex = i;
+            break;
+          }
+        }
+        return { hoverCol, dropIndex };
+      };
+
+      const start = (info) => {
+        const { hoverCol, dropIndex } = computeDrop(info.x, info.y);
+        setState({
+          dragging:true,
+          task: info.task,
+          x: info.x, y: info.y,
+          offsetX: info.offsetX, offsetY: info.offsetY,
+          draggingSize: { width: info.width, height: info.height },
+          hoverCol, dropIndex,
+          aiActive:false,
+        });
+      };
+
+      const move = (clientX, clientY) => {
+        const cur = stateRef.current;
+        if (!cur.dragging) return;
+        const { hoverCol, dropIndex } = computeDrop(clientX, clientY);
+        setState({ ...cur, x:clientX, y:clientY, hoverCol, dropIndex });
+      };
+
+      const end = (commit=true) => {
+        const cur = stateRef.current;
+        if (!cur.dragging) return;
+        if (commit && cur.task && cur.hoverCol) {
+          // remove + reinsert at dropIndex within hoverCol
+          setTasks(prev => {
+            const without = prev.filter(t => t.id !== cur.task.id);
+            // build per-column ordering preserved; rebuild whole list
+            const byCol = {};
+            COLUMNS.forEach(c => byCol[c.key] = []);
+            without.forEach(t => byCol[t.col].push(t));
+            const moved = { ...cur.task, col: cur.hoverCol };
+            // strip 'now' if leaving doing
+            if (cur.task.col === 'doing' && cur.hoverCol !== 'doing') {
+              moved.now = false;
+            }
+            const idx = Math.min(cur.dropIndex ?? byCol[cur.hoverCol].length, byCol[cur.hoverCol].length);
+            byCol[cur.hoverCol].splice(idx, 0, moved);
+            // flatten back
+            const flat = [];
+            COLUMNS.forEach(c => flat.push(...byCol[c.key]));
+            return flat;
+          });
+        }
+        setState(s => ({ ...s, dragging:false, task:null, hoverCol:null, dropIndex:null, aiActive:false }));
+      };
+
+      // pointer listeners (only when human dragging)
+      useEffect(() => {
+        if (!state.dragging || state.aiActive) return;
+        const onMove = (e) => move(e.clientX, e.clientY);
+        const onUp = () => end(true);
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        return () => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+        };
+      }, [state.dragging, state.aiActive]);
+
+      // expose programmatic moves for AI
+      const aiBeginDrag = (taskId) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return null;
+        const el = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        const center = { x: r.left + r.width/2, y: r.top + r.height/2 };
+        setState({
+          dragging:true,
+          task,
+          x: center.x, y: center.y,
+          offsetX: r.width/2, offsetY: r.height/2,
+          draggingSize:{ width:r.width, height:r.height },
+          hoverCol: null, dropIndex: null,
+          aiActive:true,
+        });
+        return { width:r.width, height:r.height };
+      };
+
+      const aiHover = (clientX, clientY) => {
+        const cur = stateRef.current;
+        if (!cur.dragging) return;
+        const { hoverCol, dropIndex } = computeDrop(clientX, clientY);
+        setState({ ...cur, x:clientX, y:clientY, hoverCol, dropIndex });
+      };
+
+      const aiCommit = () => end(true);
+
+      return {
+        ...state, start, end,
+        aiBeginDrag, aiHover, aiCommit,
+      };
+    }
+
+    /* ===== ai director ===== */
+    function useAiDirector({ tasks, drag, enabled, speed, pushLog }) {
+      const [ai, setAi] = useState({ visible:false, x:60, y:60, label:null, pulsing:false, speed });
+      const aiRef = useRef(ai);
+      aiRef.current = ai;
+      const cancelRef = useRef(false);
+      const enabledRef = useRef(enabled);
+      enabledRef.current = enabled;
+
+      const speedFactor = speed === 'fast' ? 0.55 : speed === 'slow' ? 1.6 : 1;
+
+      const wait = (ms) => new Promise(r => setTimeout(r, ms * speedFactor));
+
+      const setCursor = (patch) => setAi(s => ({ ...s, ...patch }));
+
+      const moveTo = async (x, y, opts={}) => {
+        setCursor({ visible:true, x, y, ...opts });
+        await wait(opts.dwell ?? 540);
+      };
+
+      const pickRandomMove = () => {
+        // candidate moves the coach is likely to do
+        const planned = [
+          // promote a todo to in flight when in flight is empty
+          () => {
+            const inFlight = tasks.filter(t => t.col==='doing');
+            if (inFlight.length>0) return null;
+            const todos = tasks.filter(t => t.col==='todo');
+            if (!todos.length) return null;
+            const pick = todos[Math.floor(Math.random()*todos.length)];
+            return { taskId:pick.id, toCol:'doing', label:'promote → in flight',
+                     log:`moved «${truncate(pick.title)}» → in flight` };
+          },
+          // ship reviewed → done
+          () => {
+            const r = tasks.filter(t => t.col==='review' && !t.flagged);
+            if (!r.length) return null;
+            const pick = r[Math.floor(Math.random()*r.length)];
+            return { taskId:pick.id, toCol:'done', label:'sign-off → done',
+                     log:`signed off «${truncate(pick.title)}»` };
+          },
+          // send in-flight to review
+          () => {
+            const f = tasks.filter(t => t.col==='doing');
+            if (!f.length) return null;
+            const pick = f[0];
+            return { taskId:pick.id, toCol:'review', label:'send → tutor review',
+                     log:`sent «${truncate(pick.title)}» to tutor review` };
+          },
+          // reorder a todo card upward
+          () => {
+            const todos = tasks.filter(t => t.col==='todo');
+            if (todos.length<2) return null;
+            const pick = todos[Math.floor(Math.random()*todos.length)];
+            return { taskId:pick.id, toCol:'todo', label:'reprioritize',
+                     log:`reprioritized «${truncate(pick.title)}»`, reorder:true };
+          },
+        ];
+        // try in random order
+        const order = planned.map((f,i)=>i).sort(()=>Math.random()-0.5);
+        for (const i of order) {
+          const m = planned[i]();
+          if (m) return m;
+        }
+        return null;
+      };
+
+      const truncate = (s) => s.length > 32 ? s.slice(0,30) + '…' : s;
+
+      const runOne = async () => {
+        if (!enabledRef.current || cancelRef.current) return;
+        const move = pickRandomMove();
+        if (!move) { await wait(2200); return; }
+
+        // 1. cursor enters
+        setCursor({ visible:true, label:'thinking…', pulsing:false, speed });
+        await moveTo(80 + Math.random()*120, 80 + Math.random()*40, { label:'scanning queue', dwell:520 });
+        if (cancelRef.current) return;
+
+        // 2. find the card el and move cursor to it
+        const cardEl = document.querySelector(`[data-task-id="${move.taskId}"]`);
+        if (!cardEl) return;
+        const r = cardEl.getBoundingClientRect();
+        await moveTo(r.left + r.width*0.55, r.top + r.height*0.4, { label:'select', dwell:560 });
+        if (cancelRef.current) return;
+
+        // 3. begin drag, pulse
+        setCursor({ pulsing:true, label:move.label });
+        const size = drag.aiBeginDrag(move.taskId);
+        if (!size) return;
+        await wait(220);
+        if (cancelRef.current) { drag.end(false); return; }
+
+        // 4. arc toward target column. If toCol same (reorder), pick a different y inside same col.
+        const targetColEl = document.querySelector(`[data-col="${move.toCol}"]`);
+        if (!targetColEl) { drag.end(false); return; }
+        const tr = targetColEl.getBoundingClientRect();
+        let targetX, targetY;
+        if (move.reorder) {
+          // top of column
+          targetX = tr.left + tr.width/2;
+          targetY = tr.top + 30;
+        } else {
+          targetX = tr.left + tr.width/2;
+          targetY = tr.top + 60 + Math.random()*60;
+        }
+
+        // step in 2 hops for arc feel
+        const midX = (r.left + targetX)/2;
+        const midY = Math.min(r.top, targetY) - 30;
+        setCursor({ x: midX, y: midY, label:move.label, pulsing:true });
+        drag.aiHover(midX, midY);
+        await wait(540);
+        if (cancelRef.current) { drag.end(false); return; }
+
+        setCursor({ x: targetX, y: targetY, label:'drop', pulsing:true });
+        drag.aiHover(targetX, targetY);
+        await wait(560);
+        if (cancelRef.current) { drag.end(false); return; }
+
+        // 5. commit
+        drag.aiCommit();
+        setCursor({ pulsing:false, label:null });
+        pushLog(move.log);
+        await wait(1100);
+
+        // 6. cursor exits
+        setCursor({ visible:false, label:null, pulsing:false });
+        await wait(1400 + Math.random()*1400);
+      };
+
+      useEffect(() => {
+        cancelRef.current = false;
+        let alive = true;
+        (async () => {
+          while (alive) {
+            if (!enabledRef.current) {
+              setCursor({ visible:false, label:null, pulsing:false });
+              await wait(800);
+              continue;
+            }
+            await runOne();
+          }
+        })();
+        return () => { alive = false; cancelRef.current = true; };
+        // eslint-disable-next-line
+      }, []);
+
+      useEffect(() => { setAi(s => ({ ...s, speed })); }, [speed]);
+
+      return ai;
+    }
+
+    /* ===== tutor rail ===== */
+    function TutorRail({ tasks }) {
+      const counts = TUTORS.map(t => ({
+        ...t,
+        count: tasks.filter(x => x.tutor === t.id && x.col !== 'done').length,
+        review: tasks.filter(x => x.tutor === t.id && x.col === 'review').length,
+      }));
+
+      return (
+        <aside className="surface hair-b rounded-xl p-5 flex flex-col gap-4 min-w-[260px]">
+          <div className="flex items-center justify-between">
+            <span className="mono text-[10px] dim-2 uppercase tracking-wider">tutor assignments</span>
+            <Chip live>3 online</Chip>
+          </div>
+
+          <ul className="space-y-3 col-stagger">
+            {counts.map(t => (
+              <li key={t.id} className="flex items-start gap-3">
+                <TutorAvatar tutor={t.id} size={28}/>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[13px] font-semibold tracking-tight">{t.name}</span>
+                    <span className="mono text-[10px] dim-2 uppercase tracking-wider">{t.avail}</span>
+                  </div>
+                  <div className="mono text-[10px] dim-2 uppercase tracking-wider mb-2">{t.role}</div>
+                  <div className="flex items-center gap-2 text-[10px] mono dim">
+                    <span>{t.count} active</span>
+                    <span className="dim-2">·</span>
+                    <span style={{color: t.review>0?'var(--ink-92)':'var(--ink-50)'}}>
+                      {t.review} review
+                    </span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hairline"/>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="mono text-[10px] dim-2 uppercase tracking-wider">capacity</span>
+              <span className="mono text-[10px] dim">{tasks.filter(t=>t.col!=='done').length} / 12</span>
+            </div>
+            <div className="h-1 surface-3 rounded-full overflow-hidden">
+              <div className="fill-bar h-full"
+                   style={{width:`${(tasks.filter(t=>t.col!=='done').length/12)*100}%`,
+                           background:'var(--ink-70)'}}/>
+            </div>
+          </div>
+
+          <div className="hairline"/>
+
+          <div className="rounded-md p-3 text-[11.5px] leading-relaxed mono"
+               style={{background:'var(--surface-3)', borderLeft:'2px solid var(--ink-70)',
+                       color:'var(--ink-70)'}}>
+            <span className="dim-2 uppercase tracking-wider text-[9px]">coach hint · </span>
+            Айгюль queue is bursty. Move «quality scoring» to Лена if MLE drift continues.
+          </div>
+
+          <button className="lift hair-b mono uppercase tracking-wider text-[10px] dim
+                             py-2 rounded-md"
+                  style={{background:'var(--surface-2)'}}>
+            request human tutor <Kbd>⌘T</Kbd>
+          </button>
+        </aside>
+      );
+    }
+
+    /* ===== header ===== */
+    function Header({ filter, setFilter, aiAuto, setAiAuto, aiSpeed }) {
+      const FILTERS = ['all','DE','MLE','BE'];
+      const idx = FILTERS.indexOf(filter);
+      return (
+        <header className="flex items-center justify-between pt-7 pb-5 no-select gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-md flex items-center justify-center hair2-b"
+                 style={{background:'#000'}}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                  <defs>
+                    <clipPath id="gly-tb-c"><circle cx="12" cy="12" r="9"/></clipPath>
+                  </defs>
+                  <circle cx="12" cy="12" r="9" fill="#fff"/>
+                  <g clipPath={"url(#gly-tb-c)"}>
+                    <rect x="3" y="3" width="9" height="18" fill="#000"/>
+                  </g>
+                  <g clipPath={"url(#gly-tb-c)"} stroke="#000" strokeWidth="1.4">
+                    <line x1="10" y1="2" x2="22" y2="14"/>
+                    <line x1="10" y1="6" x2="22" y2="18"/>
+                    <line x1="10" y1="10" x2="22" y2="22"/>
+                    <line x1="10" y1="14" x2="22" y2="26"/>
+                    <line x1="10" y1="18" x2="22" y2="30"/>
+                  </g>
+                </svg></div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[15px] font-semibold tracking-tight">Hone</span>
+              <span className="dim-2 text-[13px]">/</span>
+              <span className="text-[15px] font-medium dim">TaskBoard</span>
+            </div>
+            <Chip>cycle 3 · w3</Chip>
+          </div>
+
+          <div className="relative flex items-center p-1 rounded-lg hair-b surface-2">
+            <div className="absolute top-1 bottom-1 rounded-md"
+                 style={{
+                   background:'var(--surface-3)', border:'1px solid var(--hair-2)',
+                   width:`calc(25% - 2px)`,
+                   transform:`translateX(${idx*100}%)`,
+                   transition:'transform 220ms var(--ease)'
+                 }}/>
+            {FILTERS.map(f=>(
+              <button key={f} onClick={()=>setFilter(f)}
+                      className="relative z-10 px-4 py-1.5 mono text-[11px] uppercase tracking-wider rounded-md min-w-[64px]"
+                      style={{color: filter===f?'var(--ink-92)':'var(--ink-50)',
+                              transition:'color var(--t-fast) var(--ease)'}}>
+                {f}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 text-[10px] mono uppercase tracking-wider dim">
+            <button
+              onClick={()=>setAiAuto(!aiAuto)}
+              className="lift hair-b rounded-md px-3 py-1.5 inline-flex items-center gap-2"
+              style={{background: aiAuto?'var(--surface-3)':'var(--surface-2)',
+                      color:'var(--ink-70)'}}
+              title="toggle ai-coach autoplay"
+            >
+              <span className="inline-block w-1.5 h-1.5 rounded-full"
+                    style={{background: aiAuto?'var(--accent)':'var(--ink-30)',
+                            boxShadow: aiAuto?'0 0 0 2px rgba(255,59,48,0.18)':'none'}}/>
+              ai-coach {aiAuto?'on':'off'} <Kbd>A</Kbd>
+            </button>
+            <button className="btn-primary rounded-md px-3 py-1.5 inline-flex items-center gap-2 text-[11px]">
+              start focus <span className="mono" style={{color:'rgba(0,0,0,0.5)'}}>⌘.</span>
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    /* ===== tweaks ===== */
+    function TweaksPanel({ tweaks, set, onClose }) {
+      return (
+        <div className="tweaks">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] mono dim-2 uppercase tracking-wider">tweaks</span>
+            <button onClick={onClose} className="dim-2 text-[14px] leading-none" aria-label="close">×</button>
+          </div>
+          <div className="space-y-3">
+            <label className="flex items-center justify-between gap-2">
+              <span className="dim text-[11px]">show tutor rail</span>
+              <input type="checkbox" checked={tweaks.showTutorRail}
+                     onChange={e=>set('showTutorRail', e.target.checked)}/>
+            </label>
+            <label className="flex items-center justify-between gap-2">
+              <span className="dim text-[11px]">ai-coach autoplay</span>
+              <input type="checkbox" checked={tweaks.aiAuto}
+                     onChange={e=>set('aiAuto', e.target.checked)}/>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="dim text-[10px] mono uppercase tracking-wider">ai speed</span>
+              <select value={tweaks.aiSpeed} onChange={e=>set('aiSpeed', e.target.value)}
+                      className="bg-black hair2-b rounded px-2 py-1 text-[11px] mono"
+                      style={{color:'var(--ink-92)'}}>
+                <option value="slow">slow</option>
+                <option value="normal">normal</option>
+                <option value="fast">fast</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="dim text-[10px] mono uppercase tracking-wider">filter</span>
+              <select value={tweaks.filter} onChange={e=>set('filter', e.target.value)}
+                      className="bg-black hair2-b rounded px-2 py-1 text-[11px] mono"
+                      style={{color:'var(--ink-92)'}}>
+                <option value="all">all tracks</option>
+                <option value="DE">DE</option>
+                <option value="MLE">MLE</option>
+                <option value="BE">BE</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      );
+    }
+
+    /* ===== app ===== */
+    function App() {
+      const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+      const [tweaksOpen, setTweaksOpen] = useState(false);
+      const [tasks, setTasks] = useState(INITIAL_TASKS);
+      const [logMsg, setLogMsg] = useState(null);
+      const logTimer = useRef(null);
+
+      const colElsRef = useRef({});
+      const registerColEl = (key, el) => { colElsRef.current[key] = el; };
+
+      const set = (k,v) => {
+        const next = {...tweaks, [k]: v};
+        setTweaks(next);
+        try { window.parent.postMessage({type:'__edit_mode_set_keys', edits:{[k]:v}}, '*'); } catch(e){}
+      };
+
+      const pushLog = (msg) => {
+        setLogMsg(msg);
+        if (logTimer.current) clearTimeout(logTimer.current);
+        logTimer.current = setTimeout(() => setLogMsg(null), 2400);
+      };
+
+      useEffect(()=>{
+        const onMsg = (ev) => {
+          const d = ev.data || {};
+          if (d.type === '__activate_edit_mode') setTweaksOpen(true);
+          if (d.type === '__deactivate_edit_mode') setTweaksOpen(false);
+        };
+        window.addEventListener('message', onMsg);
+        try { window.parent.postMessage({type:'__edit_mode_available'}, '*'); } catch(e){}
+        return ()=> window.removeEventListener('message', onMsg);
+      }, []);
+
+      // 'A' toggles ai
+      useEffect(() => {
+        const onKey = (e) => {
+          if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+          if (e.key === 'a' || e.key === 'A') set('aiAuto', !tweaks.aiAuto);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [tweaks.aiAuto]);
+
+      const filtered = useMemo(()=>(
+        tweaks.filter === 'all' ? tasks : tasks.filter(t => t.track === tweaks.filter)
+      ), [tasks, tweaks.filter]);
+
+      const drag = useDrag(tasks, setTasks, colElsRef);
+      const ai = useAiDirector({
+        tasks, drag,
+        enabled: tweaks.aiAuto,
+        speed: tweaks.aiSpeed,
+        pushLog,
+      });
+
+      const byCol = (key) => filtered.filter(t => t.col === key);
+
+      return (
+        <div className="canvas-bg min-h-screen page-enter">
+          <div className="max-w-[1480px] mx-auto px-8">
+            <Header
+              filter={tweaks.filter}
+              setFilter={(f)=>set('filter', f)}
+              aiAuto={tweaks.aiAuto}
+              setAiAuto={(v)=>set('aiAuto', v)}
+              aiSpeed={tweaks.aiSpeed}
+            />
+
+            <main className="stagger pb-10">
+              <section className="flex items-end justify-between flex-wrap gap-4 pb-5">
+                <div>
+                  <h1 className="text-[24px] font-semibold tracking-tight">TaskBoard</h1>
+                  <p className="text-[12px] dim mt-1">
+                    {filtered.length} tasks · drag a card · or watch ai-coach reorder · sync 8s ago
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Chip>group · {tweaks.groupBy}</Chip>
+                  <Chip>{tweaks.filter}</Chip>
+                  {tweaks.aiAuto && <Chip live>ai-coach live</Chip>}
+                </div>
+              </section>
+
+              <section className="grid gap-4"
+                       style={{gridTemplateColumns: tweaks.showTutorRail
+                                ? 'minmax(0,1fr) 280px'
+                                : 'minmax(0,1fr)'}}>
+                <div className="grid gap-4"
+                     style={{gridTemplateColumns:'repeat(4, minmax(0,1fr))'}}>
+                  {COLUMNS.map(col => (
+                    <Column
+                      key={col.key}
+                      col={col}
+                      tasks={byCol(col.key)}
+                      drag={drag}
+                      registerColEl={registerColEl}
+                    />
+                  ))}
+                </div>
+                {tweaks.showTutorRail && <TutorRail tasks={tasks}/>}
+              </section>
+
+              <footer className="flex items-center justify-between mt-6 pb-4 text-[10px] mono dim-2 uppercase tracking-wider no-select">
+                <div className="flex items-center gap-4">
+                  <span>drag <Kbd>↕</Kbd></span>
+                  <span>ai-coach <Kbd>A</Kbd></span>
+                  <span>start focus <Kbd>⌘.</Kbd></span>
+                  <span>tutor <Kbd>⌘T</Kbd></span>
+                  <span>palette <Kbd>⌘K</Kbd></span>
+                </div>
+                <div>druz9 · taskboard · v0</div>
+              </footer>
+            </main>
+          </div>
+
+          <Ghost drag={drag}/>
+          <AiCursor ai={ai}/>
+          <AiLog message={logMsg}/>
+
+          {tweaksOpen && (
+            <TweaksPanel tweaks={tweaks} set={set}
+                         onClose={()=>{
+                           setTweaksOpen(false);
+                           try{ window.parent.postMessage({type:'__edit_mode_dismissed'}, '*'); } catch(e){}
+                         }}/>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

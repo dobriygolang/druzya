@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>druz9 · Codex</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#000; --surface-1:#0a0a0a; --surface-2:#111; --surface-3:#161616;
+      --hair:rgba(255,255,255,0.07); --hair-2:rgba(255,255,255,0.12);
+      --ink-100:#fff; --ink-92:rgba(255,255,255,0.92); --ink-70:rgba(255,255,255,0.7);
+      --ink-50:rgba(255,255,255,0.5); --ink-30:rgba(255,255,255,0.3);
+      --accent:#FF3B30; --t-fast:150ms; --ease:cubic-bezier(0.2,0.7,0.2,1);
+    }
+    *{box-sizing:border-box}
+    html,body{background:var(--bg);color:var(--ink-92);font-family:'Inter',sans-serif;letter-spacing:-0.005em;-webkit-font-smoothing:antialiased}
+    .mono{font-family:'JetBrains Mono',monospace;letter-spacing:-0.01em}
+    .surface{background:var(--surface-1)} .surface-2{background:var(--surface-2)} .surface-3{background:var(--surface-3)}
+    .hair-b{border:1px solid var(--hair)} .hair2-b{border:1px solid var(--hair-2)}
+    .dim{color:var(--ink-50)} .dim-2{color:var(--ink-30)} .hairline{height:1px;background:var(--hair);width:100%}
+    .canvas-bg{background:radial-gradient(circle at 30% 0%,rgba(255,255,255,0.02),transparent 55%),var(--bg)}
+    @keyframes pageFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .page-enter{animation:pageFade 220ms var(--ease) both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+    .stagger>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .stagger>*:nth-child(1){animation-delay:60ms}.stagger>*:nth-child(2){animation-delay:130ms}.stagger>*:nth-child(3){animation-delay:200ms}.stagger>*:nth-child(4){animation-delay:270ms}.stagger>*:nth-child(5){animation-delay:340ms}.stagger>*:nth-child(6){animation-delay:410ms}
+    .lift{transition:transform var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease)} .lift:hover{transform:translateY(-1px);border-color:var(--hair-2)}
+    .btn-primary{background:#fff;color:#000;transition:transform var(--t-fast) var(--ease)} .btn-primary:hover{transform:translateY(-1px);background:rgba(255,255,255,0.92)}
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;border:1px solid var(--hair);background:var(--surface-2);font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-50);font-family:'JetBrains Mono',monospace}
+    .chip.live{color:var(--ink-70)} .chip.live::before{content:'';width:6px;height:6px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 2px rgba(255,59,48,0.18)}
+    .chip.solid{background:#fff;color:#000;border-color:#fff}
+    .chip.active{background:var(--ink-100);color:#000;border-color:var(--ink-100)}
+    .kbd{display:inline-flex;padding:1px 6px;border-radius:4px;border:1px solid var(--hair-2);background:var(--surface-3);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-70)}
+    button:focus-visible{outline:1px solid var(--ink-70);outline-offset:2px}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:3px}
+    .no-select{-webkit-user-select:none;user-select:none}
+    .hero-stripe{position:absolute;top:0;left:0;right:0;height:1.5px;background:var(--accent);opacity:0.85}
+    .tweaks{position:fixed;right:20px;bottom:20px;width:260px;background:var(--surface-2);border:1px solid var(--hair-2);border-radius:10px;padding:14px;z-index:50;font-size:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6)}
+
+    /* article prose */
+    .prose{font-size:16px;line-height:1.72;color:var(--ink-92)}
+    .prose h2{font-size:22px;font-weight:600;margin:32px 0 12px;letter-spacing:-0.01em;color:#fff}
+    .prose h3{font-size:18px;font-weight:600;margin:24px 0 8px;color:#fff}
+    .prose p{margin:14px 0}
+    .prose code{background:var(--surface-3);padding:1px 6px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:14px;border:1px solid var(--hair)}
+    .prose pre{background:var(--surface-3);border:1px solid var(--hair);border-radius:6px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:13px;overflow-x:auto;margin:18px 0;line-height:1.55}
+    .prose ul{margin:12px 0;padding-left:0;list-style:none}
+    .prose ul li{padding-left:22px;position:relative;margin:8px 0}
+    .prose ul li::before{content:'·';position:absolute;left:8px;color:var(--ink-30)}
+    .prose blockquote{border-left:2px solid var(--ink-70);padding:8px 0 8px 18px;margin:18px 0;color:var(--ink-70)}
+    .prose a{color:var(--ink-92);border-bottom:1px dashed var(--hair-2)}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "view": "list",
+      "filter": "all"
+    }/*EDITMODE-END*/;
+
+    const FILTERS = [
+      { k:'all', label:'all', count:42 },
+      { k:'dev', label:'dev', count:18 },
+      { k:'ml', label:'ml', count:12 },
+      { k:'de', label:'de', count:7 },
+      { k:'sysdesign', label:'sysdesign', count:5 },
+    ];
+
+    const FEATURED = {
+      slug:'multiple-comparisons-pitfalls', title:'Multiple comparisons · the pitfall every senior misses',
+      excerpt:'A/B test passes one bar, fails three more — and you ship without knowing. Here\'s how Bonferroni / FDR / power-analysis lock together, and where Anthropic / Yandex / Сбер still bite candidates on this.',
+      author:'sergey · druz9 codex', minutes:14, atlas:['stats','ab_testing','correction'], featured:true,
+      published:'2 days ago', read_count:142,
+    };
+
+    const ARTICLES = [
+      { slug:'why-ddia-shaped-distributed-thinking', title:'Why DDIA shaped distributed thinking', excerpt:'Kleppmann\'s book is canonical for a reason. Here\'s the 5 frameworks you need before chapter 1.', author:'sergey', minutes:8, atlas:['distributed','ddia'], published:'4d ago', read_count:412 },
+      { slug:'cdc-patterns-postgres-clickhouse', title:'CDC patterns · postgres → clickhouse', excerpt:'Logical decoding vs Debezium vs polling — when each fits and why most teams pick wrong.', author:'sergey', minutes:11, atlas:['de','cdc','clickhouse'], published:'1w ago', read_count:296 },
+      { slug:'logistic-regression-cost-function', title:'Logistic regression · cost function intuition', excerpt:'Skip the formal derivation. Here\'s why log-likelihood gradient = (y - h)·x and how it generalises.', author:'sergey', minutes:6, atlas:['ml','logistic'], published:'1w ago', read_count:178 },
+      { slug:'two-pointers-the-mental-model', title:'Two-pointers · the mental model that unlocks 30% of leetcode', excerpt:'Stop memorising patterns. Here\'s the one rule.', author:'sergey', minutes:5, atlas:['algo','two_pointers'], published:'2w ago', read_count:534 },
+      { slug:'system-design-sketch-template', title:'System design · sketch template that actually fits 45 min', excerpt:'5 boxes · 3 arrows · 2 stickies. The minimum viable diagram.', author:'sergey', minutes:9, atlas:['sysdesign','interview'], published:'3w ago', read_count:687 },
+      { slug:'go-channels-deadlock-debug', title:'Go channels · how to think about deadlocks', excerpt:'`select { case <-ch: }` doesn\'t save you. Here\'s the actual mental model.', author:'sergey', minutes:7, atlas:['go','concurrency'], published:'1mo ago', read_count:223 },
+    ];
+
+    const ARTICLE_SAMPLE = `
+A/B test passed. Significance at p < 0.05. You ship.
+
+Three more comparisons passed too — but each at p < 0.05. Combined false-positive rate is now ~14%, not 5%. You shipped a feature that probably doesn't work.
+
+This is **multiple comparisons** — and it bites at every level: research, ML eval, A/B platforms, even your own debugging.
+
+## The mechanic
+
+When you run \`k\` independent tests at \`α = 0.05\`, the family-wise error rate is:
+
+\`\`\`
+P(at least one false positive) = 1 - (1 - 0.05)^k
+\`\`\`
+
+| k | error |
+|---|---|
+| 1 | 0.05 |
+| 5 | 0.226 |
+| 20 | 0.642 |
+| 100 | 0.994 |
+
+By 100 tests, you're guaranteed at least one false positive.
+
+## Three mitigations
+
+### 1. Bonferroni — the conservative anchor
+
+Divide α by k. New threshold: \`0.05 / k\`. Simple, but throws away power.
+
+### 2. Benjamini-Hochberg (FDR)
+
+Allow some false positives — control the *fraction*. Better when k is large and discoveries cheap.
+
+### 3. Power analysis upfront
+
+Decide n before you run. The right answer to «is this significant?» is sometimes «we needed 2× more users to know».
+
+## Where this bites in interviews
+
+> «I ran A/B test, treatment outperformed control at p < 0.04, we shipped.»
+
+Senior interviewer: «How many comparisons?» You: «Just one.» «Define 'one'.»
+
+If you split by region, device, demographic, and reported the strongest result — that's k=4, and 0.04 isn't significant anymore.
+
+The trick: assume any analyst hostile to your conclusion will count comparisons. Pre-register.
+
+## Quick mental check
+
+Before you say «statistically significant»:
+- How many comparisons did I actually run?
+- Did I peek at intermediate results?
+- Was the test pre-registered or post-hoc?
+- What's the realistic effect size, and did I have power for it?
+
+If you can't answer all four, it's not significant — it's *suggestive*.
+    `.trim();
+
+    const Chip = ({children,live=false,solid=false,active=false}) => <span className={`chip ${live?'live':''} ${solid?'solid':''} ${active?'active':''}`}>{children}</span>;
+    const Kbd = ({children}) => <span className="kbd">{children}</span>;
+
+    function Header({view,setView}){
+      return <header className="flex items-center justify-between pt-7 pb-5 no-select">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-md flex items-center justify-center mono text-[12px] font-semibold hair2-b" style={{background:'var(--surface-3)',color:'var(--ink-92)'}}>d9</div>
+          <span className="text-[15px] font-semibold tracking-tight">druz9</span>
+          <span className="dim-2 text-[13px]">/</span>
+          <button onClick={()=>setView('list')} className="text-[15px] hover:text-white transition-colors" style={{color:view==='list'?'var(--ink-92)':'var(--ink-50)'}}>codex</button>
+          {view==='article' && <>
+            <span className="dim-2 text-[13px]">/</span>
+            <span className="text-[15px] dim truncate max-w-[300px]">multiple comparisons · the pitfall</span>
+          </>}
+        </div>
+        <div className="flex items-center gap-2 text-[10px] mono uppercase tracking-wider dim">
+          <span>palette</span><Kbd>⌘K</Kbd>
+        </div>
+      </header>;
+    }
+
+    function ListView(){
+      return <>
+        <FilterRow/>
+        <FeaturedCard/>
+        <SectionHeader/>
+        <main className="stagger grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          {ARTICLES.map(a=><ArticleCard key={a.slug} a={a}/>)}
+        </main>
+      </>;
+    }
+
+    function FilterRow(){
+      const [active,setActive] = useState('all');
+      return <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider mr-2">filter</span>
+          {FILTERS.map(f=><button key={f.k} onClick={()=>setActive(f.k)} className={`chip ${active===f.k?'active':''} cursor-pointer`}>
+            {f.label} <span className="dim-2 ml-1">{f.count}</span>
+          </button>)}
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="text" placeholder="/ search articles" className="surface-2 hair-b rounded-md px-3 py-1.5 text-[12px] outline-none w-[180px]" style={{color:'var(--ink-92)'}}/>
+          <Kbd>⌘F</Kbd>
+        </div>
+      </div>;
+    }
+
+    function FeaturedCard(){
+      return <article className="surface hair-b rounded-xl p-7 mb-6 lift cursor-pointer relative overflow-hidden">
+        <div className="hero-stripe"/>
+        <div className="flex items-center gap-2 mb-4">
+          <Chip live>featured</Chip>
+          <Chip>14 min read</Chip>
+          {FEATURED.atlas.map(t=><Chip key={t}>{t}</Chip>)}
+          <span className="ml-auto text-[10px] mono dim-2 uppercase tracking-wider">{FEATURED.published} · {FEATURED.read_count} reads</span>
+        </div>
+        <h1 className="text-[28px] font-semibold tracking-tight mb-3 leading-[1.18]">{FEATURED.title}</h1>
+        <p className="text-[14px] dim leading-relaxed max-w-[720px] mb-5" style={{color:'var(--ink-70)'}}>{FEATURED.excerpt}</p>
+        <div className="flex items-center gap-2">
+          <button className="btn-primary px-4 py-2 rounded-md text-[12.5px] font-medium">read · 14 min</button>
+          <button className="hair-b px-4 py-2 rounded-md text-[12px] dim surface-2">save for later</button>
+          <span className="ml-auto text-[10px] mono dim-2 uppercase tracking-wider">by {FEATURED.author}</span>
+        </div>
+      </article>;
+    }
+
+    function SectionHeader(){
+      return <div className="flex items-center justify-between mb-4">
+        <h2 className="text-[18px] font-semibold tracking-tight">Recent · 6 of 42</h2>
+        <span className="text-[10px] mono dim-2 uppercase tracking-wider">our voice · ~600 words avg · short opinion-pieces</span>
+      </div>;
+    }
+
+    function ArticleCard({a}){
+      return <article className="lift surface hair-b rounded-xl p-6 cursor-pointer">
+        <div className="flex items-center gap-2 mb-3">
+          {a.atlas.slice(0,2).map(t=><Chip key={t}>{t}</Chip>)}
+          <span className="ml-auto text-[10px] mono dim-2">{a.minutes} min</span>
+        </div>
+        <h3 className="text-[16px] font-semibold tracking-tight mb-2 leading-snug" style={{color:'var(--ink-100)'}}>{a.title}</h3>
+        <p className="text-[12.5px] dim leading-relaxed mb-3 line-clamp-3" style={{color:'var(--ink-70)'}}>{a.excerpt}</p>
+        <div className="hairline mb-3"/>
+        <div className="flex items-center justify-between text-[10px] mono dim-2 uppercase tracking-wider">
+          <span>{a.author} · {a.published}</span>
+          <span>{a.read_count} reads</span>
+        </div>
+      </article>;
+    }
+
+    function ArticleView({setView}){
+      const lines = ARTICLE_SAMPLE.split('\n');
+      return <article className="max-w-[720px] mx-auto pb-16">
+        <div className="flex items-center gap-2 mb-4">
+          <button onClick={()=>setView('list')} className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2">← back to codex</button>
+          <span className="ml-auto flex items-center gap-2">
+            <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2">save</button>
+            <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2">share</button>
+          </span>
+        </div>
+
+        <div className="mb-8 relative pt-3">
+          <div className="absolute top-0 left-0 right-0 h-[1.5px]" style={{background:'var(--accent)',opacity:0.85}}/>
+          <div className="flex items-center gap-2 mb-4">
+            <Chip live>featured</Chip>
+            <Chip>14 min read</Chip>
+            {FEATURED.atlas.map(t=><Chip key={t}>{t}</Chip>)}
+          </div>
+          <h1 className="text-[36px] font-semibold tracking-tight mb-3 leading-[1.16]">{FEATURED.title}</h1>
+          <div className="flex items-center gap-3 text-[12px] dim">
+            <span>{FEATURED.author}</span><span className="dim-2">·</span><span>{FEATURED.published}</span><span className="dim-2">·</span><span>{FEATURED.read_count} reads</span>
+          </div>
+        </div>
+
+        <div className="hairline mb-8"/>
+
+        <div className="prose">
+          {lines.map((line,i)=>{
+            if (line.startsWith('## ')) return <h2 key={i}>{line.slice(3)}</h2>;
+            if (line.startsWith('### ')) return <h3 key={i}>{line.slice(4)}</h3>;
+            if (line.startsWith('> ')) return <blockquote key={i}>{line.slice(2)}</blockquote>;
+            if (line.startsWith('```')) return null;
+            if (line.match(/^[|]/)) return null;
+            if (line.trim()==='') return <div key={i} style={{height:8}}/>;
+            const formatted = line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((p,j)=>{
+              if (p.startsWith('**')) return <strong key={j} style={{color:'#fff'}}>{p.slice(2,-2)}</strong>;
+              if (p.startsWith('`')) return <code key={j}>{p.slice(1,-1)}</code>;
+              return <React.Fragment key={j}>{p}</React.Fragment>;
+            });
+            return <p key={i}>{formatted}</p>;
+          })}
+
+          <pre>{`P(at least one false positive) = 1 - (1 - 0.05)^k`}</pre>
+        </div>
+
+        <div className="hairline mt-10 mb-8"/>
+
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 rounded-full surface-3 hair-b flex items-center justify-center mono text-[12px] font-semibold" style={{color:'var(--ink-92)'}}>ml</div>
+          <div className="flex-1">
+            <div className="text-[12.5px] font-medium">ml coach</div>
+            <div className="text-[11px] dim">«helpful? ask me to walk through Bonferroni mechanic on real example»</div>
+          </div>
+          <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2">open chat ↗</button>
+        </div>
+
+        <div>
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-3 block">related · 3 articles</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {ARTICLES.slice(0,3).map(a=><div key={a.slug} className="lift hair-b rounded-md p-4 surface-2 cursor-pointer">
+              <div className="text-[12px] font-medium mb-1.5 line-clamp-2" style={{color:'var(--ink-92)'}}>{a.title}</div>
+              <div className="text-[10px] mono dim-2 uppercase tracking-wider">{a.minutes} min · {a.atlas[0]}</div>
+            </div>)}
+          </div>
+        </div>
+      </article>;
+    }
+
+    function TweaksPanel({tweaks,set,onClose}){
+      return <div className="tweaks">
+        <div className="flex items-center justify-between mb-3"><span className="text-[10px] mono dim-2 uppercase tracking-wider">tweaks</span><button onClick={onClose} className="dim-2 text-[14px] leading-none">×</button></div>
+        <div className="space-y-3">
+          <label className="flex flex-col gap-1"><span className="dim text-[10px] mono uppercase tracking-wider">view</span>
+            <select value={tweaks.view} onChange={e=>set('view',e.target.value)} className="bg-black hair2-b rounded px-2 py-1 text-[11px] mono" style={{color:'var(--ink-92)'}}>
+              <option value="list">list (catalogue)</option><option value="article">article (reader)</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1"><span className="dim text-[10px] mono uppercase tracking-wider">filter</span>
+            <select value={tweaks.filter} onChange={e=>set('filter',e.target.value)} className="bg-black hair2-b rounded px-2 py-1 text-[11px] mono" style={{color:'var(--ink-92)'}}>
+              {FILTERS.map(f=><option key={f.k} value={f.k}>{f.label}</option>)}
+            </select>
+          </label>
+        </div>
+      </div>;
+    }
+
+    function App(){
+      const [tweaks,setTweaks] = useState(TWEAK_DEFAULTS);
+      const [tweaksOpen,setTweaksOpen] = useState(false);
+      const set = (k,v) => { setTweaks({...tweaks,[k]:v}); try{window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[k]:v}},'*')}catch(e){} };
+      useEffect(()=>{
+        const onMsg = ev => { const d=ev.data||{}; if(d.type==='__activate_edit_mode')setTweaksOpen(true); if(d.type==='__deactivate_edit_mode')setTweaksOpen(false); };
+        window.addEventListener('message',onMsg);
+        try{window.parent.postMessage({type:'__edit_mode_available'},'*')}catch(e){}
+        return ()=>window.removeEventListener('message',onMsg);
+      },[]);
+
+      return <div className="canvas-bg min-h-screen page-enter">
+        <div className="max-w-[1280px] mx-auto px-8 pb-12">
+          <Header view={tweaks.view} setView={(v)=>set('view',v)}/>
+          {tweaks.view==='list' ? <ListView/> : <ArticleView setView={(v)=>set('view',v)}/>}
+          <footer className="flex items-center justify-between pt-8 mt-4 text-[10px] mono dim-2 uppercase tracking-wider no-select border-t" style={{borderColor:'var(--hair)'}}>
+            <div className="flex items-center gap-4"><span>search <Kbd>⌘F</Kbd></span><span>save <Kbd>S</Kbd></span><span>back <Kbd>esc</Kbd></span></div>
+            <span>druz9 · codex · v0</span>
+          </footer>
+        </div>
+        {tweaksOpen && <TweaksPanel tweaks={tweaks} set={set} onClose={()=>{setTweaksOpen(false);try{window.parent.postMessage({type:'__edit_mode_dismissed'},'*')}catch(e){}}}/>}
+      </div>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

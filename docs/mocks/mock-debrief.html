@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>druz9 · Mock debrief</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#000; --surface-1:#0a0a0a; --surface-2:#111; --surface-3:#161616;
+      --hair:rgba(255,255,255,0.07); --hair-2:rgba(255,255,255,0.12);
+      --ink-100:#fff; --ink-92:rgba(255,255,255,0.92); --ink-70:rgba(255,255,255,0.7);
+      --ink-50:rgba(255,255,255,0.5); --ink-30:rgba(255,255,255,0.3);
+      --accent:#FF3B30; --t-fast:150ms; --ease:cubic-bezier(0.2,0.7,0.2,1);
+    }
+    *{box-sizing:border-box}
+    html,body{background:var(--bg);color:var(--ink-92);font-family:'Inter',sans-serif;letter-spacing:-0.005em;-webkit-font-smoothing:antialiased}
+    .mono{font-family:'JetBrains Mono',monospace;letter-spacing:-0.01em}
+    .surface{background:var(--surface-1)} .surface-2{background:var(--surface-2)} .surface-3{background:var(--surface-3)}
+    .hair-b{border:1px solid var(--hair)} .hair2-b{border:1px solid var(--hair-2)}
+    .dim{color:var(--ink-50)} .dim-2{color:var(--ink-30)} .hairline{height:1px;background:var(--hair);width:100%}
+    .canvas-bg{background:radial-gradient(circle at 30% 0%,rgba(255,255,255,0.02),transparent 55%),var(--bg)}
+    @keyframes pageFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .page-enter{animation:pageFade 220ms var(--ease) both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+    .stagger>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .stagger>*:nth-child(1){animation-delay:80ms}.stagger>*:nth-child(2){animation-delay:180ms}.stagger>*:nth-child(3){animation-delay:280ms}.stagger>*:nth-child(4){animation-delay:380ms}.stagger>*:nth-child(5){animation-delay:480ms}
+    .stagger-list>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .stagger-list>*:nth-child(1){animation-delay:80ms}.stagger-list>*:nth-child(2){animation-delay:150ms}.stagger-list>*:nth-child(3){animation-delay:220ms}.stagger-list>*:nth-child(4){animation-delay:290ms}.stagger-list>*:nth-child(5){animation-delay:360ms}
+    @keyframes drawArc{from{stroke-dashoffset:264}to{stroke-dashoffset:var(--target,0)}}
+    .draw-arc{animation:drawArc 1.4s var(--ease) forwards;animation-delay:300ms}
+    @keyframes drawShape{from{stroke-dashoffset:600;opacity:0.3}to{stroke-dashoffset:0;opacity:1}}
+    .radar-shape{stroke-dasharray:600;animation:drawShape 1.2s var(--ease) forwards;animation-delay:700ms}
+    @keyframes dotPop{from{opacity:0;transform:scale(0.4)}to{opacity:1;transform:scale(1)}}
+    .radar-dot{opacity:0;animation:dotPop 320ms var(--ease) forwards}
+    @keyframes fillBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    .fill-bar{transform-origin:left;animation:fillBar 1100ms ease-out forwards;animation-delay:320ms}
+    .lift{transition:transform var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease)}
+    .lift:hover{transform:translateY(-1px);border-color:var(--hair-2)}
+    .btn-primary{background:#fff;color:#000;transition:transform var(--t-fast) var(--ease)} .btn-primary:hover{transform:translateY(-1px);background:rgba(255,255,255,0.92)}
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;border:1px solid var(--hair);background:var(--surface-2);font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-50);font-family:'JetBrains Mono',monospace}
+    .chip.live{color:var(--ink-70)} .chip.live::before{content:'';width:6px;height:6px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 2px rgba(255,59,48,0.18)}
+    .chip.solid{background:#fff;color:#000;border-color:#fff}
+    .kbd{display:inline-flex;padding:1px 6px;border-radius:4px;border:1px solid var(--hair-2);background:var(--surface-3);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-70)}
+    button:focus-visible{outline:1px solid var(--ink-70);outline-offset:2px}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:3px}
+    .hero-stripe{position:absolute;top:0;left:0;right:0;height:1.5px;background:var(--accent);opacity:0.85}
+    .no-select{-webkit-user-select:none;user-select:none}
+    .tweaks{position:fixed;right:20px;bottom:20px;width:260px;background:var(--surface-2);border:1px solid var(--hair-2);border-radius:10px;padding:14px;z-index:50;font-size:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6)}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "verdict": "PASSED",
+      "score": 72,
+      "showRecommendations": true
+    }/*EDITMODE-END*/;
+
+    const MOCK = {
+      section:'ML Engineering', company:'Yandex', profile:'expert-strict',
+      duration:47, stagesPassed:4, stagesTotal:5,
+      summary:'Sustained signal на ML system design + production. Slip на статистическом раунде — всё ещё PASS, но stat axis надо подтянуть до next mock.',
+    };
+
+    const AXES = [
+      { key:'theoretical_depth', label:'theoretical depth', score:64, prev:58 },
+      { key:'practical_impl', label:'practical implementation', score:80, prev:78 },
+      { key:'system_design', label:'ml system design', score:72, prev:65 },
+      { key:'data_intuition', label:'data intuition', score:56, prev:60 },
+      { key:'production_awareness', label:'production awareness', score:88, prev:80 },
+    ];
+
+    const STAGES = [
+      { name:'warm-up · classical ML', verdict:'pass', score:85, time:'6m', notes:'Bias-variance tradeoff explained clearly' },
+      { name:'coding · vector similarity', verdict:'pass', score:78, time:'12m', notes:'Solved with cosine, missed edge case for zero-norm' },
+      { name:'ml system design · feature store', verdict:'pass', score:72, time:'15m', notes:'Online/offline consistency reasoning solid' },
+      { name:'probability · A/B test pitfalls', verdict:'fail', score:48, time:'8m', notes:'Missed multiple-comparisons correction · weak on power' },
+      { name:'behavioral · ownership story', verdict:'pass', score:79, time:'6m', notes:'STAR structure, concrete numbers' },
+    ];
+
+    const STRENGTHS = [
+      'Production deploy intuition: знаешь канарейки, drift monitoring',
+      'Feature store online/offline split — reasoning без подсказки',
+      'STAR-формат на behavioral естественный',
+    ];
+    const WEAKNESSES = [
+      'Bonferroni / FDR correction — слабое место',
+      'Power analysis: не назвал n при given effect',
+      'Cross-entropy formula под давлением путалась',
+    ];
+    const RECS = [
+      { kind:'codex', glyph:'◇', title:'Codex · Multiple comparisons', why:'Закрывает gap в A/B стат-секции', minutes:25 },
+      { kind:'kata', glyph:'∞', title:'Practice · power calculation drill', why:'Закрепить через 3 short tasks', minutes:30 },
+      { kind:'mock', glyph:'⌘', title:'Re-mock · stat-heavy round', why:'Через 2 дня, подтвердить fix', minutes:45 },
+    ];
+
+    const Chip = ({children,live=false,solid=false}) => <span className={`chip ${live?'live':''} ${solid?'solid':''}`}>{children}</span>;
+    const Kbd = ({children}) => <span className="kbd">{children}</span>;
+
+    function Header(){
+      return <header className="flex items-center justify-between pt-7 pb-5 no-select">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-md flex items-center justify-center mono text-[12px] font-semibold hair2-b" style={{background:'var(--surface-3)',color:'var(--ink-92)'}}>d9</div>
+          <span className="text-[15px] font-semibold tracking-tight">druz9</span>
+          <span className="dim-2 text-[13px]">/</span>
+          <a className="text-[15px] dim hover:text-white transition-colors cursor-pointer">mock</a>
+          <span className="dim-2 text-[13px]">/</span>
+          <span className="text-[15px]">debrief</span>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] mono uppercase tracking-wider dim">
+          <button className="hair-b px-3 py-1.5 rounded-md surface-2">share</button>
+          <button className="hair-b px-3 py-1.5 rounded-md surface-2">export pdf</button>
+          <span>palette</span><Kbd>⌘K</Kbd>
+        </div>
+      </header>;
+    }
+
+    function VerdictHero({tweaks}){
+      const isPassed = tweaks.verdict==='PASSED';
+      const c = 264;
+      const offset = c - (tweaks.score/100)*c;
+      return <section className="surface hair-b rounded-xl overflow-hidden mb-5 relative">
+        <div className="hero-stripe"/>
+        <div className="p-7 flex items-center gap-8 flex-wrap">
+          <div className="shrink-0 relative w-[156px] h-[156px]">
+            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="var(--hair)" strokeWidth="2.5"/>
+              <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" strokeWidth="2.5" strokeDasharray="264" strokeDashoffset={offset} strokeLinecap="round" className="draw-arc" style={{'--target':offset}}/>
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="mono text-[44px] font-bold tracking-tight leading-none">{tweaks.score}</span>
+              <span className="text-[10px] mono dim-2 uppercase tracking-wider mt-1">/ 100</span>
+            </div>
+          </div>
+          <div className="flex-1 min-w-[300px]">
+            <div className="flex items-center gap-2 mb-3">
+              <Chip>{MOCK.section}</Chip>
+              <Chip>{MOCK.company}</Chip>
+              <Chip>{MOCK.profile}</Chip>
+            </div>
+            <div className="flex items-baseline gap-3 mb-3">
+              <h1 className="mono text-[36px] font-bold tracking-tight leading-none">{tweaks.verdict}</h1>
+              <span className="text-[12px] dim mono">{MOCK.stagesPassed} / {MOCK.stagesTotal} stages · {MOCK.duration}min</span>
+            </div>
+            <p className="text-[13px] dim leading-relaxed max-w-[480px]" style={{color:'var(--ink-70)'}}>{MOCK.summary}</p>
+          </div>
+          <div className="flex flex-col gap-2 shrink-0">
+            <button className="btn-primary px-4 py-2.5 rounded-md text-[13px] font-medium">start fix-mock · 25min</button>
+            <button className="hair-b px-4 py-2 rounded-md text-[12px] dim surface-2">re-take same mock</button>
+            <button className="hair-b px-4 py-2 rounded-md text-[12px] dim surface-2">view transcript</button>
+          </div>
+        </div>
+      </section>;
+    }
+
+    function Radar(){
+      const size=280, cx=size/2, cy=size/2, r=100, n=AXES.length;
+      const points = AXES.map((a,i)=>{
+        const angle = (Math.PI*2*i)/n - Math.PI/2;
+        const rr = (a.score/100)*r;
+        return [cx+rr*Math.cos(angle), cy+rr*Math.sin(angle)];
+      });
+      const pointsPrev = AXES.map((a,i)=>{
+        const angle = (Math.PI*2*i)/n - Math.PI/2;
+        const rr = (a.prev/100)*r;
+        return [cx+rr*Math.cos(angle), cy+rr*Math.sin(angle)];
+      });
+      const path = points.map((p,i)=>`${i?'L':'M'}${p[0]},${p[1]}`).join(' ')+'Z';
+      const pathPrev = pointsPrev.map((p,i)=>`${i?'L':'M'}${p[0]},${p[1]}`).join(' ')+'Z';
+      const weakest = AXES.reduce((acc,a,i)=>a.score<AXES[acc].score?i:acc,0);
+      return <section className="surface hair-b rounded-xl p-7">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-1 block">5-axis · MLE rubric</span>
+            <h2 className="text-[16px] font-semibold tracking-tight">Where you stand</h2>
+          </div>
+          <div className="flex items-center gap-3 text-[10px] mono dim-2">
+            <span className="flex items-center gap-1.5"><span className="inline-block w-2 h-2 rounded-full" style={{background:'#fff'}}/>this mock</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block w-2 h-2 rounded-full" style={{background:'var(--ink-30)'}}/>last mock</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-6 flex-wrap">
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+            {[0.25,0.5,0.75,1].map((f,i)=>{
+              const ring = AXES.map((_,j)=>{const angle=(Math.PI*2*j)/n-Math.PI/2;const rr=r*f;return `${j?'L':'M'}${cx+rr*Math.cos(angle)},${cy+rr*Math.sin(angle)}`;}).join(' ')+'Z';
+              return <path key={i} d={ring} fill="none" stroke="var(--hair)" strokeWidth="1"/>;
+            })}
+            {AXES.map((_,i)=>{const angle=(Math.PI*2*i)/n-Math.PI/2;return <line key={i} x1={cx} y1={cy} x2={cx+r*Math.cos(angle)} y2={cy+r*Math.sin(angle)} stroke="var(--hair)" strokeWidth="1"/>;})}
+            <path d={pathPrev} fill="rgba(255,255,255,0.04)" stroke="var(--ink-30)" strokeWidth="1" strokeDasharray="3 3"/>
+            <path d={path} fill="rgba(255,255,255,0.06)" stroke="var(--accent)" strokeWidth="1.5" className="radar-shape" strokeLinejoin="round"/>
+            {points.map((p,i)=><circle key={i} cx={p[0]} cy={p[1]} r={i===weakest?3.5:2.5} fill={i===weakest?'var(--accent)':'#fff'} className="radar-dot" style={{animationDelay:`${1100+i*80}ms`}}/>)}
+          </svg>
+          <div className="flex-1 min-w-[260px] space-y-2 stagger-list">
+            {AXES.map(a=>{
+              const delta = a.score-a.prev;
+              const up = delta>0;
+              return <div key={a.key} className="flex items-center gap-3 text-[12.5px]">
+                <span className="dim flex-1" style={{color:'var(--ink-70)'}}>{a.label}</span>
+                <div className="w-24 h-1 surface-3 rounded-full overflow-hidden">
+                  <div className="fill-bar h-full" style={{width:`${a.score}%`,background:a.score<60?'var(--ink-30)':'#fff'}}/>
+                </div>
+                <span className="mono text-[11px] w-7 text-right">{a.score}</span>
+                <span className="mono text-[10px] w-8 text-right" style={{color:delta===0?'var(--ink-30)':'var(--ink-70)'}}>{up?'+':''}{delta}</span>
+              </div>;
+            })}
+          </div>
+        </div>
+        <div className="mt-5 p-3 rounded-md text-[12px]" style={{background:'var(--surface-3)',borderLeft:'2px solid var(--accent)',color:'var(--ink-70)'}}>
+          <span className="dim-2 mono uppercase text-[9px] tracking-wider">insight · </span>
+          data_intuition weakest. AI-tutor «ml coach» queued reading + suggested fix-mock в 2 дня.
+        </div>
+      </section>;
+    }
+
+    function StagesBreakdown(){
+      return <section className="surface hair-b rounded-xl p-7">
+        <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-4 block">stages · {MOCK.stagesTotal}</span>
+        <div className="space-y-2 stagger-list">
+          {STAGES.map((s,i)=><div key={i} className="grid grid-cols-[24px_1fr_60px_60px] gap-3 items-center py-2 border-b last:border-b-0" style={{borderColor:'var(--hair)'}}>
+            <span className="mono text-[10px] dim-2">{i+1}</span>
+            <div className="min-w-0">
+              <div className="text-[12.5px] font-medium leading-tight mb-0.5">{s.name}</div>
+              <div className="text-[11px] dim line-clamp-1">{s.notes}</div>
+            </div>
+            <div className="text-right"><span className="mono text-[14px] font-semibold" style={{color:s.verdict==='pass'?'var(--ink-100)':'var(--ink-70)'}}>{s.score}</span></div>
+            <div className="text-right"><Chip solid={s.verdict==='pass'}>{s.verdict}</Chip></div>
+          </div>)}
+        </div>
+      </section>;
+    }
+
+    function StrengthsWeaknesses(){
+      return <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="surface hair-b rounded-xl p-6">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-3 block">strengths</span>
+          <ul className="space-y-2.5 stagger-list">{STRENGTHS.map((s,i)=><li key={i} className="grid grid-cols-[14px_1fr] gap-2 text-[12.5px] leading-relaxed">
+            <span style={{color:'var(--ink-100)'}} className="text-[14px] mt-0.5">+</span>
+            <span style={{color:'var(--ink-92)'}}>{s}</span>
+          </li>)}</ul>
+        </div>
+        <div className="surface hair-b rounded-xl p-6">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-3 block">to fix</span>
+          <ul className="space-y-2.5 stagger-list">{WEAKNESSES.map((w,i)=><li key={i} className="grid grid-cols-[14px_1fr] gap-2 text-[12.5px] leading-relaxed">
+            <span style={{color:'var(--ink-70)'}} className="text-[14px] mt-0.5">−</span>
+            <span style={{color:'var(--ink-92)'}}>{w}</span>
+          </li>)}</ul>
+        </div>
+      </section>;
+    }
+
+    function Recs(){
+      return <section className="surface hair-b rounded-xl p-7">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider">recommended next</span>
+          <span className="text-[10px] mono dim-2">3 actions · ~100 min total</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 stagger-list">{RECS.map((r,i)=><div key={i} className="lift hair-b rounded-lg p-5 cursor-pointer surface-2">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[14px]" style={{color:'var(--ink-100)'}}>{r.glyph}</span>
+            <span className="text-[10px] mono dim-2 uppercase tracking-wider">{r.kind}</span>
+            <span className="ml-auto text-[10px] mono dim-2">{r.minutes}m</span>
+          </div>
+          <h4 className="text-[13.5px] font-medium tracking-tight mb-1.5 leading-snug">{r.title}</h4>
+          <p className="text-[11.5px] dim leading-relaxed">{r.why}</p>
+          <button className="mt-4 text-[11.5px] dim hover:text-white transition-colors">open →</button>
+        </div>)}</div>
+      </section>;
+    }
+
+    function TweaksPanel({tweaks,set,onClose}){
+      return <div className="tweaks">
+        <div className="flex items-center justify-between mb-3"><span className="text-[10px] mono dim-2 uppercase tracking-wider">tweaks</span><button onClick={onClose} className="dim-2 text-[14px] leading-none">×</button></div>
+        <div className="space-y-3">
+          <label className="flex flex-col gap-1"><span className="dim text-[10px] mono uppercase tracking-wider">verdict</span>
+            <select value={tweaks.verdict} onChange={e=>set('verdict',e.target.value)} className="bg-black hair2-b rounded px-2 py-1 text-[11px] mono" style={{color:'var(--ink-92)'}}>
+              <option value="PASSED">PASSED</option><option value="FAILED">FAILED</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1"><span className="dim text-[10px] mono uppercase tracking-wider">score</span>
+            <input type="number" min="0" max="100" value={tweaks.score} onChange={e=>set('score',parseInt(e.target.value))} className="bg-black hair2-b rounded px-2 py-1 text-[11px] mono" style={{color:'var(--ink-92)'}}/>
+          </label>
+          <label className="flex items-center justify-between gap-2"><span className="dim text-[11px]">show recommendations</span><input type="checkbox" checked={tweaks.showRecommendations} onChange={e=>set('showRecommendations',e.target.checked)}/></label>
+        </div>
+      </div>;
+    }
+
+    function App(){
+      const [tweaks,setTweaks] = useState(TWEAK_DEFAULTS);
+      const [tweaksOpen,setTweaksOpen] = useState(false);
+      const set = (k,v) => { setTweaks({...tweaks,[k]:v}); try{window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[k]:v}},'*')}catch(e){} };
+      useEffect(()=>{
+        const onMsg = ev => { const d=ev.data||{}; if(d.type==='__activate_edit_mode')setTweaksOpen(true); if(d.type==='__deactivate_edit_mode')setTweaksOpen(false); };
+        window.addEventListener('message',onMsg);
+        try{window.parent.postMessage({type:'__edit_mode_available'},'*')}catch(e){}
+        return ()=>window.removeEventListener('message',onMsg);
+      },[]);
+      return <div className="canvas-bg min-h-screen page-enter">
+        <div className="max-w-[1280px] mx-auto px-8 pb-12">
+          <Header/>
+          <main className="stagger space-y-4">
+            <VerdictHero tweaks={tweaks}/>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><Radar/><StagesBreakdown/></div>
+            <StrengthsWeaknesses/>
+            {tweaks.showRecommendations && <Recs/>}
+          </main>
+          <footer className="flex items-center justify-between pt-6 mt-6 text-[10px] mono dim-2 uppercase tracking-wider no-select border-t" style={{borderColor:'var(--hair)'}}>
+            <div className="flex items-center gap-4"><span>fix-mock <Kbd>F</Kbd></span><span>transcript <Kbd>T</Kbd></span><span>share <Kbd>⌘S</Kbd></span></div>
+            <span>druz9 · debrief · v0</span>
+          </footer>
+        </div>
+        {tweaksOpen && <TweaksPanel tweaks={tweaks} set={set} onClose={()=>{setTweaksOpen(false);try{window.parent.postMessage({type:'__edit_mode_dismissed'},'*')}catch(e){}}}/>}
+      </div>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

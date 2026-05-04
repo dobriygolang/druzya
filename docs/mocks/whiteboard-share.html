@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>druz9 · Whiteboard share</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#000; --surface-1:#0a0a0a; --surface-2:#111; --surface-3:#161616;
+      --hair:rgba(255,255,255,0.07); --hair-2:rgba(255,255,255,0.12);
+      --ink-100:#fff; --ink-92:rgba(255,255,255,0.92); --ink-70:rgba(255,255,255,0.7);
+      --ink-50:rgba(255,255,255,0.5); --ink-30:rgba(255,255,255,0.3);
+      --accent:#FF3B30; --t-fast:150ms; --ease:cubic-bezier(0.2,0.7,0.2,1);
+    }
+    *{box-sizing:border-box}
+    html,body{background:var(--bg);color:var(--ink-92);font-family:'Inter',sans-serif;letter-spacing:-0.005em;-webkit-font-smoothing:antialiased}
+    .mono{font-family:'JetBrains Mono',ui-monospace,monospace;letter-spacing:-0.01em}
+    .surface{background:var(--surface-1)} .surface-2{background:var(--surface-2)} .surface-3{background:var(--surface-3)}
+    .hair-b{border:1px solid var(--hair)} .hair2-b{border:1px solid var(--hair-2)}
+    .dim{color:var(--ink-50)} .dim-2{color:var(--ink-30)}
+    @keyframes pageFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .page-enter{animation:pageFade 220ms var(--ease) both}
+    .lift{transition:transform var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease)}
+    .lift:hover{transform:translateY(-1px);border-color:var(--hair-2)}
+    .btn-primary{background:#fff;color:#000;transition:transform var(--t-fast) var(--ease)} .btn-primary:hover{transform:translateY(-1px);background:rgba(255,255,255,0.92)}
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;border:1px solid var(--hair);background:var(--surface-2);font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-50);font-family:'JetBrains Mono',monospace}
+    .chip.live{color:var(--ink-70)} .chip.live::before{content:'';width:6px;height:6px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 2px rgba(255,59,48,0.18)}
+    .kbd{display:inline-flex;padding:1px 6px;border-radius:4px;border:1px solid var(--hair-2);background:var(--surface-3);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-70)}
+    button:focus-visible{outline:1px solid var(--ink-70);outline-offset:2px}
+    ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:3px}
+    .no-select{-webkit-user-select:none;user-select:none}
+    .canvas-area{background:var(--surface-1);background-image:radial-gradient(circle,rgba(255,255,255,0.04) 1px,transparent 1px);background-size:24px 24px}
+    .tweaks{position:fixed;right:20px;bottom:80px;width:260px;background:var(--surface-2);border:1px solid var(--hair-2);border-radius:10px;padding:14px;z-index:50;font-size:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6)}
+    .avatar{width:28px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;border:1px solid var(--hair-2);background:var(--surface-3);color:var(--ink-92)}
+    .avatar.me{background:#fff;color:#000;border-color:#fff}
+    .tool-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--ink-70);transition:all var(--t-fast) var(--ease);cursor:pointer}
+    .tool-btn:hover{background:var(--surface-3);color:var(--ink-100)}
+    .tool-btn.active{background:#fff;color:#000}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.5}} .cursor-blink{animation:blink 1s ease-in-out infinite}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "showCursors": true,
+      "showAICritique": false,
+      "activeTool": "select"
+    }/*EDITMODE-END*/;
+
+    const PARTICIPANTS = [
+      { id:'me', name:'sergey', initials:'S', isMe:true, color:'#fff' },
+      { id:'tutor', name:'sql mentor', initials:'M', color:'#A0A0A0' },
+      { id:'guest', name:'guest', initials:'?', color:'#606060' },
+    ];
+
+    const TOOLS = [
+      { k:'select', label:'select', glyph:'↖', shortcut:'V' },
+      { k:'rect', label:'rectangle', glyph:'▭', shortcut:'R' },
+      { k:'ellipse', label:'ellipse', glyph:'◯', shortcut:'O' },
+      { k:'arrow', label:'arrow', glyph:'→', shortcut:'A' },
+      { k:'text', label:'text', glyph:'T', shortcut:'T' },
+      { k:'draw', label:'pen', glyph:'✎', shortcut:'P' },
+      { k:'sticky', label:'sticky', glyph:'▢', shortcut:'S' },
+    ];
+
+    const Chip = ({children,live=false}) => <span className={`chip ${live?'live':''}`}>{children}</span>;
+    const Kbd = ({children}) => <span className="kbd">{children}</span>;
+
+    function Header(){
+      return <header className="flex items-center justify-between px-6 py-3 border-b no-select" style={{borderColor:'var(--hair)',background:'#070707'}}>
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-md flex items-center justify-center mono text-[12px] font-semibold hair2-b" style={{background:'var(--surface-3)',color:'var(--ink-92)'}}>d9</div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[14px] font-semibold">druz9</span>
+            <span className="dim-2 text-[12px]">/</span>
+            <span className="text-[14px] dim">whiteboard</span>
+            <span className="dim-2 text-[12px]">/</span>
+            <span className="text-[14px]">sysdesign · cassandra-vs-postgres</span>
+          </div>
+          <Chip live>3 online · synced 2s</Chip>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center -space-x-2">{PARTICIPANTS.map(p=><span key={p.id} className={`avatar ${p.isMe?'me':''}`}>{p.initials}</span>)}</div>
+          <div className="hairline mx-2 w-px h-6" style={{background:'var(--hair-2)'}}/>
+          <Chip>tutor session · 38 min left</Chip>
+          <button className="lift hair-b px-3 py-1.5 rounded-md text-[12px] dim surface-2">share</button>
+          <button className="btn-primary px-3 py-1.5 rounded-md text-[12px] font-medium">⌘E · ai critique</button>
+        </div>
+      </header>;
+    }
+
+    function Canvas({tweaks}){
+      return <div className="canvas-area flex-1 relative overflow-hidden">
+        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet">
+          {/* boxes — system design diagram */}
+          <g stroke="#fff" strokeWidth="1.5" fill="var(--surface-2)">
+            <rect x="80" y="80" width="160" height="80" rx="6"/>
+            <rect x="320" y="80" width="160" height="80" rx="6"/>
+            <rect x="560" y="80" width="160" height="80" rx="6"/>
+            <rect x="200" y="240" width="180" height="80" rx="6"/>
+            <rect x="440" y="240" width="180" height="80" rx="6"/>
+            <rect x="680" y="240" width="180" height="80" rx="6"/>
+            <rect x="320" y="400" width="200" height="100" rx="6"/>
+            <rect x="600" y="400" width="200" height="100" rx="6"/>
+          </g>
+          {/* labels */}
+          <g fill="#fff" fontFamily="JetBrains Mono, monospace" fontSize="13" fontWeight="500" textAnchor="middle">
+            <text x="160" y="125">load balancer</text>
+            <text x="400" y="125">api gateway</text>
+            <text x="640" y="125">edge cache</text>
+            <text x="290" y="285">user-svc</text>
+            <text x="530" y="285">post-svc</text>
+            <text x="770" y="285">feed-svc</text>
+            <text x="420" y="445">postgres</text>
+            <text x="420" y="465" fontSize="10" fill="#7A7A7A">primary</text>
+            <text x="700" y="445">cassandra</text>
+            <text x="700" y="465" fontSize="10" fill="#7A7A7A">timeline</text>
+          </g>
+          {/* arrows */}
+          <g stroke="#fff" strokeWidth="1.5" fill="none">
+            <path d="M240 120 L320 120" markerEnd="url(#arrow)"/>
+            <path d="M480 120 L560 120" markerEnd="url(#arrow)"/>
+            <path d="M400 160 L290 240" markerEnd="url(#arrow)"/>
+            <path d="M400 160 L530 240" markerEnd="url(#arrow)"/>
+            <path d="M640 160 L770 240" markerEnd="url(#arrow)"/>
+            <path d="M290 320 L380 400" markerEnd="url(#arrow)"/>
+            <path d="M530 320 L460 400" markerEnd="url(#arrow)"/>
+            <path d="M770 320 L700 400" markerEnd="url(#arrow)"/>
+          </g>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#fff"/>
+            </marker>
+          </defs>
+          {/* sticky notes */}
+          <g>
+            <rect x="900" y="80" width="200" height="120" rx="3" fill="rgba(255,255,255,0.04)" stroke="var(--hair-2)" strokeDasharray="3 3"/>
+            <text x="920" y="110" fill="#fff" fontFamily="Inter" fontSize="12" fontWeight="500">— consider read replicas?</text>
+            <text x="920" y="132" fill="#A0A0A0" fontFamily="Inter" fontSize="11">— eventual consistency ok for feed</text>
+            <text x="920" y="152" fill="#A0A0A0" fontFamily="Inter" fontSize="11">— sharding by user_id</text>
+          </g>
+          <g>
+            <rect x="80" y="540" width="240" height="100" rx="3" fill="rgba(255,255,255,0.04)" stroke="var(--hair-2)" strokeDasharray="3 3"/>
+            <text x="100" y="570" fill="#fff" fontFamily="Inter" fontSize="12" fontWeight="500">scale targets</text>
+            <text x="100" y="592" fill="#A0A0A0" fontFamily="Inter" fontSize="11">— 100M DAU · 10k QPS feed</text>
+            <text x="100" y="612" fill="#A0A0A0" fontFamily="Inter" fontSize="11">— write:read · 1:100</text>
+          </g>
+        </svg>
+
+        {/* AI critique overlay if shown */}
+        {tweaks.showAICritique && <div className="absolute right-6 bottom-6 w-[320px] surface hair2-b rounded-lg p-5" style={{boxShadow:'0 12px 40px rgba(0,0,0,0.6)'}}>
+          <div className="flex items-center gap-2 mb-3">
+            <Chip live>ai critique</Chip>
+            <span className="ml-auto text-[10px] mono dim-2">2s ago · llmchain · groq 70b</span>
+          </div>
+          <h4 className="text-[13px] font-semibold mb-2">3 observations</h4>
+          <ul className="text-[12px] dim space-y-1.5 leading-relaxed" style={{color:'var(--ink-70)'}}>
+            <li>+ correct split read-write paths to cassandra/postgres</li>
+            <li>− no caching layer between gateway and services · risk hot keys</li>
+            <li>− ratelimit / auth not on gateway · single point of failure</li>
+          </ul>
+          <button className="mt-3 w-full hair-b py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2">view full critique →</button>
+        </div>}
+
+        {/* Remote cursors */}
+        {tweaks.showCursors && <>
+          <div className="absolute" style={{left:920,top:330,pointerEvents:'none'}}>
+            <svg width="18" height="18" viewBox="0 0 18 18" className="cursor-blink">
+              <path d="M3 2 L3 14 L7 11 L9.5 16 L12 15 L9.5 10 L14 9 Z" fill="#A0A0A0" stroke="#000" strokeWidth="0.6"/>
+            </svg>
+            <div className="mt-1 inline-block px-2 py-0.5 rounded text-[9px] mono uppercase tracking-wider" style={{background:'#A0A0A0',color:'#000'}}>sql mentor</div>
+          </div>
+          <div className="absolute" style={{left:340,top:480,pointerEvents:'none'}}>
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path d="M3 2 L3 14 L7 11 L9.5 16 L12 15 L9.5 10 L14 9 Z" fill="#606060" stroke="#000" strokeWidth="0.6"/>
+            </svg>
+            <div className="mt-1 inline-block px-2 py-0.5 rounded text-[9px] mono uppercase tracking-wider" style={{background:'#606060',color:'#000'}}>guest · idle</div>
+          </div>
+        </>}
+      </div>;
+    }
+
+    function ToolPalette({active,setActive}){
+      return <div className="absolute left-1/2 -translate-x-1/2 bottom-6 surface hair2-b rounded-xl px-2 py-1.5 flex items-center gap-1" style={{boxShadow:'0 8px 32px rgba(0,0,0,0.6)'}}>
+        {TOOLS.map(t=><button key={t.k} onClick={()=>setActive(t.k)} className={`tool-btn ${active===t.k?'active':''}`} title={`${t.label} · ${t.shortcut}`}>
+          <span className="text-[16px]">{t.glyph}</span>
+        </button>)}
+        <div className="hairline mx-1 w-px h-6" style={{background:'var(--hair-2)'}}/>
+        <button className="tool-btn"><span className="text-[14px]">↶</span></button>
+        <button className="tool-btn"><span className="text-[14px]">↷</span></button>
+      </div>;
+    }
+
+    function RightPanel(){
+      return <aside className="w-[260px] shrink-0 border-l flex flex-col" style={{borderColor:'var(--hair)',background:'#070707'}}>
+        <div className="px-3 py-2 border-b flex items-center justify-between" style={{borderColor:'var(--hair)'}}>
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider">participants · 3</span>
+          <Chip live>live</Chip>
+        </div>
+        <ul className="py-2">
+          {PARTICIPANTS.map(p=><li key={p.id} className="px-3 py-2 grid grid-cols-[28px_1fr_auto] items-center gap-2">
+            <span className={`avatar ${p.isMe?'me':''}`}>{p.initials}</span>
+            <div className="min-w-0">
+              <div className="text-[12.5px]" style={{color:p.isMe?'var(--ink-100)':'var(--ink-92)'}}>{p.name}</div>
+              <div className="text-[10px] mono dim-2 uppercase tracking-wider">{p.id==='guest'?'idle · 4m':'editing'}</div>
+            </div>
+            <span className="w-2 h-2 rounded-full" style={{background:p.color}}/>
+          </li>)}
+        </ul>
+
+        <div className="hairline"/>
+
+        <div className="px-3 py-3">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-2 block">recent activity · 60s</span>
+          <ul className="space-y-1.5 text-[11px]">
+            <li className="flex items-baseline gap-2">
+              <span className="dim-2 mono text-[9px] uppercase tracking-wider w-12 shrink-0">2s</span>
+              <span style={{color:'var(--ink-70)'}}>sql mentor · added sticky «scale targets»</span>
+            </li>
+            <li className="flex items-baseline gap-2">
+              <span className="dim-2 mono text-[9px] uppercase tracking-wider w-12 shrink-0">8s</span>
+              <span style={{color:'var(--ink-70)'}}>you · drew arrow gateway→user-svc</span>
+            </li>
+            <li className="flex items-baseline gap-2">
+              <span className="dim-2 mono text-[9px] uppercase tracking-wider w-12 shrink-0">22s</span>
+              <span style={{color:'var(--ink-70)'}}>sql mentor · resized cassandra box</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="hairline"/>
+
+        <div className="px-3 py-3">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-2 block">linked atlas-nodes</span>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip>distributed</Chip>
+            <Chip>data_modeling</Chip>
+            <Chip>caching</Chip>
+            <Chip>replication</Chip>
+          </div>
+        </div>
+
+        <div className="mt-auto px-3 py-2 border-t text-[10px] mono dim-2 uppercase tracking-wider" style={{borderColor:'var(--hair)'}}>
+          room · wb-7f3a · expires 4h
+        </div>
+      </aside>;
+    }
+
+    function TweaksPanel({tweaks,set,onClose}){
+      return <div className="tweaks">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider">tweaks</span>
+          <button onClick={onClose} className="dim-2 text-[14px] leading-none">×</button>
+        </div>
+        <div className="space-y-3">
+          <label className="flex items-center justify-between gap-2"><span className="dim text-[11px]">show cursors</span><input type="checkbox" checked={tweaks.showCursors} onChange={e=>set('showCursors',e.target.checked)}/></label>
+          <label className="flex items-center justify-between gap-2"><span className="dim text-[11px]">ai critique panel</span><input type="checkbox" checked={tweaks.showAICritique} onChange={e=>set('showAICritique',e.target.checked)}/></label>
+          <label className="flex flex-col gap-1"><span className="dim text-[10px] mono uppercase tracking-wider">active tool</span>
+            <select value={tweaks.activeTool} onChange={e=>set('activeTool',e.target.value)} className="bg-black hair2-b rounded px-2 py-1 text-[11px] mono" style={{color:'var(--ink-92)'}}>
+              {TOOLS.map(t=><option key={t.k} value={t.k}>{t.label}</option>)}
+            </select>
+          </label>
+        </div>
+      </div>;
+    }
+
+    function App(){
+      const [tweaks,setTweaks] = useState(TWEAK_DEFAULTS);
+      const [tweaksOpen,setTweaksOpen] = useState(false);
+      const set = (k,v) => { setTweaks({...tweaks,[k]:v}); try{window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[k]:v}},'*')}catch(e){} };
+      useEffect(()=>{
+        const onMsg = ev => { const d=ev.data||{}; if(d.type==='__activate_edit_mode')setTweaksOpen(true); if(d.type==='__deactivate_edit_mode')setTweaksOpen(false); };
+        window.addEventListener('message',onMsg);
+        try{window.parent.postMessage({type:'__edit_mode_available'},'*')}catch(e){}
+        return ()=>window.removeEventListener('message',onMsg);
+      },[]);
+
+      return <div className="page-enter min-h-screen flex flex-col">
+        <Header/>
+        <div className="flex-1 flex relative" style={{minHeight:'calc(100vh - 53px)'}}>
+          <Canvas tweaks={tweaks}/>
+          <RightPanel/>
+          <ToolPalette active={tweaks.activeTool} setActive={(t)=>set('activeTool',t)}/>
+        </div>
+        {tweaksOpen && <TweaksPanel tweaks={tweaks} set={set} onClose={()=>{setTweaksOpen(false);try{window.parent.postMessage({type:'__edit_mode_dismissed'},'*')}catch(e){}}}/>}
+      </div>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

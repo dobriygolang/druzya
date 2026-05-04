@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hone · Tutor</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#000; --surface-1:#0a0a0a; --surface-2:#111; --surface-3:#161616;
+      --hair:rgba(255,255,255,0.07); --hair-2:rgba(255,255,255,0.12);
+      --ink-100:#fff; --ink-92:rgba(255,255,255,0.92); --ink-70:rgba(255,255,255,0.7);
+      --ink-50:rgba(255,255,255,0.5); --ink-30:rgba(255,255,255,0.3);
+      --accent:#FF3B30;
+      --t-fast:150ms; --t-base:220ms;
+      --ease:cubic-bezier(0.2,0.7,0.2,1);
+    }
+    *{box-sizing:border-box}
+    html,body{
+      background:var(--bg); color:var(--ink-92);
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+      letter-spacing:-0.005em; -webkit-font-smoothing:antialiased;
+    }
+    .mono{font-family:'JetBrains Mono',ui-monospace,monospace; letter-spacing:-0.01em}
+    .surface{background:var(--surface-1)} .surface-2{background:var(--surface-2)} .surface-3{background:var(--surface-3)}
+    .hair-b{border:1px solid var(--hair)} .hair2-b{border:1px solid var(--hair-2)}
+    .dim{color:var(--ink-50)} .dim-2{color:var(--ink-30)}
+    .hairline{height:1px;background:var(--hair);width:100%}
+    .canvas-bg{background:radial-gradient(circle at 30% 0%,rgba(255,255,255,0.02),transparent 55%),var(--bg)}
+
+    @keyframes pageFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .page-enter{animation:pageFade 220ms var(--ease) both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+    .stagger>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .stagger>*:nth-child(1){animation-delay:60ms}
+    .stagger>*:nth-child(2){animation-delay:130ms}
+    .stagger>*:nth-child(3){animation-delay:200ms}
+    .stagger>*:nth-child(4){animation-delay:270ms}
+    .stagger>*:nth-child(5){animation-delay:340ms}
+    .stagger>*:nth-child(6){animation-delay:410ms}
+
+    .stagger-list>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .stagger-list>*:nth-child(1){animation-delay:80ms}
+    .stagger-list>*:nth-child(2){animation-delay:150ms}
+    .stagger-list>*:nth-child(3){animation-delay:220ms}
+    .stagger-list>*:nth-child(4){animation-delay:290ms}
+    .stagger-list>*:nth-child(5){animation-delay:360ms}
+    .stagger-list>*:nth-child(6){animation-delay:430ms}
+
+    .lift{transition:transform var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),background-color var(--t-fast) var(--ease)}
+    .lift:hover{transform:translateY(-1px); border-color:var(--hair-2)}
+    .btn-primary{background:#fff;color:#000;transition:transform var(--t-fast) var(--ease),background-color var(--t-fast) var(--ease)}
+    .btn-primary:hover{transform:translateY(-1px); background:rgba(255,255,255,0.92)}
+
+    @keyframes fillBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    .fill-bar{transform-origin:left;animation:fillBar 1100ms ease-out forwards;animation-delay:240ms}
+    @keyframes drawLine{from{stroke-dashoffset:1200}to{stroke-dashoffset:0}}
+    .spark-line{stroke-dasharray:1200;animation:drawLine 1.4s var(--ease) forwards;animation-delay:300ms}
+
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;
+      border:1px solid var(--hair); background:var(--surface-2);
+      font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;
+      color:var(--ink-50); font-family:'JetBrains Mono',ui-monospace,monospace}
+    .chip.live{color:var(--ink-70)}
+    .chip.live::before{content:'';width:6px;height:6px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 2px rgba(255,59,48,0.18)}
+    .chip.solid{background:#fff;color:#000;border-color:#fff}
+    .kbd{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;
+      border:1px solid var(--hair-2); background:var(--surface-3);
+      font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-70); line-height:1.4}
+
+    button:focus-visible{outline:1px solid var(--ink-70); outline-offset:2px}
+    ::selection{background:rgba(255,255,255,0.18); color:#fff}
+    ::-webkit-scrollbar{width:6px;height:6px}
+    ::-webkit-scrollbar-thumb{background:var(--hair-2); border-radius:3px}
+
+    .no-select{-webkit-user-select:none;user-select:none}
+    .hero-stripe{position:absolute;top:0;left:0;right:0;height:1.5px;background:var(--accent);opacity:0.85}
+
+    .tweaks{position:fixed;right:20px;bottom:20px;width:260px;
+      background:var(--surface-2); border:1px solid var(--hair-2);
+      border-radius:10px; padding:14px; z-index:50; font-size:12px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.6)}
+
+    .tab-indicator{transition:transform var(--t-base) var(--ease),width var(--t-base) var(--ease)}
+
+    .avatar{width:32px; height:32px; border-radius: 999px;
+      display:inline-flex; align-items:center; justify-content:center;
+      font-family:'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--hair-2); background: var(--surface-3); color: var(--ink-92);}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "view": "dashboard",
+      "studentId": "daniil",
+      "showAIBrief": true
+    }/*EDITMODE-END*/;
+
+    /* ====== mock data ====== */
+    const STUDENTS = [
+      { id:'daniil',  name:'Daniil',   track:'DEV · Go',  active:true,  lastSeen:'2h ago',  weekly: 6.2, mocks:3, focus: [3,4,2,5,4,6,5], score: 71 },
+      { id:'aigul',   name:'Aigul',    track:'ML eng',    active:true,  lastSeen:'now',     weekly: 8.4, mocks:5, focus: [4,5,3,6,5,7,6], score: 78 },
+      { id:'vlad',    name:'Vlad',     track:'DEV · Go',  active:false, lastSeen:'4d ago',  weekly: 0.5, mocks:0, focus: [1,0,1,0,0,0,0], score: 45 },
+      { id:'mara',    name:'Mara',     track:'English',   active:true,  lastSeen:'1d ago',  weekly: 4.1, mocks:2, focus: [2,3,2,4,3,4,3], score: 62 },
+    ];
+
+    const ACTIVITY = [
+      { l:'students',     v:12, u:'total',     trend:'+2' },
+      { l:'active · 7d',  v:9,  u:'this week', trend:'+1' },
+      { l:'sessions',     v:34, u:'this month', trend:'+8' },
+      { l:'avg score',    v:'71.4', u:'/100',  trend:'+4.2' },
+      { l:'invites pend', v:3,  u:'queue',     trend:'unchanged' },
+    ];
+
+    const INVITES = [
+      { code:'DRZ-X4F2', issued:'2d ago', status:'pending', track:'DEV · Go',  recipient:'guest@example.com' },
+      { code:'DRZ-A91P', issued:'4d ago', status:'pending', track:'ML eng',    recipient:'—' },
+      { code:'DRZ-K7QQ', issued:'1w ago', status:'accepted', track:'English',  recipient:'mara@dom.com' },
+    ];
+
+    const STUDENT_DETAIL = {
+      name:'Daniil',
+      track:'DEV · Go senior',
+      lastActive:'2h ago',
+      score: 71,
+      snapshot:{
+        focus_min: 372, mock_count: 3, weak_spots: 2, notes: 14, atlas_done: '8/12',
+      },
+      brief_md: [
+        '## Состояние · 7 дней',
+        '',
+        'Прогресс держится. **DP intuition** закрыта (mock 7 — PASS, mock 11 — FAIL по hard 2D). Слабые места — _power calculation_ для A/B и _Bonferroni correction_; обе всплывали на ML-секциях.',
+        '',
+        '## Рекомендую к 1:1',
+        '',
+        'Покрутить парные задачи на DP-2D (LIS variants, edit distance), и одну стат-задачу на multiple comparisons — 30 мин достаточно.',
+        '',
+        'Mood: high. На прошлой сессии сам предложил тему — DP. Поддержать инициативу.',
+      ].join('\n'),
+      weak_spots: [
+        { node:'dp_2d',          title:'Dynamic programming · 2D',     score:42, ctx:'3 of last 5 attempts < 50/100 · last fail on edit distance' },
+        { node:'stat_correction',title:'Multiple comparisons',         score:48, ctx:'2 mocks · weakest dimension on Yandex BE round' },
+      ],
+      assignments: [
+        { title:'Read · Kleinberg ch.6.4–6.5',  due:'thu',   kind:'codex_read', status:'open' },
+        { title:'Practice · DP 2D · 5 medium',  due:'fri',   kind:'kata',       status:'open' },
+        { title:'AI mock · stat-heavy round',   due:'sat',   kind:'mock',       status:'open' },
+      ],
+    };
+
+    const TABS = [{ key:'dashboard', label:'dashboard' }, { key:'student', label:'student · Daniil' }];
+
+    /* ====== atoms ====== */
+    const Chip = ({ children, live=false, solid=false }) => (
+      <span className={`chip ${live?'live':''} ${solid?'solid':''}`}>{children}</span>
+    );
+    const Kbd = ({ children }) => <span className="kbd">{children}</span>;
+
+    function Sparkline({ data, w=80, h=24 }) {
+      const max = Math.max(...data, 1);
+      const min = Math.min(...data, 0);
+      const range = max - min || 1;
+      const pts = data.map((v,i) => {
+        const x = (i/(data.length-1))*w;
+        const y = h - ((v-min)/range)*h;
+        return `${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block">
+          <path d={pts} fill="none" stroke="var(--ink-70)" strokeWidth="1.25"
+                strokeLinejoin="round" className="spark-line"/>
+        </svg>
+      );
+    }
+
+    /* ====== header ====== */
+    function Header({ view, setView }) {
+      const idx = TABS.findIndex(t => t.key === view);
+      return (
+        <header className="flex items-center justify-between pt-7 pb-5 no-select">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-md flex items-center justify-center hair2-b"
+                 style={{background:'#000'}}>
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                <defs>
+                  <clipPath id="gly-tut-c"><circle cx="12" cy="12" r="9"/></clipPath>
+                </defs>
+                <circle cx="12" cy="12" r="9" fill="#fff"/>
+                <g clipPath={"url(#gly-tut-c)"}>
+                  <rect x="3" y="3" width="9" height="18" fill="#000"/>
+                </g>
+                <g clipPath={"url(#gly-tut-c)"} stroke="#000" strokeWidth="1.4">
+                  <line x1="10" y1="2" x2="22" y2="14"/>
+                  <line x1="10" y1="6" x2="22" y2="18"/>
+                  <line x1="10" y1="10" x2="22" y2="22"/>
+                  <line x1="10" y1="14" x2="22" y2="26"/>
+                  <line x1="10" y1="18" x2="22" y2="30"/>
+                </g>
+              </svg>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[15px] font-semibold tracking-tight">Hone</span>
+              <span className="dim-2 text-[13px]">/</span>
+              <span className="text-[15px] font-medium dim">Tutor</span>
+            </div>
+            <Chip>12 students</Chip>
+          </div>
+
+          <div className="relative flex items-center p-1 rounded-lg hair-b surface-2">
+            <div className="tab-indicator absolute top-1 bottom-1 rounded-md"
+              style={{ background:'var(--surface-3)', border:'1px solid var(--hair-2)',
+                       width:`calc(50% - 2px)`, transform:`translateX(${idx*100}%)` }}/>
+            {TABS.map(t => (
+              <button key={t.key} onClick={()=>setView(t.key)}
+                className="relative z-10 px-4 py-1.5 mono text-[11px] uppercase tracking-wider rounded-md min-w-[160px]"
+                style={{ color: view===t.key?'var(--ink-92)':'var(--ink-50)',
+                         transition:'color var(--t-fast) var(--ease)' }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 text-[10px] mono uppercase tracking-wider dim">
+            <span>palette</span><Kbd>⌘K</Kbd>
+          </div>
+        </header>
+      );
+    }
+
+    /* ====== Dashboard view ====== */
+    function Dashboard() {
+      return (
+        <main className="stagger grid grid-cols-12 gap-4 pb-10">
+          {/* Activity row */}
+          <section className="col-span-12 grid grid-cols-2 lg:grid-cols-5 gap-3">
+            {ACTIVITY.map(a => (
+              <div key={a.l} className="lift surface hair-b rounded-xl p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] mono dim-2 uppercase tracking-wider">{a.l}</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 mb-2">
+                  <span className="mono text-[24px] font-semibold tracking-tight">{a.v}</span>
+                  <span className="text-[10px] mono dim-2">{a.u}</span>
+                </div>
+                <span className="text-[10px] mono dim-2">{a.trend}</span>
+              </div>
+            ))}
+          </section>
+
+          {/* Students list */}
+          <section className="col-span-12 lg:col-span-8 surface hair-b rounded-xl p-7">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <span className="text-[10px] mono dim-2 uppercase tracking-wider">students</span>
+                <h2 className="text-[16px] font-semibold tracking-tight mt-1">12 in roster</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="surface-2 hair-b rounded-md flex items-center px-3 py-1.5 gap-2 w-[200px]">
+                  <span className="text-[10px] mono dim-2 uppercase tracking-wider">/ search by name</span>
+                  <span className="ml-auto kbd">⌘F</span>
+                </div>
+                <button className="btn-primary px-3 py-1.5 rounded-md text-[12px] font-medium">+ invite</button>
+              </div>
+            </div>
+
+            <ul className="space-y-2 stagger-list">
+              {STUDENTS.map(s => (
+                <li key={s.id}
+                  className="lift hair-b rounded-md p-3 surface-2 grid grid-cols-[40px_1fr_120px_60px_80px] items-center gap-4 cursor-pointer">
+                  <div className="avatar">{s.name[0]}</div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[13px] font-medium" style={{color:'var(--ink-92)'}}>{s.name}</span>
+                      <Chip>{s.track}</Chip>
+                      {s.active && <Chip live>active</Chip>}
+                    </div>
+                    <div className="text-[10px] mono dim-2 uppercase tracking-wider">last · {s.lastSeen} · {s.weekly}h/wk · {s.mocks} mocks</div>
+                  </div>
+                  <Sparkline data={s.focus}/>
+                  <div className="text-right">
+                    <span className="mono text-[14px] font-semibold"
+                          style={{color: s.score >= 70 ? 'var(--ink-100)' : 'var(--ink-70)'}}>
+                      {s.score}<span className="text-[9px] dim-2">/100</span>
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <button className="hair-b px-3 py-1 rounded-md text-[10px] mono dim uppercase tracking-wider surface-3">
+                      open →
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Invites */}
+          <section className="col-span-12 lg:col-span-4 surface hair-b rounded-xl p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] mono dim-2 uppercase tracking-wider">invites</span>
+              <Chip>3 pending</Chip>
+            </div>
+
+            <ul className="space-y-2 mb-4 flex-1 stagger-list">
+              {INVITES.map(i => (
+                <li key={i.code} className="hair-b rounded-md p-3 surface-2">
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span className="mono text-[12px]" style={{color:'var(--ink-92)'}}>{i.code}</span>
+                    <Chip live={i.status==='pending'} solid={i.status==='accepted'}>{i.status}</Chip>
+                  </div>
+                  <div className="text-[10px] mono dim-2 uppercase tracking-wider mb-1">
+                    {i.track} · {i.issued}
+                  </div>
+                  <div className="text-[11px] dim truncate">{i.recipient}</div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hairline mb-3"/>
+            <button className="btn-primary py-2 rounded-md text-[12px] font-medium">+ mint new invite</button>
+          </section>
+
+          {/* Broadcast (collapsed) */}
+          <section className="col-span-12 surface hair-b rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] mono dim-2 uppercase tracking-wider">broadcast</span>
+                <h3 className="text-[14px] font-semibold tracking-tight mt-1">
+                  Push assignment to <span className="mono">N</span> students
+                </h3>
+                <p className="text-[12px] dim mt-1">Title + body markdown + capacity. Lands in their TaskBoard with deadline.</p>
+              </div>
+              <button className="lift hair-b px-4 py-2 rounded-md text-[12px] dim surface-2">
+                expand form ↓
+              </button>
+            </div>
+          </section>
+        </main>
+      );
+    }
+
+    /* ====== Student view ====== */
+    function StudentView() {
+      const s = STUDENT_DETAIL;
+      return (
+        <main className="stagger grid grid-cols-12 gap-4 pb-10">
+          {/* Hero */}
+          <section className="col-span-12 surface hair-b rounded-xl p-7 relative overflow-hidden">
+            <div className="hero-stripe"/>
+            <div className="flex items-start gap-5">
+              <div className="avatar shrink-0" style={{ width: 56, height: 56, fontSize: 20 }}>{s.name[0]}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <Chip>{s.track}</Chip>
+                  <Chip live>last active · {s.lastActive}</Chip>
+                </div>
+                <h1 className="text-[26px] font-semibold tracking-tight mb-1">{s.name}</h1>
+                <p className="text-[12px] dim">12-week track · enrolled 2026-04-01 · 8 of 12 steps complete</p>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-[10px] mono dim-2 uppercase tracking-wider">score</div>
+                <div className="mono text-[28px] font-semibold tracking-tight" style={{color:'var(--ink-100)'}}>
+                  {s.score}<span className="text-[12px] dim-2">/100</span>
+                </div>
+                <div className="text-[10px] mono dim-2 uppercase tracking-wider">+4.2 last 7d</div>
+              </div>
+            </div>
+
+            <div className="hairline my-5"/>
+
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+              <SnapStat l="focus" v={s.snapshot.focus_min} u="min · 7d"/>
+              <SnapStat l="mocks" v={s.snapshot.mock_count} u="this week"/>
+              <SnapStat l="weak spots" v={s.snapshot.weak_spots} u="flagged"/>
+              <SnapStat l="notes" v={s.snapshot.notes} u="written"/>
+              <SnapStat l="atlas" v={s.snapshot.atlas_done} u="nodes"/>
+            </div>
+
+            <div className="hairline my-5"/>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button className="btn-primary px-4 py-2 rounded-md text-[12.5px] font-medium">
+                schedule 1:1 · <span className="text-[10px] mono opacity-50 ml-1">⌘N</span>
+              </button>
+              <button className="lift hair-b px-4 py-2 rounded-md text-[12px] dim surface-2">push assignment</button>
+              <button className="lift hair-b px-4 py-2 rounded-md text-[12px] dim surface-2">export brief · pdf</button>
+              <button className="lift hair-b px-4 py-2 rounded-md text-[12px] dim surface-2">share read-only link</button>
+            </div>
+          </section>
+
+          {/* AI brief */}
+          <section className="col-span-12 lg:col-span-7 surface hair-b rounded-xl p-7">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <span className="text-[10px] mono dim-2 uppercase tracking-wider">ai · pre-session brief</span>
+                <h2 className="text-[16px] font-semibold tracking-tight mt-1">Что обсуждать</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <Chip>llmchain · groq</Chip>
+                <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2">
+                  regen
+                </button>
+              </div>
+            </div>
+
+            <div className="text-[14px] leading-relaxed" style={{color:'var(--ink-70)'}}>
+              {s.brief_md.split('\n').map((line, i) => {
+                if (line.startsWith('## ')) {
+                  return <h3 key={i} className="text-[15px] font-semibold tracking-tight mt-5 mb-2"
+                              style={{color:'var(--ink-100)'}}>{line.slice(3)}</h3>;
+                }
+                if (line.trim() === '') return <div key={i} className="h-2"/>;
+                const parts = line.split(/(\*\*[^*]+\*\*|_[^_]+_)/g);
+                return (
+                  <p key={i} className="my-1">
+                    {parts.map((p,j) => {
+                      if (p.startsWith('**')) return <strong key={j} style={{color:'var(--ink-100)'}}>{p.slice(2,-2)}</strong>;
+                      if (p.startsWith('_')) return <em key={j}>{p.slice(1,-1)}</em>;
+                      return <React.Fragment key={j}>{p}</React.Fragment>;
+                    })}
+                  </p>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Weak spots */}
+          <section className="col-span-12 lg:col-span-5 surface hair-b rounded-xl p-7">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <span className="text-[10px] mono dim-2 uppercase tracking-wider">weak spots · with context</span>
+                <h2 className="text-[16px] font-semibold tracking-tight mt-1">Where to focus</h2>
+              </div>
+              <Chip>2 flagged</Chip>
+            </div>
+
+            <ul className="space-y-3 stagger-list">
+              {s.weak_spots.map((w,i) => (
+                <li key={i} className="hair-b rounded-md p-4 surface-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Chip>atlas · {w.node}</Chip>
+                    </div>
+                    <span className="mono text-[14px] font-semibold" style={{color:'var(--ink-70)'}}>
+                      {w.score}<span className="text-[9px] dim-2">/100</span>
+                    </span>
+                  </div>
+                  <h4 className="text-[13.5px] font-medium tracking-tight mb-1.5"
+                      style={{color:'var(--ink-92)'}}>{w.title}</h4>
+                  <div className="h-0.5 surface-3 rounded-full overflow-hidden mb-2">
+                    <div className="fill-bar h-full" style={{ width: `${w.score}%`, background:'var(--ink-50)' }}/>
+                  </div>
+                  <p className="text-[11.5px] dim leading-relaxed">{w.ctx}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Assignments */}
+          <section className="col-span-12 surface hair-b rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <span className="text-[10px] mono dim-2 uppercase tracking-wider">queue</span>
+                <h2 className="text-[16px] font-semibold tracking-tight mt-1">Assignments · 3 open</h2>
+              </div>
+              <button className="btn-primary px-3 py-1.5 rounded-md text-[12px] font-medium">+ push assignment</button>
+            </div>
+
+            <ul className="space-y-2 stagger-list">
+              {s.assignments.map((a,i) => (
+                <li key={i}
+                  className="lift hair-b rounded-md p-3 surface-2 grid grid-cols-[1fr_120px_100px_80px] items-center gap-4 cursor-pointer">
+                  <div>
+                    <div className="text-[13px]" style={{color:'var(--ink-92)'}}>{a.title}</div>
+                  </div>
+                  <Chip>{a.kind}</Chip>
+                  <div className="text-[10px] mono dim-2 uppercase tracking-wider">due · {a.due}</div>
+                  <Chip live>{a.status}</Chip>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </main>
+      );
+    }
+
+    function SnapStat({ l, v, u }) {
+      return (
+        <div>
+          <div className="text-[10px] mono dim-2 uppercase tracking-wider mb-1">{l}</div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="mono text-[20px] font-semibold tracking-tight" style={{color:'var(--ink-100)'}}>{v}</span>
+            <span className="text-[10px] mono dim-2">{u}</span>
+          </div>
+        </div>
+      );
+    }
+
+    /* ====== tweaks ====== */
+    function TweaksPanel({ tweaks, set, onClose }) {
+      return (
+        <div className="tweaks">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] mono dim-2 uppercase tracking-wider">tweaks</span>
+            <button onClick={onClose} className="dim-2 text-[14px] leading-none">×</button>
+          </div>
+          <div className="space-y-3">
+            <label className="flex flex-col gap-1">
+              <span className="dim text-[10px] mono uppercase tracking-wider">view</span>
+              <select value={tweaks.view} onChange={e=>set('view', e.target.value)}
+                      className="bg-black hair2-b rounded px-2 py-1 text-[11px] mono"
+                      style={{color:'var(--ink-92)'}}>
+                {TABS.map(t=> <option key={t.key} value={t.key}>{t.label}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center justify-between gap-2">
+              <span className="dim text-[11px]">show ai brief</span>
+              <input type="checkbox" checked={tweaks.showAIBrief}
+                     onChange={e=>set('showAIBrief', e.target.checked)}/>
+            </label>
+          </div>
+        </div>
+      );
+    }
+
+    /* ====== app ====== */
+    function App() {
+      const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+      const [tweaksOpen, setTweaksOpen] = useState(false);
+
+      const set = (k,v) => {
+        const next = { ...tweaks, [k]:v };
+        setTweaks(next);
+        try { window.parent.postMessage({type:'__edit_mode_set_keys', edits:{[k]:v}}, '*'); } catch(e){}
+      };
+
+      useEffect(()=>{
+        const onMsg = (ev)=>{
+          const d = ev.data || {};
+          if (d.type==='__activate_edit_mode') setTweaksOpen(true);
+          if (d.type==='__deactivate_edit_mode') setTweaksOpen(false);
+        };
+        window.addEventListener('message', onMsg);
+        try { window.parent.postMessage({type:'__edit_mode_available'}, '*'); } catch(e){}
+        return ()=> window.removeEventListener('message', onMsg);
+      },[]);
+
+      return (
+        <div className="canvas-bg min-h-screen page-enter">
+          <div className="max-w-[1280px] mx-auto px-8">
+            <Header view={tweaks.view} setView={(v)=>set('view', v)}/>
+            <div key={tweaks.view}>
+              {tweaks.view === 'dashboard' ? <Dashboard/> : <StudentView/>}
+            </div>
+
+            <footer className="flex items-center justify-between pb-4 text-[10px] mono dim-2 uppercase tracking-wider no-select">
+              <div className="flex items-center gap-4">
+                <span>palette <Kbd>⌘K</Kbd></span>
+                <span>switch view <Kbd>tab</Kbd></span>
+                <span>search students <Kbd>⌘F</Kbd></span>
+                <span>invite <Kbd>⌘I</Kbd></span>
+              </div>
+              <div>hone · tutor · v0</div>
+            </footer>
+          </div>
+
+          {tweaksOpen && <TweaksPanel tweaks={tweaks} set={set}
+            onClose={()=>{ setTweaksOpen(false);
+              try{ window.parent.postMessage({type:'__edit_mode_dismissed'}, '*'); } catch(e){} }}/>}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

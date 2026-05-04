@@ -1,0 +1,78 @@
+[
+  {
+    "name": "specific_mock_weak_axis",
+    "task": "assistant_next_action",
+    "input": {
+      "user_state": {
+        "mode": "explore",
+        "fork_branch": "de"
+      },
+      "recent_mocks": [
+        {
+          "section": "de",
+          "score": 62,
+          "weak_axes": ["streaming"]
+        }
+      ],
+      "track_progress": {
+        "current_step": "Streaming · Kafka + windowing"
+      }
+    },
+    "raw_response": "{\"action_kind\":\"focus_block\",\"target\":\"de_streaming\",\"rationale\":\"Last DE mock scored 62 with streaming flagged weak; today re-do exactly-once recap чтобы закрыть watermark gap.\",\"estimated_minutes\":45}",
+    "regression": {
+      "must_cite_axis": "streaming",
+      "must_not_be_generic": true
+    }
+  },
+  {
+    "name": "generic_action_should_fail",
+    "task": "assistant_next_action",
+    "input": {
+      "user_state": {"mode": "explore"}
+    },
+    "raw_response": "{\"action_kind\":\"focus_block\",\"target\":\"de_streaming\",\"rationale\":\"Practice streaming. It is important.\",\"estimated_minutes\":45}",
+    "regression": {
+      "must_not_be_generic": true,
+      "expected_to_fail": true
+    }
+  },
+  {
+    "name": "track_step_concrete",
+    "task": "assistant_next_action",
+    "input": {
+      "user_state": {"mode": "commit", "track_id": "data-engineering-senior", "current_step": 3}
+    },
+    "raw_response": "{\"action_kind\":\"focus_block\",\"target\":\"de_warehouses\",\"rationale\":\"Step 3 of DE track — Snowflake partitioning. Spend 90 min on storage layout chapter pre Spark step.\",\"estimated_minutes\":90}",
+    "regression": {
+      "must_cite_step": "warehouses",
+      "must_not_be_generic": true
+    }
+  },
+  {
+    "name": "explore_no_premature_commit",
+    "task": "assistant_next_action",
+    "input": {
+      "user_state": {"mode": "explore", "explore_week": 2}
+    },
+    "raw_response": "{\"action_kind\":\"focus_block\",\"target\":\"ml_classical\",\"rationale\":\"Week 2 explore — try mlcourse topic 3 (decision trees) to feel ML side before judging fork.\",\"estimated_minutes\":60}",
+    "regression": {
+      "must_not_force_commit": true,
+      "must_not_be_generic": true
+    }
+  },
+  {
+    "name": "interview_overrides_fork",
+    "task": "assistant_next_action",
+    "input": {
+      "user_state": {"mode": "explore"},
+      "upcoming_interviews": [
+        {"company": "Yandex", "role": "DE", "days": 4}
+      ]
+    },
+    "raw_response": "{\"action_kind\":\"start_mock\",\"target\":\"de\",\"rationale\":\"Yandex DE interview in 4 days — run today's DE mock instead of explore.\",\"estimated_minutes\":75}",
+    "regression": {
+      "must_cite_interview": "Yandex",
+      "must_not_be_generic": true
+    }
+  }
+]

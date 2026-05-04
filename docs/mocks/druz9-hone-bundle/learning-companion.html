@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>druz9 · Learning Companion mockup</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #000;
+      --surface-1: #0a0a0a;
+      --surface-2: #111;
+      --surface-3: #161616;
+      --hair: rgba(255, 255, 255, 0.07);
+      --hair-2: rgba(255, 255, 255, 0.12);
+      --hair-3: rgba(255, 255, 255, 0.18);
+      --ink-100: #fff;
+      --ink-92: rgba(255, 255, 255, 0.92);
+      --ink-90: rgba(255, 255, 255, 0.92);
+      --ink-70: rgba(255, 255, 255, 0.7);
+      --ink-50: rgba(255, 255, 255, 0.5);
+      --ink-30: rgba(255, 255, 255, 0.3);
+      --ink-15: rgba(255, 255, 255, 0.15);
+      --accent: #FF3B30;
+      --t-fast: 150ms;
+      --t-base: 220ms;
+      --t-slow: 320ms;
+      --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink-92);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-feature-settings: 'ss01', 'cv11';
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.005em;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-feature-settings: 'zero', 'ss01', 'ss02';
+      letter-spacing: -0.01em;
+    }
+
+    .surface { background: var(--surface-1); }
+    .surface-2 { background: var(--surface-2); }
+    .surface-3 { background: var(--surface-3); }
+    .hair-b { border: 1px solid var(--hair); }
+    .hair2-b { border: 1px solid var(--hair-2); }
+
+    /* ---- page entry ---- */
+    @keyframes pageFade {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .page-enter { animation: pageFade 220ms var(--ease) both; }
+
+    /* ---- entry stagger ---- */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(9px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .stagger > * {
+      opacity: 0;
+      animation: fadeUp 480ms var(--ease) forwards;
+    }
+    .stagger > *:nth-child(1)  { animation-delay:  60ms; }
+    .stagger > *:nth-child(2)  { animation-delay: 130ms; }
+    .stagger > *:nth-child(3)  { animation-delay: 200ms; }
+    .stagger > *:nth-child(4)  { animation-delay: 270ms; }
+    .stagger > *:nth-child(5)  { animation-delay: 340ms; }
+    .stagger > *:nth-child(6)  { animation-delay: 410ms; }
+    .stagger > *:nth-child(7)  { animation-delay: 480ms; }
+    .stagger > *:nth-child(8)  { animation-delay: 550ms; }
+
+    /* sub-stagger inside lists */
+    .stagger-list > * {
+      opacity: 0;
+      animation: fadeUp 480ms var(--ease) forwards;
+    }
+    .stagger-list > *:nth-child(1)  { animation-delay:  80ms; }
+    .stagger-list > *:nth-child(2)  { animation-delay: 150ms; }
+    .stagger-list > *:nth-child(3)  { animation-delay: 220ms; }
+    .stagger-list > *:nth-child(4)  { animation-delay: 290ms; }
+    .stagger-list > *:nth-child(5)  { animation-delay: 360ms; }
+    .stagger-list > *:nth-child(6)  { animation-delay: 430ms; }
+    .stagger-list > *:nth-child(7)  { animation-delay: 500ms; }
+    .stagger-list > *:nth-child(8)  { animation-delay: 570ms; }
+    .stagger-list > *:nth-child(9)  { animation-delay: 640ms; }
+    .stagger-list > *:nth-child(10) { animation-delay: 710ms; }
+
+    /* ---- hover lift ---- */
+    .lift {
+      transition: transform var(--t-fast) var(--ease),
+                  border-color var(--t-fast) var(--ease),
+                  background-color var(--t-fast) var(--ease);
+    }
+    .lift:hover {
+      transform: translateY(-1px);
+      border-color: var(--hair-2);
+    }
+
+    /* primary CTA: white bg, black ink */
+    .btn-primary {
+      background: #fff;
+      color: #000;
+      transition: transform var(--t-fast) var(--ease),
+                  background-color var(--t-fast) var(--ease);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.92);
+    }
+
+    /* ---- radar draw-in ---- */
+    @keyframes drawPath {
+      from { stroke-dashoffset: 600; opacity: 0.4; }
+      to { stroke-dashoffset: 0; opacity: 1; }
+    }
+    .radar-shape {
+      stroke-dasharray: 600;
+      animation: drawPath 1.2s var(--ease) forwards;
+      animation-delay: 700ms;
+    }
+    @keyframes dotPop {
+      from { opacity: 0; transform: scale(0.4); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .radar-dot {
+      opacity: 0;
+      transform-origin: center;
+      animation: dotPop 320ms var(--ease) forwards;
+    }
+
+    /* ---- progress fill (white / ink-70) ---- */
+    @keyframes fillBar {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+    .fill-bar {
+      transform-origin: left;
+      animation: fillBar 1100ms ease-out forwards;
+      animation-delay: 240ms;
+    }
+
+    /* ---- chip / kbd ---- */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--hair);
+      background: var(--surface-2);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-50);
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    .chip.live {
+      border-color: var(--hair-2);
+      color: var(--ink-70);
+    }
+    .chip.live::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 2px rgba(255,59,48,0.18);
+    }
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--hair-2);
+      background: var(--surface-3);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--ink-70);
+      line-height: 1.4;
+    }
+
+    /* ---- mode switcher slider ---- */
+    .mode-indicator {
+      transition: transform var(--t-base) var(--ease), width var(--t-base) var(--ease);
+    }
+
+    /* ---- focus / selection ---- */
+    button:focus-visible {
+      outline: 1px solid var(--ink-70);
+      outline-offset: 2px;
+    }
+    ::selection { background: rgba(255,255,255,0.18); color: #fff; }
+
+    /* ---- scrollbar minimal ---- */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: var(--hair-2); border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* dim utility */
+    .dim { color: var(--ink-50); }
+    .dim-2 { color: var(--ink-30); }
+
+    /* hairline separator */
+    .hairline {
+      height: 1px;
+      background: var(--hair);
+      width: 100%;
+    }
+
+    /* canvas backdrop — softened to ~2% */
+    .canvas-bg {
+      background:
+        radial-gradient(circle at 30% 0%, rgba(255, 255, 255, 0.02), transparent 55%),
+        var(--bg);
+    }
+
+    /* hero top stripe — only place red appears as a stripe */
+    .hero-stripe {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1.5px;
+      background: var(--accent);
+      opacity: 0.85;
+    }
+
+    /* status dot 1.5px (visual size 6px container, 1.5px filled appearance via inset) */
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 999px;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    /* skeleton — only used briefly on temporary loading states */
+    @keyframes skeletonShimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg,
+        var(--surface-2) 0%,
+        var(--surface-3) 50%,
+        var(--surface-2) 100%);
+      background-size: 200% 100%;
+      animation: skeletonShimmer 1.4s ease-in-out infinite;
+      border-radius: 4px;
+    }
+
+    /* no-select */
+    .no-select { -webkit-user-select: none; user-select: none; }
+
+    /* tweaks panel */
+    .tweaks {
+      position: fixed;
+      right: 20px; bottom: 20px;
+      width: 260px;
+      background: var(--surface-2);
+      border: 1px solid var(--hair-2);
+      border-radius: 10px;
+      padding: 14px;
+      z-index: 50;
+      font-size: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    /* TWEAKS defaults */
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "showHeroStripe": true,
+      "showHeatmap": true,
+      "density": "comfortable",
+      "heroHeadline": "Build SQL pipeline for retention dashboard"
+    }/*EDITMODE-END*/;
+
+    /* ============================================================== */
+    /*  Mock data                                                     */
+    /* ============================================================== */
+
+    const RADAR_AXES = [
+      { key: 'etl_design',     label: 'ETL design',          score: 72 },
+      { key: 'distributed',    label: 'Distributed',         score: 58 },
+      { key: 'sql_modeling',   label: 'SQL & modeling',      score: 81 },
+      { key: 'streaming',      label: 'Streaming',           score: 44 },
+      { key: 'prod_ops',       label: 'Production ops',      score: 65 },
+    ];
+
+    const MLE_BRANCH = {
+      label: 'MLE',
+      progress: 3,
+      total: 5,
+      items: [
+        { title: 'Embedding-based semantic search в Hone-заметках', status: 'done' },
+        { title: 'RAG offline eval — recall@10', status: 'doing' },
+        { title: 'Quality scoring для ai_mock ответов', status: 'todo' },
+      ],
+      felt: 'wrestling — приходится возвращаться к матчасти',
+    };
+
+    const DE_BRANCH = {
+      label: 'DE',
+      progress: 4,
+      total: 5,
+      items: [
+        { title: 'Daily metrics pipeline (PG → CH)', status: 'done' },
+        { title: 'CDC postgres → clickhouse + dedup', status: 'done' },
+        { title: 'Streaming user events с idempotency', status: 'done' },
+        { title: 'Backfill orchestration через Airflow', status: 'doing' },
+      ],
+      felt: 'flow — задачи решаются за вечер',
+    };
+
+    const STREAM = [
+      { time: '14:00', kind: 'focus',    text: 'Focus block started · DE backfill pipeline', mode: 'now' },
+      { time: '12:15', kind: 'external', text: '+45 min · Coursera ML Specialization · regularization' },
+      { time: '09:30', kind: 'mock',     text: 'AI-mock · MLE · 68/100 · weak: data_intuition' },
+      { time: '08:40', kind: 'tutor',    text: 'AI-tutor (Лена · sql-mentor) · explained CDC vs ETL' },
+      { time: 'Yesterday' },
+      { time: '22:14', kind: 'note',     text: 'Note saved · «window function over partition»' },
+      { time: '18:30', kind: 'atlas',    text: 'Atlas node · de_streaming · marked notable' },
+      { time: '14:00', kind: 'focus',    text: 'Focus 25 min · MLE embeddings (completed)' },
+    ];
+
+    /* ============================================================== */
+    /*  Atoms                                                         */
+    /* ============================================================== */
+
+    const Chip = ({ children, live = false }) => (
+      <span className={`chip ${live ? 'live' : ''}`}>{children}</span>
+    );
+
+    const Kbd = ({ children }) => <span className="kbd">{children}</span>;
+
+    /* ============================================================== */
+    /*  Header                                                        */
+    /* ============================================================== */
+
+    const MODES = [
+      { key: 'explore', label: 'Explore' },
+      { key: 'commit',  label: 'Commit'  },
+      { key: 'deep',    label: 'Deep'    },
+    ];
+
+    function Header({ mode, setMode }) {
+      const idx = MODES.findIndex(m => m.key === mode);
+      return (
+        <header className="flex items-center justify-between pt-7 pb-5 no-select">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-7 h-7 rounded-md flex items-center justify-center mono text-[12px] font-semibold hair2-b"
+              style={{ background: '#000' }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                  <defs>
+                    <clipPath id="gly-lc-c"><circle cx="12" cy="12" r="9"/></clipPath>
+                  </defs>
+                  <circle cx="12" cy="12" r="9" fill="#fff"/>
+                  <g clipPath={"url(#gly-lc-c)"}>
+                    <rect x="3" y="3" width="9" height="18" fill="#000"/>
+                  </g>
+                  <g clipPath={"url(#gly-lc-c)"} stroke="#000" strokeWidth="1.4">
+                    <line x1="10" y1="2" x2="22" y2="14"/>
+                    <line x1="10" y1="6" x2="22" y2="18"/>
+                    <line x1="10" y1="10" x2="22" y2="22"/>
+                    <line x1="10" y1="14" x2="22" y2="26"/>
+                    <line x1="10" y1="18" x2="22" y2="30"/>
+                  </g>
+                </svg>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[15px] font-semibold tracking-tight">Hone</span>
+              <span className="dim-2 text-[13px]">/</span>
+              <span className="text-[15px] font-medium dim">Coach</span>
+            </div>
+            <div className="ml-3 hidden md:flex items-center gap-2">
+              <Chip>EXPLORE · w3</Chip>
+            </div>
+          </div>
+
+          <div className="relative flex items-center p-1 rounded-lg hair-b surface-2">
+            <div
+              className="mode-indicator absolute top-1 bottom-1 rounded-md"
+              style={{
+                background: 'var(--surface-3)',
+                border: '1px solid var(--hair-2)',
+                width: `calc(33.33% - 2px)`,
+                transform: `translateX(${idx * 100}%)`,
+              }}
+            />
+            {MODES.map(m => (
+              <button
+                key={m.key}
+                onClick={() => setMode(m.key)}
+                className="relative z-10 px-4 py-1.5 text-[12px] font-medium tracking-wide rounded-md min-w-[92px]"
+                style={{
+                  color: mode === m.key ? 'var(--ink-92)' : 'var(--ink-50)',
+                  transition: 'color var(--t-fast) var(--ease)',
+                }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 text-[12px] dim">
+            <span className="mono uppercase tracking-wider text-[10px]">palette</span>
+            <Kbd>⌘K</Kbd>
+          </div>
+        </header>
+      );
+    }
+
+    /* ============================================================== */
+    /*  Hero — one daily action                                       */
+    /* ============================================================== */
+
+    function HeroAction({ mode, tweaks }) {
+      const data = mode === 'commit'
+        ? {
+            slot: 'today · 14:00 → 14:50',
+            title: 'Distributed transactions deep-dive',
+            subtitle: 'step 4 of 8 — senior backend pack',
+            why: 'Your last mock highlighted weak two-phase commit reasoning. Track is on schedule.',
+            primary: 'open codex read · 25 min',
+            estimate: '50 min total',
+          }
+        : mode === 'deep'
+        ? {
+            slot: 'today · prep day 12 / 21',
+            title: 'Yandex DE round 2 — system design dry-run',
+            subtitle: 'mock dispatch ready · expert-strict profile',
+            why: 'Interview in 9 days. You crushed round 1 yesterday — round 2 covers a different axis.',
+            primary: 'start mock · 60 min',
+            estimate: '60 min',
+          }
+        : {
+            slot: 'today · 14:00 → 14:25',
+            title: tweaks.heroHeadline,
+            subtitle: 'DE explore · task 5 of 5',
+            why: 'Signals lean DE (4/5 complete vs 3/5 MLE). Last DE task → flow. Try one more before fork commit.',
+            primary: 'start focus · 25 min',
+            estimate: '25 min',
+          };
+
+      return (
+        <section className="col-span-12 lg:col-span-8 surface hair-b rounded-xl p-7 lift cursor-pointer relative overflow-hidden">
+          {tweaks.showHeroStripe && <div className="hero-stripe" />}
+
+          <div className="flex items-center gap-2 mb-5">
+            <Chip>{data.slot}</Chip>
+            <Chip>focus block</Chip>
+            <span className="ml-auto dim-2 text-[11px] mono">est {data.estimate}</span>
+          </div>
+
+          <h1
+            className="text-[28px] font-semibold leading-[1.18] tracking-tight mb-2"
+            style={{ color: 'var(--ink-100)' }}
+          >
+            {data.title}
+          </h1>
+          <p className="text-[13px] dim mb-6">{data.subtitle}</p>
+
+          <div className="hairline mb-5" />
+
+          <div className="grid grid-cols-[28px_1fr] gap-3 mb-6">
+            <div className="text-[10px] mono dim-2 uppercase tracking-wider mt-1">why</div>
+            <p className="text-[13px] dim leading-relaxed" style={{ color: 'var(--ink-70)' }}>{data.why}</p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button className="btn-primary inline-flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-medium">
+              <svg width="9" height="9" viewBox="0 0 10 10" fill="currentColor">
+                <path d="M2 1.5v7l6-3.5z" />
+              </svg>
+              {data.primary}
+              <span className="ml-2 mono text-[10px]" style={{ color: 'rgba(0,0,0,0.5)' }}>⏎</span>
+            </button>
+            <button
+              className="lift px-4 py-2 rounded-md text-[13px] hair-b"
+              style={{ background: 'var(--surface-2)', color: 'var(--ink-70)' }}
+            >
+              skip
+            </button>
+            <button
+              className="lift px-4 py-2 rounded-md text-[13px] hair-b"
+              style={{ background: 'var(--surface-2)', color: 'var(--ink-70)' }}
+            >
+              suggest other
+            </button>
+            <span className="ml-auto dim-2 text-[11px] mono no-select uppercase tracking-wider">
+              shortcut <Kbd>⌘.</Kbd>
+            </span>
+          </div>
+        </section>
+      );
+    }
+
+    /* ============================================================== */
+    /*  Sidebar snapshot                                              */
+    /* ============================================================== */
+
+    function SidebarSnapshot({ mode, tweaks }) {
+      const items = [
+        { label: 'streak',      value: '12',  unit: 'days' },
+        { label: 'focus today', value: '85',  unit: 'min'  },
+        { label: 'last mock',   value: 'MLE', unit: '68/100' },
+        { label: 'next mock',   value: '2',   unit: 'days' },
+      ];
+
+      // deterministic 28-cell heatmap, no Math.random per render
+      const heat = useMemo(() => {
+        const arr = [0.05,0.4,0.7,0.2,0.55,0.85,0.1,0.6,0.3,0.75,0.05,0.45,0.65,0.2,
+                     0.5,0.8,0.35,0.1,0.55,0.7,0.4,0.6,0.25,0.85,0.5,0.7,0.45,0.9];
+        return arr;
+      }, []);
+
+      return (
+        <aside className="col-span-12 lg:col-span-4 surface hair-b rounded-xl p-6 flex flex-col gap-5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] mono dim-2 uppercase tracking-wider">snapshot</span>
+            <Chip>{mode}</Chip>
+          </div>
+
+          <div className="space-y-4 stagger-list">
+            {items.map(it => (
+              <div key={it.label} className="flex items-baseline justify-between">
+                <span className="text-[12px] dim mono uppercase tracking-wider text-[10px]">{it.label}</span>
+                <span className="flex items-baseline gap-1.5">
+                  <span
+                    className="mono text-[20px] font-semibold tracking-tight"
+                    style={{ color: 'var(--ink-100)' }}
+                  >
+                    {it.value}
+                  </span>
+                  <span className="text-[11px] mono dim-2">{it.unit}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {tweaks.showHeatmap && (
+            <>
+              <div className="hairline" />
+              <div>
+                <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-3 block">
+                  streak heatmap · 28d
+                </span>
+                <div className="grid gap-[3px]" style={{ gridTemplateColumns: 'repeat(14, 1fr)' }}>
+                  {heat.map((intensity, i) => {
+                    const isToday = i === heat.length - 1;
+                    const bg = intensity < 0.25
+                      ? 'rgba(255,255,255,0.04)'
+                      : intensity < 0.5
+                      ? 'rgba(255,255,255,0.12)'
+                      : intensity < 0.75
+                      ? 'rgba(255,255,255,0.32)'
+                      : 'rgba(255,255,255,0.6)';
+                    return (
+                      <div
+                        key={i}
+                        className="aspect-square rounded-[2px]"
+                        style={{
+                          background: bg,
+                          border: isToday ? '1px solid var(--ink-92)' : 'none',
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </aside>
+      );
+    }
+
+    /* ============================================================== */
+    /*  Fork View (explore mode only)                                 */
+    /* ============================================================== */
+
+    function ForkColumn({ branch, lean }) {
+      const pct = (branch.progress / branch.total) * 100;
+      const isLeading = lean === branch.label.toLowerCase();
+      return (
+        <div
+          className="surface-2 hair-b rounded-lg p-5 flex flex-col gap-4 lift relative"
+          style={{
+            borderColor: isLeading ? 'var(--hair-2)' : 'var(--hair)',
+          }}
+        >
+          {isLeading && (
+            <div
+              className="absolute -top-2 left-5 mono text-[9px] uppercase tracking-wider px-2 py-0.5 rounded hair2-b"
+              style={{
+                background: '#fff',
+                color: '#000',
+              }}
+            >
+              leaning
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <span className="text-[16px] font-semibold tracking-tight mono">
+              {branch.label}
+            </span>
+            <span className="mono text-[13px] dim">
+              {branch.progress}<span className="dim-2">/{branch.total}</span>
+            </span>
+          </div>
+
+          <div className="relative h-1 surface-3 rounded-full overflow-hidden">
+            <div
+              className="fill-bar absolute inset-y-0 left-0 rounded-full"
+              style={{
+                width: `${pct}%`,
+                background: isLeading ? '#fff' : 'var(--ink-70)',
+              }}
+            />
+          </div>
+
+          <ul className="space-y-2 stagger-list">
+            {branch.items.map((it, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-[12.5px]">
+                <span className="mt-1 shrink-0">
+                  {it.status === 'done' && (
+                    <svg width="10" height="10" viewBox="0 0 10 10">
+                      <circle cx="5" cy="5" r="4" fill="#fff" />
+                      <path d="M3 5 l1.5 1.5 L7 3.5" stroke="#000" strokeWidth="1.2" fill="none" />
+                    </svg>
+                  )}
+                  {it.status === 'doing' && (
+                    <span
+                      className="block w-2.5 h-2.5 rounded-full"
+                      style={{
+                        border: '1px solid var(--ink-70)',
+                        background: 'rgba(255,255,255,0.18)',
+                      }}
+                    />
+                  )}
+                  {it.status === 'todo' && (
+                    <span
+                      className="block w-2.5 h-2.5 rounded-full"
+                      style={{ border: '1px solid var(--ink-30)' }}
+                    />
+                  )}
+                </span>
+                <span
+                  style={{
+                    color: it.status === 'todo' ? 'var(--ink-50)' : 'var(--ink-92)',
+                  }}
+                >
+                  {it.title}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div
+            className="mt-auto rounded-md p-3 text-[11.5px] leading-relaxed"
+            style={{
+              background: 'var(--surface-3)',
+              borderLeft: `2px solid ${isLeading ? 'var(--ink-70)' : 'var(--ink-15)'}`,
+            }}
+          >
+            <span className="dim-2 mono uppercase tracking-wider text-[9px]">felt · </span>
+            <span className="dim">{branch.felt}</span>
+          </div>
+        </div>
+      );
+    }
+
+    function ForkView() {
+      return (
+        <section className="col-span-12 surface hair-b rounded-xl p-7 relative overflow-hidden">
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] mono dim-2 uppercase tracking-wider">fork</span>
+                <Chip>explore mode</Chip>
+              </div>
+              <h2 className="text-[18px] font-semibold tracking-tight">
+                Which path does the work feel like home?
+              </h2>
+              <p className="text-[12.5px] dim mt-1">
+                6-week dual track · LLM weekly fork-analysis · auto-commit at week 6
+              </p>
+            </div>
+
+            <div className="text-right">
+              <div className="text-[10px] mono dim-2 uppercase tracking-wider">lean</div>
+              <div className="flex items-baseline gap-2 justify-end mt-1">
+                <span
+                  className="mono text-[24px] font-semibold tracking-tight"
+                  style={{ color: 'var(--ink-100)' }}
+                >
+                  DE
+                </span>
+                <span className="mono text-[12px] dim">conf 0.68</span>
+              </div>
+              <div className="text-[10px] dim-2 mono mt-0.5">updated 2d ago</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 stagger-list">
+            <ForkColumn branch={MLE_BRANCH} lean="de" />
+            <ForkColumn branch={DE_BRANCH} lean="de" />
+          </div>
+
+          <div className="hairline mb-5" />
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <button className="btn-primary px-4 py-2 rounded-md text-[13px] font-medium">
+              commit to DE
+              <span className="ml-2 mono text-[10px]" style={{ color: 'rgba(0,0,0,0.5)' }}>⌘ ⏎</span>
+            </button>
+            <button
+              className="lift px-4 py-2 rounded-md text-[13px] hair-b"
+              style={{ background: 'var(--surface-2)', color: 'var(--ink-70)' }}
+            >
+              try one more MLE task
+            </button>
+            <button
+              className="lift px-4 py-2 rounded-md text-[13px] hair-b"
+              style={{ background: 'var(--surface-2)', color: 'var(--ink-70)' }}
+            >
+              show me why
+            </button>
+            <span className="ml-auto text-[10px] dim-2 mono uppercase tracking-wider">
+              week <span className="dim">3</span> of 6
+            </span>
+          </div>
+        </section>
+      );
+    }
+
+    /* ============================================================== */
+    /*  5-axis Radar                                                  */
+    /* ============================================================== */
+
+    function Radar() {
+      const size = 240;
+      const cx = size / 2;
+      const cy = size / 2;
+      const radius = 88;
+      const axes = RADAR_AXES;
+      const n = axes.length;
+
+      const pointsForScore = (factor) =>
+        axes.map((a, i) => {
+          const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+          const r = (a.score / 100) * radius * factor;
+          return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+        });
+
+      const dots = pointsForScore(1);
+      const path = dots.map((p, i) => `${i ? 'L' : 'M'}${p[0]},${p[1]}`).join(' ') + 'Z';
+
+      // weakest axis index — for emphasis dot (red stroke on one SVG figure)
+      const weakest = axes.reduce((acc, a, i) => a.score < axes[acc].score ? i : acc, 0);
+
+      return (
+        <section className="col-span-12 lg:col-span-7 surface hair-b rounded-xl p-7">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] mono dim-2 uppercase tracking-wider">5-axis · DE rubric</span>
+              </div>
+              <h2 className="text-[16px] font-semibold tracking-tight">Where you stand</h2>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] mono dim-2 uppercase tracking-wider">overall</div>
+              <div className="mono text-[22px] font-semibold tracking-tight" style={{ color: 'var(--ink-100)' }}>
+                64<span className="text-[12px] dim-2 ml-0.5">/100</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+              {/* concentric rings */}
+              {[0.25, 0.5, 0.75, 1].map((f, i) => {
+                const ring = axes.map((_, j) => {
+                  const angle = (Math.PI * 2 * j) / n - Math.PI / 2;
+                  const r = radius * f;
+                  return `${j ? 'L' : 'M'}${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+                }).join(' ') + 'Z';
+                return (
+                  <path
+                    key={i}
+                    d={ring}
+                    fill="none"
+                    stroke="var(--hair)"
+                    strokeWidth="1"
+                  />
+                );
+              })}
+
+              {/* axis spokes */}
+              {axes.map((_, i) => {
+                const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+                return (
+                  <line
+                    key={i}
+                    x1={cx} y1={cy}
+                    x2={cx + radius * Math.cos(angle)}
+                    y2={cy + radius * Math.sin(angle)}
+                    stroke="var(--hair)"
+                    strokeWidth="1"
+                  />
+                );
+              })}
+
+              {/* score shape — red stroke for emphasis (single SVG figure) */}
+              <path
+                d={path}
+                fill="rgba(255,255,255,0.06)"
+                stroke="var(--accent)"
+                strokeWidth="1.25"
+                className="radar-shape"
+                strokeLinejoin="round"
+              />
+
+              {/* score dots — white, except weakest axis = red status dot */}
+              {dots.map((p, i) => (
+                <circle
+                  key={i}
+                  cx={p[0]}
+                  cy={p[1]}
+                  r={i === weakest ? 3 : 2.5}
+                  fill={i === weakest ? 'var(--accent)' : '#fff'}
+                  className="radar-dot"
+                  style={{ animationDelay: `${1100 + i * 80}ms` }}
+                />
+              ))}
+            </svg>
+
+            <div className="flex-1 space-y-2.5 stagger-list">
+              {axes.map((a, i) => (
+                <div key={a.key} className="flex items-center gap-3">
+                  <span className="text-[12px] dim flex-1" style={{ color: 'var(--ink-70)' }}>{a.label}</span>
+                  <div className="w-24 h-1 surface-3 rounded-full overflow-hidden">
+                    <div
+                      className="fill-bar h-full"
+                      style={{
+                        width: `${a.score}%`,
+                        background: a.score < 50 ? 'var(--ink-30)' : '#fff',
+                      }}
+                    />
+                  </div>
+                  <span className="mono text-[11px] dim w-7 text-right">{a.score}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className="mt-5 p-3 rounded-md text-[12px]"
+            style={{
+              background: 'var(--surface-3)',
+              borderLeft: '2px solid var(--ink-70)',
+              color: 'var(--ink-70)',
+            }}
+          >
+            <span className="dim-2 mono uppercase text-[9px] tracking-wider">insight · </span>
+            Streaming weakest. Next mock will probe stream-dedup + watermarks. AI-tutor (Лена)
+            will queue 1 reading by tomorrow.
+          </div>
+        </section>
+      );
+    }
+
+    /* ============================================================== */
+    /*  Activity stream                                               */
+    /* ============================================================== */
+
+    const KIND_GLYPH = {
+      focus:    { l: '◐' },
+      external: { l: '↗' },
+      mock:     { l: '⌘' },
+      tutor:    { l: '✸' },
+      note:     { l: '•' },
+      atlas:    { l: '◇' },
+    };
+
+    function Stream() {
+      return (
+        <section className="col-span-12 lg:col-span-5 surface hair-b rounded-xl p-7 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[10px] mono dim-2 uppercase tracking-wider">stream · today</span>
+            <span className="text-[10px] dim-2 mono uppercase tracking-wider">8 events</span>
+          </div>
+
+          <ul className="space-y-3 overflow-auto flex-1 stagger-list" style={{ maxHeight: 380 }}>
+            {STREAM.map((e, i) => {
+              if (!e.kind) {
+                return (
+                  <li key={i} className="pt-2 pb-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] mono dim-2 uppercase tracking-wider">{e.time}</span>
+                      <div className="flex-1 hairline" />
+                    </div>
+                  </li>
+                );
+              }
+              const g = KIND_GLYPH[e.kind] || { l: '·' };
+              const isNow = e.mode === 'now';
+              return (
+                <li key={i} className="grid grid-cols-[44px_14px_1fr] gap-2 text-[12.5px] leading-relaxed">
+                  <span className="mono dim-2 text-[10px] pt-0.5">{e.time}</span>
+                  <span
+                    className="text-center pt-0.5"
+                    style={{ color: isNow ? 'var(--ink-92)' : 'var(--ink-50)', fontSize: 11 }}
+                  >
+                    {g.l}
+                  </span>
+                  <span style={{ color: isNow ? 'var(--ink-100)' : 'var(--ink-70)' }}>
+                    {e.text}
+                    {isNow && (
+                      <span className="ml-2 chip live">live</span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="hairline mt-4 mb-3" />
+
+          <button
+            className="lift hair-b py-2 rounded-md text-[12px] dim mono uppercase tracking-wider"
+            style={{ background: 'var(--surface-2)' }}
+          >
+            + log external session
+          </button>
+        </section>
+      );
+    }
+
+    /* ============================================================== */
+    /*  Footer hints                                                  */
+    /* ============================================================== */
+
+    function Footer() {
+      return (
+        <footer className="col-span-12 flex items-center justify-between mt-6 pb-4 text-[10px] dim-2 mono no-select uppercase tracking-wider">
+          <div className="flex items-center gap-4">
+            <span>palette <Kbd>⌘K</Kbd></span>
+            <span>start focus <Kbd>⌘.</Kbd></span>
+            <span>fork toggle <Kbd>F</Kbd></span>
+            <span>radar <Kbd>R</Kbd></span>
+          </div>
+          <div>
+            druz9 · learning companion · mockup v0
+          </div>
+        </footer>
+      );
+    }
+
+    /* ============================================================== */
+    /*  Tweaks                                                        */
+    /* ============================================================== */
+
+    function TweaksPanel({ tweaks, setTweaks, onClose }) {
+      const set = (k, v) => {
+        const next = { ...tweaks, [k]: v };
+        setTweaks(next);
+        try {
+          window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [k]: v } }, '*');
+        } catch (e) {}
+      };
+      return (
+        <div className="tweaks">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] mono dim-2 uppercase tracking-wider">tweaks</span>
+            <button onClick={onClose} className="dim-2 text-[14px] leading-none" aria-label="close">×</button>
+          </div>
+          <div className="space-y-3">
+            <label className="flex items-center justify-between gap-2">
+              <span className="dim text-[11px]">hero stripe</span>
+              <input
+                type="checkbox"
+                checked={tweaks.showHeroStripe}
+                onChange={e => set('showHeroStripe', e.target.checked)}
+              />
+            </label>
+            <label className="flex items-center justify-between gap-2">
+              <span className="dim text-[11px]">streak heatmap</span>
+              <input
+                type="checkbox"
+                checked={tweaks.showHeatmap}
+                onChange={e => set('showHeatmap', e.target.checked)}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="dim text-[10px] mono uppercase tracking-wider">hero headline</span>
+              <input
+                type="text"
+                value={tweaks.heroHeadline}
+                onChange={e => set('heroHeadline', e.target.value)}
+                className="bg-black hair2-b rounded px-2 py-1 text-[11px]"
+                style={{ color: 'var(--ink-92)' }}
+              />
+            </label>
+          </div>
+        </div>
+      );
+    }
+
+    /* ============================================================== */
+    /*  App                                                           */
+    /* ============================================================== */
+
+    function App() {
+      const [mode, setMode] = useState('explore');
+      const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+      const [tweaksOpen, setTweaksOpen] = useState(false);
+
+      useEffect(() => {
+        const onMsg = (ev) => {
+          const d = ev.data || {};
+          if (d.type === '__activate_edit_mode') setTweaksOpen(true);
+          if (d.type === '__deactivate_edit_mode') setTweaksOpen(false);
+        };
+        window.addEventListener('message', onMsg);
+        try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch (e) {}
+        return () => window.removeEventListener('message', onMsg);
+      }, []);
+
+      return (
+        <div className="canvas-bg min-h-screen page-enter">
+          <div className="max-w-[1280px] mx-auto px-8">
+            <Header mode={mode} setMode={setMode} />
+            <main className="stagger grid grid-cols-12 gap-4 pb-10" key={mode}>
+              <HeroAction mode={mode} tweaks={tweaks} />
+              <SidebarSnapshot mode={mode} tweaks={tweaks} />
+              {mode === 'explore' && <ForkView />}
+              <Radar />
+              <Stream />
+              <Footer />
+            </main>
+          </div>
+          {tweaksOpen && (
+            <TweaksPanel
+              tweaks={tweaks}
+              setTweaks={setTweaks}
+              onClose={() => {
+                setTweaksOpen(false);
+                try { window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*'); } catch (e) {}
+              }}
+            />
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>druz9 · Goals</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#000; --surface-1:#0a0a0a; --surface-2:#111; --surface-3:#161616;
+      --hair:rgba(255,255,255,0.07); --hair-2:rgba(255,255,255,0.12);
+      --ink-100:#fff; --ink-92:rgba(255,255,255,0.92); --ink-70:rgba(255,255,255,0.7);
+      --ink-50:rgba(255,255,255,0.5); --ink-30:rgba(255,255,255,0.3);
+      --accent:#FF3B30; --t-fast:150ms; --ease:cubic-bezier(0.2,0.7,0.2,1);
+    }
+    *{box-sizing:border-box}
+    html,body{background:var(--bg);color:var(--ink-92);font-family:'Inter',sans-serif;letter-spacing:-0.005em;-webkit-font-smoothing:antialiased}
+    .mono{font-family:'JetBrains Mono',monospace;letter-spacing:-0.01em}
+    .surface{background:var(--surface-1)} .surface-2{background:var(--surface-2)} .surface-3{background:var(--surface-3)}
+    .hair-b{border:1px solid var(--hair)} .hair2-b{border:1px solid var(--hair-2)}
+    .dim{color:var(--ink-50)} .dim-2{color:var(--ink-30)} .hairline{height:1px;background:var(--hair);width:100%}
+    .canvas-bg{background:radial-gradient(circle at 30% 0%,rgba(255,255,255,0.02),transparent 55%),var(--bg)}
+    @keyframes pageFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .page-enter{animation:pageFade 220ms var(--ease) both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+    .stagger>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .stagger>*:nth-child(1){animation-delay:60ms}.stagger>*:nth-child(2){animation-delay:130ms}.stagger>*:nth-child(3){animation-delay:200ms}.stagger>*:nth-child(4){animation-delay:270ms}.stagger>*:nth-child(5){animation-delay:340ms}.stagger>*:nth-child(6){animation-delay:410ms}
+    .stagger-list>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .stagger-list>*:nth-child(1){animation-delay:80ms}.stagger-list>*:nth-child(2){animation-delay:150ms}.stagger-list>*:nth-child(3){animation-delay:220ms}.stagger-list>*:nth-child(4){animation-delay:290ms}.stagger-list>*:nth-child(5){animation-delay:360ms}
+    .lift{transition:transform var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease)} .lift:hover{transform:translateY(-1px);border-color:var(--hair-2)}
+    .btn-primary{background:#fff;color:#000;transition:transform var(--t-fast) var(--ease)} .btn-primary:hover{transform:translateY(-1px);background:rgba(255,255,255,0.92)}
+    @keyframes fillBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    .fill-bar{transform-origin:left;animation:fillBar 1100ms ease-out forwards;animation-delay:240ms}
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;border:1px solid var(--hair);background:var(--surface-2);font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-50);font-family:'JetBrains Mono',monospace}
+    .chip.live{color:var(--ink-70)} .chip.live::before{content:'';width:6px;height:6px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 2px rgba(255,59,48,0.18)}
+    .chip.solid{background:#fff;color:#000;border-color:#fff}
+    .kbd{display:inline-flex;padding:1px 6px;border-radius:4px;border:1px solid var(--hair-2);background:var(--surface-3);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-70)}
+    button:focus-visible{outline:1px solid var(--ink-70);outline-offset:2px}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--hair-2);border-radius:3px}
+    .no-select{-webkit-user-select:none;user-select:none}
+    .hero-stripe{position:absolute;top:0;left:0;right:0;height:1.5px;background:var(--accent);opacity:0.85}
+    .tweaks{position:fixed;right:20px;bottom:20px;width:260px;background:var(--surface-2);border:1px solid var(--hair-2);border-radius:10px;padding:14px;z-index:50;font-size:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6)}
+    .severity-stripe{position:absolute;left:0;top:0;bottom:0;width:2px}
+    .severity-critical{background:var(--accent)}
+    .severity-warn{background:var(--ink-70)}
+    .severity-cruise{background:var(--ink-30)}
+    .severity-done{background:var(--ink-15)}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "filter": "active",
+      "showCreateForm": false
+    }/*EDITMODE-END*/;
+
+    const FILTERS = [
+      { k:'active', label:'active', count:3 },
+      { k:'paused', label:'paused', count:1 },
+      { k:'done', label:'done', count:8 },
+      { k:'archive', label:'archive', count:14 },
+    ];
+
+    const GOALS = [
+      { id:1, kind:'job', title:'Yandex Backend senior · interview', deadline:'may 12 · 8 days', skills:['system_design','distributed','algo'], notes:'2 раунда позади (PASS). Финал — sysdesign + behavioral + culture-fit.', severity:'critical', status:'active', progress:0.75 },
+      { id:2, kind:'skill', title:'Master DP · 2D variants', deadline:'may 25 · 21 days', skills:['dp','dp_2d','algo'], notes:'1D solid после mock 7. 2D wobble — edit-distance / LIS / state compression.', severity:'warn', status:'active', progress:0.4 },
+      { id:3, kind:'track', title:'Finish ML Engineering Foundations', deadline:'jul 15 · 72 days', skills:['ml','deep_learning','llm_eval'], notes:'Step 5 of 10 · on schedule (slightly ahead). DE fork-explore завершено.', severity:'cruise', status:'active', progress:0.42 },
+      { id:4, kind:'skill', title:'English speaking · B2 fluency', deadline:'paused', skills:['english','speaking'], notes:'Pause до закрытия Yandex offer. Maria тутор on standby.', severity:'cruise', status:'paused', progress:0.6 },
+      { id:5, kind:'job', title:'Avito DE round 1 · prep', deadline:'apr 28 · done', skills:['data_eng'], notes:'PASSED 72/100. Strong on streaming, weak on stat correctness.', severity:'done', status:'done', progress:1.0 },
+    ];
+
+    const SUMMARY = {
+      active:3, critical:1, soonestDays:8, completionRate:0.62,
+    };
+
+    const Chip = ({children,live=false,solid=false}) => <span className={`chip ${live?'live':''} ${solid?'solid':''}`}>{children}</span>;
+    const Kbd = ({children}) => <span className="kbd">{children}</span>;
+
+    function Header(){
+      return <header className="flex items-center justify-between pt-7 pb-5 no-select">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-md flex items-center justify-center mono text-[12px] font-semibold hair2-b" style={{background:'var(--surface-3)',color:'var(--ink-92)'}}>d9</div>
+          <span className="text-[15px] font-semibold tracking-tight">druz9</span>
+          <span className="dim-2 text-[13px]">/</span>
+          <span className="text-[15px] dim">goals</span>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] mono uppercase tracking-wider dim">
+          <span>palette</span><Kbd>⌘K</Kbd>
+        </div>
+      </header>;
+    }
+
+    function HeroStats(){
+      return <section className="surface hair-b rounded-xl p-7 mb-5 relative overflow-hidden">
+        <div className="hero-stripe"/>
+        <div className="flex items-center gap-10">
+          <div>
+            <h1 className="text-[24px] font-semibold tracking-tight mb-1">3 active goals</h1>
+            <p className="text-[13px] dim">1 critical · soonest in 8 days · 62% completion rate · last 3 months</p>
+          </div>
+          <div className="ml-auto flex items-center gap-8">
+            <div className="text-right">
+              <div className="text-[10px] mono dim-2 uppercase tracking-wider mb-1">soonest</div>
+              <div className="flex items-baseline gap-1.5"><span className="mono text-[28px] font-semibold tracking-tight" style={{color:'var(--accent)'}}>8</span><span className="text-[10px] mono dim-2">days</span></div>
+            </div>
+            <div className="hairline w-px h-12" style={{background:'var(--hair-2)'}}/>
+            <div className="text-right">
+              <div className="text-[10px] mono dim-2 uppercase tracking-wider mb-1">completed last 90d</div>
+              <div className="flex items-baseline gap-1.5"><span className="mono text-[28px] font-semibold tracking-tight">8</span><span className="text-[10px] mono dim-2">/13</span></div>
+            </div>
+            <div className="hairline w-px h-12" style={{background:'var(--hair-2)'}}/>
+            <button className="btn-primary px-4 py-2.5 rounded-md text-[12.5px] font-medium">+ new goal</button>
+          </div>
+        </div>
+      </section>;
+    }
+
+    function FilterRow({active,setActive}){
+      const idx = FILTERS.findIndex(f=>f.k===active);
+      return <div className="flex items-center justify-between mb-5">
+        <div className="relative flex items-center p-1 rounded-lg hair-b surface-2 self-start">
+          <div className="absolute top-1 bottom-1 rounded-md" style={{background:'var(--surface-3)',border:'1px solid var(--hair-2)',width:`calc(25% - 2px)`,transform:`translateX(${idx*100}%)`,transition:'transform 220ms var(--ease)'}}/>
+          {FILTERS.map(f=><button key={f.k} onClick={()=>setActive(f.k)} className="relative z-10 px-4 py-1.5 mono text-[11px] uppercase tracking-wider rounded-md min-w-[96px] flex items-center gap-2 justify-center" style={{color:active===f.k?'var(--ink-92)':'var(--ink-50)',transition:'color var(--t-fast) var(--ease)'}}>
+            {f.label}<span className="dim-2 text-[10px]">{f.count}</span>
+          </button>)}
+        </div>
+        <span className="text-[10px] mono dim-2 uppercase tracking-wider">sort by deadline · severity first</span>
+      </div>;
+    }
+
+    function GoalCard({g}){
+      const sevLabel = { critical:'critical', warn:'warn', cruise:'cruise', done:'done' }[g.severity];
+      return <article className="surface hair-b rounded-xl p-6 lift cursor-pointer relative overflow-hidden grid grid-cols-[1fr_240px_140px] gap-6">
+        <div className={`severity-stripe severity-${g.severity}`}/>
+        <div className="min-w-0 pl-1">
+          <div className="flex items-center gap-2 mb-2">
+            <Chip>{g.kind}</Chip>
+            <Chip live={g.severity==='critical'}>{sevLabel}</Chip>
+            {g.status==='paused' && <Chip>paused</Chip>}
+            {g.status==='done' && <Chip solid>completed</Chip>}
+          </div>
+          <h3 className="text-[16px] font-semibold tracking-tight mb-1.5 leading-snug" style={{color:'var(--ink-100)'}}>{g.title}</h3>
+          <p className="text-[12.5px] dim leading-relaxed mb-3 line-clamp-2" style={{color:'var(--ink-70)'}}>{g.notes}</p>
+          <div className="flex flex-wrap gap-1.5">{g.skills.map(s=><span key={s} className="text-[10px] mono dim-2">·{s}</span>)}</div>
+        </div>
+
+        <div>
+          <div className="text-[10px] mono dim-2 uppercase tracking-wider mb-1">deadline</div>
+          <div className="text-[12.5px] mb-3">{g.deadline}</div>
+          <div className="text-[10px] mono dim-2 uppercase tracking-wider mb-1">progress</div>
+          <div className="flex items-baseline gap-2 mb-1.5">
+            <span className="mono text-[14px] font-semibold">{Math.round(g.progress*100)}<span className="text-[10px] dim-2">%</span></span>
+          </div>
+          <div className="h-1 surface-3 rounded-full overflow-hidden">
+            <div className="fill-bar h-full" style={{width:`${g.progress*100}%`,background:g.severity==='critical'?'var(--accent)':'#fff'}}/>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          {g.status==='active' && <>
+            <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2 w-full text-center">mark done</button>
+            <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2 w-full text-center">pause</button>
+            <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2 w-full text-center">drop</button>
+          </>}
+          {g.status==='paused' && <>
+            <button className="btn-primary px-3 py-1.5 rounded-md text-[10px] mono uppercase tracking-wider w-full">resume</button>
+            <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2 w-full">drop</button>
+          </>}
+          {g.status==='done' && <>
+            <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2 w-full">reopen</button>
+            <button className="hair-b px-3 py-1.5 rounded-md text-[10px] mono dim uppercase tracking-wider surface-2 w-full">archive</button>
+          </>}
+          <button className="text-[10px] mono dim-2 uppercase tracking-wider mt-auto hover:text-white transition-colors">edit · ⌘E</button>
+        </div>
+      </article>;
+    }
+
+    function CreateForm({onClose}){
+      return <section className="surface hair2-b rounded-xl p-7 mb-5 relative overflow-hidden">
+        <div className="hero-stripe"/>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[16px] font-semibold tracking-tight">New goal</h3>
+          <button onClick={onClose} className="dim-2 text-[16px] leading-none">×</button>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-1 block">kind</span>
+            <select className="w-full surface-2 hair2-b rounded-md text-[12.5px] py-2 px-3 mono outline-none" style={{color:'var(--ink-92)'}}>
+              <option>job · interview deadline</option><option>skill · master a topic</option><option>track · complete curriculum</option>
+            </select>
+          </div>
+          <div>
+            <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-1 block">deadline</span>
+            <input type="date" className="w-full surface-2 hair2-b rounded-md text-[12.5px] py-2 px-3 mono outline-none" style={{color:'var(--ink-92)'}}/>
+          </div>
+        </div>
+        <div className="mb-4">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-1 block">title</span>
+          <input type="text" placeholder="e.g. Master DP · 2D variants" className="w-full surface-2 hair2-b rounded-md text-[14px] py-2 px-3 outline-none" style={{color:'var(--ink-92)'}}/>
+        </div>
+        <div className="mb-4">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-1 block">skills · atlas-tags</span>
+          <input type="text" placeholder="dp, dp_2d, algo" className="w-full surface-2 hair2-b rounded-md text-[12.5px] py-2 px-3 mono outline-none" style={{color:'var(--ink-92)'}}/>
+        </div>
+        <div className="mb-4">
+          <span className="text-[10px] mono dim-2 uppercase tracking-wider mb-1 block">notes · why</span>
+          <textarea rows={3} placeholder="why this matters · what success looks like" className="w-full surface-2 hair2-b rounded-md text-[12.5px] py-2 px-3 outline-none resize-none" style={{color:'var(--ink-92)'}}/>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="btn-primary px-4 py-2 rounded-md text-[12.5px] font-medium">create goal</button>
+          <button onClick={onClose} className="hair-b px-4 py-2 rounded-md text-[12px] dim surface-2">cancel</button>
+        </div>
+      </section>;
+    }
+
+    function TweaksPanel({tweaks,set,onClose}){
+      return <div className="tweaks">
+        <div className="flex items-center justify-between mb-3"><span className="text-[10px] mono dim-2 uppercase tracking-wider">tweaks</span><button onClick={onClose} className="dim-2 text-[14px] leading-none">×</button></div>
+        <div className="space-y-3">
+          <label className="flex flex-col gap-1"><span className="dim text-[10px] mono uppercase tracking-wider">filter</span>
+            <select value={tweaks.filter} onChange={e=>set('filter',e.target.value)} className="bg-black hair2-b rounded px-2 py-1 text-[11px] mono" style={{color:'var(--ink-92)'}}>
+              {FILTERS.map(f=><option key={f.k} value={f.k}>{f.label}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center justify-between gap-2"><span className="dim text-[11px]">show create form</span><input type="checkbox" checked={tweaks.showCreateForm} onChange={e=>set('showCreateForm',e.target.checked)}/></label>
+        </div>
+      </div>;
+    }
+
+    function App(){
+      const [tweaks,setTweaks] = useState(TWEAK_DEFAULTS);
+      const [tweaksOpen,setTweaksOpen] = useState(false);
+      const set = (k,v) => { setTweaks({...tweaks,[k]:v}); try{window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[k]:v}},'*')}catch(e){} };
+      useEffect(()=>{
+        const onMsg = ev => { const d=ev.data||{}; if(d.type==='__activate_edit_mode')setTweaksOpen(true); if(d.type==='__deactivate_edit_mode')setTweaksOpen(false); };
+        window.addEventListener('message',onMsg);
+        try{window.parent.postMessage({type:'__edit_mode_available'},'*')}catch(e){}
+        return ()=>window.removeEventListener('message',onMsg);
+      },[]);
+
+      const filtered = GOALS.filter(g=>{
+        if(tweaks.filter==='active') return g.status==='active';
+        if(tweaks.filter==='paused') return g.status==='paused';
+        if(tweaks.filter==='done') return g.status==='done';
+        return true;
+      });
+
+      return <div className="canvas-bg min-h-screen page-enter">
+        <div className="max-w-[1280px] mx-auto px-8 pb-12">
+          <Header/>
+          <HeroStats/>
+          <FilterRow active={tweaks.filter} setActive={(f)=>set('filter',f)}/>
+          {tweaks.showCreateForm && <CreateForm onClose={()=>set('showCreateForm',false)}/>}
+          <main className="stagger space-y-3">{filtered.map(g=><GoalCard key={g.id} g={g}/>)}</main>
+          <footer className="flex items-center justify-between pt-8 mt-4 text-[10px] mono dim-2 uppercase tracking-wider no-select border-t" style={{borderColor:'var(--hair)'}}>
+            <div className="flex items-center gap-4"><span>new goal <Kbd>⌘N</Kbd></span><span>cycle filter <Kbd>F</Kbd></span><span>palette <Kbd>⌘K</Kbd></span></div>
+            <span>druz9 · goals · v0</span>
+          </footer>
+        </div>
+        {tweaksOpen && <TweaksPanel tweaks={tweaks} set={set} onClose={()=>{setTweaksOpen(false);try{window.parent.postMessage({type:'__edit_mode_dismissed'},'*')}catch(e){}}}/>}
+      </div>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

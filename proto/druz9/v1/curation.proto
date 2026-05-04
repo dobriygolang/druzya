@@ -1,0 +1,165 @@
+// curation.proto — Phase 3.5 personal resource library + adaptive AI.
+//
+// Service exposes:
+//   AddResource     — user добавляет URL (fetch+extract preview). 2-step:
+//                     Preview RPC возвращает auto-filled fields → user
+//                     confirm → Add RPC.
+//   PreviewResource — fetch+TaskExtractResourceContent для confirm-modal.
+//   HideResource    — скрыть curated.
+//   MarkUnhelpful   — flag + bump domain_reputation.
+//   ReplaceResource — atomic hide + add.
+//   ReorderResource — записать intended position.
+//   ApplyOverrides  — return merged list per user (server-side merge).
+//   GradeReflection — Phase 5 multi-takeaway grading.
+//
+// Bounded context: curation read/write — единственный owner overrides
+// tables. Hone NotesUI / Coach NextAction / step UX дёргают через REST
+// alias /api/v1/curation/*.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// Resource — каноничный shape (matches curation.domain.Resource).
+message Resource {
+  string url             = 1;
+  string title           = 2;
+  string author          = 3;
+  string kind            = 4;   // course|video|book|paper|article|tool|kata|podcast
+  int32  minutes         = 5;
+  string level           = 6;   // A|B|C|D
+  string priority        = 7;   // core|supplement|optional
+  string why             = 8;
+  repeated string topics_covered = 9;
+  repeated string prereqs        = 10;
+  string summary         = 11;
+  string depth           = 12;  // intro|intuition|deep|reference
+  string format_notes    = 13;
+  string reflection_prompt = 14;
+}
+
+// Target — atlas-node OR step (track_id+index). Хотя бы один задан.
+message ResourceTarget {
+  string atlas_node_id = 1;
+  string step_track_id = 2;   // empty unless step-target
+  int32  step_index    = 3;
+}
+
+// ─── Preview (add-resource modal step 1) ──────────────────────────────────
+
+message PreviewResourceRequest {
+  string url = 1;
+  // allowed_atlas_node_ids — defense vs LLM hallucination. Server fills
+  // если empty (use all atlas nodes).
+  repeated string allowed_atlas_node_ids = 2;
+}
+
+message PreviewResourceResponse {
+  Resource preview = 1;
+  // manual=true → fetch failed или LLM не извлёк. UI показывает empty
+  // fields с autocomplete.
+  bool manual = 2;
+  string fetch_strategy = 3;     // html|pdf|youtube|github-readme|fallback|invalid
+  string fetch_error    = 4;     // empty при success
+}
+
+// ─── Add (modal step 2: user confirmed) ───────────────────────────────────
+
+message AddResourceRequest {
+  ResourceTarget target = 1;
+  Resource resource = 2;
+}
+
+message AddResourceResponse {
+  string override_id = 1;
+}
+
+// ─── Hide / Unhelpful / Replace / Reorder ─────────────────────────────────
+
+message HideResourceRequest {
+  ResourceTarget target = 1;
+  string url = 2;
+}
+message HideResourceResponse {}
+
+message MarkUnhelpfulRequest {
+  ResourceTarget target = 1;
+  string url = 2;
+  string reason = 3;
+}
+message MarkUnhelpfulResponse {}
+
+message ReplaceResourceRequest {
+  ResourceTarget target = 1;
+  string original_url = 2;
+  Resource replacement = 3;
+  string reason = 4;
+}
+message ReplaceResourceResponse {}
+
+message ReorderResourceRequest {
+  ResourceTarget target = 1;
+  string url = 2;
+  int32 prev_index = 3;
+  int32 next_index = 4;
+}
+message ReorderResourceResponse {}
+
+// ─── Apply (read-side merge curated + overrides) ──────────────────────────
+
+message ApplyOverridesRequest {
+  ResourceTarget target = 1;
+  // base — curated resources (caller fetches из atlas_nodes/track_steps
+  // jsonb до RPC). Server-side merge keeps response self-contained.
+  repeated Resource base = 2;
+}
+message ApplyOverridesResponse {
+  repeated Resource resources = 1;
+}
+
+// ─── Grade reflection (Phase 5 5a) ────────────────────────────────────────
+
+message GradeReflectionRequest {
+  string user_resource_log_id = 1;
+  repeated string takeaways = 2;
+  string confusion_text = 3;
+  // Caller filling в expected/allowed sets из Resource.topics_covered.
+  repeated string expected_topics = 4;
+  repeated string allowed_atlas_node_ids = 5;
+}
+message GradeReflectionResponse {
+  float quality_score = 1;
+  repeated string extracted_topics = 2;
+  bool confusion_flag = 3;
+}
+
+// ─── Service ──────────────────────────────────────────────────────────────
+
+service CurationService {
+  rpc PreviewResource(PreviewResourceRequest) returns (PreviewResourceResponse) {
+    option (google.api.http) = { post: "/api/v1/curation/preview-resource" body: "*" };
+  }
+  rpc AddResource(AddResourceRequest) returns (AddResourceResponse) {
+    option (google.api.http) = { post: "/api/v1/curation/add-resource" body: "*" };
+  }
+  rpc HideResource(HideResourceRequest) returns (HideResourceResponse) {
+    option (google.api.http) = { post: "/api/v1/curation/hide-resource" body: "*" };
+  }
+  rpc MarkUnhelpful(MarkUnhelpfulRequest) returns (MarkUnhelpfulResponse) {
+    option (google.api.http) = { post: "/api/v1/curation/mark-unhelpful" body: "*" };
+  }
+  rpc ReplaceResource(ReplaceResourceRequest) returns (ReplaceResourceResponse) {
+    option (google.api.http) = { post: "/api/v1/curation/replace-resource" body: "*" };
+  }
+  rpc ReorderResource(ReorderResourceRequest) returns (ReorderResourceResponse) {
+    option (google.api.http) = { post: "/api/v1/curation/reorder-resource" body: "*" };
+  }
+  rpc ApplyOverrides(ApplyOverridesRequest) returns (ApplyOverridesResponse) {
+    option (google.api.http) = { post: "/api/v1/curation/apply-overrides" body: "*" };
+  }
+  rpc GradeReflection(GradeReflectionRequest) returns (GradeReflectionResponse) {
+    option (google.api.http) = { post: "/api/v1/curation/reflection" body: "*" };
+  }
+}

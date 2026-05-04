@@ -1,0 +1,66 @@
+[
+  {
+    "name": "stable_de_lean",
+    "task": "assistant_fork_analysis",
+    "input": {
+      "branch_scores": [
+        {"branch": "mle", "mock_count": 1, "avg_score": 60, "deep_dives": 1},
+        {"branch": "de", "mock_count": 3, "avg_score": 75, "deep_dives": 4}
+      ],
+      "explore_week": 4,
+      "prior_confidence": 0.55
+    },
+    "raw_response": "{\"lean_branch\":\"de\",\"confidence\":0.66,\"severity\":\"warn\",\"signals\":[\"3 DE mocks avg 75 vs 1 MLE 60\",\"4 voluntary DE deep-dives\"]}",
+    "regression": {
+      "confidence_delta_max": 0.3,
+      "must_have_signals": true
+    }
+  },
+  {
+    "name": "no_signal_low_confidence",
+    "task": "assistant_fork_analysis",
+    "input": {
+      "branch_scores": [
+        {"branch": "mle", "mock_count": 0, "avg_score": 0, "deep_dives": 0},
+        {"branch": "de", "mock_count": 0, "avg_score": 0, "deep_dives": 1}
+      ],
+      "explore_week": 1,
+      "prior_confidence": 0
+    },
+    "raw_response": "{\"lean_branch\":\"\",\"confidence\":0.1,\"severity\":\"cruise\",\"signals\":[\"too early — only 1 deep-dive\"]}",
+    "regression": {
+      "confidence_max": 0.3,
+      "must_acknowledge_no_signal": true
+    }
+  },
+  {
+    "name": "confidence_jump_should_fail",
+    "task": "assistant_fork_analysis",
+    "input": {
+      "branch_scores": [
+        {"branch": "mle", "mock_count": 1, "avg_score": 65, "deep_dives": 1},
+        {"branch": "de", "mock_count": 1, "avg_score": 70, "deep_dives": 1}
+      ],
+      "prior_confidence": 0.3
+    },
+    "raw_response": "{\"lean_branch\":\"de\",\"confidence\":0.85,\"severity\":\"critical\",\"signals\":[\"slightly higher DE score\"]}",
+    "regression": {
+      "confidence_delta_max": 0.3,
+      "expected_to_fail": true
+    }
+  },
+  {
+    "name": "voluntary_dives_dominate",
+    "task": "assistant_fork_analysis",
+    "input": {
+      "branch_scores": [
+        {"branch": "mle", "mock_count": 2, "avg_score": 70, "deep_dives": 8},
+        {"branch": "de", "mock_count": 2, "avg_score": 70, "deep_dives": 1}
+      ]
+    },
+    "raw_response": "{\"lean_branch\":\"mle\",\"confidence\":0.55,\"severity\":\"nudge\",\"signals\":[\"equal mock scores\",\"8x voluntary MLE deep-dives vs 1 DE — engagement diff\"]}",
+    "regression": {
+      "must_cite_engagement": true
+    }
+  }
+]

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>druz9 · Hone · logo lab</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#000; --surface-1:#0a0a0a; --surface-2:#111; --surface-3:#161616;
+      --hair:rgba(255,255,255,0.07); --hair-2:rgba(255,255,255,0.12);
+      --ink-92:rgba(255,255,255,0.92); --ink-70:rgba(255,255,255,0.7);
+      --ink-50:rgba(255,255,255,0.5); --ink-30:rgba(255,255,255,0.3);
+      --accent:#FF3B30;
+      --t-fast:150ms; --ease:cubic-bezier(0.2,0.7,0.2,1);
+    }
+    *{box-sizing:border-box}
+    html,body{
+      margin:0; background:var(--bg); color:var(--ink-92);
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+      letter-spacing:-0.005em; -webkit-font-smoothing:antialiased;
+    }
+    .mono{font-family:'JetBrains Mono',ui-monospace,monospace;letter-spacing:-0.01em}
+    .dim{color:var(--ink-50)} .dim-2{color:var(--ink-30)}
+    .surface{background:var(--surface-1)}
+    .surface-2{background:var(--surface-2)}
+    .surface-3{background:var(--surface-3)}
+    .hair-b{border:1px solid var(--hair)}
+    .hair2-b{border:1px solid var(--hair-2)}
+    .hairline{height:1px;background:var(--hair);width:100%}
+    .canvas-bg{
+      background:radial-gradient(circle at 12% -8%, rgba(255,255,255,0.02), transparent 55%), var(--bg);
+    }
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;
+      border:1px solid var(--hair); background:var(--surface-2);
+      font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;
+      color:var(--ink-50); font-family:'JetBrains Mono',ui-monospace,monospace}
+    .chip.live{color:var(--ink-70)}
+    .chip.live::before{content:'';width:6px;height:6px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 2px rgba(255,59,48,0.18)}
+    .kbd{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;
+      border:1px solid var(--hair-2); background:var(--surface-3);
+      font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-70); line-height:1.4}
+
+    @keyframes pageFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .page-enter{animation:pageFade 220ms var(--ease) both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+    .stagger>*{opacity:0;animation:fadeUp 480ms var(--ease) forwards}
+    .stagger>*:nth-child(1){animation-delay:60ms}
+    .stagger>*:nth-child(2){animation-delay:130ms}
+    .stagger>*:nth-child(3){animation-delay:200ms}
+    .stagger>*:nth-child(4){animation-delay:270ms}
+    .stagger>*:nth-child(5){animation-delay:340ms}
+    .stagger>*:nth-child(6){animation-delay:410ms}
+    .stagger>*:nth-child(7){animation-delay:480ms}
+    .stagger>*:nth-child(8){animation-delay:550ms}
+    .stagger>*:nth-child(9){animation-delay:620ms}
+
+    .lift{transition:transform var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),background-color var(--t-fast) var(--ease)}
+    .lift:hover{transform:translateY(-1px);border-color:var(--hair-2)}
+    button:focus-visible{outline:1px solid var(--ink-70);outline-offset:2px}
+    ::selection{background:rgba(255,255,255,0.18); color:#fff}
+
+    /* logo tile */
+    .tile{
+      background:var(--surface-1);
+      border:1px solid var(--hair);
+      border-radius:14px;
+      padding:24px;
+      display:flex; flex-direction:column; gap:18px;
+      transition:border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+    }
+    .tile:hover{border-color:var(--hair-2); transform:translateY(-1px)}
+    .tile .stage{
+      aspect-ratio: 1 / 1;
+      width:100%;
+      background:var(--bg);
+      border:1px solid var(--hair);
+      border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      position:relative;
+      overflow:hidden;
+    }
+    .tile .stage.light{background:#fff}
+    .tile .meta{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+    }
+    .tile .meta h3{margin:0; font-size:13px; font-weight:600; letter-spacing:-0.01em}
+    .tile .meta p{margin:2px 0 0; font-size:10.5px; color:var(--ink-50);
+      font-family:'JetBrains Mono',ui-monospace,monospace; letter-spacing:0.04em; text-transform:uppercase}
+
+    /* size strip — show same mark at multiple sizes */
+    .sizes{display:flex; align-items:center; gap:12px; padding:10px 12px;
+      background:var(--surface-2); border:1px solid var(--hair); border-radius:8px}
+    .sizes .lbl{font-family:'JetBrains Mono',monospace; font-size:9px;
+      color:var(--ink-30); text-transform:uppercase; letter-spacing:0.08em; min-width:32px}
+
+    /* spinning hatch hover effect */
+    @keyframes spinSlow{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    .spin-host:hover .spin{animation:spinSlow 14s linear infinite}
+    .pulse-host:hover .pulse-dot{animation:pulse 1.4s var(--ease) infinite}
+    @keyframes pulse{
+      0%,100%{transform:scale(1)} 50%{transform:scale(1.15)}
+    }
+
+    /* moving hatch (live mark) */
+    @keyframes hatchSlide{from{transform:translateX(0)}to{transform:translateX(-9.6px)}}
+    .hatch-slide{animation:hatchSlide 5s linear infinite}
+
+    /* dock preview */
+    .dock{
+      display:flex; gap:14px; align-items:flex-end; justify-content:center;
+      padding:18px 22px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+      border:1px solid var(--hair);
+      border-radius:14px;
+      backdrop-filter: blur(20px);
+    }
+    .dock .icon{
+      width:56px; height:56px; border-radius:13px;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      transition: transform 180ms var(--ease);
+    }
+    .dock .icon:hover{transform: translateY(-6px) scale(1.06)}
+    .dock .icon.app{background:#000; border:1px solid var(--hair-2)}
+    .dock .label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-30);
+      text-align:center; text-transform:uppercase; letter-spacing:0.08em; margin-top:8px}
+
+    /* favicon row */
+    .fav-row{display:flex; gap:10px; align-items:center;
+      padding:10px 12px; background:var(--surface-2); border:1px solid var(--hair); border-radius:8px}
+    .fav-tab{display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:6px 6px 0 0;
+      background:var(--surface-3); border:1px solid var(--hair-2); border-bottom:none;
+      font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-70)}
+
+    /* construction grid */
+    .grid-bg{
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-bg" style="min-height:100vh">
+    <div class="page-enter" style="max-width:1480px;margin:0 auto;padding:32px">
+
+      <!-- header -->
+      <header style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:24px;user-select:none">
+        <div style="display:flex;align-items:center;gap:12px">
+          <!-- mini brand mark (mark 04) -->
+          <div style="width:28px;height:28px;border-radius:7px;background:#000;border:1px solid var(--hair-2);display:flex;align-items:center;justify-content:center">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <defs>
+                <clipPath id="hdr-clip"><circle cx="12" cy="12" r="9"/></clipPath>
+              </defs>
+              <circle cx="12" cy="12" r="9" fill="#fff"/>
+              <g clip-path="url(#hdr-clip)">
+                <rect x="3" y="3" width="9" height="18" fill="#000"/>
+              </g>
+              <g clip-path="url(#hdr-clip)" stroke="#000" stroke-width="1.2">
+                <line x1="10" y1="2" x2="22" y2="14"/>
+                <line x1="10" y1="6" x2="22" y2="18"/>
+                <line x1="10" y1="10" x2="22" y2="22"/>
+                <line x1="10" y1="14" x2="22" y2="26"/>
+                <line x1="10" y1="18" x2="22" y2="30"/>
+              </g>
+            </svg>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Hone</span>
+            <span class="dim-2">/</span>
+            <span style="font-size:15px;font-weight:500" class="dim">logo lab</span>
+          </div>
+          <span class="chip">v0 · 9 marks</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-50);text-transform:uppercase;letter-spacing:0.06em">
+          <span>copy svg <span class="kbd">C</span></span>
+          <span>download <span class="kbd">⌘D</span></span>
+          <span>palette <span class="kbd">⌘K</span></span>
+        </div>
+      </header>
+
+      <!-- intro -->
+      <section style="padding-bottom:18px;display:flex;justify-content:space-between;flex-wrap:wrap;align-items:flex-end;gap:16px">
+        <div>
+          <h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.015em">Mark explorations</h1>
+          <p style="margin:6px 0 0;font-size:12.5px;color:var(--ink-50);max-width:560px">
+            Variations on the disc-with-hatch idea. Same DNA — black, white, ink ramp, single red allowed only as live status. All vector, all favicon-safe down to 16px.
+          </p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="chip">monochrome</span>
+          <span class="chip live">red · live only</span>
+          <span class="chip">16 → 512px</span>
+        </div>
+      </section>
+
+      <!-- mark grid -->
+      <section class="stagger" style="display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:18px;padding-bottom:28px">
+
+        <!-- 01 — closest to source: clean disc + hatch (refined) -->
+        <div class="tile">
+          <div class="stage spin-host">
+            <svg width="60%" height="60%" viewBox="0 0 100 100">
+              <defs>
+                <clipPath id="m1-clip"><circle cx="50" cy="50" r="40"/></clipPath>
+              </defs>
+              <g class="spin" style="transform-origin:50px 50px">
+                <circle cx="50" cy="50" r="40" fill="#fff"/>
+                <g clip-path="url(#m1-clip)" stroke="#000" stroke-width="3.4" stroke-linecap="round"><line x1="-10" y1="20" x2="110" y2="140"/><line x1="-10" y1="32" x2="110" y2="152"/><line x1="-10" y1="44" x2="110" y2="164"/><line x1="-10" y1="56" x2="110" y2="176"/><line x1="-10" y1="68" x2="110" y2="188"/></g>
+              </g>
+            </svg>
+          </div>
+          <div class="meta">
+            <div>
+              <h3>01 · disc / hatch</h3>
+              <p>your reference, refined</p>
+            </div>
+            <span class="chip">primary</span>
+          </div>
+        </div>
+
+        <!-- 02 — half hatch, half solid (whetstone metaphor) -->
+        <div class="tile">
+          <div class="stage">
+            <svg width="60%" height="60%" viewBox="0 0 100 100">
+              <defs>
+                <clipPath id="m2-half"><rect x="50" y="0" width="50" height="100"/></clipPath>
+                <clipPath id="m2-circle"><circle cx="50" cy="50" r="40"/></clipPath>
+              </defs>
+              <circle cx="50" cy="50" r="40" fill="#fff"/>
+              <!-- left half: solid black -->
+              <g clip-path="url(#m2-circle)">
+                <rect x="0" y="0" width="50" height="100" fill="#000"/>
+              </g>
+              <!-- right half: hatch on white -->
+              <g clip-path="url(#m2-circle)">
+                <g clip-path="url(#m2-half)" stroke="#000" stroke-width="2.6">
+                  <line x1="40" y1="0" x2="120" y2="80"/>
+                  <line x1="40" y1="14" x2="120" y2="94"/>
+                  <line x1="40" y1="28" x2="120" y2="108"/>
+                  <line x1="40" y1="42" x2="120" y2="122"/>
+                  <line x1="40" y1="56" x2="120" y2="136"/>
+                </g>
+              </g>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#fff" stroke-width="0"/>
+            </svg>
+          </div>
+          <div class="meta">
+            <div>
+              <h3>02 · whetstone</h3>
+              <p>half polished · half raw</p>
+            </div>
+            <span class="chip">conceptual</span>
+          </div>
+        </div>
+
+        <!-- 03 — h monogram disc -->
+        <div class="tile">
+          <div class="stage">
+            <svg width="60%" height="60%" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" fill="#fff"/>
+              <!-- H monogram -->
+              <rect x="30" y="28" width="6" height="44" fill="#000"/>
+              <rect x="64" y="28" width="6" height="44" fill="#000"/>
+              <rect x="30" y="47" width="40" height="6" fill="#000"/>
+              <!-- subtle hatch behind -->
+              <defs>
+                <clipPath id="m3-clip"><circle cx="50" cy="50" r="40"/></clipPath>
+              </defs>
+              <g clip-path="url(#m3-clip)" stroke="#000" stroke-width="0.8" opacity="0.18">
+                <line x1="-10" y1="80" x2="110" y2="120"/>
+                <line x1="-10" y1="86" x2="110" y2="126"/>
+                <line x1="-10" y1="92" x2="110" y2="132"/>
+              </g>
+            </svg>
+          </div>
+          <div class="meta">
+            <div>
+              <h3>03 · H monogram</h3>
+              <p>letterform inside disc</p>
+            </div>
+            <span class="chip">wordmark pair</span>
+          </div>
+        </div>
+
+        <!-- 04 — disc with red live dot (status mark variant) -->
+        <div class="tile pulse-host">
+          <div class="stage">
+            <svg width="60%" height="60%" viewBox="0 0 100 100">
+              <defs>
+                <clipPath id="m4-clip"><circle cx="50" cy="50" r="40"/></clipPath>
+              </defs>
+              <circle cx="50" cy="50" r="40" fill="#fff"/>
+              <g clip-path="url(#m4-clip)" stroke="#000" stroke-width="3.2"><line x1="-10" y1="32" x2="110" y2="152"/><line x1="-10" y1="44" x2="110" y2="164"/><line x1="-10" y1="56" x2="110" y2="176"/><line x1="-10" y1="68" x2="110" y2="188"/></g>
+              <!-- live dot -->
+              <g style="transform-origin:74px 26px" class="pulse-dot">
+                <circle cx="74" cy="26" r="9" fill="#000"/>
+                <circle cx="74" cy="26" r="6" fill="var(--accent)"/>
+              </g>
+            </svg>
+          </div>
+          <div class="meta">
+            <div>
+              <h3>04 · live disc</h3>
+              <p>focus session indicator</p>
+            </div>
+            <span class="chip live">live state</span>
+          </div>
+        </div>
+
+        <!-- 05 — orbit / ring + dot (target metaphor) -->
+        <div class="tile">
+          <div class="stage spin-host">
+            <svg width="60%" height="60%" viewBox="0 0 100 100">
+              <g class="spin" style="transform-origin:50px 50px">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#fff" stroke-width="2"/>
+                <circle cx="50" cy="50" r="28" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 3"/>
+                <circle cx="50" cy="50" r="14" fill="#fff"/>
+                <!-- tick marks at 12/3/6/9 -->
+                <line x1="50" y1="6" x2="50" y2="12" stroke="#fff" stroke-width="2"/>
+                <line x1="94" y1="50" x2="88" y2="50" stroke="#fff" stroke-width="2"/>
+                <line x1="50" y1="94" x2="50" y2="88" stroke="#fff" stroke-width="2"/>
+                <line x1="6" y1="50" x2="12" y2="50" stroke="#fff" stroke-width="2"/>
+                <!-- accent satellite -->
+                <circle cx="84" cy="32" r="3.5" fill="var(--accent)"/>
+              </g>
+            </svg>
+          </div>
+          <div class="meta">
+            <div>
+              <h3>05 · target</h3>
+              <p>orbit · skill ring</p>
+            </div>
+            <span class="chip">animated</span>
+          </div>
+        </div>
+
+        <!-- 06 — d9 mono mark (current header glyph but elevated) -->
+        <div class="tile">
+          <div class="stage">
+            <svg width="60%" height="60%" viewBox="0 0 100 100">
+              <rect x="10" y="10" width="80" height="80" rx="18" fill="#fff"/>
+              <text x="50" y="64" text-anchor="middle"
+                    font-family="JetBrains Mono, monospace" font-weight="700" font-size="38"
+                    fill="#000" letter-spacing="-2">d9</text>
+              <!-- subtle bottom stripe -->
+              <rect x="22" y="76" width="56" height="2" fill="#000" opacity="0.85"/>
+            </svg>
+          </div>
+          <div class="meta">
+            <div>
+              <h3>06 · d9 mono</h3>
+              <p>type-led · partner mark</p>
+            </div>
+            <span class="chip">utility</span>
+          </div>
+        </div>
+
+        <!-- 07 — sharpened blade / bevel -->
+        <div class="tile">
+          <div class="stage">
+            <svg width="60%" height="60%" viewBox="0 0 100 100">
+              <defs>
+                <clipPath id="m7-clip"><circle cx="50" cy="50" r="40"/></clipPath>
+              </defs>
+              <circle cx="50" cy="50" r="40" fill="#fff"/>
+              <!-- bevel: a sharp triangular wedge from upper-left to lower-right -->
+              <g clip-path="url(#m7-clip)">
+                <polygon points="10,50 50,10 90,50 50,90" fill="#000"/>
+                <polygon points="10,50 50,10 50,50" fill="#fff" opacity="0.18"/>
+              </g>
+              <!-- hairline hatch on the blade face -->
+              <g clip-path="url(#m7-clip)" stroke="#fff" stroke-width="0.9" opacity="0.55">
+                <line x1="34" y1="34" x2="58" y2="58"/>
+                <line x1="40" y1="28" x2="64" y2="52"/>
+                <line x1="46" y1="22" x2="70" y2="46"/>
+              </g>
+            </svg>
+          </div>
+          <div class="meta">
+            <div>
+              <h3>07 · bevel</h3>
+              <p>edge · sharpened</p>
+            </div>
+            <span class="chip">geometric</span>
+          </div>
+        </div>
+
+        <!-- 08 — animated hatch flow -->
+        <div class="tile">
+          <div class="stage">
+            <svg width="60%" height="60%" viewBox="0 0 100 100">
+              <defs>
+                <clipPath id="m8-clip"><circle cx="50" cy="50" r="40"/></clipPath>
+                <pattern id="m8-hatch" x="0" y="0" width="9.6" height="9.6"
+                         patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <line x1="0" y1="0" x2="0" y2="9.6" stroke="#000" stroke-width="3.6"/>
+                </pattern>
+              </defs>
+              <circle cx="50" cy="50" r="40" fill="#fff"/>
+              <g clip-path="url(#m8-clip)">
+                <rect class="hatch-slide" x="-20" y="-20" width="160" height="160" fill="url(#m8-hatch)"/>
+              </g>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#fff" stroke-width="0"/>
+            </svg>
+          </div>
+          <div class="meta">
+            <div>
+              <h3>08 · flow</h3>
+              <p>motion · always sharpening</p>
+            </div>
+            <span class="chip">animated</span>
+          </div>
+        </div>
+
+        <!-- 09 — disc + arrow / progress notch (chevron rising) -->
+        <div class="tile">
+          <div class="stage">
+            <svg width="60%" height="60%" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" fill="#fff"/>
+              <!-- rising chevron (improvement) -->
+              <polyline points="28,62 44,46 56,58 72,34"
+                        fill="none" stroke="#000" stroke-width="5"
+                        stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- baseline -->
+              <line x1="22" y1="74" x2="78" y2="74" stroke="#000" stroke-width="1.5" opacity="0.4"/>
+            </svg>
+          </div>
+          <div class="meta">
+            <div>
+              <h3>09 · climb</h3>
+              <p>progress · honing curve</p>
+            </div>
+            <span class="chip">narrative</span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ===== chosen mark detail ===== -->
+      <section class="stagger" style="display:grid;grid-template-columns:1.2fr 1fr;gap:18px;padding-bottom:28px">
+
+        <!-- construction view -->
+        <div class="tile">
+          <div class="meta" style="margin-bottom:0">
+            <div>
+              <h3>construction · mark 01</h3>
+              <p>radius 40 · stroke 3.4 · hatch step 12 · 45° rotation</p>
+            </div>
+            <span class="chip">grid</span>
+          </div>
+          <div class="stage grid-bg" style="aspect-ratio:auto;height:340px">
+            <svg width="280" height="280" viewBox="0 0 100 100">
+              <defs>
+                <clipPath id="cm-clip"><circle cx="50" cy="50" r="40"/></clipPath>
+              </defs>
+              <!-- guides -->
+              <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,59,48,0.55)" stroke-width="0.4" stroke-dasharray="1 1"/>
+              <line x1="50" y1="0" x2="50" y2="100" stroke="rgba(255,59,48,0.35)" stroke-width="0.3" stroke-dasharray="1 1.5"/>
+              <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(255,59,48,0.35)" stroke-width="0.3" stroke-dasharray="1 1.5"/>
+              <!-- mark -->
+              <circle cx="50" cy="50" r="40" fill="#fff"/>
+              <g clip-path="url(#cm-clip)" stroke="#000" stroke-width="3.4" stroke-linecap="round"><line x1="-10" y1="20" x2="110" y2="140"/><line x1="-10" y1="32" x2="110" y2="152"/><line x1="-10" y1="44" x2="110" y2="164"/><line x1="-10" y1="56" x2="110" y2="176"/><line x1="-10" y1="68" x2="110" y2="188"/></g>
+              <!-- annotations -->
+              <line x1="50" y1="50" x2="86" y2="32" stroke="rgba(255,59,48,0.7)" stroke-width="0.4"/>
+              <text x="88" y="32" font-family="JetBrains Mono, monospace" font-size="3.2"
+                    fill="rgba(255,59,48,0.85)">r=40</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- size strip -->
+        <div class="tile">
+          <div class="meta" style="margin-bottom:0">
+            <div>
+              <h3>size scale</h3>
+              <p>16 · 24 · 32 · 48 · 64 · 96 · 128 px</p>
+            </div>
+            <span class="chip">crisp at 16</span>
+          </div>
+          <div class="sizes" style="flex-wrap:wrap;gap:18px;align-items:flex-end">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <svg width="16" height="16" viewBox="0 0 24 24"><defs><clipPath id="s16"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#s16)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#s16)" stroke="#000" stroke-width="1.4"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              <span class="lbl">16</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <svg width="24" height="24" viewBox="0 0 24 24"><defs><clipPath id="s24"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#s24)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#s24)" stroke="#000" stroke-width="1.4"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              <span class="lbl">24</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <svg width="32" height="32" viewBox="0 0 24 24"><defs><clipPath id="s32"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#s32)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#s32)" stroke="#000" stroke-width="1.4"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              <span class="lbl">32</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <svg width="48" height="48" viewBox="0 0 24 24"><defs><clipPath id="s48"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#s48)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#s48)" stroke="#000" stroke-width="1.4"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              <span class="lbl">48</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <svg width="64" height="64" viewBox="0 0 24 24"><defs><clipPath id="s64"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#s64)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#s64)" stroke="#000" stroke-width="1.4"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              <span class="lbl">64</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <svg width="96" height="96" viewBox="0 0 24 24"><defs><clipPath id="s96"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#s96)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#s96)" stroke="#000" stroke-width="1.4"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              <span class="lbl">96</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <svg width="128" height="128" viewBox="0 0 24 24"><defs><clipPath id="s128"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#s128)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#s128)" stroke="#000" stroke-width="1.4"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              <span class="lbl">128</span>
+            </div>
+          </div>
+
+          <!-- favicon row -->
+          <div class="fav-row">
+            <span class="fav-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24"><defs><clipPath id="fv-clip"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#fv-clip)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#fv-clip)" stroke="#000" stroke-width="1.6"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              hone.app
+            </span>
+            <span class="fav-tab" style="opacity:0.4">
+              <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--ink-30)"></span>
+              other tab
+            </span>
+            <span class="fav-tab" style="opacity:0.4">
+              <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--ink-30)"></span>
+              another tab
+            </span>
+          </div>
+
+          <!-- on light bg -->
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;background:#fff;border-radius:8px;padding:18px;display:flex;align-items:center;justify-content:center">
+              <svg width="56" height="56" viewBox="0 0 24 24"><defs><clipPath id="lt-clip"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#000"/><g clip-path="url(#lt-clip)"><rect x="3" y="3" width="9" height="18" fill="#fff"/></g><g clip-path="url(#lt-clip)" stroke="#fff" stroke-width="1.6"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+            </div>
+            <div style="flex:1;background:var(--surface-3);border-radius:8px;padding:18px;display:flex;align-items:center;justify-content:center">
+              <svg width="56" height="56" viewBox="0 0 24 24"><defs><clipPath id="dk-clip"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#dk-clip)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#dk-clip)" stroke="#000" stroke-width="1.6"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ===== context: dock + wordmark ===== -->
+      <section class="stagger" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;padding-bottom:28px">
+        <div class="tile">
+          <div class="meta" style="margin-bottom:0">
+            <div>
+              <h3>app dock</h3>
+              <p>icon among siblings · macos style</p>
+            </div>
+            <span class="chip">context</span>
+          </div>
+          <div class="dock">
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <div class="icon" style="background:#1d3a5e">
+                <svg width="34" height="34" viewBox="0 0 24 24"><path d="M4 12 Q12 4 20 12 Q12 20 4 12 Z" fill="#fff"/></svg>
+              </div>
+              <span class="label">notes</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <div class="icon" style="background:#222">
+                <svg width="32" height="32" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#9ed18a" stroke-width="2"/></svg>
+              </div>
+              <span class="label">terminal</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <div class="icon app">
+                <svg width="38" height="38" viewBox="0 0 24 24"><defs><clipPath id="dk2-clip"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#dk2-clip)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#dk2-clip)" stroke="#000" stroke-width="1.6"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              </div>
+              <span class="label" style="color:var(--ink-92)">hone</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <div class="icon" style="background:#0a3d2e">
+                <svg width="30" height="30" viewBox="0 0 24 24"><polygon points="12,4 20,18 4,18" fill="none" stroke="#46d196" stroke-width="2" stroke-linejoin="round"/></svg>
+              </div>
+              <span class="label">finder</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <div class="icon" style="background:#3a1d3d">
+                <svg width="30" height="30" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3" fill="none" stroke="#d18ad1" stroke-width="2"/></svg>
+              </div>
+              <span class="label">mail</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tile">
+          <div class="meta" style="margin-bottom:0">
+            <div>
+              <h3>wordmark lockup</h3>
+              <p>mark + word · primary horizontal</p>
+            </div>
+            <span class="chip">brand</span>
+          </div>
+          <div class="stage" style="aspect-ratio:auto;height:170px">
+            <div style="display:flex;align-items:center;gap:18px">
+              <svg width="64" height="64" viewBox="0 0 24 24"><defs><clipPath id="wm-clip"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#fff"/><g clip-path="url(#wm-clip)"><rect x="3" y="3" width="9" height="18" fill="#000"/></g><g clip-path="url(#wm-clip)" stroke="#000" stroke-width="1.4"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              <div style="display:flex;flex-direction:column">
+                <span style="font-size:36px;font-weight:600;letter-spacing:-0.02em;line-height:1">Hone</span>
+                <span class="mono" style="font-size:10px;color:var(--ink-50);text-transform:uppercase;letter-spacing:0.12em;margin-top:6px">always sharpening</span>
+              </div>
+            </div>
+          </div>
+          <!-- inverted -->
+          <div class="stage light" style="aspect-ratio:auto;height:170px">
+            <div style="display:flex;align-items:center;gap:18px">
+              <svg width="64" height="64" viewBox="0 0 24 24"><defs><clipPath id="wm2-clip"><circle cx="12" cy="12" r="9"/></clipPath></defs><circle cx="12" cy="12" r="9" fill="#000"/><g clip-path="url(#wm2-clip)"><rect x="3" y="3" width="9" height="18" fill="#fff"/></g><g clip-path="url(#wm2-clip)" stroke="#fff" stroke-width="1.4"><line x1="10" y1="2" x2="22" y2="14"/><line x1="10" y1="6" x2="22" y2="18"/><line x1="10" y1="10" x2="22" y2="22"/><line x1="10" y1="14" x2="22" y2="26"/><line x1="10" y1="18" x2="22" y2="30"/></g></svg>
+              <div style="display:flex;flex-direction:column;color:#000">
+                <span style="font-size:36px;font-weight:600;letter-spacing:-0.02em;line-height:1">Hone</span>
+                <span class="mono" style="font-size:10px;color:rgba(0,0,0,0.5);text-transform:uppercase;letter-spacing:0.12em;margin-top:6px">always sharpening</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- footer -->
+      <footer style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 32px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-30);text-transform:uppercase;letter-spacing:0.06em;user-select:none">
+        <div style="display:flex;gap:18px">
+          <span>9 marks · 1 system</span>
+          <span>black · white · ink ramp</span>
+          <span>red = live only</span>
+        </div>
+        <div>druz9 · logo lab · v0</div>
+      </footer>
+
+    </div>
+  </div>
+</body>
+</html>

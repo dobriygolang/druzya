@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package druz9.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// AI-tutor — design в /docs/feature/ai-tutor.md.
+//
+// Reuse-first: ListMyTutors / GetStudentSnapshot / PreSessionBrief из
+// существующего TutorService уже работают для AI-тутора, потому что
+// AI-юзеры лежат в той же `users` таблице с role='ai_tutor'. Здесь
+// только специфичная для AI-сессии surface: персоны, чат, threads.
+
+// ── Persona ──────────────────────────────────────────────────────
+message AITutorPersona {
+  string id                = 1;
+  string slug              = 2;  // 'algo-coach' / 'sql-mentor' / ...
+  string display_name      = 3;
+  string scope_track_kind  = 4;  // 'dev' / 'english' / ...
+  int32  pace_per_week     = 5;
+  bool   active            = 6;
+  // ai_user_id — id юзера в users c role='ai_tutor', соответствующий
+  // этой персоне. Пустая строка пока никто не adopt'ил персону.
+  string ai_user_id        = 7;
+}
+
+// ── Thread ───────────────────────────────────────────────────────
+message AITutorThread {
+  string id              = 1;
+  string student_id      = 2;
+  string persona_id      = 3;
+  string summary_md      = 4;
+  int32  message_count   = 5;
+  int32  daily_msg_count = 6;
+  string created_at      = 7;  // RFC3339
+  string updated_at      = 8;
+}
+
+// ── Episode (one chat message row) ───────────────────────────────
+message AITutorEpisode {
+  string id           = 1;
+  string thread_id    = 2;
+  string role         = 3;  // 'user' | 'assistant' | 'system' | ...
+  string content      = 4;
+  string model_used   = 5;
+  int32  tokens_in    = 6;
+  int32  tokens_out   = 7;
+  string occurred_at  = 8;  // RFC3339
+}
+
+// ── Adopt ────────────────────────────────────────────────────────
+message AdoptAITutorRequest  { string persona_slug = 1; }
+message AdoptAITutorResponse {
+  AITutorPersona persona = 1;
+  AITutorThread  thread  = 2;
+}
+
+// ── List personas (public — рендерится на /marketplace) ──────────
+message ListAITutorPersonasRequest  {}
+message ListAITutorPersonasResponse {
+  repeated AITutorPersona items = 1;
+}
+
+// ── Threads (current user's chat list) ───────────────────────────
+message ListMyAITutorThreadsRequest  {}
+message ListMyAITutorThreadsResponse {
+  repeated AITutorThread items = 1;
+}
+
+// ── History pagination — простой forward-cursor ──────────────────
+message GetAITutorHistoryRequest {
+  string thread_id = 1;
+  int32  limit     = 2;  // default 30, max 100
+}
+message GetAITutorHistoryResponse {
+  AITutorThread          thread   = 1;
+  repeated AITutorEpisode episodes = 2;
+}
+
+// ── Send message ─────────────────────────────────────────────────
+message SendAITutorMessageRequest {
+  string thread_id = 1;
+  string content   = 2;
+  // context_note — optional. Когда непустой, бекенд appends system-episode
+  // ПЕРЕД user-episode'ом. Используется inline contextual chat-pill'ом для
+  // pre-loading'а surface-контекста (atlas-node / mock-result / reading-абзац)
+  // первый раз. Subsequent turns в том же thread'е не нуждаются — контекст
+  // уже в истории.
+  string context_note = 3;
+}
+message SendAITutorMessageResponse {
+  AITutorEpisode user_episode      = 1;
+  AITutorEpisode assistant_episode = 2;
+  // True если auto-compaction сработала на этом ходе. UI может показать
+  // тонкий toast «coach подтянул память».
+  bool   compacted                  = 3;
+}
+
+service AITutorService {
+  // Public — рендерится на /marketplace без auth.
+  rpc ListPersonas(ListAITutorPersonasRequest) returns (ListAITutorPersonasResponse) {
+    option (google.api.http) = {get: "/api/v1/ai-tutor/personas"};
+  }
+
+  // Authenticated.
+  rpc Adopt(AdoptAITutorRequest) returns (AdoptAITutorResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai-tutor/adopt"
+      body: "*"
+    };
+  }
+  rpc ListMyThreads(ListMyAITutorThreadsRequest) returns (ListMyAITutorThreadsResponse) {
+    option (google.api.http) = {get: "/api/v1/ai-tutor/threads"};
+  }
+  rpc GetHistory(GetAITutorHistoryRequest) returns (GetAITutorHistoryResponse) {
+    option (google.api.http) = {get: "/api/v1/ai-tutor/threads/{thread_id}/history"};
+  }
+  rpc SendMessage(SendAITutorMessageRequest) returns (SendAITutorMessageResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai-tutor/threads/{thread_id}/messages"
+      body: "*"
+    };
+  }
+}

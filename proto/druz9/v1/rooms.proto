@@ -1,0 +1,88 @@
+// rooms.proto — Phase 9a Path C low-key collab rooms.
+//
+// Standalone code/whiteboard rooms. Discovery only через:
+//   - tutor session card / mock auto-allocate / club / Settings dev-tools
+//
+// NO top-level surface — Sergey 2026-05-04 Path C low-key (см
+// memory/feedback_path_c_rooms.md).
+//
+// Free-tier: 3 active · 24h TTL · 3 ppl max. Pro: unlimited + AI features.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+message Room {
+  string id          = 1;
+  string owner_id    = 2;
+  string kind        = 3;   // code|whiteboard
+  string title       = 4;
+  string visibility  = 5;
+  bool   free_tier   = 6;
+  google.protobuf.Timestamp expires_at  = 7;
+  google.protobuf.Timestamp archived_at = 8;  // null = active
+  google.protobuf.Timestamp created_at  = 9;
+  string share_url   = 10;
+}
+
+message RoomQuota {
+  int32  active_count = 1;
+  int32  max_active   = 2;  // 3 для free-tier
+  string tier         = 3;  // free|pro
+}
+
+message CreateStandaloneRoomRequest {
+  string kind  = 1;          // code|whiteboard
+  string title = 2;
+}
+message CreateStandaloneRoomResponse {
+  Room room = 1;
+}
+
+message ListMyRoomsRequest {
+  string status = 1;         // active|past|all (default active)
+}
+message ListMyRoomsResponse {
+  repeated Room rooms = 1;
+  RoomQuota quota = 2;
+}
+
+message ExtendRoomRequest {
+  string kind = 1;
+  string id   = 2;
+  int32  hours = 3;          // pro-only
+}
+message ExtendRoomResponse {}
+
+message DeleteRoomRequest {
+  string kind = 1;
+  string id   = 2;
+}
+message DeleteRoomResponse {}
+
+message RestoreRoomRequest {
+  string kind = 1;
+  string id   = 2;
+}
+message RestoreRoomResponse {}
+
+service RoomService {
+  rpc CreateStandaloneRoom(CreateStandaloneRoomRequest) returns (CreateStandaloneRoomResponse) {
+    option (google.api.http) = { post: "/api/v1/rooms" body: "*" };
+  }
+  rpc ListMyRooms(ListMyRoomsRequest) returns (ListMyRoomsResponse) {
+    option (google.api.http) = { post: "/api/v1/rooms/list" body: "*" };
+  }
+  rpc ExtendRoom(ExtendRoomRequest) returns (ExtendRoomResponse) {
+    option (google.api.http) = { post: "/api/v1/rooms/extend" body: "*" };
+  }
+  rpc DeleteRoom(DeleteRoomRequest) returns (DeleteRoomResponse) {
+    option (google.api.http) = { post: "/api/v1/rooms/delete" body: "*" };
+  }
+  rpc RestoreRoom(RestoreRoomRequest) returns (RestoreRoomResponse) {
+    option (google.api.http) = { post: "/api/v1/rooms/restore" body: "*" };
+  }
+}
