@@ -82,8 +82,33 @@ export function TutorAssignmentsBanner({ running, onOpenAll }: Props) {
     void refresh();
     // Poll every 60s — covers «tutor pushed something while I was
     // working». Cheap GET against a partial-indexed table.
-    const id = window.setInterval(() => void refresh(), 60_000);
-    return () => window.clearInterval(id);
+    // Phase R3 cooldown — paused while the document is hidden (Hone in
+    // background). The visibilitychange handler resumes the cadence and
+    // immediately refreshes so the user sees up-to-date state on return.
+    let id: number | null = null;
+    const startPolling = () => {
+      if (id !== null) return;
+      id = window.setInterval(() => void refresh(), 60_000);
+    };
+    const stopPolling = () => {
+      if (id === null) return;
+      window.clearInterval(id);
+      id = null;
+    };
+    if (typeof document === 'undefined' || !document.hidden) startPolling();
+    const onVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        void refresh();
+        startPolling();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [refresh]);
 
   // Refresh when the window regains focus too — a tutor pushed in the

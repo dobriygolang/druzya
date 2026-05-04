@@ -11,7 +11,7 @@
 //   hover   → две круглые кнопки (toggle-mode + reset) ВМЕСТО time-area,
 //             вписанные в общий mini-pill. Время скрыто. Smooth fade
 //             через --t-fast.
-import { useRef, useState, type ReactNode } from 'react';
+import { memo, useRef, useState, type ReactNode } from 'react';
 
 import { Icon } from './primitives/Icon';
 
@@ -29,6 +29,11 @@ interface DockProps {
   onVol: (v: number) => void;
 }
 
+// Phase R3 cooldown — Dock displays mm:ss so it must re-render every
+// second; memoising the outer Dock itself wouldn't help (remain changes).
+// Instead we wrap VolumeBtn (below) in React.memo so the volume slider's
+// internal useState (open/closeTimer) doesn't tear down on every parent
+// tick. The Dock body is exported normally.
 export function Dock({
   onMenu,
   running,
@@ -278,7 +283,12 @@ interface VolumeBtnProps {
 // что у dock'а) absolute-positioned: левый край прижат к правому краю
 // volume-кнопки, разворачивается вправо за границу dock'а. Таймер и
 // остальные кнопки не дёргаются.
-function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
+// Phase R3 cooldown — wrapped in React.memo so 1Hz pomodoro tick re-render
+// of Dock doesn't bust this child's reconciliation. vol prop only changes
+// on actual slider interaction.
+const VolumeBtn = memo(VolumeBtnImpl);
+
+function VolumeBtnImpl({ vol, onVol }: VolumeBtnProps) {
   const [open, setOpen] = useState(false);
   // preMuteVolRef хранит уровень громкости ПЕРЕД mute'ом — чтобы
   // un-mute click восстанавливал именно его, а не дефолтный 40%. Если

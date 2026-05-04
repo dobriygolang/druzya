@@ -6,7 +6,7 @@
 //      (не red, не pulsate); если не running — пусто как раньше
 //   3. Reflection-prompt — после auto-end таймера, inline в нижнем правом
 //      углу, не модалка-блокер
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 interface ReflectionPrompt {
   sessionId: string;
@@ -24,7 +24,29 @@ interface HomePageProps {
   onDismissReflection: () => void;
 }
 
-export function HomePage({
+// Phase R3 cooldown — `remain` flips every second (1Hz pomodoro tick) but
+// the only place it influences output is the `pinnedTitle && (remain < 25*60)`
+// guard. Custom comparator: bucket remain into a single "below 25 min?"
+// boolean and skip re-render unless that bucket flips. The big mm:ss
+// timer on this page was previously removed by Sergey (see the commented
+// block below), so this is safe.
+function homeArePropsEqual(a: HomePageProps, b: HomePageProps): boolean {
+  if (a.running !== b.running) return false;
+  if (a.pinnedTitle !== b.pinnedTitle) return false;
+  if (a.reflectionPrompt !== b.reflectionPrompt) return false;
+  if (a.onStop !== b.onStop) return false;
+  if (a.onSubmitReflection !== b.onSubmitReflection) return false;
+  if (a.onDismissReflection !== b.onDismissReflection) return false;
+  // remain — only relevant via the < 25min boundary. Coalesce into a
+  // bucket so a 1Hz tick doesn't bust memo unless it crosses the line.
+  const aBucket = a.remain < 25 * 60;
+  const bBucket = b.remain < 25 * 60;
+  return aBucket === bBucket;
+}
+
+export const HomePage = memo(HomePageImpl, homeArePropsEqual);
+
+function HomePageImpl({
   running,
   remain,
   pinnedTitle,

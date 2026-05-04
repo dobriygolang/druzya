@@ -4,7 +4,7 @@
 //      drain'ятся) → синий «Syncing N pending changes»
 //
 // Когда оба false (online + outbox empty), баннер null.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { drainAll, listAll, listPending, subscribe } from '../offline/outbox';
 
@@ -13,6 +13,15 @@ export function OfflineBanner() {
   const [pendingCount, setPendingCount] = useState(0);
   const [deadCount, setDeadCount] = useState(0);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+  // Phase R3 cooldown — refs mirror state so the polling effect can
+  // short-circuit reads without busting the effect's dep array. Without
+  // these we'd either re-create the interval/subscription on every count
+  // change (effect dep churn) or skip-condition would always read the
+  // stale closure values from mount.
+  const pendingCountRef = useRef(0);
+  const deadCountRef = useRef(0);
+  pendingCountRef.current = pendingCount;
+  deadCountRef.current = deadCount;
 
   useEffect(() => {
     let cancelled = false;
@@ -33,7 +42,16 @@ export function OfflineBanner() {
       setLastSyncAt(Date.now());
       refresh();
     });
-    const t = window.setInterval(refresh, 5000);
+    // Phase R3 cooldown — was a flat 5s IDB scan regardless of state. The
+    // outbox is event-driven via subscribe() above, so when we're online
+    // with nothing queued and no dead ops, the periodic re-scan is pure
+    // heat — `subscribe` already wakes us up the moment anything enqueues.
+    // We still tick during a drain so the count updates smoothly.
+    const t = window.setInterval(() => {
+      const isOnline = typeof navigator === 'undefined' ? true : navigator.onLine;
+      if (isOnline && pendingCountRef.current === 0 && deadCountRef.current === 0) return;
+      refresh();
+    }, 5000);
     return () => {
       cancelled = true;
       unsub();

@@ -281,6 +281,13 @@ export default function App() {
   // 30s + immediate pull on window focus / online events. Errors silent
   // (sync — best-effort, не должен ломать app). При 401 device_revoked
   // sync.ts internally trigger'ит session.clear() — see api/sync.ts.
+  //
+  // Phase R3 cooldown — sync interval pauses when the app is in the
+  // background (`document.hidden`). When the user comes back to Hone, the
+  // visibilitychange handler triggers an immediate pull and resumes the
+  // 30s cadence. This stops Hone from waking the laptop's NIC every 30s
+  // while the user is in IDE / browser / Slack, which was a major heat
+  // contributor on M1 Airs.
   const userId = useSessionStore((s) => s.userId);
   useEffect(() => {
     if (status !== 'signed_in' || !userId) return;
@@ -300,20 +307,42 @@ export default function App() {
       }
     };
 
+    const startTimer = () => {
+      if (timer !== null) return;
+      timer = window.setInterval(() => void runPull(), 30_000);
+    };
+    const stopTimer = () => {
+      if (timer === null) return;
+      window.clearInterval(timer);
+      timer = null;
+    };
+
     void runPull(); // initial
-    timer = window.setInterval(() => void runPull(), 30_000);
+    if (typeof document === 'undefined' || !document.hidden) startTimer();
 
     const onFocus = () => void runPull();
     const onOnline = () => void runPull();
+    const onVisibility = () => {
+      if (document.hidden) {
+        stopTimer();
+      } else {
+        // Returned to the app — pull immediately (catch up on missed
+        // changes), then resume the cadence.
+        void runPull();
+        startTimer();
+      }
+    };
     window.addEventListener('focus', onFocus);
     window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisibility);
 
 
     return () => {
       stopped = true;
-      if (timer !== null) window.clearInterval(timer);
+      stopTimer();
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [status, userId]);
 
@@ -352,19 +381,36 @@ export default function App() {
   // Format: "12:34" while running, empty string when idle so the tray
   // collapses to icon-only. Tooltip carries the pinned task name when
   // available so a hover reveals what the timer is for.
+  //
+  // Phase R3 cooldown — was firing IPC every pomodoro tick (60 calls/min
+  // while running). The tray is glanced at, not stared at — the seconds
+  // digit is meaningless there. We now push:
+  //   1) When `running` toggles (start/stop must update immediately).
+  //   2) When `pinnedTitle` changes (tooltip needs to follow).
+  //   3) When the *minute* digit of the timer changes.
+  // That brings tray IPC from 60/min down to ~1/min during a session.
+  // The seconds in the title used to "tick" in the menubar; with this
+  // change the menubar shows the same minute for ~60s, then flips. That
+  // matches every other macOS timer convention (Bartender, system clock).
+  const lastTrayMinuteRef = useRef<number | null>(null);
   useEffect(() => {
     const bridge = typeof window !== 'undefined' ? window.hone : undefined;
     if (!bridge) return;
-    if (running) {
-      const totalSec = Math.max(0, remain);
-      const m = Math.floor(totalSec / 60);
-      const s = totalSec % 60;
-      const title = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-      const tooltip = pinnedTitle ? `Hone — ${pinnedTitle}` : 'Hone — focus session';
-      void bridge.tray.update(title, tooltip);
-    } else {
+    if (!running) {
+      lastTrayMinuteRef.current = null;
       void bridge.tray.update('', 'Hone');
+      return;
     }
+    const totalSec = Math.max(0, remain);
+    const m = Math.floor(totalSec / 60);
+    if (lastTrayMinuteRef.current === m) return;
+    lastTrayMinuteRef.current = m;
+    // Title shows mm:00 — the seconds field is intentionally zeroed so we
+    // don't mislead the user into expecting per-second updates in the
+    // menubar (which Apple throttles anyway when the app is unfocused).
+    const title = `${String(m).padStart(2, '0')}:00`;
+    const tooltip = pinnedTitle ? `Hone — ${pinnedTitle}` : 'Hone — focus session';
+    void bridge.tray.update(title, tooltip);
   }, [remain, running, pinnedTitle]);
 
   // ── Focus session backend integration ─────────────────────────────────

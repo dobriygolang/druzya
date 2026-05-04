@@ -49,12 +49,35 @@ export function UpcomingEventChip({ running, onOpenCalendar }: Props) {
   useEffect(() => {
     void refresh();
     // 60s poll matches the assignments banner cadence.
-    const id = window.setInterval(() => void refresh(), 60_000);
-    const onFocus = () => void refresh();
-    window.addEventListener('focus', onFocus);
-    return () => {
+    // Phase R3 cooldown — paused while the document is hidden. Without
+    // this, every Hone instance was hitting `/tutor/events` once a minute
+    // even when the laptop was sleeping in another Space.
+    let id: number | null = null;
+    const startPolling = () => {
+      if (id !== null) return;
+      id = window.setInterval(() => void refresh(), 60_000);
+    };
+    const stopPolling = () => {
+      if (id === null) return;
       window.clearInterval(id);
+      id = null;
+    };
+    if (typeof document === 'undefined' || !document.hidden) startPolling();
+    const onFocus = () => void refresh();
+    const onVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        void refresh();
+        startPolling();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stopPolling();
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [refresh]);
 
