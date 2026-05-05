@@ -2,18 +2,23 @@ import { http, HttpResponse } from 'msw'
 
 const base = '/api/v1'
 
+// Identity 2026-05-04 — RPG-витрина (Vessel/ascendant/Crimson Sigil)
+// выпилена. Backend поля title/char_class/level/global_power_score
+// остаются в proto до следующего bump'а — UI их игнорирует (ProfilePage
+// rewrite не показывает rating-stats). Mock держит neutral значения,
+// чтобы dev-snapshots не путали новых разработчиков.
 const profileFull = {
   id: '00000000-0000-0000-0000-000000000001',
   username: 'hero',
   display_name: 'Aleksei',
   email: 'hero@druz9.dev',
-  level: 24,
-  xp: 3620,
-  xp_to_next: 4800,
-  char_class: 'ascendant',
-  title: 'Vessel of the Crimson Sigil',
-  global_power_score: 1584,
-  subscription: { plan: 'seeker', current_period_end: '2026-06-01T00:00:00Z' },
+  level: 0,
+  xp: 0,
+  xp_to_next: 0,
+  char_class: 'dev',
+  title: 'Senior Go · ML Platform',
+  global_power_score: 0,
+  subscription: { plan: 'free', current_period_end: '2026-06-01T00:00:00Z' },
   // Mock-only: dev can override via localStorage('druz9_user_tier'). The
   // actual response interpolates the override at request time (see handler).
   tier: 'free' as 'free' | 'premium' | 'pro',
@@ -25,26 +30,26 @@ const profileFull = {
   role: 'USER_ROLE_USER',
   achievements: [
     {
-      key: 'avito_cleared',
-      title: 'Avito Dungeon Cleared',
-      description: 'Пройдено Normal подземелье',
+      key: 'first_strict_mock',
+      title: 'Первый strict mock',
+      description: 'Прошёл первую сессию с watermark',
       earned_at: '2026-02-14T00:00:00Z',
     },
     {
-      key: 'first_arena_win',
-      title: 'Первая кровь',
-      description: 'Победа в первой арене 1v1',
+      key: 'first_coach_session',
+      title: 'AI-coach подключён',
+      description: 'Первая сессия с persona-coach (память 4 layers)',
       earned_at: '2026-01-28T00:00:00Z',
     },
     {
       key: 'streak_7',
-      title: 'Неделя без пропуска',
-      description: 'Streak 7 дней',
+      title: 'Неделя в Hone',
+      description: 'Серия фокус-сессий 7 дней',
       earned_at: '2026-02-05T00:00:00Z',
     },
     {
       key: 'dp_master',
-      title: 'Мастер DP',
+      title: 'DP уверенно',
       description: '10 Medium задач на динамическое программирование',
       earned_at: '2026-03-10T00:00:00Z',
     },
@@ -129,8 +134,8 @@ const weeklyReport = {
     'На этой неделе ты делаешь плохие решения когда таймер < 5 мин — 4 из 5 проигрышей пришлись на цейтнот. Попробуй замедлиться в первой половине: 60 секунд на план перед кодом.',
   recommendations: [
     { title: 'Решить 5 DP задач (medium)', action: { kind: 'solve_task', params: { atlas_node_key: 'algo_dp' } } },
-    { title: 'Mock interview по System Design', action: { kind: 'start_mock', params: { section: 'system_design' } } },
-    { title: 'Replay 3 проигрыша из истории', action: { kind: 'open_arena', params: {} } },
+    { title: 'Strict mock по System Design', action: { kind: 'start_mock', params: { section: 'system_design' } } },
+    { title: 'Reflection-сессия с AI-coach по слабым местам', action: { kind: 'start_mock', params: { section: 'algorithms' } } },
   ],
   // Поля, которые добавились вместе с расширением WeeklyReport-proto.
   actions_count: 47,
@@ -281,7 +286,7 @@ export const profileHandlers = [
         { section: 'go', elo: 1680, matches_count: 31, percentile: 92, decaying: false },
       ],
       achievements: [
-        { key: 'avito_cleared', title: 'Avito Dungeon Cleared', description: 'Пройдено Normal подземелье', earned_at: '2026-02-14T00:00:00Z' },
+        { key: 'first_strict_mock', title: 'Первый strict mock', description: 'Прошёл первую сессию с watermark', earned_at: '2026-02-14T00:00:00Z' },
       ],
       atlas_preview: atlas,
     }),
