@@ -173,9 +173,22 @@ export const useConversationStore = create<State>((set, get) => ({
     if (ev.streamId !== get().streamId) return;
     disarmWatchdog();
     set((s) => {
-      const messages = s.messages.map((m, i) =>
-        i === s.messages.length - 1 && m.role === 'assistant' ? { ...m, pending: false } : m,
-      );
+      // Memory cleanup: drop the bulky `screenshotDataUrl` payload from
+      // any user message we own once the assistant has finished its
+      // reply. Each base64 dataURL is ~1-3 MB (1080p PNG) and we keep
+      // up to ~200 turns in memory while the expanded window stays
+      // open — without this we leak hundreds of MB across a long-lived
+      // session. We preserve `hasScreenshot=true` so the bubble still
+      // renders the "screenshot attached" affordance; if the user
+      // wants to actually view the image after the fact, that should
+      // load from server-side persistence (out of scope for MVP).
+      const messages = s.messages.map((m, i) => {
+        const isLastAssistant = i === s.messages.length - 1 && m.role === 'assistant';
+        const stripPayload = m.role === 'user' && m.screenshotDataUrl;
+        if (isLastAssistant) return { ...m, pending: false };
+        if (stripPayload) return { ...m, screenshotDataUrl: undefined };
+        return m;
+      });
       const memory = saveLocalConversation({
         conversationId: s.conversationId,
         model: s.model,
@@ -216,11 +229,18 @@ export const useConversationStore = create<State>((set, get) => ({
     if (ev.streamId !== get().streamId) return;
     disarmWatchdog();
     set((s) => {
-      const messages = s.messages.map((m, i) =>
-        i === s.messages.length - 1 && m.role === 'assistant'
-          ? { ...m, pending: false, errorCode: ev.code, errorMessage: ev.message }
-          : m,
-      );
+      // Same dataURL cleanup as receiveDone — turn is terminated, so
+      // the in-RAM screenshot payload is no longer needed (the
+      // hasScreenshot flag stays so the bubble still shows the marker).
+      const messages = s.messages.map((m, i) => {
+        const isLastAssistant = i === s.messages.length - 1 && m.role === 'assistant';
+        const stripPayload = m.role === 'user' && m.screenshotDataUrl;
+        if (isLastAssistant) {
+          return { ...m, pending: false, errorCode: ev.code, errorMessage: ev.message };
+        }
+        if (stripPayload) return { ...m, screenshotDataUrl: undefined };
+        return m;
+      });
       const memory = saveLocalConversation({
         conversationId: s.conversationId,
         model: s.model,

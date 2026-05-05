@@ -27,6 +27,46 @@ export interface TranscriptionClient {
   transcribe: (input: TranscribeInput) => Promise<TranscribeResult>;
 }
 
+/**
+ * Structured error thrown by the REST clients in this directory. Lets
+ * callers distinguish "rate-limited, please back off" (429) from a hard
+ * failure (4xx/5xx) so they can implement retry/queue logic without
+ * regex-parsing error.message.
+ */
+export class HttpClientError extends Error {
+  /** HTTP status code from the response. */
+  public readonly status: number;
+  /** Parsed Retry-After header (seconds). 0 = absent or unparseable. */
+  public readonly retryAfterSeconds: number;
+  /** Raw response body (truncated to 200 chars), for log context. */
+  public readonly bodySnippet: string;
+  constructor(status: number, retryAfterSeconds: number, bodySnippet: string, message: string) {
+    super(message);
+    this.name = 'HttpClientError';
+    this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
+    this.bodySnippet = bodySnippet;
+  }
+}
+
+/**
+ * Parse the Retry-After header. RFC 7231 allows two forms:
+ *   - delta-seconds: integer like "120"
+ *   - HTTP-date:     "Wed, 21 Oct 2015 07:28:00 GMT"
+ * We accept both; bad/missing → 0 (caller falls back to exp backoff).
+ */
+function parseRetryAfter(headerValue: string | null): number {
+  if (!headerValue) return 0;
+  const asInt = Number(headerValue);
+  if (Number.isFinite(asInt) && asInt >= 0) return Math.floor(asInt);
+  const asDate = Date.parse(headerValue);
+  if (!Number.isNaN(asDate)) {
+    const deltaMs = asDate - Date.now();
+    return deltaMs > 0 ? Math.ceil(deltaMs / 1000) : 0;
+  }
+  return 0;
+}
+
 export function createTranscriptionClient(cfg: RuntimeConfig): TranscriptionClient {
   const url = (p: string) => `${cfg.apiBaseURL.replace(/\/+$/, '')}${p}`;
 
@@ -57,7 +97,14 @@ export function createTranscriptionClient(cfg: RuntimeConfig): TranscriptionClie
       });
       if (!resp.ok) {
         const text = await resp.text().catch(() => '');
-        throw new Error(`POST /transcription: ${resp.status} ${text.slice(0, 200)}`);
+        const snippet = text.slice(0, 200);
+        const retryAfter = parseRetryAfter(resp.headers.get('retry-after'));
+        throw new HttpClientError(
+          resp.status,
+          retryAfter,
+          snippet,
+          `POST /transcription: ${resp.status} ${snippet}`,
+        );
       }
       const raw = (await resp.json()) as Record<string, unknown>;
       return {
