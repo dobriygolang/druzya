@@ -84,31 +84,6 @@ func (s *stubUserNotifRepo) CountUnread(_ context.Context, uid uuid.UUID) (int, 
 	return n, nil
 }
 
-type stubPrefsRepo struct {
-	mu sync.Mutex
-	m  map[uuid.UUID]domain.NotificationPrefs
-}
-
-func newStubPrefsRepo() *stubPrefsRepo {
-	return &stubPrefsRepo{m: map[uuid.UUID]domain.NotificationPrefs{}}
-}
-
-func (s *stubPrefsRepo) Get(_ context.Context, uid uuid.UUID) (domain.NotificationPrefs, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if v, ok := s.m[uid]; ok {
-		return v, nil
-	}
-	return domain.NotificationPrefs{UserID: uid, ChannelEnabled: map[string]bool{}}, nil
-}
-func (s *stubPrefsRepo) Upsert(_ context.Context, p domain.NotificationPrefs) (domain.NotificationPrefs, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	p.UpdatedAt = time.Now()
-	s.m[p.UserID] = p
-	return p, nil
-}
-
 func TestMarkRead_AndCount(t *testing.T) {
 	repo := newStubRepo()
 	uid := uuid.New()

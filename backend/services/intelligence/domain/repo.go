@@ -75,12 +75,6 @@ type MockReader interface {
 	RecentAbandonedCount(ctx context.Context, userID uuid.UUID, sinceDays int) (int, error)
 }
 
-// ArenaReader — recent arena matches с outcome + elo delta. Coach видит
-// «lost 3 algorithms 1v1 in a row, drop intensity, switch to katas».
-type ArenaReader interface {
-	LastNMatches(ctx context.Context, userID uuid.UUID, n int) ([]ArenaMatchSummary, error)
-}
-
 // QueueReader — снапшот сегодняшней Focus Queue. Coach видит «1/5 done,
 // you're behind — focus on first item».
 type QueueReader interface {
@@ -314,12 +308,12 @@ type ExternalActivityReader interface {
 
 // ResourceTouch — single event from user_resource_log (00055).
 type ResourceTouch struct {
-	URL          string
-	AtlasNodeID  string // optional ("" если ресурс был cross-cluster suggestion)
-	Kind         string // clicked | finished | skipped | unhelpful | reflection_submitted
-	OccurredAt   time.Time
-	HoursAgo     int    // pre-computed для prompt'а
-	Reflection   string // непустое только когда kind=reflection_submitted
+	URL         string
+	AtlasNodeID string // optional ("" если ресурс был cross-cluster suggestion)
+	Kind        string // clicked | finished | skipped | unhelpful | reflection_submitted
+	OccurredAt  time.Time
+	HoursAgo    int    // pre-computed для prompt'а
+	Reflection  string // непустое только когда kind=reflection_submitted
 }
 
 // ResourceEngagement — агрегация для RESOURCE TRAIL prompt block.
@@ -345,19 +339,19 @@ type ResourceEngagementReader interface {
 
 // ForkBranchScore — per-branch агрегация mock-результатов.
 type ForkBranchScore struct {
-	Branch       string  // "de" | "mle"
-	MockCount    int
-	AvgScore     float64
-	VoluntaryDeepDives int   // counted from atlas/resource log signals
+	Branch             string // "de" | "mle"
+	MockCount          int
+	AvgScore           float64
+	VoluntaryDeepDives int // counted from atlas/resource log signals
 }
 
 // ForkProgressSnapshot — input для FORK STATUS prompt-block + fork_progress
 // producer (Phase 1.7d). Только когда learning_state.mode=='explore'.
 type ForkProgressSnapshot struct {
-	Mode               string // explore | commit | deep
-	ExploreWeekIndex   int    // 1-based; 0 если mode != explore
-	CurrentBranch      string // current learning_state.fork_branch ("" if NULL)
-	ScoresByBranch     []ForkBranchScore
+	Mode             string // explore | commit | deep
+	ExploreWeekIndex int    // 1-based; 0 если mode != explore
+	CurrentBranch    string // current learning_state.fork_branch ("" if NULL)
+	ScoresByBranch   []ForkBranchScore
 }
 
 // ForkProgressReader читает learning_state + cross-refs mock_sessions + atlas

@@ -128,4 +128,3 @@ func runMarkExpired(ctx context.Context, pg *subInfra.Postgres, clk subDomain.Cl
 		}
 	}
 }
-

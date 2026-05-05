@@ -228,7 +228,11 @@ func (l ResourceList) Marshal() ([]byte, error) {
 	if l == nil {
 		return []byte("[]"), nil
 	}
-	return json.Marshal(l)
+	out, err := json.Marshal(l)
+	if err != nil {
+		return nil, fmt.Errorf("ResourceList.Marshal: %w", err)
+	}
+	return out, nil
 }
 
 // Unmarshal читает jsonb-bytes (включая null/'[]'/полный массив) в list.

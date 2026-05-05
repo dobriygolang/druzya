@@ -166,4 +166,3 @@ type ConfigEntry struct {
 	UpdatedAt   time.Time
 	UpdatedBy   *uuid.UUID
 }
-

@@ -302,7 +302,11 @@ func (a *atlasClassifierAdapter) Classify(
 		JSONMode:    true,
 	})
 	if err != nil {
-		return profileApp.AtlasClassifyResult{}, err
+		return profileApp.AtlasClassifyResult{}, fmt.Errorf("atlas classify chat: %w", err)
 	}
-	return profileApp.ParseAtlasClassifyResponse(resp.Content)
+	out, err := profileApp.ParseAtlasClassifyResponse(resp.Content)
+	if err != nil {
+		return profileApp.AtlasClassifyResult{}, fmt.Errorf("parse atlas classify: %w", err)
+	}
+	return out, nil
 }

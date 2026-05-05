@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"druz9/notify/domain"
 
@@ -108,20 +107,4 @@ func NewFeedHandlers(repo domain.UserNotificationRepo, prefs domain.Notification
 		panic("notify.app.NewFeedHandlers: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &FeedHandlers{Repo: repo, Prefs: prefs, Log: log}
-}
-
-// shouldDeliver — true если канал не выключен и не silenced.
-func (h *FeedHandlers) shouldDeliver(ctx context.Context, uid uuid.UUID, channel string) bool {
-	if h.Prefs == nil {
-		return true
-	}
-	p, err := h.Prefs.Get(ctx, uid)
-	if err != nil {
-		// fail-open: если prefs недоступны — лучше показать, чем замолчать.
-		return true
-	}
-	if p.IsSilenced(time.Now().UTC()) {
-		return false
-	}
-	return p.IsChannelEnabled(channel)
 }

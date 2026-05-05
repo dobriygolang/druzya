@@ -26,7 +26,6 @@ import (
 
 	"druz9/hone/domain"
 	sharedDomain "druz9/shared/domain"
-	"druz9/shared/enums"
 
 	"github.com/google/uuid"
 )
@@ -216,25 +215,6 @@ func (l *CoachListener) warn(ctx context.Context, where string, err error) {
 		slog.String("where", where), slog.Any("err", err))
 }
 
-// skillKeyForArenaSection maps the canonical section enum to the
-// atlas_nodes id we use as task.skill_key. Falls back to empty so the
-// settle/regress paths short-circuit if the section is unknown.
-func skillKeyForArenaSection(s enums.Section) string {
-	switch s { //nolint:exhaustive // free-form sections short-circuit to empty
-	case enums.SectionAlgorithms:
-		return "algo_basics"
-	case enums.SectionGo:
-		return "go_idioms"
-	case enums.SectionSQL:
-		return "sql_basics"
-	case enums.SectionSystemDesign:
-		return "sd_basics"
-	case enums.SectionBehavioral:
-		return "beh_star"
-	}
-	return ""
-}
-
 // skillKeyForSysDesignSection maps mock-interview pipelines (string-typed
 // section field) to atlas keys. Pipelines may emit section="system_design"
 // or sub-themes like "scale" / "consistency"; we normalise to sd_basics
@@ -256,10 +236,6 @@ func skillKeyForSysDesignSection(section string) string {
 		return "sql_basics"
 	}
 	return "sd_basics"
-}
-
-func itoa(i int) string {
-	return fmt.Sprintf("%d", i)
 }
 
 // Last-import guard for time so a future move-to-future-due-at field

@@ -108,7 +108,7 @@ func parseCategorise(raw string) (CategoriseTaskOutput, error) {
 	cleaned := stripCategoriseFences(raw)
 	var out CategoriseTaskOutput
 	if err := json.Unmarshal([]byte(cleaned), &out); err != nil {
-		return CategoriseTaskOutput{}, err
+		return CategoriseTaskOutput{}, fmt.Errorf("unmarshal categorise: %w", err)
 	}
 	if out.Column == "" {
 		out.Column = "todo"

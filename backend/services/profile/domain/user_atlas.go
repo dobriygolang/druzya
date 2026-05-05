@@ -3,9 +3,10 @@
 // Sergey 2026-05-03: «Например сейчас изучаю ml и ии сам подхватывает
 // это, дополняет атлас». Юзер пишет TODO («изучить транзакции»);
 // ClassifyAndAddTodo UC спрашивает LLM (TaskAtlasClassify):
-//   1) лучше всего ложится в existing curated node X → возвращаем match
-//      (UC не создаёт новый row, фронт показывает «добавили в X»).
-//   2) тематика свежая → возвращаем new node, persist в user_atlas_nodes.
+//  1. лучше всего ложится в existing curated node X → возвращаем match
+//     (UC не создаёт новый row, фронт показывает «добавили в X»).
+//  2. тематика свежая → возвращаем new node, persist в user_atlas_nodes.
+//
 // На /atlas profile.GetAtlas сливает curated + user-owned узлы юзера.
 package domain
 

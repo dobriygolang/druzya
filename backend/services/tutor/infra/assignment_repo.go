@@ -367,7 +367,10 @@ func (p *Postgres) DueWithinNeedsNotify(
 		}
 		out = append(out, a)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("tutor.assignment_repo rows: %w", err)
+	}
+	return out, nil
 }
 
 // MarkDueNotified implements domain.AssignmentRepo.

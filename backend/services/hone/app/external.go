@@ -16,10 +16,10 @@ import (
 // в coach_episodes (для intelligence recall). Atlas-progress bump'а пока нет —
 // у нас нет user_atlas_nodes таблицы; добавится отдельной волной.
 type AddExternalActivity struct {
-	Repo            domain.ExternalActivityRepo
-	CoachAppender   domain.CoachEpisodeAppender // optional, nil-safe
-	Now             func() time.Time
-	Log             *slog.Logger
+	Repo          domain.ExternalActivityRepo
+	CoachAppender domain.CoachEpisodeAppender // optional, nil-safe
+	Now           func() time.Time
+	Log           *slog.Logger
 }
 
 type AddExternalActivityInput struct {

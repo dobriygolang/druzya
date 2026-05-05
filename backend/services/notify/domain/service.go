@@ -112,4 +112,3 @@ func ValidateChannels(chs []enums.NotificationChannel) error {
 	}
 	return nil
 }
-

@@ -109,14 +109,14 @@ type Step struct {
 // CheckpointAttempt — Phase 2/2 step UX. Запись в step_checkpoint_attempts
 // (миграция 00056).
 type CheckpointAttempt struct {
-	ID         uuid.UUID
-	UserID     uuid.UUID
-	TrackID    uuid.UUID
-	StepIndex  int
-	Score      int    // 0..100
-	Attempts   []byte // raw JSON: array of {question_id, user_answer, model_answer, correct, comment}
-	PassedAt   *time.Time
-	CreatedAt  time.Time
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TrackID   uuid.UUID
+	StepIndex int
+	Score     int    // 0..100
+	Attempts  []byte // raw JSON: array of {question_id, user_answer, model_answer, correct, comment}
+	PassedAt  *time.Time
+	CreatedAt time.Time
 }
 
 // CheckpointPassThreshold — score >= 70 unlocks следующий step.

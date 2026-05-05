@@ -101,4 +101,3 @@ func (h *Handlers) OnWeeklyReportDue(ctx context.Context, ev sharedDomain.Event)
 		},
 	})
 }
-

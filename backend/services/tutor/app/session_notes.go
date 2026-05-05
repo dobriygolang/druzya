@@ -40,7 +40,11 @@ func (uc *GetSessionNotes) Do(ctx context.Context, tutorID, studentID uuid.UUID)
 	if err := assertTutorOf(ctx, uc.Repo, tutorID, studentID); err != nil {
 		return domain.SessionNotes{}, err
 	}
-	return uc.Notes.GetSessionNotes(ctx, tutorID, studentID)
+	out, err := uc.Notes.GetSessionNotes(ctx, tutorID, studentID)
+	if err != nil {
+		return domain.SessionNotes{}, fmt.Errorf("tutor.GetSessionNotes: %w", err)
+	}
+	return out, nil
 }
 
 // SaveSessionNotes — upsert. Тело прошлось через TrimRight для трейлинг-
@@ -60,11 +64,15 @@ func (uc *SaveSessionNotes) Do(ctx context.Context, tutorID, studentID uuid.UUID
 	if err := assertTutorOf(ctx, uc.Repo, tutorID, studentID); err != nil {
 		return domain.SessionNotes{}, err
 	}
-	return uc.Notes.SaveSessionNotes(ctx, domain.SessionNotes{
+	out, err := uc.Notes.SaveSessionNotes(ctx, domain.SessionNotes{
 		TutorID:   tutorID,
 		StudentID: studentID,
 		BodyMD:    bodyMD,
 	})
+	if err != nil {
+		return domain.SessionNotes{}, fmt.Errorf("tutor.SaveSessionNotes: %w", err)
+	}
+	return out, nil
 }
 
 // assertTutorOf проверяет что tutorID имеет active relationship со

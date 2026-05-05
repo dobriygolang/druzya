@@ -3,15 +3,15 @@
 //
 // Two-pass flow (curation principle: druz9 = ranking-proxy, не курсовая):
 //
-//	1) `seed_resources prompt --node <id> [--kind theory|practice|reading] [--count 5]`
-//	   читает строку из atlas_nodes и эмитит prompt-template на stdout.
-//	   Sergey копирует в Groq Console / Cerebras / OpenRouter playground
-//	   (любой free-tier из feedback_providers), забирает JSON-ответ.
+//  1. `seed_resources prompt --node <id> [--kind theory|practice|reading] [--count 5]`
+//     читает строку из atlas_nodes и эмитит prompt-template на stdout.
+//     Sergey копирует в Groq Console / Cerebras / OpenRouter playground
+//     (любой free-tier из feedback_providers), забирает JSON-ответ.
 //
-//	2) `seed_resources apply --node <id> --response <file.json>`
-//	   читает LLM-вывод (массив Resource), валидирует через
-//	   curation/domain.ResourceList.Validate, эмитит SQL UPDATE на stdout.
-//	   Sergey ревьюит → `psql < update.sql`.
+//  2. `seed_resources apply --node <id> --response <file.json>`
+//     читает LLM-вывод (массив Resource), валидирует через
+//     curation/domain.ResourceList.Validate, эмитит SQL UPDATE на stdout.
+//     Sergey ревьюит → `psql < update.sql`.
 //
 // CLI намеренно не зовёт LLM сам — Sergey хочет каждую node пройти
 // глазами перед apply (project_curation_model: «дроп тухлые / переставить
@@ -199,12 +199,12 @@ func cmdApply(argv []string) {
 	cleaned := stripCodeFences(raw)
 
 	var list domain.ResourceList
-	if err := json.Unmarshal(cleaned, &list); err != nil {
-		fmt.Fprintf(os.Stderr, "seed_resources apply: parse JSON: %v\n", err)
+	if jerr := json.Unmarshal(cleaned, &list); jerr != nil {
+		fmt.Fprintf(os.Stderr, "seed_resources apply: parse JSON: %v\n", jerr)
 		os.Exit(1)
 	}
-	if err := list.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "seed_resources apply: validate: %v\n", err)
+	if verr := list.Validate(); verr != nil {
+		fmt.Fprintf(os.Stderr, "seed_resources apply: validate: %v\n", verr)
 		os.Exit(1)
 	}
 	body, err := list.Marshal()
@@ -219,8 +219,8 @@ func cmdApply(argv []string) {
 			fmt.Fprintln(os.Stderr, "seed_resources apply: --node required for target=atlas")
 			os.Exit(2)
 		}
-		fmt.Printf("-- seed_resources apply · node=%s · %d resources\n", *nodeID, len(list))
-		fmt.Printf("UPDATE atlas_nodes SET external_resources = %s\n WHERE id = %s;\n",
+		fmt.Printf("-- seed_resources apply · node=%s · %d resources\n", *nodeID, len(list)) //nolint:forbidigo // CLI tool: emits SQL/comments to stdout for shell pipelines
+		fmt.Printf("UPDATE atlas_nodes SET external_resources = %s\n WHERE id = %s;\n",      //nolint:forbidigo // CLI tool: emits SQL to stdout
 			sqlJSONB(body), sqlString(*nodeID))
 	case "step":
 		if *stepKey == "" {
@@ -232,8 +232,8 @@ func cmdApply(argv []string) {
 			fmt.Fprintln(os.Stderr, "seed_resources apply: --step-id must be 'track_uuid:step_index'")
 			os.Exit(2)
 		}
-		fmt.Printf("-- seed_resources apply · step=%s · %d resources\n", *stepKey, len(list))
-		fmt.Printf("UPDATE track_steps SET external_resources = %s\n WHERE track_id = %s AND step_index = %s;\n",
+		fmt.Printf("-- seed_resources apply · step=%s · %d resources\n", *stepKey, len(list))                     //nolint:forbidigo // CLI tool: emits SQL/comments to stdout
+		fmt.Printf("UPDATE track_steps SET external_resources = %s\n WHERE track_id = %s AND step_index = %s;\n", //nolint:forbidigo // CLI tool: emits SQL to stdout
 			sqlJSONB(body), sqlString(parts[0]), parts[1])
 	default:
 		fmt.Fprintf(os.Stderr, "seed_resources apply: unknown --target %q\n", *target)

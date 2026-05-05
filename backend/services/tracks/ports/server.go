@@ -346,12 +346,12 @@ func (s *Server) StartCheckpoint(
 		return nil, s.toConnectErr("StartCheckpoint", err)
 	}
 	return connect.NewResponse(&pb.StartCheckpointResponse{
-		StepTitle:               out.Step.Title,
-		SkillKeys:               out.Step.SkillKeys,
-		CheckpointSkillKeys:     out.CheckpointSkills,
-		AlreadyPassed:           out.AlreadyPassed,
-		ReflectionRequired:      out.Step.ReflectionRequired,
-		GraduationMockSection:   out.Step.GraduationMockSection,
+		StepTitle:             out.Step.Title,
+		SkillKeys:             out.Step.SkillKeys,
+		CheckpointSkillKeys:   out.CheckpointSkills,
+		AlreadyPassed:         out.AlreadyPassed,
+		ReflectionRequired:    out.Step.ReflectionRequired,
+		GraduationMockSection: out.Step.GraduationMockSection,
 	}), nil
 }
 

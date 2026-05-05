@@ -74,7 +74,10 @@ func (r *ExternalRepo) List(ctx context.Context, userID uuid.UUID, source string
 		a.Source = domain.ExternalActivitySource(src)
 		out = append(out, a)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.ExternalRepo.List rows: %w", err)
+	}
+	return out, nil
 }
 
 // ListPaged — keyset cursor variant (occurred_at DESC, id DESC).
@@ -127,7 +130,7 @@ func (r *ExternalRepo) ListPaged(
 		out = append(out, a)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("hone.ExternalRepo.ListPaged rows: %w", err)
 	}
 	var nextCursor string
 	if len(out) > limit {
@@ -199,7 +202,10 @@ func (s *AtlasTopicSearcher) SearchByPrefix(ctx context.Context, prefix string, 
 		out = append(out, s)
 	}
 	_ = time.Now() // silence import on minimal rebuilds
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.AtlasTopicSearcher rows: %w", err)
+	}
+	return out, nil
 }
 
 // ─── AtlasNodeTracksReader (bulk track_kind map) ──────────────────────────
@@ -229,5 +235,8 @@ func (r *AtlasNodeTracksReader) ListAll(ctx context.Context) ([]domain.AtlasNode
 		}
 		out = append(out, t)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.AtlasNodeTracksReader rows: %w", err)
+	}
+	return out, nil
 }

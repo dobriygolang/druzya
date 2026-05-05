@@ -63,11 +63,11 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 		CreatedAt:   row.CreatedAt.Time,
 	}
 	b.Profile = domain.Profile{
-		UserID:      userID,
-		CharClass:   enums.CharClass(row.CharClass),
-		Level:       int(row.Level),
-		XP:          row.TotalXp,
-		UpdatedAt:   row.UpdatedAt.Time,
+		UserID:    userID,
+		CharClass: enums.CharClass(row.CharClass),
+		Level:     int(row.Level),
+		XP:        row.TotalXp,
+		UpdatedAt: row.UpdatedAt.Time,
 	}
 	if row.Plan.Valid {
 		b.Subscription = domain.Subscription{
@@ -103,10 +103,10 @@ func (p *Postgres) GetPublic(ctx context.Context, username string) (domain.Publi
 		CreatedAt:   row.CreatedAt.Time,
 	}
 	b.Profile = domain.Profile{
-		UserID:      b.User.ID,
-		CharClass:   enums.CharClass(row.CharClass),
-		Level:       int(row.Level),
-		XP:          row.TotalXp,
+		UserID:    b.User.ID,
+		CharClass: enums.CharClass(row.CharClass),
+		Level:     int(row.Level),
+		XP:        row.TotalXp,
 	}
 	if nodes, err := p.ListSkillNodes(ctx, b.User.ID); err != nil {
 		return domain.PublicBundle{}, fmt.Errorf("profile.Postgres.GetPublic: nodes: %w", err)
@@ -187,15 +187,4 @@ func parseChannels(raw []string) []enums.NotificationChannel {
 		}
 	}
 	return out
-}
-
-func clampPct(p float64) int {
-	v := int(p*100 + 0.5)
-	if v < 0 {
-		return 0
-	}
-	if v > 100 {
-		return 100
-	}
-	return v
 }

@@ -550,10 +550,10 @@ func (s *IntelligenceServer) SetForkBranch(
 
 func toLearningStateView(s LearningStateSnapshot) *pb.LearningStateView {
 	return &pb.LearningStateView{
-		Mode:              s.Mode,
-		ForkBranch:        s.ForkBranch,
-		ExploreWeekIndex:  int32(s.ExploreWeekIndex),
-		CommittedTrackId:  s.CommittedTrackID,
+		Mode:             s.Mode,
+		ForkBranch:       s.ForkBranch,
+		ExploreWeekIndex: int32(s.ExploreWeekIndex),
+		CommittedTrackId: s.CommittedTrackID,
 	}
 }
 

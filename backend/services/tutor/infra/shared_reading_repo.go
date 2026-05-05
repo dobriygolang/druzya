@@ -102,7 +102,7 @@ func (p *Postgres) listSharedMaterialsByTutorPaged(
 		out = append(out, m)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("tutor.shared_reading_repo rows: %w", err)
 	}
 	var nextCursor string
 	if len(out) > limit {

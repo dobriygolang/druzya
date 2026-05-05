@@ -1,12 +1,12 @@
 // notes_link_suggest.go — Phase 5 AI-link suggestions для Notes UI.
 //
 // Pipeline:
-//   1. Embed-based candidate retrieval — top-K notes по cosine similarity
-//      к target note (existing embedding pipeline).
-//   2. LLM rerank через TaskNotesLinkSuggest — JSON list
-//      [{target_note_id, score, reason}].
-//   3. Кэшируется per (target_note_id + candidate-hash) — caller имплементит
-//      через Redis-обёртку, UC чисто-функциональный.
+//  1. Embed-based candidate retrieval — top-K notes по cosine similarity
+//     к target note (existing embedding pipeline).
+//  2. LLM rerank через TaskNotesLinkSuggest — JSON list
+//     [{target_note_id, score, reason}].
+//  3. Кэшируется per (target_note_id + candidate-hash) — caller имплементит
+//     через Redis-обёртку, UC чисто-функциональный.
 //
 // UC намеренно не делает embedding-search сам — caller (handler) уже
 // pull'ит candidates через NotesReader.SimilarNotes, передаёт сюда.
@@ -53,11 +53,11 @@ type SuggestNoteLinks struct {
 
 // SuggestNoteLinksInput.
 type SuggestNoteLinksInput struct {
-	TargetNoteID    uuid.UUID
-	TargetTitle     string
-	TargetSnippet   string
-	Candidates      []NotesLinkCandidate
-	MaxSuggestions  int // default 5
+	TargetNoteID   uuid.UUID
+	TargetTitle    string
+	TargetSnippet  string
+	Candidates     []NotesLinkCandidate
+	MaxSuggestions int // default 5
 }
 
 // CacheKey deterministic — caller использует для Redis lookup.

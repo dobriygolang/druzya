@@ -33,15 +33,15 @@ func (s ExternalActivitySource) IsValid() bool {
 
 // ExternalActivity — одна запись внешнего обучения.
 type ExternalActivity struct {
-	ID                uuid.UUID
-	UserID            uuid.UUID
-	Source            ExternalActivitySource
-	TopicAtlasNodeID  string // empty when free-form
-	TopicFreeText     string
-	DurationMin       int
-	Notes             string
-	OccurredAt        time.Time
-	CreatedAt         time.Time
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	Source           ExternalActivitySource
+	TopicAtlasNodeID string // empty when free-form
+	TopicFreeText    string
+	DurationMin      int
+	Notes            string
+	OccurredAt       time.Time
+	CreatedAt        time.Time
 }
 
 type ExternalActivityRepo interface {

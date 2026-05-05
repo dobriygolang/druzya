@@ -36,4 +36,3 @@ func ApplyXP(p Profile, gain int) (newLevel, oldLevel int, totalXP int64) {
 	}
 	return newLevel, oldLevel, totalXP
 }
-

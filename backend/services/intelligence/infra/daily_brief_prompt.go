@@ -363,16 +363,6 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		sb.WriteString("\nMock interviews: none in record. (Suggest scheduling one if user has skill weakness signals.)\n")
 	}
 
-	// ── ARENA MATCHES ─────────────────────────────────────────────────
-	if len(in.Arena) > 0 {
-		sb.WriteString("\nRecent arena matches (most recent first; outcome + elo delta + section signal frustration/growth):\n")
-		for _, a := range in.Arena {
-			fmt.Fprintf(&sb, "  - %s · %s · %s · elo_delta=%+d · solve=%dms · %s\n",
-				a.Section, a.Mode, a.Outcome, a.EloDelta, a.SolveTimeMs,
-				a.FinishedAt.Format("2006-01-02"))
-		}
-	}
-
 	// ── MOCK KEYWORDS (hot topics из user-content'а mock-сессий) ──────
 	if len(in.MockKeywords) > 0 {
 		sb.WriteString("\nTop keywords from mock-interview messages last 14 days (these are topics user actually discussed — strong signal for what's currently on their mind):\n  ")
@@ -481,8 +471,8 @@ func writeSignalDigest(sb *strings.Builder, in domain.BriefPromptInput) {
 	if days := daysSinceLastTouch(in); days >= LongAbsenceDays {
 		fmt.Fprintf(sb, "  STALE_DATA_GUARD: last activity was %d days ago. Do NOT cite mock scores, arena losses, queue items, or focus stats as if they were current. Tone = welcome-back nudge. Recommendations = ONE small re-entry win (today's kata, one short focus block, schedule a fresh mock to recalibrate).\n", days)
 	}
-	fmt.Fprintf(sb, "  data_coverage: focus_days=%d mocks=%d arena=%d queue_items=%d weak_skills=%d notes=%d cue_memories=%d codex_articles=%d past_coach=%d\n",
-		len(in.FocusDays), len(in.Mocks), len(in.Arena), len(in.Queue.Items),
+	fmt.Fprintf(sb, "  data_coverage: focus_days=%d mocks=%d queue_items=%d weak_skills=%d notes=%d cue_memories=%d codex_articles=%d past_coach=%d\n",
+		len(in.FocusDays), len(in.Mocks), len(in.Queue.Items),
 		len(in.WeakSkills), len(in.RecentNotes)+len(in.DailyNotes)+len(in.Reflections),
 		len(in.CueMemories), len(in.CodexArticles), len(in.PastEpisodes))
 	wrote := false
@@ -620,9 +610,6 @@ func convergedTopics(in domain.BriefPromptInput, limit int) []string {
 	for _, kw := range in.MockKeywords {
 		add(kw.Keyword, "mock_keywords", maxInt(1, kw.Count))
 	}
-	for _, a := range in.Arena {
-		add(a.Section, "arena", 2)
-	}
 	for _, ep := range in.CueMemories {
 		_, topics := cuePromptMeta(ep.Payload)
 		for _, topic := range strings.Split(topics, ",") {
@@ -692,7 +679,8 @@ func coachMemoryPolicy(past []domain.Episode) string {
 			domain.EpisodeMockPipelineFinished,
 			domain.EpisodeCodexArticleOpened,
 			domain.EpisodeCueConversationMemory,
-			domain.EpisodeWeeklyMemorySummary:
+			domain.EpisodeWeeklyMemorySummary,
+			domain.EpisodeExternalActivity:
 			// not used for coach memory policy
 		}
 	}

@@ -1,7 +1,7 @@
-// Cross-product readers (raw SQL) — Coach prompt объединяет сигналы трёх
-// продуктов: Hone (focus, queue, notes), druz9 mock-interview (mock_sessions),
-// druz9 arena/codex (arena_matches, daily_kata_history). Все adapter'ы здесь —
-// чтобы intelligence-domain не импортировал чужие infra-пакеты.
+// Cross-product readers (raw SQL) — Coach prompt объединяет сигналы из
+// Hone (focus, queue, notes) и druz9 mock-interview (mock_sessions).
+// Все adapter'ы здесь — чтобы intelligence-domain не импортировал
+// чужие infra-пакеты.
 package infra
 
 import (
@@ -119,81 +119,6 @@ func (r *MockReader) RecentAbandonedCount(ctx context.Context, userID uuid.UUID,
 		return 0, fmt.Errorf("intelligence.MockReader.RecentAbandonedCount: %w", err)
 	}
 	return int(n), nil
-}
-
-
-// ── ArenaReader: services/arena domain ──
-
-// ArenaReader implements domain.ArenaReader over arena_matches + arena_participants.
-type ArenaReader struct{ pool *pgxpool.Pool }
-
-// NewArenaReader wraps a pool.
-func NewArenaReader(pool *pgxpool.Pool) *ArenaReader { return &ArenaReader{pool: pool} }
-
-func (r *ArenaReader) LastNMatches(ctx context.Context, userID uuid.UUID, n int) ([]domain.ArenaMatchSummary, error) {
-	if n <= 0 || n > 20 {
-		n = 5
-	}
-	// JOIN arena_matches + arena_participants. winning_team mapping в outcome:
-	// если participant.team == match.winning_team → won; 0 (draw) → draw;
-	// иначе lost. abandoned — match.status='cancelled'.
-	// v2: arena_participants.solve_time_ms dropped (was written but only
-	// read here); summary keeps the field on the wire as 0.
-	rows, err := r.pool.Query(ctx,
-		`SELECT m.id, m.section, m.mode, m.status, m.winning_team,
-		        ap.team, COALESCE(ap.elo_after - ap.elo_before, 0) AS elo_delta,
-		        COALESCE(m.finished_at, ap.submitted_at) AS finished_at
-		   FROM arena_matches m
-		   JOIN arena_participants ap ON ap.match_id = m.id
-		  WHERE ap.user_id=$1 AND m.status IN ('finished', 'cancelled')
-		  ORDER BY COALESCE(m.finished_at, ap.submitted_at) DESC NULLS LAST
-		  LIMIT $2`,
-		sharedpg.UUID(userID), n,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("intelligence.ArenaReader: %w", err)
-	}
-	defer rows.Close()
-	out := make([]domain.ArenaMatchSummary, 0, n)
-	for rows.Next() {
-		var (
-			id          pgtype.UUID
-			section     string
-			mode        string
-			status      string
-			winningTeam *int32
-			team        int32
-			eloDelta    int32
-			finishedAt  *time.Time
-		)
-		if err := rows.Scan(&id, &section, &mode, &status, &winningTeam, &team, &eloDelta, &finishedAt); err != nil {
-			return nil, fmt.Errorf("intelligence.ArenaReader: scan: %w", err)
-		}
-		outcome := "lost"
-		switch {
-		case status == "cancelled":
-			outcome = "abandoned"
-		case winningTeam == nil || *winningTeam == 0:
-			outcome = "draw"
-		case *winningTeam == team:
-			outcome = "won"
-		}
-		s := domain.ArenaMatchSummary{
-			MatchID:  sharedpg.UUIDFrom(id),
-			Section:  section,
-			Mode:     mode,
-			Outcome:  outcome,
-			EloDelta: int(eloDelta),
-		}
-		if finishedAt != nil {
-			s.FinishedAt = *finishedAt
-		}
-		out = append(out, s)
-	}
-	if err := rows.Err(); err != nil {
-		return out, fmt.Errorf("intelligence reader rows: %w", err)
-	}
-	return out, nil
 }
 
 // ── QueueReader: services/hone Focus Queue domain ──
@@ -975,7 +900,10 @@ func (r *ExternalActivityReader) SummaryWindow(
 		}
 		out.TopTopics = append(out.TopTopics, label)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return out, fmt.Errorf("ExternalActivityReader.SummaryWindow topics rows: %w", err)
+	}
+	return out, nil
 }
 
 // ── ResourceEngagementReader: services/learning-companion user_resource_log (00055) ──
@@ -1157,8 +1085,8 @@ func (r *ForkProgressReader) Snapshot(
 	for rows.Next() {
 		var section string
 		var score float64
-		if err := rows.Scan(&section, &score); err != nil {
-			return out, fmt.Errorf("ForkProgressReader mocks scan: %w", err)
+		if scanErr := rows.Scan(&section, &score); scanErr != nil {
+			return out, fmt.Errorf("ForkProgressReader mocks scan: %w", scanErr)
 		}
 		key := "mle"
 		if section == "de" {
@@ -1168,8 +1096,8 @@ func (r *ForkProgressReader) Snapshot(
 		bs.MockCount++
 		bs.AvgScore += score
 	}
-	if err := rows.Err(); err != nil {
-		return out, fmt.Errorf("ForkProgressReader mocks iter: %w", err)
+	if rerr := rows.Err(); rerr != nil {
+		return out, fmt.Errorf("ForkProgressReader mocks iter: %w", rerr)
 	}
 
 	// Voluntary deep-dives — distinct atlas-nodes под cluster (ml/de),

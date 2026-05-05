@@ -94,4 +94,3 @@ func (p *Postgres) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKe
 	}
 	return sn, nil
 }
-

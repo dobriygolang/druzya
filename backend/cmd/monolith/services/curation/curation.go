@@ -85,6 +85,7 @@ func NewCuration(d monolithServices.Deps) *monolithServices.Module {
 //   - bumps resource_promotion_signals.avg_quality (running average)
 //     если quality > 0 — это закрывает loop «user submits reflection →
 //     auto_promote sees quality signal».
+//
 // nil-safe: при d.Pool==nil вся ветка skip'ается.
 type pgxAdapter struct {
 	d         monolithServices.Deps

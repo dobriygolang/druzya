@@ -153,12 +153,12 @@ const threadCols = `id, student_id, persona_id, summary_md, message_count, last_
 
 func scanThread(row pgx.Row) (domain.Thread, error) {
 	var (
-		t                 domain.Thread
+		t                        domain.Thread
 		id, studentID, personaID pgtype.UUID
-		lastCompacted     pgtype.Timestamptz
-		dailyResetDate    pgtype.Date
-		createdAt         pgtype.Timestamptz
-		updatedAt         pgtype.Timestamptz
+		lastCompacted            pgtype.Timestamptz
+		dailyResetDate           pgtype.Date
+		createdAt                pgtype.Timestamptz
+		updatedAt                pgtype.Timestamptz
 	)
 	if err := row.Scan(&id, &studentID, &personaID, &t.SummaryMD, &t.MessageCount,
 		&lastCompacted, &t.DailyMsgCount, &dailyResetDate, &createdAt, &updatedAt,
@@ -445,9 +445,9 @@ func (p *Postgres) Upsert(ctx context.Context, f domain.Fact) (domain.Fact, erro
 		    last_used_at = now()
 		RETURNING id, last_used_at, created_at`
 	var (
-		id          pgtype.UUID
-		lastUsedAt  pgtype.Timestamptz
-		createdAt   pgtype.Timestamptz
+		id         pgtype.UUID
+		lastUsedAt pgtype.Timestamptz
+		createdAt  pgtype.Timestamptz
 	)
 	if err := p.pool.QueryRow(ctx, q,
 		pgUUID(f.ThreadID), f.Key, f.Value, f.Confidence, sourceArg,

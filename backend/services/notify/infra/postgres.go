@@ -128,7 +128,7 @@ func (p *Postgres) ListWeeklyReportEnabledChunked(ctx context.Context, chunkSize
 	last := uuid.Nil
 	for {
 		if err := ctx.Err(); err != nil {
-			return err
+			return fmt.Errorf("notify.pg.ListWeeklyReportEnabledChunked ctx: %w", err)
 		}
 		rows, err := p.pool.Query(ctx,
 			`SELECT user_id FROM notification_prefs

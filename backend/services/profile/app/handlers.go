@@ -60,4 +60,3 @@ func (h *OnXPGained) Handle(ctx context.Context, ev sharedDomain.Event) error {
 	}
 	return nil
 }
-

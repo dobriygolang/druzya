@@ -59,4 +59,3 @@ func TestBuildNextActionPrompt_IncludesForkSection(t *testing.T) {
 		t.Fatalf("expected fork section in prompt, got:\n%s", out)
 	}
 }
-

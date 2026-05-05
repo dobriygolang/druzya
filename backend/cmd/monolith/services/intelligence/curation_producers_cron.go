@@ -91,8 +91,8 @@ func runDaily(ctx context.Context, reader *intelInfra.CurationReader, sink insig
 			if uid, perr := uuid.Parse(g.UserID); perr == nil && sink != nil {
 				for _, in := range insights {
 					in.UserID = uid
-					if _, err := sink.Upsert(ctx, in); err != nil && log != nil {
-						log.Warn("intelligence.gap_detection upsert", "err", err)
+					if _, upErr := sink.Upsert(ctx, in); upErr != nil && log != nil {
+						log.Warn("intelligence.gap_detection upsert", "err", upErr)
 					}
 				}
 			}
@@ -116,8 +116,8 @@ func runDaily(ctx context.Context, reader *intelInfra.CurationReader, sink insig
 			if uid, perr := uuid.Parse(userIDStr); perr == nil && sink != nil {
 				for _, in := range insights {
 					in.UserID = uid
-					if _, err := sink.Upsert(ctx, in); err != nil && log != nil {
-						log.Warn("intelligence.confusion_pickup upsert", "err", err)
+					if _, upErr := sink.Upsert(ctx, in); upErr != nil && log != nil {
+						log.Warn("intelligence.confusion_pickup upsert", "err", upErr)
 					}
 				}
 			}

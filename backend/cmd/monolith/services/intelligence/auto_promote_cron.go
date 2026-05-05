@@ -83,7 +83,7 @@ type promotionListerAdapter struct{ p *curationInfra.Promotion }
 func (a promotionListerAdapter) Candidates(ctx context.Context, minUsers int, minQuality float32) ([]producers.PromotionCandidate, error) {
 	cands, err := a.p.Candidates(ctx, minUsers, minQuality)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("promotion candidates: %w", err)
 	}
 	out := make([]producers.PromotionCandidate, len(cands))
 	for i, c := range cands {
@@ -99,11 +99,17 @@ func (a promotionListerAdapter) Candidates(ctx context.Context, minUsers int, mi
 }
 
 func (a promotionListerAdapter) MarkPromoted(ctx context.Context, url string) error {
-	return a.p.MarkPromoted(ctx, url)
+	if err := a.p.MarkPromoted(ctx, url); err != nil {
+		return fmt.Errorf("mark promoted: %w", err)
+	}
+	return nil
 }
 
 func (a promotionListerAdapter) MarkBlocked(ctx context.Context, url, reason string) error {
-	return a.p.MarkBlocked(ctx, url, reason)
+	if err := a.p.MarkBlocked(ctx, url, reason); err != nil {
+		return fmt.Errorf("mark blocked: %w", err)
+	}
+	return nil
 }
 
 type validatorAdapter struct {
@@ -115,7 +121,7 @@ func (a *validatorAdapter) Validate(ctx context.Context, url, atlasNodeID, nodeD
 		URL: url, AtlasNodeID: atlasNodeID, NodeDescription: nodeDescription,
 	})
 	if err != nil {
-		return producers.ValidationResult{}, err
+		return producers.ValidationResult{}, fmt.Errorf("validate resource: %w", err)
 	}
 	return producers.ValidationResult{
 		Alive:     out.Alive,
@@ -136,7 +142,10 @@ func (a *atlasWriterAdapter) NodeDescription(ctx context.Context, atlasNodeID st
 		`SELECT COALESCE(description,'') FROM atlas_nodes WHERE id=$1`,
 		atlasNodeID,
 	).Scan(&desc)
-	return desc, err
+	if err != nil {
+		return desc, fmt.Errorf("scan node description: %w", err)
+	}
+	return desc, nil
 }
 
 func (a *atlasWriterAdapter) AppendAutoPromoted(ctx context.Context, atlasNodeID, resourceURL, why string) error {

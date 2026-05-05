@@ -63,7 +63,7 @@ func (g *GroqWhisperBatch) TranscribeWindow(ctx context.Context, in domain.Trans
 	}
 	res, err := g.Inner.Transcribe(ctx, wrapped)
 	if err != nil {
-		return domain.TranscribeResult{}, false, err
+		return domain.TranscribeResult{}, false, fmt.Errorf("groq batch transcribe: %w", err)
 	}
 	return res, false, nil
 }

@@ -33,7 +33,7 @@ func (uc SetMode) Execute(ctx context.Context, in SetModeInput) (domain.State, e
 	}
 	next, err := domain.ApplyMode(prev, in.Mode, in.TrackID, now)
 	if err != nil {
-		return domain.State{}, err
+		return domain.State{}, fmt.Errorf("learning_state.SetMode apply: %w", err)
 	}
 	if err := uc.Repo.Upsert(ctx, next); err != nil {
 		return domain.State{}, fmt.Errorf("learning_state.SetMode persist: %w", err)
@@ -68,7 +68,7 @@ func (uc SetFork) Execute(ctx context.Context, in SetForkInput) (domain.State, e
 	}
 	next, err := domain.ApplyFork(prev, in.Branch, now)
 	if err != nil {
-		return domain.State{}, err
+		return domain.State{}, fmt.Errorf("learning_state.SetFork apply: %w", err)
 	}
 	if err := uc.Repo.Upsert(ctx, next); err != nil {
 		return domain.State{}, fmt.Errorf("learning_state.SetFork persist: %w", err)

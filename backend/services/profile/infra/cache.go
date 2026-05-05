@@ -428,7 +428,6 @@ func (c *CachedRepo) CountRecentActivity(ctx context.Context, userID uuid.UUID, 
 	return a, nil
 }
 
-
 // ListUserTracks — pass-through. Track membership rarely matches the
 // per-user Bundle cache invariants (tracks are mutated via SetUserTracks
 // in a separate write path), and the read is small enough that going

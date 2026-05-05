@@ -52,7 +52,10 @@ LIMIT 500
 		}
 		out = append(out, e)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("curation_readers.RecentCoverageEvents rows: %w", err)
+	}
+	return out, nil
 }
 
 // RecentConfusionEvents — recent reflections с confusion_flag=true.
@@ -78,7 +81,10 @@ LIMIT 200
 		}
 		out = append(out, e)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("curation_readers.RecentConfusionEvents rows: %w", err)
+	}
+	return out, nil
 }
 
 // HighQualityClustersByTopic — для weekly redundancy_signal. Group by
@@ -109,7 +115,10 @@ LIMIT 100
 		}
 		out = append(out, c)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("curation_readers.HighQualityClustersByTopic rows: %w", err)
+	}
+	return out, nil
 }
 
 // PrereqGaps — для daily gap_detection. Для каждого user'а в active learning
@@ -162,5 +171,8 @@ LIMIT 200
 		e.NextStep = "next step"
 		out = append(out, e)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("curation_readers.PrereqGaps rows: %w", err)
+	}
+	return out, nil
 }

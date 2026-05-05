@@ -17,10 +17,11 @@ import (
 // download'ов — только metadata JSON + sub URL → fetch JSON3 → parse text.
 //
 // CLI invocation:
-//   yt-dlp --skip-download --write-auto-sub --write-info-json
-//          --sub-langs <hint>,en,ru,en-orig
-//          --sub-format json3
-//          -o "<tmp>" <url>
+//
+//	yt-dlp --skip-download --write-auto-sub --write-info-json
+//	       --sub-langs <hint>,en,ru,en-orig
+//	       --sub-format json3
+//	       -o "<tmp>" <url>
 //
 // Но проще: `yt-dlp -j <url>` возвращает full info JSON в stdout, в нём
 // есть `automatic_captions` map с URLs к каждому языку. Pull URL, parse
@@ -46,10 +47,10 @@ func extractVideoID(url string) string {
 }
 
 type ytDlpInfo struct {
-	Title             string                            `json:"title"`
-	WebpageURL        string                            `json:"webpage_url"`
-	Subtitles         map[string][]ytSubtitle           `json:"subtitles"`
-	AutomaticCaptions map[string][]ytSubtitle           `json:"automatic_captions"`
+	Title             string                  `json:"title"`
+	WebpageURL        string                  `json:"webpage_url"`
+	Subtitles         map[string][]ytSubtitle `json:"subtitles"`
+	AutomaticCaptions map[string][]ytSubtitle `json:"automatic_captions"`
 }
 
 type ytSubtitle struct {
@@ -82,8 +83,8 @@ func (f *YouTubeFetcher) Fetch(ctx context.Context, url, languageHint string) (d
 		return domain.YouTubeFetchResult{}, fmt.Errorf("hone.YouTubeFetcher: yt-dlp failed (binary on PATH?): %w", err)
 	}
 	var info ytDlpInfo
-	if err := json.Unmarshal(out, &info); err != nil {
-		return domain.YouTubeFetchResult{}, fmt.Errorf("hone.YouTubeFetcher: parse info: %w", err)
+	if jerr := json.Unmarshal(out, &info); jerr != nil {
+		return domain.YouTubeFetchResult{}, fmt.Errorf("hone.YouTubeFetcher: parse info: %w", jerr)
 	}
 
 	// Pick best sub track. Order: explicit hint → en → ru → first available.
@@ -157,7 +158,8 @@ func pickSubtitle(m map[string][]ytSubtitle, hint string) pickedSub {
 }
 
 // json3 формат от YouTube: {events:[{tStartMs:int, dDurationMs:int,
-//   segs:[{utf8:"text", tOffsetMs?:int}]}]}. Склеиваем текст с line breaks.
+//
+//	segs:[{utf8:"text", tOffsetMs?:int}]}]}. Склеиваем текст с line breaks.
 func fetchJSON3Transcript(ctx context.Context, url string) (string, error) {
 	cmd := exec.CommandContext(ctx, "curl", "-sfL", url)
 	out, err := cmd.Output()

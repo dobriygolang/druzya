@@ -498,5 +498,8 @@ func (p *Postgres) ListPendingInvitesForUser(
 		}
 		out = append(out, inv)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("tutor.ListPendingInvitesForUser rows: %w", err)
+	}
+	return out, nil
 }

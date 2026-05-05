@@ -475,7 +475,7 @@ func pumpAnalyzeFrames(ctx context.Context, stream *connect.ServerStream[pb.Anal
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return fmt.Errorf("copilot.Analyze: ctx done: %w", ctx.Err())
 		case f, ok := <-frames:
 			if !ok {
 				return nil
@@ -500,7 +500,7 @@ func pumpChatFrames(ctx context.Context, stream *connect.ServerStream[pb.ChatEve
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return fmt.Errorf("copilot.Chat: ctx done: %w", ctx.Err())
 		case f, ok := <-frames:
 			if !ok {
 				return nil

@@ -24,11 +24,11 @@ func FromResourceEngagement(eng domain.ResourceEngagement, now time.Time) []doma
 			sev = domain.InsightSeverityWarn
 		}
 		out = append(out, domain.Insight{
-			Surface:  domain.InsightSurfaceToday,
-			Severity: sev,
-			Anchor:   fmt.Sprintf("resource:unfinished:%s", day),
-			Headline: fmt.Sprintf("Open tabs piling up — %d unfinished resources.", eng.UnfinishedCount),
-			Evidence: fmt.Sprintf("%d clicked resources за окно без finished/skipped.", eng.UnfinishedCount),
+			Surface:   domain.InsightSurfaceToday,
+			Severity:  sev,
+			Anchor:    fmt.Sprintf("resource:unfinished:%s", day),
+			Headline:  fmt.Sprintf("Open tabs piling up — %d unfinished resources.", eng.UnfinishedCount),
+			Evidence:  fmt.Sprintf("%d clicked resources за окно без finished/skipped.", eng.UnfinishedCount),
 			Interpret: "Inventory is leaking attention. Either close (skip) or commit (finish).",
 			Lever:     "Pick 1 open resource → finish OR mark skipped. Don't add new.",
 			DeepLink:  "/coach",
@@ -38,11 +38,11 @@ func FromResourceEngagement(eng domain.ResourceEngagement, now time.Time) []doma
 
 	if len(eng.MarkedUnhelpful) >= 2 {
 		out = append(out, domain.Insight{
-			Surface:  domain.InsightSurfaceToday,
-			Severity: domain.InsightSeverityNudge,
-			Anchor:   fmt.Sprintf("resource:unhelpful:%s", day),
-			Headline: fmt.Sprintf("%d resources marked unhelpful recently.", len(eng.MarkedUnhelpful)),
-			Evidence: unhelpfulEvidence(eng.MarkedUnhelpful),
+			Surface:   domain.InsightSurfaceToday,
+			Severity:  domain.InsightSeverityNudge,
+			Anchor:    fmt.Sprintf("resource:unhelpful:%s", day),
+			Headline:  fmt.Sprintf("%d resources marked unhelpful recently.", len(eng.MarkedUnhelpful)),
+			Evidence:  unhelpfulEvidence(eng.MarkedUnhelpful),
 			Interpret: "Curation needs adjustment for your level/depth.",
 			Lever:     "Coach can suggest replacements — ask «what should I read instead of X».",
 			DeepLink:  "/coach",
@@ -63,11 +63,11 @@ func FromResourceEngagement(eng domain.ResourceEngagement, now time.Time) []doma
 	}
 	if finishedNoReflection >= 3 {
 		out = append(out, domain.Insight{
-			Surface:  domain.InsightSurfaceToday,
-			Severity: domain.InsightSeverityNudge,
-			Anchor:   fmt.Sprintf("resource:no-reflection:%s", day),
-			Headline: fmt.Sprintf("%d finished resources without reflection.", finishedNoReflection),
-			Evidence: "Skipping reflection forfeits the auto-link to atlas + AI-tutor recall.",
+			Surface:   domain.InsightSurfaceToday,
+			Severity:  domain.InsightSeverityNudge,
+			Anchor:    fmt.Sprintf("resource:no-reflection:%s", day),
+			Headline:  fmt.Sprintf("%d finished resources without reflection.", finishedNoReflection),
+			Evidence:  "Skipping reflection forfeits the auto-link to atlas + AI-tutor recall.",
 			Interpret: "Reading without summary = passive consumption. Pattern matters more than streak.",
 			Lever:     "1-line reflection on the next resource — title + main idea is enough.",
 			DeepLink:  "/notes",

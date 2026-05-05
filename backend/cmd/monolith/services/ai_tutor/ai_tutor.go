@@ -1,13 +1,14 @@
 // Package ai_tutor — wiring AI-tutor bounded context в monolith.
 //
 // Adapters:
-//   aiUserCreatorPG — INSERT/UPSERT юзера с role='ai_tutor' через
-//                     прямой pgx (нет use-case в profile для admin-creates).
-//   tutorRelatorAdapter — wraps tutorDomain.Repo.AcceptInvite-like logic;
-//                         мы используем CreateAITutorRelationship прямой
-//                         INSERT с ON CONFLICT DO NOTHING.
-//   snapshotAdapter — wraps tutorApp.GetStudentSnapshot, formats в текст.
-//   llmAdapter — wraps llmchain.Chain, mapping task-kind-string → Task.
+//
+//	aiUserCreatorPG — INSERT/UPSERT юзера с role='ai_tutor' через
+//	                  прямой pgx (нет use-case в profile для admin-creates).
+//	tutorRelatorAdapter — wraps tutorDomain.Repo.AcceptInvite-like logic;
+//	                      мы используем CreateAITutorRelationship прямой
+//	                      INSERT с ON CONFLICT DO NOTHING.
+//	snapshotAdapter — wraps tutorApp.GetStudentSnapshot, formats в текст.
+//	llmAdapter — wraps llmchain.Chain, mapping task-kind-string → Task.
 package ai_tutor
 
 import (
@@ -281,7 +282,7 @@ func (a *snapshotAdapter) GetSnapshotText(ctx context.Context, studentID uuid.UU
 		if err == nil && len(ms) > 0 {
 			parts := make([]string, 0, len(ms))
 			for _, m := range ms {
-				p := fmt.Sprintf("%s=%d/10", string(m.Section), m.Score)
+				p := fmt.Sprintf("%s=%d/10", m.Section, m.Score)
 				if len(m.WeakTopics) > 0 {
 					p += " (" + strings.Join(m.WeakTopics, "/") + ")"
 				}
@@ -380,5 +381,8 @@ func (a *assignmentPusherAdapter) Push(
 		BodyMD:    bodyMD,
 		DueAt:     dueAt,
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("push assignment: %w", err)
+	}
+	return nil
 }

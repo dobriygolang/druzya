@@ -1,15 +1,17 @@
 // checkpoint.go — Phase 2 step UX flow UCs.
 //
 // StartCheckpoint:  юзер открывает checkpoint quiz CTA на step → UC
-//                   возвращает skill_keys этого step'а (handler уже
-//                   подбирает 5 questions из mock_pool by these keys).
-//                   Если step.checkpoint_skill_keys пусто — step вообще
-//                   не имеет checkpoint (e.g. сам step — mock).
+//
+//	возвращает skill_keys этого step'а (handler уже
+//	подбирает 5 questions из mock_pool by these keys).
+//	Если step.checkpoint_skill_keys пусто — step вообще
+//	не имеет checkpoint (e.g. сам step — mock).
 //
 // SubmitCheckpoint: юзер прислал ответы → UC зовёт TaskCheckpointGrade
-//                   → пишет step_checkpoint_attempts row с score.
-//                   Если score >= CheckpointPassThreshold (70) → passed_at = now()
-//                   → UI soft-unlock'ает следующий step.
+//
+//	→ пишет step_checkpoint_attempts row с score.
+//	Если score >= CheckpointPassThreshold (70) → passed_at = now()
+//	→ UI soft-unlock'ает следующий step.
 //
 // Question fetching сам UC не делает — это слой handler'а (mock_pool
 // access лежит в services/ai_mock и кросс-сервисная зависимость не

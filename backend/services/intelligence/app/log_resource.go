@@ -28,14 +28,14 @@ type ResourceLogRepo interface {
 
 // ResourceLogEntry зеркалит row в user_resource_log.
 type ResourceLogEntry struct {
-	ID                uuid.UUID
-	UserID            uuid.UUID
-	ResourceURL       string
-	AtlasNodeID       string // optional ("")
-	Kind              string // clicked|finished|skipped|unhelpful|reflection_submitted
-	ReflectionText    string
-	ReflectionNoteID  *uuid.UUID
-	OccurredAt        time.Time
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	ResourceURL      string
+	AtlasNodeID      string // optional ("")
+	Kind             string // clicked|finished|skipped|unhelpful|reflection_submitted
+	ReflectionText   string
+	ReflectionNoteID *uuid.UUID
+	OccurredAt       time.Time
 }
 
 // NoteCreator — optional hook для reflection-flow. Caller передаёт
@@ -62,9 +62,9 @@ type LogResourceInput struct {
 
 // LogResourceResult.
 type LogResourceResult struct {
-	Entry             ResourceLogEntry
-	ReflectionNoteID  *uuid.UUID
-	NoteCreateFailed  bool
+	Entry            ResourceLogEntry
+	ReflectionNoteID *uuid.UUID
+	NoteCreateFailed bool
 }
 
 func (uc *LogResource) Do(ctx context.Context, in LogResourceInput) (LogResourceResult, error) {

@@ -54,11 +54,11 @@ type ReadingMaterial struct {
 	// Book-only progress tracking (Wave 2026-05-03). Для SourceKind=book
 	// body_md обычно пустой — юзер читает offline; chapter+total_chapters
 	// дают visual progress в UI. Nil для не-book material'ов.
-	BookChapter        *int
-	BookTotalChapters  *int
-	ArchivedAt *time.Time // soft-delete; nil = active
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	BookChapter       *int
+	BookTotalChapters *int
+	ArchivedAt        *time.Time // soft-delete; nil = active
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // ReadingSession is one «sit» of reading. Started when the user

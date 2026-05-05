@@ -41,12 +41,12 @@ type NextAction struct {
 // Coach next-action no longer factors interview-window pressure; track step
 // + fork mode + recent mocks remain the active inputs.
 type NextActionInput struct {
-	UserID          uuid.UUID
-	LearningState   LearningStateView
-	RecentMocks     []domain.MockSessionSummary
-	Fork            domain.ForkProgressSnapshot
-	ResourceTrail   domain.ResourceEngagement
-	ActiveTrack     *ActiveTrackStep
+	UserID        uuid.UUID
+	LearningState LearningStateView
+	RecentMocks   []domain.MockSessionSummary
+	Fork          domain.ForkProgressSnapshot
+	ResourceTrail domain.ResourceEngagement
+	ActiveTrack   *ActiveTrackStep
 }
 
 // LearningStateView — slim projection (UC не импортирует learning_state

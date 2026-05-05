@@ -371,7 +371,7 @@ func scoredSectionToProto(s domain.ScoredSection) *pb.MockScoredSection {
 // ── enum adapters ─────────────────────────────────────────────────────────
 
 func sectionToProtoMock(s enums.Section) pb.Section {
-	switch s {
+	switch s { //nolint:exhaustive // SectionDE is internal-only (Phase 1c learning-companion); no proto enum yet → falls through to UNSPECIFIED via default
 	case enums.SectionAlgorithms:
 		return pb.Section_SECTION_ALGORITHMS
 	case enums.SectionSQL:

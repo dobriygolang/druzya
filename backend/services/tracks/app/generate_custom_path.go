@@ -9,7 +9,9 @@ import (
 
 // CustomPathNode — узел сгенерированный AI'ем из юзерской цели. Mirror'ит
 // frontend `PresetNode` shape (см frontend/src/pages/onboarding/pathPresets.ts):
-//   { id, title, group, hint? }
+//
+//	{ id, title, group, hint? }
+//
 // id мы делаем deterministic'ный из title через slugify, чтобы повторная
 // генерация той же цели давала те же id'ы (для идемпотентности).
 type CustomPathNode struct {

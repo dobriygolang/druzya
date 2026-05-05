@@ -27,14 +27,14 @@ type ProcessedMockGuard interface {
 
 // OnFailedMock — proactive trigger. Когда mock-секция завершилась с
 // overall_score<70, мы:
-//   1. Находим adopted AI-tutor персону у студента, чей scope_track_kind
-//      матчит mock-секцию (algo→dev, english_hr→english, etc).
-//   2. Append'аем system-episode «Завалил mock {section}, weak: {topics}»
-//      в thread → coach помнит этот эпизод в следующих ходах.
-//   3. Генерим текст assignment'а LLM call'ом по persona.LLMTaskKind=
-//      TaskAITutorAssignment.
-//   4. Пушим assignment в tutor service (due_at = now + 3 days), студент
-//      увидит его в Hone TaskBoard.
+//  1. Находим adopted AI-tutor персону у студента, чей scope_track_kind
+//     матчит mock-секцию (algo→dev, english_hr→english, etc).
+//  2. Append'аем system-episode «Завалил mock {section}, weak: {topics}»
+//     в thread → coach помнит этот эпизод в следующих ходах.
+//  3. Генерим текст assignment'а LLM call'ом по persona.LLMTaskKind=
+//     TaskAITutorAssignment.
+//  4. Пушим assignment в tutor service (due_at = now + 3 days), студент
+//     увидит его в Hone TaskBoard.
 //
 // Idempotency: повторный fire (та же session) перезапишет episode, но
 // создаст ещё один assignment. На бэк-стороне дедуп лучше делать через
@@ -91,15 +91,15 @@ func (uc *OnFailedMock) Do(ctx context.Context, in OnFailedMockInput) error {
 		if err != nil {
 			continue
 		}
-		if string(p.ScopeTrackKind) == trackKind {
+		if p.ScopeTrackKind == trackKind {
 			targetThread = t
 			targetPersona = p
-			found = true
 			break
 		}
 		if !found {
 			targetThread = t
 			targetPersona = p
+			found = true
 		}
 	}
 	if targetPersona.ID == uuid.Nil {

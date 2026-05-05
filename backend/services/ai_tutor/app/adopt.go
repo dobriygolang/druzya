@@ -23,12 +23,12 @@ import (
 // → ensure tutor relationship → CreateOrGet thread → append welcome
 // system episode.
 type AdoptAITutor struct {
-	Personas     domain.PersonaRepo
-	Threads      domain.ThreadRepo
-	Episodes     domain.EpisodeRepo
+	Personas      domain.PersonaRepo
+	Threads       domain.ThreadRepo
+	Episodes      domain.EpisodeRepo
 	AIUserCreator domain.AIUserCreator
-	TutorRelator domain.TutorRelator
-	Now          func() time.Time
+	TutorRelator  domain.TutorRelator
+	Now           func() time.Time
 }
 
 type AdoptInput struct {
@@ -61,8 +61,8 @@ func (uc *AdoptAITutor) Do(ctx context.Context, in AdoptInput) (AdoptResult, err
 	}
 
 	// 2) Stamp ai_user_id на персоне (no-op если уже выставлено).
-	if err := uc.Personas.SetAIUserID(ctx, persona.ID, aiUserID); err != nil {
-		return AdoptResult{}, fmt.Errorf("ai_tutor.Adopt: persona stamp: %w", err)
+	if stampErr := uc.Personas.SetAIUserID(ctx, persona.ID, aiUserID); stampErr != nil {
+		return AdoptResult{}, fmt.Errorf("ai_tutor.Adopt: persona stamp: %w", stampErr)
 	}
 	persona.AIUserID = &aiUserID
 
@@ -70,8 +70,8 @@ func (uc *AdoptAITutor) Do(ctx context.Context, in AdoptInput) (AdoptResult, err
 
 	// 3) Relationship через services/tutor — ListMyTutors уже умеет
 	// возвращать AI-туторов наряду с human, без новых RPC.
-	if err := uc.TutorRelator.EnsureRelationship(ctx, aiUserID, in.StudentID, now); err != nil {
-		return AdoptResult{}, fmt.Errorf("ai_tutor.Adopt: relationship: %w", err)
+	if relErr := uc.TutorRelator.EnsureRelationship(ctx, aiUserID, in.StudentID, now); relErr != nil {
+		return AdoptResult{}, fmt.Errorf("ai_tutor.Adopt: relationship: %w", relErr)
 	}
 
 	// 4) Thread (идемпотентно). На повторный adopt просто реюзаем.

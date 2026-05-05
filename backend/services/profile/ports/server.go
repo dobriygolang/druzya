@@ -726,13 +726,6 @@ func subscriptionPlanToProto(p enums.SubscriptionPlan) pb.SubscriptionPlan {
 	}
 }
 
-func isDecaying(last *time.Time, now time.Time) bool {
-	if last == nil {
-		return false
-	}
-	return now.Sub(*last) > 7*24*time.Hour
-}
-
 // ── tracks converters ──────────────────────────────────────────────────────
 
 func toUserTracksProto(items []domain.UserTrack) *pb.UserTracks {

@@ -70,10 +70,10 @@ const streamChunkLimitPerMin = 600
 const (
 	streamSampleRate    = 16000
 	streamBytesPerFrame = 2
-	minWindowBytes      = streamSampleRate * streamBytesPerFrame * 1     // 1.0s
-	maxWindowBytes      = streamSampleRate * streamBytesPerFrame * 2     // 2.0s
-	maxBufferBytes      = streamSampleRate * streamBytesPerFrame * 30    // 30s safety cap (drop on overflow)
-	silenceRMSCutoff    = 200                                            // ниже = drop window (silence pre-filter)
+	minWindowBytes      = streamSampleRate * streamBytesPerFrame * 1  // 1.0s
+	maxWindowBytes      = streamSampleRate * streamBytesPerFrame * 2  // 2.0s
+	maxBufferBytes      = streamSampleRate * streamBytesPerFrame * 30 // 30s safety cap (drop on overflow)
+	silenceRMSCutoff    = 200                                         // ниже = drop window (silence pre-filter)
 	wsPingInterval      = 30 * time.Second
 	wsReadDeadline      = 120 * time.Second
 	wsWriteTimeout      = 10 * time.Second
@@ -178,11 +178,11 @@ func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn,
 	// fast skip. promptOverride / languageOverride accept runtime updates
 	// from {"type":"prompt"} control frames без reconnect.
 	var (
-		bufMu             sync.Mutex
-		buf               []byte
-		windowSeq         int
-		languageOverride  = language
-		promptOverride    = prompt
+		bufMu            sync.Mutex
+		buf              []byte
+		windowSeq        int
+		languageOverride = language
+		promptOverride   = prompt
 	)
 
 	flushWindow := func(reason string) {

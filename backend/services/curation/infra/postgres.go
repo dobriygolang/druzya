@@ -203,21 +203,30 @@ LIMIT 100
 		}
 		out = append(out, c)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("curation.Promotion.Candidates rows: %w", err)
+	}
+	return out, nil
 }
 
 func (p *Promotion) MarkPromoted(ctx context.Context, url string) error {
 	_, err := p.pool.Exec(ctx, `
 UPDATE resource_promotion_signals SET promoted_at = now() WHERE url=$1
 `, url)
-	return err
+	if err != nil {
+		return fmt.Errorf("curation.Promotion.MarkPromoted: %w", err)
+	}
+	return nil
 }
 
 func (p *Promotion) MarkBlocked(ctx context.Context, url, reason string) error {
 	_, err := p.pool.Exec(ctx, `
 UPDATE resource_promotion_signals SET blocked_reason=$2 WHERE url=$1
 `, url, reason)
-	return err
+	if err != nil {
+		return fmt.Errorf("curation.Promotion.MarkBlocked: %w", err)
+	}
+	return nil
 }
 
 // ─── DomainReputationRepo ────────────────────────────────────────────────

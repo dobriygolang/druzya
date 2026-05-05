@@ -8,6 +8,7 @@ package tutor
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
@@ -265,9 +266,12 @@ func (a *notifySendAdapter) Send(
 	if a.uc == nil {
 		return nil
 	}
-	return a.uc.Do(ctx, notifyApp.SendInput{
+	if err := a.uc.Do(ctx, notifyApp.SendInput{
 		UserID:  userID,
 		Type:    notType,
 		Payload: payload,
-	})
+	}); err != nil {
+		return fmt.Errorf("notify send: %w", err)
+	}
+	return nil
 }

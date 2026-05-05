@@ -35,10 +35,10 @@ func (t ActiveTrack) IsValid() bool {
 // UserSettings — per-user Hone preferences. Active study mode + orthogonal
 // English-modifier (Sergey 2026-05-03: English — не track, а дополнение).
 type UserSettings struct {
-	UserID         uuid.UUID
-	ActiveTrack    ActiveTrack
-	EnglishActive  bool
-	UpdatedAt      time.Time
+	UserID        uuid.UUID
+	ActiveTrack   ActiveTrack
+	EnglishActive bool
+	UpdatedAt     time.Time
 }
 
 // SettingsRepo — persistence для hone_user_settings. Get никогда не возвращает

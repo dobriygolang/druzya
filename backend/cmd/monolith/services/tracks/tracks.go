@@ -4,6 +4,7 @@ package tracks
 
 import (
 	"context"
+	"fmt"
 
 	monolithServices "druz9/cmd/monolith/services"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
@@ -92,7 +93,11 @@ func (a *customPathLLMAdapter) GenerateCustomPath(ctx context.Context, goal stri
 		JSONMode:    true,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("custom path chat: %w", err)
 	}
-	return tracksApp.ParseLLMResponse(resp.Content)
+	out, err := tracksApp.ParseLLMResponse(resp.Content)
+	if err != nil {
+		return nil, fmt.Errorf("parse llm response: %w", err)
+	}
+	return out, nil
 }

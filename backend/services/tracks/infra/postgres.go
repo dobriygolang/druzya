@@ -573,7 +573,7 @@ func scanCheckpoint(row pgx.Row) (domain.CheckpointAttempt, error) {
 		createdAt           time.Time
 	)
 	if err := row.Scan(&id, &userID, &trackID, &stepIndex, &score, &attempts, &passedAt, &createdAt); err != nil {
-		return domain.CheckpointAttempt{}, err
+		return domain.CheckpointAttempt{}, fmt.Errorf("scan checkpoint: %w", err)
 	}
 	return domain.CheckpointAttempt{
 		ID:        sharedpg.UUIDFrom(id),

@@ -26,12 +26,12 @@ import (
 var _ druz9v1connect.AITutorServiceHandler = (*Server)(nil)
 
 type Server struct {
-	Personas      domain.PersonaRepo
-	Threads       domain.ThreadRepo
-	Episodes      domain.EpisodeRepo
-	AdoptUC       *app.AdoptAITutor
-	SendUC        *app.SendMessage
-	Log           *slog.Logger
+	Personas domain.PersonaRepo
+	Threads  domain.ThreadRepo
+	Episodes domain.EpisodeRepo
+	AdoptUC  *app.AdoptAITutor
+	SendUC   *app.SendMessage
+	Log      *slog.Logger
 }
 
 func (s *Server) ListPersonas(
@@ -205,12 +205,12 @@ func toPersonaProto(p domain.Persona) *pb.AITutorPersona {
 
 func toThreadProto(t domain.Thread) *pb.AITutorThread {
 	out := &pb.AITutorThread{
-		Id:             t.ID.String(),
-		StudentId:      t.StudentID.String(),
-		PersonaId:      t.PersonaID.String(),
-		SummaryMd:      t.SummaryMD,
-		MessageCount:   int32(t.MessageCount),
-		DailyMsgCount:  int32(t.DailyMsgCount),
+		Id:            t.ID.String(),
+		StudentId:     t.StudentID.String(),
+		PersonaId:     t.PersonaID.String(),
+		SummaryMd:     t.SummaryMD,
+		MessageCount:  int32(t.MessageCount),
+		DailyMsgCount: int32(t.DailyMsgCount),
 	}
 	if !t.CreatedAt.IsZero() {
 		out.CreatedAt = t.CreatedAt.Format(time.RFC3339)

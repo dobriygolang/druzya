@@ -87,13 +87,12 @@ func (uc *SendMessage) Do(ctx context.Context, in SendMessageInput) (SendMessage
 	// mock-result, reading-абзац). Best-effort: ошибка append'а не должна
 	// блокировать chat-flow.
 	if note := strings.TrimSpace(in.ContextNote); note != "" {
-		if _, ctxErr := uc.Episodes.Append(ctx, domain.Episode{
+		// Best-effort: ошибка append'а не блокирует chat-flow.
+		_, _ = uc.Episodes.Append(ctx, domain.Episode{
 			ThreadID: thread.ID,
 			Role:     domain.RoleSystem,
 			Content:  note,
-		}); ctxErr != nil {
-			// Non-fatal — продолжаем чат без преамбулы.
-		}
+		})
 	}
 
 	// 1. Append user episode.
@@ -189,9 +188,8 @@ func (uc *SendMessage) Do(ctx context.Context, in SendMessageInput) (SendMessage
 		for _, f := range facts {
 			ids = append(ids, f.ID)
 		}
-		if err := uc.Facts.TouchLastUsed(ctx, ids, now); err != nil {
-			// Non-fatal — отвечать студенту важнее чем точные timestamps.
-		}
+		// Non-fatal — отвечать студенту важнее чем точные timestamps.
+		_ = uc.Facts.TouchLastUsed(ctx, ids, now)
 	}
 
 	// 8. Auto-compaction trigger.

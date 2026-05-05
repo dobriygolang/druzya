@@ -78,7 +78,10 @@ ORDER BY calls DESC
 		t.EstCostCents = 0
 		out = append(out, t)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("admin.ListTaskRollups rows: %w", err)
+	}
+	return out, nil
 }
 
 // LatestEvalRuns — последняя строка per dataset.
@@ -100,5 +103,8 @@ ORDER BY dataset, ran_at DESC
 		}
 		out = append(out, e)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("admin.LatestEvalRuns rows: %w", err)
+	}
+	return out, nil
 }

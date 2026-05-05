@@ -58,4 +58,3 @@ type ConfigRepo interface {
 type ConfigBroadcaster interface {
 	Publish(ctx context.Context, entry ConfigEntry) error
 }
-

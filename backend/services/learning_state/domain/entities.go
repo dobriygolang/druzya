@@ -69,14 +69,14 @@ func (f ForkBranch) String() string { return string(f) }
 // CommittedAt всегда парный CommittedTrackID (оба nil или оба set) —
 // это soft-инвариант, repo приводит при SetMode.
 type State struct {
-	UserID             uuid.UUID
-	Mode               Mode
-	ForkBranch         *ForkBranch // nil = не выбирал
-	ExploreStartedAt   time.Time
-	CommittedTrackID   *uuid.UUID
-	CommittedAt        *time.Time
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	UserID           uuid.UUID
+	Mode             Mode
+	ForkBranch       *ForkBranch // nil = не выбирал
+	ExploreStartedAt time.Time
+	CommittedTrackID *uuid.UUID
+	CommittedAt      *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // Default возвращает initial state для нового юзера. Lazy-create в repo

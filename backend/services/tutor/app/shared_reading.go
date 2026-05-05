@@ -29,9 +29,9 @@ type PushSharedReadingInput struct {
 }
 
 type PushSharedReadingResult struct {
-	Material      domain.SharedMaterial
-	PushedCount   int
-	FailedCount   int
+	Material    domain.SharedMaterial
+	PushedCount int
+	FailedCount int
 }
 
 const sharedReadingTitlePrefix = "[Reading] "

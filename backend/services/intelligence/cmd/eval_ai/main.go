@@ -8,18 +8,18 @@
 //
 // Per-dataset shape:
 //
-//   [{ name, task, input, raw_response, regression: {...} }, ...]
+//	[{ name, task, input, raw_response, regression: {...} }, ...]
 //
 // regression-flags задают per-sample проверки:
-//   * must_cite_axis / must_cite_step / must_cite_interview / must_cite_engagement
+//   - must_cite_axis / must_cite_step / must_cite_interview / must_cite_engagement
 //     — substring-match в raw_response, case-insensitive
-//   * must_not_be_generic — отсутствие generic-фраз в rationale
-//   * must_not_force_commit — нет 'commit' в action_kind когда explore
-//   * must_acknowledge_no_signal — есть «too early» / «not enough» / etc.
-//   * confidence_max / confidence_delta_max — числовые границы
-//   * min_resources / max_resources — для curate output
-//   * all_urls_absolute / all_why_non_empty / all_kinds_valid — curation
-//   * expected_to_fail — sample специально невалидный, fail = pass
+//   - must_not_be_generic — отсутствие generic-фраз в rationale
+//   - must_not_force_commit — нет 'commit' в action_kind когда explore
+//   - must_acknowledge_no_signal — есть «too early» / «not enough» / etc.
+//   - confidence_max / confidence_delta_max — числовые границы
+//   - min_resources / max_resources — для curate output
+//   - all_urls_absolute / all_why_non_empty / all_kinds_valid — curation
+//   - expected_to_fail — sample специально невалидный, fail = pass
 //
 // Не делает LLM-вызовов. CI-friendly. Exit 1 если хоть один fail.
 //
@@ -43,11 +43,11 @@ import (
 )
 
 type sample struct {
-	Name        string                 `json:"name"`
-	Task        string                 `json:"task"`
-	Input       map[string]any         `json:"input"`
-	RawResponse string                 `json:"raw_response"`
-	Regression  map[string]any         `json:"regression"`
+	Name        string         `json:"name"`
+	Task        string         `json:"task"`
+	Input       map[string]any `json:"input"`
+	RawResponse string         `json:"raw_response"`
+	Regression  map[string]any `json:"regression"`
 }
 
 type result struct {
@@ -57,10 +57,10 @@ type result struct {
 }
 
 type report struct {
-	Dataset    string   `json:"dataset"`
-	Total      int      `json:"total"`
-	Passed     int      `json:"passed"`
-	Failures   []string `json:"failures,omitempty"`
+	Dataset  string   `json:"dataset"`
+	Total    int      `json:"total"`
+	Passed   int      `json:"passed"`
+	Failures []string `json:"failures,omitempty"`
 }
 
 var genericPhrases = []string{
@@ -132,9 +132,9 @@ func main() {
 		_ = enc.Encode(reports)
 	} else {
 		for _, rep := range reports {
-			fmt.Printf("== %s ==  %d/%d passed\n", rep.Dataset, rep.Passed, rep.Total)
+			fmt.Printf("== %s ==  %d/%d passed\n", rep.Dataset, rep.Passed, rep.Total) //nolint:forbidigo // CLI tool: writes report to stdout
 			for _, f := range rep.Failures {
-				fmt.Printf("  FAIL %s\n", f)
+				fmt.Printf("  FAIL %s\n", f) //nolint:forbidigo // CLI tool: writes report to stdout
 			}
 		}
 	}

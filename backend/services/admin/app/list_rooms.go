@@ -242,7 +242,10 @@ LIMIT $1
 		}
 		out = append(out, t)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("admin.AdminRoomsReader.TopCreators rows: %w", err)
+	}
+	return out, nil
 }
 
 // BulkArchiveExpired — admin override чтобы archive expired non-archived rows

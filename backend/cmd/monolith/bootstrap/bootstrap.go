@@ -23,14 +23,14 @@ import (
 	authServices "druz9/cmd/monolith/services/auth"
 	circlesServices "druz9/cmd/monolith/services/circles"
 	copilotServices "druz9/cmd/monolith/services/copilot"
-	editorServices "druz9/cmd/monolith/services/editor"
 	curationServices "druz9/cmd/monolith/services/curation"
+	editorServices "druz9/cmd/monolith/services/editor"
 	honeServices "druz9/cmd/monolith/services/hone"
-	roomsServices "druz9/cmd/monolith/services/rooms"
 	intelligenceService "druz9/cmd/monolith/services/intelligence"
 	notifyServices "druz9/cmd/monolith/services/notify"
 	podcastServices "druz9/cmd/monolith/services/podcast"
 	profileServices "druz9/cmd/monolith/services/profile"
+	roomsServices "druz9/cmd/monolith/services/rooms"
 	storageServices "druz9/cmd/monolith/services/storage"
 	subscriptionServices "druz9/cmd/monolith/services/subscription"
 	syncServices "druz9/cmd/monolith/services/sync"
@@ -501,4 +501,3 @@ func buildHoneYjsDeps(d services.Deps) honeServices.YjsPersistenceDeps {
 		Log:     d.Log,
 	}
 }
-

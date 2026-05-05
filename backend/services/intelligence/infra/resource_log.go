@@ -54,10 +54,10 @@ func (r *ResourceLogPostgres) Insert(ctx context.Context, in app.ResourceLogEntr
 		refl, noteID,
 	)
 	var (
-		id, userID pgtype.UUID
+		id, userID                pgtype.UUID
 		url, node, kind, reflText string
-		occ time.Time
-		rNoteID pgtype.UUID
+		occ                       time.Time
+		rNoteID                   pgtype.UUID
 	)
 	if err := row.Scan(&id, &userID, &url, &node, &kind, &occ, &reflText, &rNoteID); err != nil {
 		return app.ResourceLogEntry{}, fmt.Errorf("intelligence.ResourceLogPostgres.Insert: %w", err)

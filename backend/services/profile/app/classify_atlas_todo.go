@@ -3,9 +3,9 @@
 // UC: юзер пишет TODO («изучить транзакции в Postgres»). LLM
 // (TaskAtlasClassify через PathLLMDispatcher-подобный adapter)
 // classifies в одно из:
-//   1. existing curated atlas_node — возвращаем его id, ничего не пишем.
-//   2. new node — генерим snake_case node_key, persist в user_atlas_nodes,
-//      возвращаем enriched view.
+//  1. existing curated atlas_node — возвращаем его id, ничего не пишем.
+//  2. new node — генерим snake_case node_key, persist в user_atlas_nodes,
+//     возвращаем enriched view.
 //
 // LLM-дispatcher изолирован за интерфейсом, чтобы UC оставался unit-
 // testable без живого llmchain. Wiring — в cmd/monolith/services/profile.go.
