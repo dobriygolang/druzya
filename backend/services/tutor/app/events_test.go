@@ -61,11 +61,25 @@ func (f fakeEventRepo) ListByTutor(ctx context.Context, t uuid.UUID, l int) ([]d
 	}
 	return f.listTutor(ctx, t, l)
 }
+func (f fakeEventRepo) ListByTutorPaged(ctx context.Context, t uuid.UUID, l int, _ string) ([]domain.Event, string, error) {
+	if f.listTutor == nil {
+		return nil, "", errors.New("listTutor not set")
+	}
+	rows, err := f.listTutor(ctx, t, l)
+	return rows, "", err
+}
 func (f fakeEventRepo) ListUpcomingForStudent(ctx context.Context, s uuid.UUID, now time.Time, l int) ([]domain.Event, error) {
 	if f.listStudent == nil {
 		return nil, errors.New("listStudent not set")
 	}
 	return f.listStudent(ctx, s, now, l)
+}
+func (f fakeEventRepo) ListUpcomingForStudentPaged(ctx context.Context, s uuid.UUID, now time.Time, l int, _ string) ([]domain.Event, string, error) {
+	if f.listStudent == nil {
+		return nil, "", errors.New("listStudent not set")
+	}
+	rows, err := f.listStudent(ctx, s, now, l)
+	return rows, "", err
 }
 func (f fakeEventRepo) TutorEventStats(_ context.Context, _ uuid.UUID, _ int, _ time.Time) (domain.TutorActivity, error) {
 	return domain.TutorActivity{}, nil
@@ -410,19 +424,19 @@ func TestListEventsForTutor_PassesThrough(t *testing.T) {
 		},
 	}
 	uc := &ListEventsForTutor{Repo: repo}
-	out, err := uc.Do(context.Background(), tutorID, 25)
+	out, err := uc.Do(context.Background(), tutorID, 25, "")
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if len(out) != 2 {
-		t.Errorf("expected 2 events, got %d", len(out))
+	if len(out.Items) != 2 {
+		t.Errorf("expected 2 events, got %d", len(out.Items))
 	}
 }
 
 func TestListEventsForTutor_RejectsZeroID(t *testing.T) {
 	t.Parallel()
 	uc := &ListEventsForTutor{Repo: fakeEventRepo{}}
-	if _, err := uc.Do(context.Background(), uuid.Nil, 10); err == nil {
+	if _, err := uc.Do(context.Background(), uuid.Nil, 10, ""); err == nil {
 		t.Error("expected error for zero tutor id")
 	}
 }
@@ -442,11 +456,11 @@ func TestListUpcomingEventsForStudent_PassesThrough(t *testing.T) {
 		},
 	}
 	uc := &ListUpcomingEventsForStudent{Repo: repo, Now: func() time.Time { return frozen }}
-	out, err := uc.Do(context.Background(), studentID, 5)
+	out, err := uc.Do(context.Background(), studentID, 5, "")
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if len(out) != 1 {
-		t.Errorf("expected 1 event, got %d", len(out))
+	if len(out.Items) != 1 {
+		t.Errorf("expected 1 event, got %d", len(out.Items))
 	}
 }

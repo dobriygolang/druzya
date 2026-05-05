@@ -75,10 +75,15 @@ export function useAdoptAITutorMutation() {
   })
 }
 
-export function useMyAITutorThreadsQuery() {
+/** Default — first page (limit=200, no cursor). The wire endpoint
+ *  supports keyset cursor; UI infinite-scroll deferred to a UX pass. */
+export function useMyAITutorThreadsQuery(limit = 200) {
   return useQuery({
-    queryKey: ['ai-tutor', 'threads'] as const,
-    queryFn: () => api<{ items: AITutorThread[] }>('/ai-tutor/threads'),
+    queryKey: ['ai-tutor', 'threads', limit] as const,
+    queryFn: () =>
+      api<{ items: AITutorThread[]; next_cursor?: string }>(
+        `/ai-tutor/threads?limit=${limit}`,
+      ),
     staleTime: 30_000,
   })
 }

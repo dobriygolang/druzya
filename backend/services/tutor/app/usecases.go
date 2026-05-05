@@ -111,18 +111,21 @@ type ListInvites struct {
 	Repo domain.Repo
 }
 
-func (uc *ListInvites) Do(ctx context.Context, tutorID uuid.UUID, limit int) ([]domain.Invite, error) {
+// ListInvitesOutput — items + opaque next cursor (empty = end).
+type ListInvitesOutput struct {
+	Items      []domain.Invite
+	NextCursor string
+}
+
+func (uc *ListInvites) Do(ctx context.Context, tutorID uuid.UUID, limit int, cursor string) (ListInvitesOutput, error) {
 	if tutorID == uuid.Nil {
-		return nil, fmt.Errorf("tutor.ListInvites: %w", domain.ErrInvalidInput)
+		return ListInvitesOutput{}, fmt.Errorf("tutor.ListInvites: %w", domain.ErrInvalidInput)
 	}
-	if limit <= 0 || limit > 200 {
-		limit = 50 // sensible default for the dashboard widget
-	}
-	out, err := uc.Repo.ListTutorInvites(ctx, tutorID, limit)
+	out, next, err := uc.Repo.ListTutorInvitesPaged(ctx, tutorID, limit, cursor)
 	if err != nil {
-		return nil, fmt.Errorf("tutor.ListInvites: %w", err)
+		return ListInvitesOutput{}, fmt.Errorf("tutor.ListInvites: %w", err)
 	}
-	return out, nil
+	return ListInvitesOutput{Items: out, NextCursor: next}, nil
 }
 
 // ListStudents — tutor's active students.

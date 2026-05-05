@@ -36,19 +36,47 @@ func (p *Postgres) CreateSharedMaterial(ctx context.Context, m domain.SharedMate
 
 // ListSharedMaterialsByTutor implements domain.SharedMaterialRepo.
 func (p *Postgres) ListSharedMaterialsByTutor(ctx context.Context, tutorID uuid.UUID, limit int) ([]domain.SharedMaterial, error) {
-	if limit <= 0 || limit > 100 {
+	rows, _, err := p.listSharedMaterialsByTutorPaged(ctx, tutorID, limit, "")
+	return rows, err
+}
+
+// ListSharedMaterialsByTutorPaged — keyset cursor variant.
+// Sort: created_at DESC, id DESC. cursor "" = first page.
+func (p *Postgres) ListSharedMaterialsByTutorPaged(
+	ctx context.Context, tutorID uuid.UUID, limit int, cursor string,
+) ([]domain.SharedMaterial, string, error) {
+	return p.listSharedMaterialsByTutorPaged(ctx, tutorID, limit, cursor)
+}
+
+func (p *Postgres) listSharedMaterialsByTutorPaged(
+	ctx context.Context, tutorID uuid.UUID, limit int, cursor string,
+) ([]domain.SharedMaterial, string, error) {
+	if limit <= 0 || limit > 200 {
 		limit = 30
 	}
-	rows, err := p.pool.Query(ctx, `
+	c, err := decodeCreatedAtCursor(cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListSharedMaterialsByTutor: %w", err)
+	}
+	args := []any{pgtype.UUID{Bytes: tutorID, Valid: true}}
+	q := `
 		SELECT id, tutor_id, title, source_url, body_md, student_count, created_at
 		FROM tutor_shared_materials
-		WHERE tutor_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2`,
-		pgtype.UUID{Bytes: tutorID, Valid: true}, limit,
-	)
+		WHERE tutor_id = $1`
+	if !c.CreatedAt.IsZero() {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListSharedMaterialsByTutor: cursor id: %w", parseErr)
+		}
+		args = append(args, c.CreatedAt, pgtype.UUID{Bytes: cid, Valid: true})
+		q += fmt.Sprintf(` AND (created_at, id) < ($%d, $%d)`, len(args)-1, len(args))
+	}
+	args = append(args, limit+1)
+	q += fmt.Sprintf(` ORDER BY created_at DESC, id DESC LIMIT $%d`, len(args))
+
+	rows, err := p.pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("tutor.ListSharedMaterialsByTutor: %w", err)
+		return nil, "", fmt.Errorf("tutor.ListSharedMaterialsByTutor: %w", err)
 	}
 	defer rows.Close()
 	out := make([]domain.SharedMaterial, 0, limit)
@@ -61,8 +89,8 @@ func (p *Postgres) ListSharedMaterialsByTutor(ctx context.Context, tutorID uuid.
 			count     int
 			createdAt pgtype.Timestamptz
 		)
-		if err := rows.Scan(&id, &tID, &title, &url, &body, &count, &createdAt); err != nil {
-			return nil, fmt.Errorf("tutor.ListSharedMaterialsByTutor scan: %w", err)
+		if scanErr := rows.Scan(&id, &tID, &title, &url, &body, &count, &createdAt); scanErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListSharedMaterialsByTutor scan: %w", scanErr)
 		}
 		m := domain.SharedMaterial{
 			ID: uuidFrom(id), TutorID: uuidFrom(tID),
@@ -73,5 +101,17 @@ func (p *Postgres) ListSharedMaterialsByTutor(ctx context.Context, tutorID uuid.
 		}
 		out = append(out, m)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, "", err
+	}
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeCreatedAtCursor(createdAtCursor{
+			CreatedAt: last.CreatedAt,
+			ID:        last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
 }

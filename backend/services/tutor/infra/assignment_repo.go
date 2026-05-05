@@ -125,6 +125,120 @@ func (p *Postgres) ListPendingForStudent(ctx context.Context, studentID uuid.UUI
 	return out, nil
 }
 
+// ListByTutorStudentPaged — keyset-cursor variant of ListByTutorStudent.
+// Sort: created_at DESC, id DESC. Empty cursor = first page.
+func (p *Postgres) ListByTutorStudentPaged(
+	ctx context.Context, tutorID, studentID uuid.UUID, limit int, cursor string,
+) ([]domain.Assignment, string, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	c, err := decodeCreatedAtCursor(cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListByTutorStudent: %w", err)
+	}
+	args := []any{pgUUID(tutorID), pgUUID(studentID)}
+	q := `
+		SELECT id, tutor_id, student_id, title, body_md, due_at, created_at, completed_at, archived_at
+		FROM tutor_assignments
+		WHERE tutor_id = $1 AND student_id = $2`
+	if !c.CreatedAt.IsZero() {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListByTutorStudent: cursor id: %w", parseErr)
+		}
+		args = append(args, c.CreatedAt, pgUUID(cid))
+		q += fmt.Sprintf(` AND (created_at, id) < ($%d, $%d)`, len(args)-1, len(args))
+	}
+	args = append(args, limit+1)
+	q += fmt.Sprintf(` ORDER BY created_at DESC, id DESC LIMIT $%d`, len(args))
+
+	rows, err := p.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListByTutorStudent: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Assignment, 0, limit)
+	for rows.Next() {
+		a, scanErr := scanAssignment(rows)
+		if scanErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListByTutorStudent: scan: %w", scanErr)
+		}
+		out = append(out, a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", fmt.Errorf("tutor.ListByTutorStudent: rows: %w", err)
+	}
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeCreatedAtCursor(createdAtCursor{
+			CreatedAt: last.CreatedAt,
+			ID:        last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
+}
+
+// ListPendingForStudentPaged — keyset cursor variant. Sort:
+// created_at DESC, id DESC. The use-case ranking by due_at is
+// kept on the non-paged path; pagination over a NULL-aware sort
+// would require a more elaborate cursor envelope.
+func (p *Postgres) ListPendingForStudentPaged(
+	ctx context.Context, studentID uuid.UUID, limit int, cursor string,
+) ([]domain.Assignment, string, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 25
+	}
+	c, err := decodeCreatedAtCursor(cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListPendingForStudent: %w", err)
+	}
+	args := []any{pgUUID(studentID)}
+	q := `
+		SELECT id, tutor_id, student_id, title, body_md, due_at, created_at, completed_at, archived_at
+		FROM tutor_assignments
+		WHERE student_id = $1 AND archived_at IS NULL AND completed_at IS NULL`
+	if !c.CreatedAt.IsZero() {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListPendingForStudent: cursor id: %w", parseErr)
+		}
+		args = append(args, c.CreatedAt, pgUUID(cid))
+		q += fmt.Sprintf(` AND (created_at, id) < ($%d, $%d)`, len(args)-1, len(args))
+	}
+	args = append(args, limit+1)
+	q += fmt.Sprintf(` ORDER BY created_at DESC, id DESC LIMIT $%d`, len(args))
+
+	rows, err := p.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListPendingForStudent: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Assignment, 0, limit)
+	for rows.Next() {
+		a, scanErr := scanAssignment(rows)
+		if scanErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListPendingForStudent: scan: %w", scanErr)
+		}
+		out = append(out, a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", fmt.Errorf("tutor.ListPendingForStudent: rows: %w", err)
+	}
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeCreatedAtCursor(createdAtCursor{
+			CreatedAt: last.CreatedAt,
+			ID:        last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
+}
+
 // MarkComplete is student-only. The WHERE includes `completed_at IS
 // NULL` so a re-call on an already-completed row is a 0-rows-affected
 // no-op — we surface that as ErrAlreadyCompleted (vs ErrNotFound) so

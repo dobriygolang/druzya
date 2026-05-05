@@ -25,4 +25,7 @@ type SharedMaterial struct {
 type SharedMaterialRepo interface {
 	CreateSharedMaterial(ctx context.Context, m SharedMaterial) (SharedMaterial, error)
 	ListSharedMaterialsByTutor(ctx context.Context, tutorID uuid.UUID, limit int) ([]SharedMaterial, error)
+	// ListSharedMaterialsByTutorPaged — keyset cursor variant.
+	// Sort: created_at DESC, id DESC. cursor "" = first page.
+	ListSharedMaterialsByTutorPaged(ctx context.Context, tutorID uuid.UUID, limit int, cursor string) ([]SharedMaterial, string, error)
 }

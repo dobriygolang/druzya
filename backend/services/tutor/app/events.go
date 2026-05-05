@@ -191,15 +191,21 @@ type ListEventsForTutor struct {
 	Repo domain.EventRepo
 }
 
-func (uc *ListEventsForTutor) Do(ctx context.Context, tutorID uuid.UUID, limit int) ([]domain.Event, error) {
+// ListEventsForTutorOutput — items + opaque next cursor (empty = end).
+type ListEventsForTutorOutput struct {
+	Items      []domain.Event
+	NextCursor string
+}
+
+func (uc *ListEventsForTutor) Do(ctx context.Context, tutorID uuid.UUID, limit int, cursor string) (ListEventsForTutorOutput, error) {
 	if tutorID == uuid.Nil {
-		return nil, fmt.Errorf("tutor.ListEventsForTutor: %w", domain.ErrInvalidInput)
+		return ListEventsForTutorOutput{}, fmt.Errorf("tutor.ListEventsForTutor: %w", domain.ErrInvalidInput)
 	}
-	out, err := uc.Repo.ListByTutor(ctx, tutorID, limit)
+	out, next, err := uc.Repo.ListByTutorPaged(ctx, tutorID, limit, cursor)
 	if err != nil {
-		return nil, fmt.Errorf("tutor.ListEventsForTutor: %w", err)
+		return ListEventsForTutorOutput{}, fmt.Errorf("tutor.ListEventsForTutor: %w", err)
 	}
-	return out, nil
+	return ListEventsForTutorOutput{Items: out, NextCursor: next}, nil
 }
 
 // ── Wave 5.2 group events on circles ─────────────────────────────
@@ -379,13 +385,19 @@ type ListUpcomingEventsForStudent struct {
 	Now  func() time.Time
 }
 
-func (uc *ListUpcomingEventsForStudent) Do(ctx context.Context, studentID uuid.UUID, limit int) ([]domain.Event, error) {
+// ListUpcomingEventsForStudentOutput — items + opaque next cursor.
+type ListUpcomingEventsForStudentOutput struct {
+	Items      []domain.Event
+	NextCursor string
+}
+
+func (uc *ListUpcomingEventsForStudent) Do(ctx context.Context, studentID uuid.UUID, limit int, cursor string) (ListUpcomingEventsForStudentOutput, error) {
 	if studentID == uuid.Nil {
-		return nil, fmt.Errorf("tutor.ListUpcomingEventsForStudent: %w", domain.ErrInvalidInput)
+		return ListUpcomingEventsForStudentOutput{}, fmt.Errorf("tutor.ListUpcomingEventsForStudent: %w", domain.ErrInvalidInput)
 	}
-	out, err := uc.Repo.ListUpcomingForStudent(ctx, studentID, nowOr(uc.Now), limit)
+	out, next, err := uc.Repo.ListUpcomingForStudentPaged(ctx, studentID, nowOr(uc.Now), limit, cursor)
 	if err != nil {
-		return nil, fmt.Errorf("tutor.ListUpcomingEventsForStudent: %w", err)
+		return ListUpcomingEventsForStudentOutput{}, fmt.Errorf("tutor.ListUpcomingEventsForStudent: %w", err)
 	}
-	return out, nil
+	return ListUpcomingEventsForStudentOutput{Items: out, NextCursor: next}, nil
 }

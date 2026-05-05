@@ -612,9 +612,18 @@ export class TutorAcceptInviteRequest extends Message<TutorAcceptInviteRequest> 
  */
 export class TutorListInvitesRequest extends Message<TutorListInvitesRequest> {
   /**
+   * 0 → server default (50), max 200
+   *
    * @generated from field: int32 limit = 1;
    */
   limit = 0;
+
+  /**
+   * opaque keyset cursor (created_at DESC, id DESC)
+   *
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
 
   constructor(data?: PartialMessage<TutorListInvitesRequest>) {
     super();
@@ -625,6 +634,7 @@ export class TutorListInvitesRequest extends Message<TutorListInvitesRequest> {
   static readonly typeName = "druz9.v1.TutorListInvitesRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListInvitesRequest {
@@ -653,6 +663,13 @@ export class TutorListInvitesResponse extends Message<TutorListInvitesResponse> 
    */
   items: TutorInvite[] = [];
 
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
   constructor(data?: PartialMessage<TutorListInvitesResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -662,6 +679,7 @@ export class TutorListInvitesResponse extends Message<TutorListInvitesResponse> 
   static readonly typeName = "druz9.v1.TutorListInvitesResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "items", kind: "message", T: TutorInvite, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListInvitesResponse {
@@ -1796,11 +1814,18 @@ export class TutorListAssignmentsRequest extends Message<TutorListAssignmentsReq
   studentId = "";
 
   /**
-   * 0 → server default (50)
+   * 0 → server default (50), max 200
    *
    * @generated from field: int32 limit = 2;
    */
   limit = 0;
+
+  /**
+   * opaque keyset cursor (created_at DESC, id DESC)
+   *
+   * @generated from field: string cursor = 3;
+   */
+  cursor = "";
 
   constructor(data?: PartialMessage<TutorListAssignmentsRequest>) {
     super();
@@ -1812,6 +1837,7 @@ export class TutorListAssignmentsRequest extends Message<TutorListAssignmentsReq
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "student_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListAssignmentsRequest {
@@ -1836,11 +1862,18 @@ export class TutorListAssignmentsRequest extends Message<TutorListAssignmentsReq
  */
 export class TutorListPendingAssignmentsRequest extends Message<TutorListPendingAssignmentsRequest> {
   /**
-   * 0 → server default (25)
+   * 0 → server default (25), max 200
    *
    * @generated from field: int32 limit = 1;
    */
   limit = 0;
+
+  /**
+   * opaque keyset cursor (created_at DESC, id DESC)
+   *
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
 
   constructor(data?: PartialMessage<TutorListPendingAssignmentsRequest>) {
     super();
@@ -1851,6 +1884,7 @@ export class TutorListPendingAssignmentsRequest extends Message<TutorListPending
   static readonly typeName = "druz9.v1.TutorListPendingAssignmentsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListPendingAssignmentsRequest {
@@ -1879,6 +1913,13 @@ export class TutorListAssignmentsResponse extends Message<TutorListAssignmentsRe
    */
   items: TutorAssignment[] = [];
 
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
   constructor(data?: PartialMessage<TutorListAssignmentsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1888,6 +1929,7 @@ export class TutorListAssignmentsResponse extends Message<TutorListAssignmentsRe
   static readonly typeName = "druz9.v1.TutorListAssignmentsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "items", kind: "message", T: TutorAssignment, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListAssignmentsResponse {
@@ -2317,9 +2359,18 @@ export class TutorPushSharedReadingResponse extends Message<TutorPushSharedReadi
  */
 export class TutorListSharedReadingRequest extends Message<TutorListSharedReadingRequest> {
   /**
+   * default 50, max 200
+   *
    * @generated from field: int32 limit = 1;
    */
   limit = 0;
+
+  /**
+   * opaque keyset cursor (created_at DESC, id DESC)
+   *
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
 
   constructor(data?: PartialMessage<TutorListSharedReadingRequest>) {
     super();
@@ -2330,6 +2381,7 @@ export class TutorListSharedReadingRequest extends Message<TutorListSharedReadin
   static readonly typeName = "druz9.v1.TutorListSharedReadingRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListSharedReadingRequest {
@@ -2358,6 +2410,13 @@ export class TutorListSharedReadingResponse extends Message<TutorListSharedReadi
    */
   items: TutorSharedMaterial[] = [];
 
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
   constructor(data?: PartialMessage<TutorListSharedReadingResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -2367,6 +2426,7 @@ export class TutorListSharedReadingResponse extends Message<TutorListSharedReadi
   static readonly typeName = "druz9.v1.TutorListSharedReadingResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "items", kind: "message", T: TutorSharedMaterial, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListSharedReadingResponse {
@@ -2791,11 +2851,18 @@ export class TutorCompleteEventResponse extends Message<TutorCompleteEventRespon
  */
 export class TutorListEventsRequest extends Message<TutorListEventsRequest> {
   /**
-   * 0 → server default (50)
+   * 0 → server default (50), max 200
    *
    * @generated from field: int32 limit = 1;
    */
   limit = 0;
+
+  /**
+   * opaque keyset cursor (scheduled_at DESC, id DESC)
+   *
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
 
   constructor(data?: PartialMessage<TutorListEventsRequest>) {
     super();
@@ -2806,6 +2873,7 @@ export class TutorListEventsRequest extends Message<TutorListEventsRequest> {
   static readonly typeName = "druz9.v1.TutorListEventsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListEventsRequest {
@@ -2830,11 +2898,18 @@ export class TutorListEventsRequest extends Message<TutorListEventsRequest> {
  */
 export class TutorListUpcomingEventsRequest extends Message<TutorListUpcomingEventsRequest> {
   /**
-   * 0 → server default (25)
+   * 0 → server default (25), max 200
    *
    * @generated from field: int32 limit = 1;
    */
   limit = 0;
+
+  /**
+   * opaque keyset cursor (scheduled_at ASC, id ASC) — upcoming
+   *
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
 
   constructor(data?: PartialMessage<TutorListUpcomingEventsRequest>) {
     super();
@@ -2845,6 +2920,7 @@ export class TutorListUpcomingEventsRequest extends Message<TutorListUpcomingEve
   static readonly typeName = "druz9.v1.TutorListUpcomingEventsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListUpcomingEventsRequest {
@@ -2873,6 +2949,13 @@ export class TutorListEventsResponse extends Message<TutorListEventsResponse> {
    */
   items: TutorEvent[] = [];
 
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
   constructor(data?: PartialMessage<TutorListEventsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -2882,6 +2965,7 @@ export class TutorListEventsResponse extends Message<TutorListEventsResponse> {
   static readonly typeName = "druz9.v1.TutorListEventsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "items", kind: "message", T: TutorEvent, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListEventsResponse {

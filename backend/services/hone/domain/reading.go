@@ -117,6 +117,11 @@ type ReadingRepo interface {
 	// IS NULL), most-recent first. limit caps the result.
 	ListMaterials(ctx context.Context, userID uuid.UUID, limit int) ([]ReadingMaterial, error)
 
+	// ListMaterialsPaged — keyset-paginated variant for the library
+	// view. cursor "" = first page; returns next_cursor to feed back
+	// to the next call. Page key = (created_at DESC, id DESC).
+	ListMaterialsPaged(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]ReadingMaterial, string, error)
+
 	// ArchiveMaterial soft-deletes a material. Returns ErrNotFound
 	// if the row doesn't exist or belongs to another user.
 	ArchiveMaterial(ctx context.Context, userID, materialID uuid.UUID, now time.Time) error

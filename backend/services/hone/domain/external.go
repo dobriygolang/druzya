@@ -47,6 +47,8 @@ type ExternalActivity struct {
 type ExternalActivityRepo interface {
 	Insert(ctx context.Context, a ExternalActivity) (ExternalActivity, error)
 	List(ctx context.Context, userID uuid.UUID, source string, limit int) ([]ExternalActivity, error)
+	// ListPaged — keyset cursor variant. Sort: occurred_at DESC, id DESC.
+	ListPaged(ctx context.Context, userID uuid.UUID, source string, limit int, cursor string) ([]ExternalActivity, string, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 }
 

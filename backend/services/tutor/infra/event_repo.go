@@ -234,6 +234,128 @@ func (p *Postgres) ListUpcomingForStudent(ctx context.Context, studentID uuid.UU
 	return out, nil
 }
 
+// ListByTutorPaged — keyset cursor variant of ListByTutor.
+// Sort: scheduled_at DESC, id DESC. cursor "" = first page.
+func (p *Postgres) ListByTutorPaged(
+	ctx context.Context, tutorID uuid.UUID, limit int, cursor string,
+) ([]domain.Event, string, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	c, err := decodeScheduledAtCursor(cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListByTutor: %w", err)
+	}
+	args := []any{pgUUID(tutorID)}
+	q := `
+		SELECT id, tutor_id, student_id, circle_id, title, body_md,
+		       scheduled_at, duration_min, meet_url, capacity,
+		       status, cancellation_reason, session_note, created_at, updated_at
+		FROM tutor_events
+		WHERE tutor_id = $1`
+	if !c.ScheduledAt.IsZero() {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListByTutor: cursor id: %w", parseErr)
+		}
+		args = append(args, c.ScheduledAt, pgUUID(cid))
+		q += fmt.Sprintf(` AND (scheduled_at, id) < ($%d, $%d)`, len(args)-1, len(args))
+	}
+	args = append(args, limit+1)
+	q += fmt.Sprintf(` ORDER BY scheduled_at DESC, id DESC LIMIT $%d`, len(args))
+
+	rows, err := p.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListByTutor: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Event, 0, limit)
+	for rows.Next() {
+		ev, scanErr := scanEvent(rows)
+		if scanErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListByTutor: scan: %w", scanErr)
+		}
+		out = append(out, ev)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", fmt.Errorf("tutor.ListByTutor: %w", err)
+	}
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeScheduledAtCursor(scheduledAtCursor{
+			ScheduledAt: last.ScheduledAt,
+			ID:          last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
+}
+
+// ListUpcomingForStudentPaged — keyset cursor variant.
+// Walks forward (scheduled_at ASC, id ASC) — so cursor advances older→newer
+// because earliest-scheduled comes first.
+func (p *Postgres) ListUpcomingForStudentPaged(
+	ctx context.Context, studentID uuid.UUID, now time.Time, limit int, cursor string,
+) ([]domain.Event, string, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 25
+	}
+	c, err := decodeScheduledAtCursor(cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListUpcomingForStudent: %w", err)
+	}
+	args := []any{
+		pgUUID(studentID),
+		pgtype.Timestamptz{Time: now, Valid: true},
+	}
+	q := `
+		SELECT id, tutor_id, student_id, circle_id, title, body_md,
+		       scheduled_at, duration_min, meet_url, capacity,
+		       status, cancellation_reason, session_note, created_at, updated_at
+		FROM tutor_events
+		WHERE student_id = $1
+		  AND status = 'scheduled'
+		  AND (scheduled_at + (duration_min || ' minutes')::interval) > $2`
+	if !c.ScheduledAt.IsZero() {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListUpcomingForStudent: cursor id: %w", parseErr)
+		}
+		args = append(args, c.ScheduledAt, pgUUID(cid))
+		q += fmt.Sprintf(` AND (scheduled_at, id) > ($%d, $%d)`, len(args)-1, len(args))
+	}
+	args = append(args, limit+1)
+	q += fmt.Sprintf(` ORDER BY scheduled_at ASC, id ASC LIMIT $%d`, len(args))
+
+	rows, err := p.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListUpcomingForStudent: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Event, 0, limit)
+	for rows.Next() {
+		ev, scanErr := scanEvent(rows)
+		if scanErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListUpcomingForStudent: scan: %w", scanErr)
+		}
+		out = append(out, ev)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", fmt.Errorf("tutor.ListUpcomingForStudent: %w", err)
+	}
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeScheduledAtCursor(scheduledAtCursor{
+			ScheduledAt: last.ScheduledAt,
+			ID:          last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
+}
+
 // TutorEventStats — Wave 9.5 aggregate. Three queries, fail-soft per
 // block (silently zeros if a sub-query errors). Active-student count
 // reuses tutor_students; event aggregates over tutor_events filtered

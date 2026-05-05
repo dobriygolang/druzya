@@ -4160,7 +4160,9 @@ type ListExternalActivityRequest struct {
 	// Empty = no filter. Otherwise filter by source.
 	Source string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
 	// Default 50, max 200.
-	Limit         int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Opaque keyset cursor (occurred_at DESC, id DESC). Empty = first page.
+	Cursor        string `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4209,9 +4211,17 @@ func (x *ListExternalActivityRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListExternalActivityRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type ListExternalActivityResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*ExternalActivity    `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // empty when no more pages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4251,6 +4261,13 @@ func (x *ListExternalActivityResponse) GetItems() []*ExternalActivity {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *ListExternalActivityResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
 type DeleteExternalActivityRequest struct {
@@ -6763,7 +6780,8 @@ func (x *UpdateBookProgressRequest) GetHasBookTotal() bool {
 
 type ListReadingMaterialsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (50)
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // 0 → server default (50), max 200
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (created_at DESC, id DESC)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6805,11 +6823,19 @@ func (x *ListReadingMaterialsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListReadingMaterialsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type ListReadingMaterialsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// body_md omitted from list items by the handler — clients fetch it
 	// via GetReadingMaterial when they actually open a material.
 	Items         []*ReadingMaterial `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	NextCursor    string             `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // empty when no more pages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6849,6 +6875,13 @@ func (x *ListReadingMaterialsResponse) GetItems() []*ReadingMaterial {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *ListReadingMaterialsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
 type GetReadingMaterialRequest struct {
@@ -7606,7 +7639,8 @@ func (x *IngestYouTubeListeningRequest) GetLanguageHint() string {
 
 type ListListeningMaterialsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (50)
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // 0 → server default (50), max 200
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (created_at DESC, id DESC)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7648,9 +7682,17 @@ func (x *ListListeningMaterialsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListListeningMaterialsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type ListListeningMaterialsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*ListeningMaterial   `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // empty when no more pages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7690,6 +7732,13 @@ func (x *ListListeningMaterialsResponse) GetItems() []*ListeningMaterial {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *ListListeningMaterialsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
 type GetListeningMaterialRequest struct {
@@ -8480,12 +8529,15 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x0ftopic_free_text\x18\x03 \x01(\tR\rtopicFreeText\x12!\n" +
 	"\fduration_min\x18\x04 \x01(\x05R\vdurationMin\x12\x14\n" +
 	"\x05notes\x18\x05 \x01(\tR\x05notes\x12&\n" +
-	"\x0foccurred_at_iso\x18\x06 \x01(\tR\roccurredAtIso\"K\n" +
+	"\x0foccurred_at_iso\x18\x06 \x01(\tR\roccurredAtIso\"c\n" +
 	"\x1bListExternalActivityRequest\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\tR\x06source\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"P\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x03 \x01(\tR\x06cursor\"q\n" +
 	"\x1cListExternalActivityResponse\x120\n" +
-	"\x05items\x18\x01 \x03(\v2\x1a.druz9.v1.ExternalActivityR\x05items\"/\n" +
+	"\x05items\x18\x01 \x03(\v2\x1a.druz9.v1.ExternalActivityR\x05items\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"/\n" +
 	"\x1dDeleteExternalActivityRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\" \n" +
 	"\x1eDeleteExternalActivityResponse\"j\n" +
@@ -8680,11 +8732,14 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\fbook_chapter\x18\x02 \x01(\x05R\vbookChapter\x12(\n" +
 	"\x10has_book_chapter\x18\x03 \x01(\bR\x0ehasBookChapter\x12.\n" +
 	"\x13book_total_chapters\x18\x04 \x01(\x05R\x11bookTotalChapters\x12$\n" +
-	"\x0ehas_book_total\x18\x05 \x01(\bR\fhasBookTotal\"3\n" +
+	"\x0ehas_book_total\x18\x05 \x01(\bR\fhasBookTotal\"K\n" +
 	"\x1bListReadingMaterialsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\"O\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"p\n" +
 	"\x1cListReadingMaterialsResponse\x12/\n" +
-	"\x05items\x18\x01 \x03(\v2\x19.druz9.v1.ReadingMaterialR\x05items\"+\n" +
+	"\x05items\x18\x01 \x03(\v2\x19.druz9.v1.ReadingMaterialR\x05items\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"+\n" +
 	"\x19GetReadingMaterialRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"/\n" +
 	"\x1dArchiveReadingMaterialRequest\x12\x0e\n" +
@@ -8737,11 +8792,14 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\rtranscript_md\x18\x03 \x01(\tR\ftranscriptMd\"V\n" +
 	"\x1dIngestYouTubeListeningRequest\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12#\n" +
-	"\rlanguage_hint\x18\x02 \x01(\tR\flanguageHint\"5\n" +
+	"\rlanguage_hint\x18\x02 \x01(\tR\flanguageHint\"M\n" +
 	"\x1dListListeningMaterialsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\"S\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"t\n" +
 	"\x1eListListeningMaterialsResponse\x121\n" +
-	"\x05items\x18\x01 \x03(\v2\x1b.druz9.v1.ListeningMaterialR\x05items\"-\n" +
+	"\x05items\x18\x01 \x03(\v2\x1b.druz9.v1.ListeningMaterialR\x05items\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"-\n" +
 	"\x1bGetListeningMaterialRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"1\n" +
 	"\x1fArchiveListeningMaterialRequest\x12\x0e\n" +

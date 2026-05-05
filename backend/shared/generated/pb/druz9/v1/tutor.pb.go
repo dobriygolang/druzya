@@ -750,7 +750,8 @@ func (x *TutorAcceptInviteRequest) GetCode() string {
 
 type TutorListInvitesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // 0 → server default (50), max 200
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (created_at DESC, id DESC)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -792,9 +793,17 @@ func (x *TutorListInvitesRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *TutorListInvitesRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type TutorListInvitesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*TutorInvite         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // empty when no more pages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -834,6 +843,13 @@ func (x *TutorListInvitesResponse) GetItems() []*TutorInvite {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *TutorListInvitesResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
 type TutorListStudentsRequest struct {
@@ -2152,7 +2168,8 @@ func (x *TutorPushAssignmentRequest) GetDueAt() *timestamppb.Timestamp {
 type TutorListAssignmentsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	StudentId     string                 `protobuf:"bytes,1,opt,name=student_id,json=studentId,proto3" json:"student_id,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (50)
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`  // 0 → server default (50), max 200
+	Cursor        string                 `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (created_at DESC, id DESC)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2201,9 +2218,17 @@ func (x *TutorListAssignmentsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *TutorListAssignmentsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type TutorListPendingAssignmentsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (25)
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // 0 → server default (25), max 200
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (created_at DESC, id DESC)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2245,9 +2270,17 @@ func (x *TutorListPendingAssignmentsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *TutorListPendingAssignmentsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type TutorListAssignmentsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*TutorAssignment     `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // empty when no more pages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2287,6 +2320,13 @@ func (x *TutorListAssignmentsResponse) GetItems() []*TutorAssignment {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *TutorListAssignmentsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
 type TutorCompleteAssignmentRequest struct {
@@ -2779,7 +2819,8 @@ func (x *TutorPushSharedReadingResponse) GetFailedCount() int32 {
 
 type TutorListSharedReadingRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // default 50, max 200
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (created_at DESC, id DESC)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2821,9 +2862,17 @@ func (x *TutorListSharedReadingRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *TutorListSharedReadingRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type TutorListSharedReadingResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*TutorSharedMaterial `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // empty when no more pages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2863,6 +2912,13 @@ func (x *TutorListSharedReadingResponse) GetItems() []*TutorSharedMaterial {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *TutorListSharedReadingResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
 type TutorBroadcastAssignmentResponse struct {
@@ -3347,7 +3403,8 @@ func (*TutorCompleteEventResponse) Descriptor() ([]byte, []int) {
 
 type TutorListEventsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (50)
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // 0 → server default (50), max 200
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (scheduled_at DESC, id DESC)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3389,9 +3446,17 @@ func (x *TutorListEventsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *TutorListEventsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type TutorListUpcomingEventsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (25)
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // 0 → server default (25), max 200
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (scheduled_at ASC, id ASC) — upcoming
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3433,9 +3498,17 @@ func (x *TutorListUpcomingEventsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *TutorListUpcomingEventsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type TutorListEventsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*TutorEvent          `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // empty when no more pages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3475,6 +3548,13 @@ func (x *TutorListEventsResponse) GetItems() []*TutorEvent {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *TutorListEventsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
 // TutorPeekInviteResponse mirrors domain.PeekInviteResult — the invite
@@ -3755,11 +3835,14 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\x16TutorPeekInviteRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\".\n" +
 	"\x18TutorAcceptInviteRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"/\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\"G\n" +
 	"\x17TutorListInvitesRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\"G\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"h\n" +
 	"\x18TutorListInvitesResponse\x12+\n" +
-	"\x05items\x18\x01 \x03(\v2\x15.druz9.v1.TutorInviteR\x05items\"\x1a\n" +
+	"\x05items\x18\x01 \x03(\v2\x15.druz9.v1.TutorInviteR\x05items\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"\x1a\n" +
 	"\x18TutorListStudentsRequest\"N\n" +
 	"\x19TutorListStudentsResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.druz9.v1.TutorRelationshipR\x05items\"\x1a\n" +
@@ -3860,15 +3943,19 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"student_id\x18\x01 \x01(\tR\tstudentId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x17\n" +
 	"\abody_md\x18\x03 \x01(\tR\x06bodyMd\x121\n" +
-	"\x06due_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x05dueAt\"R\n" +
+	"\x06due_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x05dueAt\"j\n" +
 	"\x1bTutorListAssignmentsRequest\x12\x1d\n" +
 	"\n" +
 	"student_id\x18\x01 \x01(\tR\tstudentId\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\":\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x03 \x01(\tR\x06cursor\"R\n" +
 	"\"TutorListPendingAssignmentsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\"O\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"p\n" +
 	"\x1cTutorListAssignmentsResponse\x12/\n" +
-	"\x05items\x18\x01 \x03(\v2\x19.druz9.v1.TutorAssignmentR\x05items\"E\n" +
+	"\x05items\x18\x01 \x03(\v2\x19.druz9.v1.TutorAssignmentR\x05items\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"E\n" +
 	"\x1eTutorCompleteAssignmentRequest\x12#\n" +
 	"\rassignment_id\x18\x01 \x01(\tR\fassignmentId\"!\n" +
 	"\x1fTutorCompleteAssignmentResponse\"D\n" +
@@ -3901,11 +3988,14 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\x1eTutorPushSharedReadingResponse\x129\n" +
 	"\bmaterial\x18\x01 \x01(\v2\x1d.druz9.v1.TutorSharedMaterialR\bmaterial\x12!\n" +
 	"\fpushed_count\x18\x02 \x01(\x05R\vpushedCount\x12!\n" +
-	"\ffailed_count\x18\x03 \x01(\x05R\vfailedCount\"5\n" +
+	"\ffailed_count\x18\x03 \x01(\x05R\vfailedCount\"M\n" +
 	"\x1dTutorListSharedReadingRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\"U\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"v\n" +
 	"\x1eTutorListSharedReadingResponse\x123\n" +
-	"\x05items\x18\x01 \x03(\v2\x1d.druz9.v1.TutorSharedMaterialR\x05items\"\x8e\x01\n" +
+	"\x05items\x18\x01 \x03(\v2\x1d.druz9.v1.TutorSharedMaterialR\x05items\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"\x8e\x01\n" +
 	" TutorBroadcastAssignmentResponse\x121\n" +
 	"\x06pushed\x18\x01 \x03(\v2\x19.druz9.v1.TutorAssignmentR\x06pushed\x127\n" +
 	"\x06failed\x18\x02 \x03(\v2\x1f.druz9.v1.TutorBroadcastFailureR\x06failed\"\x9d\x04\n" +
@@ -3945,13 +4035,17 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\x19TutorCompleteEventRequest\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12!\n" +
 	"\fsession_note\x18\x02 \x01(\tR\vsessionNote\"\x1c\n" +
-	"\x1aTutorCompleteEventResponse\".\n" +
+	"\x1aTutorCompleteEventResponse\"F\n" +
 	"\x16TutorListEventsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\"6\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"N\n" +
 	"\x1eTutorListUpcomingEventsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\"E\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"f\n" +
 	"\x17TutorListEventsResponse\x12*\n" +
-	"\x05items\x18\x01 \x03(\v2\x14.druz9.v1.TutorEventR\x05items\"m\n" +
+	"\x05items\x18\x01 \x03(\v2\x14.druz9.v1.TutorEventR\x05items\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"m\n" +
 	"\x17TutorPeekInviteResponse\x12-\n" +
 	"\x06invite\x18\x01 \x01(\v2\x15.druz9.v1.TutorInviteR\x06invite\x12#\n" +
 	"\rtutor_display\x18\x02 \x01(\tR\ftutorDisplay\"<\n" +

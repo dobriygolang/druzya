@@ -109,34 +109,85 @@ func (p *ReadingRepoPG) GetMaterial(ctx context.Context, userID, materialID uuid
 }
 
 func (p *ReadingRepoPG) ListMaterials(ctx context.Context, userID uuid.UUID, limit int) ([]domain.ReadingMaterial, error) {
+	rows, _, err := p.listMaterialsPaged(ctx, userID, limit, "")
+	return rows, err
+}
+
+// ListMaterialsPaged — keyset-cursor variant. Order: created_at DESC, id DESC.
+// next_cursor empty when no more pages. Decode error → typed error,
+// not a silent empty page.
+func (p *ReadingRepoPG) ListMaterialsPaged(
+	ctx context.Context,
+	userID uuid.UUID,
+	limit int,
+	cursor string,
+) ([]domain.ReadingMaterial, string, error) {
+	return p.listMaterialsPaged(ctx, userID, limit, cursor)
+}
+
+func (p *ReadingRepoPG) listMaterialsPaged(
+	ctx context.Context,
+	userID uuid.UUID,
+	limit int,
+	cursor string,
+) ([]domain.ReadingMaterial, string, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	const q = `
+	c, err := decodeCreatedAtCursor(cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("hone.ListMaterials: %w", err)
+	}
+	// peek limit+1 → the extra row signals «next page exists».
+	peek := int32(limit) + 1
+	const baseSelect = `
 		SELECT id, user_id, source_kind, source_url, title, body_md, total_chars,
 		       book_chapter, book_total_chapters,
 		       archived_at, created_at, updated_at
 		FROM hone_reading_materials
-		WHERE user_id = $1 AND archived_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT $2`
-	rows, err := p.pool.Query(ctx, q, sharedpg.UUID(userID), limit)
+		WHERE user_id = $1 AND archived_at IS NULL`
+	var rows pgx.Rows
+	if c.CreatedAt.IsZero() {
+		rows, err = p.pool.Query(ctx, baseSelect+`
+		  ORDER BY created_at DESC, id DESC
+		  LIMIT $2`,
+			sharedpg.UUID(userID), peek)
+	} else {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("hone.ListMaterials: cursor id: %w", parseErr)
+		}
+		rows, err = p.pool.Query(ctx, baseSelect+`
+		    AND (created_at, id) < ($2, $3)
+		  ORDER BY created_at DESC, id DESC
+		  LIMIT $4`,
+			sharedpg.UUID(userID), c.CreatedAt, sharedpg.UUID(cid), peek)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("hone.ListMaterials: %w", err)
+		return nil, "", fmt.Errorf("hone.ListMaterials: %w", err)
 	}
 	defer rows.Close()
 	out := make([]domain.ReadingMaterial, 0, 16)
 	for rows.Next() {
-		m, err := scanReadingMaterial(rows)
-		if err != nil {
-			return nil, fmt.Errorf("hone.ListMaterials: scan: %w", err)
+		m, scanErr := scanReadingMaterial(rows)
+		if scanErr != nil {
+			return nil, "", fmt.Errorf("hone.ListMaterials: scan: %w", scanErr)
 		}
 		out = append(out, m)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("hone.ListMaterials: iterate: %w", err)
+		return nil, "", fmt.Errorf("hone.ListMaterials: iterate: %w", err)
 	}
-	return out, nil
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeCreatedAtCursor(createdAtCursor{
+			CreatedAt: last.CreatedAt,
+			ID:        last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
 }
 
 func (p *ReadingRepoPG) UpdateBookProgress(

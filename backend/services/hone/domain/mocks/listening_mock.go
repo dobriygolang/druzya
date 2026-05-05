@@ -102,6 +102,22 @@ func (mr *MockListeningRepoMockRecorder) ListMaterials(ctx, userID, limit any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMaterials", reflect.TypeOf((*MockListeningRepo)(nil).ListMaterials), ctx, userID, limit)
 }
 
+// ListMaterialsPaged mocks base method.
+func (m *MockListeningRepo) ListMaterialsPaged(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.ListeningMaterial, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMaterialsPaged", ctx, userID, limit, cursor)
+	ret0, _ := ret[0].([]domain.ListeningMaterial)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListMaterialsPaged indicates an expected call of ListMaterialsPaged.
+func (mr *MockListeningRepoMockRecorder) ListMaterialsPaged(ctx, userID, limit, cursor any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMaterialsPaged", reflect.TypeOf((*MockListeningRepo)(nil).ListMaterialsPaged), ctx, userID, limit, cursor)
+}
+
 // MockYouTubeFetcher is a mock of YouTubeFetcher interface.
 type MockYouTubeFetcher struct {
 	ctrl     *gomock.Controller

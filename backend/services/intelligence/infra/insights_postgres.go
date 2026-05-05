@@ -102,11 +102,38 @@ func (r *InsightsPostgres) ListLiveBySurface(
 	surface domain.InsightSurface,
 	limit int,
 ) ([]domain.Insight, error) {
+	rows, _, err := r.listLivePaged(ctx, userID, surface, 0, limit, false)
+	return rows, err
+}
+
+// ListLiveBySurfacePaged — offset+limit variant. Returns rows + total live
+// count for (user, surface). Severity-then-recency ordering preserved.
+func (r *InsightsPostgres) ListLiveBySurfacePaged(
+	ctx context.Context,
+	userID uuid.UUID,
+	surface domain.InsightSurface,
+	offset, limit int,
+) ([]domain.Insight, int, error) {
+	return r.listLivePaged(ctx, userID, surface, offset, limit, true)
+}
+
+// listLivePaged — shared core. withTotal=true triggers COUNT(*) over
+// the same predicate and returns it as the second result.
+func (r *InsightsPostgres) listLivePaged(
+	ctx context.Context,
+	userID uuid.UUID,
+	surface domain.InsightSurface,
+	offset, limit int,
+	withTotal bool,
+) ([]domain.Insight, int, error) {
 	if !surface.IsValid() {
-		return nil, fmt.Errorf("intelligence.ListLiveBySurface: invalid surface %q", surface)
+		return nil, 0, fmt.Errorf("intelligence.ListLiveBySurfacePaged: invalid surface %q", surface)
 	}
 	if limit <= 0 || limit > 50 {
 		limit = 10
+	}
+	if offset < 0 {
+		offset = 0
 	}
 	rows, err := r.pool.Query(ctx, `
         SELECT `+insightCols+`
@@ -123,25 +150,40 @@ func (r *InsightsPostgres) ListLiveBySurface(
                 ELSE 3
             END,
             generated_at DESC
-         LIMIT $3`,
-		sharedpg.UUID(userID), string(surface), limit,
+         OFFSET $3
+         LIMIT $4`,
+		sharedpg.UUID(userID), string(surface), offset, limit,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("intelligence.InsightsPostgres.ListLiveBySurface: %w", err)
+		return nil, 0, fmt.Errorf("intelligence.InsightsPostgres.ListLiveBySurfacePaged: %w", err)
 	}
 	defer rows.Close()
 	out := make([]domain.Insight, 0, 8)
 	for rows.Next() {
 		ins, err := scanInsight(rows)
 		if err != nil {
-			return nil, fmt.Errorf("intelligence.InsightsPostgres.ListLiveBySurface: scan: %w", err)
+			return nil, 0, fmt.Errorf("intelligence.InsightsPostgres.ListLiveBySurfacePaged: scan: %w", err)
 		}
 		out = append(out, ins)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("intelligence.InsightsPostgres.ListLiveBySurface: rows: %w", err)
+		return nil, 0, fmt.Errorf("intelligence.InsightsPostgres.ListLiveBySurfacePaged: rows: %w", err)
 	}
-	return out, nil
+	total := 0
+	if withTotal {
+		if err := r.pool.QueryRow(ctx, `
+        SELECT COUNT(*)
+          FROM intelligence_insights
+         WHERE user_id = $1
+           AND surface = $2
+           AND dismissed_at IS NULL
+           AND expires_at > now()`,
+			sharedpg.UUID(userID), string(surface),
+		).Scan(&total); err != nil {
+			return nil, 0, fmt.Errorf("intelligence.InsightsPostgres.ListLiveBySurfacePaged: count: %w", err)
+		}
+	}
+	return out, total, nil
 }
 
 // MarkDismissed — idempotent. Updates only when the row exists and

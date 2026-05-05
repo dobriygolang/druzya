@@ -890,8 +890,11 @@ func (x *Insight) GetExpiresAt() *timestamppb.Timestamp {
 type ListInsightsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// surface MUST be one of the closed set; empty defaults to 'today'.
-	Surface       string `protobuf:"bytes,1,opt,name=surface,proto3" json:"surface,omitempty"`
-	Limit         int32  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (10)
+	Surface string `protobuf:"bytes,1,opt,name=surface,proto3" json:"surface,omitempty"`
+	Limit   int32  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (10), max 50
+	// offset — для severity-ranked feed это лучше cursor'а, поскольку
+	// severity-CASE-сорт не имеет монотонного якоря. По умолчанию 0.
+	Offset        int32 `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -940,9 +943,20 @@ func (x *ListInsightsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListInsightsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type ListInsightsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*Insight             `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Items []*Insight             `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// total — full row count (after surface/dismissed/expired filter), для
+	// UI «Page X of Y». Дешёво, потому что counter использует тот же
+	// primary index, что и основной SELECT.
+	Total         int32 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -982,6 +996,13 @@ func (x *ListInsightsResponse) GetItems() []*Insight {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *ListInsightsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 // AckInsightRequest — user feedback. action 'follow' marks acted_at,
@@ -2271,12 +2292,14 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\btrack_id\x18\r \x01(\tR\atrackId\x12=\n" +
 	"\fgenerated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\x129\n" +
 	"\n" +
-	"expires_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"E\n" +
+	"expires_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"]\n" +
 	"\x13ListInsightsRequest\x12\x18\n" +
 	"\asurface\x18\x01 \x01(\tR\asurface\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"?\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"U\n" +
 	"\x14ListInsightsResponse\x12'\n" +
-	"\x05items\x18\x01 \x03(\v2\x11.druz9.v1.InsightR\x05items\";\n" +
+	"\x05items\x18\x01 \x03(\v2\x11.druz9.v1.InsightR\x05items\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\";\n" +
 	"\x11AckInsightRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\"$\n" +

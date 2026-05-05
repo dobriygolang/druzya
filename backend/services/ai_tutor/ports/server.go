@@ -75,17 +75,20 @@ func (s *Server) Adopt(
 
 func (s *Server) ListMyThreads(
 	ctx context.Context,
-	_ *connect.Request[pb.ListMyAITutorThreadsRequest],
+	req *connect.Request[pb.ListMyAITutorThreadsRequest],
 ) (*connect.Response[pb.ListMyAITutorThreadsResponse], error) {
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	rows, err := s.Threads.ListThreadsByStudent(ctx, uid)
+	rows, nextCursor, err := s.Threads.ListThreadsByStudentPaged(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor())
 	if err != nil {
 		return nil, fmt.Errorf("ai_tutor.ListMyThreads: %w", s.toConnectErr(err))
 	}
-	out := &pb.ListMyAITutorThreadsResponse{Items: make([]*pb.AITutorThread, 0, len(rows))}
+	out := &pb.ListMyAITutorThreadsResponse{
+		Items:      make([]*pb.AITutorThread, 0, len(rows)),
+		NextCursor: nextCursor,
+	}
 	for _, t := range rows {
 		out.Items = append(out.Items, toThreadProto(t))
 	}

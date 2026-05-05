@@ -1304,12 +1304,13 @@ func (s *HoneServer) ListReadingMaterials(
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.H.ListReadingMaterials.Do(ctx, uid, int(req.Msg.Limit))
+	items, nextCursor, err := s.H.ListReadingMaterials.Do(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor())
 	if err != nil {
 		return nil, fmt.Errorf("hone.ListReadingMaterials: %w", s.toConnectErr(err))
 	}
 	out := &pb.ListReadingMaterialsResponse{
-		Items: make([]*pb.ReadingMaterial, 0, len(items)),
+		Items:      make([]*pb.ReadingMaterial, 0, len(items)),
+		NextCursor: nextCursor,
 	}
 	for _, m := range items {
 		// list path strips body_md to save bandwidth — clients
@@ -1595,11 +1596,14 @@ func (s *HoneServer) ListListeningMaterials(
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.H.ListListeningMaterials.Do(ctx, uid, int(req.Msg.Limit))
+	items, nextCursor, err := s.H.ListListeningMaterials.Do(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor())
 	if err != nil {
 		return nil, fmt.Errorf("hone.ListListeningMaterials: %w", s.toConnectErr(err))
 	}
-	resp := &pb.ListListeningMaterialsResponse{Items: make([]*pb.ListeningMaterial, 0, len(items))}
+	resp := &pb.ListListeningMaterialsResponse{
+		Items:      make([]*pb.ListeningMaterial, 0, len(items)),
+		NextCursor: nextCursor,
+	}
 	for _, m := range items {
 		resp.Items = append(resp.Items, toListeningMaterialProto(m, false))
 	}

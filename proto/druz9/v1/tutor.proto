@@ -89,8 +89,14 @@ message TutorPendingInvite {
 message TutorRevokeInviteRequest  { string invite_id = 1; }
 message TutorPeekInviteRequest    { string code = 1; }
 message TutorAcceptInviteRequest  { string code = 1; }
-message TutorListInvitesRequest   { int32  limit = 1; } // 0 → server default (50)
-message TutorListInvitesResponse  { repeated TutorInvite items = 1; }
+message TutorListInvitesRequest   {
+  int32  limit  = 1; // 0 → server default (50), max 200
+  string cursor = 2; // opaque keyset cursor (created_at DESC, id DESC)
+}
+message TutorListInvitesResponse  {
+  repeated TutorInvite items = 1;
+  string next_cursor = 2; // empty when no more pages
+}
 message TutorListStudentsRequest  {}
 message TutorListStudentsResponse { repeated TutorRelationship items = 1; }
 message TutorListMyTutorsRequest  {}
@@ -228,15 +234,18 @@ message TutorPushAssignmentRequest {
 
 message TutorListAssignmentsRequest {
   string student_id = 1;
-  int32  limit      = 2; // 0 → server default (50)
+  int32  limit      = 2; // 0 → server default (50), max 200
+  string cursor     = 3; // opaque keyset cursor (created_at DESC, id DESC)
 }
 
 message TutorListPendingAssignmentsRequest {
-  int32 limit = 1; // 0 → server default (25)
+  int32 limit   = 1; // 0 → server default (25), max 200
+  string cursor = 2; // opaque keyset cursor (created_at DESC, id DESC)
 }
 
 message TutorListAssignmentsResponse {
   repeated TutorAssignment items = 1;
+  string next_cursor = 2; // empty when no more pages
 }
 
 message TutorCompleteAssignmentRequest  { string assignment_id = 1; }
@@ -283,11 +292,13 @@ message TutorPushSharedReadingResponse {
 }
 
 message TutorListSharedReadingRequest {
-  int32 limit = 1;
+  int32 limit   = 1; // default 50, max 200
+  string cursor = 2; // opaque keyset cursor (created_at DESC, id DESC)
 }
 
 message TutorListSharedReadingResponse {
   repeated TutorSharedMaterial items = 1;
+  string next_cursor = 2; // empty when no more pages
 }
 
 message TutorBroadcastAssignmentResponse {
@@ -351,15 +362,18 @@ message TutorCompleteEventRequest {
 message TutorCompleteEventResponse {}
 
 message TutorListEventsRequest {
-  int32 limit = 1; // 0 → server default (50)
+  int32 limit   = 1; // 0 → server default (50), max 200
+  string cursor = 2; // opaque keyset cursor (scheduled_at DESC, id DESC)
 }
 
 message TutorListUpcomingEventsRequest {
-  int32 limit = 1; // 0 → server default (25)
+  int32 limit   = 1; // 0 → server default (25), max 200
+  string cursor = 2; // opaque keyset cursor (scheduled_at ASC, id ASC) — upcoming
 }
 
 message TutorListEventsResponse {
   repeated TutorEvent items = 1;
+  string next_cursor = 2; // empty when no more pages
 }
 
 // TutorPeekInviteResponse mirrors domain.PeekInviteResult — the invite

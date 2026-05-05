@@ -3499,6 +3499,13 @@ export class ListExternalActivityRequest extends Message<ListExternalActivityReq
    */
   limit = 0;
 
+  /**
+   * Opaque keyset cursor (occurred_at DESC, id DESC). Empty = first page.
+   *
+   * @generated from field: string cursor = 3;
+   */
+  cursor = "";
+
   constructor(data?: PartialMessage<ListExternalActivityRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -3509,6 +3516,7 @@ export class ListExternalActivityRequest extends Message<ListExternalActivityReq
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "source", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListExternalActivityRequest {
@@ -3537,6 +3545,13 @@ export class ListExternalActivityResponse extends Message<ListExternalActivityRe
    */
   items: ExternalActivity[] = [];
 
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
   constructor(data?: PartialMessage<ListExternalActivityResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -3546,6 +3561,7 @@ export class ListExternalActivityResponse extends Message<ListExternalActivityRe
   static readonly typeName = "druz9.v1.ListExternalActivityResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "items", kind: "message", T: ExternalActivity, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListExternalActivityResponse {
@@ -5670,11 +5686,18 @@ export class UpdateBookProgressRequest extends Message<UpdateBookProgressRequest
  */
 export class ListReadingMaterialsRequest extends Message<ListReadingMaterialsRequest> {
   /**
-   * 0 → server default (50)
+   * 0 → server default (50), max 200
    *
    * @generated from field: int32 limit = 1;
    */
   limit = 0;
+
+  /**
+   * opaque keyset cursor (created_at DESC, id DESC)
+   *
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
 
   constructor(data?: PartialMessage<ListReadingMaterialsRequest>) {
     super();
@@ -5685,6 +5708,7 @@ export class ListReadingMaterialsRequest extends Message<ListReadingMaterialsReq
   static readonly typeName = "druz9.v1.ListReadingMaterialsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListReadingMaterialsRequest {
@@ -5716,6 +5740,13 @@ export class ListReadingMaterialsResponse extends Message<ListReadingMaterialsRe
    */
   items: ReadingMaterial[] = [];
 
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
   constructor(data?: PartialMessage<ListReadingMaterialsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -5725,6 +5756,7 @@ export class ListReadingMaterialsResponse extends Message<ListReadingMaterialsRe
   static readonly typeName = "druz9.v1.ListReadingMaterialsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "items", kind: "message", T: ReadingMaterial, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListReadingMaterialsResponse {
@@ -6381,11 +6413,18 @@ export class IngestYouTubeListeningRequest extends Message<IngestYouTubeListenin
  */
 export class ListListeningMaterialsRequest extends Message<ListListeningMaterialsRequest> {
   /**
-   * 0 → server default (50)
+   * 0 → server default (50), max 200
    *
    * @generated from field: int32 limit = 1;
    */
   limit = 0;
+
+  /**
+   * opaque keyset cursor (created_at DESC, id DESC)
+   *
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
 
   constructor(data?: PartialMessage<ListListeningMaterialsRequest>) {
     super();
@@ -6396,6 +6435,7 @@ export class ListListeningMaterialsRequest extends Message<ListListeningMaterial
   static readonly typeName = "druz9.v1.ListListeningMaterialsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListListeningMaterialsRequest {
@@ -6424,6 +6464,13 @@ export class ListListeningMaterialsResponse extends Message<ListListeningMateria
    */
   items: ListeningMaterial[] = [];
 
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
   constructor(data?: PartialMessage<ListListeningMaterialsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -6433,6 +6480,7 @@ export class ListListeningMaterialsResponse extends Message<ListListeningMateria
   static readonly typeName = "druz9.v1.ListListeningMaterialsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "items", kind: "message", T: ListeningMaterial, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListListeningMaterialsResponse {

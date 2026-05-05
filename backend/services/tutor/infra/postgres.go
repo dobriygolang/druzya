@@ -141,6 +141,63 @@ func (p *Postgres) ListTutorInvites(ctx context.Context, tutorID uuid.UUID, limi
 	return out, nil
 }
 
+// ListTutorInvitesPaged — keyset cursor variant.
+// Sort: created_at DESC, id DESC. limit clamped 1..200, default 50.
+func (p *Postgres) ListTutorInvitesPaged(
+	ctx context.Context, tutorID uuid.UUID, limit int, cursor string,
+) ([]domain.Invite, string, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	c, err := decodeCreatedAtCursor(cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListTutorInvites: %w", err)
+	}
+	args := []any{pgUUID(tutorID)}
+	q := `
+		SELECT id, tutor_id, code, note, created_at, expires_at,
+		       accepted_by, accepted_at, revoked_at, target_user_id
+		FROM tutor_invites
+		WHERE tutor_id = $1`
+	if !c.CreatedAt.IsZero() {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListTutorInvites: cursor id: %w", parseErr)
+		}
+		args = append(args, c.CreatedAt, pgUUID(cid))
+		q += fmt.Sprintf(` AND (created_at, id) < ($%d, $%d)`, len(args)-1, len(args))
+	}
+	args = append(args, limit+1)
+	q += fmt.Sprintf(` ORDER BY created_at DESC, id DESC LIMIT $%d`, len(args))
+
+	rows, err := p.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListTutorInvites: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Invite, 0, limit)
+	for rows.Next() {
+		inv, scanErr := scanInvite(rows)
+		if scanErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListTutorInvites: scan: %w", scanErr)
+		}
+		out = append(out, inv)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", fmt.Errorf("tutor.ListTutorInvites: iterate: %w", err)
+	}
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeCreatedAtCursor(createdAtCursor{
+			CreatedAt: last.CreatedAt,
+			ID:        last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
+}
+
 // RevokeInvite stamps revoked_at on an active invite owned by tutorID.
 // Returns the appropriate sentinel for terminal states so the handler
 // can render the correct message instead of a generic 5xx.

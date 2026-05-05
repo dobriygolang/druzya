@@ -50,11 +50,25 @@ func (f fakeAssignmentRepo) ListByTutorStudent(ctx context.Context, t, s uuid.UU
 	}
 	return f.listByPair(ctx, t, s, l)
 }
+func (f fakeAssignmentRepo) ListByTutorStudentPaged(ctx context.Context, t, s uuid.UUID, l int, _ string) ([]domain.Assignment, string, error) {
+	if f.listByPair == nil {
+		return nil, "", errors.New("listByPair not set")
+	}
+	rows, err := f.listByPair(ctx, t, s, l)
+	return rows, "", err
+}
 func (f fakeAssignmentRepo) ListPendingForStudent(ctx context.Context, s uuid.UUID, l int) ([]domain.Assignment, error) {
 	if f.listPending == nil {
 		return nil, errors.New("listPending not set")
 	}
 	return f.listPending(ctx, s, l)
+}
+func (f fakeAssignmentRepo) ListPendingForStudentPaged(ctx context.Context, s uuid.UUID, l int, _ string) ([]domain.Assignment, string, error) {
+	if f.listPending == nil {
+		return nil, "", errors.New("listPending not set")
+	}
+	rows, err := f.listPending(ctx, s, l)
+	return rows, "", err
 }
 func (f fakeAssignmentRepo) MarkComplete(ctx context.Context, s, a uuid.UUID, now time.Time) error {
 	if f.markComplete == nil {
@@ -223,6 +237,9 @@ func (f fakeStudentsRepo) GetInviteByCode(_ context.Context, _ string) (domain.I
 func (f fakeStudentsRepo) ListTutorInvites(_ context.Context, _ uuid.UUID, _ int) ([]domain.Invite, error) {
 	return nil, errors.New("not implemented")
 }
+func (f fakeStudentsRepo) ListTutorInvitesPaged(_ context.Context, _ uuid.UUID, _ int, _ string) ([]domain.Invite, string, error) {
+	return nil, "", errors.New("not implemented")
+}
 func (f fakeStudentsRepo) RevokeInvite(_ context.Context, _, _ uuid.UUID, _ time.Time) error {
 	return errors.New("not implemented")
 }
@@ -381,8 +398,8 @@ func TestListAssignmentsForTutor_GatesViaEnsureFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if len(out) != 1 {
-		t.Errorf("expected 1 item, got %d", len(out))
+	if len(out.Items) != 1 {
+		t.Errorf("expected 1 item, got %d", len(out.Items))
 	}
 	if len(calls) != 2 || calls[0] != "ensure" || calls[1] != "list" {
 		t.Errorf("ensure must be called BEFORE list; got %v", calls)

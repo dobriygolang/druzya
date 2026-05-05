@@ -146,11 +146,18 @@ message Insight {
 message ListInsightsRequest {
   // surface MUST be one of the closed set; empty defaults to 'today'.
   string surface = 1;
-  int32  limit   = 2;  // 0 → server default (10)
+  int32  limit   = 2;  // 0 → server default (10), max 50
+  // offset — для severity-ranked feed это лучше cursor'а, поскольку
+  // severity-CASE-сорт не имеет монотонного якоря. По умолчанию 0.
+  int32  offset  = 3;
 }
 
 message ListInsightsResponse {
   repeated Insight items = 1;
+  // total — full row count (after surface/dismissed/expired filter), для
+  // UI «Page X of Y». Дешёво, потому что counter использует тот же
+  // primary index, что и основной SELECT.
+  int32 total = 2;
 }
 
 // AckInsightRequest — user feedback. action 'follow' marks acted_at,

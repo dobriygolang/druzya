@@ -414,6 +414,20 @@ export class ListAITutorPersonasResponse extends Message<ListAITutorPersonasResp
  * @generated from message druz9.v1.ListMyAITutorThreadsRequest
  */
 export class ListMyAITutorThreadsRequest extends Message<ListMyAITutorThreadsRequest> {
+  /**
+   * default 50, max 200
+   *
+   * @generated from field: int32 limit = 1;
+   */
+  limit = 0;
+
+  /**
+   * opaque keyset cursor (last_msg_at DESC, id DESC)
+   *
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
+
   constructor(data?: PartialMessage<ListMyAITutorThreadsRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -422,6 +436,8 @@ export class ListMyAITutorThreadsRequest extends Message<ListMyAITutorThreadsReq
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.ListMyAITutorThreadsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMyAITutorThreadsRequest {
@@ -450,6 +466,13 @@ export class ListMyAITutorThreadsResponse extends Message<ListMyAITutorThreadsRe
    */
   items: AITutorThread[] = [];
 
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
   constructor(data?: PartialMessage<ListMyAITutorThreadsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -459,6 +482,7 @@ export class ListMyAITutorThreadsResponse extends Message<ListMyAITutorThreadsRe
   static readonly typeName = "druz9.v1.ListMyAITutorThreadsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "items", kind: "message", T: AITutorThread, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMyAITutorThreadsResponse {

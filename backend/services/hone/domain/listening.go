@@ -46,6 +46,11 @@ type ListeningRepo interface {
 	// IS NULL), most-recent first. limit caps the result.
 	ListMaterials(ctx context.Context, userID uuid.UUID, limit int) ([]ListeningMaterial, error)
 
+	// ListMaterialsPaged — keyset cursor variant; returns the same rows
+	// plus a next_cursor token (empty when no more pages). Sort key is
+	// (created_at DESC, id DESC).
+	ListMaterialsPaged(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]ListeningMaterial, string, error)
+
 	// ArchiveMaterial soft-deletes a material. Returns ErrNotFound if
 	// the row doesn't exist or belongs to another user.
 	ArchiveMaterial(ctx context.Context, userID, materialID uuid.UUID, now time.Time) error

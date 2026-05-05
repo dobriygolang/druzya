@@ -93,14 +93,21 @@ type ListExternalActivityInput struct {
 	UserID uuid.UUID
 	Source string
 	Limit  int
+	Cursor string
 }
 
-func (uc *ListExternalActivity) Do(ctx context.Context, in ListExternalActivityInput) ([]domain.ExternalActivity, error) {
-	items, err := uc.Repo.List(ctx, in.UserID, in.Source, in.Limit)
+// ListExternalActivityOutput — items + opaque next cursor (empty = end).
+type ListExternalActivityOutput struct {
+	Items      []domain.ExternalActivity
+	NextCursor string
+}
+
+func (uc *ListExternalActivity) Do(ctx context.Context, in ListExternalActivityInput) (ListExternalActivityOutput, error) {
+	items, next, err := uc.Repo.ListPaged(ctx, in.UserID, in.Source, in.Limit, in.Cursor)
 	if err != nil {
-		return nil, fmt.Errorf("hone.ListExternalActivity: %w", err)
+		return ListExternalActivityOutput{}, fmt.Errorf("hone.ListExternalActivity: %w", err)
 	}
-	return items, nil
+	return ListExternalActivityOutput{Items: items, NextCursor: next}, nil
 }
 
 // DeleteExternalActivity — удаление одной записи (например, опечатка).

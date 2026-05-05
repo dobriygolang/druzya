@@ -216,16 +216,20 @@ func (s *IntelligenceServer) ListInsights(
 	if !surface.IsValid() {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid surface"))
 	}
-	rows, err := s.ListInsightsUC.Do(ctx, app.ListInsightsInput{
+	res, err := s.ListInsightsUC.Do(ctx, app.ListInsightsInput{
 		UserID:  uid,
 		Surface: surface,
 		Limit:   int(req.Msg.GetLimit()),
+		Offset:  int(req.Msg.GetOffset()),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("intelligence.ListInsights: %w", s.toConnectErr(err))
 	}
-	out := &pb.ListInsightsResponse{Items: make([]*pb.Insight, 0, len(rows))}
-	for _, r := range rows {
+	out := &pb.ListInsightsResponse{
+		Items: make([]*pb.Insight, 0, len(res.Items)),
+		Total: int32(res.Total),
+	}
+	for _, r := range res.Items {
 		out.Items = append(out.Items, insightToProto(r))
 	}
 	return connect.NewResponse(out), nil

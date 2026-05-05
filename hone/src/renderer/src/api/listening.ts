@@ -51,6 +51,23 @@ export async function listListeningMaterials(limit = 100): Promise<ListeningMate
   return resp.items.map((m) => unwrap(m as unknown as ProtoMaterial));
 }
 
+/** Cursor-paginated variant. Empty cursor = first page. UI infinite-scroll
+ *  integration deferred to a UX pass; this helper exposes the API-level
+ *  pagination so heavy libraries can fetch beyond the 100-row default. */
+export async function listListeningMaterialsPage(args: {
+  limit?: number;
+  cursor?: string;
+}): Promise<{ items: ListeningMaterial[]; nextCursor: string }> {
+  const resp = await client.listListeningMaterials({
+    limit: args.limit ?? 50,
+    cursor: args.cursor ?? '',
+  });
+  return {
+    items: resp.items.map((m) => unwrap(m as unknown as ProtoMaterial)),
+    nextCursor: resp.nextCursor,
+  };
+}
+
 export async function getListeningMaterial(id: string): Promise<ListeningMaterial> {
   const resp = await client.getListeningMaterial({ id });
   return unwrap(resp as unknown as ProtoMaterial);

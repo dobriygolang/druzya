@@ -109,11 +109,16 @@ export type TutorPreSessionBrief = {
   brief: string // markdown; empty when LLMChain unavailable
 }
 
-/** ListInvites — tutor's own invites, recent first. */
-export function useTutorInvitesQuery() {
+/** ListInvites — tutor's own invites, recent first. limit caps the
+ *  result; the wire endpoint also supports keyset cursor for the next
+ *  page (UI infinite-scroll deferred to a UX pass). */
+export function useTutorInvitesQuery(limit = 200) {
   return useQuery({
-    queryKey: ['tutor', 'invites'] as const,
-    queryFn: () => api<{ items: TutorInvite[] }>('/tutor/invites'),
+    queryKey: ['tutor', 'invites', limit] as const,
+    queryFn: () =>
+      api<{ items: TutorInvite[]; next_cursor?: string }>(
+        `/tutor/invites?limit=${limit}`,
+      ),
     staleTime: 30_000,
   })
 }
@@ -280,13 +285,15 @@ export type TutorAssignment = {
   archived_at?: string
 }
 
-/** Tutor-side: full backlog for one student (active + completed + archived). */
-export function useTutorAssignmentsQuery(studentId: string | undefined) {
+/** Tutor-side: full backlog for one student (active + completed + archived).
+ *  Wire endpoint supports keyset cursor pagination — UI infinite-scroll
+ *  deferred to a UX pass; default limit=200 covers typical backlogs. */
+export function useTutorAssignmentsQuery(studentId: string | undefined, limit = 200) {
   return useQuery({
-    queryKey: ['tutor', 'students', studentId, 'assignments'] as const,
+    queryKey: ['tutor', 'students', studentId, 'assignments', limit] as const,
     queryFn: () =>
-      api<{ items: TutorAssignment[] }>(
-        `/tutor/students/${encodeURIComponent(studentId!)}/assignments`,
+      api<{ items: TutorAssignment[]; next_cursor?: string }>(
+        `/tutor/students/${encodeURIComponent(studentId!)}/assignments?limit=${limit}`,
       ),
     enabled: Boolean(studentId),
     staleTime: 30_000,
@@ -333,11 +340,15 @@ export function useArchiveAssignmentMutation(studentId: string) {
   })
 }
 
-/** Student-side: pending feed (active, not completed, not archived). */
-export function usePendingAssignmentsQuery() {
+/** Student-side: pending feed (active, not completed, not archived).
+ *  Wire endpoint supports cursor pagination; UI infinite-scroll deferred. */
+export function usePendingAssignmentsQuery(limit = 100) {
   return useQuery({
-    queryKey: ['tutor', 'assignments', 'pending'] as const,
-    queryFn: () => api<{ items: TutorAssignment[] }>('/tutor/assignments/pending'),
+    queryKey: ['tutor', 'assignments', 'pending', limit] as const,
+    queryFn: () =>
+      api<{ items: TutorAssignment[]; next_cursor?: string }>(
+        `/tutor/assignments/pending?limit=${limit}`,
+      ),
     staleTime: 30_000,
   })
 }
@@ -410,11 +421,16 @@ export type TutorSharedMaterial = {
   created_at?: string
 }
 
-export function useTutorSharedReadingQuery(limit = 30) {
+/** Wire endpoint supports keyset cursor pagination (D1).
+ *  UI infinite-scroll deferred to a UX pass; default limit covers
+ *  typical libraries. */
+export function useTutorSharedReadingQuery(limit = 100) {
   return useQuery({
     queryKey: ['tutor', 'shared-reading', limit] as const,
     queryFn: () =>
-      api<{ items: TutorSharedMaterial[] }>(`/tutor/shared-reading?limit=${limit}`),
+      api<{ items: TutorSharedMaterial[]; next_cursor?: string }>(
+        `/tutor/shared-reading?limit=${limit}`,
+      ),
     staleTime: 30_000,
   })
 }
@@ -490,21 +506,29 @@ export function useTutorActivityQuery(windowDays = 30) {
   })
 }
 
-/** Tutor's full calendar list — all statuses, most-recently-scheduled first. */
-export function useTutorEventsQuery() {
+/** Tutor's full calendar list — all statuses, most-recently-scheduled first.
+ *  Wire endpoint supports cursor pagination; UI infinite-scroll deferred. */
+export function useTutorEventsQuery(limit = 200) {
   return useQuery({
-    queryKey: ['tutor', 'events'] as const,
-    queryFn: () => api<{ items: TutorEvent[] }>('/tutor/events'),
+    queryKey: ['tutor', 'events', limit] as const,
+    queryFn: () =>
+      api<{ items: TutorEvent[]; next_cursor?: string }>(
+        `/tutor/events?limit=${limit}`,
+      ),
     staleTime: 30_000,
   })
 }
 
 /** Student-side: scheduled events whose end time hasn't passed yet,
- *  earliest-first. Drives Hone's Calendar page + HomePage chip. */
-export function useUpcomingEventsQuery() {
+ *  earliest-first. Drives Hone's Calendar page + HomePage chip.
+ *  Wire endpoint supports cursor pagination; UI infinite-scroll deferred. */
+export function useUpcomingEventsQuery(limit = 100) {
   return useQuery({
-    queryKey: ['tutor', 'events', 'upcoming'] as const,
-    queryFn: () => api<{ items: TutorEvent[] }>('/tutor/events/upcoming'),
+    queryKey: ['tutor', 'events', 'upcoming', limit] as const,
+    queryFn: () =>
+      api<{ items: TutorEvent[]; next_cursor?: string }>(
+        `/tutor/events/upcoming?limit=${limit}`,
+      ),
     staleTime: 30_000,
   })
 }

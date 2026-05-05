@@ -77,6 +77,70 @@ func (r *ExternalRepo) List(ctx context.Context, userID uuid.UUID, source string
 	return out, rows.Err()
 }
 
+// ListPaged — keyset cursor variant (occurred_at DESC, id DESC).
+// Decodes the opaque cursor; empty = first page; cursor with garbage =
+// typed error rather than silent empty page.
+func (r *ExternalRepo) ListPaged(
+	ctx context.Context, userID uuid.UUID, source string, limit int, cursor string,
+) ([]domain.ExternalActivity, string, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	c, err := decodeCreatedAtCursor(cursor) // CreatedAt holds occurred_at here.
+	if err != nil {
+		return nil, "", fmt.Errorf("hone.ExternalRepo.ListPaged: %w", err)
+	}
+	args := []any{userID}
+	q := `SELECT id, user_id, source, COALESCE(topic_atlas_node_id, ''), topic_free_text,
+	             duration_min, notes, occurred_at, created_at
+	      FROM external_activity
+	      WHERE user_id = $1`
+	if strings.TrimSpace(source) != "" {
+		args = append(args, strings.TrimSpace(source))
+		q += fmt.Sprintf(` AND source = $%d`, len(args))
+	}
+	if !c.CreatedAt.IsZero() {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("hone.ExternalRepo.ListPaged: cursor id: %w", parseErr)
+		}
+		args = append(args, c.CreatedAt, cid)
+		q += fmt.Sprintf(` AND (occurred_at, id) < ($%d, $%d)`, len(args)-1, len(args))
+	}
+	args = append(args, limit+1)
+	q += fmt.Sprintf(` ORDER BY occurred_at DESC, id DESC LIMIT $%d`, len(args))
+
+	rows, err := r.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, "", fmt.Errorf("hone.ExternalRepo.ListPaged: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.ExternalActivity, 0, limit)
+	for rows.Next() {
+		var a domain.ExternalActivity
+		var src string
+		if scanErr := rows.Scan(&a.ID, &a.UserID, &src, &a.TopicAtlasNodeID, &a.TopicFreeText,
+			&a.DurationMin, &a.Notes, &a.OccurredAt, &a.CreatedAt); scanErr != nil {
+			return nil, "", fmt.Errorf("hone.ExternalRepo.ListPaged scan: %w", scanErr)
+		}
+		a.Source = domain.ExternalActivitySource(src)
+		out = append(out, a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", err
+	}
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeCreatedAtCursor(createdAtCursor{
+			CreatedAt: last.OccurredAt,
+			ID:        last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
+}
+
 func (r *ExternalRepo) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	const q = `DELETE FROM external_activity WHERE user_id = $1 AND id = $2`
 	tag, err := r.pool.Exec(ctx, q, userID, id)

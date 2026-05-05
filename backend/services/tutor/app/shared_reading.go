@@ -104,13 +104,19 @@ type ListSharedReading struct {
 	Materials domain.SharedMaterialRepo
 }
 
-func (uc *ListSharedReading) Do(ctx context.Context, tutorID uuid.UUID, limit int) ([]domain.SharedMaterial, error) {
+// ListSharedReadingOutput — items + opaque next cursor (empty = end).
+type ListSharedReadingOutput struct {
+	Items      []domain.SharedMaterial
+	NextCursor string
+}
+
+func (uc *ListSharedReading) Do(ctx context.Context, tutorID uuid.UUID, limit int, cursor string) (ListSharedReadingOutput, error) {
 	if uc.Materials == nil {
-		return nil, nil
+		return ListSharedReadingOutput{}, nil
 	}
-	out, err := uc.Materials.ListSharedMaterialsByTutor(ctx, tutorID, limit)
+	out, next, err := uc.Materials.ListSharedMaterialsByTutorPaged(ctx, tutorID, limit, cursor)
 	if err != nil {
-		return nil, fmt.Errorf("tutor.ListSharedReading: %w", err)
+		return ListSharedReadingOutput{}, fmt.Errorf("tutor.ListSharedReading: %w", err)
 	}
-	return out, nil
+	return ListSharedReadingOutput{Items: out, NextCursor: next}, nil
 }

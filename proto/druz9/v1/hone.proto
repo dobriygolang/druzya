@@ -942,10 +942,13 @@ message ListExternalActivityRequest {
   string source = 1;
   // Default 50, max 200.
   int32 limit = 2;
+  // Opaque keyset cursor (occurred_at DESC, id DESC). Empty = first page.
+  string cursor = 3;
 }
 
 message ListExternalActivityResponse {
   repeated ExternalActivity items = 1;
+  string next_cursor = 2; // empty when no more pages
 }
 
 message DeleteExternalActivityRequest {
@@ -1267,13 +1270,15 @@ message UpdateBookProgressRequest {
 }
 
 message ListReadingMaterialsRequest {
-  int32 limit = 1; // 0 → server default (50)
+  int32 limit = 1; // 0 → server default (50), max 200
+  string cursor = 2; // opaque keyset cursor (created_at DESC, id DESC)
 }
 
 message ListReadingMaterialsResponse {
   // body_md omitted from list items by the handler — clients fetch it
   // via GetReadingMaterial when they actually open a material.
   repeated ReadingMaterial items = 1;
+  string next_cursor = 2; // empty when no more pages
 }
 
 message GetReadingMaterialRequest {
@@ -1357,11 +1362,13 @@ message IngestYouTubeListeningRequest {
 }
 
 message ListListeningMaterialsRequest {
-  int32 limit = 1; // 0 → server default (50)
+  int32 limit = 1; // 0 → server default (50), max 200
+  string cursor = 2; // opaque keyset cursor (created_at DESC, id DESC)
 }
 
 message ListListeningMaterialsResponse {
   repeated ListeningMaterial items = 1;
+  string next_cursor = 2; // empty when no more pages
 }
 
 message GetListeningMaterialRequest  { string id = 1; }

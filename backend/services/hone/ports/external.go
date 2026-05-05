@@ -53,16 +53,20 @@ func (s *HoneServer) ListExternalActivity(
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.H.ListExternalActivity.Do(ctx, app.ListExternalActivityInput{
+	res, err := s.H.ListExternalActivity.Do(ctx, app.ListExternalActivityInput{
 		UserID: uid,
 		Source: req.Msg.GetSource(),
 		Limit:  int(req.Msg.GetLimit()),
+		Cursor: req.Msg.GetCursor(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("hone.ListExternalActivity: %w", s.toConnectErr(err))
 	}
-	out := &pb.ListExternalActivityResponse{Items: make([]*pb.ExternalActivity, 0, len(items))}
-	for _, a := range items {
+	out := &pb.ListExternalActivityResponse{
+		Items:      make([]*pb.ExternalActivity, 0, len(res.Items)),
+		NextCursor: res.NextCursor,
+	}
+	for _, a := range res.Items {
 		out.Items = append(out.Items, toExternalActivityProto(a))
 	}
 	return connect.NewResponse(out), nil

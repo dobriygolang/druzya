@@ -224,24 +224,67 @@ func (p *Postgres) GetThreadByID(ctx context.Context, id uuid.UUID) (domain.Thre
 }
 
 func (p *Postgres) ListThreadsByStudent(ctx context.Context, studentID uuid.UUID) ([]domain.Thread, error) {
-	q := `SELECT ` + threadCols + ` FROM ai_tutor_threads WHERE student_id = $1 ORDER BY updated_at DESC`
-	rows, err := p.pool.Query(ctx, q, pgUUID(studentID))
+	rows, _, err := p.listThreadsPaged(ctx, studentID, 0, "")
+	return rows, err
+}
+
+// ListThreadsByStudentPaged — keyset cursor variant.
+// Sort: updated_at DESC, id DESC. limit clamped to 1..200, default 50.
+func (p *Postgres) ListThreadsByStudentPaged(
+	ctx context.Context, studentID uuid.UUID, limit int, cursor string,
+) ([]domain.Thread, string, error) {
+	return p.listThreadsPaged(ctx, studentID, limit, cursor)
+}
+
+func (p *Postgres) listThreadsPaged(
+	ctx context.Context, studentID uuid.UUID, limit int, cursor string,
+) ([]domain.Thread, string, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	c, err := decodeAITutorCursor(cursor)
 	if err != nil {
-		return nil, fmt.Errorf("ai_tutor.ListThreadsByStudent: %w", err)
+		return nil, "", fmt.Errorf("ai_tutor.ListThreadsByStudent: %w", err)
+	}
+	args := []any{pgUUID(studentID)}
+	q := `SELECT ` + threadCols + ` FROM ai_tutor_threads WHERE student_id = $1`
+	if !c.UpdatedAt.IsZero() {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("ai_tutor.ListThreadsByStudent: cursor id: %w", parseErr)
+		}
+		args = append(args, c.UpdatedAt, pgUUID(cid))
+		q += fmt.Sprintf(` AND (updated_at, id) < ($%d, $%d)`, len(args)-1, len(args))
+	}
+	args = append(args, limit+1) // peek+1
+	q += fmt.Sprintf(` ORDER BY updated_at DESC, id DESC LIMIT $%d`, len(args))
+
+	rows, err := p.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, "", fmt.Errorf("ai_tutor.ListThreadsByStudent: %w", err)
 	}
 	defer rows.Close()
-	out := make([]domain.Thread, 0, 4)
+	out := make([]domain.Thread, 0, limit)
 	for rows.Next() {
-		t, err := scanThread(rows)
-		if err != nil {
-			return nil, fmt.Errorf("ai_tutor.ListThreadsByStudent: %w", err)
+		t, scanErr := scanThread(rows)
+		if scanErr != nil {
+			return nil, "", fmt.Errorf("ai_tutor.ListThreadsByStudent: %w", scanErr)
 		}
 		out = append(out, t)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("ai_tutor.ListThreadsByStudent: %w", err)
+		return nil, "", fmt.Errorf("ai_tutor.ListThreadsByStudent: %w", err)
 	}
-	return out, nil
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeAITutorCursor(aiTutorCursor{
+			UpdatedAt: last.UpdatedAt,
+			ID:        last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
 }
 
 // IncrementCounters — atomic. Если current_date > daily_msg_reset_date,

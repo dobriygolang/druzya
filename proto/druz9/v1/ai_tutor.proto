@@ -64,9 +64,13 @@ message ListAITutorPersonasResponse {
 }
 
 // ── Threads (current user's chat list) ───────────────────────────
-message ListMyAITutorThreadsRequest  {}
+message ListMyAITutorThreadsRequest  {
+  int32 limit = 1;   // default 50, max 200
+  string cursor = 2; // opaque keyset cursor (last_msg_at DESC, id DESC)
+}
 message ListMyAITutorThreadsResponse {
   repeated AITutorThread items = 1;
+  string next_cursor = 2; // empty when no more pages
 }
 
 // ── History pagination — простой forward-cursor ──────────────────

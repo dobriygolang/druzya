@@ -95,20 +95,27 @@ type ListAssignmentsForTutorInput struct {
 	TutorID   uuid.UUID
 	StudentID uuid.UUID
 	Limit     int
+	Cursor    string
 }
 
-func (uc *ListAssignmentsForTutor) Do(ctx context.Context, in ListAssignmentsForTutorInput) ([]domain.Assignment, error) {
+// ListAssignmentsForTutorOutput — items + opaque next cursor (empty = end).
+type ListAssignmentsForTutorOutput struct {
+	Items      []domain.Assignment
+	NextCursor string
+}
+
+func (uc *ListAssignmentsForTutor) Do(ctx context.Context, in ListAssignmentsForTutorInput) (ListAssignmentsForTutorOutput, error) {
 	if in.TutorID == uuid.Nil || in.StudentID == uuid.Nil {
-		return nil, fmt.Errorf("tutor.ListAssignmentsForTutor: %w", domain.ErrInvalidInput)
+		return ListAssignmentsForTutorOutput{}, fmt.Errorf("tutor.ListAssignmentsForTutor: %w", domain.ErrInvalidInput)
 	}
 	if err := uc.Repo.EnsureRelationship(ctx, in.TutorID, in.StudentID); err != nil {
-		return nil, fmt.Errorf("tutor.ListAssignmentsForTutor: %w", err)
+		return ListAssignmentsForTutorOutput{}, fmt.Errorf("tutor.ListAssignmentsForTutor: %w", err)
 	}
-	out, err := uc.Repo.ListByTutorStudent(ctx, in.TutorID, in.StudentID, in.Limit)
+	out, next, err := uc.Repo.ListByTutorStudentPaged(ctx, in.TutorID, in.StudentID, in.Limit, in.Cursor)
 	if err != nil {
-		return nil, fmt.Errorf("tutor.ListAssignmentsForTutor: %w", err)
+		return ListAssignmentsForTutorOutput{}, fmt.Errorf("tutor.ListAssignmentsForTutor: %w", err)
 	}
-	return out, nil
+	return ListAssignmentsForTutorOutput{Items: out, NextCursor: next}, nil
 }
 
 // ListPendingForStudent — student's «what to work on» feed. Used by
@@ -117,15 +124,21 @@ type ListPendingForStudent struct {
 	Repo domain.AssignmentRepo
 }
 
-func (uc *ListPendingForStudent) Do(ctx context.Context, studentID uuid.UUID, limit int) ([]domain.Assignment, error) {
+// ListPendingForStudentOutput — items + opaque next cursor.
+type ListPendingForStudentOutput struct {
+	Items      []domain.Assignment
+	NextCursor string
+}
+
+func (uc *ListPendingForStudent) Do(ctx context.Context, studentID uuid.UUID, limit int, cursor string) (ListPendingForStudentOutput, error) {
 	if studentID == uuid.Nil {
-		return nil, fmt.Errorf("tutor.ListPendingForStudent: %w", domain.ErrInvalidInput)
+		return ListPendingForStudentOutput{}, fmt.Errorf("tutor.ListPendingForStudent: %w", domain.ErrInvalidInput)
 	}
-	out, err := uc.Repo.ListPendingForStudent(ctx, studentID, limit)
+	out, next, err := uc.Repo.ListPendingForStudentPaged(ctx, studentID, limit, cursor)
 	if err != nil {
-		return nil, fmt.Errorf("tutor.ListPendingForStudent: %w", err)
+		return ListPendingForStudentOutput{}, fmt.Errorf("tutor.ListPendingForStudent: %w", err)
 	}
-	return out, nil
+	return ListPendingForStudentOutput{Items: out, NextCursor: next}, nil
 }
 
 // MarkAssignmentComplete — student stamps completed_at on their own

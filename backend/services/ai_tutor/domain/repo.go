@@ -29,6 +29,9 @@ type ThreadRepo interface {
 	CreateOrGet(ctx context.Context, studentID, personaID uuid.UUID) (Thread, error)
 	GetThreadByID(ctx context.Context, id uuid.UUID) (Thread, error)
 	ListThreadsByStudent(ctx context.Context, studentID uuid.UUID) ([]Thread, error)
+	// ListThreadsByStudentPaged — keyset cursor variant.
+	// Sort: updated_at DESC, id DESC. cursor "" = first page.
+	ListThreadsByStudentPaged(ctx context.Context, studentID uuid.UUID, limit int, cursor string) ([]Thread, string, error)
 
 	// IncrementMessageCount + rolling daily counter. Возвращает обновлённый
 	// thread. Если daily_msg_count >= DailyMessageLimit (после reset на

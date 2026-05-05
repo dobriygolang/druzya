@@ -33,18 +33,22 @@ export interface Insight {
 
 interface ListInsightsResponse {
   items: Insight[]
+  // total — full live count under the surface filter (D1 added). Older
+  // backends omit it; consumers that don't care can ignore.
+  total?: number
 }
 
 const keys = {
-  surface: (s: string, limit: number) => ['intelligence', 'insights', s, limit] as const,
+  surface: (s: string, limit: number, offset: number) =>
+    ['intelligence', 'insights', s, limit, offset] as const,
 }
 
-export function useInsightsQuery(surface = 'today', limit = 8) {
+export function useInsightsQuery(surface = 'today', limit = 8, offset = 0) {
   return useQuery({
-    queryKey: keys.surface(surface, limit),
+    queryKey: keys.surface(surface, limit, offset),
     queryFn: () =>
       api<ListInsightsResponse>(
-        `/intelligence/insights?surface=${encodeURIComponent(surface)}&limit=${limit}`,
+        `/intelligence/insights?surface=${encodeURIComponent(surface)}&limit=${limit}&offset=${offset}`,
       ),
     staleTime: 60_000,
   })

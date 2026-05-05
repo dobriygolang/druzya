@@ -162,6 +162,22 @@ func (mr *MockRepoMockRecorder) ListTutorInvites(ctx, tutorID, limit any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTutorInvites", reflect.TypeOf((*MockRepo)(nil).ListTutorInvites), ctx, tutorID, limit)
 }
 
+// ListTutorInvitesPaged mocks base method.
+func (m *MockRepo) ListTutorInvitesPaged(ctx context.Context, tutorID uuid.UUID, limit int, cursor string) ([]domain.Invite, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTutorInvitesPaged", ctx, tutorID, limit, cursor)
+	ret0, _ := ret[0].([]domain.Invite)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListTutorInvitesPaged indicates an expected call of ListTutorInvitesPaged.
+func (mr *MockRepoMockRecorder) ListTutorInvitesPaged(ctx, tutorID, limit, cursor any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTutorInvitesPaged", reflect.TypeOf((*MockRepo)(nil).ListTutorInvitesPaged), ctx, tutorID, limit, cursor)
+}
+
 // ListTutorStudents mocks base method.
 func (m *MockRepo) ListTutorStudents(ctx context.Context, tutorID uuid.UUID) ([]domain.Relationship, error) {
 	m.ctrl.T.Helper()

@@ -82,15 +82,16 @@ type ListListeningMaterials struct {
 	Repo domain.ListeningRepo
 }
 
-func (uc *ListListeningMaterials) Do(ctx context.Context, userID uuid.UUID, limit int) ([]domain.ListeningMaterial, error) {
+// Do — keyset-paginated. cursor "" = first page; empty next_cursor = end.
+func (uc *ListListeningMaterials) Do(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.ListeningMaterial, string, error) {
 	if userID == uuid.Nil {
-		return nil, fmt.Errorf("hone.ListListeningMaterials: user_id required")
+		return nil, "", fmt.Errorf("hone.ListListeningMaterials: user_id required")
 	}
-	out, err := uc.Repo.ListMaterials(ctx, userID, limit)
+	out, next, err := uc.Repo.ListMaterialsPaged(ctx, userID, limit, cursor)
 	if err != nil {
-		return nil, fmt.Errorf("hone.ListListeningMaterials: %w", err)
+		return nil, "", fmt.Errorf("hone.ListListeningMaterials: %w", err)
 	}
-	return out, nil
+	return out, next, nil
 }
 
 // ArchiveListeningMaterial — soft-delete from library. Reuses the

@@ -146,6 +146,22 @@ func (mr *MockReadingRepoMockRecorder) ListMaterials(ctx, userID, limit any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMaterials", reflect.TypeOf((*MockReadingRepo)(nil).ListMaterials), ctx, userID, limit)
 }
 
+// ListMaterialsPaged mocks base method.
+func (m *MockReadingRepo) ListMaterialsPaged(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.ReadingMaterial, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMaterialsPaged", ctx, userID, limit, cursor)
+	ret0, _ := ret[0].([]domain.ReadingMaterial)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListMaterialsPaged indicates an expected call of ListMaterialsPaged.
+func (mr *MockReadingRepoMockRecorder) ListMaterialsPaged(ctx, userID, limit, cursor any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMaterialsPaged", reflect.TypeOf((*MockReadingRepo)(nil).ListMaterialsPaged), ctx, userID, limit, cursor)
+}
+
 // ListVocabBySourceMaterial mocks base method.
 func (m *MockReadingRepo) ListVocabBySourceMaterial(ctx context.Context, userID, materialID uuid.UUID, limit int) ([]domain.VocabEntry, error) {
 	m.ctrl.T.Helper()

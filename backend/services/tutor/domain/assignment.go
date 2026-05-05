@@ -73,10 +73,19 @@ type AssignmentRepo interface {
 	// rendered in UI). Most-recent first; limit caps the result.
 	ListByTutorStudent(ctx context.Context, tutorID, studentID uuid.UUID, limit int) ([]Assignment, error)
 
+	// ListByTutorStudentPaged — keyset cursor variant of ListByTutorStudent.
+	// Sort: created_at DESC, id DESC. cursor "" = first page; empty
+	// next_cursor = end of stream.
+	ListByTutorStudentPaged(ctx context.Context, tutorID, studentID uuid.UUID, limit int, cursor string) ([]Assignment, string, error)
+
 	// ListPendingForStudent — student's view of «what do I need to
 	// work on». Excludes completed AND archived. Ordered by due_at
 	// (NULL last) then created_at desc — i.e. closest deadline first.
 	ListPendingForStudent(ctx context.Context, studentID uuid.UUID, limit int) ([]Assignment, error)
+
+	// ListPendingForStudentPaged — keyset cursor variant. Sort:
+	// created_at DESC, id DESC. cursor "" = first page.
+	ListPendingForStudentPaged(ctx context.Context, studentID uuid.UUID, limit int, cursor string) ([]Assignment, string, error)
 
 	// MarkComplete stamps CompletedAt. Only the student on the row
 	// can call this (verified by SQL gate). Idempotent — repeating

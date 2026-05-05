@@ -111,6 +111,12 @@ type InsightRepo interface {
 	// layer so callers can render directly.
 	ListLiveBySurface(ctx context.Context, userID uuid.UUID, surface InsightSurface, limit int) ([]Insight, error)
 
+	// ListLiveBySurfacePaged — same as ListLiveBySurface but with
+	// offset+limit pagination. Returns rows + the total live count for
+	// (user, surface) so the UI can render «N of M» / page controls.
+	// Severity-then-recency ordering preserved.
+	ListLiveBySurfacePaged(ctx context.Context, userID uuid.UUID, surface InsightSurface, offset, limit int) ([]Insight, int, error)
+
 	// MarkDismissed records a user-visible dismiss (×). Idempotent.
 	MarkDismissed(ctx context.Context, userID, insightID uuid.UUID) error
 

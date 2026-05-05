@@ -500,6 +500,8 @@ func (x *ListAITutorPersonasResponse) GetItems() []*AITutorPersona {
 // ── Threads (current user's chat list) ───────────────────────────
 type ListMyAITutorThreadsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // default 50, max 200
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (last_msg_at DESC, id DESC)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -534,9 +536,24 @@ func (*ListMyAITutorThreadsRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_ai_tutor_proto_rawDescGZIP(), []int{7}
 }
 
+func (x *ListMyAITutorThreadsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListMyAITutorThreadsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type ListMyAITutorThreadsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*AITutorThread       `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // empty when no more pages
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -576,6 +593,13 @@ func (x *ListMyAITutorThreadsResponse) GetItems() []*AITutorThread {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *ListMyAITutorThreadsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
 // ── History pagination — простой forward-cursor ──────────────────
@@ -858,10 +882,14 @@ const file_druz9_v1_ai_tutor_proto_rawDesc = "" +
 	"\x06thread\x18\x02 \x01(\v2\x17.druz9.v1.AITutorThreadR\x06thread\"\x1c\n" +
 	"\x1aListAITutorPersonasRequest\"M\n" +
 	"\x1bListAITutorPersonasResponse\x12.\n" +
-	"\x05items\x18\x01 \x03(\v2\x18.druz9.v1.AITutorPersonaR\x05items\"\x1d\n" +
-	"\x1bListMyAITutorThreadsRequest\"M\n" +
+	"\x05items\x18\x01 \x03(\v2\x18.druz9.v1.AITutorPersonaR\x05items\"K\n" +
+	"\x1bListMyAITutorThreadsRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"n\n" +
 	"\x1cListMyAITutorThreadsResponse\x12-\n" +
-	"\x05items\x18\x01 \x03(\v2\x17.druz9.v1.AITutorThreadR\x05items\"M\n" +
+	"\x05items\x18\x01 \x03(\v2\x17.druz9.v1.AITutorThreadR\x05items\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"M\n" +
 	"\x18GetAITutorHistoryRequest\x12\x1b\n" +
 	"\tthread_id\x18\x01 \x01(\tR\bthreadId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x82\x01\n" +

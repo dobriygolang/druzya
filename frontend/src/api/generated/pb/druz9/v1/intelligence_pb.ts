@@ -747,11 +747,19 @@ export class ListInsightsRequest extends Message<ListInsightsRequest> {
   surface = "";
 
   /**
-   * 0 → server default (10)
+   * 0 → server default (10), max 50
    *
    * @generated from field: int32 limit = 2;
    */
   limit = 0;
+
+  /**
+   * offset — для severity-ranked feed это лучше cursor'а, поскольку
+   * severity-CASE-сорт не имеет монотонного якоря. По умолчанию 0.
+   *
+   * @generated from field: int32 offset = 3;
+   */
+  offset = 0;
 
   constructor(data?: PartialMessage<ListInsightsRequest>) {
     super();
@@ -763,6 +771,7 @@ export class ListInsightsRequest extends Message<ListInsightsRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "surface", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListInsightsRequest {
@@ -791,6 +800,15 @@ export class ListInsightsResponse extends Message<ListInsightsResponse> {
    */
   items: Insight[] = [];
 
+  /**
+   * total — full row count (after surface/dismissed/expired filter), для
+   * UI «Page X of Y». Дешёво, потому что counter использует тот же
+   * primary index, что и основной SELECT.
+   *
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListInsightsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -800,6 +818,7 @@ export class ListInsightsResponse extends Message<ListInsightsResponse> {
   static readonly typeName = "druz9.v1.ListInsightsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "items", kind: "message", T: Insight, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListInsightsResponse {

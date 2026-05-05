@@ -163,6 +163,26 @@ export async function listReadingMaterials(limit = 100): Promise<ReadingMaterial
   return resp.items.map((m) => unwrapMaterial(m as unknown as ProtoMaterial));
 }
 
+/** Cursor-paginated variant. Pass nextCursor from the previous page;
+ *  empty string for the first page. Returns rows plus the cursor for the
+ *  next page (empty when no more pages). Phase D1 wiring — UI infinite-
+ *  scroll integration deferred to a UX pass; current callers can opt-in
+ *  to multi-page reads via this helper without bloating the simple call
+ *  site of `listReadingMaterials`. */
+export async function listReadingMaterialsPage(args: {
+  limit?: number;
+  cursor?: string;
+}): Promise<{ items: ReadingMaterial[]; nextCursor: string }> {
+  const resp = await client.listReadingMaterials({
+    limit: args.limit ?? 50,
+    cursor: args.cursor ?? '',
+  });
+  return {
+    items: resp.items.map((m) => unwrapMaterial(m as unknown as ProtoMaterial)),
+    nextCursor: resp.nextCursor,
+  };
+}
+
 export async function getReadingMaterial(id: string): Promise<ReadingMaterial> {
   const resp = await client.getReadingMaterial({ id });
   return unwrapMaterial(resp as unknown as ProtoMaterial);

@@ -160,12 +160,15 @@ func (s *TutorServer) ListInvites(
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	items, err := s.ListInvitesUC.Do(ctx, uid, int(req.Msg.Limit))
+	res, err := s.ListInvitesUC.Do(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor())
 	if err != nil {
 		return nil, fmt.Errorf("tutor.ListInvites: %w", s.toConnectErr(err))
 	}
-	out := &pb.TutorListInvitesResponse{Items: make([]*pb.TutorInvite, 0, len(items))}
-	for _, inv := range items {
+	out := &pb.TutorListInvitesResponse{
+		Items:      make([]*pb.TutorInvite, 0, len(res.Items)),
+		NextCursor: res.NextCursor,
+	}
+	for _, inv := range res.Items {
 		out.Items = append(out.Items, toInviteProto(inv))
 	}
 	return connect.NewResponse(out), nil
@@ -402,16 +405,20 @@ func (s *TutorServer) ListAssignmentsForTutor(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("student_id: %w", err))
 	}
-	items, err := s.ListAssignmentsForTutorUC.Do(ctx, app.ListAssignmentsForTutorInput{
+	res, err := s.ListAssignmentsForTutorUC.Do(ctx, app.ListAssignmentsForTutorInput{
 		TutorID:   uid,
 		StudentID: studentID,
-		Limit:     int(req.Msg.Limit),
+		Limit:     int(req.Msg.GetLimit()),
+		Cursor:    req.Msg.GetCursor(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("tutor.ListAssignmentsForTutor: %w", s.toConnectErr(err))
 	}
-	resp := &pb.TutorListAssignmentsResponse{Items: make([]*pb.TutorAssignment, 0, len(items))}
-	for _, a := range items {
+	resp := &pb.TutorListAssignmentsResponse{
+		Items:      make([]*pb.TutorAssignment, 0, len(res.Items)),
+		NextCursor: res.NextCursor,
+	}
+	for _, a := range res.Items {
 		resp.Items = append(resp.Items, toAssignmentProto(a))
 	}
 	return connect.NewResponse(resp), nil
@@ -428,12 +435,15 @@ func (s *TutorServer) ListPendingAssignments(
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	items, err := s.ListPendingAssignmentsUC.Do(ctx, uid, int(req.Msg.Limit))
+	res, err := s.ListPendingAssignmentsUC.Do(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor())
 	if err != nil {
 		return nil, fmt.Errorf("tutor.ListPendingAssignments: %w", s.toConnectErr(err))
 	}
-	resp := &pb.TutorListAssignmentsResponse{Items: make([]*pb.TutorAssignment, 0, len(items))}
-	for _, a := range items {
+	resp := &pb.TutorListAssignmentsResponse{
+		Items:      make([]*pb.TutorAssignment, 0, len(res.Items)),
+		NextCursor: res.NextCursor,
+	}
+	for _, a := range res.Items {
 		resp.Items = append(resp.Items, toAssignmentProto(a))
 	}
 	return connect.NewResponse(resp), nil
@@ -622,12 +632,15 @@ func (s *TutorServer) ListEventsForTutor(
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	items, err := s.ListEventsForTutorUC.Do(ctx, uid, int(req.Msg.Limit))
+	res, err := s.ListEventsForTutorUC.Do(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor())
 	if err != nil {
 		return nil, fmt.Errorf("tutor.ListEventsForTutor: %w", s.toConnectErr(err))
 	}
-	resp := &pb.TutorListEventsResponse{Items: make([]*pb.TutorEvent, 0, len(items))}
-	for _, ev := range items {
+	resp := &pb.TutorListEventsResponse{
+		Items:      make([]*pb.TutorEvent, 0, len(res.Items)),
+		NextCursor: res.NextCursor,
+	}
+	for _, ev := range res.Items {
 		resp.Items = append(resp.Items, toEventProto(ev))
 	}
 	return connect.NewResponse(resp), nil
@@ -644,12 +657,15 @@ func (s *TutorServer) ListUpcomingEventsForStudent(
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	items, err := s.ListUpcomingEventsForStudentUC.Do(ctx, uid, int(req.Msg.Limit))
+	res, err := s.ListUpcomingEventsForStudentUC.Do(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor())
 	if err != nil {
 		return nil, fmt.Errorf("tutor.ListUpcomingEventsForStudent: %w", s.toConnectErr(err))
 	}
-	resp := &pb.TutorListEventsResponse{Items: make([]*pb.TutorEvent, 0, len(items))}
-	for _, ev := range items {
+	resp := &pb.TutorListEventsResponse{
+		Items:      make([]*pb.TutorEvent, 0, len(res.Items)),
+		NextCursor: res.NextCursor,
+	}
+	for _, ev := range res.Items {
 		resp.Items = append(resp.Items, toEventProto(ev))
 	}
 	return connect.NewResponse(resp), nil
@@ -1027,12 +1043,15 @@ func (s *TutorServer) ListSharedReading(
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	items, err := s.ListSharedReadingUC.Do(ctx, uid, int(req.Msg.Limit))
+	res, err := s.ListSharedReadingUC.Do(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor())
 	if err != nil {
 		return nil, fmt.Errorf("tutor.ListSharedReading: %w", s.toConnectErr(err))
 	}
-	out := &pb.TutorListSharedReadingResponse{Items: make([]*pb.TutorSharedMaterial, 0, len(items))}
-	for _, m := range items {
+	out := &pb.TutorListSharedReadingResponse{
+		Items:      make([]*pb.TutorSharedMaterial, 0, len(res.Items)),
+		NextCursor: res.NextCursor,
+	}
+	for _, m := range res.Items {
 		out.Items = append(out.Items, toSharedMaterialProto(m))
 	}
 	return connect.NewResponse(out), nil

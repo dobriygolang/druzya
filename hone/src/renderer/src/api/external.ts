@@ -100,6 +100,26 @@ export async function listExternalActivity(args?: {
   return (resp.items ?? []).map(unwrap);
 }
 
+/** Cursor-paginated variant. Empty cursor = first page; the returned
+ *  nextCursor (empty when no more) feeds back into the next call.
+ *  UI infinite-scroll deferred to a UX pass — wired here so a heavy
+ *  Stats page can crawl history without bloating the basic call site. */
+export async function listExternalActivityPage(args: {
+  source?: ExternalSource;
+  limit?: number;
+  cursor?: string;
+}): Promise<{ items: ExternalActivity[]; nextCursor: string }> {
+  const resp = await client.listExternalActivity({
+    source: args.source ?? '',
+    limit: args.limit ?? 50,
+    cursor: args.cursor ?? '',
+  });
+  return {
+    items: (resp.items ?? []).map(unwrap),
+    nextCursor: resp.nextCursor,
+  };
+}
+
 export async function deleteExternalActivity(id: string): Promise<void> {
   await client.deleteExternalActivity({ id });
 }

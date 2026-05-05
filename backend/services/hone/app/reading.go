@@ -114,15 +114,17 @@ type ListReadingMaterials struct {
 	Repo domain.ReadingRepo
 }
 
-func (uc *ListReadingMaterials) Do(ctx context.Context, userID uuid.UUID, limit int) ([]domain.ReadingMaterial, error) {
+// Do — keyset-paginated. cursor "" = first page; the returned next_cursor
+// feeds back into the next call. Empty next_cursor = end of stream.
+func (uc *ListReadingMaterials) Do(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.ReadingMaterial, string, error) {
 	if userID == uuid.Nil {
-		return nil, fmt.Errorf("hone.ListReadingMaterials: user_id required")
+		return nil, "", fmt.Errorf("hone.ListReadingMaterials: user_id required")
 	}
-	out, err := uc.Repo.ListMaterials(ctx, userID, limit)
+	out, next, err := uc.Repo.ListMaterialsPaged(ctx, userID, limit, cursor)
 	if err != nil {
-		return nil, fmt.Errorf("hone.ListReadingMaterials: %w", err)
+		return nil, "", fmt.Errorf("hone.ListReadingMaterials: %w", err)
 	}
-	return out, nil
+	return out, next, nil
 }
 
 // ArchiveReadingMaterial — soft-delete from library.

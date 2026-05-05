@@ -37,23 +37,43 @@ function severityFromProto(s: InsightSeverity): Severity {
 }
 
 export async function listInsights(surface = 'today', limit = 5): Promise<Insight[]> {
+  const page = await listInsightsPage({ surface, limit });
+  return page.items;
+}
+
+/** Offset-paginated variant. Severity-ranked feed = offset+limit beats
+ *  cursor (the CASE-derived sort key has no monotonic anchor). Returns
+ *  rows + total live count for «N of M» UI. UI-side page controls
+ *  deferred to a UX pass — this helper exposes the wire shape. */
+export async function listInsightsPage(args: {
+  surface?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: Insight[]; total: number }> {
   try {
-    const resp = await client.listInsights({ surface, limit });
-    return resp.items.map((p) => ({
-      id: p.id,
-      surface: p.surface,
-      severity: severityFromProto(p.severity),
-      anchor: p.anchor,
-      headline: p.headline,
-      evidence: p.evidence,
-      interpret: p.interpret,
-      lever: p.lever,
-      deepLink: p.deepLink,
-      skillKey: p.skillKey,
-      codexSlug: p.codexSlug,
-    }));
+    const resp = await client.listInsights({
+      surface: args.surface ?? 'today',
+      limit: args.limit ?? 5,
+      offset: args.offset ?? 0,
+    });
+    return {
+      items: resp.items.map((p) => ({
+        id: p.id,
+        surface: p.surface,
+        severity: severityFromProto(p.severity),
+        anchor: p.anchor,
+        headline: p.headline,
+        evidence: p.evidence,
+        interpret: p.interpret,
+        lever: p.lever,
+        deepLink: p.deepLink,
+        skillKey: p.skillKey,
+        codexSlug: p.codexSlug,
+      })),
+      total: resp.total,
+    };
   } catch {
-    return [];
+    return { items: [], total: 0 };
   }
 }
 

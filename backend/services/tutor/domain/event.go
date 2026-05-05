@@ -148,11 +148,21 @@ type EventRepo interface {
 	// recently-scheduled first. limit caps the result.
 	ListByTutor(ctx context.Context, tutorID uuid.UUID, limit int) ([]Event, error)
 
+	// ListByTutorPaged — keyset cursor variant of ListByTutor.
+	// Sort: scheduled_at DESC, id DESC. cursor "" = first page.
+	ListByTutorPaged(ctx context.Context, tutorID uuid.UUID, limit int, cursor string) ([]Event, string, error)
+
 	// ListUpcomingForStudent — the hot student-side read path. Returns
 	// scheduled events targeting this student (V1: 1-on-1 only; V2
 	// will UNION events via circles the student is a member of) where
 	// EndsAt > now. Ordered earliest-first.
 	ListUpcomingForStudent(ctx context.Context, studentID uuid.UUID, now time.Time, limit int) ([]Event, error)
+
+	// ListUpcomingForStudentPaged — keyset cursor variant.
+	// Sort: scheduled_at ASC, id ASC. Walks forward through the
+	// upcoming queue (cursor advances older→newer because earliest-
+	// scheduled lands first).
+	ListUpcomingForStudentPaged(ctx context.Context, studentID uuid.UUID, now time.Time, limit int, cursor string) ([]Event, string, error)
 
 	// TutorEventStats — Wave 9.5 analytics aggregate. Returns counts +
 	// total minutes taught for completed events authored by this tutor
