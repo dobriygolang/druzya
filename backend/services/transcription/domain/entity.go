@@ -1,7 +1,7 @@
 // Package domain declares the types and ports for the transcription
-// service. Speech-to-text only — no diarization, no streaming, no live
-// audio mixing at this layer. Those belong to higher-level orchestrators
-// (future: live-coach service).
+// service. Speech-to-text plus a thin StreamingTranscriber port for the
+// WS surface — no diarization, no live audio mixing at this layer.
+// Those belong to higher-level orchestrators (future: live-coach service).
 package domain
 
 import (
@@ -85,3 +85,30 @@ var (
 // 25MB mirrors OpenAI/Groq Whisper's documented input limit; we reject
 // earlier at the API boundary so the user sees a clear error.
 const MaxAudioBytes = 25 * 1024 * 1024
+
+// ─────────────────────────────────────────────────────────────────────────
+// Streaming surface (WS endpoint).
+// ─────────────────────────────────────────────────────────────────────────
+
+// StreamingTranscriber — boundary для WS handler'а. Pragmatic shim:
+// Whisper и аналоги (Cerebras, Mistral) на free-tier'е НЕ умеют
+// продолжительный stream — они принимают batch и возвращают batch.
+// Поэтому интерфейс называется streaming "по контексту" (handler
+// аккумулирует input chunks в окно и дёргает реализацию), а не по
+// payload'у. Будущая Deepgram/AssemblyAI streaming impl сможет
+// переопределить behaviour прокинув `keep` true чтобы handler НЕ
+// сбрасывал window после flush'а.
+//
+// Implementations:
+//   - GroqWhisperBatch (infra): WAV-wrap PCM16 + Provider.Transcribe.
+//   - Mock (tests): deterministic for assertion на windowing logic.
+type StreamingTranscriber interface {
+	// TranscribeWindow принимает накопленный аудио-window и возвращает
+	// результат в формате Provider'а. isPartial=true сигналит handler'у
+	// что текущий window НЕ финальный — например streaming-impl ещё
+	// получит больше данных в этой же фразе. Для Groq/Cerebras всегда
+	// false (один window = один final fragment).
+	TranscribeWindow(ctx context.Context, in TranscribeInput) (res TranscribeResult, isPartial bool, err error)
+	// Name — provider id для logs/metrics ("groq-batch", "deepgram-stream").
+	Name() string
+}

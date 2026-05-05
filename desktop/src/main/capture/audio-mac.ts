@@ -1,41 +1,23 @@
 // macOS system-audio capture pipeline.
 //
 // Spawns the AudioCaptureMac binary (see desktop/native/audio-mac/),
-// reads raw 16kHz mono PCM16 from its stdout, accumulates N-second
-// chunks, wraps each in a WAV header, and POSTs to /transcription.
-// The resulting transcript text is emitted to renderers via an IPC
-// event so a live-transcript widget can paint it.
+// reads raw 16kHz mono PCM16 from its stdout, and ships it to the
+// transcription backend. The default ship path is a long-lived
+// WebSocket (`/ws/transcription/stream`) — server accumulates 1-2s
+// windows and pushes JSON deltas back. On WS connect failure, we
+// fall back to the legacy batch endpoint (`POST /transcription`)
+// which wraps each VAD-delimited chunk in WAV and round-trips
+// through Whisper.
 //
 // Failure modes we surface clearly to the renderer:
 //   - binary missing (dev build without `npm run build:native-mac`);
 //   - Screen Recording permission denied;
 //   - transcription backend 502 (e.g. GROQ_API_KEY not configured);
+//   - WS connect failure → silent fallback to batch (logged to console).
 //
 // Not in scope in this iteration:
 //   - Windows path (WASAPI loopback — separate native module);
-//   - streaming STT (each chunk is a self-contained batch request);
 //   - VAD to skip silent windows (next iteration — saves Groq minutes).
-//
-// TODO(streaming-stt): replace the batch /transcribe pipeline with a
-// single long-lived WebSocket session per source. Design sketch:
-//   1) Backend exposes WS /api/v1/transcription/stream (Groq Whisper
-//      doesn't natively stream yet; for stage-1 use Deepgram / Soniox /
-//      AssemblyAI streaming behind same internal interface so we can
-//      A/B without changing client).
-//   2) Client opens one WS per source on capture start, pushes raw
-//      PCM frames as they arrive from Swift (no buffering, no WAV
-//      header — server-side handles framing).
-//   3) Server pushes JSON deltas: {type: 'partial'|'final', text, ts}.
-//      Client emits onTranscript(text, dur, isFinal) — same API surface
-//      as today, so renderer-side стейт-машина не меняется.
-//   4) Pros vs current: ↓ latency (no 1.5s buffer wait), ↓ wasted
-//      bandwidth on silence (server VAD), ↓ tail-of-utterance loss when
-//      stop() preempts a chunk. Cons: WS lifecycle complexity
-//      (reconnect, backpressure, partial state on drop).
-//   5) Migration path: run both in parallel behind a config flag
-//      (cfg.useStreamingSTT), fallback to batch on WS open failure,
-//      drop batch path after 2 weeks of streaming hits ≥99% chunk-
-//      success in production.
 
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -43,7 +25,12 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
 
-import { createTranscriptionClient, HttpClientError } from '../api/transcription';
+import {
+  createTranscriptionClient,
+  createTranscriptionStreamClient,
+  HttpClientError,
+  type TranscriptionStreamHandle,
+} from '../api/transcription';
 import type { RuntimeConfig } from '../config/bootstrap';
 
 /** Raw sample rate the Swift binary emits. Keep in sync with the
@@ -165,12 +152,27 @@ export interface AudioCaptureController {
  * (один для system, один для mic) — оба spawn'ят независимые Swift
  * child processes и эмитят свои events.
  */
+// Streaming-mode chunk cadence. Server batches into 1-2s windows
+// internally — we just want to ship PCM as it lands without holding
+// onto it. 200ms = sweet spot: small enough that the server's window
+// fills smoothly, large enough that we don't drown in WS frame
+// overhead (each frame is ~10 bytes of WS header + payload).
+const STREAM_CHUNK_BYTES = Math.floor(SAMPLE_RATE * BYTES_PER_FRAME * 0.2); // 0.2s
+
+// Streaming reconnect schedule. After 3 consecutive failures we give
+// up на streaming and fall back permanently на batch endpoint for
+// the rest of this capture session — рассчитываем что сервер просто
+// не поддерживает WS endpoint (older deployment). 200 → 800 → 2400ms.
+const STREAM_RECONNECT_MS = [200, 800, 2400] as const;
+const STREAM_RECONNECT_MAX = 3;
+
 export function createAudioCapture(
   cfg: RuntimeConfig,
   events: AudioCaptureEvents,
   source: AudioCaptureSource,
 ): AudioCaptureController {
   const transcriber = createTranscriptionClient(cfg);
+  const streamClient = createTranscriptionStreamClient(cfg);
 
   let proc: ChildProcessWithoutNullStreams | null = null;
   let state: AudioCaptureState = 'idle';
@@ -184,9 +186,141 @@ export function createAudioCapture(
   // consecutive chunks apart and paint them as separate lines.
   let chunkSeq = 0;
 
+  // Streaming state. When `stream` is non-null and isOpen() returns
+  // true, all PCM goes through it; otherwise we fall back to the batch
+  // transcribeChunk path. `streamFallback` flips permanently after
+  // STREAM_RECONNECT_MAX failures — we stop trying streaming for the
+  // rest of this capture session.
+  let stream: TranscriptionStreamHandle | null = null;
+  let streamFallback = false;
+  let streamReconnectAttempts = 0;
+  let streamSendBuf: Buffer = Buffer.alloc(0);
+
   const setState = (s: AudioCaptureState) => {
     state = s;
     events.onState(s);
+  };
+
+  /**
+   * Open a streaming WS to the backend. Returns true on successful
+   * open, false on any failure (in which case the caller should fall
+   * back to the batch path). Wraps the streamClient.connect() Promise
+   * with a 3s open-timeout — we don't want the user staring at a
+   * silent transcript while a half-broken WS handshake hangs.
+   */
+  const connectStream = async (): Promise<boolean> => {
+    if (streamFallback) return false;
+    return new Promise<boolean>((resolve) => {
+      let resolved = false;
+      const settle = (ok: boolean) => {
+        if (resolved) return;
+        resolved = true;
+        resolve(ok);
+      };
+      const openTimeout = setTimeout(() => {
+        // eslint-disable-next-line no-console
+        console.warn(`[AudioCaptureMac:${source}] WS open timeout, falling back to batch`);
+        try { stream?.close(1006, 'open-timeout'); } catch { /* noop */ }
+        stream = null;
+        settle(false);
+      }, 3000);
+
+      streamClient.connect(
+        {
+          onOpen: () => {
+            clearTimeout(openTimeout);
+            streamReconnectAttempts = 0;
+            // eslint-disable-next-line no-console
+            console.log(`[AudioCaptureMac:${source}] streaming WS open`);
+            settle(true);
+          },
+          onMessage: (msg) => {
+            switch (msg.type) {
+              case 'final':
+              case 'partial': {
+                const text = msg.text?.trim() ?? '';
+                if (!text) return;
+                const dur = typeof msg.duration === 'number' ? msg.duration : 0;
+                events.onTranscript(text, dur, msg.type === 'final');
+                chunkSeq += 1;
+                return;
+              }
+              case 'error':
+                // Server-side hiccup on a single window — log but don't
+                // surface to UI (would spam during transient failures).
+                // eslint-disable-next-line no-console
+                console.warn(`[AudioCaptureMac:${source}] stream warning: ${msg.message ?? ''}`);
+                return;
+              case 'pong':
+                return;
+            }
+          },
+          onClose: (code, reason) => {
+            clearTimeout(openTimeout);
+            stream = null;
+            // eslint-disable-next-line no-console
+            console.log(`[AudioCaptureMac:${source}] stream closed`, { code, reason });
+            // Clean close (1000) when WE called close() during stop();
+            // server close (1005/1006/1011 etc) → reconnect attempt.
+            if (state === 'running' && code !== 1000) {
+              tryReconnectStream();
+            }
+            settle(false);
+          },
+          onError: (err) => {
+            // Surface only if we never even opened — once running, error
+            // events fire in tandem with close, no need to double-log.
+            // eslint-disable-next-line no-console
+            console.warn(`[AudioCaptureMac:${source}] stream transport error:`, err.message);
+          },
+        },
+        {
+          language: cfg.defaultLocale || 'ru',
+          prompt:
+            cfg.defaultLocale === 'en'
+              ? 'Live meeting transcript. Technical discussion: software, AI, code.'
+              : 'Запись встречи: технический разговор о софте, AI, коде, druzya, druz9, copilot, Hone, Cue.',
+        },
+      )
+        .then((handle) => {
+          if (!handle) {
+            // No valid session — caller falls back to batch which
+            // handles 401 itself (refresh path).
+            clearTimeout(openTimeout);
+            settle(false);
+            return;
+          }
+          stream = handle;
+        })
+        .catch((err: unknown) => {
+          clearTimeout(openTimeout);
+          // eslint-disable-next-line no-console
+          console.warn(`[AudioCaptureMac:${source}] stream connect failed:`, err instanceof Error ? err.message : String(err));
+          settle(false);
+        });
+    });
+  };
+
+  /**
+   * Fire-and-forget reconnect after an unexpected close. Schedules
+   * the next attempt with exp backoff; flips streamFallback once
+   * STREAM_RECONNECT_MAX is exhausted, after which all subsequent
+   * audio goes through the batch path until stop() resets state.
+   */
+  const tryReconnectStream = () => {
+    if (streamFallback) return;
+    if (streamReconnectAttempts >= STREAM_RECONNECT_MAX) {
+      streamFallback = true;
+      // eslint-disable-next-line no-console
+      console.warn(`[AudioCaptureMac:${source}] streaming gave up after ${STREAM_RECONNECT_MAX} attempts, batch fallback active`);
+      return;
+    }
+    const delayMs = STREAM_RECONNECT_MS[streamReconnectAttempts];
+    streamReconnectAttempts += 1;
+    setTimeout(() => {
+      if (state !== 'running') return;
+      void connectStream();
+    }, delayMs);
   };
 
   const transcribeChunk = async (pcm: Buffer) => {
@@ -298,6 +432,27 @@ export function createAudioCapture(
   };
 
   const flushBuffer = (reason: 'boundary' | 'max' | 'stop') => {
+    // Streaming mode: don't ship batched WAV; just signal the boundary
+    // so server knows to flush its current window. The pending PCM
+    // is already in flight (chunked at STREAM_CHUNK_BYTES).
+    if (stream && stream.isOpen()) {
+      // Flush whatever tail bytes remain in the streaming buf.
+      if (streamSendBuf.length > 0) {
+        try {
+          stream.send(new Uint8Array(streamSendBuf.buffer, streamSendBuf.byteOffset, streamSendBuf.byteLength));
+        } catch { /* socket closed mid-send — onClose will handle */ }
+        streamSendBuf = Buffer.alloc(0);
+      }
+      if (reason !== 'max') {
+        try {
+          stream.sendCtl({ type: reason === 'stop' ? 'reset' : 'final' });
+        } catch { /* noop */ }
+      }
+      // Clear batch buf — we never accumulated for batch in this mode.
+      buf = Buffer.alloc(0);
+      return;
+    }
+    // Batch fallback path — original behaviour.
     if (buf.length < MIN_CHUNK_BYTES) {
       // Too short to be a useful utterance. Discard on stop (stop
       // click right after start); keep on boundary (next boundary
@@ -312,10 +467,29 @@ export function createAudioCapture(
   };
 
   const onPCMData = (chunk: Buffer) => {
+    // Streaming path — chunked send at ~200ms cadence to keep WS
+    // throughput steady but not noisy. Server batches to its own
+    // 1-2s window; we just need to ship.
+    if (stream && stream.isOpen()) {
+      streamSendBuf = streamSendBuf.length === 0 ? chunk : Buffer.concat([streamSendBuf, chunk]);
+      while (streamSendBuf.length >= STREAM_CHUNK_BYTES) {
+        const slice = streamSendBuf.subarray(0, STREAM_CHUNK_BYTES);
+        try {
+          stream.send(new Uint8Array(slice.buffer, slice.byteOffset, slice.byteLength));
+        } catch { /* socket closed mid-send — onClose handles */ }
+        streamSendBuf = Buffer.from(streamSendBuf.subarray(STREAM_CHUNK_BYTES));
+      }
+      // Local recording continuation in streaming mode (debug aid).
+      if (recordingDir) {
+        // Light-touch: only if user has set a recording dir; we keep
+        // the same wav-chunk-NNNN convention as batch but without the
+        // pre-chunk WAV header (raw PCM). Skipped for MVP to avoid
+        // fan-out: streaming + raw-PCM recording can be added later.
+      }
+      return;
+    }
+    // Batch fallback — original VAD-window accumulation.
     buf = buf.length === 0 ? chunk : Buffer.concat([buf, chunk]);
-    // Hard ceiling — Whisper-turbo is happiest with ≤3s. The Swift
-    // VAD normally beats us to a boundary long before this, but a
-    // monologue with no sub-600ms pauses can slip through.
     if (buf.length >= MAX_CHUNK_BYTES) {
       flushBuffer('max');
     }
@@ -335,6 +509,9 @@ export function createAudioCapture(
     setState('starting');
     chunkSeq = 0;
     buf = Buffer.alloc(0);
+    streamSendBuf = Buffer.alloc(0);
+    streamFallback = false;
+    streamReconnectAttempts = 0;
     recordingDir = join(
       app.getPath('userData'),
       'recordings',
@@ -342,6 +519,20 @@ export function createAudioCapture(
       `meeting-${new Date().toISOString().replace(/[:.]/g, '-')}`,
     );
     await mkdir(recordingDir, { recursive: true });
+
+    // Try streaming first. Fire-and-forget: if it opens, onPCMData will
+    // notice stream.isOpen() === true and route audio that way; if it
+    // never opens (timeout / 401 / server doesn't expose endpoint),
+    // streamFallback flips and we silently use the batch path. We do
+    // NOT await — Swift binary spawn happens in parallel so the user
+    // doesn't pay 3s open-timeout latency on top of TCC prompts.
+    void connectStream().then((ok) => {
+      if (!ok) {
+        streamFallback = true;
+        // eslint-disable-next-line no-console
+        console.log(`[AudioCaptureMac:${source}] streaming unavailable, using batch endpoint`);
+      }
+    });
 
     proc = spawn(bin, [], { stdio: ['pipe', 'pipe', 'pipe'] });
 
@@ -432,6 +623,22 @@ export function createAudioCapture(
       proc.stdin.write('quit\n');
     } catch {
       /* pipe already closed — the 'exit' handler will clean up */
+    }
+    // Tear the streaming WS down cleanly first. We send any tail PCM
+    // (in case the user cut off mid-utterance) and a `reset` ctl frame
+    // so the server flushes its window before close. Then a clean 1000
+    // close prevents tryReconnectStream from kicking in (it's gated
+    // on code !== 1000).
+    if (stream) {
+      if (streamSendBuf.length > 0) {
+        try {
+          stream.send(new Uint8Array(streamSendBuf.buffer, streamSendBuf.byteOffset, streamSendBuf.byteLength));
+        } catch { /* noop */ }
+        streamSendBuf = Buffer.alloc(0);
+      }
+      try { stream.sendCtl({ type: 'reset' }); } catch { /* noop */ }
+      try { stream.close(1000, 'capture stopped'); } catch { /* noop */ }
+      stream = null;
     }
     // Give it 2s to drain; if it doesn't exit, SIGTERM.
     const p = proc;

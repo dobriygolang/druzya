@@ -45,6 +45,15 @@ func (a EditorTokenVerifier) VerifyScopedFull(raw, expectedScope string) (uuid.U
 	return parseSubjectScopedFull(a.Issuer, raw, expectedScope)
 }
 
+// TranscriptionTokenVerifier — implements transcription/ports.TokenVerifier.
+// Used by the WS streaming endpoint to authenticate the bearer in the
+// query-string (?token=) handshake.
+type TranscriptionTokenVerifier struct{ Issuer *authApp.TokenIssuer }
+
+func (a TranscriptionTokenVerifier) Verify(raw string) (uuid.UUID, error) {
+	return parseSubject(a.Issuer, raw)
+}
+
 // WhiteboardTokenVerifier — implements whiteboard_rooms/ports.Verifier.
 type WhiteboardTokenVerifier struct{ Issuer *authApp.TokenIssuer }
 
