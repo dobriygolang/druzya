@@ -19,7 +19,10 @@ const AtlasExplorePage = lazy(() => import('./pages/atlas/AtlasExplorePage'))
 const TrackDetailPage = lazy(() => import('./pages/atlas/TrackDetailPage'))
 const TaskBoardPage = lazy(() => import('./pages/TaskBoardPage'))
 const InsightsPage = lazy(() => import('./pages/InsightsPage'))
-const GoalsPage = lazy(() => import('./pages/GoalsPage'))
+// /goals UI removed 2026-05-05 (R10 cleanup) — orphan page без nav-links.
+// Coach всё ещё читает goals через GoalsReader (см services/intelligence/
+// infra/cross_readers.go), CRUD endpoints в backend остаются для будущего
+// surface'а или CLI-доступа.
 const CodexPage = lazy(() => import('./pages/CodexPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
@@ -109,7 +112,6 @@ export default function App() {
         <Route path="/atlas/explore" element={<AtlasExplorePage />} />
         <Route path="/atlas/track/:slug" element={<TrackDetailPage />} />
         <Route path="/insights" element={<InsightsPage />} />
-        <Route path="/goals" element={<GoalsPage />} />
         <Route path="/tasks" element={<TaskBoardPage />} />
         {/* Calendar UI вырезан 2026-04-30: backend personal_events + coach
             CalendarReader keepalive, но web UI оказался вторичным. /calendar

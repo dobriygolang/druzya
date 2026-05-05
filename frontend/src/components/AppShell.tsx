@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, HelpCircle, Shield, Sparkles } from 'lucide-react'
+import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, HelpCircle, Shield } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { MobileBottomNav } from './MobileBottomNav'
@@ -182,12 +182,10 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   const admin = useAdminDashboardQuery()
   const adminStatus = (admin.error as { status?: number } | null)?.status
   const isAdmin = !admin.isError && admin.isSuccess && adminStatus !== 403
-  // User-menu (under avatar) — персональные разделы вне top-nav. Top-nav
-  // сейчас 7 entries (Today/Atlas/Mock/Insights/Tutor/Codex/Vacancies),
-  // 8-я бы переполнила tablet — Copilot живёт здесь с NEW badge + promo
-  // banner на /welcome для discovery.
+  // User-menu (under avatar) — персональные разделы вне top-nav.
+  // R10 cleanup 2026-05-05: /copilot landing удалён в Phase-4 ADR-001
+  // (см App.tsx комментарий) — link тоже удалён.
   const items: { to: string; label: string; icon: typeof User; badge?: 'new' }[] = [
-    { to: '/copilot', label: 'Copilot', icon: Sparkles, badge: 'new' },
     { to: '/profile', label: t('nav.profile'), icon: User },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
     { to: '/notifications', label: t('nav.notifications'), icon: Bell },
