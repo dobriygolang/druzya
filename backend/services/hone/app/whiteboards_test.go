@@ -9,32 +9,27 @@ import (
 	"time"
 
 	"druz9/hone/domain"
+	"druz9/hone/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-type fakeBoards struct {
-	wb     domain.Whiteboard
-	getErr error
-}
-
-func (f *fakeBoards) Get(context.Context, uuid.UUID, uuid.UUID) (domain.Whiteboard, error) {
-	return f.wb, f.getErr
-}
-func (f *fakeBoards) Create(context.Context, domain.Whiteboard) (domain.Whiteboard, error) {
-	return domain.Whiteboard{}, nil
-}
-func (f *fakeBoards) Update(context.Context, domain.Whiteboard, int) (domain.Whiteboard, error) {
-	return domain.Whiteboard{}, nil
-}
-func (f *fakeBoards) List(context.Context, uuid.UUID) ([]domain.WhiteboardSummary, error) {
-	return nil, nil
-}
-func (f *fakeBoards) Delete(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 func TestSaveCritiqueAsNote_CreatesNoteWithDefaultTitle(t *testing.T) {
 	t.Parallel()
-	boards := &fakeBoards{wb: domain.Whiteboard{ID: uuid.New(), Title: "Chat system"}}
-	notes := &fakeNotes{}
+	ctrl := gomock.NewController(t)
+	wbID := uuid.New()
+	uid := uuid.New()
+	boards := mocks.NewMockWhiteboardRepo(ctrl)
+	boards.EXPECT().Get(gomock.Any(), uid, wbID).Return(domain.Whiteboard{ID: wbID, Title: "Chat system"}, nil)
+
+	notes := mocks.NewMockNoteRepo(ctrl)
+	notes.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, n domain.Note) (domain.Note, error) {
+			n.ID = uuid.New()
+			return n, nil
+		},
+	)
 
 	uc := &SaveCritiqueAsNote{
 		Boards: boards,
@@ -43,8 +38,8 @@ func TestSaveCritiqueAsNote_CreatesNoteWithDefaultTitle(t *testing.T) {
 		Now:    func() time.Time { return time.Date(2026, 4, 25, 10, 0, 0, 0, time.UTC) },
 	}
 	n, err := uc.Do(context.Background(), SaveCritiqueAsNoteInput{
-		UserID:       uuid.New(),
-		WhiteboardID: uuid.New(),
+		UserID:       uid,
+		WhiteboardID: wbID,
 		Title:        "",
 		BodyMD:       "## STRENGTHS\n- clear api",
 	})
@@ -58,9 +53,10 @@ func TestSaveCritiqueAsNote_CreatesNoteWithDefaultTitle(t *testing.T) {
 
 func TestSaveCritiqueAsNote_EmptyBodyRejected(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uc := &SaveCritiqueAsNote{
-		Boards: &fakeBoards{},
-		Notes:  &fakeNotes{},
+		Boards: mocks.NewMockWhiteboardRepo(ctrl),
+		Notes:  mocks.NewMockNoteRepo(ctrl),
 		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:    time.Now,
 	}
@@ -76,10 +72,12 @@ func TestSaveCritiqueAsNote_EmptyBodyRejected(t *testing.T) {
 
 func TestSaveCritiqueAsNote_UnknownWhiteboard(t *testing.T) {
 	t.Parallel()
-	boards := &fakeBoards{getErr: domain.ErrNotFound}
+	ctrl := gomock.NewController(t)
+	boards := mocks.NewMockWhiteboardRepo(ctrl)
+	boards.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.Whiteboard{}, domain.ErrNotFound)
 	uc := &SaveCritiqueAsNote{
 		Boards: boards,
-		Notes:  &fakeNotes{},
+		Notes:  mocks.NewMockNoteRepo(ctrl),
 		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:    time.Now,
 	}

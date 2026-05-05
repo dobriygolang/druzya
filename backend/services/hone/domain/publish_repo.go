@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/publish_mock.go -source publish_repo.go
 package domain
 
 import (

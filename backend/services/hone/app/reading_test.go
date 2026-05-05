@@ -7,82 +7,11 @@ import (
 	"time"
 
 	"druz9/hone/domain"
+	"druz9/hone/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// fakeReadingRepo — hand-rolled fake (no mockgen for ReadingRepo,
-// matches the rest of the Hone test suite). Each closure satisfies
-// one method; nil = «test will fail loudly when this surface is hit».
-type fakeReadingRepo struct {
-	create            func(context.Context, domain.ReadingMaterial) (domain.ReadingMaterial, error)
-	get               func(context.Context, uuid.UUID, uuid.UUID) (domain.ReadingMaterial, error)
-	list              func(context.Context, uuid.UUID, int) ([]domain.ReadingMaterial, error)
-	archive           func(context.Context, uuid.UUID, uuid.UUID, time.Time) error
-	startSess         func(context.Context, uuid.UUID, uuid.UUID) (domain.ReadingSession, error)
-	endSess           func(context.Context, uuid.UUID, uuid.UUID, int, string, time.Time) error
-	getSess           func(context.Context, uuid.UUID, uuid.UUID) (domain.ReadingSession, error)
-	setScore          func(context.Context, uuid.UUID, uuid.UUID, int) error
-	listVocab         func(context.Context, uuid.UUID, time.Time, int) ([]domain.VocabEntry, error)
-	upsertVoc         func(context.Context, domain.VocabEntry) (domain.VocabEntry, error)
-	advanceVoc        func(context.Context, uuid.UUID, string, bool, time.Time) (domain.VocabEntry, error)
-	listVocabBySource func(context.Context, uuid.UUID, uuid.UUID, int) ([]domain.VocabEntry, error)
-}
-
-func (f fakeReadingRepo) CreateMaterial(ctx context.Context, m domain.ReadingMaterial) (domain.ReadingMaterial, error) {
-	return f.create(ctx, m)
-}
-
-func (f fakeReadingRepo) GetMaterial(ctx context.Context, u, m uuid.UUID) (domain.ReadingMaterial, error) {
-	return f.get(ctx, u, m)
-}
-
-func (f fakeReadingRepo) ListMaterials(ctx context.Context, u uuid.UUID, l int) ([]domain.ReadingMaterial, error) {
-	return f.list(ctx, u, l)
-}
-
-func (f fakeReadingRepo) ArchiveMaterial(ctx context.Context, u, m uuid.UUID, n time.Time) error {
-	return f.archive(ctx, u, m, n)
-}
-
-func (f fakeReadingRepo) UpdateBookProgress(ctx context.Context, u, m uuid.UUID, ch, tot *int) (domain.ReadingMaterial, error) {
-	return domain.ReadingMaterial{ID: m, UserID: u, BookChapter: ch, BookTotalChapters: tot}, nil
-}
-
-func (f fakeReadingRepo) StartSession(ctx context.Context, u, m uuid.UUID) (domain.ReadingSession, error) {
-	return f.startSess(ctx, u, m)
-}
-
-func (f fakeReadingRepo) EndSession(ctx context.Context, u, s uuid.UUID, c int, sm string, n time.Time) error {
-	return f.endSess(ctx, u, s, c, sm, n)
-}
-
-func (f fakeReadingRepo) GetSession(ctx context.Context, u, s uuid.UUID) (domain.ReadingSession, error) {
-	return f.getSess(ctx, u, s)
-}
-
-func (f fakeReadingRepo) SetAISummaryScore(ctx context.Context, u, s uuid.UUID, score int) error {
-	return f.setScore(ctx, u, s, score)
-}
-
-func (f fakeReadingRepo) ListVocabDue(ctx context.Context, u uuid.UUID, n time.Time, l int) ([]domain.VocabEntry, error) {
-	return f.listVocab(ctx, u, n, l)
-}
-
-func (f fakeReadingRepo) UpsertVocab(ctx context.Context, e domain.VocabEntry) (domain.VocabEntry, error) {
-	return f.upsertVoc(ctx, e)
-}
-
-func (f fakeReadingRepo) AdvanceVocab(ctx context.Context, u uuid.UUID, w string, c bool, n time.Time) (domain.VocabEntry, error) {
-	return f.advanceVoc(ctx, u, w, c, n)
-}
-
-func (f fakeReadingRepo) ListVocabBySourceMaterial(ctx context.Context, u, m uuid.UUID, l int) ([]domain.VocabEntry, error) {
-	if f.listVocabBySource == nil {
-		return nil, nil
-	}
-	return f.listVocabBySource(ctx, u, m, l)
-}
 
 // ─────────────────────────────────────────────────────────────────
 // AddReadingMaterial — input validation
@@ -90,9 +19,11 @@ func (f fakeReadingRepo) ListVocabBySourceMaterial(ctx context.Context, u, m uui
 
 func TestAddReadingMaterial_HappyPath(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
-	repo := fakeReadingRepo{
-		create: func(_ context.Context, m domain.ReadingMaterial) (domain.ReadingMaterial, error) {
+	repo := mocks.NewMockReadingRepo(ctrl)
+	repo.EXPECT().CreateMaterial(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, m domain.ReadingMaterial) (domain.ReadingMaterial, error) {
 			if m.UserID != uid {
 				t.Errorf("user_id: got %v want %v", m.UserID, uid)
 			}
@@ -102,7 +33,7 @@ func TestAddReadingMaterial_HappyPath(t *testing.T) {
 			m.ID = uuid.New()
 			return m, nil
 		},
-	}
+	)
 	uc := &AddReadingMaterial{Repo: repo}
 	out, err := uc.Do(context.Background(), AddReadingMaterialInput{
 		UserID:     uid,
@@ -120,7 +51,8 @@ func TestAddReadingMaterial_HappyPath(t *testing.T) {
 
 func TestAddReadingMaterial_RejectsInvalidInput(t *testing.T) {
 	t.Parallel()
-	uc := &AddReadingMaterial{Repo: fakeReadingRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &AddReadingMaterial{Repo: mocks.NewMockReadingRepo(ctrl)}
 	cases := []struct {
 		name string
 		in   AddReadingMaterialInput
@@ -143,12 +75,10 @@ func TestAddReadingMaterial_RejectsInvalidInput(t *testing.T) {
 
 func TestAddReadingMaterial_BodyTooLargeIsRejected(t *testing.T) {
 	t.Parallel()
-	repo := fakeReadingRepo{
-		create: func(_ context.Context, _ domain.ReadingMaterial) (domain.ReadingMaterial, error) {
-			t.Fatal("repo must not be called when body exceeds cap")
-			return domain.ReadingMaterial{}, nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockReadingRepo(ctrl)
+	// gomock will fail on unexpected calls — this validates that CreateMaterial
+	// is NOT called when body exceeds the size cap.
 	uc := &AddReadingMaterial{Repo: repo}
 	huge := make([]byte, 2_000_001) // 2MB + 1
 	for i := range huge {
@@ -171,15 +101,12 @@ func TestAddReadingMaterial_BodyTooLargeIsRejected(t *testing.T) {
 
 func TestReviewVocab_CorrectAdvancesBox(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
-	repo := fakeReadingRepo{
-		advanceVoc: func(_ context.Context, u uuid.UUID, w string, correct bool, _ time.Time) (domain.VocabEntry, error) {
-			if u != uid || w != "compound" || !correct {
-				t.Errorf("args mismatch: %v %q %v", u, w, correct)
-			}
-			return domain.VocabEntry{Word: w, Box: 2}, nil
-		},
-	}
+	repo := mocks.NewMockReadingRepo(ctrl)
+	repo.EXPECT().AdvanceVocab(gomock.Any(), uid, "compound", true, gomock.Any()).Return(
+		domain.VocabEntry{Word: "compound", Box: 2}, nil,
+	)
 	uc := &ReviewVocab{Repo: repo}
 	out, err := uc.Do(context.Background(), ReviewVocabInput{UserID: uid, Word: "compound", Correct: true})
 	if err != nil {
@@ -192,11 +119,11 @@ func TestReviewVocab_CorrectAdvancesBox(t *testing.T) {
 
 func TestReviewVocab_NotFoundPropagates(t *testing.T) {
 	t.Parallel()
-	repo := fakeReadingRepo{
-		advanceVoc: func(_ context.Context, _ uuid.UUID, _ string, _ bool, _ time.Time) (domain.VocabEntry, error) {
-			return domain.VocabEntry{}, domain.ErrNotFound
-		},
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockReadingRepo(ctrl)
+	repo.EXPECT().AdvanceVocab(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.VocabEntry{}, domain.ErrNotFound,
+	)
 	uc := &ReviewVocab{Repo: repo}
 	_, err := uc.Do(context.Background(), ReviewVocabInput{UserID: uuid.New(), Word: "ghost", Correct: false})
 	if !errors.Is(err, domain.ErrNotFound) {
@@ -206,7 +133,8 @@ func TestReviewVocab_NotFoundPropagates(t *testing.T) {
 
 func TestReviewVocab_RejectsZeroIDsAndEmptyWord(t *testing.T) {
 	t.Parallel()
-	uc := &ReviewVocab{Repo: fakeReadingRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &ReviewVocab{Repo: mocks.NewMockReadingRepo(ctrl)}
 	if _, err := uc.Do(context.Background(), ReviewVocabInput{UserID: uuid.Nil, Word: "x"}); err == nil {
 		t.Error("zero user_id must fail")
 	}
@@ -219,28 +147,17 @@ func TestReviewVocab_RejectsZeroIDsAndEmptyWord(t *testing.T) {
 // EndReadingSession — grader integration
 // ─────────────────────────────────────────────────────────────────
 
-type fakeGrader struct {
-	score int
-	err   error
-	calls int
-}
-
-func (g *fakeGrader) GradeSummary(_ context.Context, _ domain.GradeSummaryInput) (int, error) {
-	g.calls++
-	return g.score, g.err
-}
-
 // no-grader path: end the session, reload it, return as-is.
 func TestEndReadingSession_NoGrader_ReturnsSession(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
 	sid := uuid.New()
-	repo := fakeReadingRepo{
-		endSess: func(_ context.Context, _, _ uuid.UUID, _ int, _ string, _ time.Time) error { return nil },
-		getSess: func(_ context.Context, _, _ uuid.UUID) (domain.ReadingSession, error) {
-			return domain.ReadingSession{ID: sid, UserID: uid, SummaryMD: "ok"}, nil
-		},
-	}
+	repo := mocks.NewMockReadingRepo(ctrl)
+	repo.EXPECT().EndSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	repo.EXPECT().GetSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.ReadingSession{ID: sid, UserID: uid, SummaryMD: "ok"}, nil,
+	)
 	uc := &EndReadingSession{Repo: repo}
 	out, err := uc.Do(context.Background(), EndReadingSessionInput{
 		UserID:    uid,
@@ -262,13 +179,17 @@ func TestEndReadingSession_NoGrader_ReturnsSession(t *testing.T) {
 // happy grader path: persists score, GetSession reflects it.
 func TestEndReadingSession_GraderHappyPath(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
 	sid := uuid.New()
 	mid := uuid.New()
 	persisted := 0
-	repo := fakeReadingRepo{
-		endSess: func(_ context.Context, _, _ uuid.UUID, _ int, _ string, _ time.Time) error { return nil },
-		getSess: func(_ context.Context, _, _ uuid.UUID) (domain.ReadingSession, error) {
+	repo := mocks.NewMockReadingRepo(ctrl)
+	repo.EXPECT().EndSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	// First GetSession call (just after EndSession) returns w/o score; second
+	// after SetAISummaryScore returns with persisted score.
+	repo.EXPECT().GetSession(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _, _ uuid.UUID) (domain.ReadingSession, error) {
 			s := domain.ReadingSession{ID: sid, UserID: uid, MaterialID: mid, SummaryMD: "ok"}
 			if persisted > 0 {
 				v := persisted
@@ -276,15 +197,18 @@ func TestEndReadingSession_GraderHappyPath(t *testing.T) {
 			}
 			return s, nil
 		},
-		get: func(_ context.Context, _, _ uuid.UUID) (domain.ReadingMaterial, error) {
-			return domain.ReadingMaterial{ID: mid, UserID: uid, Title: "T", BodyMD: "B"}, nil
-		},
-		setScore: func(_ context.Context, _, _ uuid.UUID, score int) error {
+	).AnyTimes()
+	repo.EXPECT().GetMaterial(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.ReadingMaterial{ID: mid, UserID: uid, Title: "T", BodyMD: "B"}, nil,
+	)
+	repo.EXPECT().SetAISummaryScore(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _, _ uuid.UUID, score int) error {
 			persisted = score
 			return nil
 		},
-	}
-	g := &fakeGrader{score: 78}
+	)
+	g := mocks.NewMockSummaryGrader(ctrl)
+	g.EXPECT().GradeSummary(gomock.Any(), gomock.Any()).Return(78, nil)
 	uc := &EndReadingSession{Repo: repo, Grader: g}
 	out, err := uc.Do(context.Background(), EndReadingSessionInput{
 		UserID:    uid,
@@ -294,9 +218,6 @@ func TestEndReadingSession_GraderHappyPath(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
-	}
-	if g.calls != 1 {
-		t.Errorf("grader expected 1 call, got %d", g.calls)
 	}
 	if persisted != 78 {
 		t.Errorf("persisted score %d != 78", persisted)
@@ -309,22 +230,21 @@ func TestEndReadingSession_GraderHappyPath(t *testing.T) {
 // grader error must NOT fail the use case — session is already persisted.
 func TestEndReadingSession_GraderErrorIsSwallowed(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
 	sid := uuid.New()
-	repo := fakeReadingRepo{
-		endSess: func(_ context.Context, _, _ uuid.UUID, _ int, _ string, _ time.Time) error { return nil },
-		getSess: func(_ context.Context, _, _ uuid.UUID) (domain.ReadingSession, error) {
-			return domain.ReadingSession{ID: sid, UserID: uid, SummaryMD: "ok"}, nil
-		},
-		get: func(_ context.Context, _, _ uuid.UUID) (domain.ReadingMaterial, error) {
-			return domain.ReadingMaterial{ID: uuid.New(), UserID: uid, BodyMD: "B"}, nil
-		},
-		setScore: func(_ context.Context, _, _ uuid.UUID, _ int) error {
-			t.Fatal("setScore must not be called when grader errors")
-			return nil
-		},
-	}
-	g := &fakeGrader{err: errors.New("provider down")}
+	repo := mocks.NewMockReadingRepo(ctrl)
+	repo.EXPECT().EndSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	// GetSession is called twice: once inside gradeAndPersist, once at the end.
+	repo.EXPECT().GetSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.ReadingSession{ID: sid, UserID: uid, SummaryMD: "ok"}, nil,
+	).AnyTimes()
+	repo.EXPECT().GetMaterial(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.ReadingMaterial{ID: uuid.New(), UserID: uid, BodyMD: "B"}, nil,
+	)
+	// SetAISummaryScore must NOT be called — gomock auto-fails on unexpected calls.
+	g := mocks.NewMockSummaryGrader(ctrl)
+	g.EXPECT().GradeSummary(gomock.Any(), gomock.Any()).Return(0, errors.New("provider down"))
 	uc := &EndReadingSession{Repo: repo, Grader: g}
 	if _, err := uc.Do(context.Background(), EndReadingSessionInput{
 		UserID:    uid,
@@ -338,15 +258,17 @@ func TestEndReadingSession_GraderErrorIsSwallowed(t *testing.T) {
 // empty summary: grader is skipped (no point grading nothing).
 func TestEndReadingSession_EmptySummarySkipsGrader(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
 	sid := uuid.New()
-	repo := fakeReadingRepo{
-		endSess: func(_ context.Context, _, _ uuid.UUID, _ int, _ string, _ time.Time) error { return nil },
-		getSess: func(_ context.Context, _, _ uuid.UUID) (domain.ReadingSession, error) {
-			return domain.ReadingSession{ID: sid, UserID: uid}, nil
-		},
-	}
-	g := &fakeGrader{score: 50}
+	repo := mocks.NewMockReadingRepo(ctrl)
+	repo.EXPECT().EndSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	repo.EXPECT().GetSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.ReadingSession{ID: sid, UserID: uid}, nil,
+	)
+	g := mocks.NewMockSummaryGrader(ctrl)
+	// grader.EXPECT().GradeSummary is intentionally NOT set — gomock will fail
+	// if grader is called for an empty summary, validating the skip behavior.
 	uc := &EndReadingSession{Repo: repo, Grader: g}
 	if _, err := uc.Do(context.Background(), EndReadingSessionInput{
 		UserID:    uid,
@@ -354,9 +276,6 @@ func TestEndReadingSession_EmptySummarySkipsGrader(t *testing.T) {
 		SummaryMD: "   ",
 	}); err != nil {
 		t.Fatalf("unexpected: %v", err)
-	}
-	if g.calls != 0 {
-		t.Errorf("grader must be skipped for empty summary; calls=%d", g.calls)
 	}
 }
 
@@ -367,15 +286,17 @@ func TestEndReadingSession_EmptySummarySkipsGrader(t *testing.T) {
 
 func TestAddVocab_PassesThroughToUpsert(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
-	repo := fakeReadingRepo{
-		upsertVoc: func(_ context.Context, e domain.VocabEntry) (domain.VocabEntry, error) {
+	repo := mocks.NewMockReadingRepo(ctrl)
+	repo.EXPECT().UpsertVocab(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, e domain.VocabEntry) (domain.VocabEntry, error) {
 			if e.UserID != uid || e.Word != "compound" {
 				t.Errorf("not propagated: %+v", e)
 			}
 			return e, nil
 		},
-	}
+	)
 	uc := &AddVocab{Repo: repo}
 	out, err := uc.Do(context.Background(), domain.VocabEntry{
 		UserID: uid,
@@ -388,3 +309,6 @@ func TestAddVocab_PassesThroughToUpsert(t *testing.T) {
 		t.Error("round-trip broken")
 	}
 }
+
+// _ silences unused import in non-vocab tests
+var _ = time.Second

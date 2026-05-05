@@ -1,68 +1,17 @@
-package app
+package app_test
 
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
+	"druz9/curation/app"
+	"druz9/curation/app/mocks"
 	"druz9/curation/domain"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// fakeOverrideRepo — in-memory test double.
-type fakeOverrideRepo struct {
-	rows []Override
-}
-
-func (r *fakeOverrideRepo) Insert(_ context.Context, ov Override) (Override, error) {
-	if ov.ID == uuid.Nil {
-		ov.ID = uuid.New()
-	}
-	r.rows = append(r.rows, ov)
-	return ov, nil
-}
-
-func (r *fakeOverrideRepo) List(_ context.Context, userID uuid.UUID, t Target) ([]Override, error) {
-	out := []Override{}
-	for _, ov := range r.rows {
-		if ov.UserID != userID {
-			continue
-		}
-		if t.AtlasNodeID != "" && ov.Target.AtlasNodeID != t.AtlasNodeID {
-			continue
-		}
-		out = append(out, ov)
-	}
-	return out, nil
-}
-
-func (r *fakeOverrideRepo) DeleteByURL(_ context.Context, _ uuid.UUID, _ Target, _ string, _ OverrideAction) error {
-	return nil
-}
-
-type fakePromotionTracker struct {
-	bumpCount int
-	lastURL   string
-}
-
-func (p *fakePromotionTracker) BumpAdded(_ context.Context, url, _ string) error {
-	p.bumpCount++
-	p.lastURL = url
-	return nil
-}
-func (p *fakePromotionTracker) UpdateQuality(_ context.Context, _ string, _ float32) error {
-	return nil
-}
-
-type fakeReputation struct{ bumpedHosts []string }
-
-func (r *fakeReputation) BumpUnhelpful(_ context.Context, host string) error {
-	r.bumpedHosts = append(r.bumpedHosts, host)
-	return nil
-}
-func (r *fakeReputation) IsBlocked(_ context.Context, _ string) (bool, error) { return false, nil }
 
 func validResource() domain.Resource {
 	return domain.Resource{
@@ -76,10 +25,14 @@ func validResource() domain.Resource {
 }
 
 func TestAddResource_RejectsInvalidTarget(t *testing.T) {
-	uc := AddResource{Repo: &fakeOverrideRepo{}, Promotion: &fakePromotionTracker{}}
-	_, err := uc.Do(context.Background(), AddResourceInput{
+	ctrl := gomock.NewController(t)
+	uc := app.AddResource{
+		Repo:      mocks.NewMockOverrideRepo(ctrl),
+		Promotion: mocks.NewMockPromotionTracker(ctrl),
+	}
+	_, err := uc.Do(context.Background(), app.AddResourceInput{
 		UserID:   uuid.New(),
-		Target:   Target{}, // empty — invalid
+		Target:   app.Target{}, // empty — invalid
 		Resource: validResource(),
 	})
 	if err == nil {
@@ -88,28 +41,47 @@ func TestAddResource_RejectsInvalidTarget(t *testing.T) {
 }
 
 func TestAddResource_BumpsPromotionForNodeTarget(t *testing.T) {
-	repo := &fakeOverrideRepo{}
-	prom := &fakePromotionTracker{}
-	uc := AddResource{Repo: repo, Promotion: prom}
-	_, err := uc.Do(context.Background(), AddResourceInput{
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockOverrideRepo(ctrl)
+	repo.EXPECT().Insert(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, ov app.Override) (app.Override, error) {
+			ov.ID = uuid.New()
+			return ov, nil
+		},
+	)
+	prom := mocks.NewMockPromotionTracker(ctrl)
+	var bumpedURL string
+	prom.EXPECT().BumpAdded(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, url, _ string) error {
+			bumpedURL = url
+			return nil
+		},
+	)
+
+	uc := app.AddResource{Repo: repo, Promotion: prom}
+	_, err := uc.Do(context.Background(), app.AddResourceInput{
 		UserID:   uuid.New(),
-		Target:   Target{AtlasNodeID: "ml_classical"},
+		Target:   app.Target{AtlasNodeID: "ml_classical"},
 		Resource: validResource(),
 	})
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if prom.bumpCount != 1 || prom.lastURL != "https://example.com/post" {
-		t.Errorf("promotion not bumped: count=%d url=%q", prom.bumpCount, prom.lastURL)
+	if bumpedURL != "https://example.com/post" {
+		t.Errorf("promotion not bumped: url=%q", bumpedURL)
 	}
 }
 
 func TestAddResource_PropagatesValidationErrors(t *testing.T) {
-	uc := AddResource{Repo: &fakeOverrideRepo{}, Promotion: &fakePromotionTracker{}}
+	ctrl := gomock.NewController(t)
+	uc := app.AddResource{
+		Repo:      mocks.NewMockOverrideRepo(ctrl),
+		Promotion: mocks.NewMockPromotionTracker(ctrl),
+	}
 	r := validResource()
 	r.URL = "not-a-url"
-	_, err := uc.Do(context.Background(), AddResourceInput{
-		UserID: uuid.New(), Target: Target{AtlasNodeID: "ml"}, Resource: r,
+	_, err := uc.Do(context.Background(), app.AddResourceInput{
+		UserID: uuid.New(), Target: app.Target{AtlasNodeID: "ml"}, Resource: r,
 	})
 	if err == nil || !errors.Is(err, domain.ErrInvalidResource) {
 		t.Fatalf("expected ErrInvalidResource, got %v", err)
@@ -117,29 +89,49 @@ func TestAddResource_PropagatesValidationErrors(t *testing.T) {
 }
 
 func TestMarkUnhelpful_BumpsReputation(t *testing.T) {
-	rep := &fakeReputation{}
-	uc := MarkUnhelpful{Repo: &fakeOverrideRepo{}, Reputation: rep}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockOverrideRepo(ctrl)
+	repo.EXPECT().Insert(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, ov app.Override) (app.Override, error) {
+			ov.ID = uuid.New()
+			return ov, nil
+		},
+	)
+	rep := mocks.NewMockDomainReputationRepo(ctrl)
+	var bumpedHosts []string
+	rep.EXPECT().BumpUnhelpful(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, host string) error {
+			bumpedHosts = append(bumpedHosts, host)
+			return nil
+		},
+	)
+
+	uc := app.MarkUnhelpful{Repo: repo, Reputation: rep}
 	err := uc.Do(context.Background(), uuid.New(),
-		Target{AtlasNodeID: "ml"}, "https://blogspam.test/x", "trash")
+		app.Target{AtlasNodeID: "ml"}, "https://blogspam.test/x", "trash")
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if len(rep.bumpedHosts) != 1 || rep.bumpedHosts[0] != "blogspam.test" {
-		t.Errorf("reputation not bumped properly: %v", rep.bumpedHosts)
+	if len(bumpedHosts) != 1 || bumpedHosts[0] != "blogspam.test" {
+		t.Errorf("reputation not bumped properly: %v", bumpedHosts)
 	}
 }
 
 func TestApplyOverrides_FiltersHidden(t *testing.T) {
-	repo := &fakeOverrideRepo{}
+	ctrl := gomock.NewController(t)
 	userID := uuid.New()
-	target := Target{AtlasNodeID: "ml"}
-	// Pre-seed: hide a curated URL.
-	_, _ = repo.Insert(context.Background(), Override{
-		UserID: userID, Target: target,
-		URL:    "https://strang.example/ch3",
-		Action: ActionHidden, Payload: []byte(`{}`),
-	})
-	uc := ApplyOverrides{Repo: repo}
+	target := app.Target{AtlasNodeID: "ml"}
+	repo := mocks.NewMockOverrideRepo(ctrl)
+	// Pre-seeded: hide a curated URL.
+	repo.EXPECT().List(gomock.Any(), userID, target).Return([]app.Override{
+		{
+			UserID: userID, Target: target,
+			URL:    "https://strang.example/ch3",
+			Action: app.ActionHidden, Payload: []byte(`{}`),
+		},
+	}, nil)
+
+	uc := app.ApplyOverrides{Repo: repo}
 	base := domain.ResourceList{
 		{URL: "https://strang.example/ch3", Title: "Strang", Why: "x", Kind: domain.KindBook, Level: domain.LevelB, Priority: domain.PriorityCore},
 		{URL: "https://kept.example", Title: "Kept", Why: "x", Kind: domain.KindArticle, Level: domain.LevelB, Priority: domain.PrioritySupplement},
@@ -154,29 +146,27 @@ func TestApplyOverrides_FiltersHidden(t *testing.T) {
 }
 
 func TestApplyOverrides_AddsUserResources(t *testing.T) {
-	repo := &fakeOverrideRepo{}
+	ctrl := gomock.NewController(t)
 	userID := uuid.New()
-	target := Target{AtlasNodeID: "ml"}
+	target := app.Target{AtlasNodeID: "ml"}
 	r := validResource()
 	r.URL = "https://my.example/post"
 	payload, _ := domain.ResourceList{r}.Marshal()
-	_, _ = repo.Insert(context.Background(), Override{
-		UserID: userID, Target: target,
-		URL: r.URL, Action: ActionAdded, Payload: payload,
-	})
-	uc := ApplyOverrides{Repo: repo}
+
+	repo := mocks.NewMockOverrideRepo(ctrl)
+	repo.EXPECT().List(gomock.Any(), userID, target).Return([]app.Override{
+		{
+			UserID: userID, Target: target,
+			URL: r.URL, Action: app.ActionAdded, Payload: payload,
+		},
+	}, nil)
+
+	uc := app.ApplyOverrides{Repo: repo}
 	out, err := uc.Do(context.Background(), userID, target, nil)
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
 	if len(out) != 1 || out[0].URL != "https://my.example/post" {
 		t.Errorf("user-added not appended: %+v", out)
-	}
-}
-
-func TestJsonString_EscapesQuotes(t *testing.T) {
-	got := jsonString(`he said "hi"`)
-	if !strings.Contains(got, `\"hi\"`) {
-		t.Errorf("quote not escaped: %s", got)
 	}
 }

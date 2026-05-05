@@ -11,6 +11,8 @@
 //   - ReorderResource — change ordering relative to siblings.
 //   - ApplyOverrides  — merge curated.external_resources с user overrides
 //     в один ordered list per user.
+
+//go:generate mockgen -package mocks -destination mocks/overrides_mock.go -source overrides.go
 package app
 
 import (

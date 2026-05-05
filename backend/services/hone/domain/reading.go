@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/reading_mock.go -source reading.go
 package domain
 
 import (

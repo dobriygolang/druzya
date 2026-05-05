@@ -5,46 +5,28 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 
 	"druz9/hone/domain"
+	"druz9/hone/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// fakeListeningRepo — hand-rolled fake (parallel to fakeReadingRepo).
-type fakeListeningRepo struct {
-	create  func(context.Context, domain.ListeningMaterial) (domain.ListeningMaterial, error)
-	get     func(context.Context, uuid.UUID, uuid.UUID) (domain.ListeningMaterial, error)
-	list    func(context.Context, uuid.UUID, int) ([]domain.ListeningMaterial, error)
-	archive func(context.Context, uuid.UUID, uuid.UUID, time.Time) error
-}
-
-func (f fakeListeningRepo) CreateMaterial(ctx context.Context, m domain.ListeningMaterial) (domain.ListeningMaterial, error) {
-	return f.create(ctx, m)
-}
-func (f fakeListeningRepo) GetMaterial(ctx context.Context, u, m uuid.UUID) (domain.ListeningMaterial, error) {
-	return f.get(ctx, u, m)
-}
-func (f fakeListeningRepo) ListMaterials(ctx context.Context, u uuid.UUID, l int) ([]domain.ListeningMaterial, error) {
-	return f.list(ctx, u, l)
-}
-func (f fakeListeningRepo) ArchiveMaterial(ctx context.Context, u, m uuid.UUID, n time.Time) error {
-	return f.archive(ctx, u, m, n)
-}
 
 func TestAddListeningMaterial_HappyPath(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
-	repo := fakeListeningRepo{
-		create: func(_ context.Context, m domain.ListeningMaterial) (domain.ListeningMaterial, error) {
+	repo := mocks.NewMockListeningRepo(ctrl)
+	repo.EXPECT().CreateMaterial(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, m domain.ListeningMaterial) (domain.ListeningMaterial, error) {
 			if m.UserID != uid || m.Title != "Lex Fridman ep 400" {
 				t.Errorf("not propagated: %+v", m)
 			}
 			m.ID = uuid.New()
 			return m, nil
 		},
-	}
+	)
 	uc := &AddListeningMaterial{Repo: repo}
 	out, err := uc.Do(context.Background(), AddListeningMaterialInput{
 		UserID:       uid,
@@ -62,7 +44,8 @@ func TestAddListeningMaterial_HappyPath(t *testing.T) {
 
 func TestAddListeningMaterial_RejectsBadInput(t *testing.T) {
 	t.Parallel()
-	uc := &AddListeningMaterial{Repo: fakeListeningRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &AddListeningMaterial{Repo: mocks.NewMockListeningRepo(ctrl)}
 	cases := []struct {
 		name string
 		in   AddListeningMaterialInput
@@ -90,11 +73,9 @@ func TestAddListeningMaterial_RejectsBadInput(t *testing.T) {
 
 func TestArchiveListeningMaterial_PassThrough(t *testing.T) {
 	t.Parallel()
-	repo := fakeListeningRepo{
-		archive: func(_ context.Context, _, _ uuid.UUID, _ time.Time) error {
-			return domain.ErrNotFound
-		},
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockListeningRepo(ctrl)
+	repo.EXPECT().ArchiveMaterial(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.ErrNotFound)
 	uc := &ArchiveListeningMaterial{Repo: repo}
 	if err := uc.Do(context.Background(), uuid.New(), uuid.New()); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)

@@ -6,103 +6,47 @@ import (
 	"io"
 	"log/slog"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"druz9/hone/domain"
+	"druz9/hone/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// ─── fakes ─────────────────────────────────────────────────────────────────
-
-type fakeNotes struct {
-	mu       sync.Mutex
-	created  []domain.Note
-	createFn func(domain.Note) (domain.Note, error)
-}
-
-func (f *fakeNotes) Create(_ context.Context, n domain.Note) (domain.Note, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.createFn != nil {
-		out, err := f.createFn(n)
-		if err != nil {
-			return domain.Note{}, err
-		}
-		f.created = append(f.created, out)
-		return out, nil
-	}
-	n.ID = uuid.New()
-	n.CreatedAt = time.Now()
-	n.UpdatedAt = time.Now()
-	f.created = append(f.created, n)
-	return n, nil
-}
-func (f *fakeNotes) Update(context.Context, domain.Note) (domain.Note, error) {
-	return domain.Note{}, errors.New("unused")
-}
-func (f *fakeNotes) Get(context.Context, uuid.UUID, uuid.UUID) (domain.Note, error) {
-	return domain.Note{}, errors.New("unused")
-}
-func (f *fakeNotes) List(context.Context, uuid.UUID, int, string, *uuid.UUID) ([]domain.NoteSummary, string, error) {
-	return nil, "", nil
-}
-func (f *fakeNotes) Move(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID) (domain.Note, error) {
-	return domain.Note{}, errors.New("unused")
-}
-func (f *fakeNotes) Delete(context.Context, uuid.UUID, uuid.UUID) error { return nil }
-func (f *fakeNotes) SetEmbedding(context.Context, uuid.UUID, uuid.UUID, []float32, string, time.Time) error {
-	return nil
-}
-func (f *fakeNotes) WithEmbeddingsForUser(context.Context, uuid.UUID, string) ([]domain.NoteEmbedding, error) {
-	return nil, nil
-}
-
-func (f *fakeNotes) ExistsByTitleForUser(context.Context, uuid.UUID, string) (bool, error) {
-	return false, nil
-}
-
-func (f *fakeNotes) MarkStaleForReembed(context.Context, string) (int64, error) {
-	return 0, nil
-}
-
-func (f *fakeNotes) SearchSimilarNotes(context.Context, uuid.UUID, []float32, string, uuid.UUID, float32, int) ([]domain.NoteSimilarityHit, error) {
-	return nil, nil
-}
-
-type standupFakePlans struct {
-	plan     domain.Plan
-	getErr   error
-	upserted domain.Plan
-}
-
-func (f *standupFakePlans) GetForDate(context.Context, uuid.UUID, time.Time) (domain.Plan, error) {
-	if f.getErr != nil {
-		return domain.Plan{}, f.getErr
-	}
-	return f.plan, nil
-}
-func (f *standupFakePlans) Upsert(_ context.Context, p domain.Plan) (domain.Plan, error) {
-	f.upserted = p
-	return p, nil
-}
-func (f *standupFakePlans) PatchItem(context.Context, uuid.UUID, time.Time, string, bool, bool) (domain.Plan, error) {
-	return domain.Plan{}, nil
-}
-
-// ─── tests ─────────────────────────────────────────────────────────────────
 
 func TestRecordStandup_CreatesNoteAndPatchesPlan(t *testing.T) {
 	t.Parallel()
-	notes := &fakeNotes{}
-	plans := &standupFakePlans{
-		plan: domain.Plan{
-			Date:  time.Date(2026, 4, 25, 0, 0, 0, 0, time.UTC),
-			Items: []domain.PlanItem{{ID: "existing", Title: "foo"}},
+	ctrl := gomock.NewController(t)
+	uid := uuid.New()
+	planDate := time.Date(2026, 4, 25, 0, 0, 0, 0, time.UTC)
+
+	notes := mocks.NewMockNoteRepo(ctrl)
+	createdNote := domain.Note{}
+	notes.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, n domain.Note) (domain.Note, error) {
+			n.ID = uuid.New()
+			n.CreatedAt = time.Now()
+			n.UpdatedAt = time.Now()
+			createdNote = n
+			return n, nil
 		},
-	}
+	)
+
+	plans := mocks.NewMockPlanRepo(ctrl)
+	plans.EXPECT().GetForDate(gomock.Any(), uid, gomock.Any()).Return(domain.Plan{
+		Date:  planDate,
+		Items: []domain.PlanItem{{ID: "existing", Title: "foo"}},
+	}, nil)
+	var upserted domain.Plan
+	plans.EXPECT().Upsert(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, p domain.Plan) (domain.Plan, error) {
+			upserted = p
+			return p, nil
+		},
+	)
+
 	uc := &RecordStandup{
 		Notes: notes,
 		Plans: plans,
@@ -110,7 +54,7 @@ func TestRecordStandup_CreatesNoteAndPatchesPlan(t *testing.T) {
 		Now:   func() time.Time { return time.Date(2026, 4, 25, 9, 0, 0, 0, time.UTC) },
 	}
 	out, err := uc.Do(context.Background(), RecordStandupInput{
-		UserID:    uuid.New(),
+		UserID:    uid,
 		Yesterday: "Finished streak reconciler",
 		Today:     "Ship resistance tracker",
 		Blockers:  "none",
@@ -121,22 +65,23 @@ func TestRecordStandup_CreatesNoteAndPatchesPlan(t *testing.T) {
 	if out.Note.Title != "Standup 2026-04-25" {
 		t.Errorf("title = %q", out.Note.Title)
 	}
-	if !strings.Contains(out.Note.BodyMD, "## Yesterday") || !strings.Contains(out.Note.BodyMD, "Ship resistance tracker") {
-		t.Errorf("body missing sections: %q", out.Note.BodyMD)
+	if !strings.Contains(createdNote.BodyMD, "## Yesterday") || !strings.Contains(createdNote.BodyMD, "Ship resistance tracker") {
+		t.Errorf("body missing sections: %q", createdNote.BodyMD)
 	}
-	if len(plans.upserted.Items) != 2 {
-		t.Errorf("expected plan to have 2 items after patch, got %d", len(plans.upserted.Items))
+	if len(upserted.Items) != 2 {
+		t.Errorf("expected plan to have 2 items after patch, got %d", len(upserted.Items))
 	}
-	if plans.upserted.Items[1].Kind != domain.PlanItemCustom {
-		t.Errorf("new item kind = %v, want custom", plans.upserted.Items[1].Kind)
+	if upserted.Items[1].Kind != domain.PlanItemCustom {
+		t.Errorf("new item kind = %v, want custom", upserted.Items[1].Kind)
 	}
 }
 
 func TestRecordStandup_EmptyInputRejected(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uc := &RecordStandup{
-		Notes: &fakeNotes{},
-		Plans: &standupFakePlans{},
+		Notes: mocks.NewMockNoteRepo(ctrl),
+		Plans: mocks.NewMockPlanRepo(ctrl),
 		Log:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:   time.Now,
 	}
@@ -148,8 +93,16 @@ func TestRecordStandup_EmptyInputRejected(t *testing.T) {
 
 func TestRecordStandup_NoPlanYet_ReturnsNoteOnly(t *testing.T) {
 	t.Parallel()
-	notes := &fakeNotes{}
-	plans := &standupFakePlans{getErr: domain.ErrNotFound}
+	ctrl := gomock.NewController(t)
+	notes := mocks.NewMockNoteRepo(ctrl)
+	notes.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, n domain.Note) (domain.Note, error) {
+			n.ID = uuid.New()
+			return n, nil
+		},
+	)
+	plans := mocks.NewMockPlanRepo(ctrl)
+	plans.EXPECT().GetForDate(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.Plan{}, domain.ErrNotFound)
 	uc := &RecordStandup{
 		Notes: notes,
 		Plans: plans,

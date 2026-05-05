@@ -3,78 +3,44 @@ package app
 import (
 	"context"
 	"errors"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"druz9/copilot/domain"
+	"druz9/copilot/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// fakeStartSessions — минимальная реализация SessionRepo для теста.
-// Остальные методы panic-ят: если тест их вдруг позовёт, узнаем громко.
-type fakeStartSessions struct {
-	created int64
-}
-
-func (f *fakeStartSessions) Create(_ context.Context, userID uuid.UUID, kind domain.SessionKind) (domain.Session, error) {
-	atomic.AddInt64(&f.created, 1)
-	return domain.Session{ID: uuid.New(), UserID: userID, Kind: kind}, nil
-}
-func (f *fakeStartSessions) Get(context.Context, uuid.UUID) (domain.Session, error) {
-	panic("unexpected Get")
-}
-func (f *fakeStartSessions) GetLive(context.Context, uuid.UUID) (domain.Session, error) {
-	panic("unexpected GetLive")
-}
-func (f *fakeStartSessions) End(context.Context, uuid.UUID, uuid.UUID) error { panic("unexpected End") }
-func (f *fakeStartSessions) MarkByok(context.Context, uuid.UUID) error       { panic("unexpected MarkByok") }
-func (f *fakeStartSessions) ListForUser(
-	context.Context, uuid.UUID, domain.SessionKind, domain.Cursor, int,
-) ([]domain.SessionSummary, domain.Cursor, error) {
-	panic("unexpected ListForUser")
-}
-func (f *fakeStartSessions) AttachConversation(context.Context, uuid.UUID, uuid.UUID) error {
-	panic("unexpected AttachConversation")
-}
-func (f *fakeStartSessions) ListConversations(context.Context, uuid.UUID) ([]domain.Conversation, error) {
-	panic("unexpected ListConversations")
-}
-func (f *fakeStartSessions) AttachDocument(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {
-	panic("unexpected AttachDocument")
-}
-func (f *fakeStartSessions) DetachDocument(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {
-	panic("unexpected DetachDocument")
-}
-
-// inMemoryLimiter — лимитер с фиксированным порогом и счётчиком на ключ.
-// 11-й вызов (при limit=10) возвращает ErrRateLimited.
-type inMemoryLimiter struct {
-	limit  int
-	counts map[string]int
-}
-
-func newInMemoryLimiter(limit int) *inMemoryLimiter {
-	return &inMemoryLimiter{limit: limit, counts: map[string]int{}}
-}
-
-func (l *inMemoryLimiter) Allow(_ context.Context, key string, limit int, _ time.Duration) (int, int, error) {
-	l.counts[key]++
-	if l.counts[key] > limit {
-		return 0, 60, domain.ErrRateLimited
-	}
-	return limit - l.counts[key], 0, nil
-}
 
 // TestStartSession_RateLimited — 11-й старт подряд для одного юзера падает
 // в ErrRateLimited; 10 первых проходят.
 func TestStartSession_RateLimited(t *testing.T) {
-	sessions := &fakeStartSessions{}
-	limiter := newInMemoryLimiter(10)
+	ctrl := gomock.NewController(t)
+	uid := uuid.New()
+	sessions := mocks.NewMockSessionRepo(ctrl)
+	createCalls := 0
+	sessions.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID, kind domain.SessionKind) (domain.Session, error) {
+			createCalls++
+			return domain.Session{ID: uuid.New(), UserID: userID, Kind: kind}, nil
+		},
+	).Times(10)
+
+	limiter := mocks.NewMockRateLimiter(ctrl)
+	calls := 0
+	limiter.EXPECT().Allow(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string, limit int, _ time.Duration) (int, int, error) {
+			calls++
+			if calls > limit {
+				return 0, 60, domain.ErrRateLimited
+			}
+			return limit - calls, 0, nil
+		},
+	).AnyTimes()
+
 	uc := &StartSession{Sessions: sessions, Limiter: limiter}
 
-	uid := uuid.New()
 	for i := 0; i < 10; i++ {
 		if _, err := uc.Do(context.Background(), StartSessionInput{
 			UserID: uid, Kind: domain.SessionKindInterview,
@@ -88,8 +54,8 @@ func TestStartSession_RateLimited(t *testing.T) {
 	if !errors.Is(err, domain.ErrRateLimited) {
 		t.Fatalf("expected ErrRateLimited on 11th call, got %v", err)
 	}
-	if got := atomic.LoadInt64(&sessions.created); got != 10 {
-		t.Fatalf("Create calls=%d, want 10 (лимит пропустил только первые 10)", got)
+	if createCalls != 10 {
+		t.Fatalf("Create calls=%d, want 10 (лимит пропустил только первые 10)", createCalls)
 	}
 }
 
@@ -97,8 +63,26 @@ func TestStartSession_RateLimited(t *testing.T) {
 // или глобально: второй юзер стартует успешно даже после того, как первый
 // выбрал квоту.
 func TestStartSession_RateLimitPerUser(t *testing.T) {
-	sessions := &fakeStartSessions{}
-	limiter := newInMemoryLimiter(10)
+	ctrl := gomock.NewController(t)
+	sessions := mocks.NewMockSessionRepo(ctrl)
+	sessions.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID, kind domain.SessionKind) (domain.Session, error) {
+			return domain.Session{ID: uuid.New(), UserID: userID, Kind: kind}, nil
+		},
+	).AnyTimes()
+
+	limiter := mocks.NewMockRateLimiter(ctrl)
+	counts := map[string]int{}
+	limiter.EXPECT().Allow(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, key string, limit int, _ time.Duration) (int, int, error) {
+			counts[key]++
+			if counts[key] > limit {
+				return 0, 60, domain.ErrRateLimited
+			}
+			return limit - counts[key], 0, nil
+		},
+	).AnyTimes()
+
 	uc := &StartSession{Sessions: sessions, Limiter: limiter}
 
 	alice := uuid.New()
@@ -129,7 +113,13 @@ func TestStartSession_RateLimitPerUser(t *testing.T) {
 // TestStartSession_NoLimiter — use case работает и без limiter'а (nil-safe).
 // Нужен для совместимости с тестами, которые limiter не создают.
 func TestStartSession_NoLimiter(t *testing.T) {
-	sessions := &fakeStartSessions{}
+	ctrl := gomock.NewController(t)
+	sessions := mocks.NewMockSessionRepo(ctrl)
+	sessions.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID, kind domain.SessionKind) (domain.Session, error) {
+			return domain.Session{ID: uuid.New(), UserID: userID, Kind: kind}, nil
+		},
+	)
 	uc := &StartSession{Sessions: sessions /* Limiter nil */}
 	if _, err := uc.Do(context.Background(), StartSessionInput{
 		UserID: uuid.New(), Kind: domain.SessionKindInterview,

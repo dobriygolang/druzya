@@ -8,59 +8,11 @@ import (
 	"time"
 
 	"druz9/hone/domain"
+	"druz9/hone/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// ─── fakes ─────────────────────────────────────────────────────────────────
-
-type fakeFocusRepo struct {
-	create func(context.Context, domain.FocusSession) (domain.FocusSession, error)
-	end    func(context.Context, uuid.UUID, uuid.UUID, time.Time, int, int) (domain.FocusSession, error)
-	get    func(context.Context, uuid.UUID, uuid.UUID) (domain.FocusSession, error)
-}
-
-func (f fakeFocusRepo) Create(ctx context.Context, s domain.FocusSession) (domain.FocusSession, error) {
-	return f.create(ctx, s)
-}
-func (f fakeFocusRepo) End(ctx context.Context, u, sid uuid.UUID, t time.Time, p, sec int) (domain.FocusSession, error) {
-	return f.end(ctx, u, sid, t, p, sec)
-}
-func (f fakeFocusRepo) Get(ctx context.Context, u, sid uuid.UUID) (domain.FocusSession, error) {
-	return f.get(ctx, u, sid)
-}
-
-type fakeStreakRepo struct {
-	getState          func(context.Context, uuid.UUID) (domain.StreakState, error)
-	applyFocusSession func(context.Context, uuid.UUID, time.Time, int, int, int) (domain.StreakState, error)
-	rangeDays         func(context.Context, uuid.UUID, time.Time, time.Time) ([]domain.StreakDay, error)
-	applyCalls        []struct {
-		day       time.Time
-		seconds   int
-		threshold int
-	}
-}
-
-func (f *fakeStreakRepo) GetState(ctx context.Context, u uuid.UUID) (domain.StreakState, error) {
-	return f.getState(ctx, u)
-}
-func (f *fakeStreakRepo) ApplyFocusSession(ctx context.Context, u uuid.UUID, day time.Time, sd, ssd, th int) (domain.StreakState, error) {
-	f.applyCalls = append(f.applyCalls, struct {
-		day       time.Time
-		seconds   int
-		threshold int
-	}{day, sd, th})
-	return f.applyFocusSession(ctx, u, day, sd, ssd, th)
-}
-func (f *fakeStreakRepo) RangeDays(ctx context.Context, u uuid.UUID, from, to time.Time) ([]domain.StreakDay, error) {
-	return f.rangeDays(ctx, u, from, to)
-}
-func (f *fakeStreakRepo) FindDrift(context.Context, time.Duration) ([]domain.DriftRow, error) {
-	return nil, nil
-}
-func (f *fakeStreakRepo) RecomputeDay(context.Context, uuid.UUID, time.Time, int, int, int) (domain.StreakState, error) {
-	return domain.StreakState{}, nil
-}
 
 // ─── StartFocus ────────────────────────────────────────────────────────────
 
@@ -68,17 +20,20 @@ func TestStartFocus_DefaultsMode(t *testing.T) {
 	t.Parallel()
 	// Invalid / empty mode input defaults to pomodoro rather than rejecting —
 	// the client may forget to set the field, a timer is still a timer.
+	ctrl := gomock.NewController(t)
 	var got domain.FocusSession
-	uc := &StartFocus{
-		Focus: fakeFocusRepo{
-			create: func(_ context.Context, s domain.FocusSession) (domain.FocusSession, error) {
-				got = s
-				s.ID = uuid.New()
-				return s, nil
-			},
+	focus := mocks.NewMockFocusRepo(ctrl)
+	focus.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, s domain.FocusSession) (domain.FocusSession, error) {
+			got = s
+			s.ID = uuid.New()
+			return s, nil
 		},
-		Log: discardLogger(),
-		Now: fixedNow,
+	)
+	uc := &StartFocus{
+		Focus: focus,
+		Log:   discardLogger(),
+		Now:   fixedNow,
 	}
 	_, err := uc.Do(context.Background(), StartFocusInput{UserID: uuid.New(), Mode: "not-a-mode"})
 	if err != nil {
@@ -96,20 +51,31 @@ func TestStartFocus_DefaultsMode(t *testing.T) {
 
 func TestEndFocus_AppliesStreakOnSuccess(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
 	sid := uuid.New()
 	nowUTC := fixedNow().UTC()
-	streak := &fakeStreakRepo{
-		applyFocusSession: func(_ context.Context, _ uuid.UUID, _ time.Time, _ int, _ int, _ int) (domain.StreakState, error) {
+	focus := mocks.NewMockFocusRepo(ctrl)
+	focus.EXPECT().End(gomock.Any(), uid, sid, gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.FocusSession{ID: sid, UserID: uid, EndedAt: &nowUTC}, nil,
+	)
+
+	streak := mocks.NewMockStreakRepo(ctrl)
+	type applyCall struct {
+		day       time.Time
+		seconds   int
+		threshold int
+	}
+	var applyCalls []applyCall
+	streak.EXPECT().ApplyFocusSession(gomock.Any(), uid, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, day time.Time, sd, _, th int) (domain.StreakState, error) {
+			applyCalls = append(applyCalls, applyCall{day: day, seconds: sd, threshold: th})
 			return domain.StreakState{CurrentStreak: 1}, nil
 		},
-	}
+	)
+
 	uc := &EndFocus{
-		Focus: fakeFocusRepo{
-			end: func(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ time.Time, _ int, _ int) (domain.FocusSession, error) {
-				return domain.FocusSession{ID: sid, UserID: uid, EndedAt: &nowUTC}, nil
-			},
-		},
+		Focus:   focus,
 		Streaks: streak,
 		Log:     discardLogger(),
 		Now:     fixedNow,
@@ -118,17 +84,16 @@ func TestEndFocus_AppliesStreakOnSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(streak.applyCalls) != 1 {
-		t.Fatalf("ApplyFocusSession called %d times, want 1", len(streak.applyCalls))
+	if len(applyCalls) != 1 {
+		t.Fatalf("ApplyFocusSession called %d times, want 1", len(applyCalls))
 	}
-	got := streak.applyCalls[0]
+	got := applyCalls[0]
 	if got.seconds != 1500 {
 		t.Errorf("seconds delta = %d, want 1500", got.seconds)
 	}
 	if got.threshold != MinQualifyingFocusSeconds {
 		t.Errorf("threshold = %d, want default %d", got.threshold, MinQualifyingFocusSeconds)
 	}
-	// day is always truncated to 00:00 UTC of the current day
 	if !got.day.Equal(nowUTC.Truncate(24 * time.Hour)) {
 		t.Errorf("day = %v, want %v", got.day, nowUTC.Truncate(24*time.Hour))
 	}
@@ -136,46 +101,57 @@ func TestEndFocus_AppliesStreakOnSuccess(t *testing.T) {
 
 func TestEndFocus_DoesNotFailWhenStreakApplyErrors(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	// Streak aggregate is eventually-consistent: if the post-End streak
 	// update fails (Redis stall, transient PG flake), the session itself
 	// is already stored and the user should see the "you focused" path
 	// complete. Reconciliation is the streak worker's problem, not the UC.
-	streak := &fakeStreakRepo{
-		applyFocusSession: func(_ context.Context, _ uuid.UUID, _ time.Time, _ int, _ int, _ int) (domain.StreakState, error) {
-			return domain.StreakState{}, errors.New("transient")
-		},
-	}
+	focus := mocks.NewMockFocusRepo(ctrl)
+	focus.EXPECT().End(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.FocusSession{}, nil,
+	)
+	streak := mocks.NewMockStreakRepo(ctrl)
+	streak.EXPECT().ApplyFocusSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.StreakState{}, errors.New("transient"),
+	)
 	uc := &EndFocus{
-		Focus: fakeFocusRepo{
-			end: func(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ time.Time, _ int, _ int) (domain.FocusSession, error) {
-				return domain.FocusSession{}, nil
-			},
-		},
+		Focus:   focus,
 		Streaks: streak,
 		Log:     discardLogger(),
 		Now:     fixedNow,
 	}
-	if _, err := uc.Do(context.Background(), EndFocusInput{UserID: uuid.New(), SessionID: uuid.New()}); err != nil {
+	// SecondsFocused>=60 чтобы пройти insta-stop фильтр и вызвать ApplyFocusSession.
+	if _, err := uc.Do(context.Background(), EndFocusInput{UserID: uuid.New(), SessionID: uuid.New(), SecondsFocused: 60}); err != nil {
 		t.Fatalf("End should succeed even when streak apply fails; got %v", err)
 	}
 }
 
 func TestEndFocus_ReflectionCreatesNote(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
 	sid := uuid.New()
-	streak := &fakeStreakRepo{
-		applyFocusSession: func(_ context.Context, _ uuid.UUID, _ time.Time, _ int, _ int, _ int) (domain.StreakState, error) {
-			return domain.StreakState{}, nil
+	focus := mocks.NewMockFocusRepo(ctrl)
+	focus.EXPECT().End(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _, _ uuid.UUID, _ time.Time, _, secs int) (domain.FocusSession, error) {
+			return domain.FocusSession{ID: sid, UserID: uid, PinnedTitle: "BFS on trees", SecondsFocused: secs}, nil
 		},
-	}
-	notes := &fakeNotes{}
+	)
+	streak := mocks.NewMockStreakRepo(ctrl)
+	streak.EXPECT().ApplyFocusSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.StreakState{}, nil)
+
+	notes := mocks.NewMockNoteRepo(ctrl)
+	var created []domain.Note
+	notes.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, n domain.Note) (domain.Note, error) {
+			n.ID = uuid.New()
+			created = append(created, n)
+			return n, nil
+		},
+	)
+
 	uc := &EndFocus{
-		Focus: fakeFocusRepo{
-			end: func(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ time.Time, _ int, secs int) (domain.FocusSession, error) {
-				return domain.FocusSession{ID: sid, UserID: uid, PinnedTitle: "BFS on trees", SecondsFocused: secs}, nil
-			},
-		},
+		Focus:   focus,
 		Streaks: streak,
 		Notes:   notes,
 		Log:     discardLogger(),
@@ -188,58 +164,60 @@ func TestEndFocus_ReflectionCreatesNote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	if len(notes.created) != 1 {
-		t.Fatalf("expected 1 reflection note, got %d", len(notes.created))
+	if len(created) != 1 {
+		t.Fatalf("expected 1 reflection note, got %d", len(created))
 	}
-	if !strings.Contains(notes.created[0].Title, "BFS on trees") {
-		t.Errorf("note title = %q", notes.created[0].Title)
+	if !strings.Contains(created[0].Title, "BFS on trees") {
+		t.Errorf("note title = %q", created[0].Title)
 	}
-	if !strings.Contains(notes.created[0].BodyMD, "Understood the algorithm") {
+	if !strings.Contains(created[0].BodyMD, "Understood the algorithm") {
 		t.Errorf("note body missing reflection")
 	}
 }
 
 func TestEndFocus_EmptyReflection_NoNote(t *testing.T) {
 	t.Parallel()
-	streak := &fakeStreakRepo{
-		applyFocusSession: func(_ context.Context, _ uuid.UUID, _ time.Time, _ int, _ int, _ int) (domain.StreakState, error) {
-			return domain.StreakState{}, nil
-		},
-	}
-	notes := &fakeNotes{}
+	ctrl := gomock.NewController(t)
+	focus := mocks.NewMockFocusRepo(ctrl)
+	focus.EXPECT().End(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.FocusSession{}, nil,
+	)
+	streak := mocks.NewMockStreakRepo(ctrl)
+	streak.EXPECT().ApplyFocusSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.StreakState{}, nil)
+	notes := mocks.NewMockNoteRepo(ctrl)
+	// notes.Create should NOT be called when reflection is empty (gomock will
+	// auto-fail on unexpected calls, validating the no-note assertion).
 	uc := &EndFocus{
-		Focus: fakeFocusRepo{
-			end: func(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ time.Time, _ int, _ int) (domain.FocusSession, error) {
-				return domain.FocusSession{}, nil
-			},
-		},
+		Focus:   focus,
 		Streaks: streak,
 		Notes:   notes,
 		Log:     discardLogger(),
 		Now:     fixedNow,
 	}
-	_, err := uc.Do(context.Background(), EndFocusInput{UserID: uuid.New(), SessionID: uuid.New()})
+	// SecondsFocused>=60 чтобы пройти insta-stop фильтр и вызвать ApplyFocusSession.
+	_, err := uc.Do(context.Background(), EndFocusInput{UserID: uuid.New(), SessionID: uuid.New(), SecondsFocused: 60})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
-	}
-	if len(notes.created) != 0 {
-		t.Errorf("expected 0 notes for empty reflection, got %d", len(notes.created))
 	}
 }
 
 func TestEndFocus_UsesCustomQualifyingSecondsWhenSet(t *testing.T) {
 	t.Parallel()
-	streak := &fakeStreakRepo{
-		applyFocusSession: func(_ context.Context, _ uuid.UUID, _ time.Time, _ int, _ int, _ int) (domain.StreakState, error) {
+	ctrl := gomock.NewController(t)
+	focus := mocks.NewMockFocusRepo(ctrl)
+	focus.EXPECT().End(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.FocusSession{}, nil,
+	)
+	streak := mocks.NewMockStreakRepo(ctrl)
+	var gotThreshold int
+	streak.EXPECT().ApplyFocusSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, _ time.Time, _, _, th int) (domain.StreakState, error) {
+			gotThreshold = th
 			return domain.StreakState{}, nil
 		},
-	}
+	)
 	uc := &EndFocus{
-		Focus: fakeFocusRepo{
-			end: func(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ time.Time, _ int, _ int) (domain.FocusSession, error) {
-				return domain.FocusSession{}, nil
-			},
-		},
+		Focus:             focus,
 		Streaks:           streak,
 		Log:               discardLogger(),
 		Now:               fixedNow,
@@ -248,8 +226,8 @@ func TestEndFocus_UsesCustomQualifyingSecondsWhenSet(t *testing.T) {
 	// SecondsFocused>=60 чтобы пройти через insta-stop фильтр в EndFocus.Do.
 	// Сессии короче минуты не вызывают ApplyFocusSession (см. focus.go).
 	_, _ = uc.Do(context.Background(), EndFocusInput{UserID: uuid.New(), SessionID: uuid.New(), SecondsFocused: 60})
-	if streak.applyCalls[0].threshold != 42 {
-		t.Fatalf("threshold = %d, want 42", streak.applyCalls[0].threshold)
+	if gotThreshold != 42 {
+		t.Fatalf("threshold = %d, want 42", gotThreshold)
 	}
 }
 
@@ -257,6 +235,7 @@ func TestEndFocus_UsesCustomQualifyingSecondsWhenSet(t *testing.T) {
 
 func TestGetStats_ComputesTotalAndLastSeven(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
 	to := fixedNow().UTC().Truncate(24 * time.Hour)
 	// 10 days: oldest 5 outside the 7-day window, newest 5 inside + today.
@@ -268,14 +247,12 @@ func TestGetStats_ComputesTotalAndLastSeven(t *testing.T) {
 			SessionsCount:  1,
 		}
 	}
+	streak := mocks.NewMockStreakRepo(ctrl)
+	streak.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(domain.StreakState{CurrentStreak: 3, LongestStreak: 7}, nil)
+	streak.EXPECT().RangeDays(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(days, nil)
 	uc := &GetStats{
-		Streaks: &fakeStreakRepo{
-			getState: func(_ context.Context, _ uuid.UUID) (domain.StreakState, error) {
-				return domain.StreakState{CurrentStreak: 3, LongestStreak: 7}, nil
-			},
-			rangeDays: func(_ context.Context, _ uuid.UUID, _, _ time.Time) ([]domain.StreakDay, error) { return days, nil },
-		},
-		Now: fixedNow,
+		Streaks: streak,
+		Now:     fixedNow,
 	}
 	got, err := uc.Do(context.Background(), GetStatsInput{UserID: uid})
 	if err != nil {

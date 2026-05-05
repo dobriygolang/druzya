@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/listening_mock.go -source listening.go
 package domain
 
 import (
