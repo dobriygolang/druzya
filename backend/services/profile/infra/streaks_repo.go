@@ -17,8 +17,8 @@ import (
 // CountRecentActivity via sqlc-generated weekly counts.
 func (p *Postgres) CountRecentActivity(ctx context.Context, userID uuid.UUID, since time.Time) (domain.Activity, error) {
 	row, err := p.q.CountWeeklyActivity(ctx, profiledb.CountWeeklyActivityParams{
-		UserID:      sharedpg.UUID(userID),
-		SubmittedAt: pgtype.Timestamptz{Time: since, Valid: true},
+		UserID:     sharedpg.UUID(userID),
+		FinishedAt: pgtype.Timestamptz{Time: since, Valid: true},
 	})
 	if err != nil {
 		return domain.Activity{}, fmt.Errorf("profile.Postgres.CountRecentActivity: %w", err)

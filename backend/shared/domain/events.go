@@ -110,12 +110,12 @@ type XPGained struct {
 	UserID uuid.UUID `json:"user_id"`
 	Amount int       `json:"amount"`
 	// Reason — свободный label публишера (e.g. "podcast_completed",
-	// "hone_task_done:algo"). Используется в логах + xp_events.source
-	// маппинге через FirstReasonToken.
+	// "hone_task_done:algo"). Используется в логах + telemetry tags.
 	Reason string `json:"reason"`
-	// SourceID — Phase H audit. UUID конкретного объекта (match_id /
-	// task_id / kata_id / mock_session_id / etc.). nil если контекст
-	// неприменим (например podcast progress — episode не uuid'нутый).
+	// SourceID — UUID конкретного объекта-источника XP (task_id /
+	// mock_session_id / etc.). nil если контекст неприменим. Сейчас
+	// переживает только в логах OnXPGained — audit-log таблица xp_events
+	// удалена в migration 00081 (Phase E2 RPG/arena cleanup).
 	SourceID *uuid.UUID `json:"source_id,omitempty"`
 }
 

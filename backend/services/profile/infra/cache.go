@@ -316,14 +316,6 @@ func (c *CachedRepo) ApplyXPDelta(ctx context.Context, userID uuid.UUID, addXP i
 	return nil
 }
 
-// RecordXPEvent forwards (no cache to invalidate — append-only audit).
-func (c *CachedRepo) RecordXPEvent(ctx context.Context, userID uuid.UUID, amount int, source string, sourceID *uuid.UUID) error {
-	if err := c.delegate.RecordXPEvent(ctx, userID, amount, source, sourceID); err != nil {
-		return fmt.Errorf("profile.cache.RecordXPEvent: %w", err)
-	}
-	return nil
-}
-
 // GetSettings is uncached — settings are written rarely but read on the
 // settings page only, so the cost/benefit doesn't pencil out today.
 // TODO Phase 2: cache settings under profile:v1:settings:<uid> if hot.

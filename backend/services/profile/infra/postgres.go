@@ -73,7 +73,7 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 		b.Subscription = domain.Subscription{
 			UserID: userID,
 			Plan:   enums.SubscriptionPlan(row.Plan.String),
-			Status: pgText(row.Status),
+			Status: subStatusText(row.Status),
 		}
 		if row.CurrentPeriodEnd.Valid {
 			t := row.CurrentPeriodEnd.Time
@@ -154,29 +154,9 @@ func (p *Postgres) ApplyXPDelta(ctx context.Context, userID uuid.UUID, addXP int
 	}); err != nil {
 		return fmt.Errorf("profile.Postgres.ApplyXPDelta: %w", err)
 	}
-	_ = addXP // sub-event audit пишется отдельным RecordXPEvent
+	_ = addXP // amount fed into LevelUp event by caller; not persisted as audit row
 	return nil
 }
-
-// RecordXPEvent — Phase H audit log row. SQL-CHECK на source гарантирует
-// closed-set; некорректный source ловится тут с ошибкой 23514 → caller
-// должен починить мапинг (см. xpEventSourceFromReason в profile/app).
-func (p *Postgres) RecordXPEvent(ctx context.Context, userID uuid.UUID, amount int, source string, sourceID *uuid.UUID) error {
-	var sid pgtype.UUID
-	if sourceID != nil && *sourceID != uuid.Nil {
-		sid = sharedpg.UUID(*sourceID)
-	}
-	if err := p.q.InsertXPEvent(ctx, profiledb.InsertXPEventParams{
-		UserID:   sharedpg.UUID(userID),
-		Amount:   int32(amount),
-		Source:   source,
-		SourceID: sid,
-	}); err != nil {
-		return fmt.Errorf("profile.Postgres.RecordXPEvent: %w", err)
-	}
-	return nil
-}
-
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -185,6 +165,17 @@ func pgText(t pgtype.Text) string {
 		return ""
 	}
 	return t.String
+}
+
+// subStatusText flattens the regen-emitted NullSubscriptionStatus enum back to
+// a plain string, matching what domain.Subscription.Status expects. The enum
+// itself is enforced at the DB layer (CHECK constraint added in migration 73);
+// the domain stays string-typed so downstream consumers don't need the enum.
+func subStatusText(s profiledb.NullSubscriptionStatus) string {
+	if !s.Valid {
+		return ""
+	}
+	return string(s.SubscriptionStatus)
 }
 
 func parseChannels(raw []string) []enums.NotificationChannel {

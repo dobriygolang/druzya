@@ -25,13 +25,6 @@ type ProfileRepo interface {
 	// ApplyXPDelta adjusts xp/level atomically (used by XPGained handler).
 	ApplyXPDelta(ctx context.Context, userID uuid.UUID, addXP int, newLevel int, remainderXP int64) error
 
-	// RecordXPEvent writes an audit-log row in xp_events. source — closed
-	// set (CHECK constraint в schema_v2): task/arena/kata/podcast/mock/quiz/
-	// review/custom. sourceID опционально — UUID match'а / task'а / kata'и
-	// для downstream-аналитики. Пишется в OnXPGained handler синхронно
-	// с ApplyXPDelta так что credit и audit всегда в паре.
-	RecordXPEvent(ctx context.Context, userID uuid.UUID, amount int, source string, sourceID *uuid.UUID) error
-
 	// Settings operations.
 	GetSettings(ctx context.Context, userID uuid.UUID) (Settings, error)
 	UpdateSettings(ctx context.Context, userID uuid.UUID, s Settings) error

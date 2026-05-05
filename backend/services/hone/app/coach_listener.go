@@ -123,8 +123,7 @@ func (l *CoachListener) OnCopilotAnalysisCompleted(ctx context.Context, e shared
 // ── Internals ────────────────────────────────────────────────────────────
 
 // settle moves a matching task to `done` and adds an AI comment.
-// `_taskCompleted` is reserved for the future XPGained publishing path
-// (Phase H wires it to xp_events).
+// `_taskCompleted` is reserved for the future XPGained publishing path.
 func (l *CoachListener) settle(ctx context.Context, userID uuid.UUID, skillKey, comment string, _taskCompleted bool) {
 	if skillKey == "" {
 		return
