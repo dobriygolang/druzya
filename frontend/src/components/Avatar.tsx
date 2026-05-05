@@ -46,14 +46,16 @@ const STATUS_COLOR: Record<AvatarStatus, string> = {
   streaming: 'bg-text-secondary',
 };
 
-// Tier rings — keep gold/silver/bronze metallic hex (they're heraldic, not
-// brand colors), drop cyan/accent for platinum/master in favor of ink.
+// Tier rings — full B/W ramp. Heraldic metallics (bronze/silver/gold)
+// заменены на ink-ramp; diamond цяан → text-secondary; master/platinum
+// держат ink. Identity 2026-05-04: no gamification, tiers — это просто
+// orderable opacity, не «цветная иерархия достижений».
 const TIER_RING: Record<AvatarTier, string> = {
-  bronze: 'ring-[#CD7F32]',
-  silver: 'ring-[#C0C0C0]',
-  gold: 'ring-warn',
+  bronze: 'ring-text-muted',
+  silver: 'ring-text-secondary',
+  gold: 'ring-text-primary',
   platinum: 'ring-text-secondary',
-  diamond: 'ring-[#B9F2FF]',
+  diamond: 'ring-text-secondary',
   master: 'ring-text-primary',
 };
 

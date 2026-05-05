@@ -18,16 +18,15 @@ import (
 )
 
 // AdminDashboard is the live counters payload served by the /admin landing.
+//
+// Pivot 2026-05: MatchesToday/MatchesWeek/KatasToday/Week полей нет —
+// arena/daily_kata свёрнуты.
 type AdminDashboard struct {
 	UsersTotal         int64
 	UsersActiveToday   int64
 	UsersActiveWeek    int64
 	UsersActiveMonth   int64
 	UsersBanned        int64
-	MatchesToday       int64
-	MatchesWeek        int64
-	KatasToday         int64
-	KatasWeek          int64
 	ActiveMockSessions int64
 	ReportsPending     int64
 	GeneratedAt        time.Time

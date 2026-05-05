@@ -119,7 +119,7 @@ export function AICoachPill({
             tabIndex={-1}
             aria-label="Закрыть"
           />
-          <aside className="relative flex h-full w-full max-w-[420px] flex-col bg-surface-1 shadow-card">
+          <aside className="relative flex h-full w-full flex-col bg-surface-1 shadow-card sm:max-w-[420px]">
             <div className="flex items-center justify-between border-b border-border px-5 py-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-accent" />

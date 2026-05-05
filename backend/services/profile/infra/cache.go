@@ -436,32 +436,6 @@ func (c *CachedRepo) CountRecentActivity(ctx context.Context, userID uuid.UUID, 
 	return a, nil
 }
 
-// GetStreaks — uncached pass-through.
-func (c *CachedRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
-	cur, best, err := c.delegate.GetStreaks(ctx, userID)
-	if err != nil {
-		return 0, 0, fmt.Errorf("profile.cache.GetStreaks: %w", err)
-	}
-	return cur, best, nil
-}
-
-// IssueShareToken — write pass-through, no caching (each issuance is unique).
-func (c *CachedRepo) IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (domain.ShareToken, error) {
-	tok, err := c.delegate.IssueShareToken(ctx, userID, weekISO)
-	if err != nil {
-		return tok, fmt.Errorf("profile.cache.IssueShareToken: %w", err)
-	}
-	return tok, nil
-}
-
-// ResolveShareToken — pass-through (tokens are public-read, no per-user cache).
-func (c *CachedRepo) ResolveShareToken(ctx context.Context, token string) (domain.ShareResolution, error) {
-	r, err := c.delegate.ResolveShareToken(ctx, token)
-	if err != nil {
-		return r, fmt.Errorf("profile.cache.ResolveShareToken: %w", err)
-	}
-	return r, nil
-}
 
 // ListUserTracks — pass-through. Track membership rarely matches the
 // per-user Bundle cache invariants (tracks are mutated via SetUserTracks

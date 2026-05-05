@@ -75,12 +75,6 @@ type MockReader interface {
 	RecentAbandonedCount(ctx context.Context, userID uuid.UUID, sinceDays int) (int, error)
 }
 
-// KataReader — daily kata streak + recent attempts. Сигнал «consistency».
-type KataReader interface {
-	GetStreak(ctx context.Context, userID uuid.UUID) (KataStreak, error)
-	LastNAttempts(ctx context.Context, userID uuid.UUID, n int) ([]KataAttempt, error)
-}
-
 // ArenaReader — recent arena matches с outcome + elo delta. Coach видит
 // «lost 3 algorithms 1v1 in a row, drop intensity, switch to katas».
 type ArenaReader interface {
@@ -239,11 +233,6 @@ type BriefPromptInput struct {
 	// MockAbandonedRecent — Phase 4.7. Кол-во abandoned mock sessions за
 	// последние 14 дней. ≥2 = consistency-break warn в severity grader.
 	MockAbandonedRecent int
-
-	// KataStreak / KataRecent — daily kata consistency (current_streak)
-	// + последние passed/failed attempts.
-	KataStreak KataStreak
-	KataRecent []KataAttempt
 
 	// Arena — последние arena-matches: section, outcome, elo delta. Coach
 	// видит losing-streak, frustration patterns.

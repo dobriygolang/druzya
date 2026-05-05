@@ -37,21 +37,22 @@ import { useDailyBriefQuery, normalizeSeverity } from '../lib/queries/intelligen
 import { useInsightsQuery } from '../lib/queries/insights'
 import { useAtlasQuery } from '../lib/queries/profile'
 
-// Section в атласе → AI-coach persona slug. Same mapping что в drawer.
+// Section в атласе → AI-coach persona slug. Display-name всегда role-only
+// lowercase, без human first names — см memory/feedback_persona_names.md.
 function pickPersonaFor(section: string, activeTrack: ActiveTrack): {
   slug: string
   name: string
 } {
-  if (activeTrack === 'go') return { slug: 'go-coach', name: 'Гоша · Go-коуч' }
-  if (activeTrack === 'english') return { slug: 'english-coach', name: 'Maria · English coach' }
+  if (activeTrack === 'go') return { slug: 'go-coach', name: 'go coach' }
+  if (activeTrack === 'english') return { slug: 'english-coach', name: 'english coach' }
   switch (section) {
     case 'system_design':
-      return { slug: 'sysdesign-guru', name: 'Кирилл · sysdesign-guru' }
+      return { slug: 'sysdesign-guru', name: 'sysdesign coach' }
     case 'sql':
     case 'databases':
-      return { slug: 'sql-mentor', name: 'Лена · SQL-ментор' }
+      return { slug: 'sql-mentor', name: 'sql coach' }
     default:
-      return { slug: 'algo-coach', name: 'Алёша · алго-коуч' }
+      return { slug: 'algo-coach', name: 'algo coach' }
   }
 }
 

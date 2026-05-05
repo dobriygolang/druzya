@@ -37,9 +37,9 @@
     "back": "Back"
   },
   "mobileNav": {
-    "match": "match",
-    "matchAria": "launch ranked match",
-    "matchmakingAria": "matchmaking · {{time}} · tap to cancel",
+    "match": "mock",
+    "matchAria": "launch mock",
+    "matchmakingAria": "session warming up · {{time}} · tap to cancel",
     "unread": "{{count}} unread"
   },
   "atlas": {

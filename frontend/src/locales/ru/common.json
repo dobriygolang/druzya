@@ -1,11 +1,11 @@
 {
   "nav": {
-    "sanctum": "Sanctum",
-    "arena": "Arena",
+    "sanctum": "Today",
+    "arena": "Mock",
     "atlas": "Atlas",
     "insights": "Insights",
-    "circles": "Circles",
-    "codex": "Кодекс",
+    "circles": "Tutor",
+    "codex": "Codex",
     "friends": "Друзья",
     "help": "Помощь",
     "logout": "Выйти",
@@ -17,7 +17,7 @@
     "admin": "Админка"
   },
   "buttons": {
-    "find_opponent": "Найти соперника",
+    "find_opponent": "Запустить mock",
     "start": "Начать",
     "next": "Далее",
     "back": "Назад",
@@ -27,21 +27,21 @@
     "run": "Запустить",
     "open": "Открыть",
     "view_all": "Все →",
-    "create_party": "Создать пати",
+    "create_party": "Создать сессию",
     "share": "Поделиться",
     "add_friend": "В друзья",
     "login": "Войти"
   },
   "labels": {
-    "search_placeholder": "Поиск ката, друзей, когорт…",
+    "search_placeholder": "Поиск тем, заметок, тренеров…",
     "loading": "Загрузка...",
     "empty": "Пусто",
     "error": "Ошибка",
     "load_failed": "Не удалось загрузить",
-    "season": "Сезон",
-    "level": "Уровень",
-    "xp": "XP",
-    "lp": "LP"
+    "season": "Период",
+    "level": "Узел",
+    "xp": "Часы",
+    "lp": "Score"
   },
   "theme": {
     "label": "Тема",

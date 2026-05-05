@@ -4,7 +4,7 @@
 -- v2: email column dropped from users; xp/level moved to user_xp.
 SELECT u.id, u.username, u.role, u.locale, u.display_name, u.created_at,
        p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
-       p.career_stage, p.updated_at,
+       p.updated_at,
        s.plan, s.status, s.current_period_end
   FROM users u
   JOIN profiles p           ON p.user_id = u.id
@@ -14,8 +14,7 @@ SELECT u.id, u.username, u.role, u.locale, u.display_name, u.created_at,
 
 -- name: GetProfilePublic :one
 SELECT u.id, u.username, u.display_name, u.created_at,
-       p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
-       p.career_stage
+       p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp
   FROM users u
   JOIN profiles p      ON p.user_id = u.id
   LEFT JOIN user_xp ux ON ux.user_id = u.id
@@ -54,11 +53,11 @@ SELECT node_key, progress, unlocked_at, decayed_at, updated_at
   FROM skill_nodes WHERE user_id = $1;
 
 -- name: CountWeeklyActivity :one
--- Pivot 2026-05-01: arena_matches/participants дропнуты. matches_won
--- остаётся в proto-shape но возвращает 0 — TODO выпилить из proto после
--- следующего gen-cycle.
+-- Pivot 2026-05-01: arena_matches/participants/daily_kata_history дропнуты.
+-- matches_won/katas_passed остаются в proto-shape но возвращают 0 —
+-- TODO выпилить из proto после следующего gen-cycle.
 SELECT
-  (SELECT COUNT(*)::int FROM daily_kata_history dkh WHERE dkh.user_id = $1 AND dkh.passed = true AND dkh.submitted_at >= $2)::int AS katas_passed,
+  0::int AS katas_passed,
   0::int AS matches_won,
   (SELECT COALESCE(SUM(ms.duration_min),0)::int FROM mock_sessions ms
     WHERE ms.user_id = $1 AND ms.finished_at >= $2)::int AS mock_minutes;

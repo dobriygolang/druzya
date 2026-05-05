@@ -176,37 +176,6 @@ func (mr *MockProfileRepoMockRecorder) GetSettings(ctx, userID any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSettings", reflect.TypeOf((*MockProfileRepo)(nil).GetSettings), ctx, userID)
 }
 
-// GetStreaks mocks base method.
-func (m *MockProfileRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetStreaks", ctx, userID)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(int)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// GetStreaks indicates an expected call of GetStreaks.
-func (mr *MockProfileRepoMockRecorder) GetStreaks(ctx, userID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStreaks", reflect.TypeOf((*MockProfileRepo)(nil).GetStreaks), ctx, userID)
-}
-
-// IssueShareToken mocks base method.
-func (m *MockProfileRepo) IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (domain.ShareToken, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IssueShareToken", ctx, userID, weekISO)
-	ret0, _ := ret[0].(domain.ShareToken)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IssueShareToken indicates an expected call of IssueShareToken.
-func (mr *MockProfileRepoMockRecorder) IssueShareToken(ctx, userID, weekISO any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueShareToken", reflect.TypeOf((*MockProfileRepo)(nil).IssueShareToken), ctx, userID, weekISO)
-}
-
 // ListInterviewerApplications mocks base method.
 func (m *MockProfileRepo) ListInterviewerApplications(ctx context.Context, status string) ([]domain.InterviewerApplication, error) {
 	m.ctrl.T.Helper()
@@ -279,21 +248,6 @@ func (m *MockProfileRepo) RejectInterviewerApplication(ctx context.Context, appl
 func (mr *MockProfileRepoMockRecorder) RejectInterviewerApplication(ctx, applicationID, adminID, note any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RejectInterviewerApplication", reflect.TypeOf((*MockProfileRepo)(nil).RejectInterviewerApplication), ctx, applicationID, adminID, note)
-}
-
-// ResolveShareToken mocks base method.
-func (m *MockProfileRepo) ResolveShareToken(ctx context.Context, token string) (domain.ShareResolution, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ResolveShareToken", ctx, token)
-	ret0, _ := ret[0].(domain.ShareResolution)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ResolveShareToken indicates an expected call of ResolveShareToken.
-func (mr *MockProfileRepoMockRecorder) ResolveShareToken(ctx, token any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveShareToken", reflect.TypeOf((*MockProfileRepo)(nil).ResolveShareToken), ctx, token)
 }
 
 // SetUserTracks mocks base method.

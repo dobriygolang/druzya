@@ -105,9 +105,10 @@ func (w *Worker) process(ctx context.Context, n domain.Notification) {
 				slog.String("user_id", n.UserID.String()), slog.Any("err", rerr))
 		}
 		if !ok {
-			// STUB: bible §3.11 asks for a digest after 1 min. For MVP we just
-			// drop the single message and log — the dedup window prevents
-			// storms anyway. Follow-up: assemble a digest text.
+			// При rate_limited drop'аем single message — dedup window уже
+			// гасит storms, цена пропуска одного push'а низкая. Digest-on-
+			// rate-limit fall-back мы не пишем: TG bot is the primary
+			// surface, и юзер всё равно увидит счётчик в /notifications.
 			w.Log.InfoContext(ctx, "notify.worker: rate_limited_drop",
 				slog.String("user_id", n.UserID.String()),
 				slog.Int("retry_in_s", int(retryIn.Seconds())))

@@ -92,17 +92,17 @@ export const AtlasNode = memo(function AtlasNode({
     >
       {title && <title>{title}</title>}
 
-      {/* Decay pulse — separate ring so it doesn't fight selection ring */}
+      {/* Decay pulse — red signal (Hone accent, B/W rule). */}
       {state === 'decaying' && (
-        <circle cx={x} cy={y} r={r + 4} fill="none" stroke="rgb(251,191,36)" strokeWidth={1.5} opacity={0.6}>
+        <circle cx={x} cy={y} r={r + 4} fill="none" stroke="#FF3B30" strokeWidth={1.5} opacity={0.6}>
           <animate attributeName="r" values={`${r + 4};${r + 8};${r + 4}`} dur="1.8s" repeatCount="indefinite" />
           <animate attributeName="opacity" values="0.6;0.1;0.6" dur="1.8s" repeatCount="indefinite" />
         </circle>
       )}
 
-      {/* Selection ring — accent, distinct channel from hover scale */}
+      {/* Selection ring — pure white, distinct channel from hover scale. */}
       {selected && (
-        <circle cx={x} cy={y} r={r + 6} fill="none" stroke="rgb(88,44,255)" strokeWidth={3} />
+        <circle cx={x} cy={y} r={r + 6} fill="none" stroke="#FFFFFF" strokeWidth={3} />
       )}
 
       {/* Notable kind: sigil-frame ring around the node so it reads as milestone */}

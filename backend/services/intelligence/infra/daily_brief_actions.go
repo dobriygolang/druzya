@@ -113,12 +113,6 @@ func coachActionCandidatesForPrompt(in domain.BriefPromptInput, limit int) []coa
 			fmt.Sprintf("Skill Atlas shows %s at %d/100.", w.SkillKey, w.Progress),
 			"", w.SkillKey)
 	}
-	if in.KataStreak.Current > 0 {
-		add(42+in.KataStreak.Current/3, domain.RecommendationTinyTask,
-			"Do today's daily kata before anything else.",
-			fmt.Sprintf("Current kata streak is %d days; this is a cheap consistency win.", in.KataStreak.Current),
-			"", "algorithms")
-	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].priority == out[j].priority {
 			return out[i].title < out[j].title

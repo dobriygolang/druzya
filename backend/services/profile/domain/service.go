@@ -4,29 +4,6 @@ import (
 	"math"
 )
 
-// CareerStage is the derived seniority label shown on the public profile.
-type CareerStage string
-
-const (
-	CareerStageJunior    CareerStage = "junior"
-	CareerStageMiddle    CareerStage = "middle"
-	CareerStageSenior    CareerStage = "senior"
-	CareerStageStaff     CareerStage = "staff"
-	CareerStagePrincipal CareerStage = "principal"
-)
-
-// IsValid enforces exhaustive switching in downstream code.
-func (c CareerStage) IsValid() bool {
-	switch c {
-	case CareerStageJunior, CareerStageMiddle, CareerStageSenior, CareerStageStaff, CareerStagePrincipal:
-		return true
-	}
-	return false
-}
-
-// String implements fmt.Stringer.
-func (c CareerStage) String() string { return string(c) }
-
 // XPToNext returns the XP threshold for the next level.
 // Formula: 500 * level^1.5 (bible instruction). Returns at least 500.
 func XPToNext(level int) int64 {

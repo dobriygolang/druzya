@@ -1,16 +1,16 @@
-// Onboarding Step 1 — Welcome gate (Wave-10, design-review v3 A.1/A.5).
-// Single value-prop H1 + 3 mini-cards (atlas / arena / coach).
-// Skip-route: «Не сейчас» → /sanctum?onboarding=deferred (lets the user
-// in without completing; we'll re-prompt on next /sanctum visit).
+// Onboarding Step 1 — Welcome gate.
+// Single value-prop H1 + 3 mini-cards (mock / atlas / coach) — identity
+// 2026-05-04: arena/duels/ELO выпилены, продукт = AI-mock + Skill Atlas
+// + AI-coach. Skip-route ведёт на /atlas (Atlas — основная карта).
 
 import { useNavigate } from 'react-router-dom'
 import { OnboardingLayout } from './_shared/Layout'
 import { useOnboarding } from './_shared/useOnboarding'
 
 const VALUE_PROPS = [
+  { kicker: 'mock', title: 'strict + AI-mode' },
   { kicker: 'atlas', title: 'карта скиллов' },
-  { kicker: 'arena', title: 'дуэли 1:1' },
-  { kicker: 'coach', title: 'AI-ревью' },
+  { kicker: 'coach', title: 'AI с памятью' },
 ] as const
 
 export default function Step1Welcome() {
@@ -31,12 +31,13 @@ export default function Step1Welcome() {
         </div>
         <h1 className="font-display text-3xl lg:text-[40px] font-bold leading-[1.05] mb-4">
           <span className="text-text-primary">druz9</span>
-          {' — инструмент готовиться к собесам Big-Tech'}
+          {' — подготовка к Senior IT-собесам'}
         </h1>
         <p className="text-text-secondary text-[15px] leading-relaxed max-w-[520px] mx-auto mb-8">
-          Прокачка скиллов через дуэли, daily kata, AI-коуч. Живой ELO, реальные вопросы, карта прогресса.
+          Strict mock с watermark, AI-coach с памятью, карта прогресса. Для тех, у кого
+          есть база и нужна объективная оценка готовности.
         </p>
-        <div className="grid grid-cols-3 gap-3 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
           {VALUE_PROPS.map((v) => (
             <div key={v.kicker} className="rounded-lg border border-border bg-surface-1 p-3">
               <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted mb-1">{v.kicker}</div>

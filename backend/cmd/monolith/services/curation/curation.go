@@ -65,14 +65,16 @@ func NewCuration(d monolithServices.Deps) *monolithServices.Module {
 		ConnectHandler:     connectHandler,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			r.Post("/curation/preview-resource", connectHandler.ServeHTTP)
+			// Live REST callers — Hone outbox дёргает напрямую (см.
+			// hone/src/renderer/src/offline/wire.ts).
 			r.Post("/curation/add-resource", connectHandler.ServeHTTP)
 			r.Post("/curation/hide-resource", connectHandler.ServeHTTP)
 			r.Post("/curation/mark-unhelpful", connectHandler.ServeHTTP)
 			r.Post("/curation/replace-resource", connectHandler.ServeHTTP)
-			r.Post("/curation/reorder-resource", connectHandler.ServeHTTP)
-			r.Post("/curation/apply-overrides", connectHandler.ServeHTTP)
 			r.Post("/curation/reflection", connectHandler.ServeHTTP)
+			// Pivot 2026-05-05: orphan REST aliases /preview-resource,
+			// /reorder-resource, /apply-overrides удалены — клиенты ходят
+			// через Connect-RPC напрямую (см. hone/api/curation.ts).
 		},
 	}
 }

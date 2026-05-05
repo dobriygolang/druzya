@@ -24,7 +24,7 @@ import { cn } from '../../lib/cn'
 export type AtlasNodeBottomSheetProps = {
   node: AtlasNode
   onClose: () => void
-  /** Optional secondary action — e.g. "Open in Arena". */
+  /** Optional secondary action — e.g. "Start mock for this node". */
   onPrimaryAction?: () => void
   primaryActionLabel?: string
 }

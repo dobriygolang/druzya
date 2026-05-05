@@ -655,7 +655,6 @@ func (s *IntelligenceServer) GetCoachStats(
 		return nil, fmt.Errorf("intelligence.GetCoachStats: %w", s.toConnectErr(err))
 	}
 	return connect.NewResponse(&pb.CoachStats{
-		StreakDays:      int32(out.StreakDays),
 		FocusTodayMin:   int32(out.FocusTodayMin),
 		LastMockScore:   int32(out.LastMockScore),
 		LastMockSection: out.LastMockSection,

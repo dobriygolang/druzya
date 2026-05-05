@@ -1,8 +1,7 @@
 import type { Profile, PublicProfile } from '../../lib/queries/profile'
 
 // ProfileViewModel is the union of /profile/me and /profile/{username}
-// rendered fields. Public-only routes get a partial — the UI degrades
-// gracefully when private fields (xp, ai_credits, etc.) are absent.
+// rendered fields. Public-only routes get a partial.
 export type ProfileViewModel = {
   isOwn: boolean
   username: string
@@ -11,7 +10,6 @@ export type ProfileViewModel = {
   title: string
   level: number
   charClass: string
-  careerStage: string
   globalPowerScore: number
 }
 
@@ -32,7 +30,6 @@ export function toViewModel(args: {
       title: own.title || '—',
       level: own.level ?? 0,
       charClass: own.char_class || '—',
-      careerStage: own.career_stage || '',
       globalPowerScore: own.global_power_score ?? fallbackScore ?? 0,
     }
   }
@@ -45,7 +42,6 @@ export function toViewModel(args: {
     title: pub.title || '—',
     level: pub.level ?? 0,
     charClass: pub.char_class || '—',
-    careerStage: pub.career_stage || '',
     globalPowerScore: pub.global_power_score ?? 0,
   }
 }
@@ -58,9 +54,9 @@ export const SECTION_LABELS: Record<string, string> = {
   behavioral: 'Behavioral',
 }
 
-// Phase-4 ADR-001: Achievements tab removed (Wave 1 — gamification cut).
-// Cohorts → Circles renamed (Wave 2 — cohort merged into circles).
-// Stats moves to /insights as a top-level surface in a later wave.
-export const PROFILE_TABS_OWN = ['Overview', 'Matches', 'Circles', 'Stats', 'Bookings'] as const
-export const PROFILE_TABS_PUBLIC = ['Overview', 'Matches', 'Circles', 'Stats'] as const
+// Identity 2026-05-04 — pivot убрал arena/matches/cohort/bookings из
+// продукта. Profile теперь это: Overview (контекст) + Stats (метрики из
+// /insights). Mock-сессии видны на /mock, события — в Hone.
+export const PROFILE_TABS_OWN = ['Overview', 'Stats'] as const
+export const PROFILE_TABS_PUBLIC = ['Overview', 'Stats'] as const
 export type ProfileTab = (typeof PROFILE_TABS_OWN)[number]

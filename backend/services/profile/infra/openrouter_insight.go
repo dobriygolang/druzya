@@ -53,7 +53,6 @@ type InsightPayload struct {
 	EloDelta         int            // sum of ELO changes for the week
 	WinRateBySection map[string]int // section name → win-rate %
 	HoursStudied     float64        // derived from Activity.TimeMinutes / 60
-	Streak           int            // current streak in days
 	WeakestSection   string         // section name (lower-case slug); "" if none
 
 	// Model — per-call OpenRouter model override (e.g. "openai/gpt-4o-mini").
@@ -256,7 +255,6 @@ func renderUserPrompt(p InsightPayload) string {
 		sb.WriteString("\n")
 	}
 	fmt.Fprintf(&sb, "  - Study hours: %.1f\n", p.HoursStudied)
-	fmt.Fprintf(&sb, "  - Streak: %d days\n", p.Streak)
 	weakest := p.WeakestSection
 	if weakest == "" {
 		weakest = "(none)"

@@ -42,9 +42,7 @@ function Hero({ total }: { total: number }) {
   return (
     <section
       className="flex flex-col items-start justify-center gap-3 px-4 py-8 sm:px-8 lg:px-20"
-      style={{
-        background: 'linear-gradient(180deg, #0A0A0A 0%, #0A0A0F 100%)',
-      }}
+      style={{ background: '#0A0A0A' }}
     >
       <span className="inline-flex items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         CODEX · БИБЛИОТЕКА ЗНАНИЙ

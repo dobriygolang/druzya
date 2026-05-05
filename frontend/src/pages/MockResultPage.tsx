@@ -485,13 +485,14 @@ export default function MockResultPage() {
           <div className="flex flex-1 flex-col gap-4">
             {(() => {
               const sec = session?.section ?? 'algorithms'
+              // Display-name role-only lowercase per memory/feedback_persona_names.md.
               const persona = activeTrack === 'go'
-                ? { slug: 'go-coach', name: 'Гоша · Go-коуч' }
+                ? { slug: 'go-coach', name: 'go coach' }
                 : sec === 'english_hr'
-                  ? { slug: 'english-coach', name: 'Maria · English coach' }
+                  ? { slug: 'english-coach', name: 'english coach' }
                   : sec === 'system_design_senior' || sec === 'tech_lead_em'
-                    ? { slug: 'sysdesign-guru', name: 'Кирилл · sysdesign-guru' }
-                    : { slug: 'algo-coach', name: 'Алёша · алго-коуч' }
+                    ? { slug: 'sysdesign-guru', name: 'sysdesign coach' }
+                    : { slug: 'algo-coach', name: 'algo coach' }
               const weakList = (weaknesses ?? []).slice(0, 5).join('; ')
               const ctx = `Студент только что прошёл mock (${sec}). Overall score: ${overall}. Слабые места: ${weakList || '—'}. Помоги разобрать что именно пошло не так и составить план улучшения.`
               return (

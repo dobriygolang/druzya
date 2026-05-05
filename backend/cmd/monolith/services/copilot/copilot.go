@@ -214,27 +214,21 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			r.Post("/copilot/analyze", transcoder.ServeHTTP)
-			r.Post("/copilot/conversations/{conversationId}/chat", transcoder.ServeHTTP)
+			// Pivot 2026-05-05: orphan copilot REST aliases удалены —
+			// Cue desktop client дёргает Connect-RPC напрямую (см.
+			// desktop/src/main/api/*.ts: client.getConversation/getQuota/
+			// rateMessage/getDesktopConfig/...). Удалены:
+			//   - /copilot/analyze, /copilot/check-block
+			//   - /copilot/conversations/{id} (GET/DELETE), /chat
+			//   - /copilot/desktop-config, /copilot/history
+			//   - /copilot/messages/{messageId}/rate
+			//   - /copilot/providers, /copilot/quota
 
-			r.Get("/copilot/history", transcoder.ServeHTTP)
-			r.Get("/copilot/conversations/{id}", transcoder.ServeHTTP)
-			r.Delete("/copilot/conversations/{id}", transcoder.ServeHTTP)
-
-			r.Get("/copilot/providers", transcoder.ServeHTTP)
-			r.Get("/copilot/quota", transcoder.ServeHTTP)
-			r.Get("/copilot/desktop-config", transcoder.ServeHTTP)
-
-			r.Post("/copilot/messages/{messageId}/rate", transcoder.ServeHTTP)
-
-			// Sessions.
+			// Sessions REST — реально используется Cue (см. desktop/src/main/api/sessions.ts).
 			r.Post("/copilot/sessions", transcoder.ServeHTTP)
 			r.Post("/copilot/sessions/{sessionId}/end", transcoder.ServeHTTP)
 			r.Get("/copilot/sessions/{sessionId}/analysis", transcoder.ServeHTTP)
 			r.Get("/copilot/sessions", transcoder.ServeHTTP)
-
-			// CheckBlock — Cue desktop polls before each consult.
-			r.Get("/copilot/check-block", transcoder.ServeHTTP)
 
 			// Session ↔ documents attachment. Plain REST, not RPC —
 			// see ports/session_docs.go for rationale.

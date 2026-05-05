@@ -47,11 +47,8 @@ func (d *Dashboard) Snapshot(ctx context.Context, now time.Time) (domain.AdminDa
 		{&out.UsersBanned, `SELECT COUNT(*)::bigint FROM user_bans
 		                     WHERE lifted_at IS NULL
 		                       AND (expires_at IS NULL OR expires_at > now())`},
-		// Pivot 2026-05-01: MatchesToday/Week и ActiveArenaMatches удалены
-		// (arena_matches таблица дропнута). Поля останутся в proto как 0
-		// для wire-compat, потом deprecate'нём окончательно.
-		{&out.KatasToday, `SELECT COUNT(*)::bigint FROM daily_kata_history WHERE submitted_at >= now() - interval '24 hours' AND passed = TRUE`},
-		{&out.KatasWeek, `SELECT COUNT(*)::bigint FROM daily_kata_history WHERE submitted_at >= now() - interval '7 days' AND passed = TRUE`},
+		// Pivot 2026-05: matches_today/week/active_arena_matches/katas_today/week
+		// удалены вместе с arena_matches и daily_kata_history.
 		{&out.ActiveMockSessions, `SELECT COUNT(*)::bigint FROM mock_sessions WHERE status = 'in_progress'`},
 		{&out.ReportsPending, `SELECT COUNT(*)::bigint FROM user_reports WHERE status = 'pending'`},
 	}

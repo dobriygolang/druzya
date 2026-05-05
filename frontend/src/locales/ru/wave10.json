@@ -38,9 +38,9 @@
     "back": "Назад"
   },
   "mobileNav": {
-    "match": "match",
-    "matchAria": "запустить рейтинговый матч",
-    "matchmakingAria": "идёт подбор · {{time}} · нажми, чтобы отменить",
+    "match": "mock",
+    "matchAria": "запустить mock",
+    "matchmakingAria": "сессия готовится · {{time}} · нажми, чтобы отменить",
     "unread": "{{count}} непрочитанных"
   },
   "atlas": {

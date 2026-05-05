@@ -58,7 +58,6 @@ func (uc *GenerateInsights) Do(ctx context.Context, in GenerateInsightsInput) (G
 	candidates = append(candidates, produceLongAbsenceInsight(in, now)...)
 	candidates = append(candidates, produceMockTopicInsight(in, now)...)
 	candidates = append(candidates, produceWeakSkillInsight(in, now)...)
-	candidates = append(candidates, produceKataStreakInsight(in, now)...)
 
 	res := GenerateInsightsResult{Surfaces: map[domain.InsightSurface]int{}}
 	for _, c := range candidates {
@@ -286,26 +285,6 @@ func produceWeakSkillInsight(in GenerateInsightsInputSnapshot, now time.Time) []
 	}}
 }
 
-func produceKataStreakInsight(in GenerateInsightsInputSnapshot, now time.Time) []domain.Insight {
-	if in.Snapshot.KataStreak.Current >= 1 {
-		return nil
-	}
-	if in.Snapshot.KataStreak.Longest < 3 {
-		return nil
-	}
-	return []domain.Insight{{
-		Surface:   domain.InsightSurfaceToday,
-		Severity:  domain.InsightSeverityNudge,
-		Anchor:    "streak:kata",
-		Headline:  fmt.Sprintf("Kata streak broken (was %d).", in.Snapshot.KataStreak.Longest),
-		Evidence:  fmt.Sprintf("Longest streak %d days, current 0.", in.Snapshot.KataStreak.Longest),
-		Interpret: "Streaks compound — one missed day is a soft restart, two is a habit reset.",
-		Lever:     "Five minutes on today's kata, before anything else.",
-		DeepLink:  "/arena/kata",
-		ExpiresAt: now.Add(36 * time.Hour),
-	}}
-}
-
 // GenerateInsightsInputSnapshot — thin alias keeping producer
 // signatures readable. Both fields are read-only inside producers.
 type GenerateInsightsInputSnapshot = GenerateInsightsInput
@@ -333,14 +312,6 @@ func daysSinceLastTouchSnapshot(in domain.BriefPromptInput) int {
 	}
 	for _, a := range in.Arena {
 		bump(a.FinishedAt)
-	}
-	if in.KataStreak.LastKataDate != nil {
-		bump(*in.KataStreak.LastKataDate)
-	}
-	for _, k := range in.KataRecent {
-		if k.SubmittedAt != nil {
-			bump(*k.SubmittedAt)
-		}
 	}
 	for _, c := range in.CompletedRecent {
 		bump(c.PlanDate)

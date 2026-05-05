@@ -173,13 +173,11 @@ func (s *AdminServer) mapUserErr(err error) error {
 
 func dashboardToProto(d domain.AdminDashboard) *pb.AdminDashboard {
 	out := &pb.AdminDashboard{
-		UsersTotal:           d.UsersTotal,
-		UsersActiveToday:     d.UsersActiveToday,
-		UsersActiveWeek:      d.UsersActiveWeek,
-		UsersActiveMonth:     d.UsersActiveMonth,
-		UsersBanned:          d.UsersBanned,
-		KatasToday:           d.KatasToday,
-		KatasWeek:            d.KatasWeek,
+		UsersTotal:         d.UsersTotal,
+		UsersActiveToday:   d.UsersActiveToday,
+		UsersActiveWeek:    d.UsersActiveWeek,
+		UsersActiveMonth:   d.UsersActiveMonth,
+		UsersBanned:        d.UsersBanned,
 		ActiveMockSessions: d.ActiveMockSessions,
 		ReportsPending:     d.ReportsPending,
 	}

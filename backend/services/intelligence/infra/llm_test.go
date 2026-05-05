@@ -123,7 +123,6 @@ func TestCoachDiagnosesRankCrossProductEvidence(t *testing.T) {
 			Kind:    domain.EpisodeCueConversationMemory,
 			Payload: payload,
 		}},
-		KataStreak: domain.KataStreak{Current: 9, Longest: 12},
 	}
 
 	got := coachDiagnoses(in)
@@ -229,7 +228,6 @@ func TestCoachActionCandidatesUseSpecificSafeActions(t *testing.T) {
 			ReadMin:     10,
 			Link:        "/codex?topic=system_design&article=caching-strategies",
 		}},
-		KataStreak: domain.KataStreak{Current: 6},
 	}
 
 	got := coachActionCandidatesForPrompt(in, 8)

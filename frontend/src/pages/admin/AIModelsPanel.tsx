@@ -106,7 +106,7 @@ export function AIModelsPanel() {
                     <td className="py-2 pr-3">
                       <div className="flex flex-wrap gap-1">
                         {m.use_for_arena && (
-                          <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">arena</span>
+                          <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-text-muted" title="Backend legacy flag — выпилится при proto-bump'е.">arena · legacy</span>
                         )}
                         {m.use_for_insight && (
                           <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">insight</span>

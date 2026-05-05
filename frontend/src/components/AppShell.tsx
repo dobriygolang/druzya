@@ -182,15 +182,10 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   const admin = useAdminDashboardQuery()
   const adminStatus = (admin.error as { status?: number } | null)?.status
   const isAdmin = !admin.isError && admin.isSuccess && adminStatus !== 403
-  // WAVE-13 IA refactor — user-menu облегчён:
-  //   - Podcasts удалён (теперь таб внутри /codex).
-  //   - Weekly удалён (теперь таб внутри /profile).
-  //   - Vacancies удалён (теперь top-nav entry).
-  // В меню остались персональные разделы и админка.
-  // Wave-13: «Copilot» surfaced here with a NEW badge. Header nav already
-  // has 7 entries (Sanctum/Arena/Atlas/Кодекс/Вакансии/Слоты/Когорта) so
-  // adding a 8th would overflow on tablet — we use the user-menu instead
-  // and rely on the NEW badge + the /welcome promo banner for discovery.
+  // User-menu (under avatar) — персональные разделы вне top-nav. Top-nav
+  // сейчас 7 entries (Today/Atlas/Mock/Insights/Tutor/Codex/Vacancies),
+  // 8-я бы переполнила tablet — Copilot живёт здесь с NEW badge + promo
+  // banner на /welcome для discovery.
   const items: { to: string; label: string; icon: typeof User; badge?: 'new' }[] = [
     { to: '/copilot', label: 'Copilot', icon: Sparkles, badge: 'new' },
     { to: '/profile', label: t('nav.profile'), icon: User },

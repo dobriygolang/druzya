@@ -2,9 +2,9 @@
   "login": "Sign in",
   "start": "Start",
   "developers_inside": "{{count}} developers already inside",
-  "headline_1": "Coding is a sport.",
-  "headline_2": "Train like an athlete.",
-  "subhead": "A gamified algorithms platform. Real-time duels, cohorts, AI mentor, seasonal rewards.",
+  "headline_1": "Ready for the interview?",
+  "headline_2": "Find out for sure.",
+  "subhead": "Strict mock with watermark, AI-coach with memory, Skill Atlas. Senior IT prep — for those who already have the basics.",
   "start_free": "Start free",
   "watch_demo": "Watch demo",
   "developers_from": "Developers from",
@@ -18,41 +18,41 @@
 
   "features": {
     "eyebrow": "What's inside",
-    "title": "A platform built for growth",
-    "subtitle": "Not just grinding tasks — beating live opponents and locking in the skill day after day.",
+    "title": "A platform built for objective progress",
+    "subtitle": "Not drilling — strict mock with watermark, so you know your readiness honestly.",
     "pvp": {
-      "title": "Real-time PvP duels",
-      "desc": "1v1 boxes on speed and code quality. Rating-based matchmaking, anti-bot detection, fair timer."
+      "title": "Strict mock with watermark",
+      "desc": "Solve twice: strict (no AI, Cue blocked server-side) and AI-mode (with hints). Watermark separates 'honest' from 'with AI' — that's an objective readiness currency."
     },
     "ai": {
-      "title": "AI mock interviews",
-      "desc": "Tech-interview simulation: algorithms, system design, behavioral. Voice, breakdown and recommendations."
+      "title": "AI-coach with memory",
+      "desc": "4-layer memory: snapshot · facts · summary · episodes. The coach remembers your context between sessions — not yet another GPT chat."
     },
     "daily": {
-      "title": "Daily kata and streaks",
-      "desc": "A daily problem, streaks and a weekly report. A habit that compounds rating — while others scroll the feed."
+      "title": "Hone — daily ritual",
+      "desc": "Quiet desktop cockpit: AI plan, focus, notes with AI-link. Works offline, syncs via outbox."
     },
     "cohorts": {
-      "title": "Cohorts and seasons",
-      "desc": "Team tournaments, leagues, season pass. Progress visible to everyone — including those who hire."
+      "title": "Tutor toolkit (free)",
+      "desc": "Student snapshots, AI pre-session brief, shared calendar, library, session notes. No money step in between."
     },
     "atlas": {
-      "title": "Skill atlas",
-      "desc": "Atlas covers topics from hash maps to distributed queues. See where you're strong and where to dig."
+      "title": "Skill Atlas",
+      "desc": "Track progress map. Ranking-proxy curation: link the best external resources (Strang, mlcourse, DDIA) — don't clone them."
     },
     "podcasts": {
-      "title": "Podcasts and codex",
-      "desc": "Hiring stories, offer breakdowns, summaries. Content that actually helps in interviews."
+      "title": "Codex",
+      "desc": "Short opinion pieces (~600 words) bridging theory↔practice. Our voice on interview prep."
     }
   },
 
   "stats": {
     "eyebrow": "Platform numbers",
-    "title": "Live audience, real matches",
+    "title": "Live audience, real mock sessions",
     "subtitle": "Metrics update in real time.",
     "users": "developers",
     "active": "online today",
-    "matches": "matches played",
+    "matches": "mock sessions completed",
     "loading": "—"
   },
 
@@ -62,27 +62,27 @@
     "subtitle": "Names and companies are design placeholders. Real cases will appear after public launch.",
     "items": [
       {
-        "quote": "I solved more problems in a month than in half a year on LeetCode. When you're up against a real person, your brain just kicks in differently.",
+        "quote": "Strict mock finally showed me my honest readiness. I thought I knew everything — turned out there were gaps in SD.",
         "name": "Alex",
-        "role": "Backend Developer",
+        "role": "Senior Backend",
         "company": "fintech"
       },
       {
-        "quote": "The AI mock pinpointed exactly the gaps I'd failed on in my last interview. Got the offer on attempt #2.",
+        "quote": "AI-coach with memory actually remembers my weak spots. I don't have to re-state context every session.",
         "name": "Marina",
-        "role": "Middle Frontend",
+        "role": "Middle → Senior Frontend",
         "company": "e-commerce"
       },
       {
-        "quote": "Daily kata became my morning ritual. Streak of 87 — and it's clear my explanations got cleaner.",
+        "quote": "Hone became my morning ritual. Minimalist, quiet, doesn't get in the way.",
         "name": "Dmitri",
         "role": "ML Engineer",
         "company": "research"
       },
       {
-        "quote": "Cohorts are the best way to get a team aligned. We code, argue, grow — together.",
+        "quote": "Free tutor toolkit — I can run students without subscriptions or platform tax.",
         "name": "Ilya",
-        "role": "Tech Lead",
+        "role": "Tech Lead, tutor",
         "company": "startup"
       }
     ]
@@ -90,18 +90,18 @@
 
   "pricing": {
     "eyebrow": "Pricing",
-    "title": "Start free — grow without limits",
-    "subtitle": "All core mechanics are available on Free. Premium — for those who want to go deeper.",
+    "title": "Free forever — Pro for depth",
+    "subtitle": "Free covers basic Atlas and 1 mock per week. Pro unlocks AI-tutor with memory and unlimited.",
     "free": {
       "name": "Free",
       "price": "$0",
       "period": "forever",
       "desc": "Everything you need to get started.",
       "features": [
-        "Unlimited 1v1 duels",
-        "Daily kata",
-        "Basic profile and rating",
-        "Atlas skills"
+        "1 mock session per week",
+        "Skill Atlas + Codex",
+        "Hone without AI planning",
+        "Tutor toolkit for educators"
       ],
       "cta": "Get started"
     },
@@ -112,11 +112,11 @@
       "desc": "For those aiming at the offer.",
       "badge": "Popular",
       "features": [
-        "Everything in Free",
-        "Unlimited AI mocks",
-        "Interview transcript and breakdown",
+        "Unlimited mock (AI / strict)",
+        "AI-coach with memory (4 layers)",
+        "Hone with AI planning + links",
         "Weekly progress analytics",
-        "Private rooms with friends"
+        "Insights across web + Hone + Cue"
       ],
       "cta": "Get Premium"
     },
@@ -124,12 +124,12 @@
       "name": "Pro",
       "price": "$12",
       "period": "/ month",
-      "desc": "Teams, cohorts, business.",
+      "desc": "For those running it at full throttle.",
       "features": [
         "Everything in Premium",
-        "Cohort up to 50 people",
-        "Branded tournaments",
-        "Team analytics",
+        "Cue copilot · unlimited",
+        "Multi-track Atlas (dev + english + go-deep)",
+        "English HR-round + tutor scenarios",
         "Priority support"
       ],
       "cta": "Get Pro"
@@ -138,23 +138,23 @@
 
   "final_cta": {
     "title": "Ready for the interview? Start now.",
-    "subtitle": "Sign-up takes 30 seconds. First duel — within a minute.",
+    "subtitle": "Sign-up takes 30 seconds. First strict mock — within a minute.",
     "primary": "Start free",
     "secondary": "Watch demo"
   },
 
   "footer": {
-    "tagline": "Next-generation technical interview prep platform.",
+    "tagline": "Senior IT interview prep through strict mock + AI-coach with memory.",
     "product": "Product",
     "resources": "Resources",
     "community": "Community",
     "links": {
-      "arena": "Arena",
-      "daily": "Daily kata",
+      "arena": "Mock",
+      "daily": "Today",
       "atlas": "Atlas",
       "pricing": "Pricing",
       "help": "Help",
-      "podcasts": "Podcasts",
+      "podcasts": "Codex",
       "github": "GitHub",
       "telegram": "Telegram",
       "discord": "Discord"

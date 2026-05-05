@@ -12,9 +12,10 @@ import (
 
 // EmailSender is the SMTP-backed Sender for the email channel.
 //
-// STUB: logs every send. Real implementation will use net/smtp (or
-// go-mail/mail) with the credentials in cfg.Notify.SMTP*. Kept as a stub for
-// MVP because bible §3.11 prioritises Telegram; email is a fallback only.
+// NOTE: stdout sink. Production уведомления идут через TG bot; SMTP не
+// подключён намеренно (free-tier, no transactional email vendor). Сохраняем
+// сигнатуру + sender чтобы worker fan-out не падал, и чтобы при появлении
+// SMTP-провайдера hot-swap прошёл без правок ports/app.
 type EmailSender struct {
 	log  *slog.Logger
 	host string
@@ -22,7 +23,7 @@ type EmailSender struct {
 	user string
 }
 
-// NewEmailSender returns a STUB sender.
+// NewEmailSender returns a stdout-logging sender (no SMTP wired).
 func NewEmailSender(log *slog.Logger, host string, port int, user string) *EmailSender {
 	return &EmailSender{log: log, host: host, port: port, user: user}
 }

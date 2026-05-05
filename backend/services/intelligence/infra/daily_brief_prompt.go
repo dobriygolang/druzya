@@ -296,32 +296,6 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		sb.WriteString("\nMock interviews: none in record. (Suggest scheduling one if user has skill weakness signals.)\n")
 	}
 
-	// ── KATA STREAK + RECENT ──────────────────────────────────────────
-	if in.KataStreak.Current > 0 || in.KataStreak.Longest > 0 {
-		fmt.Fprintf(&sb, "\nDaily kata streak: current=%d days, longest=%d days",
-			in.KataStreak.Current, in.KataStreak.Longest)
-		if in.KataStreak.LastKataDate != nil {
-			fmt.Fprintf(&sb, ", last_kata=%s", in.KataStreak.LastKataDate.Format("2006-01-02"))
-		}
-		sb.WriteString("\n")
-	}
-	if len(in.KataRecent) > 0 {
-		sb.WriteString("Recent kata attempts (passed marks streak-eligible):\n")
-		for _, k := range in.KataRecent {
-			tag := "passed"
-			if !k.Passed {
-				tag = "missed"
-			}
-			extra := ""
-			if k.IsCursed {
-				extra += " · cursed"
-			}
-			if k.IsWeeklyBoss {
-				extra += " · weekly_boss"
-			}
-			fmt.Fprintf(&sb, "  - %s · %s%s\n", k.KataDate.Format("2006-01-02"), tag, extra)
-		}
-	}
 
 	// ── ARENA MATCHES ─────────────────────────────────────────────────
 	if len(in.Arena) > 0 {

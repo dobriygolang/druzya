@@ -11,17 +11,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// ReportView, ReportWeakness, Recommendation, and PickFeaturedMetric live in
-// domain so the infra ReportCache adapter can reference them without crossing
-// into app. Re-exported here as aliases for backward compatibility with all
-// existing call sites (ports, tests).
+// ReportView, ReportWeakness, Recommendation live in domain so the infra
+// ReportCache adapter can reference them without crossing into app.
+// Re-exported here as aliases for backward compatibility.
 type (
 	ReportView     = domain.ReportView
 	ReportWeakness = domain.ReportWeakness
 	Recommendation = domain.Recommendation
 )
-
-var PickFeaturedMetric = domain.PickFeaturedMetric
 
 // InsightPayload mirrors infra.InsightPayload but lives in the app layer to
 // avoid an app→infra import. The wirer adapts the two structs.
@@ -30,7 +27,6 @@ type InsightPayload struct {
 	EloDelta         int
 	WinRateBySection map[string]int
 	HoursStudied     float64
-	Streak           int
 	WeakestSection   string
 
 	// Model — per-call OpenRouter model id override taken from the user's
@@ -72,10 +68,6 @@ type GetReport struct {
 //
 // Aggregates loaded:
 //   - 7-day activity counters (matches won, XP, time)
-//   - Current/best streak (active days)
-//
-// Streak repo error НЕ ronит запрос — отчёт деградирует к нулям,
-// но базовые метрики продолжают работать.
 func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (ReportView, error) {
 	end := now.UTC().Truncate(24 * time.Hour)
 	start := end.Add(-7 * 24 * time.Hour)
@@ -98,17 +90,6 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 			ActionKind:  "open_atlas",
 		}},
 	}
-
-	if cur, best, serr := uc.Repo.GetStreaks(ctx, userID); serr == nil {
-		view.StreakDays = cur
-		view.BestStreak = best
-	}
-
-	// Featured metric for the weekly share card — pick after streaks are
-	// loaded so the rule has the data it needs. Always emits a non-empty
-	// value; the proto field allows "" but server-side we always commit to
-	// an explicit default ("xp") so the client never has to guess.
-	view.FeaturedMetric = PickFeaturedMetric(view.StreakDays)
 
 	// ── Phase B: AI insight ────────────────────────────────────────────────
 	//
@@ -152,7 +133,6 @@ func buildInsightPayload(v ReportView, weekEnd time.Time, model string) InsightP
 		WeekISO:      fmt.Sprintf("%04d-W%02d", year, week),
 		EloDelta:     v.Metrics.RatingChange,
 		HoursStudied: float64(v.Metrics.TimeMinutes) / 60.0,
-		Streak:       v.StreakDays,
 		Model:        model,
 	}
 }

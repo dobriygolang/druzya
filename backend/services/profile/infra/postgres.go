@@ -1,15 +1,14 @@
 // Package infra provides the PostgreSQL-backed ProfileRepo.
 // Most queries are now served by the sqlc-generated profiledb.Queries; a few
-// pieces that require dynamic SQL (settings + daily_streaks upsert) remain
-// hand-rolled and are marked accordingly.
+// pieces that require dynamic SQL remain hand-rolled and are marked accordingly.
 //
-// File layout (split from a single 765-line postgres.go in WAVE-11):
+// File layout (split from a single 765-line postgres.go in WAVE-11; pruned
+// after R1 cleanup — daily_streaks / share_tokens / percentiles dropped):
 //   - postgres.go           — constructor, pool wiring, top-level bundle reads.
 //   - settings_repo.go      — GetSettings / UpdateSettings.
 //   - skill_nodes_repo.go   — UpsertSkillNode + ListSkillNodes.
-//   - percentiles_repo.go   — GetPercentiles.
-//   - streaks_repo.go       — GetStreaks + activity / weekly XP / elo / hourly.
-//   - share_tokens_repo.go  — IssueShareToken / ResolveShareToken.
+//   - streaks_repo.go       — CountRecentActivity (XP/elo aggregates).
+//   - tracks_repo.go        — Track-related lookups.
 //
 // All methods stay on *Postgres — splitting is purely organisational so the
 // next reader can find the relevant SQL without scrolling 700 lines.
@@ -43,8 +42,9 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool: pool, q: profiledb.New(pool)}
 }
 
-// GetByUserID joins users + profiles + subscriptions + ai_credits via sqlc,
-// then pulls ratings separately.
+// GetByUserID joins users + profiles + subscriptions via sqlc, then pulls
+// ratings separately. (ai_credits table dropped in 00074, AICredits field
+// returns 0 from the bundle reader.)
 func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bundle, error) {
 	row, err := p.q.GetProfileBundle(ctx, sharedpg.UUID(userID))
 	if err != nil {
@@ -67,7 +67,6 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 		CharClass:   enums.CharClass(row.CharClass),
 		Level:       int(row.Level),
 		XP:          row.TotalXp,
-		CareerStage: domain.CareerStage(row.CareerStage),
 		UpdatedAt:   row.UpdatedAt.Time,
 	}
 	if row.Plan.Valid {
@@ -108,7 +107,6 @@ func (p *Postgres) GetPublic(ctx context.Context, username string) (domain.Publi
 		CharClass:   enums.CharClass(row.CharClass),
 		Level:       int(row.Level),
 		XP:          row.TotalXp,
-		CareerStage: domain.CareerStage(row.CareerStage),
 	}
 	if nodes, err := p.ListSkillNodes(ctx, b.User.ID); err != nil {
 		return domain.PublicBundle{}, fmt.Errorf("profile.Postgres.GetPublic: nodes: %w", err)
@@ -118,9 +116,7 @@ func (p *Postgres) GetPublic(ctx context.Context, username string) (domain.Publi
 	return b, nil
 }
 
-// EnsureDefaults seeds profile/subscription/prefs and daily_streaks.
-// daily_streaks lives in a different domain (daily) but the MVP creates it here
-// so new users don't 404 on first GET /daily/streak.
+// EnsureDefaults seeds profile/subscription/prefs.
 func (p *Postgres) EnsureDefaults(ctx context.Context, userID uuid.UUID) error {
 	tx, err := p.pool.Begin(ctx)
 	if err != nil {
@@ -138,11 +134,6 @@ func (p *Postgres) EnsureDefaults(ctx context.Context, userID uuid.UUID) error {
 	}
 	if err := qtx.EnsureNotificationPrefs(ctx, uid); err != nil {
 		return fmt.Errorf("profile.Postgres.EnsureDefaults: prefs: %w", err)
-	}
-	// NOTE: daily_streaks ensure — cross-domain init, not in profile sqlc.
-	if _, err := tx.Exec(ctx,
-		`INSERT INTO daily_streaks(user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, userID); err != nil {
-		return fmt.Errorf("profile.Postgres.EnsureDefaults: streak: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("profile.Postgres.EnsureDefaults: commit: %w", err)

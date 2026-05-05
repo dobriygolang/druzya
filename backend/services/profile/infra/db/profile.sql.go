@@ -46,7 +46,7 @@ func (q *Queries) ApproveInterviewerApplication(ctx context.Context, arg Approve
 
 const countWeeklyActivity = `-- name: CountWeeklyActivity :one
 SELECT
-  (SELECT COUNT(*)::int FROM daily_kata_history dkh WHERE dkh.user_id = $1 AND dkh.passed = true AND dkh.submitted_at >= $2)::int AS katas_passed,
+  0::int AS katas_passed,
   0::int AS matches_won,
   (SELECT COALESCE(SUM(ms.duration_min),0)::int FROM mock_sessions ms
     WHERE ms.user_id = $1 AND ms.finished_at >= $2)::int AS mock_minutes
@@ -162,7 +162,7 @@ const getProfileBundle = `-- name: GetProfileBundle :one
 
 SELECT u.id, u.username, u.role, u.locale, u.display_name, u.created_at,
        p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
-       p.career_stage, p.updated_at,
+       p.updated_at,
        s.plan, s.status, s.current_period_end
   FROM users u
   JOIN profiles p           ON p.user_id = u.id
@@ -181,7 +181,6 @@ type GetProfileBundleRow struct {
 	CharClass        string
 	Level            int32
 	TotalXp          int64
-	CareerStage      string
 	UpdatedAt        pgtype.Timestamptz
 	Plan             pgtype.Text
 	Status           pgtype.Text
@@ -203,7 +202,6 @@ func (q *Queries) GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProf
 		&i.CharClass,
 		&i.Level,
 		&i.TotalXp,
-		&i.CareerStage,
 		&i.UpdatedAt,
 		&i.Plan,
 		&i.Status,
@@ -214,8 +212,7 @@ func (q *Queries) GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProf
 
 const getProfilePublic = `-- name: GetProfilePublic :one
 SELECT u.id, u.username, u.display_name, u.created_at,
-       p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
-       p.career_stage
+       p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp
   FROM users u
   JOIN profiles p      ON p.user_id = u.id
   LEFT JOIN user_xp ux ON ux.user_id = u.id
@@ -230,7 +227,6 @@ type GetProfilePublicRow struct {
 	CharClass   string
 	Level       int32
 	TotalXp     int64
-	CareerStage string
 }
 
 func (q *Queries) GetProfilePublic(ctx context.Context, username string) (GetProfilePublicRow, error) {
@@ -244,7 +240,6 @@ func (q *Queries) GetProfilePublic(ctx context.Context, username string) (GetPro
 		&i.CharClass,
 		&i.Level,
 		&i.TotalXp,
-		&i.CareerStage,
 	)
 	return i, err
 }

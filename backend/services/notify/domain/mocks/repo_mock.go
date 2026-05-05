@@ -437,45 +437,6 @@ func (mr *MockUserLookupMockRecorder) GetLocale(ctx, userID any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLocale", reflect.TypeOf((*MockUserLookup)(nil).GetLocale), ctx, userID)
 }
 
-// MockStreakReader is a mock of StreakReader interface.
-type MockStreakReader struct {
-	ctrl     *gomock.Controller
-	recorder *MockStreakReaderMockRecorder
-	isgomock struct{}
-}
-
-// MockStreakReaderMockRecorder is the mock recorder for MockStreakReader.
-type MockStreakReaderMockRecorder struct {
-	mock *MockStreakReader
-}
-
-// NewMockStreakReader creates a new mock instance.
-func NewMockStreakReader(ctrl *gomock.Controller) *MockStreakReader {
-	mock := &MockStreakReader{ctrl: ctrl}
-	mock.recorder = &MockStreakReaderMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockStreakReader) EXPECT() *MockStreakReaderMockRecorder {
-	return m.recorder
-}
-
-// GetStreakByChatID mocks base method.
-func (m *MockStreakReader) GetStreakByChatID(ctx context.Context, chatID int64) (domain.StreakInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetStreakByChatID", ctx, chatID)
-	ret0, _ := ret[0].(domain.StreakInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetStreakByChatID indicates an expected call of GetStreakByChatID.
-func (mr *MockStreakReaderMockRecorder) GetStreakByChatID(ctx, chatID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStreakByChatID", reflect.TypeOf((*MockStreakReader)(nil).GetStreakByChatID), ctx, chatID)
-}
-
 // MockCodeFiller is a mock of CodeFiller interface.
 type MockCodeFiller struct {
 	ctrl     *gomock.Controller

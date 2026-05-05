@@ -333,7 +333,7 @@ function PinnedRibbon({
 
 function GraphSkeleton() {
   return (
-    <div className="relative flex-1" style={{ minHeight: 720 }}>
+    <div className="relative flex-1" style={{ minHeight: 'min(720px, 60vh)' }}>
       <div
         className="absolute inset-0 animate-pulse"
         style={{

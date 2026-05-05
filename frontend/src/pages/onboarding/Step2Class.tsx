@@ -11,18 +11,21 @@ import { OnboardingLayout } from './_shared/Layout'
 import { useOnboarding, type FocusClass } from './_shared/useOnboarding'
 import { cn } from '../../lib/cn'
 
+// Identity 2026-05-04: arena ELO выпилен. Вместо ELO band показываем
+// прикидочный объём подготовки в часах — это полезный сигнал для
+// планирования, не legacy-rating.
 const CLASSES: {
   id: FocusClass
   title: string
   skills: string
-  elo: string
+  hours: string
   typical: string
 }[] = [
-  { id: 'algo', title: 'Алгоритмы', skills: 'two pointers · sliding window · binary search · graphs', elo: '1200–2400', typical: 'Яндекс, Meta' },
-  { id: 'backend', title: 'Бекенд', skills: 'http · caching · db · queues · api design', elo: '1000–2200', typical: 'Авито, Ozon' },
-  { id: 'system', title: 'System Design', skills: 'scalability · cap · sharding · load balancer', elo: '1400–2600', typical: 'Meta, Google' },
-  { id: 'concurrency', title: 'Concurrency', skills: 'locks · channels · async · race conditions', elo: '1200–2400', typical: 'Go, Rust ролы' },
-  { id: 'ds', title: 'Data Science', skills: 'sql · ab test · probability · ml basics', elo: '1000–2200', typical: 'Яндекс, Tinkoff' },
+  { id: 'algo', title: 'Алгоритмы', skills: 'two pointers · sliding window · binary search · graphs', hours: '40–80 ч', typical: 'Яндекс, Meta' },
+  { id: 'backend', title: 'Бекенд', skills: 'http · caching · db · queues · api design', hours: '30–60 ч', typical: 'Авито, Ozon' },
+  { id: 'system', title: 'System Design', skills: 'scalability · cap · sharding · load balancer', hours: '50–100 ч', typical: 'Meta, Google' },
+  { id: 'concurrency', title: 'Concurrency', skills: 'locks · channels · async · race conditions', hours: '40–80 ч', typical: 'Go, Rust ролы' },
+  { id: 'ds', title: 'Data Science', skills: 'sql · ab test · probability · ml basics', hours: '30–60 ч', typical: 'Яндекс, Tinkoff' },
 ]
 
 export default function Step2Class() {
@@ -79,8 +82,8 @@ export default function Step2Class() {
               <div className="text-[11px] text-text-muted leading-relaxed mb-3">{c.skills}</div>
               <div className="space-y-1.5 text-[11px]">
                 <div className="flex justify-between">
-                  <span className="text-text-muted">ELO band</span>
-                  <span className="font-mono text-text-secondary">{c.elo}</span>
+                  <span className="text-text-muted">подготовка</span>
+                  <span className="font-mono text-text-secondary">{c.hours}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-text-muted">типичный</span>

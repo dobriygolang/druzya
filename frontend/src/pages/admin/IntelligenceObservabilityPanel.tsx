@@ -20,10 +20,11 @@ import {
 
 const WINDOW_OPTIONS = [7, 14, 30, 60] as const
 
+// B/W rule: только critical держит accent, остальные — ink-ramp.
 const SEVERITY_COLOR: Record<keyof CoachAdminStatsResp['severity_distribution'], string> = {
   critical: 'bg-danger',
-  warn: 'bg-warn',
-  nudge: 'bg-blue-500',
+  warn: 'bg-text-primary',
+  nudge: 'bg-text-secondary',
   cruise: 'bg-text-muted',
 }
 

@@ -35,23 +35,23 @@ export const AtlasHub = memo(function AtlasHub({ cx, cy, className, tier, onClic
     >
       <title>{`${className} · ${tier}`}</title>
 
-      {/* Soft outer glow — signals "this is the center of gravity" */}
-      <circle cx={cx} cy={cy} r={r + 16} fill="rgba(88,44,255,0.12)" />
-      <circle cx={cx} cy={cy} r={r + 8} fill="rgba(88,44,255,0.2)" />
+      {/* Soft outer glow — white-alpha (B/W rule). */}
+      <circle cx={cx} cy={cy} r={r + 16} fill="rgba(255,255,255,0.06)" />
+      <circle cx={cx} cy={cy} r={r + 8} fill="rgba(255,255,255,0.12)" />
 
-      {/* Orbital ring — 2px accent line evoking the PoE class-circle */}
+      {/* Orbital ring — pure white at 70% opacity. */}
       <circle
         cx={cx}
         cy={cy}
         r={r + 4}
         fill="none"
-        stroke="rgb(88,44,255)"
+        stroke="#FFFFFF"
         strokeWidth={2}
         opacity={0.7}
       />
 
-      {/* Core circle — uses the hubCore radial gradient defined in <AtlasDefs /> */}
-      <circle cx={cx} cy={cy} r={r} fill={`url(#${DEFS_IDS.hubCore})`} stroke="rgb(167,139,250)" strokeWidth={1.5} />
+      {/* Core circle — uses the hubCore radial gradient defined in <AtlasDefs />. */}
+      <circle cx={cx} cy={cy} r={r} fill={`url(#${DEFS_IDS.hubCore})`} stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} />
 
       {/* Subtle bevel highlight for depth — upper-left sheen */}
       <circle cx={cx} cy={cy} r={r} fill={`url(#${DEFS_IDS.nodeBevel})`} />

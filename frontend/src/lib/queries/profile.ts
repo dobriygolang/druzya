@@ -1,12 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, API_BASE, forceRefresh } from '../apiClient'
-
-export type Attributes = {
-  intellect: number
-  strength: number
-  dexterity: number
-  will: number
-}
+import { api, forceRefresh } from '../apiClient'
 
 export type Subscription = {
   plan: string
@@ -23,15 +16,11 @@ export type Profile = {
   xp_to_next: number
   char_class: string
   title: string
-  attributes: Attributes
   global_power_score: number
-  career_stage: string
   subscription: Subscription
   tier?: 'free' | 'pro' | 'max'
-  ai_credits: number
   created_at: string
   achievements?: Achievement[]
-  avatar_frame?: string
   avatar_url?: string
   // role mirrors users.role; surfaced for UI RBAC gates (e.g. interviewer-
   // only «Создать слот» CTA on /slots). Wire enum is the canonical proto
@@ -57,7 +46,6 @@ export type PublicProfile = {
   title: string
   level: number
   char_class: string
-  career_stage: string
   global_power_score: number
   ratings?: PublicSectionRating[]
 }
@@ -511,55 +499,3 @@ export function useWeeklyReportQuery() {
   })
 }
 
-// ── Phase C: weekly-report public share link ────────────────────────────────
-//
-// useWeeklyShareQuery — публичная страница /weekly/share/:token. Не требует
-// bearer (REST gate пропускает по publicPaths-prefix). Используем сырой
-// fetch, а не api(), чтобы случайно не залить access-токен и не дёрнуть
-// 401-refresh-loop, если у анонима его нет.
-export const weeklyShareQueryKey = (token: string) =>
-  ['profile', 'weekly', 'share', token] as const
-
-// fetchWeeklyShare — выделено отдельно от хука для unit-тестов: vitest умеет
-// замокать globalThis.fetch и проверить контракт без поднятия react-query.
-export async function fetchWeeklyShare(token: string): Promise<WeeklyReport> {
-  const res = await fetch(`${API_BASE}/profile/weekly/share/${encodeURIComponent(token)}`, {
-    headers: { 'Content-Type': 'application/json' },
-  })
-  if (res.status === 404) {
-    throw Object.assign(new Error('share token not found'), { status: 404 })
-  }
-  if (!res.ok) {
-    throw Object.assign(new Error(`share request failed: ${res.status}`), { status: res.status })
-  }
-  return (await res.json()) as WeeklyReport
-}
-
-export function useWeeklyShareQuery(token: string | undefined) {
-  const safe = (token ?? '').trim()
-  return useQuery({
-    queryKey: weeklyShareQueryKey(safe),
-    queryFn: () => fetchWeeklyShare(safe),
-    enabled: safe.length > 0,
-    staleTime: PROFILE_STALE_MS,
-    gcTime: PROFILE_GC_MS,
-    retry: (failureCount, err) => {
-      const status = (err as { status?: number } | null)?.status
-      if (status === 404) return false
-      return failureCount < 2
-    },
-  })
-}
-
-// useIssueShareTokenMutation — кнопка «Поделиться» на /weekly. Дёргает
-// /profile/me/report?include_share_token=true (через transcoded REST), бэк
-// возвращает WeeklyReport со свежим share_token. Возвращаем строку токена
-// (или пустую строку, если бэк по какой-то причине не выдал).
-export function useIssueShareTokenMutation() {
-  return useMutation({
-    mutationFn: async (): Promise<string> => {
-      const r = await api<WeeklyReport>('/profile/me/report?include_share_token=true')
-      return r.share_token ?? ''
-    },
-  })
-}

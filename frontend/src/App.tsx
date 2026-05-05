@@ -63,9 +63,6 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
-// WeeklyShareView (Wave-10 P1) — dedicated public view (replaces the legacy
-// WeeklyReportSharePage which mirrored the authorized /weekly layout).
-const WeeklyShareView = lazy(() => import('./pages/WeeklyShareView'))
 const VoiceMockPage = lazy(() => import('./pages/VoiceMockPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminInterviewerApplicationsPage = lazy(() => import('./pages/AdminInterviewerApplicationsPage'))
@@ -184,13 +181,8 @@ export default function App() {
           /weekly — primary route as advertised in nav. /report kept as alias
           for backward compatibility (старые шеры в ссылках, e2e-тесты).
         */}
-        {/* WAVE-13 — /weekly kept as 301-style redirect to /profile/weekly.
-            Public share /weekly/share/:token below stays unchanged. */}
+        {/* WAVE-13 — /weekly kept as 301-style redirect to /profile/weekly. */}
         <Route path="/weekly" element={<Navigate to="/profile/weekly" replace />} />
-        {/* Phase C: публичный share-link на недельный отчёт. Никаких guards —
-            страница сама дёргает /api/v1/profile/weekly/share/{token} без
-            bearer'а и показывает 404 при истёкшем токене. */}
-        <Route path="/weekly/share/:token" element={<WeeklyShareView />} />
         {/* /podcasts перенесён в Hone (P hotkey). /report и /cohort/warroom
             redirect-routes удалены — NotFound для устаревших ссылок. */}
         <Route path="/voice-mock/:sessionId" element={<VoiceMockPage />} />

@@ -48,11 +48,11 @@ func NewRooms(d monolithServices.Deps) *monolithServices.Module {
 		ConnectHandler:     connectHandler,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
+			// Pivot 2026-05-05: orphan REST aliases удалены — Hone использует
+			// Connect-RPC напрямую (см. hone/api/rooms.ts: createRoom/
+			// listMyRooms/extendRoom/deleteRoom/restoreRoom). Оставляем
+			// `/rooms` (POST) на случай curl-tests из Settings → Developer tools.
 			r.Post("/rooms", connectHandler.ServeHTTP)
-			r.Post("/rooms/list", connectHandler.ServeHTTP)
-			r.Post("/rooms/extend", connectHandler.ServeHTTP)
-			r.Post("/rooms/delete", connectHandler.ServeHTTP)
-			r.Post("/rooms/restore", connectHandler.ServeHTTP)
 		},
 	}
 }

@@ -108,7 +108,7 @@ function ProfileCard() {
   const username = profile?.username ?? (isLoading ? '' : '—')
   const display = profile?.display_name ?? (isLoading ? '' : '—')
   const email = profile?.email ?? ''
-  const initial = (profile?.display_name ?? 'Д').charAt(0).toUpperCase()
+  const initial = (profile?.display_name ?? '?').charAt(0).toUpperCase()
   return (
     <Card className="flex-col gap-5 p-6">
       <div className="flex items-center justify-between">
@@ -763,9 +763,9 @@ function DangerCard() {
     <Card className="flex-col gap-4 p-6">
       <h3 className="font-display text-lg font-bold text-text-primary">Опасная зона</h3>
       <p className="text-[13px] text-text-secondary">
-        Удаление аккаунта необратимо. Уйдут заметки, прогресс, ачивки,
-        история матчей и подписки. Boosty-подписка останется на их
-        стороне — её надо отменить отдельно.
+        Удаление аккаунта необратимо. Уйдут заметки, прогресс, mock-сессии
+        и подписки. Внешние подписки (Boosty, если есть legacy) останутся
+        на их стороне — их надо отменить отдельно.
       </p>
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-1 p-3">
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">

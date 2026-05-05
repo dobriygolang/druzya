@@ -513,7 +513,7 @@ function Hero() {
         </p>
         <form
           onSubmit={submit}
-          className="flex h-12 w-full max-w-[720px] items-center gap-3 rounded-xl border border-white/20 bg-bg/60 px-4 backdrop-blur"
+          className="flex h-12 w-full max-w-[720px] items-center gap-3 rounded-xl border border-text-primary/20 bg-bg/60 px-4 backdrop-blur"
         >
           <Search className="h-5 w-5 shrink-0 text-text-muted" />
           <input
@@ -539,9 +539,9 @@ function Hero() {
         {/* Transparency: show which LLM will crunch the vacancy + deep-link
             to the picker in Settings. Clicking the model id goes straight
             to the AI tab so users don't hunt for the control. */}
-        <div className="flex max-w-[720px] flex-wrap items-center gap-1.5 text-[11px] text-white/70">
+        <div className="flex max-w-[720px] flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
           <span>Модель разбора:</span>
-          <span className="font-mono text-white">{modelLabel}</span>
+          <span className="font-mono text-text-primary">{modelLabel}</span>
           <span>·</span>
           <Link
             to="/settings"

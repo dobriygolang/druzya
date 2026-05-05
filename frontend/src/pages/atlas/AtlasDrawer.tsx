@@ -17,26 +17,27 @@ import { useActiveStudyModeQuery, type ActiveTrack } from '../../lib/queries/hon
 
 // pickPersonaForNode — выбирает AI-coach персону. mode='go' выигрывает над
 // section'ом (юзер явно сказал что в go-режиме). Иначе — по section'у узла.
+// Display-name: role-only lowercase per memory/feedback_persona_names.md.
 function pickPersonaForNode(
   node: AtlasNode,
   activeTrack: ActiveTrack,
 ): { slug: string; name: string } {
   if (activeTrack === 'go') {
-    return { slug: 'go-coach', name: 'Гоша · Go-коуч' }
+    return { slug: 'go-coach', name: 'go coach' }
   }
   switch (node.section) {
     case 'algorithms':
-      return { slug: 'algo-coach', name: 'Алёша · алго-коуч' }
+      return { slug: 'algo-coach', name: 'algo coach' }
     case 'system_design':
-      return { slug: 'sysdesign-guru', name: 'Кирилл · sysdesign-guru' }
+      return { slug: 'sysdesign-guru', name: 'sysdesign coach' }
     case 'sql':
     case 'databases':
-      return { slug: 'sql-mentor', name: 'Лена · SQL-ментор' }
+      return { slug: 'sql-mentor', name: 'sql coach' }
     case 'english_hr':
     case 'english':
-      return { slug: 'english-coach', name: 'Maria · English coach' }
+      return { slug: 'english-coach', name: 'english coach' }
     default:
-      return { slug: 'algo-coach', name: 'Алёша · алго-коуч' }
+      return { slug: 'algo-coach', name: 'algo coach' }
   }
 }
 import {

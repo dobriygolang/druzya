@@ -131,9 +131,10 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 		MountREST: func(r chi.Router) {
 			r.Post("/editor/room", transcoder.ServeHTTP)
 			r.Get("/editor/room/{roomId}", transcoder.ServeHTTP)
-			r.Post("/editor/room/{roomId}/invite", transcoder.ServeHTTP)
-			r.Post("/editor/room/{roomId}/freeze", transcoder.ServeHTTP)
-			r.Get("/editor/room/{roomId}/replay", transcoder.ServeHTTP)
+			// freeze/invite/replay REST aliases удалены 2026-05-05 —
+			// Hone client'ы дёргают Connect-RPC напрямую (FreezeRoom /
+			// CreateInvite / ReplayRoom через transport.ts). REST-aliases
+			// никогда не вызывались, оставляем proto endpoints без REST-mount.
 			r.Post("/editor/room/{roomId}/run", transcoder.ServeHTTP)
 			r.Get("/editor/room/{roomId}/visibility", transcoder.ServeHTTP)
 			r.Post("/editor/room/{roomId}/visibility", transcoder.ServeHTTP)

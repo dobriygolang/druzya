@@ -45,7 +45,6 @@ type GetDailyBrief struct {
 	// просто не наполняется. Это позволяет частичный rollout: сначала
 	// поднимаем Mocks, потом добавляем Arena, и т.д.
 	Mocks        domain.MockReader
-	Kata         domain.KataReader
 	Arena        domain.ArenaReader
 	Queue        domain.QueueReader
 	Skills       domain.SkillReader
@@ -185,8 +184,6 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 
 	var (
 		mocks           []domain.MockSessionSummary
-		kataStreak      domain.KataStreak
-		kataRecent      []domain.KataAttempt
 		arena           []domain.ArenaMatchSummary
 		queue           domain.QueueSnapshot
 		weakSkills      []domain.SkillWeak
@@ -216,22 +213,6 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 				abandonedRecent = v
 			} else {
 				warnReader(uc.Log, "mocks_abandoned", err)
-			}
-		}()
-	}
-	if uc.Kata != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.Kata.GetStreak(ctx, in.UserID); err == nil {
-				kataStreak = v
-			} else {
-				warnReader(uc.Log, "kata_streak", err)
-			}
-			if v, err := uc.Kata.LastNAttempts(ctx, in.UserID, 7); err == nil {
-				kataRecent = v
-			} else {
-				warnReader(uc.Log, "kata_recent", err)
 			}
 		}()
 	}
@@ -429,8 +410,6 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		CueMemories:         cueMemories,
 		Mocks:               mocks,
 		MockAbandonedRecent: abandonedRecent,
-		KataStreak:          kataStreak,
-		KataRecent:          kataRecent,
 		Arena:               arena,
 		Queue:               queue,
 		WeakSkills:          weakSkills,

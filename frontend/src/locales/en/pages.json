@@ -26,20 +26,20 @@
   },
   "match_end": {
     "back": "Back",
-    "header": "RANKED 1V1 · ROUND COMPLETE",
-    "match": "Match",
-    "win": "VICTORY",
-    "verdict_default": "Clean, fast, beautiful",
+    "header": "MOCK · SESSION COMPLETE",
+    "match": "Mock",
+    "win": "PASSED",
+    "verdict_default": "Clean, fast, readable",
     "task_default": "Median of Two Sorted Arrays",
-    "sub_default": "beat opponent by 1:42",
+    "sub_default": "solved in 1:42",
     "stats_time": "TIME",
     "stats_tests": "TESTS",
     "stats_complexity": "COMPLEXITY",
     "stats_lines": "LINES",
-    "rematch": "Rematch",
+    "rematch": "Try again",
     "replay": "Replay",
     "share": "Share",
-    "next_match": "Next match"
+    "next_match": "Next session"
   },
   "tournament": {
     "registered": "Registered",

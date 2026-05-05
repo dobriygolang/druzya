@@ -26,20 +26,20 @@
   },
   "match_end": {
     "back": "Назад",
-    "header": "RANKED 1V1 · ROUND COMPLETE",
-    "match": "Матч",
-    "win": "ПОБЕДА",
-    "verdict_default": "Чисто, быстро, красиво",
+    "header": "MOCK · СЕССИЯ ЗАВЕРШЕНА",
+    "match": "Mock",
+    "win": "ПРОЙДЕНО",
+    "verdict_default": "Чисто, быстро, читаемо",
     "task_default": "Median of Two Sorted Arrays",
-    "sub_default": "побил соперника на 1:42",
+    "sub_default": "решено за 1:42",
     "stats_time": "ВРЕМЯ",
     "stats_tests": "ТЕСТЫ",
     "stats_complexity": "СЛОЖНОСТЬ",
     "stats_lines": "СТРОК",
-    "rematch": "Реванш",
+    "rematch": "Ещё раз",
     "replay": "Replay",
     "share": "Поделиться",
-    "next_match": "Следующий матч"
+    "next_match": "Следующая сессия"
   },
   "tournament": {
     "registered": "Зарегистрирован",

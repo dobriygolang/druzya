@@ -18,21 +18,11 @@ type ReportView struct {
 	StressAnalysis  string
 	Recommendations []Recommendation
 
-	StreakDays int
-	BestStreak int
-
 	// AIInsight — Phase B: 2-paragraph Russian narrative produced by the
 	// OpenRouter insight client. Empty string when the LLM is disabled
 	// (OPENROUTER_API_KEY missing) or upstream call failed; the frontend
 	// hides the section in that case (anti-fallback policy).
 	AIInsight string
-
-	// FeaturedMetric — server-picked headline metric for the share card.
-	// Values: "streak" | "xp" | "" (empty ⇒ client default).
-	// Selection rules (see PickFeaturedMetric):
-	//   - "streak" if StreakDays >= 7
-	//   - else "xp"
-	FeaturedMetric string
 }
 
 // ReportWeakness is a node-scoped weak spot.
@@ -47,14 +37,4 @@ type Recommendation struct {
 	Description string
 	ActionKind  string
 	Params      map[string]any
-}
-
-// PickFeaturedMetric implements the rules described on ReportView.FeaturedMetric.
-// Pure function — kept exported for direct unit testing without spinning the
-// whole GetReport.Do pipeline.
-func PickFeaturedMetric(streakDays int) string {
-	if streakDays >= 7 {
-		return "streak"
-	}
-	return "xp"
 }

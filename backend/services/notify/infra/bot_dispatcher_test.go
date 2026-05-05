@@ -209,16 +209,6 @@ func TestDispatch_UnknownCommand(t *testing.T) {
 	}
 }
 
-func TestDispatch_Streak_Stub(t *testing.T) {
-	api := &fakeAPI{}
-	bot := newTestBot(api, newFakePrefs(), &fakeUsers{})
-	msg := makeMsg("streak", "", "alice", 42)
-	_ = bot.dispatch.Dispatch(context.Background(), msg)
-	if api.lastText() != RussianReplies.StreakStub {
-		t.Fatalf("got %q", api.lastText())
-	}
-}
-
 func TestDispatch_Leaderboard_Stub(t *testing.T) {
 	api := &fakeAPI{}
 	bot := newTestBot(api, newFakePrefs(), &fakeUsers{})

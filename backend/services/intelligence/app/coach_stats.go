@@ -16,7 +16,6 @@ import (
 
 // CoachStats — wire-shape для UI snapshot.
 type CoachStats struct {
-	StreakDays      int
 	FocusTodayMin   int
 	LastMockScore   int    // 0..100
 	LastMockSection string // '' if no mocks
@@ -28,7 +27,6 @@ type CoachStats struct {
 type GetCoachStats struct {
 	Focus    domain.FocusReader
 	Mocks    domain.MockReader
-	Kata     domain.KataReader
 	Calendar domain.CalendarReader
 	Now      func() time.Time
 }
@@ -42,11 +40,6 @@ func (uc *GetCoachStats) Do(ctx context.Context, userID uuid.UUID) (CoachStats, 
 	if days, err := uc.Focus.LastNDays(ctx, userID, 1); err == nil && len(days) > 0 {
 		// FocusDay.Seconds — от reader; конверт в minutes.
 		out.FocusTodayMin = days[0].Seconds / 60
-	}
-
-	// Streak — kata streak.
-	if s, err := uc.Kata.GetStreak(ctx, userID); err == nil {
-		out.StreakDays = s.Current
 	}
 
 	// Last mock — top finished.

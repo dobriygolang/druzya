@@ -165,9 +165,9 @@ export function LLMModelModal({
               <input type="checkbox" checked={isEnabled} onChange={(e) => setIsEnabled(e.target.checked)} className="h-4 w-4" />
               <span className="text-sm text-text-secondary">is_enabled</span>
             </label>
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2" title="Backend поле use_for_arena (legacy имя — выпиливается при следующем proto-bump'е).">
               <input type="checkbox" checked={useArena} onChange={(e) => setUseArena(e.target.checked)} className="h-4 w-4" />
-              <span className="text-sm text-text-secondary">use_for_arena</span>
+              <span className="text-sm text-text-secondary">use_for_arena · legacy</span>
             </label>
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={useInsight} onChange={(e) => setUseInsight(e.target.checked)} className="h-4 w-4" />

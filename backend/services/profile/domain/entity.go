@@ -24,12 +24,11 @@ type User struct {
 
 // Profile — строка прогрессии пользователя (таблица profiles).
 type Profile struct {
-	UserID      uuid.UUID
-	CharClass   enums.CharClass
-	Level       int
-	XP          int64
-	CareerStage CareerStage
-	UpdatedAt   time.Time
+	UserID    uuid.UUID
+	CharClass enums.CharClass
+	Level     int
+	XP        int64
+	UpdatedAt time.Time
 }
 
 // Subscription — текущий тарифный план пользователя.
@@ -103,19 +102,6 @@ var AllowedFocusClasses = map[string]struct{}{
 	"system":      {},
 	"concurrency": {},
 	"ds":          {},
-}
-
-// ShareToken — выпущенный токен публичной ссылки на отчёт.
-type ShareToken struct {
-	Token     string
-	WeekISO   string
-	ExpiresAt time.Time
-}
-
-// ShareResolution — результат разрешения токена /report/share/{token}.
-type ShareResolution struct {
-	UserID  uuid.UUID
-	WeekISO string
 }
 
 // InterviewerApplication mirrors a row in `interviewer_applications`.

@@ -32,17 +32,19 @@ export function DashboardPanel({ setTab }: { setTab?: (t: Tab) => void }) {
       <section>
         <h2 className="mb-2 font-display text-sm font-bold text-text-secondary">Активность</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          <StatCard label="Матчей сегодня" value={fmt(data.matches_today)} />
-          <StatCard label="Матчей за неделю" value={fmt(data.matches_week)} />
-          <StatCard label="Kata сегодня" value={fmt(data.katas_today)} />
-          <StatCard label="Kata за неделю" value={fmt(data.katas_week)} />
+          {/* Backend ключи (matches_*, katas_*) сохранены — их потребляет proto;
+              UI-копия идентичная identity 2026-05-04 (mock-сессии вместо матчей). */}
+          <StatCard label="Mock-сессий сегодня" value={fmt(data.matches_today)} />
+          <StatCard label="Mock-сессий за неделю" value={fmt(data.matches_week)} />
+          <StatCard label="Задач сегодня" value={fmt(data.katas_today)} />
+          <StatCard label="Задач за неделю" value={fmt(data.katas_week)} />
         </div>
       </section>
       <section>
         <h2 className="mb-2 font-display text-sm font-bold text-text-secondary">Сейчас идут</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <StatCard label="Mock-сессий" value={fmt(data.active_mock_sessions)} color="text-text-secondary" />
-          <StatCard label="Активных матчей" value={fmt(data.active_arena_matches)} color="text-text-secondary" />
+          <StatCard label="Активных сессий (legacy)" value={fmt(data.active_arena_matches)} color="text-text-secondary" />
           <StatCard label="Anti-cheat сигналов 24ч" value={fmt(data.anticheat_signals_24h)} color={data.anticheat_signals_24h > 0 ? 'text-warn' : 'text-text-muted'} />
         </div>
       </section>

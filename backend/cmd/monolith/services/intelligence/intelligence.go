@@ -82,7 +82,6 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	// Today (queue, daily notes). См. domain/repo.go BriefPromptInput
 	// и services/intelligence/infra/cross_readers.go.
 	mockR := intelInfra.NewMockReader(d.Pool)
-	kataR := intelInfra.NewKataReader(d.Pool)
 	arenaR := intelInfra.NewArenaReader(d.Pool)
 	queueR := intelInfra.NewQueueReader(d.Pool)
 	skillR := intelInfra.NewSkillReader(d.Pool)
@@ -161,7 +160,6 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			Memory:      memory,
 			// Cross-product сигналы для smart Coach.
 			Mocks:        mockR,
-			Kata:         kataR,
 			Arena:        arenaR,
 			Queue:        queueR,
 			Skills:       skillR,
@@ -216,7 +214,6 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	server.CoachStatsUC = &intelApp.GetCoachStats{
 		Focus:    focusR,
 		Mocks:    mockR,
-		Kata:     kataR,
 		Calendar: calR,
 	}
 	if d.LLMChain != nil {
@@ -275,21 +272,14 @@ func New(d monolithServices.Deps) IntelligenceModule {
 				// negotiation quirk.
 				dailyBriefDirect := newDailyBriefDirectHandler(h.GetDailyBrief, d.Log)
 				r.Post("/intelligence/daily-brief", dailyBriefDirect)
-				r.Post("/intelligence/ask-notes", transcoder.ServeHTTP)
-				r.Post("/intelligence/brief/ack", transcoder.ServeHTTP)
-				r.Get("/intelligence/memory/stats", transcoder.ServeHTTP)
-				// Phase 1.5 insight stream.
+				// Phase 1.5 insight stream — Hone web frontend дёргает напрямую.
 				r.Get("/intelligence/insights", transcoder.ServeHTTP)
 				r.Post("/intelligence/insights/{id}/ack", transcoder.ServeHTTP)
-				// Phase 2 learning-companion REST aliases.
-				r.Post("/intelligence/next-action", transcoder.ServeHTTP)
-				r.Get("/intelligence/fork-snapshot", transcoder.ServeHTTP)
-				r.Post("/intelligence/resource-log", transcoder.ServeHTTP)
-				r.Post("/intelligence/learning-mode", transcoder.ServeHTTP)
-				r.Post("/intelligence/fork-branch", transcoder.ServeHTTP)
-				r.Get("/intelligence/resource-trail", transcoder.ServeHTTP)
-				r.Get("/intelligence/skill-radar", transcoder.ServeHTTP)
-				r.Get("/intelligence/coach-stats", transcoder.ServeHTTP)
+				// Pivot 2026-05-05: orphan REST aliases удалены —
+				// Hone client дёргает Connect-RPC напрямую через
+				// hone/api/intelligence.ts (askNotes/ackBrief/getMemoryStats/
+				// getNextAction/getForkSnapshot/logResource/setLearningMode/
+				// setForkBranch/getResourceTrail/getSkillRadar/getCoachStats).
 				// Phase 5 — Hone /coach feed: last N days briefs newest-first.
 				recentBriefs := newRecentBriefsHandler(briefs, d.Log)
 				r.Get("/intelligence/briefs/recent", recentBriefs)

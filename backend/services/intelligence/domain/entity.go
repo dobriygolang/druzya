@@ -145,23 +145,6 @@ type MockSessionSummary struct {
 	AIReportRaw []byte
 }
 
-// KataAttempt — одна daily kata запись из daily_kata_history.
-// passed bool nullable в DB → true/false — finished, nil — submitted_at IS NULL.
-type KataAttempt struct {
-	KataDate     time.Time
-	Passed       bool // false если ещё не сабмитили или не прошли
-	IsCursed     bool
-	IsWeeklyBoss bool
-	SubmittedAt  *time.Time
-}
-
-// KataStreak — current/longest streak из daily_streaks.
-type KataStreak struct {
-	Current      int
-	Longest      int
-	LastKataDate *time.Time
-}
-
 // ArenaMatchSummary — одна arena сессия для user'а. winning_team mapping
 // в won/lost/draw делается reader'ом (по сравнению participant.team).
 type ArenaMatchSummary struct {

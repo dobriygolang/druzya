@@ -71,12 +71,12 @@ export const AtlasKeystone = memo(function AtlasKeystone({
     >
       {title && <title>{title}</title>}
 
-      {/* Decay pulse: outer diamond ring */}
+      {/* Decay pulse: outer diamond ring — red signal (B/W rule). */}
       {state === 'decaying' && (
         <path
           d={`M ${x} ${y - r - 4} L ${x + r + 4} ${y} L ${x} ${y + r + 4} L ${x - r - 4} ${y} Z`}
           fill="none"
-          stroke="rgb(251,191,36)"
+          stroke="#FF3B30"
           strokeWidth={1.5}
           opacity={0.6}
         >
@@ -89,12 +89,12 @@ export const AtlasKeystone = memo(function AtlasKeystone({
         </path>
       )}
 
-      {/* Selection ring — accent, bigger diamond outline */}
+      {/* Selection ring — pure white. */}
       {selected && (
         <path
           d={`M ${x} ${y - r - 6} L ${x + r + 6} ${y} L ${x} ${y + r + 6} L ${x - r - 6} ${y} Z`}
           fill="none"
-          stroke="rgb(88,44,255)"
+          stroke="#FFFFFF"
           strokeWidth={3}
         />
       )}

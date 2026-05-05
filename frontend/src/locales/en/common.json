@@ -1,10 +1,10 @@
 {
   "nav": {
-    "sanctum": "Sanctum",
-    "arena": "Arena",
+    "sanctum": "Today",
+    "arena": "Mock",
     "atlas": "Atlas",
     "insights": "Insights",
-    "circles": "Circles",
+    "circles": "Tutor",
     "codex": "Codex",
     "friends": "Friends",
     "help": "Help",
@@ -17,7 +17,7 @@
     "admin": "Admin"
   },
   "buttons": {
-    "find_opponent": "Find opponent",
+    "find_opponent": "Start mock",
     "start": "Start",
     "next": "Next",
     "back": "Back",
@@ -27,21 +27,21 @@
     "run": "Run",
     "open": "Open",
     "view_all": "View all →",
-    "create_party": "Create party",
+    "create_party": "Create session",
     "share": "Share",
     "add_friend": "Add friend",
     "login": "Sign in"
   },
   "labels": {
-    "search_placeholder": "Search kata, friends, cohorts…",
+    "search_placeholder": "Search topics, notes, coaches…",
     "loading": "Loading...",
     "empty": "Empty",
     "error": "Error",
     "load_failed": "Failed to load",
-    "season": "Season",
-    "level": "Level",
-    "xp": "XP",
-    "lp": "LP"
+    "season": "Period",
+    "level": "Node",
+    "xp": "Hours",
+    "lp": "Score"
   },
   "theme": {
     "label": "Theme",

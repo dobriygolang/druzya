@@ -27,7 +27,7 @@ func (s *stubLoader) load(_ context.Context, _ uuid.UUID, _ time.Time) (app.Repo
 func TestReportCache_HitSecondCall(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
-	loader := &stubLoader{view: app.ReportView{StreakDays: 7, BestStreak: 12}}
+	loader := &stubLoader{view: app.ReportView{AIInsight: "v1"}}
 	kv := newMemKV()
 	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 
@@ -38,8 +38,8 @@ func TestReportCache_HitSecondCall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second call: %v", err)
 	}
-	if got.StreakDays != 7 {
-		t.Fatalf("streak mismatch: %d", got.StreakDays)
+	if got.AIInsight != "v1" {
+		t.Fatalf("AIInsight mismatch: %q", got.AIInsight)
 	}
 	if loader.calls.Load() != 1 {
 		t.Fatalf("loader should be called once, got %d", loader.calls.Load())
@@ -49,7 +49,7 @@ func TestReportCache_HitSecondCall(t *testing.T) {
 func TestReportCache_MissTriggersLoader(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
-	loader := &stubLoader{view: app.ReportView{StreakDays: 47}}
+	loader := &stubLoader{view: app.ReportView{AIInsight: "first"}}
 	kv := newMemKV()
 	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 
@@ -57,8 +57,8 @@ func TestReportCache_MissTriggersLoader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if got.StreakDays != 47 {
-		t.Fatalf("actions=%d", got.StreakDays)
+	if got.AIInsight != "first" {
+		t.Fatalf("ai_insight=%q", got.AIInsight)
 	}
 	if loader.calls.Load() != 1 {
 		t.Fatalf("expected 1 loader call, got %d", loader.calls.Load())
@@ -79,7 +79,7 @@ func TestReportCache_RedisGetErrorPropagates(t *testing.T) {
 	t.Parallel()
 	// fallbacks were removed deliberately — Redis is required, errors propagate.
 	// Loader MUST NOT be invoked when Redis Get itself blew up.
-	loader := &stubLoader{view: app.ReportView{StreakDays: 3}}
+	loader := &stubLoader{view: app.ReportView{AIInsight: "x"}}
 	kv := newMemKV()
 	kv.failGet = true
 	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
@@ -94,7 +94,7 @@ func TestReportCache_RedisGetErrorPropagates(t *testing.T) {
 func TestReportCache_InvalidateBustsKey(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
-	loader := &stubLoader{view: app.ReportView{StreakDays: 1}}
+	loader := &stubLoader{view: app.ReportView{AIInsight: "v"}}
 	kv := newMemKV()
 	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 	_, _ = rc.Get(context.Background(), uid)
@@ -110,7 +110,7 @@ func TestReportCache_InvalidateBustsKey(t *testing.T) {
 func TestReportCache_TTLExpiry(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
-	loader := &stubLoader{view: app.ReportView{StreakDays: 9}}
+	loader := &stubLoader{view: app.ReportView{AIInsight: "v"}}
 	kv := newMemKV()
 	now := time.Now()
 	kv.now = func() time.Time { return now }
@@ -153,7 +153,7 @@ func TestReportCache_DefaultTTLApplied(t *testing.T) {
 func TestReportCache_CorruptEntryRefreshes(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
-	loader := &stubLoader{view: app.ReportView{StreakDays: 5}}
+	loader := &stubLoader{view: app.ReportView{AIInsight: "fresh"}}
 	kv := newMemKV()
 	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 	// Inject corrupt JSON under the report key.
@@ -162,7 +162,7 @@ func TestReportCache_CorruptEntryRefreshes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if got.StreakDays != 5 {
-		t.Fatalf("expected fresh load, got actions=%d", got.StreakDays)
+	if got.AIInsight != "fresh" {
+		t.Fatalf("expected fresh load, got AIInsight=%q", got.AIInsight)
 	}
 }

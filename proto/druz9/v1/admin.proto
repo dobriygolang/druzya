@@ -24,119 +24,11 @@ option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Tasks (admin projection — carries solution_hint)
+//
+// Pivot 2026-05: AdminTask*/Company*/ListCompanies* messages удалены —
+// curator UI ушёл на mock_interview сервис, а /companies проксируется
+// chi-direct'ом мимо proto. См commit history admin.proto.
 // ─────────────────────────────────────────────────────────────────────────
-
-// AdminTaskTestCase mirrors the inline test-case item in OpenAPI AdminTask.
-message AdminTaskTestCase {
-  string id = 1;
-  string input = 2;
-  string expected_output = 3;
-  bool is_hidden = 4;
-  int32 order_num = 5;
-}
-
-// AdminTaskFollowUpQuestion mirrors the inline follow-up item.
-message AdminTaskFollowUpQuestion {
-  string question_ru = 1;
-  string question_en = 2;
-  string answer_hint = 3;
-  int32 order_num = 4;
-}
-
-// AdminTask is the curator-facing task projection — INCLUDES solution_hint.
-message AdminTask {
-  string id = 1;
-  string slug = 2;
-  string title_ru = 3;
-  string title_en = 4;
-  string description_ru = 5;
-  string description_en = 6;
-  Difficulty difficulty = 7;
-  Section section = 8;
-  int32 time_limit_sec = 9;
-  int32 memory_limit_mb = 10;
-  string solution_hint = 11; // admin-only (see package doc)
-  int32 version = 12;
-  bool is_active = 13;
-  repeated AdminTaskTestCase test_cases = 14;
-  repeated AdminTaskFollowUpQuestion follow_up_questions = 15;
-}
-
-// AdminTaskList mirrors OpenAPI AdminTaskList.
-message AdminTaskList {
-  repeated AdminTask items = 1;
-  int32 total = 2;
-  int32 page = 3;
-}
-
-// AdminTaskUpsert mirrors OpenAPI AdminTaskUpsert (POST/PUT body).
-message AdminTaskUpsert {
-  string slug = 1;
-  string title_ru = 2;
-  string title_en = 3;
-  string description_ru = 4;
-  string description_en = 5;
-  Difficulty difficulty = 6;
-  Section section = 7;
-  int32 time_limit_sec = 8;
-  int32 memory_limit_mb = 9;
-  string solution_hint = 10;
-  bool is_active = 11;
-  repeated AdminTaskTestCase test_cases = 12;
-  repeated AdminTaskFollowUpQuestion follow_up_questions = 13;
-}
-
-message ListAdminTasksRequest {
-  Section section = 1;
-  Difficulty difficulty = 2;
-  // is_active_set=true means the is_active filter is applied (value in
-  // is_active). Keeping the tri-state requires a companion flag since
-  // proto3 bool has no "unset" sentinel.
-  bool is_active = 3;
-  bool is_active_set = 4;
-  int32 page = 5;
-  int32 limit = 6;
-}
-
-message CreateAdminTaskRequest {
-  AdminTaskUpsert task = 1;
-}
-
-message UpdateAdminTaskRequest {
-  string task_id = 1;
-  AdminTaskUpsert task = 2;
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Companies
-// ─────────────────────────────────────────────────────────────────────────
-
-// Company mirrors OpenAPI Company.
-message Company {
-  string id = 1;
-  string slug = 2;
-  string name = 3;
-  DungeonTier difficulty = 4;
-  int32 min_level_required = 5;
-  repeated Section sections = 6;
-}
-
-message CompanyList {
-  repeated Company items = 1;
-}
-
-// CompanyUpsert mirrors OpenAPI CompanyUpsert (POST body).
-message CompanyUpsert {
-  string slug = 1;
-  string name = 2;
-  DungeonTier difficulty = 3;
-  int32 min_level_required = 4;
-}
-
-message ListCompaniesRequest {}
-message CreateCompanyRequest {
-  CompanyUpsert company = 1;
-}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Dynamic config
@@ -224,12 +116,10 @@ message AdminDashboard {
   int64 users_active_week      = 3;
   int64 users_active_month     = 4;
   int64 users_banned           = 5;
-  int64 matches_today          = 6 [deprecated = true]; // pivot 2026-05-01: arena dropped
-  int64 matches_week           = 7 [deprecated = true]; // pivot 2026-05-01: arena dropped
-  int64 katas_today            = 8;
-  int64 katas_week             = 9;
+  reserved 6, 7;               // matches_today / matches_week (arena dropped 2026-05-01)
+  reserved 8, 9;               // katas_today / katas_week (daily_kata_history dropped 2026-05)
   int64 active_mock_sessions   = 10;
-  reserved 11; // active_arena_matches (pivot 2026-05-01: arena dropped)
+  reserved 11;                 // active_arena_matches (pivot 2026-05-01: arena dropped)
   int64 reports_pending        = 12;
   int64 anticheat_signals_24h  = 13;
   // generated_at — when the snapshot was assembled (cache miss timestamp).

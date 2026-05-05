@@ -46,52 +46,54 @@ export type HelpContact = {
 
 const ic = (Comp: typeof Rocket, cls = 'h-5 w-5') => createElement(Comp, { className: cls })
 
+// Identity 2026-05-04: arena/cohort выпилены, gamification — нет.
+// Категории — продуктовые поверхности: Mock / Atlas / Coach / Tutor toolkit.
 export const HELP_CATEGORIES: HelpCategory[] = [
   { slug: 'start', icon: ic(Rocket), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'Старт', count: 8 },
-  { slug: 'arena', icon: ic(Swords), color: 'text-text-primary', bg: 'bg-text-primary/15', label: 'Арена и матчи', count: 14 },
-  { slug: 'cohort', icon: ic(Shield), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'Когорты', count: 11 },
-  { slug: 'premium', icon: ic(Crown), color: 'text-warn', bg: 'bg-warn/15', label: 'Premium', count: 6 },
-  { slug: 'ai', icon: ic(Sparkles), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'AI-собеседование', count: 9 },
-  { slug: 'security', icon: ic(Lock), color: 'text-success', bg: 'bg-success/15', label: 'Безопасность', count: 5 },
+  { slug: 'mock', icon: ic(Swords), color: 'text-text-primary', bg: 'bg-text-primary/15', label: 'Mock-сессии', count: 12 },
+  { slug: 'atlas', icon: ic(Shield), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'Atlas и треки', count: 9 },
+  { slug: 'premium', icon: ic(Crown), color: 'text-text-primary', bg: 'bg-text-primary/10', label: 'Подписка', count: 6 },
+  { slug: 'ai', icon: ic(Sparkles), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'AI-coach', count: 9 },
+  { slug: 'security', icon: ic(Lock), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'Безопасность', count: 5 },
 ]
 
 export const HELP_TOTAL_ARTICLES = HELP_CATEGORIES.reduce((s, c) => s + c.count, 0)
 
 export const HELP_FAQ: HelpFAQ[] = [
   {
-    id: 'lp',
-    question: 'Как считается LP?',
-    tags: ['MMR vs LP', 'Сезонный сброс', 'Decay'],
+    id: 'strict-mock',
+    question: 'Чем strict mock отличается от AI-mode?',
+    tags: ['Mock', 'Watermark'],
     answer:
-      'LP начисляется за победы в ranked-матчах и зависит от разницы рейтингов соперников. Базовое значение — 20 LP, корректируется на основе MMR-формулы (Elo-подобная). Минимум +5 LP за победу, максимум +35 LP. При поражении удерживается от −12 до −22 LP.',
+      'Strict — без AI и без подсказок, Cue блокируется на сервере. AI-mode — с inline coach. Watermark разделяет результат на «честно» и «с AI» — это объективная валюта готовности.',
   },
   {
     id: 'premium',
-    question: 'Что даёт Premium?',
+    question: 'Что даёт Pro?',
     tags: ['Подписка', 'Биллинг'],
     answer:
-      'Premium даёт безлимит mock-интервью с моделью GPT-4o (вместо free GPT-4o-mini), премиальные TTS-голоса для разбора, расширенную аналитику в weekly-report и эксклюзивные бейджи. Цена 490₽/мес или 4900₽/год. Оплата через Boosty, отмена в любой момент.',
+      'Pro: безлимит mock (AI / strict), AI-tutor с памятью (4 layers), Cue copilot без лимита, multi-track Atlas + Insights. Free навсегда: 1 mock в неделю, Atlas + Codex, tutor toolkit.',
   },
   {
-    id: 'cohort-create',
-    question: 'Как создать когорту?',
-    tags: ['Когорты'],
+    id: 'tracks',
+    question: 'Сколько треков и как переключиться?',
+    tags: ['Tracks', 'English'],
     answer:
-      'Создание когорты откроется после достижения 1500 ELO в любой из секций (algorithms / SQL / etc). Стоимость регистрации — 5000 XP. Когорта имеет до 30 участников, своё название и эмблему. Раз в неделю — cohort war против другой когорты того же тира.',
+      'Главный трек: dev (Go senior). Sub-mode «go deep» для language internals/runtime/distributed. Орт-модификатор «english» — opt-in toggle в Hone settings. Когда выключен, English-surfaces скрыты.',
   },
   {
     id: 'ai-models',
     question: 'Какие AI модели доступны?',
-    tags: ['AI', 'OpenRouter'],
+    tags: ['AI', 'LLM cascade'],
     answer:
-      'Бесплатно: GPT-4o-mini для mock-интервью + браузерный TTS. Premium: GPT-4o + Edge TTS Premium голос. Модель и провайдер можно поменять в Настройках → AI.',
+      'Free LLM cascade: groq → cerebras → google → cloudflare → mistral → openrouter → deepseek → ollama. Никаких платных API в production-цепочке. Модель можно поменять в Настройках → AI.',
   },
   {
-    id: 'streak-freeze',
-    question: 'Как работает Streak Freeze?',
-    tags: ['Daily', 'Стрик'],
+    id: 'tutor-toolkit',
+    question: 'Что входит в free tutor toolkit?',
+    tags: ['Tutor', 'Free'],
     answer:
-      'Freeze автоматически защищает streak если ты пропустил день. Каждые 7 дней непрерывного решения daily-kata получаешь 1 freeze (максимум 3). Дополнительные можно купить за 100 💎.',
+      'Бесплатно для преподавателей: assignments queue, student snapshots, AI pre-session brief, общий календарь, shared reading library, session notes. Двусторонний рынок без денежного шага.',
   },
   {
     id: 'refund',
@@ -102,7 +104,7 @@ export const HELP_FAQ: HelpFAQ[] = [
   },
 ]
 
-export const HELP_QUICK_QUESTIONS = ['Как поднять LP?', 'Создать когорту', 'Купить Premium']
+export const HELP_QUICK_QUESTIONS = ['Strict vs AI-mock', 'Что даёт Pro', 'Подключить тутора']
 
 export const HELP_CONTACTS: HelpContact[] = [
   {

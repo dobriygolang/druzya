@@ -22,11 +22,13 @@ import { DEFS_IDS } from './atlasTokens'
 export const AtlasDefs = memo(function AtlasDefs() {
   return (
     <defs>
-      {/* Hub core gradient — violet from centre, deep purple at rim */}
+      {/* Hub core gradient — pure white centre, fading to deep ink at rim
+          (B/W rule, см memory/feedback_color_rule.md). Earlier violet
+          radial removed 2026-05-05 along with the rest of the RPG-витрина. */}
       <radialGradient id={DEFS_IDS.hubCore} cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#E9D5FF" />
-        <stop offset="40%" stopColor="#FFFFFF" />
-        <stop offset="100%" stopColor="#3B0764" />
+        <stop offset="0%" stopColor="#FFFFFF" />
+        <stop offset="55%" stopColor="rgba(255,255,255,0.55)" />
+        <stop offset="100%" stopColor="#0A0A0A" />
       </radialGradient>
 
       {/* Upper-left sheen for depth — works on any fill underneath */}

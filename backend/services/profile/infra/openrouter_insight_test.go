@@ -20,7 +20,6 @@ func payload() InsightPayload {
 		EloDelta:         42,
 		WinRateBySection: map[string]int{"algorithms": 80, "sql": 50},
 		HoursStudied:     6.5,
-		Streak:           5,
 		WeakestSection:   "sql",
 	}
 }

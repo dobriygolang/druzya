@@ -172,16 +172,15 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
                 <ul className="flex flex-col divide-y divide-border">
                   {items.map((n: NotificationItem) => (
                     <li key={n.id}>
-                      {/* arena/achievements удалены post-pivot 2026-05-01;
-                          accept/decline-match и open-achievement переведены
-                          в no-op (карточки match-нотификаций больше не
-                          приходят из бэка, но guard на случай stale-row'ов
-                          в БД). open-insight ведёт на /weekly как раньше. */}
+                      {/* match/achievement kinds — legacy (выпилены post-pivot
+                          2026-05-01). Handlers — no-op guard на случай
+                          stale-row'ов в БД, новые карточки этих видов с бэка
+                          не приходят. */}
                       <NotificationCard
                         item={n}
                         onMarkRead={(id) => markRead.mutate(id)}
-                        onAcceptMatch={() => { /* arena removed */ }}
-                        onDeclineMatch={() => { /* arena removed */ }}
+                        onAcceptMatch={() => { /* legacy no-op */ }}
+                        onDeclineMatch={() => { /* legacy no-op */ }}
                         onOpenInsight={() => navigateAndClose('/weekly')}
                         onOpenAchievement={() => navigateAndClose('/profile')}
                         onOpenSystem={(href) => navigateAndClose(href)}
@@ -225,15 +224,7 @@ function Header({ onClose }: { onClose: () => void }) {
     <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
       <div className="flex flex-col gap-0.5">
         <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Notifications</span>
-        <span
-          className="font-display text-lg font-bold"
-          style={{
-            background: 'linear-gradient(90deg, rgb(244,114,182), rgb(34,211,238))',
-            WebkitBackgroundClip: 'text',
-            backgroundClip: 'text',
-            color: 'transparent',
-          }}
-        >
+        <span className="font-display text-lg font-bold text-text-primary">
           Уведомления
         </span>
       </div>

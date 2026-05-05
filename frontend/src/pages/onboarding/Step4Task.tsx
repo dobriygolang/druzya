@@ -1,13 +1,11 @@
-// Onboarding Step 4 — first task in sandbox mode (Wave-10, design-review v3 A.5).
+// Onboarding Step 4 — first task in sandbox mode.
 //
-// Sandbox = NO side-effects: no submission to match-history, no ELO
-// delta, no streak update. The user just sees the arena layout and how
-// problem/editor/sample-IO compose. Skip-able («потом попробую»).
+// Sandbox = NO side-effects: no submission to history, no streak update.
+// The user just sees mock-session layout (problem / editor / sample-IO).
+// Skip-able («потом попробую»). После Step5 ведёт на /atlas с tour.
 //
-// We deliberately don't wire a real CodeEditor here — that's a heavy
-// dependency and onboarding shouldn't pay the cost. A textarea-shaped
-// preview (read-only) communicates the layout. The user lands on the
-// real arena via Step 5's tour.
+// Deliberately нет real CodeEditor — heavy dependency, onboarding не
+// должен платить bundle cost. Read-only preview даёт ощущение layout'а.
 
 import { useNavigate } from 'react-router-dom'
 import { OnboardingLayout } from './_shared/Layout'
@@ -25,7 +23,7 @@ export default function Step4Task() {
   const { setStep } = useOnboarding()
 
   const runAndGo = () => {
-    // Sandbox: NO POST to match-history, NO ELO update.
+    // Sandbox: no side-effects in storage. Just navigate to Atlas tour.
     setStep(5)
     nav('/atlas?tour=1')
   }
@@ -43,10 +41,10 @@ export default function Step4Task() {
     >
       <div className="text-center mb-5">
         <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-2">
-          шаг 4 · как выглядит арена
+          шаг 4 · как выглядит mock
         </div>
-        <h2 className="font-display text-2xl font-bold mb-1.5">Первая задача — без счёта</h2>
-        <p className="text-[13px] text-text-secondary">Sandbox. Таймер остановлен, ELO не изменится.</p>
+        <h2 className="font-display text-2xl font-bold mb-1.5">Первая задача — sandbox</h2>
+        <p className="text-[13px] text-text-secondary">Без таймера и без записи в историю — посмотри, как устроена сессия.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-5">

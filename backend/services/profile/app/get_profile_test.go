@@ -24,7 +24,6 @@ func TestGetProfile_Do_HappyPath(t *testing.T) {
 			UserID: uid, Level: 3, XP: 100, CharClass: enums.CharClassNovice,
 		},
 		Subscription: domain.Subscription{Plan: enums.SubscriptionPlanFree},
-		AICredits:    5,
 	}
 	repo.EXPECT().GetByUserID(gomock.Any(), uid).Return(bundle, nil)
 

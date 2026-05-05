@@ -115,10 +115,9 @@ function Glyph({ kind }: { item: NotificationItem; kind: CardKind }) {
     case 'coach-insight-ready':
       return (
         <span
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-          style={{ background: 'linear-gradient(135deg, rgb(244,114,182) 0%, rgb(34,211,238) 100%)' }}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-text-primary/10 ring-1 ring-text-primary/20"
         >
-          <Sparkles className="h-4 w-4 text-white" />
+          <Sparkles className="h-4 w-4 text-text-primary" />
         </span>
       )
     case 'achievement-unlocked':
@@ -204,8 +203,7 @@ function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKi
         <button
           type="button"
           onClick={() => props.onOpenInsight?.(id)}
-          className="inline-flex items-center gap-1 pt-1 text-left text-xs font-semibold hover:brightness-110"
-          style={{ background: 'linear-gradient(90deg, rgb(244,114,182), rgb(34,211,238))', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+          className="inline-flex items-center gap-1 pt-1 text-left text-xs font-semibold text-text-primary hover:brightness-110"
         >
           Открыть инсайт <ArrowRight className="h-3 w-3 text-text-secondary" />
         </button>

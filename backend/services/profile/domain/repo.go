@@ -60,17 +60,6 @@ type ProfileRepo interface {
 	// Activity snapshots for the weekly report.
 	CountRecentActivity(ctx context.Context, userID uuid.UUID, since time.Time) (Activity, error)
 
-	// GetStreaks возвращает текущую серию активности (дни) и личный рекорд.
-	// Реализация может вернуть (0, 0), если не поддерживает streak-таблицу.
-	GetStreaks(ctx context.Context, userID uuid.UUID) (current, best int, err error)
-
-	// IssueShareToken создаёт строку в weekly_share_tokens с TTL 30 дней.
-	IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (ShareToken, error)
-
-	// ResolveShareToken находит активный токен; ErrNotFound если протух/нет.
-	// Также инкрементирует views_count атомарно.
-	ResolveShareToken(ctx context.Context, token string) (ShareResolution, error)
-
 	// ── Multi-track (см docs/feature/tracks.md) ──────────────────────────
 	// ListUserTracks возвращает все активные треки пользователя, primary
 	// первым. Пустой срез — валидный ответ (например, юзер сбросил

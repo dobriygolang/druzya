@@ -49,14 +49,15 @@ export const AtlasEdge = memo(function AtlasEdge({ from, to, kind }: AtlasEdgePr
   let opacity: number
 
   switch (kind) {
+    // B/W rule: edges по statuses через ink-ramp + opacity, не цвет.
     case 'prereq':
-      stroke = bothMastered ? 'rgb(16,185,129)' : 'rgb(192,192,192)'
+      stroke = bothMastered ? '#FFFFFF' : 'rgba(255,255,255,0.55)'
       width = 2
       dash = undefined
       opacity = bothMastered ? 0.95 : 0.55
       break
     case 'suggested':
-      stroke = 'rgb(34,211,238)'
+      stroke = 'rgba(255,255,255,0.4)'
       width = 1
       dash = undefined
       opacity = 0.5

@@ -10,16 +10,17 @@ import (
 	"github.com/google/uuid"
 )
 
-// WebPushSender implements the web-push channel as a STUB.
+// WebPushSender implements the web-push channel as a noop sink.
 //
-// STUB: real implementation will use github.com/SherClockHolmes/webpush-go
-// with VAPID keys and subscriptions stored per-user. Not in MVP scope
-// (bible §3.11: PWA push is Phase 2).
+// NOTE: noop sink. Production использует TG bot вместо webpush — VAPID
+// keys + subscription endpoint pipeline не подключены намеренно. Сохраняем
+// слой Sender чтобы worker fan-out имел NotificationChannelPush adapter и
+// route fall-through был тривиальным.
 type WebPushSender struct {
 	log *slog.Logger
 }
 
-// NewWebPushSender returns a stub.
+// NewWebPushSender returns a noop sender (no VAPID dispatch).
 func NewWebPushSender(log *slog.Logger) *WebPushSender {
 	return &WebPushSender{log: log}
 }

@@ -84,7 +84,7 @@ export default function HelpPage() {
 
       <div className="flex flex-col gap-8 px-4 py-8 sm:px-8 lg:px-20 lg:py-10">
         {/* Категории */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           {HELP_CATEGORIES.map((c) => (
             <Card
               key={c.slug}
@@ -364,7 +364,7 @@ function SupportForm() {
         </div>
 
         {(validationErr || apiErr) && (
-          <div className="rounded-md border border-red-300/40 bg-red-500/15 px-3 py-2 text-[12px] text-red-100">
+          <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-[12px] text-danger">
             {validationErr ?? apiErr}
           </div>
         )}

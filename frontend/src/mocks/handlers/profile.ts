@@ -12,16 +12,12 @@ const profileFull = {
   xp_to_next: 4800,
   char_class: 'ascendant',
   title: 'Vessel of the Crimson Sigil',
-  attributes: { intellect: 82, strength: 74, dexterity: 91, will: 67 },
   global_power_score: 1584,
-  career_stage: 'senior',
   subscription: { plan: 'seeker', current_period_end: '2026-06-01T00:00:00Z' },
   // Mock-only: dev can override via localStorage('druz9_user_tier'). The
   // actual response interpolates the override at request time (see handler).
   tier: 'free' as 'free' | 'premium' | 'pro',
-  ai_credits: 240,
   created_at: '2025-11-14T10:00:00Z',
-  avatar_frame: 'crimson_sigil',
   // role mirrors users.role; default to plain user so the
   // BecomeInterviewer flow on /slots is exercisable. Toggle via the POST
   // /profile/me/become-interviewer mock below — the mutation flips this
@@ -278,7 +274,6 @@ export const profileHandlers = [
       title: profileFull.title,
       level: profileFull.level,
       char_class: profileFull.char_class,
-      career_stage: profileFull.career_stage,
       global_power_score: profileFull.global_power_score,
       ratings: [
         { section: 'algorithms', elo: 1620, matches_count: 42, percentile: 88, decaying: false },

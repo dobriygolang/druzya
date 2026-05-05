@@ -37,7 +37,6 @@ func (a insightGeneratorAdapter) Generate(
 		EloDelta:         p.EloDelta,
 		WinRateBySection: p.WinRateBySection,
 		HoursStudied:     p.HoursStudied,
-		Streak:           p.Streak,
 		WeakestSection:   p.WeakestSection,
 		Model:            p.Model,
 	})
@@ -164,9 +163,6 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 			r.Get("/admin/interviewer-applications", transcoder.ServeHTTP)
 			r.Post("/admin/interviewer-applications/{application_id}/approve", transcoder.ServeHTTP)
 			r.Post("/admin/interviewer-applications/{application_id}/reject", transcoder.ServeHTTP)
-			// /profile/weekly/share/{token} — публичный, авторизация не нужна;
-			// REST gate пропускает по publicPaths-prefix /profile/weekly/share/.
-			r.Get("/profile/weekly/share/{token}", transcoder.ServeHTTP)
 			r.Get("/profile/{username}", transcoder.ServeHTTP)
 
 			// Account deletion (Danger zone). Chi-direct because the

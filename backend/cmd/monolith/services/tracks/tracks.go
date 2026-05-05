@@ -66,9 +66,9 @@ func NewTracks(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/tracks/{track_id}/pause", transcoder.ServeHTTP)
 			r.Post("/tracks/{track_id}/leave", transcoder.ServeHTTP)
 			r.Post("/tracks/custom-path/generate", transcoder.ServeHTTP)
-			// Phase 2 step UX REST-aliases.
-			r.Post("/tracks/{track_id}/steps/{step_index}/checkpoint/start", transcoder.ServeHTTP)
-			r.Post("/tracks/{track_id}/steps/{step_index}/checkpoint/submit", transcoder.ServeHTTP)
+			// Pivot 2026-05-05: checkpoint/start + /submit REST-aliases
+			// удалены — Hone использует Connect-RPC напрямую (см.
+			// hone/api/tracks.ts: client.startCheckpoint / submitCheckpoint).
 		},
 	}
 }

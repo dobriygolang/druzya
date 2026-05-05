@@ -68,14 +68,6 @@ func daysSinceLastTouch(in domain.BriefPromptInput) int {
 	for _, a := range in.Arena {
 		bump(a.FinishedAt)
 	}
-	if in.KataStreak.LastKataDate != nil {
-		bump(*in.KataStreak.LastKataDate)
-	}
-	for _, k := range in.KataRecent {
-		if k.SubmittedAt != nil {
-			bump(*k.SubmittedAt)
-		}
-	}
 	for _, c := range in.CompletedRecent {
 		bump(c.PlanDate)
 	}
@@ -227,9 +219,6 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 		w := in.WeakSkills[0]
 		return severityNudge, fmt.Sprintf("weakest skill %s at %d/100", w.SkillKey, w.Progress)
 	}
-	if in.KataStreak.LastKataDate != nil && in.KataStreak.Current == 0 && in.KataStreak.Longest >= 3 {
-		return severityNudge, fmt.Sprintf("kata streak broken (was %d days)", in.KataStreak.Longest)
-	}
 	if in.Queue.Total > 0 && in.Queue.Done == 0 && (in.Queue.Todo+in.Queue.InProgress) >= 3 {
 		return severityNudge, fmt.Sprintf("queue stalled: 0/%d done", in.Queue.Total)
 	}
@@ -351,14 +340,6 @@ func coachDiagnoses(in domain.BriefPromptInput) []coachDiagnosis {
 	if topic, count := cueWeakTopic(in.CueMemories); topic != "" {
 		add(40+count, "cue:"+topic,
 			fmt.Sprintf("cue_memory_pattern: %s appears in %d useful Cue memory item(s)", topic, count))
-	}
-	if in.KataStreak.Current > 0 || in.KataStreak.Longest > 0 {
-		last := "unknown"
-		if in.KataStreak.LastKataDate != nil {
-			last = in.KataStreak.LastKataDate.Format("2006-01-02")
-		}
-		add(35+in.KataStreak.Current/3, "kata",
-			fmt.Sprintf("kata_consistency: current=%d longest=%d last=%s", in.KataStreak.Current, in.KataStreak.Longest, last))
 	}
 	sort.SliceStable(items, func(i, j int) bool {
 		if items[i].priority == items[j].priority {
