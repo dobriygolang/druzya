@@ -94,7 +94,7 @@ function StatCard({ label, value, hint, onOpen }: { label: string; value: number
 
 function Section({ title, empty, children }: { title: string; empty?: string | null; children: React.ReactNode }) {
   const arr = Array.isArray(children) ? children : [children];
-  const hasChildren = arr.some((c) => c !== null && c !== undefined && c !== false);
+  const hasChildren = arr.some((c) => c != null && c !== false);
   return (
     <section style={{ marginBottom: 24 }}>
       <div className="mono" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'var(--ink-40)', textTransform: 'uppercase', marginBottom: 8 }}>

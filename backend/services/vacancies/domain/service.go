@@ -2,7 +2,8 @@ package domain
 
 import (
 	"context"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 )
 
@@ -49,9 +50,9 @@ func ComputeSkillGap(required, userSkills []string) SkillGap {
 			out.Extra = append(out.Extra, s)
 		}
 	}
-	sort.Strings(out.Matched)
-	sort.Strings(out.Missing)
-	sort.Strings(out.Extra)
+	slices.Sort(out.Matched)
+	slices.Sort(out.Missing)
+	slices.Sort(out.Extra)
 	if out.Matched == nil {
 		out.Matched = []string{}
 	}
@@ -77,12 +78,7 @@ func normSet(in []string) map[string]struct{} {
 }
 
 func sortedKeys(m map[string]struct{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
+	return slices.Sorted(maps.Keys(m))
 }
 
 // NormalizeSkills lowercases, trims, and dedupes a parser-emitted skill slice
@@ -112,6 +108,6 @@ func NormalizeSkills(in []string) []string {
 		seen[s] = struct{}{}
 		out = append(out, s)
 	}
-	sort.Strings(out)
+	slices.Sort(out)
 	return out
 }

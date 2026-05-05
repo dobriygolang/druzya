@@ -1,6 +1,6 @@
 package domain
 
-import "sort"
+import "slices"
 
 // CosineTopK returns the k chunks with highest cosine similarity against
 // query. Both query and chunk embeddings MUST be L2-normalized — the
@@ -28,8 +28,14 @@ func CosineTopK(query []float32, chunks []Chunk, k int) []SearchHit {
 			Score: dot(query, c.Embedding),
 		})
 	}
-	sort.Slice(hits, func(i, j int) bool {
-		return hits[i].Score > hits[j].Score
+	slices.SortFunc(hits, func(a, b SearchHit) int {
+		if a.Score > b.Score {
+			return -1
+		}
+		if a.Score < b.Score {
+			return 1
+		}
+		return 0
 	})
 	if len(hits) > k {
 		hits = hits[:k]

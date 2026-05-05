@@ -21,9 +21,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -359,7 +360,7 @@ func signV4Podcast(req *http.Request, accessKey, secretKey, region, service, bod
 	if req.Header.Get("Content-Type") != "" {
 		signedHeaderNames = append(signedHeaderNames, "content-type")
 	}
-	sort.Strings(signedHeaderNames)
+	slices.Sort(signedHeaderNames)
 
 	var canonicalHeaders strings.Builder
 	for _, h := range signedHeaderNames {
@@ -397,11 +398,7 @@ func signV4Podcast(req *http.Request, accessKey, secretKey, region, service, bod
 }
 
 func canonicalQueryStringPodcast(values url.Values) string {
-	keys := make([]string, 0, len(values))
-	for k := range values {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(values))
 	parts := make([]string, 0, len(keys))
 	for _, k := range keys {
 		for _, v := range values[k] {

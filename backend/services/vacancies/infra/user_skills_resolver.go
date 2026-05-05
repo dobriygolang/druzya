@@ -14,7 +14,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sort"
+	"maps"
+	"slices"
 	"time"
 
 	"druz9/vacancies/domain"
@@ -198,10 +199,7 @@ func (r *UserSkillsResolver) Resolve(ctx context.Context, userID uuid.UUID) (dom
 		return out, nil
 	}
 
-	rawSkills := make([]string, 0, len(confSamples))
-	for s := range confSamples {
-		rawSkills = append(rawSkills, s)
-	}
+	rawSkills := slices.Collect(maps.Keys(confSamples))
 	out.Skills = domain.NormalizeSkills(rawSkills)
 
 	// Build confidence map keyed by the post-normalization label so callers
@@ -225,7 +223,7 @@ func (r *UserSkillsResolver) Resolve(ctx context.Context, userID uuid.UUID) (dom
 		}
 	}
 
-	sort.Strings(qualifiedSections)
+	slices.Sort(qualifiedSections)
 	out.Sections = qualifiedSections
 	return out, nil
 }

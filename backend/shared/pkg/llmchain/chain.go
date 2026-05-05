@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -746,8 +746,14 @@ func (c *Chain) reorderByLatency(in []candidate, task Task) []candidate {
 			knownIdx = append(knownIdx, i)
 		}
 	}
-	sort.SliceStable(knownIdx, func(a, b int) bool {
-		return scoredList[knownIdx[a]].p95 < scoredList[knownIdx[b]].p95
+	slices.SortStableFunc(knownIdx, func(a, b int) int {
+		if scoredList[a].p95 < scoredList[b].p95 {
+			return -1
+		}
+		if scoredList[a].p95 > scoredList[b].p95 {
+			return 1
+		}
+		return 0
 	})
 	// Rebuild the output: walk the original slice; at each slot that was
 	// "known-p95", pull the next entry from the sorted knownIdx list.

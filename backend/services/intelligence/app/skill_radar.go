@@ -16,7 +16,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"slices"
+	"strings"
 
 	"druz9/intelligence/domain"
 
@@ -180,12 +181,7 @@ func (uc *GetSkillRadar) Do(ctx context.Context, in GetSkillRadarInput) (SkillRa
 }
 
 func sectionInRubric(section string, rubricSections []string) bool {
-	for _, s := range rubricSections {
-		if s == section {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(rubricSections, section)
 }
 
 // avgAxis — извлекает per-axis score из ai_report JSONB и усредняет.
@@ -231,6 +227,6 @@ func avgAxis(mocks []domain.MockSessionSummary, axisKey string) (float64, int) {
 func (s SkillRadarSnapshot) SortedAxes() []SkillRadarAxis {
 	out := make([]SkillRadarAxis, len(s.Axes))
 	copy(out, s.Axes)
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	slices.SortStableFunc(out, func(a, b SkillRadarAxis) int { return strings.Compare(a.Key, b.Key) })
 	return out
 }

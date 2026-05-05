@@ -14,7 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"sort"
+	"slices"
 	"time"
 
 	"druz9/intelligence/domain"
@@ -176,8 +176,14 @@ func (m *Memory) Recall(ctx context.Context, p RecallParams) ([]domain.Episode, 
 	// 3. Semantic hits stay first in similarity order; recency tail follows
 	// newest-first. This makes old but relevant coach memory outrank fresh
 	// unrelated events.
-	sort.Slice(recent, func(i, j int) bool {
-		return recent[i].OccurredAt.After(recent[j].OccurredAt)
+	slices.SortFunc(recent, func(a, b domain.Episode) int {
+		if a.OccurredAt.After(b.OccurredAt) {
+			return -1
+		}
+		if a.OccurredAt.Before(b.OccurredAt) {
+			return 1
+		}
+		return 0
 	})
 	res := make([]domain.Episode, 0, len(semantic)+len(recent))
 	res = append(res, semantic...)

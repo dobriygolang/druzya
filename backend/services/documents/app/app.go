@@ -9,7 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -224,7 +224,7 @@ func (u *Upload) embedAll(ctx context.Context, docID uuid.UUID, pieces []string)
 
 	// Keep chunks sorted by Ord (redundant given we wrote by index, but
 	// defends against any future change to the filling strategy).
-	sort.Slice(chunks, func(i, j int) bool { return chunks[i].Ord < chunks[j].Ord })
+	slices.SortFunc(chunks, func(a, b domain.Chunk) int { return a.Ord - b.Ord })
 	return chunks, total, nil
 }
 

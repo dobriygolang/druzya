@@ -3,7 +3,7 @@ package infra
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"druz9/intelligence/domain"
@@ -663,11 +663,11 @@ func convergedTopics(in domain.BriefPromptInput, limit int) []string {
 		}
 		out = append(out, *h)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].count == out[j].count {
-			return out[i].topic < out[j].topic
+	slices.SortFunc(out, func(a, b hit) int {
+		if a.count == b.count {
+			return strings.Compare(a.topic, b.topic)
 		}
-		return out[i].count > out[j].count
+		return b.count - a.count
 	})
 	if len(out) > limit {
 		out = out[:limit]

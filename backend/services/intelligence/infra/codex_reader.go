@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"sort"
+	"slices"
 	"strings"
 
 	"druz9/intelligence/domain"
@@ -91,11 +91,11 @@ func (r *CodexReader) SuggestArticles(ctx context.Context, _ uuid.UUID, topics [
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("intelligence.CodexReader rows: %w", err)
 	}
-	sort.SliceStable(candidates, func(i, j int) bool {
-		if candidates[i].score == candidates[j].score {
-			return candidates[i].order < candidates[j].order
+	slices.SortStableFunc(candidates, func(a, b codexCandidate) int {
+		if a.score == b.score {
+			return a.order - b.order
 		}
-		return candidates[i].score > candidates[j].score
+		return b.score - a.score
 	})
 	if len(candidates) > limit {
 		candidates = candidates[:limit]

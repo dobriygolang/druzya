@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -117,12 +118,7 @@ func deriveTitle(prompt string) string {
 
 // anyScreenshot reports whether any attachment is an image payload.
 func anyScreenshot(atts []domain.AttachmentInput) bool {
-	for _, a := range atts {
-		if a.IsScreenshot() {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(atts, func(a domain.AttachmentInput) bool { return a.IsScreenshot() })
 }
 
 // toLLMImages converts attachments into the domain.LLMImage shape, skipping

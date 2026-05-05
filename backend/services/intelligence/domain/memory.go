@@ -76,7 +76,6 @@ type Episode struct {
 	Kind           EpisodeKind
 	Summary        string
 	Payload        []byte // raw JSON
-	Embedding      []float32
 	EmbeddingModel string
 	EmbeddedAt     *time.Time
 	OccurredAt     time.Time

@@ -201,7 +201,7 @@ function IncidentsCard({ incidents }: { incidents: StatusIncident[] }) {
       )}
       <div className="mt-4 flex flex-col gap-3">
         {incidents.map((inc) => {
-          const resolved = inc.endedAt !== null && inc.endedAt !== undefined && inc.endedAt !== ''
+          const resolved = inc.endedAt != null && inc.endedAt !== ''
           return (
             <div key={inc.id} className="rounded-[10px] bg-surface-1 p-3.5">
               <div className="flex items-center justify-between">

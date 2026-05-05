@@ -7,7 +7,8 @@
 package infra
 
 import (
-	"sort"
+	"maps"
+	"slices"
 
 	"druz9/sync/domain"
 )
@@ -77,12 +78,7 @@ func (Catalog) Known(table string) bool {
 
 // Names — debug helper, sorted copy.
 func (Catalog) Names() []string {
-	out := make([]string, 0, len(pullColumns))
-	for k := range pullColumns {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
+	return slices.Sorted(maps.Keys(pullColumns))
 }
 
 var _ domain.TableCatalog = (*Catalog)(nil)

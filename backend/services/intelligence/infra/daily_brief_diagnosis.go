@@ -2,7 +2,7 @@ package infra
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -341,11 +341,11 @@ func coachDiagnoses(in domain.BriefPromptInput) []coachDiagnosis {
 		add(40+count, "cue:"+topic,
 			fmt.Sprintf("cue_memory_pattern: %s appears in %d useful Cue memory item(s)", topic, count))
 	}
-	sort.SliceStable(items, func(i, j int) bool {
-		if items[i].priority == items[j].priority {
-			return items[i].key < items[j].key
+	slices.SortStableFunc(items, func(a, b coachDiagnosis) int {
+		if a.priority == b.priority {
+			return strings.Compare(a.key, b.key)
 		}
-		return items[i].priority > items[j].priority
+		return b.priority - a.priority
 	})
 	return dedupeCoachDiagnoses(items, 8)
 }
@@ -537,11 +537,11 @@ func currentTopics(in domain.BriefPromptInput, limit int) []string {
 	for topic, count := range counts {
 		all = append(all, kv{topic: topic, count: count})
 	}
-	sort.Slice(all, func(i, j int) bool {
-		if all[i].count == all[j].count {
-			return all[i].topic < all[j].topic
+	slices.SortFunc(all, func(a, b kv) int {
+		if a.count == b.count {
+			return strings.Compare(a.topic, b.topic)
 		}
-		return all[i].count > all[j].count
+		return b.count - a.count
 	})
 	if len(all) > limit {
 		all = all[:limit]

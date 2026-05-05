@@ -17,8 +17,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -242,11 +243,7 @@ func renderUserPrompt(p InsightPayload) string {
 	if len(p.WinRateBySection) == 0 {
 		sb.WriteString("(no matches)\n")
 	} else {
-		keys := make([]string, 0, len(p.WinRateBySection))
-		for k := range p.WinRateBySection {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
+		keys := slices.Sorted(maps.Keys(p.WinRateBySection))
 		parts := make([]string, 0, len(keys))
 		for _, k := range keys {
 			parts = append(parts, fmt.Sprintf("%s=%d%%", k, p.WinRateBySection[k]))

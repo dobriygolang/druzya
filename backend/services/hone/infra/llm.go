@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -308,12 +309,7 @@ func isGenericPlanTitle(title string) bool {
 		"start with the first item",
 		"first item in the queue",
 	}
-	for _, phrase := range generic {
-		if strings.Contains(s, phrase) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(generic, func(phrase string) bool { return strings.Contains(s, phrase) })
 }
 
 func planTitleKey(title string) string {

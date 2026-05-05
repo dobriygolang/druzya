@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -553,10 +554,5 @@ func isGenericRecommendation(title, rationale string) bool {
 		"stay consistent",
 		"keep up the good work",
 	}
-	for _, phrase := range generic {
-		if strings.Contains(s, phrase) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(generic, func(phrase string) bool { return strings.Contains(s, phrase) })
 }

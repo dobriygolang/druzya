@@ -4,6 +4,7 @@ package domain
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	"druz9/shared/enums"
@@ -39,12 +40,7 @@ type Preferences struct {
 
 // HasChannel возвращает true, если c есть среди включённых каналов.
 func (p Preferences) HasChannel(c enums.NotificationChannel) bool {
-	for _, x := range p.Channels {
-		if x == c {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.Channels, c)
 }
 
 // Notification — исходящая запись сообщения, ожидающая рендера и отправки.

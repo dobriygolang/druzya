@@ -1,7 +1,7 @@
 package llmchain
 
 import (
-	"sort"
+	"slices"
 	"sync"
 	"time"
 )
@@ -102,7 +102,7 @@ func (w *latencyWindow) P95() (time.Duration, bool) {
 	// drag in zero entries that would skew the percentile toward 0.
 	out := make([]time.Duration, w.filled)
 	copy(out, w.buf[:w.filled])
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	// Index formula: ceil(0.95 * N) - 1, clamped to last index.
 	idx := (95*w.filled + 99) / 100
 	if idx >= len(out) {

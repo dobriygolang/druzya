@@ -2,7 +2,7 @@ package infra
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"druz9/intelligence/domain"
@@ -113,11 +113,11 @@ func coachActionCandidatesForPrompt(in domain.BriefPromptInput, limit int) []coa
 			fmt.Sprintf("Skill Atlas shows %s at %d/100.", w.SkillKey, w.Progress),
 			"", w.SkillKey)
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].priority == out[j].priority {
-			return out[i].title < out[j].title
+	slices.SortStableFunc(out, func(a, b coachActionCandidate) int {
+		if a.priority == b.priority {
+			return strings.Compare(a.title, b.title)
 		}
-		return out[i].priority > out[j].priority
+		return b.priority - a.priority
 	})
 	return dedupeActionCandidates(out, limit)
 }
@@ -147,12 +147,7 @@ func isGenericQueueTitle(title string) bool {
 		"do one task",
 		"first item in the queue",
 	}
-	for _, phrase := range generic {
-		if strings.Contains(s, phrase) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(generic, func(phrase string) bool { return strings.Contains(s, phrase) })
 }
 
 func interviewActionCandidates(in domain.BriefPromptInput, ui domain.UpcomingInterview) []coachActionCandidate {

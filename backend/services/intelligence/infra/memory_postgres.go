@@ -25,8 +25,8 @@ type Episodes struct {
 // NewEpisodes wraps a pool.
 func NewEpisodes(pool *pgxpool.Pool) *Episodes { return &Episodes{pool: pool} }
 
-// Append inserts one episode. Embedding is optional (worker fills it
-// later if NULL on insert).
+// Append inserts one episode. Embedding is optional (worker fills
+// embedding_vec later if NULL on insert).
 func (r *Episodes) Append(ctx context.Context, e domain.Episode) error {
 	if e.Kind == "" || !e.Kind.IsValid() {
 		return fmt.Errorf("intelligence.Episodes.Append: invalid kind %q", e.Kind)
@@ -45,16 +45,15 @@ func (r *Episodes) Append(ctx context.Context, e domain.Episode) error {
 	}
 	_, err := r.pool.Exec(ctx,
 		`INSERT INTO coach_episodes
-		    (user_id, kind, summary, payload, embedding, embedding_model_id, embedded_at, occurred_at)
-		 VALUES ($1, $2, $3, $4::jsonb, $5,
-		         (SELECT id FROM embedding_models WHERE name = NULLIF($6, '')),
-		         $7,
-		         COALESCE(NULLIF($8, '0001-01-01 00:00:00+00'::timestamptz), now()))`,
+		    (user_id, kind, summary, payload, embedding_model_id, embedded_at, occurred_at)
+		 VALUES ($1, $2, $3, $4::jsonb,
+		         (SELECT id FROM embedding_models WHERE name = NULLIF($5, '')),
+		         $6,
+		         COALESCE(NULLIF($7, '0001-01-01 00:00:00+00'::timestamptz), now()))`,
 		sharedpg.UUID(e.UserID),
 		string(e.Kind),
 		e.Summary,
 		string(payload),
-		nullableFloat32Slice(e.Embedding),
 		e.EmbeddingModel,
 		embedded,
 		pgtype.Timestamptz{Time: occ, Valid: true},
@@ -71,7 +70,7 @@ func (r *Episodes) LatestByKind(ctx context.Context, userID uuid.UUID, kind doma
 		limit = 50
 	}
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, kind, summary, payload, embedding,
+		`SELECT id, user_id, kind, summary, payload,
 		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		        embedded_at, occurred_at, created_at
 		   FROM coach_episodes
@@ -95,7 +94,7 @@ func (r *Episodes) LatestByKinds(ctx context.Context, userID uuid.UUID, kinds []
 	if len(kinds) == 0 {
 		// Если фильтра нет — возвращаем все kinds. Без этого ANY([]) ловит 0 строк.
 		rows, err := r.pool.Query(ctx,
-			`SELECT id, user_id, kind, summary, payload, embedding,
+			`SELECT id, user_id, kind, summary, payload,
 		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 			        embedded_at, occurred_at, created_at
 			   FROM coach_episodes
@@ -114,7 +113,7 @@ func (r *Episodes) LatestByKinds(ctx context.Context, userID uuid.UUID, kinds []
 		kindStrs[i] = string(k)
 	}
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, kind, summary, payload, embedding,
+		`SELECT id, user_id, kind, summary, payload,
 		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		        embedded_at, occurred_at, created_at
 		   FROM coach_episodes
@@ -143,11 +142,11 @@ func (r *Episodes) LatestPerKind(ctx context.Context, userID uuid.UUID, kinds []
 		kindStrs[i] = string(k)
 	}
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, kind, summary, payload, embedding,
+		`SELECT id, user_id, kind, summary, payload,
 		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		        embedded_at, occurred_at, created_at
 		   FROM (
-		        SELECT id, user_id, kind, summary, payload, embedding,
+		        SELECT id, user_id, kind, summary, payload,
 		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		               embedded_at, occurred_at, created_at,
 		               row_number() OVER (PARTITION BY kind ORDER BY occurred_at DESC) AS rn
@@ -185,7 +184,7 @@ func (r *Episodes) SearchSimilar(ctx context.Context, userID uuid.UUID, vec []fl
 	if vecStr == "" {
 		return nil, nil
 	}
-	q := `SELECT id, user_id, kind, summary, payload, embedding,
+	q := `SELECT id, user_id, kind, summary, payload,
 	        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 	        embedded_at, occurred_at, created_at,
 	        1 - (embedding_vec <=> $2::vector) AS similarity
@@ -224,7 +223,7 @@ func (r *Episodes) PendingEmbeddings(ctx context.Context, limit int) ([]domain.E
 		limit = 64
 	}
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, kind, summary, payload, embedding,
+		`SELECT id, user_id, kind, summary, payload,
 		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		        embedded_at, occurred_at, created_at
 		   FROM coach_episodes
@@ -242,20 +241,19 @@ func (r *Episodes) PendingEmbeddings(ctx context.Context, limit int) ([]domain.E
 
 // SetEmbedding writes the vector + model + embedded_at=now.
 //
-// Phase IX: dual-writes — legacy real[] + pgvector vector(384). Read-side
-// пока на Go-cosine; readers перейдут на pgvector в follow-up slice.
+// R9: legacy real[] coach_episodes.embedding column dropped (00079);
+// pgvector embedding_vec is now the single source of truth for similarity.
 func (r *Episodes) SetEmbedding(ctx context.Context, id uuid.UUID, vec []float32, model string) error {
 	if len(vec) == 0 {
 		return fmt.Errorf("intelligence.Episodes.SetEmbedding: empty vector")
 	}
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE coach_episodes
-		    SET embedding = $2,
-		        embedding_vec = NULLIF($4, '')::vector,
+		    SET embedding_vec = NULLIF($2, '')::vector,
 		        embedding_model_id = (SELECT id FROM embedding_models WHERE name = $3),
 		        embedded_at = now()
 		  WHERE id = $1`,
-		sharedpg.UUID(id), nullableFloat32Slice(vec), model, sharedpg.VectorString(vec),
+		sharedpg.UUID(id), sharedpg.VectorString(vec), model,
 	)
 	if err != nil {
 		return fmt.Errorf("intelligence.Episodes.SetEmbedding: %w", err)
@@ -278,7 +276,7 @@ func (r *Episodes) MarkStaleForReembed(ctx context.Context, currentModelName str
 		`UPDATE coach_episodes
 		    SET embedded_at = NULL
 		  WHERE embedded_at IS NOT NULL
-		    AND embedding IS NOT NULL
+		    AND embedding_vec IS NOT NULL
 		    AND embedding_model_id IS DISTINCT FROM
 		        (SELECT id FROM embedding_models WHERE name = $1)`,
 		currentModelName,
@@ -369,13 +367,12 @@ func scanEpisodes(rows pgx.Rows) ([]domain.Episode, error) {
 			kind           string
 			summary        string
 			payload        []byte
-			embedding      []float32
 			embeddingModel pgtype.Text
 			embeddedAt     pgtype.Timestamptz
 			occurredAt     time.Time
 			createdAt      time.Time
 		)
-		if err := rows.Scan(&id, &userID, &kind, &summary, &payload, &embedding,
+		if err := rows.Scan(&id, &userID, &kind, &summary, &payload,
 			&embeddingModel, &embeddedAt, &occurredAt, &createdAt); err != nil {
 			return nil, fmt.Errorf("scanEpisodes: %w", err)
 		}
@@ -385,7 +382,6 @@ func scanEpisodes(rows pgx.Rows) ([]domain.Episode, error) {
 			Kind:       domain.EpisodeKind(kind),
 			Summary:    summary,
 			Payload:    payload,
-			Embedding:  embedding,
 			OccurredAt: occurredAt,
 			CreatedAt:  createdAt,
 		}
@@ -404,8 +400,8 @@ func scanEpisodes(rows pgx.Rows) ([]domain.Episode, error) {
 	return out, nil
 }
 
-// scanEpisodesWithScore — Phase IX v2: scanEpisodes + similarity column
-// (последняя в SELECT). Используется только SearchSimilar.
+// scanEpisodesWithScore — scanEpisodes + similarity column (последняя в SELECT).
+// Используется только SearchSimilar.
 func scanEpisodesWithScore(rows pgx.Rows) ([]domain.EpisodeWithScore, error) {
 	var out []domain.EpisodeWithScore
 	for rows.Next() {
@@ -414,14 +410,13 @@ func scanEpisodesWithScore(rows pgx.Rows) ([]domain.EpisodeWithScore, error) {
 			kind           string
 			summary        string
 			payload        []byte
-			embedding      []float32
 			embeddingModel pgtype.Text
 			embeddedAt     pgtype.Timestamptz
 			occurredAt     time.Time
 			createdAt      time.Time
 			similarity     float64
 		)
-		if err := rows.Scan(&id, &userID, &kind, &summary, &payload, &embedding,
+		if err := rows.Scan(&id, &userID, &kind, &summary, &payload,
 			&embeddingModel, &embeddedAt, &occurredAt, &createdAt, &similarity); err != nil {
 			return nil, fmt.Errorf("scanEpisodesWithScore: %w", err)
 		}
@@ -431,7 +426,6 @@ func scanEpisodesWithScore(rows pgx.Rows) ([]domain.EpisodeWithScore, error) {
 			Kind:       domain.EpisodeKind(kind),
 			Summary:    summary,
 			Payload:    payload,
-			Embedding:  embedding,
 			OccurredAt: occurredAt,
 			CreatedAt:  createdAt,
 		}
@@ -462,15 +456,6 @@ func (r *Episodes) DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64
 		return 0, fmt.Errorf("intelligence.Episodes.DeleteOlderThan: %w", err)
 	}
 	return cmd.RowsAffected(), nil
-}
-
-// nullableFloat32Slice returns nil for empty slices so pg writes SQL NULL
-// (otherwise pgx encodes as empty real[] which is non-NULL but empty).
-func nullableFloat32Slice(v []float32) any {
-	if len(v) == 0 {
-		return nil
-	}
-	return v
 }
 
 // CountByKindInRange — Phase 4.5. Single GROUP BY query. weekly_memory_summary

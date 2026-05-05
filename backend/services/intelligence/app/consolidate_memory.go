@@ -15,7 +15,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -130,11 +130,11 @@ func formatWeeklySummary(weekStart time.Time, counts map[domain.EpisodeKind]int)
 		}
 		rows = append(rows, kc{Kind: k, Count: n})
 	}
-	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].Count != rows[j].Count {
-			return rows[i].Count > rows[j].Count
+	slices.SortFunc(rows, func(a, b kc) int {
+		if a.Count != b.Count {
+			return b.Count - a.Count
 		}
-		return string(rows[i].Kind) < string(rows[j].Kind)
+		return strings.Compare(string(a.Kind), string(b.Kind))
 	})
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Week of %s: ", weekStart.Format("2006-01-02"))

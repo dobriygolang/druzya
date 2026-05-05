@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"math"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -83,7 +83,15 @@ func (uc *AskNotes) Do(ctx context.Context, in AskNotesInput) (domain.AskAnswer,
 		sim := cosine(qVec, c.Embedding)
 		ranked = append(ranked, scored{n: c, sim: sim})
 	}
-	sort.Slice(ranked, func(i, j int) bool { return ranked[i].sim > ranked[j].sim })
+	slices.SortFunc(ranked, func(a, b scored) int {
+		if a.sim > b.sim {
+			return -1
+		}
+		if a.sim < b.sim {
+			return 1
+		}
+		return 0
+	})
 	if len(ranked) > TopK {
 		ranked = ranked[:TopK]
 	}

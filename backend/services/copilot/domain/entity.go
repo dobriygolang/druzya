@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"slices"
 	"time"
 
 	"druz9/shared/enums"
@@ -143,12 +144,7 @@ func (q Quota) IsModelAllowed(modelID string) bool {
 	if len(q.ModelsAllowed) == 0 {
 		return true
 	}
-	for _, m := range q.ModelsAllowed {
-		if m == modelID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(q.ModelsAllowed, modelID)
 }
 
 // ModelSpeedClass is a UI-only grouping surfaced in the provider picker.

@@ -18,7 +18,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -69,7 +69,7 @@ func (in SuggestNoteLinksInput) CacheKey() string {
 	for i, c := range in.Candidates {
 		ids[i] = c.NoteID.String()
 	}
-	sort.Strings(ids)
+	slices.Sort(ids)
 	h.Write([]byte(strings.Join(ids, ",")))
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }

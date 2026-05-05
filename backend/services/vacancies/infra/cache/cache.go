@@ -27,7 +27,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -247,11 +247,14 @@ func (c *Cache) List(filter domain.ListFilter) domain.Page {
 			matched = append(matched, v)
 		}
 	}
-	sort.SliceStable(matched, func(i, j int) bool {
-		if matched[i].FetchedAt.Equal(matched[j].FetchedAt) {
-			return matched[i].ExternalID > matched[j].ExternalID
+	slices.SortStableFunc(matched, func(a, b domain.Vacancy) int {
+		if a.FetchedAt.Equal(b.FetchedAt) {
+			return strings.Compare(b.ExternalID, a.ExternalID)
 		}
-		return matched[i].FetchedAt.After(matched[j].FetchedAt)
+		if a.FetchedAt.After(b.FetchedAt) {
+			return -1
+		}
+		return 1
 	})
 	limit := filter.Limit
 	if limit <= 0 {
@@ -370,13 +373,13 @@ func (c *Cache) Counts() map[domain.Source]int {
 
 // matchesFilter is the in-memory equivalent of the old SQL WHERE clause.
 func matchesFilter(v domain.Vacancy, f domain.ListFilter) bool {
-	if len(f.Sources) > 0 && !containsSource(f.Sources, v.Source) {
+	if len(f.Sources) > 0 && !slices.Contains(f.Sources, v.Source) {
 		return false
 	}
-	if len(f.Companies) > 0 && !containsStr(f.Companies, v.Company) {
+	if len(f.Companies) > 0 && !slices.Contains(f.Companies, v.Company) {
 		return false
 	}
-	if len(f.Categories) > 0 && !containsCategory(f.Categories, v.Category) {
+	if len(f.Categories) > 0 && !slices.Contains(f.Categories, v.Category) {
 		return false
 	}
 	if len(f.Skills) > 0 {
@@ -410,43 +413,16 @@ func matchesFilter(v domain.Vacancy, f domain.ListFilter) bool {
 	return true
 }
 
-func containsSource(xs []domain.Source, x domain.Source) bool {
-	for _, y := range xs {
-		if y == x {
-			return true
-		}
-	}
-	return false
-}
-
-func containsCategory(xs []domain.Category, x domain.Category) bool {
-	for _, y := range xs {
-		if y == x {
-			return true
-		}
-	}
-	return false
-}
-
-func containsStr(xs []string, x string) bool {
-	for _, y := range xs {
-		if y == x {
-			return true
-		}
-	}
-	return false
-}
-
 func toEntriesSorted(m map[string]int) []domain.FacetEntry {
 	out := make([]domain.FacetEntry, 0, len(m))
 	for k, c := range m {
 		out = append(out, domain.FacetEntry{Name: k, Count: c})
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Count != out[j].Count {
-			return out[i].Count > out[j].Count
+	slices.SortFunc(out, func(a, b domain.FacetEntry) int {
+		if a.Count != b.Count {
+			return b.Count - a.Count
 		}
-		return out[i].Name < out[j].Name
+		return strings.Compare(a.Name, b.Name)
 	})
 	return out
 }

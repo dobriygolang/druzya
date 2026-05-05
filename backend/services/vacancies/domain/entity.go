@@ -13,6 +13,7 @@ package domain
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -56,12 +57,7 @@ var AllSources = []Source{
 
 // IsValidSource is the cheap allow-list check used by parsers + handlers.
 func IsValidSource(s Source) bool {
-	for _, x := range AllSources {
-		if x == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(AllSources, s)
 }
 
 // SavedStatus is the kanban column for the user's tracked vacancy.
@@ -113,12 +109,7 @@ var AllCategories = []Category{
 
 // IsValidCategory is the allow-list check used by handlers.
 func IsValidCategory(c Category) bool {
-	for _, x := range AllCategories {
-		if x == c {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(AllCategories, c)
 }
 
 // Vacancy is the parsed posting. Identity is (Source, ExternalID) — there

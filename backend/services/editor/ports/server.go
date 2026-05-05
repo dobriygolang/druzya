@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"druz9/editor/app"
 	"druz9/editor/domain"
@@ -318,12 +319,7 @@ func isParticipant(uid, owner uuid.UUID, ps []domain.Participant) bool {
 	if uid == owner {
 		return true
 	}
-	for _, p := range ps {
-		if p.UserID == uid {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(ps, func(p domain.Participant) bool { return p.UserID == uid })
 }
 
 // ── enum adapters ─────────────────────────────────────────────────────────

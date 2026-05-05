@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"strings"
 
 	"druz9/hone/domain"
@@ -132,12 +133,8 @@ func firstTodayContextSentence(s string, limit int) string {
 
 func looksLikeTodayContextActionOrBlocker(line string) bool {
 	lower := strings.ToLower(line)
-	for _, marker := range append(blockerNeedles(), actionNeedles()...) {
-		if strings.Contains(lower, marker) {
-			return true
-		}
-	}
-	return false
+	needles := append(blockerNeedles(), actionNeedles()...)
+	return slices.ContainsFunc(needles, func(marker string) bool { return strings.Contains(lower, marker) })
 }
 
 func blockerNeedles() []string {

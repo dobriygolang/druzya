@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -86,7 +86,7 @@ func VerifyTelegramHash(p TelegramPayload, botToken string, now time.Time) (Tele
 		}
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 	lines := make([]string, 0, len(keys))
 	for _, k := range keys {
 		lines = append(lines, k+"="+kv[k])
