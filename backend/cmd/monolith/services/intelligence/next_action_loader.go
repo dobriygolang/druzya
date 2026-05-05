@@ -12,13 +12,16 @@ import (
 
 // nextActionLoader собирает NextActionInput для GetNextAction UC. Тонкая
 // аггрегация поверх existing intelligence-readers + ForkProgressReader +
-// ResourceEngagementReader + CalendarReader. Помещаем в bootstrap-слой
-// чтобы UC не импортировал readers напрямую (DI через ports interface).
+// ResourceEngagementReader. Помещаем в bootstrap-слой чтобы UC не
+// импортировал readers напрямую (DI через ports interface).
+//
+// Calendar pivot 2026-05-04: CalendarReader/UpcomingEvents removed alongside
+// personal_events drop. Coach next-action no longer factors interview-window
+// pressure; mocks + track step + fork mode remain the active inputs.
 type nextActionLoader struct {
 	fork          *intelInfra.ForkProgressReader
 	resourceTrail *intelInfra.ResourceEngagementReader
 	mocks         *intelInfra.MockReader
-	calendar      *intelInfra.CalendarReader
 	tracks        *intelInfra.TrackReader
 }
 
@@ -47,11 +50,6 @@ func (l *nextActionLoader) LoadNextActionContext(
 	// Recent mocks (last 5 finished).
 	if mocks, err := l.mocks.LastNFinished(ctx, userID, 5); err == nil {
 		out.RecentMocks = mocks
-	}
-
-	// Upcoming interviews (within 30 days).
-	if events, err := l.calendar.UpcomingInterviews(ctx, userID, 30); err == nil {
-		out.UpcomingEvents = events
 	}
 
 	// ActiveTrack — first non-paused enrolment (для users в commit/deep mode).

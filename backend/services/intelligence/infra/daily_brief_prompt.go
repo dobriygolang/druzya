@@ -178,15 +178,6 @@ func writeBriefSignalHighlights(sb *strings.Builder, in domain.BriefPromptInput)
 	severity, severityReason := deriveSeverity(in)
 	fmt.Fprintf(sb, "  severity=%s · %s\n", severity, severityReason)
 
-	// Interview pressure (highest-priority signal, drives override rule).
-	for _, ui := range in.UpcomingInterviews {
-		if ui.DaysFromNow >= 0 && ui.DaysFromNow <= 7 {
-			fmt.Fprintf(sb, "  upcoming_interview: %s %s in %d days, readiness=%d%%\n",
-				ui.CompanyName, ui.Role, ui.DaysFromNow, ui.ReadinessPct)
-			break
-		}
-	}
-
 	// Latest mock (most recent finished — common citation target).
 	if len(in.Mocks) > 0 {
 		m := in.Mocks[0]
@@ -304,17 +295,6 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 				fmt.Fprintf(&sb, " · target=%s", f.TargetID)
 			}
 			sb.WriteString("\n")
-		}
-		sb.WriteString("\n")
-	}
-
-	// ── UPCOMING INTERVIEWS (highest-priority signal) ─────────────────
-	if len(in.UpcomingInterviews) > 0 {
-		sb.WriteString("UPCOMING INTERVIEWS (override everything else if interview is within 7 days):\n")
-		for _, ui := range in.UpcomingInterviews {
-			fmt.Fprintf(&sb, "  - %s · role=%q level=%q · in %d days (date %s) · self-readiness=%d%%\n",
-				ui.CompanyName, ui.Role, ui.CurrentLevel,
-				ui.DaysFromNow, ui.InterviewDate.Format("2006-01-02"), ui.ReadinessPct)
 		}
 		sb.WriteString("\n")
 	}
@@ -506,13 +486,6 @@ func writeSignalDigest(sb *strings.Builder, in domain.BriefPromptInput) {
 		len(in.WeakSkills), len(in.RecentNotes)+len(in.DailyNotes)+len(in.Reflections),
 		len(in.CueMemories), len(in.CodexArticles), len(in.PastEpisodes))
 	wrote := false
-	for _, ui := range in.UpcomingInterviews {
-		if ui.DaysFromNow >= 0 && ui.DaysFromNow <= 7 {
-			fmt.Fprintf(sb, "  P0 upcoming_interview: %s %s in %d days, readiness=%d%%\n",
-				ui.CompanyName, ui.Role, ui.DaysFromNow, ui.ReadinessPct)
-			wrote = true
-		}
-	}
 	if len(in.Mocks) > 0 {
 		m := in.Mocks[0]
 		weak := strings.Join(m.WeakTopics, ",")

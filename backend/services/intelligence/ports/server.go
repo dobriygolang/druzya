@@ -659,11 +659,15 @@ func (s *IntelligenceServer) GetCoachStats(
 	if err != nil {
 		return nil, fmt.Errorf("intelligence.GetCoachStats: %w", s.toConnectErr(err))
 	}
+	// Calendar pivot 2026-05-04: NextMockInDays / NextMockCompany are
+	// pinned to "no upcoming interview" sentinels — the calendar reader
+	// was removed alongside personal_events. Proto fields stay on the
+	// wire for client back-compat until the next /generate cycle.
 	return connect.NewResponse(&pb.CoachStats{
 		FocusTodayMin:   int32(out.FocusTodayMin),
 		LastMockScore:   int32(out.LastMockScore),
 		LastMockSection: out.LastMockSection,
-		NextMockInDays:  int32(out.NextMockInDays),
-		NextMockCompany: out.NextMockCompany,
+		NextMockInDays:  -1,
+		NextMockCompany: "",
 	}), nil
 }

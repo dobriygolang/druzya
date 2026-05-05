@@ -276,9 +276,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		aiMockServices.NewMockInterview(deps),
 		// Pivot 2026-05-04: calendar bounded context выпилен — нулевые
 		// frontend-вызовы /calendar/events*, ribbon на Hone Today
-		// никогда не материализовался. Intelligence.CalendarReader всё
-		// ещё читает personal_events (таблица сохранена), но без
-		// writer'ов всегда возвращает пустой список — graceful degrade.
+		// никогда не материализовался. Phase E1 (migration 00080)
+		// дропнул personal_events table + CalendarReader/UpcomingInterview
+		// legacy: coach больше не учитывает calendar pressure.
 		// Phase 2 — curated learning Tracks (bounded context tracks).
 		// Reads are auth-gated so the catalogue can show enrolment state.
 		tracksServices.NewTracks(deps),

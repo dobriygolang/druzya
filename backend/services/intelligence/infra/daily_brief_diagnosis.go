@@ -119,30 +119,10 @@ func daysSinceLastTouch(in domain.BriefPromptInput) int {
 //     in ≤2 days with pre-read pinned, or open queue pressure.
 //   - cruise:   nothing meaningful; healthy momentum or no data.
 func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
-	// Critical events override the long-absence cap — interview Friday
-	// matters even if the user vanished for 3 weeks.
-	for _, ev := range in.UpcomingInterviews {
-		if ev.DaysFromNow < 0 {
-			continue
-		}
-		switch ev.Kind {
-		case "interview", "":
-			if ev.DaysFromNow <= 3 {
-				return severityCritical, fmt.Sprintf("%s interview in %d day(s)",
-					interviewLabelFromUI(ev), ev.DaysFromNow)
-			}
-		case "exam":
-			if ev.DaysFromNow <= 3 {
-				return severityCritical, fmt.Sprintf("exam %q in %d day(s)",
-					strings.TrimSpace(ev.Title), ev.DaysFromNow)
-			}
-		case "deadline":
-			if ev.DaysFromNow <= 2 {
-				return severityCritical, fmt.Sprintf("deadline %q in %d day(s)",
-					strings.TrimSpace(ev.Title), ev.DaysFromNow)
-			}
-		}
-	}
+	// Critical signals — chronic avoidance + arena loss streak still
+	// fire here. Calendar pressure was removed in the 2026-05-04 pivot
+	// (personal_events drop), so interview/exam/deadline events no
+	// longer surface as severity inputs.
 	if _, _, n := repeatedSkippedItem(in.SkippedRecent); n >= 4 {
 		return severityCritical, fmt.Sprintf("plan item skipped %d times — chronic avoidance", n)
 	}
@@ -166,28 +146,6 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 	// arena losses don't mislead the coach into "you're failing".
 	if days := daysSinceLastTouch(in); days >= LongAbsenceDays {
 		return severityCruise, fmt.Sprintf("welcome back — %d days off; old data is stale, treat today as a fresh start", days)
-	}
-	for _, ev := range in.UpcomingInterviews {
-		if ev.DaysFromNow < 0 {
-			continue
-		}
-		switch ev.Kind {
-		case "interview", "":
-			if ev.DaysFromNow <= 7 {
-				return severityWarn, fmt.Sprintf("%s interview in %d days",
-					interviewLabelFromUI(ev), ev.DaysFromNow)
-			}
-		case "exam":
-			if ev.DaysFromNow <= 7 {
-				return severityWarn, fmt.Sprintf("exam %q in %d days",
-					strings.TrimSpace(ev.Title), ev.DaysFromNow)
-			}
-		case "deadline":
-			if ev.DaysFromNow <= 5 {
-				return severityWarn, fmt.Sprintf("deadline %q in %d days",
-					strings.TrimSpace(ev.Title), ev.DaysFromNow)
-			}
-		}
 	}
 	if topic, n := repeatedMockWeakTopic(in.Mocks); n >= 3 {
 		return severityWarn, fmt.Sprintf("%s flagged weak in %d mocks", topic, n)
@@ -222,12 +180,6 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 	if in.Queue.Total > 0 && in.Queue.Done == 0 && (in.Queue.Todo+in.Queue.InProgress) >= 3 {
 		return severityNudge, fmt.Sprintf("queue stalled: 0/%d done", in.Queue.Total)
 	}
-	for _, ev := range in.UpcomingInterviews {
-		if ev.Kind == "club_session" && ev.DaysFromNow >= 0 && ev.DaysFromNow <= 2 && strings.TrimSpace(ev.Title) != "" {
-			return severityNudge, fmt.Sprintf("club session %q in %d day(s)",
-				strings.TrimSpace(ev.Title), ev.DaysFromNow)
-		}
-	}
 	// Phase 3 final — ghosted clubs. Если за неделю юзер пропустил ≥1
 	// сессию на которую RSVP'нул_yes — это disengagement signal. nudge,
 	// не warn: клубы — soft commitment, не hard как mock или goal.
@@ -257,28 +209,6 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 	return severityCruise, "no urgent bottleneck detected"
 }
 
-// interviewLabelFromUI is the same logic as interviewLabel(domain.UpcomingInterview)
-// but tolerates an empty company name by falling back to the title slot,
-// which non-interview kinds populate. Kept private to this file because
-// daily_brief_actions.go has its own interviewLabel that consumers
-// elsewhere already depend on.
-func interviewLabelFromUI(ev domain.UpcomingInterview) string {
-	parts := make([]string, 0, 2)
-	if s := strings.TrimSpace(ev.CompanyName); s != "" {
-		parts = append(parts, s)
-	}
-	if s := strings.TrimSpace(ev.Role); s != "" {
-		parts = append(parts, s)
-	}
-	if len(parts) == 0 {
-		if t := strings.TrimSpace(ev.Title); t != "" {
-			return t
-		}
-		return "upcoming interview"
-	}
-	return strings.Join(parts, " ")
-}
-
 func writeCoachDiagnosis(sb *strings.Builder, in domain.BriefPromptInput) {
 	items := coachDiagnoses(in)
 	sb.WriteString("COACH DIAGNOSIS (ranked deterministic evidence; choose recommendations from here before raw sections):\n")
@@ -300,14 +230,6 @@ func coachDiagnoses(in domain.BriefPromptInput) []coachDiagnosis {
 			return
 		}
 		items = append(items, coachDiagnosis{priority: priority, key: key, line: line})
-	}
-	for _, ui := range in.UpcomingInterviews {
-		if ui.DaysFromNow < 0 || ui.DaysFromNow > 7 {
-			continue
-		}
-		add(100-ui.DaysFromNow, "interview:"+ui.CompanyName,
-			fmt.Sprintf("interview_pressure: %s %s in %d days, readiness=%d%%",
-				ui.CompanyName, ui.Role, ui.DaysFromNow, ui.ReadinessPct))
 	}
 	if topic, count := repeatedMockWeakTopic(in.Mocks); topic != "" {
 		add(80+count, "mock-topic:"+topic,

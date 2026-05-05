@@ -88,7 +88,6 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	queueR := intelInfra.NewQueueReader(d.Pool)
 	skillR := intelInfra.NewSkillReader(d.Pool)
 	dailyR := intelInfra.NewDailyNoteReader(d.Pool)
-	calR := intelInfra.NewCalendarReader(d.Pool)
 	mockMsgR := intelInfra.NewMockMessagesReader(d.Pool)
 	codexR := intelInfra.NewCodexReader(d.Pool)
 	trackR := intelInfra.NewTrackReader(d.Pool)
@@ -186,7 +185,6 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			Queue:        queueR,
 			Skills:       skillR,
 			DailyNotes:   dailyR,
-			Calendar:     calR,
 			MockMessages: mockMsgR,
 			Tracks:       trackR,
 			Goals:        goalsR,
@@ -235,9 +233,8 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	server.ResourceTrailReader = resourceEngagementR
 	server.SkillRadarUC = &intelApp.GetSkillRadar{Mocks: mockR}
 	server.CoachStatsUC = &intelApp.GetCoachStats{
-		Focus:    focusR,
-		Mocks:    mockR,
-		Calendar: calR,
+		Focus: focusR,
+		Mocks: mockR,
 	}
 	if d.LLMChain != nil {
 		server.NextActionUC = &intelApp.GetNextAction{
@@ -248,7 +245,6 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			fork:          forkProgressR,
 			resourceTrail: resourceEngagementR,
 			mocks:         mockR,
-			calendar:      calR,
 			tracks:        trackR,
 		}
 	}

@@ -60,15 +60,3 @@ func TestBuildNextActionPrompt_IncludesForkSection(t *testing.T) {
 	}
 }
 
-func TestBuildNextActionPrompt_IncludesUpcomingInterview(t *testing.T) {
-	in := NextActionInput{
-		LearningState: LearningStateView{Mode: "explore"},
-		UpcomingEvents: []domain.UpcomingInterview{
-			{CompanyName: "Yandex", Role: "DE", DaysFromNow: 4},
-		},
-	}
-	out := buildNextActionPrompt(in)
-	if !strings.Contains(out, "UPCOMING") || !strings.Contains(out, "Yandex") {
-		t.Fatalf("expected upcoming section, got:\n%s", out)
-	}
-}

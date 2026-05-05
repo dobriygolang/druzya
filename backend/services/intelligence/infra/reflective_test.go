@@ -55,22 +55,20 @@ func quietLogger() *slog.Logger {
 }
 
 // criticalInput — BriefPromptInput that deriveSeverity grades as critical
-// (interview in 2 days). Used wherever we want a warn/critical-grade
-// gate to fire.
+// (4× same plan item skipped). Used wherever we want a warn/critical-grade
+// gate to fire. Calendar pivot 2026-05-04: previously this used an
+// upcoming interview signal, now driven by the skipped-item branch.
 func criticalInput() domain.BriefPromptInput {
 	today := time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC)
 	return domain.BriefPromptInput{
 		UserID: uuid.New(),
 		Today:  today,
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			CompanyName:   "Yandex",
-			Role:          "backend",
-			Kind:          "interview",
-			Title:         "Yandex L4",
-			DaysFromNow:   2,
-			InterviewDate: today.AddDate(0, 0, 2),
-			ReadinessPct:  40,
-		}},
+		SkippedRecent: []domain.SkippedPlanItem{
+			{ItemID: "p1", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+			{ItemID: "p2", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+			{ItemID: "p3", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+			{ItemID: "p4", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+		},
 		FocusDays: []domain.FocusDay{{Day: today.AddDate(0, 0, -1), Seconds: 3600, Pomodoros: 2}},
 	}
 }
@@ -89,12 +87,14 @@ func cruiseInput() domain.BriefPromptInput {
 	}
 }
 
-// briefSketch — a JSON-encoded brief that always parses cleanly. We give
-// it a single tiny_task with no target_id, so noteIDs / planItemIDs in
-// input don't need to match anything.
-const briefSketch = `{"headline":"Yandex Wed — system_design gap.","narrative":"Last system_design mock 2 days ago scored 5/10, weak_topics=[capacity-estimation]. Yandex L4 interview is in 2 days. Today's lever: capacity-estimation drill before anything else.","recommendations":[{"kind":"tiny_task","title":"Solve one capacity-estimation back-of-envelope problem.","rationale":"Listed as weak_topic in last mock + relevant for sharding section of Yandex interview.","target_id":""},{"kind":"schedule","title":"Run a system_design mock today, focus on capacity-estimation.","rationale":"Last mock scored 5/10 on this section, Yandex interview is in 2 days.","target_id":""},{"kind":"tiny_task","title":"Read [caching patterns](/codex?topic=system_design&article=caching-strategies) and write 3 takeaways.","rationale":"Weak_topic capacity-estimation overlaps caching primitives.","target_id":""}]}`
+// briefSketch / briefRefined — JSON-encoded briefs that always parse
+// cleanly. Headlines include the deterministic critical-anchor
+// ("Skipped Review prefix-sum patterns") so pinCriticalHeadline leaves
+// them intact and lets the test distinguish sketch vs refined by the
+// distinct trailing fragment.
+const briefSketch = `{"headline":"Skipped Review prefix-sum patterns 4× — sketch wall.","narrative":"You skipped the same prefix-sum review 4 times in the last 14 days. Today's lever: open the doc and read just the first paragraph.","recommendations":[{"kind":"tiny_task","title":"Solve one capacity-estimation back-of-envelope problem.","rationale":"Listed as weak_topic in last mock; ties into the prefix-sum review you keep skipping.","target_id":""},{"kind":"schedule","title":"Run a system_design mock today, focus on capacity-estimation.","rationale":"Mock weak_topic + 4 skipped reviews = closing the loop matters today.","target_id":""},{"kind":"tiny_task","title":"Read [caching patterns](/codex?topic=system_design&article=caching-strategies) and write 3 takeaways.","rationale":"Weak_topic capacity-estimation overlaps caching primitives.","target_id":""}]}`
 
-const briefRefined = `{"headline":"Yandex L4 in 2 days — 40% ready, capacity-estimation blocking.","narrative":"Last system_design mock scored 5/10 with capacity-estimation flagged weak. Yandex L4 interview is 48 hours away at 40% self-readiness. Today's lever: one full back-of-envelope capacity drill, then a focused mock.","recommendations":[{"kind":"tiny_task","title":"Solve one capacity-estimation back-of-envelope drill (60s users, 1KB row).","rationale":"Last mock scored 5/10, capacity-estimation flagged weak — Yandex interview Wed.","target_id":""},{"kind":"schedule","title":"Run a system_design mock today, force a capacity-heavy prompt.","rationale":"5/10 baseline + 2 days to interview = need a second data point under pressure.","target_id":""},{"kind":"tiny_task","title":"Memorise Latency Numbers Every Programmer Should Know.","rationale":"Capacity-estimation rationale needs these constants live.","target_id":""}]}`
+const briefRefined = `{"headline":"Skipped Review prefix-sum patterns 4× — refined push.","narrative":"You skipped the same prefix-sum review 4 times. Refined plan: shrink the first step to one paragraph, then drill capacity-estimation off the back of it.","recommendations":[{"kind":"tiny_task","title":"Solve one capacity-estimation back-of-envelope drill (60s users, 1KB row).","rationale":"Capacity-estimation flagged weak; refined version cites concrete inputs.","target_id":""},{"kind":"schedule","title":"Run a system_design mock today, force a capacity-heavy prompt.","rationale":"Need a second data point under pressure; refined emphasis on the cache-heavy prompt.","target_id":""},{"kind":"tiny_task","title":"Memorise Latency Numbers Every Programmer Should Know.","rationale":"Capacity-estimation rationale needs these constants live.","target_id":""}]}`
 
 // ── tests ─────────────────────────────────────────────────────────────────
 
@@ -137,7 +137,7 @@ func TestSynthesise_CriticalReflectsWhenEnabled(t *testing.T) {
 	if len(chat.calls) != 2 {
 		t.Fatalf("expected 2 chat calls (sketch + critique), got %d", len(chat.calls))
 	}
-	if !strings.Contains(got.Headline, "40% ready") {
+	if !strings.Contains(got.Headline, "refined push") {
 		t.Fatalf("expected refined headline, got %q", got.Headline)
 	}
 	// Second call must include the draft envelope as evidence.
@@ -195,7 +195,7 @@ func TestSynthesise_CritiqueChainErrorFallsBackToSketch(t *testing.T) {
 	if len(chat.calls) != 2 {
 		t.Fatalf("expected 2 chat calls (sketch + failed critique), got %d", len(chat.calls))
 	}
-	if !strings.HasPrefix(got.Headline, "Yandex Wed") {
+	if !strings.Contains(got.Headline, "sketch wall") {
 		t.Fatalf("expected sketch headline preserved on critique error, got %q", got.Headline)
 	}
 }
@@ -219,7 +219,7 @@ func TestSynthesise_CritiqueParseFailFallsBackToSketch(t *testing.T) {
 	if len(chat.calls) != 2 {
 		t.Fatalf("expected 2 chat calls (sketch + parse-fail critique), got %d", len(chat.calls))
 	}
-	if !strings.HasPrefix(got.Headline, "Yandex Wed") {
+	if !strings.Contains(got.Headline, "sketch wall") {
 		t.Fatalf("expected sketch headline preserved on critique parse-fail, got %q", got.Headline)
 	}
 }

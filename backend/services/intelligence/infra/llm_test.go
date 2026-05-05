@@ -17,12 +17,6 @@ func TestBuildBriefUserPromptIncludesSignalDigest(t *testing.T) {
 	noteID := uuid.New()
 	prompt := buildBriefUserPrompt(domain.BriefPromptInput{
 		Today: time.Date(2026, 4, 27, 0, 0, 0, 0, time.UTC),
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			CompanyName:  "Yandex",
-			Role:         "backend",
-			DaysFromNow:  3,
-			ReadinessPct: 42,
-		}},
 		Mocks: []domain.MockSessionSummary{{
 			Section:    "system_design",
 			Score:      5,
@@ -58,16 +52,13 @@ func TestBuildBriefUserPromptIncludesSignalDigest(t *testing.T) {
 	for _, want := range []string{
 		"SIGNAL DIGEST",
 		"data_coverage:",
-		"P0 upcoming_interview: Yandex backend in 3 days",
 		"P1 latest_mock: section=system_design score=5/10",
 		"P1 weakest_skill: sharding",
 		"P1 codex_match: system_design · Cache strategies · 10 min · /codex?topic=system_design&article=caching-strategies",
 		"P1 topic_convergence: sharding",
 		"COACH DIAGNOSIS",
-		"interview_pressure: Yandex backend in 3 days",
 		"skill_atlas_gap: sharding",
 		"ACTION CANDIDATES",
-		"kind=schedule",
 		"Available Codex curated articles",
 		"slug=\"caching-strategies\"",
 		"memory_avoid_repeating_dismissed",
@@ -94,12 +85,6 @@ func TestCoachDiagnosesRankCrossProductEvidence(t *testing.T) {
 	}
 	in := domain.BriefPromptInput{
 		Today: time.Date(2026, 4, 27, 0, 0, 0, 0, time.UTC),
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			CompanyName:  "Yandex",
-			Role:         "backend",
-			DaysFromNow:  2,
-			ReadinessPct: 35,
-		}},
 		Mocks: []domain.MockSessionSummary{
 			{WeakTopics: []string{"redis", "cache-design"}},
 			{WeakTopics: []string{"redis"}},
@@ -129,9 +114,6 @@ func TestCoachDiagnosesRankCrossProductEvidence(t *testing.T) {
 	if len(got) == 0 {
 		t.Fatal("empty diagnoses")
 	}
-	if !strings.Contains(got[0].line, "interview_pressure") {
-		t.Fatalf("first diagnosis=%q, want interview pressure", got[0].line)
-	}
 	joined := diagnosisLines(got)
 	for _, want := range []string{
 		"repeated_mock_weakness: cache-design appears in 3",
@@ -145,25 +127,6 @@ func TestCoachDiagnosesRankCrossProductEvidence(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("diagnoses missing %q:\n%s", want, joined)
 		}
-	}
-}
-
-func TestSignalDigestIgnoresPastInterviewPressure(t *testing.T) {
-	var sb strings.Builder
-	writeSignalDigest(&sb, domain.BriefPromptInput{
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			CompanyName:  "PastCo",
-			Role:         "backend",
-			DaysFromNow:  -1,
-			ReadinessPct: 20,
-		}},
-	})
-	got := sb.String()
-	if strings.Contains(got, "P0 upcoming_interview") {
-		t.Fatalf("digest promoted past interview:\n%s", got)
-	}
-	if !strings.Contains(got, "sparse_data") {
-		t.Fatalf("digest should remain sparse when only past interview exists:\n%s", got)
 	}
 }
 
@@ -189,12 +152,6 @@ func diagnosisLines(items []coachDiagnosis) string {
 func TestCoachActionCandidatesUseSpecificSafeActions(t *testing.T) {
 	noteID := uuid.New()
 	in := domain.BriefPromptInput{
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			CompanyName:  "Yandex",
-			Role:         "backend",
-			DaysFromNow:  2,
-			ReadinessPct: 35,
-		}},
 		Mocks: []domain.MockSessionSummary{
 			{WeakTopics: []string{"cache-design"}},
 			{WeakTopics: []string{"redis"}},
@@ -233,8 +190,6 @@ func TestCoachActionCandidatesUseSpecificSafeActions(t *testing.T) {
 	got := coachActionCandidatesForPrompt(in, 8)
 	joined := actionCandidateLines(got)
 	for _, want := range []string{
-		"Run one mock block for Yandex backend today.",
-		"Do one cache-design drill for Yandex backend.",
 		"Write 3 concrete tradeoffs for cache-design.",
 		"target=plan-cache",
 		"target=" + noteID.String(),
@@ -389,12 +344,6 @@ func TestParseBriefJSONBackfillsFromActionCandidates(t *testing.T) {
 	}`
 
 	brief, err := parseBriefJSON(raw, domain.BriefPromptInput{
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			CompanyName:  "Yandex",
-			Role:         "backend",
-			DaysFromNow:  2,
-			ReadinessPct: 35,
-		}},
 		Mocks: []domain.MockSessionSummary{
 			{WeakTopics: []string{"cache-design"}},
 			{WeakTopics: []string{"redis"}},
@@ -412,55 +361,12 @@ func TestParseBriefJSONBackfillsFromActionCandidates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseBriefJSON: %v", err)
 	}
-	if len(brief.Recommendations) != 3 {
-		t.Fatalf("len=%d, want 3: %#v", len(brief.Recommendations), brief.Recommendations)
+	if len(brief.Recommendations) == 0 {
+		t.Fatalf("len=%d, want at least 1: %#v", len(brief.Recommendations), brief.Recommendations)
 	}
 	titles := recommendationTitles(brief.Recommendations)
-	for _, want := range []string{
-		"Write one cache tradeoff.",
-		"Run one mock block for Yandex backend today.",
-		"Do one cache-design drill for Yandex backend.",
-	} {
-		if !strings.Contains(titles, want) {
-			t.Fatalf("titles missing %q: %s", want, titles)
-		}
-	}
-}
-
-func TestParseBriefJSONEnforcesUrgentInterviewRecommendations(t *testing.T) {
-	raw := `{
-		"headline":"Cache gap remains.",
-		"narrative":"There is an interview soon, but recommendations ignored it.",
-		"recommendations":[
-			{"kind":"tiny_task","title":"Write one cache tradeoff.","rationale":"cache-design is repeated.","target_id":""},
-			{"kind":"schedule","title":"Block 25 minutes for queue cleanup.","rationale":"Queue is behind.","target_id":""},
-			{"kind":"tiny_task","title":"Do today's daily kata.","rationale":"Streak is active.","target_id":""}
-		]
-	}`
-
-	brief, err := parseBriefJSON(raw, domain.BriefPromptInput{
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			CompanyName:  "Yandex",
-			Role:         "backend",
-			DaysFromNow:  2,
-			ReadinessPct: 35,
-		}},
-		Mocks: []domain.MockSessionSummary{{WeakTopics: []string{"cache-design"}}},
-	})
-	if err != nil {
-		t.Fatalf("parseBriefJSON: %v", err)
-	}
-	if len(brief.Recommendations) != 3 {
-		t.Fatalf("len=%d, want 3", len(brief.Recommendations))
-	}
-	titles := recommendationTitles(brief.Recommendations)
-	for _, want := range []string{
-		"Run one mock block for Yandex backend today.",
-		"Do one cache-design drill for Yandex backend.",
-	} {
-		if !strings.Contains(titles, want) {
-			t.Fatalf("titles missing %q:\n%s", want, titles)
-		}
+	if !strings.Contains(titles, "Write one cache tradeoff.") {
+		t.Fatalf("titles missing %q: %s", "Write one cache tradeoff.", titles)
 	}
 }
 
@@ -644,24 +550,6 @@ func TestDeriveSeverityRanksSignals(t *testing.T) {
 		want coachSeverity
 	}{
 		{
-			name: "interview_in_3_days_is_critical",
-			in: domain.BriefPromptInput{
-				UpcomingInterviews: []domain.UpcomingInterview{{
-					CompanyName: "Yandex", DaysFromNow: 3, ReadinessPct: 40,
-				}},
-			},
-			want: severityCritical,
-		},
-		{
-			name: "interview_in_7_days_is_warn",
-			in: domain.BriefPromptInput{
-				UpcomingInterviews: []domain.UpcomingInterview{{
-					CompanyName: "Yandex", DaysFromNow: 7, ReadinessPct: 40,
-				}},
-			},
-			want: severityWarn,
-		},
-		{
 			name: "skipped_4x_is_critical",
 			in: domain.BriefPromptInput{
 				SkippedRecent: []domain.SkippedPlanItem{
@@ -764,23 +652,28 @@ func TestDeriveSeverityRanksSignals(t *testing.T) {
 
 func TestPinCriticalHeadlineOverridesGenericLLMHeadline(t *testing.T) {
 	in := domain.BriefPromptInput{
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			CompanyName: "Yandex", Role: "backend", DaysFromNow: 2, ReadinessPct: 35,
-		}},
+		SkippedRecent: []domain.SkippedPlanItem{
+			{ItemID: "p1", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+			{ItemID: "p2", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+			{ItemID: "p3", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+			{ItemID: "p4", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+		},
 	}
 	got := pinCriticalHeadline("Stay focused and consistent.", in)
-	if !strings.Contains(got, "Yandex") || !strings.Contains(got, "in 2 days") {
+	if !strings.Contains(got, "Skipped") || !strings.Contains(got, "4") {
 		t.Fatalf("pinned headline lost critical anchor: %q", got)
 	}
 }
 
 func TestPinCriticalHeadlineKeepsLLMHeadlineWithAnchor(t *testing.T) {
 	in := domain.BriefPromptInput{
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			CompanyName: "Yandex", Role: "backend", DaysFromNow: 2, ReadinessPct: 35,
-		}},
+		Arena: []domain.ArenaMatchSummary{
+			{Section: "algorithms", Outcome: "lost"},
+			{Section: "algorithms", Outcome: "lost"},
+			{Section: "algorithms", Outcome: "lost"},
+		},
 	}
-	llm := "Yandex Friday — system_design gap."
+	llm := "3-loss algorithms streak — slow down."
 	got := pinCriticalHeadline(llm, in)
 	if got != llm {
 		t.Fatalf("pin overrode a headline that already mentioned anchor: %q -> %q", llm, got)
@@ -845,16 +738,17 @@ func TestPinWelcomeBackKeepsLLMHeadlineThatGreetsAlready(t *testing.T) {
 	}
 }
 
-func TestCriticalEventOverridesLongAbsence(t *testing.T) {
+func TestCriticalSignalOverridesLongAbsence(t *testing.T) {
 	today := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
 	in := domain.BriefPromptInput{
 		Today: today,
-		// Even after 30 days off, an interview in 2 days must stay critical.
-		UpcomingInterviews: []domain.UpcomingInterview{{
-			Kind: "interview", CompanyName: "Yandex",
-			DaysFromNow: 2, ReadinessPct: 30,
-			InterviewDate: today.AddDate(0, 0, 2),
-		}},
+		// Even after 30 days off, 4× same skipped item stays critical.
+		SkippedRecent: []domain.SkippedPlanItem{
+			{ItemID: "p1", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+			{ItemID: "p2", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+			{ItemID: "p3", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+			{ItemID: "p4", SkillKey: "prefix-sum", Title: "Review prefix-sum patterns"},
+		},
 		FocusDays: []domain.FocusDay{{
 			Day: today.AddDate(0, 0, -30), Seconds: 1800,
 		}},
@@ -863,8 +757,8 @@ func TestCriticalEventOverridesLongAbsence(t *testing.T) {
 	if got != severityCritical {
 		t.Fatalf("severity=%q, want critical despite long absence", got)
 	}
-	if !strings.Contains(reason, "Yandex") {
-		t.Fatalf("reason should mention interview, got %q", reason)
+	if !strings.Contains(reason, "skipped") {
+		t.Fatalf("reason should mention skipped pattern, got %q", reason)
 	}
 }
 

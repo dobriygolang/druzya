@@ -64,7 +64,6 @@ type GetDailyBrief struct {
 	Queue        domain.QueueReader
 	Skills       domain.SkillReader
 	DailyNotes   domain.DailyNoteReader
-	Calendar     domain.CalendarReader
 	MockMessages domain.MockMessagesReader
 	Codex        domain.CodexReader
 	// Tracks — Phase 2d. Reads the user's active learning tracks so
@@ -203,7 +202,6 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		queue           domain.QueueSnapshot
 		weakSkills      []domain.SkillWeak
 		dailyNotes      []domain.DailyNoteHead
-		upcoming        []domain.UpcomingInterview
 		keywords        []domain.MockKeywords
 		tracks          []domain.ActiveTrack
 		goals           []domain.UserGoal
@@ -275,17 +273,6 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 			}
 		}()
 	}
-	if uc.Calendar != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.Calendar.UpcomingInterviews(ctx, in.UserID, 30); err == nil {
-				upcoming = v
-			} else {
-				warnReader(uc.Log, "calendar", err)
-			}
-		}()
-	}
 	if uc.MockMessages != nil {
 		optionalWG.Add(1)
 		go func() {
@@ -351,7 +338,7 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	)
 	if uc.Memory != nil {
 		recallQuery := briefMemoryRecallQuery(
-			upcoming, mocks, weakSkills, keywords, arena, queue, skipped, recent, dailyNotes,
+			mocks, weakSkills, keywords, arena, queue, skipped, recent, dailyNotes,
 		)
 		var memoryWG sync.WaitGroup
 		memoryWG.Add(2)
@@ -429,7 +416,6 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		Queue:               queue,
 		WeakSkills:          weakSkills,
 		DailyNotes:          dailyNotes,
-		UpcomingInterviews:  upcoming,
 		MockKeywords:        keywords,
 		CodexArticles:       codexArticles,
 		ActiveTracks:        tracks,
@@ -642,7 +628,6 @@ func warnReader(log *slog.Logger, name string, err error) {
 }
 
 func briefMemoryRecallQuery(
-	upcoming []domain.UpcomingInterview,
 	mocks []domain.MockSessionSummary,
 	weakSkills []domain.SkillWeak,
 	keywords []domain.MockKeywords,
@@ -664,14 +649,6 @@ func briefMemoryRecallQuery(
 		}
 		seen[s] = struct{}{}
 		parts = append(parts, s)
-	}
-	for _, ui := range upcoming {
-		if ui.DaysFromNow < 0 || ui.DaysFromNow > 30 {
-			continue
-		}
-		add(ui.CompanyName)
-		add(ui.Role)
-		add(ui.CurrentLevel)
 	}
 	for _, m := range mocks {
 		add(m.Section)

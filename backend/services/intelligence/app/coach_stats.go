@@ -15,26 +15,28 @@ import (
 )
 
 // CoachStats — wire-shape для UI snapshot.
+//
+// Calendar pivot 2026-05-04: NextMockInDays / NextMockCompany dropped along
+// with the calendar bounded context. UI consumers are expected to default
+// to -1 for the "next mock" card; the field stays renderable as "no upcoming
+// interview" text even with the field gone from this struct.
 type CoachStats struct {
 	FocusTodayMin   int
 	LastMockScore   int    // 0..100
 	LastMockSection string // '' if no mocks
-	NextMockInDays  int    // -1 if none
-	NextMockCompany string
 }
 
 // GetCoachStats — UC.
 type GetCoachStats struct {
-	Focus    domain.FocusReader
-	Mocks    domain.MockReader
-	Calendar domain.CalendarReader
-	Now      func() time.Time
+	Focus domain.FocusReader
+	Mocks domain.MockReader
+	Now   func() time.Time
 }
 
-// Do aggregates 4 cards. Best-effort: каждый reader fail → soft default,
+// Do aggregates 3 cards. Best-effort: каждый reader fail → soft default,
 // мы не валим snapshot из-за одного reader.
 func (uc *GetCoachStats) Do(ctx context.Context, userID uuid.UUID) (CoachStats, error) {
-	out := CoachStats{NextMockInDays: -1}
+	var out CoachStats
 
 	// Focus today (UTC day) — sum LastNDays(1).
 	if days, err := uc.Focus.LastNDays(ctx, userID, 1); err == nil && len(days) > 0 {
@@ -47,20 +49,6 @@ func (uc *GetCoachStats) Do(ctx context.Context, userID uuid.UUID) (CoachStats, 
 		// MockSessionSummary.Score is 0..10 (10x scale). Renormalize 0..100.
 		out.LastMockScore = ms[0].Score * 10
 		out.LastMockSection = ms[0].Section
-	}
-
-	// Next mock — earliest upcoming interview within 30d.
-	if events, err := uc.Calendar.UpcomingInterviews(ctx, userID, 30); err == nil && len(events) > 0 {
-		earliest := events[0]
-		for _, e := range events[1:] {
-			if e.DaysFromNow < earliest.DaysFromNow {
-				earliest = e
-			}
-		}
-		if earliest.DaysFromNow >= 0 {
-			out.NextMockInDays = earliest.DaysFromNow
-			out.NextMockCompany = earliest.CompanyName
-		}
 	}
 
 	_ = fmt.Sprintf // unused-import guard for fmt; remove if needed

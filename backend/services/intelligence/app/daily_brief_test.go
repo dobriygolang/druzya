@@ -75,12 +75,6 @@ func TestCodexTopicsForBriefCollectsSignals(t *testing.T) {
 
 func TestBriefMemoryRecallQueryUsesCurrentSignals(t *testing.T) {
 	got := briefMemoryRecallQuery(
-		[]domain.UpcomingInterview{{
-			CompanyName:  "Yandex",
-			Role:         "backend",
-			CurrentLevel: "L5",
-			DaysFromNow:  3,
-		}},
 		[]domain.MockSessionSummary{{Section: "system_design", WeakTopics: []string{"cache-design"}}},
 		[]domain.SkillWeak{{SkillKey: "redis", Title: "Redis caching"}},
 		[]domain.MockKeywords{{Keyword: "consistent-hashing", Count: 4}},
@@ -91,8 +85,6 @@ func TestBriefMemoryRecallQueryUsesCurrentSignals(t *testing.T) {
 		[]domain.DailyNoteHead{{Excerpt: "stuck on sharding and cache invalidation today"}},
 	)
 	for _, want := range []string{
-		"yandex",
-		"backend",
 		"system_design",
 		"cache-design",
 		"redis",

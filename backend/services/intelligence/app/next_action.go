@@ -36,13 +36,16 @@ type NextAction struct {
 // NextActionInput — снапшот для prompt'а. Caller (handler) собирает из
 // readers и passes сюда — UC не дёргает readers сам, чтобы оставаться
 // тестируемым.
+//
+// Calendar pivot 2026-05-04: UpcomingEvents removed alongside personal_events.
+// Coach next-action no longer factors interview-window pressure; track step
+// + fork mode + recent mocks remain the active inputs.
 type NextActionInput struct {
 	UserID          uuid.UUID
 	LearningState   LearningStateView
 	RecentMocks     []domain.MockSessionSummary
 	Fork            domain.ForkProgressSnapshot
 	ResourceTrail   domain.ResourceEngagement
-	UpcomingEvents  []domain.UpcomingInterview
 	ActiveTrack     *ActiveTrackStep
 }
 
@@ -116,7 +119,6 @@ Constraints:
 - Output STRICT JSON, no markdown, no commentary:
   {"action_kind":"focus_block|start_mock|review_resource|reflection|checkpoint|graduation_mock","target":"<atlas_node_id|track_step_slug|resource_url>","rationale":"<1-2 sentences citing specific signal>","estimated_minutes":<int>}
 - Rationale MUST cite a SPECIFIC signal: weak axis from last mock, concrete track step, named resource, named atlas node. Generic ("practice algorithms", "be consistent") = FAIL.
-- If user has upcoming interview within 4 days — action MUST address that interview's section.
 - If learning_state.mode=='explore' — DO NOT push commit; suggest exploration of underdeveloped fork-branch.
 - estimated_minutes ∈ [15, 120].`
 
@@ -154,16 +156,6 @@ func buildNextActionPrompt(in NextActionInput) string {
 	if in.ResourceTrail.UnfinishedCount > 0 || len(in.ResourceTrail.MarkedUnhelpful) > 0 {
 		fmt.Fprintf(&b, "\nRESOURCE TRAIL: %d unfinished · %d unhelpful\n",
 			in.ResourceTrail.UnfinishedCount, len(in.ResourceTrail.MarkedUnhelpful))
-	}
-
-	if len(in.UpcomingEvents) > 0 {
-		b.WriteString("\nUPCOMING:\n")
-		for _, e := range in.UpcomingEvents {
-			if e.DaysFromNow >= 0 && e.DaysFromNow <= 7 {
-				fmt.Fprintf(&b, "  - %s · %s · in %d days\n",
-					e.CompanyName, e.Role, e.DaysFromNow)
-			}
-		}
 	}
 
 	b.WriteString("\nReturn the single most-important next action.")

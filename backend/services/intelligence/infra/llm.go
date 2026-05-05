@@ -196,8 +196,6 @@ func (s *LLMChainBriefSynthesiser) shouldReflect(ctx context.Context, sketch dom
 // warnGradeReflectsBenefit — Phase R6. Sub-gate for warn severity. Only
 // warn signals where the second LLM pass is likely to materially improve
 // the brief get critique. Heuristics:
-//   - Interview 4-7 days out: warn-grade priority (≤3d already critical),
-//     critique sharpens prep-direction language.
 //   - Repeated mock weak topic ≥3: pattern is real; critique can ground
 //     the rationale in the count.
 //   - Abandoned mocks ≥2: consistency-break warrants careful framing.
@@ -205,14 +203,6 @@ func (s *LLMChainBriefSynthesiser) shouldReflect(ctx context.Context, sketch dom
 // Bare warn signals (low focus week, single skipped item × 2) skip —
 // they're already easy to phrase well in one pass.
 func warnGradeReflectsBenefit(in domain.BriefPromptInput) bool {
-	for _, ui := range in.UpcomingInterviews {
-		if ui.DaysFromNow >= 4 && ui.DaysFromNow <= 7 {
-			switch ui.Kind {
-			case "interview", "":
-				return true
-			}
-		}
-	}
 	if _, n := repeatedMockWeakTopic(in.Mocks); n >= 3 {
 		return true
 	}

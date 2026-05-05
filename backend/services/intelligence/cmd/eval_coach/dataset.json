@@ -3,17 +3,6 @@
     "name": "interview_in_2_days_critical",
     "in": {
       "Today": "2026-04-30T00:00:00Z",
-      "UpcomingInterviews": [
-        {
-          "CompanyName": "Yandex",
-          "Role": "backend",
-          "Kind": "interview",
-          "Title": "Yandex L4",
-          "DaysFromNow": 2,
-          "InterviewDate": "2026-05-02T00:00:00Z",
-          "ReadinessPct": 40
-        }
-      ],
       "Mocks": [
         {
           "SessionID": "00000000-0000-0000-0000-000000000001",
@@ -83,17 +72,6 @@
     "name": "simultaneous_critical_signals",
     "in": {
       "Today": "2026-04-30T00:00:00Z",
-      "UpcomingInterviews": [
-        {
-          "CompanyName": "Stripe",
-          "Role": "backend",
-          "Kind": "interview",
-          "Title": "Stripe L5",
-          "DaysFromNow": 2,
-          "InterviewDate": "2026-05-02T00:00:00Z",
-          "ReadinessPct": 55
-        }
-      ],
       "ActiveGoals": [
         {
           "Kind": "skill_target",
@@ -168,9 +146,6 @@
     "name": "interview_warn_4_to_7d",
     "in": {
       "Today": "2026-04-30T00:00:00Z",
-      "UpcomingInterviews": [
-        {"CompanyName": "Google", "Role": "backend", "Kind": "interview", "Title": "Google L5", "DaysFromNow": 5, "InterviewDate": "2026-05-05T00:00:00Z", "ReadinessPct": 60}
-      ],
       "Mocks": [
         {"SessionID": "00000000-0000-0000-0000-000000000020", "Section": "system_design", "Difficulty": "medium", "Status": "finished", "Score": 6, "WeakTopics": ["sharding"], "FinishedAt": "2026-04-29T00:00:00Z", "DurationMin": 45}
       ]

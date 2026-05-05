@@ -58,7 +58,6 @@ type GenerateInsightsResult struct {
 func (uc *GenerateInsights) Do(ctx context.Context, in GenerateInsightsInput) (GenerateInsightsResult, error) {
 	now := uc.now().UTC()
 	candidates := make([]domain.Insight, 0, 8)
-	candidates = append(candidates, produceUrgentEventInsights(in, now)...)
 	candidates = append(candidates, produceLongAbsenceInsight(in, now)...)
 	candidates = append(candidates, produceMockTopicInsight(in, now)...)
 	candidates = append(candidates, produceWeakSkillInsight(in, now)...)
@@ -250,56 +249,6 @@ func (uc *AckInsight) Do(ctx context.Context, in AckInsightInput) error {
 //
 // One per "kind of pattern". Each returns ≤2 insights so a noisy day
 // can't flood the feed; ranking happens at the read side via severity.
-
-func produceUrgentEventInsights(in GenerateInsightsInputSnapshot, now time.Time) []domain.Insight {
-	out := make([]domain.Insight, 0, 2)
-	for _, ev := range in.Snapshot.UpcomingInterviews {
-		if ev.DaysFromNow < 0 || ev.DaysFromNow > 7 {
-			continue
-		}
-		var sev domain.InsightSeverity
-		switch {
-		case ev.DaysFromNow <= 3:
-			sev = domain.InsightSeverityCritical
-		case ev.DaysFromNow <= 7:
-			sev = domain.InsightSeverityWarn
-		default:
-			continue
-		}
-		title := strings.TrimSpace(ev.CompanyName)
-		if title == "" {
-			title = strings.TrimSpace(ev.Title)
-		}
-		if title == "" {
-			title = "Upcoming"
-		}
-		var when string
-		switch ev.DaysFromNow {
-		case 0:
-			when = "today"
-		case 1:
-			when = "tomorrow"
-		default:
-			when = fmt.Sprintf("in %d days", ev.DaysFromNow)
-		}
-		anchor := "event:" + strings.ToLower(strings.ReplaceAll(title, " ", "_")) + "_" + ev.InterviewDate.Format("2006-01-02")
-		out = append(out, domain.Insight{
-			Surface:   domain.InsightSurfaceToday,
-			Severity:  sev,
-			Anchor:    anchor,
-			Headline:  fmt.Sprintf("%s · %s · readiness %d%%", title, when, ev.ReadinessPct),
-			Evidence:  fmt.Sprintf("%s in %d day(s); self-readiness %d%%.", title, ev.DaysFromNow, ev.ReadinessPct),
-			Interpret: "Calendar pressure overrides every other signal until the event passes.",
-			Lever:     "Run one focused mock today aimed at this company's stack.",
-			DeepLink:  "/mock",
-			ExpiresAt: now.Add(time.Duration(ev.DaysFromNow+1) * 24 * time.Hour),
-		})
-		if len(out) >= 2 {
-			break
-		}
-	}
-	return out
-}
 
 func produceLongAbsenceInsight(in GenerateInsightsInputSnapshot, now time.Time) []domain.Insight {
 	days := daysSinceLastTouchSnapshot(in.Snapshot)

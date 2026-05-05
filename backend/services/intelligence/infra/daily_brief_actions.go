@@ -60,14 +60,6 @@ func coachActionCandidatesForPrompt(in domain.BriefPromptInput, limit int) []coa
 			topic:     normalizeTopic(topic),
 		})
 	}
-	for _, ui := range in.UpcomingInterviews {
-		if ui.DaysFromNow < 0 || ui.DaysFromNow > 7 {
-			continue
-		}
-		for _, c := range interviewActionCandidates(in, ui) {
-			add(c.priority, c.kind, c.title, c.rationale, c.targetID, c.topic)
-		}
-	}
 	if topic, count := repeatedMockWeakTopic(in.Mocks); topic != "" {
 		add(85+count, domain.RecommendationTinyTask,
 			fmt.Sprintf("Write 3 concrete tradeoffs for %s.", topic),
@@ -148,64 +140,6 @@ func isGenericQueueTitle(title string) bool {
 		"first item in the queue",
 	}
 	return slices.ContainsFunc(generic, func(phrase string) bool { return strings.Contains(s, phrase) })
-}
-
-func interviewActionCandidates(in domain.BriefPromptInput, ui domain.UpcomingInterview) []coachActionCandidate {
-	if ui.DaysFromNow < 0 || ui.DaysFromNow > 7 {
-		return nil
-	}
-	label := interviewLabel(ui)
-	out := []coachActionCandidate{{
-		priority:  100 - ui.DaysFromNow,
-		kind:      domain.RecommendationSchedule,
-		title:     fmt.Sprintf("Run one mock block for %s today.", label),
-		rationale: fmt.Sprintf("%s interview is in %d days; self-readiness=%d%%.", label, ui.DaysFromNow, ui.ReadinessPct),
-		topic:     normalizeTopic(ui.Role),
-	}}
-	if topic := topInterviewPrepTopic(in, ui); topic != "" {
-		out = append(out, coachActionCandidate{
-			priority:  99 - ui.DaysFromNow,
-			kind:      domain.RecommendationTinyTask,
-			title:     fmt.Sprintf("Do one %s drill for %s.", topic, label),
-			rationale: fmt.Sprintf("%s interview is in %d days and current evidence points at %s.", label, ui.DaysFromNow, topic),
-			topic:     topic,
-		})
-	}
-	return out
-}
-
-func interviewLabel(ui domain.UpcomingInterview) string {
-	parts := make([]string, 0, 2)
-	if s := strings.TrimSpace(ui.CompanyName); s != "" {
-		parts = append(parts, s)
-	}
-	if s := strings.TrimSpace(ui.Role); s != "" {
-		parts = append(parts, s)
-	}
-	if len(parts) == 0 {
-		return "upcoming interview"
-	}
-	return strings.Join(parts, " ")
-}
-
-func topInterviewPrepTopic(in domain.BriefPromptInput, ui domain.UpcomingInterview) string {
-	if topic, _ := repeatedMockWeakTopic(in.Mocks); topic != "" {
-		return topic
-	}
-	if len(in.WeakSkills) > 0 {
-		if topic := normalizeTopic(in.WeakSkills[0].SkillKey); topic != "" {
-			return topic
-		}
-	}
-	if topic := normalizeTopic(ui.Role); topic != "" {
-		return topic
-	}
-	for _, topic := range currentTopics(in, 3) {
-		if topic != "" {
-			return topic
-		}
-	}
-	return ""
 }
 
 func dedupeActionCandidates(in []coachActionCandidate, limit int) []coachActionCandidate {

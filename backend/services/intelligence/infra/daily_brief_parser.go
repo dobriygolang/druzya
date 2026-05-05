@@ -109,7 +109,6 @@ func parseBriefJSON(raw string, in domain.BriefPromptInput) (domain.DailyBrief, 
 			TargetID:  target,
 		})
 	}
-	enforceInterviewRecommendations(&recs, seen, blockedPast, in)
 	fillRecommendationsFromCandidates(&recs, seen, blockedPast, in, 3)
 	if len(recs) == 0 {
 		return domain.DailyBrief{}, errors.New("all recommendations dropped as degenerate")
@@ -197,24 +196,6 @@ func pinCriticalHeadline(headline string, in domain.BriefPromptInput) string {
 // signal. Returns the headline plus an "anchor" string that, if present
 // in the LLM's own headline, means we should leave it alone.
 func criticalHeadlineFor(in domain.BriefPromptInput) (string, string) {
-	for _, ui := range in.UpcomingInterviews {
-		if ui.DaysFromNow >= 0 && ui.DaysFromNow <= 3 {
-			company := strings.TrimSpace(ui.CompanyName)
-			if company == "" {
-				company = "Interview"
-			}
-			var when string
-			switch ui.DaysFromNow {
-			case 0:
-				when = "today"
-			case 1:
-				when = "tomorrow"
-			default:
-				when = fmt.Sprintf("in %d days", ui.DaysFromNow)
-			}
-			return fmt.Sprintf("%s interview %s — readiness %d%%.", company, when, ui.ReadinessPct), company
-		}
-	}
 	if item, n := repeatedSkippedPlanItem(in.SkippedRecent); n >= 4 {
 		title := strings.TrimSpace(item.Title)
 		if title == "" {
@@ -229,87 +210,6 @@ func criticalHeadlineFor(in domain.BriefPromptInput) (string, string) {
 		return fmt.Sprintf("%d-loss streak in %s — slow down.", losses, section), section
 	}
 	return "", ""
-}
-
-func enforceInterviewRecommendations(
-	recs *[]domain.Recommendation,
-	seen map[string]struct{},
-	blocked map[string]struct{},
-	in domain.BriefPromptInput,
-) {
-	ui, ok := nearestUrgentInterview(in.UpcomingInterviews)
-	if !ok {
-		return
-	}
-	count := 0
-	replaceIndexes := make([]int, 0, len(*recs))
-	for i, rec := range *recs {
-		if isInterviewRecommendation(rec, ui) {
-			count++
-		} else {
-			replaceIndexes = append(replaceIndexes, i)
-		}
-	}
-	if count >= 2 {
-		return
-	}
-	for _, c := range interviewActionCandidates(in, ui) {
-		if count >= 2 {
-			return
-		}
-		key := recommendationDedupeKey(c.kind, c.title, c.targetID)
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		if _, ok := blocked[key]; ok {
-			continue
-		}
-		rec := domain.Recommendation{
-			Kind:      c.kind,
-			Title:     c.title,
-			Rationale: c.rationale,
-			TargetID:  c.targetID,
-		}
-		if len(*recs) < 3 {
-			*recs = append(*recs, rec)
-		} else if len(replaceIndexes) > 0 {
-			idx := replaceIndexes[len(replaceIndexes)-1]
-			replaceIndexes = replaceIndexes[:len(replaceIndexes)-1]
-			(*recs)[idx] = rec
-		} else {
-			return
-		}
-		seen[key] = struct{}{}
-		count++
-	}
-}
-
-func isInterviewRecommendation(rec domain.Recommendation, ui domain.UpcomingInterview) bool {
-	text := strings.ToLower(rec.Title + " " + rec.Rationale)
-	if company := strings.ToLower(strings.TrimSpace(ui.CompanyName)); company != "" && strings.Contains(text, company) {
-		return true
-	}
-	if role := strings.ToLower(strings.TrimSpace(ui.Role)); role != "" &&
-		strings.Contains(text, role) &&
-		strings.Contains(text, "interview") {
-		return true
-	}
-	return false
-}
-
-func nearestUrgentInterview(items []domain.UpcomingInterview) (domain.UpcomingInterview, bool) {
-	var best domain.UpcomingInterview
-	ok := false
-	for _, ui := range items {
-		if ui.DaysFromNow < 0 || ui.DaysFromNow > 7 {
-			continue
-		}
-		if !ok || ui.DaysFromNow < best.DaysFromNow {
-			best = ui
-			ok = true
-		}
-	}
-	return best, ok
 }
 
 func fillRecommendationsFromCandidates(

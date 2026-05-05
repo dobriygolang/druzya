@@ -190,27 +190,6 @@ type DailyNoteHead struct {
 	Excerpt string // first ~400 chars
 }
 
-// UpcomingInterview — projection of one personal_events row. Originally
-// modeled only interviews; the shape now carries every personal-calendar
-// kind through the same prompt slot (interview, deadline, exam,
-// club_session, study_block, interview_prep_block) so the coach reasons
-// about calendar pressure as one feature.
-//
-// Kind drives severity: interview/exam/deadline are first-class urgency
-// signals; club_session is informational. The original field name is
-// kept so existing prompt builders compile while severity rules in
-// daily_brief_diagnosis.go switch on Kind to pick critical/warn/nudge.
-type UpcomingInterview struct {
-	Kind          string    // 'interview'|'deadline'|'exam'|'club_session'|'study_block'|'interview_prep_block'
-	CompanyName   string    // empty for non-interview kinds
-	Role          string    // empty for non-interview kinds
-	InterviewDate time.Time // == personal_events.starts_at; "interview" suffix kept for backwards compat
-	CurrentLevel  string    // empty for non-interview kinds
-	ReadinessPct  int       // 0..100 — only meaningful for interview-like kinds
-	Title         string    // free-form, for non-interview kinds (e.g. "Final paper due")
-	DaysFromNow   int       // ceil((starts_at - today)/24h); negative = past, 0 = today
-}
-
 // MockKeywords — keyword frequency table из mock_messages user-content'а.
 // Извлекается reader'ом через простой term-frequency analysis (lowercase,
 // stop-words filter, top-N по count). Coach видит «user обсуждал prefix-sum
