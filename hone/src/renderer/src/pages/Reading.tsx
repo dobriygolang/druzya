@@ -557,7 +557,7 @@ function AddMaterialForm({ onCancel, onAdded }: AddMaterialFormProps) {
       </label>
 
       {error && (
-        <p style={{ color: 'rgb(248, 113, 113)', fontSize: 12, marginTop: 12 }}>{error}</p>
+        <p style={{ color: 'var(--red)', fontSize: 12, marginTop: 12 }}>{error}</p>
       )}
 
       <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
@@ -979,11 +979,11 @@ function SavedVocabPanel({ items }: { items: VocabEntry[] }) {
 // short interpretive label; the detailed feedback is captured server-side
 // and we'll surface it in a session-history view in a later wave.
 function ScoreResultPanel({ score, onClose }: { score: number; onClose: () => void }) {
-  // Color mirrors the rubric in summaryGradePrompt: green = strong,
-  // amber = mid, red = needs work.
+  // B/W rule: tier через ink-ramp + #FF3B30 для weak (signal).
+  // Strong/mid отличаются opacity и label.
   const tier = score >= 80 ? 'strong' : score >= 50 ? 'mid' : 'weak';
   const stripe =
-    tier === 'strong' ? 'rgb(74, 222, 128)' : tier === 'mid' ? 'rgb(251, 191, 36)' : 'rgb(248, 113, 113)';
+    tier === 'strong' ? 'rgba(255, 255, 255, 0.85)' : tier === 'mid' ? 'rgba(255, 255, 255, 0.55)' : 'var(--red)';
   const label =
     tier === 'strong' ? 'Solid coverage' : tier === 'mid' ? 'Decent — some gaps' : 'Mostly missed it';
 
@@ -1410,18 +1410,20 @@ function ReaderPillRow({ material }: ReaderPillRowProps) {
   );
 }
 
+// Display-name role-only lowercase per memory/feedback_persona_names.md.
+// 'ml' kept as legacy union value (Phase 4.1 ML-track выпилен, но старые
+// settings могут содержать строку 'ml' до миграции) → fallback на sysdesign.
 function pickPersonaForReading(
   activeTrack: 'general' | 'dev' | 'ml' | 'english' | 'go',
 ): { slug: string; name: string } {
   switch (activeTrack) {
     case 'go':
-      return { slug: 'go-coach', name: 'Гоша · Go-коуч' };
+      return { slug: 'go-coach', name: 'go coach' };
     case 'english':
-      return { slug: 'english-coach', name: 'Maria · English coach' };
+      return { slug: 'english-coach', name: 'english coach' };
     case 'ml':
-      // ML reading материалы — всё ещё нет ml-персоны; fallback на sysdesign.
-      return { slug: 'sysdesign-guru', name: 'Кирилл · sysdesign-guru' };
+      return { slug: 'sysdesign-guru', name: 'sysdesign coach' };
     default:
-      return { slug: 'algo-coach', name: 'Алёша · алго-коуч' };
+      return { slug: 'algo-coach', name: 'algo coach' };
   }
 }

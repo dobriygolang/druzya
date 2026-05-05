@@ -1,9 +1,4 @@
 // stats_repo.go — Postgres adapter for /api/v1/stats/public counters.
-//
-// Three SELECT count(*) round-trips kept verbatim from
-// cmd/monolith/services/admin/stats.go. The arena_matches probe
-// deliberately swallows errors so a missing table simply leaves the
-// counter at zero (resilient to fresh environments).
 package infra
 
 import (
@@ -56,15 +51,6 @@ func (s *Stats) PublicStats(ctx context.Context) (domain.PublicStats, error) {
 		resp.ActiveToday = active
 	}
 
-	// matches total — arena_matches if it exists; absorb any error so
-	// the endpoint stays resilient when the table is missing.
-	var matches int
-	row = s.pool.QueryRow(ctx, `SELECT count(*)::int FROM arena_matches`)
-	if err := row.Scan(&matches); err != nil {
-		resp.MatchesTotal = 0
-	} else {
-		resp.MatchesTotal = matches
-	}
 	return resp, nil
 }
 

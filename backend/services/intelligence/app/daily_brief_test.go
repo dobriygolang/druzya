@@ -63,10 +63,9 @@ func TestCodexTopicsForBriefCollectsSignals(t *testing.T) {
 		}},
 		[]domain.SkillWeak{{SkillKey: "redis", Title: "Redis caching"}},
 		[]domain.MockKeywords{{Keyword: "consistent-hashing", Count: 4}},
-		[]domain.ArenaMatchSummary{{Section: "algorithms"}},
 		[]domain.Episode{cueEpisode(t, now, "weak", "weak cache answer", []string{"backend"})},
 	)
-	for _, want := range []string{"system_design", "cache-design", "sharding", "redis", "redis caching", "consistent-hashing", "algorithms", "backend"} {
+	for _, want := range []string{"system_design", "cache-design", "sharding", "redis", "redis caching", "consistent-hashing", "backend"} {
 		if !containsString(got, want) {
 			t.Fatalf("topics=%v missing %q", got, want)
 		}
@@ -78,7 +77,6 @@ func TestBriefMemoryRecallQueryUsesCurrentSignals(t *testing.T) {
 		[]domain.MockSessionSummary{{Section: "system_design", WeakTopics: []string{"cache-design"}}},
 		[]domain.SkillWeak{{SkillKey: "redis", Title: "Redis caching"}},
 		[]domain.MockKeywords{{Keyword: "consistent-hashing", Count: 4}},
-		[]domain.ArenaMatchSummary{{Section: "algorithms"}},
 		domain.QueueSnapshot{Items: []domain.QueueLine{{Title: "Capacity estimation prompt", SkillKey: "system_design"}}},
 		[]domain.SkippedPlanItem{{Title: "Read cache notes", SkillKey: "cache-design"}},
 		[]domain.NoteHead{{Title: "Redis deep dive", Excerpt: "invalidation and write-through cache notes"}},

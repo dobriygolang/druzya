@@ -405,7 +405,7 @@ function VolumeBtnImpl({ vol, onVol }: VolumeBtnProps) {
                   // Diagonal strike — линия из top-right в bottom-left,
                   // 1.5px белая через linear-gradient на 14px box'е.
                   background:
-                    'linear-gradient(45deg, transparent 45%, #ff6a6a 45%, #ff6a6a 55%, transparent 55%)',
+                    'linear-gradient(45deg, transparent 45%, var(--red) 45%, var(--red) 55%, transparent 55%)',
                   borderRadius: 2,
                 }}
               />

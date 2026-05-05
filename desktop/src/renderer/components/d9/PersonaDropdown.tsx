@@ -45,7 +45,7 @@ export function PersonaDropdown({ items, activeId, onSelect, onClose, style }: P
   return (
     <div ref={ref} className="d9-root d9-popover" style={{ width: 240, ...style }}>
       <div className="d9-popover-label">
-        <span>PERSONA</span>
+        <span>ПЕРСОНА</span>
         <span className="d9-popover-label-esc">ESC</span>
       </div>
       {items.length === 0 && (

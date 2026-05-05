@@ -60,7 +60,6 @@ type GetDailyBrief struct {
 	// просто не наполняется. Это позволяет частичный rollout: сначала
 	// поднимаем Mocks, потом добавляем Arena, и т.д.
 	Mocks        domain.MockReader
-	Arena        domain.ArenaReader
 	Queue        domain.QueueReader
 	Skills       domain.SkillReader
 	DailyNotes   domain.DailyNoteReader
@@ -198,7 +197,6 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 
 	var (
 		mocks           []domain.MockSessionSummary
-		arena           []domain.ArenaMatchSummary
 		queue           domain.QueueSnapshot
 		weakSkills      []domain.SkillWeak
 		dailyNotes      []domain.DailyNoteHead
@@ -226,17 +224,6 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 				abandonedRecent = v
 			} else {
 				warnReader(uc.Log, "mocks_abandoned", err)
-			}
-		}()
-	}
-	if uc.Arena != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.Arena.LastNMatches(ctx, in.UserID, 5); err == nil {
-				arena = v
-			} else {
-				warnReader(uc.Log, "arena", err)
 			}
 		}()
 	}
@@ -338,7 +325,7 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	)
 	if uc.Memory != nil {
 		recallQuery := briefMemoryRecallQuery(
-			mocks, weakSkills, keywords, arena, queue, skipped, recent, dailyNotes,
+			mocks, weakSkills, keywords, queue, skipped, recent, dailyNotes,
 		)
 		var memoryWG sync.WaitGroup
 		memoryWG.Add(2)
@@ -387,7 +374,7 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	var codexArticles []domain.CodexArticleSuggestion
 	if uc.Codex != nil {
 		if v, cErr := uc.Codex.SuggestArticles(ctx, in.UserID, codexTopicsForBrief(
-			mocks, weakSkills, keywords, arena, cueMemories,
+			mocks, weakSkills, keywords, cueMemories,
 		), 6); cErr == nil {
 			codexArticles = v
 		} else {
@@ -412,7 +399,6 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		CueMemories:         cueMemories,
 		Mocks:               mocks,
 		MockAbandonedRecent: abandonedRecent,
-		Arena:               arena,
 		Queue:               queue,
 		WeakSkills:          weakSkills,
 		DailyNotes:          dailyNotes,
@@ -631,7 +617,6 @@ func briefMemoryRecallQuery(
 	mocks []domain.MockSessionSummary,
 	weakSkills []domain.SkillWeak,
 	keywords []domain.MockKeywords,
-	arena []domain.ArenaMatchSummary,
 	queue domain.QueueSnapshot,
 	skipped []domain.SkippedPlanItem,
 	recent []domain.NoteHead,
@@ -662,9 +647,6 @@ func briefMemoryRecallQuery(
 	}
 	for _, kw := range keywords {
 		add(kw.Keyword)
-	}
-	for _, a := range arena {
-		add(a.Section)
 	}
 	for _, item := range queue.Items {
 		add(item.SkillKey)
@@ -702,7 +684,6 @@ func codexTopicsForBrief(
 	mocks []domain.MockSessionSummary,
 	weakSkills []domain.SkillWeak,
 	keywords []domain.MockKeywords,
-	arena []domain.ArenaMatchSummary,
 	cue []domain.Episode,
 ) []string {
 	seen := make(map[string]struct{}, 32)
@@ -730,9 +711,6 @@ func codexTopicsForBrief(
 	}
 	for _, kw := range keywords {
 		add(kw.Keyword)
-	}
-	for _, a := range arena {
-		add(a.Section)
 	}
 	for _, ep := range cue {
 		p, ok := parseCueMemoryPayload(ep.Payload)

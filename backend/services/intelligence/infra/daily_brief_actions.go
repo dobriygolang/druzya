@@ -84,12 +84,6 @@ func coachActionCandidatesForPrompt(in domain.BriefPromptInput, limit int) []coa
 			fmt.Sprintf("Curated Codex match for %s; source=%s, read_min=%d.", topic, article.Source, article.ReadMin),
 			"", topic)
 	}
-	if section, losses := arenaLossStreak(in.Arena); losses > 0 {
-		add(62+losses, domain.RecommendationTinyTask,
-			fmt.Sprintf("Replay one failed %s arena pattern slowly.", section),
-			fmt.Sprintf("Lost %d recent %s arena match(es); slow replay targets pattern recognition.", losses, section),
-			"", section)
-	}
 	if line, ok := firstUndoneQueueLine(in.Queue); ok {
 		if title := concreteQueueActionTitle(line); title != "" {
 			add(58+in.Queue.Todo+in.Queue.InProgress, domain.RecommendationSchedule,

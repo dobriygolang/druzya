@@ -65,9 +65,6 @@ func daysSinceLastTouch(in domain.BriefPromptInput) int {
 	for _, m := range in.Mocks {
 		bump(m.FinishedAt)
 	}
-	for _, a := range in.Arena {
-		bump(a.FinishedAt)
-	}
 	for _, c := range in.CompletedRecent {
 		bump(c.PlanDate)
 	}
@@ -125,9 +122,6 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 	// longer surface as severity inputs.
 	if _, _, n := repeatedSkippedItem(in.SkippedRecent); n >= 4 {
 		return severityCritical, fmt.Sprintf("plan item skipped %d times — chronic avoidance", n)
-	}
-	if _, losses := arenaLossStreak(in.Arena); losses >= 3 {
-		return severityCritical, fmt.Sprintf("%d consecutive arena losses", losses)
 	}
 	// Phase 4.3 — goal deadline crit. job_target в 3 дня = равноценно
 	// interview-event критическому: нужен срочный фокус. skill/track
@@ -235,10 +229,6 @@ func coachDiagnoses(in domain.BriefPromptInput) []coachDiagnosis {
 		add(80+count, "mock-topic:"+topic,
 			fmt.Sprintf("repeated_mock_weakness: %s appears in %d mock weak-topic reports", topic, count))
 	}
-	if section, losses := arenaLossStreak(in.Arena); losses > 0 {
-		add(70+losses, "arena-loss:"+section,
-			fmt.Sprintf("arena_loss_streak: lost %d recent %s match(es)", losses, section))
-	}
 	if key, title, count := repeatedSkippedItem(in.SkippedRecent); key != "" {
 		add(65+count, "skipped:"+key,
 			fmt.Sprintf("avoidance_pattern: skipped %q %d time(s) in recent plans", title, count))
@@ -303,24 +293,6 @@ func repeatedMockWeakTopic(mocks []domain.MockSessionSummary) (string, int) {
 		}
 	}
 	return topCount(counts)
-}
-
-func arenaLossStreak(matches []domain.ArenaMatchSummary) (string, int) {
-	count := 0
-	section := ""
-	for _, m := range matches {
-		if strings.TrimSpace(m.Outcome) != "lost" {
-			break
-		}
-		count++
-		if section == "" {
-			section = normalizeTopic(m.Section)
-			if section == "" {
-				section = strings.TrimSpace(m.Section)
-			}
-		}
-	}
-	return section, count
 }
 
 func repeatedSkippedItem(items []domain.SkippedPlanItem) (string, string, int) {
@@ -441,9 +413,6 @@ func currentTopics(in domain.BriefPromptInput, limit int) []string {
 	}
 	for _, kw := range in.MockKeywords {
 		add(kw.Keyword, maxInt(1, kw.Count))
-	}
-	for _, a := range in.Arena {
-		add(a.Section, 2)
 	}
 	for _, ep := range in.CueMemories {
 		_, topics := cuePromptMeta(ep.Payload)

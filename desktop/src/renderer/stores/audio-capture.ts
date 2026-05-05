@@ -143,8 +143,9 @@ export const useAudioCaptureStore = create<State>((set, get) => ({
         }));
       }),
       window.druz9.on<AudioCaptureTranscriptEvent>(eventChannels.audioCaptureTranscript, (ev) => {
-        // eslint-disable-next-line no-console
-        console.log('[store:audio] transcript event', ev);
+        // Privacy: transcript events НЕ логируем (они содержат raw речь юзера +
+        // системного аудио). Раньше был console.log — потенциальный leak в
+        // crash-reports / DevTools / forensic tools.
         if (!ev || (ev.source !== 'system' && ev.source !== 'mic')) return;
         const text = (ev.text ?? '').trim();
         if (!text) return;

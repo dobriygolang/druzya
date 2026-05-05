@@ -362,9 +362,6 @@ func daysSinceLastTouchSnapshot(in domain.BriefPromptInput) int {
 	for _, m := range in.Mocks {
 		bump(m.FinishedAt)
 	}
-	for _, a := range in.Arena {
-		bump(a.FinishedAt)
-	}
 	for _, c := range in.CompletedRecent {
 		bump(c.PlanDate)
 	}

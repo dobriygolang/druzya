@@ -20,19 +20,19 @@ export function QuotaMeterMini({ used, cap, width = 44 }: Props) {
   const pct = cap > 0 ? Math.min(100, (used / cap) * 100) : 0;
   const remaining = Math.max(0, cap - used);
 
-  // Threshold-based color escalation. Amber/red — universal "осторожно/
-  // критично" semantic. На макс — interactive (открывает paywall hint).
+  // B/W rule: danger → #FF3B30 (signal accent), warn → bright white-alpha.
+  // Severity escalation через ink-ramp + pulse-animation, не hue.
   const danger = pct >= 95;
   const warn = pct >= 80;
   const fillColor = danger
-    ? 'oklch(0.65 0.22 25)' // red
+    ? 'var(--d9-accent)'
     : warn
-      ? 'oklch(0.7 0.18 65)' // amber
-      : undefined; // default gradient
+      ? 'rgba(255,255,255,0.55)'
+      : undefined;
   const textColor = danger
-    ? 'oklch(0.75 0.18 25)'
+    ? 'var(--d9-accent)'
     : warn
-      ? 'oklch(0.78 0.16 65)'
+      ? 'rgba(255,255,255,0.85)'
       : 'var(--d9-ink-mute)';
 
   const tooltip = danger

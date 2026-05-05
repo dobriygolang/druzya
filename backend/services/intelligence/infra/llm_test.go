@@ -89,11 +89,6 @@ func TestCoachDiagnosesRankCrossProductEvidence(t *testing.T) {
 			{WeakTopics: []string{"redis", "cache-design"}},
 			{WeakTopics: []string{"redis"}},
 		},
-		Arena: []domain.ArenaMatchSummary{
-			{Section: "algorithms", Outcome: "lost"},
-			{Section: "algorithms", Outcome: "lost"},
-			{Section: "algorithms", Outcome: "won"},
-		},
 		SkippedRecent: []domain.SkippedPlanItem{
 			{ItemID: "p1", SkillKey: "cache-design", Title: "Read cache notes"},
 			{ItemID: "p2", SkillKey: "cache-design", Title: "Read cache notes"},
@@ -117,7 +112,6 @@ func TestCoachDiagnosesRankCrossProductEvidence(t *testing.T) {
 	joined := diagnosisLines(got)
 	for _, want := range []string{
 		"repeated_mock_weakness: cache-design appears in 3",
-		"arena_loss_streak: lost 2 recent algorithms",
 		"avoidance_pattern: skipped \"Read cache notes\" 2",
 		"focus_coverage: 1/2 days reached 30+ min",
 		"today_queue_pressure: done=0/3",
@@ -562,17 +556,6 @@ func TestDeriveSeverityRanksSignals(t *testing.T) {
 			want: severityCritical,
 		},
 		{
-			name: "three_arena_losses_is_critical",
-			in: domain.BriefPromptInput{
-				Arena: []domain.ArenaMatchSummary{
-					{Section: "algorithms", Outcome: "lost"},
-					{Section: "algorithms", Outcome: "lost"},
-					{Section: "algorithms", Outcome: "lost"},
-				},
-			},
-			want: severityCritical,
-		},
-		{
 			name: "weak_skill_alone_is_nudge",
 			in: domain.BriefPromptInput{
 				WeakSkills: []domain.SkillWeak{{SkillKey: "graphs", Title: "Graphs", Progress: 18}},
@@ -662,21 +645,6 @@ func TestPinCriticalHeadlineOverridesGenericLLMHeadline(t *testing.T) {
 	got := pinCriticalHeadline("Stay focused and consistent.", in)
 	if !strings.Contains(got, "Skipped") || !strings.Contains(got, "4") {
 		t.Fatalf("pinned headline lost critical anchor: %q", got)
-	}
-}
-
-func TestPinCriticalHeadlineKeepsLLMHeadlineWithAnchor(t *testing.T) {
-	in := domain.BriefPromptInput{
-		Arena: []domain.ArenaMatchSummary{
-			{Section: "algorithms", Outcome: "lost"},
-			{Section: "algorithms", Outcome: "lost"},
-			{Section: "algorithms", Outcome: "lost"},
-		},
-	}
-	llm := "3-loss algorithms streak — slow down."
-	got := pinCriticalHeadline(llm, in)
-	if got != llm {
-		t.Fatalf("pin overrode a headline that already mentioned anchor: %q -> %q", llm, got)
 	}
 }
 

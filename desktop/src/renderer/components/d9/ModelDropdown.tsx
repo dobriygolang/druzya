@@ -48,7 +48,7 @@ export function ModelDropdown({ items, activeId, onSelect, onClose, onManage, st
   return (
     <div ref={ref} className="d9-root d9-popover" style={{ width: 260, ...style }}>
       <div className="d9-popover-label">
-        <span>MODEL</span>
+        <span>МОДЕЛЬ</span>
         <span className="d9-popover-label-esc">ESC</span>
       </div>
       {items.length === 0 && (

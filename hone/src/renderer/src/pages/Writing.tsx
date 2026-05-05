@@ -36,11 +36,13 @@ const CATEGORY_LABEL: Record<WritingIssueCategory, string> = {
   clarity: 'CLARITY',
 };
 
+// B/W rule: семантика категорий через icon + label, не цвет. Stripe →
+// ink-ramp (4 уровня opacity вместо 4 hue).
 const CATEGORY_STRIPE: Record<WritingIssueCategory, string> = {
-  grammar: 'rgb(248, 113, 113)',
-  vocab: 'rgb(96, 165, 250)',
-  style: 'rgb(251, 191, 36)',
-  clarity: 'rgb(167, 139, 250)',
+  grammar: 'rgba(255, 255, 255, 0.75)',
+  vocab: 'rgba(255, 255, 255, 0.55)',
+  style: 'rgba(255, 255, 255, 0.65)',
+  clarity: 'rgba(255, 255, 255, 0.45)',
 };
 
 export function WritingPage() {
@@ -185,7 +187,7 @@ export function WritingPage() {
             Save to Notes
           </button>
           {savedNoteFlash && (
-            <span style={{ fontSize: 12, color: 'rgb(74, 222, 128)' }}>Saved →</span>
+            <span style={{ fontSize: 12, color: 'rgb(var(--ink))' }}>Saved →</span>
           )}
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--ink-40)' }}>
             {wordCount} words
@@ -193,7 +195,7 @@ export function WritingPage() {
         </div>
 
         {grading.kind === 'error' && (
-          <p style={{ marginTop: 12, color: 'rgb(248, 113, 113)', fontSize: 12 }}>
+          <p style={{ marginTop: 12, color: 'var(--red)', fontSize: 12 }}>
             {grading.message}
           </p>
         )}
@@ -236,8 +238,10 @@ function FeedbackPanel({
 }) {
   const score = feedback.overallScore;
   const tier: 'strong' | 'mid' | 'weak' = score >= 80 ? 'strong' : score >= 50 ? 'mid' : 'weak';
+  // B/W rule: tier через ink-ramp + #FF3B30 для weak (signal). Strong/mid
+  // отличаются opacity и label.
   const stripe =
-    tier === 'strong' ? 'rgb(74, 222, 128)' : tier === 'mid' ? 'rgb(251, 191, 36)' : 'rgb(248, 113, 113)';
+    tier === 'strong' ? 'rgba(255, 255, 255, 0.85)' : tier === 'mid' ? 'rgba(255, 255, 255, 0.55)' : 'var(--red)';
   const label =
     tier === 'strong' ? 'Strong' : tier === 'mid' ? 'OK — some gaps' : 'Needs work';
 

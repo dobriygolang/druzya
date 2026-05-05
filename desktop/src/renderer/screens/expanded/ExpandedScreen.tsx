@@ -597,7 +597,7 @@ export function ExpandedScreen() {
                 void send();
               }
             }}
-            placeholder={recording ? 'Слушаю…' : 'Continue dialog…'}
+            placeholder={recording ? 'Слушаю…' : 'Продолжить диалог…'}
             style={{
               flex: 1,
               background: 'transparent',

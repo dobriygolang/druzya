@@ -84,7 +84,6 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	// Today (queue, daily notes). См. domain/repo.go BriefPromptInput
 	// и services/intelligence/infra/cross_readers.go.
 	mockR := intelInfra.NewMockReader(d.Pool)
-	arenaR := intelInfra.NewArenaReader(d.Pool)
 	queueR := intelInfra.NewQueueReader(d.Pool)
 	skillR := intelInfra.NewSkillReader(d.Pool)
 	dailyR := intelInfra.NewDailyNoteReader(d.Pool)
@@ -181,7 +180,6 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			Memory:      memory,
 			// Cross-product сигналы для smart Coach.
 			Mocks:        mockR,
-			Arena:        arenaR,
 			Queue:        queueR,
 			Skills:       skillR,
 			DailyNotes:   dailyR,

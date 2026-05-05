@@ -52,19 +52,16 @@ interface KindDef {
   path: string;
 }
 
+// B/W rule: kind taxonomy несётся иконкой + label, цвет нулевой (ink-ramp).
+// Identity: technical, no gamification — kanban не должен выглядеть как
+// radio-color-coded.
 const KINDS: Record<TaskKind, KindDef> = {
-  // Code </> — algorithm
-  algo:      { label: 'Algorithm',     color: '#a78bfa', path: 'M16 18l6-6-6-6 M8 6l-6 6 6 6 M14.5 4l-5 16' },
-  // Network/sitemap — system design
-  sysdesign: { label: 'System Design', color: '#22d3ee', path: 'M9 19v-3 M15 19v-3 M9 8V5 M15 8V5 M5 11h14 M5 11v3a2 2 0 002 2h10a2 2 0 002-2v-3 M7 5h10' },
-  // Question circle — quiz
-  quiz:      { label: 'Quiz',          color: '#4ade80', path: 'M12 22a10 10 0 100-20 10 10 0 000 20z M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3 M12 17h.01' },
-  // Brain — reflection
-  reflection:{ label: 'Reflection',    color: '#fbbf24', path: 'M9.5 2A2.5 2.5 0 0112 4.5 2.5 2.5 0 0114.5 2 2.5 2.5 0 0117 4.5c0 .55-.18 1.06-.49 1.47A2.5 2.5 0 0118 8.5a2.5 2.5 0 01-1.5 2.29A2.5 2.5 0 0118 13.5a2.5 2.5 0 01-2.5 2.5h-.05A2.5 2.5 0 0113 18.5 2.5 2.5 0 0110.5 16H10A2.5 2.5 0 017.5 13.5 2.5 2.5 0 016 11 2.5 2.5 0 017.5 8.5 2.5 2.5 0 016 6 2.5 2.5 0 019.5 2z' },
-  // Book open — reading
-  reading:   { label: 'Reading',       color: '#8896ab', path: 'M2 4h7a3 3 0 013 3v14a2 2 0 00-2-2H2V4z M22 4h-7a3 3 0 00-3 3v14a2 2 0 012-2h8V4z' },
-  // Pencil — custom
-  custom:    { label: 'Custom',        color: '#a1a1aa', path: 'M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z' },
+  algo:      { label: 'Algorithm',     color: 'rgba(255,255,255,0.65)', path: 'M16 18l6-6-6-6 M8 6l-6 6 6 6 M14.5 4l-5 16' },
+  sysdesign: { label: 'System Design', color: 'rgba(255,255,255,0.55)', path: 'M9 19v-3 M15 19v-3 M9 8V5 M15 8V5 M5 11h14 M5 11v3a2 2 0 002 2h10a2 2 0 002-2v-3 M7 5h10' },
+  quiz:      { label: 'Quiz',          color: 'rgba(255,255,255,0.75)', path: 'M12 22a10 10 0 100-20 10 10 0 000 20z M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3 M12 17h.01' },
+  reflection:{ label: 'Reflection',    color: 'rgba(255,255,255,0.60)', path: 'M9.5 2A2.5 2.5 0 0112 4.5 2.5 2.5 0 0114.5 2 2.5 2.5 0 0117 4.5c0 .55-.18 1.06-.49 1.47A2.5 2.5 0 0118 8.5a2.5 2.5 0 01-1.5 2.29A2.5 2.5 0 0118 13.5a2.5 2.5 0 01-2.5 2.5h-.05A2.5 2.5 0 0113 18.5 2.5 2.5 0 0110.5 16H10A2.5 2.5 0 017.5 13.5 2.5 2.5 0 016 11 2.5 2.5 0 017.5 8.5 2.5 2.5 0 016 6 2.5 2.5 0 019.5 2z' },
+  reading:   { label: 'Reading',       color: 'rgba(255,255,255,0.50)', path: 'M2 4h7a3 3 0 013 3v14a2 2 0 00-2-2H2V4z M22 4h-7a3 3 0 00-3 3v14a2 2 0 012-2h8V4z' },
+  custom:    { label: 'Custom',        color: 'rgba(255,255,255,0.58)', path: 'M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z' },
 };
 
 // KindIcon — единая SVG-обёртка для всех мест где раньше был эмодзи.
@@ -552,7 +549,7 @@ function TaskCardView({ task, onClick, onCtxMenu }: TaskCardViewProps): JSX.Elem
           )}
           <span style={{ fontSize: 10, color: 'var(--ink-40)' }}>{relativeAge(task.createdAt)}</span>
           {task.source === 'ai' ? (
-            <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.4px', padding: '1px 5px', borderRadius: 3, background: 'rgba(167,139,250,0.12)', color: '#a78bfa' }}>
+            <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.4px', padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.10)', color: 'rgb(var(--ink))' }}>
               AI
             </span>
           ) : (

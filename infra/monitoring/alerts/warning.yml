@@ -5,28 +5,6 @@ groups:
   - name: druz9-warning
     interval: 60s
     rules:
-      - alert: ArenaQueueDepthGrowing
-        expr: druz9_arena_queue_depth > 50
-        for: 5m
-        labels:
-          severity: warning
-          service: arena
-        annotations:
-          summary: "Arena queue depth > 50 for 5m"
-          description: "Players waiting: {{ $value }}. Matchmaker may be stuck."
-
-      - alert: DailyKataSolveRateLow
-        expr: |
-          sum(rate(druz9_daily_kata_solved_total[24h]))
-            / sum(rate(druz9_daily_kata_attempts_total[24h])) < 0.10
-        for: 1h
-        labels:
-          severity: warning
-          service: daily
-        annotations:
-          summary: "Daily kata solve rate < 10% / 24h"
-          description: "Solve rate: {{ $value | humanizePercentage }}. Today's task may be too hard."
-
       - alert: MockSessionDropoutHigh
         expr: |
           sum(rate(druz9_mock_sessions_total{status="abandoned"}[1h]))

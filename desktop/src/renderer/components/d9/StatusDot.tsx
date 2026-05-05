@@ -6,13 +6,16 @@ import { Fragment } from 'react';
 
 export type DotState = 'idle' | 'ready' | 'thinking' | 'streaming' | 'recording' | 'error';
 
+// B/W rule: signal — это --d9-accent (#FF3B30). Recording / error используют
+// тот же красный, что ready/thinking/streaming — не разводим два оттенка red.
+// Idle — нейтральный white-alpha.
 const CFG: Record<DotState, { c: string; pulse: boolean }> = {
   idle:      { c: 'rgba(255,255,255,0.3)', pulse: false },
   ready:     { c: 'var(--d9-accent)',      pulse: false },
   thinking:  { c: 'var(--d9-accent)',      pulse: true  },
   streaming: { c: 'var(--d9-accent)',      pulse: true  },
-  recording: { c: 'oklch(0.65 0.22 25)',   pulse: true  },
-  error:     { c: 'oklch(0.65 0.22 25)',   pulse: false },
+  recording: { c: 'var(--d9-accent)',      pulse: true  },
+  error:     { c: 'var(--d9-accent)',      pulse: false },
 };
 
 let keyframesInjected = false;

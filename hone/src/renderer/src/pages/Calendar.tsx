@@ -332,8 +332,8 @@ function EventCard({ event }: { event: TutorEvent }) {
           style={{
             margin: '6px 0 10px',
             padding: '8px 10px',
-            border: '1px solid rgba(74,222,128,0.24)',
-            background: 'rgba(74,222,128,0.05)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            background: 'rgba(255,255,255,0.04)',
             borderRadius: 8,
           }}
         >
@@ -342,7 +342,7 @@ function EventCard({ event }: { event: TutorEvent }) {
             style={{
               fontSize: 9,
               letterSpacing: '0.18em',
-              color: 'rgba(74,222,128,0.85)',
+              color: 'rgba(255,255,255,0.85)',
               marginBottom: 2,
             }}
           >

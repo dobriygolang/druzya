@@ -578,6 +578,11 @@ textarea {
   left: -30%;
   width: 160%;
   height: 38%;
+  /* B/W rule exception (Sergey 2026-05-05): Aurora — это декоративный
+     canvas-театр (как и Cosmic, Particles, Abyss). Цветные стопы здесь
+     намеренные — без них Aurora превратится в серый туман и название
+     перестанет иметь смысл. Если решим выпиливать decorative themes
+     полностью — снимем сам theme из CanvasBg.tsx, не grayscale-фейкаем. */
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -592,6 +597,7 @@ textarea {
   will-change: transform;
 }
 .aurora-stripe-2 {
+  /* Aurora exception — см .aurora-stripe-1 выше. */
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -601,6 +607,7 @@ textarea {
   );
 }
 .aurora-stripe-3 {
+  /* Aurora exception — см .aurora-stripe-1 выше. */
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -638,6 +645,9 @@ textarea {
   flex-direction: column;
   font-size: 11px;
   line-height: 1.15;
+  /* B/W rule exception (Sergey 2026-05-05): GridRain — Matrix-style canvas
+     theme. Если уйдёт зелёный — превратится в обычный белый дождь, теряет
+     identity темы. Снимать decorative theme как целое, не фейкаем grayscale. */
   color: rgba(190, 240, 200, 0.55);
   text-shadow: 0 0 6px rgba(120, 240, 160, 0.35);
   will-change: transform;

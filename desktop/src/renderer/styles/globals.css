@@ -319,9 +319,10 @@ button {
   border: 0.5px solid rgba(255, 59, 48, 0.35);
 }
 .d9-tag-ready {
-  background: oklch(0.8 0.17 150 / 0.12);
-  color: var(--d9-ok);
-  border: 0.5px solid oklch(0.8 0.17 150 / 0.28);
+  /* B/W rule: ink-ramp вместо green hue. Семантика через label «ready». */
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--d9-ink-dim);
+  border: 0.5px solid var(--d9-hairline-b);
 }
 
 /* ─── Accent indicators — the tiny leading squares/dots used by pills

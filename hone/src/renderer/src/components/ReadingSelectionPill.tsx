@@ -127,16 +127,17 @@ export function ReadingSelectionPill({ containerRef, materialTitle }: Props) {
   );
 }
 
+// Display-name role-only lowercase per memory/feedback_persona_names.md.
 function pickPersona(activeTrack: 'general' | 'dev' | 'english' | 'go'): {
   slug: string;
   name: string;
 } {
   switch (activeTrack) {
     case 'go':
-      return { slug: 'go-coach', name: 'Гоша · Go-коуч' };
+      return { slug: 'go-coach', name: 'go coach' };
     case 'english':
-      return { slug: 'english-coach', name: 'Maria · English coach' };
+      return { slug: 'english-coach', name: 'english coach' };
     default:
-      return { slug: 'algo-coach', name: 'Алёша · алго-коуч' };
+      return { slug: 'algo-coach', name: 'algo coach' };
   }
 }

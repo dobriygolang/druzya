@@ -1,10 +1,10 @@
 // active_users_pg.go — implementation of app.ActiveUsersReader.
 //
 // Coach generator needs "users active in the last N days". The signal is
-// fuzzy by design: we union three cheap sources kept up-to-date by other
-// services (notify writes tg_user_link.last_seen_at, focus sessions and
-// arena finishes are continuous activity), so a single SQL UNION gives
-// us a stable approximation without a dedicated last_seen column on users.
+// fuzzy by design: we union two cheap sources kept up-to-date by other
+// services (notify writes tg_user_link.last_seen_at, focus sessions are
+// continuous activity), so a single SQL UNION gives us a stable
+// approximation without a dedicated last_seen column on users.
 package infra
 
 import (
@@ -43,10 +43,6 @@ func (r *ActiveUsersReader) ListActive(ctx context.Context, since time.Time, lim
             UNION
             SELECT user_id FROM hone_focus_sessions
               WHERE started_at >= $1
-            UNION
-            SELECT ap.user_id FROM arena_participants ap
-              JOIN arena_matches am ON am.id = ap.match_id
-              WHERE am.finished_at >= $1
         ) AS active
         LIMIT $2`,
 		pgtype.Timestamptz{Time: since, Valid: true}, int32(limit))

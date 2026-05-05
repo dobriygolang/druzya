@@ -17,6 +17,9 @@ interface OnboardingModalProps {
   onClose: () => void;
 }
 
+// Identity 2026-05-04 (Phase 4.1): ML-track выпилен. Specialization
+// сохранена внутри dev_senior. 'ml' оставлен в union только для legacy
+// localStorage migration (см saveProfile read-back).
 type Stack = 'go' | 'ml' | 'de' | 'english' | 'other';
 type Mode = 'explore' | 'commit' | 'deep';
 
@@ -36,9 +39,11 @@ function saveProfile(p: HoneProfile): void {
   }
 }
 
+// 'ml' option выпилен из onboarding selection (Phase 4.1, identity 2026-05-04).
+// ML-материалы остаются специализацией внутри dev_senior — onboarding не
+// предлагает их как отдельный трек.
 const STACKS: { k: Stack; l: string; d: string; g: string }[] = [
   { k: 'go', l: 'Go senior', d: 'concurrency · runtime · profiling', g: 'go' },
-  { k: 'ml', l: 'ML engineering', d: 'classical → DL → LLM eval', g: '∞' },
   { k: 'de', l: 'Data engineering', d: 'pipelines · CDC · streaming', g: '☷' },
   { k: 'english', l: 'English', d: 'B1 → B2+ for tech professionals', g: 'en' },
   { k: 'other', l: 'Other / explore', d: 'figure out which fits — 6w fork track', g: '?' },

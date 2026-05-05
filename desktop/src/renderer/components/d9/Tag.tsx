@@ -6,11 +6,9 @@ import type { ReactNode } from 'react';
 
 export type TagTone = 'neutral' | 'warn' | 'ok' | 'error' | 'accent';
 
-// Tone → color triple. `accent` and `error` share the red palette by
-// design (the new Hone theme folded status-red into the primary accent).
-// Keeping them as separate keys preserves the semantic vocabulary —
-// callers saying `tone="error"` still read correctly even if visually
-// identical to `tone="accent"`.
+// B/W rule: tones — только ink-ramp + signal-red для error/accent. Раньше
+// warn/ok были amber/green oklch — нарушение. Семантика передаётся
+// через label + текст, не через hue.
 const tones: Record<TagTone, { fg: string; bg: string; border: string }> = {
   neutral: {
     fg: 'var(--d9-ink-dim)',
@@ -18,14 +16,14 @@ const tones: Record<TagTone, { fg: string; bg: string; border: string }> = {
     border: 'var(--d9-hairline)',
   },
   warn: {
-    fg: 'var(--d9-warn)',
-    bg: 'oklch(0.6 0.15 70 / 0.12)',
-    border: 'oklch(0.6 0.15 70 / 0.3)',
+    fg: 'rgba(255, 255, 255, 0.85)',
+    bg: 'rgba(255, 255, 255, 0.10)',
+    border: 'rgba(255, 255, 255, 0.20)',
   },
   ok: {
-    fg: 'var(--d9-ok)',
-    bg: 'oklch(0.6 0.15 150 / 0.12)',
-    border: 'oklch(0.6 0.15 150 / 0.3)',
+    fg: 'var(--d9-ink-dim)',
+    bg: 'rgba(255, 255, 255, 0.08)',
+    border: 'var(--d9-hairline-b)',
   },
   error: {
     fg: 'var(--d9-accent-hi)',

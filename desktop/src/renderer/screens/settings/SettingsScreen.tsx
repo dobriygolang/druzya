@@ -358,9 +358,9 @@ function SubscriptionCard({
               fontWeight: 600,
               padding: '3px 10px',
               borderRadius: 999,
-              background: isPaid ? 'oklch(0.55 0.28 265 / 0.14)' : 'oklch(1 0 0 / 0.06)',
+              background: isPaid ? 'var(--d9-accent-glow)' : 'rgba(255,255,255,0.06)',
               color: isPaid ? 'var(--d9-accent-hi)' : 'var(--d9-ink-mute)',
-              border: `0.5px solid ${isPaid ? 'oklch(0.55 0.28 265 / 0.32)' : 'var(--d9-hairline)'}`,
+              border: `0.5px solid ${isPaid ? 'rgba(255,59,48,0.35)' : 'var(--d9-hairline)'}`,
             }}
           >
             {planLabel}
@@ -407,7 +407,7 @@ function SubscriptionCard({
                   width: `${pct}%`,
                   borderRadius: 2,
                   background: nearLimit
-                    ? 'oklch(0.7 0.2 25)'
+                    ? 'var(--d9-accent)'
                     : isPaid
                       ? 'var(--d9-accent)'
                       : 'var(--d9-ink-dim)',

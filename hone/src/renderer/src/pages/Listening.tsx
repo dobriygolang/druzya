@@ -446,7 +446,7 @@ function AddForm({ onCancel, onAdded }: { onCancel: () => void; onAdded: () => v
             Title + transcript заполнятся автоматически. Если у видео нет
             субтитров — переключись на Manual.
           </p>
-          {error && <p style={{ color: 'rgb(248, 113, 113)', fontSize: 12, marginTop: 12 }}>{error}</p>}
+          {error && <p style={{ color: 'var(--red)', fontSize: 12, marginTop: 12 }}>{error}</p>}
           <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
             <button type="submit" disabled={busy} style={primaryBtnStyle}>
               {busy ? 'Pulling…' : 'Pull from YouTube'}
@@ -494,7 +494,7 @@ function AddForm({ onCancel, onAdded }: { onCancel: () => void; onAdded: () => v
             />
           </label>
 
-          {error && <p style={{ color: 'rgb(248, 113, 113)', fontSize: 12, marginTop: 12 }}>{error}</p>}
+          {error && <p style={{ color: 'var(--red)', fontSize: 12, marginTop: 12 }}>{error}</p>}
 
           <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
             <button type="submit" disabled={busy} style={primaryBtnStyle}>

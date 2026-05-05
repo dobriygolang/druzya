@@ -35,12 +35,14 @@ export function WindowShell({
   style,
   className,
 }: Props) {
+  // B/W rule: glass background — pure dark grayscale, no purple/indigo hue.
+  // Earlier oklch(_ _ 278) переливал в фиолет — не identity-aligned.
   const bg =
     glass === 'heavy'
-      ? 'linear-gradient(180deg, oklch(0.16 0.04 278 / 0.72), oklch(0.12 0.035 278 / 0.82))'
+      ? 'linear-gradient(180deg, rgba(20,20,20,0.72), rgba(10,10,10,0.82))'
       : glass === 'medium'
-      ? 'linear-gradient(180deg, oklch(0.16 0.04 278 / 0.88), oklch(0.12 0.035 278 / 0.94))'
-      : 'linear-gradient(180deg, oklch(0.17 0.04 278), oklch(0.12 0.035 278))';
+      ? 'linear-gradient(180deg, rgba(20,20,20,0.88), rgba(10,10,10,0.94))'
+      : 'linear-gradient(180deg, #1a1a1a, #0a0a0a)';
 
   return (
     <div

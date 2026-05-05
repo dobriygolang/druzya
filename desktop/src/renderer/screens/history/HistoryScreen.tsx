@@ -372,7 +372,7 @@ function HistoryRow({
           width: 4,
           alignSelf: 'stretch',
           borderRadius: 2,
-          background: 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)',
+          background: 'linear-gradient(135deg, var(--d9-accent) 0%, rgba(255,255,255,0.6) 100%)',
           opacity: 0.7,
         }}
       />

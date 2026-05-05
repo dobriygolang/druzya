@@ -206,9 +206,6 @@ func criticalHeadlineFor(in domain.BriefPromptInput) (string, string) {
 		}
 		return fmt.Sprintf("Skipped %s %d×. Wall — break it today.", title, n), title
 	}
-	if section, losses := arenaLossStreak(in.Arena); losses >= 3 {
-		return fmt.Sprintf("%d-loss streak in %s — slow down.", losses, section), section
-	}
 	return "", ""
 }
 

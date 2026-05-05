@@ -834,7 +834,7 @@ function SignOutSection() {
           fontSize: 12.5,
           fontWeight: 500,
           color: '#fff',
-          background: busy ? 'rgba(255,106,106,0.4)' : '#ff6a6a',
+          background: busy ? 'rgba(255,59,48,0.4)' : 'var(--red)',
           border: 'none',
           borderRadius: 8,
           cursor: busy ? 'default' : 'pointer',
@@ -1161,7 +1161,7 @@ function VaultSection() {
         />
       )}
       {error ? (
-        <div style={{ fontSize: 12.5, color: '#ff6a6a' }}>{error}</div>
+        <div style={{ fontSize: 12.5, color: 'var(--red)' }}>{error}</div>
       ) : (
         <div style={{ fontSize: 12, color: 'var(--ink-40)', lineHeight: 1.55 }}>
           {state === 'none' &&
@@ -1255,7 +1255,7 @@ function VaultPasswordForm({
     >
       {mode === 'setup' && (
         <div style={{ fontSize: 12, color: 'var(--ink-60)', lineHeight: 1.55, marginBottom: 4 }}>
-          Choose a Vault password (min 8 chars). <strong style={{ color: '#ff9e7a' }}>No recovery</strong>{' '}
+          Choose a Vault password (min 8 chars). <strong style={{ color: 'var(--red)' }}>No recovery</strong>{' '}
           — if you forget it, all encrypted notes are permanently lost.
         </div>
       )}
@@ -1308,7 +1308,8 @@ function VaultPasswordForm({
 
 function VaultStatusBadge({ state }: { state: 'none' | 'locked' | 'unlocked' }) {
   const label = state === 'none' ? 'NOT SET UP' : state === 'locked' ? 'LOCKED' : 'UNLOCKED';
-  const color = state === 'unlocked' ? '#7fd49b' : state === 'locked' ? 'var(--ink-60)' : 'var(--ink-40)';
+  // B/W rule: unlocked → bright ink, locked → dim, none → ghost. No green hue.
+  const color = state === 'unlocked' ? 'rgb(var(--ink))' : state === 'locked' ? 'var(--ink-60)' : 'var(--ink-40)';
   return (
     <span
       className="mono"

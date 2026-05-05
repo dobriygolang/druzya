@@ -879,8 +879,9 @@ export function registerHandlers(opts: RegisterOptions): void {
       broadcast(eventChannels.audioCaptureStateChanged, { source, state });
     },
     onTranscript: (text: string, windowSec: number, isFinal: boolean) => {
-      // eslint-disable-next-line no-console
-      console.log(`[handlers:audio:${source}] broadcast transcript isFinal=${isFinal} len=${text.length}`);
+      // Privacy: транскрипт длина — это metadata leak в crash logs / forensic.
+      // Раньше был console.log — убран. Если нужен debug, вернуть с if (isDev).
+      void text; void windowSec; void isFinal;
       broadcast(eventChannels.audioCaptureTranscript, { source, text, windowSec, isFinal });
       if (isFinal) {
         coachPolicy.onTranscript(text);
