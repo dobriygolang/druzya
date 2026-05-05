@@ -88,7 +88,7 @@ func (uc *GenerateInsights) Do(ctx context.Context, in GenerateInsightsInput) (G
 	// R4 perf: drop user's cached lists после успешного upsert'а так
 	// чтобы next ListInsights увидел свежие rows без ожидания TTL.
 	if uc.CacheInvalidator != nil && res.Upserted > 0 {
-		uc.CacheInvalidator.ForUser(in.UserID)
+		uc.CacheInvalidator.ForUser(ctx, in.UserID)
 	}
 	return res, nil
 }
@@ -100,18 +100,23 @@ func (uc *GenerateInsights) now() time.Time {
 	return time.Now()
 }
 
-// InsightsListCache — narrow interface для in-memory TTL cache. Inject'ится
-// в ListInsights через intelligence wiring; nil-safe (cache miss = direct DB).
+// InsightsListCache — narrow interface для read-through TTL cache.
+// Inject'ится в ListInsights через intelligence wiring; nil-safe
+// (cache miss = direct DB).
 //
-// Не импортируем shared/pkg/ttlcache напрямую чтобы не создать app→shared
-// зависимость в domain слое. Caller передаёт concrete *ttlcache.Cache[[]Insight].
+// Не импортируем shared/pkg/rediscache напрямую — caller (bootstrap)
+// заворачивает concrete *rediscache.Cache[[]Insight] в этот interface.
 //
-// TODO(perf): swap to Redis-backed cache когда cross-instance consistency
-// нужна (multi-replica deploy). In-memory достаточно для single-monolith.
+// Phase D4: backed by Redis (was in-memory ttlcache до R6 conflict resolution).
+// Cross-instance consistency: invalidate в одной replica виден всем. Pattern-
+// delete `insights:{uid}:*` для per-user invalidation.
 type InsightsListCache interface {
-	Get(key string) ([]domain.Insight, bool)
-	Set(key string, v []domain.Insight)
-	Delete(key string)
+	Get(ctx context.Context, key string) ([]domain.Insight, bool)
+	Set(ctx context.Context, key string, v []domain.Insight)
+	Delete(ctx context.Context, key string)
+	// DeleteForUser удаляет все cached entries (любые surface/limit) для
+	// userID. Реализация — pattern-delete `insights:{uid}:*`.
+	DeleteForUser(ctx context.Context, userID uuid.UUID)
 }
 
 // ListInsights — surface-scoped feed. Thin wrapper.
@@ -127,24 +132,45 @@ type ListInsightsInput struct {
 	UserID  uuid.UUID
 	Surface domain.InsightSurface
 	Limit   int
+	Offset  int
+}
+
+// ListInsightsOutput — rows + total live count under the same predicate.
+type ListInsightsOutput struct {
+	Items []domain.Insight
+	Total int
 }
 
 // Do executes the use case.
-func (uc *ListInsights) Do(ctx context.Context, in ListInsightsInput) ([]domain.Insight, error) {
-	cacheKey := insightsCacheKey(in.UserID, in.Surface, in.Limit)
-	if uc.Cache != nil {
-		if cached, ok := uc.Cache.Get(cacheKey); ok {
-			return cached, nil
+//
+// Severity-ranked feed → offset+limit pagination is correct (cursor-by-key
+// would break under tie-breaks in the CASE-derived sort key). Cache only
+// the first page (offset=0) — deeper pages are rare and expire quickly.
+func (uc *ListInsights) Do(ctx context.Context, in ListInsightsInput) (ListInsightsOutput, error) {
+	if in.Offset == 0 {
+		cacheKey := insightsCacheKey(in.UserID, in.Surface, in.Limit)
+		if uc.Cache != nil {
+			if cached, ok := uc.Cache.Get(ctx, cacheKey); ok {
+				// Cache stores items only; recompute total only on
+				// cache miss. For first-page UI «N of M» stays stable
+				// for the cache TTL window.
+				return ListInsightsOutput{Items: cached, Total: len(cached)}, nil
+			}
 		}
+		rows, total, err := uc.Repo.ListLiveBySurfacePaged(ctx, in.UserID, in.Surface, 0, in.Limit)
+		if err != nil {
+			return ListInsightsOutput{}, fmt.Errorf("intelligence.ListInsights: %w", err)
+		}
+		if uc.Cache != nil {
+			uc.Cache.Set(ctx, cacheKey, rows)
+		}
+		return ListInsightsOutput{Items: rows, Total: total}, nil
 	}
-	rows, err := uc.Repo.ListLiveBySurface(ctx, in.UserID, in.Surface, in.Limit)
+	rows, total, err := uc.Repo.ListLiveBySurfacePaged(ctx, in.UserID, in.Surface, in.Offset, in.Limit)
 	if err != nil {
-		return nil, fmt.Errorf("intelligence.ListInsights: %w", err)
+		return ListInsightsOutput{}, fmt.Errorf("intelligence.ListInsights: %w", err)
 	}
-	if uc.Cache != nil {
-		uc.Cache.Set(cacheKey, rows)
-	}
-	return rows, nil
+	return ListInsightsOutput{Items: rows, Total: total}, nil
 }
 
 // insightsCacheKey builds the lookup key. Surface + limit included
@@ -154,14 +180,12 @@ func insightsCacheKey(userID uuid.UUID, surface domain.InsightSurface, limit int
 	return fmt.Sprintf("insights:%s:%s:%d", userID.String(), string(surface), limit)
 }
 
-// InvalidateInsightsCacheForUser — caller (Generate / Ack) уведомляет
-// что user'ские insights могли поменяться. Удаляет ВСЕ surface×limit
-// варианты ленивым approach'ем — в реальности кеш TTL короткий (1m),
-// так что lazy invalidate (drop on next Set conflict) тоже работает.
+// insightsCacheInvalidator — caller (Generate / Ack) уведомляет
+// что user'ские insights могли поменяться.
 //
-// Принимает any cache (Surface key prefix не разделяет surfaces).
-// Простое удаление 4×N keys; если не хочется hardcode'ить surfaces —
-// рефактор на cache implementation с Scan/Prefix-delete.
+// Phase D4: Redis-backed cache supports pattern-delete (`insights:{uid}:*`),
+// так что не нужно перебирать все surface×limit комбинации — один SCAN+DEL.
+// Fallback на per-key Delete остаётся работающим для in-memory backends.
 type insightsCacheInvalidator struct {
 	cache InsightsListCache
 }
@@ -175,24 +199,14 @@ func NewInsightsCacheInvalidator(c InsightsListCache) *insightsCacheInvalidator 
 	return &insightsCacheInvalidator{cache: c}
 }
 
-// ForUser drops every cached (surface, limit) tuple для userID. Limits
-// — typical caller values (default 50 / max 200). Лёгкий over-delete OK.
-func (inv *insightsCacheInvalidator) ForUser(userID uuid.UUID) {
+// ForUser drops every cached (surface, limit) tuple для userID.
+// Implementation использует cache.DeleteForUser — для Redis это
+// SCAN+DEL по pattern'у, не O(surfaces×limits) round-trips.
+func (inv *insightsCacheInvalidator) ForUser(ctx context.Context, userID uuid.UUID) {
 	if inv == nil || inv.cache == nil {
 		return
 	}
-	surfaces := []domain.InsightSurface{
-		domain.InsightSurfaceToday,
-		domain.InsightSurfaceArena,
-		domain.InsightSurfaceMock,
-		domain.InsightSurfaceCodex,
-	}
-	limits := []int{0, 10, 20, 50, 100, 200}
-	for _, s := range surfaces {
-		for _, l := range limits {
-			inv.cache.Delete(insightsCacheKey(userID, s, l))
-		}
-	}
+	inv.cache.DeleteForUser(ctx, userID)
 }
 
 // AckInsight — user-feedback tap.
@@ -227,7 +241,7 @@ func (uc *AckInsight) Do(ctx context.Context, in AckInsightInput) error {
 		return fmt.Errorf("intelligence.AckInsight: invalid action %q", in.Action)
 	}
 	if uc.CacheInvalidator != nil {
-		uc.CacheInvalidator.ForUser(in.UserID)
+		uc.CacheInvalidator.ForUser(ctx, in.UserID)
 	}
 	return nil
 }

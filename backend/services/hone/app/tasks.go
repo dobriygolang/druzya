@@ -83,7 +83,7 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("hone.CreateTask: %w", err)
 	}
-	InvalidateTasksCacheForUser(uc.Cache, in.UserID)
+	InvalidateTasksCacheForUser(ctx, uc.Cache, in.UserID)
 
 	// Phase 10 auto-place. Skip когда Categoriser nil (LLM не wired).
 	// Failure не блокирует Create — task уже сохранён, просто остаётся
@@ -155,21 +155,21 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 	return created, nil
 }
 
-// TasksListCache — narrow interface для in-memory TTL cache на ListTasks.
+// TasksListCache — narrow interface для read-through TTL cache на ListTasks.
 // nil-safe (cache miss = direct DB).
 //
-// TODO(perf): swap to Redis-backed cache когда cross-instance consistency
-// нужна (multi-replica deploy). In-memory достаточно для single-monolith.
+// Phase D4: backed by Redis (was in-memory ttlcache). Cross-instance
+// consistency: invalidate в одной replica виден всем.
 type TasksListCache interface {
-	Get(key string) ([]domain.Task, bool)
-	Set(key string, v []domain.Task)
-	Delete(key string)
+	Get(ctx context.Context, key string) ([]domain.Task, bool)
+	Set(ctx context.Context, key string, v []domain.Task)
+	Delete(ctx context.Context, key string)
 }
 
 // ListTasks — board read for the frontend.
 type ListTasks struct {
 	Tasks domain.TaskRepo
-	// Cache — optional in-memory TTL cache. TaskBoard front опрашивает
+	// Cache — optional read-through TTL cache. TaskBoard front опрашивает
 	// /hone/tasks при каждом focus change → easy hot-key. nil-safe.
 	Cache TasksListCache
 }
@@ -180,7 +180,7 @@ type ListTasks struct {
 func (uc *ListTasks) Do(ctx context.Context, userID uuid.UUID) ([]domain.Task, error) {
 	cacheKey := tasksCacheKey(userID)
 	if uc.Cache != nil {
-		if cached, ok := uc.Cache.Get(cacheKey); ok {
+		if cached, ok := uc.Cache.Get(ctx, cacheKey); ok {
 			return cached, nil
 		}
 	}
@@ -189,7 +189,7 @@ func (uc *ListTasks) Do(ctx context.Context, userID uuid.UUID) ([]domain.Task, e
 		return nil, fmt.Errorf("hone.ListTasks: %w", err)
 	}
 	if uc.Cache != nil {
-		uc.Cache.Set(cacheKey, rows)
+		uc.Cache.Set(ctx, cacheKey, rows)
 	}
 	return rows, nil
 }
@@ -203,11 +203,11 @@ func tasksCacheKey(userID uuid.UUID) string {
 // InvalidateTasksCacheForUser — caller (Create/Move/Delete) уведомляет
 // что user'ские tasks могли поменяться. Дроп key с TTL re-fetch на
 // next List call. nil-safe.
-func InvalidateTasksCacheForUser(cache TasksListCache, userID uuid.UUID) {
+func InvalidateTasksCacheForUser(ctx context.Context, cache TasksListCache, userID uuid.UUID) {
 	if cache == nil {
 		return
 	}
-	cache.Delete(tasksCacheKey(userID))
+	cache.Delete(ctx, tasksCacheKey(userID))
 }
 
 // MoveTaskStatus — explicit user move (drag-and-drop or button). The AI
@@ -235,7 +235,7 @@ func (uc *MoveTaskStatus) Do(ctx context.Context, in MoveTaskStatusInput) (domai
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("hone.MoveTaskStatus: %w", err)
 	}
-	InvalidateTasksCacheForUser(uc.Cache, in.UserID)
+	InvalidateTasksCacheForUser(ctx, uc.Cache, in.UserID)
 	return updated, nil
 }
 
@@ -250,7 +250,7 @@ func (uc *DeleteTask) Do(ctx context.Context, userID, taskID uuid.UUID) error {
 	if err := uc.Tasks.Delete(ctx, userID, taskID); err != nil {
 		return fmt.Errorf("hone.DeleteTask: %w", err)
 	}
-	InvalidateTasksCacheForUser(uc.Cache, userID)
+	InvalidateTasksCacheForUser(ctx, uc.Cache, userID)
 	return nil
 }
 

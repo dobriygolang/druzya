@@ -23,10 +23,41 @@ import (
 	intelligenceApp "druz9/intelligence/app"
 	notifyDomain "druz9/notify/domain"
 	notifyInfra "druz9/notify/infra"
+	"druz9/shared/pkg/rediscache"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// honeTasksRedisCacheAdapter satisfies honeApp.TasksListCache backed by
+// shared/pkg/rediscache. Тонкий shim: app слой не импортирует rediscache
+// напрямую (избегаем app→shared), а wiring передаёт уже завёрнутый cache.
+type honeTasksRedisCacheAdapter struct {
+	c *rediscache.Cache[[]honeDomain.Task]
+}
+
+// NewHoneTasksRedisCache wraps a generic rediscache for ListTasks consumers.
+func NewHoneTasksRedisCache(c *rediscache.Cache[[]honeDomain.Task]) honeApp.TasksListCache {
+	if c == nil {
+		return nil
+	}
+	return &honeTasksRedisCacheAdapter{c: c}
+}
+
+func (a *honeTasksRedisCacheAdapter) Get(ctx context.Context, key string) ([]honeDomain.Task, bool) {
+	return a.c.Get(ctx, key)
+}
+
+func (a *honeTasksRedisCacheAdapter) Set(ctx context.Context, key string, v []honeDomain.Task) {
+	// Fail-soft: errors logged at the rediscache layer (metrics counter), не
+	// возвращаем выше — caller'ы (CreateTask/MoveTaskStatus/DeleteTask) не
+	// должны падать когда cache write не прошёл.
+	_ = a.c.Set(ctx, key, v)
+}
+
+func (a *honeTasksRedisCacheAdapter) Delete(ctx context.Context, key string) {
+	_ = a.c.Delete(ctx, key)
+}
 
 // NewHoneSkillAtlasAdapter — thin wrapper preserving bootstrap-API.
 func NewHoneSkillAtlasAdapter(pool *pgxpool.Pool) honeDomain.SkillAtlasReader {

@@ -14,7 +14,7 @@ import (
 	miDomain "druz9/mock_interview/domain"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/metrics"
-	"druz9/shared/pkg/ttlcache"
+	"druz9/shared/pkg/rediscache"
 	"time"
 
 	"connectrpc.com/connect"
@@ -146,11 +146,18 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	// in a detached goroutine, keeping both surfaces synchronised
 	// without re-fetching readers.
 	insightsRepo := intelInfra.NewInsightsPostgres(d.Pool)
-	// R4 perf: in-memory TTL cache на ListInsights. 1h TTL — Today
-	// surface обновляется вечером после reflection submit'а, и
-	// invalidate'ится Generate/Ack путями, так что stale risk минимален.
-	// 4096 max keys: ~few hundred users × 4 surfaces × 6 limits ≪ 4096.
-	insightsCache := ttlcache.New[[]intelDomain.Insight](1*time.Hour, 4096)
+	// Phase D4: Redis-backed TTL cache на ListInsights (was in-memory ttlcache
+	// до R6 conflict resolution). 1h TTL — Today surface обновляется вечером
+	// после reflection submit'а, invalidate'ится через pattern-delete
+	// `insights:{uid}:*` в Generate/Ack путях. Cross-instance consistency:
+	// invalidate в одной replica виден всем — was a problem с in-memory.
+	// nil-safe: если Redis не wired (тесты) — cache=nil, ListInsights делает
+	// прямой запрос (см. intelApp.ListInsights.Do).
+	var insightsCache intelApp.InsightsListCache
+	if d.Redis != nil {
+		raw := rediscache.New[[]intelDomain.Insight](d.Redis, 1*time.Hour, "intelligence_insights")
+		insightsCache = NewInsightsRedisCache(raw)
+	}
 	insightsInvalidator := intelApp.NewInsightsCacheInvalidator(insightsCache)
 	listInsightsUC := &intelApp.ListInsights{Repo: insightsRepo, Cache: insightsCache}
 	ackInsightUC := &intelApp.AckInsight{Repo: insightsRepo, CacheInvalidator: insightsInvalidator}

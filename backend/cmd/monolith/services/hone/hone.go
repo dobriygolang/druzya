@@ -16,7 +16,7 @@ import (
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/metrics"
 	"druz9/shared/pkg/ratelimit"
-	"druz9/shared/pkg/ttlcache"
+	"druz9/shared/pkg/rediscache"
 	subDomain "druz9/subscription/domain"
 
 	"connectrpc.com/connect"
@@ -25,7 +25,7 @@ import (
 )
 
 // honeDomainTaskAlias — type alias чтобы избежать прямого imports
-// honeDomain.Task в этом файле для generic ttlcache. Уже импортирован
+// honeDomain.Task в этом файле для generic rediscache. Уже импортирован
 // через honeDomain в build, alias — только nominal.
 type honeDomainTaskAlias = honeDomain.Task
 
@@ -409,10 +409,18 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	if d.CategoriserPool != nil {
 		categoriserPool = d.CategoriserPool
 	}
-	// R4 perf: in-memory TTL cache на ListTasks. 15m TTL покрывает burst
-	// polling (frontend опрашивает на focus change), inline-invalidate
-	// в Create/Move/Delete keeps данные corrent. 4096 max keys.
-	tasksCache := ttlcache.New[[]honeDomainTaskAlias](15*time.Minute, 4096)
+	// Phase D4: Redis-backed TTL cache на ListTasks (was in-memory ttlcache до
+	// R6 conflict resolution). 15m TTL покрывает burst polling (frontend
+	// опрашивает на focus change), inline-invalidate в Create/Move/Delete
+	// keeps данные current. Cross-instance consistency: invalidate в одной
+	// replica виден всем — was a problem с in-memory.
+	// nil-safe: если Redis не wired (тесты) — cache=nil, ListTasks делает
+	// прямой запрос (см. honeApp.ListTasks.Do).
+	var tasksCache honeApp.TasksListCache
+	if d.Redis != nil {
+		raw := rediscache.New[[]honeDomainTaskAlias](d.Redis, 15*time.Minute, "hone_tasks")
+		tasksCache = NewHoneTasksRedisCache(raw)
+	}
 	h.CreateTask = &honeApp.CreateTask{
 		Tasks:           tasksRepo,
 		Log:             d.Log,
