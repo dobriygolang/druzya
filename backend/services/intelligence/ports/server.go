@@ -598,10 +598,11 @@ func (s *IntelligenceServer) GetSkillRadar(
 	resp := &pb.SkillRadar{Rubric: out.Rubric}
 	for _, ax := range out.Axes {
 		resp.Axes = append(resp.Axes, &pb.SkillRadarAxis{
-			Key:       ax.Key,
-			Label:     ax.Label,
-			Score:     ax.Score,
-			MockCount: int32(ax.MockCount),
+			Key:        ax.Key,
+			Label:      ax.Label,
+			Score:      ax.Score,
+			MockCount:  int32(ax.MockCount),
+			Confidence: string(ax.Confidence),
 		})
 	}
 	return connect.NewResponse(resp), nil

@@ -65,6 +65,10 @@ WHERE user_id=$1 AND COALESCE(atlas_node_id,'')=COALESCE($2,'')
 }
 
 func (r *Overrides) List(ctx context.Context, userID uuid.UUID, t app.Target) ([]app.Override, error) {
+	// Phase R5: hard LIMIT 500 cap as a defensive guard. Per-user
+	// per-target overrides typically count under 50 (a single user has
+	// O(skills) overrides, not O(users)). Cap protects against runaway
+	// growth from bulk-import or test fixtures.
 	rows, err := r.pool.Query(ctx, `
 SELECT id, user_id, atlas_node_id, step_track_id, step_index,
        url, action, payload, auto_promoted_at, created_at
@@ -74,6 +78,7 @@ WHERE user_id=$1
   AND ($3::uuid IS NULL OR step_track_id=$3)
   AND ($4::int  IS NULL OR step_index=$4)
 ORDER BY created_at ASC
+LIMIT 500
 `, userID, nullableNode(t.AtlasNodeID), t.StepTrackID, t.StepIndex)
 	if err != nil {
 		return nil, fmt.Errorf("curation.Overrides.List: %w", err)

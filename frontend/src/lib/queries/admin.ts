@@ -16,10 +16,6 @@ export type AdminDashboard = {
   users_active_week: number
   users_active_month: number
   users_banned: number
-  matches_today: number
-  matches_week: number
-  katas_today: number
-  katas_week: number
   active_mock_sessions: number
   active_arena_matches: number
   reports_pending: number
@@ -49,10 +45,6 @@ type wireDashboard = Partial<{
   usersActiveWeek: number | string
   usersActiveMonth: number | string
   usersBanned: number | string
-  matchesToday: number | string
-  matchesWeek: number | string
-  katasToday: number | string
-  katasWeek: number | string
   activeMockSessions: number | string
   activeArenaMatches: number | string
   reportsPending: number | string
@@ -77,10 +69,6 @@ export function useAdminDashboardQuery() {
         users_active_week: toNum(w.usersActiveWeek),
         users_active_month: toNum(w.usersActiveMonth),
         users_banned: toNum(w.usersBanned),
-        matches_today: toNum(w.matchesToday),
-        matches_week: toNum(w.matchesWeek),
-        katas_today: toNum(w.katasToday),
-        katas_week: toNum(w.katasWeek),
         active_mock_sessions: toNum(w.activeMockSessions),
         active_arena_matches: toNum(w.activeArenaMatches),
         reports_pending: toNum(w.reportsPending),

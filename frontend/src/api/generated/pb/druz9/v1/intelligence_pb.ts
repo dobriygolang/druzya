@@ -1586,6 +1586,15 @@ export class SkillRadarAxis extends Message<SkillRadarAxis> {
    */
   mockCount = 0;
 
+  /**
+   * confidence — qualitative reliability marker derived from mock_count:
+   *   "empty" (0 mocks) | "low" (1) | "medium" (2-3) | "high" (4+)
+   * UI uses this to render low-confidence axes with dashed outline / pill.
+   *
+   * @generated from field: string confidence = 5;
+   */
+  confidence = "";
+
   constructor(data?: PartialMessage<SkillRadarAxis>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1598,6 +1607,7 @@ export class SkillRadarAxis extends Message<SkillRadarAxis> {
     { no: 2, name: "label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "score", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
     { no: 4, name: "mock_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "confidence", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SkillRadarAxis {

@@ -151,972 +151,6 @@ func (AdminReportStatus) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{1}
 }
 
-// AdminTaskTestCase mirrors the inline test-case item in OpenAPI AdminTask.
-type AdminTaskTestCase struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Input          string                 `protobuf:"bytes,2,opt,name=input,proto3" json:"input,omitempty"`
-	ExpectedOutput string                 `protobuf:"bytes,3,opt,name=expected_output,json=expectedOutput,proto3" json:"expected_output,omitempty"`
-	IsHidden       bool                   `protobuf:"varint,4,opt,name=is_hidden,json=isHidden,proto3" json:"is_hidden,omitempty"`
-	OrderNum       int32                  `protobuf:"varint,5,opt,name=order_num,json=orderNum,proto3" json:"order_num,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *AdminTaskTestCase) Reset() {
-	*x = AdminTaskTestCase{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AdminTaskTestCase) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AdminTaskTestCase) ProtoMessage() {}
-
-func (x *AdminTaskTestCase) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AdminTaskTestCase.ProtoReflect.Descriptor instead.
-func (*AdminTaskTestCase) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *AdminTaskTestCase) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *AdminTaskTestCase) GetInput() string {
-	if x != nil {
-		return x.Input
-	}
-	return ""
-}
-
-func (x *AdminTaskTestCase) GetExpectedOutput() string {
-	if x != nil {
-		return x.ExpectedOutput
-	}
-	return ""
-}
-
-func (x *AdminTaskTestCase) GetIsHidden() bool {
-	if x != nil {
-		return x.IsHidden
-	}
-	return false
-}
-
-func (x *AdminTaskTestCase) GetOrderNum() int32 {
-	if x != nil {
-		return x.OrderNum
-	}
-	return 0
-}
-
-// AdminTaskFollowUpQuestion mirrors the inline follow-up item.
-type AdminTaskFollowUpQuestion struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	QuestionRu    string                 `protobuf:"bytes,1,opt,name=question_ru,json=questionRu,proto3" json:"question_ru,omitempty"`
-	QuestionEn    string                 `protobuf:"bytes,2,opt,name=question_en,json=questionEn,proto3" json:"question_en,omitempty"`
-	AnswerHint    string                 `protobuf:"bytes,3,opt,name=answer_hint,json=answerHint,proto3" json:"answer_hint,omitempty"`
-	OrderNum      int32                  `protobuf:"varint,4,opt,name=order_num,json=orderNum,proto3" json:"order_num,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AdminTaskFollowUpQuestion) Reset() {
-	*x = AdminTaskFollowUpQuestion{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AdminTaskFollowUpQuestion) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AdminTaskFollowUpQuestion) ProtoMessage() {}
-
-func (x *AdminTaskFollowUpQuestion) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AdminTaskFollowUpQuestion.ProtoReflect.Descriptor instead.
-func (*AdminTaskFollowUpQuestion) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *AdminTaskFollowUpQuestion) GetQuestionRu() string {
-	if x != nil {
-		return x.QuestionRu
-	}
-	return ""
-}
-
-func (x *AdminTaskFollowUpQuestion) GetQuestionEn() string {
-	if x != nil {
-		return x.QuestionEn
-	}
-	return ""
-}
-
-func (x *AdminTaskFollowUpQuestion) GetAnswerHint() string {
-	if x != nil {
-		return x.AnswerHint
-	}
-	return ""
-}
-
-func (x *AdminTaskFollowUpQuestion) GetOrderNum() int32 {
-	if x != nil {
-		return x.OrderNum
-	}
-	return 0
-}
-
-// AdminTask is the curator-facing task projection — INCLUDES solution_hint.
-type AdminTask struct {
-	state             protoimpl.MessageState       `protogen:"open.v1"`
-	Id                string                       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Slug              string                       `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
-	TitleRu           string                       `protobuf:"bytes,3,opt,name=title_ru,json=titleRu,proto3" json:"title_ru,omitempty"`
-	TitleEn           string                       `protobuf:"bytes,4,opt,name=title_en,json=titleEn,proto3" json:"title_en,omitempty"`
-	DescriptionRu     string                       `protobuf:"bytes,5,opt,name=description_ru,json=descriptionRu,proto3" json:"description_ru,omitempty"`
-	DescriptionEn     string                       `protobuf:"bytes,6,opt,name=description_en,json=descriptionEn,proto3" json:"description_en,omitempty"`
-	Difficulty        Difficulty                   `protobuf:"varint,7,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
-	Section           Section                      `protobuf:"varint,8,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
-	TimeLimitSec      int32                        `protobuf:"varint,9,opt,name=time_limit_sec,json=timeLimitSec,proto3" json:"time_limit_sec,omitempty"`
-	MemoryLimitMb     int32                        `protobuf:"varint,10,opt,name=memory_limit_mb,json=memoryLimitMb,proto3" json:"memory_limit_mb,omitempty"`
-	SolutionHint      string                       `protobuf:"bytes,11,opt,name=solution_hint,json=solutionHint,proto3" json:"solution_hint,omitempty"` // admin-only (see package doc)
-	Version           int32                        `protobuf:"varint,12,opt,name=version,proto3" json:"version,omitempty"`
-	IsActive          bool                         `protobuf:"varint,13,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
-	TestCases         []*AdminTaskTestCase         `protobuf:"bytes,14,rep,name=test_cases,json=testCases,proto3" json:"test_cases,omitempty"`
-	FollowUpQuestions []*AdminTaskFollowUpQuestion `protobuf:"bytes,15,rep,name=follow_up_questions,json=followUpQuestions,proto3" json:"follow_up_questions,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *AdminTask) Reset() {
-	*x = AdminTask{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AdminTask) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AdminTask) ProtoMessage() {}
-
-func (x *AdminTask) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AdminTask.ProtoReflect.Descriptor instead.
-func (*AdminTask) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *AdminTask) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *AdminTask) GetSlug() string {
-	if x != nil {
-		return x.Slug
-	}
-	return ""
-}
-
-func (x *AdminTask) GetTitleRu() string {
-	if x != nil {
-		return x.TitleRu
-	}
-	return ""
-}
-
-func (x *AdminTask) GetTitleEn() string {
-	if x != nil {
-		return x.TitleEn
-	}
-	return ""
-}
-
-func (x *AdminTask) GetDescriptionRu() string {
-	if x != nil {
-		return x.DescriptionRu
-	}
-	return ""
-}
-
-func (x *AdminTask) GetDescriptionEn() string {
-	if x != nil {
-		return x.DescriptionEn
-	}
-	return ""
-}
-
-func (x *AdminTask) GetDifficulty() Difficulty {
-	if x != nil {
-		return x.Difficulty
-	}
-	return Difficulty_DIFFICULTY_UNSPECIFIED
-}
-
-func (x *AdminTask) GetSection() Section {
-	if x != nil {
-		return x.Section
-	}
-	return Section_SECTION_UNSPECIFIED
-}
-
-func (x *AdminTask) GetTimeLimitSec() int32 {
-	if x != nil {
-		return x.TimeLimitSec
-	}
-	return 0
-}
-
-func (x *AdminTask) GetMemoryLimitMb() int32 {
-	if x != nil {
-		return x.MemoryLimitMb
-	}
-	return 0
-}
-
-func (x *AdminTask) GetSolutionHint() string {
-	if x != nil {
-		return x.SolutionHint
-	}
-	return ""
-}
-
-func (x *AdminTask) GetVersion() int32 {
-	if x != nil {
-		return x.Version
-	}
-	return 0
-}
-
-func (x *AdminTask) GetIsActive() bool {
-	if x != nil {
-		return x.IsActive
-	}
-	return false
-}
-
-func (x *AdminTask) GetTestCases() []*AdminTaskTestCase {
-	if x != nil {
-		return x.TestCases
-	}
-	return nil
-}
-
-func (x *AdminTask) GetFollowUpQuestions() []*AdminTaskFollowUpQuestion {
-	if x != nil {
-		return x.FollowUpQuestions
-	}
-	return nil
-}
-
-// AdminTaskList mirrors OpenAPI AdminTaskList.
-type AdminTaskList struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*AdminTask           `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
-	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AdminTaskList) Reset() {
-	*x = AdminTaskList{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AdminTaskList) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AdminTaskList) ProtoMessage() {}
-
-func (x *AdminTaskList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AdminTaskList.ProtoReflect.Descriptor instead.
-func (*AdminTaskList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *AdminTaskList) GetItems() []*AdminTask {
-	if x != nil {
-		return x.Items
-	}
-	return nil
-}
-
-func (x *AdminTaskList) GetTotal() int32 {
-	if x != nil {
-		return x.Total
-	}
-	return 0
-}
-
-func (x *AdminTaskList) GetPage() int32 {
-	if x != nil {
-		return x.Page
-	}
-	return 0
-}
-
-// AdminTaskUpsert mirrors OpenAPI AdminTaskUpsert (POST/PUT body).
-type AdminTaskUpsert struct {
-	state             protoimpl.MessageState       `protogen:"open.v1"`
-	Slug              string                       `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	TitleRu           string                       `protobuf:"bytes,2,opt,name=title_ru,json=titleRu,proto3" json:"title_ru,omitempty"`
-	TitleEn           string                       `protobuf:"bytes,3,opt,name=title_en,json=titleEn,proto3" json:"title_en,omitempty"`
-	DescriptionRu     string                       `protobuf:"bytes,4,opt,name=description_ru,json=descriptionRu,proto3" json:"description_ru,omitempty"`
-	DescriptionEn     string                       `protobuf:"bytes,5,opt,name=description_en,json=descriptionEn,proto3" json:"description_en,omitempty"`
-	Difficulty        Difficulty                   `protobuf:"varint,6,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
-	Section           Section                      `protobuf:"varint,7,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
-	TimeLimitSec      int32                        `protobuf:"varint,8,opt,name=time_limit_sec,json=timeLimitSec,proto3" json:"time_limit_sec,omitempty"`
-	MemoryLimitMb     int32                        `protobuf:"varint,9,opt,name=memory_limit_mb,json=memoryLimitMb,proto3" json:"memory_limit_mb,omitempty"`
-	SolutionHint      string                       `protobuf:"bytes,10,opt,name=solution_hint,json=solutionHint,proto3" json:"solution_hint,omitempty"`
-	IsActive          bool                         `protobuf:"varint,11,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
-	TestCases         []*AdminTaskTestCase         `protobuf:"bytes,12,rep,name=test_cases,json=testCases,proto3" json:"test_cases,omitempty"`
-	FollowUpQuestions []*AdminTaskFollowUpQuestion `protobuf:"bytes,13,rep,name=follow_up_questions,json=followUpQuestions,proto3" json:"follow_up_questions,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *AdminTaskUpsert) Reset() {
-	*x = AdminTaskUpsert{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AdminTaskUpsert) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AdminTaskUpsert) ProtoMessage() {}
-
-func (x *AdminTaskUpsert) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AdminTaskUpsert.ProtoReflect.Descriptor instead.
-func (*AdminTaskUpsert) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *AdminTaskUpsert) GetSlug() string {
-	if x != nil {
-		return x.Slug
-	}
-	return ""
-}
-
-func (x *AdminTaskUpsert) GetTitleRu() string {
-	if x != nil {
-		return x.TitleRu
-	}
-	return ""
-}
-
-func (x *AdminTaskUpsert) GetTitleEn() string {
-	if x != nil {
-		return x.TitleEn
-	}
-	return ""
-}
-
-func (x *AdminTaskUpsert) GetDescriptionRu() string {
-	if x != nil {
-		return x.DescriptionRu
-	}
-	return ""
-}
-
-func (x *AdminTaskUpsert) GetDescriptionEn() string {
-	if x != nil {
-		return x.DescriptionEn
-	}
-	return ""
-}
-
-func (x *AdminTaskUpsert) GetDifficulty() Difficulty {
-	if x != nil {
-		return x.Difficulty
-	}
-	return Difficulty_DIFFICULTY_UNSPECIFIED
-}
-
-func (x *AdminTaskUpsert) GetSection() Section {
-	if x != nil {
-		return x.Section
-	}
-	return Section_SECTION_UNSPECIFIED
-}
-
-func (x *AdminTaskUpsert) GetTimeLimitSec() int32 {
-	if x != nil {
-		return x.TimeLimitSec
-	}
-	return 0
-}
-
-func (x *AdminTaskUpsert) GetMemoryLimitMb() int32 {
-	if x != nil {
-		return x.MemoryLimitMb
-	}
-	return 0
-}
-
-func (x *AdminTaskUpsert) GetSolutionHint() string {
-	if x != nil {
-		return x.SolutionHint
-	}
-	return ""
-}
-
-func (x *AdminTaskUpsert) GetIsActive() bool {
-	if x != nil {
-		return x.IsActive
-	}
-	return false
-}
-
-func (x *AdminTaskUpsert) GetTestCases() []*AdminTaskTestCase {
-	if x != nil {
-		return x.TestCases
-	}
-	return nil
-}
-
-func (x *AdminTaskUpsert) GetFollowUpQuestions() []*AdminTaskFollowUpQuestion {
-	if x != nil {
-		return x.FollowUpQuestions
-	}
-	return nil
-}
-
-type ListAdminTasksRequest struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	Section    Section                `protobuf:"varint,1,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
-	Difficulty Difficulty             `protobuf:"varint,2,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
-	// is_active_set=true means the is_active filter is applied (value in
-	// is_active). Keeping the tri-state requires a companion flag since
-	// proto3 bool has no "unset" sentinel.
-	IsActive      bool  `protobuf:"varint,3,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
-	IsActiveSet   bool  `protobuf:"varint,4,opt,name=is_active_set,json=isActiveSet,proto3" json:"is_active_set,omitempty"`
-	Page          int32 `protobuf:"varint,5,opt,name=page,proto3" json:"page,omitempty"`
-	Limit         int32 `protobuf:"varint,6,opt,name=limit,proto3" json:"limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListAdminTasksRequest) Reset() {
-	*x = ListAdminTasksRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListAdminTasksRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListAdminTasksRequest) ProtoMessage() {}
-
-func (x *ListAdminTasksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListAdminTasksRequest.ProtoReflect.Descriptor instead.
-func (*ListAdminTasksRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *ListAdminTasksRequest) GetSection() Section {
-	if x != nil {
-		return x.Section
-	}
-	return Section_SECTION_UNSPECIFIED
-}
-
-func (x *ListAdminTasksRequest) GetDifficulty() Difficulty {
-	if x != nil {
-		return x.Difficulty
-	}
-	return Difficulty_DIFFICULTY_UNSPECIFIED
-}
-
-func (x *ListAdminTasksRequest) GetIsActive() bool {
-	if x != nil {
-		return x.IsActive
-	}
-	return false
-}
-
-func (x *ListAdminTasksRequest) GetIsActiveSet() bool {
-	if x != nil {
-		return x.IsActiveSet
-	}
-	return false
-}
-
-func (x *ListAdminTasksRequest) GetPage() int32 {
-	if x != nil {
-		return x.Page
-	}
-	return 0
-}
-
-func (x *ListAdminTasksRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
-type CreateAdminTaskRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Task          *AdminTaskUpsert       `protobuf:"bytes,1,opt,name=task,proto3" json:"task,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateAdminTaskRequest) Reset() {
-	*x = CreateAdminTaskRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateAdminTaskRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateAdminTaskRequest) ProtoMessage() {}
-
-func (x *CreateAdminTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateAdminTaskRequest.ProtoReflect.Descriptor instead.
-func (*CreateAdminTaskRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *CreateAdminTaskRequest) GetTask() *AdminTaskUpsert {
-	if x != nil {
-		return x.Task
-	}
-	return nil
-}
-
-type UpdateAdminTaskRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
-	Task          *AdminTaskUpsert       `protobuf:"bytes,2,opt,name=task,proto3" json:"task,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateAdminTaskRequest) Reset() {
-	*x = UpdateAdminTaskRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateAdminTaskRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateAdminTaskRequest) ProtoMessage() {}
-
-func (x *UpdateAdminTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateAdminTaskRequest.ProtoReflect.Descriptor instead.
-func (*UpdateAdminTaskRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *UpdateAdminTaskRequest) GetTaskId() string {
-	if x != nil {
-		return x.TaskId
-	}
-	return ""
-}
-
-func (x *UpdateAdminTaskRequest) GetTask() *AdminTaskUpsert {
-	if x != nil {
-		return x.Task
-	}
-	return nil
-}
-
-// Company mirrors OpenAPI Company.
-type Company struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Slug             string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
-	Name             string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Difficulty       DungeonTier            `protobuf:"varint,4,opt,name=difficulty,proto3,enum=druz9.v1.DungeonTier" json:"difficulty,omitempty"`
-	MinLevelRequired int32                  `protobuf:"varint,5,opt,name=min_level_required,json=minLevelRequired,proto3" json:"min_level_required,omitempty"`
-	Sections         []Section              `protobuf:"varint,6,rep,packed,name=sections,proto3,enum=druz9.v1.Section" json:"sections,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *Company) Reset() {
-	*x = Company{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Company) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Company) ProtoMessage() {}
-
-func (x *Company) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Company.ProtoReflect.Descriptor instead.
-func (*Company) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *Company) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *Company) GetSlug() string {
-	if x != nil {
-		return x.Slug
-	}
-	return ""
-}
-
-func (x *Company) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Company) GetDifficulty() DungeonTier {
-	if x != nil {
-		return x.Difficulty
-	}
-	return DungeonTier_DUNGEON_TIER_UNSPECIFIED
-}
-
-func (x *Company) GetMinLevelRequired() int32 {
-	if x != nil {
-		return x.MinLevelRequired
-	}
-	return 0
-}
-
-func (x *Company) GetSections() []Section {
-	if x != nil {
-		return x.Sections
-	}
-	return nil
-}
-
-type CompanyList struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*Company             `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CompanyList) Reset() {
-	*x = CompanyList{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CompanyList) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CompanyList) ProtoMessage() {}
-
-func (x *CompanyList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CompanyList.ProtoReflect.Descriptor instead.
-func (*CompanyList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *CompanyList) GetItems() []*Company {
-	if x != nil {
-		return x.Items
-	}
-	return nil
-}
-
-// CompanyUpsert mirrors OpenAPI CompanyUpsert (POST body).
-type CompanyUpsert struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Slug             string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Difficulty       DungeonTier            `protobuf:"varint,3,opt,name=difficulty,proto3,enum=druz9.v1.DungeonTier" json:"difficulty,omitempty"`
-	MinLevelRequired int32                  `protobuf:"varint,4,opt,name=min_level_required,json=minLevelRequired,proto3" json:"min_level_required,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *CompanyUpsert) Reset() {
-	*x = CompanyUpsert{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CompanyUpsert) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CompanyUpsert) ProtoMessage() {}
-
-func (x *CompanyUpsert) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CompanyUpsert.ProtoReflect.Descriptor instead.
-func (*CompanyUpsert) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *CompanyUpsert) GetSlug() string {
-	if x != nil {
-		return x.Slug
-	}
-	return ""
-}
-
-func (x *CompanyUpsert) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *CompanyUpsert) GetDifficulty() DungeonTier {
-	if x != nil {
-		return x.Difficulty
-	}
-	return DungeonTier_DUNGEON_TIER_UNSPECIFIED
-}
-
-func (x *CompanyUpsert) GetMinLevelRequired() int32 {
-	if x != nil {
-		return x.MinLevelRequired
-	}
-	return 0
-}
-
-type ListCompaniesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListCompaniesRequest) Reset() {
-	*x = ListCompaniesRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListCompaniesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListCompaniesRequest) ProtoMessage() {}
-
-func (x *ListCompaniesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListCompaniesRequest.ProtoReflect.Descriptor instead.
-func (*ListCompaniesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{11}
-}
-
-type CreateCompanyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Company       *CompanyUpsert         `protobuf:"bytes,1,opt,name=company,proto3" json:"company,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateCompanyRequest) Reset() {
-	*x = CreateCompanyRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateCompanyRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateCompanyRequest) ProtoMessage() {}
-
-func (x *CreateCompanyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateCompanyRequest.ProtoReflect.Descriptor instead.
-func (*CreateCompanyRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *CreateCompanyRequest) GetCompany() *CompanyUpsert {
-	if x != nil {
-		return x.Company
-	}
-	return nil
-}
-
 // ConfigEntry mirrors OpenAPI ConfigEntry. The OpenAPI `value` field is a
 // oneOf<number|string|bool|object>; we use google.protobuf.Value to keep the
 // JSON shape opaque on the wire. The app layer still round-trips the raw
@@ -1136,7 +170,7 @@ type ConfigEntry struct {
 
 func (x *ConfigEntry) Reset() {
 	*x = ConfigEntry{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[13]
+	mi := &file_druz9_v1_admin_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1148,7 +182,7 @@ func (x *ConfigEntry) String() string {
 func (*ConfigEntry) ProtoMessage() {}
 
 func (x *ConfigEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[13]
+	mi := &file_druz9_v1_admin_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1161,7 +195,7 @@ func (x *ConfigEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigEntry.ProtoReflect.Descriptor instead.
 func (*ConfigEntry) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{13}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ConfigEntry) GetKey() string {
@@ -1215,7 +249,7 @@ type ConfigEntryList struct {
 
 func (x *ConfigEntryList) Reset() {
 	*x = ConfigEntryList{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[14]
+	mi := &file_druz9_v1_admin_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1227,7 +261,7 @@ func (x *ConfigEntryList) String() string {
 func (*ConfigEntryList) ProtoMessage() {}
 
 func (x *ConfigEntryList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[14]
+	mi := &file_druz9_v1_admin_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1240,7 +274,7 @@ func (x *ConfigEntryList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigEntryList.ProtoReflect.Descriptor instead.
 func (*ConfigEntryList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{14}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ConfigEntryList) GetItems() []*ConfigEntry {
@@ -1262,7 +296,7 @@ type UpdateConfigRequest struct {
 
 func (x *UpdateConfigRequest) Reset() {
 	*x = UpdateConfigRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[15]
+	mi := &file_druz9_v1_admin_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1274,7 +308,7 @@ func (x *UpdateConfigRequest) String() string {
 func (*UpdateConfigRequest) ProtoMessage() {}
 
 func (x *UpdateConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[15]
+	mi := &file_druz9_v1_admin_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1287,7 +321,7 @@ func (x *UpdateConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateConfigRequest.ProtoReflect.Descriptor instead.
 func (*UpdateConfigRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{15}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *UpdateConfigRequest) GetKey() string {
@@ -1312,7 +346,7 @@ type ListConfigRequest struct {
 
 func (x *ListConfigRequest) Reset() {
 	*x = ListConfigRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[16]
+	mi := &file_druz9_v1_admin_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1324,7 +358,7 @@ func (x *ListConfigRequest) String() string {
 func (*ListConfigRequest) ProtoMessage() {}
 
 func (x *ListConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[16]
+	mi := &file_druz9_v1_admin_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1337,7 +371,7 @@ func (x *ListConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConfigRequest.ProtoReflect.Descriptor instead.
 func (*ListConfigRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{16}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{3}
 }
 
 // AnticheatSignal mirrors OpenAPI AnticheatSignal.
@@ -1362,7 +396,7 @@ type AnticheatSignal struct {
 
 func (x *AnticheatSignal) Reset() {
 	*x = AnticheatSignal{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[17]
+	mi := &file_druz9_v1_admin_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1374,7 +408,7 @@ func (x *AnticheatSignal) String() string {
 func (*AnticheatSignal) ProtoMessage() {}
 
 func (x *AnticheatSignal) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[17]
+	mi := &file_druz9_v1_admin_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1387,7 +421,7 @@ func (x *AnticheatSignal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnticheatSignal.ProtoReflect.Descriptor instead.
 func (*AnticheatSignal) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{17}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AnticheatSignal) GetId() string {
@@ -1455,7 +489,7 @@ type AnticheatSignalList struct {
 
 func (x *AnticheatSignalList) Reset() {
 	*x = AnticheatSignalList{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[18]
+	mi := &file_druz9_v1_admin_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1467,7 +501,7 @@ func (x *AnticheatSignalList) String() string {
 func (*AnticheatSignalList) ProtoMessage() {}
 
 func (x *AnticheatSignalList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[18]
+	mi := &file_druz9_v1_admin_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1480,7 +514,7 @@ func (x *AnticheatSignalList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnticheatSignalList.ProtoReflect.Descriptor instead.
 func (*AnticheatSignalList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{18}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AnticheatSignalList) GetItems() []*AnticheatSignal {
@@ -1501,7 +535,7 @@ type ListAnticheatRequest struct {
 
 func (x *ListAnticheatRequest) Reset() {
 	*x = ListAnticheatRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[19]
+	mi := &file_druz9_v1_admin_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1513,7 +547,7 @@ func (x *ListAnticheatRequest) String() string {
 func (*ListAnticheatRequest) ProtoMessage() {}
 
 func (x *ListAnticheatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[19]
+	mi := &file_druz9_v1_admin_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1526,7 +560,7 @@ func (x *ListAnticheatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAnticheatRequest.ProtoReflect.Descriptor instead.
 func (*ListAnticheatRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{19}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListAnticheatRequest) GetSeverity() SeverityLevel {
@@ -1555,21 +589,15 @@ func (x *ListAnticheatRequest) GetLimit() int32 {
 // "active_*" timeframe is computed off users.updated_at (see stats.go for
 // the same proxy used by /stats/public).
 type AdminDashboard struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	UsersTotal       int64                  `protobuf:"varint,1,opt,name=users_total,json=usersTotal,proto3" json:"users_total,omitempty"`
-	UsersActiveToday int64                  `protobuf:"varint,2,opt,name=users_active_today,json=usersActiveToday,proto3" json:"users_active_today,omitempty"`
-	UsersActiveWeek  int64                  `protobuf:"varint,3,opt,name=users_active_week,json=usersActiveWeek,proto3" json:"users_active_week,omitempty"`
-	UsersActiveMonth int64                  `protobuf:"varint,4,opt,name=users_active_month,json=usersActiveMonth,proto3" json:"users_active_month,omitempty"`
-	UsersBanned      int64                  `protobuf:"varint,5,opt,name=users_banned,json=usersBanned,proto3" json:"users_banned,omitempty"`
-	// Deprecated: Marked as deprecated in druz9/v1/admin.proto.
-	MatchesToday int64 `protobuf:"varint,6,opt,name=matches_today,json=matchesToday,proto3" json:"matches_today,omitempty"` // pivot 2026-05-01: arena dropped
-	// Deprecated: Marked as deprecated in druz9/v1/admin.proto.
-	MatchesWeek          int64 `protobuf:"varint,7,opt,name=matches_week,json=matchesWeek,proto3" json:"matches_week,omitempty"` // pivot 2026-05-01: arena dropped
-	KatasToday           int64 `protobuf:"varint,8,opt,name=katas_today,json=katasToday,proto3" json:"katas_today,omitempty"`
-	KatasWeek            int64 `protobuf:"varint,9,opt,name=katas_week,json=katasWeek,proto3" json:"katas_week,omitempty"`
-	ActiveMockSessions   int64 `protobuf:"varint,10,opt,name=active_mock_sessions,json=activeMockSessions,proto3" json:"active_mock_sessions,omitempty"`
-	ReportsPending       int64 `protobuf:"varint,12,opt,name=reports_pending,json=reportsPending,proto3" json:"reports_pending,omitempty"`
-	AnticheatSignals_24H int64 `protobuf:"varint,13,opt,name=anticheat_signals_24h,json=anticheatSignals24h,proto3" json:"anticheat_signals_24h,omitempty"`
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	UsersTotal           int64                  `protobuf:"varint,1,opt,name=users_total,json=usersTotal,proto3" json:"users_total,omitempty"`
+	UsersActiveToday     int64                  `protobuf:"varint,2,opt,name=users_active_today,json=usersActiveToday,proto3" json:"users_active_today,omitempty"`
+	UsersActiveWeek      int64                  `protobuf:"varint,3,opt,name=users_active_week,json=usersActiveWeek,proto3" json:"users_active_week,omitempty"`
+	UsersActiveMonth     int64                  `protobuf:"varint,4,opt,name=users_active_month,json=usersActiveMonth,proto3" json:"users_active_month,omitempty"`
+	UsersBanned          int64                  `protobuf:"varint,5,opt,name=users_banned,json=usersBanned,proto3" json:"users_banned,omitempty"`
+	ActiveMockSessions   int64                  `protobuf:"varint,10,opt,name=active_mock_sessions,json=activeMockSessions,proto3" json:"active_mock_sessions,omitempty"`
+	ReportsPending       int64                  `protobuf:"varint,12,opt,name=reports_pending,json=reportsPending,proto3" json:"reports_pending,omitempty"`
+	AnticheatSignals_24H int64                  `protobuf:"varint,13,opt,name=anticheat_signals_24h,json=anticheatSignals24h,proto3" json:"anticheat_signals_24h,omitempty"`
 	// generated_at — when the snapshot was assembled (cache miss timestamp).
 	GeneratedAt   *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1578,7 +606,7 @@ type AdminDashboard struct {
 
 func (x *AdminDashboard) Reset() {
 	*x = AdminDashboard{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[20]
+	mi := &file_druz9_v1_admin_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1590,7 +618,7 @@ func (x *AdminDashboard) String() string {
 func (*AdminDashboard) ProtoMessage() {}
 
 func (x *AdminDashboard) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[20]
+	mi := &file_druz9_v1_admin_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1603,7 +631,7 @@ func (x *AdminDashboard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminDashboard.ProtoReflect.Descriptor instead.
 func (*AdminDashboard) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{20}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AdminDashboard) GetUsersTotal() int64 {
@@ -1637,36 +665,6 @@ func (x *AdminDashboard) GetUsersActiveMonth() int64 {
 func (x *AdminDashboard) GetUsersBanned() int64 {
 	if x != nil {
 		return x.UsersBanned
-	}
-	return 0
-}
-
-// Deprecated: Marked as deprecated in druz9/v1/admin.proto.
-func (x *AdminDashboard) GetMatchesToday() int64 {
-	if x != nil {
-		return x.MatchesToday
-	}
-	return 0
-}
-
-// Deprecated: Marked as deprecated in druz9/v1/admin.proto.
-func (x *AdminDashboard) GetMatchesWeek() int64 {
-	if x != nil {
-		return x.MatchesWeek
-	}
-	return 0
-}
-
-func (x *AdminDashboard) GetKatasToday() int64 {
-	if x != nil {
-		return x.KatasToday
-	}
-	return 0
-}
-
-func (x *AdminDashboard) GetKatasWeek() int64 {
-	if x != nil {
-		return x.KatasWeek
 	}
 	return 0
 }
@@ -1707,7 +705,7 @@ type GetAdminDashboardRequest struct {
 
 func (x *GetAdminDashboardRequest) Reset() {
 	*x = GetAdminDashboardRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[21]
+	mi := &file_druz9_v1_admin_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1719,7 +717,7 @@ func (x *GetAdminDashboardRequest) String() string {
 func (*GetAdminDashboardRequest) ProtoMessage() {}
 
 func (x *GetAdminDashboardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[21]
+	mi := &file_druz9_v1_admin_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1732,7 +730,7 @@ func (x *GetAdminDashboardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdminDashboardRequest.ProtoReflect.Descriptor instead.
 func (*GetAdminDashboardRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{21}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{8}
 }
 
 // AdminUserRow is the row shape returned by GET /api/v1/admin/users.
@@ -1756,7 +754,7 @@ type AdminUserRow struct {
 
 func (x *AdminUserRow) Reset() {
 	*x = AdminUserRow{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[22]
+	mi := &file_druz9_v1_admin_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1768,7 +766,7 @@ func (x *AdminUserRow) String() string {
 func (*AdminUserRow) ProtoMessage() {}
 
 func (x *AdminUserRow) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[22]
+	mi := &file_druz9_v1_admin_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1781,7 +779,7 @@ func (x *AdminUserRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminUserRow.ProtoReflect.Descriptor instead.
 func (*AdminUserRow) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{22}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AdminUserRow) GetId() string {
@@ -1865,7 +863,7 @@ type AdminUserList struct {
 
 func (x *AdminUserList) Reset() {
 	*x = AdminUserList{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[23]
+	mi := &file_druz9_v1_admin_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1877,7 +875,7 @@ func (x *AdminUserList) String() string {
 func (*AdminUserList) ProtoMessage() {}
 
 func (x *AdminUserList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[23]
+	mi := &file_druz9_v1_admin_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1890,7 +888,7 @@ func (x *AdminUserList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminUserList.ProtoReflect.Descriptor instead.
 func (*AdminUserList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{23}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AdminUserList) GetItems() []*AdminUserRow {
@@ -1928,7 +926,7 @@ type ListAdminUsersRequest struct {
 
 func (x *ListAdminUsersRequest) Reset() {
 	*x = ListAdminUsersRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[24]
+	mi := &file_druz9_v1_admin_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1940,7 +938,7 @@ func (x *ListAdminUsersRequest) String() string {
 func (*ListAdminUsersRequest) ProtoMessage() {}
 
 func (x *ListAdminUsersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[24]
+	mi := &file_druz9_v1_admin_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1953,7 +951,7 @@ func (x *ListAdminUsersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdminUsersRequest.ProtoReflect.Descriptor instead.
 func (*ListAdminUsersRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{24}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListAdminUsersRequest) GetQuery() string {
@@ -1996,7 +994,7 @@ type BanUserRequest struct {
 
 func (x *BanUserRequest) Reset() {
 	*x = BanUserRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[25]
+	mi := &file_druz9_v1_admin_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2008,7 +1006,7 @@ func (x *BanUserRequest) String() string {
 func (*BanUserRequest) ProtoMessage() {}
 
 func (x *BanUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[25]
+	mi := &file_druz9_v1_admin_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2021,7 +1019,7 @@ func (x *BanUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BanUserRequest.ProtoReflect.Descriptor instead.
 func (*BanUserRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{25}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *BanUserRequest) GetUserId() string {
@@ -2054,7 +1052,7 @@ type UnbanUserRequest struct {
 
 func (x *UnbanUserRequest) Reset() {
 	*x = UnbanUserRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[26]
+	mi := &file_druz9_v1_admin_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2066,7 +1064,7 @@ func (x *UnbanUserRequest) String() string {
 func (*UnbanUserRequest) ProtoMessage() {}
 
 func (x *UnbanUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[26]
+	mi := &file_druz9_v1_admin_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2079,7 +1077,7 @@ func (x *UnbanUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnbanUserRequest.ProtoReflect.Descriptor instead.
 func (*UnbanUserRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{26}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UnbanUserRequest) GetUserId() string {
@@ -2098,7 +1096,7 @@ type BanUserResponse struct {
 
 func (x *BanUserResponse) Reset() {
 	*x = BanUserResponse{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[27]
+	mi := &file_druz9_v1_admin_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2110,7 +1108,7 @@ func (x *BanUserResponse) String() string {
 func (*BanUserResponse) ProtoMessage() {}
 
 func (x *BanUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[27]
+	mi := &file_druz9_v1_admin_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2123,7 +1121,7 @@ func (x *BanUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BanUserResponse.ProtoReflect.Descriptor instead.
 func (*BanUserResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{27}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *BanUserResponse) GetUser() *AdminUserRow {
@@ -2150,7 +1148,7 @@ type AdminReport struct {
 
 func (x *AdminReport) Reset() {
 	*x = AdminReport{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[28]
+	mi := &file_druz9_v1_admin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2162,7 +1160,7 @@ func (x *AdminReport) String() string {
 func (*AdminReport) ProtoMessage() {}
 
 func (x *AdminReport) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[28]
+	mi := &file_druz9_v1_admin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2175,7 +1173,7 @@ func (x *AdminReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminReport.ProtoReflect.Descriptor instead.
 func (*AdminReport) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{28}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AdminReport) GetId() string {
@@ -2251,7 +1249,7 @@ type AdminReportList struct {
 
 func (x *AdminReportList) Reset() {
 	*x = AdminReportList{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[29]
+	mi := &file_druz9_v1_admin_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2263,7 +1261,7 @@ func (x *AdminReportList) String() string {
 func (*AdminReportList) ProtoMessage() {}
 
 func (x *AdminReportList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[29]
+	mi := &file_druz9_v1_admin_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2276,7 +1274,7 @@ func (x *AdminReportList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminReportList.ProtoReflect.Descriptor instead.
 func (*AdminReportList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{29}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AdminReportList) GetItems() []*AdminReport {
@@ -2304,7 +1302,7 @@ type ListAdminReportsRequest struct {
 
 func (x *ListAdminReportsRequest) Reset() {
 	*x = ListAdminReportsRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[30]
+	mi := &file_druz9_v1_admin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2316,7 +1314,7 @@ func (x *ListAdminReportsRequest) String() string {
 func (*ListAdminReportsRequest) ProtoMessage() {}
 
 func (x *ListAdminReportsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[30]
+	mi := &file_druz9_v1_admin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2329,7 +1327,7 @@ func (x *ListAdminReportsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdminReportsRequest.ProtoReflect.Descriptor instead.
 func (*ListAdminReportsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{30}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ListAdminReportsRequest) GetStatus() AdminReportStatus {
@@ -2360,7 +1358,7 @@ type StatusServiceState struct {
 
 func (x *StatusServiceState) Reset() {
 	*x = StatusServiceState{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[31]
+	mi := &file_druz9_v1_admin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2372,7 +1370,7 @@ func (x *StatusServiceState) String() string {
 func (*StatusServiceState) ProtoMessage() {}
 
 func (x *StatusServiceState) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[31]
+	mi := &file_druz9_v1_admin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2385,7 +1383,7 @@ func (x *StatusServiceState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusServiceState.ProtoReflect.Descriptor instead.
 func (*StatusServiceState) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{31}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *StatusServiceState) GetName() string {
@@ -2439,7 +1437,7 @@ type StatusIncident struct {
 
 func (x *StatusIncident) Reset() {
 	*x = StatusIncident{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[32]
+	mi := &file_druz9_v1_admin_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2451,7 +1449,7 @@ func (x *StatusIncident) String() string {
 func (*StatusIncident) ProtoMessage() {}
 
 func (x *StatusIncident) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[32]
+	mi := &file_druz9_v1_admin_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2464,7 +1462,7 @@ func (x *StatusIncident) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusIncident.ProtoReflect.Descriptor instead.
 func (*StatusIncident) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{32}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *StatusIncident) GetId() string {
@@ -2529,7 +1527,7 @@ type StatusPage struct {
 
 func (x *StatusPage) Reset() {
 	*x = StatusPage{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[33]
+	mi := &file_druz9_v1_admin_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2541,7 +1539,7 @@ func (x *StatusPage) String() string {
 func (*StatusPage) ProtoMessage() {}
 
 func (x *StatusPage) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[33]
+	mi := &file_druz9_v1_admin_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2554,7 +1552,7 @@ func (x *StatusPage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusPage.ProtoReflect.Descriptor instead.
 func (*StatusPage) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{33}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *StatusPage) GetOverallStatus() string {
@@ -2600,7 +1598,7 @@ type GetStatusPageRequest struct {
 
 func (x *GetStatusPageRequest) Reset() {
 	*x = GetStatusPageRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[34]
+	mi := &file_druz9_v1_admin_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2612,7 +1610,7 @@ func (x *GetStatusPageRequest) String() string {
 func (*GetStatusPageRequest) ProtoMessage() {}
 
 func (x *GetStatusPageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[34]
+	mi := &file_druz9_v1_admin_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2625,105 +1623,14 @@ func (x *GetStatusPageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusPageRequest.ProtoReflect.Descriptor instead.
 func (*GetStatusPageRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{34}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{21}
 }
 
 var File_druz9_v1_admin_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\n" +
-	"\x14druz9/v1/admin.proto\x12\bdruz9.v1\x1a\x15druz9/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9c\x01\n" +
-	"\x11AdminTaskTestCase\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05input\x18\x02 \x01(\tR\x05input\x12'\n" +
-	"\x0fexpected_output\x18\x03 \x01(\tR\x0eexpectedOutput\x12\x1b\n" +
-	"\tis_hidden\x18\x04 \x01(\bR\bisHidden\x12\x1b\n" +
-	"\torder_num\x18\x05 \x01(\x05R\borderNum\"\x9b\x01\n" +
-	"\x19AdminTaskFollowUpQuestion\x12\x1f\n" +
-	"\vquestion_ru\x18\x01 \x01(\tR\n" +
-	"questionRu\x12\x1f\n" +
-	"\vquestion_en\x18\x02 \x01(\tR\n" +
-	"questionEn\x12\x1f\n" +
-	"\vanswer_hint\x18\x03 \x01(\tR\n" +
-	"answerHint\x12\x1b\n" +
-	"\torder_num\x18\x04 \x01(\x05R\borderNum\"\xd1\x04\n" +
-	"\tAdminTask\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x19\n" +
-	"\btitle_ru\x18\x03 \x01(\tR\atitleRu\x12\x19\n" +
-	"\btitle_en\x18\x04 \x01(\tR\atitleEn\x12%\n" +
-	"\x0edescription_ru\x18\x05 \x01(\tR\rdescriptionRu\x12%\n" +
-	"\x0edescription_en\x18\x06 \x01(\tR\rdescriptionEn\x124\n" +
-	"\n" +
-	"difficulty\x18\a \x01(\x0e2\x14.druz9.v1.DifficultyR\n" +
-	"difficulty\x12+\n" +
-	"\asection\x18\b \x01(\x0e2\x11.druz9.v1.SectionR\asection\x12$\n" +
-	"\x0etime_limit_sec\x18\t \x01(\x05R\ftimeLimitSec\x12&\n" +
-	"\x0fmemory_limit_mb\x18\n" +
-	" \x01(\x05R\rmemoryLimitMb\x12#\n" +
-	"\rsolution_hint\x18\v \x01(\tR\fsolutionHint\x12\x18\n" +
-	"\aversion\x18\f \x01(\x05R\aversion\x12\x1b\n" +
-	"\tis_active\x18\r \x01(\bR\bisActive\x12:\n" +
-	"\n" +
-	"test_cases\x18\x0e \x03(\v2\x1b.druz9.v1.AdminTaskTestCaseR\ttestCases\x12S\n" +
-	"\x13follow_up_questions\x18\x0f \x03(\v2#.druz9.v1.AdminTaskFollowUpQuestionR\x11followUpQuestions\"d\n" +
-	"\rAdminTaskList\x12)\n" +
-	"\x05items\x18\x01 \x03(\v2\x13.druz9.v1.AdminTaskR\x05items\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
-	"\x04page\x18\x03 \x01(\x05R\x04page\"\xad\x04\n" +
-	"\x0fAdminTaskUpsert\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x19\n" +
-	"\btitle_ru\x18\x02 \x01(\tR\atitleRu\x12\x19\n" +
-	"\btitle_en\x18\x03 \x01(\tR\atitleEn\x12%\n" +
-	"\x0edescription_ru\x18\x04 \x01(\tR\rdescriptionRu\x12%\n" +
-	"\x0edescription_en\x18\x05 \x01(\tR\rdescriptionEn\x124\n" +
-	"\n" +
-	"difficulty\x18\x06 \x01(\x0e2\x14.druz9.v1.DifficultyR\n" +
-	"difficulty\x12+\n" +
-	"\asection\x18\a \x01(\x0e2\x11.druz9.v1.SectionR\asection\x12$\n" +
-	"\x0etime_limit_sec\x18\b \x01(\x05R\ftimeLimitSec\x12&\n" +
-	"\x0fmemory_limit_mb\x18\t \x01(\x05R\rmemoryLimitMb\x12#\n" +
-	"\rsolution_hint\x18\n" +
-	" \x01(\tR\fsolutionHint\x12\x1b\n" +
-	"\tis_active\x18\v \x01(\bR\bisActive\x12:\n" +
-	"\n" +
-	"test_cases\x18\f \x03(\v2\x1b.druz9.v1.AdminTaskTestCaseR\ttestCases\x12S\n" +
-	"\x13follow_up_questions\x18\r \x03(\v2#.druz9.v1.AdminTaskFollowUpQuestionR\x11followUpQuestions\"\xe5\x01\n" +
-	"\x15ListAdminTasksRequest\x12+\n" +
-	"\asection\x18\x01 \x01(\x0e2\x11.druz9.v1.SectionR\asection\x124\n" +
-	"\n" +
-	"difficulty\x18\x02 \x01(\x0e2\x14.druz9.v1.DifficultyR\n" +
-	"difficulty\x12\x1b\n" +
-	"\tis_active\x18\x03 \x01(\bR\bisActive\x12\"\n" +
-	"\ris_active_set\x18\x04 \x01(\bR\visActiveSet\x12\x12\n" +
-	"\x04page\x18\x05 \x01(\x05R\x04page\x12\x14\n" +
-	"\x05limit\x18\x06 \x01(\x05R\x05limit\"G\n" +
-	"\x16CreateAdminTaskRequest\x12-\n" +
-	"\x04task\x18\x01 \x01(\v2\x19.druz9.v1.AdminTaskUpsertR\x04task\"`\n" +
-	"\x16UpdateAdminTaskRequest\x12\x17\n" +
-	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12-\n" +
-	"\x04task\x18\x02 \x01(\v2\x19.druz9.v1.AdminTaskUpsertR\x04task\"\xd5\x01\n" +
-	"\aCompany\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x125\n" +
-	"\n" +
-	"difficulty\x18\x04 \x01(\x0e2\x15.druz9.v1.DungeonTierR\n" +
-	"difficulty\x12,\n" +
-	"\x12min_level_required\x18\x05 \x01(\x05R\x10minLevelRequired\x12-\n" +
-	"\bsections\x18\x06 \x03(\x0e2\x11.druz9.v1.SectionR\bsections\"6\n" +
-	"\vCompanyList\x12'\n" +
-	"\x05items\x18\x01 \x03(\v2\x11.druz9.v1.CompanyR\x05items\"\x9c\x01\n" +
-	"\rCompanyUpsert\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x125\n" +
-	"\n" +
-	"difficulty\x18\x03 \x01(\x0e2\x15.druz9.v1.DungeonTierR\n" +
-	"difficulty\x12,\n" +
-	"\x12min_level_required\x18\x04 \x01(\x05R\x10minLevelRequired\"\x16\n" +
-	"\x14ListCompaniesRequest\"I\n" +
-	"\x14CreateCompanyRequest\x121\n" +
-	"\acompany\x18\x01 \x01(\v2\x17.druz9.v1.CompanyUpsertR\acompany\"\xf8\x01\n" +
+	"\x14druz9/v1/admin.proto\x12\bdruz9.v1\x1a\x15druz9/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf8\x01\n" +
 	"\vConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12,\n" +
 	"\x05value\x18\x02 \x01(\v2\x16.google.protobuf.ValueR\x05value\x12-\n" +
@@ -2754,25 +1661,20 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\x14ListAnticheatRequest\x123\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\x17.druz9.v1.SeverityLevelR\bseverity\x12.\n" +
 	"\x04from\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\xc0\x04\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\xc8\x03\n" +
 	"\x0eAdminDashboard\x12\x1f\n" +
 	"\vusers_total\x18\x01 \x01(\x03R\n" +
 	"usersTotal\x12,\n" +
 	"\x12users_active_today\x18\x02 \x01(\x03R\x10usersActiveToday\x12*\n" +
 	"\x11users_active_week\x18\x03 \x01(\x03R\x0fusersActiveWeek\x12,\n" +
 	"\x12users_active_month\x18\x04 \x01(\x03R\x10usersActiveMonth\x12!\n" +
-	"\fusers_banned\x18\x05 \x01(\x03R\vusersBanned\x12'\n" +
-	"\rmatches_today\x18\x06 \x01(\x03B\x02\x18\x01R\fmatchesToday\x12%\n" +
-	"\fmatches_week\x18\a \x01(\x03B\x02\x18\x01R\vmatchesWeek\x12\x1f\n" +
-	"\vkatas_today\x18\b \x01(\x03R\n" +
-	"katasToday\x12\x1d\n" +
-	"\n" +
-	"katas_week\x18\t \x01(\x03R\tkatasWeek\x120\n" +
+	"\fusers_banned\x18\x05 \x01(\x03R\vusersBanned\x120\n" +
 	"\x14active_mock_sessions\x18\n" +
 	" \x01(\x03R\x12activeMockSessions\x12'\n" +
 	"\x0freports_pending\x18\f \x01(\x03R\x0ereportsPending\x122\n" +
 	"\x15anticheat_signals_24h\x18\r \x01(\x03R\x13anticheatSignals24h\x12=\n" +
-	"\fgenerated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAtJ\x04\b\v\x10\f\"\x1a\n" +
+	"\fgenerated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAtJ\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"J\x04\b\v\x10\f\"\x1a\n" +
 	"\x18GetAdminDashboardRequest\"\xfb\x02\n" +
 	"\fAdminUserRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
@@ -2890,119 +1792,85 @@ func file_druz9_v1_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_druz9_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_druz9_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_druz9_v1_admin_proto_goTypes = []any{
-	(ConfigEntryType)(0),              // 0: druz9.v1.ConfigEntryType
-	(AdminReportStatus)(0),            // 1: druz9.v1.AdminReportStatus
-	(*AdminTaskTestCase)(nil),         // 2: druz9.v1.AdminTaskTestCase
-	(*AdminTaskFollowUpQuestion)(nil), // 3: druz9.v1.AdminTaskFollowUpQuestion
-	(*AdminTask)(nil),                 // 4: druz9.v1.AdminTask
-	(*AdminTaskList)(nil),             // 5: druz9.v1.AdminTaskList
-	(*AdminTaskUpsert)(nil),           // 6: druz9.v1.AdminTaskUpsert
-	(*ListAdminTasksRequest)(nil),     // 7: druz9.v1.ListAdminTasksRequest
-	(*CreateAdminTaskRequest)(nil),    // 8: druz9.v1.CreateAdminTaskRequest
-	(*UpdateAdminTaskRequest)(nil),    // 9: druz9.v1.UpdateAdminTaskRequest
-	(*Company)(nil),                   // 10: druz9.v1.Company
-	(*CompanyList)(nil),               // 11: druz9.v1.CompanyList
-	(*CompanyUpsert)(nil),             // 12: druz9.v1.CompanyUpsert
-	(*ListCompaniesRequest)(nil),      // 13: druz9.v1.ListCompaniesRequest
-	(*CreateCompanyRequest)(nil),      // 14: druz9.v1.CreateCompanyRequest
-	(*ConfigEntry)(nil),               // 15: druz9.v1.ConfigEntry
-	(*ConfigEntryList)(nil),           // 16: druz9.v1.ConfigEntryList
-	(*UpdateConfigRequest)(nil),       // 17: druz9.v1.UpdateConfigRequest
-	(*ListConfigRequest)(nil),         // 18: druz9.v1.ListConfigRequest
-	(*AnticheatSignal)(nil),           // 19: druz9.v1.AnticheatSignal
-	(*AnticheatSignalList)(nil),       // 20: druz9.v1.AnticheatSignalList
-	(*ListAnticheatRequest)(nil),      // 21: druz9.v1.ListAnticheatRequest
-	(*AdminDashboard)(nil),            // 22: druz9.v1.AdminDashboard
-	(*GetAdminDashboardRequest)(nil),  // 23: druz9.v1.GetAdminDashboardRequest
-	(*AdminUserRow)(nil),              // 24: druz9.v1.AdminUserRow
-	(*AdminUserList)(nil),             // 25: druz9.v1.AdminUserList
-	(*ListAdminUsersRequest)(nil),     // 26: druz9.v1.ListAdminUsersRequest
-	(*BanUserRequest)(nil),            // 27: druz9.v1.BanUserRequest
-	(*UnbanUserRequest)(nil),          // 28: druz9.v1.UnbanUserRequest
-	(*BanUserResponse)(nil),           // 29: druz9.v1.BanUserResponse
-	(*AdminReport)(nil),               // 30: druz9.v1.AdminReport
-	(*AdminReportList)(nil),           // 31: druz9.v1.AdminReportList
-	(*ListAdminReportsRequest)(nil),   // 32: druz9.v1.ListAdminReportsRequest
-	(*StatusServiceState)(nil),        // 33: druz9.v1.StatusServiceState
-	(*StatusIncident)(nil),            // 34: druz9.v1.StatusIncident
-	(*StatusPage)(nil),                // 35: druz9.v1.StatusPage
-	(*GetStatusPageRequest)(nil),      // 36: druz9.v1.GetStatusPageRequest
-	(Difficulty)(0),                   // 37: druz9.v1.Difficulty
-	(Section)(0),                      // 38: druz9.v1.Section
-	(DungeonTier)(0),                  // 39: druz9.v1.DungeonTier
-	(*structpb.Value)(nil),            // 40: google.protobuf.Value
-	(*timestamppb.Timestamp)(nil),     // 41: google.protobuf.Timestamp
-	(SeverityLevel)(0),                // 42: druz9.v1.SeverityLevel
+	(ConfigEntryType)(0),             // 0: druz9.v1.ConfigEntryType
+	(AdminReportStatus)(0),           // 1: druz9.v1.AdminReportStatus
+	(*ConfigEntry)(nil),              // 2: druz9.v1.ConfigEntry
+	(*ConfigEntryList)(nil),          // 3: druz9.v1.ConfigEntryList
+	(*UpdateConfigRequest)(nil),      // 4: druz9.v1.UpdateConfigRequest
+	(*ListConfigRequest)(nil),        // 5: druz9.v1.ListConfigRequest
+	(*AnticheatSignal)(nil),          // 6: druz9.v1.AnticheatSignal
+	(*AnticheatSignalList)(nil),      // 7: druz9.v1.AnticheatSignalList
+	(*ListAnticheatRequest)(nil),     // 8: druz9.v1.ListAnticheatRequest
+	(*AdminDashboard)(nil),           // 9: druz9.v1.AdminDashboard
+	(*GetAdminDashboardRequest)(nil), // 10: druz9.v1.GetAdminDashboardRequest
+	(*AdminUserRow)(nil),             // 11: druz9.v1.AdminUserRow
+	(*AdminUserList)(nil),            // 12: druz9.v1.AdminUserList
+	(*ListAdminUsersRequest)(nil),    // 13: druz9.v1.ListAdminUsersRequest
+	(*BanUserRequest)(nil),           // 14: druz9.v1.BanUserRequest
+	(*UnbanUserRequest)(nil),         // 15: druz9.v1.UnbanUserRequest
+	(*BanUserResponse)(nil),          // 16: druz9.v1.BanUserResponse
+	(*AdminReport)(nil),              // 17: druz9.v1.AdminReport
+	(*AdminReportList)(nil),          // 18: druz9.v1.AdminReportList
+	(*ListAdminReportsRequest)(nil),  // 19: druz9.v1.ListAdminReportsRequest
+	(*StatusServiceState)(nil),       // 20: druz9.v1.StatusServiceState
+	(*StatusIncident)(nil),           // 21: druz9.v1.StatusIncident
+	(*StatusPage)(nil),               // 22: druz9.v1.StatusPage
+	(*GetStatusPageRequest)(nil),     // 23: druz9.v1.GetStatusPageRequest
+	(*structpb.Value)(nil),           // 24: google.protobuf.Value
+	(*timestamppb.Timestamp)(nil),    // 25: google.protobuf.Timestamp
+	(SeverityLevel)(0),               // 26: druz9.v1.SeverityLevel
 }
 var file_druz9_v1_admin_proto_depIdxs = []int32{
-	37, // 0: druz9.v1.AdminTask.difficulty:type_name -> druz9.v1.Difficulty
-	38, // 1: druz9.v1.AdminTask.section:type_name -> druz9.v1.Section
-	2,  // 2: druz9.v1.AdminTask.test_cases:type_name -> druz9.v1.AdminTaskTestCase
-	3,  // 3: druz9.v1.AdminTask.follow_up_questions:type_name -> druz9.v1.AdminTaskFollowUpQuestion
-	4,  // 4: druz9.v1.AdminTaskList.items:type_name -> druz9.v1.AdminTask
-	37, // 5: druz9.v1.AdminTaskUpsert.difficulty:type_name -> druz9.v1.Difficulty
-	38, // 6: druz9.v1.AdminTaskUpsert.section:type_name -> druz9.v1.Section
-	2,  // 7: druz9.v1.AdminTaskUpsert.test_cases:type_name -> druz9.v1.AdminTaskTestCase
-	3,  // 8: druz9.v1.AdminTaskUpsert.follow_up_questions:type_name -> druz9.v1.AdminTaskFollowUpQuestion
-	38, // 9: druz9.v1.ListAdminTasksRequest.section:type_name -> druz9.v1.Section
-	37, // 10: druz9.v1.ListAdminTasksRequest.difficulty:type_name -> druz9.v1.Difficulty
-	6,  // 11: druz9.v1.CreateAdminTaskRequest.task:type_name -> druz9.v1.AdminTaskUpsert
-	6,  // 12: druz9.v1.UpdateAdminTaskRequest.task:type_name -> druz9.v1.AdminTaskUpsert
-	39, // 13: druz9.v1.Company.difficulty:type_name -> druz9.v1.DungeonTier
-	38, // 14: druz9.v1.Company.sections:type_name -> druz9.v1.Section
-	10, // 15: druz9.v1.CompanyList.items:type_name -> druz9.v1.Company
-	39, // 16: druz9.v1.CompanyUpsert.difficulty:type_name -> druz9.v1.DungeonTier
-	12, // 17: druz9.v1.CreateCompanyRequest.company:type_name -> druz9.v1.CompanyUpsert
-	40, // 18: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
-	0,  // 19: druz9.v1.ConfigEntry.type:type_name -> druz9.v1.ConfigEntryType
-	41, // 20: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
-	15, // 21: druz9.v1.ConfigEntryList.items:type_name -> druz9.v1.ConfigEntry
-	40, // 22: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
-	42, // 23: druz9.v1.AnticheatSignal.severity:type_name -> druz9.v1.SeverityLevel
-	40, // 24: druz9.v1.AnticheatSignal.metadata:type_name -> google.protobuf.Value
-	41, // 25: druz9.v1.AnticheatSignal.created_at:type_name -> google.protobuf.Timestamp
-	19, // 26: druz9.v1.AnticheatSignalList.items:type_name -> druz9.v1.AnticheatSignal
-	42, // 27: druz9.v1.ListAnticheatRequest.severity:type_name -> druz9.v1.SeverityLevel
-	41, // 28: druz9.v1.ListAnticheatRequest.from:type_name -> google.protobuf.Timestamp
-	41, // 29: druz9.v1.AdminDashboard.generated_at:type_name -> google.protobuf.Timestamp
-	41, // 30: druz9.v1.AdminUserRow.created_at:type_name -> google.protobuf.Timestamp
-	41, // 31: druz9.v1.AdminUserRow.updated_at:type_name -> google.protobuf.Timestamp
-	41, // 32: druz9.v1.AdminUserRow.ban_expires_at:type_name -> google.protobuf.Timestamp
-	24, // 33: druz9.v1.AdminUserList.items:type_name -> druz9.v1.AdminUserRow
-	41, // 34: druz9.v1.BanUserRequest.expires_at:type_name -> google.protobuf.Timestamp
-	24, // 35: druz9.v1.BanUserResponse.user:type_name -> druz9.v1.AdminUserRow
-	1,  // 36: druz9.v1.AdminReport.status:type_name -> druz9.v1.AdminReportStatus
-	41, // 37: druz9.v1.AdminReport.created_at:type_name -> google.protobuf.Timestamp
-	30, // 38: druz9.v1.AdminReportList.items:type_name -> druz9.v1.AdminReport
-	1,  // 39: druz9.v1.ListAdminReportsRequest.status:type_name -> druz9.v1.AdminReportStatus
-	41, // 40: druz9.v1.StatusIncident.started_at:type_name -> google.protobuf.Timestamp
-	41, // 41: druz9.v1.StatusIncident.ended_at:type_name -> google.protobuf.Timestamp
-	33, // 42: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
-	34, // 43: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
-	41, // 44: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
-	18, // 45: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
-	17, // 46: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
-	23, // 47: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
-	26, // 48: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
-	27, // 49: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
-	28, // 50: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
-	32, // 51: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
-	36, // 52: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
-	16, // 53: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
-	15, // 54: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
-	22, // 55: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
-	25, // 56: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
-	29, // 57: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
-	29, // 58: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
-	31, // 59: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
-	35, // 60: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
-	53, // [53:61] is the sub-list for method output_type
-	45, // [45:53] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	24, // 0: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
+	0,  // 1: druz9.v1.ConfigEntry.type:type_name -> druz9.v1.ConfigEntryType
+	25, // 2: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
+	2,  // 3: druz9.v1.ConfigEntryList.items:type_name -> druz9.v1.ConfigEntry
+	24, // 4: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
+	26, // 5: druz9.v1.AnticheatSignal.severity:type_name -> druz9.v1.SeverityLevel
+	24, // 6: druz9.v1.AnticheatSignal.metadata:type_name -> google.protobuf.Value
+	25, // 7: druz9.v1.AnticheatSignal.created_at:type_name -> google.protobuf.Timestamp
+	6,  // 8: druz9.v1.AnticheatSignalList.items:type_name -> druz9.v1.AnticheatSignal
+	26, // 9: druz9.v1.ListAnticheatRequest.severity:type_name -> druz9.v1.SeverityLevel
+	25, // 10: druz9.v1.ListAnticheatRequest.from:type_name -> google.protobuf.Timestamp
+	25, // 11: druz9.v1.AdminDashboard.generated_at:type_name -> google.protobuf.Timestamp
+	25, // 12: druz9.v1.AdminUserRow.created_at:type_name -> google.protobuf.Timestamp
+	25, // 13: druz9.v1.AdminUserRow.updated_at:type_name -> google.protobuf.Timestamp
+	25, // 14: druz9.v1.AdminUserRow.ban_expires_at:type_name -> google.protobuf.Timestamp
+	11, // 15: druz9.v1.AdminUserList.items:type_name -> druz9.v1.AdminUserRow
+	25, // 16: druz9.v1.BanUserRequest.expires_at:type_name -> google.protobuf.Timestamp
+	11, // 17: druz9.v1.BanUserResponse.user:type_name -> druz9.v1.AdminUserRow
+	1,  // 18: druz9.v1.AdminReport.status:type_name -> druz9.v1.AdminReportStatus
+	25, // 19: druz9.v1.AdminReport.created_at:type_name -> google.protobuf.Timestamp
+	17, // 20: druz9.v1.AdminReportList.items:type_name -> druz9.v1.AdminReport
+	1,  // 21: druz9.v1.ListAdminReportsRequest.status:type_name -> druz9.v1.AdminReportStatus
+	25, // 22: druz9.v1.StatusIncident.started_at:type_name -> google.protobuf.Timestamp
+	25, // 23: druz9.v1.StatusIncident.ended_at:type_name -> google.protobuf.Timestamp
+	20, // 24: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
+	21, // 25: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
+	25, // 26: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
+	5,  // 27: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
+	4,  // 28: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
+	10, // 29: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
+	13, // 30: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
+	14, // 31: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
+	15, // 32: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
+	19, // 33: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
+	23, // 34: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
+	3,  // 35: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
+	2,  // 36: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
+	9,  // 37: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
+	12, // 38: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
+	16, // 39: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
+	16, // 40: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
+	18, // 41: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
+	22, // 42: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
+	35, // [35:43] is the sub-list for method output_type
+	27, // [27:35] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_admin_proto_init() }
@@ -3017,7 +1885,7 @@ func file_druz9_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_admin_proto_rawDesc), len(file_druz9_v1_admin_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   35,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

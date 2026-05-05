@@ -483,6 +483,11 @@ const SnapshotPanel: React.FC<{
           )}
         </div>
         <Radar axes={axes} />
+        {radar && radar.axes.some((a) => a.confidence === 'empty' || a.confidence === 'low') && (
+          <div style={{ ...dimColor(0.4), fontSize: 10, fontFamily: monoFont, marginTop: 6, letterSpacing: '0.04em' }}>
+            low confidence — radar may jitter (need more mocks)
+          </div>
+        )}
       </div>
     </aside>
   );

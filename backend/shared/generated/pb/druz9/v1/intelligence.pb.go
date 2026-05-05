@@ -1824,11 +1824,17 @@ func (x *GetSkillRadarRequest) GetRubric() string {
 
 // SkillRadarAxis — single axis с score 0..1.
 type SkillRadarAxis struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
-	Score         float64                `protobuf:"fixed64,3,opt,name=score,proto3" json:"score,omitempty"`                         // 0..1, normalized из ai_report
-	MockCount     int32                  `protobuf:"varint,4,opt,name=mock_count,json=mockCount,proto3" json:"mock_count,omitempty"` // сколько mocks внесли вклад в этот axis
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Key       string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Label     string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	Score     float64                `protobuf:"fixed64,3,opt,name=score,proto3" json:"score,omitempty"`                         // 0..1, normalized из ai_report
+	MockCount int32                  `protobuf:"varint,4,opt,name=mock_count,json=mockCount,proto3" json:"mock_count,omitempty"` // сколько mocks внесли вклад в этот axis
+	// confidence — qualitative reliability marker derived from mock_count:
+	//
+	//	"empty" (0 mocks) | "low" (1) | "medium" (2-3) | "high" (4+)
+	//
+	// UI uses this to render low-confidence axes with dashed outline / pill.
+	Confidence    string `protobuf:"bytes,5,opt,name=confidence,proto3" json:"confidence,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1889,6 +1895,13 @@ func (x *SkillRadarAxis) GetMockCount() int32 {
 		return x.MockCount
 	}
 	return 0
+}
+
+func (x *SkillRadarAxis) GetConfidence() string {
+	if x != nil {
+		return x.Confidence
+	}
+	return ""
 }
 
 // SkillRadar — 5-axis snapshot.
@@ -2325,13 +2338,16 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x10marked_unhelpful\x18\x03 \x03(\v2\x17.druz9.v1.ResourceTouchR\x0fmarkedUnhelpful\x12F\n" +
 	"\x12recent_reflections\x18\x04 \x03(\v2\x17.druz9.v1.ResourceTouchR\x11recentReflections\".\n" +
 	"\x14GetSkillRadarRequest\x12\x16\n" +
-	"\x06rubric\x18\x01 \x01(\tR\x06rubric\"m\n" +
+	"\x06rubric\x18\x01 \x01(\tR\x06rubric\"\x8d\x01\n" +
 	"\x0eSkillRadarAxis\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x14\n" +
 	"\x05score\x18\x03 \x01(\x01R\x05score\x12\x1d\n" +
 	"\n" +
-	"mock_count\x18\x04 \x01(\x05R\tmockCount\"R\n" +
+	"mock_count\x18\x04 \x01(\x05R\tmockCount\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\x05 \x01(\tR\n" +
+	"confidence\"R\n" +
 	"\n" +
 	"SkillRadar\x12\x16\n" +
 	"\x06rubric\x18\x01 \x01(\tR\x06rubric\x12,\n" +

@@ -259,6 +259,10 @@ message SkillRadarAxis {
   string label     = 2;
   double score     = 3; // 0..1, normalized из ai_report
   int32  mock_count = 4; // сколько mocks внесли вклад в этот axis
+  // confidence — qualitative reliability marker derived from mock_count:
+  //   "empty" (0 mocks) | "low" (1) | "medium" (2-3) | "high" (4+)
+  // UI uses this to render low-confidence axes with dashed outline / pill.
+  string confidence = 5;
 }
 
 // SkillRadar — 5-axis snapshot.

@@ -175,7 +175,7 @@ func (s *CopilotServer) Analyze(
 	if err != nil {
 		return s.toConnectErr(err)
 	}
-	return pumpAnalyzeFrames(stream, frames)
+	return pumpAnalyzeFrames(ctx, stream, frames)
 }
 
 // Chat streams a follow-up turn in an existing conversation.
@@ -207,7 +207,7 @@ func (s *CopilotServer) Chat(
 	if err != nil {
 		return s.toConnectErr(err)
 	}
-	return pumpChatFrames(stream, frames)
+	return pumpChatFrames(ctx, stream, frames)
 }
 
 // ── Unary handlers ───────────────────────────────────────────────────────
@@ -465,38 +465,58 @@ func parseOptionalUUID(s string) (uuid.UUID, error) {
 // pumpAnalyzeFrames translates app.StreamFrame into pb.AnalyzeEvent frames
 // and sends them on the Connect stream. Returns on upstream close or on
 // send error (the first send error terminates the stream).
-func pumpAnalyzeFrames(stream *connect.ServerStream[pb.AnalyzeEvent], frames <-chan app.StreamFrame) error {
-	for f := range frames {
-		ev, err := streamFrameToAnalyzeEvent(f)
-		if err != nil {
-			return err
-		}
-		if ev == nil {
-			continue
-		}
-		if sendErr := stream.Send(ev); sendErr != nil {
-			return fmt.Errorf("copilot.Analyze: stream send: %w", sendErr)
+//
+// Phase R5 backpressure: ctx cancellation (client disconnect / shutdown)
+// breaks both the upstream channel read and the downstream send. This
+// stops the LLM token producer promptly when the client goes away —
+// previously the pump would block on `stream.Send` indefinitely until
+// the OS detected dead TCP, which could waste minutes of compute.
+func pumpAnalyzeFrames(ctx context.Context, stream *connect.ServerStream[pb.AnalyzeEvent], frames <-chan app.StreamFrame) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case f, ok := <-frames:
+			if !ok {
+				return nil
+			}
+			ev, err := streamFrameToAnalyzeEvent(f)
+			if err != nil {
+				return err
+			}
+			if ev == nil {
+				continue
+			}
+			if sendErr := stream.Send(ev); sendErr != nil {
+				return fmt.Errorf("copilot.Analyze: stream send: %w", sendErr)
+			}
 		}
 	}
-	return nil
 }
 
 // pumpChatFrames is the Chat analogue of pumpAnalyzeFrames. The frame
 // shape is identical; only the proto envelope type differs.
-func pumpChatFrames(stream *connect.ServerStream[pb.ChatEvent], frames <-chan app.StreamFrame) error {
-	for f := range frames {
-		ev, err := streamFrameToChatEvent(f)
-		if err != nil {
-			return err
-		}
-		if ev == nil {
-			continue
-		}
-		if sendErr := stream.Send(ev); sendErr != nil {
-			return fmt.Errorf("copilot.Chat: stream send: %w", sendErr)
+func pumpChatFrames(ctx context.Context, stream *connect.ServerStream[pb.ChatEvent], frames <-chan app.StreamFrame) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case f, ok := <-frames:
+			if !ok {
+				return nil
+			}
+			ev, err := streamFrameToChatEvent(f)
+			if err != nil {
+				return err
+			}
+			if ev == nil {
+				continue
+			}
+			if sendErr := stream.Send(ev); sendErr != nil {
+				return fmt.Errorf("copilot.Chat: stream send: %w", sendErr)
+			}
 		}
 	}
-	return nil
 }
 
 // streamFrameToAnalyzeEvent maps one app.StreamFrame onto the proto union.

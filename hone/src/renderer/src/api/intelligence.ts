@@ -468,11 +468,16 @@ export async function getResourceTrail(days = 7, keepRecent = 5): Promise<Resour
   };
 }
 
+export type SkillRadarConfidence = 'empty' | 'low' | 'medium' | 'high';
+
 export interface SkillRadarAxis {
   key: string;
   label: string;
   score: number; // 0..1
   mockCount: number;
+  // confidence — derived from mockCount: 0 = empty, 1 = low, 2-3 = medium, 4+ = high.
+  // UI uses this to render low-confidence axes with dashed outline / pill.
+  confidence: SkillRadarConfidence;
 }
 
 export interface SkillRadar {
@@ -489,6 +494,7 @@ export async function getSkillRadar(rubric?: string): Promise<SkillRadar> {
       label: a.label ?? '',
       score: a.score ?? 0,
       mockCount: a.mockCount ?? 0,
+      confidence: ((a.confidence ?? 'empty') as SkillRadarConfidence),
     })),
   };
 }
