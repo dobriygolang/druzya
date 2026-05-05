@@ -503,6 +503,68 @@ func (s *Streaks) FindDrift(ctx context.Context, lookback time.Duration) ([]doma
 	return out, nil
 }
 
+// recomputeBatchRow — narrow shape, matches hone/app domainDriftLike.
+// Не импортируем app-package в infra (циркуляр) — описано локально.
+// ВАЖНО: должен быть type alias (=), а не named type, иначе interface
+// satisfaction в app не сработает (Go nominal typing).
+type recomputeBatchRow = struct {
+	UserID         uuid.UUID
+	Day            time.Time
+	ActualSeconds  int
+	ActualSessions int
+}
+
+// RecomputeDaysBatch — batch-вариант RecomputeDay для reconciler'а.
+// Вместо N round-trip'ов делает 1 pgx.SendBatch.
+//
+// Семантика отличается от per-row RecomputeDay в одном моменте: state-
+// transition (transitionState) НЕ запускается per row. Это сознательный
+// trade-off: reconciler runs every 15 min, и state будет согласован
+// в течение след. real-write пути (любой EndFocus → ApplyFocusSession
+// делает transitionState штатно). Альтернатива — отдельный pass'ом
+// transitionState только для (user, day) пар где qualifies флипнулся
+// false→true; не делаем сейчас чтобы не раздувать R4.
+//
+// Соответствие interface'у `app.streakBatchRecomputer`. В случае
+// signature-drift compile-time error в callers.
+func (s *Streaks) RecomputeDaysBatch(ctx context.Context, drift []recomputeBatchRow, qualifyingThreshold int) (int64, error) {
+	if len(drift) == 0 {
+		return 0, nil
+	}
+	batch := &pgx.Batch{}
+	for _, d := range drift {
+		day := d.Day.UTC().Truncate(24 * time.Hour)
+		batch.Queue(
+			`INSERT INTO hone_streak_days (user_id, day, focused_seconds, sessions_count, qualifies_streak)
+			 VALUES ($1, $2, $3::int, $4::int, $3::int >= $5::int)
+			 ON CONFLICT (user_id, day) DO UPDATE
+			   SET focused_seconds = EXCLUDED.focused_seconds,
+			       sessions_count  = EXCLUDED.sessions_count,
+			       qualifies_streak = EXCLUDED.qualifies_streak,
+			       updated_at = now()`,
+			sharedpg.UUID(d.UserID),
+			pgtype.Date{Time: day, Valid: true},
+			int32(d.ActualSeconds),
+			int32(d.ActualSessions),
+			int32(qualifyingThreshold),
+		)
+	}
+	br := s.pool.SendBatch(ctx, batch)
+	defer br.Close()
+	var total int64
+	for range drift {
+		tag, err := br.Exec()
+		if err != nil {
+			return total, fmt.Errorf("hone.Streaks.RecomputeDaysBatch: exec: %w", err)
+		}
+		total += tag.RowsAffected()
+	}
+	if err := br.Close(); err != nil {
+		return total, fmt.Errorf("hone.Streaks.RecomputeDaysBatch: close: %w", err)
+	}
+	return total, nil
+}
+
 // RecomputeDay перезаписывает строку hone_streak_days абсолютными значениями
 // и прогоняет transitionState, если qualifies флипнулось в true. В отличие
 // от ApplyFocusSession (который использует дельту), здесь мы знаем

@@ -14,6 +14,8 @@ import (
 	miDomain "druz9/mock_interview/domain"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/metrics"
+	"druz9/shared/pkg/ttlcache"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-chi/chi/v5"
@@ -144,9 +146,22 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	// in a detached goroutine, keeping both surfaces synchronised
 	// without re-fetching readers.
 	insightsRepo := intelInfra.NewInsightsPostgres(d.Pool)
-	listInsightsUC := &intelApp.ListInsights{Repo: insightsRepo}
-	ackInsightUC := &intelApp.AckInsight{Repo: insightsRepo}
-	generateInsightsUC := &intelApp.GenerateInsights{Repo: insightsRepo, Now: d.Now}
+	// R4 perf: in-memory TTL cache на ListInsights. 1h TTL — Today
+	// surface обновляется вечером после reflection submit'а, и
+	// invalidate'ится Generate/Ack путями, так что stale risk минимален.
+	// 4096 max keys: ~few hundred users × 4 surfaces × 6 limits ≪ 4096.
+	insightsCache := ttlcache.New[[]intelDomain.Insight](1*time.Hour, 4096)
+	insightsInvalidator := intelApp.NewInsightsCacheInvalidator(insightsCache)
+	listInsightsUC := &intelApp.ListInsights{Repo: insightsRepo, Cache: insightsCache}
+	ackInsightUC := &intelApp.AckInsight{Repo: insightsRepo, CacheInvalidator: insightsInvalidator}
+	generateInsightsUC := &intelApp.GenerateInsights{Repo: insightsRepo, Now: d.Now, CacheInvalidator: insightsInvalidator}
+
+	// R4 perf: bounded pool для async insight gen (replaces raw `go
+	// func()`). nil-safe — daily_brief.go falls back to raw goroutine.
+	var insightsPool intelApp.AsyncSubmitter
+	if d.InsightsPool != nil {
+		insightsPool = d.InsightsPool
+	}
 
 	h := intelApp.NewHandler(intelApp.Handler{
 		GetDailyBrief: &intelApp.GetDailyBrief{
@@ -171,7 +186,8 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			Clubs:        clubsR,
 			Codex:        codexR,
 			// Phase 1.5b — share snapshot with the insight stream.
-			Insights: generateInsightsUC,
+			Insights:     generateInsightsUC,
+			InsightsPool: insightsPool,
 		},
 		AskNotes: &intelApp.AskNotes{
 			Notes:    notesR,

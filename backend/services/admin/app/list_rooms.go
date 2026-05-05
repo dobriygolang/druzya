@@ -40,16 +40,53 @@ type AdminRoomsFilter struct {
 	UserID *uuid.UUID
 	Kind   string // ""|code|whiteboard
 	Status string // ""|active|expired|archived
-	Limit  int    // default 50
+	Limit  int    // default 50, max 500
+	// Cursor — opaque pagination cursor (RFC3339 timestamp + uuid),
+	// returned as NextCursor of previous page. Empty == start.
+	Cursor string
 }
 
-// List возвращает rows для admin table.
+// AdminRoomsPage — paginated result. NextCursor пустой == последняя страница.
+type AdminRoomsPage struct {
+	Rows       []AdminRoomRow
+	NextCursor string
+}
+
+// MaxAdminRoomsLimit — hard cap чтобы admin случайно не дёрнул всю
+// табличку под нагрузкой.
+const MaxAdminRoomsLimit = 500
+
+// List возвращает rows для admin table. Backwards-compat: если Limit==0,
+// используется default 50; результат — старый flat slice, без NextCursor.
+// Caller, нужный paging — see ListPage.
 func (r *AdminRoomsReader) List(ctx context.Context, f AdminRoomsFilter) ([]AdminRoomRow, error) {
+	page, err := r.ListPage(ctx, f)
+	if err != nil {
+		return nil, err
+	}
+	return page.Rows, nil
+}
+
+// ListPage — paginated вариант List. Cursor encodes (created_at, id)
+// последней rows предыдущей страницы; запрашивается WHERE
+// (created_at, id) < (cursor.ts, cursor.id), что обеспечивает stable
+// ordering под INSERTs в ходе paging'а.
+func (r *AdminRoomsReader) ListPage(ctx context.Context, f AdminRoomsFilter) (AdminRoomsPage, error) {
 	limit := f.Limit
 	if limit <= 0 {
 		limit = 50
 	}
+	if limit > MaxAdminRoomsLimit {
+		limit = MaxAdminRoomsLimit
+	}
 	now := time.Now().UTC()
+	cursorTime, cursorID, hasCursor, err := decodeRoomsCursor(f.Cursor)
+	if err != nil {
+		return AdminRoomsPage{}, fmt.Errorf("admin.AdminRoomsReader.ListPage: cursor: %w", err)
+	}
+	_ = cursorID
+	_ = cursorTime
+	_ = hasCursor
 
 	// Union over editor_rooms + whiteboard_rooms. Чтобы не плодить два
 	// query-path'а, используем UNION ALL с kind-литералом.
@@ -89,23 +126,34 @@ WHERE 1=1
 	case "archived":
 		q += " AND archived_at IS NOT NULL"
 	}
+	if hasCursor {
+		// Keyset pagination: WHERE (created_at, id) < (cursor.ts, cursor.id).
+		// DESC ordering матчит ниже — нам нужны ROWS младше курсора.
+		argN++
+		tsArg := argN
+		argN++
+		idArg := argN
+		q += fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", tsArg, idArg)
+		args = append(args, cursorTime, cursorID)
+	}
 	argN++
-	q += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d", argN)
-	args = append(args, limit)
+	// Fetch limit+1 чтобы определить наличие след. страницы без COUNT(*).
+	q += fmt.Sprintf(" ORDER BY created_at DESC, id DESC LIMIT $%d", argN)
+	args = append(args, limit+1)
 
 	rows, err := r.Pool.Query(ctx, q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("admin.AdminRoomsReader.List: %w", err)
+		return AdminRoomsPage{}, fmt.Errorf("admin.AdminRoomsReader.ListPage: %w", err)
 	}
 	defer rows.Close()
 
-	var out []AdminRoomRow
+	out := make([]AdminRoomRow, 0, limit)
 	for rows.Next() {
 		var row AdminRoomRow
 		var archived *time.Time
 		if err := rows.Scan(&row.ID, &row.OwnerID, &row.Kind, &row.Title,
 			&row.FreeTier, &row.ExpiresAt, &archived, &row.CreatedAt); err != nil {
-			return nil, fmt.Errorf("admin.AdminRoomsReader.List scan: %w", err)
+			return AdminRoomsPage{}, fmt.Errorf("admin.AdminRoomsReader.ListPage scan: %w", err)
 		}
 		row.ArchivedAt = archived
 		switch {
@@ -118,7 +166,51 @@ WHERE 1=1
 		}
 		out = append(out, row)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return AdminRoomsPage{}, fmt.Errorf("admin.AdminRoomsReader.ListPage rows: %w", err)
+	}
+	page := AdminRoomsPage{Rows: out}
+	if len(out) > limit {
+		// Trim sentinel row, encode cursor от last KEPT row.
+		page.Rows = out[:limit]
+		last := page.Rows[len(page.Rows)-1]
+		page.NextCursor = encodeRoomsCursor(last.CreatedAt, last.ID)
+	}
+	return page, nil
+}
+
+// encodeRoomsCursor — keyset cursor (RFC3339Nano timestamp + uuid),
+// joined через "|". Простой формат — easy debug в logs/network panel.
+func encodeRoomsCursor(t time.Time, id uuid.UUID) string {
+	return t.UTC().Format(time.RFC3339Nano) + "|" + id.String()
+}
+
+// decodeRoomsCursor — обратный encode. Возвращает (zero, zero, false, nil)
+// для пустой строки. Ошибка возвращается только для truly malformed cursor.
+func decodeRoomsCursor(s string) (time.Time, uuid.UUID, bool, error) {
+	if s == "" {
+		return time.Time{}, uuid.Nil, false, nil
+	}
+	idx := -1
+	for i, c := range s {
+		if c == '|' {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return time.Time{}, uuid.Nil, false, fmt.Errorf("invalid cursor format")
+	}
+	tsStr, idStr := s[:idx], s[idx+1:]
+	t, err := time.Parse(time.RFC3339Nano, tsStr)
+	if err != nil {
+		return time.Time{}, uuid.Nil, false, fmt.Errorf("invalid cursor timestamp: %w", err)
+	}
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return time.Time{}, uuid.Nil, false, fmt.Errorf("invalid cursor id: %w", err)
+	}
+	return t, id, true, nil
 }
 
 // TopCreators — top-N юзеров по active_count (free-tier breach signal).

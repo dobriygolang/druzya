@@ -26,6 +26,17 @@ const CacheTTL = 6 * time.Hour
 // 1 час не даёт нагенерировать ⌘R-спамом и не сжигает LLM-квоту.
 const ForceCooldown = time.Hour
 
+// AsyncSubmitter — bounded worker pool interface для detached side-
+// effect work (insight generation после brief synth'а). nil-safe в
+// caller'е: если nil — fallback на raw `go func()`.
+//
+// Не импортируем shared/pkg/workerpool сюда чтобы не тащить shared в
+// intelligence-domain зависимости — interface достаточно узкий чтобы
+// caller любой pool реализацией заинжектил.
+type AsyncSubmitter interface {
+	Submit(ctx context.Context, fn func(ctx context.Context)) bool
+}
+
 // GetDailyBrief — use case для GetDailyBrief RPC.
 type GetDailyBrief struct {
 	Briefs      domain.DailyBriefRepo
@@ -38,6 +49,10 @@ type GetDailyBrief struct {
 	// Memory — optional. С ним brief получает «past coach interactions»
 	// в prompt и каждое generated brief пишется как brief_emitted episode.
 	Memory *Memory
+	// InsightsPool — optional bounded pool для async insight gen после
+	// synth'а. nil → fallback на raw `go func()` (старое поведение,
+	// 1 goroutine на request — рискованно при burst). Wired в bootstrap.
+	InsightsPool AsyncSubmitter
 
 	// ── Cross-product readers (все nullable) ──
 	//
@@ -451,21 +466,44 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	// Runs in a detached goroutine so the brief's RPC latency stays
 	// untouched: insight production is a side-effect (writes to its own
 	// table via Upsert) and never blocks the user.
+	//
+	// R4 perf: prefer InsightsPool when wired — bounds concurrency на
+	// burst (1000 параллельных briefs больше не = 1000 LLM goroutines).
+	// Drop с warn'ом если pool full: insight cards отстают на цикл,
+	// brief сам по себе валиден.
 	if uc.Insights != nil {
-		go func(s domain.BriefPromptInput) {
-			// Disconnected ctx — request ctx may be cancelled the moment
-			// the brief response is flushed. We give the generator its
-			// own short window so DB writes don't get torn.
-			bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
+		userID := in.UserID
+		work := func(bgCtx context.Context) {
 			if _, err := uc.Insights.Do(bgCtx, GenerateInsightsInput{
-				UserID:   in.UserID,
-				Snapshot: s,
+				UserID:   userID,
+				Snapshot: snapshot,
 			}); err != nil {
 				uc.Log.Warn("intelligence.GetDailyBrief.Do: insight generation failed",
-					slog.Any("err", err), slog.String("user_id", in.UserID.String()))
+					slog.Any("err", err), slog.String("user_id", userID.String()))
 			}
-		}(snapshot)
+		}
+		if uc.InsightsPool != nil {
+			// Detached ctx с 30s timeout — request ctx может cancel'нуться
+			// сразу после 200 OK, а нам ещё нужно writeать insight rows.
+			bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			submitted := uc.InsightsPool.Submit(bgCtx, func(ctx context.Context) {
+				defer cancel()
+				work(ctx)
+			})
+			if !submitted {
+				cancel()
+				uc.Log.Warn("intelligence.GetDailyBrief.Do: insights pool full, deferred",
+					slog.String("user_id", userID.String()))
+			}
+		} else {
+			// Fallback: raw goroutine (старое поведение). Используется
+			// в тестах где pool не wired.
+			go func() {
+				bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				work(bgCtx)
+			}()
+		}
 	}
 	return brief, nil
 }

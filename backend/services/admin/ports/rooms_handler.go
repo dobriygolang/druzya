@@ -23,11 +23,16 @@ func NewAdminRoomsHandler(reader *app.AdminRoomsReader, log *slog.Logger) *Admin
 	return &AdminRoomsHandler{Reader: reader, Log: log}
 }
 
-// GET /admin/rooms?user_id=&kind=&status=&limit=
+// GET /admin/rooms?user_id=&kind=&status=&limit=&cursor=
+//
+// Response shape: { rows: [...], next_cursor: "..." }. Backwards-compat
+// note: previously returned bare array. Frontend updated одновременно
+// со switch на keyset paging (admin UI loads-more pattern).
 func (h *AdminRoomsHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	f := app.AdminRoomsFilter{
 		Kind:   r.URL.Query().Get("kind"),
 		Status: r.URL.Query().Get("status"),
+		Cursor: r.URL.Query().Get("cursor"),
 	}
 	if uid := r.URL.Query().Get("user_id"); uid != "" {
 		if id, err := uuid.Parse(uid); err == nil {
@@ -39,12 +44,15 @@ func (h *AdminRoomsHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 			f.Limit = n
 		}
 	}
-	out, err := h.Reader.List(r.Context(), f)
+	page, err := h.Reader.ListPage(r.Context(), f)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, out)
+	writeJSON(w, map[string]any{
+		"rows":        page.Rows,
+		"next_cursor": page.NextCursor,
+	})
 }
 
 // GET /admin/rooms/top-creators?limit=

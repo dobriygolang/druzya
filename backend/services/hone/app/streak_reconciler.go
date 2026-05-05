@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"druz9/hone/domain"
+
+	"github.com/google/uuid"
 )
 
 // StreakReconciler периодически сверяет hone_focus_sessions с
@@ -71,8 +73,29 @@ func (r *StreakReconciler) Run(ctx context.Context) {
 	}
 }
 
+// streakBatchRecomputer — optional capability checked at runtime: если
+// repo реализует RecomputeDaysBatch, reconciler шлёт drift батчем (1 RTT
+// для N records) вместо последовательных RecomputeDay-вызовов (N RTT).
+type streakBatchRecomputer interface {
+	RecomputeDaysBatch(ctx context.Context, drift []domainDriftLike, threshold int) (int64, error)
+}
+
+// domainDriftLike — locally-typed alias чтобы не тащить domain.DriftRow
+// в interface определение и не создать circular-imports тонкой пере-
+// объявкой. На репо-стороне batch-метод объявлен через тот же тип.
+type domainDriftLike = struct {
+	UserID         uuid.UUID
+	Day            time.Time
+	ActualSeconds  int
+	ActualSessions int
+}
+
 // runOnce — один проход. Вынесен отдельно чтобы тесты могли дёргать без
 // пинания Ticker'а.
+//
+// R4 perf: если repo реализует streakBatchRecomputer — drift летит
+// одним pgx.Batch (1 RTT). Иначе fallback на per-row RecomputeDay loop
+// (старое поведение, тесты-fake'и используют именно его).
 func (r *StreakReconciler) runOnce(ctx context.Context, lookback time.Duration, threshold int) {
 	drift, err := r.Streaks.FindDrift(ctx, lookback)
 	if err != nil {
@@ -87,6 +110,34 @@ func (r *StreakReconciler) runOnce(ctx context.Context, lookback time.Duration, 
 	if r.Log != nil {
 		r.Log.InfoContext(ctx, "hone.streak.reconcile: drift found",
 			slog.Int("count", len(drift)))
+	}
+	if batcher, ok := r.Streaks.(streakBatchRecomputer); ok {
+		// Batch path. Convert to local alias slice; only the 4 fields
+		// the batch needs (state-transition нужен per-row, обрабаты-
+		// вается batch impl'ом отдельно).
+		rows := make([]domainDriftLike, 0, len(drift))
+		for _, d := range drift {
+			rows = append(rows, domainDriftLike{
+				UserID:         d.UserID,
+				Day:            d.Day,
+				ActualSeconds:  d.ActualSeconds,
+				ActualSessions: d.ActualSessions,
+			})
+		}
+		n, err := batcher.RecomputeDaysBatch(ctx, rows, threshold)
+		if err != nil {
+			if r.Log != nil {
+				r.Log.WarnContext(ctx, "hone.streak.reconcile: batch recompute failed, falling back to per-row",
+					slog.Any("err", err))
+			}
+			// Fall through to per-row loop.
+		} else {
+			if r.Log != nil {
+				r.Log.InfoContext(ctx, "hone.streak.reconcile: batch upsert done",
+					slog.Int64("rows", n))
+			}
+			return
+		}
 	}
 	for _, d := range drift {
 		if err := ctx.Err(); err != nil {

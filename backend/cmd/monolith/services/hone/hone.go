@@ -16,12 +16,18 @@ import (
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/metrics"
 	"druz9/shared/pkg/ratelimit"
+	"druz9/shared/pkg/ttlcache"
 	subDomain "druz9/subscription/domain"
 
 	"connectrpc.com/connect"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
+
+// honeDomainTaskAlias — type alias чтобы избежать прямого imports
+// honeDomain.Task в этом файле для generic ttlcache. Уже импортирован
+// через honeDomain в build, alias — только nominal.
+type honeDomainTaskAlias = honeDomain.Task
 
 // honeEmbedQueueAdapter адаптирует infra.RedisEmbedQueue под app.EmbedQueue.
 // Конвертер payload'а, иначе пришлось бы делать infra→app импорт через
@@ -397,10 +403,27 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	// The Connect server (services/hone/ports) already implements ListTasks /
 	// CreateTask / MoveTaskStatus / DeleteTask / Add+ListTaskComments and
 	// vanguard transcodes /api/v1/hone/tasks/* into them.
-	h.CreateTask = &honeApp.CreateTask{Tasks: tasksRepo, Log: d.Log, Categoriser: categoriser, CursorBus: cursorBus}
-	h.ListTasks = &honeApp.ListTasks{Tasks: tasksRepo}
-	h.MoveTaskStatus = &honeApp.MoveTaskStatus{Tasks: tasksRepo, Log: d.Log}
-	h.DeleteTask = &honeApp.DeleteTask{Tasks: tasksRepo}
+	// R4 perf: bounded Categoriser pool (replaces raw `go func()`).
+	// nil-safe — CreateTask.Do falls back to raw goroutine when pool nil.
+	var categoriserPool honeApp.AsyncSubmitter
+	if d.CategoriserPool != nil {
+		categoriserPool = d.CategoriserPool
+	}
+	// R4 perf: in-memory TTL cache на ListTasks. 15m TTL покрывает burst
+	// polling (frontend опрашивает на focus change), inline-invalidate
+	// в Create/Move/Delete keeps данные corrent. 4096 max keys.
+	tasksCache := ttlcache.New[[]honeDomainTaskAlias](15*time.Minute, 4096)
+	h.CreateTask = &honeApp.CreateTask{
+		Tasks:           tasksRepo,
+		Log:             d.Log,
+		Categoriser:     categoriser,
+		CursorBus:       cursorBus,
+		CategoriserPool: categoriserPool,
+		Cache:           tasksCache,
+	}
+	h.ListTasks = &honeApp.ListTasks{Tasks: tasksRepo, Cache: tasksCache}
+	h.MoveTaskStatus = &honeApp.MoveTaskStatus{Tasks: tasksRepo, Log: d.Log, Cache: tasksCache}
+	h.DeleteTask = &honeApp.DeleteTask{Tasks: tasksRepo, Cache: tasksCache}
 	h.AddTaskComment = &honeApp.AddTaskComment{Tasks: tasksRepo}
 	h.ListTaskComments = &honeApp.ListTaskComments{Tasks: tasksRepo}
 

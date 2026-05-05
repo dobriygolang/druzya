@@ -2,11 +2,15 @@ package app
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"druz9/notify/domain"
 	sharedDomain "druz9/shared/domain"
+
+	"github.com/google/uuid"
 )
 
 // SchedulerStateStore persists the last-fired bucket timestamp so API
@@ -46,6 +50,17 @@ const weeklyStoreKey = "notify:scheduler:weekly:last_fired"
 // исчез между недельными fire'ами, но достаточно короткий чтобы не
 // замусоривать Redis вечно при деактивации feature'а.
 const weeklyStoreTTL = 8 * 24 * time.Hour
+
+// weeklyFanoutChunkSize — сколько event'ов publish'им за один chunk до
+// короткой паузы. На 100K subscribers без chunking'а EventBus захлёбы-
+// вается + downstream notify-handlers'ы лочат БД. 100 — здоровый
+// батч: ~50ms/chunk на типовой dispatch'е.
+const weeklyFanoutChunkSize = 100
+
+// weeklyFanoutChunkPause — пауза между chunk'ами. 100ms × 1000 chunks
+// (100K users) = 100s scheduler-block, что ок: weekly job не время-
+// критичный, окно «воскресенье 20:00-20:59» с щедрым запасом.
+const weeklyFanoutChunkPause = 100 * time.Millisecond
 
 // Run blocks until ctx is cancelled. Ticker interval is 1 minute — good
 // enough granularity for a weekly job.
@@ -114,15 +129,86 @@ func (s *WeeklyReportScheduler) Run(ctx context.Context) {
 	}
 }
 
+// chunkedListReader — optional capability на repo: streaming fetch
+// chunk'ами, чтобы scheduler не загружал 100K user_ids в RAM сразу.
+// Repo PostgresAdapter implements это, mock'и в тестах — нет (fall-back).
+type chunkedListReader interface {
+	ListWeeklyReportEnabledChunked(ctx context.Context, chunkSize int, visit func(batch []uuid.UUID) error) error
+}
+
 func (s *WeeklyReportScheduler) fireOnce(ctx context.Context, at time.Time) {
+	// R4 perf: prefer chunked fetch when available — экономим RAM на
+	// 100K-subscriber base'е. Иначе fallback на full-list reader.
+	if reader, ok := s.Prefs.(chunkedListReader); ok {
+		s.Log.InfoContext(ctx, "notify.scheduler.weekly: firing (chunked)",
+			slog.Int("chunk_size", weeklyFanoutChunkSize))
+		var totalSent int
+		err := reader.ListWeeklyReportEnabledChunked(ctx, weeklyFanoutChunkSize, func(batch []uuid.UUID) error {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("notify.scheduler.weekly: cancelled: %w", err)
+			}
+			s.publishBatch(ctx, batch, at)
+			totalSent += len(batch)
+			// Pause между chunk'ами; последний chunk вернёт меньше
+			// chunkSize и ListWeeklyReportEnabledChunked сама exit'нет.
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("notify.scheduler.weekly: cancelled mid-pause: %w", ctx.Err())
+			case <-time.After(weeklyFanoutChunkPause):
+			}
+			return nil
+		})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			s.Log.ErrorContext(ctx, "notify.scheduler.weekly: chunked list failed",
+				slog.Any("err", err),
+				slog.Int("delivered", totalSent))
+			return
+		}
+		s.Log.InfoContext(ctx, "notify.scheduler.weekly: chunked fanout done",
+			slog.Int("delivered", totalSent))
+		return
+	}
+
 	users, err := s.Prefs.ListWeeklyReportEnabled(ctx)
 	if err != nil {
 		s.Log.ErrorContext(ctx, "notify.scheduler.weekly: list", slog.Any("err", err))
 		return
 	}
 	s.Log.InfoContext(ctx, "notify.scheduler.weekly: firing",
-		slog.Int("subscribers", len(users)))
-	for _, uid := range users {
+		slog.Int("subscribers", len(users)),
+		slog.Int("chunk_size", weeklyFanoutChunkSize))
+
+	// R4 perf: chunked fanout с короткой паузой. Раньше fanout 100K
+	// юзеров был sync'ным loop'ом, scheduler-goroutine блокировался
+	// на 30+ секунд и downstream notify-handlers (TG send,
+	// notification_log INSERT) контеншили БД-пул. Сейчас EventBus
+	// dispatch'ит chunk, scheduler паузит ~100ms, повторяет.
+	for start := 0; start < len(users); start += weeklyFanoutChunkSize {
+		if err := ctx.Err(); err != nil {
+			s.Log.WarnContext(ctx, "notify.scheduler.weekly: cancelled mid-fanout",
+				slog.Int("delivered", start),
+				slog.Int("remaining", len(users)-start))
+			return
+		}
+		end := start + weeklyFanoutChunkSize
+		if end > len(users) {
+			end = len(users)
+		}
+		s.publishBatch(ctx, users[start:end], at)
+		if end < len(users) {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(weeklyFanoutChunkPause):
+			}
+		}
+	}
+}
+
+// publishBatch — extracted чтобы chunked + non-chunked paths делили один
+// publish loop.
+func (s *WeeklyReportScheduler) publishBatch(ctx context.Context, batch []uuid.UUID, at time.Time) {
+	for _, uid := range batch {
 		ev := domain.WeeklyReportDue{At: at, UserID: uid}
 		if err := s.Bus.Publish(ctx, ev); err != nil {
 			s.Log.WarnContext(ctx, "notify.scheduler.weekly: publish",

@@ -45,6 +45,7 @@ import (
 	"druz9/shared/pkg/llmchain"
 	"druz9/shared/pkg/metrics"
 	"druz9/shared/pkg/quota"
+	"druz9/shared/pkg/workerpool"
 	subApp "druz9/subscription/app"
 	subDomain "druz9/subscription/domain"
 	subInfra "druz9/subscription/infra"
@@ -72,6 +73,10 @@ type App struct {
 	// graceful shutdown. Всегда non-nil (NoopCache.Close тоже no-op);
 	// регистрируется через registerInfraClosers в общий closers-chain.
 	llmCacheClose func() error
+
+	// workerPools — drained на shutdown ДО Postgres/Redis-close, чтобы
+	// last-в-полёте insight-gen / Categoriser tasks успели завершиться.
+	workerPools []*workerpool.Pool
 
 	// closers run in reverse-of-registration order during Shutdown. Each
 	// one is recovered individually so a single bad cleanup can't take
@@ -134,11 +139,23 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		}
 	}
 
+	// Bounded worker pools для detached-goroutine fan-out. Заменяют
+	// raw `go func(){}` в hot-path'ах (intelligence GetDailyBrief →
+	// GenerateInsights, hone CreateTask → Categoriser). Sizing:
+	//  - insightsPool 20: insight gen — LLM-driven (5-15s), free-tier
+	//    Groq/Cerebras rate-limit ~30 RPM, 20 даёт headroom без overload.
+	//  - categoriserPool 30: Categoriser — короткий LLM hop (1-3s),
+	//    bursty при опт-in юзерах кликающих CreateTask.
+	insightsPool := workerpool.New("insights", 20, log)
+	categoriserPool := workerpool.New("categoriser", 30, log)
+
 	deps := services.Deps{
 		Cfg: cfg, Log: log, Pool: pool, Redis: rdb,
 		Bus: bus, Now: nowFunc(), LLMChain: llmChain,
-		KillSwitch: killswitch.New(rdb),
-		TokenQuota: quota.New(rdb, dailyCap),
+		KillSwitch:      killswitch.New(rdb),
+		TokenQuota:      quota.New(rdb, dailyCap),
+		InsightsPool:    insightsPool,
+		CategoriserPool: categoriserPool,
 	}
 
 	// КРИТИЧНО: Subscription quota deps wire'ятся ПЕРВЫМИ — иначе модули
@@ -343,6 +360,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		pool: pool, redis: rdb, bus: bus,
 		httpSrv: httpSrv, notify: notify, modules: modules,
 		llmCacheClose: llmCacheClose,
+		workerPools:   []*workerpool.Pool{insightsPool, categoriserPool},
 	}
 	a.registerInfraClosers()
 	return a, otelShutdown, nil
@@ -367,6 +385,12 @@ func (a *App) registerInfraClosers() {
 	// получим ошибки дрейна в логе.
 	if a.llmCacheClose != nil {
 		a.closers = append(a.closers, func(context.Context) error { return a.llmCacheClose() })
+	}
+	// Drain bounded worker pools до Postgres/Redis: in-flight задачи
+	// (insight upserts / categoriser SetStatus) пишут в БД и Redis.
+	for _, p := range a.workerPools {
+		p := p
+		a.closers = append(a.closers, func(context.Context) error { return p.Close() })
 	}
 	a.closers = append(a.closers,
 		func(context.Context) error { a.pool.Close(); return nil },

@@ -19,6 +19,7 @@ import (
 	"druz9/shared/pkg/killswitch"
 	"druz9/shared/pkg/llmchain"
 	"druz9/shared/pkg/quota"
+	"druz9/shared/pkg/workerpool"
 	subApp "druz9/subscription/app"
 
 	"github.com/go-chi/chi/v5"
@@ -150,6 +151,18 @@ type Deps struct {
 	// Set'ится в WireSubscriptionQuota; NewCopilot устанавливает
 	// SetTierUC.OnTierChanged hook.
 	SetTierUC *subApp.SetTier
+
+	// InsightsPool — bounded worker pool для async insight generation
+	// (вызывается из intelligence.GetDailyBrief после synth'а). Заменяет
+	// raw `go func(){}` чтобы при 1000 параллельных briefs мы не
+	// спавнили 1000 goroutines (LLM-rate-limit и пиковая memory).
+	// nil-safe: если nil — caller выбирает inline detached fallback.
+	InsightsPool *workerpool.Pool
+
+	// CategoriserPool — bounded worker pool для hone CreateTask auto-place
+	// (LLM-driven column assignment). Аналогично InsightsPool, защищает
+	// от goroutine spam при burst'е CreateTask request'ов.
+	CategoriserPool *workerpool.Pool
 }
 
 // StorageGate is the cross-domain interface Hone (and any future writer)

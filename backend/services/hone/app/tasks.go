@@ -27,6 +27,13 @@ import (
 // `hone_taskboard_todo_cap` overrides at runtime.
 const MaxInTodoPerUser = 7
 
+// AsyncSubmitter — bounded worker pool interface для detached
+// Categoriser job. nil-safe в Do (если nil → fallback на raw goroutine,
+// старое поведение).
+type AsyncSubmitter interface {
+	Submit(ctx context.Context, fn func(ctx context.Context)) bool
+}
+
 // CreateTask — manual user task. Always source='user'; AI tasks are
 // produced via the coach generator (see coach_generator.go).
 //
@@ -35,10 +42,12 @@ const MaxInTodoPerUser = 7
 // (todo/doing/done) + tags по deadline/kind. Fail-soft: ошибка LLM не
 // блокирует Create — task остаётся в default todo column.
 type CreateTask struct {
-	Tasks       domain.TaskRepo
-	Log         *slog.Logger
-	Categoriser *CategoriseTask     // optional · nil → skip auto-place
-	CursorBus   domain.CursorEventBus // optional · nil → skip SSE publish
+	Tasks           domain.TaskRepo
+	Log             *slog.Logger
+	Categoriser     *CategoriseTask       // optional · nil → skip auto-place
+	CursorBus       domain.CursorEventBus // optional · nil → skip SSE publish
+	CategoriserPool AsyncSubmitter        // optional · bounded pool, nil → raw goroutine
+	Cache           TasksListCache        // optional · invalidate ListTasks cache
 }
 
 // CreateTaskInput.
@@ -74,66 +83,131 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("hone.CreateTask: %w", err)
 	}
+	InvalidateTasksCacheForUser(uc.Cache, in.UserID)
 
 	// Phase 10 auto-place. Skip когда Categoriser nil (LLM не wired).
 	// Failure не блокирует Create — task уже сохранён, просто остаётся
 	// в default todo column. UI может observe new column через next
 	// ListTasks fetch.
+	//
+	// R4 perf: bounded pool вместо raw `go func()` чтобы при burst'е
+	// CreateTask request'ов мы не спавнили 1000 goroutines. Drop с
+	// warn'ом если pool full: task попадает в default todo, фронт
+	// сделает manual placement.
 	if uc.Categoriser != nil {
-		go func() {
-			catCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
+		userID := in.UserID
+		taskID := created.ID
+		title := in.Title
+		brief := in.BriefMD
+		skillKey := in.SkillKey
+		work := func(catCtx context.Context) {
 			out, err := uc.Categoriser.Do(catCtx, CategoriseTaskInput{
-				Title:    in.Title,
-				BriefMD:  in.BriefMD,
+				Title:    title,
+				BriefMD:  brief,
 				Kind:     string(kind),
-				SkillKey: in.SkillKey,
+				SkillKey: skillKey,
 			})
 			if err != nil {
 				if uc.Log != nil {
-					uc.Log.Warn("hone.CreateTask: categorise failed", "err", err, "task_id", created.ID)
+					uc.Log.Warn("hone.CreateTask: categorise failed", "err", err, "task_id", taskID)
 				}
 				return
 			}
-			// Apply column placement если LLM выдал не-default.
 			if newStatus := domain.TaskStatus(out.Column); newStatus.IsValid() && newStatus != domain.TaskStatusToDo {
-				if _, err := uc.Tasks.SetStatus(catCtx, in.UserID, created.ID, newStatus); err != nil && uc.Log != nil {
-					uc.Log.Warn("hone.CreateTask: categorise SetStatus", "err", err, "task_id", created.ID)
+				if _, err := uc.Tasks.SetStatus(catCtx, userID, taskID, newStatus); err != nil && uc.Log != nil {
+					uc.Log.Warn("hone.CreateTask: categorise SetStatus", "err", err, "task_id", taskID)
 					return
 				}
-				// Phase 10 — publish AICursor event так чтобы frontend
-				// показал animation «AI moves card». Skip если bus nil.
 				if uc.CursorBus != nil {
 					uc.CursorBus.Publish(catCtx, domain.CursorEvent{
 						Kind:       domain.CardMove,
-						UserID:     in.UserID,
-						TaskID:     created.ID,
+						UserID:     userID,
+						TaskID:     taskID,
 						FromColumn: domain.TaskStatusToDo,
 						ToColumn:   newStatus,
 						OccurredAt: time.Now().UTC(),
 					})
 				}
 			}
-		}()
+		}
+		if uc.CategoriserPool != nil {
+			catCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			submitted := uc.CategoriserPool.Submit(catCtx, func(ctx context.Context) {
+				defer cancel()
+				work(ctx)
+			})
+			if !submitted {
+				cancel()
+				if uc.Log != nil {
+					uc.Log.Warn("hone.CreateTask: categoriser pool full, deferred",
+						"task_id", created.ID)
+				}
+			}
+		} else {
+			go func() {
+				catCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				work(catCtx)
+			}()
+		}
 	}
 
 	return created, nil
 }
 
+// TasksListCache — narrow interface для in-memory TTL cache на ListTasks.
+// nil-safe (cache miss = direct DB).
+//
+// TODO(perf): swap to Redis-backed cache когда cross-instance consistency
+// нужна (multi-replica deploy). In-memory достаточно для single-monolith.
+type TasksListCache interface {
+	Get(key string) ([]domain.Task, bool)
+	Set(key string, v []domain.Task)
+	Delete(key string)
+}
+
 // ListTasks — board read for the frontend.
 type ListTasks struct {
 	Tasks domain.TaskRepo
+	// Cache — optional in-memory TTL cache. TaskBoard front опрашивает
+	// /hone/tasks при каждом focus change → easy hot-key. nil-safe.
+	Cache TasksListCache
 }
 
 // Do returns the user's tasks across todo/in_progress/in_review/done.
 // `dismissed` is excluded from the default list view (still reachable via
 // admin / future "history" filter).
 func (uc *ListTasks) Do(ctx context.Context, userID uuid.UUID) ([]domain.Task, error) {
+	cacheKey := tasksCacheKey(userID)
+	if uc.Cache != nil {
+		if cached, ok := uc.Cache.Get(cacheKey); ok {
+			return cached, nil
+		}
+	}
 	rows, err := uc.Tasks.ListByUser(ctx, userID, nil, 200)
 	if err != nil {
 		return nil, fmt.Errorf("hone.ListTasks: %w", err)
 	}
+	if uc.Cache != nil {
+		uc.Cache.Set(cacheKey, rows)
+	}
 	return rows, nil
+}
+
+// tasksCacheKey — единый формат для tasks list cache. Один key на user
+// (no surface/limit пер-versions — ListTasks всегда дёргает default).
+func tasksCacheKey(userID uuid.UUID) string {
+	return "hone:tasks:" + userID.String()
+}
+
+// InvalidateTasksCacheForUser — caller (Create/Move/Delete) уведомляет
+// что user'ские tasks могли поменяться. Дроп key с TTL re-fetch на
+// next List call. nil-safe.
+func InvalidateTasksCacheForUser(cache TasksListCache, userID uuid.UUID) {
+	if cache == nil {
+		return
+	}
+	cache.Delete(tasksCacheKey(userID))
 }
 
 // MoveTaskStatus — explicit user move (drag-and-drop or button). The AI
@@ -142,6 +216,7 @@ func (uc *ListTasks) Do(ctx context.Context, userID uuid.UUID) ([]domain.Task, e
 type MoveTaskStatus struct {
 	Tasks domain.TaskRepo
 	Log   *slog.Logger
+	Cache TasksListCache // optional · invalidate ListTasks cache
 }
 
 // MoveTaskStatusInput.
@@ -160,12 +235,14 @@ func (uc *MoveTaskStatus) Do(ctx context.Context, in MoveTaskStatusInput) (domai
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("hone.MoveTaskStatus: %w", err)
 	}
+	InvalidateTasksCacheForUser(uc.Cache, in.UserID)
 	return updated, nil
 }
 
 // DeleteTask removes a task (and cascades comments).
 type DeleteTask struct {
 	Tasks domain.TaskRepo
+	Cache TasksListCache // optional · invalidate ListTasks cache
 }
 
 // Do executes the use case.
@@ -173,6 +250,7 @@ func (uc *DeleteTask) Do(ctx context.Context, userID, taskID uuid.UUID) error {
 	if err := uc.Tasks.Delete(ctx, userID, taskID); err != nil {
 		return fmt.Errorf("hone.DeleteTask: %w", err)
 	}
+	InvalidateTasksCacheForUser(uc.Cache, userID)
 	return nil
 }
 

@@ -110,6 +110,63 @@ func (p *Postgres) ListWeeklyReportEnabled(ctx context.Context) ([]uuid.UUID, er
 	return out, nil
 }
 
+// ListWeeklyReportEnabledChunked — chunked-fetch вариант для scheduler'а.
+// Загружает batch'ами (default 1000) пока не закончатся; передаёт каждый
+// batch в visit(). Прерывается при visit-ошибке или ctx.Cancel'е.
+//
+// R4 perf: ListWeeklyReportEnabled на 100K subscribers держит весь slice
+// в памяти и блокирует запрос на full-table scan. Chunked path стримит
+// batches → меньшее давление на пул + scheduler может начать fan-out
+// раньше чем всё прогружено.
+//
+// Использует raw SQL (sqlc-generated query — non-paginated). Hand-rolled
+// keyset запрос: WHERE user_id > last ORDER BY user_id LIMIT N.
+func (p *Postgres) ListWeeklyReportEnabledChunked(ctx context.Context, chunkSize int, visit func(batch []uuid.UUID) error) error {
+	if chunkSize <= 0 {
+		chunkSize = 1000
+	}
+	last := uuid.Nil
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		rows, err := p.pool.Query(ctx,
+			`SELECT user_id FROM notification_prefs
+			 WHERE weekly_report_enabled = TRUE AND user_id > $1
+			 ORDER BY user_id ASC
+			 LIMIT $2`,
+			sharedpg.UUID(last), chunkSize,
+		)
+		if err != nil {
+			return fmt.Errorf("notify.pg.ListWeeklyReportEnabledChunked: %w", err)
+		}
+		batch := make([]uuid.UUID, 0, chunkSize)
+		for rows.Next() {
+			var u pgtype.UUID
+			if err := rows.Scan(&u); err != nil {
+				rows.Close()
+				return fmt.Errorf("notify.pg.ListWeeklyReportEnabledChunked: scan: %w", err)
+			}
+			batch = append(batch, sharedpg.UUIDFrom(u))
+		}
+		closeErr := rows.Err()
+		rows.Close()
+		if closeErr != nil {
+			return fmt.Errorf("notify.pg.ListWeeklyReportEnabledChunked: rows: %w", closeErr)
+		}
+		if len(batch) == 0 {
+			return nil
+		}
+		if err := visit(batch); err != nil {
+			return err
+		}
+		last = batch[len(batch)-1]
+		if len(batch) < chunkSize {
+			return nil
+		}
+	}
+}
+
 // ── UserLookup ──────────────────────────────────────────────────────────────
 
 // FindIDByUsername resolves username → user_id. Used by /link.
