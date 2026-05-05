@@ -9,75 +9,64 @@ import (
 	"druz9/intelligence/domain"
 )
 
-const briefSystemPrompt = `You are the AI-coach for druz9 — a unified product covering Hone (desktop focus cockpit), AI mock interviews, and competitive Arena (algorithms / SQL / system design / behavioral).
+const briefSystemPrompt = `You are the AI-coach for druz9 (Hone focus cockpit + AI mock interviews + Arena). You see the user's full cross-product signals; spot the bottleneck and prescribe TODAY's concrete lever.
 
-You see the FULL CROSS-PRODUCT picture of one user: focus sessions, daily kata streak, mock interview scores by section, arena win/loss/elo trends, today's task queue, free-form daily notes, recent file activity, weakest skills from the Skill Atlas. Your job: spot the actual bottleneck and tell the user what to do TODAY — concretely.
-
-Output EXACTLY this JSON shape, nothing else:
+OUTPUT — strict JSON, nothing else:
 {"headline":"...","narrative":"...","recommendations":[
   {"kind":"tiny_task|schedule|review_note|unblock","title":"...","rationale":"...","target_id":"..."},
   {"kind":"...","title":"...","rationale":"...","target_id":"..."},
   {"kind":"...","title":"...","rationale":"...","target_id":"..."}
 ]}
 
-CORE RULES:
+KIND CONTRACT (only these 4; no "practice_skill"/"drill_mock"/"drill_kata"):
+  tiny_task   5-15 min concrete action.            target_id=""
+  schedule    time-block today.                    target_id=""
+  review_note open one provided note.              target_id=note_id (must match input)
+  unblock     5-min first step on a stuck plan item. target_id=item_id (must match input)
 
-1. NEVER use generic verbs. FORBIDDEN: "practice algorithms", "do system design", "work on databases", "review your notes", "be consistent", "keep going". These are useless. If you write one of these, you have failed.
+PRIORITY ORDER (use SIGNAL DIGEST before raw sections; first matching wins):
+  1. Interview ≤7d → ≥2 of 3 recs prep that role+sections; severity=critical=urgency in headline.
+  2. Repeated topic (mock weak / arena loss / Cue) → one concrete drill on that topic.
+  3. Repeated skipped plan item → "unblock" with item_id.
+  4. Very weak skill (≤30/100) → name skill_key in title/rationale (kind=tiny_task).
+  5. Fresh relevant note → review_note with exact note_id.
+  6. Sparse signals (<3d data) → say so in narrative, recommend onboarding (first mock, generate plan, daily kata).
+  7. Otherwise → tiny task tied to today's queue.
 
-2. ALWAYS cite a SPECIFIC signal in rationale. Examples of good rationales:
-   - "Last system_design mock 3 days ago scored 5/10 — capacity-estimation called out as weak."
-   - "Lost 2 of 3 algorithms 1v1 matches this week, all under 8 minutes — pattern-recognition gap."
-   - "You skipped 'review prefix-sum' 4 times in 14 days — chronic avoidance."
-   - "Kata streak broke yesterday after 7 days, last cursed kata you missed was 2 days ago."
-   - "Today's queue: 0/4 done, 1 in_progress for 2h — task too big or stuck."
-   - "Daily note from yesterday mentions 'stuck on dynamic-programming' — addressing that today."
+NARRATIVE — 2-3 sentences, causal chain: <observation+numbers> → <cause/interpretation> → <today's lever>. ALWAYS cite real numbers ("4 of 7 days >30 min focus", "kata streak: 12d", "2 mocks scored 6 and 7"). No disjoint facts; no platitudes.
 
-3. SPECIFICITY HIERARCHY (use the most specific available, and use the SIGNAL DIGEST before raw sections):
-   a) If user has an upcoming interview within 7 days → 2 recommendations must prepare that interview.
-   b) If mock/arena/Cue evidence repeats the same topic → recommend one concrete drill for that topic.
-   c) If skill_progress has a very low skill → name the skill_key in title/rationale, but kind remains "tiny_task".
-   d) If skipped plan items repeat → break the most-skipped one into a 5-min first step (kind: "unblock").
-   e) If fresh recent notes are relevant → "review_note" the exact note_id.
-   Otherwise — if no specific signal → tiny task tied to today's queue.
+HEADLINE — ≤8 words, matches severity in SIGNAL DIGEST:
+  critical → urgency (interview/streak break/3+ losses)
+  warn     → name the bottleneck
+  nudge    → name the leverage point
+  cruise   → acknowledge momentum (no flattery)
 
-4. RECOMMENDATION KINDS:
-   - "tiny_task": 5-15 min concrete action. target_id empty. Used when chronic avoidance is detected.
-   - "schedule": time-block in the day. target_id empty. Used when user has data but no plan structure today.
-   - "review_note": open a specific note. target_id = note_id (must match one of provided notes).
-   - "unblock": split a stuck task. target_id = item_id of the skipped plan item.
-   Do NOT output unsupported kinds such as "practice_skill", "drill_mock", or "drill_kata". Express those as "tiny_task" or "schedule" with the concrete section/skill in title and rationale.
+RATIONALE — every recommendation cites a specific signal. Good vs bad:
+  GOOD: "Last system_design mock 3d ago scored 5/10 — capacity-estimation flagged weak."
+  GOOD: "Skipped 'review prefix-sum' 4× in 14d — chronic avoidance."
+  GOOD: "Kata streak broke yesterday after 7d."
+  BAD : "Algorithms are important." / "Reviewing helps retention." / "Stay consistent."
 
-5. NARRATIVE: 2-3 sentences in CAUSAL CHAIN form: <observation with numbers> → <interpretation/cause> → <today's lever>. ALWAYS reference real numbers from the data: "4 of 7 days >30 min focus", "lost 3 in a row in arena", "kata streak: 12 days", "2 mocks this week, both system_design, scores 6 and 7". The chain MUST connect — do not list disjoint facts. No platitudes. No "great job".
+FORBIDDEN VERBS/PHRASES (writing one = failure): "practice algorithms", "do system design", "work on databases", "review your notes", "be consistent", "keep going", "take a break", "drink water", "celebrate", "you can do it", "don't forget to rest", "stay consistent", "keep up the good work", "great job".
 
-   Causal chain example: "Last system_design mock scored 5/10 with capacity-estimation flagged weak (Mon). Same gap shows in 3 of 5 mock weak_topics this month — pattern, not luck. Google interview is Fri, so today's lever is one capacity-estimation drill before anything else."
+NON-REPETITION: dismissed Past coach interactions → don't repeat title/target. Followed → continue with a NEW next step. Never 3 recs on the same topic (interview ≤7d overrides).
 
-6. HEADLINE: ONE short sentence (≤8 words). Capture the DOMINANT cross-product pattern AT THE SEVERITY LEVEL given in SIGNAL DIGEST. severity=critical → headline must convey urgency (interview/streak break/3+ losses). severity=warn → headline names the bottleneck. severity=nudge → headline names the leverage point. severity=cruise → headline acknowledges momentum without flattery. Examples: "System Design holding back; algorithms solid.", "12-day kata streak, but no deep focus.", "Three quiet days after Saturday burst.".
-
-7. ANTI-FLUFF: forbidden words/phrases — "take a break", "drink water", "celebrate", "you can do it", "don't forget to rest", "stay consistent", "keep up the good work". The user pays you to be honest, not nice.
-
-8. If signals are SPARSE (new user, < 3 days of data) — say so explicitly in narrative and recommend onboarding actions: schedule first mock, generate a daily plan, do today's daily kata. Don't fabricate insight from nothing.
-
-9. UPCOMING INTERVIEWS overrides everything. If user has an interview scheduled in the next 7 days, AT LEAST 2 of 3 recommendations MUST address that interview's company role + sections. Use "schedule" for booking a mock block or "tiny_task" for a concrete drill; target_id stays empty unless kind is review_note/unblock.
-
-10. INLINE LINKS — narrative, title, and rationale fields support markdown link form: [label](url). Use Codex links ONLY from the "Available Codex curated articles" section. Never invent article slugs, topic slugs, or raw external URLs. Keep label SHORT (1-3 words). If no Codex article is listed for a topic, do not link it.
-
-11. NON-REPETITION: If Past coach interactions show the user dismissed a recommendation, do not repeat the same title or target. If the user followed a recommendation, continue the direction with a new next step. Never produce 3 recommendations about the same topic; diversify by bottleneck unless an interview within 7 days overrides.
+INLINE LINKS — markdown [label](url) allowed in narrative/title/rationale. Codex links ONLY from the "Available Codex curated articles" list; never invent slugs/URLs. Label 1-3 words. No Codex match → no link.
 
 ──────────────────────────────────────────────────────────────────────────
-FEW-SHOT EXAMPLES (good vs bad — match the good one's specificity):
+FEW-SHOT (match the good one's specificity):
 
-❌ BAD output (generic, useless):
-{"headline":"Keep up the good work!","narrative":"You've been making great progress. Stay consistent and continue practicing daily.","recommendations":[{"kind":"tiny_task","title":"Practice algorithms","rationale":"Algorithms are important.","target_id":""},{"kind":"schedule","title":"Block focus time","rationale":"Focus is key to growth.","target_id":""},{"kind":"tiny_task","title":"Review your notes","rationale":"Reviewing helps retention.","target_id":""}]}
+BAD:
+{"headline":"Keep up the good work!","narrative":"You've been making great progress. Stay consistent.","recommendations":[{"kind":"tiny_task","title":"Practice algorithms","rationale":"Algorithms are important.","target_id":""},{"kind":"schedule","title":"Block focus time","rationale":"Focus is key.","target_id":""},{"kind":"tiny_task","title":"Review your notes","rationale":"Reviewing helps retention.","target_id":""}]}
 
-✅ GOOD output (specific signals, concrete actions):
-{"headline":"Google interview Friday — system_design gap.","narrative":"Last system_design mock 2 days ago scored 5/10, weak_topics=[capacity-estimation, sharding]. You have 3 days until Google L5 interview, readiness_pct=40. Today's queue is empty, you skipped 'review consistent-hashing' 4 times in 14 days.","recommendations":[{"kind":"schedule","title":"Run a system_design mock today, focus on capacity-estimation.","rationale":"Last mock scored 5/10 on this section, Google interview is in 3 days.","target_id":""},{"kind":"unblock","title":"Open consistent-hashing review and read just the first paragraph.","rationale":"Skipped 4 times in 14 days — chronic avoidance. Tiny first step breaks the wall.","target_id":"plan-item-abc-123"},{"kind":"tiny_task","title":"Solve one capacity-estimation back-of-envelope problem.","rationale":"Listed as weak_topic in last mock + relevant for sharding section of Google interview.","target_id":""}]}
+GOOD (interview override):
+{"headline":"Google interview Friday — system_design gap.","narrative":"Last system_design mock 2d ago scored 5/10, weak_topics=[capacity-estimation, sharding]. 3 days until Google L5, readiness=40%. Today's queue empty, skipped 'review consistent-hashing' 4× in 14d.","recommendations":[{"kind":"schedule","title":"Run a system_design mock today, focus on capacity-estimation.","rationale":"Last mock 5/10 on this section, Google in 3 days.","target_id":""},{"kind":"unblock","title":"Open consistent-hashing review, read just the first paragraph.","rationale":"Skipped 4× in 14d — chronic avoidance. Tiny step breaks the wall.","target_id":"plan-item-abc-123"},{"kind":"tiny_task","title":"Solve one capacity-estimation back-of-envelope problem.","rationale":"weak_topic in last mock + relevant for sharding at Google.","target_id":""}]}
 
-✅ GOOD output (user has hot keywords from mock messages):
-{"headline":"Three quiet days, prefix-sum still hot in mocks.","narrative":"0 focus minutes Mon-Wed despite 12-day kata streak. Your mock messages last 14 days mention prefix-sum 18 times and segment-tree 9 times. Last algorithms 1v1 in arena: lost in 12 minutes (elo -22).","recommendations":[{"kind":"tiny_task","title":"Do today's daily kata — protect the streak.","rationale":"12-day streak, last_kata yesterday. Skipping today drops you to 0.","target_id":""},{"kind":"tiny_task","title":"Solve one segment-tree problem from weak skills.","rationale":"Mentioned 9× in mocks, listed in skill_progress as 28/100.","target_id":""},{"kind":"schedule","title":"Block 90 min focus before lunch.","rationale":"3 days of zero focus — re-establish habit before deep loss.","target_id":""}]}
+GOOD (hot mock keywords):
+{"headline":"Three quiet days, prefix-sum still hot.","narrative":"0 focus min Mon-Wed despite 12d kata streak. Mock messages mention prefix-sum 18× and segment-tree 9× last 14d. Last algorithms 1v1: lost in 12min (elo -22).","recommendations":[{"kind":"tiny_task","title":"Do today's daily kata — protect the streak.","rationale":"12d streak, last kata yesterday. Skip drops to 0.","target_id":""},{"kind":"tiny_task","title":"Solve one segment-tree problem from weak skills.","rationale":"9× in mocks, skill_progress=28/100.","target_id":""},{"kind":"schedule","title":"Block 90 min focus before lunch.","rationale":"3d zero focus — restore habit before deep loss.","target_id":""}]}
 
-✅ GOOD output (codex links inline, advanced reader trick):
-{"headline":"Redis blind spot — 4 mock retries in a row.","narrative":"Last 4 system_design mocks all stalled on caching. You have a Yandex interview in 6 days. Worth [caching patterns](/codex?topic=system_design&article=caching-strategies) tonight — your mock messages mention 'redis' 22× this week without resolving.","recommendations":[{"kind":"tiny_task","title":"Read [caching patterns](/codex?topic=system_design&article=caching-strategies) and write 3 takeaways.","rationale":"Skill_progress=12/100 on cache-design. 10-min curated Codex read, immediate retention.","target_id":""},{"kind":"schedule","title":"Run a system_design mock today, force a cache-heavy prompt.","rationale":"Last 4 mocks scored 4-5/10 on caching. Yandex interview Wed.","target_id":""},{"kind":"review_note","title":"Open redis-deep-dive and read the section header.","rationale":"Recent note is available and Redis appears 22× in mock messages this week.","target_id":"note-uuid-here"}]}
-
+GOOD (codex link inline):
+{"headline":"Redis blind spot — 4 mock retries.","narrative":"Last 4 system_design mocks stalled on caching. Yandex interview in 6d. Worth [caching patterns](/codex?topic=system_design&article=caching-strategies) — mock messages mention 'redis' 22× this week unresolved.","recommendations":[{"kind":"tiny_task","title":"Read [caching patterns](/codex?topic=system_design&article=caching-strategies), write 3 takeaways.","rationale":"skill_progress=12/100 on cache-design. 10-min curated read.","target_id":""},{"kind":"schedule","title":"Run a system_design mock today, force a cache-heavy prompt.","rationale":"Last 4 mocks 4-5/10 on caching. Yandex Wed.","target_id":""},{"kind":"review_note","title":"Open redis-deep-dive, read the section header.","rationale":"Recent note available; redis 22× in mock messages.","target_id":"note-uuid-here"}]}
 ──────────────────────────────────────────────────────────────────────────
 
 Return ONLY the JSON object. No prose, no code fences.`
@@ -158,19 +147,117 @@ Output EXACTLY the same JSON shape, nothing else:
 Allowed kinds: tiny_task | schedule | review_note | unblock. target_id matches the sketch when carrying note_id / plan_item_id; empty otherwise.`
 
 // buildBriefCritiqueUserPrompt assembles the second-stage user prompt.
-// The critic must see the SAME signals stage 1 did so improvements stay
-// grounded — we re-use buildBriefUserPrompt verbatim and prepend the
-// draft for review. Single source of truth for "what evidence exists".
+//
+// Phase R6 — delta-compress: instead of re-emitting the full sketch
+// signal digest (~1000 tokens), critique sees only:
+//   - DRAFT JSON (the sketch under review),
+//   - SIGNAL HIGHLIGHTS (severity grade + top 3-5 facts: severity reason,
+//     latest mock, weakest skill, repeated topic, interview pressure).
+//
+// The critique system prompt holds the 7-check rubric — it doesn't need
+// the full data digest to apply it; it needs (a) the draft and (b) just
+// enough evidence to verify the draft is grounded. Delta-compress saves
+// ~400 tokens per critique call without losing critique signal.
 func buildBriefCritiqueUserPrompt(in domain.BriefPromptInput, sketchJSON string) string {
 	var sb strings.Builder
 	sb.WriteString("──────────────────────────────────────────────────\n")
 	sb.WriteString("DRAFT BRIEF (under review):\n")
 	sb.WriteString(strings.TrimSpace(sketchJSON))
 	sb.WriteString("\n──────────────────────────────────────────────────\n\n")
-	sb.WriteString("Same signals stage 1 saw, in full:\n\n")
-	sb.WriteString(buildBriefUserPrompt(in))
-	sb.WriteString("\n\nReturn ONLY the final JSON brief (verbatim if draft passes all 7 checks; improved otherwise). No prose, no fences.")
+	writeBriefSignalHighlights(&sb, in)
+	sb.WriteString("\nReturn ONLY the final JSON brief (verbatim if draft passes all 7 checks; improved otherwise). No prose, no fences.")
 	return sb.String()
+}
+
+// writeBriefSignalHighlights — Phase R6 compact evidence digest used by
+// critique stage. Lists only the most load-bearing facts; the critic
+// uses these to verify the draft's claims are grounded without re-paying
+// the cost of the full signal section.
+func writeBriefSignalHighlights(sb *strings.Builder, in domain.BriefPromptInput) {
+	sb.WriteString("SIGNAL HIGHLIGHTS (verify draft claims against these — full signal set is upstream):\n")
+	severity, severityReason := deriveSeverity(in)
+	fmt.Fprintf(sb, "  severity=%s · %s\n", severity, severityReason)
+
+	// Interview pressure (highest-priority signal, drives override rule).
+	for _, ui := range in.UpcomingInterviews {
+		if ui.DaysFromNow >= 0 && ui.DaysFromNow <= 7 {
+			fmt.Fprintf(sb, "  upcoming_interview: %s %s in %d days, readiness=%d%%\n",
+				ui.CompanyName, ui.Role, ui.DaysFromNow, ui.ReadinessPct)
+			break
+		}
+	}
+
+	// Latest mock (most recent finished — common citation target).
+	if len(in.Mocks) > 0 {
+		m := in.Mocks[0]
+		weak := strings.Join(m.WeakTopics, ",")
+		if weak == "" {
+			weak = "no weak_topics"
+		}
+		fmt.Fprintf(sb, "  latest_mock: section=%s score=%d/10 weak=[%s] finished=%s\n",
+			m.Section, m.Score, weak, m.FinishedAt.Format("2006-01-02"))
+	}
+
+	// Repeated weak topic (warn-grade pattern).
+	if topic, n := repeatedMockWeakTopic(in.Mocks); n >= 3 {
+		fmt.Fprintf(sb, "  repeated_mock_weakness: %s in %d mock weak-topic reports\n", topic, n)
+	}
+
+	// Weakest skill (often title/rationale citation).
+	if len(in.WeakSkills) > 0 {
+		w := in.WeakSkills[0]
+		fmt.Fprintf(sb, "  weakest_skill: %s (%s) progress=%d/100\n", w.SkillKey, w.Title, w.Progress)
+	}
+
+	// Repeated skipped item (avoidance pattern).
+	if _, title, n := repeatedSkippedItem(in.SkippedRecent); n >= 2 {
+		fmt.Fprintf(sb, "  repeated_skipped: %q skipped %d times\n", title, n)
+	}
+
+	// Available codex articles — critic must verify links exist.
+	if len(in.CodexArticles) > 0 {
+		sb.WriteString("  available_codex_links: ")
+		for i, a := range in.CodexArticles {
+			if i >= 5 {
+				break
+			}
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			fmt.Fprintf(sb, "%s", a.Link)
+		}
+		sb.WriteString("\n")
+	}
+
+	// Available note IDs — critic must verify review_note targets exist.
+	if len(in.RecentNotes) > 0 {
+		sb.WriteString("  available_note_ids: ")
+		for i, n := range in.RecentNotes {
+			if i >= 5 {
+				break
+			}
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			fmt.Fprintf(sb, "%s", n.NoteID.String())
+		}
+		sb.WriteString("\n")
+	}
+
+	// Available skipped item IDs — critic must verify unblock targets exist.
+	if len(in.SkippedRecent) > 0 {
+		sb.WriteString("  available_unblock_item_ids: ")
+		for i, s := range in.SkippedRecent {
+			if i >= 5 {
+				break
+			}
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			fmt.Fprintf(sb, "%s", s.ItemID)
+		}
+		sb.WriteString("\n")
+	}
 }
 
 func buildBriefUserPrompt(in domain.BriefPromptInput) string {
@@ -295,7 +382,6 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 	} else {
 		sb.WriteString("\nMock interviews: none in record. (Suggest scheduling one if user has skill weakness signals.)\n")
 	}
-
 
 	// ── ARENA MATCHES ─────────────────────────────────────────────────
 	if len(in.Arena) > 0 {

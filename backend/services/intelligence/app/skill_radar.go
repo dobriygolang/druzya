@@ -5,11 +5,11 @@
 // Radar UC агрегирует scores per-axis за recent finished mocks одного rubric'а.
 //
 // Strategy:
-//   1. Caller передаёт rubric ('de' | 'dev_senior' | 'mle' | 'english').
-//   2. UC фильтрует mocks по соответствующему section (или fallback'ит на
-//      learning_state mode для derive'а).
-//   3. Для каждой axis из rubric definition — averages из ai_report.sections[axis].score.
-//   4. Normalizes 0..100 → 0..1 для UI.
+//  1. Caller передаёт rubric ('de' | 'dev_senior' | 'mle' | 'english').
+//  2. UC фильтрует mocks по соответствующему section (или fallback'ит на
+//     learning_state mode для derive'а).
+//  3. Для каждой axis из rubric definition — averages из ai_report.sections[axis].score.
+//  4. Normalizes 0..100 → 0..1 для UI.
 package app
 
 import (
@@ -25,8 +25,8 @@ import (
 
 // RadarRubric — статически известный набор axes per-rubric.
 type RadarRubric struct {
-	Key   string
-	Axes  []RadarAxisDef
+	Key  string
+	Axes []RadarAxisDef
 	// Sections — какие mock_sessions.section попадают в этот rubric.
 	Sections []string
 }
@@ -38,11 +38,52 @@ type RadarAxisDef struct {
 }
 
 // SkillRadarAxis — one axis with averaged score.
+//
+// Phase R6 — Confidence guard: a single mock makes the radar jitter on
+// every refresh. We expose MockCount (raw sample size) and Confidence
+// (low / medium / high based on count) so the UI can indicate which
+// axes are reliable. Frontend will render low-confidence axes with a
+// dashed outline / smaller node until proto regen lifts these fields
+// onto the wire (deferred to R5).
 type SkillRadarAxis struct {
-	Key       string
-	Label     string
-	Score     float64 // 0..1
-	MockCount int
+	Key        string
+	Label      string
+	Score      float64 // 0..1
+	MockCount  int
+	Confidence RadarAxisConfidence
+}
+
+// RadarAxisConfidence — qualitative reliability marker derived from
+// MockCount. Threshold tuned so:
+//   - 0 mocks = empty (UI shows axis at zero with no marker)
+//   - 1 mock  = low (UI: "1 mock — radar may jitter")
+//   - 2-3     = medium (acceptable for trend-spotting)
+//   - 4+      = high (stable trend)
+type RadarAxisConfidence string
+
+const (
+	// RadarConfidenceEmpty — axis has no mocks; score is 0 by definition.
+	RadarConfidenceEmpty RadarAxisConfidence = "empty"
+	// RadarConfidenceLow — single mock; score is real but volatile.
+	RadarConfidenceLow RadarAxisConfidence = "low"
+	// RadarConfidenceMedium — 2-3 mocks; trend visible.
+	RadarConfidenceMedium RadarAxisConfidence = "medium"
+	// RadarConfidenceHigh — 4+ mocks; stable signal.
+	RadarConfidenceHigh RadarAxisConfidence = "high"
+)
+
+// confidenceForCount maps raw MockCount → qualitative confidence bucket.
+func confidenceForCount(n int) RadarAxisConfidence {
+	switch {
+	case n <= 0:
+		return RadarConfidenceEmpty
+	case n == 1:
+		return RadarConfidenceLow
+	case n <= 3:
+		return RadarConfidenceMedium
+	default:
+		return RadarConfidenceHigh
+	}
 }
 
 // SkillRadarSnapshot — full 5-axis result.
@@ -128,10 +169,11 @@ func (uc *GetSkillRadar) Do(ctx context.Context, in GetSkillRadarInput) (SkillRa
 	for _, ax := range rub.Axes {
 		score, count := avgAxis(relevant, ax.Key)
 		out.Axes = append(out.Axes, SkillRadarAxis{
-			Key:       ax.Key,
-			Label:     ax.Label,
-			Score:     score,
-			MockCount: count,
+			Key:        ax.Key,
+			Label:      ax.Label,
+			Score:      score,
+			MockCount:  count,
+			Confidence: confidenceForCount(count),
 		})
 	}
 	return out, nil
@@ -148,7 +190,9 @@ func sectionInRubric(section string, rubricSections []string) bool {
 
 // avgAxis — извлекает per-axis score из ai_report JSONB и усредняет.
 // ai_report shape ожидается:
-//   { "overall_score": int, "sections": {"<axis_key>": {"score": int, ...}, ...} }
+//
+//	{ "overall_score": int, "sections": {"<axis_key>": {"score": int, ...}, ...} }
+//
 // Empty / malformed reports → score 0, count 0.
 func avgAxis(mocks []domain.MockSessionSummary, axisKey string) (float64, int) {
 	var sum float64

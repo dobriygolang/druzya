@@ -8,6 +8,11 @@
 //     UI попросит юзера заполнить руками с autocomplete по atlas-nodes
 //   - LLM fail → fetcher.Title + plain summary без topics, manual=true
 //   - LLM ok → full Resource shape, manual=false
+//
+// Phase R6 — process-local dedup cache (sha256(URL) → Resource, TTL 7d).
+// Cache hit returns Manual=false preview without touching the network or
+// LLM. Successful LLM-parsed extractions populate the cache; failures
+// skip caching so retries can recover. See extract_cache.go for details.
 package app
 
 import (
@@ -16,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -29,6 +35,9 @@ type ExtractResourceContent struct {
 	Fetcher *curation.Fetcher
 	Chain   llmchain.ChatClient
 	Timeout time.Duration
+	// Log — optional. When set, cache hits/misses are logged at Debug for
+	// admin visibility. Nil-safe (we use a no-op logger when unset).
+	Log *slog.Logger
 }
 
 // ExtractInput.
@@ -58,6 +67,27 @@ func (uc *ExtractResourceContent) Do(ctx context.Context, in ExtractInput) (Extr
 	if strings.TrimSpace(in.URL) == "" {
 		return ExtractOutput{}, fmt.Errorf("curation.ExtractResourceContent: empty url")
 	}
+
+	// Phase R6 — dedup cache. Hot URLs (popular blog posts, course
+	// landing pages, GH repos, batch retries) get served from memory
+	// without any network or LLM cost.
+	cacheKey := in.CacheKey()
+	if cached, ok := globalExtractCache.get(cacheKey); ok {
+		if log := uc.logger(); log != nil {
+			log.Debug("curation.ExtractResourceContent: cache hit",
+				slog.String("url", in.URL), slog.String("key", cacheKey))
+		}
+		return ExtractOutput{
+			Preview:   cached,
+			Manual:    false,
+			FetchInfo: curation.FetchResult{URL: in.URL, Strategy: "cache", ExtractedAt: time.Now().UTC()},
+		}, nil
+	}
+	if log := uc.logger(); log != nil {
+		log.Debug("curation.ExtractResourceContent: cache miss",
+			slog.String("url", in.URL), slog.String("key", cacheKey))
+	}
+
 	out := ExtractOutput{Preview: domain.Resource{URL: in.URL}}
 
 	fetched := uc.Fetcher.Fetch(ctx, in.URL)
@@ -104,6 +134,49 @@ func (uc *ExtractResourceContent) Do(ctx context.Context, in ExtractInput) (Extr
 	}
 	out.Preview = parsed
 	out.Manual = false
+	// Cache the successful LLM extraction. Failures (manual=true) skip
+	// caching so the next attempt can recover.
+	globalExtractCache.set(cacheKey, parsed)
+	return out, nil
+}
+
+// logger — nil-safe accessor for the optional UC logger.
+func (uc *ExtractResourceContent) logger() *slog.Logger {
+	if uc == nil || uc.Log == nil {
+		return nil
+	}
+	return uc.Log
+}
+
+// ExtractMany — Phase R6 sequential batched wrapper. Iterates the URL
+// list and runs Do per URL, returning per-URL outputs in input order.
+// The dedup cache (Phase R6) absorbs repeated URLs across calls within
+// one process; the seed_resources cmd benefits the most.
+//
+// TODO(perf): true multi-doc LLM call (one prompt with 3-5 URLs in body)
+// would cut the per-URL token tax further. Holding off until we have a
+// caller that justifies the extra prompt-engineering surface — current
+// callers are admin-grade and dedup-cache already kills the duplicate
+// LLM calls they used to make.
+func (uc *ExtractResourceContent) ExtractMany(ctx context.Context, urls []string, allowedAtlasNodeIDs []string) ([]ExtractOutput, error) {
+	out := make([]ExtractOutput, 0, len(urls))
+	for _, url := range urls {
+		if strings.TrimSpace(url) == "" {
+			out = append(out, ExtractOutput{})
+			continue
+		}
+		o, err := uc.Do(ctx, ExtractInput{URL: url, AtlasNodeIDs: allowedAtlasNodeIDs})
+		if err != nil {
+			// Per-URL fail-soft: empty preview, manual=true. Caller can
+			// retry the failing slot later without losing the rest.
+			out = append(out, ExtractOutput{
+				Preview: domain.Resource{URL: url},
+				Manual:  true,
+			})
+			continue
+		}
+		out = append(out, o)
+	}
 	return out, nil
 }
 

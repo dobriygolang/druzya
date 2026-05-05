@@ -14,16 +14,16 @@ import (
 // SendMessage — main chat use case.
 //
 // Flow:
-//   1. Load thread + verify ownership (student_id == requester)
-//   2. IncrementCounters (atomic; ErrRateLimited if daily cap hit)
-//   3. Append user-episode
-//   4. Recall: persona prompt + facts + summary + recent episodes + snapshot
-//   5. LLM call (TaskAITutorChat) с собранным prompt
-//   6. Append assistant-episode
-//   7. Touch facts (last_used_at update)
-//   8. Maybe-compact: если exceed thresholds → trigger в той же call-path
-//      (мы синхронны — пусть user подождёт extra 1-2s раз в N сообщений
-//       вместо background-job complexity).
+//  1. Load thread + verify ownership (student_id == requester)
+//  2. IncrementCounters (atomic; ErrRateLimited if daily cap hit)
+//  3. Append user-episode
+//  4. Recall: persona prompt + facts + summary + recent episodes + snapshot
+//  5. LLM call (TaskAITutorChat) с собранным prompt
+//  6. Append assistant-episode
+//  7. Touch facts (last_used_at update)
+//  8. Maybe-compact: если exceed thresholds → trigger в той же call-path
+//     (мы синхронны — пусть user подождёт extra 1-2s раз в N сообщений
+//     вместо background-job complexity).
 type SendMessage struct {
 	Personas  domain.PersonaRepo
 	Threads   domain.ThreadRepo
@@ -253,6 +253,11 @@ func renderFactsBlock(facts []domain.Fact) string {
 // shouldCompact — true если message_count с момента last_compacted_at
 // превышает threshold ИЛИ approx tokens прошлого ответа намекают что
 // мы скоро упрёмся в context budget.
+//
+// Phase R6 — added stale-summary trigger: thread с LastCompactedAt
+// старше CompactionStaleAfter (7d) compact'ится даже при низком
+// message_count. Без этого SummaryMD растёт unbounded для медленных
+// студентов (1-2 messages/week), и facts с low confidence не decay'ятся.
 func shouldCompact(thread domain.Thread, recent []domain.Episode, lastResp domain.LLMResponse) bool {
 	// Threshold по message_count: считаем диалог-ходов с момента
 	// последней compaction. message_count в thread теперь увеличен на 1
@@ -260,6 +265,12 @@ func shouldCompact(thread domain.Thread, recent []domain.Episode, lastResp domai
 	if thread.LastCompactedAt == nil {
 		// Никогда не компактили; trigger по абсолютному count.
 		return thread.MessageCount >= domain.CompactionMessageThreshold
+	}
+	// Phase R6 — stale summary trigger. Если SummaryMD не обновлялся
+	// >7d, прогоняем compaction даже когда диалог редкий: facts decay'ятся,
+	// summary освежается. Защищает медленные threads от unbounded growth.
+	if time.Since(*thread.LastCompactedAt) > domain.CompactionStaleAfter && thread.MessageCount > 0 {
+		return true
 	}
 	// Compactили — count episodes since тот timestamp. Approximate через
 	// recent (8 episodes) — если все 8 свежее last_compacted_at, то

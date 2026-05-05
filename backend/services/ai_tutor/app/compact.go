@@ -13,8 +13,8 @@ import (
 )
 
 // Compact — turns the last N episodes into:
-//   1. New summary_md (3-5 bullets, replaces working memory)
-//   2. 0-3 fact upserts (extracted student-specific facts)
+//  1. New summary_md (3-5 bullets, replaces working memory)
+//  2. 0-3 fact upserts (extracted student-specific facts)
 //
 // Trigger flow:
 //   - Auto: SendMessage detects threshold breach → calls Compact synchronously
@@ -138,7 +138,49 @@ func (uc *Compact) Do(ctx context.Context, threadID uuid.UUID) error {
 			continue
 		}
 	}
+
+	// Phase R6 — fact decay sweep. Stale facts (LastUsedAt > 7d ago) get
+	// their confidence trimmed by FactDecayRate; if the new confidence
+	// drops below FactDecayThreshold, the fact is dropped entirely.
+	// Newly-upserted facts above are skipped because they were just
+	// touched (Upsert sets last_used_at via touch on the next prompt).
+	uc.decayStaleFacts(ctx, threadID, now)
+
 	return nil
+}
+
+// decayStaleFacts — Phase R6. Pulls top-50 facts ranked by confidence/last_used_at,
+// scans for unused stale ones (LastUsedAt < now - FactDecayUnusedAfter),
+// reduces their confidence by FactDecayRate, drops below FactDecayThreshold.
+//
+// Best-effort: errors are non-fatal — the next compaction tries again.
+// We bound the scan at 50 facts so a runaway thread doesn't pay O(N) per
+// compaction; in practice threads rarely accumulate >20 facts.
+func (uc *Compact) decayStaleFacts(ctx context.Context, threadID uuid.UUID, now time.Time) {
+	facts, err := uc.Facts.TopRanked(ctx, threadID, 50)
+	if err != nil || len(facts) == 0 {
+		return
+	}
+	staleSince := now.Add(-domain.FactDecayUnusedAfter)
+	for _, f := range facts {
+		if f.LastUsedAt.IsZero() || f.LastUsedAt.After(staleSince) {
+			// Recently used; skip decay.
+			continue
+		}
+		newConf := f.Confidence - domain.FactDecayRate
+		if newConf < domain.FactDecayThreshold {
+			// Drop the fact entirely — it's stale and below the floor.
+			_ = uc.Facts.Delete(ctx, threadID, f.Key)
+			continue
+		}
+		// Lower confidence; carry value/key over via upsert.
+		_, _ = uc.Facts.Upsert(ctx, domain.Fact{
+			ThreadID:   threadID,
+			Key:        f.Key,
+			Value:      f.Value,
+			Confidence: newConf,
+		})
+	}
 }
 
 func parseCompactPayload(raw string) compactPayload {

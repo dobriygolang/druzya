@@ -68,5 +68,136 @@
       ]
     },
     "raw": "{\"headline\":\"Two days of solid 80-min focus — keep it.\",\"narrative\":\"Last 2 days each landed 80+ min of deep focus across 3 pomodoros. No urgent bottleneck right now. Today's lever: pick the next thing on Atlas you've been avoiding and prep it.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Pick one weak Atlas node and read its description block.\",\"rationale\":\"2 days of healthy focus — invest in inventory pruning before next push.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Schedule a 60-min focus block tomorrow on the same atlas node.\",\"rationale\":\"Pomodoros at 3/day is sustainable; 60 min concrete target keeps it.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Write 2 lines in daily note about today's actual blocker.\",\"rationale\":\"Focus is up; reflection lag is the next leverage point.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "long_absence_welcome_back",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "FocusDays": [
+        {"Day": "2026-04-10T00:00:00Z", "Seconds": 3600, "Pomodoros": 2}
+      ]
+    },
+    "raw": "{\"headline\":\"Welcome back — 20 days off, fresh start today.\",\"narrative\":\"Last activity 20 days ago. Old data is stale, so today's lever is one tiny re-entry win — solve one easy kata, not the full plan.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Solve one easy kata to restart momentum.\",\"rationale\":\"20 days off, 1 finished problem restarts the muscle.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Block 25 min focus this afternoon, not more.\",\"rationale\":\"Fresh from a break, 25 min has 90% completion vs 60% for 60 min.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Schedule a fresh diagnostic mock for tomorrow to recalibrate.\",\"rationale\":\"After 20 days, old mock scores no longer reflect current level.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "simultaneous_critical_signals",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "UpcomingInterviews": [
+        {
+          "CompanyName": "Stripe",
+          "Role": "backend",
+          "Kind": "interview",
+          "Title": "Stripe L5",
+          "DaysFromNow": 2,
+          "InterviewDate": "2026-05-02T00:00:00Z",
+          "ReadinessPct": 55
+        }
+      ],
+      "ActiveGoals": [
+        {
+          "Kind": "skill_target",
+          "Title": "Master rate-limiting",
+          "Deadline": "2026-05-02T00:00:00Z",
+          "DaysToDeadline": 2,
+          "SkillKeys": ["rate-limiting"]
+        }
+      ]
+    },
+    "raw": "{\"headline\":\"Stripe L5 + skill goal both due in 2 days.\",\"narrative\":\"Stripe L5 interview in 48h with readiness=55%. Skill goal master rate-limiting also due in 2 days. Today's single lever: drill rate-limiting against Stripe-style sysdesign prompt.\",\"recommendations\":[{\"kind\":\"schedule\",\"title\":\"Run a 30-min sysdesign mock with rate-limiting as the headline constraint.\",\"rationale\":\"Both signals point to rate-limiting; one mock buys 2 data points.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Memorise token-bucket vs leaky-bucket tradeoffs in 10 min.\",\"rationale\":\"Stripe interview is 2 days out; rate-limiting is the named gap.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Write 3 distributed-rate-limit edge cases on paper.\",\"rationale\":\"Skill goal due in 2 days plus Stripe interview overlaps.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "mock_topic_repeat_warn",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "Mocks": [
+        {"SessionID": "00000000-0000-0000-0000-000000000010", "Section": "system_design", "Difficulty": "medium", "Status": "finished", "Score": 6, "WeakTopics": ["caching", "consistent-hashing"], "FinishedAt": "2026-04-28T00:00:00Z", "DurationMin": 40},
+        {"SessionID": "00000000-0000-0000-0000-000000000011", "Section": "system_design", "Difficulty": "medium", "Status": "finished", "Score": 5, "WeakTopics": ["caching"], "FinishedAt": "2026-04-25T00:00:00Z", "DurationMin": 42},
+        {"SessionID": "00000000-0000-0000-0000-000000000012", "Section": "system_design", "Difficulty": "medium", "Status": "finished", "Score": 5, "WeakTopics": ["caching", "redis"], "FinishedAt": "2026-04-22T00:00:00Z", "DurationMin": 45}
+      ]
+    },
+    "raw": "{\"headline\":\"Caching flagged in 3 of 3 last mocks.\",\"narrative\":\"Caching shows up as weak_topic in all 3 of your last system_design mocks (scores 5, 5, 6). Pattern, not noise. Today's lever: one focused caching drill before next mock.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Read TTL+invalidation section of caching-strategies, write 3 takeaways.\",\"rationale\":\"Caching weak_topic across 3 mocks; targeted reading converts pattern to fix.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Run a system_design mock today, force a cache-heavy prompt.\",\"rationale\":\"3 mocks scored 5-6 on caching; need a 4th data point post-fix.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Implement a tiny LRU cache in 15 min, no library.\",\"rationale\":\"Caching gap is 3-mock chronic; muscle memory beats theory here.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "track_stalled_5d_warn",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "ActiveTracks": [
+        {"Name": "Senior Backend", "IsPaused": false, "CurrentStep": 2, "StepsTotal": 8, "CurrentStepTitle": "Distributed Locks", "CurrentStepSkills": ["zookeeper", "redis-locks"], "DaysSinceLastTouch": 6}
+      ]
+    },
+    "raw": "{\"headline\":\"Senior Backend track stalled 6 days on locks.\",\"narrative\":\"Active track Senior Backend stuck on step 3/8 'Distributed Locks' for 6 days. Skills zookeeper, redis-locks haven't seen any activity. Today's lever: one tiny win on redis-locks to unstick.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Read the SETNX section of redis-locks docs, write 1 takeaway.\",\"rationale\":\"Track step 3/8 stalled 6 days on this skill; 5-min read restarts.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Block 25 min today to implement a redlock client.\",\"rationale\":\"6 days stalled = friction is high; 25 min is doable to break it.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Write 1 line in daily note: what scared you about distributed locks.\",\"rationale\":\"6-day stall on the same step suggests avoidance, not lack of time.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "weak_skill_critical_15",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "WeakSkills": [
+        {"SkillKey": "consistent-hashing", "Title": "Consistent Hashing", "Progress": 12}
+      ],
+      "FocusDays": [
+        {"Day": "2026-04-29T00:00:00Z", "Seconds": 3600, "Pomodoros": 2}
+      ]
+    },
+    "raw": "{\"headline\":\"Consistent-hashing at 12/100 — pick today.\",\"narrative\":\"Skill_progress shows consistent-hashing at 12/100, your weakest atlas node. Yesterday had 60 min of focus, momentum is there. Today's lever: one targeted drill on hash-ring placement.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Implement a hash-ring with 3 virtual nodes per server in 20 min.\",\"rationale\":\"consistent-hashing at 12/100; coding it from scratch lifts mastery 8-10 points.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Read consistent-hashing primer, write 2 takeaways.\",\"rationale\":\"12/100 weakest skill; 10 min reading covers the conceptual gap.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Block 30 min focus before lunch on hash-ring drills.\",\"rationale\":\"Yesterday hit 60 min; 30 min today maintains the rhythm.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "skipped_item_chronic_critical",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "SkippedRecent": [
+        {"ItemID": "plan-skip-1", "SkillKey": "dp-optimisation", "Title": "Review prefix-sum patterns", "PlanDate": "2026-04-26T00:00:00Z"},
+        {"ItemID": "plan-skip-2", "SkillKey": "dp-optimisation", "Title": "Review prefix-sum patterns", "PlanDate": "2026-04-23T00:00:00Z"},
+        {"ItemID": "plan-skip-3", "SkillKey": "dp-optimisation", "Title": "Review prefix-sum patterns", "PlanDate": "2026-04-20T00:00:00Z"},
+        {"ItemID": "plan-skip-4", "SkillKey": "dp-optimisation", "Title": "Review prefix-sum patterns", "PlanDate": "2026-04-17T00:00:00Z"}
+      ]
+    },
+    "raw": "{\"headline\":\"Prefix-sum skipped 4 times — chronic avoidance.\",\"narrative\":\"You skipped 'review prefix-sum patterns' 4 times in the last 14 days. Pattern suggests friction or scope; today's lever is one 5-min first paragraph, not the full review.\",\"recommendations\":[{\"kind\":\"unblock\",\"title\":\"Open prefix-sum review and read just the first paragraph.\",\"rationale\":\"Skipped 4 times in 14 days; tiny first step beats the wall.\",\"target_id\":\"plan-skip-1\"},{\"kind\":\"tiny_task\",\"title\":\"Solve one easy prefix-sum kata in 10 min.\",\"rationale\":\"4 skips on review; flip to active drill for muscle memory.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Write 1 line: what felt overwhelming about prefix-sum review.\",\"rationale\":\"4 skips = avoidance; naming the friction is half the fix.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "goal_due_today_critical",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "ActiveGoals": [
+        {"Kind": "skill_target", "Title": "Finish DDIA chapter 3", "Deadline": "2026-04-30T00:00:00Z", "DaysToDeadline": 0, "SkillKeys": ["storage-engines"]}
+      ]
+    },
+    "raw": "{\"headline\":\"DDIA ch3 deadline is today — close it.\",\"narrative\":\"Your skill_target 'Finish DDIA chapter 3' is due today. No buffer left. Today's only lever: read the remaining sections, mark complete.\",\"recommendations\":[{\"kind\":\"schedule\",\"title\":\"Block 50 min this morning to finish DDIA chapter 3.\",\"rationale\":\"Goal deadline is today; missing it loses commitment momentum.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Take 3 notes on storage-engines section while reading.\",\"rationale\":\"Skill_keys=storage-engines; capturing while reading locks retention.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Mark goal complete in tracker after final page.\",\"rationale\":\"Closing the loop on a 0-day goal beats opening 3 new ones.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "interview_warn_4_to_7d",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "UpcomingInterviews": [
+        {"CompanyName": "Google", "Role": "backend", "Kind": "interview", "Title": "Google L5", "DaysFromNow": 5, "InterviewDate": "2026-05-05T00:00:00Z", "ReadinessPct": 60}
+      ],
+      "Mocks": [
+        {"SessionID": "00000000-0000-0000-0000-000000000020", "Section": "system_design", "Difficulty": "medium", "Status": "finished", "Score": 6, "WeakTopics": ["sharding"], "FinishedAt": "2026-04-29T00:00:00Z", "DurationMin": 45}
+      ]
+    },
+    "raw": "{\"headline\":\"Google L5 in 5 days — sharding still 6/10.\",\"narrative\":\"Google L5 in 5 days at 60% readiness. Yesterday's mock scored 6/10 on system_design with sharding flagged weak. Today's lever: one targeted sharding drill.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Solve one sharding-strategy back-of-envelope in 15 min.\",\"rationale\":\"Google interview in 5 days, sharding flagged weak in yesterday's mock 6/10.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Run a system_design mock tomorrow, force a sharding-heavy prompt.\",\"rationale\":\"5 days to interview, 1 follow-up mock confirms or denies the gap.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Memorise the 4 standard sharding strategies (range, hash, geo, dir).\",\"rationale\":\"Google L5 likely covers sharding; flash facts beat improvising.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "queue_stalled_nudge",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "Queue": {"Total": 5, "Done": 0, "InProgress": 1, "Todo": 4, "AISourced": 3, "UserSourced": 2, "Items": [{"ItemID": "q-1", "Status": "in_progress", "Source": "ai", "SkillKey": "go", "Title": "Refactor handler chain"}]}
+    },
+    "raw": "{\"headline\":\"0 of 5 done — refactor task stuck.\",\"narrative\":\"Today's queue 0/5 done with 1 in_progress on 'Refactor handler chain'. Task likely too big or unclear. Today's lever: shrink it to a 5-min first slice.\",\"recommendations\":[{\"kind\":\"unblock\",\"title\":\"Open the handler-chain refactor and write 1 line: which file to touch first.\",\"rationale\":\"In_progress for a while at 0/5 done; naming the first file unsticks.\",\"target_id\":\"q-1\"},{\"kind\":\"tiny_task\",\"title\":\"Pick the smallest of the 4 todo items, do that first.\",\"rationale\":\"0/5 done = momentum issue; small win restarts.\",\"target_id\":\"\"},{\"kind\":\"schedule\",\"title\":\"Block 25 min focus right after lunch on the smallest task.\",\"rationale\":\"Queue stuck; pinned slot beats free-floating intent.\",\"target_id\":\"\"}]}"
+  },
+  {
+    "name": "cooldown_3_dismissed_kind",
+    "in": {
+      "Today": "2026-04-30T00:00:00Z",
+      "PastEpisodes": [
+        {"OccurredAt": "2026-04-29T00:00:00Z", "Kind": "brief_dismissed", "Summary": "User dismissed schedule recommendation 'Block 90 min focus'"},
+        {"OccurredAt": "2026-04-27T00:00:00Z", "Kind": "brief_dismissed", "Summary": "User dismissed schedule recommendation 'Block 60 min focus'"},
+        {"OccurredAt": "2026-04-25T00:00:00Z", "Kind": "brief_dismissed", "Summary": "User dismissed schedule recommendation 'Block 45 min focus'"}
+      ],
+      "WeakSkills": [
+        {"SkillKey": "graphs", "Title": "Graphs", "Progress": 22}
+      ]
+    },
+    "raw": "{\"headline\":\"Graphs at 22/100 — try a tiny win, not a block.\",\"narrative\":\"Last 3 'block focus' recs were dismissed in a row. Switch tactic: tiny actionable task instead of a calendar block. Graphs at 22/100 is the natural target.\",\"recommendations\":[{\"kind\":\"tiny_task\",\"title\":\"Solve one easy BFS kata in 10 min, no setup.\",\"rationale\":\"3 dismissed schedule recs; 10-min kata bypasses the calendar friction.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Read the 'BFS template' Atlas card, write 1 takeaway.\",\"rationale\":\"Graphs 22/100 is gap; 5 min read replaces a 60-min block.\",\"target_id\":\"\"},{\"kind\":\"tiny_task\",\"title\":\"Pick which 2 graph problems you'll do this week, write them in daily note.\",\"rationale\":\"Dismissal pattern says block-time isn't working; commit to specific items instead.\",\"target_id\":\"\"}]}"
   }
 ]
