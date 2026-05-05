@@ -17,12 +17,18 @@ export default defineConfig({
     exclude: ['tests/e2e/**', 'node_modules/**', 'dist/**'],
   },
   build: {
+    // Modern browsers only — соответствует tsconfig target: ES2022.
+    // Уменьшает bundle (no transpile down к ES2015) и включает native
+    // top-level await, optional chaining без polyfill'ов.
+    target: 'esnext',
     // manualChunks убран намеренно: ручное разделение разделяло react в свой
     // chunk, но React-зависимые либы (sentry/react, monaco-editor/react,
     // framer-motion, @tanstack/react-query) попадали в "vendor", который
     // загружался ДО react chunk → "Cannot read properties of undefined
     // (reading 'createContext')". Vite/Rollup умеет делать корректный
     // topological-split автоматически — пусть делает.
+    // Brotli/gzip compression выполняется на nginx-уровне (см infra/nginx/),
+    // дублировать build-time плагином смысла нет — лишний devDep.
   },
   server: {
     host: true,
