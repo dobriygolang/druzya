@@ -1,5 +1,4 @@
-// llmchain_config_repo.go — Postgres-реализация
-// llmchain.ConfigSource / domain.LLMChainConfigRepo.
+// llmchain_config_repo.go — Postgres-реализация llmchain.ConfigSource.
 //
 // Singleton row in llm_runtime_config (id=1). JSONB поля
 // сериализуем/десериализуем ручками — простые map'ы, sqlc generic не
@@ -14,7 +13,6 @@ import (
 	"fmt"
 	"time"
 
-	"druz9/admin/domain"
 	"druz9/shared/pkg/llmchain"
 
 	"github.com/jackc/pgx/v5"
@@ -158,8 +156,5 @@ func (s *LLMChainConfig) Save(ctx context.Context, cfg *llmchain.RuntimeConfig, 
 	return nil
 }
 
-// Compile-time assertions.
-var (
-	_ llmchain.ConfigSource     = (*LLMChainConfig)(nil)
-	_ domain.LLMChainConfigRepo = (*LLMChainConfig)(nil)
-)
+// Compile-time assertion.
+var _ llmchain.ConfigSource = (*LLMChainConfig)(nil)
