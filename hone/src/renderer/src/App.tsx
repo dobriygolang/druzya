@@ -12,7 +12,7 @@
 // task + post-finish reflection). Backend StartFocusSession /
 // EndFocusSession теперь оркестрируется отсюда, не из удалённой страницы,
 // чтобы streak-механика продолжала наполняться (bible §6 sync).
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CueSessionAnalysis } from '@shared/ipc';
 
 import { CanvasBg, type CanvasMode, type ThemeId } from './components/CanvasBg';
@@ -23,7 +23,6 @@ import { Dock } from './components/Dock';
 import { LoginScreen } from './components/LoginScreen';
 import { OnboardingModal } from './components/OnboardingModal';
 import { Palette, type PageId, type PaletteAction } from './components/Palette';
-import { Copilot } from './components/Copilot';
 import { DailyBriefPanel } from './components/DailyBriefPanel';
 import { TutorAssignmentsBanner } from './components/TutorAssignmentsBanner';
 // StandupOverlay удалён — standup переехал в morning banner на Today page
@@ -31,33 +30,57 @@ import { TutorAssignmentsBanner } from './components/TutorAssignmentsBanner';
 import { UpdateToast } from './components/UpdateToast';
 import { OfflineBanner } from './components/OfflineBanner';
 import { HomePage } from './pages/Home';
-import { Coach } from './pages/Coach';
-import { Stats } from './pages/Stats';
 import { type StartFocusArgs } from './pages/Today';
-import { TaskBoardPage } from './pages/TaskBoard';
-import { NotesPage } from './pages/Notes';
 import { VaultUnlockGate } from './components/VaultUnlockGate';
 import { UpgradePrompt } from './components/UpgradePrompt';
 import { useQuotaStore } from './stores/quota';
-import { StatsOverlay } from './components/StatsOverlay';
-import { PodcastsPage } from './pages/Podcasts';
-import { SharedBoardsPage } from './pages/SharedBoards';
-import { EditorPage } from './pages/Editor';
 import { BoardsTabsChrome } from './components/BoardsTabsChrome';
 import { EnglishTabsChrome, type EnglishTab } from './components/EnglishTabsChrome';
 import { TutorTabsChrome, type TutorTab } from './components/TutorTabsChrome';
-import { ReadingPage } from './pages/Reading';
-import { WritingPage } from './pages/Writing';
-import { TutorAssignmentsPage } from './pages/TutorAssignments';
-import { ListeningPage } from './pages/Listening';
-import { EnglishOverviewPage } from './pages/EnglishOverview';
 import { useTrackStore } from './stores/track';
-import { CalendarPage } from './pages/Calendar';
 import { UpcomingEventChip } from './components/UpcomingEventChip';
-import { SettingsPage, readStoredTheme, readPomodoroSeconds } from './pages/Settings';
+import { readStoredTheme, readPomodoroSeconds } from './stores/prefs';
 import { useSessionStore } from './stores/session';
 import { startFocusSession, endFocusSession } from './api/hone';
 import { notify } from './api/notifications';
+
+// Lazy pages — each ships in its own chunk. Heavy editors (Editor with
+// CodeMirror, SharedBoards with Excalidraw, Notes with Milkdown) are the
+// biggest payoff; lighter ones still benefit from cold-path delay.
+// HomePage stays eager because it is the first paint after auth and the
+// reflection prompt + pomodoro depend on it being mounted immediately.
+const Coach = lazy(() => import('./pages/Coach').then((m) => ({ default: m.Coach })));
+const Stats = lazy(() => import('./pages/Stats').then((m) => ({ default: m.Stats })));
+const TaskBoardPage = lazy(() => import('./pages/TaskBoard').then((m) => ({ default: m.TaskBoardPage })));
+const NotesPage = lazy(() => import('./pages/Notes').then((m) => ({ default: m.NotesPage })));
+const PodcastsPage = lazy(() => import('./pages/Podcasts').then((m) => ({ default: m.PodcastsPage })));
+const SharedBoardsPage = lazy(() => import('./pages/SharedBoards').then((m) => ({ default: m.SharedBoardsPage })));
+const EditorPage = lazy(() => import('./pages/Editor').then((m) => ({ default: m.EditorPage })));
+const ReadingPage = lazy(() => import('./pages/Reading').then((m) => ({ default: m.ReadingPage })));
+const WritingPage = lazy(() => import('./pages/Writing').then((m) => ({ default: m.WritingPage })));
+const TutorAssignmentsPage = lazy(() =>
+  import('./pages/TutorAssignments').then((m) => ({ default: m.TutorAssignmentsPage })),
+);
+const ListeningPage = lazy(() => import('./pages/Listening').then((m) => ({ default: m.ListeningPage })));
+const EnglishOverviewPage = lazy(() =>
+  import('./pages/EnglishOverview').then((m) => ({ default: m.EnglishOverviewPage })),
+);
+const CalendarPage = lazy(() => import('./pages/Calendar').then((m) => ({ default: m.CalendarPage })));
+const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
+
+// Heavy overlays — only mounted on demand. StatsOverlay pulls in stats UI
+// surface; Copilot is rarely opened (palette / hotkey only).
+const StatsOverlay = lazy(() =>
+  import('./components/StatsOverlay').then((m) => ({ default: m.StatsOverlay })),
+);
+const Copilot = lazy(() => import('./components/Copilot').then((m) => ({ default: m.Copilot })));
+
+// Empty Suspense fallback — pages animate in via CSS fadein already, and
+// the canvas backdrop covers the viewport, so a spinner here would just
+// flash. Prefer null over a stub.
+const PageSuspense = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={null}>{children}</Suspense>
+);
 
 // Pomodoro duration — initialised from localStorage so Settings changes
 // survive restart. pomodoroSecsRef holds the "cap" for the next session;
@@ -852,39 +875,41 @@ export default function App() {
           onDismissReflection={() => setReflectionPrompt(null)}
         />
       )}
-      {page === 'today' && <TaskBoardPage />}
-      {page === 'coach' && <Coach onStartFocus={({ pinnedTitle }) => startFocus({ pinnedTitle })} />}
-      {page === 'stats' && <Stats />}
-      {page === 'notes' && (
-        <VaultUnlockGate>
-          <NotesPage
-            initialSelectedId={briefTargetNoteId}
-            onConsumeInitial={() => setBriefTargetNoteId(null)}
-            initialCueNote={importedCueNote}
-            onConsumeCueNote={() => setImportedCueNote(null)}
+      <PageSuspense>
+        {page === 'today' && <TaskBoardPage />}
+        {page === 'coach' && <Coach onStartFocus={({ pinnedTitle }) => startFocus({ pinnedTitle })} />}
+        {page === 'stats' && <Stats />}
+        {page === 'notes' && (
+          <VaultUnlockGate>
+            <NotesPage
+              initialSelectedId={briefTargetNoteId}
+              onConsumeInitial={() => setBriefTargetNoteId(null)}
+              initialCueNote={importedCueNote}
+              onConsumeCueNote={() => setImportedCueNote(null)}
+            />
+          </VaultUnlockGate>
+        )}
+        {/* page === 'board' removed — единый поток через shared_boards.
+            Private/public — это лишь вопрос с кем поделили URL комнаты. */}
+        {/* Stats теперь overlay (см. statsOpen ниже). Старая StatsPage снята. */}
+        {page === 'podcasts' && <PodcastsPage />}
+        {/* Boards / Code rooms — два отдельных page'а. Tabs вынесены в
+            top chrome (BoardsTabsChrome ниже), сами страницы рендерятся
+            напрямую без BoardsHub-обёртки. Caller сам решает что
+            показывать; tabs перебрасывают через setPage. */}
+        {page === 'shared_boards' && (
+          <SharedBoardsPage
+            initialRoomId={initialBoardRoom}
+            onConsumeInitial={() => setInitialBoardRoom(null)}
           />
-        </VaultUnlockGate>
-      )}
-      {/* page === 'board' removed — единый поток через shared_boards.
-          Private/public — это лишь вопрос с кем поделили URL комнаты. */}
-      {/* Stats теперь overlay (см. statsOpen ниже). Старая StatsPage снята. */}
-      {page === 'podcasts' && <PodcastsPage />}
-      {/* Boards / Code rooms — два отдельных page'а. Tabs вынесены в
-          top chrome (BoardsTabsChrome ниже), сами страницы рендерятся
-          напрямую без BoardsHub-обёртки. Caller сам решает что
-          показывать; tabs перебрасывают через setPage. */}
-      {page === 'shared_boards' && (
-        <SharedBoardsPage
-          initialRoomId={initialBoardRoom}
-          onConsumeInitial={() => setInitialBoardRoom(null)}
-        />
-      )}
-      {page === 'editor' && (
-        <EditorPage
-          initialRoomId={initialEditorRoom}
-          onConsumeInitial={() => setInitialEditorRoom(null)}
-        />
-      )}
+        )}
+        {page === 'editor' && (
+          <EditorPage
+            initialRoomId={initialEditorRoom}
+            onConsumeInitial={() => setInitialEditorRoom(null)}
+          />
+        )}
+      </PageSuspense>
       {(page === 'shared_boards' || page === 'editor') && (
         <BoardsTabsChrome
           current={page}
@@ -910,32 +935,34 @@ export default function App() {
       {page === 'home' && (
         <AnimatedStatsOverlay open={statsOpen} onClose={() => setStatsOpen(false)} />
       )}
-      {page === 'settings' && (
-        <SettingsPage
-          theme={theme}
-          onThemeChange={setTheme}
-          onPomoChange={(secs) => {
-            pomodoroSecsRef.current = secs;
-            // Only reset remain if the timer isn't running — we don't
-            // interrupt an active focus session.
-            if (!running) setRemain(secs);
-          }}
-        />
-      )}
+      <PageSuspense>
+        {page === 'settings' && (
+          <SettingsPage
+            theme={theme}
+            onThemeChange={setTheme}
+            onPomoChange={(secs) => {
+              pomodoroSecsRef.current = secs;
+              // Only reset remain if the timer isn't running — we don't
+              // interrupt an active focus session.
+              if (!running) setRemain(secs);
+            }}
+          />
+        )}
 
-      {(page === 'english_overview' || page === 'reading' || page === 'writing' || page === 'listening') &&
-        (englishVisible ? (
-          <>
-            {page === 'english_overview' && <EnglishOverviewPage onOpen={openImpl} />}
-            {page === 'reading' && <ReadingPage />}
-            {page === 'writing' && <WritingPage />}
-            {page === 'listening' && <ListeningPage />}
-          </>
-        ) : (
-          <EnglishOffPlaceholder onActivate={() => setPage('settings')} />
-        ))}
-      {page === 'assignments' && <TutorAssignmentsPage />}
-      {page === 'calendar' && <CalendarPage />}
+        {(page === 'english_overview' || page === 'reading' || page === 'writing' || page === 'listening') &&
+          (englishVisible ? (
+            <>
+              {page === 'english_overview' && <EnglishOverviewPage onOpen={openImpl} />}
+              {page === 'reading' && <ReadingPage />}
+              {page === 'writing' && <WritingPage />}
+              {page === 'listening' && <ListeningPage />}
+            </>
+          ) : (
+            <EnglishOffPlaceholder onActivate={() => setPage('settings')} />
+          ))}
+        {page === 'assignments' && <TutorAssignmentsPage />}
+        {page === 'calendar' && <CalendarPage />}
+      </PageSuspense>
 
       <Dock
         onMenu={() => setPaletteOpen(true)}
@@ -960,7 +987,11 @@ export default function App() {
       {paletteOpen && (
         <Palette onClose={() => setPaletteOpen(false)} onOpen={(id) => open(id)} englishVisible={englishVisible} />
       )}
-      {copilotOpen && <Copilot onClose={() => setCopilotOpen(false)} />}
+      {copilotOpen && (
+        <Suspense fallback={null}>
+          <Copilot onClose={() => setCopilotOpen(false)} />
+        </Suspense>
+      )}
       {onboardingOpen && <OnboardingModal onClose={dismissOnboarding} />}
       <UpdateToast />
       <OfflineBanner />
@@ -992,7 +1023,11 @@ function AnimatedStatsOverlay({ open, onClose }: { open: boolean; onClose: () =>
   }, [open, mounted]);
 
   if (!mounted) return null;
-  return <StatsOverlay onClose={onClose} closing={closing} />;
+  return (
+    <Suspense fallback={null}>
+      <StatsOverlay onClose={onClose} closing={closing} />
+    </Suspense>
+  );
 }
 
 // EnglishOffPlaceholder — рендерится когда юзер навигирует на Reading /

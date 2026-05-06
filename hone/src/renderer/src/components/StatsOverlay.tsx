@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 
 import { getStats, type HoneStats, type FocusDay } from '../api/hone';
-import { readDailyGoalMin } from '../pages/Settings';
+import { readDailyGoalMin } from '../stores/prefs';
 
 interface FetchState {
   status: 'loading' | 'ok' | 'error';

@@ -67,8 +67,35 @@ export default defineConfig({
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
     build: {
+      // Electron 41 ships Chromium ≥130, so we don't need to down-level
+      // syntax for legacy browsers. esnext keeps optional chaining /
+      // nullish-coalescing / class fields untranspiled, which both
+      // speeds up Vite's transform pass and shrinks the renderer bundle.
+      target: 'esnext',
+      // Lazy-page splitting (App.tsx) gives us per-page chunks; manual
+      // chunks below carve the heaviest *vendor* groups out so they
+      // ship in stable, cacheable files instead of being inlined into
+      // whichever page first imports them. Order matters — Excalidraw
+      // and CodeMirror own most of the renderer payload.
       rollupOptions: {
         input: resolve(__dirname, 'src/renderer/index.html'),
+        output: {
+          manualChunks: (id) => {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('@excalidraw')) return 'vendor-excalidraw';
+            if (id.includes('@codemirror') || id.includes('codemirror')) return 'vendor-codemirror';
+            if (id.includes('yjs') || id.includes('y-indexeddb') || id.includes('y-codemirror') || id.includes('y-protocols')) {
+              return 'vendor-yjs';
+            }
+            if (id.includes('react-dom') || id.includes('/react/') || id.includes('scheduler')) {
+              return 'vendor-react';
+            }
+            if (id.includes('@bufbuild') || id.includes('@connectrpc')) return 'vendor-connect';
+            if (id.includes('@sentry')) return 'vendor-sentry';
+            if (id.includes('marked')) return 'vendor-marked';
+            return undefined;
+          },
+        },
       },
     },
     resolve: {

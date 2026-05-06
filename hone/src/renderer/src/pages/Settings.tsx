@@ -16,6 +16,12 @@
 import { useEffect, useState } from 'react';
 
 import { CanvasBg, type ThemeId, THEME_IDS } from '../components/CanvasBg';
+import {
+  readPomodoroSeconds as readPomodoroSecondsFromPrefs,
+  readDailyGoalMin as readDailyGoalMinFromPrefs,
+  readStoredTheme as readStoredThemeFromPrefs,
+  PREFS_KEYS,
+} from '../stores/prefs';
 import { QuotaUsageBar } from '../components/QuotaUsageBar';
 import { useQuotaStore } from '../stores/quota';
 import { useSessionStore } from '../stores/session';
@@ -53,8 +59,8 @@ interface HoneSettings {
   ambientMusic: boolean;
 }
 
-const SETTINGS_KEY = 'hone:settings';
-const THEME_KEY = 'hone:theme';
+const SETTINGS_KEY = PREFS_KEYS.SETTINGS_KEY;
+const THEME_KEY = PREFS_KEYS.THEME_KEY;
 
 const DEFAULTS: HoneSettings = {
   pomodoroMinutes: 25,
@@ -64,27 +70,10 @@ const DEFAULTS: HoneSettings = {
   ambientMusic: true,
 };
 
-/** Read the stored pomodoro duration in seconds (clamped 5–90 min). */
-export function readPomodoroSeconds(): number {
-  const s = readSettings();
-  return s.pomodoroMinutes * 60;
-}
-
-/** Read the stored daily focus goal in minutes (default 120). Used by StatsOverlay GoalMeterCell. */
-export function readDailyGoalMin(): number {
-  return readSettings().dailyGoalMin;
-}
-
-export function readStoredTheme(): ThemeId {
-  if (typeof window === 'undefined') return 'winter';
-  try {
-    const v = window.localStorage.getItem(THEME_KEY);
-    if (v && (THEME_IDS as readonly string[]).includes(v)) return v as ThemeId;
-  } catch {
-    /* ignore */
-  }
-  return 'winter';
-}
+/** Re-exported from stores/prefs so legacy import paths keep working. */
+export const readPomodoroSeconds = readPomodoroSecondsFromPrefs;
+export const readDailyGoalMin = readDailyGoalMinFromPrefs;
+export const readStoredTheme = readStoredThemeFromPrefs;
 
 function readSettings(): HoneSettings {
   if (typeof window === 'undefined') return DEFAULTS;
