@@ -39,7 +39,7 @@ import {
 import { clearSession, loadSession, saveSession } from './keychain';
 import { clearVaultPassphrase, loadVaultPassphrase, saveVaultPassphrase } from './vaultKeychain';
 import { loadPomodoro, savePomodoro } from './pomodoro_store';
-import { checkForUpdates, quitAndInstall, startPeriodicCheck, wireUpdater } from './updater';
+import { quitAndInstall, startPeriodicCheck, wireUpdater } from './updater';
 
 // Backend host. Main can't import the renderer alias due to electron-vite's
 // split bundles, so we duplicate the resolution logic here.
@@ -336,17 +336,6 @@ function consumeColdStartURL(): void {
 
 app.whenReady().then(() => {
   // ── IPC ────────────────────────────────────────────────────────────────
-  ipcMain.handle(invokeChannels.appVersion, () => app.getVersion());
-
-  ipcMain.handle(invokeChannels.cueReadNote, async (_e, filePath: string) => {
-    try {
-      const raw = await readFile(filePath, 'utf-8');
-      return JSON.parse(raw) as unknown;
-    } catch {
-      return null;
-    }
-  });
-
   ipcMain.handle(invokeChannels.authSession, async () => {
     return await loadSession();
   });
@@ -457,9 +446,6 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.handle(invokeChannels.updaterCheck, async () => {
-    await checkForUpdates();
-  });
   ipcMain.handle(invokeChannels.updaterInstall, async () => {
     quitAndInstall();
   });

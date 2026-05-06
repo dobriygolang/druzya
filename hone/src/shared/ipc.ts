@@ -5,8 +5,6 @@
 // bridge stays compact.
 
 export const invokeChannels = {
-  appVersion: 'app:version',
-  cueReadNote: 'cue:read-note',
   authSession: 'auth:session',
   authPersist: 'auth:persist',
   authLogout: 'auth:logout',
@@ -15,7 +13,6 @@ export const invokeChannels = {
   pomodoroLoad: 'pomodoro:load',
   pomodoroSave: 'pomodoro:save',
   shellOpenExternal: 'shell:open-external',
-  updaterCheck: 'updater:check',
   updaterInstall: 'updater:install',
   trafficLightsShow: 'window:traffic-lights-show',
   // Vault passphrase persistence через OS keychain (Electron safeStorage).
@@ -71,9 +68,6 @@ export interface CueSessionAnalysis {
 
 /** Stable shape of the window.hone API exposed via contextBridge. */
 export interface HoneAPI {
-  app: {
-    version: () => Promise<string>;
-  };
   auth: {
     /** Returns null when the user has not yet logged in. */
     session: () => Promise<AuthSession | null>;
@@ -103,8 +97,6 @@ export interface HoneAPI {
     openExternal: (url: string) => Promise<void>;
   };
   updater: {
-    /** Kick manual update check. Idempotent — no-op if check in flight. */
-    check: () => Promise<void>;
     /** Quit + install the already-downloaded update. */
     install: () => Promise<void>;
   };
@@ -132,10 +124,6 @@ export interface HoneAPI {
     passSave: (passphrase: string) => Promise<void>;
     /** Forget saved passphrase — next launch will require manual unlock. */
     passClear: () => Promise<void>;
-  };
-  /** Cue integration — read meeting notes saved by the Cue desktop app. */
-  cue: {
-    readNote: (filePath: string) => Promise<CueSessionAnalysis | null>;
   };
   /** Subscribe to a main→renderer push (returns an unsubscribe fn). */
   on: <K extends keyof typeof eventChannels>(
