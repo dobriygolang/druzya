@@ -30,7 +30,7 @@ backend/services/<svc>/
     └── *_handler.go
 ```
 
-A service may omit folders it does not need. Quiz has no `infra/db` (Redis-only),
+A service may omit folders it does not need. Some are Redis-only,
 documents has no migrations (read from already-uploaded blobs), etc. Generated
 configs (`.go-arch-lint.yml`) only declare components that exist.
 
@@ -117,18 +117,17 @@ You write the proto + the use-case impl. **You do not write a chi handler
 plus a separate Connect handler plus a separate FE schema.** The wire
 shape comes from the proto for free.
 
-Wiring template (cmd/monolith/services/quiz/quiz.go):
+Wiring template (cmd/monolith/services/<svc>/<svc>.go):
 
 ```go
-connectPath, connectHandler := druz9v1connect.NewQuizServiceHandler(server)
-transcoder := monolithServices.MustTranscode("quiz", connectPath, connectHandler)
+connectPath, connectHandler := druz9v1connect.NewMyServiceHandler(server)
+transcoder := monolithServices.MustTranscode("my_svc", connectPath, connectHandler)
 return &monolithServices.Module{
     ConnectPath:        connectPath,
     ConnectHandler:     transcoder,
     RequireConnectAuth: true,
     MountREST: func(r chi.Router) {
-        r.Post("/quiz/start", transcoder.ServeHTTP)
-        r.Post("/quiz/{session_id}/submit", transcoder.ServeHTTP)
+        r.Post("/my-svc/action", transcoder.ServeHTTP)
     },
 }
 ```

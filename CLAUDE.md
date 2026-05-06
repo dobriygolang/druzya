@@ -1,6 +1,6 @@
 # CLAUDE.md — orientation для AI-агентов
 
-Это монорепо проекта **druz9** — экосистема из трёх продуктов: web `druz9.online` (AI-coach + arena + atlas), desktop focus-cockpit Hone, stealth tray-copilot Cue.
+Это монорепо проекта **druz9** — экосистема из трёх продуктов: web `druz9.online` (AI-coach + AI-mock + atlas + tutor toolkit), desktop focus-cockpit Hone, stealth tray-copilot Cue.
 
 **Identity (Sergey 2026-05-04):** AI-coach с памятью + free tutor-toolkit + Hone для подготовки senior IT-разрабов. **3 трека:** Go senior · ML engineering · English (opt-in toggle). НЕ LeetCode / НЕ Skyeng / НЕ paid marketplace. См [docs/feature/identity.md](./docs/feature/identity.md).
 
@@ -30,7 +30,7 @@
 | **Hone** | `hone/` | Тихий desktop-кокпит: AI-план, фокус, заметки с AI-link, taskboard с auto-categorise, English hub. **Не делает stealth** |
 | **Cue** | `desktop/` | Stealth tray-copilot. Невидим при screen-share, live-транскрипт встреч |
 
-Backend — общий Go-монолит в `backend/cmd/monolith/`, ~30 сервисов в `backend/services/`. Контракт API в `proto/druz9/v1/`. Подробнее — [docs/tech/architecture.md](./docs/tech/architecture.md).
+Backend — общий Go-монолит в `backend/cmd/monolith/`, ~25 сервисов в `backend/services/`. Контракт API в `proto/druz9/v1/`. Подробнее — [docs/tech/architecture.md](./docs/tech/architecture.md).
 
 **Local dev login:** Hone Vite (`localhost:5173`) → LoginScreen → username «sergey» → DEV LOGIN button (visible только при `import.meta.env.DEV` + backend `DEV_AUTH=true`). Bypass'ит TG flow.
 
@@ -68,7 +68,7 @@ druzya/
 ├── proto/druz9/v1/          Контракт API (источник правды)
 ├── backend/                 Go monolith
 │   ├── cmd/monolith/        Точка входа + bootstrap + wiring
-│   ├── services/            ~30 доменных сервисов
+│   ├── services/            ~25 доменных сервисов
 │   ├── shared/              Общие пакеты + generated/pb/
 │   └── migrations/          Goose SQL
 ├── frontend/                Web (Vite + React)

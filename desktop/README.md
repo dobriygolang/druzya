@@ -88,15 +88,11 @@ If a browser update starts rendering our window to viewers, file an
 update to `DesktopConfig.StealthWarnings` on the backend so the client
 displays a known-bad warning.
 
-## What's NOT in Phase 3
+## Status
 
-UI screens are placeholder components (`Phase 4 placeholder`). The
-scaffold proves:
+Production beta on macOS (arm64 + x64). Notarized DMG, electron-updater,
+Sentry. Native Swift binary (`AudioCaptureMac`) under ScreenCaptureKit
+for system-audio capture. Real components shipped: compact / expanded /
+picker / settings / area-overlay / english-polish screens.
 
-- Electron boots the compact window with stealth enabled.
-- Global hotkeys fire and push IPC events to the renderer.
-- Connect-RPC client talks to the monolith with a keychain-backed
-  Bearer token.
-- Streaming Analyze/Chat is translated into IPC events per frame.
-
-Phase 4 fills in the real components against the Claude design output.
+Windows native module (WASAPI) parked for Q3 2026.

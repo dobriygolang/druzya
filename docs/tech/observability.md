@@ -24,7 +24,7 @@ backend/api ──┬──> Prometheus (local TSDB 6h) ──> remote_write ─
 |---|---|
 | `druz9_http_requests_total{status, method, route}` | RPS + error rate |
 | `druz9_http_request_duration_seconds` | Histogram p50/p95/p99 |
-| `druz9_ws_connections{endpoint}` | Открытые WS-сессии (arena/mock/editor/whiteboard/feed) |
+| `druz9_ws_connections{endpoint}` | Открытые WS-сессии (mock/editor/whiteboard) |
 | `druz9_pgxpool_*` | Postgres pool: acquired / idle / wait_count |
 | `druz9_redis_*` | Redis: ops/sec, latency |
 | `druz9_llm_requests_total{provider, task, status}` | LLM-вызовы по chain'у |
@@ -42,8 +42,7 @@ backend/api ──┬──> Prometheus (local TSDB 6h) ──> remote_write ─
 | `druz9-overview.json` | `druz9-overview` | Главный «здорово ли» — p99, error rate, error logs из Loki |
 | `druz9-tech.json` | `druz9-tech` | HTTP / WS / Postgres pool / Redis system view |
 | `druz9-llm.json` | `druz9-llm` | LLM spend (хоть и free-tier, рейт-лимиты считаем), token throughput, latency by model |
-| `druz9-business.json` | `druz9-business` | Match start rate, mock dropout, ratings churn |
-| `druz9-arena.json` | `druz9-arena` | Arena RPS, queue depth, match results, win rate |
+| `druz9-business.json` | `druz9-business` | Mock dropout, tutor adoption, retention |
 | `druz9-auth.json` | `druz9-auth` | Login success/fail, OAuth provider mix, DAU |
 
 Правка дашбордов — **в репо первой**, потом re-import. Hand-edit в Grafana UI теряется на следующем импорте.
@@ -67,10 +66,9 @@ backend/api ──┬──> Prometheus (local TSDB 6h) ──> remote_write ─
 
 | Алерт | Условие | Что значит |
 |---|---|---|
-| `ArenaQueueBacklog` | matchmaker queue > 50 | Не хватает противников / проблема matchmaker'а |
-| `KataDifficultyDrift` | Daily kata accuracy < 30% или > 90% | Калибровка taskpool сломана |
 | `LLMSlowness` | Groq latency > 5s | Один провайдер деградирует, fallback chain переключается |
 | `MockDropoutHigh` | > 40% mock-сессий abandon'ятся | UX-проблема с продуктом |
+| `TutorBriefFailure` | TaskTutorPreSessionBrief failure rate > 10% | LLM-задача fail'ит, tutor видит шаблонный текст |
 
 ## Notification channel
 

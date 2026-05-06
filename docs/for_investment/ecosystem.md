@@ -5,7 +5,7 @@
 ```
 ┌──────────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
 │  druz9.online (web)      │   │   Hone (desktop)     │   │   Cue (desktop)      │
-│  «AI-coach + arena»      │   │   «Тихий кокпит»     │   │   «Наушник тренера»  │
+│  «AI-coach + AI-mock»    │   │   «Тихий кокпит»     │   │   «Наушник тренера»  │
 │                          │   │                      │   │                      │
 │  • AI mock-собеседования │   │  • План дня от AI    │   │  • Невидим при       │
 │  • 5-axis radar /        │   │  • Pomodoro + focus  │   │    screen-share      │
@@ -72,7 +72,7 @@ druz9 — AI-coach с памятью + free tutor-toolkit + Hone для подг
 
 | Поверхность | Free | Pro |
 |---|---|---|
-| druz9.online | Базовая arena, общий Atlas, AI-mock 1/нед | Безлимитный AI-mock, расширенный Atlas, AI-tutor с памятью, Insights |
+| druz9.online | Общий Atlas, AI-mock 1/нед, Codex public articles | Безлимитный AI-mock, расширенный Atlas, AI-tutor с памятью, Insights |
 | Hone | Canvas, Pomodoro, Notes без AI-link, базовый Stats | AI-планер, AI-link заметок, AI-критика досок, AI auto-categorise TaskBoard |
 | Cue | — (требует Pro) | Все фичи включены |
 
@@ -101,6 +101,6 @@ druz9 — AI-coach с памятью + free tutor-toolkit + Hone для подг
 
 ## Подробнее по продуктам
 
-- [druz9.md](./druz9.md) — веб-продукт (AI-coach + arena + atlas).
+- [druz9.md](./druz9.md) — веб-продукт (AI-coach + AI-mock + atlas + tutor toolkit).
 - [hone.md](./hone.md) — desktop-кокпит для ежедневного ритуала.
 - [cue.md](./cue.md) — невидимый AI-помощник для звонков и работы.

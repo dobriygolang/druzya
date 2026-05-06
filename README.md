@@ -2,9 +2,9 @@
 
 Экосистема из трёх продуктов для роста разработчика:
 
-- **[druz9.online](./docs/for_investment/druz9.md)** — веб-арена + аналитика. Mock-собеседования, 1v1/2v2 матчи, Insights.
-- **[Hone](./docs/for_investment/hone.md)** — desktop focus-cockpit. План дня, фокус-сессии, заметки, whiteboard.
-- **[Cue](./docs/for_investment/cue.md)** — stealth tray-copilot. Невидимый AI поверх ОС.
+- **[druz9.online](./docs/for_investment/druz9.md)** — веб-продукт. AI-coach с памятью, AI-mock с 5-axis radar, Skill Atlas, Codex, free tutor-toolkit.
+- **[Hone](./docs/for_investment/hone.md)** — desktop focus-cockpit. AI-план дня, Pomodoro, заметки с AI-link, TaskBoard с auto-categorise, English hub.
+- **[Cue](./docs/for_investment/cue.md)** — stealth tray-copilot. Невидимый AI поверх ОС, live-транскрипт встреч.
 
 Один аккаунт, одна подписка `druz9 Pro`, три поверхности под три состояния разработчика.
 
@@ -37,13 +37,13 @@ make gen-check   # CI drift-чек
 
 ```
 druzya/
-├── proto/druz9/v1/      Контракт API (34 .proto)
-├── backend/             Go monolith (~30 сервисов)
+├── proto/druz9/v1/      Контракт API (~27 .proto)
+├── backend/             Go monolith (~25 сервисов)
 ├── frontend/            Web (Vite + React + TS)
 ├── hone/                Hone Electron app
 ├── desktop/             Cue Electron app
 ├── infra/               docker-compose.prod, nginx, monitoring
-├── docs/                Документация (for_investment/ + tech/)
+├── docs/                Документация (for_investment/ + tech/ + feature/)
 └── .ai/skills/          Project-specific workflows для AI-агентов
 ```
 

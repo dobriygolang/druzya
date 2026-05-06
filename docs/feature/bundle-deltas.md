@@ -190,7 +190,7 @@
 - Feature cards.
 
 ### Removed
-- Если current имеет Phase 0 пафос (sanctum / arena / etc.) — strip per project_state.md «выпилено».
+- Если current имеет старый пафос (sanctum / arena / etc.) — strip как «выпилено» Wave R0-R6.
 
 ### Schema implications
 - None (frontend-only).
@@ -234,19 +234,9 @@
 
 ---
 
-## 11. events (`events.html` → frontend/src/pages/clubs/ или новая)
+## 11. events (`events.html`)
 
-### Added
-- Event listing + filtering + RSVP UI.
-
-### Removed
-- Per project_state.md «events / clubs выпилены 2026-05-01». **Этот mockup может быть устаревшим** — verify с Sergey перед apply. Возможно re-introducing community surface.
-
-### Schema implications
-- Если возвращаем — `events` + `event_participants` tables новые.
-
-### Phase impact
-- Outside DAG. Требует decision от Sergey: re-introduce events или skip mockup.
+**SKIPPED.** events / clubs / lobby выпилены за Wave R0. Mockup сохранён как design exploration; в production не уходит.
 
 ---
 

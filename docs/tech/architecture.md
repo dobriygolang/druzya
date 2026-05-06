@@ -7,7 +7,7 @@
 ```
                         ┌────────────────────────────────┐
                         │        proto/druz9/v1/         │
-                        │   Источник правды API (34 .proto)
+                        │   Источник правды API (~27 .proto)
                         └──────────────┬─────────────────┘
                                        │ buf generate
                   ┌────────────────────┼────────────────────┐
@@ -51,13 +51,12 @@
 
 В браузере используется `@connectrpc/connect-web` через `fetch`. Никакого envoy / API-gateway.
 
-WebSocket'ы для real-time:
+WebSocket'ы / SSE для real-time:
 
-- `/ws/arena` — арена 1v1/2v2 матчи.
 - `/ws/mock` — mock-собеседования.
 - `/ws/editor/{id}` — Yjs-сессии редактора.
 - `/ws/whiteboard/{id}` — multiplayer Excalidraw (Yjs).
-- `/ws/feed` — публичная активность (без auth).
+- `/api/v1/hone/cursor/events` — AICursor SSE (TaskBoard auto-categorise events).
 
 ## Чистая архитектура внутри сервисов
 
@@ -154,24 +153,22 @@ Backend-сервис `backend/services/sync/` обслуживает CRDT-син
 
 Не CHANGELOG — короткий якорь, чтобы новый dev понимал, какие сервисы недавно появились / исчезли. Полная история — git log. При расхождении доверяй коду.
 
-**Удалены** (Phase-4 ADR-001 + cleanup):
-- `services/friends/` — социальный граф ушёл в TG-канал + circles.
-- `services/season/` — incomplete season pass без UI.
-- `services/cohort/` — поглощён `circles`.
-- `services/achievements/` — gamification cut.
-- `services/ai_native/` — legacy mock-round flow.
+**Удалены** (Wave R0-Wave6 + Phase 4 cleanup):
+- `services/arena/` + `services/lobby/` + `services/slot/` + `services/rating/` + `services/review/` + `services/events/` — pivot на single-track AI-coach (mig 00029, 00034).
+- `services/friends/` + `services/cohort/` + `services/season/` + `services/achievements/` + `services/ai_native/` — социальный граф ушёл в TG + circles, gamification cut.
+- `services/daily/` + `services/quiz/` + `services/feed/` + `services/tg_coach/` + `services/calendar/` (как сервис; personal events дропнуты mig 00080) — заменены Coach next-action + reflection grade.
+- `services/clubs/` — TG-mirror удалён в Wave R; circles остался для group reading clubs.
+- `services/mentor_session/` — strategic-wire scaffold (build-tagged, never bootstrapped).
 
-**Добавлены** (Phase 1-4 + Wave 0-4):
-- `services/calendar/` — personal events (Phase 1b).
+**Добавлены / расширены** (Wave R0-Wave6, Phase 0-12):
+- `services/intelligence/` — AI-coach: daily brief + atomic insights + severity grader + weekly memory consolidation + goal-aware briefs.
+- `services/tracks/` — curated learning programmes (Go senior · ML engineering). Web `/atlas` теперь Tracks ribbon.
+- `services/tutor/` — полный tutor toolkit: invite/accept + per-student snapshot + AI pre-session brief + assignments + 1-on-1 events с session_note и reminders + multi-tutor (`ListMyTutors`) + analytics aggregate.
+- `services/ai_tutor/` — 4-layer memory chat (snapshot/facts/summary/episodes). 7 personas (algo/sql/sysdesign/english/go/ml/de coach).
+- `services/ai_mock/` — Sysanalyst + Product analyst + QA + DevOps/SRE + DE pool. Section dispatcher в `service.go` покрывает 7 free-form секций.
+- `services/curation/` — Phase 3.5 ranking-proxy: `external_resources` jsonb + `user_resource_overrides` + auto-promote algorithm.
+- `services/learning_state/` — Phase 0/2: explore/commit/deep mode + ForkProgressReader + RadarReader.
+- `services/rooms/` — Phase 9a: standalone collab rooms (code/whiteboard) low-key (3 active · 24h TTL · 3 ppl free-tier).
 - `services/sync/` — Yjs CRDT relay для multi-device Hone.
-- `services/intelligence/` — AI-coach: daily brief + atomic insights + severity grader + persona/variant overlays + weekly memory consolidation + goal-aware briefs.
-- `services/tracks/` — curated learning programmes (Phase 2). Web `/atlas` теперь Tracks ribbon, старый skill-graph под `/atlas/explore`.
-- `services/tutor/` — полный tutor-стек: Tier 1 invite/accept (Wave 2) + per-student snapshot с агрегированной English activity (2.4b/c) + AI pre-session brief (2.5) + assignments + broadcast (5.1/5.2a) + 1-on-1 events с reminders + session notes (5.2b/c/d). Один `*Postgres` satisfies 4 интерфейса (Repo/SnapshotRepo/AssignmentRepo/EventRepo).
-- `services/clubs/` — Phase 3 MVP. Public catalogue + sessions + RSVP. **REST chi-direct** (read-mostly + одна mutation, не proto).
-
-**Расширены:**
-- `services/lobby/` — solo mode + skill_filter (Phase 2c-2): Practice CTA на TrackDetailPage создаёт single-player drill room.
-- `services/hone/` — English learning surface: Reading + sessions + Leitner-SRS vocab + AI summary grader (Wave 4) + Writing-as-Focus grader (4.4) + Listening materials с transcript (6.1) + Code-review-coaching grader (3.6). Все LLM-grader'ы — отдельные ports (`SummaryGrader`/`WritingGrader`/`CodeReviewGrader`) с `LLMChain*` real adapter + `NoLLM*` floor (returns ErrLLMUnavailable → 503). Free-tier providers only (Groq/Cerebras/Mistral/OpenRouter/Ollama).
-- `services/ai_mock/` — Sysanalyst (Wave 7), Product analyst (Wave 8), QA (Wave 9.2), DevOps/SRE (Wave 9.3). Free-form mock'и с per-section prompts (`domain/{sysanalyst,product_analyst,qa,devops}.go`) и section-specific rubric'ами в `BuildReportPrompt`. Section dispatcher в `service.go` покрывает 7 free-form секций: english_hr, system_design_senior, tech_lead_em, sysanalyst, product_analyst, qa, devops.
-- `services/tutor/` — Wave 9.4 multi-tutor (`ListStudentTutors` repo + `ListMyTutors` UC + RPC `/api/v1/tutor/my-tutors`); Wave 9.5 analytics aggregate (`TutorEventStats` repo + `GetTutorActivity` UC + RPC `/api/v1/tutor/activity` — active students / completed / cancelled / minutes_taught / cancellation_rate over trailing window).
-- Migrations: `00018_analyst_atlas_seed.sql` (Sysanalyst + Product analyst nodes), `00019_qa_devops_atlas_seed.sql` (QA + DevOps + adds `'devops'` to `track_kind` enum), `00020_tutor_event_rsvps.sql` (group-event RSVPs scaffold), `00021_tutor_listings_scaffold.sql` (marketplace schema scaffold).
+- `services/hone/` — English learning surface (Reading + Writing + Listening + Leitner-SRS vocab) + AI grader ports + AICursor SSE.
+- `services/admin/` — observability + audit log + admin pages для rooms / LLM rollups.

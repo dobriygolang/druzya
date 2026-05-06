@@ -34,21 +34,21 @@ make gen-check  # CI-style проверка drift
 
 ## Состояние проекта
 
-- ~32 backend-сервиса в монолите (`backend/services/`), включая `clubs` (REST chi-direct) и `tutor` (Connect-RPC).
-- 34 .proto файла → Go server (Connect-RPC) + TS-клиент через `make gen-proto`.
-- 60+ страниц в `frontend/` (web), включая `/atlas` Tracks ribbon, `/clubs`, `/tutor`, `/onboarding/tracks`.
-- 13+ страниц в `hone/` (focus cockpit): Today, Focus, Notes, Whiteboard, Reading (English-loop), Writing, TaskBoard, Stats, Podcasts, Editor, BoardsHub, SharedBoards, Events, Coach.
+- ~25 backend-сервисов в монолите (`backend/services/`). Все wired через `cmd/monolith/services/<svc>.go`.
+- 27 .proto файлов в `proto/druz9/v1/` → Go server (Connect-RPC) + TS-клиент через `make gen-proto`.
+- 30+ страниц в `frontend/` (web): `/atlas`, `/mock`, `/codex`, `/tutor` dashboard, `/onboarding`, `/insights`, и т.д.
+- 16 страниц в `hone/` (focus cockpit): Today, Focus, Notes, Coach, TaskBoard, Stats, Settings, EnglishOverview (Reading/Writing/Listening), Calendar, Editor, SharedBoards, Podcasts, TutorAssignments.
 - Cue (`desktop/`) — tray-only, native Swift binary под macOS audio.
-- 17 миграций (`backend/migrations/`) — baseline + Phase 1-4 + Wave 0-6 incremental. См [README](../../backend/migrations/README.md). Создавай новые через `make migrate-new NAME=<snake_name>`.
+- 64 миграции (`backend/migrations/`) — consolidated baseline + ~60 patch'ей. См [README](../../backend/migrations/README.md). Создавай новые через `make migrate-new NAME=<snake_name>`.
 
 ## Где что
 
 ```
 druzya/
-├── proto/druz9/v1/           Контракт API (34 .proto). Источник правды
+├── proto/druz9/v1/           Контракт API (~27 .proto). Источник правды
 ├── backend/
 │   ├── cmd/monolith/         Точка входа. Вся wiring здесь
-│   ├── services/             Доменные сервисы (~30 шт)
+│   ├── services/             Доменные сервисы (~25 шт)
 │   ├── shared/               Общие пакеты: pkg/{llmchain,llmcache,quota,...}
 │   │   └── generated/pb/     Генерированные Go-стубы
 │   └── migrations/           Goose SQL миграции
