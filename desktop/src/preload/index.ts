@@ -23,8 +23,6 @@ import {
   type MasqueradePreset,
   type MasqueradePresetInfo,
   type Persona,
-  type TranscribeInput,
-  type TranscribeResult,
   type AudioCaptureState,
   type CursorFreezeState,
   type PermissionKind,
@@ -209,10 +207,6 @@ const api: Druz9API = {
       }>,
     getAnalysis: (sessionId: string) =>
       ipcRenderer.invoke(invokeChannels.sessionGetAnalysis, sessionId) as Promise<SessionAnalysis>,
-  },
-  transcription: {
-    transcribe: (input: TranscribeInput) =>
-      ipcRenderer.invoke(invokeChannels.transcriptionTranscribe, input) as Promise<TranscribeResult>,
   },
   audioCapture: {
     start: (source: 'mic' | 'system') =>

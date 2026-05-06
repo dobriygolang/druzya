@@ -30,7 +30,6 @@ import {
   sessionKindSchema,
   shortIdSchema,
   toastShowSchema,
-  transcribeSchema,
   urlSchema,
   windowNameSchema,
 } from './schemas';
@@ -45,7 +44,6 @@ import { createPersonasClient, type PersonaDTO } from '../api/personas';
 import { createSessionsClient } from '../api/sessions';
 import { createDocumentsClient } from '../api/documents';
 import { createMemoryClient } from '../api/memory';
-import { createTranscriptionClient } from '../api/transcription';
 import { createAudioCapture, type AudioCaptureState } from '../capture/audio-mac';
 import { createSuggestionClient } from '../api/suggestion';
 import { createEnglishPolishClient } from '../api/english';
@@ -128,15 +126,6 @@ export function registerHandlers(opts: RegisterOptions): void {
   // Documents REST client. Shares the same auth/token path as sessions
   // — both talk to /api/v1/* with the user's Druz9 bearer.
   const documentsREST = createDocumentsClient({
-    apiBaseURL,
-    updateFeedURL: '',
-    sentryDSN: '',
-    environment: '',
-    defaultLocale: 'ru',
-    isDev: false,
-  });
-
-  const transcriptionREST = createTranscriptionClient({
     apiBaseURL,
     updateFeedURL: '',
     sentryDSN: '',
@@ -800,11 +789,6 @@ export function registerHandlers(opts: RegisterOptions): void {
   );
   handleIn(invokeChannels.documentsListAttached, shortIdSchema, async (sessionId) =>
     documentsREST.listAttachedToSession(sessionId),
-  );
-
-  // ── Transcription ──
-  handleIn(invokeChannels.transcriptionTranscribe, transcribeSchema, async (input) =>
-    transcriptionREST.transcribe(input),
   );
 
   // ── English polish (Wave 6.2) ──

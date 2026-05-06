@@ -2,7 +2,7 @@
   "name": "druz9-copilot",
   "productName": "Cue",
   "version": "0.1.0",
-  "description": "Cue — stealthy AI assistant for developers (macOS desktop)",
+  "description": "Cue \u2014 stealthy AI assistant for developers (macOS desktop)",
   "private": true,
   "main": "out/main/index.js",
   "scripts": {
@@ -15,7 +15,6 @@
     "build:native-mac": "./native/audio-mac/build.sh && ./native/CursorHelper/build.sh"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "1.10.0",
     "@connectrpc/connect": "^1.4.0",
     "@connectrpc/connect-web": "^1.4.0",
     "@fontsource/instrument-serif": "^5.2.8",

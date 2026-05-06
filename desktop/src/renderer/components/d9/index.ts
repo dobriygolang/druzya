@@ -9,13 +9,11 @@ export type { IconButtonTone } from './IconButton';
 export { Kbd, Kbds } from './Kbd';
 export { StatusDot } from './StatusDot';
 export type { DotState } from './StatusDot';
-export { Caret } from './Caret';
 export { ModelPill } from './ModelPill';
 export { PersonaChip } from './PersonaChip';
 export { QuotaMeterMini } from './QuotaMeterMini';
 export { StreamingHairline } from './StreamingHairline';
 export { WindowShell } from './WindowShell';
-export type { GlassIntensity } from './WindowShell';
 export { PersonaDropdown } from './PersonaDropdown';
 export type { PersonaDropdownItem } from './PersonaDropdown';
 export { ModelDropdown } from './ModelDropdown';
@@ -27,12 +25,6 @@ export { Seg } from './Seg';
 export {
   D9IconCamera,
   D9IconSettings,
-  D9IconArrow,
   D9IconClose,
-  D9IconExpand,
-  D9IconCollapse,
   D9IconCopy,
-  D9IconSparkle,
-  D9IconMic,
-  D9IconCheck,
 } from './icons';

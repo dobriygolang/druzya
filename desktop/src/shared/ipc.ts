@@ -116,8 +116,6 @@ export const invokeChannels = {
   sessionList: 'session:list',
   sessionGetAnalysis: 'session:get-analysis',
 
-  transcriptionTranscribe: 'transcription:transcribe',
-
   audioCaptureStart: 'audio-capture:start',
   audioCaptureStop: 'audio-capture:stop',
   audioCaptureState: 'audio-capture:state',
@@ -504,27 +502,6 @@ export interface DocumentListResult {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Transcription (mic → text)
-// ─────────────────────────────────────────────────────────────────────────
-
-export interface TranscribeInput {
-  /** Raw audio bytes from MediaRecorder. Capped at 25MB server-side. */
-  audio: Uint8Array;
-  mime: string;
-  filename: string;
-  /** BCP-47 hint. Empty = auto-detect. */
-  language: string;
-  /** Optional bias phrase for domain vocabulary. */
-  prompt: string;
-}
-
-export interface TranscribeResult {
-  text: string;
-  language: string;
-  duration: number;
-}
-
-// ─────────────────────────────────────────────────────────────────────────
 // macOS system-audio capture (etap 1 — system audio path)
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -807,16 +784,6 @@ export interface Druz9API {
    * subsequent turn in that session pulls the top-K relevant chunks
    * into the system prompt.
    */
-  /**
-   * Transcription — mic audio → text via the backend STT provider.
-   * Disabled (module returns 404 for underlying REST) when
-   * GROQ_API_KEY is unset server-side; the renderer surfaces the error
-   * verbatim so users can fix the env var or pick a non-audio flow.
-   */
-  transcription: {
-    transcribe: (input: TranscribeInput) => Promise<TranscribeResult>;
-  };
-
   /**
    * macOS system-audio capture. Native helper binary is required
    * (desktop/native/audio-mac/build.sh). On Windows/Linux the feature

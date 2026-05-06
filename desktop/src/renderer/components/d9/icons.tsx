@@ -28,52 +28,10 @@ export function D9IconSettings({ size = 14, ...rest }: P) {
   );
 }
 
-export function D9IconArrow({ size = 14, ...rest }: P) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" {...rest}>
-      <path
-        d="M8 2.5V13.5M8 2.5L4 6.5M8 2.5L12 6.5"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export function D9IconClose({ size = 12, ...rest }: P) {
   return (
     <svg width={size} height={size} viewBox="0 0 12 12" fill="none" {...rest}>
       <path d="M3 3L9 9M9 3L3 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-export function D9IconExpand({ size = 14, ...rest }: P) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" {...rest}>
-      <path
-        d="M3 10V13H6M13 6V3H10M13 3L9 7M3 13L7 9"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-export function D9IconCollapse({ size = 14, ...rest }: P) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" {...rest}>
-      <path
-        d="M6 3V6H3M10 13V10H13M10 10L13 13M6 6L3 3"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
     </svg>
   );
 }
@@ -86,49 +44,6 @@ export function D9IconCopy({ size = 12, ...rest }: P) {
         d="M10 3.5V2.5C10 2 9.5 1.5 9 1.5H3C2.5 1.5 2 2 2 2.5V8.5C2 9 2.5 9.5 3 9.5H4"
         stroke="currentColor"
         strokeWidth="1.1"
-      />
-    </svg>
-  );
-}
-
-export function D9IconSparkle({ size = 12, ...rest }: P) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" {...rest}>
-      <path
-        d="M6 1L7 5L11 6L7 7L6 11L5 7L1 6L5 5L6 1Z"
-        stroke="currentColor"
-        strokeWidth="1"
-        fill="currentColor"
-        fillOpacity="0.15"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-export function D9IconMic({ size = 14, ...rest }: P) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" {...rest}>
-      <rect x="6" y="2" width="4" height="7" rx="2" stroke="currentColor" strokeWidth="1.2" />
-      <path
-        d="M3.5 8C3.5 10.5 5.5 12 8 12M8 12C10.5 12 12.5 10.5 12.5 8M8 12V14.5"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-export function D9IconCheck({ size = 12, ...rest }: P) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" {...rest}>
-      <path
-        d="M2.5 6L5 8.5L9.5 3.5"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   );

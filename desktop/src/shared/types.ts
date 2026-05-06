@@ -1,12 +1,12 @@
 // Client-side mirror of the proto-derived domain types. We keep these
-// hand-typed rather than importing the generated @bufbuild/protobuf classes
-// because:
+// hand-typed rather than depending on the @bufbuild/protobuf generated
+// classes because:
 //  1. Generated classes carry proto internals the renderer doesn't need.
 //  2. Fields are renamed to idiomatic camelCase without oneof ceremony.
 //  3. Dates become strings so they survive IPC serialization unchanged.
-//
 // The main-process API client (see main/api/client.ts) converts proto ↔
-// these shapes at the IPC boundary.
+// these shapes at the IPC boundary using the @connectrpc/connect-web
+// transport directly.
 
 export type HotkeyAction =
   | 'screenshot_area'
