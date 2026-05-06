@@ -18,9 +18,8 @@ import { proto3 } from "@bufbuild/protobuf";
  * mock_sessions.section is the natural lookup key and creating a parallel
  * taxonomy for English would force every consumer (Insights, mock-pipeline,
  * history) to carry a tagged-union switch. Tables that gate on engineering
- * sections via CHECK constraints (ratings, elo_snapshots, tasks,
- * arena_matches, slots) do NOT accept english_hr — see
- * migrations/00001_baseline.sql.
+ * sections via CHECK constraints (ratings, elo_snapshots, tasks, slots)
+ * do NOT accept english_hr — see migrations/00001_baseline.sql.
  *
  * @generated from enum druz9.v1.Section
  */

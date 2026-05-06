@@ -2015,15 +2015,16 @@ func (*GetCoachStatsRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{29}
 }
 
-// CoachStats — 4 KPI cards для snapshot panel.
+// CoachStats — KPI cards для snapshot panel.
+//
+// Pivot 2026-05-04 (calendar) + Arena/Lobby final purge 2026-05-06: dropped
+// next_mock_in_days / next_mock_company along with the calendar context, and
+// streak_days alongside the kata stream. Only mock + focus signals remain.
 type CoachStats struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	StreakDays      int32                  `protobuf:"varint,1,opt,name=streak_days,json=streakDays,proto3" json:"streak_days,omitempty"`                 // kata streak
 	FocusTodayMin   int32                  `protobuf:"varint,2,opt,name=focus_today_min,json=focusTodayMin,proto3" json:"focus_today_min,omitempty"`      // sum focus minutes today (UTC day)
 	LastMockScore   int32                  `protobuf:"varint,3,opt,name=last_mock_score,json=lastMockScore,proto3" json:"last_mock_score,omitempty"`      // 0..100, 0 if no mocks
 	LastMockSection string                 `protobuf:"bytes,4,opt,name=last_mock_section,json=lastMockSection,proto3" json:"last_mock_section,omitempty"` // 'de' | 'algorithms' | etc — '' if none
-	NextMockInDays  int32                  `protobuf:"varint,5,opt,name=next_mock_in_days,json=nextMockInDays,proto3" json:"next_mock_in_days,omitempty"` // days to next upcoming interview, -1 if none
-	NextMockCompany string                 `protobuf:"bytes,6,opt,name=next_mock_company,json=nextMockCompany,proto3" json:"next_mock_company,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2058,13 +2059,6 @@ func (*CoachStats) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{30}
 }
 
-func (x *CoachStats) GetStreakDays() int32 {
-	if x != nil {
-		return x.StreakDays
-	}
-	return 0
-}
-
 func (x *CoachStats) GetFocusTodayMin() int32 {
 	if x != nil {
 		return x.FocusTodayMin
@@ -2082,20 +2076,6 @@ func (x *CoachStats) GetLastMockScore() int32 {
 func (x *CoachStats) GetLastMockSection() string {
 	if x != nil {
 		return x.LastMockSection
-	}
-	return ""
-}
-
-func (x *CoachStats) GetNextMockInDays() int32 {
-	if x != nil {
-		return x.NextMockInDays
-	}
-	return 0
-}
-
-func (x *CoachStats) GetNextMockCompany() string {
-	if x != nil {
-		return x.NextMockCompany
 	}
 	return ""
 }
@@ -2375,16 +2355,12 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"SkillRadar\x12\x16\n" +
 	"\x06rubric\x18\x01 \x01(\tR\x06rubric\x12,\n" +
 	"\x04axes\x18\x02 \x03(\v2\x18.druz9.v1.SkillRadarAxisR\x04axes\"\x16\n" +
-	"\x14GetCoachStatsRequest\"\x80\x02\n" +
+	"\x14GetCoachStatsRequest\"\xcd\x01\n" +
 	"\n" +
-	"CoachStats\x12\x1f\n" +
-	"\vstreak_days\x18\x01 \x01(\x05R\n" +
-	"streakDays\x12&\n" +
+	"CoachStats\x12&\n" +
 	"\x0ffocus_today_min\x18\x02 \x01(\x05R\rfocusTodayMin\x12&\n" +
 	"\x0flast_mock_score\x18\x03 \x01(\x05R\rlastMockScore\x12*\n" +
-	"\x11last_mock_section\x18\x04 \x01(\tR\x0flastMockSection\x12)\n" +
-	"\x11next_mock_in_days\x18\x05 \x01(\x05R\x0enextMockInDays\x12*\n" +
-	"\x11next_mock_company\x18\x06 \x01(\tR\x0fnextMockCompany\"\x98\x01\n" +
+	"\x11last_mock_section\x18\x04 \x01(\tR\x0flastMockSectionJ\x04\b\x01\x10\x02J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\vstreak_daysR\x11next_mock_in_daysR\x11next_mock_company\"\x98\x01\n" +
 	"\x12LogResourceRequest\x12!\n" +
 	"\fresource_url\x18\x01 \x01(\tR\vresourceUrl\x12\"\n" +
 	"\ratlas_node_id\x18\x02 \x01(\tR\vatlasNodeId\x12\x12\n" +

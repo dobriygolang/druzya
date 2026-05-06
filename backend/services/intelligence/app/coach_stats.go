@@ -16,10 +16,10 @@ import (
 
 // CoachStats — wire-shape для UI snapshot.
 //
-// Calendar pivot 2026-05-04: NextMockInDays / NextMockCompany dropped along
-// with the calendar bounded context. UI consumers are expected to default
-// to -1 for the "next mock" card; the field stays renderable as "no upcoming
-// interview" text even with the field gone from this struct.
+// Arena/Lobby final purge 2026-05-06: NextMockInDays / NextMockCompany /
+// StreakDays dropped from both the proto and this struct. The "next mock"
+// card collapses to "no upcoming interview" client-side; streak is no longer
+// surfaced after kata stream removal.
 type CoachStats struct {
 	FocusTodayMin   int
 	LastMockScore   int    // 0..100

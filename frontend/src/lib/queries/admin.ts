@@ -10,6 +10,9 @@ import { api } from '../apiClient'
 // Dashboard
 // ─────────────────────────────────────────────────────────────────────────
 
+// Arena/Lobby final purge 2026-05-06: active_arena_matches dropped — proto
+// already reserved the slot back in the 2026-05-01 pivot, this just brings
+// the TS shape and reader in line.
 export type AdminDashboard = {
   users_total: number
   users_active_today: number
@@ -17,7 +20,6 @@ export type AdminDashboard = {
   users_active_month: number
   users_banned: number
   active_mock_sessions: number
-  active_arena_matches: number
   reports_pending: number
   anticheat_signals_24h: number
   generated_at: string
@@ -46,7 +48,6 @@ type wireDashboard = Partial<{
   usersActiveMonth: number | string
   usersBanned: number | string
   activeMockSessions: number | string
-  activeArenaMatches: number | string
   reportsPending: number | string
   anticheatSignals24H: number | string
   anticheatSignals_24h: number | string // proto's _24h field maps to this
@@ -70,7 +71,6 @@ export function useAdminDashboardQuery() {
         users_active_month: toNum(w.usersActiveMonth),
         users_banned: toNum(w.usersBanned),
         active_mock_sessions: toNum(w.activeMockSessions),
-        active_arena_matches: toNum(w.activeArenaMatches),
         reports_pending: toNum(w.reportsPending),
         anticheat_signals_24h: toNum(w.anticheatSignals24H ?? w.anticheatSignals_24h),
         generated_at: w.generatedAt ?? '',

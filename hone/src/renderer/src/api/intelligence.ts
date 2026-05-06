@@ -501,23 +501,20 @@ export async function getSkillRadar(rubric?: string): Promise<SkillRadar> {
 
 // ── Phase 2 finalizer: snapshot stats ──────────────────────────────────
 
+// CoachStats — Arena/Lobby final purge 2026-05-06: streakDays /
+// nextMockInDays / nextMockCompany dropped from the proto and this shape.
+// The "next mock" snapshot tile collapsed to a static placeholder client-side.
 export interface CoachStats {
-  streakDays: number;
   focusTodayMin: number;
   lastMockScore: number; // 0..100
   lastMockSection: string;
-  nextMockInDays: number; // -1 if none
-  nextMockCompany: string;
 }
 
 export async function getCoachStats(): Promise<CoachStats> {
   const r = await client.getCoachStats({});
   return {
-    streakDays: r.streakDays ?? 0,
     focusTodayMin: r.focusTodayMin ?? 0,
     lastMockScore: r.lastMockScore ?? 0,
     lastMockSection: r.lastMockSection ?? '',
-    nextMockInDays: r.nextMockInDays ?? -1,
-    nextMockCompany: r.nextMockCompany ?? '',
   };
 }

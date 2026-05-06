@@ -221,10 +221,6 @@ type BriefPromptInput struct {
 	// последние 14 дней. ≥2 = consistency-break warn в severity grader.
 	MockAbandonedRecent int
 
-	// Arena — последние arena-matches: section, outcome, elo delta. Coach
-	// видит losing-streak, frustration patterns.
-	Arena []ArenaMatchSummary
-
 	// Queue — снапшот today queue. «You're 1/5 done на сегодня».
 	Queue QueueSnapshot
 

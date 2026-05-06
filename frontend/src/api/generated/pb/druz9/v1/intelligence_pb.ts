@@ -1725,18 +1725,15 @@ export class GetCoachStatsRequest extends Message<GetCoachStatsRequest> {
 }
 
 /**
- * CoachStats — 4 KPI cards для snapshot panel.
+ * CoachStats — KPI cards для snapshot panel.
+ *
+ * Pivot 2026-05-04 (calendar) + Arena/Lobby final purge 2026-05-06: dropped
+ * next_mock_in_days / next_mock_company along with the calendar context, and
+ * streak_days alongside the kata stream. Only mock + focus signals remain.
  *
  * @generated from message druz9.v1.CoachStats
  */
 export class CoachStats extends Message<CoachStats> {
-  /**
-   * kata streak
-   *
-   * @generated from field: int32 streak_days = 1;
-   */
-  streakDays = 0;
-
   /**
    * sum focus minutes today (UTC day)
    *
@@ -1758,18 +1755,6 @@ export class CoachStats extends Message<CoachStats> {
    */
   lastMockSection = "";
 
-  /**
-   * days to next upcoming interview, -1 if none
-   *
-   * @generated from field: int32 next_mock_in_days = 5;
-   */
-  nextMockInDays = 0;
-
-  /**
-   * @generated from field: string next_mock_company = 6;
-   */
-  nextMockCompany = "";
-
   constructor(data?: PartialMessage<CoachStats>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1778,12 +1763,9 @@ export class CoachStats extends Message<CoachStats> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.CoachStats";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "streak_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 2, name: "focus_today_min", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 3, name: "last_mock_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "last_mock_section", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "next_mock_in_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 6, name: "next_mock_company", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CoachStats {

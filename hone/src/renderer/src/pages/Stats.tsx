@@ -94,7 +94,7 @@ export const Stats: React.FC = () => {
             />
             <KpiCard
               label="streak"
-              value={coach ? `${coach.streakDays}` : '—'}
+              value={stats ? `${stats.currentStreakDays}` : '—'}
               unit="days"
               hint={stats ? `longest ${stats.longestStreakDays}d` : ''}
             />

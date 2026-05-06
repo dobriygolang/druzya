@@ -145,18 +145,6 @@ type MockSessionSummary struct {
 	AIReportRaw []byte
 }
 
-// ArenaMatchSummary — одна arena сессия для user'а. winning_team mapping
-// в won/lost/draw делается reader'ом (по сравнению participant.team).
-type ArenaMatchSummary struct {
-	MatchID     uuid.UUID
-	Section     string
-	Mode        string // 'solo_1v1' / 'duo_2v2' / 'ranked' / 'hardcore' / 'cursed'
-	Outcome     string // 'won' / 'lost' / 'draw' / 'abandoned'
-	EloDelta    int    // (elo_after - elo_before) для user'а
-	SolveTimeMs int64
-	FinishedAt  time.Time
-}
-
 // QueueSnapshot — статус focus-queue на сегодня.
 type QueueSnapshot struct {
 	Total       int

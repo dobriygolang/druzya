@@ -281,14 +281,17 @@ message SkillRadar {
 // GetCoachStatsRequest — header snapshot panel.
 message GetCoachStatsRequest {}
 
-// CoachStats — 4 KPI cards для snapshot panel.
+// CoachStats — KPI cards для snapshot panel.
+//
+// Pivot 2026-05-04 (calendar) + Arena/Lobby final purge 2026-05-06: dropped
+// next_mock_in_days / next_mock_company along with the calendar context, and
+// streak_days alongside the kata stream. Only mock + focus signals remain.
 message CoachStats {
-  int32  streak_days        = 1; // kata streak
+  reserved 1, 5, 6;
+  reserved "streak_days", "next_mock_in_days", "next_mock_company";
   int32  focus_today_min    = 2; // sum focus minutes today (UTC day)
   int32  last_mock_score    = 3; // 0..100, 0 if no mocks
   string last_mock_section  = 4; // 'de' | 'algorithms' | etc — '' if none
-  int32  next_mock_in_days  = 5; // days to next upcoming interview, -1 if none
-  string next_mock_company  = 6;
 }
 
 // LogResourceRequest — событие user_resource_log.

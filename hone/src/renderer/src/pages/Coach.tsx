@@ -420,14 +420,9 @@ const SnapshotPanel: React.FC<{
     const mockCard = stats && stats.lastMockScore > 0
       ? `${stats.lastMockScore}/100${stats.lastMockSection ? ` · ${stats.lastMockSection}` : ''}`
       : '—';
-    const nextMock = stats && stats.nextMockInDays >= 0
-      ? `${stats.nextMockInDays}d${stats.nextMockCompany ? ` · ${stats.nextMockCompany}` : ''}`
-      : '—';
     return [
-      { label: 'streak', value: stats ? `${stats.streakDays} days` : '— days' },
       { label: 'focus today', value: stats ? `${stats.focusTodayMin} min` : '— min' },
       { label: 'last mock', value: mockCard },
-      { label: 'next mock', value: nextMock },
     ];
   }, [stats]);
   void fork;
