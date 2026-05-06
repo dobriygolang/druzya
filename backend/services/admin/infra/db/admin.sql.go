@@ -279,59 +279,6 @@ func (q *Queries) InsertTestCase(ctx context.Context, arg InsertTestCaseParams) 
 	return i, err
 }
 
-const listAnticheatSignalsBase = `-- name: ListAnticheatSignalsBase :many
-
-SELECT s.id, s.user_id, u.username, s.match_id, s.type, s.severity,
-       s.metadata, s.created_at
-  FROM anticheat_signals s
-  LEFT JOIN users u ON u.id = s.user_id
- ORDER BY s.created_at DESC
- LIMIT $1
-`
-
-type ListAnticheatSignalsBaseRow struct {
-	ID        pgtype.UUID
-	UserID    pgtype.UUID
-	Username  pgtype.Text
-	MatchID   pgtype.UUID
-	Type      string
-	Severity  string
-	Metadata  []byte
-	CreatedAt pgtype.Timestamptz
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Anticheat — base-case ordering; filtered variants live in postgres.go.
-// ─────────────────────────────────────────────────────────────────────────
-func (q *Queries) ListAnticheatSignalsBase(ctx context.Context, limit int32) ([]ListAnticheatSignalsBaseRow, error) {
-	rows, err := q.db.Query(ctx, listAnticheatSignalsBase, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListAnticheatSignalsBaseRow{}
-	for rows.Next() {
-		var i ListAnticheatSignalsBaseRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Username,
-			&i.MatchID,
-			&i.Type,
-			&i.Severity,
-			&i.Metadata,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listCompanies = `-- name: ListCompanies :many
 
 SELECT id, slug, name, logo_url, description, active, sort_order, created_at

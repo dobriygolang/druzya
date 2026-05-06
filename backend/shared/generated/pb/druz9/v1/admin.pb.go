@@ -374,216 +374,6 @@ func (*ListConfigRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{3}
 }
 
-// AnticheatSignal mirrors OpenAPI AnticheatSignal.
-type AnticheatSignal struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	UserId   string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Username string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	MatchId  string                 `protobuf:"bytes,4,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
-	// `type` in OpenAPI is a free-form string example — we keep it as a
-	// string here for wire compatibility. The shared enum
-	// AnticheatSignalType in common.proto lists the known values; the REST
-	// wire surface is a plain string.
-	Type     string        `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`
-	Severity SeverityLevel `protobuf:"varint,6,opt,name=severity,proto3,enum=druz9.v1.SeverityLevel" json:"severity,omitempty"`
-	// metadata is a free-form JSON object — again kept opaque via Value.
-	Metadata      *structpb.Value        `protobuf:"bytes,7,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnticheatSignal) Reset() {
-	*x = AnticheatSignal{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnticheatSignal) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnticheatSignal) ProtoMessage() {}
-
-func (x *AnticheatSignal) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnticheatSignal.ProtoReflect.Descriptor instead.
-func (*AnticheatSignal) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *AnticheatSignal) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *AnticheatSignal) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *AnticheatSignal) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *AnticheatSignal) GetMatchId() string {
-	if x != nil {
-		return x.MatchId
-	}
-	return ""
-}
-
-func (x *AnticheatSignal) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-func (x *AnticheatSignal) GetSeverity() SeverityLevel {
-	if x != nil {
-		return x.Severity
-	}
-	return SeverityLevel_SEVERITY_LEVEL_UNSPECIFIED
-}
-
-func (x *AnticheatSignal) GetMetadata() *structpb.Value {
-	if x != nil {
-		return x.Metadata
-	}
-	return nil
-}
-
-func (x *AnticheatSignal) GetCreatedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.CreatedAt
-	}
-	return nil
-}
-
-type AnticheatSignalList struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*AnticheatSignal     `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AnticheatSignalList) Reset() {
-	*x = AnticheatSignalList{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AnticheatSignalList) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AnticheatSignalList) ProtoMessage() {}
-
-func (x *AnticheatSignalList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AnticheatSignalList.ProtoReflect.Descriptor instead.
-func (*AnticheatSignalList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *AnticheatSignalList) GetItems() []*AnticheatSignal {
-	if x != nil {
-		return x.Items
-	}
-	return nil
-}
-
-type ListAnticheatRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Severity      SeverityLevel          `protobuf:"varint,1,opt,name=severity,proto3,enum=druz9.v1.SeverityLevel" json:"severity,omitempty"`
-	From          *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
-	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListAnticheatRequest) Reset() {
-	*x = ListAnticheatRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListAnticheatRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListAnticheatRequest) ProtoMessage() {}
-
-func (x *ListAnticheatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListAnticheatRequest.ProtoReflect.Descriptor instead.
-func (*ListAnticheatRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *ListAnticheatRequest) GetSeverity() SeverityLevel {
-	if x != nil {
-		return x.Severity
-	}
-	return SeverityLevel_SEVERITY_LEVEL_UNSPECIFIED
-}
-
-func (x *ListAnticheatRequest) GetFrom() *timestamppb.Timestamp {
-	if x != nil {
-		return x.From
-	}
-	return nil
-}
-
-func (x *ListAnticheatRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
 // AdminDashboard mirrors the JSON shape served by GET /api/v1/admin/dashboard.
 // Counters are live aggregates with a 60s server-side Redis cache. Every
 // "active_*" timeframe is computed off users.updated_at (see stats.go for
@@ -606,7 +396,7 @@ type AdminDashboard struct {
 
 func (x *AdminDashboard) Reset() {
 	*x = AdminDashboard{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[7]
+	mi := &file_druz9_v1_admin_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -618,7 +408,7 @@ func (x *AdminDashboard) String() string {
 func (*AdminDashboard) ProtoMessage() {}
 
 func (x *AdminDashboard) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[7]
+	mi := &file_druz9_v1_admin_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -631,7 +421,7 @@ func (x *AdminDashboard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminDashboard.ProtoReflect.Descriptor instead.
 func (*AdminDashboard) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{7}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AdminDashboard) GetUsersTotal() int64 {
@@ -705,7 +495,7 @@ type GetAdminDashboardRequest struct {
 
 func (x *GetAdminDashboardRequest) Reset() {
 	*x = GetAdminDashboardRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[8]
+	mi := &file_druz9_v1_admin_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -717,7 +507,7 @@ func (x *GetAdminDashboardRequest) String() string {
 func (*GetAdminDashboardRequest) ProtoMessage() {}
 
 func (x *GetAdminDashboardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[8]
+	mi := &file_druz9_v1_admin_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -730,7 +520,7 @@ func (x *GetAdminDashboardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdminDashboardRequest.ProtoReflect.Descriptor instead.
 func (*GetAdminDashboardRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{8}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{5}
 }
 
 // AdminUserRow is the row shape returned by GET /api/v1/admin/users.
@@ -754,7 +544,7 @@ type AdminUserRow struct {
 
 func (x *AdminUserRow) Reset() {
 	*x = AdminUserRow{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[9]
+	mi := &file_druz9_v1_admin_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -766,7 +556,7 @@ func (x *AdminUserRow) String() string {
 func (*AdminUserRow) ProtoMessage() {}
 
 func (x *AdminUserRow) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[9]
+	mi := &file_druz9_v1_admin_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -779,7 +569,7 @@ func (x *AdminUserRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminUserRow.ProtoReflect.Descriptor instead.
 func (*AdminUserRow) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{9}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AdminUserRow) GetId() string {
@@ -863,7 +653,7 @@ type AdminUserList struct {
 
 func (x *AdminUserList) Reset() {
 	*x = AdminUserList{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[10]
+	mi := &file_druz9_v1_admin_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -875,7 +665,7 @@ func (x *AdminUserList) String() string {
 func (*AdminUserList) ProtoMessage() {}
 
 func (x *AdminUserList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[10]
+	mi := &file_druz9_v1_admin_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -888,7 +678,7 @@ func (x *AdminUserList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminUserList.ProtoReflect.Descriptor instead.
 func (*AdminUserList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{10}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AdminUserList) GetItems() []*AdminUserRow {
@@ -926,7 +716,7 @@ type ListAdminUsersRequest struct {
 
 func (x *ListAdminUsersRequest) Reset() {
 	*x = ListAdminUsersRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[11]
+	mi := &file_druz9_v1_admin_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -938,7 +728,7 @@ func (x *ListAdminUsersRequest) String() string {
 func (*ListAdminUsersRequest) ProtoMessage() {}
 
 func (x *ListAdminUsersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[11]
+	mi := &file_druz9_v1_admin_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -951,7 +741,7 @@ func (x *ListAdminUsersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdminUsersRequest.ProtoReflect.Descriptor instead.
 func (*ListAdminUsersRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{11}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListAdminUsersRequest) GetQuery() string {
@@ -994,7 +784,7 @@ type BanUserRequest struct {
 
 func (x *BanUserRequest) Reset() {
 	*x = BanUserRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[12]
+	mi := &file_druz9_v1_admin_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1006,7 +796,7 @@ func (x *BanUserRequest) String() string {
 func (*BanUserRequest) ProtoMessage() {}
 
 func (x *BanUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[12]
+	mi := &file_druz9_v1_admin_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1019,7 +809,7 @@ func (x *BanUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BanUserRequest.ProtoReflect.Descriptor instead.
 func (*BanUserRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{12}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *BanUserRequest) GetUserId() string {
@@ -1052,7 +842,7 @@ type UnbanUserRequest struct {
 
 func (x *UnbanUserRequest) Reset() {
 	*x = UnbanUserRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[13]
+	mi := &file_druz9_v1_admin_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1064,7 +854,7 @@ func (x *UnbanUserRequest) String() string {
 func (*UnbanUserRequest) ProtoMessage() {}
 
 func (x *UnbanUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[13]
+	mi := &file_druz9_v1_admin_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1077,7 +867,7 @@ func (x *UnbanUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnbanUserRequest.ProtoReflect.Descriptor instead.
 func (*UnbanUserRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{13}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UnbanUserRequest) GetUserId() string {
@@ -1096,7 +886,7 @@ type BanUserResponse struct {
 
 func (x *BanUserResponse) Reset() {
 	*x = BanUserResponse{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[14]
+	mi := &file_druz9_v1_admin_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1108,7 +898,7 @@ func (x *BanUserResponse) String() string {
 func (*BanUserResponse) ProtoMessage() {}
 
 func (x *BanUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[14]
+	mi := &file_druz9_v1_admin_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1121,7 +911,7 @@ func (x *BanUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BanUserResponse.ProtoReflect.Descriptor instead.
 func (*BanUserResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{14}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *BanUserResponse) GetUser() *AdminUserRow {
@@ -1148,7 +938,7 @@ type AdminReport struct {
 
 func (x *AdminReport) Reset() {
 	*x = AdminReport{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[15]
+	mi := &file_druz9_v1_admin_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1160,7 +950,7 @@ func (x *AdminReport) String() string {
 func (*AdminReport) ProtoMessage() {}
 
 func (x *AdminReport) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[15]
+	mi := &file_druz9_v1_admin_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1173,7 +963,7 @@ func (x *AdminReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminReport.ProtoReflect.Descriptor instead.
 func (*AdminReport) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{15}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AdminReport) GetId() string {
@@ -1249,7 +1039,7 @@ type AdminReportList struct {
 
 func (x *AdminReportList) Reset() {
 	*x = AdminReportList{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[16]
+	mi := &file_druz9_v1_admin_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1261,7 +1051,7 @@ func (x *AdminReportList) String() string {
 func (*AdminReportList) ProtoMessage() {}
 
 func (x *AdminReportList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[16]
+	mi := &file_druz9_v1_admin_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1274,7 +1064,7 @@ func (x *AdminReportList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminReportList.ProtoReflect.Descriptor instead.
 func (*AdminReportList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{16}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AdminReportList) GetItems() []*AdminReport {
@@ -1302,7 +1092,7 @@ type ListAdminReportsRequest struct {
 
 func (x *ListAdminReportsRequest) Reset() {
 	*x = ListAdminReportsRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[17]
+	mi := &file_druz9_v1_admin_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1314,7 +1104,7 @@ func (x *ListAdminReportsRequest) String() string {
 func (*ListAdminReportsRequest) ProtoMessage() {}
 
 func (x *ListAdminReportsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[17]
+	mi := &file_druz9_v1_admin_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1327,7 +1117,7 @@ func (x *ListAdminReportsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdminReportsRequest.ProtoReflect.Descriptor instead.
 func (*ListAdminReportsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{17}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListAdminReportsRequest) GetStatus() AdminReportStatus {
@@ -1358,7 +1148,7 @@ type StatusServiceState struct {
 
 func (x *StatusServiceState) Reset() {
 	*x = StatusServiceState{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[18]
+	mi := &file_druz9_v1_admin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1370,7 +1160,7 @@ func (x *StatusServiceState) String() string {
 func (*StatusServiceState) ProtoMessage() {}
 
 func (x *StatusServiceState) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[18]
+	mi := &file_druz9_v1_admin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1383,7 +1173,7 @@ func (x *StatusServiceState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusServiceState.ProtoReflect.Descriptor instead.
 func (*StatusServiceState) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{18}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *StatusServiceState) GetName() string {
@@ -1437,7 +1227,7 @@ type StatusIncident struct {
 
 func (x *StatusIncident) Reset() {
 	*x = StatusIncident{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[19]
+	mi := &file_druz9_v1_admin_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1449,7 +1239,7 @@ func (x *StatusIncident) String() string {
 func (*StatusIncident) ProtoMessage() {}
 
 func (x *StatusIncident) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[19]
+	mi := &file_druz9_v1_admin_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1462,7 +1252,7 @@ func (x *StatusIncident) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusIncident.ProtoReflect.Descriptor instead.
 func (*StatusIncident) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{19}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *StatusIncident) GetId() string {
@@ -1527,7 +1317,7 @@ type StatusPage struct {
 
 func (x *StatusPage) Reset() {
 	*x = StatusPage{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[20]
+	mi := &file_druz9_v1_admin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1539,7 +1329,7 @@ func (x *StatusPage) String() string {
 func (*StatusPage) ProtoMessage() {}
 
 func (x *StatusPage) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[20]
+	mi := &file_druz9_v1_admin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1552,7 +1342,7 @@ func (x *StatusPage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusPage.ProtoReflect.Descriptor instead.
 func (*StatusPage) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{20}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *StatusPage) GetOverallStatus() string {
@@ -1598,7 +1388,7 @@ type GetStatusPageRequest struct {
 
 func (x *GetStatusPageRequest) Reset() {
 	*x = GetStatusPageRequest{}
-	mi := &file_druz9_v1_admin_proto_msgTypes[21]
+	mi := &file_druz9_v1_admin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1610,7 +1400,7 @@ func (x *GetStatusPageRequest) String() string {
 func (*GetStatusPageRequest) ProtoMessage() {}
 
 func (x *GetStatusPageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_admin_proto_msgTypes[21]
+	mi := &file_druz9_v1_admin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1623,7 +1413,7 @@ func (x *GetStatusPageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusPageRequest.ProtoReflect.Descriptor instead.
 func (*GetStatusPageRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{21}
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{18}
 }
 
 var File_druz9_v1_admin_proto protoreflect.FileDescriptor
@@ -1645,23 +1435,7 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\x13UpdateConfigRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12,\n" +
 	"\x05value\x18\x02 \x01(\v2\x16.google.protobuf.ValueR\x05value\"\x13\n" +
-	"\x11ListConfigRequest\"\xa9\x02\n" +
-	"\x0fAnticheatSignal\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1a\n" +
-	"\busername\x18\x03 \x01(\tR\busername\x12\x19\n" +
-	"\bmatch_id\x18\x04 \x01(\tR\amatchId\x12\x12\n" +
-	"\x04type\x18\x05 \x01(\tR\x04type\x123\n" +
-	"\bseverity\x18\x06 \x01(\x0e2\x17.druz9.v1.SeverityLevelR\bseverity\x122\n" +
-	"\bmetadata\x18\a \x01(\v2\x16.google.protobuf.ValueR\bmetadata\x129\n" +
-	"\n" +
-	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"F\n" +
-	"\x13AnticheatSignalList\x12/\n" +
-	"\x05items\x18\x01 \x03(\v2\x19.druz9.v1.AnticheatSignalR\x05items\"\x91\x01\n" +
-	"\x14ListAnticheatRequest\x123\n" +
-	"\bseverity\x18\x01 \x01(\x0e2\x17.druz9.v1.SeverityLevelR\bseverity\x12.\n" +
-	"\x04from\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\xc8\x03\n" +
+	"\x11ListConfigRequest\"\xc8\x03\n" +
 	"\x0eAdminDashboard\x12\x1f\n" +
 	"\vusers_total\x18\x01 \x01(\x03R\n" +
 	"usersTotal\x12,\n" +
@@ -1792,7 +1566,7 @@ func file_druz9_v1_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_druz9_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_druz9_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_druz9_v1_admin_proto_goTypes = []any{
 	(ConfigEntryType)(0),             // 0: druz9.v1.ConfigEntryType
 	(AdminReportStatus)(0),           // 1: druz9.v1.AdminReportStatus
@@ -1800,77 +1574,67 @@ var file_druz9_v1_admin_proto_goTypes = []any{
 	(*ConfigEntryList)(nil),          // 3: druz9.v1.ConfigEntryList
 	(*UpdateConfigRequest)(nil),      // 4: druz9.v1.UpdateConfigRequest
 	(*ListConfigRequest)(nil),        // 5: druz9.v1.ListConfigRequest
-	(*AnticheatSignal)(nil),          // 6: druz9.v1.AnticheatSignal
-	(*AnticheatSignalList)(nil),      // 7: druz9.v1.AnticheatSignalList
-	(*ListAnticheatRequest)(nil),     // 8: druz9.v1.ListAnticheatRequest
-	(*AdminDashboard)(nil),           // 9: druz9.v1.AdminDashboard
-	(*GetAdminDashboardRequest)(nil), // 10: druz9.v1.GetAdminDashboardRequest
-	(*AdminUserRow)(nil),             // 11: druz9.v1.AdminUserRow
-	(*AdminUserList)(nil),            // 12: druz9.v1.AdminUserList
-	(*ListAdminUsersRequest)(nil),    // 13: druz9.v1.ListAdminUsersRequest
-	(*BanUserRequest)(nil),           // 14: druz9.v1.BanUserRequest
-	(*UnbanUserRequest)(nil),         // 15: druz9.v1.UnbanUserRequest
-	(*BanUserResponse)(nil),          // 16: druz9.v1.BanUserResponse
-	(*AdminReport)(nil),              // 17: druz9.v1.AdminReport
-	(*AdminReportList)(nil),          // 18: druz9.v1.AdminReportList
-	(*ListAdminReportsRequest)(nil),  // 19: druz9.v1.ListAdminReportsRequest
-	(*StatusServiceState)(nil),       // 20: druz9.v1.StatusServiceState
-	(*StatusIncident)(nil),           // 21: druz9.v1.StatusIncident
-	(*StatusPage)(nil),               // 22: druz9.v1.StatusPage
-	(*GetStatusPageRequest)(nil),     // 23: druz9.v1.GetStatusPageRequest
-	(*structpb.Value)(nil),           // 24: google.protobuf.Value
-	(*timestamppb.Timestamp)(nil),    // 25: google.protobuf.Timestamp
-	(SeverityLevel)(0),               // 26: druz9.v1.SeverityLevel
+	(*AdminDashboard)(nil),           // 6: druz9.v1.AdminDashboard
+	(*GetAdminDashboardRequest)(nil), // 7: druz9.v1.GetAdminDashboardRequest
+	(*AdminUserRow)(nil),             // 8: druz9.v1.AdminUserRow
+	(*AdminUserList)(nil),            // 9: druz9.v1.AdminUserList
+	(*ListAdminUsersRequest)(nil),    // 10: druz9.v1.ListAdminUsersRequest
+	(*BanUserRequest)(nil),           // 11: druz9.v1.BanUserRequest
+	(*UnbanUserRequest)(nil),         // 12: druz9.v1.UnbanUserRequest
+	(*BanUserResponse)(nil),          // 13: druz9.v1.BanUserResponse
+	(*AdminReport)(nil),              // 14: druz9.v1.AdminReport
+	(*AdminReportList)(nil),          // 15: druz9.v1.AdminReportList
+	(*ListAdminReportsRequest)(nil),  // 16: druz9.v1.ListAdminReportsRequest
+	(*StatusServiceState)(nil),       // 17: druz9.v1.StatusServiceState
+	(*StatusIncident)(nil),           // 18: druz9.v1.StatusIncident
+	(*StatusPage)(nil),               // 19: druz9.v1.StatusPage
+	(*GetStatusPageRequest)(nil),     // 20: druz9.v1.GetStatusPageRequest
+	(*structpb.Value)(nil),           // 21: google.protobuf.Value
+	(*timestamppb.Timestamp)(nil),    // 22: google.protobuf.Timestamp
 }
 var file_druz9_v1_admin_proto_depIdxs = []int32{
-	24, // 0: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
+	21, // 0: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
 	0,  // 1: druz9.v1.ConfigEntry.type:type_name -> druz9.v1.ConfigEntryType
-	25, // 2: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 2: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
 	2,  // 3: druz9.v1.ConfigEntryList.items:type_name -> druz9.v1.ConfigEntry
-	24, // 4: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
-	26, // 5: druz9.v1.AnticheatSignal.severity:type_name -> druz9.v1.SeverityLevel
-	24, // 6: druz9.v1.AnticheatSignal.metadata:type_name -> google.protobuf.Value
-	25, // 7: druz9.v1.AnticheatSignal.created_at:type_name -> google.protobuf.Timestamp
-	6,  // 8: druz9.v1.AnticheatSignalList.items:type_name -> druz9.v1.AnticheatSignal
-	26, // 9: druz9.v1.ListAnticheatRequest.severity:type_name -> druz9.v1.SeverityLevel
-	25, // 10: druz9.v1.ListAnticheatRequest.from:type_name -> google.protobuf.Timestamp
-	25, // 11: druz9.v1.AdminDashboard.generated_at:type_name -> google.protobuf.Timestamp
-	25, // 12: druz9.v1.AdminUserRow.created_at:type_name -> google.protobuf.Timestamp
-	25, // 13: druz9.v1.AdminUserRow.updated_at:type_name -> google.protobuf.Timestamp
-	25, // 14: druz9.v1.AdminUserRow.ban_expires_at:type_name -> google.protobuf.Timestamp
-	11, // 15: druz9.v1.AdminUserList.items:type_name -> druz9.v1.AdminUserRow
-	25, // 16: druz9.v1.BanUserRequest.expires_at:type_name -> google.protobuf.Timestamp
-	11, // 17: druz9.v1.BanUserResponse.user:type_name -> druz9.v1.AdminUserRow
-	1,  // 18: druz9.v1.AdminReport.status:type_name -> druz9.v1.AdminReportStatus
-	25, // 19: druz9.v1.AdminReport.created_at:type_name -> google.protobuf.Timestamp
-	17, // 20: druz9.v1.AdminReportList.items:type_name -> druz9.v1.AdminReport
-	1,  // 21: druz9.v1.ListAdminReportsRequest.status:type_name -> druz9.v1.AdminReportStatus
-	25, // 22: druz9.v1.StatusIncident.started_at:type_name -> google.protobuf.Timestamp
-	25, // 23: druz9.v1.StatusIncident.ended_at:type_name -> google.protobuf.Timestamp
-	20, // 24: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
-	21, // 25: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
-	25, // 26: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
-	5,  // 27: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
-	4,  // 28: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
-	10, // 29: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
-	13, // 30: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
-	14, // 31: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
-	15, // 32: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
-	19, // 33: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
-	23, // 34: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
-	3,  // 35: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
-	2,  // 36: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
-	9,  // 37: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
-	12, // 38: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
-	16, // 39: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
-	16, // 40: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
-	18, // 41: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
-	22, // 42: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
-	35, // [35:43] is the sub-list for method output_type
-	27, // [27:35] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	21, // 4: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
+	22, // 5: druz9.v1.AdminDashboard.generated_at:type_name -> google.protobuf.Timestamp
+	22, // 6: druz9.v1.AdminUserRow.created_at:type_name -> google.protobuf.Timestamp
+	22, // 7: druz9.v1.AdminUserRow.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 8: druz9.v1.AdminUserRow.ban_expires_at:type_name -> google.protobuf.Timestamp
+	8,  // 9: druz9.v1.AdminUserList.items:type_name -> druz9.v1.AdminUserRow
+	22, // 10: druz9.v1.BanUserRequest.expires_at:type_name -> google.protobuf.Timestamp
+	8,  // 11: druz9.v1.BanUserResponse.user:type_name -> druz9.v1.AdminUserRow
+	1,  // 12: druz9.v1.AdminReport.status:type_name -> druz9.v1.AdminReportStatus
+	22, // 13: druz9.v1.AdminReport.created_at:type_name -> google.protobuf.Timestamp
+	14, // 14: druz9.v1.AdminReportList.items:type_name -> druz9.v1.AdminReport
+	1,  // 15: druz9.v1.ListAdminReportsRequest.status:type_name -> druz9.v1.AdminReportStatus
+	22, // 16: druz9.v1.StatusIncident.started_at:type_name -> google.protobuf.Timestamp
+	22, // 17: druz9.v1.StatusIncident.ended_at:type_name -> google.protobuf.Timestamp
+	17, // 18: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
+	18, // 19: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
+	22, // 20: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
+	5,  // 21: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
+	4,  // 22: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
+	7,  // 23: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
+	10, // 24: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
+	11, // 25: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
+	12, // 26: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
+	16, // 27: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
+	20, // 28: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
+	3,  // 29: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
+	2,  // 30: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
+	6,  // 31: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
+	9,  // 32: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
+	13, // 33: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
+	13, // 34: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
+	15, // 35: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
+	19, // 36: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
+	29, // [29:37] is the sub-list for method output_type
+	21, // [21:29] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_admin_proto_init() }
@@ -1885,7 +1649,7 @@ func file_druz9_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_admin_proto_rawDesc), len(file_druz9_v1_admin_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   22,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

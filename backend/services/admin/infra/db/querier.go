@@ -34,10 +34,6 @@ type Querier interface {
 	InsertFollowUpQuestion(ctx context.Context, arg InsertFollowUpQuestionParams) (FollowUpQuestion, error)
 	InsertTestCase(ctx context.Context, arg InsertTestCaseParams) (TestCase, error)
 	// ─────────────────────────────────────────────────────────────────────────
-	// Anticheat — base-case ordering; filtered variants live in postgres.go.
-	// ─────────────────────────────────────────────────────────────────────────
-	ListAnticheatSignalsBase(ctx context.Context, limit int32) ([]ListAnticheatSignalsBaseRow, error)
-	// ─────────────────────────────────────────────────────────────────────────
 	// Companies
 	// ─────────────────────────────────────────────────────────────────────────
 	// companies теперь живут под mock-interview pipeline shape

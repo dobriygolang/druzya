@@ -119,7 +119,7 @@ ON CONFLICT (user_id) DO UPDATE
 type UpsertSubscriptionParams struct {
 	UserID           pgtype.UUID
 	Plan             string
-	Status           string
+	Status           SubscriptionStatus
 	Provider         pgtype.Text
 	ProviderSubID    pgtype.Text
 	CurrentPeriodEnd pgtype.Timestamptz

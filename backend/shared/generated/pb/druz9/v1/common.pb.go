@@ -927,62 +927,6 @@ func (SeverityLevel) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_common_proto_rawDescGZIP(), []int{14}
 }
 
-// AnticheatSignalType mirrors shared/enums.AnticheatSignalType.
-type AnticheatSignalType int32
-
-const (
-	AnticheatSignalType_ANTICHEAT_SIGNAL_TYPE_UNSPECIFIED        AnticheatSignalType = 0
-	AnticheatSignalType_ANTICHEAT_SIGNAL_TYPE_PASTE_DETECTED     AnticheatSignalType = 1
-	AnticheatSignalType_ANTICHEAT_SIGNAL_TYPE_TAB_SWITCH         AnticheatSignalType = 2
-	AnticheatSignalType_ANTICHEAT_SIGNAL_TYPE_ANOMALOUS_SPEED    AnticheatSignalType = 3
-	AnticheatSignalType_ANTICHEAT_SIGNAL_TYPE_SUSPICIOUS_PATTERN AnticheatSignalType = 4
-)
-
-// Enum value maps for AnticheatSignalType.
-var (
-	AnticheatSignalType_name = map[int32]string{
-		0: "ANTICHEAT_SIGNAL_TYPE_UNSPECIFIED",
-		1: "ANTICHEAT_SIGNAL_TYPE_PASTE_DETECTED",
-		2: "ANTICHEAT_SIGNAL_TYPE_TAB_SWITCH",
-		3: "ANTICHEAT_SIGNAL_TYPE_ANOMALOUS_SPEED",
-		4: "ANTICHEAT_SIGNAL_TYPE_SUSPICIOUS_PATTERN",
-	}
-	AnticheatSignalType_value = map[string]int32{
-		"ANTICHEAT_SIGNAL_TYPE_UNSPECIFIED":        0,
-		"ANTICHEAT_SIGNAL_TYPE_PASTE_DETECTED":     1,
-		"ANTICHEAT_SIGNAL_TYPE_TAB_SWITCH":         2,
-		"ANTICHEAT_SIGNAL_TYPE_ANOMALOUS_SPEED":    3,
-		"ANTICHEAT_SIGNAL_TYPE_SUSPICIOUS_PATTERN": 4,
-	}
-)
-
-func (x AnticheatSignalType) Enum() *AnticheatSignalType {
-	p := new(AnticheatSignalType)
-	*p = x
-	return p
-}
-
-func (x AnticheatSignalType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (AnticheatSignalType) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_common_proto_enumTypes[15].Descriptor()
-}
-
-func (AnticheatSignalType) Type() protoreflect.EnumType {
-	return &file_druz9_v1_common_proto_enumTypes[15]
-}
-
-func (x AnticheatSignalType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use AnticheatSignalType.Descriptor instead.
-func (AnticheatSignalType) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_common_proto_rawDescGZIP(), []int{15}
-}
-
 var File_druz9_v1_common_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_common_proto_rawDesc = "" +
@@ -1089,13 +1033,7 @@ const file_druz9_v1_common_proto_rawDesc = "" +
 	"\x1aSEVERITY_LEVEL_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SEVERITY_LEVEL_LOW\x10\x01\x12\x19\n" +
 	"\x15SEVERITY_LEVEL_MEDIUM\x10\x02\x12\x17\n" +
-	"\x13SEVERITY_LEVEL_HIGH\x10\x03*\xe5\x01\n" +
-	"\x13AnticheatSignalType\x12%\n" +
-	"!ANTICHEAT_SIGNAL_TYPE_UNSPECIFIED\x10\x00\x12(\n" +
-	"$ANTICHEAT_SIGNAL_TYPE_PASTE_DETECTED\x10\x01\x12$\n" +
-	" ANTICHEAT_SIGNAL_TYPE_TAB_SWITCH\x10\x02\x12)\n" +
-	"%ANTICHEAT_SIGNAL_TYPE_ANOMALOUS_SPEED\x10\x03\x12,\n" +
-	"(ANTICHEAT_SIGNAL_TYPE_SUSPICIOUS_PATTERN\x10\x04B\x88\x01\n" +
+	"\x13SEVERITY_LEVEL_HIGH\x10\x03B\x88\x01\n" +
 	"\fcom.druz9.v1B\vCommonProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -1110,7 +1048,7 @@ func file_druz9_v1_common_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_common_proto_rawDescData
 }
 
-var file_druz9_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 16)
+var file_druz9_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 15)
 var file_druz9_v1_common_proto_goTypes = []any{
 	(Section)(0),             // 0: druz9.v1.Section
 	(Difficulty)(0),          // 1: druz9.v1.Difficulty
@@ -1127,7 +1065,6 @@ var file_druz9_v1_common_proto_goTypes = []any{
 	(DungeonTier)(0),         // 12: druz9.v1.DungeonTier
 	(EditorRole)(0),          // 13: druz9.v1.EditorRole
 	(SeverityLevel)(0),       // 14: druz9.v1.SeverityLevel
-	(AnticheatSignalType)(0), // 15: druz9.v1.AnticheatSignalType
 }
 var file_druz9_v1_common_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -1147,7 +1084,7 @@ func file_druz9_v1_common_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_common_proto_rawDesc), len(file_druz9_v1_common_proto_rawDesc)),
-			NumEnums:      16,
+			NumEnums:      15,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

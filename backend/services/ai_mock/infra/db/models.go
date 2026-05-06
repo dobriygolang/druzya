@@ -100,6 +100,50 @@ func (ns NullClubSessionStatus) Value() (driver.Value, error) {
 	return string(ns.ClubSessionStatus), nil
 }
 
+type CopilotReportStatus string
+
+const (
+	CopilotReportStatusPending CopilotReportStatus = "pending"
+	CopilotReportStatusRunning CopilotReportStatus = "running"
+	CopilotReportStatusReady   CopilotReportStatus = "ready"
+	CopilotReportStatusFailed  CopilotReportStatus = "failed"
+)
+
+func (e *CopilotReportStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CopilotReportStatus(s)
+	case string:
+		*e = CopilotReportStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CopilotReportStatus: %T", src)
+	}
+	return nil
+}
+
+type NullCopilotReportStatus struct {
+	CopilotReportStatus CopilotReportStatus
+	Valid               bool // Valid is true if CopilotReportStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCopilotReportStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.CopilotReportStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CopilotReportStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCopilotReportStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CopilotReportStatus), nil
+}
+
 type ForkBranch string
 
 const (
@@ -408,6 +452,49 @@ func (ns NullPersonalEventStatus) Value() (driver.Value, error) {
 	return string(ns.PersonalEventStatus), nil
 }
 
+type SubscriptionStatus string
+
+const (
+	SubscriptionStatusActive    SubscriptionStatus = "active"
+	SubscriptionStatusCancelled SubscriptionStatus = "cancelled"
+	SubscriptionStatusExpired   SubscriptionStatus = "expired"
+)
+
+func (e *SubscriptionStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SubscriptionStatus(s)
+	case string:
+		*e = SubscriptionStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SubscriptionStatus: %T", src)
+	}
+	return nil
+}
+
+type NullSubscriptionStatus struct {
+	SubscriptionStatus SubscriptionStatus
+	Valid              bool // Valid is true if SubscriptionStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSubscriptionStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.SubscriptionStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SubscriptionStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSubscriptionStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SubscriptionStatus), nil
+}
+
 type TrackKind string
 
 const (
@@ -586,12 +673,6 @@ func (ns NullUserGoalStatus) Value() (driver.Value, error) {
 	return string(ns.UserGoalStatus), nil
 }
 
-type AiCredit struct {
-	UserID    pgtype.UUID
-	Balance   int32
-	UpdatedAt pgtype.Timestamptz
-}
-
 type AiStrictnessProfile struct {
 	ID                   pgtype.UUID
 	Slug                 string
@@ -661,16 +742,6 @@ type AiTutorThread struct {
 	UpdatedAt         pgtype.Timestamptz
 }
 
-type AnticheatSignal struct {
-	ID        pgtype.UUID
-	UserID    pgtype.UUID
-	MatchID   pgtype.UUID
-	Type      string
-	Severity  string
-	Metadata  []byte
-	CreatedAt pgtype.Timestamptz
-}
-
 type AtlasEdge struct {
 	ID     int64
 	FromID string
@@ -719,7 +790,6 @@ type CoachEpisode struct {
 	Kind             string
 	Summary          string
 	Payload          []byte
-	Embedding        []float32
 	EmbeddingVec     pgvector.Vector
 	EmbeddingModelID pgtype.Int4
 	EmbeddedAt       pgtype.Timestamptz
@@ -839,7 +909,7 @@ type CopilotSession struct {
 
 type CopilotSessionReport struct {
 	SessionID       pgtype.UUID
-	Status          string
+	Status          CopilotReportStatus
 	OverallScore    int32
 	SectionScores   []byte
 	Weaknesses      []byte
@@ -853,26 +923,6 @@ type CopilotSessionReport struct {
 	UpdatedAt       pgtype.Timestamptz
 	Analysis        []byte
 	Title           string
-}
-
-type DailyKataHistory struct {
-	UserID       pgtype.UUID
-	KataDate     pgtype.Date
-	TaskID       pgtype.UUID
-	IsCursed     bool
-	IsWeeklyBoss bool
-	Passed       pgtype.Bool
-	FreezeUsed   bool
-	SubmittedAt  pgtype.Timestamptz
-}
-
-type DailyStreak struct {
-	UserID        pgtype.UUID
-	CurrentStreak int32
-	LongestStreak int32
-	FreezeTokens  int32
-	LastKataDate  pgtype.Date
-	UpdatedAt     pgtype.Timestamptz
 }
 
 type Device struct {
@@ -1178,8 +1228,6 @@ type HoneUserSetting struct {
 	ActiveTrack   string
 	UpdatedAt     pgtype.Timestamptz
 	EnglishActive bool
-	// Phase 6 onboarding wizard version completed by user. 0 = never finished; 1 = finished v2; future increments reset wizard для existing юзеров при major refresh.
-	OnboardingVersion int32
 }
 
 type HoneVocabQueue struct {
@@ -1412,31 +1460,6 @@ type Persona struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
-type PersonalEvent struct {
-	ID               pgtype.UUID
-	UserID           pgtype.UUID
-	Kind             PersonalEventKind
-	Title            string
-	DescriptionMd    string
-	StartsAt         pgtype.Timestamptz
-	EndsAt           pgtype.Timestamptz
-	AllDay           bool
-	CompanyID        pgtype.UUID
-	Role             string
-	CurrentLevel     string
-	ReadinessPct     int16
-	CodexArticleSlug string
-	TrackID          pgtype.UUID
-	ClubSessionID    pgtype.UUID
-	Status           PersonalEventStatus
-	OutcomeMd        string
-	FeltScore        pgtype.Int2
-	FinishedAt       pgtype.Timestamptz
-	Source           string
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-}
-
 type PipelineAttempt struct {
 	ID         pgtype.UUID
 	StageID    pgtype.UUID
@@ -1492,16 +1515,9 @@ type PodcastProgress struct {
 }
 
 type Profile struct {
-	UserID      pgtype.UUID
-	CharClass   string
-	Title       pgtype.Text
-	AvatarFrame pgtype.Text
-	CareerStage string
-	Intellect   int32
-	Strength    int32
-	Dexterity   int32
-	Will        int32
-	UpdatedAt   pgtype.Timestamptz
+	UserID    pgtype.UUID
+	CharClass string
+	UpdatedAt pgtype.Timestamptz
 }
 
 type ProviderLink struct {
@@ -1573,7 +1589,7 @@ type StepCheckpointAttempt struct {
 type Subscription struct {
 	UserID           pgtype.UUID
 	Plan             string
-	Status           string
+	Status           SubscriptionStatus
 	Provider         pgtype.Text
 	ProviderSubID    pgtype.Text
 	CurrentPeriodEnd pgtype.Timestamptz
@@ -1924,16 +1940,6 @@ type UserXp struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
-type WeeklyShareToken struct {
-	ID         pgtype.UUID
-	UserID     pgtype.UUID
-	WeekIso    string
-	Token      string
-	CreatedAt  pgtype.Timestamptz
-	ExpiresAt  pgtype.Timestamptz
-	ViewsCount int32
-}
-
 type WhiteboardRoom struct {
 	ID         pgtype.UUID
 	OwnerID    pgtype.UUID
@@ -1959,13 +1965,4 @@ type WhiteboardYjsUpdate struct {
 	UserID       pgtype.UUID
 	UpdateData   []byte
 	CreatedAt    pgtype.Timestamptz
-}
-
-type XpEvent struct {
-	ID        int64
-	UserID    pgtype.UUID
-	Amount    int32
-	Source    string
-	SourceID  pgtype.UUID
-	CreatedAt pgtype.Timestamptz
 }

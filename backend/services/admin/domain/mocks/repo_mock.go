@@ -247,4 +247,3 @@ func (mr *MockConfigBroadcasterMockRecorder) Publish(ctx, entry any) *gomock.Cal
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockConfigBroadcaster)(nil).Publish), ctx, entry)
 }
-

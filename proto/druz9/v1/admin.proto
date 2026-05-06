@@ -72,37 +72,6 @@ message UpdateConfigRequest {
 message ListConfigRequest {}
 
 // ─────────────────────────────────────────────────────────────────────────
-// Anticheat
-// ─────────────────────────────────────────────────────────────────────────
-
-// AnticheatSignal mirrors OpenAPI AnticheatSignal.
-message AnticheatSignal {
-  string id = 1;
-  string user_id = 2;
-  string username = 3;
-  string match_id = 4;
-  // `type` in OpenAPI is a free-form string example — we keep it as a
-  // string here for wire compatibility. The shared enum
-  // AnticheatSignalType in common.proto lists the known values; the REST
-  // wire surface is a plain string.
-  string type = 5;
-  SeverityLevel severity = 6;
-  // metadata is a free-form JSON object — again kept opaque via Value.
-  google.protobuf.Value metadata = 7;
-  google.protobuf.Timestamp created_at = 8;
-}
-
-message AnticheatSignalList {
-  repeated AnticheatSignal items = 1;
-}
-
-message ListAnticheatRequest {
-  SeverityLevel severity = 1;
-  google.protobuf.Timestamp from = 2;
-  int32 limit = 3;
-}
-
-// ─────────────────────────────────────────────────────────────────────────
 // Dashboard — live counters for /admin landing tab.
 // ─────────────────────────────────────────────────────────────────────────
 

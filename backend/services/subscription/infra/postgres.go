@@ -47,7 +47,7 @@ func (p *Postgres) Upsert(ctx context.Context, sub domain.Subscription) error {
 	if err := p.q.UpsertSubscription(ctx, subdb.UpsertSubscriptionParams{
 		UserID:           pgUUID(sub.UserID),
 		Plan:             string(sub.Tier),
-		Status:           string(sub.Status),
+		Status:           subdb.SubscriptionStatus(sub.Status),
 		Provider:         pgText(string(sub.Provider)),
 		ProviderSubID:    pgText(sub.ProviderSubID),
 		CurrentPeriodEnd: pgTS(sub.CurrentPeriodEnd),
