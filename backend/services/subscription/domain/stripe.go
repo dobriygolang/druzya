@@ -89,6 +89,12 @@ type StripeClient interface {
 	// Stripe-Signature против тела запроса + STRIPE_WEBHOOK_SECRET.
 	// Возвращает nil если подпись валидна; иначе ErrInvalidWebhookSignature.
 	VerifyWebhookSignature(payload []byte, sigHeader string) error
+
+	// RetrieveCheckoutSession — GET /v1/checkout/sessions/{id}. Используется
+	// /billing/welcome verify-endpoint'ом чтобы подтвердить факт оплаты
+	// клиенту, не дожидаясь webhook'а. Возвращает ErrNotFound если session
+	// не существует.
+	RetrieveCheckoutSession(ctx context.Context, sessionID string) (CheckoutSessionDetails, error)
 }
 
 // CreateCheckoutSessionInput — payload для StripeClient.CreateCheckoutSession.
@@ -109,4 +115,27 @@ type CreateCheckoutSessionInput struct {
 type CheckoutSession struct {
 	SessionID   string
 	CheckoutURL string
+}
+
+// CheckoutSessionDetails — projection Stripe Checkout Session для verify-
+// endpoint'а /billing/welcome. Поля сужены до того, что нужно frontend'у —
+// не expose'им весь Stripe payload зря.
+type CheckoutSessionDetails struct {
+	SessionID string
+	// PaymentStatus — Stripe-канонический: "paid"|"unpaid"|"no_payment_required".
+	PaymentStatus string
+	// Status — overall session status: "open"|"complete"|"expired".
+	Status string
+	// AmountTotal — total in minor units (копейки/центы).
+	AmountTotal int64
+	// Currency — ISO-3 lowercase ("rub"/"usd"/"eur").
+	Currency string
+	// CustomerEmail — введённый юзером email на странице Stripe. Может быть
+	// пустым если customer был передан pre-authenticated без email'а.
+	CustomerEmail string
+	// SubscriptionID — Stripe subscription id (если session subscription-mode).
+	// Используется для резолва period_end если webhook уже синкнул row.
+	SubscriptionID string
+	// ClientReferenceID — наш user_id, который мы передавали при create'е.
+	ClientReferenceID string
 }

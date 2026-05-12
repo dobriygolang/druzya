@@ -101,6 +101,50 @@ func (c *StripeClient) CreateCheckoutSession(ctx context.Context, in domain.Crea
 	return domain.CheckoutSession{SessionID: resp.ID, CheckoutURL: resp.URL}, nil
 }
 
+// RetrieveCheckoutSession — GET /v1/checkout/sessions/:id. Используется
+// /billing/welcome verify endpoint'ом: подтверждает оплату на момент когда
+// webhook checkout.session.completed ещё мог не долететь (Stripe иногда
+// шлёт его через 1-2с после redirect'а). Не валит на 404 — клиент
+// маппит ErrNotFound в Unavailable («Subscription is processing...»).
+func (c *StripeClient) RetrieveCheckoutSession(ctx context.Context, sessionID string) (domain.CheckoutSessionDetails, error) {
+	if sessionID == "" {
+		return domain.CheckoutSessionDetails{}, fmt.Errorf("%w: empty session id", domain.ErrStripeAPI)
+	}
+	var resp struct {
+		ID                string `json:"id"`
+		PaymentStatus     string `json:"payment_status"`
+		Status            string `json:"status"`
+		AmountTotal       int64  `json:"amount_total"`
+		Currency          string `json:"currency"`
+		CustomerEmail     string `json:"customer_email"`
+		CustomerDetails   struct {
+			Email string `json:"email"`
+		} `json:"customer_details"`
+		Subscription      string `json:"subscription"`
+		ClientReferenceID string `json:"client_reference_id"`
+	}
+	if err := c.getJSON(ctx, "/v1/checkout/sessions/"+url.PathEscape(sessionID), &resp); err != nil {
+		return domain.CheckoutSessionDetails{}, err
+	}
+	if resp.ID == "" {
+		return domain.CheckoutSessionDetails{}, domain.ErrNotFound
+	}
+	email := resp.CustomerEmail
+	if email == "" {
+		email = resp.CustomerDetails.Email
+	}
+	return domain.CheckoutSessionDetails{
+		SessionID:         resp.ID,
+		PaymentStatus:     resp.PaymentStatus,
+		Status:            resp.Status,
+		AmountTotal:       resp.AmountTotal,
+		Currency:          resp.Currency,
+		CustomerEmail:     email,
+		SubscriptionID:    resp.Subscription,
+		ClientReferenceID: resp.ClientReferenceID,
+	}, nil
+}
+
 // UpdateSubscriptionCancelAtPeriodEnd — POST /v1/subscriptions/:id с
 // cancel_at_period_end. Stripe принимает POST (не PATCH) для update'ов.
 func (c *StripeClient) UpdateSubscriptionCancelAtPeriodEnd(ctx context.Context, subID string, cancel bool) error {
@@ -167,6 +211,49 @@ func (c *StripeClient) VerifyWebhookSignature(payload []byte, sigHeader string) 
 		}
 	}
 	return domain.ErrInvalidWebhookSignature
+}
+
+// getJSON — внутренний helper для GET запросов к Stripe. Аналог postForm,
+// но без body. Stripe возвращает JSON, парсим в out.
+func (c *StripeClient) getJSON(ctx context.Context, path string, out any) error {
+	if c.SecretKey == "" {
+		return fmt.Errorf("%w: secret key not configured", domain.ErrStripeAPI)
+	}
+	base := c.BaseURL
+	if base == "" {
+		base = "https://api.stripe.com"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path, nil)
+	if err != nil {
+		return fmt.Errorf("%w: build req: %v", domain.ErrStripeAPI, err)
+	}
+	req.Header.Set("authorization", "Bearer "+c.SecretKey)
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: http: %v", domain.ErrStripeAPI, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == http.StatusNotFound {
+		return domain.ErrNotFound
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var errResp struct {
+			Error struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+				Code    string `json:"code"`
+			} `json:"error"`
+		}
+		_ = json.Unmarshal(body, &errResp)
+		return fmt.Errorf("%w: %d %s (%s)", domain.ErrStripeAPI, resp.StatusCode, errResp.Error.Message, errResp.Error.Code)
+	}
+	if out != nil {
+		if err := json.Unmarshal(body, out); err != nil {
+			return fmt.Errorf("%w: parse: %v", domain.ErrStripeAPI, err)
+		}
+	}
+	return nil
 }
 
 // postForm — внутренний helper для POST x-www-form-urlencoded запросов

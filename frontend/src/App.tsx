@@ -89,6 +89,10 @@ const PricingPage = lazy(() => import('./pages/pricing/PricingPage'))
 const CheckoutPage = lazy(() => import('./pages/checkout/CheckoutPage'))
 const CheckoutSuccess = lazy(() => import('./pages/checkout/CheckoutSuccess'))
 const CheckoutFailure = lazy(() => import('./pages/checkout/CheckoutFailure'))
+// Wave 5 (2026-05-12) — Stripe success_url target. Renders post-checkout
+// hero + unlocked Pro features + next-action cards. Cancel route reuses
+// /upgrade с ?retry=true banner.
+const BillingWelcomePage = lazy(() => import('./pages/BillingWelcome'))
 // Pair-coding (collaborative editor) переехал в Hone (bible §2.1 DNA-revision).
 // Web-routes /pair удалены — primary surface теперь desktop, shareable URL
 // приведёт сюда лендинг «Open in Hone». TODO: добавить hone-handoff page
@@ -229,6 +233,14 @@ export default function App() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/checkout/success" element={<CheckoutSuccess />} />
         <Route path="/checkout/failure" element={<CheckoutFailure />} />
+        {/* Wave 5 (2026-05-12) — Stripe success_url target. Auth-free
+            route: пользователь мог пройти checkout без сохранённой
+            session. session_id из query param → verify через GetCheckoutSession. */}
+        <Route path="/billing/welcome" element={<BillingWelcomePage />} />
+        {/* /upgrade — Stripe cancel_url target + canonical upsell URL для
+            email/notify CTA'ев. Сейчас тонкий redirect на /pricing с
+            ?retry=true прокинутым (PricingPage показывает банер). */}
+        <Route path="/upgrade" element={<PricingPage />} />
         {/* /pair moved to Hone (E hotkey, bible §2.1). */}
         {/* Lobby/lobbies routes удалены 2026-05-01 (см pivot-arena-drop.md). */}
         <Route path="/circles" element={<CirclesPage />} />

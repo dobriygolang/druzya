@@ -15,6 +15,7 @@ import (
 	intelApp "druz9/intelligence/app"
 	intelDomain "druz9/intelligence/domain"
 	miDomain "druz9/mock_interview/domain"
+	notifyApp "druz9/notify/app"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
 	"druz9/shared/pkg/killswitch"
@@ -86,6 +87,13 @@ type Deps struct {
 	// 32, сегодня 71 — рост"). nil-safe: orchestrator guards every
 	// call. Set in bootstrap right after NewIntelligence.
 	IntelligenceMockMemoryHook miDomain.MemoryHook
+
+	// IntelligenceMarkAtlasStruggle — Phase J / X5 cross-product handoff.
+	// mock_interview adapter (atlas_struggle_producer.go) wraps this UC
+	// into the StruggleHook port shape so FinishPipeline can emit
+	// struggle marks for low-axis stages. nil-safe: adapter returns nil
+	// when not wired, orchestrator short-circuits.
+	IntelligenceMarkAtlasStruggle *intelApp.MarkAtlasStruggle
 
 	// IntelligenceMemory — direct access to the Coach episode store.
 	// Used by chi-direct services (codex /open) that aren't bounded
@@ -182,6 +190,13 @@ type Deps struct {
 	// bootstrap.go ПОСЛЕ NewIntelligence, ДО NewSubscription. nil-safe:
 	// при отсутствии — cron отключён (log warn в subscription wiring).
 	IntelligenceInsightUpserter IntelligenceInsightUpserter
+
+	// NotifySend — Send use-case from notify-сервиса. Used by cross-domain
+	// crons (e.g. subscription notify_trial_expiring) that want to push
+	// outbound TG / email / push without an event-bus round-trip. nil-safe:
+	// при nil cron'ы пропускают outbound (только Insight остаётся).
+	// Заполняется в bootstrap.go ПОСЛЕ NewNotify, ДО NewSubscription.
+	NotifySend *notifyApp.SendNotification
 }
 
 // IntelligenceInsightUpserter — narrow port re-exposed from intelligence

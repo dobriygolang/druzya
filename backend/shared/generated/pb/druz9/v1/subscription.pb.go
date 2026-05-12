@@ -860,6 +860,152 @@ func (x *CheckoutSessionResponse) GetCheckoutUrl() string {
 	return ""
 }
 
+// GetCheckoutSessionRequest — verify payload для /billing/welcome.
+// session_id из URL query param (Stripe возвращает {CHECKOUT_SESSION_ID}
+// в success_url если передать ?session_id={CHECKOUT_SESSION_ID}, либо
+// этот id уже хранится у нас от CreateCheckoutSession).
+type GetCheckoutSessionRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Stripe checkout session id (cs_test_... / cs_live_...).
+	SessionId     string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCheckoutSessionRequest) Reset() {
+	*x = GetCheckoutSessionRequest{}
+	mi := &file_druz9_v1_subscription_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCheckoutSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCheckoutSessionRequest) ProtoMessage() {}
+
+func (x *GetCheckoutSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_subscription_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCheckoutSessionRequest.ProtoReflect.Descriptor instead.
+func (*GetCheckoutSessionRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetCheckoutSessionRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+// GetCheckoutSessionResponse — детали оплаченной сессии.
+// paid=false означает «session есть, но payment_status != paid» (webhook
+// ещё не успел синкнуться или юзер открыл welcome до завершения flow).
+// Фронт в этом случае показывает «Confirming...» и polling'ом ждёт.
+type GetCheckoutSessionResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// true если Stripe считает session оплаченной (payment_status='paid' или
+	// status='complete').
+	Paid bool `protobuf:"varint,1,opt,name=paid,proto3" json:"paid,omitempty"`
+	// Резолвённый tier на момент session ("pro"|"max"). Может быть пустым
+	// если webhook ещё не отработал — фронт fallback'ает на «pro».
+	Tier string `protobuf:"bytes,2,opt,name=tier,proto3" json:"tier,omitempty"`
+	// amount_paid в minor units (копейки/центы) — Stripe формат.
+	AmountPaid int64 `protobuf:"varint,3,opt,name=amount_paid,json=amountPaid,proto3" json:"amount_paid,omitempty"`
+	// ISO 4217 валюта ("rub"/"usd"/"eur").
+	Currency string `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	// Конец оплаченного периода (если уже известен из subscription).
+	PeriodEnd *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=period_end,json=periodEnd,proto3" json:"period_end,omitempty"`
+	// Customer email (Stripe собрал при checkout'е). Чтобы фронт мог сказать
+	// «Чек придёт на youraddress@…».
+	CustomerEmail string `protobuf:"bytes,6,opt,name=customer_email,json=customerEmail,proto3" json:"customer_email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCheckoutSessionResponse) Reset() {
+	*x = GetCheckoutSessionResponse{}
+	mi := &file_druz9_v1_subscription_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCheckoutSessionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCheckoutSessionResponse) ProtoMessage() {}
+
+func (x *GetCheckoutSessionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_subscription_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCheckoutSessionResponse.ProtoReflect.Descriptor instead.
+func (*GetCheckoutSessionResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_subscription_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetCheckoutSessionResponse) GetPaid() bool {
+	if x != nil {
+		return x.Paid
+	}
+	return false
+}
+
+func (x *GetCheckoutSessionResponse) GetTier() string {
+	if x != nil {
+		return x.Tier
+	}
+	return ""
+}
+
+func (x *GetCheckoutSessionResponse) GetAmountPaid() int64 {
+	if x != nil {
+		return x.AmountPaid
+	}
+	return 0
+}
+
+func (x *GetCheckoutSessionResponse) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *GetCheckoutSessionResponse) GetPeriodEnd() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PeriodEnd
+	}
+	return nil
+}
+
+func (x *GetCheckoutSessionResponse) GetCustomerEmail() string {
+	if x != nil {
+		return x.CustomerEmail
+	}
+	return ""
+}
+
 var File_druz9_v1_subscription_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_subscription_proto_rawDesc = "" +
@@ -923,7 +1069,19 @@ const file_druz9_v1_subscription_proto_rawDesc = "" +
 	"\x17CheckoutSessionResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12!\n" +
-	"\fcheckout_url\x18\x02 \x01(\tR\vcheckoutUrl2\xdb\a\n" +
+	"\fcheckout_url\x18\x02 \x01(\tR\vcheckoutUrl\":\n" +
+	"\x19GetCheckoutSessionRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\xe3\x01\n" +
+	"\x1aGetCheckoutSessionResponse\x12\x12\n" +
+	"\x04paid\x18\x01 \x01(\bR\x04paid\x12\x12\n" +
+	"\x04tier\x18\x02 \x01(\tR\x04tier\x12\x1f\n" +
+	"\vamount_paid\x18\x03 \x01(\x03R\n" +
+	"amountPaid\x12\x1a\n" +
+	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x129\n" +
+	"\n" +
+	"period_end\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tperiodEnd\x12%\n" +
+	"\x0ecustomer_email\x18\x06 \x01(\tR\rcustomerEmail2\xf9\b\n" +
 	"\x13SubscriptionService\x12g\n" +
 	"\tGetMyTier\x12\x1a.druz9.v1.GetMyTierRequest\x1a\x1b.druz9.v1.GetMyTierResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/subscription/tier\x12V\n" +
 	"\x0fGetTierByUserID\x12 .druz9.v1.GetTierByUserIDRequest\x1a!.druz9.v1.GetTierByUserIDResponse\x12~\n" +
@@ -934,7 +1092,8 @@ const file_druz9_v1_subscription_proto_rawDesc = "" +
 	"SetBYOKKey\x12\x1b.druz9.v1.SetBYOKKeyRequest\x1a\x12.druz9.v1.TierInfo\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/api/v1/subscription/byok\x12^\n" +
 	"\rRemoveBYOKKey\x12\x16.google.protobuf.Empty\x1a\x12.druz9.v1.TierInfo\"!\x82\xd3\xe4\x93\x02\x1b*\x19/api/v1/subscription/byok\x12\x8c\x01\n" +
 	"\x15CreateCheckoutSession\x12&.druz9.v1.CreateCheckoutSessionRequest\x1a!.druz9.v1.CheckoutSessionResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/v1/subscription/checkout\x12l\n" +
-	"\x12CancelSubscription\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/v1/subscription/cancelB\x8e\x01\n" +
+	"\x12CancelSubscription\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/v1/subscription/cancel\x12\x9b\x01\n" +
+	"\x12GetCheckoutSession\x12#.druz9.v1.GetCheckoutSessionRequest\x1a$.druz9.v1.GetCheckoutSessionResponse\":\x82\xd3\xe4\x93\x024\x122/api/v1/subscription/checkout-session/{session_id}B\x8e\x01\n" +
 	"\fcom.druz9.v1B\x11SubscriptionProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -949,7 +1108,7 @@ func file_druz9_v1_subscription_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_subscription_proto_rawDescData
 }
 
-var file_druz9_v1_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_druz9_v1_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_druz9_v1_subscription_proto_goTypes = []any{
 	(*QuotaPolicy)(nil),                  // 0: druz9.v1.QuotaPolicy
 	(*QuotaUsage)(nil),                   // 1: druz9.v1.QuotaUsage
@@ -965,39 +1124,44 @@ var file_druz9_v1_subscription_proto_goTypes = []any{
 	(*SetBYOKKeyRequest)(nil),            // 11: druz9.v1.SetBYOKKeyRequest
 	(*CreateCheckoutSessionRequest)(nil), // 12: druz9.v1.CreateCheckoutSessionRequest
 	(*CheckoutSessionResponse)(nil),      // 13: druz9.v1.CheckoutSessionResponse
-	(*timestamppb.Timestamp)(nil),        // 14: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                // 15: google.protobuf.Empty
+	(*GetCheckoutSessionRequest)(nil),    // 14: druz9.v1.GetCheckoutSessionRequest
+	(*GetCheckoutSessionResponse)(nil),   // 15: druz9.v1.GetCheckoutSessionResponse
+	(*timestamppb.Timestamp)(nil),        // 16: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                // 17: google.protobuf.Empty
 }
 var file_druz9_v1_subscription_proto_depIdxs = []int32{
 	0,  // 0: druz9.v1.QuotaSnapshot.policy:type_name -> druz9.v1.QuotaPolicy
 	1,  // 1: druz9.v1.QuotaSnapshot.usage:type_name -> druz9.v1.QuotaUsage
-	14, // 2: druz9.v1.GetMyTierResponse.current_period_end:type_name -> google.protobuf.Timestamp
-	14, // 3: druz9.v1.GetMyTierResponse.grace_until:type_name -> google.protobuf.Timestamp
-	14, // 4: druz9.v1.AdminSetTierRequest.current_period_end:type_name -> google.protobuf.Timestamp
-	14, // 5: druz9.v1.TierInfo.expires_at:type_name -> google.protobuf.Timestamp
-	4,  // 6: druz9.v1.SubscriptionService.GetMyTier:input_type -> druz9.v1.GetMyTierRequest
-	6,  // 7: druz9.v1.SubscriptionService.GetTierByUserID:input_type -> druz9.v1.GetTierByUserIDRequest
-	8,  // 8: druz9.v1.SubscriptionService.AdminSetTier:input_type -> druz9.v1.AdminSetTierRequest
-	2,  // 9: druz9.v1.SubscriptionService.GetQuota:input_type -> druz9.v1.GetQuotaRequest
-	15, // 10: druz9.v1.SubscriptionService.GetTier:input_type -> google.protobuf.Empty
-	11, // 11: druz9.v1.SubscriptionService.SetBYOKKey:input_type -> druz9.v1.SetBYOKKeyRequest
-	15, // 12: druz9.v1.SubscriptionService.RemoveBYOKKey:input_type -> google.protobuf.Empty
-	12, // 13: druz9.v1.SubscriptionService.CreateCheckoutSession:input_type -> druz9.v1.CreateCheckoutSessionRequest
-	15, // 14: druz9.v1.SubscriptionService.CancelSubscription:input_type -> google.protobuf.Empty
-	5,  // 15: druz9.v1.SubscriptionService.GetMyTier:output_type -> druz9.v1.GetMyTierResponse
-	7,  // 16: druz9.v1.SubscriptionService.GetTierByUserID:output_type -> druz9.v1.GetTierByUserIDResponse
-	9,  // 17: druz9.v1.SubscriptionService.AdminSetTier:output_type -> druz9.v1.AdminSetTierResponse
-	3,  // 18: druz9.v1.SubscriptionService.GetQuota:output_type -> druz9.v1.QuotaSnapshot
-	10, // 19: druz9.v1.SubscriptionService.GetTier:output_type -> druz9.v1.TierInfo
-	10, // 20: druz9.v1.SubscriptionService.SetBYOKKey:output_type -> druz9.v1.TierInfo
-	10, // 21: druz9.v1.SubscriptionService.RemoveBYOKKey:output_type -> druz9.v1.TierInfo
-	13, // 22: druz9.v1.SubscriptionService.CreateCheckoutSession:output_type -> druz9.v1.CheckoutSessionResponse
-	15, // 23: druz9.v1.SubscriptionService.CancelSubscription:output_type -> google.protobuf.Empty
-	15, // [15:24] is the sub-list for method output_type
-	6,  // [6:15] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	16, // 2: druz9.v1.GetMyTierResponse.current_period_end:type_name -> google.protobuf.Timestamp
+	16, // 3: druz9.v1.GetMyTierResponse.grace_until:type_name -> google.protobuf.Timestamp
+	16, // 4: druz9.v1.AdminSetTierRequest.current_period_end:type_name -> google.protobuf.Timestamp
+	16, // 5: druz9.v1.TierInfo.expires_at:type_name -> google.protobuf.Timestamp
+	16, // 6: druz9.v1.GetCheckoutSessionResponse.period_end:type_name -> google.protobuf.Timestamp
+	4,  // 7: druz9.v1.SubscriptionService.GetMyTier:input_type -> druz9.v1.GetMyTierRequest
+	6,  // 8: druz9.v1.SubscriptionService.GetTierByUserID:input_type -> druz9.v1.GetTierByUserIDRequest
+	8,  // 9: druz9.v1.SubscriptionService.AdminSetTier:input_type -> druz9.v1.AdminSetTierRequest
+	2,  // 10: druz9.v1.SubscriptionService.GetQuota:input_type -> druz9.v1.GetQuotaRequest
+	17, // 11: druz9.v1.SubscriptionService.GetTier:input_type -> google.protobuf.Empty
+	11, // 12: druz9.v1.SubscriptionService.SetBYOKKey:input_type -> druz9.v1.SetBYOKKeyRequest
+	17, // 13: druz9.v1.SubscriptionService.RemoveBYOKKey:input_type -> google.protobuf.Empty
+	12, // 14: druz9.v1.SubscriptionService.CreateCheckoutSession:input_type -> druz9.v1.CreateCheckoutSessionRequest
+	17, // 15: druz9.v1.SubscriptionService.CancelSubscription:input_type -> google.protobuf.Empty
+	14, // 16: druz9.v1.SubscriptionService.GetCheckoutSession:input_type -> druz9.v1.GetCheckoutSessionRequest
+	5,  // 17: druz9.v1.SubscriptionService.GetMyTier:output_type -> druz9.v1.GetMyTierResponse
+	7,  // 18: druz9.v1.SubscriptionService.GetTierByUserID:output_type -> druz9.v1.GetTierByUserIDResponse
+	9,  // 19: druz9.v1.SubscriptionService.AdminSetTier:output_type -> druz9.v1.AdminSetTierResponse
+	3,  // 20: druz9.v1.SubscriptionService.GetQuota:output_type -> druz9.v1.QuotaSnapshot
+	10, // 21: druz9.v1.SubscriptionService.GetTier:output_type -> druz9.v1.TierInfo
+	10, // 22: druz9.v1.SubscriptionService.SetBYOKKey:output_type -> druz9.v1.TierInfo
+	10, // 23: druz9.v1.SubscriptionService.RemoveBYOKKey:output_type -> druz9.v1.TierInfo
+	13, // 24: druz9.v1.SubscriptionService.CreateCheckoutSession:output_type -> druz9.v1.CheckoutSessionResponse
+	17, // 25: druz9.v1.SubscriptionService.CancelSubscription:output_type -> google.protobuf.Empty
+	15, // 26: druz9.v1.SubscriptionService.GetCheckoutSession:output_type -> druz9.v1.GetCheckoutSessionResponse
+	17, // [17:27] is the sub-list for method output_type
+	7,  // [7:17] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_subscription_proto_init() }
@@ -1011,7 +1175,7 @@ func file_druz9_v1_subscription_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_subscription_proto_rawDesc), len(file_druz9_v1_subscription_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

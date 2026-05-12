@@ -727,3 +727,134 @@ export class CheckoutSessionResponse extends Message<CheckoutSessionResponse> {
   }
 }
 
+/**
+ * GetCheckoutSessionRequest — verify payload для /billing/welcome.
+ * session_id из URL query param (Stripe возвращает {CHECKOUT_SESSION_ID}
+ * в success_url если передать ?session_id={CHECKOUT_SESSION_ID}, либо
+ * этот id уже хранится у нас от CreateCheckoutSession).
+ *
+ * @generated from message druz9.v1.GetCheckoutSessionRequest
+ */
+export class GetCheckoutSessionRequest extends Message<GetCheckoutSessionRequest> {
+  /**
+   * Stripe checkout session id (cs_test_... / cs_live_...).
+   *
+   * @generated from field: string session_id = 1;
+   */
+  sessionId = "";
+
+  constructor(data?: PartialMessage<GetCheckoutSessionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetCheckoutSessionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetCheckoutSessionRequest {
+    return new GetCheckoutSessionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetCheckoutSessionRequest {
+    return new GetCheckoutSessionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetCheckoutSessionRequest {
+    return new GetCheckoutSessionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetCheckoutSessionRequest | PlainMessage<GetCheckoutSessionRequest> | undefined, b: GetCheckoutSessionRequest | PlainMessage<GetCheckoutSessionRequest> | undefined): boolean {
+    return proto3.util.equals(GetCheckoutSessionRequest, a, b);
+  }
+}
+
+/**
+ * GetCheckoutSessionResponse — детали оплаченной сессии.
+ * paid=false означает «session есть, но payment_status != paid» (webhook
+ * ещё не успел синкнуться или юзер открыл welcome до завершения flow).
+ * Фронт в этом случае показывает «Confirming...» и polling'ом ждёт.
+ *
+ * @generated from message druz9.v1.GetCheckoutSessionResponse
+ */
+export class GetCheckoutSessionResponse extends Message<GetCheckoutSessionResponse> {
+  /**
+   * true если Stripe считает session оплаченной (payment_status='paid' или
+   * status='complete').
+   *
+   * @generated from field: bool paid = 1;
+   */
+  paid = false;
+
+  /**
+   * Резолвённый tier на момент session ("pro"|"max"). Может быть пустым
+   * если webhook ещё не отработал — фронт fallback'ает на «pro».
+   *
+   * @generated from field: string tier = 2;
+   */
+  tier = "";
+
+  /**
+   * amount_paid в minor units (копейки/центы) — Stripe формат.
+   *
+   * @generated from field: int64 amount_paid = 3;
+   */
+  amountPaid = protoInt64.zero;
+
+  /**
+   * ISO 4217 валюта ("rub"/"usd"/"eur").
+   *
+   * @generated from field: string currency = 4;
+   */
+  currency = "";
+
+  /**
+   * Конец оплаченного периода (если уже известен из subscription).
+   *
+   * @generated from field: google.protobuf.Timestamp period_end = 5;
+   */
+  periodEnd?: Timestamp;
+
+  /**
+   * Customer email (Stripe собрал при checkout'е). Чтобы фронт мог сказать
+   * «Чек придёт на youraddress@…».
+   *
+   * @generated from field: string customer_email = 6;
+   */
+  customerEmail = "";
+
+  constructor(data?: PartialMessage<GetCheckoutSessionResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetCheckoutSessionResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "paid", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "tier", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "amount_paid", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "currency", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "period_end", kind: "message", T: Timestamp },
+    { no: 6, name: "customer_email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetCheckoutSessionResponse {
+    return new GetCheckoutSessionResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetCheckoutSessionResponse {
+    return new GetCheckoutSessionResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetCheckoutSessionResponse {
+    return new GetCheckoutSessionResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetCheckoutSessionResponse | PlainMessage<GetCheckoutSessionResponse> | undefined, b: GetCheckoutSessionResponse | PlainMessage<GetCheckoutSessionResponse> | undefined): boolean {
+    return proto3.util.equals(GetCheckoutSessionResponse, a, b);
+  }
+}
+

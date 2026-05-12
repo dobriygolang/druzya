@@ -43,6 +43,7 @@ type SubscriptionServer struct {
 	RemoveBYOKKeyUC         *app.RemoveBYOKKey
 	CreateCheckoutSessionUC *app.CreateCheckoutSession
 	CancelSubscriptionUC    *app.CancelSubscription
+	GetCheckoutSessionUC    *app.GetCheckoutSession
 	Log                     *slog.Logger
 }
 

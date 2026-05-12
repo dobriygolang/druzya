@@ -104,8 +104,13 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 		// tasks. nil-safe: in dev runs without bus everything else still
 		// works, just no fan-out.
 		Bus: d.Bus,
-		Now: d.Now,
-		Log: d.Log,
+		// X5: emit struggle marks for low-axis stages so the web AtlasPage
+		// highlights what the user is stuck on. nil-safe — the producer
+		// returns a nil hook when the UC isn't wired (dev runs without
+		// intelligence) and the orchestrator short-circuits.
+		Struggle: newAtlasStruggleProducer(d.IntelligenceMarkAtlasStruggle, d.Log),
+		Now:      d.Now,
+		Log:      d.Log,
 	}
 
 	server := miPorts.NewServer(handlers, orch, d.Log)

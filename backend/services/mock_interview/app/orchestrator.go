@@ -74,9 +74,22 @@ type Orchestrator struct {
 	// CoachListener relies on this signal to settle `kind=sysdesign` /
 	// `kind=reflection` tasks; MockPipelineFinished feeds that flow.
 	Bus sharedDomain.Bus
-	Now func() time.Time
-	Log *slog.Logger
+	// Struggle is the optional intelligence-side struggle reporter.
+	// nil-safe. FinishPipeline fires OnStageStruggle for every stage
+	// whose normalised score < struggleAxisThreshold so the web AtlasPage
+	// can highlight nodes the user is stuck on (Phase J Wave 3 / O — X5
+	// cross-product handoff).
+	Struggle domain.StruggleHook
+	Now      func() time.Time
+	Log      *slog.Logger
 }
+
+// struggleAxisThreshold — normalised (0..1) cut-off below which a stage's
+// axis-score counts as a "struggle" signal. 0.4 ≡ raw score < 40 on the
+// 0-100 scale. Anything weaker than borderline-fail (50) is at least a
+// signal worth surfacing; 40 keeps the bar slightly stricter so we don't
+// fire on every nervous run.
+const struggleAxisThreshold = 0.4
 
 func (o *Orchestrator) now() time.Time {
 	if o.Now != nil {
@@ -904,8 +917,49 @@ func (o *Orchestrator) FinishPipeline(ctx context.Context, pipelineID uuid.UUID)
 	// его двигают вверх. Best-effort: ошибка не валит FinishPipeline.
 	o.bumpAtlasFromStages(ctx, pipe.UserID, stages)
 
+	// X5 cross-product handoff: emit a struggle mark for each stage whose
+	// normalised axis-score crossed the threshold. nil-safe — without a
+	// Struggle hook wired, this is a no-op. Best-effort: failures live
+	// inside the adapter, never propagate up to the user submit.
+	o.emitStruggleMarks(ctx, pipe.UserID, stages)
+
 	// TODO: publish leaderboard event with ai_assist=pipeline.AIAssist watermark
 	return pipe, nil
+}
+
+// stageToStruggleAnchor maps StageKind → canonical atlas-struggle anchor
+// (`stage:<axis>`). Used by emitStruggleMarks. HR is omitted on purpose
+// (not a learnable axis, so we don't surface struggle).
+var stageToStruggleAnchor = map[domain.StageKind]string{
+	domain.StageAlgo:       "stage:algo",
+	domain.StageCoding:     "stage:coding",
+	domain.StageSysDesign:  "stage:sysdesign",
+	domain.StageBehavioral: "stage:behavioral",
+}
+
+// emitStruggleMarks walks the final stages and fires the struggle hook
+// for every stage whose normalised score (0..1) lies under
+// struggleAxisThreshold. Skipped stages (no score, HR-kind) are passed
+// over silently. Failures inside the hook are absorbed by the adapter
+// implementation — this method does not log on its own.
+func (o *Orchestrator) emitStruggleMarks(ctx context.Context, userID uuid.UUID, stages []domain.PipelineStage) {
+	if o.Struggle == nil {
+		return
+	}
+	for _, s := range stages {
+		anchor, ok := stageToStruggleAnchor[s.StageKind]
+		if !ok {
+			continue
+		}
+		if s.Score == nil {
+			continue
+		}
+		axis := float64(*s.Score) / 100.0
+		if axis >= struggleAxisThreshold {
+			continue
+		}
+		o.Struggle.OnStageStruggle(ctx, userID, anchor, s.StageKind, axis, "")
+	}
 }
 
 // stageToAtlasNode — primary atlas node_key per stage_kind. Maps

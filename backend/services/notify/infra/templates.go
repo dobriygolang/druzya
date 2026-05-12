@@ -83,6 +83,11 @@ var rawTemplates = map[enums.NotificationType]map[string]string{
 		"ru": `👋 Добро пожаловать в druz9{{if .Username}}, {{.Username}}{{end}}! Открой сайт и выбери первую Kata — путь начинается здесь.`,
 		"en": `👋 Welcome to druz9{{if .Username}}, {{.Username}}{{end}}! Open the site and pick your first Kata — your journey starts here.`,
 	},
+	// payload: {Hours:int, UpgradeURL:string}
+	enums.NotificationTypeTrialExpiring: {
+		"ru": `⏳ Trial Pro заканчивается через ~{{.Hours}}ч. Продолжить с Pro 990₽/мес или подключить свой LLM-ключ (бесплатно): {{.UpgradeURL}}`,
+		"en": `⏳ Your Pro trial ends in ~{{.Hours}}h. Continue with Pro 990₽/mo or bring your own LLM key (free): {{.UpgradeURL}}`,
+	},
 }
 
 // SubscriptionActivatedTemplate and UserRegisteredTemplate are reused via

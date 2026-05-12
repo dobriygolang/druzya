@@ -330,14 +330,16 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	server.ListFocusReflectionsUC = &intelApp.ListFocusReflections{Repo: focusReflectionsRepo}
 
 	// ── C3 Cross-product context (Phase J 2026-05-12) ───────────────────
-	// AtlasReader stays nil until atlas-retrieval hook lands (TODO in
-	// intelligence/app/get_user_context.go). Goals + Episodes +
-	// ResourceEng + Mocks readers already wired above.
+	// AtlasReader bridges into atlas_nodes via the simple ILIKE-ranking
+	// adapter below. Goals + Episodes + ResourceEng + Mocks readers
+	// already wired above.
+	atlasReader := newAtlasReaderAdapter(d.Pool)
 	getUserContextUC := &intelApp.GetUserContext{
 		Goals:            primaryGoalsRepo,
 		Episodes:         episodes,
 		ResourceEng:      resourceEngagementR,
 		Mocks:            mockR,
+		AtlasReader:      atlasReader,
 		MemoryLimit:      12,
 		MemoryWindowDays: 14,
 		Now:              d.Now,

@@ -73,6 +73,16 @@ service SubscriptionService {
   rpc CancelSubscription(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (google.api.http) = {post: "/api/v1/subscription/cancel" body: "*"};
   }
+
+  // GetCheckoutSession — verify endpoint для /billing/welcome. Запрашивает
+  // у Stripe детали Checkout Session по её ID, возвращает paid/tier/amount
+  // /currency/period_end. Используется post-redirect-страницей чтобы
+  // подтвердить «оплата прошла» когда tier-info ещё не обновился (webhook
+  // в полёте). Redis cache 60s — session_id immutable, не имеет смысла
+  // дёргать Stripe заново на каждый refresh.
+  rpc GetCheckoutSession(GetCheckoutSessionRequest) returns (GetCheckoutSessionResponse) {
+    option (google.api.http) = {get: "/api/v1/subscription/checkout-session/{session_id}"};
+  }
 }
 
 message QuotaPolicy {
@@ -171,4 +181,35 @@ message CreateCheckoutSessionRequest {
 message CheckoutSessionResponse {
   string session_id   = 1;
   string checkout_url = 2;
+}
+
+// GetCheckoutSessionRequest — verify payload для /billing/welcome.
+// session_id из URL query param (Stripe возвращает {CHECKOUT_SESSION_ID}
+// в success_url если передать ?session_id={CHECKOUT_SESSION_ID}, либо
+// этот id уже хранится у нас от CreateCheckoutSession).
+message GetCheckoutSessionRequest {
+  // Stripe checkout session id (cs_test_... / cs_live_...).
+  string session_id = 1;
+}
+
+// GetCheckoutSessionResponse — детали оплаченной сессии.
+// paid=false означает «session есть, но payment_status != paid» (webhook
+// ещё не успел синкнуться или юзер открыл welcome до завершения flow).
+// Фронт в этом случае показывает «Confirming...» и polling'ом ждёт.
+message GetCheckoutSessionResponse {
+  // true если Stripe считает session оплаченной (payment_status='paid' или
+  // status='complete').
+  bool paid = 1;
+  // Резолвённый tier на момент session ("pro"|"max"). Может быть пустым
+  // если webhook ещё не отработал — фронт fallback'ает на «pro».
+  string tier = 2;
+  // amount_paid в minor units (копейки/центы) — Stripe формат.
+  int64 amount_paid = 3;
+  // ISO 4217 валюта ("rub"/"usd"/"eur").
+  string currency = 4;
+  // Конец оплаченного периода (если уже известен из subscription).
+  google.protobuf.Timestamp period_end = 5;
+  // Customer email (Stripe собрал при checkout'е). Чтобы фронт мог сказать
+  // «Чек придёт на youraddress@…».
+  string customer_email = 6;
 }

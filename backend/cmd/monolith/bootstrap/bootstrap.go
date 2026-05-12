@@ -195,6 +195,11 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// notify.Bot живой но без api → adapter всё равно сконструируется,
 	// фактический Send вернёт error и Hone отдаст 5xx.
 	deps.HoneNotificationSender = honeServices.NewHoneNotificationAdapter(notify.Bot, notify.Prefs)
+	// Expose notify SendNotification UC to subscription cron
+	// (notify_trial_expiring). Wired via Deps так чтобы NewSubscription
+	// мог построить TrialExpiringNotifier adapter. nil-safe: cron работает
+	// без notifier'а (только Insight).
+	deps.NotifySend = notify.Send
 
 	statsMod := adminServices.NewStats(deps)
 
@@ -226,6 +231,11 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	deps.IntelligenceMemory = intelligenceMod.Memory
 	deps.IntelligenceLinkSuggester = intelligenceMod.LinkSuggester
 	deps.IntelligenceLogResource = intelligenceMod.LogResourceUC
+	// X5: mock pipeline struggle producer is wired through ai_mock
+	// via this UC pointer. Wired BEFORE aiMockServices.NewAIMock /
+	// NewMockInterview so the orchestrator's Struggle field gets the
+	// adapter at construction time (NOT after via late-binding).
+	deps.IntelligenceMarkAtlasStruggle = intelligenceMod.MarkAtlasStruggleUC
 	// Insight upserter port — subscription notify_trial_expiring cron
 	// пишет insight'ы через узкий interface. Wired до NewSubscription.
 	deps.IntelligenceInsightUpserter = intelligenceMod.InsightsRepo

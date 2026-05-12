@@ -125,10 +125,9 @@ type GetUserContext struct {
 	Episodes    domain.EpisodeRepo
 	ResourceEng domain.ResourceEngagementReader
 	Mocks       domain.MockReader
-	// AtlasReader — future hook for atlas resource retrieval. nil-safe;
-	// when nil, RelevantResources is always empty in the bundle.
-	// TODO(C3-Phase2): wire an Atlas-search adapter — likely a
-	// shared reader in services/curation/.
+	// AtlasReader — atlas-relevant resource retrieval. nil-safe; when
+	// nil, RelevantResources is always empty in the bundle. Wired in
+	// cmd/monolith/services/intelligence/atlas_reader_adapter.go.
 	AtlasReader AtlasReader
 
 	// MemoryLimit defaults to 12 when zero.
@@ -139,10 +138,22 @@ type GetUserContext struct {
 	Now func() time.Time
 }
 
-// AtlasReader — narrow port for atlas retrieval. Empty implementation
-// is acceptable until atlas search lands.
+// ActivityKind — narrow projection of the user's recent activity
+// surfaces (mock stage_kind, resource log kind). The atlas reader uses
+// these to boost matching nodes (e.g. recent algo activity → boost
+// algo_* nodes).
+type ActivityKind string
+
+// AtlasReader — narrow port for atlas retrieval, scoped by user signal.
+//
+// Implementation strategy (adapter side):
+//   - Match `goalText` keywords against atlas_nodes.title / description
+//     (ILIKE fast-path; vector embedding upgrade later).
+//   - Boost nodes whose section/cluster overlaps `recentActivity`.
+//   - De-prioritise nodes the user already completed (skill_nodes.progress=100).
+//   - Cap result count at limit.
 type AtlasReader interface {
-	TopForUser(ctx context.Context, userID uuid.UUID, limit int) ([]AtlasResourceRef, error)
+	TopRelevantNodes(ctx context.Context, userID uuid.UUID, goalText string, recentActivity []ActivityKind, limit int) ([]AtlasResourceRef, error)
 }
 
 // GetUserContextInput is the validated input. UserID is mandatory.
@@ -231,14 +242,69 @@ func (uc *GetUserContext) Do(ctx context.Context, in GetUserContextInput) (UserC
 		}
 	}
 
-	// ── 5. Atlas resources (stub, atlas hook TODO) ──
+	// ── 5. Atlas-relevant resources (Phase J Wave 1 / D) ──
+	// Fold the bundle we just assembled into the atlas query:
+	//   - goalText derived from ActiveGoal (kind + company/text fields)
+	//   - recentActivity from top kinds and recent memory episode kinds
+	// Fail-soft: a broken atlas reader doesn't blank out the rest of the bundle.
 	if uc.AtlasReader != nil {
-		if refs, err := uc.AtlasReader.TopForUser(ctx, in.UserID, 5); err == nil {
+		goalText := goalTextFromBundle(out.ActiveGoal)
+		recentAct := recentActivityFromBundle(out)
+		if refs, err := uc.AtlasReader.TopRelevantNodes(ctx, in.UserID, goalText, recentAct, 5); err == nil {
 			out.RelevantResources = refs
 		}
 	}
 
 	return out, nil
+}
+
+// goalTextFromBundle assembles a single-line "what the user is trying to
+// achieve" string from the active goal. Empty when no goal is set —
+// atlas reader then falls back to weakest-axis match.
+func goalTextFromBundle(g *domain.PrimaryGoal) string {
+	if g == nil {
+		return ""
+	}
+	parts := make([]string, 0, 4)
+	parts = append(parts, string(g.Kind))
+	if g.TargetCompany != "" {
+		parts = append(parts, g.TargetCompany)
+	}
+	if g.TargetLevel != "" {
+		parts = append(parts, g.TargetLevel)
+	}
+	if g.TargetText != "" {
+		parts = append(parts, g.TargetText)
+	}
+	return strings.Join(parts, " ")
+}
+
+// recentActivityFromBundle distills the bundle's recent signals into a
+// flat list of activity kinds. Atlas reader uses this to boost nodes whose
+// section/cluster overlaps the user's recent attention.
+func recentActivityFromBundle(b UserContextBundle) []ActivityKind {
+	seen := make(map[string]struct{}, 8)
+	out := make([]ActivityKind, 0, 8)
+	addKind := func(k string) {
+		k = strings.TrimSpace(strings.ToLower(k))
+		if k == "" {
+			return
+		}
+		if _, dup := seen[k]; dup {
+			return
+		}
+		seen[k] = struct{}{}
+		out = append(out, ActivityKind(k))
+	}
+	for _, k := range b.Activity.TopKinds {
+		addKind(k)
+	}
+	for _, m := range b.RecentMemory {
+		addKind(m.Kind)
+	}
+	// Weakest radar axis is also a strong "what to recommend next" signal.
+	addKind(b.Radar.WeakestAxis)
+	return out
 }
 
 func (uc *GetUserContext) now() time.Time {

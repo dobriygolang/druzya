@@ -40,6 +40,8 @@ export const ANALYTICS_EVENTS = {
   upgrade_modal_clicked: 'upgrade_modal.clicked',
   trial_pro_granted: 'trial_pro.granted',
   byok_unlocked: 'byok.unlocked',
+  checkout_completed: 'checkout.completed',
+  checkout_cancelled: 'checkout.cancelled',
 
   // Notes (Hone)
   note_created: 'note.created',

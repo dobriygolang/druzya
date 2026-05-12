@@ -15,6 +15,7 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "druz9/shared/generated/pb/druz9/v1"
 	sharedMw "druz9/shared/pkg/middleware"
@@ -54,6 +55,53 @@ func (s *SubscriptionServer) CreateCheckoutSession(
 		SessionId:   out.SessionID,
 		CheckoutUrl: out.CheckoutURL,
 	}), nil
+}
+
+// GetCheckoutSession — Connect-RPC handler. Verify-endpoint для /billing/welcome.
+//
+// Auth: JWT необязателен. Юзер мог открыть /billing/welcome неавторизованным
+// (e.g. login session expired в момент Stripe-flow'а). Server делает
+// best-effort owner-binding через client_reference_id, но не блокирует
+// response если mismatch — frontend всё равно показывает welcome.
+// Owner-mismatch только логируется как warn.
+func (s *SubscriptionServer) GetCheckoutSession(
+	ctx context.Context,
+	req *connect.Request[pb.GetCheckoutSessionRequest],
+) (*connect.Response[pb.GetCheckoutSessionResponse], error) {
+	if s.GetCheckoutSessionUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("stripe_not_configured"))
+	}
+	sid := req.Msg.GetSessionId()
+	if sid == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("session_id required"))
+	}
+	// User id опционален — best-effort owner-binding.
+	uid, _ := sharedMw.UserIDFromContext(ctx)
+
+	out, err := s.GetCheckoutSessionUC.Do(ctx, app.GetCheckoutSessionInput{
+		SessionID:       sid,
+		RequesterUserID: uid,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		if errors.Is(err, domain.ErrStripeNotConfigured) {
+			return nil, connect.NewError(connect.CodeUnavailable, err)
+		}
+		return nil, fmt.Errorf("subscription.GetCheckoutSession: %w", err)
+	}
+	resp := &pb.GetCheckoutSessionResponse{
+		Paid:          out.Paid,
+		Tier:          out.Tier,
+		AmountPaid:    out.AmountPaid,
+		Currency:      out.Currency,
+		CustomerEmail: out.CustomerEmail,
+	}
+	if out.PeriodEnd != nil {
+		resp.PeriodEnd = timestamppb.New(out.PeriodEnd.UTC())
+	}
+	return connect.NewResponse(resp), nil
 }
 
 // CancelSubscription — Connect-RPC handler. user_id из JWT.

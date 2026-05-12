@@ -118,6 +118,23 @@ func (c *fakeStripeClient) VerifyWebhookSignature(_ []byte, _ string) error {
 	return c.verifyErr
 }
 
+// RetrieveCheckoutSession — added для verify endpoint. Fake возвращает
+// canned-state'ы по session_id: пусто = ErrNotFound, иначе - paid stub.
+func (c *fakeStripeClient) RetrieveCheckoutSession(_ context.Context, sessionID string) (domain.CheckoutSessionDetails, error) {
+	c.calls = append(c.calls, "RetrieveCheckoutSession")
+	if sessionID == "" {
+		return domain.CheckoutSessionDetails{}, domain.ErrNotFound
+	}
+	return domain.CheckoutSessionDetails{
+		SessionID:     sessionID,
+		PaymentStatus: "paid",
+		Status:        "complete",
+		AmountTotal:   99000,
+		Currency:      "rub",
+		CustomerEmail: "test@druz9.app",
+	}, nil
+}
+
 func TestCreateCheckoutSession_LazyCustomer_AndSession(t *testing.T) {
 	repo := newFakeStripeRepo()
 	client := &fakeStripeClient{}

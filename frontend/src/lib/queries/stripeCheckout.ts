@@ -14,7 +14,7 @@
 // На странице success хук useTierQuery polls /subscription/tier-info и
 // показывает «Pro активирован».
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../apiClient'
 import { tierQueryKeys } from './tier'
 
@@ -86,6 +86,49 @@ export function useCreateCheckoutSessionMutation() {
       if (res?.checkout_url && typeof window !== 'undefined') {
         window.location.href = res.checkout_url
       }
+    },
+  })
+}
+
+// CheckoutSessionDetails — verify-payload для /billing/welcome.
+// paid=false означает «session есть, но Stripe ещё не подтвердил payment».
+// Frontend в этом случае показывает «Confirming...» и polling'ом ждёт.
+export type CheckoutSessionDetails = {
+  paid: boolean
+  tier: string
+  amount_paid: number
+  currency: string
+  period_end?: string // ISO-8601, пусто если webhook ещё не синкнул
+  customer_email?: string
+}
+
+// fetchCheckoutSession — GET /subscription/checkout-session/<id>.
+// Backend Redis-cached 60s. Auth опционален: endpoint доступен без JWT
+// (юзер мог открыть /billing/welcome неавторизованным).
+export async function fetchCheckoutSession(sessionId: string): Promise<CheckoutSessionDetails> {
+  return api<CheckoutSessionDetails>(
+    `/subscription/checkout-session/${encodeURIComponent(sessionId)}`,
+  )
+}
+
+// useCheckoutSessionQuery — TanStack hook для verify-flow'а на /billing/welcome.
+// Session immutable, поэтому staleTime: Infinity. Запрос enabled только когда
+// session_id передан; если pending payment (paid=false), refetchInterval
+// polls каждые 3s пока не paid (cap 60s — после этого юзер видит fallback).
+export function useCheckoutSessionQuery(sessionId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['checkout-session', sessionId ?? ''],
+    queryFn: () => fetchCheckoutSession(sessionId as string),
+    enabled: !!sessionId,
+    staleTime: Infinity,
+    retry: 1,
+    refetchInterval: (q) => {
+      // Polling: пока paid=false (webhook в полёте) — раз в 3с. Когда paid=true
+      // — остановиться (staleTime: Infinity обеспечивает no-refetch).
+      const data = q.state.data as CheckoutSessionDetails | undefined
+      if (!data) return false
+      if (data.paid) return false
+      return 3_000
     },
   })
 }

@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AdminSetTierRequest, AdminSetTierResponse, CheckoutSessionResponse, CreateCheckoutSessionRequest, GetMyTierRequest, GetMyTierResponse, GetQuotaRequest, GetTierByUserIDRequest, GetTierByUserIDResponse, QuotaSnapshot, SetBYOKKeyRequest, TierInfo } from "./subscription_pb.js";
+import { AdminSetTierRequest, AdminSetTierResponse, CheckoutSessionResponse, CreateCheckoutSessionRequest, GetCheckoutSessionRequest, GetCheckoutSessionResponse, GetMyTierRequest, GetMyTierResponse, GetQuotaRequest, GetTierByUserIDRequest, GetTierByUserIDResponse, QuotaSnapshot, SetBYOKKeyRequest, TierInfo } from "./subscription_pb.js";
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -133,6 +133,22 @@ export const SubscriptionService = {
       name: "CancelSubscription",
       I: Empty,
       O: Empty,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetCheckoutSession — verify endpoint для /billing/welcome. Запрашивает
+     * у Stripe детали Checkout Session по её ID, возвращает paid/tier/amount
+     * /currency/period_end. Используется post-redirect-страницей чтобы
+     * подтвердить «оплата прошла» когда tier-info ещё не обновился (webhook
+     * в полёте). Redis cache 60s — session_id immutable, не имеет смысла
+     * дёргать Stripe заново на каждый refresh.
+     *
+     * @generated from rpc druz9.v1.SubscriptionService.GetCheckoutSession
+     */
+    getCheckoutSession: {
+      name: "GetCheckoutSession",
+      I: GetCheckoutSessionRequest,
+      O: GetCheckoutSessionResponse,
       kind: MethodKind.Unary,
     },
   }

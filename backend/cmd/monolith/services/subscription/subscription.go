@@ -165,8 +165,12 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 		refundUC := subApp.NewHandleRefund(stripeRepo, setTierUC, d.Log)
 		webhookUC := subApp.NewHandleWebhookEvent(stripeRepo, stripeClient, setTierUC, d.Log)
 		webhookUC.RefundUC = refundUC
+		// /billing/welcome verify endpoint — Redis-cached 60s. Stripe session
+		// immutable, повторные refresh'и страницы welcome не дёргают Stripe.
+		getCheckoutUC := subApp.NewGetCheckoutSession(stripeClient, stripeRepo, d.Redis, d.Log)
 		server.CreateCheckoutSessionUC = createCheckoutUC
 		server.CancelSubscriptionUC = cancelSubUC
+		server.GetCheckoutSessionUC = getCheckoutUC
 		stripeWebhook = subPorts.NewStripeWebhookHandler(webhookUC, d.Log)
 		d.Log.Info(fmt.Sprintf("subscription.stripe: wired (default=%s, currencies=%v)", stripeDefaultPriceID, currencyKeys(priceIDs)))
 	} else {
@@ -175,12 +179,24 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 
 	// Trial-expiring notification cron (launch polish 2026-05-12). Daily
 	// scan находит users on trial Pro у которых current_period_end в окне
-	// (now, now+24h] и пишет Insight + outbound notification. nil-safe:
-	// без insightWriter — cron всё равно работает, просто без feed-card'ы.
+	// (now, now+24h] и пишет Insight + outbound notification (TG / email
+	// через notify-сервис). nil-safe: без insightWriter — cron всё равно
+	// работает, просто без feed-card'ы; без notify-Send — cron работает
+	// только с Insight (in-app card), без push.
 	var notifyTrialUC *subApp.NotifyTrialExpiring
 	if d.IntelligenceInsightUpserter != nil {
 		insightWriter := newTrialExpiringInsightWriter(d.IntelligenceInsightUpserter)
-		notifyTrialUC = subApp.NewNotifyTrialExpiring(pg, insightWriter, nil, clk, d.Log)
+		// Wave 4 / S follow-up — wire actual TrialExpiringNotifier через
+		// notify SendNotification UC. adapter живёт в trial_notify_adapter.go
+		// (anti-cycle: subscription/app не импортирует notify-домен).
+		var trialNotifier subApp.TrialExpiringNotifier
+		if d.NotifySend != nil {
+			trialNotifier = newTrialExpiringNotifyAdapter(d.NotifySend, "https://druz9.online/upgrade", d.Log)
+			d.Log.Info("subscription.notify_trial_expiring: outbound notifier wired (TG + email fallback)")
+		} else {
+			d.Log.Warn("subscription.notify_trial_expiring: notify SendNotification не wired — outbound TG/email отключён, только in-app Insight")
+		}
+		notifyTrialUC = subApp.NewNotifyTrialExpiring(pg, insightWriter, trialNotifier, clk, d.Log)
 	} else {
 		d.Log.Warn("subscription.notify_trial_expiring: intelligence InsightUpserter не wired — cron отключён")
 	}
@@ -216,6 +232,13 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 			if stripeWebhook != nil {
 				r.Post("/subscription/stripe-webhook", stripeWebhook.ServeHTTP)
 			}
+			// /billing/welcome verify endpoint. GET — frontend читает
+			// session_id из URL query. Auth НЕ обязателен (юзер мог открыть
+			// welcome неавторизованным — owner-binding делается best-effort
+			// через client_reference_id). Опубликован в MountPublicREST чтобы
+			// обойти restAuthGate. Handler сам делает best-effort
+			// UserIDFromContext.
+			r.Get("/subscription/checkout-session/{session_id}", transcoder.ServeHTTP)
 		},
 		Background: []func(ctx context.Context){
 			// Cron MarkExpired: раз в час. Первый tick сразу после старта —

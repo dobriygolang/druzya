@@ -14,13 +14,14 @@
 // canonical, motion-tokens for transitions.
 
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Check, X, ChevronDown } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Check, X, ChevronDown, Info } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
 import { Card } from '../../components/Card'
 import { cn } from '../../lib/cn'
 import { readAccessToken } from '../../lib/apiClient'
 import { PRICE_TABLE, type BillingPeriod, type BillingPlanTier } from '../../lib/queries/billing'
+import { ANALYTICS_EVENTS, analytics } from '../../lib/analytics'
 
 const PERIOD_KEY = 'druz9_pricing_period'
 
@@ -137,7 +138,26 @@ function formatRub(amount: number, period: BillingPeriod): string {
 
 export default function PricingPage() {
   const [period, setPeriod] = useState<BillingPeriod>(readPeriod())
+  const [params] = useSearchParams()
+  // Wave 5 (2026-05-12) — Stripe cancel_url полирован. ?retry=true →
+  // показываем subtle banner. Не auto-restart'аем checkout — юзер сам
+  // решит, попробует другую карту или передумает.
+  const retry = params.get('retry') === 'true'
+
   useEffect(() => writePeriod(period), [period])
+  // Emit cancel analytics один раз на mount если ?retry=true. dedup'и
+  // дальше делает sessionStorage flag — F5 страницы не плодит дубликаты.
+  useEffect(() => {
+    if (!retry) return
+    try {
+      const fired = window.sessionStorage.getItem('druz9:checkout-cancel-emitted')
+      if (fired === '1') return
+      window.sessionStorage.setItem('druz9:checkout-cancel-emitted', '1')
+    } catch {
+      /* private mode — emit anyway */
+    }
+    analytics.track(ANALYTICS_EVENTS.checkout_cancelled, { source: 'stripe_cancel_url' })
+  }, [retry])
 
   // Public route: гости видят минимальный shell без AppShellV2 (он дёргает
   // /admin/dashboard, что для гостей даст 401 → redirect на /login). Для
@@ -146,6 +166,7 @@ export default function PricingPage() {
 
   const body = (
     <div className="mx-auto flex max-w-7xl flex-col gap-12 px-4 py-10 sm:px-8 lg:px-20 lg:py-16">
+      {retry && <RetryBanner />}
       <Header period={period} setPeriod={setPeriod} />
       <PlanGrid period={period} />
       <ComparisonTable />
@@ -171,6 +192,64 @@ export default function PricingPage() {
         </Link>
       </header>
       {body}
+    </div>
+  )
+}
+
+// RetryBanner — subtle информер для Stripe-cancel'нувшегося юзера.
+// Не auto-restart'ит checkout: дать юзеру выбор (другая карта, BYOK, ничего).
+// B/W only: одна 1.5px красная полоска слева как signal stripe.
+function RetryBanner() {
+  return (
+    <div
+      role="status"
+      className="relative flex flex-col items-start gap-2 rounded-md border border-border-strong bg-surface-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+      style={{ minWidth: 0 }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 1.5,
+          height: 24,
+          background: 'var(--red)',
+        }}
+      />
+      <div className="flex items-start gap-3" style={{ minWidth: 0 }}>
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-text-secondary" />
+        <div className="flex flex-col gap-1" style={{ minWidth: 0 }}>
+          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary">
+            checkout cancelled
+          </span>
+          <span className="text-[12.5px] leading-relaxed text-text-secondary">
+            Оплата не была завершена. Можно попробовать снова — или подключить свой LLM-ключ (BYOK)
+            и получить Pro без подписки.
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 self-stretch sm:self-auto">
+        <Link
+          to="/profile/settings"
+          className="rounded-md border border-border bg-bg px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary transition-colors hover:border-border-strong"
+          style={{
+            transition: 'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+        >
+          BYOK alternative
+        </Link>
+        <a
+          href="mailto:support@druz9.app?subject=Не%20прошла%20оплата"
+          className="rounded-md border border-border bg-bg px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary transition-colors hover:border-border-strong"
+          style={{
+            transition: 'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+        >
+          Связаться с поддержкой
+        </a>
+      </div>
     </div>
   )
 }

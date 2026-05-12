@@ -68,6 +68,9 @@ const (
 	// SubscriptionServiceCancelSubscriptionProcedure is the fully-qualified name of the
 	// SubscriptionService's CancelSubscription RPC.
 	SubscriptionServiceCancelSubscriptionProcedure = "/druz9.v1.SubscriptionService/CancelSubscription"
+	// SubscriptionServiceGetCheckoutSessionProcedure is the fully-qualified name of the
+	// SubscriptionService's GetCheckoutSession RPC.
+	SubscriptionServiceGetCheckoutSessionProcedure = "/druz9.v1.SubscriptionService/GetCheckoutSession"
 )
 
 // SubscriptionServiceClient is a client for the druz9.v1.SubscriptionService service.
@@ -107,6 +110,13 @@ type SubscriptionServiceClient interface {
 	// После period_end webhook customer.subscription.deleted откатит tier
 	// в Free.
 	CancelSubscription(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error)
+	// GetCheckoutSession — verify endpoint для /billing/welcome. Запрашивает
+	// у Stripe детали Checkout Session по её ID, возвращает paid/tier/amount
+	// /currency/period_end. Используется post-redirect-страницей чтобы
+	// подтвердить «оплата прошла» когда tier-info ещё не обновился (webhook
+	// в полёте). Redis cache 60s — session_id immutable, не имеет смысла
+	// дёргать Stripe заново на каждый refresh.
+	GetCheckoutSession(context.Context, *connect.Request[v1.GetCheckoutSessionRequest]) (*connect.Response[v1.GetCheckoutSessionResponse], error)
 }
 
 // NewSubscriptionServiceClient constructs a client for the druz9.v1.SubscriptionService service. By
@@ -174,6 +184,12 @@ func NewSubscriptionServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(subscriptionServiceMethods.ByName("CancelSubscription")),
 			connect.WithClientOptions(opts...),
 		),
+		getCheckoutSession: connect.NewClient[v1.GetCheckoutSessionRequest, v1.GetCheckoutSessionResponse](
+			httpClient,
+			baseURL+SubscriptionServiceGetCheckoutSessionProcedure,
+			connect.WithSchema(subscriptionServiceMethods.ByName("GetCheckoutSession")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -188,6 +204,7 @@ type subscriptionServiceClient struct {
 	removeBYOKKey         *connect.Client[emptypb.Empty, v1.TierInfo]
 	createCheckoutSession *connect.Client[v1.CreateCheckoutSessionRequest, v1.CheckoutSessionResponse]
 	cancelSubscription    *connect.Client[emptypb.Empty, emptypb.Empty]
+	getCheckoutSession    *connect.Client[v1.GetCheckoutSessionRequest, v1.GetCheckoutSessionResponse]
 }
 
 // GetMyTier calls druz9.v1.SubscriptionService.GetMyTier.
@@ -235,6 +252,11 @@ func (c *subscriptionServiceClient) CancelSubscription(ctx context.Context, req 
 	return c.cancelSubscription.CallUnary(ctx, req)
 }
 
+// GetCheckoutSession calls druz9.v1.SubscriptionService.GetCheckoutSession.
+func (c *subscriptionServiceClient) GetCheckoutSession(ctx context.Context, req *connect.Request[v1.GetCheckoutSessionRequest]) (*connect.Response[v1.GetCheckoutSessionResponse], error) {
+	return c.getCheckoutSession.CallUnary(ctx, req)
+}
+
 // SubscriptionServiceHandler is an implementation of the druz9.v1.SubscriptionService service.
 type SubscriptionServiceHandler interface {
 	// GetMyTier — эндпоинт для авторизованного пользователя. user_id
@@ -272,6 +294,13 @@ type SubscriptionServiceHandler interface {
 	// После period_end webhook customer.subscription.deleted откатит tier
 	// в Free.
 	CancelSubscription(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error)
+	// GetCheckoutSession — verify endpoint для /billing/welcome. Запрашивает
+	// у Stripe детали Checkout Session по её ID, возвращает paid/tier/amount
+	// /currency/period_end. Используется post-redirect-страницей чтобы
+	// подтвердить «оплата прошла» когда tier-info ещё не обновился (webhook
+	// в полёте). Redis cache 60s — session_id immutable, не имеет смысла
+	// дёргать Stripe заново на каждый refresh.
+	GetCheckoutSession(context.Context, *connect.Request[v1.GetCheckoutSessionRequest]) (*connect.Response[v1.GetCheckoutSessionResponse], error)
 }
 
 // NewSubscriptionServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -335,6 +364,12 @@ func NewSubscriptionServiceHandler(svc SubscriptionServiceHandler, opts ...conne
 		connect.WithSchema(subscriptionServiceMethods.ByName("CancelSubscription")),
 		connect.WithHandlerOptions(opts...),
 	)
+	subscriptionServiceGetCheckoutSessionHandler := connect.NewUnaryHandler(
+		SubscriptionServiceGetCheckoutSessionProcedure,
+		svc.GetCheckoutSession,
+		connect.WithSchema(subscriptionServiceMethods.ByName("GetCheckoutSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.SubscriptionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SubscriptionServiceGetMyTierProcedure:
@@ -355,6 +390,8 @@ func NewSubscriptionServiceHandler(svc SubscriptionServiceHandler, opts ...conne
 			subscriptionServiceCreateCheckoutSessionHandler.ServeHTTP(w, r)
 		case SubscriptionServiceCancelSubscriptionProcedure:
 			subscriptionServiceCancelSubscriptionHandler.ServeHTTP(w, r)
+		case SubscriptionServiceGetCheckoutSessionProcedure:
+			subscriptionServiceGetCheckoutSessionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -398,4 +435,8 @@ func (UnimplementedSubscriptionServiceHandler) CreateCheckoutSession(context.Con
 
 func (UnimplementedSubscriptionServiceHandler) CancelSubscription(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.CancelSubscription is not implemented"))
+}
+
+func (UnimplementedSubscriptionServiceHandler) GetCheckoutSession(context.Context, *connect.Request[v1.GetCheckoutSessionRequest]) (*connect.Response[v1.GetCheckoutSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.GetCheckoutSession is not implemented"))
 }
