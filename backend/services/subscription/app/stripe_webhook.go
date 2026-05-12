@@ -19,7 +19,7 @@ import (
 //  3) sync local stripe_subscriptions row;
 //  4) call SetTier hook (paid Pro / Free).
 //
-// Поддерживаем три event'а:
+// Поддерживаем event'ы:
 //   - checkout.session.completed — первый успешный checkout. Создаём
 //     stripe_subscriptions row + SetTier(Pro).
 //   - customer.subscription.updated — изменение status / period_end /
@@ -27,6 +27,8 @@ import (
 //     иначе ignore (deletion обрабатываем отдельно).
 //   - customer.subscription.deleted — подписка полностью прекращена
 //     (после period_end). SetTier(Free).
+//   - charge.refunded — деньги вернули → flip немедленно в Free, не
+//     дожидаясь period end. Delegate'ится в HandleRefund UC.
 //
 // Прочие event'ы (invoice.paid и т.п.) silently ignored — Stripe сам
 // retry'ит если 5xx, поэтому мы возвращаем 200 для unsupported types.
@@ -34,7 +36,10 @@ type HandleWebhookEvent struct {
 	Repo      domain.StripeRepo
 	Client    domain.StripeClient
 	SetTierUC *SetTier
-	Log       *slog.Logger
+	// RefundUC — optional. Обрабатывает charge.refunded. Nil-safe:
+	// при отсутствии event silently игнорируется.
+	RefundUC *HandleRefund
+	Log      *slog.Logger
 }
 
 // NewHandleWebhookEvent — конструктор. SetTierUC обязателен; без него
@@ -125,6 +130,12 @@ func (uc *HandleWebhookEvent) Do(ctx context.Context, payload []byte, sigHeader 
 		return uc.handleSubscriptionUpdated(ctx, env.Data.Object)
 	case "customer.subscription.deleted":
 		return uc.handleSubscriptionDeleted(ctx, env.Data.Object)
+	case "charge.refunded":
+		if uc.RefundUC == nil {
+			uc.Log.WarnContext(ctx, "subscription.stripe.webhook: charge.refunded received but RefundUC is nil — silent ack")
+			return nil
+		}
+		return uc.RefundUC.Do(ctx, env.Data.Object)
 	default:
 		// Unsupported event — silently ack to avoid Stripe retries.
 		return nil

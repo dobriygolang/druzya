@@ -13,6 +13,7 @@ import (
 	authApp "druz9/auth/app"
 	honeDomain "druz9/hone/domain"
 	intelApp "druz9/intelligence/app"
+	intelDomain "druz9/intelligence/domain"
 	miDomain "druz9/mock_interview/domain"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
@@ -175,6 +176,18 @@ type Deps struct {
 	// (LLM-driven column assignment). Аналогично InsightsPool, защищает
 	// от goroutine spam при burst'е CreateTask request'ов.
 	CategoriserPool *workerpool.Pool
+
+	// IntelligenceInsightUpserter — narrow port для subscription cron
+	// (notify_trial_expiring) который пишет insight'ы. Заполняется в
+	// bootstrap.go ПОСЛЕ NewIntelligence, ДО NewSubscription. nil-safe:
+	// при отсутствии — cron отключён (log warn в subscription wiring).
+	IntelligenceInsightUpserter IntelligenceInsightUpserter
+}
+
+// IntelligenceInsightUpserter — narrow port re-exposed from intelligence
+// service для cross-domain cron'ов. Satisfied by *intelligence/infra.InsightsPostgres.
+type IntelligenceInsightUpserter interface {
+	Upsert(ctx context.Context, in intelDomain.Insight) (intelDomain.Insight, error)
 }
 
 // StorageGate is the cross-domain interface Hone (and any future writer)

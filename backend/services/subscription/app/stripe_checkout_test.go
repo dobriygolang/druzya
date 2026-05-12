@@ -65,6 +65,15 @@ func (r *fakeStripeRepo) GetActiveSubscriptionByUser(_ context.Context, userID u
 	return domain.StripeSubscription{}, domain.ErrNotFound
 }
 
+func (r *fakeStripeRepo) GetSubscriptionByStripeID(_ context.Context, stripeSubID string) (domain.StripeSubscription, error) {
+	for _, s := range r.subs {
+		if s.StripeSubscriptionID == stripeSubID {
+			return s, nil
+		}
+	}
+	return domain.StripeSubscription{}, domain.ErrNotFound
+}
+
 // fakeStripeClient — canned-response StripeClient.
 type fakeStripeClient struct {
 	createSessErr error

@@ -1,6 +1,18 @@
 # Implementation plan — текущий статус
 
-> **2026-05-12 update:** comprehensive 24-26-week roadmap утверждённый 2026-05-11 — **Phases A-H полностью shipped в single-day marathon session** (17 parallel agents). Phase I (docs + final polish + admin Phase 3) — remaining ~2-3 weeks.
+> **2026-05-12 update:** comprehensive 24-26-week roadmap утверждённый 2026-05-11 — **Phases A-J shipped 2026-05-12 marathon + same-day polish wave** (17 parallel agents + Phase J finalisation). Phase J (light theme kill switch, Cue onboarding/interview-prep wizards, C4 diarization, masquerade CI, H6 docs refresh) shipped 2026-05-12. Phase I final polish (Admin Phase 3 A/B/audit/roles) — remaining ~6 weeks post-launch.
+
+## Wave J (2026-05-12) — shipped
+
+| Item | Scope | Status |
+|---|---|---|
+| H6 README refresh | hone/README.md (15 pages), cue/README.md (wizards + CI), docs/tech/frontend.md, docs/feature/identity.md + this file, CLAUDE.md migrations 00097-00109 + roadmap, backend/migrations/README.md | ✅ |
+| Light theme kill switch (P2) | frontend `theme.ts` returns 'dark' no-op, SettingsPage AppearanceCard label only, AppShell ThemeToggleButton removed; hone никогда не имел light/dark (CanvasBg = decorative dark themes); cue никогда не имел light theme | ✅ |
+| Cue onboarding wizard | Welcome / Permissions / InvisibleDemo / Complete (first-launch) | ✅ |
+| Cue interview-prep wizard | UploadCV / UploadJD / Review / Launch (mig 00108) | ✅ |
+| C4 diarization | SpeakerLabel chips + ExpandedScreen bar для ≥2 speaker | ✅ |
+| Cue stealth-verifier | DesktopConfig.StealthWarnings + known-bad browser probe | ✅ |
+| Cue masquerade CI | cue-masquerade-release.yml + cue-masquerade-validate.yml + afterPack-masquerade.cjs (4 alias bundles) | ✅ |
 
 ## Marathon session 2026-05-12 — shipped
 
@@ -42,6 +54,7 @@
 | **G — Google Calendar + Podcast + Admin Phase 2** | ✅ Stream E + Stream G + Admin Phase 2 starter (Goal presets) |
 | **H — Subscription + Tutor mode** | ✅ Stream C subscription + Stream D tutor mode + Stripe Agent K |
 | **I — Docs + Launch prep** | 🚧 этот файл + final smoke tests; Admin Phase 3 (A/B + audit + roles) deferred post-launch |
+| **J — Polish + cleanup** | ✅ light theme kill switch / Cue onboarding + interview-prep / C4 diarization / stealth-verifier / masquerade CI / H6 README refresh (2026-05-12) |
 
 ## Что уже сделано (pre-2026-05-11)
 
@@ -85,6 +98,7 @@ druz9 **не создаёт content.** Мы — ranking-proxy + interview cockpi
 - 00081 — drop xp_events (gamification cleanup)
 - 00082 — drop_vacancies (D1 cleanup 2026-05-11)
 - **2026-05-12 marathon (00083 → 00096):** F6 deprecate cols / D8 RPG drop / F2 user_primary_goals / F10 cue_sessions / drop_use_for_arena / BYOK subscription_tiers / google_calendar / drop_peer_collab / stage_templates (R7) / tutor_mode_paths / user_milestones + memory soft-delete / stripe_subscriptions / goal_presets (admin Phase 2)
+- **2026-05-12 polish wave (00097 → 00109):** coach_prompts (admin-editable inline prompts) / notification_templates / ab_experiments (Phase 3 starter) / stripe_webhook_dedup / coach_episodes.edited_at / telemetry_events (90-day retention) / focus_reflections (Hone Pomodoro grade+notes) / user_app_installs (cross-app suggestion + trial Pro) / speaking (Hone English Speaking modality) / task_manual_kind_override (TaskBoard categorise override) / telemetry_consent / interview_prep_sessions (Cue prep wizard) / user_atlas_struggle_marks
 - Полный список в [../../backend/migrations/README.md](../../backend/migrations/README.md)
 
 ## llmchain tasks (текущие)

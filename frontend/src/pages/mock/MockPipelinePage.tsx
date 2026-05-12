@@ -34,6 +34,7 @@ import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { EmptyState } from '../../components/EmptyState'
+import { analytics, ANALYTICS_EVENTS } from '../../lib/analytics'
 import { useMockCompaniesQuery } from '../../lib/queries/mockPipeline'
 import {
   isComingSoonError,
@@ -94,6 +95,60 @@ export default function MockPipelinePage() {
     startedForOrdinalRef.current = currentStage.ordinal
     startNext.mutate()
   }, [pipeline, currentStage, startNext])
+
+  // Phase J / X3 — fire mock_pipeline_started once per pipeline mount,
+  // mock_pipeline_completed when verdict transitions away from in_progress.
+  // The redirect upstream skips the second branch on subsequent mounts,
+  // so the completed signal fires exactly once per outcome.
+  const trackedStartedRef = useRef<string | null>(null)
+  const trackedCompletedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!pipeline) return
+    if (trackedStartedRef.current !== pipeline.id) {
+      trackedStartedRef.current = pipeline.id
+      analytics.track(ANALYTICS_EVENTS.mock_pipeline_started, {
+        company_id: pipeline.company_id ?? 'random',
+      })
+    }
+    if (pipeline.verdict !== 'in_progress' && trackedCompletedRef.current !== pipeline.id) {
+      trackedCompletedRef.current = pipeline.id
+      analytics.track(ANALYTICS_EVENTS.mock_pipeline_completed, {
+        verdict: pipeline.verdict,
+        company_id: pipeline.company_id ?? 'random',
+      })
+    }
+  }, [pipeline])
+
+  // Track stage_completed transitions: a stage is considered completed
+  // once its `verdict` advances из null (in-progress / pending) to a
+  // terminal value (pass / fail / borderline). We diff against a ref so
+  // each completed stage fires exactly once.
+  const stageVerdictsRef = useRef<Map<number, string>>(new Map())
+  useEffect(() => {
+    if (!pipeline) return
+    const stages = pipeline.stages ?? []
+    for (const s of stages) {
+      const prev = stageVerdictsRef.current.get(s.ordinal)
+      // Verdict is null while the stage is unresolved → string when terminal.
+      if (s.verdict && prev !== s.verdict) {
+        stageVerdictsRef.current.set(s.ordinal, s.verdict)
+        // Skip the initial paint: only fire when we'd already seen the
+        // stage без terminal verdict. Without this gate, the first
+        // render of a half-finished pipeline (e.g. browser reload after
+        // stage 3) would replay completed signals for stages 1-2.
+        if (prev !== undefined) {
+          analytics.track(ANALYTICS_EVENTS.mock_pipeline_stage_completed, {
+            stage_kind: s.stage_kind,
+            verdict: s.verdict,
+            ordinal: s.ordinal,
+          })
+        }
+      } else if (s.verdict && prev === undefined) {
+        // Seed: remember без firing — pipeline mid-flight on mount.
+        stageVerdictsRef.current.set(s.ordinal, s.verdict)
+      }
+    }
+  }, [pipeline])
 
   // ── loading / error ──────────────────────────────────────────────────
 

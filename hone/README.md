@@ -10,10 +10,20 @@ Electron + Vite + React. macOS-first, Windows/Linux parked for v2.
 ## Status
 
 Production beta on macOS (arm64 + x64) with notarized DMG, electron-updater,
-Sentry. 16 pages under `src/renderer/src/pages/`: Today, Focus, Notes, Coach,
-TaskBoard, Stats, Settings, Calendar, Editor, SharedBoards, Podcasts,
-TutorAssignments, EnglishOverview (Reading / Writing / Listening). All wired
-via Connect-RPC over `@generated/*` aliased TS stubs.
+Sentry. 15 pages под `src/renderer/src/pages/`: Home (subtle persistent timer),
+Today (AI-план + reflection), Notes (Vault 🔒 + AI backlinks), Coach (read-only
+past briefs feed + Goal chip), TaskBoard (archive drawer + drag-ghost + inline
+edit + auto-categorise), Stats, Settings, Calendar, TutorAssignments,
+MemoryTimeline, плюс English hub: EnglishOverview / Reading / Writing /
+Listening / Speaking. Все wired via Connect-RPC поверх `@generated/*` aliased
+TS stubs.
+
+Editor, SharedBoards, Podcasts мигрированы в web (Stream F W/E + D5 podcasts
+delete, 2026-05-12) — peer-collab WS strip'нут, Hone теперь чисто solo
+focus-cockpit. Wave J дополнил: ConnectionPanel в Today (Cue session
+notifications), Speaking page (MicRecorder + AudioPlayer для English voice
+practice), F2 GoalEditModal mirror, OfflineBanner 5-state, ConflictModal
+для outbox 409 conflicts.
 
 ## Run
 
@@ -63,11 +73,14 @@ hone/
             │   ├── Palette.tsx      ⌘K command surface
             │   ├── primitives/      Icon, Kbd
             │   └── stats/           Card, Label, Heatmap, Sparkline, Bars
-            ├── pages/               per-page modules (Today, Focus, Notes,
+            ├── pages/               per-page modules (Home, Today, Notes,
             │                         Coach, TaskBoard, Stats, Settings,
-            │                         Calendar, Editor, SharedBoards, Podcasts,
-            │                         TutorAssignments, EnglishOverview, Reading,
-            │                         Writing, Listening)
+            │                         Calendar, TutorAssignments, MemoryTimeline,
+            │                         EnglishOverview, Reading, Writing,
+            │                         Listening, Speaking).
+            │                         DELETED 2026-05-12: Editor.tsx,
+            │                         SharedBoards.tsx, Podcasts.tsx — peer-
+            │                         collab + podcasts мигрированы в web.
             ├── stores/session.ts    zustand auth store (Phase 5b hydrates)
             ├── styles/globals.css   tokens + primitive classes
             └── vite-env.d.ts        typed window.hone

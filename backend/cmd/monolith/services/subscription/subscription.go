@@ -4,11 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
+	intelDomain "druz9/intelligence/domain"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	subApp "druz9/subscription/app"
 	subDomain "druz9/subscription/domain"
@@ -113,29 +116,73 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 		server.CheckTierUC = checkTierUC
 	}
 
-	// Stream-C Stripe MVP wiring. Все три env'а обязательны для full flow:
+	// Stream-C Stripe MVP wiring + multi-currency support (launch polish 2026-05-12).
+	// Env vars:
 	//   STRIPE_SECRET_KEY            → API auth (sk_test_... / sk_live_...)
 	//   STRIPE_WEBHOOK_SECRET        → HMAC verification (whsec_...)
-	//   STRIPE_PRICE_ID_PRO_MONTHLY  → конкретный price object в Stripe Dashboard
-	// При пустом любом — server.CreateCheckoutSessionUC / CancelSubscriptionUC
-	// остаются nil → endpoints возвращают Unavailable. Webhook handler тоже
-	// nil → POST /stripe-webhook вернёт 503.
+	//   STRIPE_PRICE_ID_PRO_MONTHLY  → legacy fallback (== STRIPE_PRICE_ID_PRO_RUB)
+	//   STRIPE_PRICE_ID_PRO_RUB      → ₽ price object (default ru locale)
+	//   STRIPE_PRICE_ID_PRO_USD      → $ price object (en locale)
+	//   STRIPE_PRICE_ID_PRO_EUR      → € price object (de/fr/es locale)
+	// Без secret/webhook secret — endpoints не запускаются (как раньше).
+	// Хотя бы один price_id обязателен; если есть только legacy MONTHLY,
+	// он используется как RUB.
 	var stripeWebhook *subPorts.StripeWebhookHandler
 	stripeSecret := os.Getenv("STRIPE_SECRET_KEY")
 	stripeWebhookSecret := os.Getenv("STRIPE_WEBHOOK_SECRET")
-	stripePriceID := os.Getenv("STRIPE_PRICE_ID_PRO_MONTHLY")
-	if stripeSecret != "" && stripeWebhookSecret != "" && stripePriceID != "" {
+	stripePriceLegacy := strings.TrimSpace(os.Getenv("STRIPE_PRICE_ID_PRO_MONTHLY"))
+	stripePriceRUB := strings.TrimSpace(os.Getenv("STRIPE_PRICE_ID_PRO_RUB"))
+	stripePriceUSD := strings.TrimSpace(os.Getenv("STRIPE_PRICE_ID_PRO_USD"))
+	stripePriceEUR := strings.TrimSpace(os.Getenv("STRIPE_PRICE_ID_PRO_EUR"))
+	// Backward-compat: если есть только LEGACY, используем как RUB.
+	if stripePriceRUB == "" && stripePriceLegacy != "" {
+		stripePriceRUB = stripePriceLegacy
+	}
+	// Build currency → price_id map (только сконфигурированные валюты).
+	priceIDs := map[string]string{}
+	if stripePriceRUB != "" {
+		priceIDs["RUB"] = stripePriceRUB
+	}
+	if stripePriceUSD != "" {
+		priceIDs["USD"] = stripePriceUSD
+	}
+	if stripePriceEUR != "" {
+		priceIDs["EUR"] = stripePriceEUR
+	}
+	stripeDefaultPriceID := stripePriceRUB
+	if stripeDefaultPriceID == "" {
+		stripeDefaultPriceID = stripePriceLegacy
+	}
+	if stripeSecret != "" && stripeWebhookSecret != "" && stripeDefaultPriceID != "" {
 		stripeClient := subInfra.NewStripeClient(stripeSecret, stripeWebhookSecret)
 		stripeRepo := subInfra.NewStripeRepo(d.Pool)
-		createCheckoutUC := subApp.NewCreateCheckoutSession(stripeRepo, stripeClient, stripePriceID, d.Log)
+		createCheckoutUC := subApp.NewCreateCheckoutSession(stripeRepo, stripeClient, stripeDefaultPriceID, d.Log)
+		createCheckoutUC.PriceIDs = priceIDs
+		createCheckoutUC.DefaultCurrency = "RUB"
 		cancelSubUC := subApp.NewCancelSubscription(stripeRepo, stripeClient, d.Log)
+		// HandleRefund — charge.refunded webhook handler. flip tier→Free
+		// сразу после refund, не дожидаясь period end.
+		refundUC := subApp.NewHandleRefund(stripeRepo, setTierUC, d.Log)
 		webhookUC := subApp.NewHandleWebhookEvent(stripeRepo, stripeClient, setTierUC, d.Log)
+		webhookUC.RefundUC = refundUC
 		server.CreateCheckoutSessionUC = createCheckoutUC
 		server.CancelSubscriptionUC = cancelSubUC
 		stripeWebhook = subPorts.NewStripeWebhookHandler(webhookUC, d.Log)
-		d.Log.Info("subscription.stripe: wired with price_id=" + stripePriceID)
+		d.Log.Info(fmt.Sprintf("subscription.stripe: wired (default=%s, currencies=%v)", stripeDefaultPriceID, currencyKeys(priceIDs)))
 	} else {
-		d.Log.Warn("subscription.stripe: env vars пусты (STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET / STRIPE_PRICE_ID_PRO_MONTHLY) — Stripe endpoints отключены")
+		d.Log.Warn("subscription.stripe: env vars пусты (STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET / STRIPE_PRICE_ID_PRO_RUB|MONTHLY) — Stripe endpoints отключены")
+	}
+
+	// Trial-expiring notification cron (launch polish 2026-05-12). Daily
+	// scan находит users on trial Pro у которых current_period_end в окне
+	// (now, now+24h] и пишет Insight + outbound notification. nil-safe:
+	// без insightWriter — cron всё равно работает, просто без feed-card'ы.
+	var notifyTrialUC *subApp.NotifyTrialExpiring
+	if d.IntelligenceInsightUpserter != nil {
+		insightWriter := newTrialExpiringInsightWriter(d.IntelligenceInsightUpserter)
+		notifyTrialUC = subApp.NewNotifyTrialExpiring(pg, insightWriter, nil, clk, d.Log)
+	} else {
+		d.Log.Warn("subscription.notify_trial_expiring: intelligence InsightUpserter не wired — cron отключён")
 	}
 	connectPath, connectHandler := druz9v1connect.NewSubscriptionServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("subscription", connectPath, connectHandler)
@@ -176,7 +223,101 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 			func(ctx context.Context) {
 				go runMarkExpired(ctx, pg, clk, d.Log)
 			},
+			// Cron notify_trial_expiring: раз в сутки. Находит trial Pro
+			// юзеров с current_period_end в (now, now+24h] и пишет insight
+			// + outbound notification.
+			func(ctx context.Context) {
+				if notifyTrialUC == nil {
+					return
+				}
+				go runNotifyTrialExpiring(ctx, notifyTrialUC, d.Log)
+			},
 		},
+	}
+}
+
+// currencyKeys возвращает отсортированные ключи map'ы для log'ов.
+func currencyKeys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}
+
+// trialExpiringInsightWriter — adapter из subscription.TrialExpiringInsightWriter
+// в intelligence.InsightRepo. Subscription не импортирует intelligence/app
+// напрямую — мы держим тонкий interface (IntelligenceInsightUpserter) в Deps
+// и binding'аем здесь, в bootstrap'е, где обе зависимости видимы.
+type trialExpiringInsightWriter struct {
+	upserter IntelligenceInsightUpserter
+}
+
+// IntelligenceInsightUpserter — узкий interface которому удовлетворяет
+// *intelligence/infra.InsightsPostgres (метод Upsert). Объявлен здесь чтобы
+// subscription/cmd-wiring мог взять intelligence depend'у через Deps без
+// прямого импорта intelligence/domain в Deps.
+type IntelligenceInsightUpserter interface {
+	Upsert(ctx context.Context, in intelDomain.Insight) (intelDomain.Insight, error)
+}
+
+func newTrialExpiringInsightWriter(u IntelligenceInsightUpserter) *trialExpiringInsightWriter {
+	return &trialExpiringInsightWriter{upserter: u}
+}
+
+// UpsertTrialExpiring пишет insight (surface=today, anchor=billing:trial_expiring:<date>)
+// + lever-CTA. Idempotent: anchor вшит с датой trial-конца чтобы повторный
+// run в течение того же 24h окна не плодил duplicate'ов.
+func (w *trialExpiringInsightWriter) UpsertTrialExpiring(ctx context.Context, in subApp.TrialExpiringInsight) error {
+	if w.upserter == nil {
+		return nil
+	}
+	dateKey := in.TrialEnd.UTC().Format("2006-01-02")
+	hoursLeft := int(in.TrialEnd.Sub(in.Now).Hours())
+	if hoursLeft < 1 {
+		hoursLeft = 1
+	}
+	ins := intelDomain.Insight{
+		UserID:    in.UserID,
+		Surface:   intelDomain.InsightSurfaceToday,
+		Severity:  intelDomain.InsightSeverityWarn,
+		Anchor:    "billing:trial_expiring:" + dateKey,
+		Headline:  fmt.Sprintf("Pro trial ends in ~%dh.", hoursLeft),
+		Evidence:  fmt.Sprintf("Your 7-day Pro trial expires %s. AI-coach unlimited / AI-mock pipelines / deep analytics remain Pro features.", in.TrialEnd.UTC().Format("Mon Jan 2")),
+		Interpret: "No double-charge — your trial ends, paid Pro starts. No gap.",
+		Lever:     "Continue with Pro 990₽/mo (or use your own LLM key for free).",
+		DeepLink:  in.UpgradeCTA,
+		GeneratedAt: in.Now,
+		// Insight живёт до самого trial-end + 1h grace; после end MarkExpired flip'нет
+		// tier и insight естественно скроется (сам по себе он не expire'ится cron'ом
+		// в моменте, но user уже не на trial и lever не релевантен).
+		ExpiresAt: in.TrialEnd.Add(1 * time.Hour),
+	}
+	if _, err := w.upserter.Upsert(ctx, ins); err != nil {
+		return fmt.Errorf("subscription.trial_expiring_writer: %w", err)
+	}
+	return nil
+}
+
+// runNotifyTrialExpiring — daily cron. Initial tick сразу + раз в сутки.
+// Не вызываем чаще: notify-сервис сам дедупит, но Insight upsert'ы (NULL
+// anchor varies by date), но spam'ить worker не нужно.
+func runNotifyTrialExpiring(ctx context.Context, uc *subApp.NotifyTrialExpiring, log *slog.Logger) {
+	t := time.NewTicker(24 * time.Hour)
+	defer t.Stop()
+	// Initial tick.
+	if _, err := uc.Do(ctx); err != nil {
+		log.WarnContext(ctx, "subscription.cron.notify_trial_expiring: initial", "err", err)
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if _, err := uc.Do(ctx); err != nil {
+				log.WarnContext(ctx, "subscription.cron.notify_trial_expiring", "err", err)
+			}
+		}
 	}
 }
 

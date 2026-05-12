@@ -26,8 +26,11 @@ import {
   type BYOKProvider,
 } from '../../lib/queries/tier'
 import {
+  CURRENCY_DISPLAY,
+  detectCurrency,
   useCancelSubscriptionMutation,
   useCreateCheckoutSessionMutation,
+  type SupportedCurrency,
 } from '../../lib/queries/stripeCheckout'
 
 const TIER_LABEL: Record<SubscriptionTier, string> = {
@@ -200,10 +203,16 @@ function StripeCard() {
   const trialStart = new Date()
   const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000)
   const trialEndStr = trialEnd.toLocaleDateString('ru', { day: 'numeric', month: 'long' })
+
+  // Currency picker — auto-detect by locale at mount, user can override.
+  // Default не sticky'ится между сессиями — каждый раз решается из navigator.
+  const [currency, setCurrency] = useState<SupportedCurrency>(detectCurrency())
+  const priceDisplay = CURRENCY_DISPLAY[currency].price
+
   return (
     <Card className="flex-col gap-3 p-6">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h3 className="font-display text-lg font-bold text-text-primary">Pro · 990 ₽/мес</h3>
+        <h3 className="font-display text-lg font-bold text-text-primary">Pro · {priceDisplay}/мес</h3>
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           Stripe
         </span>
@@ -212,6 +221,35 @@ function StripeCard() {
         Безлимит AI-mock pipelines · deep readiness analytics · premium Cue · Google Calendar sync ·
         advanced goal analytics.
       </p>
+
+      {/* Currency picker — 3 button segmented. B/W mode: selected = ink bg, unselected = surface. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+          Валюта
+        </span>
+        {(['RUB', 'USD', 'EUR'] as SupportedCurrency[]).map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCurrency(c)}
+            disabled={checkout.isPending || isByokPro}
+            style={{
+              transition:
+                'border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+            }}
+            className={[
+              'rounded-md border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.08em]',
+              currency === c
+                ? 'border-text-primary bg-text-primary text-bg'
+                : 'border-border bg-surface-1 text-text-secondary hover:border-border-strong hover:text-text-primary',
+              checkout.isPending || isByokPro ? 'opacity-60' : '',
+            ].join(' ')}
+          >
+            {c} · {CURRENCY_DISPLAY[c].price}
+          </button>
+        ))}
+      </div>
+
       {eligibleForTrial && (
         <div
           className="flex flex-col gap-1 rounded-md border border-border-strong bg-surface-2 px-3 py-2"
@@ -234,8 +272,9 @@ function StripeCard() {
           onClick={() => {
             const origin = typeof window !== 'undefined' ? window.location.origin : ''
             checkout.mutate({
-              success_url: `${origin}/checkout/success`,
-              cancel_url: `${origin}/checkout/failure?reason=cancelled`,
+              success_url: `${origin}/billing/welcome`,
+              cancel_url: `${origin}/upgrade?retry=true`,
+              currency,
             })
           }}
         >
@@ -243,7 +282,7 @@ function StripeCard() {
             ? 'Pro через BYOK активен'
             : eligibleForTrial
               ? 'Начать 7 дней trial'
-              : 'Оплатить Pro'}
+              : `Оплатить Pro · ${priceDisplay}`}
         </Button>
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted self-center">
           BYOK ниже — бесплатная альтернатива

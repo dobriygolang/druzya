@@ -33,6 +33,7 @@ import {
 import { useGoalStore, daysUntil, formatGoalChip } from '../stores/goal';
 import { GoalEditModal } from '../components/GoalEditModal';
 import { trackEvent } from '../api/events';
+import { analytics, ANALYTICS_EVENTS } from '../lib/analytics';
 import {
   openWebMock,
   openDruz9Web,
@@ -164,7 +165,16 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
     setNextError(null);
     getNextAction()
       .then((r) => {
-        if (!cancelled) setNext(r);
+        if (cancelled) return;
+        setNext(r);
+        // Phase J / X3 — surface the next-action view. Use action_kind +
+        // mode (categorical, low-cardinality) — never raw `target` text.
+        if (r) {
+          analytics.track(ANALYTICS_EVENTS.coach_next_action_viewed, {
+            action_kind: r.actionKind,
+            mode,
+          });
+        }
       })
       .catch((err) => {
         if (!cancelled) setNextError(err?.message ?? 'unable to load');
@@ -241,6 +251,13 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
     if (!next || !onStartFocus) return;
     const title = next.target ? `coach · ${next.actionKind} · ${next.target}` : `coach · ${next.actionKind}`;
     trackEvent('coach_action_start', { action_kind: next.actionKind, mode });
+    // Phase J / X3 — cross-product taxonomy. `target` is a stable
+    // resource id (atlas slug / url-fragment), safe to track. Free-text
+    // titles never enter properties — sanitize() would strip them anyway.
+    analytics.track(ANALYTICS_EVENTS.coach_next_action_consumed, {
+      action_kind: next.actionKind,
+      mode,
+    });
     onStartFocus({ pinnedTitle: title });
   };
 

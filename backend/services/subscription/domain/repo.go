@@ -25,6 +25,12 @@ type Repo interface {
 	// MarkExpired ставит status='expired' всем с grace_until < now.
 	// Вызывается периодически cron'ом (раз в час). Возвращает число обновлённых.
 	MarkExpired(ctx context.Context, now time.Time) (int64, error)
+
+	// ListExpiringTrials возвращает users on admin-granted trial Pro,
+	// у которых current_period_end лежит в окне (from, until]. Used cron
+	// notify_trial_expiring (раз в день) чтобы предупредить юзеров за 24h
+	// до конца trial'а. Возвращает только status='active' rows.
+	ListExpiringTrials(ctx context.Context, from, until time.Time, limit int) ([]Subscription, error)
 }
 
 // Clock — test-seam. Производственная реализация — time.Now; тесты

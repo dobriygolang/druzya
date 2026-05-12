@@ -2,7 +2,7 @@
 
 Goose SQL поверх Postgres. Один консолидированный baseline `00001_baseline.sql` (~3.1k строк, финальная схема + Phase 1-4 / Wave 0-6 inline) + ~80 patch-миграций сверху.
 
-Текущее состояние (2026-05-12 marathon): последний номер — `00096` (goal_presets — admin Phase 2 starter). Гэпы (00002-15, 00053, 00069-71, 00084) — следствие consolidations, переименований и параллельных cleanup-волн; goose их игнорирует. Дубликат `00068` (focus_mode_check + drop_anticheat_attribute_columns) — оба уже применены на проде, ПЕРЕИМЕНОВЫВАТЬ НЕЛЬЗЯ (сломаешь goose).
+Текущее состояние (2026-05-12 marathon + Phase J polish): последний номер — `00109` (user_atlas_struggle_marks). Гэпы (00002-15, 00053, 00069-71, 00084) — следствие consolidations, переименований и параллельных cleanup-волн; goose их игнорирует. Дубликат `00068` (focus_mode_check + drop_anticheat_attribute_columns) — оба уже применены на проде, ПЕРЕИМЕНОВЫВАТЬ НЕЛЬЗЯ (сломаешь goose).
 
 **2026-05-12 marathon миграции (00083 → 00096):**
 - 00083 — F6 resource_promotion_deprecate (+ deprecated_at/reason + partial index)
@@ -18,6 +18,21 @@ Goose SQL поверх Postgres. Один консолидированный bas
 - 00094 — F2 user_milestones + coach_episodes.deleted_at (memory soft-delete)
 - 00095 — Stripe stripe_subscriptions + stripe_customers
 - 00096 — Admin Phase 2 goal_presets (+ 8 builtin seeds)
+
+**2026-05-12 polish wave миграции (00097 → 00109):**
+- 00097 — coach_prompts (centralise inline prompts: intelligence / admin / mock — admin-editable)
+- 00098 — notification_templates (admin-composed inactive-user nudges + variants)
+- 00099 — ab_experiments (Phase 3 starter: experiment + per-user variant assignment)
+- 00100 — stripe_webhook_dedup (3-day Stripe retry idempotency)
+- 00101 — coach_episodes.edited_at (user уточняет formulation entry, e.g. mock_complete summary)
+- 00102 — telemetry_events (90-day retention enforced by background prune job)
+- 00103 — focus_reflections (Hone Pomodoro reflection — structured grade 1-5 + notes)
+- 00104 — user_app_installs (install-tracking + cross-app suggestion + first-week trial Pro flow)
+- 00105 — speaking (Hone English Speaking modality — attempts + grades + audio refs)
+- 00106 — task_manual_kind_override (TaskBoard auto-categorise user override)
+- 00107 — telemetry_consent (consent state separate table — auditable history)
+- 00108 — interview_prep_sessions (Cue interview-prep wizard CV+JD upload target)
+- 00109 — user_atlas_struggle_marks (atlas node struggle handoff signal)
 
 ## Как это работает
 

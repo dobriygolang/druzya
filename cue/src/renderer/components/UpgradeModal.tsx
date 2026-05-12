@@ -21,6 +21,35 @@ import { PRO_UPGRADE_URL_BASE, PRO_BYOK_URL } from '../lib/upgrade-config';
 import { Modal } from './primitives/Modal';
 import { motion as motionTokens } from '../lib/design-tokens';
 
+// SupportedCurrency — keep in sync с frontend/hone. Backend env vars
+// STRIPE_PRICE_ID_PRO_{RUB,USD,EUR}.
+export type SupportedCurrency = 'RUB' | 'USD' | 'EUR';
+
+// CURRENCY_DISPLAY — price labels per currency. Real Stripe price тянется
+// из webhook; это placeholder для plans card UI.
+const CURRENCY_DISPLAY: Record<SupportedCurrency, { symbol: string; price: string }> = {
+  RUB: { symbol: '₽', price: '990₽' },
+  USD: { symbol: '$', price: '$9' },
+  EUR: { symbol: '€', price: '€9' },
+};
+
+// detectCurrency — best-effort из browser locale.
+function detectCurrency(): SupportedCurrency {
+  if (typeof navigator === 'undefined') return 'RUB';
+  const lang = (navigator.language || 'en').toLowerCase();
+  if (lang.startsWith('ru') || lang.startsWith('be') || lang.startsWith('kk')) return 'RUB';
+  if (
+    lang.startsWith('de') ||
+    lang.startsWith('fr') ||
+    lang.startsWith('es') ||
+    lang.startsWith('it') ||
+    lang.startsWith('nl') ||
+    lang.startsWith('pt')
+  )
+    return 'EUR';
+  return 'USD';
+}
+
 const COMPARISON: Array<{ label: string; free: string; pro: string }> = [
   { label: 'AI-coach unlimited chat', free: 'Yes', pro: 'Yes' },
   { label: 'Cue sessions', free: 'Up to 1 hour', pro: 'Up to 8 hours' },
@@ -58,8 +87,15 @@ export function UpgradeModal() {
 }
 
 function ModalBody({ ctx, onClose }: { ctx: UpgradeContext; onClose: () => void }) {
+  // Currency picker — auto-detect at mount, user can override before opening external.
+  const [currency, setCurrency] = useState<SupportedCurrency>(detectCurrency());
+  useEffect(() => {
+    setCurrency(detectCurrency());
+  }, []);
+  const priceDisplay = CURRENCY_DISPLAY[currency].price;
+
   const handleUpgrade = () => {
-    const url = `${PRO_UPGRADE_URL_BASE}?source=cue&feature=${encodeURIComponent(ctx.feature)}`;
+    const url = `${PRO_UPGRADE_URL_BASE}?source=cue&feature=${encodeURIComponent(ctx.feature)}&currency=${currency}`;
     void window.druz9.shell.openExternal(url);
     onClose();
   };
@@ -128,8 +164,7 @@ function ModalBody({ ctx, onClose }: { ctx: UpgradeContext; onClose: () => void 
       <div
         style={{
           display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'baseline',
+          flexDirection: 'column',
           gap: 10,
           padding: '14px 16px',
           borderRadius: 10,
@@ -138,21 +173,81 @@ function ModalBody({ ctx, onClose }: { ctx: UpgradeContext; onClose: () => void 
           minWidth: 0,
         }}
       >
-        <span
+        <div
           style={{
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: '-0.02em',
-            color: 'var(--d9-ink)',
-            lineHeight: 1,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'baseline',
+            gap: 10,
+            minWidth: 0,
           }}
         >
-          990₽
-        </span>
-        <span style={{ fontSize: 13, color: 'var(--d9-ink-mute)' }}>/ month</span>
-        <span style={{ fontSize: 12, color: 'var(--d9-ink-ghost)', marginLeft: 'auto' }}>
-          ~$9–12 USD · cancel anytime
-        </span>
+          <span
+            style={{
+              fontSize: 28,
+              fontWeight: 600,
+              letterSpacing: '-0.02em',
+              color: 'var(--d9-ink)',
+              lineHeight: 1,
+            }}
+          >
+            {priceDisplay}
+          </span>
+          <span style={{ fontSize: 13, color: 'var(--d9-ink-mute)' }}>/ month</span>
+          <span style={{ fontSize: 12, color: 'var(--d9-ink-ghost)', marginLeft: 'auto' }}>
+            cancel anytime
+          </span>
+        </div>
+        {/* Currency picker — 3-button segmented, B/W only */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 6,
+            alignItems: 'center',
+          }}
+        >
+          <span
+            className="mono"
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--d9-ink-ghost)',
+              marginRight: 4,
+            }}
+          >
+            Currency
+          </span>
+          {(['RUB', 'USD', 'EUR'] as SupportedCurrency[]).map((c) => {
+            const active = c === currency;
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCurrency(c)}
+                className="mono"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: '1px solid',
+                  borderColor: active ? 'var(--d9-ink)' : 'var(--d9-hairline-b)',
+                  background: active ? 'var(--d9-ink)' : 'transparent',
+                  color: active ? '#000' : 'var(--d9-ink-mute)',
+                  fontSize: 10,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  transition:
+                    'border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+                }}
+              >
+                {c}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Lift stat */}

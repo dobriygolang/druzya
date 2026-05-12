@@ -88,14 +88,14 @@ func TestSubscription_ActiveAt(t *testing.T) {
 }
 
 func TestProvider_IsValid(t *testing.T) {
-	valid := []Provider{ProviderBoosty, ProviderYookassa, ProviderTBank, ProviderAdmin}
+	valid := []Provider{ProviderBoosty, ProviderYookassa, ProviderTBank, ProviderStripe, ProviderAdmin}
 	for _, p := range valid {
 		if !p.IsValid() {
 			t.Errorf("%s must be valid", p)
 		}
 	}
-	if Provider("stripe").IsValid() {
-		t.Error("stripe must be invalid until explicitly added")
+	if Provider("unknown").IsValid() {
+		t.Error("unknown provider must be invalid")
 	}
 }
 

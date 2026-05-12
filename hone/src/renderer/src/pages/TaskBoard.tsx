@@ -31,6 +31,7 @@ import { useToastStore } from '../stores/toast';
 import { useTrackStore } from '../stores/track';
 import { TodayGoalSection } from './Today';
 import { trackEvent } from '../api/events';
+import { analytics, ANALYTICS_EVENTS } from '../lib/analytics';
 
 // ── Config ─────────────────────────────────────────────────────────────
 
@@ -225,6 +226,12 @@ export function TaskBoardPage(): JSX.Element {
             detectedKind: e.detectedKind,
             reasoning: e.body ?? '',
             confidence: conf,
+          });
+          // Phase J / X3 — cross-product taxonomy. detectedKind +
+          // confidence bucket. Never log task title (free-text).
+          analytics.track(ANALYTICS_EVENTS.task_auto_categorised, {
+            detected_kind: e.detectedKind,
+            confidence_bucket: conf >= 0.8 ? 'high' : conf >= 0.6 ? 'med' : 'low',
           });
           // Optimistically reflect kind change в list (server already wrote).
           setTasks((prev) => prev.map((x) => (x.id === e.taskId ? { ...x, kind: e.detectedKind as TaskKind } : x)));

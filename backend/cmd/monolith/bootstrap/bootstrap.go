@@ -226,6 +226,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	deps.IntelligenceMemory = intelligenceMod.Memory
 	deps.IntelligenceLinkSuggester = intelligenceMod.LinkSuggester
 	deps.IntelligenceLogResource = intelligenceMod.LogResourceUC
+	// Insight upserter port — subscription notify_trial_expiring cron
+	// пишет insight'ы через узкий interface. Wired до NewSubscription.
+	deps.IntelligenceInsightUpserter = intelligenceMod.InsightsRepo
 	// C3 cross-product context — copilot bootstrap wraps в cached
 	// adapter и заинжектит в Suggest + Analyze (Phase J).
 	deps.IntelligenceUserContext = intelligenceMod.GetUserContextUC

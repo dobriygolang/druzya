@@ -63,6 +63,7 @@ import {
 } from '../api/storage';
 import { getRow } from '../api/localCache';
 import { trackEvent } from '../api/events';
+import { analytics, ANALYTICS_EVENTS } from '../lib/analytics';
 import { useSessionStore } from '../stores/session';
 import { useQuotaStore } from '../stores/quota';
 import {
@@ -751,6 +752,9 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
     try {
       const n = await createNote('Untitled', '');
       trackEvent('note_create');
+      // Phase J / X3 — cross-product taxonomy mirror. `source` distinguishes
+      // empty-shell creations (this branch) от promote-from-link (см ниже).
+      analytics.track(ANALYTICS_EVENTS.note_created, { source: 'sidebar_new' });
       // Replace temp-row with real one, swap selectedId.
       setList((prev) => ({
         ...prev,

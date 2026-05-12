@@ -150,7 +150,7 @@ message CreateCheckoutSessionRequest {
   string success_url = 1;
   // Куда после cancel / back (absolute URL).
   string cancel_url = 2;
-  // Optional price_id override. Пусто = server use STRIPE_PRICE_ID_PRO_MONTHLY.
+  // Optional price_id override. Пусто = server use STRIPE_PRICE_ID_PRO_<currency>.
   // Зарезервировано для будущего Max tier.
   string price_id = 3;
   // trial_days — explicit trial period override. 0 = server applies default
@@ -158,6 +158,11 @@ message CreateCheckoutSessionRequest {
   // длины. <0 не сериализуется (proto uint32); чтобы отключить trial для
   // паид-юзера используется существующая paid-subscription detection.
   uint32 trial_days = 4;
+  // currency — ISO 4217 (RUB | USD | EUR). Пусто = server picks default based
+  // on locale (Accept-Language header, fallback RUB). Maps to one of three
+  // env-var price IDs (STRIPE_PRICE_ID_PRO_RUB / _USD / _EUR). Передача
+  // несконфигурированной валюты возвращает Unavailable.
+  string currency = 5;
 }
 
 // CheckoutSessionResponse — то, что фронт получает из CreateCheckoutSession.

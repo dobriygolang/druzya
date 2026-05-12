@@ -46,6 +46,10 @@ func (r *fakeRepo) MarkExpired(_ context.Context, _ time.Time) (int64, error) {
 	return 0, nil
 }
 
+func (r *fakeRepo) ListExpiringTrials(_ context.Context, _, _ time.Time, _ int) ([]domain.Subscription, error) {
+	return nil, nil
+}
+
 func TestGetTier_NoRow_ReturnsFree(t *testing.T) {
 	uc := NewGetTier(&fakeRepo{}, fakeClock{now: time.Now()})
 	tier, err := uc.Do(context.Background(), uuid.New())

@@ -24,6 +24,7 @@ import { FormField } from '../components/FormField'
 import { AIModelRow, PremiumUpgradeHint } from '../components/AIModelRow'
 import { GoogleCalendarSection } from '../components/GoogleCalendarSection'
 import { cn } from '../lib/cn'
+import { analytics } from '../lib/analytics'
 import { useProfileQuery } from '../lib/queries/profile'
 import { useAIModelsQuery } from '../lib/queries/ai'
 import { useNotificationPrefsQuery, useUpdatePrefs } from '../lib/queries/notifications'
@@ -293,9 +294,10 @@ function IntegrationRow({
 
 function AppearanceCard() {
   const { t } = useTranslation('settings')
-  // CI4 (2026-05-11): theme picker removed — light theme killed per roadmap
-  // anti-pattern #16 (kill switch over AAA audit). Card retained для
-  // language picker; theme controls collapsed into single read-only label.
+  // Theme picker removed CI4 2026-05-11 + finalised Phase J 2026-05-12.
+  // Light theme killed forever (B/W only — memory/feedback_color_rule.md).
+  // Card retained для language picker; theme — single read-only label.
+  // NOTE: keep coordinated with analytics toggle (parallel Agent Q context).
   const [, force] = useState(0)
   const [lang, setLang] = useState<Lang>(currentLanguage())
   const onLang = (l: Lang) => {
@@ -608,17 +610,142 @@ function NotificationsCard() {
 
 function PrivacyCard() {
   return (
+    <div className="flex flex-col gap-4">
+      <Card className="flex-col gap-3 p-6">
+        <h3 className="font-display text-lg font-bold text-text-primary">Приватность</h3>
+        <p className="text-[13px] text-text-secondary">
+          Профиль виден только участникам твоих кругов и оппонентам в матчах.
+          Анонимные публичные ссылки на отчёты можно создавать вручную из{' '}
+          <Link to="/profile/weekly" className="underline">/profile/weekly</Link>.
+        </p>
+        <p className="text-[12px] text-text-muted">
+          Данные хранятся в РФ; кэш Redis очищается через 24 часа после
+          выхода. Полный экспорт + удаление — в&nbsp;<b>Опасной зоне</b>.
+        </p>
+      </Card>
+
+      <AnalyticsConsentCard />
+    </div>
+  )
+}
+
+// AnalyticsConsentCard — Phase J / X3 (P1).
+// 3 controls: opt-in toggle + export-events + delete-events.
+//   - Toggle: localStorage caches + backend SetConsent для cross-device sync.
+//   - Export: GET /api/v1/telemetry/export → JSON blob download.
+//   - Delete: confirm modal → DELETE /api/v1/telemetry/events.
+// Web default — opted-OUT (anonymous web visitor trust gradient is low);
+// user must explicitly enable.
+function AnalyticsConsentCard() {
+  const [opted, setOpted] = useState<boolean>(() => analytics.isOptedIn())
+  const [exporting, setExporting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [exportErr, setExportErr] = useState<string | null>(null)
+  const [deleteErr, setDeleteErr] = useState<string | null>(null)
+  const [deletedCount, setDeletedCount] = useState<number | null>(null)
+
+  async function handleExport() {
+    setExportErr(null)
+    setExporting(true)
+    try {
+      // ExportEvents returns { events_json, count }. Server-side helper уже
+      // глотает PII; client просто оформляет blob и тригерит download.
+      const resp = await api<{ events_json: string; count: number }>(
+        '/telemetry/export?surface=',
+        { method: 'GET' },
+      )
+      const blob = new Blob([resp.events_json || '[]'], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      a.href = url
+      a.download = `druz9-analytics-${stamp}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setExportErr(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleteErr(null)
+    setDeletedCount(null)
+    if (!window.confirm('Удалить ВСЕ свои analytics-events безвозвратно?')) return
+    setDeleting(true)
+    try {
+      const resp = await api<{ deleted: number }>('/telemetry/events', {
+        method: 'DELETE',
+      })
+      setDeletedCount(typeof resp.deleted === 'number' ? resp.deleted : 0)
+    } catch (e) {
+      setDeleteErr(e instanceof Error ? e.message : 'Delete failed')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
     <Card className="flex-col gap-3 p-6">
-      <h3 className="font-display text-lg font-bold text-text-primary">Приватность</h3>
+      <h3 className="font-display text-lg font-bold text-text-primary">
+        Product analytics
+      </h3>
       <p className="text-[13px] text-text-secondary">
-        Профиль виден только участникам твоих кругов и оппонентам в матчах.
-        Анонимные публичные ссылки на отчёты можно создавать вручную из{' '}
-        <Link to="/profile/weekly" className="underline">/profile/weekly</Link>.
+        Anonymous usage events помогают приоритизировать фичи. No PII.
+        Toggle off anytime — мы сразу дропаем pending events из памяти.
       </p>
-      <p className="text-[12px] text-text-muted">
-        Данные хранятся в РФ; кэш Redis очищается через 24 часа после
-        выхода. Полный экспорт + удаление — в&nbsp;<b>Опасной зоне</b>.
-      </p>
+
+      <label className="flex cursor-pointer items-center gap-3 pt-1">
+        <input
+          type="checkbox"
+          checked={opted}
+          onChange={(e) => {
+            const v = e.target.checked
+            setOpted(v)
+            analytics.setOptedIn(v)
+          }}
+          className="h-4 w-4 cursor-pointer"
+        />
+        <span className="text-[13px] font-semibold text-text-primary">
+          Share anonymous usage events to improve druz9
+        </span>
+      </label>
+
+      <div className="mt-2 flex flex-col gap-2 border-t border-border pt-4">
+        <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+          Data rights
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => void handleExport()}
+            disabled={exporting}
+          >
+            {exporting ? 'Готовим…' : 'Скачать мои события'}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => void handleDelete()}
+            disabled={deleting}
+          >
+            {deleting ? 'Удаляем…' : 'Удалить мои события'}
+          </Button>
+        </div>
+        {exportErr && (
+          <p className="text-[12px] text-text-secondary">{exportErr}</p>
+        )}
+        {deleteErr && (
+          <p className="text-[12px] text-text-secondary">{deleteErr}</p>
+        )}
+        {deletedCount !== null && deleteErr === null && (
+          <p className="text-[12px] text-text-secondary">
+            Готово — удалено {deletedCount} {deletedCount === 1 ? 'событие' : 'событий'}.
+          </p>
+        )}
+      </div>
     </Card>
   )
 }

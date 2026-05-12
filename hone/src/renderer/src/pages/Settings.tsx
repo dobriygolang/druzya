@@ -46,6 +46,7 @@ import {
 import { useTrackStore } from '../stores/track';
 import { DeveloperToolsSection } from '../components/DeveloperToolsSection';
 import { ResourceLibrarySection } from '../components/ResourceLibrarySection';
+import { analytics } from '../lib/analytics';
 import {
   IdentityCard,
   PRODUCTS,
@@ -290,6 +291,13 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
             hint="End-to-end encryption for sensitive notes. Server can't read them — but coach memory, search, and publish-to-web won't work for encrypted notes. No password recovery."
           >
             <VaultSection />
+          </Section>
+
+          <Section
+            title="PRODUCT ANALYTICS"
+            hint="Anonymous usage events help us prioritise features. No PII collected. Toggle off anytime."
+          >
+            <AnalyticsConsentSection />
           </Section>
         </SectionGroup>
 
@@ -1009,6 +1017,39 @@ function DeviceRow({ device, onRevoke }: { device: Device; onRevoke: () => void 
 
 // VaultSection — Private Vault status + setup / unlock / lock controls.
 // Three states:
+// AnalyticsConsentSection — Phase J / X3 (P1) opt-in toggle.
+// Reads current state from the analytics SDK (which hydrated from
+// localStorage on App.tsx init), writes via setOptedIn() which mirrors
+// to localStorage + best-effort backend SetConsent для cross-device sync.
+function AnalyticsConsentSection() {
+  const [opted, setOpted] = useState<boolean>(() => analytics.isOptedIn());
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Toggle
+        value={opted}
+        onChange={(v) => {
+          setOpted(v);
+          analytics.setOptedIn(v);
+        }}
+        label="Share anonymous usage events"
+      />
+      <p
+        style={{
+          margin: 0,
+          fontSize: 11,
+          color: 'var(--ink-50, rgba(255,255,255,0.5))',
+          maxWidth: 540,
+          lineHeight: 1.5,
+        }}
+      >
+        No PII. Tracks aggregate signals like «focus session started» so we
+        can prioritise the features you actually use. Toggle off anytime —
+        we drop unsent events from memory immediately.
+      </p>
+    </div>
+  );
+}
+
 //   1. Not initialised: «Set up Vault» button → POST /vault/init + prompt
 //      password → unlockVault() → store key in memory.
 //   2. Initialised + locked: «Unlock» button → password prompt →

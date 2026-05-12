@@ -132,14 +132,34 @@ druzya/
 - **DB v86** — F2 user_primary_goals (single-active goal per user, 5 GoalKind enum)
 - **DB v87** — F10 cue_sessions (interview-session ingestion target, jsonb stages)
 - **DB v88** — drop llm_models.use_for_arena column (post-D8 Go/proto cleanup)
+- **DB v89** — Stream C subscription_tiers (BYOK encrypted keys)
+- **DB v90** — Stream E google_calendar (credentials + events_synced + indexes)
+- **DB v91** — Stream F drop_peer_collab (editor_rooms.code col removed; presence/WS RAM-only)
+- **DB v92** — R7 stage_templates (+ 5 builtin seeds: standard/yandex/ozon/pm/blank)
+- **DB v93** — Stream D tutor_mode_paths + users.tutor_mode_enabled
+- **DB v94** — F2 user_milestones + coach_episodes.deleted_at (memory soft-delete)
+- **DB v95** — Stripe stripe_subscriptions + stripe_customers
+- **DB v96** — Admin Phase 2 goal_presets (+ 8 builtin seeds)
+- **DB v97** — coach_prompts (admin-editable inline prompts: intelligence / admin / mock)
+- **DB v98** — notification_templates (admin compose для inactive-user etc)
+- **DB v99** — ab_experiments (Phase 3 starter: experiment + per-user variant)
+- **DB v100** — stripe_webhook_dedup (3-day Stripe retry idempotency)
+- **DB v101** — coach_episodes.edited_at (user может уточнить formulation entry)
+- **DB v102** — telemetry_events (90-day retention enforced via prune job)
+- **DB v103** — focus_reflections (Hone Pomodoro grade 1-5 + notes structured)
+- **DB v104** — user_app_installs (install-tracking + cross-app suggestion + first-week trial Pro)
+- **DB v105** — speaking (Hone English Speaking modality: attempts + grades)
+- **DB v106** — task_manual_kind_override (TaskBoard auto-categorise user override)
+- **DB v107** — telemetry_consent (consent state table, не profile col — auditable)
+- **DB v108** — interview_prep_sessions (Cue interview-prep wizard CV+JD upload)
+- **DB v109** — user_atlas_struggle_marks (atlas node struggle handoff signal)
 
 ## Текущий roadmap (2026-05-12)
 
 Старый phased plan (Phase 0-12.5 на основе 13 mockups) **закрыт**. Все wave-фазы либо ship'нуты, либо deferred/replaced. См [docs/feature/implementation-plan.md](./docs/feature/implementation-plan.md) для исторического статуса + текущего pointer'а.
 
-Comprehensive roadmap утверждённый 2026-05-11 — identity-driven rebuild на 9 фаз (A → I). **Phases A-H полностью shipped 2026-05-12** в single-day marathon через 17 параллельных агентов (DB v95→v96). Phase I (final polish + Admin Phase 3 + launch readiness) — текущая. Roadmap живёт в `~/.claude/plans/system-design-ux-copy-user-research-compiled-beacon.md` (private).
+Comprehensive roadmap утверждённый 2026-05-11 — identity-driven rebuild на 9 фаз (A → I) + J (polish). **Phases A-H полностью shipped 2026-05-12** в single-day marathon через 17 параллельных агентов (DB v95→v96). **Phase J shipped 2026-05-12 post-marathon**: light theme kill switch finalised (B/W only), Cue onboarding wizard, Cue interview-prep wizard (mig 00108), C4 diarization, stealth-verifier probe, Cue masquerade builds CI'd (workflows `cue-masquerade-release.yml` + `cue-masquerade-validate.yml`), H6 README refresh. Phase I (Admin Phase 3 + final launch readiness) — текущая. Roadmap живёт в `~/.claude/plans/system-design-ux-copy-user-research-compiled-beacon.md` (private).
 
-**Implementation snapshot:** F1-F10 + R1-R10 + D1-D9 + Streams A-G shipped. Что осталось:
+**Implementation snapshot:** F1-F10 + R1-R10 + D1-D9 + Streams A-G + Phase J shipped. Что осталось:
 - Admin Phase 3 (~6 weeks): A/B framework / Audit log / Fine-grained roles
-- Cue process masquerade builds (~1-2 weeks electron-builder)
-- Polish post-launch: light theme kill switch, Firefox extension port, Stripe trial/refunds/multi-currency, Hone Dock 6 focus modes, voice audio upload
+- Polish post-launch: Firefox extension port, Stripe trial/refunds/multi-currency, Hone Dock 6 focus modes, voice audio upload

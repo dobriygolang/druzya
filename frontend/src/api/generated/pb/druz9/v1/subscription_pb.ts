@@ -621,7 +621,7 @@ export class CreateCheckoutSessionRequest extends Message<CreateCheckoutSessionR
   cancelUrl = "";
 
   /**
-   * Optional price_id override. Пусто = server use STRIPE_PRICE_ID_PRO_MONTHLY.
+   * Optional price_id override. Пусто = server use STRIPE_PRICE_ID_PRO_<currency>.
    * Зарезервировано для будущего Max tier.
    *
    * @generated from field: string price_id = 3;
@@ -638,6 +638,16 @@ export class CreateCheckoutSessionRequest extends Message<CreateCheckoutSessionR
    */
   trialDays = 0;
 
+  /**
+   * currency — ISO 4217 (RUB | USD | EUR). Пусто = server picks default based
+   * on locale (Accept-Language header, fallback RUB). Maps to one of three
+   * env-var price IDs (STRIPE_PRICE_ID_PRO_RUB / _USD / _EUR). Передача
+   * несконфигурированной валюты возвращает Unavailable.
+   *
+   * @generated from field: string currency = 5;
+   */
+  currency = "";
+
   constructor(data?: PartialMessage<CreateCheckoutSessionRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -650,6 +660,7 @@ export class CreateCheckoutSessionRequest extends Message<CreateCheckoutSessionR
     { no: 2, name: "cancel_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "price_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "trial_days", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+    { no: 5, name: "currency", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateCheckoutSessionRequest {

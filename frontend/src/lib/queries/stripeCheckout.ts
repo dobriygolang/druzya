@@ -21,11 +21,46 @@ import { tierQueryKeys } from './tier'
 export type CreateCheckoutSessionInput = {
   success_url: string
   cancel_url: string
-  // Optional: будущий Max tier override. Пусто = backend STRIPE_PRICE_ID_PRO_MONTHLY.
+  // Optional: будущий Max tier override. Пусто = backend STRIPE_PRICE_ID_PRO_<currency>.
   price_id?: string
   // 0 (или не задано) = backend применит default (7 дней для first-time
   // subscribers). Передаём explicit для promo-flow'ов в будущем.
   trial_days?: number
+  // ISO 4217 currency: 'RUB' | 'USD' | 'EUR'. Пусто = backend default (RUB)
+  // или auto-detect по Accept-Language header. Pre-fill из user locale.
+  currency?: SupportedCurrency
+}
+
+// SupportedCurrency — keep in sync с backend STRIPE_PRICE_ID_PRO_{RUB,USD,EUR}.
+// Adding a new ISO code требует и Stripe Dashboard product + backend env var.
+export type SupportedCurrency = 'RUB' | 'USD' | 'EUR'
+
+// CURRENCY_DISPLAY — UI labels + sample price для каждой валюты.
+// Real Stripe price тянется из webhook (не отображаем confidence до checkout
+// completed). Это placeholder для plans table.
+export const CURRENCY_DISPLAY: Record<SupportedCurrency, { symbol: string; price: string; name: string }> = {
+  RUB: { symbol: '₽', price: '990₽', name: 'Russian ruble' },
+  USD: { symbol: '$', price: '$9', name: 'US dollar' },
+  EUR: { symbol: '€', price: '€9', name: 'Euro' },
+}
+
+// detectCurrency — best-effort из browser locale. Russian → RUB, Eurozone
+// languages → EUR, anything else → USD. Server overrides via auto-detect
+// если пришли без header'а.
+export function detectCurrency(): SupportedCurrency {
+  if (typeof navigator === 'undefined') return 'RUB'
+  const lang = (navigator.language || 'en').toLowerCase()
+  if (lang.startsWith('ru') || lang.startsWith('be') || lang.startsWith('kk')) return 'RUB'
+  if (
+    lang.startsWith('de') ||
+    lang.startsWith('fr') ||
+    lang.startsWith('es') ||
+    lang.startsWith('it') ||
+    lang.startsWith('nl') ||
+    lang.startsWith('pt')
+  )
+    return 'EUR'
+  return 'USD'
 }
 
 export type CheckoutSessionResponse = {

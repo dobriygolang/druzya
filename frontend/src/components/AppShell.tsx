@@ -292,9 +292,9 @@ function TopNav({ onOpenNotifications, unreadCount, onOpenPalette }: {
         >
           <Search className="h-5 w-5" />
         </button>
-        {/* CI4 (2026-05-11): light theme killed (kill switch over AAA audit
-            per roadmap anti-pattern #16). ThemeToggleButton removed from
-            header — dark-only across all surfaces. */}
+        {/* Light theme killed CI4 2026-05-11 + finalised Phase J 2026-05-12
+            (B/W only forever — see memory/feedback_color_rule.md).
+            ThemeToggleButton removed from header — dark-only across surfaces. */}
         <LanguageToggleButton />
         <NotificationsBell unreadCount={unreadCount} onClick={onOpenNotifications} />
         {/* Avatar + dropdown — кликабельный, открывает user-menu */}
@@ -407,6 +407,22 @@ export function AppShellV2({ children }: { children: ReactNode }) {
       void recordWebInstallOnce()
     })
   }, [])
+
+  // Phase J / X3 (P1) — opt-in product analytics bootstrap. Web default:
+  // opted-OUT until the user accepts via Settings → Privacy. SDK hydrates
+  // its consent flag from localStorage so the toggle survives reloads;
+  // backend GetConsent is best-effort cross-device sync (not blocking).
+  // Profile data carries the user_id we attach to all subsequent events
+  // (backend pulls it from auth middleware anyway — this is purely so
+  // future client-side enrichment can be user-scoped).
+  const profileForAnalytics = useProfileQuery()
+  useEffect(() => {
+    const uid = profileForAnalytics.data?.id
+    if (!uid) return
+    void import('../lib/analytics').then(({ analytics }) => {
+      analytics.init({ userId: uid })
+    })
+  }, [profileForAnalytics.data?.id])
 
   // Reset scroll on route change — но только когда нет hash. Если есть
   // location.hash (e.g. /today#activity из insight CTA), позволяем

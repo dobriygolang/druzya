@@ -22,11 +22,23 @@ import (
 // При любом failure'е — error; фронт показывает toast «не удалось создать
 // сессию». DB write делается ТОЛЬКО для customer mapping; subscription row
 // создаётся webhook'ом после реальной оплаты.
+//
+// Multi-currency (2026-05-12 launch polish): PriceIDs хранит per-ISO 4217
+// мапу price_id; PriceID (legacy field) — fallback на default valutu (RUB).
+// Caller (Connect-RPC handler) передаёт ISO code в .Currency; UC резолвит
+// конкретный Stripe price object.
 type CreateCheckoutSession struct {
 	Repo    domain.StripeRepo
 	Client  domain.StripeClient
-	PriceID string // env STRIPE_PRICE_ID_PRO_MONTHLY
-	Log     *slog.Logger
+	PriceID string // legacy fallback — env STRIPE_PRICE_ID_PRO_MONTHLY / STRIPE_PRICE_ID_PRO_RUB
+	// PriceIDs — currency → stripe price_id. Заполняется bootstrap'ом из
+	// STRIPE_PRICE_ID_PRO_RUB / _USD / _EUR. Пустые значения исключаются —
+	// caller пропускает только сконфигурированные валюты.
+	PriceIDs map[string]string
+	// DefaultCurrency — какую валюту использовать когда caller передал пустой
+	// .Currency и server'ный locale-detection не разрешает выбор. По дефолту RUB.
+	DefaultCurrency string
+	Log             *slog.Logger
 	// DefaultTrialDays — fallback trial period for first-time subscribers
 	// when caller doesn't pass an explicit value. 0 = no trial.
 	// Поставлен Sergey'ем (2026-05-12) launch-polish: 7 дней.
@@ -39,7 +51,15 @@ func NewCreateCheckoutSession(repo domain.StripeRepo, client domain.StripeClient
 	if log == nil {
 		panic("subscription.NewCreateCheckoutSession: logger is required")
 	}
-	return &CreateCheckoutSession{Repo: repo, Client: client, PriceID: priceID, Log: log, DefaultTrialDays: 7}
+	return &CreateCheckoutSession{
+		Repo:             repo,
+		Client:           client,
+		PriceID:          priceID,
+		PriceIDs:         map[string]string{},
+		DefaultCurrency:  "RUB",
+		Log:              log,
+		DefaultTrialDays: 7,
+	}
 }
 
 // CreateCheckoutSessionInput — payload.
@@ -49,12 +69,16 @@ type CreateCheckoutSessionInput struct {
 	SuccessURL string
 	CancelURL  string
 	// PriceID опционально перекрывает default из UC (для Max tier в будущем).
-	// Пусто = используется UC.PriceID.
+	// Пусто = используется UC.PriceIDs[Currency] (или UC.PriceID fallback).
 	PriceID string
 	// TrialDays — explicit per-request override. >0 = принудительный trial;
 	// 0 = use UC default (только для first-time subscribers); <0 = принудительно
 	// БЕЗ trial (используется для re-subscribe flow в будущем).
 	TrialDays int
+	// Currency — ISO 4217 code ("RUB"|"USD"|"EUR"). Пусто = UC.DefaultCurrency.
+	// Не-сконфигурированная валюта → ErrStripeNotConfigured. PriceID override
+	// игнорирует Currency (для Max tier нужно знать price_id напрямую).
+	Currency string
 }
 
 // CreateCheckoutSessionOutput — возврат UC.
@@ -68,9 +92,23 @@ func (uc *CreateCheckoutSession) Do(ctx context.Context, in CreateCheckoutSessio
 	if uc.Client == nil {
 		return CreateCheckoutSessionOutput{}, domain.ErrStripeNotConfigured
 	}
+	// Resolve price_id: explicit PriceID override → PriceIDs[Currency] →
+	// PriceIDs[DefaultCurrency] → legacy PriceID. Любой шаг которая
+	// возвращает непустую строку — winner.
 	priceID := strings.TrimSpace(in.PriceID)
+	currency := strings.ToUpper(strings.TrimSpace(in.Currency))
 	if priceID == "" {
-		priceID = uc.PriceID
+		if currency == "" {
+			currency = strings.ToUpper(strings.TrimSpace(uc.DefaultCurrency))
+		}
+		if currency != "" && len(uc.PriceIDs) > 0 {
+			if p, ok := uc.PriceIDs[currency]; ok && strings.TrimSpace(p) != "" {
+				priceID = strings.TrimSpace(p)
+			}
+		}
+	}
+	if priceID == "" {
+		priceID = strings.TrimSpace(uc.PriceID)
 	}
 	if priceID == "" {
 		return CreateCheckoutSessionOutput{}, domain.ErrStripeNotConfigured
@@ -137,7 +175,9 @@ func (uc *CreateCheckoutSession) Do(ctx context.Context, in CreateCheckoutSessio
 	uc.Log.InfoContext(ctx, "subscription.stripe.checkout_session_created",
 		slog.String("user_id", in.UserID.String()),
 		slog.String("session_id", sess.SessionID),
-		slog.Int("trial_days", trialDays))
+		slog.Int("trial_days", trialDays),
+		slog.String("currency", currency),
+		slog.String("price_id", priceID))
 	return CreateCheckoutSessionOutput{
 		SessionID:   sess.SessionID,
 		CheckoutURL: sess.CheckoutURL,

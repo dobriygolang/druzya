@@ -289,6 +289,7 @@ function GeneralTab({
         <SubscriptionCard quota={quota} />
         <InterviewPrepRow />
         <StealthRow />
+        <AnalyticsConsentRow />
         <HistoryRetentionRow />
 
         <LocaleRow />
@@ -638,6 +639,43 @@ function StealthRow() {
               // Revert UI if IPC fails.
               setOn(!next);
             }
+          }}
+        />
+      }
+    />
+  );
+}
+
+// AnalyticsConsentRow — Phase J / X3 (P1).
+// Stealth-first default: opted-OUT. Toggle persists through analytics
+// SDK (localStorage + best-effort backend SetConsent). Hint copy makes
+// the trust-on-user posture explicit — Cue keeps quiet by default.
+function AnalyticsConsentRow() {
+  const [on, setOn] = useState(false);
+  // Lazy-load the SDK to keep this row a pure presentational helper —
+  // and avoid forcing the analytics module into the settings bundle
+  // before the user even opens Settings.
+  useEffect(() => {
+    let cancelled = false;
+    void import('../../lib/analytics').then(({ analytics }) => {
+      if (!cancelled) setOn(analytics.isOptedIn());
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return (
+    <Row
+      title="Анонимная аналитика использования"
+      hint="Cue остаётся тихим по умолчанию. Включи, если хочешь помочь нам приоритизировать фичи — без PII, только агрегированные сигналы (sessions started, suggestions received). Off anytime."
+      control={
+        <Toggle
+          on={on}
+          onChange={(next) => {
+            setOn(next);
+            void import('../../lib/analytics').then(({ analytics }) => {
+              analytics.setOptedIn(next);
+            });
           }}
         />
       }

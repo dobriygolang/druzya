@@ -66,6 +66,7 @@ import { useGlobalHotkeys } from './hooks/useGlobalHotkeys';
 import { useTrackpadSwipe } from './hooks/useTrackpadSwipe';
 import { useHoneSync } from './hooks/useHoneSync';
 import { trackEvent, installTelemetryAutoFlush } from './api/events';
+import { analytics, ANALYTICS_EVENTS } from './lib/analytics';
 
 // Lazy pages — each ships in its own chunk. Heavy editors (Editor with
 // CodeMirror, SharedBoards with Excalidraw, Notes with Milkdown) are the
@@ -460,6 +461,16 @@ export default function App() {
     void import('./api/vault').then(({ lockVault }) => lockVault());
   }, [status]);
 
+  // ── Analytics opt-in SDK bootstrap (Phase J / X3, 2026-05-12) ──────────
+  // Mirrored API surface across web/hone/cue. Hone default: opted-IN
+  // (desktop install = explicit trust); user can flip in Settings → Privacy.
+  // Delegates to existing trackEvent (Connect-RPC + batching).
+  const sessionUserId = useSessionStore((s) => s.userId);
+  useEffect(() => {
+    if (status !== 'signed_in' || !sessionUserId) return;
+    analytics.init({ userId: sessionUserId });
+  }, [status, sessionUserId]);
+
   // ── Sync replication (Phase C-4) ────────────────────────────────────────
   const userId = useSessionStore((s) => s.userId);
   useHoneSync(status, userId);
@@ -602,6 +613,12 @@ export default function App() {
         pomodoros_completed: pomodorosCompleted,
         had_reflection: trimmed.length > 0 ? 'true' : 'false',
       });
+      // Phase J / X3 — cross-product taxonomy mirror.
+      analytics.track(ANALYTICS_EVENTS.focus_session_completed, {
+        seconds_focused: secondsFocused,
+        pomodoros_completed: pomodorosCompleted,
+        had_reflection: trimmed.length > 0,
+      });
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         await queueIfNeeded();
         return;
@@ -719,6 +736,12 @@ export default function App() {
     trackEvent('focus_start', {
       has_plan_item: args?.planItemId ? 'true' : 'false',
       has_pinned_title: args?.pinnedTitle ? 'true' : 'false',
+    });
+    // Phase J / X3 — cross-product taxonomy. Identical surface across apps
+    // so funnel queries can group hone+cue+web focus starts cleanly.
+    analytics.track(ANALYTICS_EVENTS.focus_session_started, {
+      has_plan_item: args?.planItemId ? true : false,
+      has_pinned_title: args?.pinnedTitle ? true : false,
     });
   }, []);
 
@@ -944,6 +967,13 @@ export default function App() {
             } catch {
               await queueIfNeeded();
             }
+            // Phase J / X3 — reflection submitted. `grade` already
+            // sanitised by FormField; `notes` length is non-PII signal.
+            analytics.track(ANALYTICS_EVENTS.reflection_submitted, {
+              has_grade: typeof grade === 'number',
+              has_notes: trimmed.length > 0,
+              focus_mode: prompt.focusMode,
+            });
             setReflectionPrompt(null);
           }}
           onDismissReflection={() => setReflectionPrompt(null)}

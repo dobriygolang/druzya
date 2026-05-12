@@ -723,14 +723,19 @@ type CreateCheckoutSessionRequest struct {
 	SuccessUrl string `protobuf:"bytes,1,opt,name=success_url,json=successUrl,proto3" json:"success_url,omitempty"`
 	// Куда после cancel / back (absolute URL).
 	CancelUrl string `protobuf:"bytes,2,opt,name=cancel_url,json=cancelUrl,proto3" json:"cancel_url,omitempty"`
-	// Optional price_id override. Пусто = server use STRIPE_PRICE_ID_PRO_MONTHLY.
+	// Optional price_id override. Пусто = server use STRIPE_PRICE_ID_PRO_<currency>.
 	// Зарезервировано для будущего Max tier.
 	PriceId string `protobuf:"bytes,3,opt,name=price_id,json=priceId,proto3" json:"price_id,omitempty"`
 	// trial_days — explicit trial period override. 0 = server applies default
 	// (7 дней first-time subscribers, иначе 0). >0 = принудительный trial этой
 	// длины. <0 не сериализуется (proto uint32); чтобы отключить trial для
 	// паид-юзера используется существующая paid-subscription detection.
-	TrialDays     uint32 `protobuf:"varint,4,opt,name=trial_days,json=trialDays,proto3" json:"trial_days,omitempty"`
+	TrialDays uint32 `protobuf:"varint,4,opt,name=trial_days,json=trialDays,proto3" json:"trial_days,omitempty"`
+	// currency — ISO 4217 (RUB | USD | EUR). Пусто = server picks default based
+	// on locale (Accept-Language header, fallback RUB). Maps to one of three
+	// env-var price IDs (STRIPE_PRICE_ID_PRO_RUB / _USD / _EUR). Передача
+	// несконфигурированной валюты возвращает Unavailable.
+	Currency      string `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -791,6 +796,13 @@ func (x *CreateCheckoutSessionRequest) GetTrialDays() uint32 {
 		return x.TrialDays
 	}
 	return 0
+}
+
+func (x *CreateCheckoutSessionRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
 }
 
 // CheckoutSessionResponse — то, что фронт получает из CreateCheckoutSession.
@@ -898,7 +910,7 @@ const file_druz9_v1_subscription_proto_rawDesc = "" +
 	"\rbyok_provider\x18\x04 \x01(\tR\fbyokProvider\"H\n" +
 	"\x11SetBYOKKeyRequest\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x17\n" +
-	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\"\x98\x01\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\"\xb4\x01\n" +
 	"\x1cCreateCheckoutSessionRequest\x12\x1f\n" +
 	"\vsuccess_url\x18\x01 \x01(\tR\n" +
 	"successUrl\x12\x1d\n" +
@@ -906,7 +918,8 @@ const file_druz9_v1_subscription_proto_rawDesc = "" +
 	"cancel_url\x18\x02 \x01(\tR\tcancelUrl\x12\x19\n" +
 	"\bprice_id\x18\x03 \x01(\tR\apriceId\x12\x1d\n" +
 	"\n" +
-	"trial_days\x18\x04 \x01(\rR\ttrialDays\"[\n" +
+	"trial_days\x18\x04 \x01(\rR\ttrialDays\x12\x1a\n" +
+	"\bcurrency\x18\x05 \x01(\tR\bcurrency\"[\n" +
 	"\x17CheckoutSessionResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12!\n" +

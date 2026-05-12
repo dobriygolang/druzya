@@ -88,6 +88,55 @@ func (p *Postgres) MarkExpired(ctx context.Context, now time.Time) (int64, error
 	return affected, nil
 }
 
+// ListExpiringTrials — выбирает active trial Pro подписки (provider='admin'
+// = только trial grant; paid Pro через stripe не считаем здесь — у них есть
+// auto-renew), у которых current_period_end лежит в (from, until].
+// Используется notify_trial_expiring cron'ом (24h before expiry).
+//
+// Раздельный запрос а не sqlc — узкая read-only выборка для одного cron'а;
+// проще здесь чем тянуть в queries файл.
+func (p *Postgres) ListExpiringTrials(ctx context.Context, from, until time.Time, limit int) ([]domain.Subscription, error) {
+	if limit <= 0 {
+		limit = 500
+	}
+	const q = `
+		SELECT user_id, plan, status, provider, provider_sub_id,
+		       current_period_end, grace_until, updated_at
+		  FROM subscriptions
+		 WHERE plan = 'pro'
+		   AND status = 'active'
+		   AND provider = 'admin'
+		   AND current_period_end IS NOT NULL
+		   AND current_period_end > $1
+		   AND current_period_end <= $2
+		 ORDER BY current_period_end ASC
+		 LIMIT $3`
+	rows, err := p.pool.Query(ctx, q, from, until, limit)
+	if err != nil {
+		return nil, fmt.Errorf("subscription.pg.ListExpiringTrials: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Subscription, 0, 64)
+	for rows.Next() {
+		var (
+			r  subdb.Subscription
+			pr pgtype.Text
+		)
+		if err := rows.Scan(
+			&r.UserID, &r.Plan, &r.Status, &pr, &r.ProviderSubID,
+			&r.CurrentPeriodEnd, &r.GraceUntil, &r.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("subscription.pg.ListExpiringTrials: scan: %w", err)
+		}
+		r.Provider = pr
+		out = append(out, listRowToSub(r))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("subscription.pg.ListExpiringTrials: rows: %w", err)
+	}
+	return out, nil
+}
+
 // Compile-time assertion.
 var _ domain.Repo = (*Postgres)(nil)
 

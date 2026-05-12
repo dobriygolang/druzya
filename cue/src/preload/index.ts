@@ -293,6 +293,12 @@ const api: Druz9API = {
       >,
     end: () => ipcRenderer.invoke(invokeChannels.interviewPrepEnd) as Promise<void>,
   },
+  telemetry: {
+    record: (batch) =>
+      ipcRenderer.invoke(invokeChannels.telemetryRecord, batch) as Promise<{ accepted: number }>,
+    setConsent: (input) =>
+      ipcRenderer.invoke(invokeChannels.telemetryConsentSet, input) as Promise<{ ok: boolean }>,
+  },
   on: <T>(channel: string, handler: (payload: T) => void) => {
     // Whitelist so renderer can't subscribe to arbitrary channels.
     const allowed = Object.values(eventChannels) as string[];

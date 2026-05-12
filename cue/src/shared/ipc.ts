@@ -184,6 +184,16 @@ export const invokeChannels = {
   selectedModelChanged: 'ui:selected-model-changed',
   /** Renderer → main: announce persona pick, rebroadcast to all windows. */
   activePersonaChanged: 'ui:active-persona-changed',
+
+  /** Phase J / X3 (P1) — opt-in product analytics. Main process owns the
+   *  bearer auth, so renderer dispatches batches here and main fans
+   *  them out to /api/v1/telemetry/events. Best-effort fire-and-forget. */
+  telemetryRecord: 'telemetry:record',
+  /** Renderer → main: persist user's consent toggle to the backend
+   *  (`/api/v1/telemetry/consent`). Idempotent. Best-effort: failures
+   *  surface as `ok=false` but never throw — the local localStorage flip
+   *  is the primary truth. */
+  telemetryConsentSet: 'telemetry:consent-set',
 } as const;
 
 /** Events pushed from main → renderer. */
@@ -950,8 +960,35 @@ export interface Druz9API {
     end: () => Promise<void>;
   };
 
+  /**
+   * Phase J / X3 (P1) — opt-in product analytics. Main process owns the
+   * bearer auth, so renderer dispatches batches here and main fans them
+   * out to /api/v1/telemetry/events. Best-effort fire-and-forget.
+   */
+  telemetry: {
+    /** Record a batch of events. Best-effort: errors swallowed in main. */
+    record: (batch: TelemetryEventInput[]) => Promise<{ accepted: number }>;
+    /** Persist user's consent toggle. Local localStorage is primary truth;
+     *  this call is best-effort cross-device sync. */
+    setConsent: (input: TelemetryConsentInput) => Promise<{ ok: boolean }>;
+  };
+
   /** Subscribe to a main-process event. Returns an unsubscribe function. */
   on: <T = unknown>(channel: string, handler: (payload: T) => void) => () => void;
+}
+
+// Phase J / X3 — opt-in product analytics wire shapes.
+export interface TelemetryEventInput {
+  name: string;
+  /** ISO-8601 client timestamp. */
+  occurredAt: string;
+  /** Free-form key/value bag. Already PII-sanitized renderer-side. */
+  properties: Record<string, string>;
+}
+
+export interface TelemetryConsentInput {
+  optedIn: boolean;
+  consentVersion: number;
 }
 
 // Phase J / C6 — Interview prep wire shapes. Mirrors the proto fields

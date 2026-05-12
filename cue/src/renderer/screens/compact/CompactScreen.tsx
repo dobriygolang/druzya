@@ -121,6 +121,16 @@ export function CompactScreen() {
     };
   }, [authBootstrap, conversationBootstrap, cursorBootstrap, sessionBootstrap]);
 
+  // ── Analytics opt-in SDK bootstrap (Phase J / X3, 2026-05-12) ──────────
+  // Stealth-product default: opted-OUT. SDK hydrates consent from
+  // localStorage; Settings → Privacy lets the user opt in.
+  useEffect(() => {
+    if (!session?.userId) return;
+    void import('../../lib/analytics').then(({ analytics }) => {
+      analytics.init({ userId: session.userId });
+    });
+  }, [session?.userId]);
+
   // Mirror the picker-window state so the caret on the corresponding
   // pill rotates. Picker runs in a separate BrowserWindow — we can't
   // observe its mount locally, so main broadcasts pickerStateChanged

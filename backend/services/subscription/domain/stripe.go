@@ -51,6 +51,13 @@ type StripeRepo interface {
 	// отменять. ErrNotFound если у юзера нет подписок.
 	GetActiveSubscriptionByUser(ctx context.Context, userID uuid.UUID) (StripeSubscription, error)
 
+	// GetSubscriptionByStripeID — lookup по stripe_subscription_id. Используется
+	// refund handler'ом: charge.refunded payload приносит invoice → invoice
+	// references subscription_id; нам нужен user_id чтобы flip'нуть tier.
+	// ErrNotFound если row отсутствует (e.g. webhook прилетел до того как
+	// мы записали subscription).
+	GetSubscriptionByStripeID(ctx context.Context, stripeSubID string) (StripeSubscription, error)
+
 	// HasAnySubscription — true если у юзера когда-либо была подписка
 	// (включая canceled). Используется для гейтинга «first-time trial».
 	// Должна возвращать (false, nil) даже если row отсутствует.

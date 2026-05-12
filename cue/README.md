@@ -67,10 +67,13 @@ src/
 │   └── windows/   Window manager + stealth wiring
 ├── preload/       contextBridge → window.druz9 typed API
 ├── renderer/      React + Vite (one HTML, hash-routed per window)
-│   ├── screens/   compact / expanded / settings / onboarding
+│   ├── screens/   compact / expanded / picker / settings / onboarding /
+│   │              area-overlay / english-polish / interview-prep /
+│   │              history / summary / toast / tray-popup
 │   ├── hooks/     useConfig, useHotkeyEvents, …
-│   ├── stores/    zustand (Phase 4)
-│   └── styles/    tokens.css + globals
+│   ├── stores/    zustand (audio-capture, coach, session, conversation,
+│   │              persona, documents)
+│   └── styles/    tokens.css + globals.css (dark-only B/W)
 └── shared/        types.ts + ipc.ts (shared main+renderer)
 ```
 
@@ -132,8 +135,22 @@ displays a known-bad warning.
 ## Status
 
 Production beta on macOS (arm64 + x64). Notarized DMG, electron-updater,
-Sentry. Native Swift binary (`AudioCaptureMac`) under ScreenCaptureKit
-for system-audio capture. Real components shipped: compact / expanded /
-picker / settings / area-overlay / english-polish screens.
+Sentry. Native Swift binary (`AudioCaptureMac`) под ScreenCaptureKit для
+system-audio capture. Real components shipped: compact / expanded / picker
+/ settings / area-overlay / english-polish + Wave J: onboarding wizard
+(Welcome / Permissions / InvisibleDemo / Complete), interview-prep wizard
+(UploadCV / UploadJD / Review / Launch, mig 00108), C4 diarization
+(per-session SpeakerLabel chips + 2+ speaker bar в ExpandedScreen),
+stealth-verifier probe (DesktopConfig.StealthWarnings warns при known-bad
+browser builds), F10 cross-product ingest (`session.end` → POST
+`/intelligence/interview-sessions/ingest` → Coach видит «вчера на Google
+struggled with sharding question»).
+
+**Masquerade builds CI'd.** `.github/workflows/cue-masquerade-release.yml`
++ `cue-masquerade-validate.yml` собирают 4 alias-bundles (Notes / Telegram
+/ Slack / Xcode) с per-alias `Info.plist` rewrite через
+`scripts/afterPack-masquerade.cjs` — масштабируется через `npm run
+build:masquerade:all`. Раньше «process masquerade builds (~1-2 weeks)»
+считался deferred; теперь shipped end-to-end.
 
 Windows native module (WASAPI) parked for Q3 2026.

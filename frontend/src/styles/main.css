@@ -57,14 +57,9 @@
     --red: #FF3B30;
   }
 
-  /* light theme killed 2026-05-12; force dark per Sergey identity (Hone
-     dark-only across all surfaces). theme.ts useTheme() returns 'dark'
-     and `set`/`toggle` are no-ops. Re-introducing light is a CSS revert
-     + theme.ts state change away. See memory/feedback_color_rule.md. */
-  .light {
-    /* Inherits from :root,.dark — Tailwind `darkMode: 'class'` still scopes
-       dark utility variants under .dark, and HTML always carries .dark. */
-  }
+  /* Light theme killed 2026-05-12 (Phase J final). `<html>` always carries
+     `.dark` (set in index.html), no `.light` class block exists anymore.
+     B/W only across web/Hone/Cue — see memory/feedback_color_rule.md. */
 
   html {
     transition: background-color var(--motion-dur-medium) var(--motion-ease-standard), color var(--motion-dur-medium) var(--motion-ease-standard);

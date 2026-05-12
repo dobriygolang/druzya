@@ -14,12 +14,43 @@
 // Wiring — single global mount в App.tsx, state живёт в useQuotaStore
 // через showUpgradeModal({ feature, label, benefit, liftStat? }) action.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useQuotaStore, type UpgradeContext } from '../stores/quota';
 import { PRO_UPGRADE_URL_BASE, PRO_BYOK_URL } from '../api/config';
 import { Modal } from './primitives/Modal';
 import { motion as motionTokens } from '../lib/design-tokens';
+
+// SupportedCurrency — keep in sync c frontend stripeCheckout.ts.
+// Backend env vars STRIPE_PRICE_ID_PRO_{RUB,USD,EUR}.
+export type SupportedCurrency = 'RUB' | 'USD' | 'EUR';
+
+// CURRENCY_DISPLAY — price labels per currency. Real Stripe price тянется
+// из webhook; это placeholder для plans card UI.
+const CURRENCY_DISPLAY: Record<SupportedCurrency, { symbol: string; price: string }> = {
+  RUB: { symbol: '₽', price: '990₽' },
+  USD: { symbol: '$', price: '$9' },
+  EUR: { symbol: '€', price: '€9' },
+};
+
+// detectCurrency — best-effort из browser locale. Hone runs in Electron;
+// navigator.language всё равно доступен. Default = RUB чтобы Russian
+// юзеры видели родную валюту без клика.
+function detectCurrency(): SupportedCurrency {
+  if (typeof navigator === 'undefined') return 'RUB';
+  const lang = (navigator.language || 'en').toLowerCase();
+  if (lang.startsWith('ru') || lang.startsWith('be') || lang.startsWith('kk')) return 'RUB';
+  if (
+    lang.startsWith('de') ||
+    lang.startsWith('fr') ||
+    lang.startsWith('es') ||
+    lang.startsWith('it') ||
+    lang.startsWith('nl') ||
+    lang.startsWith('pt')
+  )
+    return 'EUR';
+  return 'USD';
+}
 
 // Feature comparison rows — Free vs Pro. Source of truth — feedback_monetization.md.
 // Each row: Free side либо «—» (not included) либо краткая «free version».
@@ -56,8 +87,16 @@ export function UpgradeModal() {
 }
 
 function ModalBody({ ctx, onClose }: { ctx: UpgradeContext; onClose: () => void }) {
+  // Currency picker — auto-detect at mount, user can override.
+  const [currency, setCurrency] = useState<SupportedCurrency>(detectCurrency());
+  useEffect(() => {
+    // Re-detect when modal re-opens (locale could've changed in Electron settings).
+    setCurrency(detectCurrency());
+  }, []);
+  const priceDisplay = CURRENCY_DISPLAY[currency].price;
+
   const handleUpgrade = () => {
-    const url = `${PRO_UPGRADE_URL_BASE}?source=hone&feature=${encodeURIComponent(ctx.feature)}`;
+    const url = `${PRO_UPGRADE_URL_BASE}?source=hone&feature=${encodeURIComponent(ctx.feature)}&currency=${currency}`;
     const bridge = typeof window !== 'undefined' ? window.hone : undefined;
     if (bridge) void bridge.shell.openExternal(url);
     else window.open(url, '_blank');
@@ -130,8 +169,7 @@ function ModalBody({ ctx, onClose }: { ctx: UpgradeContext; onClose: () => void 
       <div
         style={{
           display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'baseline',
+          flexDirection: 'column',
           gap: 10,
           padding: '14px 16px',
           borderRadius: 10,
@@ -140,21 +178,80 @@ function ModalBody({ ctx, onClose }: { ctx: UpgradeContext; onClose: () => void 
           minWidth: 0,
         }}
       >
-        <span
+        <div
           style={{
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: '-0.02em',
-            color: 'var(--ink)',
-            lineHeight: 1,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'baseline',
+            gap: 10,
+            minWidth: 0,
           }}
         >
-          990₽
-        </span>
-        <span style={{ fontSize: 13, color: 'var(--ink-60)' }}>/ month</span>
-        <span style={{ fontSize: 12, color: 'var(--ink-40)', marginLeft: 'auto' }}>
-          ~$9–12 USD · cancel anytime
-        </span>
+          <span
+            style={{
+              fontSize: 28,
+              fontWeight: 600,
+              letterSpacing: '-0.02em',
+              color: 'var(--ink)',
+              lineHeight: 1,
+            }}
+          >
+            {priceDisplay}
+          </span>
+          <span style={{ fontSize: 13, color: 'var(--ink-60)' }}>/ month</span>
+          <span style={{ fontSize: 12, color: 'var(--ink-40)', marginLeft: 'auto' }}>
+            cancel anytime
+          </span>
+        </div>
+        {/* Currency picker — 3-button segmented, B/W only */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 6,
+            alignItems: 'center',
+          }}
+        >
+          <span
+            className="mono"
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-40)',
+              marginRight: 4,
+            }}
+          >
+            Currency
+          </span>
+          {(['RUB', 'USD', 'EUR'] as SupportedCurrency[]).map((c) => {
+            const active = c === currency;
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCurrency(c)}
+                className="mono"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: '1px solid',
+                  borderColor: active ? 'var(--ink)' : 'var(--hair-2)',
+                  background: active ? 'var(--ink)' : 'transparent',
+                  color: active ? 'var(--bg)' : 'var(--ink-60)',
+                  fontSize: 10,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition:
+                    'border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+                }}
+              >
+                {c}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Lift stat (conditional) — text-secondary one-liner with red stripe */}

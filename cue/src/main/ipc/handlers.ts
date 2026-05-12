@@ -1072,6 +1072,37 @@ export function registerHandlers(opts: RegisterOptions): void {
     await interviewPrepREST.end();
   });
 
+  // ── Telemetry (Phase J / X3, 2026-05-12) ──
+  // Renderer batches events + flips consent; main attaches the bearer
+  // token and POSTs. Errors swallowed inside telemetry.ts — events are
+  // ephemeral, retry storms hurt UX more than missing a few data points.
+  handleIn(
+    invokeChannels.telemetryRecord,
+    z.array(
+      z.object({
+        name: z.string().min(1).max(128),
+        occurredAt: z.string().max(64),
+        properties: z.record(z.string()),
+      }),
+    ).max(100),
+    async (batch) => {
+      const { recordEvents } = await import('../api/telemetry');
+      return recordEvents(apiBaseURL, batch);
+    },
+  );
+
+  handleIn(
+    invokeChannels.telemetryConsentSet,
+    z.object({
+      optedIn: z.boolean(),
+      consentVersion: z.number().int().min(0).max(99),
+    }),
+    async (input) => {
+      const { setConsent } = await import('../api/telemetry');
+      return setConsent(apiBaseURL, input);
+    },
+  );
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -56,9 +56,30 @@ function buildDeepLink(
  * to the LaunchServices / Win shell handler for `druz9://`. If Hone isn't
  * installed there's no observable effect — we attempt a fallback toast
  * via the caller (since toast UI patterns differ across pages).
+ *
+ * Phase J / X3 — emit cross_app_opened analytics signal. `intent` carries
+ * the deep-link verb (focus.start / coach.open / note.open / task.open /
+ * english.exercise), low-cardinality and PII-free.
  */
 function openDeepLink(url: string): void {
   if (typeof window === 'undefined') return;
+  // Tracking lives here (not at each caller) so every new helper above
+  // gets the signal for free. We parse the intent+source out of the URL
+  // we just built — that's the only PII-free piece we want to log.
+  try {
+    const stripped = url.replace(HONE_DEEPLINK_BASE, '');
+    const [intent, query = ''] = stripped.split('?');
+    const sp = new URLSearchParams(query);
+    void import('./analytics').then(({ analytics, ANALYTICS_EVENTS }) => {
+      analytics.track(ANALYTICS_EVENTS.cross_app_opened, {
+        target: 'hone',
+        intent,
+        source: sp.get('source') ?? 'unknown',
+      });
+    });
+  } catch {
+    /* analytics is best-effort; deep-link itself proceeds */
+  }
   // Use a temporary anchor so we don't navigate the current document if
   // the protocol handler is missing (Chrome on missing scheme stays on
   // current page; setting location.href would error in some browsers).

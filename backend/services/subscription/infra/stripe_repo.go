@@ -28,6 +28,22 @@ func NewStripeRepo(pool *pgxpool.Pool) *StripeRepo {
 // Compile-time.
 var _ domain.StripeRepo = (*StripeRepo)(nil)
 
+// GetCustomerByStripeID — reverse lookup: stripe_customer_id → user_id.
+// Used by HandleRefund для резолва user'а из charge.customer когда
+// metadata["user_id"] отсутствует. ErrNotFound если row нет.
+func (r *StripeRepo) GetCustomerByStripeID(ctx context.Context, stripeCustomerID string) (uuid.UUID, error) {
+	const q = `SELECT user_id FROM stripe_customers WHERE stripe_customer_id = $1 LIMIT 1`
+	row := r.pool.QueryRow(ctx, q, stripeCustomerID)
+	var userID uuid.UUID
+	if err := row.Scan(&userID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, domain.ErrNotFound
+		}
+		return uuid.Nil, fmt.Errorf("subscription.stripe.GetCustomerByStripeID: %w", err)
+	}
+	return userID, nil
+}
+
 func (r *StripeRepo) GetCustomer(ctx context.Context, userID uuid.UUID) (domain.StripeCustomer, error) {
 	const q = `
 		SELECT user_id, stripe_customer_id, created_at
@@ -115,6 +131,36 @@ func (r *StripeRepo) MarkWebhookSeen(ctx context.Context, eventID, eventType str
 		return false, fmt.Errorf("subscription.stripe.MarkWebhookSeen: %w", err)
 	}
 	return cmd.RowsAffected() == 1, nil
+}
+
+// GetSubscriptionByStripeID — lookup row по stripe_subscription_id. Used
+// refund handler'ом: charge.refunded прилетает с invoice → subscription_id;
+// нам нужен user_id чтобы flip'нуть tier обратно в free.
+func (r *StripeRepo) GetSubscriptionByStripeID(ctx context.Context, stripeSubID string) (domain.StripeSubscription, error) {
+	const q = `
+		SELECT id, user_id, stripe_subscription_id, stripe_price_id,
+		       status, current_period_end, cancel_at_period_end,
+		       created_at, updated_at
+		  FROM stripe_subscriptions
+		 WHERE stripe_subscription_id = $1
+		 LIMIT 1`
+	row := r.pool.QueryRow(ctx, q, stripeSubID)
+	var (
+		out domain.StripeSubscription
+		cpe *time.Time
+	)
+	if err := row.Scan(
+		&out.ID, &out.UserID, &out.StripeSubscriptionID, &out.StripePriceID,
+		&out.Status, &cpe, &out.CancelAtPeriodEnd,
+		&out.CreatedAt, &out.UpdatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.StripeSubscription{}, domain.ErrNotFound
+		}
+		return domain.StripeSubscription{}, fmt.Errorf("subscription.stripe.GetSubscriptionByStripeID: %w", err)
+	}
+	out.CurrentPeriodEnd = cpe
+	return out, nil
 }
 
 // GetActiveSubscriptionByUser — последняя active/trialing подписка юзера.

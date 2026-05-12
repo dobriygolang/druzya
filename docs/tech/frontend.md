@@ -76,16 +76,18 @@ hone/
 │           │                 ConflictModal (CI4), OfflineBanner (5-state),
 │           │                 GoalEditModal (F2 mirror)
 │           ├── pages/        Home (subtle persistent timer R10), Today,
-│           │                 Focus, Notes (Vault 🔒 icon, AI backlinks R5),
+│           │                 Notes (Vault 🔒 icon, AI backlinks R5),
 │           │                 TaskBoard (archive drawer R4 + drag-ghost +
-│           │                 inline-edit titles), Stats, Coach (read-only
-│           │                 past briefs feed + Goal chip),
-│           │                 Reading (R), Writing (W), Listening (L),
-│           │                 CodeReview (G), TutorAssignments (A),
-│           │                 Calendar (M).
-│           │                 DELETED 2026-05-12: SharedBoards.tsx,
-│           │                 Editor.tsx (→ web /whiteboard /editor solo),
-│           │                 Podcasts.tsx (→ web /podcasts)
+│           │                 inline-edit titles + auto-categorise), Stats,
+│           │                 Coach (read-only past briefs feed + Goal chip),
+│           │                 MemoryTimeline (memory audit surface),
+│           │                 EnglishOverview + Reading (R) / Writing (W) /
+│           │                 Listening (L) / Speaking (Wave J — MicRecorder
+│           │                 + AudioPlayer), TutorAssignments (A),
+│           │                 Calendar (M), Settings (,).
+│           │                 15 pages total. DELETED 2026-05-12:
+│           │                 SharedBoards.tsx, Editor.tsx (→ web /whiteboard
+│           │                 /editor solo), Podcasts.tsx (→ web /podcasts).
 │           ├── stores/       zustand (session, focus, goal F2 mirror, ...)
 │           └── styles/globals.css
 └── resources/                Icons, splash images
@@ -93,7 +95,7 @@ hone/
 
 **Принципы:**
 
-- **Не делает stealth.** Никаких `setContentProtection`, никаких global hotkeys. In-focus letter-shortcuts: `T` Today, `N` Notes, `S` Stats, `R` Reading, `W` Writing, `L` Listening, `A` Assignments, `M` Calendar, `G` Code review, `,` Settings. ⌘K — palette (+ Recent section since 2026-05-12). **`B`/`E`/`P` releases:** Whiteboard/Editor/Podcasts мигрировали в web; `B`/`E` теперь open browser tab к web pages; `P` released (no Hone podcasts surface).
+- **Не делает stealth.** Никаких `setContentProtection`, никаких global hotkeys. In-focus letter-shortcuts: `T` Today, `N` Notes, `S` Stats, `R` Reading, `W` Writing, `L` Listening, `K` Speaking, `A` Assignments, `M` Calendar, `,` Settings. ⌘K — palette (+ Recent section since 2026-05-12). **`B`/`E`/`P`/`G` releases:** Whiteboard/Editor/Podcasts/CodeReview мигрировали в web; `B`/`E` теперь open browser tab к web pages; `P` released (no Hone podcasts surface); `G` released (CodeReview merged в TutorAssignments).
 - **Без `keytar`.** Токены через Electron `safeStorage` (без native build).
 - **Auth через Telegram code flow** в main-process (без drush9:// browser dance).
 - **strict TypeScript.** `@ts-nocheck` запрещён.
@@ -139,24 +141,34 @@ cue/
 │   └── renderer/
 │       ├── screens/
 │       │   ├── compact/    460×92 полоска (модель, persona, ввод)
-│       │   ├── expanded/   Чат + transcript + auto-suggest pill
+│       │   ├── expanded/   Чат + transcript + auto-suggest pill + C4
+│       │   │               diarization SpeakerLabel chips bar
 │       │   ├── picker/     Floating persona/model picker
-│       │   ├── settings/   Документы (RAG attach)
+│       │   ├── settings/   Документы (RAG attach) + language picker
 │       │   ├── area-overlay/  Screenshot area-selector
 │       │   ├── toast/      Floating error/info
-│       │   └── english-polish/ Wave 6.2 — ⌃⇧L: clipboard → AI feedback
+│       │   ├── english-polish/ Wave 6.2 — ⌃⇧L: clipboard → AI feedback
+│       │   ├── onboarding/ Wave J — Welcome / Permissions /
+│       │   │               InvisibleDemo / Complete (first-launch wizard)
+│       │   ├── interview-prep/ Wave J — UploadCV / UploadJD / Review /
+│       │   │               Launch (CV+JD prep before interview, mig 00108)
+│       │   ├── history/    Past sessions list
+│       │   ├── summary/    Per-session debrief
+│       │   └── tray-popup/ Quick actions menu
 │       └── stores/         audio-capture, coach, session, conversation, persona, documents
 ```
 
 **Принципы:**
 
 - **Tray-only.** Нет dock-иконки. UX: «вызвал → ответил → исчез».
-- **Stealth при screen-share.** `setContentProtection(true)` → `NSWindowSharingNone` на macOS, `WDA_EXCLUDEFROMCAPTURE` на Win (Electron 30+).
-- **Runtime masquerade.** `applyPreset()` swap'ит dock + tray icon + window titles (Notes/Telegram/Xcode/Slack presets). Process masquerade builds (signed Notes.app / Telegram.app separate bundles) deferred — electron-builder pipeline.
+- **Stealth при screen-share.** `setContentProtection(true)` → `NSWindowSharingNone` на macOS, `WDA_EXCLUDEFROMCAPTURE` на Win (Electron 30+). Stealth-verifier probe (DesktopConfig.StealthWarnings) warns при known-bad browser builds.
+- **Runtime masquerade + process masquerade builds shipped.** `applyPreset()` swap'ит dock + tray icon + window titles runtime (Notes/Telegram/Xcode/Slack presets). Plus `.github/workflows/cue-masquerade-release.yml` + `cue-masquerade-validate.yml` собирают 4 alias-bundles с per-alias `Info.plist` rewrite (CFBundleName/Executable + LSUIElement=true) через `scripts/afterPack-masquerade.cjs`. `npm run build:masquerade:all` локально.
 - **Mock-block protocol.** `copilot.CheckBlock` RPC + serverside enforcement в `Answer` (см [architecture.md](./architecture.md)).
 - **Native audio macOS.** ScreenCaptureKit → PCM16 → VAD → batch chunks → Whisper Turbo.
+- **C4 diarization.** Per-session manual relabel chips (SpeakerLabel.tsx) когда diarizer нашёл ≥2 distinct speakers. UI bar в ExpandedScreen.
 - **IPC zod-валидирован.** `main/ipc/schemas.ts` — 15+ каналов с runtime-валидацией renderer-input.
 - **F10 cross-product moat (2026-05-12).** Session.end → poll analysis → ready → `saveNotes()` (Hone import) + `intelligence.ingestInterviewSession()` (Coach memory). Coach видит «вчера на Google interview struggled with sharding question».
+- **Wave J onboarding + interview-prep wizards.** First-launch onboarding (Welcome / Permissions / InvisibleDemo / Complete). Pre-interview CV+JD upload wizard (mig 00108 `interview_prep_sessions`) → персонализирует Cue persona на конкретный JD.
 
 **Запуск:**
 
@@ -197,10 +209,11 @@ Hone и Cue **алиасят** `frontend/src/api/generated/` через `@genera
 | Инструмент | Web | Hone | Cue |
 |---|---|---|---|
 | Bundler | Vite | electron-vite | electron-vite |
-| Test | Vitest + RTL | (нет — vibe-tested) | (нет) |
+| Test | Vitest + RTL | Vitest (vitest.config.ts) | Vitest (vitest.config.ts) |
 | Lint | ESLint + tsc | ESLint + tsc | ESLint + tsc |
-| Style | Tailwind + CSS vars | CSS vars + globals.css | CSS vars |
+| Style | Tailwind + CSS vars | CSS vars + globals.css | CSS vars + globals.css |
 | State | zustand + react-query | zustand | zustand |
+| Theme | Dark-only (light killed 2026-05-12) | Dark-only | Dark-only |
 
 ## Куда смотреть, если
 

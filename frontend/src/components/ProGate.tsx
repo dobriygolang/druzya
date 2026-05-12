@@ -8,9 +8,11 @@
 //
 // B/W design: 1.5px полоса слева (red accent dot only, не fill) для
 // Free-prompt blocка; Pro/BYOK badge — font-mono uppercase, без gradient.
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from './Button'
 import { Card } from './Card'
+import { analytics, ANALYTICS_EVENTS } from '../lib/analytics'
 import { hasProAccess, useTierQuery } from '../lib/queries/tier'
 
 // FeatureKey — список фич, чтобы текст в upgrade-prompt был контекстным.
@@ -76,6 +78,12 @@ export function ProGate({ feature = 'generic', fallback, children }: ProGateProp
 // не gradient/fill). См memory/feedback_color_rule.md.
 function InlinePrompt({ feature }: { feature: FeatureKey }) {
   const copy = FEATURE_COPY[feature]
+  // Phase J / X3 — fire upgrade_modal_shown once per mount. `feature`
+  // bucket is categorical (whitelisted in FeatureKey union) → safe to
+  // send без sanitization concerns.
+  useEffect(() => {
+    analytics.track(ANALYTICS_EVENTS.upgrade_modal_shown, { feature })
+  }, [feature])
   return (
     <Card className="flex-col gap-4 border-l-[1.5px] border-l-text-primary p-6">
       <div className="flex items-start gap-3">
@@ -91,7 +99,10 @@ function InlinePrompt({ feature }: { feature: FeatureKey }) {
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Link to="/settings/billing">
+        <Link
+          to="/settings/billing"
+          onClick={() => analytics.track(ANALYTICS_EVENTS.upgrade_modal_clicked, { feature })}
+        >
           <Button variant="primary" size="md">
             Открыть billing
           </Button>

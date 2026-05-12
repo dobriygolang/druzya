@@ -42,6 +42,7 @@ func (s *SubscriptionServer) CreateCheckoutSession(
 		CancelURL:  req.Msg.GetCancelUrl(),
 		PriceID:    req.Msg.GetPriceId(),
 		TrialDays:  int(req.Msg.GetTrialDays()),
+		Currency:   req.Msg.GetCurrency(),
 	})
 	if err != nil {
 		if errors.Is(err, domain.ErrStripeNotConfigured) {

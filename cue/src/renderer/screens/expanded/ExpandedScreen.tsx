@@ -1507,6 +1507,15 @@ function AutoSuggestPill({
     const joiner = draft.length === 0 || /\s$/.test(draft) ? '' : '\n';
     setDraft(draft + joiner + suggestion.text);
     dismiss();
+    // Phase J / X3 — cue_suggestion_acted_upon. The user accepted the
+    // suggestion (spliced into draft). `text` length is signal; the
+    // raw content is never logged (PII guard would strip anyway).
+    void import('../../lib/analytics').then(({ analytics, ANALYTICS_EVENTS }) => {
+      analytics.track(ANALYTICS_EVENTS.cue_suggestion_acted_upon, {
+        action: 'insert',
+        context_used: suggestion.contextUsed,
+      });
+    });
   };
 
   return (
