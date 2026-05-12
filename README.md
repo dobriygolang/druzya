@@ -21,7 +21,7 @@ cp .env.example .env
 make start       # backend stack: postgres + redis + minio + clickhouse + judge0 + api
 make front       # web (http://localhost:5173, MSW моки)
 cd hone && npm run dev      # Hone Electron
-cd desktop && npm run dev   # Cue Electron
+cd cue && npm run dev       # Cue Electron
 ```
 
 После любых изменений `proto/`:
@@ -41,7 +41,7 @@ druzya/
 ├── backend/             Go monolith (~25 сервисов)
 ├── frontend/            Web (Vite + React + TS)
 ├── hone/                Hone Electron app
-├── desktop/             Cue Electron app
+├── cue/                 Cue Electron app
 ├── infra/               docker-compose.prod, nginx, monitoring
 ├── docs/                Документация (for_investment/ + tech/ + feature/)
 └── .ai/skills/          Project-specific workflows для AI-агентов

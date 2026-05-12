@@ -1,7 +1,7 @@
 // Copilot — MOCK stealth-style overlay kept in Hone for design continuity.
 //
 // Important: the actual stealth/invisible-to-screen-share product is
-// the sibling `desktop/` app (to be renamed Cue). This component is a
+// the sibling `cue/` app. This component is a
 // visual affordance inside Hone that hints the ecosystem — when the
 // user presses ⌘⇧Space, they see what a copilot call *looks* like. It
 // does NOT implement stealth at the window-layer here — Hone is a
@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 
 import { Icon } from './primitives/Icon';
+import { motion as motionTokens } from '../lib/design-tokens';
 
 interface CopilotProps {
   onClose: () => void;
@@ -34,7 +35,9 @@ export function Copilot({ onClose }: CopilotProps) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
     if (shown >= LINES.length) return;
-    const t = setTimeout(() => setShown((s) => s + 1), 180);
+    // Step cadence between lines — small motion token (160ms) keeps the
+    // typewriter beat steady without feeling sluggish.
+    const t = setTimeout(() => setShown((s) => s + 1), motionTokens.dur.small);
     return () => clearTimeout(t);
   }, [shown]);
 
@@ -47,24 +50,26 @@ export function Copilot({ onClose }: CopilotProps) {
         right: 22,
         width: 420,
         zIndex: 55,
-        background: 'rgba(8,8,8,0.88)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 14,
+        background: 'rgba(8, 8, 8, 0.88)',
+        border: '1px solid var(--hair)',
+        borderRadius: 'var(--radius-outer)',
         backdropFilter: 'blur(24px) saturate(1.2)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
         overflow: 'hidden',
-        boxShadow: '0 30px 80px -10px rgba(0,0,0,0.7)',
+        boxShadow: '0 30px 80px -10px rgba(0, 0, 0, 0.7)',
       }}
     >
+      {/* Live-indicator row: canonical red dot + ink-ramp text, no green hue. */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 'var(--gap-row)',
           padding: '8px 14px',
           fontSize: 10.5,
-          color: 'rgb(140,240,170)',
-          background: 'rgba(40,200,120,0.08)',
-          borderBottom: '1px solid rgba(140,255,170,0.18)',
+          color: 'var(--ink-90)',
+          background: 'var(--hair)',
+          borderBottom: '1px solid var(--hair-2)',
         }}
         className="mono"
       >
@@ -73,19 +78,30 @@ export function Copilot({ onClose }: CopilotProps) {
             width: 5,
             height: 5,
             borderRadius: 99,
-            background: 'rgb(100,230,140)',
+            background: 'var(--red)',
           }}
           className="red-pulse"
         />
-        <span style={{ letterSpacing: '.18em' }}>HIDDEN FROM SCREEN SHARE</span>
-        <button onClick={onClose} style={{ marginLeft: 'auto', color: 'var(--ink-40)' }}>
+        <span style={{ letterSpacing: '0.08em' }}>HIDDEN FROM SCREEN SHARE</span>
+        <button
+          onClick={onClose}
+          aria-label="dismiss copilot"
+          style={{
+            marginLeft: 'auto',
+            color: 'var(--ink-40)',
+            background: 'transparent',
+            border: 0,
+            cursor: 'pointer',
+            padding: 2,
+          }}
+        >
           <Icon name="x" size={11} />
         </button>
       </div>
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--hair)' }}>
         <div
           className="mono"
-          style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 4 }}
+          style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)', marginBottom: 4 }}
         >
           Q
         </div>
@@ -94,7 +110,7 @@ export function Copilot({ onClose }: CopilotProps) {
       <div style={{ padding: '12px 16px 16px' }}>
         <div
           className="mono"
-          style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 6 }}
+          style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)', marginBottom: 6 }}
         >
           A
         </div>
@@ -126,9 +142,10 @@ export function Copilot({ onClose }: CopilotProps) {
           alignItems: 'center',
           gap: 12,
           padding: '9px 14px',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '1px solid var(--hair)',
           fontSize: 10.5,
           color: 'var(--ink-40)',
+          letterSpacing: '0.08em',
         }}
         className="mono"
       >

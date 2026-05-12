@@ -1,5 +1,5 @@
 // Shared IPC types. Kept deliberately narrow for the Hone MVP — the
-// stealth/copilot app (desktop/) has a much larger IPC surface because
+// stealth/copilot app (cue/) has a much larger IPC surface because
 // it touches capture / hotkeys / permissions; Hone is a single main
 // window that mostly speaks to the backend directly, so the preload
 // bridge stays compact.
@@ -37,7 +37,7 @@ export const eventChannels = {
 } as const;
 
 // ── Cue session analysis types ────────────────────────────────────────────
-// Mirror of desktop/src/shared/types SessionAnalysis — kept in sync manually.
+// Mirror of cue/src/shared/types SessionAnalysis — kept in sync manually.
 // Future: extract to a shared workspace package.
 
 export interface CueAnalysisItem {

@@ -2,7 +2,7 @@ import { defineConfig } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
-// electron-vite scaffolding mirrors desktop/ (the stealth copilot) so the
+// electron-vite scaffolding mirrors cue/ (the stealth copilot) so the
 // two apps can share a codegen root (frontend/src/api/generated) and a
 // future shared/electron-core package. Any divergence here should have a
 // reason documented in the README.
@@ -10,7 +10,7 @@ import { resolve } from 'node:path';
 // Two cross-cutting concerns repeat across main / preload / renderer:
 //
 //   @generated/*        — proto-generated TS stubs live in the frontend
-//                          tree; both desktop/ and hone/ alias the same
+//                          tree; both cue/ and hone/ alias the same
 //                          directory so one `make gen-proto` updates both.
 //
 //   @bufbuild/protobuf, — peer packages of the generated code. When a

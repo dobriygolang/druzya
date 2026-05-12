@@ -3,7 +3,7 @@
 Hone is a minimal dark desktop app for programmers in the druz9 ecosystem.
 See [../docs/for_investment/hone.md](../docs/for_investment/hone.md) for the product spec and
 [../docs/for_investment/ecosystem.md](../docs/for_investment/ecosystem.md) for how Hone fits with druz9.online (web AI-coach + AI-mock + atlas)
-and the stealth copilot Cue (`../desktop/`).
+and the stealth copilot Cue (`../cue/`).
 
 Electron + Vite + React. macOS-first, Windows/Linux parked for v2.
 
@@ -73,9 +73,9 @@ hone/
             └── vite-env.d.ts        typed window.hone
 ```
 
-## Relationship to `../desktop/`
+## Relationship to `../cue/`
 
-- `desktop/` is the **stealth copilot** (Cue). Tray-only, invisible to
+- `cue/` is the **stealth copilot** (Cue). Tray-only, invisible to
   screen share, ⌘⇧Space hotkey. Different product, different UX, same
   monorepo for codegen reuse.
 - `hone/` is this app: the quiet focus cockpit, with a normal dock icon
@@ -118,7 +118,7 @@ production-билдов не экспортируется.
 ## Stealth boundary (don't drift)
 
 - **No `BrowserWindow.setContentProtection(true)`** — Hone is meant to be
-  visible. The stealth trick lives in `../desktop/` (Cue).
+  visible. The stealth trick lives in `../cue/` (Cue).
 - **No global hotkeys.** Hone reacts to keyboard only when focused.
 - **No tray icon.** Hone is dock-first.
 

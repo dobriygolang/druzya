@@ -173,7 +173,7 @@ type Analyze struct {
 	TokenQuota *tokenquota.DailyTokenQuota
 
 	// MockGate — server-side defense-in-depth for the "no Cue while a
-	// strict mock is live" rule (Phase-4 ADR-001 Wave 3). The desktop
+	// strict mock is live" rule (Phase-4 ADR-001 Wave 3). The Cue
 	// client also polls CheckBlock; this is the backstop for clients
 	// that didn't. Nil-safe (no enforcement when unset, e.g. tests).
 	MockGate domain.MockSessionGate

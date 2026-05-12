@@ -5,7 +5,7 @@ description: Add a new page to druz9 web (frontend/) or Hone (hone/) — routing
 
 # Добавить страницу
 
-Web (`frontend/`) и Hone (`hone/`) — оба React 18 + Vite + TS + Connect-RPC. Cue (`desktop/`) — другой паттерн (tray-screens), отдельная история.
+Web (`frontend/`) и Hone (`hone/`) — оба React 18 + Vite + TS + Connect-RPC. Cue (`cue/`) — другой паттерн (tray-screens), отдельная история.
 
 ## Когда применять
 

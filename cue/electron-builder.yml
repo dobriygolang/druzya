@@ -1,0 +1,70 @@
+appId: app.druzya.copilot
+productName: Cue
+copyright: Copyright © 2026 Druz9
+asar: true
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**/*
+  - package.json
+# The macOS system-audio capture helper (ScreenCaptureKit binary built
+# from cue/native/audio-mac). Copied into Contents/Resources/native/
+# so main/capture/audio-mac.ts can resolve it via process.resourcesPath.
+# macOS-only — ignored on Windows/Linux builds.
+extraResources:
+  - from: resources/native
+    to: native
+    filter: ["**/*"]
+  # Runtime-loaded assets (tray icons). Хранятся в Contents/Resources/
+  # resources/ — main/index.ts резолвит их через
+  # `join(process.resourcesPath, 'resources')` (см. строку с
+  # resourcesPath = ... process.resourcesPath, 'resources').
+  # Без этой записи Tray.setImage падает в prod c «icon is missing or
+  # invalid» — а сам tray-иконку не создаёт, и в OS-меню Cue не видно.
+  - from: resources
+    to: resources
+    filter:
+      - "trayTemplate.png"
+      - "trayTemplate@2x.png"
+mac:
+  icon: resources/icon.icns
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+  # URL scheme: druz9-cue:// (НЕ druz9:// — этот занят Hone-приложением,
+  # которое регистрируется при ./hone npm run dev / build. Если оба claim
+  # одну схему, macOS отдаёт deeplink одному из них в зависимости от
+  # порядка регистрации, что ломает cross-app flows вроде
+  # druz9://notes/import?path=... → Hone — Cue перехватывал и no-op'ил).
+  # Cue теперь использует druz9-cue:// для своих собственных deeplink'ов
+  # (open session by file path), Hone — druz9:// для своих.
+  extendInfo:
+    # LSUIElement=true hides the app from Cmd+Tab / Mission Control / Dock
+    # entirely — critical for stealth: the masquerade .app bundles
+    # (Notes/Telegram/Slack/Xcode) MUST NOT surface a second tile in
+    # Cmd+Tab when running, otherwise the observer instantly sees there
+    # are "two Notes" running. With LSUIElement the process lives only
+    # in the menu-bar (via Tray) and Activity Monitor — exactly what the
+    # masquerade story requires.
+    LSUIElement: true
+    CFBundleURLTypes:
+      - CFBundleURLName: Cue
+        CFBundleURLSchemes: [druz9-cue]
+    NSScreenCaptureUsageDescription: >-
+      Cue captures the area you select so the AI can answer
+      questions about what's on your screen.
+    NSMicrophoneUsageDescription: >-
+      Cue records your voice only when you explicitly start voice
+      input. Audio is sent for transcription and then discarded.
+    # SFSpeechRecognizer (on-device) требует отдельный TCC-prompt с
+    # этим ключом. Без него SFSpeechRecognizer.requestAuthorization
+    # моментально возвращает .denied и Swift валится в PCM-fallback.
+    NSSpeechRecognitionUsageDescription: >-
+      Cue uses on-device speech recognition (Apple Speech, no network)
+      to transcribe meetings privately. Audio never leaves your Mac.

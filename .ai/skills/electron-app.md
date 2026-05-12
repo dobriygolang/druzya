@@ -58,7 +58,7 @@ Hone и Cue имеют почти идентичный pipeline (DMG + electron-
 ### 1. Bump version
 
 ```bash
-cd hone   # или desktop
+cd hone   # или cue
 npm version patch   # или minor / major
 ```
 
@@ -121,7 +121,7 @@ spctl -a -vv -t install /Volumes/Hone/Hone.app
 ### Native Swift binary
 
 ```bash
-cd desktop/native/audio-mac
+cd cue/native/audio-mac
 ./build.sh
 # Проверить:
 file ../../resources/native/AudioCaptureMac

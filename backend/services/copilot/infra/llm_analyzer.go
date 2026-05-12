@@ -24,7 +24,7 @@ import (
 // score-card (overall_score, weaknesses, …) AND the structured
 // Cluely-style breakdown (tldr, key_topics, action_items, terminology,
 // decisions, open_questions). Both live on AnalyzerResult — the web
-// report uses the former, the desktop's Summary view uses the latter.
+// report uses the former, Cue's Summary view uses the latter.
 // AnalysisUsage is filled outside the LLM (token sums from messages)
 // because we already have ground truth there and shouldn't let the LLM
 // invent numbers.
@@ -34,7 +34,7 @@ type LLMAnalyzer struct {
 	model      string
 	httpClient *http.Client
 	// ReportURLTemplate — printf-style: first %s = session id. The
-	// server fills this in so desktop/frontend can open the report in
+	// server fills this in so Cue/frontend can open the report in
 	// the Druzya web UI.
 	reportURLTemplate string
 }

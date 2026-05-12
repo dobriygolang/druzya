@@ -6,8 +6,8 @@
 // WS port stays provider-agnostic and a future Deepgram/AssemblyAI
 // impl can drop in without touching the handler.
 //
-// Sample rate / format invariants must match the desktop client:
-// 16kHz mono PCM16, little-endian. См. desktop/src/main/capture/audio-mac.ts.
+// Sample rate / format invariants must match the Cue client:
+// 16kHz mono PCM16, little-endian. См. cue/src/main/capture/audio-mac.ts.
 package infra
 
 import (

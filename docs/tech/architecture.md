@@ -13,7 +13,7 @@
                   ┌────────────────────┼────────────────────┐
                   ▼                    ▼                    ▼
        ┌──────────────────┐  ┌──────────────────┐  ┌────────────────────┐
-       │ backend/shared/  │  │ frontend/src/api/│  │ hone, desktop      │
+       │ backend/shared/  │  │ frontend/src/api/│  │ hone, cue          │
        │ generated/pb     │  │ generated/       │  │ алиасят через      │
        │ (Go server-side) │  │ (Connect-ES)     │  │ @generated/*       │
        └──────────────────┘  └──────────────────┘  └────────────────────┘
@@ -133,9 +133,7 @@ Backend-сервис `backend/services/sync/` обслуживает CRDT-син
 |---|---|---|
 | Web | `frontend/` | React + Vite + TS, Connect-ES, MSW для моков |
 | Hone | `hone/` | Electron + Vite + React. **Не делает stealth.** Минималистичный focus cockpit |
-| Cue | `desktop/` | Electron + tray. **Делает stealth** — `setContentProtection`, native Swift audio binary, global hotkey |
-
-Имя директории `desktop/` ≠ продукт `Cue` — это отложенный rename ради чистоты CI и git-blame. См §6 ниже.
+| Cue | `cue/` | Electron + tray. **Делает stealth** — `setContentProtection`, native Swift audio binary, global hotkey |
 
 ## Контрактная дисциплина
 
@@ -160,15 +158,18 @@ Backend-сервис `backend/services/sync/` обслуживает CRDT-син
 - `services/clubs/` — TG-mirror удалён в Wave R; circles остался для group reading clubs.
 - `services/mentor_session/` — strategic-wire scaffold (build-tagged, never bootstrapped).
 
-**Добавлены / расширены** (Wave R0-Wave6, Phase 0-12):
-- `services/intelligence/` — AI-coach: daily brief + atomic insights + severity grader + weekly memory consolidation + goal-aware briefs.
-- `services/tracks/` — curated learning programmes (Go senior · ML engineering). Web `/atlas` теперь Tracks ribbon.
-- `services/tutor/` — полный tutor toolkit: invite/accept + per-student snapshot + AI pre-session brief + assignments + 1-on-1 events с session_note и reminders + multi-tutor (`ListMyTutors`) + analytics aggregate.
-- `services/ai_tutor/` — 4-layer memory chat (snapshot/facts/summary/episodes). 7 personas (algo/sql/sysdesign/english/go/ml/de coach).
-- `services/ai_mock/` — Sysanalyst + Product analyst + QA + DevOps/SRE + DE pool. Section dispatcher в `service.go` покрывает 7 free-form секций.
-- `services/curation/` — Phase 3.5 ranking-proxy: `external_resources` jsonb + `user_resource_overrides` + auto-promote algorithm.
-- `services/learning_state/` — Phase 0/2: explore/commit/deep mode + ForkProgressReader + RadarReader.
-- `services/rooms/` — Phase 9a: standalone collab rooms (code/whiteboard) low-key (3 active · 24h TTL · 3 ppl free-tier).
+**Добавлены / расширены** (Wave R0-Wave6, Phase 0-12, 2026-05-12 marathon):
+- `services/intelligence/` — AI-coach: daily brief + atomic insights + severity grader + memory consolidation + goal-aware briefs + **F2 Goal CRUD** (CreateGoal/GetActiveGoal/UpdateGoal/DeactivateGoal) + **F10 InterviewSession ingestion** (Cue session.end → coach_episodes row) + **F2 LLM milestones** (GenerateMilestones/GetMilestones/MarkMilestoneDone 30d cache) + **R3 NodeCoverage** (per-atlas-node aggregation) + **F1 Memory entries** list/delete с soft-delete (coach_episodes.deleted_at).
+- `services/tracks/` — curated learning programmes (Go senior · ML engineering). Web `/atlas` теперь Tracks ribbon. **Arena enum value removed (D8 cleanup).**
+- `services/tutor/` — полный tutor toolkit + **role toggle (users.tutor_mode_enabled)** + **tutor_reading_paths** (4-я subsurface curated atlas-node sequences).
+- `services/ai_tutor/` — 4-layer memory chat. 7 personas. **AITutorChatPage now has CoachMemoryCard slice + markdown render.**
+- `services/ai_mock/` + `services/mock_interview/` — **R2 5 stages: HR / Algo (Judge0 detailed) / Coding (LLM rubric) / SysDesign (Excalidraw + 5-axis rubric) / Behavioral (voice MediaRecorder + STAR grading).** 5-axis radar debrief.
+- `services/curation/` — ranking-proxy + **F6 auto-promote daemon** (6h cron, refresh signals + promote ≥0.7 / deprecate ≤0.3).
+- `services/learning_state/` — explore/commit/deep mode + ForkProgressReader + RadarReader.
+- `services/rooms/` — standalone collab rooms (code/whiteboard) low-key (24h TTL · 3 ppl free-tier).
 - `services/sync/` — Yjs CRDT relay для multi-device Hone.
-- `services/hone/` — English learning surface (Reading + Writing + Listening + Leitner-SRS vocab) + AI grader ports + AICursor SSE.
-- `services/admin/` — observability + audit log + admin pages для rooms / LLM rollups.
+- `services/hone/` — English learning surface (Reading + Writing + Listening + Leitner-SRS) + AI grader ports + AICursor SSE.
+- `services/admin/` — observability + audit log + **R7 Phase 1 Company Manager** (Pipeline DnD + StageTemplates + ValidatePipeline) + **Admin Phase 2 Goal Presets CRUD**.
+- `services/subscription/` — **Stream C Pro tier** (CheckTier + SetTier) + **BYOK** (AES-256-GCM keys + 5 LLM provider validators: OpenRouter/Groq/Cerebras/Anthropic/OpenAI) + **Stripe checkout** (CreateCheckoutSession + webhook handler + CancelSubscription).
+- `services/google_calendar/` — **NEW Stream E**: OAuth flow + token AES encryption + 5-min pull cron + two-way sync (pull events, push new events, etag tracking, mirror в `events_synced` table).
+- `services/editor/` + `services/whiteboard_rooms/` — **Stream F: peer-collab WS stripped, solo persistence kept** (web pages `/editor/:id` + `/whiteboard/:id`).

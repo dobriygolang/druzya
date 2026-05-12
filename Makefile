@@ -44,7 +44,7 @@ logs: ## Tail api logs
 	docker compose logs -f api
 
 .PHONY: lint
-lint: lint-go lint-ts lint-proto lint-tidy ## Mirror CI lint: Go (golangci-lint) + frontend/hone/desktop (eslint+tsc) + proto (buf) + go.mod tidy drift
+lint: lint-go lint-ts lint-proto lint-tidy ## Mirror CI lint: Go (golangci-lint) + frontend/hone/cue (eslint+tsc) + proto (buf) + go.mod tidy drift
 
 # CI-equivalent — same command list, same flags, same exit semantics.
 # Adding `make lint` here so commits don't depend on remembering to also run
@@ -95,10 +95,10 @@ lint-go: ## Run golangci-lint across all Go modules (mirrors CI sequentially wit
 
 # JS workspaces with their own package.json + lint + typecheck scripts.
 # Add a new app here once and `make lint-ts` covers it.
-JS_APPS = frontend hone desktop
+JS_APPS = frontend hone cue
 
 .PHONY: lint-ts
-lint-ts: ## Run ESLint + tsc on every JS app (frontend, hone, desktop)
+lint-ts: ## Run ESLint + tsc on every JS app (frontend, hone, cue)
 	@# Per-app: пытаемся lint (если eslint установлен) + typecheck (всегда).
 	@# Не прерываем на первой ошибке — хотим увидеть все падения сразу.
 	@failed=""; \
@@ -249,6 +249,28 @@ gen-check: generate ## Fail if codegen output drifted from committed files (CI)
 	@git diff --exit-code -- backend/shared/generated backend/services/*/infra/db backend/services/*/domain/mocks frontend/src/api/generated \
 		|| (echo "codegen drift — run 'make generate' and commit" && exit 1)
 
+.PHONY: tokens
+tokens: ## Regenerate cross-app design tokens (motion + focus + density + typography) from design/tokens/source.mjs
+	@node design/tokens/emit.mjs
+
+.PHONY: check-fixed-widths
+check-fixed-widths: ## Lint advisory — flag NEW inline `width: NNNpx` without min/max (responsive-rule guard)
+	@tools/check-fixed-widths.sh
+
+.PHONY: tokens-check
+tokens-check: tokens ## Fail if `make tokens` produced changes (CI guard for design-token + shared lib drift)
+	@git diff --exit-code -- \
+		'frontend/src/styles/_tokens.generated.css' 'frontend/src/lib/design-tokens.ts' \
+		'frontend/src/lib/focus-trap.ts' 'frontend/src/hooks/useFocusTrap.ts' \
+		'frontend/src/components/a11y/VisuallyHidden.tsx' 'frontend/src/components/a11y/LiveRegion.tsx' \
+		'hone/src/renderer/src/styles/_tokens.generated.css' 'hone/src/renderer/src/lib/design-tokens.ts' \
+		'hone/src/renderer/src/lib/focus-trap.ts' 'hone/src/renderer/src/hooks/useFocusTrap.ts' \
+		'hone/src/renderer/src/components/a11y/VisuallyHidden.tsx' 'hone/src/renderer/src/components/a11y/LiveRegion.tsx' \
+		'cue/src/renderer/styles/_tokens.generated.css' 'cue/src/renderer/lib/design-tokens.ts' \
+		'cue/src/renderer/lib/focus-trap.ts' 'cue/src/renderer/hooks/useFocusTrap.ts' \
+		'cue/src/renderer/components/a11y/VisuallyHidden.tsx' 'cue/src/renderer/components/a11y/LiveRegion.tsx' \
+		|| (echo "design-tokens drift — run 'make tokens' and commit" && exit 1)
+
 .PHONY: migrate-up
 migrate-up: ## Apply all pending migrations
 	goose -dir $(MIGRATIONS_DIR) postgres "$(GOOSE_DSN)" up
@@ -287,28 +309,28 @@ eval-coach: ## Phase 5 — run offline eval over coach brief parser/sanitizer (n
 eval-ai: ## Phase 1.7f — run offline eval over learning-companion AI tasks (next_action / fork_analysis / curate_resource)
 	cd backend/services/intelligence && go run ./cmd/eval_ai -dir cmd/eval_ai
 
-.PHONY: desktop-install
-desktop-install: ## Install desktop app npm dependencies
-	cd desktop && npm install
+.PHONY: cue-install
+cue-install: ## Install Cue app npm dependencies
+	cd cue && npm install
 
-.PHONY: desktop-dev
-desktop-dev: ## Run desktop in dev mode (requires backend running separately)
-	cd desktop && npm run dev
+.PHONY: cue-dev
+cue-dev: ## Run Cue in dev mode (requires backend running separately)
+	cd cue && npm run dev
 
-.PHONY: desktop-build
-desktop-build: ## Build desktop .app and .dmg for macOS
-	cd desktop && npm run build:mac
+.PHONY: cue-build
+cue-build: ## Build Cue .app and .dmg for macOS
+	cd cue && npm run build:mac
 
-.PHONY: desktop-typecheck
-desktop-typecheck: ## Type-check desktop (renderer + main)
-	cd desktop && npm run typecheck
+.PHONY: cue-typecheck
+cue-typecheck: ## Type-check Cue (renderer + main)
+	cd cue && npm run typecheck
 
 .PHONY: cursor-helper-build
 cursor-helper-build: ## Build the Swift CursorHelper binary + stage into resources/
-	cd desktop/native/CursorHelper && swift build -c release
-	mkdir -p desktop/resources/native
-	cp desktop/native/CursorHelper/.build/release/CursorHelper desktop/resources/native/
+	cd cue/native/CursorHelper && swift build -c release
+	mkdir -p cue/resources/native
+	cp cue/native/CursorHelper/.build/release/CursorHelper cue/resources/native/
 
-.PHONY: desktop-build-masquerade
-desktop-build-masquerade: ## Build alt-branded .dmgs (Notes/Telegram/Xcode/Slack)
-	cd desktop && node scripts/build-masquerade.mjs
+.PHONY: cue-build-masquerade
+cue-build-masquerade: ## Build alt-branded .dmgs (Notes/Telegram/Xcode/Slack)
+	cd cue && node scripts/build-masquerade.mjs

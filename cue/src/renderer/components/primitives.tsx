@@ -1,0 +1,238 @@
+// Low-level UI atoms shared by every screen. Styles use CSS variables from
+// tokens.css — no component-local colour constants.
+
+import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Button — three variants: primary (gradient), secondary (outline), ghost.
+// ─────────────────────────────────────────────────────────────────────────
+
+type Variant = 'primary' | 'secondary' | 'ghost' | 'pill';
+
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: Variant;
+  size?: 'sm' | 'md';
+  leading?: ReactNode;
+  trailing?: ReactNode;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = 'secondary', size = 'md', leading, trailing, children, style, className, ...rest },
+  ref,
+) {
+  const base: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    height: size === 'sm' ? 26 : 32,
+    padding: size === 'sm' ? '0 10px' : '0 14px',
+    fontSize: size === 'sm' ? 12 : 13,
+    fontWeight: 500,
+    borderRadius: variant === 'pill' ? 'var(--r-pill)' : 'var(--r-btn)',
+    border: '1px solid transparent',
+    cursor: 'pointer',
+    transition:
+      'background var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), filter var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard)',
+    whiteSpace: 'nowrap',
+    userSelect: 'none',
+  };
+  // Hone-style primary: FLAT red, no gradient, no bloom-shadow. The
+  // previous red→red-hi gradient + rgba(255,59,48,0.28) glow read as
+  // "iOS-plastic" — too loud on pure black. A flat accent with a
+  // subtle inset highlight still says "primary CTA" without shouting.
+  // Secondary/ghost/pill unchanged — they were already muted.
+  const variants: Record<Variant, CSSProperties> = {
+    primary: {
+      background: 'var(--d9-accent)',
+      color: 'white',
+      boxShadow: '0 0.5px 0 rgba(255,255,255,0.14) inset, 0 1px 0 rgba(0,0,0,0.25)',
+    },
+    secondary: {
+      background: 'var(--d9-slate)',
+      color: 'var(--d9-ink)',
+      borderColor: 'var(--d9-hairline-b)',
+    },
+    ghost: {
+      background: 'transparent',
+      color: 'var(--d9-ink-dim)',
+    },
+    pill: {
+      background: 'var(--d9-slate)',
+      color: 'var(--d9-ink-dim)',
+      borderColor: 'var(--d9-hairline)',
+    },
+  };
+  // Hover classes live in globals.css — we compose the caller's
+  // className with ours so Tailwind-ish consumers don't lose their
+  // override access.
+  const hoverClass = 'd9-btn-' + variant;
+  const composed = className ? hoverClass + ' ' + className : hoverClass;
+  return (
+    <button ref={ref} className={composed} style={{ ...base, ...variants[variant], ...style }} {...rest}>
+      {leading}
+      {children}
+      {trailing}
+    </button>
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// IconButton — square, hover ring, for toolbar-style actions.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  size?: number;
+}
+
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
+  { size = 28, children, style, ...rest },
+  ref,
+) {
+  return (
+    <button
+      ref={ref}
+      style={{
+        width: size,
+        height: size,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'transparent',
+        color: 'var(--d9-ink-dim)',
+        border: '1px solid transparent',
+        borderRadius: 'var(--r-btn)',
+        cursor: 'pointer',
+        transition:
+          'background var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+        ...style,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+        e.currentTarget.style.color = 'var(--d9-ink)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = 'var(--d9-ink-dim)';
+      }}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Kbd — renders a keyboard shortcut pill. Accepts accelerator strings
+// like "CommandOrControl+Shift+S" and splits them into rendered chips.
+// ─────────────────────────────────────────────────────────────────────────
+
+const acceleratorGlyphs: Record<string, string> = {
+  CommandOrControl: '⌘',
+  Command: '⌘',
+  Cmd: '⌘',
+  Control: '⌃',
+  Ctrl: '⌃',
+  Shift: '⇧',
+  Alt: '⌥',
+  Option: '⌥',
+  Enter: '↵',
+  Escape: 'Esc',
+  Space: '␣',
+};
+
+export function Kbd({ children, size = 'md' }: { children: ReactNode; size?: 'sm' | 'md' }) {
+  const parts =
+    typeof children === 'string'
+      ? children.split('+').map((k) => acceleratorGlyphs[k] ?? k)
+      : [children];
+  return (
+    <span style={{ display: 'inline-flex', gap: 2 }}>
+      {parts.map((p, i) => (
+        <span
+          key={i}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: size === 'sm' ? 14 : 18,
+            height: size === 'sm' ? 16 : 20,
+            padding: '0 4px',
+            fontSize: size === 'sm' ? 10 : 11,
+            fontFamily: 'var(--d9-font-mono)',
+            color: 'var(--d9-ink-mute)',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid var(--d9-hairline)',
+            borderRadius: 4,
+          }}
+        >
+          {p}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// StatusDot — tiny indicator used in the compact window's status bar.
+// States map to colours; thinking pulses.
+// ─────────────────────────────────────────────────────────────────────────
+
+export type DotState = 'idle' | 'ready' | 'thinking' | 'recording' | 'error';
+
+export function StatusDot({ state, size = 6 }: { state: DotState; size?: number }) {
+  const colour: Record<DotState, string> = {
+    idle: 'var(--d9-ink-ghost)',
+    ready: 'var(--d9-ok)',
+    thinking: 'var(--d9-accent)',
+    recording: 'var(--d9-err)',
+    error: 'var(--d9-err)',
+  };
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: size,
+        height: size,
+        borderRadius: size,
+        background: colour[state],
+        animation: state === 'thinking' || state === 'recording' ? 'druz9-pulse 1.2s ease-in-out infinite' : undefined,
+        boxShadow:
+          state === 'ready'
+            ? `0 0 ${size}px rgba(52,199,89,0.6)`
+            : state === 'thinking'
+              ? `0 0 ${size}px rgba(124,92,255,0.6)`
+              : undefined,
+      }}
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Surface — the frosted rounded card used as every window's outer shell.
+// ─────────────────────────────────────────────────────────────────────────
+
+export function Surface({
+  children,
+  style,
+  className,
+}: {
+  children: ReactNode;
+  style?: CSSProperties;
+  className?: string;
+}) {
+  return (
+    <div
+      className={className}
+      style={{
+        background: 'var(--d9-obsidian)',
+        border: '1px solid var(--d9-hairline)',
+        borderRadius: 'var(--r-window)',
+        boxShadow: 'var(--s-window)',
+        overflow: 'hidden',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}

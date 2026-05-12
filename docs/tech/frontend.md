@@ -14,13 +14,22 @@ frontend/
 │   ├── api/
 │   │   ├── apiClient.ts      Connect transport + auth interceptor
 │   │   └── generated/        Generated через `make gen-ts` — НЕ редактировать
-│   ├── pages/                ~60 страниц (Arena, Mock, Atlas, Insights, Codex, ...)
-│   ├── components/           Reusable
+│   ├── pages/                ~70 страниц (Today, Mock pipeline, Atlas, Insights, Codex, Memory, Podcasts, Whiteboard, Editor, ...)
+│   ├── components/           Reusable + new: ErrorBoundary, DataLoader, ConflictModal (Hone), ProGate, TierBadge, GoogleCalendarSection
 │   ├── hooks/                useQuery wrappers, кастомные хуки
-│   ├── lib/                  Utility, datetime, constants
+│   ├── lib/                  Utility, datetime, constants + new: goal, activity, readiness, miniMock, cueSessions, diagnostic, dailyPlan, insights, milestones, atlasCoverage, onboardingFlag, dataExport, codexHelpers, useReadiness
 │   └── mocks/                MSW handlers — мокают backend в development
 └── public/
 ```
+
+**2026-05-12 marathon — новые surfaces:**
+- `/today` (enriched: Streak/Milestones/Trajectory/WeeklySnapshot/ActivityFeed/CueSessions/DailyPlan/Readiness/Insights/Hero)
+- `/podcasts`, `/profile/memory`, `/profile/settings`, `/whiteboard/:id`, `/editor/:id`, `/mock/diagnostic`
+- `/auth/google-calendar-callback`
+- Mock pipeline stages: AlgoStage / CodingStage / SysDesignStage / BehavioralStage (voice MediaRecorder)
+- Admin: ObservabilityDashboard (D9), CompanyManagerPage (R7), GoalPresetsPanel (Phase 2)
+
+**CI1 pattern:** Все backend-driven сurfaces wrapped в `<ErrorBoundary section="X"><DataLoader state={query} skeleton={...} empty={...} emptyContent={...}>{(data) => <Real />}</DataLoader></ErrorBoundary>`. 9 surfaces migrated 2026-05-12 (AITutorChatPage / ProfilePage / InsightsPage / CodexPage / AtlasPage / AtlasExplorePage / MockSessionPage / WeeklyReportPage / NotificationsPage). Mock pipeline stages кастомно handle inline state.
 
 **Транспорт:** `@connectrpc/connect-web` через `fetch`. Без envoy / API gateway. Все клиенты типизированы через `frontend/src/api/generated/pb/druz9/v1/*_connect.ts`.
 
@@ -63,21 +72,28 @@ hone/
 │           │   ├── config.ts   VITE_DRUZ9_API_BASE + dev-token
 │           │   ├── transport.ts singleton + auth interceptor
 │           │   └── *.ts      Per-service typed wrappers
-│           ├── components/   CanvasBg, Chrome, Dock, Palette, Copilot, ...
-│           ├── pages/        Home, Today, Focus, Notes, Whiteboard, Stats,
-│           │                 Podcasts, Editor, BoardsHub, SharedBoards,
-│           │                 Events, Coach (read-only past briefs feed),
+│           ├── components/   CanvasBg, Chrome, Dock, Palette, Copilot,
+│           │                 ConflictModal (CI4), OfflineBanner (5-state),
+│           │                 GoalEditModal (F2 mirror)
+│           ├── pages/        Home (subtle persistent timer R10), Today,
+│           │                 Focus, Notes (Vault 🔒 icon, AI backlinks R5),
+│           │                 TaskBoard (archive drawer R4 + drag-ghost +
+│           │                 inline-edit titles), Stats, Coach (read-only
+│           │                 past briefs feed + Goal chip),
 │           │                 Reading (R), Writing (W), Listening (L),
 │           │                 CodeReview (G), TutorAssignments (A),
-│           │                 Calendar (M)
-│           ├── stores/       zustand (session, focus, ...)
+│           │                 Calendar (M).
+│           │                 DELETED 2026-05-12: SharedBoards.tsx,
+│           │                 Editor.tsx (→ web /whiteboard /editor solo),
+│           │                 Podcasts.tsx (→ web /podcasts)
+│           ├── stores/       zustand (session, focus, goal F2 mirror, ...)
 │           └── styles/globals.css
 └── resources/                Icons, splash images
 ```
 
 **Принципы:**
 
-- **Не делает stealth.** Никаких `setContentProtection`, никаких global hotkeys. Только in-focus letter-shortcuts: `T` Today, `N` Notes, `B` Boards, `C` Code editor, `E` Events, `S` Stats, `P` Podcasts, `R` Reading, `W` Writing, `L` Listening, `A` Assignments (от тутора), `M` Calendar (тутор-сессии), `G` Code review, `,` Settings. ⌘K — palette, ⌘S — sidebar toggle. На канвасных страницах (boards/editor) plain-letter shortcuts отключены, только палитра.
+- **Не делает stealth.** Никаких `setContentProtection`, никаких global hotkeys. In-focus letter-shortcuts: `T` Today, `N` Notes, `S` Stats, `R` Reading, `W` Writing, `L` Listening, `A` Assignments, `M` Calendar, `G` Code review, `,` Settings. ⌘K — palette (+ Recent section since 2026-05-12). **`B`/`E`/`P` releases:** Whiteboard/Editor/Podcasts мигрировали в web; `B`/`E` теперь open browser tab к web pages; `P` released (no Hone podcasts surface).
 - **Без `keytar`.** Токены через Electron `safeStorage` (без native build).
 - **Auth через Telegram code flow** в main-process (без drush9:// browser dance).
 - **strict TypeScript.** `@ts-nocheck` запрещён.
@@ -95,12 +111,12 @@ npm run build        # build для notarize
 
 **Релиз:** GitHub Action `.github/workflows/hone-release.yml` собирает DMG + electron-updater feed. См [deployment.md](./deployment.md#hone-cue-релизы).
 
-## Cue — `desktop/`
+## Cue — `cue/`
 
 Electron + tray-only + native Swift binary для macOS системного аудио.
 
 ```
-desktop/
+cue/
 ├── package.json              "productName": "Cue"
 ├── native/
 │   └── audio-mac/
@@ -113,9 +129,12 @@ desktop/
 │   │   │   └── screenshot.ts       desktopCapturer area / full
 │   │   ├── coach/trigger-policy.ts rolling 60s transcript + question detect
 │   │   ├── api/                    REST clients
+│   │   │   └── intelligence.ts     F10 (2026-05-12) — session.end ingest
+│   │   │                           → POST /intelligence/interview-sessions/ingest
 │   │   ├── ipc/                    zod-validated IPC schemas
 │   │   ├── windows/window-manager.ts  setContentProtection, always-on-top
-│   │   └── masquerade.ts           Runtime swap dock icon / titles
+│   │   └── masquerade.ts           Runtime swap dock + tray icon
+│   │                               (CI3 2026-05-12: tray.registerTray() syncs)
 │   ├── preload/
 │   └── renderer/
 │       ├── screens/
@@ -133,14 +152,16 @@ desktop/
 
 - **Tray-only.** Нет dock-иконки. UX: «вызвал → ответил → исчез».
 - **Stealth при screen-share.** `setContentProtection(true)` → `NSWindowSharingNone` на macOS, `WDA_EXCLUDEFROMCAPTURE` на Win (Electron 30+).
+- **Runtime masquerade.** `applyPreset()` swap'ит dock + tray icon + window titles (Notes/Telegram/Xcode/Slack presets). Process masquerade builds (signed Notes.app / Telegram.app separate bundles) deferred — electron-builder pipeline.
 - **Mock-block protocol.** `copilot.CheckBlock` RPC + serverside enforcement в `Answer` (см [architecture.md](./architecture.md)).
 - **Native audio macOS.** ScreenCaptureKit → PCM16 → VAD → batch chunks → Whisper Turbo.
 - **IPC zod-валидирован.** `main/ipc/schemas.ts` — 15+ каналов с runtime-валидацией renderer-input.
+- **F10 cross-product moat (2026-05-12).** Session.end → poll analysis → ready → `saveNotes()` (Hone import) + `intelligence.ingestInterviewSession()` (Coach memory). Coach видит «вчера на Google interview struggled with sharding question».
 
 **Запуск:**
 
 ```bash
-cd desktop
+cd cue
 npm install
 # Соберём Swift binary (один раз, нужен Xcode CLI):
 ./native/audio-mac/build.sh
