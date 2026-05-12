@@ -21,7 +21,12 @@ const windows = new Map<WindowName, BrowserWindow>();
 // stealth-protection list (stealthDefault below). Если добавишь сюда новое
 // имя — `setStealth()` начнёт его flippать; если убудет — окно станет
 // permanently либо visible, либо invisible вне зависимости от toggle.
-const STEALTHED_WINDOWS: ReadonlySet<WindowName> = new Set([
+//
+// Exported so vitest regression tests (windows/__tests__/window-manager.test.ts)
+// can pin the contract: «эти + только эти окна stealth'ятся». Adding /
+// removing a name without updating the test = explicit signal that the
+// stealth boundary moved (intentionally or by accident).
+export const STEALTHED_WINDOWS: ReadonlySet<WindowName> = new Set([
   'compact',
   'expanded',
   'history',
@@ -31,6 +36,16 @@ const STEALTHED_WINDOWS: ReadonlySet<WindowName> = new Set([
   // compact/expanded so screen-share viewers don't see «AI is editing
   // my message».
   'english-polish',
+]);
+
+// Windows that explicitly run BEFORE the user is sharing screen, where
+// visibility is the desired UX. Exported alongside STEALTHED_WINDOWS so
+// the test pinning both invariants stays a single source of truth.
+export const NON_STEALTHED_WINDOWS: ReadonlySet<WindowName> = new Set([
+  'settings',
+  'onboarding',
+  'toast',
+  'tray-popup',
 ]);
 
 // Persisted stealth state. `true` (default) = окна спрятаны от capture'а.
@@ -230,6 +245,9 @@ function createManagedWindow(
     toast: '#/toast',
     'tray-popup': '#/tray-popup',
     'english-polish': '#/english-polish',
+    // Phase J / C6 — interview-prep wizard. Separate window (not the
+    // first-run onboarding) for the "Upload CV → JD → Start" flow.
+    'interview-prep': '#/interview-prep',
   };
   const url = options.initialURL ?? `${opts.rendererURL}${hashFor[name]}`;
   void win.loadURL(url);
@@ -673,10 +691,22 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         resizable: true,
       });
     case 'onboarding':
+      // Deliberately NOT stealthed (no setContentProtection, no
+      // alwaysOnTop). The onboarding wizard is the user's first hands-on
+      // tour through Cue and runs *before* they start sharing their
+      // screen anywhere — invisibility here would actively hurt the
+      // pitch (the C2 InvisibleDemoScreen mocks up what stealth feels
+      // like; the real moment is when compact opens in stealth mode
+      // after onboarding completes).
+      //
+      // 720×560 fits the 4-step flow comfortably at 13px body type:
+      // wider than Settings' 720 so cards can sit side-by-side in the
+      // C1 PermissionsScreen without flex-wrap kicking in on a 1280×800
+      // display.
       return new BrowserWindow({
         ...base,
-        width: 760,
-        height: 580,
+        width: 720,
+        height: 560,
         title: 'Cue',
         resizable: false,
         center: true,
@@ -792,6 +822,25 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         focusable: true,
         roundedCorners: true,
         show: false,
+      });
+    }
+    case 'interview-prep': {
+      // Phase J / C6 — interview-prep wizard. Standalone window (not
+      // first-run onboarding), opens from compact / expanded / settings.
+      // Deliberately NOT stealthed: this runs BEFORE the user starts
+      // sharing their screen; stealth wouldn't add value and would
+      // hide the wizard from any screen-share if they accidentally
+      // started one. Standard window chrome (title bar) so the user
+      // can drag and close like any normal dialog.
+      return new BrowserWindow({
+        ...base,
+        width: 760,
+        height: 620,
+        title: 'Cue — Interview Prep',
+        resizable: true,
+        center: true,
+        minWidth: 560,
+        minHeight: 520,
       });
     }
     default:

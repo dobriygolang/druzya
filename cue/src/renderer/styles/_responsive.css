@@ -1,0 +1,48 @@
+/**
+ * Responsive utility classes — byte-identical to frontend/src/styles/_responsive.css.
+ *
+ * Cue windows: compact HUD stays fixed (stealth invariant), but expanded /
+ * history / english-polish flex from 600×400 up to 4K+. Use these classes
+ * (auto-fit-grid + cq) for any content that should adapt to window size.
+ */
+
+.flex-wrap-row {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.auto-fit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--auto-fit-min, 240px), 1fr));
+  gap: var(--gap-row, 12px);
+}
+
+.cq {
+  container-type: inline-size;
+}
+
+@container (max-width: 768px) {
+  .cq-md-col {
+    flex-direction: column;
+  }
+  .cq-md-hide {
+    display: none;
+  }
+  .cq-md-full {
+    width: 100%;
+  }
+}
+
+@container (min-width: 1024px) {
+  .cq-lg-row {
+    flex-direction: row;
+  }
+  .cq-lg-show {
+    display: revert;
+  }
+}

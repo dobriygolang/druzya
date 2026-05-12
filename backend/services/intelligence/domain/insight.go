@@ -15,7 +15,7 @@ type InsightSurface string
 
 const (
 	InsightSurfaceToday InsightSurface = "today"
-	InsightSurfaceArena InsightSurface = "arena"
+	// Arena removed 2026-05-12 (D8) — no surface для arena в текущем продукте.
 	InsightSurfaceMock  InsightSurface = "mock"
 	InsightSurfaceCodex InsightSurface = "codex"
 )
@@ -23,7 +23,7 @@ const (
 // IsValid returns true for known surfaces.
 func (s InsightSurface) IsValid() bool {
 	switch s {
-	case InsightSurfaceToday, InsightSurfaceArena, InsightSurfaceMock, InsightSurfaceCodex:
+	case InsightSurfaceToday, InsightSurfaceMock, InsightSurfaceCodex:
 		return true
 	}
 	return false

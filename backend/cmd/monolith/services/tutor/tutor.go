@@ -106,6 +106,12 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 			Now: d.Now,
 		},
 		ListSharedReadingUC: &tutorApp.ListSharedReading{Materials: repo},
+		// Stream D (2026-05-12) — reading paths CRUD. *Postgres satisfies
+		// domain.ReadingPathRepo (5th interface on the same struct).
+		ListReadingPathsUC:   &tutorApp.ListReadingPaths{Repo: repo},
+		CreateReadingPathUC:  &tutorApp.CreateReadingPath{Repo: repo, Now: d.Now},
+		UpdateReadingPathUC:  &tutorApp.UpdateReadingPath{Repo: repo, Now: d.Now},
+		ArchiveReadingPathUC: &tutorApp.ArchiveReadingPath{Repo: repo, Now: d.Now},
 		// Wave 5.2b — calendar events. *Postgres satisfies EventRepo
 		// (one struct now satisfies four interfaces: Repo + SnapshotRepo
 		// + AssignmentRepo + EventRepo).
@@ -165,6 +171,11 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 			r.Get("/tutor/events/upcoming", transcoder.ServeHTTP)
 			r.Post("/tutor/events/{event_id}/cancel", transcoder.ServeHTTP)
 			r.Post("/tutor/events/{event_id}/complete", transcoder.ServeHTTP) // Wave 5.2d
+			// Stream D (2026-05-12) — reading paths REST aliases.
+			r.Get("/tutor/paths", transcoder.ServeHTTP)
+			r.Post("/tutor/paths", transcoder.ServeHTTP)
+			r.Put("/tutor/paths/{path_id}", transcoder.ServeHTTP)
+			r.Post("/tutor/paths/{path_id}/archive", transcoder.ServeHTTP)
 		},
 	}
 

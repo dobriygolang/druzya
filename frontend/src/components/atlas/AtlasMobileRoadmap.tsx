@@ -134,14 +134,14 @@ function NodeGlyph({ kind, locked, color }: { kind: AtlasNodeKind; locked: boole
   }
   if (kind === 'keystone') {
     return (
-      <svg width={20} height={20} viewBox="0 0 20 20" className="shrink-0">
+      <svg width={20} height={20} viewBox="0 0 20 20" className="shrink-0" aria-hidden="true">
         <path d="M10 2 L18 10 L10 18 L2 10 Z" fill={color} stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
       </svg>
     )
   }
   if (kind === 'notable') {
     return (
-      <svg width={20} height={20} viewBox="0 0 20 20" className="shrink-0">
+      <svg width={20} height={20} viewBox="0 0 20 20" className="shrink-0" aria-hidden="true">
         <circle cx={10} cy={10} r={8} fill={color} stroke={color} strokeWidth={1.5} />
         <circle cx={10} cy={10} r={5} fill="rgba(0,0,0,0.25)" />
       </svg>

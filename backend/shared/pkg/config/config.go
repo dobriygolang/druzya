@@ -97,6 +97,26 @@ type Config struct {
 		SMTPUser              string
 		SMTPPass              string
 	}
+
+	// Telemetry — Phase J / X3 (P1) shared analytics layer. Все 3 поля
+	// optional — без них fanout-to-PostHog отключается, телеметрия едет
+	// только в локальный telemetry_events table (90-day retention).
+	//
+	// Privacy model: user_id отдаётся в PostHog как HMAC(user_id, Salt)
+	// чтобы PostHog distinct_id'ы нельзя было сопоставить с DB user.id
+	// без знания соли. Соль обязательна когда APIKey задан.
+	Telemetry struct {
+		// PostHogAPIKey — project API key (phc_…). Если пусто → fanout
+		// disabled, события только в локальной БД.
+		PostHogAPIKey string
+		// PostHogEndpoint — обычно https://eu.i.posthog.com (EU hosting
+		// для приватности RU-users) или https://us.i.posthog.com.
+		PostHogEndpoint string
+		// AnonymizationSalt — обязательна когда APIKey задан. HMAC ключ
+		// для распределения user_id'ов. Без неё мы бы отдавали raw uuid
+		// сторонему vendor'у → нарушение privacy guarantee из proto-доки.
+		AnonymizationSalt string
+	}
 }
 
 // Load читает конфигурацию из переменных окружения. Падает сразу, если обязательные поля отсутствуют.
@@ -163,6 +183,10 @@ func Load() (Config, error) {
 	c.Notify.SMTPPort = envInt("SMTP_PORT", 587)
 	c.Notify.SMTPUser = env("SMTP_USER", "")
 	c.Notify.SMTPPass = env("SMTP_PASS", "")
+
+	c.Telemetry.PostHogAPIKey = env("POSTHOG_API_KEY", "")
+	c.Telemetry.PostHogEndpoint = env("POSTHOG_ENDPOINT", "https://eu.i.posthog.com")
+	c.Telemetry.AnonymizationSalt = env("TELEMETRY_ANON_SALT", "")
 
 	return c, nil
 }

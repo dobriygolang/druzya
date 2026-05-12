@@ -8,9 +8,13 @@ import './styles/main.css'
 import { initI18n } from './lib/i18n'
 import { initObservability, ErrorBoundary } from './lib/observability'
 import { bootstrapSilentRefresh } from './lib/apiClient'
+import { startCWV } from './lib/perfMetrics'
 
 async function bootstrap() {
   initObservability()
+  // Core Web Vitals — LCP / INP / CLS / TTFB. Dev: console.debug под [CWV].
+  // Prod: sendBeacon → /api/v1/telemetry/cwv (silent если endpoint отсутствует).
+  startCWV()
   await initI18n()
   // Restart the silent-refresh timer from the persisted access TTL — without
   // this, a page reload would only see access expiry on the next failing
@@ -30,7 +34,7 @@ async function bootstrap() {
 
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <ErrorBoundary fallback={<div style={{padding:40,color:'#fff',background:'#0A0A0F',minHeight:'100vh'}}>Что-то сломалось. Перезагрузи страницу.</div>}>
+      <ErrorBoundary fallback={<div style={{padding:40,color:'#FFFFFF',background:'#000000',minHeight:'100vh'}}>Что-то сломалось. Перезагрузи страницу.</div>}>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <App />

@@ -157,7 +157,7 @@ export function AtlasCanvas({
   const hub = byKey.get(centerNodeKey)
 
   return (
-    <svg viewBox={`0 0 ${ATLAS_VIEWBOX} ${ATLAS_VIEWBOX}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+    <svg viewBox={`0 0 ${ATLAS_VIEWBOX} ${ATLAS_VIEWBOX}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Skill atlas — interactive map of preparation topics">
       <AtlasDefs />
 
       {/* 1. Cluster auras at the bottom of the z-stack */}

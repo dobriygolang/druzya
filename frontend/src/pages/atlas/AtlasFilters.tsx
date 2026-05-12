@@ -28,13 +28,25 @@ export function AtlasFilters({
     <div className="flex flex-col gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-8 lg:px-20">
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+          <Search className="pointer-events-none absolute left-1 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по названию навыка…"
-            className="h-9 w-full rounded-md border border-border bg-bg pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+            className="h-9 w-full bg-transparent pl-7 pr-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+            style={{
+              border: 'none',
+              borderBottom: '1px solid var(--hair-2)',
+              transition:
+                'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderBottom = '1.5px solid rgb(var(--ink))'
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderBottom = '1px solid var(--hair-2)'
+            }}
           />
         </div>
         {(query || category !== 'all' || status !== 'all') && (
@@ -105,6 +117,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={`${base} ${active ? activeCls : inactiveCls}`}
     >
       {label}

@@ -67,7 +67,7 @@ export function DegradedBanner() {
     >
       <AlertTriangle className="h-4 w-4 shrink-0 text-warn" />
       <div className="flex-1 min-w-0 text-[13px] text-text-primary">
-        <strong className="font-mono uppercase text-[11px] tracking-wider text-warn mr-2">
+        <strong className="font-mono uppercase text-[11px] tracking-[0.08em] text-warn mr-2">
           {t('globalError.degraded.label')}
         </strong>
         <span className="font-medium">{scope}</span>
@@ -75,7 +75,7 @@ export function DegradedBanner() {
       </div>
       <a
         href="/status"
-        className="inline-flex items-center gap-1 text-[12px] font-mono uppercase tracking-wider text-text-secondary hover:text-text-primary"
+        className="inline-flex items-center gap-1 text-[12px] font-mono uppercase tracking-[0.08em] text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
       >
         {t('globalError.statusLink')}
         <ExternalLink className="h-3 w-3" />
@@ -83,7 +83,7 @@ export function DegradedBanner() {
       <button
         type="button"
         onClick={() => setDismissed((d) => new Set(d).add(scope))}
-        className="grid h-6 w-6 place-items-center rounded-md text-text-muted hover:bg-warn/20 hover:text-text-primary"
+        className="grid h-9 w-9 place-items-center rounded-md text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-warn/20 hover:text-text-primary"
         aria-label={t('globalError.dismiss')}
       >
         <X className="h-3.5 w-3.5" />

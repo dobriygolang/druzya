@@ -1,0 +1,274 @@
+name: Cue Masquerade Release
+
+# Триггер:
+#  - push tag'а вида `cue-masquerade-v*` — 4 disguise bundles (Notes/
+#    Telegram/Slack/Xcode), параллельно собираются, подписываются Apple
+#    Developer ID, нотарайзятся через `@electron/notarize`, аплоадятся
+#    как GitHub Release asset'ы. Релиз создаётся в draft — пользователь
+#    review'ит payload и публикует.
+#  - workflow_dispatch — manual trigger для smoke-testing без tag'а.
+#
+# Параллельная сборка матрицы (fail-fast: false) — одна сломанная preset
+# не убивает остальные три. arm64 macos-14 runner потому что:
+#   - native helpers (audio-mac, CursorHelper) compile под arm64
+#   - cross-compile на x64 → arm64 требует Rosetta + headers, который CI
+#     image не гарантирует
+#
+# Apple signing секреты (GitHub Secrets, опциональные — без них build
+# unsigned, годится только для smoke-теста):
+#   APPLE_ID            — Apple ID email
+#   APPLE_APP_PASSWORD  — app-specific password
+#   APPLE_TEAM_ID       — Team ID
+#   CSC_LINK            — base64-encoded .p12 developer cert
+#   CSC_KEY_PASSWORD    — p12 password
+# Без них Gatekeeper заблокирует .dmg при первом запуске на чистой машине.
+
+on:
+  push:
+    tags:
+      - 'cue-masquerade-v*'      # e.g. cue-masquerade-v0.1.0
+  workflow_dispatch:              # ручной trigger для testing
+    inputs:
+      preset:
+        description: 'Single preset to build (notes/telegram/slack/xcode/all)'
+        required: false
+        default: 'all'
+
+concurrency:
+  group: cue-masquerade-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.preset }}
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [notes, telegram, slack, xcode]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip preset (workflow_dispatch single preset)
+        id: filter
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          requested='${{ github.event.inputs.preset }}'
+          current='${{ matrix.preset }}'
+          if [ "$requested" != "all" ] && [ "$requested" != "$current" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping $current (requested: $requested)"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.skip != 'true'
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: cue/package-lock.json
+
+      - name: Cache cue node_modules
+        if: steps.filter.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: cue/node_modules
+          key: nm-cue-${{ runner.os }}-node20-${{ hashFiles('cue/package-lock.json') }}
+          restore-keys: |
+            nm-cue-${{ runner.os }}-node20-
+
+      # Same artifactory rewrite as ci.yml — lockfile baked on corp laptop
+      # via artifactory.s.o3.ru proxy; GitHub runners can't reach it.
+      # Integrity SHAs остаются валидны (content-addressed).
+      - name: Rewrite npm registry URLs to public registry
+        if: steps.filter.outputs.skip != 'true'
+        working-directory: cue
+        run: |
+          sed -i '' 's|https://artifactory\.s\.o3\.ru/artifactory/api/npm/npm-all-virtual|https://registry.npmjs.org|g' package-lock.json
+          echo "registry=https://registry.npmjs.org/" > .npmrc
+
+      - name: Install
+        if: steps.filter.outputs.skip != 'true'
+        working-directory: cue
+        run: npm ci --no-audit --no-fund --prefer-offline
+
+      # Native Swift helpers — ScreenCaptureKit audio + CursorHelper.
+      # Compile под arm64 на macos-14 runner. Без них приложение запустится
+      # но audio capture отвалится (fallback на mic) — критично для Cue
+      # т.к. core flow это live-транскрипт встреч.
+      - name: Build native Swift binaries
+        if: steps.filter.outputs.skip != 'true'
+        working-directory: cue
+        run: |
+          ./native/audio-mac/build.sh
+          ./native/CursorHelper/build.sh
+
+      - name: Build masquerade preset
+        if: steps.filter.outputs.skip != 'true'
+        working-directory: cue
+        env:
+          # electron-builder triggers @electron/notarize automatically when
+          # все три Apple-секрета + CSC_LINK заданы. Без CSC_LINK билд
+          # unsigned (для CI smoke-testing).
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$CSC_LINK" ]; then
+            echo "::warning::Building unsigned ${{ matrix.preset }} (CSC_LINK not set)"
+            npx electron-vite build
+            npx electron-builder --mac \
+              --config electron-builder.${{ matrix.preset }}.yml \
+              --config.mac.identity=null \
+              --config.mac.hardenedRuntime=false \
+              --config.mac.gatekeeperAssess=false \
+              --publish never
+          else
+            # CSC_LINK is base64-encoded p12. electron-builder reads it via
+            # env var directly — no manual security/keychain import needed.
+            npm run build:masquerade:${{ matrix.preset }}
+          fi
+
+      # Collect все .dmg + blockmap + latest-mac*.yml в один dir.
+      # electron-builder.<preset>.yml output → dist/mac-<preset>/, поэтому
+      # шаг лазит по предсказуемому пути.
+      - name: Collect artifacts
+        if: steps.filter.outputs.skip != 'true'
+        working-directory: cue
+        run: |
+          mkdir -p dist-collected
+          # output path из electron-builder.<preset>.yml: dist/mac-<preset>
+          src="dist/mac-${{ matrix.preset }}"
+          if [ -d "$src" ]; then
+            find "$src" -maxdepth 2 -type f \
+              \( -name '*.dmg' -o -name '*.dmg.blockmap' -o -name 'latest-mac*.yml' \) \
+              -exec cp -v {} dist-collected/ \;
+          fi
+          ls -la dist-collected/ || true
+
+      - name: Upload artifact
+        if: steps.filter.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cue-masquerade-${{ matrix.preset }}-${{ runner.arch }}
+          path: |
+            cue/dist-collected/*.dmg
+            cue/dist-collected/*.dmg.blockmap
+            cue/dist-collected/latest-mac*.yml
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Generate release notes (per preset)
+        if: steps.filter.outputs.skip != 'true' && startsWith(github.ref, 'refs/tags/')
+        working-directory: cue
+        run: |
+          PRESET=${{ matrix.preset }}
+          PRESET_TITLE=$(echo "$PRESET" | awk '{print toupper(substr($0,1,1))substr($0,2)}')
+          cat > release-notes-$PRESET.md <<EOF
+          ## $PRESET_TITLE disguise
+
+          This is the **$PRESET** masquerade bundle of Cue. In Activity
+          Monitor, Cmd+Tab, and Finder it appears as $PRESET_TITLE — but
+          the binary is identical to the standard Cue build.
+
+          - **Bundle identifier:** \`app.druzya.copilot.alias.$PRESET\`
+          - **Tag:** \`${{ github.ref_name }}\`
+          - **Architecture:** ${{ runner.arch }}
+
+          ### Install
+          1. Open the .dmg
+          2. Drag $PRESET_TITLE.app to /Applications
+          3. Launch — same UX as the regular Cue, but masqueraded
+
+          ### Stealth properties
+          - \`CFBundleName\`: $PRESET_TITLE (Activity Monitor + Finder)
+          - \`CFBundleExecutable\`: $PRESET_TITLE (\`ps\`, \`top\`, crash logs)
+          - \`LSUIElement\`: true (hidden from Dock / Cmd+Tab / Mission Control)
+          - \`NSWindowSharingNone\`: preserved (invisible during screen-share)
+          - \`CFBundleURLTypes\`: emptied (only the real Cue claims druz9-cue://)
+
+          ### Auto-update
+          electron-updater on this bundle reads \`latest-mac.yml\` from the
+          \`masquerade-$PRESET\` channel of this release — Notes-disguise
+          only auto-updates Notes-disguise, never cross-contaminates.
+          EOF
+          cat release-notes-$PRESET.md
+
+      - name: Upload release notes
+        if: steps.filter.outputs.skip != 'true' && startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-${{ matrix.preset }}
+          path: cue/release-notes-${{ matrix.preset }}.md
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/cue-masquerade-v')
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten dmg artifacts
+        # 4 preset × 1 arch = 4 artifact dirs; flatten в один release dir
+        # для softprops/action-gh-release.
+        run: |
+          mkdir -p release
+          find artifacts -type f \
+            \( -name '*.dmg' -o -name '*.dmg.blockmap' -o -name 'latest-mac*.yml' \) \
+            -exec cp -v {} release/ \;
+          ls -la release/
+
+      - name: Combine release notes
+        run: |
+          {
+            echo "# Cue Masquerade Builds — ${{ github.ref_name }}"
+            echo ""
+            echo "Four signed + notarized disguise bundles for screen-share invisibility."
+            echo "Each .dmg is a separate macOS app — install whichever disguise(s)"
+            echo "you want alongside (or instead of) the standard Cue build."
+            echo ""
+            echo "| Preset | Activity Monitor name | Bundle ID |"
+            echo "|---|---|---|"
+            echo "| notes | Notes | app.druzya.copilot.alias.notes |"
+            echo "| telegram | Telegram | app.druzya.copilot.alias.telegram |"
+            echo "| slack | Slack | app.druzya.copilot.alias.slack |"
+            echo "| xcode | Xcode | app.druzya.copilot.alias.xcode |"
+            echo ""
+            for preset in notes telegram slack xcode; do
+              notes_file="artifacts/release-notes-$preset/release-notes-$preset.md"
+              if [ -f "$notes_file" ]; then
+                echo "---"
+                echo ""
+                cat "$notes_file"
+                echo ""
+              fi
+            done
+          } > release-notes.md
+          echo "──── release notes ────"
+          cat release-notes.md
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Cue Masquerade ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: release/*
+          draft: true        # User reviews payload before publishing
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          fail_on_unmatched_files: false

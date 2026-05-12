@@ -31,7 +31,7 @@ export function MarkdownView({ source }: MarkdownViewProps) {
         fontSize: 14,
         lineHeight: 1.75,
         color: 'var(--ink-90)',
-        letterSpacing: '-0.003em',
+        letterSpacing: 'var(--type-body-ls)',
       }}
     />
   );

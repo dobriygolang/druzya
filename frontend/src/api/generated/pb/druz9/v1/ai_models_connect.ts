@@ -1,7 +1,6 @@
 // ai_models.proto — Connect-RPC contract for the LLM model catalogue.
 //
-// Public list: anonymous-readable, narrows by use-surface (arena / insight
-// / mock / vacancies).
+// Public list: anonymous-readable, narrows by use-surface (insight / mock).
 //
 // Admin CRUD: model_id includes a provider prefix (`mistralai/mistral-7b`)
 // so the URL pattern uses `{model_id=**}` to capture slash-containing

@@ -96,7 +96,9 @@ export function UpcomingEventChip({ running, onOpenCalendar }: Props) {
   // when the user needs the join button most).
   if (!live && (ms < 0 || ms > SOON_WINDOW_MS)) return null;
 
-  const stripe = live ? 'rgb(74, 222, 128)' : 'rgb(251, 191, 36)';
+  // Active "LIVE NOW" event surfaces as red signal stripe; scheduled-soon
+  // sessions use ink-ramp (no chroma — calmer indicator).
+  const stripe = live ? 'var(--red)' : 'var(--ink-60)';
 
   return (
     <button
@@ -110,9 +112,9 @@ export function UpcomingEventChip({ running, onOpenCalendar }: Props) {
         maxWidth: 320,
         padding: '8px 12px',
         background: 'rgba(8,8,8,0.92)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        border: '1px solid var(--hair)',
         borderLeft: `3px solid ${stripe}`,
-        borderRadius: 10,
+        borderRadius: 'var(--radius-inner)',
         backdropFilter: 'blur(14px)',
         color: 'var(--ink)',
         textAlign: 'left',
@@ -124,7 +126,7 @@ export function UpcomingEventChip({ running, onOpenCalendar }: Props) {
         className="mono"
         style={{
           fontSize: 9,
-          letterSpacing: '0.22em',
+          letterSpacing: '0.08em',
           color: 'var(--ink-40)',
           marginBottom: 2,
         }}
@@ -154,7 +156,7 @@ export function UpcomingEventChip({ running, onOpenCalendar }: Props) {
             marginTop: 6,
             padding: '3px 8px',
             fontSize: 9,
-            letterSpacing: '0.18em',
+            letterSpacing: '0.08em',
             color: stripe,
             textDecoration: 'none',
             border: `1px solid ${stripe}`,

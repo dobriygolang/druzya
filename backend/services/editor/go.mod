@@ -5,9 +5,7 @@ go 1.25.0
 require (
 	connectrpc.com/connect v1.19.2
 	druz9/shared v0.0.0
-	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/pgvector/pgvector-go v0.3.0
 	go.uber.org/mock v0.6.0

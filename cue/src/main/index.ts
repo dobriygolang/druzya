@@ -12,6 +12,7 @@ import { maybeShowWhatsNew } from './whats-new';
 import { createCopilotClient } from './api/client';
 import { ensureScreenRecordingPrompted } from './capture/screenshot';
 import { loadRuntimeConfig } from './config/bootstrap';
+import { isOnboardingCompleted } from './onboarding/flag';
 import {
   applyBindings,
   disposeHotkeys,
@@ -134,6 +135,20 @@ app.whenReady().then(async () => {
     },
   });
 
+  // Phase J / X1 (P0) — install heartbeat. Idempotent: backend uses
+  // ON CONFLICT to refresh last_seen_at. First install across all 3
+  // surfaces issues a 7-day Pro trial; we silently log here, the
+  // renderer can show the celebratory toast when it asks for tier-info.
+  void import('./api/install-heartbeat').then(({ recordCueInstall }) => {
+    void recordCueInstall(cfg, app.getVersion()).then((r) => {
+      if (r.trialProGranted) {
+        console.log('[cue] first-install trial Pro granted until', r.trialProUntil);
+      }
+    }).catch(() => {
+      /* best-effort — retry next launch */
+    });
+  });
+
   // Spawn CursorHelper Swift binary (CGAssociateMouseAndMouseCursorPosition
    // wrapper). Used by area-screenshot flow to freeze the system cursor
    // so viewer'ы при demo-share не видят как мы драгаем прямоугольник
@@ -242,26 +257,57 @@ app.whenReady().then(async () => {
     { action: 'english_polish', accelerator: 'CommandOrControl+Shift+L' },
   ]);
 
-  // Trigger macOS Screen Recording prompt BEFORE the compact window
-  // appears. Compact is setContentProtection(true) + alwaysOnTop —
-  // it can and does sit on top of the system permission dialog,
-  // which is why users never see the prompt and the app never shows
-  // up in Privacy → Screen Recording.
+  // First-run gate. If the onboarding flag is absent, open the
+  // wizard window instead of compact + skip the auto-prompt. The
+  // wizard owns the permission flow now: the user explicitly opts
+  // into Screen Recording / Microphone / Accessibility *after* seeing
+  // the pre-prompt screens (C1) + the invisible-stealth demo (C2).
   //
-  // We AWAIT here (rather than void + fire-and-forget) so the dialog
-  // gets a bare desktop to render on. The bootstrap returns as soon
-  // as macOS finishes its bookkeeping (~100ms on 'granted', blocks
-  // until user clicks Allow/Deny on 'not-determined'). Worst case
-  // ~200ms delay before compact appears on a happy-path boot — we
-  // accept that trade-off for "first ⌘⇧A actually captures".
-  await ensureScreenRecordingPrompted();
+  // Why not trigger ensureScreenRecordingPrompted here anyway: the
+  // entire reason for C1 is that calling the OS prompt with no context
+  // → 30-50% denial rate → app dead. The pre-prompt cards explain why
+  // each permission matters BEFORE the OS dialog appears, so the user
+  // arrives at the system prompt already primed.
+  //
+  // On re-runs (user clicks "Re-run welcome flow" from Settings, then
+  // restarts) the flag is wiped and we land here again — same path.
+  const needsOnboarding = !isOnboardingCompleted();
 
-  showWindow('compact', windowOptions);
-  preloadWindow('picker', windowOptions);
+  if (needsOnboarding) {
+    // No auto-prompt; the wizard's PermissionsScreen will trigger TCC
+    // dialogs only when the user clicks "Grant Permissions".
+    showWindow('onboarding', windowOptions);
+    // Preload picker anyway — it's cheap and the user will use compact
+    // immediately after onboarding completes.
+    preloadWindow('picker', windowOptions);
+  } else {
+    // Trigger macOS Screen Recording prompt BEFORE the compact window
+    // appears. Compact is setContentProtection(true) + alwaysOnTop —
+    // it can and does sit on top of the system permission dialog,
+    // which is why users never see the prompt and the app never shows
+    // up in Privacy → Screen Recording. (Returning user path only: a
+    // first-time user goes through the wizard above instead.)
+    //
+    // We AWAIT here (rather than void + fire-and-forget) so the dialog
+    // gets a bare desktop to render on. The bootstrap returns as soon
+    // as macOS finishes its bookkeeping (~100ms on 'granted', blocks
+    // until user clicks Allow/Deny on 'not-determined'). Worst case
+    // ~200ms delay before compact appears on a happy-path boot — we
+    // accept that trade-off for "first ⌘⇧A actually captures".
+    await ensureScreenRecordingPrompted();
+
+    showWindow('compact', windowOptions);
+    preloadWindow('picker', windowOptions);
+  }
 
   // Best-effort boot tasks — errors are logged, never crash the app.
   void cleanupOldRecordings();
-  void maybeShowWhatsNew(windowOptions);
+  // Skip the "What's new" toast on a first-run boot where the
+  // onboarding wizard is still on screen — stacking a toast over the
+  // wizard's CTA confuses users and steals focus from the flow.
+  if (!needsOnboarding) {
+    void maybeShowWhatsNew(windowOptions);
+  }
 
   // Re-bind deep-links to the actual compact window now that it exists.
   // First call (above, with null) registered the protocol scheme and

@@ -92,6 +92,12 @@ type Deps struct {
 	// nil-safe; consumers guard.
 	IntelligenceMemory *intelApp.Memory
 
+	// IntelligenceUserContext — C3 cross-product context fetcher (Phase J).
+	// Copilot bootstrap wraps это в Redis-cached UserContextProvider
+	// adapter и заинжектит в Suggest + Analyze. nil-safe: when nil,
+	// copilot falls back to generic prompts (pre-C3 behaviour).
+	IntelligenceUserContext *intelApp.GetUserContext
+
 	// IntelligenceLinkSuggester — Phase 5 LLM-rerank UC. Hone bootstrap
 	// заворачивает его в honeApp.LinkSuggester adapter и подключает в
 	// hone.app.SuggestNoteLinks. nil-safe: hone-adapter руководит fallback.
@@ -151,6 +157,12 @@ type Deps struct {
 	// Set'ится в WireSubscriptionQuota; NewCopilot устанавливает
 	// SetTierUC.OnTierChanged hook.
 	SetTierUC *subApp.SetTier
+
+	// TrialProGranter — Phase J / X1 (P0). Set in WireSubscriptionQuota;
+	// consumed by NewProfile to wire the RecordAppInstall trial-gate.
+	// nil-safe — when not wired, RecordAppInstall just skips the trial
+	// side-effect (heartbeat itself still records).
+	TrialProGranter *subApp.GrantFirstInstallTrial
 
 	// InsightsPool — bounded worker pool для async insight generation
 	// (вызывается из intelligence.GetDailyBrief после synth'а). Заменяет

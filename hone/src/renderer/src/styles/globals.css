@@ -14,6 +14,9 @@
 @import '@fontsource/jetbrains-mono/300.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
+@import './_tokens.generated.css';
+@import './motion.css';
+@import './_responsive.css';
 
 :root {
   --ink: #ffffff;
@@ -61,6 +64,43 @@ body {
 }
 .hair-l {
   border-left: 1px solid var(--hair);
+}
+
+/* ─── Surface elevation per visual-language v2 spec ────────────────────
+   4-step elevation ramp shared across web / Hone / Cue. e0 = flat,
+   e1 = card on bg, e2 = floating panel, e3 = modal / popover. */
+.surface-e0 {
+  background: transparent;
+}
+.surface-e1 {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hair, rgba(255, 255, 255, 0.08));
+}
+.surface-e2 {
+  background: #0a0a0a;
+  border: 1px solid var(--hair-2, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.4);
+}
+.surface-e3 {
+  background: #0a0a0a;
+  border: 1px solid var(--hair-2, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.85);
+}
+
+/* Card lift — 1px translate + hairline brighten on hover. */
+.card-lift {
+  transition:
+    transform var(--motion-dur-small) var(--motion-ease-standard),
+    border-color var(--motion-dur-small) var(--motion-ease-standard);
+}
+.card-lift:hover {
+  transform: translateY(-1px);
+  border-color: var(--hair-2, rgba(255, 255, 255, 0.14));
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-lift:hover {
+    transform: none;
+  }
 }
 
 button {
@@ -187,7 +227,26 @@ textarea {
   }
 }
 .fadein {
-  animation: fadein 300ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: fadein var(--motion-dur-large) var(--motion-ease-standard) both;
+}
+
+/* R4 (Phase A 2026-05-12) — slide-in-right для ArchiveDrawer на TaskBoard. */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Drawer becomes instant opacity fade. */
+  @keyframes slideInRight {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }
 
 /* Phase 11b — stagger entry animations (cards / list items / sections).
@@ -205,7 +264,7 @@ textarea {
 }
 .stagger > * {
   opacity: 0;
-  animation: fadeUp 480ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  animation: fadeUp var(--motion-dur-xlarge) var(--motion-ease-standard) forwards;
 }
 .stagger > *:nth-child(1) {
   animation-delay: 60ms;
@@ -325,16 +384,15 @@ textarea {
 }
 
 /*
- * Motion tokens — единый язык для transitions и hovers.
- * 150ms — micro (color, opacity)
- * 220ms — small (scale, position)
- * 320ms — large (modal open/close)
- * cubic-bezier(0.2, 0.7, 0.2, 1) — soft ease-out, как у winter.so / linear
+ * Legacy motion aliases — теперь mapped на foundation motion tokens
+ * (--motion-dur-* / --motion-ease-*). Сами foundation tokens живут
+ * в _tokens.generated.css. Новый код использует motion tokens напрямую;
+ * --t-fast/base/slow остались для обратной совместимости.
  */
 :root {
-  --t-fast: 150ms cubic-bezier(0.2, 0.7, 0.2, 1);
-  --t-base: 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
-  --t-slow: 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: var(--motion-dur-small) var(--motion-ease-standard);
+  --t-base: var(--motion-dur-medium) var(--motion-ease-standard);
+  --t-slow: var(--motion-dur-large) var(--motion-ease-standard);
 }
 
 /* Apply to any interactive surface — buttons, list rows, inputs.
@@ -389,7 +447,7 @@ textarea {
   }
 }
 .slide-from-left {
-  animation: slide-from-left 380ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: slide-from-left var(--motion-dur-large) var(--motion-ease-standard) both;
 }
 
 @keyframes slide-from-right {
@@ -403,7 +461,7 @@ textarea {
   }
 }
 .slide-from-right {
-  animation: slide-from-right 380ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: slide-from-right var(--motion-dur-large) var(--motion-ease-standard) both;
 }
 
 /* slide-to-right — exit-анимация для StatsOverlay при закрытии. Применяется
@@ -413,7 +471,7 @@ textarea {
   to   { opacity: 0; transform: translateX(32px); }
 }
 .slide-to-right {
-  animation: slide-to-right 220ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: slide-to-right var(--motion-dur-medium) var(--motion-ease-accelerate) both;
 }
 
 /* View Transitions API — общий fade-cross для смены страниц. Хром фиксирует
@@ -451,7 +509,7 @@ textarea {
   }
 }
 .slide-from-bottom {
-  animation: slide-from-bottom 380ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: slide-from-bottom var(--motion-dur-large) var(--motion-ease-standard) both;
 }
 
 @keyframes slide-out-to-bottom {
@@ -465,7 +523,7 @@ textarea {
   }
 }
 .slide-out-to-bottom {
-  animation: slide-out-to-bottom 260ms cubic-bezier(0.4, 0, 0.6, 1) both;
+  animation: slide-out-to-bottom var(--motion-dur-medium) var(--motion-ease-accelerate) both;
 }
 
 /* Centered overlay container — для модалок которые сами центрируются
@@ -862,7 +920,7 @@ textarea {
   --crepe-color-inverse: rgba(255, 255, 255, 0.05);
   --crepe-color-on-inverse: var(--ink);
   --crepe-color-inline-code: var(--ink);
-  --crepe-color-error: #ff6a6a;
+  --crepe-color-error: var(--red);
   --crepe-color-hover: rgba(255, 255, 255, 0.06);
   --crepe-color-selected: rgba(255, 255, 255, 0.1);
   --crepe-color-inline-area: rgba(255, 255, 255, 0.08);
@@ -891,11 +949,11 @@ textarea {
    уровень heading'а (Turn into → H2/H3 из drag-popup'а тоже работает,
    но «+» сильнее обнаруживается). */
 .hone-milkdown-mount .milkdown .milkdown-block-handle {
-  transition: opacity 80ms ease;
+  transition: opacity var(--motion-dur-micro) var(--motion-ease-standard);
 }
 .hone-milkdown-mount .milkdown .milkdown-block-handle .operation-item {
   color: rgba(255, 255, 255, 0.4) !important;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition: color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard);
   border-radius: 4px;
 }
 .hone-milkdown-mount .milkdown .milkdown-block-handle .operation-item:hover {
@@ -945,7 +1003,7 @@ textarea {
   font-size: 13px !important;
   color: rgba(255, 255, 255, 0.85) !important;
   cursor: pointer !important;
-  transition: background-color 80ms ease;
+  transition: background-color var(--motion-dur-micro) var(--motion-ease-standard);
 }
 .hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item:hover,
 .hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item.hover,
@@ -1003,7 +1061,7 @@ textarea {
   padding: 4px !important;
   border-radius: 5px !important;
   color: rgba(255, 255, 255, 0.78) !important;
-  transition: background-color 80ms ease, color 80ms ease;
+  transition: background-color var(--motion-dur-micro) var(--motion-ease-standard), color var(--motion-dur-micro) var(--motion-ease-standard);
 }
 .hone-milkdown-mount .milkdown .milkdown-toolbar .toolbar-item:hover {
   background: rgba(255, 255, 255, 0.1) !important;
@@ -1033,7 +1091,7 @@ textarea {
   border-radius: 6px !important;
   max-width: 320px;
   gap: 4px !important;
-  transition: opacity 100ms ease;
+  transition: opacity var(--motion-dur-small) var(--motion-ease-standard);
 }
 .hone-milkdown-mount .milkdown .milkdown-link-preview a,
 .hone-milkdown-mount .milkdown .milkdown-link-edit input {
@@ -1202,4 +1260,62 @@ textarea {
 }
 .hone-md-source-mount .cm-gutters {
   display: none;
+}
+
+/* ── DataLoader (CI1 error pattern) ─────────────────────────────────────
+ * Used by components/DataLoader.tsx. B/W rule: red ONLY as 1.5px stripe;
+ * retry button is plain text-affordance, no background fill.
+ */
+.data-loader-error {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.data-loader-error-stripe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: #FF3B30;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+.data-loader-error-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.data-loader-error-label {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+.data-loader-error-detail {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+  font-family: 'JetBrains Mono', ui-monospace, SF Mono, Menlo, monospace;
+  word-break: break-word;
+}
+.data-loader-error-retry {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'JetBrains Mono', ui-monospace, SF Mono, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  cursor: pointer;
+  transition: color var(--t-fast);
+}
+.data-loader-error-retry:hover {
+  color: rgba(255, 255, 255, 1);
 }

@@ -20,6 +20,10 @@ type User struct {
 	Locale      string
 	DisplayName string
 	CreatedAt   time.Time
+	// TutorModeEnabled mirrors users.tutor_mode_enabled (migration 00093).
+	// Self-toggle flag — independent from Role. When true the web AppShell
+	// surfaces tutor nav items + /tutor sub-surfaces. Free per identity.md.
+	TutorModeEnabled bool
 }
 
 // Profile — строка прогрессии пользователя (таблица profiles).
@@ -83,6 +87,11 @@ type Settings struct {
 	// Validated by UpdateSettings against AllowedFocusClasses.
 	FocusClass string
 
+	// TutorModeEnabled — write-side counterpart to User.TutorModeEnabled.
+	// HasTutorModeEnabled gates the column update so partial PUTs leave it
+	// alone. Stream D, 2026-05-12.
+	TutorModeEnabled bool
+
 	// FieldMask flags — true when the caller explicitly provided the value
 	// in the inbound proto so the persistence layer can skip clobbering
 	// columns that were not part of the partial update. Set by
@@ -90,6 +99,7 @@ type Settings struct {
 	// fields keep their previous "send empty = no-op" semantics.
 	HasOnboardingCompleted bool
 	HasFocusClass          bool
+	HasTutorModeEnabled    bool
 }
 
 // AllowedFocusClasses is the canonical set enforced by both the DB CHECK
@@ -126,3 +136,35 @@ const (
 	ApplicationStatusApproved = "approved"
 	ApplicationStatusRejected = "rejected"
 )
+
+// AppSurface — wire-closed identifier of the surface a heartbeat came from.
+// Mirrors proto enum AppSurface; string-typed inside the domain so the SQL
+// layer can use it directly as a TEXT column value without an extra enum
+// table.
+type AppSurface string
+
+const (
+	AppSurfaceWeb  AppSurface = "web"
+	AppSurfaceHone AppSurface = "hone"
+	AppSurfaceCue  AppSurface = "cue"
+)
+
+// IsValid — sanity check before write. Server rejects unknown values with
+// InvalidArgument before they ever hit the DB CHECK.
+func (a AppSurface) IsValid() bool {
+	switch a {
+	case AppSurfaceWeb, AppSurfaceHone, AppSurfaceCue:
+		return true
+	}
+	return false
+}
+
+// AppInstall mirrors a row in user_app_installs. Phase J / X1 (P0).
+// AppVersion is informational — Hone / Cue / web all push their semver
+// on every heartbeat; web typically stays empty (no versioning hook).
+type AppInstall struct {
+	App         AppSurface
+	FirstSeenAt time.Time
+	LastSeenAt  time.Time
+	AppVersion  string
+}

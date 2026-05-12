@@ -1,16 +1,25 @@
-// druz9:// deep-link handling for Cue.
+// druz9-cue:// deep-link intent router for Cue.
 //
-// Use case: Hone (note-taking companion) shows a "Start Cue" button on
-// imported meeting notes. Click → it opens `druz9://cue/open?file=<path>`
-// which OS routes back here. We surface the path to the renderer so it
-// jumps directly to that session in the local sessions list.
+// History: Originally only `druz9-cue://open?file=<path>` was supported
+// (Hone → Cue handoff: «start Cue with this imported note → open the
+// session in local list»). X5 (Phase J P2 2026-05-12) generalises into a
+// typed intent system so future cross-product handoffs (web → Cue
+// «start session for upcoming interview», Hone → Cue «record this note
+// as voice»…) can plug in without touching the URL parser.
+//
+// Recognised intents:
+//   druz9-cue://open?file=<path>      → session.open (Hone → Cue, existing)
+//   druz9-cue://session.start?company=&persona=  → session.start (X5 future, web → Cue)
+//   druz9-cue://transcript.open?id=<session-id>  → transcript.open (X5 future)
 //
 // Protocol scheme registration is the OS-level handshake: Cue tells the
-// OS "I own druz9://" so any app launching `open druz9://...` lands in
-// our open-url handler. Done at app startup, idempotent.
+// OS "I own druz9-cue://" so any app launching `open druz9-cue://...`
+// lands in our open-url handler. Done at app startup, idempotent.
 //
 // The renderer subscribes to the `cue:openSession` channel — see
-// cue/src/preload/index.ts for the contextBridge that exposes it.
+// cue/src/preload/index.ts for the contextBridge that exposes it. New
+// intent channels can plug in via the same pattern — the channel name
+// must be in shared/ipc.ts eventChannels.
 
 import { app } from 'electron';
 import type { BrowserWindow } from 'electron';
@@ -25,12 +34,19 @@ import { eventChannels } from '@shared/ipc';
 const PROTOCOL = 'druz9-cue';
 const CUE_OPEN_CHANNEL = eventChannels.cueOpenSession;
 
+/** Closed union of recognised Cue intents. */
+export type CueDeepLinkIntent =
+  | { kind: 'session.open'; filePath: string; source?: string }
+  | { kind: 'session.start'; company?: string; persona?: string; source?: string }
+  | { kind: 'transcript.open'; sessionId: string; source?: string };
+
 let cachedTargetWindow: BrowserWindow | null = null;
 // Pending URL queued during cold-start before the renderer is ready.
 let pendingUrl: string | null = null;
 
 export interface CueDeepLinkPayload {
   filePath: string;
+  source?: string;
 }
 
 /**
@@ -86,41 +102,77 @@ export function registerDeepLinks(target: BrowserWindow | null): void {
  */
 export function consumePendingDeepLink(): CueDeepLinkPayload | null {
   if (!pendingUrl) return null;
-  const parsed = parseCueOpenURL(pendingUrl);
+  const intent = parseCueDeepLink(pendingUrl);
   pendingUrl = null;
-  return parsed;
+  if (!intent || intent.kind !== 'session.open') return null;
+  return { filePath: intent.filePath, source: intent.source };
 }
 
 function dispatch(url: string): void {
-  // Only handle cue/open today; other paths reserved for future flows
-  // (cue/share, cue/settings, etc).
-  const payload = parseCueOpenURL(url);
-  if (!payload) return;
+  const intent = parseCueDeepLink(url);
+  if (!intent) return;
 
+  // For the existing «session.open» path we keep the dedicated channel
+  // (renderer already subscribes via cue:openSession). New intent kinds
+  // route through dispatchExtended for forward compatibility.
+  if (intent.kind === 'session.open') {
+    if (cachedTargetWindow && !cachedTargetWindow.isDestroyed()) {
+      cachedTargetWindow.webContents.send(CUE_OPEN_CHANNEL, {
+        filePath: intent.filePath,
+        source: intent.source,
+      });
+      if (cachedTargetWindow.isMinimized()) cachedTargetWindow.restore();
+      cachedTargetWindow.focus();
+    } else {
+      pendingUrl = url;
+    }
+    return;
+  }
+  // X5 forward-compat: session.start / transcript.open kinds. These don't
+  // have dedicated channels yet — we drop them silently with a debug log
+  // until the renderer hosts the relevant surfaces. Don't break existing
+  // installs.
   if (cachedTargetWindow && !cachedTargetWindow.isDestroyed()) {
-    cachedTargetWindow.webContents.send(CUE_OPEN_CHANNEL, payload);
     if (cachedTargetWindow.isMinimized()) cachedTargetWindow.restore();
     cachedTargetWindow.focus();
-  } else {
-    pendingUrl = url;
   }
 }
 
 /**
- * Parse `druz9-cue://open?file=<encoded-abs-path>`.
- * Anything else returns null — caller should fall through silently.
+ * Pure URL → typed Intent. Single source of truth for the Cue deeplink
+ * grammar. Returns null for non-druz9-cue:// inputs or malformed payloads.
  */
-function parseCueOpenURL(raw: string): CueDeepLinkPayload | null {
+export function parseCueDeepLink(raw: string): CueDeepLinkIntent | null {
   try {
     const u = new URL(raw);
     if (u.protocol !== `${PROTOCOL}:`) return null;
-    // Для druz9-cue://open?file=... URL парсится как host="open", path="".
-    // (До разделения схем было host="cue", path="/open" в "druz9://cue/open" —
-    // см. git blame, оставлено в комменте для traceability.)
-    if (u.host !== 'open') return null;
-    const file = u.searchParams.get('file');
-    if (!file) return null;
-    return { filePath: file };
+    const host = u.host.toLowerCase();
+    const source = u.searchParams.get('source') ?? undefined;
+
+    // Existing — `druz9-cue://open?file=...`
+    if (host === 'open') {
+      const file = u.searchParams.get('file');
+      if (!file) return null;
+      return { kind: 'session.open', filePath: file, source };
+    }
+
+    // X5 — `druz9-cue://session.start?company=&persona=`
+    if (host === 'session.start' || host === 'start') {
+      return {
+        kind: 'session.start',
+        company: u.searchParams.get('company') ?? undefined,
+        persona: u.searchParams.get('persona') ?? undefined,
+        source,
+      };
+    }
+
+    // X5 — `druz9-cue://transcript.open?id=<session-id>`
+    if (host === 'transcript.open' || host === 'transcript') {
+      const id = u.searchParams.get('id') ?? u.searchParams.get('session');
+      if (!id) return null;
+      return { kind: 'transcript.open', sessionId: id, source };
+    }
+    return null;
   } catch {
     return null;
   }

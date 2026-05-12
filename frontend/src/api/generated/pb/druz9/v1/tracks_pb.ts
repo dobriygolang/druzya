@@ -27,11 +27,6 @@ export enum TrackStepKind {
   KATA = 1,
 
   /**
-   * @generated from enum value: TRACK_STEP_KIND_ARENA = 2;
-   */
-  ARENA = 2,
-
-  /**
    * @generated from enum value: TRACK_STEP_KIND_MOCK = 3;
    */
   MOCK = 3,
@@ -50,7 +45,6 @@ export enum TrackStepKind {
 proto3.util.setEnumType(TrackStepKind, "druz9.v1.TrackStepKind", [
   { no: 0, name: "TRACK_STEP_KIND_UNSPECIFIED" },
   { no: 1, name: "TRACK_STEP_KIND_KATA" },
-  { no: 2, name: "TRACK_STEP_KIND_ARENA" },
   { no: 3, name: "TRACK_STEP_KIND_MOCK" },
   { no: 4, name: "TRACK_STEP_KIND_CODEX_READ" },
   { no: 5, name: "TRACK_STEP_KIND_FOCUS_BLOCK" },

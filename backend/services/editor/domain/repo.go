@@ -80,6 +80,11 @@ type RoomRepo interface {
 	// when no row was deleted (either non-owner or unknown id) — callers MUST
 	// NOT distinguish these to avoid leaking room existence to non-owners.
 	DeleteOwned(ctx context.Context, id, ownerID uuid.UUID) error
+	// D4 Stream F (2026-05-12) — solo code persistence. GetCode returns the
+	// editor_rooms.code TEXT column; SaveCode upserts it (owner-only — caller
+	// enforces). ErrNotFound for missing rooms.
+	GetCode(ctx context.Context, id uuid.UUID) (string, error)
+	SaveCode(ctx context.Context, id uuid.UUID, code string) error
 }
 
 // ParticipantRepo persists editor_participants rows.

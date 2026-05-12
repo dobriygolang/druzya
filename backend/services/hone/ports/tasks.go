@@ -159,6 +159,99 @@ func (s *HoneServer) AddTaskComment(
 	return connect.NewResponse(taskCommentToProto(c)), nil
 }
 
+// ── Phase J / H3 (P1, 2026-05-12) — UpdateTaskKind + BulkAutoCategorise ──
+
+// UpdateTaskKind sets the kind manually and flips manual_kind_override=true
+// so background re-categorisers skip the row.
+func (s *HoneServer) UpdateTaskKind(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateTaskKindRequest],
+) (*connect.Response[pb.Task], error) {
+	uid, err := s.requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, perr := uuid.Parse(req.Msg.Id)
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("bad_id"))
+	}
+	kind := taskKindFromProto(req.Msg.Kind)
+	if !kind.IsValid() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("bad_kind"))
+	}
+	// Default to manual override unless caller explicitly opts out.
+	// User-facing path always sets manual_override=true (chip picker).
+	manualOverride := req.Msg.ManualOverride
+	if !req.Msg.ManualOverride && !req.Msg.GetManualOverride() {
+		// Default true for caller convenience: most usages are the
+		// manual chip picker; backend internal callers can pass false
+		// explicitly через proto field (proto3 bool defaults to false,
+		// so opt-in to manual semantic via wire would be inverted).
+		manualOverride = true
+	}
+	if s.H.UpdateTaskKind == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("update_task_kind_unwired"))
+	}
+	t, err := s.H.UpdateTaskKind.Do(ctx, app.UpdateTaskKindInput{
+		UserID: uid, TaskID: id, Kind: kind, ManualOverride: manualOverride,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("not_found"))
+		}
+		if errors.Is(err, domain.ErrInvalidInput) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal"))
+	}
+	return connect.NewResponse(taskToProto(t)), nil
+}
+
+// BulkAutoCategorise streams categorisation events for a set of user tasks.
+// Empty task_ids → server auto-picks all eligible open tasks.
+func (s *HoneServer) BulkAutoCategorise(
+	ctx context.Context,
+	req *connect.Request[pb.BulkAutoCategoriseRequest],
+	stream *connect.ServerStream[pb.BulkAutoCategoriseEvent],
+) error {
+	uid, err := s.requireUser(ctx)
+	if err != nil {
+		return err
+	}
+	if s.H.BulkAutoCategorise == nil {
+		return connect.NewError(connect.CodeUnimplemented, errors.New("bulk_categorise_unwired"))
+	}
+	taskIDs := make([]uuid.UUID, 0, len(req.Msg.TaskIds))
+	for _, raw := range req.Msg.TaskIds {
+		id, perr := uuid.Parse(raw)
+		if perr != nil {
+			continue // skip malformed; не fail-all
+		}
+		taskIDs = append(taskIDs, id)
+	}
+	emit := func(ev app.BulkAutoCategoriseEvent) error {
+		return stream.Send(&pb.BulkAutoCategoriseEvent{
+			TaskId:     ev.TaskID.String(),
+			Kind:       taskKindToProto(ev.Kind),
+			Reasoning:  ev.Reasoning,
+			Confidence: ev.Confidence,
+			Processed:  int32(ev.Processed),
+			Total:      int32(ev.Total),
+			Done:       ev.Done,
+		})
+	}
+	if err := s.H.BulkAutoCategorise.Do(ctx, app.BulkAutoCategoriseInput{
+		UserID:  uid,
+		TaskIDs: taskIDs,
+	}, emit); err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			return connect.NewError(connect.CodeUnimplemented, errors.New("categoriser_unavailable"))
+		}
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	return nil
+}
+
 // ── helpers ─────────────────────────────────────────────────────────────
 
 func (s *HoneServer) requireUser(ctx context.Context) (uuid.UUID, error) {
@@ -283,6 +376,7 @@ func taskToProto(t domain.Task) *pb.Task {
 		Priority:           int32(t.Priority),
 		CreatedAt:          timestamppb.New(t.CreatedAt.UTC()),
 		UpdatedAt:          timestamppb.New(t.UpdatedAt.UTC()),
+		ManualKindOverride: t.ManualKindOverride,
 	}
 	if t.CompletedAt != nil {
 		out.CompletedAt = timestamppb.New(t.CompletedAt.UTC())

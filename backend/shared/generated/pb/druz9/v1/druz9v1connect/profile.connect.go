@@ -77,12 +77,6 @@ const (
 	// ProfileServiceAllocateAtlasSkillProcedure is the fully-qualified name of the ProfileService's
 	// AllocateAtlasSkill RPC.
 	ProfileServiceAllocateAtlasSkillProcedure = "/druz9.v1.ProfileService/AllocateAtlasSkill"
-	// ProfileServiceGetAIVacanciesModelProcedure is the fully-qualified name of the ProfileService's
-	// GetAIVacanciesModel RPC.
-	ProfileServiceGetAIVacanciesModelProcedure = "/druz9.v1.ProfileService/GetAIVacanciesModel"
-	// ProfileServiceSetAIVacanciesModelProcedure is the fully-qualified name of the ProfileService's
-	// SetAIVacanciesModel RPC.
-	ProfileServiceSetAIVacanciesModelProcedure = "/druz9.v1.ProfileService/SetAIVacanciesModel"
 	// ProfileServiceGetUserTracksProcedure is the fully-qualified name of the ProfileService's
 	// GetUserTracks RPC.
 	ProfileServiceGetUserTracksProcedure = "/druz9.v1.ProfileService/GetUserTracks"
@@ -95,6 +89,12 @@ const (
 	// ProfileServiceSetAtlasNodePrefProcedure is the fully-qualified name of the ProfileService's
 	// SetAtlasNodePref RPC.
 	ProfileServiceSetAtlasNodePrefProcedure = "/druz9.v1.ProfileService/SetAtlasNodePref"
+	// ProfileServiceRecordAppInstallProcedure is the fully-qualified name of the ProfileService's
+	// RecordAppInstall RPC.
+	ProfileServiceRecordAppInstallProcedure = "/druz9.v1.ProfileService/RecordAppInstall"
+	// ProfileServiceGetInstalledAppsProcedure is the fully-qualified name of the ProfileService's
+	// GetInstalledApps RPC.
+	ProfileServiceGetInstalledAppsProcedure = "/druz9.v1.ProfileService/GetInstalledApps"
 )
 
 // ProfileServiceClient is a client for the druz9.v1.ProfileService service.
@@ -139,12 +139,6 @@ type ProfileServiceClient interface {
 	// AllocateAtlasSkill grants the caller +N progress on the given atlas
 	// skill node. Used by the Atlas page's "claim 1 free point" button.
 	AllocateAtlasSkill(context.Context, *connect.Request[v1.AllocateAtlasSkillRequest]) (*connect.Response[v1.AllocateAtlasSkillResponse], error)
-	// GetAIVacanciesModel returns the user's chosen LLM for the AI vacancy
-	// recommender. Empty string means "server default".
-	GetAIVacanciesModel(context.Context, *connect.Request[v1.GetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
-	// SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
-	// to clear the override and fall back to the server default.
-	SetAIVacanciesModel(context.Context, *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
 	// GetUserTracks returns the caller's active tracks (multi-track Atlas,
 	// см docs/feature/tracks.md). New users get an empty list and must
 	// pass through onboarding-fork; existing users were backfilled in
@@ -161,6 +155,16 @@ type ProfileServiceClient interface {
 	ClassifyAtlasTodo(context.Context, *connect.Request[v1.ClassifyAtlasTodoRequest]) (*connect.Response[v1.ClassifyAtlasTodoResponse], error)
 	// SetAtlasNodePref — Phase 3 pin/hide actions per atlas node.
 	SetAtlasNodePref(context.Context, *connect.Request[v1.SetAtlasNodePrefRequest]) (*connect.Response[v1.SetAtlasNodePrefResponse], error)
+	// RecordAppInstall — Phase J / X1 (P0). Fired by web/hone/cue on launch
+	// (idempotent heartbeat). Server uses ON CONFLICT (user_id, app) DO UPDATE
+	// SET last_seen_at = now(). First row across all three apps flips a
+	// free-tier user into a 7d Pro trial via subscription.grant_trial_pro.
+	RecordAppInstall(context.Context, *connect.Request[v1.RecordAppInstallRequest]) (*connect.Response[v1.RecordAppInstallResponse], error)
+	// GetInstalledApps — Phase J / X1 (P0). Reads the user's install matrix.
+	// Hone uses this to decide whether to show «install Cue» suggestion after
+	// a completed focus session; web reads it to surface cross-app CTAs in
+	// /all-set and Settings.
+	GetInstalledApps(context.Context, *connect.Request[v1.GetInstalledAppsRequest]) (*connect.Response[v1.GetInstalledAppsResponse], error)
 }
 
 // NewProfileServiceClient constructs a client for the druz9.v1.ProfileService service. By default,
@@ -246,18 +250,6 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("AllocateAtlasSkill")),
 			connect.WithClientOptions(opts...),
 		),
-		getAIVacanciesModel: connect.NewClient[v1.GetAIVacanciesModelRequest, v1.AIVacanciesModel](
-			httpClient,
-			baseURL+ProfileServiceGetAIVacanciesModelProcedure,
-			connect.WithSchema(profileServiceMethods.ByName("GetAIVacanciesModel")),
-			connect.WithClientOptions(opts...),
-		),
-		setAIVacanciesModel: connect.NewClient[v1.SetAIVacanciesModelRequest, v1.AIVacanciesModel](
-			httpClient,
-			baseURL+ProfileServiceSetAIVacanciesModelProcedure,
-			connect.WithSchema(profileServiceMethods.ByName("SetAIVacanciesModel")),
-			connect.WithClientOptions(opts...),
-		),
 		getUserTracks: connect.NewClient[v1.GetUserTracksRequest, v1.UserTracks](
 			httpClient,
 			baseURL+ProfileServiceGetUserTracksProcedure,
@@ -282,6 +274,18 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("SetAtlasNodePref")),
 			connect.WithClientOptions(opts...),
 		),
+		recordAppInstall: connect.NewClient[v1.RecordAppInstallRequest, v1.RecordAppInstallResponse](
+			httpClient,
+			baseURL+ProfileServiceRecordAppInstallProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("RecordAppInstall")),
+			connect.WithClientOptions(opts...),
+		),
+		getInstalledApps: connect.NewClient[v1.GetInstalledAppsRequest, v1.GetInstalledAppsResponse](
+			httpClient,
+			baseURL+ProfileServiceGetInstalledAppsProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("GetInstalledApps")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -299,12 +303,12 @@ type profileServiceClient struct {
 	approveInterviewerApplication *connect.Client[v1.ApproveInterviewerApplicationRequest, v1.InterviewerApplication]
 	rejectInterviewerApplication  *connect.Client[v1.RejectInterviewerApplicationRequest, v1.InterviewerApplication]
 	allocateAtlasSkill            *connect.Client[v1.AllocateAtlasSkillRequest, v1.AllocateAtlasSkillResponse]
-	getAIVacanciesModel           *connect.Client[v1.GetAIVacanciesModelRequest, v1.AIVacanciesModel]
-	setAIVacanciesModel           *connect.Client[v1.SetAIVacanciesModelRequest, v1.AIVacanciesModel]
 	getUserTracks                 *connect.Client[v1.GetUserTracksRequest, v1.UserTracks]
 	setUserTracks                 *connect.Client[v1.SetUserTracksRequest, v1.UserTracks]
 	classifyAtlasTodo             *connect.Client[v1.ClassifyAtlasTodoRequest, v1.ClassifyAtlasTodoResponse]
 	setAtlasNodePref              *connect.Client[v1.SetAtlasNodePrefRequest, v1.SetAtlasNodePrefResponse]
+	recordAppInstall              *connect.Client[v1.RecordAppInstallRequest, v1.RecordAppInstallResponse]
+	getInstalledApps              *connect.Client[v1.GetInstalledAppsRequest, v1.GetInstalledAppsResponse]
 }
 
 // GetMyProfile calls druz9.v1.ProfileService.GetMyProfile.
@@ -367,16 +371,6 @@ func (c *profileServiceClient) AllocateAtlasSkill(ctx context.Context, req *conn
 	return c.allocateAtlasSkill.CallUnary(ctx, req)
 }
 
-// GetAIVacanciesModel calls druz9.v1.ProfileService.GetAIVacanciesModel.
-func (c *profileServiceClient) GetAIVacanciesModel(ctx context.Context, req *connect.Request[v1.GetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error) {
-	return c.getAIVacanciesModel.CallUnary(ctx, req)
-}
-
-// SetAIVacanciesModel calls druz9.v1.ProfileService.SetAIVacanciesModel.
-func (c *profileServiceClient) SetAIVacanciesModel(ctx context.Context, req *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error) {
-	return c.setAIVacanciesModel.CallUnary(ctx, req)
-}
-
 // GetUserTracks calls druz9.v1.ProfileService.GetUserTracks.
 func (c *profileServiceClient) GetUserTracks(ctx context.Context, req *connect.Request[v1.GetUserTracksRequest]) (*connect.Response[v1.UserTracks], error) {
 	return c.getUserTracks.CallUnary(ctx, req)
@@ -395,6 +389,16 @@ func (c *profileServiceClient) ClassifyAtlasTodo(ctx context.Context, req *conne
 // SetAtlasNodePref calls druz9.v1.ProfileService.SetAtlasNodePref.
 func (c *profileServiceClient) SetAtlasNodePref(ctx context.Context, req *connect.Request[v1.SetAtlasNodePrefRequest]) (*connect.Response[v1.SetAtlasNodePrefResponse], error) {
 	return c.setAtlasNodePref.CallUnary(ctx, req)
+}
+
+// RecordAppInstall calls druz9.v1.ProfileService.RecordAppInstall.
+func (c *profileServiceClient) RecordAppInstall(ctx context.Context, req *connect.Request[v1.RecordAppInstallRequest]) (*connect.Response[v1.RecordAppInstallResponse], error) {
+	return c.recordAppInstall.CallUnary(ctx, req)
+}
+
+// GetInstalledApps calls druz9.v1.ProfileService.GetInstalledApps.
+func (c *profileServiceClient) GetInstalledApps(ctx context.Context, req *connect.Request[v1.GetInstalledAppsRequest]) (*connect.Response[v1.GetInstalledAppsResponse], error) {
+	return c.getInstalledApps.CallUnary(ctx, req)
 }
 
 // ProfileServiceHandler is an implementation of the druz9.v1.ProfileService service.
@@ -439,12 +443,6 @@ type ProfileServiceHandler interface {
 	// AllocateAtlasSkill grants the caller +N progress on the given atlas
 	// skill node. Used by the Atlas page's "claim 1 free point" button.
 	AllocateAtlasSkill(context.Context, *connect.Request[v1.AllocateAtlasSkillRequest]) (*connect.Response[v1.AllocateAtlasSkillResponse], error)
-	// GetAIVacanciesModel returns the user's chosen LLM for the AI vacancy
-	// recommender. Empty string means "server default".
-	GetAIVacanciesModel(context.Context, *connect.Request[v1.GetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
-	// SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
-	// to clear the override and fall back to the server default.
-	SetAIVacanciesModel(context.Context, *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
 	// GetUserTracks returns the caller's active tracks (multi-track Atlas,
 	// см docs/feature/tracks.md). New users get an empty list and must
 	// pass through onboarding-fork; existing users were backfilled in
@@ -461,6 +459,16 @@ type ProfileServiceHandler interface {
 	ClassifyAtlasTodo(context.Context, *connect.Request[v1.ClassifyAtlasTodoRequest]) (*connect.Response[v1.ClassifyAtlasTodoResponse], error)
 	// SetAtlasNodePref — Phase 3 pin/hide actions per atlas node.
 	SetAtlasNodePref(context.Context, *connect.Request[v1.SetAtlasNodePrefRequest]) (*connect.Response[v1.SetAtlasNodePrefResponse], error)
+	// RecordAppInstall — Phase J / X1 (P0). Fired by web/hone/cue on launch
+	// (idempotent heartbeat). Server uses ON CONFLICT (user_id, app) DO UPDATE
+	// SET last_seen_at = now(). First row across all three apps flips a
+	// free-tier user into a 7d Pro trial via subscription.grant_trial_pro.
+	RecordAppInstall(context.Context, *connect.Request[v1.RecordAppInstallRequest]) (*connect.Response[v1.RecordAppInstallResponse], error)
+	// GetInstalledApps — Phase J / X1 (P0). Reads the user's install matrix.
+	// Hone uses this to decide whether to show «install Cue» suggestion after
+	// a completed focus session; web reads it to surface cross-app CTAs in
+	// /all-set and Settings.
+	GetInstalledApps(context.Context, *connect.Request[v1.GetInstalledAppsRequest]) (*connect.Response[v1.GetInstalledAppsResponse], error)
 }
 
 // NewProfileServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -542,18 +550,6 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		connect.WithSchema(profileServiceMethods.ByName("AllocateAtlasSkill")),
 		connect.WithHandlerOptions(opts...),
 	)
-	profileServiceGetAIVacanciesModelHandler := connect.NewUnaryHandler(
-		ProfileServiceGetAIVacanciesModelProcedure,
-		svc.GetAIVacanciesModel,
-		connect.WithSchema(profileServiceMethods.ByName("GetAIVacanciesModel")),
-		connect.WithHandlerOptions(opts...),
-	)
-	profileServiceSetAIVacanciesModelHandler := connect.NewUnaryHandler(
-		ProfileServiceSetAIVacanciesModelProcedure,
-		svc.SetAIVacanciesModel,
-		connect.WithSchema(profileServiceMethods.ByName("SetAIVacanciesModel")),
-		connect.WithHandlerOptions(opts...),
-	)
 	profileServiceGetUserTracksHandler := connect.NewUnaryHandler(
 		ProfileServiceGetUserTracksProcedure,
 		svc.GetUserTracks,
@@ -576,6 +572,18 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		ProfileServiceSetAtlasNodePrefProcedure,
 		svc.SetAtlasNodePref,
 		connect.WithSchema(profileServiceMethods.ByName("SetAtlasNodePref")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profileServiceRecordAppInstallHandler := connect.NewUnaryHandler(
+		ProfileServiceRecordAppInstallProcedure,
+		svc.RecordAppInstall,
+		connect.WithSchema(profileServiceMethods.ByName("RecordAppInstall")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profileServiceGetInstalledAppsHandler := connect.NewUnaryHandler(
+		ProfileServiceGetInstalledAppsProcedure,
+		svc.GetInstalledApps,
+		connect.WithSchema(profileServiceMethods.ByName("GetInstalledApps")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -604,10 +612,6 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceRejectInterviewerApplicationHandler.ServeHTTP(w, r)
 		case ProfileServiceAllocateAtlasSkillProcedure:
 			profileServiceAllocateAtlasSkillHandler.ServeHTTP(w, r)
-		case ProfileServiceGetAIVacanciesModelProcedure:
-			profileServiceGetAIVacanciesModelHandler.ServeHTTP(w, r)
-		case ProfileServiceSetAIVacanciesModelProcedure:
-			profileServiceSetAIVacanciesModelHandler.ServeHTTP(w, r)
 		case ProfileServiceGetUserTracksProcedure:
 			profileServiceGetUserTracksHandler.ServeHTTP(w, r)
 		case ProfileServiceSetUserTracksProcedure:
@@ -616,6 +620,10 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceClassifyAtlasTodoHandler.ServeHTTP(w, r)
 		case ProfileServiceSetAtlasNodePrefProcedure:
 			profileServiceSetAtlasNodePrefHandler.ServeHTTP(w, r)
+		case ProfileServiceRecordAppInstallProcedure:
+			profileServiceRecordAppInstallHandler.ServeHTTP(w, r)
+		case ProfileServiceGetInstalledAppsProcedure:
+			profileServiceGetInstalledAppsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -673,14 +681,6 @@ func (UnimplementedProfileServiceHandler) AllocateAtlasSkill(context.Context, *c
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.AllocateAtlasSkill is not implemented"))
 }
 
-func (UnimplementedProfileServiceHandler) GetAIVacanciesModel(context.Context, *connect.Request[v1.GetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetAIVacanciesModel is not implemented"))
-}
-
-func (UnimplementedProfileServiceHandler) SetAIVacanciesModel(context.Context, *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.SetAIVacanciesModel is not implemented"))
-}
-
 func (UnimplementedProfileServiceHandler) GetUserTracks(context.Context, *connect.Request[v1.GetUserTracksRequest]) (*connect.Response[v1.UserTracks], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetUserTracks is not implemented"))
 }
@@ -695,4 +695,12 @@ func (UnimplementedProfileServiceHandler) ClassifyAtlasTodo(context.Context, *co
 
 func (UnimplementedProfileServiceHandler) SetAtlasNodePref(context.Context, *connect.Request[v1.SetAtlasNodePrefRequest]) (*connect.Response[v1.SetAtlasNodePrefResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.SetAtlasNodePref is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) RecordAppInstall(context.Context, *connect.Request[v1.RecordAppInstallRequest]) (*connect.Response[v1.RecordAppInstallResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.RecordAppInstall is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) GetInstalledApps(context.Context, *connect.Request[v1.GetInstalledAppsRequest]) (*connect.Response[v1.GetInstalledAppsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetInstalledApps is not implemented"))
 }

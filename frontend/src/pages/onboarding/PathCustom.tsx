@@ -10,13 +10,16 @@
 // Backend nil-safe: если LLMChain не сконфигурён, RPC отвечает
 // Unimplemented — UI показывает inline-сообщение и оставляет
 // «coming soon» fallback (юзер может всё равно сохранить goal).
+//
+// 2026-05-12: v2 visual language — underline textarea (был filled),
+// white-filled checkmark (был accent), red signal stripe on error/info
+// banner, caption-mono labels 0.08em canonical.
 
 import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Sparkles, Loader2 } from 'lucide-react'
 
 import { OnboardingLayout } from './_shared/Layout'
-import { Button } from '../../components/Button'
 import {
   useGenerateCustomPathMutation,
   type CustomPathNode,
@@ -30,6 +33,15 @@ interface SavedCustomState {
   goal: string
   nodes: CustomPathNode[]
   skip: string[]
+}
+
+const captionMono: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
 }
 
 export default function PathCustom() {
@@ -106,24 +118,51 @@ export default function PathCustom() {
 
   return (
     <OnboardingLayout step={1}>
-      <div className="mx-auto max-w-2xl px-4 py-10 sm:py-14">
+      <div className="mx-auto px-4 py-10 sm:py-14" style={{ maxWidth: 640 }}>
         <Link
           to="/onboarding/path"
-          className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary"
+          className="focus-ring"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 12,
+            color: 'var(--ink-60)',
+            textDecoration: 'none',
+            padding: '4px 8px',
+            borderRadius: 6,
+            transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
         >
-          <ArrowLeft className="h-3 w-3" /> К выбору пути
+          <ArrowLeft style={{ width: 12, height: 12 }} /> К выбору пути
         </Link>
-        <header className="mt-3 mb-6">
-          <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">
-            СВОЙ ПУТЬ
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-bold leading-tight">
+        <header style={{ marginTop: 14, marginBottom: 24 }}>
+          <div style={captionMono}>СВОЙ ПУТЬ</div>
+          <h1
+            style={{
+              margin: '8px 0 0',
+              fontSize: 'var(--type-h1-size)',
+              lineHeight: 'var(--type-h1-lh)',
+              letterSpacing: 'var(--type-h1-ls)',
+              fontWeight: 'var(--type-h1-weight)',
+              color: 'rgb(var(--ink))',
+            }}
+          >
             Опиши цель
           </h1>
-          <p className="mt-2 text-[14px] text-text-secondary">
-            Чем точнее цель — тем релевантнее карта тем. Примеры:
-            «Senior Go-разработчик в Booking», «ML researcher в LLM-стартап»,
-            «Senior backend в Yandex Search».
+          <p
+            style={{
+              margin: '12px 0 0',
+              maxWidth: 540,
+              fontSize: 'var(--type-body-size)',
+              lineHeight: 'var(--type-body-lh)',
+              color: 'var(--ink-60)',
+            }}
+          >
+            Чем точнее цель — тем релевантнее карта тем. Примеры: «Senior Go-разработчик
+            в Booking», «ML researcher в LLM-стартап», «Senior backend в Yandex Search».
           </p>
         </header>
 
@@ -132,54 +171,100 @@ export default function PathCustom() {
           onChange={(e) => setGoal(e.target.value)}
           rows={4}
           placeholder="Senior Go-разработчик в финтех с фокусом на realtime-сервисы…"
-          className="w-full rounded-lg border border-border bg-surface-2 px-4 py-3 text-[14px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+          className="focus-ring"
+          aria-label="Цель"
+          style={{
+            width: '100%',
+            padding: '12px 0',
+            background: 'transparent',
+            border: 0,
+            borderBottom: '1px solid var(--hair-2)',
+            color: 'rgb(var(--ink))',
+            fontSize: 14,
+            outline: 'none',
+            resize: 'vertical',
+            fontFamily: 'inherit',
+            transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderBottomColor = 'rgb(var(--ink))')}
+          onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
         />
 
-        <div className="mt-3 flex items-center gap-2">
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={goal.trim().length < 5 || gen.isPending}
-            icon={
-              gen.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5" />
-              )
-            }
+        <div className="flex-wrap-row" style={{ marginTop: 14, alignItems: 'center', gap: 12 }}>
+          <button
+            type="button"
             onClick={handleGenerate}
+            disabled={goal.trim().length < 5 || gen.isPending}
+            className="focus-ring motion-press"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              background: 'rgb(var(--ink))',
+              color: 'rgb(var(--color-bg))',
+              border: 0,
+              borderRadius: 'var(--radius-inner)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: goal.trim().length < 5 || gen.isPending ? 'not-allowed' : 'pointer',
+              opacity: goal.trim().length < 5 || gen.isPending ? 0.5 : 1,
+              transition:
+                'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+            }}
           >
+            {gen.isPending ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Sparkles style={{ width: 14, height: 14 }} />}
             {nodes.length > 0 ? 'Перегенерировать' : 'Сгенерировать карту тем'}
-          </Button>
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            8–15 тем · ~3–8 секунд
-          </span>
+          </button>
+          <span style={captionMono}>8–15 тем · ~3–8 секунд</span>
         </div>
 
         {error && (
-          <div className="mt-3 rounded-md border border-dashed border-warn bg-surface-1 p-3 text-[12px] text-text-secondary">
-            {error}
+          <div
+            role="alert"
+            style={{
+              marginTop: 14,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              padding: '10px 14px',
+              border: '1px dashed var(--hair-2)',
+              borderRadius: 'var(--radius-inner)',
+              fontSize: 12,
+              color: 'var(--ink-60)',
+              background: 'transparent',
+            }}
+          >
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 6, flex: '0 0 auto' }} />
+            <span>{error}</span>
           </div>
         )}
 
         {/* Generated nodes — group view + checkboxes */}
         {nodes.length > 0 && (
-          <div className="mt-6">
-            <div className="mb-3 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-              <span>
-                Учить: <b className="text-text-primary">{totalLearn}</b>
+          <div style={{ marginTop: 24 }}>
+            <div
+              className="flex-wrap-row"
+              style={{ marginBottom: 14, gap: 16, alignItems: 'center', color: 'var(--ink-60)' }}
+            >
+              <span style={captionMono}>
+                Учить:{' '}
+                <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                  {totalLearn}
+                </strong>
               </span>
-              <span>
-                Пропустить: <b className="text-text-primary">{skip.size}</b>
+              <span style={captionMono}>
+                Пропустить:{' '}
+                <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                  {skip.size}
+                </strong>
               </span>
             </div>
-            <div className="flex flex-col gap-5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {Object.entries(grouped).map(([group, gNodes]) => (
                 <section key={group}>
-                  <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-                    {group}
-                  </div>
-                  <ul className="flex flex-col gap-1">
+                  <div style={{ ...captionMono, fontSize: 10, marginBottom: 8 }}>{group}</div>
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {gNodes.map((n) => {
                       const isSkipped = skip.has(n.id)
                       return (
@@ -194,35 +279,54 @@ export default function PathCustom() {
                                 return next
                               })
                             }}
-                            className={`group flex w-full items-start gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
-                              isSkipped
-                                ? 'border-border bg-surface-2/50 opacity-60'
-                                : 'border-border bg-surface-2 hover:border-accent'
-                            }`}
+                            className="focus-ring motion-press"
+                            aria-pressed={!isSkipped}
+                            style={{
+                              display: 'flex',
+                              width: '100%',
+                              alignItems: 'flex-start',
+                              gap: 12,
+                              padding: '10px 14px',
+                              border: '1px solid var(--hair-2)',
+                              background: 'transparent',
+                              borderRadius: 'var(--radius-inner)',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              opacity: isSkipped ? 0.5 : 1,
+                              transition:
+                                'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+                            }}
                           >
                             <span
-                              className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border ${
-                                isSkipped
-                                  ? 'border-border bg-transparent'
-                                  : 'border-accent bg-accent'
-                              }`}
+                              aria-hidden="true"
+                              style={{
+                                marginTop: 2,
+                                display: 'grid',
+                                placeItems: 'center',
+                                width: 16,
+                                height: 16,
+                                border: isSkipped ? '1px solid var(--hair-2)' : 0,
+                                borderRadius: 4,
+                                background: isSkipped ? 'transparent' : 'rgb(var(--ink))',
+                                color: 'rgb(var(--color-bg))',
+                                flex: '0 0 auto',
+                              }}
                             >
-                              {!isSkipped && (
-                                <Check className="h-3 w-3 text-bg" />
-                              )}
+                              {!isSkipped && <Check style={{ width: 12, height: 12 }} />}
                             </span>
-                            <span className="flex-1">
+                            <span style={{ flex: 1, minWidth: 0 }}>
                               <span
-                                className={`block text-[13px] ${
-                                  isSkipped
-                                    ? 'line-through text-text-muted'
-                                    : 'text-text-primary'
-                                }`}
+                                style={{
+                                  display: 'block',
+                                  fontSize: 13,
+                                  color: isSkipped ? 'var(--ink-40)' : 'rgb(var(--ink))',
+                                  textDecoration: isSkipped ? 'line-through' : 'none',
+                                }}
                               >
                                 {n.title}
                               </span>
                               {n.hint && (
-                                <span className="mt-0.5 block text-[11px] text-text-muted">
+                                <span style={{ marginTop: 2, display: 'block', fontSize: 11, color: 'var(--ink-40)', lineHeight: 1.5 }}>
                                   {n.hint}
                                 </span>
                               )}
@@ -238,23 +342,50 @@ export default function PathCustom() {
           </div>
         )}
 
-        <div className="mt-8 flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="md"
+        <div style={{ marginTop: 32, display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
             onClick={() => navigate('/onboarding/path')}
+            className="focus-ring motion-press"
+            style={{
+              padding: '10px 18px',
+              background: 'transparent',
+              color: 'var(--ink-60)',
+              border: '1px solid var(--hair-2)',
+              borderRadius: 'var(--radius-inner)',
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition:
+                'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+            }}
           >
             Отмена
-          </Button>
-          <Button
-            variant="primary"
-            size="md"
-            disabled={goal.trim().length < 5}
-            iconRight={<ArrowRight className="h-4 w-4" />}
+          </button>
+          <button
+            type="button"
             onClick={finish}
+            disabled={goal.trim().length < 5}
+            className="focus-ring motion-press"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 22px',
+              background: 'rgb(var(--ink))',
+              color: 'rgb(var(--color-bg))',
+              border: 0,
+              borderRadius: 'var(--radius-inner)',
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: goal.trim().length < 5 ? 'not-allowed' : 'pointer',
+              opacity: goal.trim().length < 5 ? 0.5 : 1,
+              transition:
+                'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+            }}
           >
-            Сохранить и начать
-          </Button>
+            Сохранить и начать <ArrowRight style={{ width: 16, height: 16 }} />
+          </button>
         </div>
       </div>
     </OnboardingLayout>

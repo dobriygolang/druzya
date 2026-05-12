@@ -43,13 +43,23 @@ export class HttpClientError extends Error {
 //   Server → TextMessage    {"type":"final"|"partial"|"error","text":"...","duration":1.2}
 // ─────────────────────────────────────────────────────────────────────────
 
-/** Frame the server pushes to the client. Mirrors backend streamCtl. */
+/** Frame the server pushes to the client. Mirrors backend streamCtl.
+ *
+ * Diarization (C4): server attaches `source` and `speakerId` to every
+ * `final` delta:
+ *  - source: 'mic' → speakerId always 0 (the user "Я")
+ *  - source: 'system' → speakerId 1..N клuster'ом по RMS+ZCR features
+ *  - speakerId may be `undefined` for old server builds; client should
+ *    fallback на source-based label.
+ */
 export interface TranscriptionStreamMessage {
   type: 'final' | 'partial' | 'error' | 'pong';
   text?: string;
   message?: string;
   language?: string;
   duration?: number;
+  source?: 'mic' | 'system';
+  speaker_id?: number;
 }
 
 /**
@@ -87,6 +97,11 @@ export interface TranscriptionStreamConnectOptions {
   language?: string;
   /** Bias prompt for domain vocab. */
   prompt?: string;
+  /** Capture source — 'mic' (the user) or 'system' (the others). Backend
+   *  uses this to route diarization: mic always speaker 0, system gets
+   *  RMS-clustered speaker 1..N per utterance. Default 'system' on backend
+   *  if missing (backward-compat для старого client'а). */
+  source?: 'mic' | 'system';
 }
 
 /**
@@ -129,6 +144,7 @@ export function createTranscriptionStreamClient(cfg: RuntimeConfig): Transcripti
       const params = new URLSearchParams({ token: s.accessToken });
       if (opts?.language) params.set('language', opts.language);
       if (opts?.prompt) params.set('prompt', opts.prompt);
+      if (opts?.source) params.set('source', opts.source);
       const url = `${wsBase}/ws/transcription/stream?${params.toString()}`;
 
       // Node 22 (Electron 41 main) ships global WebSocket. We avoid the

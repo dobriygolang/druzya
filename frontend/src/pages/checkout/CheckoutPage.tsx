@@ -142,7 +142,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">
+          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
             оформление
           </span>
           <h1 className="font-display text-3xl font-bold leading-[1.1] text-text-primary lg:text-[40px]">
@@ -166,14 +166,32 @@ export default function CheckoutPage() {
                       key={m.kind}
                       type="button"
                       onClick={() => setMethod(m.kind)}
+                      style={{
+                        transition:
+                          'border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard)',
+                      }}
                       className={cn(
-                        'flex h-20 flex-col items-center justify-center gap-1.5 rounded-lg border p-3 transition-colors',
+                        'relative flex h-20 flex-col items-center justify-center gap-1.5 rounded-lg border p-3',
                         active
                           ? 'border-text-primary bg-text-primary/10'
                           : 'border-border bg-surface-1 hover:border-border-strong',
                       )}
                       aria-pressed={active}
                     >
+                      {active && (
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: 1.5,
+                            height: 24,
+                            background: 'var(--red)',
+                          }}
+                        />
+                      )}
                       <Icon className={cn('h-5 w-5', active ? 'text-text-primary' : 'text-text-secondary')} />
                       <span className="text-[12px] font-semibold text-text-primary">{m.label}</span>
                     </button>
@@ -192,22 +210,40 @@ export default function CheckoutPage() {
                     setPromo(e.target.value)
                     if (promoStatus !== 'idle') setPromoStatus('idle')
                   }}
-                  onBlur={onPromoBlur}
+                  onBlur={(e) => {
+                    onPromoBlur()
+                    e.currentTarget.style.borderBottomColor = 'var(--hair-2)'
+                    e.currentTarget.style.borderBottomWidth = '1px'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderBottomColor = 'rgb(var(--ink))'
+                    e.currentTarget.style.borderBottomWidth = '1.5px'
+                  }}
                   placeholder="STUDENT50"
-                  className={cn(
-                    'h-10 rounded-lg border bg-surface-1 px-3 font-mono text-[13px] uppercase text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-2 focus:ring-text-primary/40',
-                    promoStatus === 'invalid' && 'border-danger',
-                    promoStatus === 'valid' && 'border-success',
-                    promoStatus === 'idle' && 'border-border',
-                  )}
+                  style={{
+                    border: 'none',
+                    borderBottom:
+                      promoStatus === 'invalid'
+                        ? '1.5px solid var(--red)'
+                        : promoStatus === 'valid'
+                          ? '1.5px solid rgb(var(--ink))'
+                          : '1px solid var(--hair-2)',
+                    background: 'transparent',
+                    transition:
+                      'border-bottom-color var(--motion-dur-small) var(--motion-ease-standard), border-bottom-width var(--motion-dur-small) var(--motion-ease-standard)',
+                  }}
+                  className="h-10 px-1 font-mono text-[13px] uppercase text-text-primary placeholder:text-text-muted/60 focus:outline-none"
                 />
                 {promoStatus === 'invalid' && (
-                  <span className="font-mono text-[11px] text-danger">
+                  <span
+                    className="font-mono text-[11px]"
+                    style={{ color: 'var(--red)' }}
+                  >
                     Такого кода не существует
                   </span>
                 )}
                 {promoStatus === 'valid' && (
-                  <span className="font-mono text-[11px] text-success">
+                  <span className="font-mono text-[11px] text-text-primary">
                     Применён · −50%
                   </span>
                 )}
@@ -279,14 +315,22 @@ function SidebarSummary({
   return (
     <div className="lg:sticky lg:top-6 lg:self-start">
       <Card
-        className={cn(
-          'flex-col gap-4 p-6',
-          'border-warn/40 bg-gradient-to-br from-warn/10 to-transparent',
-        )}
+        className="relative flex-col gap-4 p-6 border-border-strong bg-surface-2/40"
       >
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '24px',
+            width: 1.5,
+            height: 24,
+            background: 'var(--red)',
+          }}
+        />
         <div className="flex items-center justify-between">
           <h3 className="font-display text-lg font-bold text-text-primary">К оплате сегодня</h3>
-          <span className="rounded-md bg-warn/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-warn">
+          <span className="rounded-md bg-text-primary/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-text-primary">
             {planName}
           </span>
         </div>

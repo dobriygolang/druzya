@@ -40,6 +40,12 @@ export interface CoachSuggestionEvent {
   question: string;
   text: string;
   latencyMs: number;
+  /**
+   * True when backend injected cross-product context (goal/memory/
+   * activity/radar) into the LLM call. UI surfaces subtle hint.
+   * C3 (Phase J 2026-05-12).
+   */
+  contextUsed: boolean;
 }
 export interface CoachStatusEvent {
   kind: 'status';
@@ -123,6 +129,7 @@ export function createTriggerPolicy(
         question,
         text: res.text,
         latencyMs: res.latencyMs,
+        contextUsed: res.contextUsed,
       });
     } catch (err) {
       onEvent({

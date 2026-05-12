@@ -13,7 +13,6 @@ package llmchain
 //
 // Criteria for picks (as of 2026-Q2):
 //
-//	VacanciesJSON    — 8B-class, JSON mode reliable. Latency blocks the UI.
 //	InsightProse     — 70B-class, Russian prose quality matters.
 //	CopilotStream    — 70B-class, reasoning + streaming. Same as insight
 //	                   but accessed via ChatStream.
@@ -37,21 +36,6 @@ type TaskModelMap map[Task]map[Provider]string
 // it at construction; overriding individual slots is an explicit
 // operator action through the chain's options.
 var DefaultTaskModelMap = TaskModelMap{
-	TaskVacanciesJSON: {
-		ProviderGroq: "llama-3.1-8b-instant",
-		// Cerebras seeds 8b as "llama3.1-8b" (no dot); they maintain
-		// their own model ids parallel to the Groq ones.
-		ProviderCerebras: "llama3.1-8b",
-		// Mistral Small is closest to 8B-class on La Plateforme free tier.
-		ProviderMistral: "mistral-small-latest",
-		// OpenRouter :free lane — qwen3-coder is the most reliable strict-JSON
-		// model in our tests; gpt-oss-120b:free breaks JSON ~15% of the time.
-		ProviderOpenRouter: "qwen/qwen3-coder:free",
-		// Ollama floor-fallback: Qwen 2.5 3B с JSON-mode. Структура хуже
-		// чем у cloud 8B-70B, но для "крайнего случая" (все провайдеры
-		// исчерпаны) лучше чем error.
-		ProviderOllama: "qwen2.5:7b-instruct-q4_K_M",
-	},
 	TaskInsightProse: {
 		ProviderGroq:       "llama-3.3-70b-versatile",
 		ProviderCerebras:   "llama3.3-70b",
@@ -321,6 +305,18 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderGroq:       "llama-3.3-70b-versatile",
 		ProviderCerebras:   "llama3.3-70b",
 		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
+	TaskHoneSpeakingGrade: {
+		// Speaking-grade — word-level alignment between reference text and
+		// Whisper transcript + 1-line coach feedback. Mostly classification,
+		// no deep reasoning required. 8B is plenty + UI is latency-sensitive
+		// (user stares at "Grading..." until response). Same model tier as
+		// writing feedback.
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderMistral:    "mistral-small-latest",
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
 	},

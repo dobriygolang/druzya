@@ -8,6 +8,10 @@
 // Polls upcoming events every 60 s + on window focus (matches the
 // HomePage chip refresh cadence). Events render in the viewer's local
 // timezone — backend stores UTC, we re-render via toLocaleString.
+//
+// 2026-05-12: v2 visual language — hairline cards, status stripes via
+// ink-ramp + var(--red) only (was green/yellow/blue/purple violating
+// b/w + red rule), caption-mono 0.08em canonical.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -18,6 +22,8 @@ import {
   listUpcomingGroupEvents,
   type TutorEvent,
 } from '../api/tutor';
+import { useQuotaStore } from '../stores/quota';
+import { requestUpgrade } from '../components/UpgradeModal';
 
 interface State {
   status: 'loading' | 'ok' | 'error';
@@ -69,8 +75,24 @@ function timeUntil(d: Date): string {
   return `in ${Math.floor(h / 24)}d`;
 }
 
+const monoFont = "'JetBrains Mono', ui-monospace, monospace";
+
+const captionMonoTiny: React.CSSProperties = {
+  fontFamily: monoFont,
+  fontSize: 10,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+};
+
 export function CalendarPage() {
   const [state, setState] = useState<State>(INITIAL);
+  // X2 (P0) — Pro gate для двух-сторонней Google Calendar sync. Banner
+  // показывается только на free tier; click → UpgradeModal с calendar_sync
+  // context'ом. Сам sync flow живёт в Settings → Integrations (TODO когда
+  // backend GoogleCalendarIntegration RPC будет ready).
+  const tier = useQuotaStore((s) => s.tier);
 
   const refresh = useCallback(async () => {
     try {
@@ -103,11 +125,10 @@ export function CalendarPage() {
 
   return (
     <div
-      className="fadein"
+      className="motion-page-in"
       style={{
         position: 'absolute',
         inset: 0,
-        animationDuration: '320ms',
         paddingTop: 96,
         paddingBottom: 120,
         overflowY: 'auto',
@@ -115,42 +136,98 @@ export function CalendarPage() {
     >
       <div style={{ width: 720, maxWidth: '92%', margin: '0 auto', padding: '0 24px' }}>
         <header style={{ marginBottom: 24 }}>
-          <div
-            className="mono"
-            style={{
-              fontSize: 10,
-              letterSpacing: '0.24em',
-              color: 'var(--ink-40)',
-              marginBottom: 4,
-            }}
-          >
-            CALENDAR · UPCOMING
-          </div>
+          <div style={{ ...captionMonoTiny, marginBottom: 6 }}>CALENDAR · UPCOMING</div>
           <h1
             style={{
               margin: 0,
-              fontSize: 40,
-              fontWeight: 500,
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
+              fontSize: 'var(--type-h1-size)',
+              lineHeight: 'var(--type-h1-lh)',
+              letterSpacing: 'var(--type-h1-ls)',
+              fontWeight: 'var(--type-h1-weight)',
               color: 'var(--ink)',
             }}
           >
             Your sessions
           </h1>
-          <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--ink-60)', maxWidth: 520 }}>
-            События, которые тутор поставил тебе в расписание. Live-сессия
-            (происходит сейчас) подсвечивается зелёным; meet-link открывается
-            одним кликом.
+          <p
+            style={{
+              margin: '12px 0 0',
+              fontSize: 'var(--type-body-size)',
+              lineHeight: 'var(--type-body-lh)',
+              color: 'var(--ink-60)',
+              maxWidth: 540,
+            }}
+          >
+            События, которые тутор поставил тебе в расписание. Live-сессия (происходит сейчас)
+            подсвечивается красным сигналом; meet-link открывается одним кликом.
           </p>
         </header>
+
+        {tier === 'free' && (
+          <button
+            type="button"
+            onClick={() => {
+              requestUpgrade({
+                feature: 'calendar_sync',
+                label: 'Google Calendar sync',
+                benefit:
+                  'Pro syncs tutor sessions, focus blocks, and reflections two-ways with Google Calendar — schedule a session in either place and the other reflects it within seconds.',
+              });
+            }}
+            className="focus-ring"
+            style={{
+              display: 'flex',
+              width: '100%',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              marginBottom: 20,
+              padding: '12px 14px',
+              background: 'transparent',
+              border: '1px solid var(--hair-2)',
+              borderRadius: 'var(--radius-outer)',
+              color: 'inherit',
+              cursor: 'pointer',
+              font: 'inherit',
+              textAlign: 'left',
+              flexWrap: 'wrap',
+              transition: 'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--ink-20)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--hair-2)';
+            }}
+          >
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 13, color: 'var(--ink-90)' }}>
+                Sync with Google Calendar · Pro
+              </div>
+              <div style={{ marginTop: 2, fontSize: 12, color: 'var(--ink-60)' }}>
+                Two-way sync with Google Calendar — sessions and focus blocks in one feed.
+              </div>
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--ink-40)' }}>See plans →</span>
+          </button>
+        )}
 
         {state.status === 'loading' && (
           <p style={{ color: 'var(--ink-40)', fontSize: 13 }}>Loading…</p>
         )}
         {state.status === 'error' && (
-          <p style={{ color: 'var(--ink-60)', fontSize: 13 }}>
-            Не удалось загрузить: {state.error}
+          <p
+            role="alert"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              fontSize: 13,
+              color: 'var(--red)',
+            }}
+          >
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 8, flex: '0 0 auto' }} />
+            <span>Не удалось загрузить: {state.error}</span>
           </p>
         )}
         {state.status === 'ok' && state.items.length === 0 && (
@@ -158,39 +235,23 @@ export function CalendarPage() {
             style={{
               padding: 32,
               textAlign: 'center',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid var(--hair-2)',
+              borderRadius: 'var(--radius-outer)',
+              background: 'transparent',
             }}
           >
             <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-60)' }}>
               Запланированных событий нет.
             </p>
-            <p
-              style={{
-                margin: '8px 0 0',
-                fontSize: 12,
-                color: 'var(--ink-40)',
-              }}
-            >
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--ink-40)' }}>
               Тутор поставит сессию — она появится здесь и в HomePage-чипе.
             </p>
           </div>
         )}
 
         {state.status === 'ok' && state.groupItems.length > 0 && (
-          <section style={{ marginBottom: 28 }}>
-            <div
-              className="mono"
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.2em',
-                color: 'var(--ink-40)',
-                marginBottom: 8,
-              }}
-            >
-              GROUP CLASSES · OPEN
-            </div>
+          <section style={{ marginBottom: 28 }} className="motion-stagger">
+            <div style={{ ...captionMonoTiny, marginBottom: 10 }}>GROUP CLASSES · OPEN</div>
             <ul
               style={{
                 listStyle: 'none',
@@ -211,20 +272,10 @@ export function CalendarPage() {
         )}
 
         {state.status === 'ok' && state.items.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div className="motion-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {grouped.map(({ key, items }) => (
               <section key={key}>
-                <div
-                  className="mono"
-                  style={{
-                    fontSize: 10,
-                    letterSpacing: '0.2em',
-                    color: 'var(--ink-40)',
-                    marginBottom: 8,
-                  }}
-                >
-                  {key.toUpperCase()}
-                </div>
+                <div style={{ ...captionMonoTiny, marginBottom: 10 }}>{key.toUpperCase()}</div>
                 <ul
                   style={{
                     listStyle: 'none',
@@ -267,25 +318,45 @@ function groupByDay(items: TutorEvent[]): Array<{ key: string; items: TutorEvent
 
 function EventCard({ event }: { event: TutorEvent }) {
   const ds = eventDisplayState(event);
+  // B/W + red rule: live → var(--red) (canonical accent для "now"),
+  // soon → ink-ramp 60%, later → ink-ramp 30%. No hue palette.
   const stripe =
-    ds === 'live' ? 'rgb(74, 222, 128)' : ds === 'soon' ? 'rgb(251, 191, 36)' : 'rgb(96, 165, 250)';
+    ds === 'live'
+      ? 'var(--red)'
+      : ds === 'soon'
+        ? 'rgba(255, 255, 255, 0.6)'
+        : 'rgba(255, 255, 255, 0.3)';
+  const chipColor =
+    ds === 'live' ? 'var(--red)' : ds === 'soon' ? 'var(--ink)' : 'var(--ink-60)';
 
   return (
     <article
       style={{
         padding: '14px 16px 12px',
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'transparent',
+        border: '1px solid var(--hair-2)',
         borderLeft: `3px solid ${stripe}`,
-        borderRadius: 12,
+        borderRadius: 'var(--radius-outer)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+      {ds === 'live' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          {/* v2 signature — red signal stripe denotes live session. */}
+          <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)' }} />
+          <span style={{ ...captionMonoTiny, color: 'var(--red)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span aria-hidden="true" className="red-pulse" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--red)' }} />
+            LIVE NOW
+          </span>
+        </div>
+      )}
+      <div className="flex-wrap-row" style={{ alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
         <h2
           style={{
             margin: 0,
-            fontSize: 16,
-            fontWeight: 500,
+            fontSize: 'var(--type-h3-size)',
+            lineHeight: 'var(--type-h3-lh)',
+            letterSpacing: 'var(--type-h3-ls)',
+            fontWeight: 'var(--type-h3-weight)',
             color: 'var(--ink)',
             flex: 1,
             minWidth: 0,
@@ -293,17 +364,17 @@ function EventCard({ event }: { event: TutorEvent }) {
         >
           {event.title}
         </h2>
-        {event.scheduledAt && (
+        {event.scheduledAt && ds !== 'live' && (
           <span
-            className="mono"
             style={{
-              fontSize: 10,
-              letterSpacing: '0.16em',
-              color: stripe,
-              textTransform: 'uppercase',
+              ...captionMonoTiny,
+              color: chipColor,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
-            {ds === 'live' ? 'LIVE NOW' : timeUntil(event.scheduledAt)}
+            {timeUntil(event.scheduledAt)}
           </span>
         )}
       </div>
@@ -311,11 +382,11 @@ function EventCard({ event }: { event: TutorEvent }) {
       {event.bodyMd && (
         <pre
           style={{
-            margin: '6px 0 10px',
+            margin: '8px 0 12px',
             whiteSpace: 'pre-wrap',
             fontFamily: 'inherit',
             fontSize: 13,
-            lineHeight: 1.5,
+            lineHeight: 1.55,
             color: 'var(--ink-60)',
           }}
         >
@@ -330,22 +401,14 @@ function EventCard({ event }: { event: TutorEvent }) {
       {event.sessionNote && (
         <div
           style={{
-            margin: '6px 0 10px',
-            padding: '8px 10px',
-            border: '1px solid rgba(255,255,255,0.18)',
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: 8,
+            margin: '8px 0 12px',
+            padding: '10px 12px',
+            border: '1px solid var(--hair-2)',
+            background: 'transparent',
+            borderRadius: 'var(--radius-inner)',
           }}
         >
-          <div
-            className="mono"
-            style={{
-              fontSize: 9,
-              letterSpacing: '0.18em',
-              color: 'rgba(255,255,255,0.85)',
-              marginBottom: 2,
-            }}
-          >
+          <div style={{ ...captionMonoTiny, fontSize: 9, marginBottom: 4, color: 'var(--ink-60)' }}>
             SESSION NOTE
           </div>
           <pre
@@ -354,7 +417,7 @@ function EventCard({ event }: { event: TutorEvent }) {
               whiteSpace: 'pre-wrap',
               fontFamily: 'inherit',
               fontSize: 13,
-              lineHeight: 1.5,
+              lineHeight: 1.55,
               color: 'var(--ink)',
             }}
           >
@@ -364,16 +427,11 @@ function EventCard({ event }: { event: TutorEvent }) {
       )}
 
       <div
-        className="mono"
+        className="flex-wrap-row"
         style={{
-          display: 'flex',
-          flexWrap: 'wrap',
           alignItems: 'center',
-          gap: 10,
-          fontSize: 10,
-          letterSpacing: '0.14em',
-          color: 'var(--ink-40)',
-          textTransform: 'uppercase',
+          gap: 12,
+          ...captionMonoTiny,
         }}
       >
         {event.scheduledAt && <span>{timeOfDay(event.scheduledAt)}</span>}
@@ -383,13 +441,21 @@ function EventCard({ event }: { event: TutorEvent }) {
             href={event.meetUrl}
             target="_blank"
             rel="noreferrer"
+            className="focus-ring motion-press"
             style={{
-              color: 'var(--ink-60)',
-              textDecoration: 'none',
-              padding: '3px 10px',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 999,
               marginLeft: 'auto',
+              padding: '5px 12px',
+              border: '1px solid var(--hair-2)',
+              borderRadius: 999,
+              color: 'var(--ink)',
+              textDecoration: 'none',
+              fontFamily: monoFont,
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              transition:
+                'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
             }}
           >
             JOIN →
@@ -439,50 +505,62 @@ function GroupEventCard({
     <article
       style={{
         padding: '14px 16px 12px',
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderLeft: '3px solid rgb(168, 85, 247)',
-        borderRadius: 12,
+        background: 'transparent',
+        border: '1px solid var(--hair-2)',
+        borderLeft: '3px solid rgba(255, 255, 255, 0.7)',
+        borderRadius: 'var(--radius-outer)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span
-          className="mono"
-          style={{
-            fontSize: 9,
-            letterSpacing: '0.2em',
-            color: 'var(--ink-40)',
-          }}
-        >
+      <div className="flex-wrap-row" style={{ alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <span style={{ ...captionMonoTiny, fontSize: 9 }}>
           GROUP{event.capacity > 0 ? ` · cap ${event.capacity}` : ''}
         </span>
         {event.scheduledAt && (
-          <span style={{ fontSize: 11, color: 'var(--ink-40)', marginLeft: 'auto' }}>
+          <span style={{ fontSize: 11, color: 'var(--ink-40)', marginLeft: 'auto', fontFamily: monoFont }}>
             {timeOfDay(event.scheduledAt)} · {timeUntil(event.scheduledAt)}
           </span>
         )}
       </div>
-      <div style={{ fontSize: 14, color: 'var(--ink)', marginBottom: 4 }}>{event.title}</div>
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 500,
+          letterSpacing: '-0.005em',
+          color: 'var(--ink)',
+          marginBottom: 6,
+        }}
+      >
+        {event.title}
+      </div>
       {event.bodyMd && (
-        <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--ink-60)', whiteSpace: 'pre-wrap' }}>
+        <p
+          style={{
+            margin: '0 0 10px',
+            fontSize: 12,
+            color: 'var(--ink-60)',
+            whiteSpace: 'pre-wrap',
+            lineHeight: 1.55,
+          }}
+        >
           {event.bodyMd}
         </p>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="flex-wrap-row" style={{ alignItems: 'center', gap: 10 }}>
         <button
           type="button"
           onClick={onJoin}
           disabled={busy !== null}
-          className="mono"
+          className="focus-ring motion-press"
           style={{
-            fontSize: 10,
-            letterSpacing: '0.18em',
-            padding: '5px 10px',
-            background: 'rgba(168, 85, 247, 0.15)',
-            color: 'rgb(216, 180, 254)',
-            border: '1px solid rgba(168, 85, 247, 0.3)',
+            ...captionMonoTiny,
+            padding: '5px 12px',
+            background: 'var(--ink)',
+            color: 'var(--bg, #000)',
+            border: 0,
             borderRadius: 999,
             cursor: busy ? 'wait' : 'pointer',
+            transition:
+              'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
           {busy === 'join' ? '…' : 'JOIN'}
@@ -491,21 +569,35 @@ function GroupEventCard({
           type="button"
           onClick={onLeave}
           disabled={busy !== null}
-          className="mono"
+          className="focus-ring motion-press"
           style={{
-            fontSize: 10,
-            letterSpacing: '0.18em',
-            padding: '5px 10px',
+            ...captionMonoTiny,
+            padding: '5px 12px',
             background: 'transparent',
             color: 'var(--ink-60)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid var(--hair-2)',
             borderRadius: 999,
             cursor: busy ? 'wait' : 'pointer',
+            transition:
+              'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
           {busy === 'leave' ? '…' : 'LEAVE'}
         </button>
-        {err && <span style={{ fontSize: 11, color: 'rgb(248, 113, 113)' }}>{err}</span>}
+        {err && (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'flex-start',
+              gap: 8,
+              fontSize: 11,
+              color: 'var(--red)',
+            }}
+          >
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 16, height: 1.5, background: 'var(--red)', marginTop: 5 }} />
+            {err}
+          </span>
+        )}
       </div>
     </article>
   );

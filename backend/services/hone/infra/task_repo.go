@@ -273,11 +273,86 @@ func (r *TaskRepo) ListComments(ctx context.Context, taskID uuid.UUID) ([]domain
 	return out, nil
 }
 
+// ── Phase J / H3 (2026-05-12) — kind override + bulk auto-categorise ──
+
+// SetKind changes the task's kind. When manualOverride=true, flips
+// manual_kind_override = true so background re-categorisers skip the
+// row. When false (used internally by auto-categoriser path), preserves
+// the existing flag value.
+func (r *TaskRepo) SetKind(ctx context.Context, userID, taskID uuid.UUID, kind domain.TaskKind, manualOverride bool) (domain.Task, error) {
+	if !kind.IsValid() {
+		return domain.Task{}, fmt.Errorf("hone.TaskRepo.SetKind: invalid kind %q", kind)
+	}
+	// Two paths: when manualOverride=true we set the flag; otherwise
+	// we leave the flag column untouched (COALESCE keeps existing).
+	var row pgx.Row
+	if manualOverride {
+		row = r.pool.QueryRow(ctx, `
+            UPDATE hone_tasks
+               SET kind = $3, manual_kind_override = true, updated_at = now()
+             WHERE id = $1 AND user_id = $2
+            RETURNING `+taskColumns,
+			sharedpg.UUID(taskID), sharedpg.UUID(userID), string(kind))
+	} else {
+		row = r.pool.QueryRow(ctx, `
+            UPDATE hone_tasks
+               SET kind = $3, updated_at = now()
+             WHERE id = $1 AND user_id = $2
+               -- Guard: do NOT silently overwrite a manual override even
+               -- if caller passed manualOverride=false. Caller must
+               -- decide upstream whether to skip (BulkAutoCategorise UC
+               -- pre-filters); this guard is a safety net.
+               AND manual_kind_override = false
+            RETURNING `+taskColumns,
+			sharedpg.UUID(taskID), sharedpg.UUID(userID), string(kind))
+	}
+	t, err := scanTask(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Task{}, domain.ErrNotFound
+		}
+		return domain.Task{}, fmt.Errorf("hone.TaskRepo.SetKind: %w", err)
+	}
+	return t, nil
+}
+
+// ListAutoCategorisable returns up to `limit` open tasks (todo/in_progress/
+// in_review) where manual_kind_override = false. Ordered oldest-first so
+// backlog cleanup processes the longest-pending items first.
+func (r *TaskRepo) ListAutoCategorisable(ctx context.Context, userID uuid.UUID, limit int) ([]domain.Task, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	rows, err := r.pool.Query(ctx, taskSelect+`
+         WHERE user_id = $1
+           AND status IN ('todo','in_progress','in_review')
+           AND manual_kind_override = false
+         ORDER BY created_at ASC
+         LIMIT $2`,
+		sharedpg.UUID(userID), limit)
+	if err != nil {
+		return nil, fmt.Errorf("hone.TaskRepo.ListAutoCategorisable: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Task, 0, 16)
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, fmt.Errorf("hone.TaskRepo.ListAutoCategorisable: scan: %w", err)
+		}
+		out = append(out, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.TaskRepo.ListAutoCategorisable: rows: %w", err)
+	}
+	return out, nil
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────
 
 const taskColumns = `id, user_id, status, kind, source, title, brief_md,
         skill_key, deep_link, recommended_reading, priority, due_at,
-        created_at, updated_at, completed_at, dismissed_at`
+        created_at, updated_at, completed_at, dismissed_at, manual_kind_override`
 
 const taskSelect = `SELECT ` + taskColumns + ` FROM hone_tasks`
 
@@ -294,11 +369,12 @@ func scanTask(s pgx.Row) (domain.Task, error) {
 		dueAt                pgtype.Timestamptz
 		createdAt, updatedAt time.Time
 		completedAt, dismAt  pgtype.Timestamptz
+		manualOverride       bool
 	)
 	if err := s.Scan(
 		&id, &uid, &status, &kind, &source, &title, &briefMD,
 		&skillKey, &deepLink, &recommendedReading, &priority, &dueAt,
-		&createdAt, &updatedAt, &completedAt, &dismAt,
+		&createdAt, &updatedAt, &completedAt, &dismAt, &manualOverride,
 	); err != nil {
 		return domain.Task{}, fmt.Errorf("hone.scanTask: %w", err)
 	}
@@ -310,6 +386,7 @@ func scanTask(s pgx.Row) (domain.Task, error) {
 		DeepLink: deepLink, RecommendedReading: recommendedReading,
 		Priority:  priority,
 		CreatedAt: createdAt, UpdatedAt: updatedAt,
+		ManualKindOverride: manualOverride,
 	}
 	if skillKey.Valid {
 		t.SkillKey = skillKey.String

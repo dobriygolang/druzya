@@ -28,13 +28,16 @@ export function UpdateToast() {
   return (
     <div
       className="fadein"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       style={{
         position: 'fixed',
         bottom: 100,
         right: 24,
         zIndex: 90,
         padding: '12px 16px',
-        borderRadius: 10,
+        borderRadius: 'var(--radius-inner)',
         background: 'rgba(12,12,12,0.94)',
         border: '1px solid rgba(255,255,255,0.1)',
         backdropFilter: 'blur(14px)',
@@ -55,10 +58,10 @@ export function UpdateToast() {
         style={{
           padding: '5px 11px',
           fontSize: 10,
-          letterSpacing: '.14em',
+          letterSpacing: '0.08em',
           color: '#000',
           background: '#fff',
-          borderRadius: 6,
+          borderRadius: 'var(--radius-inner)',
         }}
       >
         RESTART

@@ -12,6 +12,8 @@
 import { useMemo } from 'react'
 import type { Atlas, AtlasNode } from '../../lib/queries/profile'
 import { cn } from '../../lib/cn'
+import { CoverageBadge } from '../../components/CoverageBadge'
+import { useAtlasStrugglesQuery } from '../../lib/queries/intelligence'
 import {
   STATE_LABEL,
   computePct,
@@ -61,6 +63,24 @@ export function AtlasListMode({
     })
   }, [atlas, highlightKeys])
 
+  // X5 (Phase J P2 2026-05-12) — cross-product struggle marks. Hydrate
+  // once at top of list so each row can probe O(1). 503 / no data —
+  // empty set, no highlights.
+  const struggles = useAtlasStrugglesQuery(30).data ?? []
+  const struggleKeys = useMemo(() => {
+    const s = new Set<string>()
+    for (const m of struggles) {
+      s.add(m.atlasNodeId)
+      // Anchor-prefix conventions: producers use «node:<key>» or
+      // «stage:<key>» depending on origin. Strip to bare key so matching
+      // tolerates both shapes.
+      if (m.atlasNodeId.includes(':')) {
+        s.add(m.atlasNodeId.split(':', 2)[1] ?? '')
+      }
+    }
+    return s
+  }, [struggles])
+
   if (grouped.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center bg-bg p-8">
@@ -78,7 +98,7 @@ export function AtlasListMode({
             className="overflow-hidden rounded-xl border border-border bg-surface-1"
           >
             <header className="border-b border-border px-4 py-2.5">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
                 {sectionLabel(section)}
               </span>
               <span className="ml-2 font-mono text-[11px] text-text-muted">
@@ -91,6 +111,7 @@ export function AtlasListMode({
                 const pct = computePct(n)
                 const isSelected = selectedKey === n.key
                 const isLocked = state === 'locked'
+                const isStruggle = struggleKeys.has(n.key)
                 return (
                   <li key={n.key}>
                     <button
@@ -98,13 +119,24 @@ export function AtlasListMode({
                       onClick={() => !isLocked && onSelect(n.key)}
                       disabled={isLocked}
                       className={cn(
-                        'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
+                        'relative flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
                         isSelected && 'bg-text-primary/5',
                         isLocked ? 'cursor-not-allowed' : 'hover:bg-surface-2',
                       )}
                       aria-current={isSelected ? 'true' : undefined}
                       aria-disabled={isLocked || undefined}
                     >
+                      {/* X5: single red dot indicator when cross-product
+                          signals flagged this node. B/W rule per CLAUDE.md
+                          — no bg/fill, just a dot anchor. */}
+                      {isStruggle && (
+                        <span
+                          aria-hidden
+                          className="absolute left-1 top-1/2 inline-block h-1.5 w-1.5 -translate-y-1/2 rounded-full"
+                          style={{ background: 'var(--red)' }}
+                          title="Cross-product signals: stuck on this topic"
+                        />
+                      )}
                       <div className="min-w-0 flex-1">
                         <div
                           className={cn(
@@ -120,6 +152,12 @@ export function AtlasListMode({
                           </div>
                         )}
                       </div>
+                      <CoverageBadge
+                        nodeKey={n.key}
+                        nodeTitle={n.title}
+                        nodeSection={n.section}
+                        compact
+                      />
                       <span
                         className={cn(
                           'shrink-0 rounded-full px-2 py-0.5 font-mono text-[9px] uppercase',

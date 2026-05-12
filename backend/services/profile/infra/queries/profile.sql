@@ -2,7 +2,9 @@
 
 -- name: GetProfileBundle :one
 -- v2: email column dropped from users; xp/level moved to user_xp.
+-- Stream D (2026-05-12): tutor_mode_enabled surfaced for AppShell RBAC.
 SELECT u.id, u.username, u.role, u.locale, u.display_name, u.created_at,
+       u.tutor_mode_enabled,
        p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
        p.updated_at,
        s.plan, s.status, s.current_period_end
@@ -107,3 +109,30 @@ UPDATE interviewer_applications
  WHERE id = $1
    AND status = 'pending'
 RETURNING id, user_id, motivation, status, reviewed_by, reviewed_at, decision_note, created_at;
+
+-- name: UpsertAppInstall :one
+-- Phase J / X1 (P0). Idempotent heartbeat from web / Hone / Cue.
+-- xmax = 0 on the returned row means INSERT path; xmax != 0 means UPDATE
+-- path (existing row touched). That bit drives the «is this the first
+-- install row for the user across all 3 apps» trial-grant check upstream.
+INSERT INTO user_app_installs(user_id, app, app_version)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, app) DO UPDATE
+   SET last_seen_at = now(),
+       app_version  = CASE WHEN EXCLUDED.app_version <> ''
+                           THEN EXCLUDED.app_version
+                           ELSE user_app_installs.app_version END
+RETURNING user_id, app, first_seen_at, last_seen_at, app_version,
+          (xmax = 0) AS inserted;
+
+-- name: ListAppInstalls :many
+SELECT user_id, app, first_seen_at, last_seen_at, app_version
+  FROM user_app_installs
+ WHERE user_id = $1
+ ORDER BY first_seen_at ASC;
+
+-- name: CountUserAppInstalls :one
+-- Used by RecordAppInstall trial-grant gate: «is this the very first
+-- install row for the user (any app)». Returns the count BEFORE the
+-- caller wrote the new row, so caller checks count == 0.
+SELECT COUNT(*)::bigint FROM user_app_installs WHERE user_id = $1;

@@ -4,7 +4,6 @@ Disallow: /admin
 Disallow: /onboarding
 Disallow: /mock/
 Disallow: /native/
-Disallow: /voice-mock/
 Disallow: /spectator/
 Disallow: /api/
 Disallow: /ws/

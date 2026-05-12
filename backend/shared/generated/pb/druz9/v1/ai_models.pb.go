@@ -1,7 +1,6 @@
 // ai_models.proto — Connect-RPC contract for the LLM model catalogue.
 //
-// Public list: anonymous-readable, narrows by use-surface (arena / insight
-// / mock / vacancies).
+// Public list: anonymous-readable, narrows by use-surface (insight / mock).
 //
 // Admin CRUD: model_id includes a provider prefix (`mistralai/mistral-7b`)
 // so the URL pattern uses `{model_id=**}` to capture slash-containing
@@ -229,7 +228,6 @@ type AIModel struct {
 	HasCostInput        bool                   `protobuf:"varint,10,opt,name=has_cost_input,json=hasCostInput,proto3" json:"has_cost_input,omitempty"`
 	CostPer_1KOutputUsd float64                `protobuf:"fixed64,11,opt,name=cost_per_1k_output_usd,json=costPer1kOutputUsd,proto3" json:"cost_per_1k_output_usd,omitempty"`
 	HasCostOutput       bool                   `protobuf:"varint,12,opt,name=has_cost_output,json=hasCostOutput,proto3" json:"has_cost_output,omitempty"`
-	UseForArena         bool                   `protobuf:"varint,13,opt,name=use_for_arena,json=useForArena,proto3" json:"use_for_arena,omitempty"`
 	UseForInsight       bool                   `protobuf:"varint,14,opt,name=use_for_insight,json=useForInsight,proto3" json:"use_for_insight,omitempty"`
 	UseForMock          bool                   `protobuf:"varint,15,opt,name=use_for_mock,json=useForMock,proto3" json:"use_for_mock,omitempty"`
 	SortOrder           int32                  `protobuf:"varint,16,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
@@ -353,13 +351,6 @@ func (x *AIModel) GetHasCostOutput() bool {
 	return false
 }
 
-func (x *AIModel) GetUseForArena() bool {
-	if x != nil {
-		return x.UseForArena
-	}
-	return false
-}
-
 func (x *AIModel) GetUseForInsight() bool {
 	if x != nil {
 		return x.UseForInsight
@@ -455,8 +446,6 @@ type AIModelUpsert struct {
 	HasCostInput        bool                   `protobuf:"varint,10,opt,name=has_cost_input,json=hasCostInput,proto3" json:"has_cost_input,omitempty"`
 	CostPer_1KOutputUsd float64                `protobuf:"fixed64,11,opt,name=cost_per_1k_output_usd,json=costPer1kOutputUsd,proto3" json:"cost_per_1k_output_usd,omitempty"`
 	HasCostOutput       bool                   `protobuf:"varint,12,opt,name=has_cost_output,json=hasCostOutput,proto3" json:"has_cost_output,omitempty"`
-	UseForArena         bool                   `protobuf:"varint,13,opt,name=use_for_arena,json=useForArena,proto3" json:"use_for_arena,omitempty"`
-	HasUseForArena      bool                   `protobuf:"varint,14,opt,name=has_use_for_arena,json=hasUseForArena,proto3" json:"has_use_for_arena,omitempty"`
 	UseForInsight       bool                   `protobuf:"varint,15,opt,name=use_for_insight,json=useForInsight,proto3" json:"use_for_insight,omitempty"`
 	HasUseForInsight    bool                   `protobuf:"varint,16,opt,name=has_use_for_insight,json=hasUseForInsight,proto3" json:"has_use_for_insight,omitempty"`
 	UseForMock          bool                   `protobuf:"varint,17,opt,name=use_for_mock,json=useForMock,proto3" json:"use_for_mock,omitempty"`
@@ -577,20 +566,6 @@ func (x *AIModelUpsert) GetCostPer_1KOutputUsd() float64 {
 func (x *AIModelUpsert) GetHasCostOutput() bool {
 	if x != nil {
 		return x.HasCostOutput
-	}
-	return false
-}
-
-func (x *AIModelUpsert) GetUseForArena() bool {
-	if x != nil {
-		return x.UseForArena
-	}
-	return false
-}
-
-func (x *AIModelUpsert) GetHasUseForArena() bool {
-	if x != nil {
-		return x.HasUseForArena
 	}
 	return false
 }
@@ -920,7 +895,7 @@ const file_druz9_v1_ai_models_proto_rawDesc = "" +
 	"\tavailable\x18\x01 \x01(\bR\tavailable\x12-\n" +
 	"\x05items\x18\x02 \x03(\v2\x17.druz9.v1.PublicAIModelR\x05items\"-\n" +
 	"\x19ListPublicAIModelsRequest\x12\x10\n" +
-	"\x03use\x18\x01 \x01(\tR\x03use\"\xed\x04\n" +
+	"\x03use\x18\x01 \x01(\tR\x03use\"\xde\x04\n" +
 	"\aAIModel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x19\n" +
 	"\bmodel_id\x18\x02 \x01(\tR\amodelId\x12\x14\n" +
@@ -935,8 +910,7 @@ const file_druz9_v1_ai_models_proto_rawDesc = "" +
 	"\x0ehas_cost_input\x18\n" +
 	" \x01(\bR\fhasCostInput\x122\n" +
 	"\x16cost_per_1k_output_usd\x18\v \x01(\x01R\x12costPer1kOutputUsd\x12&\n" +
-	"\x0fhas_cost_output\x18\f \x01(\bR\rhasCostOutput\x12\"\n" +
-	"\ruse_for_arena\x18\r \x01(\bR\vuseForArena\x12&\n" +
+	"\x0fhas_cost_output\x18\f \x01(\bR\rhasCostOutput\x12&\n" +
 	"\x0fuse_for_insight\x18\x0e \x01(\bR\ruseForInsight\x12 \n" +
 	"\fuse_for_mock\x18\x0f \x01(\bR\n" +
 	"useForMock\x12\x1d\n" +
@@ -945,9 +919,9 @@ const file_druz9_v1_ai_models_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x11 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x12 \x01(\tR\tupdatedAt\"6\n" +
+	"updated_at\x18\x12 \x01(\tR\tupdatedAtJ\x04\b\r\x10\x0eR\ruse_for_arena\"6\n" +
 	"\vAIModelList\x12'\n" +
-	"\x05items\x18\x01 \x03(\v2\x11.druz9.v1.AIModelR\x05items\"\xf4\x05\n" +
+	"\x05items\x18\x01 \x03(\v2\x11.druz9.v1.AIModelR\x05items\"\xd3\x05\n" +
 	"\rAIModelUpsert\x12\x19\n" +
 	"\bmodel_id\x18\x01 \x01(\tR\amodelId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x1a\n" +
@@ -962,9 +936,7 @@ const file_druz9_v1_ai_models_proto_rawDesc = "" +
 	"\x0ehas_cost_input\x18\n" +
 	" \x01(\bR\fhasCostInput\x122\n" +
 	"\x16cost_per_1k_output_usd\x18\v \x01(\x01R\x12costPer1kOutputUsd\x12&\n" +
-	"\x0fhas_cost_output\x18\f \x01(\bR\rhasCostOutput\x12\"\n" +
-	"\ruse_for_arena\x18\r \x01(\bR\vuseForArena\x12)\n" +
-	"\x11has_use_for_arena\x18\x0e \x01(\bR\x0ehasUseForArena\x12&\n" +
+	"\x0fhas_cost_output\x18\f \x01(\bR\rhasCostOutput\x12&\n" +
 	"\x0fuse_for_insight\x18\x0f \x01(\bR\ruseForInsight\x12-\n" +
 	"\x13has_use_for_insight\x18\x10 \x01(\bR\x10hasUseForInsight\x12 \n" +
 	"\fuse_for_mock\x18\x11 \x01(\bR\n" +
@@ -972,7 +944,7 @@ const file_druz9_v1_ai_models_proto_rawDesc = "" +
 	"\x10has_use_for_mock\x18\x12 \x01(\bR\rhasUseForMock\x12\x1d\n" +
 	"\n" +
 	"sort_order\x18\x13 \x01(\x05R\tsortOrder\x12$\n" +
-	"\x0ehas_sort_order\x18\x14 \x01(\bR\fhasSortOrder\"\x1a\n" +
+	"\x0ehas_sort_order\x18\x14 \x01(\bR\fhasSortOrderJ\x04\b\r\x10\x0eJ\x04\b\x0e\x10\x0fR\ruse_for_arenaR\x11has_use_for_arena\"\x1a\n" +
 	"\x18ListAdminAIModelsRequest\"E\n" +
 	"\x14CreateAIModelRequest\x12-\n" +
 	"\x05model\x18\x01 \x01(\v2\x17.druz9.v1.AIModelUpsertR\x05model\"`\n" +

@@ -452,6 +452,51 @@ func (ns NullPersonalEventStatus) Value() (driver.Value, error) {
 	return string(ns.PersonalEventStatus), nil
 }
 
+type PrimaryGoalKind string
+
+const (
+	PrimaryGoalKindTopTierCo     PrimaryGoalKind = "top_tier_co"
+	PrimaryGoalKindAnySenior     PrimaryGoalKind = "any_senior"
+	PrimaryGoalKindMlOffer       PrimaryGoalKind = "ml_offer"
+	PrimaryGoalKindEnglishTarget PrimaryGoalKind = "english_target"
+	PrimaryGoalKindCustom        PrimaryGoalKind = "custom"
+)
+
+func (e *PrimaryGoalKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PrimaryGoalKind(s)
+	case string:
+		*e = PrimaryGoalKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PrimaryGoalKind: %T", src)
+	}
+	return nil
+}
+
+type NullPrimaryGoalKind struct {
+	PrimaryGoalKind PrimaryGoalKind
+	Valid           bool // Valid is true if PrimaryGoalKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPrimaryGoalKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.PrimaryGoalKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PrimaryGoalKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPrimaryGoalKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PrimaryGoalKind), nil
+}
+
 type SubscriptionStatus string
 
 const (
@@ -673,6 +718,27 @@ func (ns NullUserGoalStatus) Value() (driver.Value, error) {
 	return string(ns.UserGoalStatus), nil
 }
 
+type AbExperiment struct {
+	ID         pgtype.UUID
+	Slug       string
+	Hypothesis string
+	Variants   []byte
+	MetricSlug string
+	Status     string
+	StartsAt   pgtype.Timestamptz
+	EndsAt     pgtype.Timestamptz
+	CreatedBy  pgtype.UUID
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type AbUserAssignment struct {
+	UserID       pgtype.UUID
+	ExperimentID pgtype.UUID
+	Variant      string
+	AssignedAt   pgtype.Timestamptz
+}
+
 type AiStrictnessProfile struct {
 	ID                   pgtype.UUID
 	Slug                 string
@@ -795,6 +861,22 @@ type CoachEpisode struct {
 	EmbeddedAt       pgtype.Timestamptz
 	OccurredAt       pgtype.Timestamptz
 	CreatedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	EditedAt         pgtype.Timestamptz
+}
+
+type CoachPrompt struct {
+	ID          pgtype.UUID
+	Slug        string
+	Category    string
+	Template    string
+	Variables   []byte
+	Description string
+	IsActive    bool
+	Version     int32
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type CodexArticle struct {
@@ -925,6 +1007,17 @@ type CopilotSessionReport struct {
 	Title           string
 }
 
+type CueSession struct {
+	ID            pgtype.UUID
+	UserID        pgtype.UUID
+	Company       pgtype.Text
+	Persona       pgtype.Text
+	Stages        []byte
+	AiSummary     pgtype.Text
+	RawTranscript pgtype.Text
+	CompletedAt   pgtype.Timestamptz
+}
+
 type Device struct {
 	ID         pgtype.UUID
 	UserID     pgtype.UUID
@@ -1015,6 +1108,7 @@ type EditorRoom struct {
 	CreatedAt  pgtype.Timestamptz
 	ArchivedAt pgtype.Timestamptz
 	FreeTier   bool
+	Code       string
 }
 
 type EmbeddingModel struct {
@@ -1037,6 +1131,19 @@ type EvalRun struct {
 	OccurredAt  pgtype.Timestamptz
 }
 
+type EventsSynced struct {
+	ID            pgtype.UUID
+	UserID        pgtype.UUID
+	GoogleEventID string
+	GoogleEtag    string
+	Title         string
+	StartTime     pgtype.Timestamptz
+	EndTime       pgtype.Timestamptz
+	Description   string
+	LastSyncedAt  pgtype.Timestamptz
+	DeletedAt     pgtype.Timestamptz
+}
+
 type ExternalActivity struct {
 	ID               pgtype.UUID
 	UserID           pgtype.UUID
@@ -1049,6 +1156,20 @@ type ExternalActivity struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+type FocusReflection struct {
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	SessionID       string
+	FocusMode       string
+	DurationSeconds int32
+	Grade           pgtype.Int2
+	Notes           string
+	TaskPinned      string
+	StartedAt       pgtype.Timestamptz
+	EndedAt         pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+}
+
 type FollowUpQuestion struct {
 	ID         pgtype.UUID
 	TaskID     pgtype.UUID
@@ -1056,6 +1177,22 @@ type FollowUpQuestion struct {
 	QuestionEn string
 	AnswerHint pgtype.Text
 	OrderNum   int32
+}
+
+type GoalPreset struct {
+	ID                pgtype.UUID
+	Slug              string
+	Title             string
+	Kind              string
+	TargetCompany     string
+	TargetLevel       string
+	TargetText        string
+	DefaultTargetDays pgtype.Int4
+	IsActive          bool
+	SortOrder         int32
+	CreatedBy         pgtype.UUID
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 }
 
 type HoneDailyBrief struct {
@@ -1213,6 +1350,7 @@ type HoneTask struct {
 	UpdatedAt          pgtype.Timestamptz
 	CompletedAt        pgtype.Timestamptz
 	DismissedAt        pgtype.Timestamptz
+	ManualKindOverride bool
 }
 
 type HoneTaskComment struct {
@@ -1285,6 +1423,19 @@ type IntelligenceInsight struct {
 	ExpiresAt   pgtype.Timestamptz
 }
 
+type InterviewPrepSession struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	ParsedCv  []byte
+	ParsedJd  []byte
+	CvText    pgtype.Text
+	JdText    pgtype.Text
+	Company   pgtype.Text
+	Role      pgtype.Text
+	StartedAt pgtype.Timestamptz
+	EndedAt   pgtype.Timestamptz
+}
+
 type InterviewerApplication struct {
 	ID           pgtype.UUID
 	UserID       pgtype.UUID
@@ -1323,10 +1474,8 @@ type LlmModel struct {
 	ContextWindow      pgtype.Int4
 	CostPer1kInputUsd  pgtype.Numeric
 	CostPer1kOutputUsd pgtype.Numeric
-	UseForArena        bool
 	UseForInsight      bool
 	UseForMock         bool
-	UseForVacancies    bool
 	SortOrder          int32
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
@@ -1435,6 +1584,20 @@ type NotificationPref struct {
 	UpdatedAt                 pgtype.Timestamptz
 }
 
+type NotificationTemplate struct {
+	ID              pgtype.UUID
+	Slug            string
+	Channel         string
+	SubjectTemplate string
+	BodyTemplate    string
+	Variables       []byte
+	Description     string
+	IsActive        bool
+	CreatedBy       pgtype.UUID
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
 type OauthAccount struct {
 	ID              pgtype.UUID
 	UserID          pgtype.UUID
@@ -1531,25 +1694,15 @@ type ProviderLink struct {
 }
 
 type ResourcePromotionSignal struct {
-	Url             string
-	AtlasNodeID     string
-	UserCount       int32
-	AvgQuality      pgtype.Float4
-	LastUserAddedAt pgtype.Timestamptz
-	PromotedAt      pgtype.Timestamptz
-	BlockedReason   pgtype.Text
-}
-
-type SavedVacancy struct {
-	ID           int64
-	UserID       pgtype.UUID
-	Source       string
-	ExternalID   string
-	SnapshotJson []byte
-	Status       string
-	Notes        pgtype.Text
-	SavedAt      pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	Url              string
+	AtlasNodeID      string
+	UserCount        int32
+	AvgQuality       pgtype.Float4
+	LastUserAddedAt  pgtype.Timestamptz
+	PromotedAt       pgtype.Timestamptz
+	BlockedReason    pgtype.Text
+	DeprecatedAt     pgtype.Timestamptz
+	DeprecatedReason pgtype.Text
 }
 
 type SkillNode struct {
@@ -1561,6 +1714,29 @@ type SkillNode struct {
 	UpdatedAt  pgtype.Timestamptz
 }
 
+type SpeakingExercise struct {
+	ID        string
+	Level     string
+	Topic     string
+	Prompt    string
+	AudioUrl  string
+	CreatedAt pgtype.Timestamptz
+}
+
+type SpeakingSession struct {
+	ID                 pgtype.UUID
+	UserID             pgtype.UUID
+	ClientSessionID    string
+	ExerciseID         string
+	Prompt             string
+	UserTranscript     string
+	PronunciationScore pgtype.Int2
+	FluencyScore       pgtype.Int2
+	CoachFeedback      string
+	DurationMs         int32
+	CreatedAt          pgtype.Timestamptz
+}
+
 type StageDefaultQuestion struct {
 	ID                pgtype.UUID
 	StageKind         string
@@ -1570,6 +1746,17 @@ type StageDefaultQuestion struct {
 	Active            bool
 	SortOrder         int32
 	CreatedAt         pgtype.Timestamptz
+}
+
+type StageTemplate struct {
+	ID          pgtype.UUID
+	Slug        string
+	Name        string
+	Description string
+	StagesJson  []byte
+	UsageCount  int32
+	IsBuiltin   bool
+	CreatedAt   pgtype.Timestamptz
 }
 
 // Per-attempt results of step checkpoint quiz (5 questions из mock_pool по track_steps.checkpoint_skill_keys, AI-graded via TaskCheckpointGrade).
@@ -1584,6 +1771,30 @@ type StepCheckpointAttempt struct {
 	// Set when score >= 70. NULL = failed/not yet graded. Latest passed_at IS NOT NULL row gates next-step unlock.
 	PassedAt  pgtype.Timestamptz
 	CreatedAt pgtype.Timestamptz
+}
+
+type StripeCustomer struct {
+	UserID           pgtype.UUID
+	StripeCustomerID string
+	CreatedAt        pgtype.Timestamptz
+}
+
+type StripeSubscription struct {
+	ID                   pgtype.UUID
+	UserID               pgtype.UUID
+	StripeSubscriptionID string
+	StripePriceID        string
+	Status               string
+	CurrentPeriodEnd     pgtype.Timestamptz
+	CancelAtPeriodEnd    bool
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+}
+
+type StripeWebhookEvent struct {
+	EventID    string
+	EventType  string
+	ReceivedAt pgtype.Timestamptz
 }
 
 type Subscription struct {
@@ -1654,6 +1865,24 @@ type TaskTemplate struct {
 	TaskID      pgtype.UUID
 	Language    string
 	StarterCode string
+}
+
+type TelemetryConsent struct {
+	UserID         pgtype.UUID
+	Surface        string
+	OptedIn        bool
+	ConsentVersion int32
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type TelemetryEvent struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	Surface    string
+	Name       string
+	OccurredAt pgtype.Timestamptz
+	ReceivedAt pgtype.Timestamptz
+	Properties []byte
 }
 
 type TestCase struct {
@@ -1754,6 +1983,19 @@ type TutorInvite struct {
 	TargetUserID pgtype.UUID
 }
 
+type TutorReadingPath struct {
+	ID            pgtype.UUID
+	TutorID       pgtype.UUID
+	Name          string
+	Description   string
+	AtlasNodeKeys []string
+	ResourceIds   []pgtype.UUID
+	AssignedCount int32
+	ArchivedAt    pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
 type TutorSessionNote struct {
 	TutorID   pgtype.UUID
 	StudentID pgtype.UUID
@@ -1789,7 +2031,6 @@ type User struct {
 	DisplayName           pgtype.Text
 	AvatarUrl             string
 	AiInsightModel        pgtype.Text
-	AiVacanciesModel      pgtype.Text
 	OnboardingCompletedAt pgtype.Timestamptz
 	FocusClass            string
 	StorageQuotaBytes     int64
@@ -1799,6 +2040,15 @@ type User struct {
 	VaultKdfSalt          []byte
 	CreatedAt             pgtype.Timestamptz
 	UpdatedAt             pgtype.Timestamptz
+	TutorModeEnabled      bool
+}
+
+type UserAppInstall struct {
+	UserID      pgtype.UUID
+	App         string
+	FirstSeenAt pgtype.Timestamptz
+	LastSeenAt  pgtype.Timestamptz
+	AppVersion  string
 }
 
 type UserAtlasNode struct {
@@ -1823,6 +2073,15 @@ type UserAtlasNodePref struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type UserAtlasStruggleMark struct {
+	UserID      pgtype.UUID
+	AtlasNodeID string
+	Source      string
+	Confidence  float32
+	Note        string
+	MarkedAt    pgtype.Timestamptz
+}
+
 type UserBan struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID
@@ -1832,6 +2091,15 @@ type UserBan struct {
 	ExpiresAt pgtype.Timestamptz
 	LiftedAt  pgtype.Timestamptz
 	LiftedBy  pgtype.UUID
+}
+
+type UserByokKey struct {
+	UserID          pgtype.UUID
+	Provider        string
+	ApiKeyEncrypted string
+	ValidatedAt     pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
 }
 
 type UserGoal struct {
@@ -1847,6 +2115,31 @@ type UserGoal struct {
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 	CompletedAt pgtype.Timestamptz
+}
+
+type UserGoogleCredential struct {
+	UserID                pgtype.UUID
+	AccessTokenEncrypted  string
+	RefreshTokenEncrypted string
+	Expiry                pgtype.Timestamptz
+	Scopes                []string
+	CalendarID            string
+	ConnectedAt           pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+}
+
+type UserMilestone struct {
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	GoalID      pgtype.UUID
+	WeekIndex   int32
+	WeekStart   pgtype.Date
+	Title       string
+	Detail      string
+	Category    string
+	DoneAt      pgtype.Timestamptz
+	GeneratedAt pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type UserNotification struct {
@@ -1869,6 +2162,19 @@ type UserPersonaTrack struct {
 	PrimaryTrack bool
 	StartedAt    pgtype.Timestamptz
 	LastActiveAt pgtype.Timestamptz
+}
+
+type UserPrimaryGoal struct {
+	ID            pgtype.UUID
+	UserID        pgtype.UUID
+	Kind          PrimaryGoalKind
+	TargetCompany pgtype.Text
+	TargetLevel   pgtype.Text
+	TargetText    pgtype.Text
+	TargetDate    pgtype.Date
+	Active        bool
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
 }
 
 type UserReport struct {

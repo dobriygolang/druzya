@@ -54,7 +54,7 @@ export function NotificationsBell({ unreadCount, onClick, ariaLabel }: Notificat
       onClick={onClick}
       aria-label={label}
       className={cn(
-        'relative grid h-9 w-9 place-items-center rounded-md text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary',
+        'relative grid h-9 w-9 place-items-center rounded-md text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-2 hover:text-text-primary',
       )}
     >
       <Bell className="h-5 w-5" strokeWidth={2} />
@@ -62,22 +62,24 @@ export function NotificationsBell({ unreadCount, onClick, ariaLabel }: Notificat
         <span
           className={cn(
             'absolute -top-0.5 -right-0.5 grid place-items-center rounded-full bg-danger',
-            'font-mono font-bold text-white ring-2 ring-bg tabular-nums',
+            'font-mono font-bold ring-2 ring-bg tabular-nums',
             'h-[15px] min-w-[15px] px-1 text-[8px]',
             // Pulse uses CSS box-shadow ripple; defined inline to avoid a global
             // keyframe collision (the wrapper HTML uses the same name).
             pulse && 'animate-[notif-pulse_1.4s_ease-out_3]',
           )}
+          style={{ color: 'rgb(var(--ink))' }}
           aria-hidden={false}
         >
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
-      {/* Inline keyframes — scoped via uniquely-named animation. */}
+      {/* Inline keyframes — scoped via uniquely-named animation. Pulse uses
+        var(--red) канонический accent (was hardcoded rgba(239,68,68,…)). */}
       <style>{`
         @keyframes notif-pulse {
-          0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.55); }
-          50%     { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+          0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 55%, transparent); }
+          50%     { box-shadow: 0 0 0 8px color-mix(in srgb, var(--red) 0%, transparent); }
         }
       `}</style>
     </button>

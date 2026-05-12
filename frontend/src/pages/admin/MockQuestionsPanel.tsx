@@ -121,7 +121,7 @@ function DefaultQuestionsSection() {
         <div className="flex flex-col gap-4">
           {STAGE_KINDS.filter((s) => grouped.has(s)).map((s) => (
             <div key={s} className="flex flex-col gap-1.5">
-              <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">
+              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                 {s}
               </div>
               <ul className="flex flex-col gap-1.5">
@@ -138,12 +138,12 @@ function DefaultQuestionsSection() {
         onSubmit={add}
         className="mt-4 flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-3"
       >
-        <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           + добавить дефолтный вопрос
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <label className="flex flex-col gap-1 sm:w-44">
-            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">stage</span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">stage</span>
             <select
               value={newStage}
               onChange={(e) => setNewStage(e.target.value as StageKind)}
@@ -157,7 +157,7 @@ function DefaultQuestionsSection() {
           </div>
         </div>
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+          <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
             expected_answer_md — образец ответа (для AI-судьи)
           </span>
           <textarea
@@ -165,7 +165,7 @@ function DefaultQuestionsSection() {
             onChange={(e) => setNewExpected(e.target.value)}
             rows={3}
             placeholder="Краткий «как правильно» — судья сравнивает с ним. Можно оставить пустым."
-            className="rounded-md border border-border bg-bg/40 px-2 py-1.5 font-mono text-[12px] text-text-primary"
+            className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
           />
         </label>
         {err && <div className="text-[12px] text-danger">{err}</div>}
@@ -219,6 +219,7 @@ function DefaultQuestionRow({ q }: { q: DefaultQuestion }) {
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
             className="rounded border border-border px-2 py-0.5 font-mono text-[10px] text-text-secondary"
           >
             {open ? '−' : 'edit'}
@@ -307,7 +308,7 @@ function CompanyQuestionsSection() {
           </p>
         </div>
         <label className="flex items-center gap-2">
-          <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">company</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">company</span>
           <select
             value={companyId}
             onChange={(e) => setCompanyId(e.target.value)}
@@ -356,12 +357,12 @@ function CompanyQuestionsSection() {
             onSubmit={add}
             className="mt-4 flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-3"
           >
-            <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
               + добавить company-specific вопрос
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <label className="flex flex-col gap-1 sm:w-44">
-                <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">stage</span>
+                <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">stage</span>
                 <select
                   value={newStage}
                   onChange={(e) => setNewStage(e.target.value as StageKind)}
@@ -375,7 +376,7 @@ function CompanyQuestionsSection() {
               </div>
             </div>
             <label className="flex flex-col gap-1">
-              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+              <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
                 expected_answer_md — образец ответа (для AI-судьи)
               </span>
               <textarea
@@ -383,7 +384,7 @@ function CompanyQuestionsSection() {
                 onChange={(e) => setNewExpected(e.target.value)}
                 rows={3}
                 placeholder="Краткий «как правильно» — судья сравнивает с ним. Можно оставить пустым."
-                className="rounded-md border border-border bg-bg/40 px-2 py-1.5 font-mono text-[12px] text-text-primary"
+                className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
               />
             </label>
             {err && <div className="text-[12px] text-danger">{err}</div>}
@@ -443,6 +444,7 @@ function CompanyQuestionRow({ q }: { q: CompanyQuestion }) {
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
             className="rounded border border-border px-2 py-0.5 font-mono text-[10px] text-text-secondary"
           >
             {open ? '−' : 'edit'}
@@ -499,6 +501,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={on}
       className={`rounded-full border px-2 py-0.5 font-mono text-[10px] ${
         on
           ? 'border-text-primary bg-text-primary/10 text-text-primary'

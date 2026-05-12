@@ -2,19 +2,16 @@ package whiteboard_rooms
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
-	authApp "druz9/auth/app"
 	monolithServices "druz9/cmd/monolith/services"
-	authServices "druz9/cmd/monolith/services/auth"
 	subscriptionServices "druz9/cmd/monolith/services/subscription"
-	"druz9/shared/enums"
+	sharedMw "druz9/shared/pkg/middleware"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	subDomain "druz9/subscription/domain"
 	whiteboardApp "druz9/whiteboard_rooms/app"
@@ -26,34 +23,19 @@ import (
 	"github.com/google/uuid"
 )
 
-// NewWhiteboardRooms wires shared multiplayer whiteboards (bible §9
-// Phase 6.5.4). Mirrors editor wiring: Connect service for CRUD,
-// raw chi WS for the Yjs relay.
+// NewWhiteboardRooms wires the whiteboard surface. D4/Stream F (2026-05-12)
+// — peer-collab Yjs WS / hub / participants gate dropped. Что осталось:
+// Connect-RPC CRUD + REST snapshot save/load (solo persistence). Web
+// (frontend/src/pages/whiteboard/WhiteboardPage.tsx) теперь единственный
+// surface; Hone migrated to deeplink.
 func NewWhiteboardRooms(d monolithServices.Deps) *monolithServices.Module {
 	rooms := whiteboardInfra.NewRooms(d.Pool)
 	parts := whiteboardInfra.NewParticipants(d.Pool)
 	handlers := whiteboardApp.NewHandlers(rooms, parts)
 
-	hub := whiteboardPorts.NewHub(d.Log, rooms, handlers)
-	wsh := whiteboardPorts.NewWSHandler(
-		hub, authServices.WhiteboardTokenVerifier{Issuer: d.TokenIssuer},
-		rooms, parts, d.Log,
-	)
-
-	// WS URL builder — public base covers https → wss replacement so the
-	// browser client can connect directly without env-specific branching.
-	publicBase := d.Cfg.Notify.PublicBaseURL
-	wsURL := func(id uuid.UUID) string {
-		scheme := "wss"
-		host := publicBase
-		if len(host) > 7 && host[:7] == "http://" {
-			scheme = "ws"
-			host = host[7:]
-		} else if len(host) > 8 && host[:8] == "https://" {
-			host = host[8:]
-		}
-		return fmt.Sprintf("%s://%s/ws/whiteboard/%s", scheme, host, id.String())
-	}
+	// ws_url remains in proto/EditorRoom DTO for backwards compat (web client
+	// игнорирует поле). Возвращаем пустую строку.
+	wsURL := func(_ uuid.UUID) string { return "" }
 	// Phase 2: closure для enforce quota'ы перед CreateRoom. nil-safe — при
 	// missing QuotaResolver / Usage / TierGetter (subscription not loaded)
 	// passthrough'ит без блокировок.
@@ -83,29 +65,18 @@ func NewWhiteboardRooms(d monolithServices.Deps) *monolithServices.Module {
 			r.Delete("/whiteboard/room/{room_id}", transcoder.ServeHTTP)
 			r.Get("/whiteboard/room/{room_id}/visibility", transcoder.ServeHTTP)
 			r.Post("/whiteboard/room/{room_id}/visibility", transcoder.ServeHTTP)
+			// D4 Stream F (2026-05-12) — solo snapshot endpoint, hand-rolled
+			// REST (не Connect-RPC). GET → {snapshot_b64} | 404. PUT body
+			// {snapshot_b64} → 204. Owner-only write; any participant read.
+			sh := &snapshotHandler{rooms: rooms, log: d.Log}
+			r.Get("/whiteboard/room/{room_id}/snapshot", sh.get)
+			r.Put("/whiteboard/room/{room_id}/snapshot", sh.put)
 		},
-		MountPublicREST: func(r chi.Router) {
-			// Guest-join — no-auth endpoint. Принимает имя, выдаёт guest JWT
-			// с scope'ом на конкретную room. Handler сам проверяет
-			// visibility=private (отказ для гостей) и rate-limit'ит implicit
-			// через короткий TTL ephemeral user'а.
-			gj := &guestJoinHandler{
-				rooms:    rooms,
-				issuer:   d.TokenIssuer,
-				log:      d.Log,
-				guestTTL: 24 * time.Hour,
-			}
-			r.Post("/whiteboard/room/{room_id}/guest-join", gj.handle)
-		},
-		MountWS: func(ws chi.Router) {
-			ws.Get("/whiteboard/{roomId}", wsh.Handle)
-		},
+		// MountPublicREST / MountWS — D4 Stream F (2026-05-12) удалены:
+		// guest-join был peer-collab only (нужен был чтобы получить
+		// scoped WS-token); solo mode требует обычный bearer auth, гостя
+		// сюда не пускаем. WS hub снесён целиком.
 		Background: []func(ctx context.Context){
-			// Wave-15: ephemeral guest user GC removed — guests are now
-			// fully session-only (no INSERT into users), so there's
-			// nothing to clean up. The migration that ran with this
-			// commit also dropped any historic ephemeral=true rows.
-
 			// Phase 4 — auto-downgrade free-tier shared boards после TTL.
 			// Раз в час: shared rooms принадлежащие free-tier owner'ам с
 			// expired expires_at → flip visibility='private'. Реализация
@@ -114,112 +85,109 @@ func NewWhiteboardRooms(d monolithServices.Deps) *monolithServices.Module {
 				go subscriptionServices.RunFreeTierShareDowngradeWhiteboard(ctx, d.Pool, d.Log)
 			},
 		},
-		Shutdown: []func(ctx context.Context) error{
-			func(ctx context.Context) error { hub.CloseAll(); return nil },
-		},
 	}
 }
 
-// ─── Guest-join REST handler ──────────────────────────────────────────────
+// ─── Snapshot REST handler (D4 Stream F, 2026-05-12) ─────────────────────
 //
-// POST /api/v1/whiteboard/room/{room_id}/guest-join {name: "string"}
-// Guest flow: создаёт ephemeral user-row (role=guest, ephemeral=true),
-// добавляет его в participants, минтит JWT. Token имеет TTL 24h. Доступ
-// блокируется если room.visibility=private (только owner может entered).
+// GET  /api/v1/whiteboard/room/{room_id}/snapshot → {snapshot_b64} | 404
+// PUT  /api/v1/whiteboard/room/{room_id}/snapshot   body: {snapshot_b64}
 //
-// Этот handler сидит ВНЕ auth chain'а — даже без токена (см.
-// router.go MountREST для /whiteboard).
-
-type guestJoinHandler struct {
-	rooms    whiteboardDomain.RoomRepo
-	issuer   *authApp.TokenIssuer
-	log      *slog.Logger
-	guestTTL time.Duration
+// Snapshot — opaque base64 blob (raw Excalidraw scene JSON). Server не
+// валидирует структуру; web client сам решает что serialise'ить. Owner-
+// only write; чтение допускается любому залогиненному (read-only deeplinks).
+type snapshotHandler struct {
+	rooms whiteboardDomain.RoomRepo
+	log   *slog.Logger
 }
 
-type guestJoinRequest struct {
-	Name string `json:"name"`
+type snapshotPutRequest struct {
+	SnapshotB64 string `json:"snapshot_b64"`
 }
 
-type guestJoinResponse struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int    `json:"expires_in_sec"`
-	UserID      string `json:"user_id"`
-	Username    string `json:"username"`
-	Role        string `json:"role"`
+type snapshotGetResponse struct {
+	SnapshotB64 string `json:"snapshot_b64"`
 }
 
-func (h *guestJoinHandler) handle(w http.ResponseWriter, r *http.Request) {
+func (h *snapshotHandler) get(w http.ResponseWriter, r *http.Request) {
+	if _, ok := sharedMw.UserIDFromContext(r.Context()); !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
 	roomID, err := uuid.Parse(chi.URLParam(r, "room_id"))
 	if err != nil {
 		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
 		return
 	}
-	var body guestJoinRequest
-	if decodeErr := json.NewDecoder(r.Body).Decode(&body); decodeErr != nil {
-		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
-		return
-	}
-	name := strings.TrimSpace(body.Name)
-	if name == "" {
-		name = "guest"
-	}
-	if len(name) > 40 {
-		name = name[:40]
-	}
-
-	// Verify room: existence + not expired + not private.
 	room, err := h.rooms.Get(r.Context(), roomID)
 	if err != nil {
 		if errors.Is(err, whiteboardDomain.ErrNotFound) {
 			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
 			return
 		}
-		h.log.ErrorContext(r.Context(), "guest_join: rooms.Get", slog.Any("err", err))
+		h.log.ErrorContext(r.Context(), "whiteboard.snapshot.get", slog.Any("err", err))
 		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
 		return
 	}
-	if time.Now().UTC().After(room.ExpiresAt) {
-		http.Error(w, `{"error":{"code":"expired"}}`, http.StatusGone)
+	if len(room.Snapshot) == 0 {
+		http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
 		return
 	}
-	if room.Visibility == whiteboardDomain.VisibilityPrivate {
-		http.Error(w, `{"error":{"code":"forbidden","message":"private board: guests not allowed"}}`,
-			http.StatusForbidden)
-		return
-	}
-
-	// Session-only guest: no user-row INSERT, no participants row. The
-	// guest's identity lives ENTIRELY inside the JWT (random UUID + the
-	// chosen display name in the `display_name` claim). WS handler trusts
-	// the JWT scope check to gate room access; cursor labels come from
-	// the client-side awareness state seeded with the JWT's display name.
-	// FK to users.id is therefore never exercised for guests.
-	guestUUID := uuid.New()
-
-	// Mint scoped JWT — Scope привязывает токен к конкретной room. WS handler
-	// на upgrade'е проверит что Scope матчит room_id из URL; если злоумышленник
-	// возьмёт guest-token room A и попробует подключиться к room B — 403.
-	// `name` сохраняется в DisplayName-claim'е, фронт читает его для
-	// awareness-cursor'а.
-	scope := fmt.Sprintf("whiteboard:%s", roomID.String())
-	tok, expiresIn, err := h.issuer.MintScopedWithDisplayName(
-		guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram, scope, name, h.guestTTL,
-	)
-	if err != nil {
-		h.log.ErrorContext(r.Context(), "guest_join: mint", slog.Any("err", err))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(guestJoinResponse{
-		AccessToken: tok,
-		ExpiresIn:   expiresIn,
-		UserID:      guestUUID.String(),
-		Username:    name,
-		Role:        "guest",
+	_ = json.NewEncoder(w).Encode(snapshotGetResponse{
+		SnapshotB64: base64.StdEncoding.EncodeToString(room.Snapshot),
 	})
+}
+
+func (h *snapshotHandler) put(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
+	roomID, err := uuid.Parse(chi.URLParam(r, "room_id"))
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
+		return
+	}
+	var body snapshotPutRequest
+	if decodeErr := json.NewDecoder(r.Body).Decode(&body); decodeErr != nil {
+		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
+		return
+	}
+	blob, err := base64.StdEncoding.DecodeString(body.SnapshotB64)
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_b64"}}`, http.StatusBadRequest)
+		return
+	}
+	// Cap on blob size — Excalidraw scenes обычно <100 KiB; 8 MiB hard cap
+	// защищает от accidental gigabyte uploads.
+	if len(blob) > 8<<20 {
+		http.Error(w, `{"error":{"code":"too_large"}}`, http.StatusRequestEntityTooLarge)
+		return
+	}
+	room, err := h.rooms.Get(r.Context(), roomID)
+	if err != nil {
+		if errors.Is(err, whiteboardDomain.ErrNotFound) {
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		h.log.ErrorContext(r.Context(), "whiteboard.snapshot.put.get", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	if room.OwnerID != uid {
+		http.Error(w, `{"error":{"code":"forbidden"}}`, http.StatusForbidden)
+		return
+	}
+	// Bump expires_at on each save — active rooms живут пока юзер их трогает.
+	newExpires := time.Now().UTC().Add(whiteboardDomain.DefaultTTL)
+	if err := h.rooms.UpdateSnapshot(r.Context(), roomID, blob, newExpires); err != nil {
+		h.log.ErrorContext(r.Context(), "whiteboard.snapshot.put.update", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // whiteboardDomainQuotaField — accessor для domain.QuotaPolicy.ActiveSharedBoards.

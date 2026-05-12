@@ -49,6 +49,18 @@ const (
 	// AddExternalActivity UC как fire-and-forget side-effect, чтобы AI-tutor
 	// recall + daily-brief видели эти эпизоды как часть коач-памяти.
 	EpisodeExternalActivity EpisodeKind = "external_activity"
+	// EpisodeCueSession — coarser sibling EpisodeCueConversationMemory: одна
+	// запись на whole Cue interview session (company, persona, per-stage
+	// ratings, ai_summary). Пишется IngestSessionTranscript UC при flush'е
+	// из Cue desktop. Coach recall видит «вчера на Google interview struggled
+	// with sharding» как один episode вместо storm'а conversation turns.
+	EpisodeCueSession EpisodeKind = "cue_session"
+	// EpisodeFocusReflectionAdded — H2 (Phase J). Юзер submit'ит grade
+	// (1-5) + notes после pomodoro. Coach next-action / DailyBrief читает
+	// these episodes как «previously stuck on X with grade 2». Distinct
+	// from EpisodeReflectionAdded (legacy hone_notes-based reflection):
+	// этот episode carries structured grade + duration в payload.
+	EpisodeFocusReflectionAdded EpisodeKind = "focus_reflection_added"
 )
 
 // IsValid powers exhaustive switches and runtime guards.
@@ -60,7 +72,8 @@ func (k EpisodeKind) IsValid() bool {
 		EpisodePlanSkipped, EpisodePlanCompleted,
 		EpisodeNoteCreated, EpisodeFocusSessionDone,
 		EpisodeMockPipelineFinished, EpisodeCodexArticleOpened, EpisodeCueConversationMemory,
-		EpisodeWeeklyMemorySummary, EpisodeExternalActivity:
+		EpisodeWeeklyMemorySummary, EpisodeExternalActivity, EpisodeCueSession,
+		EpisodeFocusReflectionAdded:
 		return true
 	}
 	return false
@@ -80,6 +93,9 @@ type Episode struct {
 	EmbeddedAt     *time.Time
 	OccurredAt     time.Time
 	CreatedAt      time.Time
+	// EditedAt — nil если юзер никогда не редактировал entry; иначе
+	// timestamp последней правки. Driven by EditMemoryEntry UC (F1).
+	EditedAt *time.Time
 }
 
 // EpisodeWithScore is a recall hit (cosine similarity).

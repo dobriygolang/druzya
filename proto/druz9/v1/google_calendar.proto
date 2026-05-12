@@ -1,0 +1,103 @@
+// google_calendar.proto — Stream E: two-way sync Google Calendar.
+// OAuth2 connect flow + periodic pull + ad-hoc push. Local Hone Calendar
+// view reads events_synced (mirrored from Google) and pushes user-created
+// items back via PushEvent. Webhook subscription deferred post-MVP.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+service GoogleCalendarService {
+  // GetConnectionStatus — has the caller linked Google Calendar?
+  rpc GetConnectionStatus(google.protobuf.Empty) returns (ConnectionStatus) {
+    option (google.api.http) = {get: "/api/v1/google_calendar/status"};
+  }
+
+  // StartOAuth — server returns auth URL + state nonce. Frontend opens
+  // the URL in a new window; Google redirects to /auth/google-calendar-callback
+  // with ?code=...&state=... which the SPA POSTs back via CompleteOAuth.
+  rpc StartOAuth(StartOAuthRequest) returns (StartOAuthResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/google_calendar/oauth/start"
+      body: "*"
+    };
+  }
+
+  // CompleteOAuth — swap authorization code for tokens, persist encrypted.
+  rpc CompleteOAuth(CompleteOAuthRequest) returns (ConnectionStatus) {
+    option (google.api.http) = {
+      post: "/api/v1/google_calendar/oauth/callback"
+      body: "*"
+    };
+  }
+
+  // Disconnect — revoke at Google + delete row. Idempotent.
+  rpc Disconnect(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/google_calendar/disconnect"
+      body: "*"
+    };
+  }
+
+  // SyncEvents — pull (mirror remote → events_synced) + push (publish
+  // pending local writes). Idempotent on event_id via etag check.
+  rpc SyncEvents(google.protobuf.Empty) returns (SyncEventsResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/google_calendar/sync"
+      body: "*"
+    };
+  }
+
+  // ListEvents — read-side: returns mirrored events in [from, to] window.
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
+    option (google.api.http) = {get: "/api/v1/google_calendar/events"};
+  }
+}
+
+message ConnectionStatus {
+  bool connected = 1;
+  string calendar_id = 2;
+  google.protobuf.Timestamp last_synced = 3;
+}
+
+message StartOAuthRequest {
+  string redirect_uri = 1;
+}
+
+message StartOAuthResponse {
+  string auth_url = 1;
+  string state = 2;
+}
+
+message CompleteOAuthRequest {
+  string code = 1;
+  string state = 2;
+  string redirect_uri = 3;
+}
+
+message SyncEventsResponse {
+  int32 pulled = 1;
+  int32 pushed = 2;
+}
+
+message ListEventsRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+}
+
+message ListEventsResponse {
+  repeated CalendarEvent items = 1;
+}
+
+message CalendarEvent {
+  string id = 1;
+  string google_event_id = 2;
+  string title = 3;
+  google.protobuf.Timestamp start = 4;
+  google.protobuf.Timestamp end = 5;
+  string description = 6;
+}

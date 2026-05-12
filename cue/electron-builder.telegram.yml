@@ -1,0 +1,26 @@
+# Masquerade build: Telegram alias bundle. See electron-builder.notes.yml
+# for the full rationale — only the identity fields differ between
+# masquerade presets.
+extends: electron-builder.yml
+productName: Telegram
+appId: app.druzya.copilot.alias.telegram
+directories:
+  output: dist/mac-telegram
+mac:
+  icon: resources/masquerade/telegram.icns
+  extendInfo:
+    LSUIElement: true
+    CFBundleName: Telegram
+    CFBundleDisplayName: Telegram
+    CFBundleURLTypes: []
+afterPack: scripts/afterPack-masquerade.cjs
+extraMetadata:
+  productName: Telegram
+  masqueradePreset: telegram
+artifactName: Telegram-${version}-${arch}.${ext}
+# Per-preset update channel — см. electron-builder.notes.yml для полного
+# объяснения. Telegram-disguise auto-updates только Telegram-disguise.
+publish:
+  - provider: github
+    channel: masquerade-telegram
+    releaseType: draft

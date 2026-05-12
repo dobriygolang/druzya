@@ -122,7 +122,7 @@ function CosmicBg({ mode }: { mode: CanvasMode }) {
           position: 'absolute',
           inset: 0,
           transform: `translate(${px1}px, ${py1}px)`,
-          transition: 'transform 600ms cubic-bezier(0.2,0.7,0.2,1)',
+          transition: 'transform var(--motion-dur-xxlarge) cubic-bezier(0.2,0.7,0.2,1)',
         }}
       >
         {stars1.map((s, i) => (
@@ -148,7 +148,7 @@ function CosmicBg({ mode }: { mode: CanvasMode }) {
           position: 'absolute',
           inset: 0,
           transform: `translate(${px2}px, ${py2}px)`,
-          transition: 'transform 500ms cubic-bezier(0.2,0.7,0.2,1)',
+          transition: 'transform var(--motion-dur-xlarge) var(--motion-ease-standard)',
         }}
       >
         {stars2.map((s, i) => (
@@ -174,7 +174,7 @@ function CosmicBg({ mode }: { mode: CanvasMode }) {
           position: 'absolute',
           inset: 0,
           transform: `translate(${px3}px, ${py3}px)`,
-          transition: 'transform 400ms cubic-bezier(0.2,0.7,0.2,1)',
+          transition: 'transform var(--motion-dur-xlarge) var(--motion-ease-standard)',
         }}
       >
         {stars3.map((s, i) => (
@@ -210,7 +210,7 @@ function CosmicBg({ mode }: { mode: CanvasMode }) {
               'radial-gradient(circle at 35% 30%, rgba(120,90,180,0.32) 0%, rgba(60,40,110,0.22) 35%, rgba(20,10,40,0.10) 65%, transparent 100%)',
             boxShadow:
               'inset -50px -80px 120px rgba(0,0,0,0.55), 0 0 80px rgba(80,60,140,0.18)',
-            transition: 'left 700ms cubic-bezier(0.2,0.7,0.2,1), bottom 700ms cubic-bezier(0.2,0.7,0.2,1)',
+            transition: 'left var(--motion-dur-xxlarge) cubic-bezier(0.2,0.7,0.2,1), bottom var(--motion-dur-xxlarge) cubic-bezier(0.2,0.7,0.2,1)',
           }}
         />
       )}

@@ -196,10 +196,6 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// и не-залогиненный мог написать. Авторизованный user_id берётся
 		// из context'а (если bearer есть, middleware его положит).
 		"/api/v1/support/ticket": {},
-		// /api/v1/vacancies — read-only catalogue, public for SEO + the
-		// "browse without sign-up" flow. Phase 5: /vacancies/analyze is
-		// no longer public — match-score requires the user's stack.
-		"/api/v1/vacancies": {},
 		// /api/v1/ai/models — public model catalogue used by the AI-opponent
 		// picker on /arena. Frontend needs it before sign-in to render the
 		// premium-tier upsell, so it stays outside the bearer gate.
@@ -226,15 +222,6 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// /api/v1/profile/{username} — public, but /api/v1/profile/me*
 		// is NOT.
 		if strings.HasPrefix(p, "/api/v1/profile/") && !strings.HasPrefix(p, "/api/v1/profile/me") {
-			return true
-		}
-		// /api/v1/vacancies/{id} — public detail view. Saved-list paths
-		// (/vacancies/saved, /vacancies/{id}/save, /vacancies/saved/{id})
-		// AND /vacancies/analyze (Phase 5: requires user stack) stay gated.
-		if strings.HasPrefix(p, "/api/v1/vacancies/") &&
-			!strings.HasPrefix(p, "/api/v1/vacancies/saved") &&
-			p != "/api/v1/vacancies/analyze" &&
-			!strings.HasSuffix(p, "/save") {
 			return true
 		}
 		// Pivot 2026-05-01: lobby + marketplace prefix-rules выпилены

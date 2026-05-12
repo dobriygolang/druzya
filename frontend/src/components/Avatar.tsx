@@ -26,13 +26,18 @@ const SIZE_TEXT: Record<AvatarSize, string> = {
 // Phase-1: avatar gradients collapsed to a monochrome ramp (varying ink
 // opacities over black). Names retained so callsites don't break; visual
 // differentiation comes from the index, not the hue.
+// Hero-treatment 2026-05-12: hardcoded hex → ink-ramp via rgba(var(--ink))
+// stratification (single ink source, opacity = differentiator). `pink-red`
+// keeps the canonical accent `var(--red)` as its terminal stop — the only
+// gradient that earns a hue stop because it semantically signals «live /
+// danger» (used for in-match presence avatars).
 const GRADIENT_CSS: Record<AvatarGradient, string> = {
-  'violet-cyan':  'linear-gradient(135deg, #2A2A2A 0%, #595959 100%)',
-  'pink-violet':  'linear-gradient(135deg, #1F1F1F 0%, #4A4A4A 100%)',
-  'cyan-violet':  'linear-gradient(135deg, #333333 0%, #6B6B6B 100%)',
-  'pink-red':     'linear-gradient(135deg, #2A2A2A 0%, #FF3B30 100%)',
-  'success-cyan': 'linear-gradient(135deg, #262626 0%, #5C5C5C 100%)',
-  gold:           'linear-gradient(135deg, #3A3A3A 0%, #7A7A7A 100%)',
+  'violet-cyan':  'linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.35) 100%)',
+  'pink-violet':  'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.29) 100%)',
+  'cyan-violet':  'linear-gradient(135deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.42) 100%)',
+  'pink-red':     'linear-gradient(135deg, rgba(255,255,255,0.16) 0%, var(--red) 100%)',
+  'success-cyan': 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.36) 100%)',
+  gold:           'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.48) 100%)',
 };
 
 // Phase-3: presence colors collapsed to ink+success+red. "in-match" reads

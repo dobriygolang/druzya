@@ -12,6 +12,10 @@ import (
 
 type Querier interface {
 	ApproveInterviewerApplication(ctx context.Context, arg ApproveInterviewerApplicationParams) (InterviewerApplication, error)
+	// Used by RecordAppInstall trial-grant gate: «is this the very first
+	// install row for the user (any app)». Returns the count BEFORE the
+	// caller wrote the new row, so caller checks count == 0.
+	CountUserAppInstalls(ctx context.Context, userID pgtype.UUID) (int64, error)
 	// Pivot 2026-05-01: arena_matches/participants/daily_kata_history дропнуты.
 	// matches_won/katas_passed остаются в proto-shape но возвращают 0 —
 	// TODO выпилить из proto после следующего gen-cycle.
@@ -25,8 +29,10 @@ type Querier interface {
 	GetMyInterviewerApplication(ctx context.Context, userID pgtype.UUID) (InterviewerApplication, error)
 	// Queries consumed by sqlc; mirror the hand-rolled pgx code in infra/postgres.go.
 	// v2: email column dropped from users; xp/level moved to user_xp.
+	// Stream D (2026-05-12): tutor_mode_enabled surfaced for AppShell RBAC.
 	GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProfileBundleRow, error)
 	GetProfilePublic(ctx context.Context, username string) (GetProfilePublicRow, error)
+	ListAppInstalls(ctx context.Context, userID pgtype.UUID) ([]UserAppInstall, error)
 	// Admin queue. Sorted oldest-first inside a status group so the FIFO
 	// principle is obvious to moderators.
 	ListInterviewerApplications(ctx context.Context, status string) ([]ListInterviewerApplicationsRow, error)
@@ -38,6 +44,11 @@ type Querier interface {
 	SubmitInterviewerApplication(ctx context.Context, arg SubmitInterviewerApplicationParams) (InterviewerApplication, error)
 	// v2: xp/level live in user_xp table.
 	UpdateProfileXPLevel(ctx context.Context, arg UpdateProfileXPLevelParams) error
+	// Phase J / X1 (P0). Idempotent heartbeat from web / Hone / Cue.
+	// xmax = 0 on the returned row means INSERT path; xmax != 0 means UPDATE
+	// path (existing row touched). That bit drives the «is this the first
+	// install row for the user across all 3 apps» trial-grant check upstream.
+	UpsertAppInstall(ctx context.Context, arg UpsertAppInstallParams) (UpsertAppInstallRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -63,6 +63,13 @@ type CopilotServer struct {
 	// CheckBlock (Phase-4 ADR-001 Wave 3).
 	CheckBlockUC *app.CheckBlock
 
+	// Interview prep (Phase J / C6).
+	ParseCVUC                *app.ParseCV
+	ParseJDUC                *app.ParseJD
+	StartInterviewPrepUC     *app.StartInterviewPrep
+	GetActiveInterviewPrepUC *app.GetActiveInterviewPrep
+	EndInterviewPrepUC       *app.EndInterviewPrep
+
 	// AnalyzeLimiter — defense-in-depth rate-limit на streaming endpoint'ы
 	// (Analyze + Chat) поверх per-user CopilotQuota. Quota — это бюджет в
 	// сутки (24h rolling), а Limiter — burst-protection (req/min): не даёт
@@ -555,6 +562,7 @@ func streamFrameToAnalyzeEvent(f app.StreamFrame) (*pb.AnalyzeEvent, error) {
 			CompactionThreshold: int32(f.Done.CompactionThreshold),
 			CompactionTriggered: f.Done.CompactionTriggered,
 			RunningSummaryChars: int32(f.Done.RunningSummaryChars),
+			ContextUsed:         f.Done.ContextUsed,
 		}}}, nil
 	case f.Delta != "":
 		return &pb.AnalyzeEvent{Kind: &pb.AnalyzeEvent_Delta{Delta: &pb.CopilotTokenDelta{
@@ -595,6 +603,7 @@ func streamFrameToChatEvent(f app.StreamFrame) (*pb.ChatEvent, error) {
 			CompactionThreshold: int32(f.Done.CompactionThreshold),
 			CompactionTriggered: f.Done.CompactionTriggered,
 			RunningSummaryChars: int32(f.Done.RunningSummaryChars),
+			ContextUsed:         f.Done.ContextUsed,
 		}}}, nil
 	case f.Delta != "":
 		return &pb.ChatEvent{Kind: &pb.ChatEvent_Delta{Delta: &pb.CopilotTokenDelta{
@@ -657,6 +666,221 @@ func (s *CopilotServer) checkAnalyzeRateLimit(ctx context.Context, uid uuid.UUID
 		return ce
 	}
 	return nil
+}
+
+// ── Interview prep (Phase J / C6) ───────────────────────────────────────
+
+// ParseCV — POST /api/v1/copilot/interview-prep/parse-cv. Body carries
+// EITHER cv_text OR cv_bytes. The handler dispatches to the use case
+// which returns a structured ParsedCV via the free LLM chain.
+func (s *CopilotServer) ParseCV(
+	ctx context.Context,
+	req *connect.Request[pb.ParseCVRequest],
+) (*connect.Response[pb.ParseCVResponse], error) {
+	if _, ok := sharedMw.UserIDFromContext(ctx); !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.ParseCVUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("interview prep not wired"))
+	}
+	out, err := s.ParseCVUC.Do(ctx, app.ParseCVInput{
+		Text:     req.Msg.GetCvText(),
+		Bytes:    req.Msg.GetCvBytes(),
+		MimeType: req.Msg.GetMimeType(),
+		Filename: req.Msg.GetFilename(),
+		UserTier: sharedMw.UserTierFromContext(ctx),
+	})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(&pb.ParseCVResponse{
+		Parsed: parsedCVToProto(out.Parsed),
+		Model:  out.Model,
+	}), nil
+}
+
+// ParseJD — POST /api/v1/copilot/interview-prep/parse-jd. Body carries
+// EITHER jd_text OR jd_url. URL fetching is best-effort: failures map
+// to FailedPrecondition with a clear "paste text" hint.
+func (s *CopilotServer) ParseJD(
+	ctx context.Context,
+	req *connect.Request[pb.ParseJDRequest],
+) (*connect.Response[pb.ParseJDResponse], error) {
+	if _, ok := sharedMw.UserIDFromContext(ctx); !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.ParseJDUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("interview prep not wired"))
+	}
+	out, err := s.ParseJDUC.Do(ctx, app.ParseJDInput{
+		Text:     req.Msg.GetJdText(),
+		URL:      req.Msg.GetJdUrl(),
+		UserTier: sharedMw.UserTierFromContext(ctx),
+	})
+	if err != nil {
+		// URL-fetch failures are common (LinkedIn blocks bots); surface
+		// them as FailedPrecondition so the client can prompt "paste
+		// text instead".
+		low := strings.ToLower(err.Error())
+		if strings.Contains(low, "fetch url") || strings.Contains(low, "fetch:") {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(&pb.ParseJDResponse{
+		Parsed: parsedJDToProto(out.Parsed),
+		Model:  out.Model,
+	}), nil
+}
+
+// StartInterviewPrep — POST /api/v1/copilot/interview-prep/start.
+// Commits parsed CV+JD as the user's CURRENT active prep (single-active
+// invariant enforced by the repo's tx-wrapped end-prior + insert-new).
+func (s *CopilotServer) StartInterviewPrep(
+	ctx context.Context,
+	req *connect.Request[pb.StartInterviewPrepRequest],
+) (*connect.Response[pb.StartInterviewPrepResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.StartInterviewPrepUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("interview prep not wired"))
+	}
+	out, err := s.StartInterviewPrepUC.Do(ctx, app.StartInterviewPrepInput{
+		UserID:   uid,
+		ParsedCV: parsedCVFromProto(req.Msg.GetParsedCv()),
+		ParsedJD: parsedJDFromProto(req.Msg.GetParsedJd()),
+		CVText:   req.Msg.GetCvText(),
+		JDText:   req.Msg.GetJdText(),
+	})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	resp := &pb.StartInterviewPrepResponse{
+		SessionId:         out.Prep.ID.String(),
+		PrepPromptPreview: out.PromptPreview,
+	}
+	if !out.Prep.StartedAt.IsZero() {
+		resp.StartedAt = timestamppb.New(out.Prep.StartedAt.UTC())
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// GetActiveInterviewPrep — GET /api/v1/copilot/interview-prep/active.
+// Returns active=false when the user has no active prep (empty state
+// for the wizard).
+func (s *CopilotServer) GetActiveInterviewPrep(
+	ctx context.Context,
+	_ *connect.Request[pb.GetActiveInterviewPrepRequest],
+) (*connect.Response[pb.GetActiveInterviewPrepResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.GetActiveInterviewPrepUC == nil {
+		return connect.NewResponse(&pb.GetActiveInterviewPrepResponse{}), nil
+	}
+	out, err := s.GetActiveInterviewPrepUC.Do(ctx, app.GetActiveInterviewPrepInput{UserID: uid})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	if !out.Active {
+		return connect.NewResponse(&pb.GetActiveInterviewPrepResponse{}), nil
+	}
+	resp := &pb.GetActiveInterviewPrepResponse{
+		Active:    true,
+		SessionId: out.Prep.ID.String(),
+		ParsedCv:  parsedCVToProto(out.Prep.ParsedCV),
+		ParsedJd:  parsedJDToProto(out.Prep.ParsedJD),
+		Company:   out.Prep.Company,
+		Role:      out.Prep.Role,
+	}
+	if !out.Prep.StartedAt.IsZero() {
+		resp.StartedAt = timestamppb.New(out.Prep.StartedAt.UTC())
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// EndInterviewPrep — POST /api/v1/copilot/interview-prep/end. Idempotent.
+func (s *CopilotServer) EndInterviewPrep(
+	ctx context.Context,
+	req *connect.Request[pb.EndInterviewPrepRequest],
+) (*connect.Response[pb.EndInterviewPrepResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.EndInterviewPrepUC == nil {
+		return connect.NewResponse(&pb.EndInterviewPrepResponse{}), nil
+	}
+	sessionID := uuid.Nil
+	if s := strings.TrimSpace(req.Msg.GetSessionId()); s != "" {
+		parsed, err := uuid.Parse(s)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid session_id: %w", err))
+		}
+		sessionID = parsed
+	}
+	if err := s.EndInterviewPrepUC.Do(ctx, app.EndInterviewPrepInput{
+		UserID:    uid,
+		SessionID: sessionID,
+	}); err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(&pb.EndInterviewPrepResponse{}), nil
+}
+
+// ── Interview prep proto converters ──────────────────────────────────────
+
+func parsedCVToProto(p domain.ParsedCV) *pb.ParsedCV {
+	return &pb.ParsedCV{
+		Name:            p.Name,
+		ExperienceYears: int32(p.ExperienceYears),
+		CurrentRole:     p.CurrentRole,
+		TopSkills:       append([]string(nil), p.TopSkills...),
+		Summary:         p.Summary,
+		Education:       p.Education,
+	}
+}
+
+func parsedCVFromProto(p *pb.ParsedCV) domain.ParsedCV {
+	if p == nil {
+		return domain.ParsedCV{}
+	}
+	return domain.ParsedCV{
+		Name:            p.GetName(),
+		ExperienceYears: int(p.GetExperienceYears()),
+		CurrentRole:     p.GetCurrentRole(),
+		TopSkills:       append([]string(nil), p.GetTopSkills()...),
+		Summary:         p.GetSummary(),
+		Education:       p.GetEducation(),
+	}
+}
+
+func parsedJDToProto(p domain.ParsedJD) *pb.ParsedJD {
+	return &pb.ParsedJD{
+		Company:            p.Company,
+		Role:               p.Role,
+		Seniority:          p.Seniority,
+		KeySkills:          append([]string(nil), p.KeySkills...),
+		DescriptionSummary: p.DescriptionSummary,
+		Language:           p.Language,
+	}
+}
+
+func parsedJDFromProto(p *pb.ParsedJD) domain.ParsedJD {
+	if p == nil {
+		return domain.ParsedJD{}
+	}
+	return domain.ParsedJD{
+		Company:            p.GetCompany(),
+		Role:               p.GetRole(),
+		Seniority:          p.GetSeniority(),
+		KeySkills:          append([]string(nil), p.GetKeySkills()...),
+		DescriptionSummary: p.GetDescriptionSummary(),
+		Language:           p.GetLanguage(),
+	}
 }
 
 // ── error mapping ────────────────────────────────────────────────────────

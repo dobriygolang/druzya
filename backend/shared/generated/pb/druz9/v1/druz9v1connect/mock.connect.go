@@ -73,6 +73,18 @@ const (
 	// MockPipelineServiceFinishStageProcedure is the fully-qualified name of the MockPipelineService's
 	// FinishStage RPC.
 	MockPipelineServiceFinishStageProcedure = "/druz9.v1.MockPipelineService/FinishStage"
+	// MockPipelineServiceRunAlgoAttemptProcedure is the fully-qualified name of the
+	// MockPipelineService's RunAlgoAttempt RPC.
+	MockPipelineServiceRunAlgoAttemptProcedure = "/druz9.v1.MockPipelineService/RunAlgoAttempt"
+	// MockPipelineServiceRunCodingAttemptProcedure is the fully-qualified name of the
+	// MockPipelineService's RunCodingAttempt RPC.
+	MockPipelineServiceRunCodingAttemptProcedure = "/druz9.v1.MockPipelineService/RunCodingAttempt"
+	// MockPipelineServiceRunSysDesignAttemptProcedure is the fully-qualified name of the
+	// MockPipelineService's RunSysDesignAttempt RPC.
+	MockPipelineServiceRunSysDesignAttemptProcedure = "/druz9.v1.MockPipelineService/RunSysDesignAttempt"
+	// MockPipelineServiceRunBehavioralAttemptProcedure is the fully-qualified name of the
+	// MockPipelineService's RunBehavioralAttempt RPC.
+	MockPipelineServiceRunBehavioralAttemptProcedure = "/druz9.v1.MockPipelineService/RunBehavioralAttempt"
 	// MockPipelineServiceAdminListCompaniesProcedure is the fully-qualified name of the
 	// MockPipelineService's AdminListCompanies RPC.
 	MockPipelineServiceAdminListCompaniesProcedure = "/druz9.v1.MockPipelineService/AdminListCompanies"
@@ -187,6 +199,18 @@ type MockPipelineServiceClient interface {
 	SubmitAnswer(context.Context, *connect.Request[v1.SubmitAnswerRequest]) (*connect.Response[v1.PipelineAttempt], error)
 	// FinishStage — orchestrator: закрывает stage (manual для HR / Soft).
 	FinishStage(context.Context, *connect.Request[v1.FinishStageRequest]) (*connect.Response[v1.PipelineStage], error)
+	// RunAlgoAttempt — "Run tests" для Algo стадии: прогон кода через Judge0
+	// sandbox без persist'а в pipeline_attempts. Возвращает per-test
+	// verdict. Для финальной оценки используется SubmitAnswer.
+	RunAlgoAttempt(context.Context, *connect.Request[v1.RunAlgoAttemptRequest]) (*connect.Response[v1.AlgoVerdict], error)
+	// RunCodingAttempt — «Get rubric» для Coding стадии: LLM rubric grading
+	// open-ended кода без persist'а. Для финальной оценки — SubmitAnswer.
+	RunCodingAttempt(context.Context, *connect.Request[v1.RunCodingAttemptRequest]) (*connect.Response[v1.CodingVerdict], error)
+	// RunSysDesignAttempt — 5-axis rubric (availability / consistency /
+	// scalability / cost / simplicity) text-only. Без persist'а.
+	RunSysDesignAttempt(context.Context, *connect.Request[v1.RunSysDesignAttemptRequest]) (*connect.Response[v1.SysDesignVerdict], error)
+	// RunBehavioralAttempt — STAR rubric для behavioral. Без persist'а.
+	RunBehavioralAttempt(context.Context, *connect.Request[v1.RunBehavioralAttemptRequest]) (*connect.Response[v1.BehavioralVerdict], error)
 	AdminListCompanies(context.Context, *connect.Request[v1.AdminListMockCompaniesRequest]) (*connect.Response[v1.AdminListMockCompaniesResponse], error)
 	AdminCreateCompany(context.Context, *connect.Request[v1.AdminCreateMockCompanyRequest]) (*connect.Response[v1.PipelineCompany], error)
 	AdminUpdateCompany(context.Context, *connect.Request[v1.AdminUpdateMockCompanyRequest]) (*connect.Response[v1.PipelineCompany], error)
@@ -288,6 +312,30 @@ func NewMockPipelineServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+MockPipelineServiceFinishStageProcedure,
 			connect.WithSchema(mockPipelineServiceMethods.ByName("FinishStage")),
+			connect.WithClientOptions(opts...),
+		),
+		runAlgoAttempt: connect.NewClient[v1.RunAlgoAttemptRequest, v1.AlgoVerdict](
+			httpClient,
+			baseURL+MockPipelineServiceRunAlgoAttemptProcedure,
+			connect.WithSchema(mockPipelineServiceMethods.ByName("RunAlgoAttempt")),
+			connect.WithClientOptions(opts...),
+		),
+		runCodingAttempt: connect.NewClient[v1.RunCodingAttemptRequest, v1.CodingVerdict](
+			httpClient,
+			baseURL+MockPipelineServiceRunCodingAttemptProcedure,
+			connect.WithSchema(mockPipelineServiceMethods.ByName("RunCodingAttempt")),
+			connect.WithClientOptions(opts...),
+		),
+		runSysDesignAttempt: connect.NewClient[v1.RunSysDesignAttemptRequest, v1.SysDesignVerdict](
+			httpClient,
+			baseURL+MockPipelineServiceRunSysDesignAttemptProcedure,
+			connect.WithSchema(mockPipelineServiceMethods.ByName("RunSysDesignAttempt")),
+			connect.WithClientOptions(opts...),
+		),
+		runBehavioralAttempt: connect.NewClient[v1.RunBehavioralAttemptRequest, v1.BehavioralVerdict](
+			httpClient,
+			baseURL+MockPipelineServiceRunBehavioralAttemptProcedure,
+			connect.WithSchema(mockPipelineServiceMethods.ByName("RunBehavioralAttempt")),
 			connect.WithClientOptions(opts...),
 		),
 		adminListCompanies: connect.NewClient[v1.AdminListMockCompaniesRequest, v1.AdminListMockCompaniesResponse](
@@ -485,6 +533,10 @@ type mockPipelineServiceClient struct {
 	startNextStage             *connect.Client[v1.StartNextStageRequest, v1.StageWithAttempts]
 	submitAnswer               *connect.Client[v1.SubmitAnswerRequest, v1.PipelineAttempt]
 	finishStage                *connect.Client[v1.FinishStageRequest, v1.PipelineStage]
+	runAlgoAttempt             *connect.Client[v1.RunAlgoAttemptRequest, v1.AlgoVerdict]
+	runCodingAttempt           *connect.Client[v1.RunCodingAttemptRequest, v1.CodingVerdict]
+	runSysDesignAttempt        *connect.Client[v1.RunSysDesignAttemptRequest, v1.SysDesignVerdict]
+	runBehavioralAttempt       *connect.Client[v1.RunBehavioralAttemptRequest, v1.BehavioralVerdict]
 	adminListCompanies         *connect.Client[v1.AdminListMockCompaniesRequest, v1.AdminListMockCompaniesResponse]
 	adminCreateCompany         *connect.Client[v1.AdminCreateMockCompanyRequest, v1.PipelineCompany]
 	adminUpdateCompany         *connect.Client[v1.AdminUpdateMockCompanyRequest, v1.PipelineCompany]
@@ -565,6 +617,26 @@ func (c *mockPipelineServiceClient) SubmitAnswer(ctx context.Context, req *conne
 // FinishStage calls druz9.v1.MockPipelineService.FinishStage.
 func (c *mockPipelineServiceClient) FinishStage(ctx context.Context, req *connect.Request[v1.FinishStageRequest]) (*connect.Response[v1.PipelineStage], error) {
 	return c.finishStage.CallUnary(ctx, req)
+}
+
+// RunAlgoAttempt calls druz9.v1.MockPipelineService.RunAlgoAttempt.
+func (c *mockPipelineServiceClient) RunAlgoAttempt(ctx context.Context, req *connect.Request[v1.RunAlgoAttemptRequest]) (*connect.Response[v1.AlgoVerdict], error) {
+	return c.runAlgoAttempt.CallUnary(ctx, req)
+}
+
+// RunCodingAttempt calls druz9.v1.MockPipelineService.RunCodingAttempt.
+func (c *mockPipelineServiceClient) RunCodingAttempt(ctx context.Context, req *connect.Request[v1.RunCodingAttemptRequest]) (*connect.Response[v1.CodingVerdict], error) {
+	return c.runCodingAttempt.CallUnary(ctx, req)
+}
+
+// RunSysDesignAttempt calls druz9.v1.MockPipelineService.RunSysDesignAttempt.
+func (c *mockPipelineServiceClient) RunSysDesignAttempt(ctx context.Context, req *connect.Request[v1.RunSysDesignAttemptRequest]) (*connect.Response[v1.SysDesignVerdict], error) {
+	return c.runSysDesignAttempt.CallUnary(ctx, req)
+}
+
+// RunBehavioralAttempt calls druz9.v1.MockPipelineService.RunBehavioralAttempt.
+func (c *mockPipelineServiceClient) RunBehavioralAttempt(ctx context.Context, req *connect.Request[v1.RunBehavioralAttemptRequest]) (*connect.Response[v1.BehavioralVerdict], error) {
+	return c.runBehavioralAttempt.CallUnary(ctx, req)
 }
 
 // AdminListCompanies calls druz9.v1.MockPipelineService.AdminListCompanies.
@@ -739,6 +811,18 @@ type MockPipelineServiceHandler interface {
 	SubmitAnswer(context.Context, *connect.Request[v1.SubmitAnswerRequest]) (*connect.Response[v1.PipelineAttempt], error)
 	// FinishStage — orchestrator: закрывает stage (manual для HR / Soft).
 	FinishStage(context.Context, *connect.Request[v1.FinishStageRequest]) (*connect.Response[v1.PipelineStage], error)
+	// RunAlgoAttempt — "Run tests" для Algo стадии: прогон кода через Judge0
+	// sandbox без persist'а в pipeline_attempts. Возвращает per-test
+	// verdict. Для финальной оценки используется SubmitAnswer.
+	RunAlgoAttempt(context.Context, *connect.Request[v1.RunAlgoAttemptRequest]) (*connect.Response[v1.AlgoVerdict], error)
+	// RunCodingAttempt — «Get rubric» для Coding стадии: LLM rubric grading
+	// open-ended кода без persist'а. Для финальной оценки — SubmitAnswer.
+	RunCodingAttempt(context.Context, *connect.Request[v1.RunCodingAttemptRequest]) (*connect.Response[v1.CodingVerdict], error)
+	// RunSysDesignAttempt — 5-axis rubric (availability / consistency /
+	// scalability / cost / simplicity) text-only. Без persist'а.
+	RunSysDesignAttempt(context.Context, *connect.Request[v1.RunSysDesignAttemptRequest]) (*connect.Response[v1.SysDesignVerdict], error)
+	// RunBehavioralAttempt — STAR rubric для behavioral. Без persist'а.
+	RunBehavioralAttempt(context.Context, *connect.Request[v1.RunBehavioralAttemptRequest]) (*connect.Response[v1.BehavioralVerdict], error)
 	AdminListCompanies(context.Context, *connect.Request[v1.AdminListMockCompaniesRequest]) (*connect.Response[v1.AdminListMockCompaniesResponse], error)
 	AdminCreateCompany(context.Context, *connect.Request[v1.AdminCreateMockCompanyRequest]) (*connect.Response[v1.PipelineCompany], error)
 	AdminUpdateCompany(context.Context, *connect.Request[v1.AdminUpdateMockCompanyRequest]) (*connect.Response[v1.PipelineCompany], error)
@@ -836,6 +920,30 @@ func NewMockPipelineServiceHandler(svc MockPipelineServiceHandler, opts ...conne
 		MockPipelineServiceFinishStageProcedure,
 		svc.FinishStage,
 		connect.WithSchema(mockPipelineServiceMethods.ByName("FinishStage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mockPipelineServiceRunAlgoAttemptHandler := connect.NewUnaryHandler(
+		MockPipelineServiceRunAlgoAttemptProcedure,
+		svc.RunAlgoAttempt,
+		connect.WithSchema(mockPipelineServiceMethods.ByName("RunAlgoAttempt")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mockPipelineServiceRunCodingAttemptHandler := connect.NewUnaryHandler(
+		MockPipelineServiceRunCodingAttemptProcedure,
+		svc.RunCodingAttempt,
+		connect.WithSchema(mockPipelineServiceMethods.ByName("RunCodingAttempt")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mockPipelineServiceRunSysDesignAttemptHandler := connect.NewUnaryHandler(
+		MockPipelineServiceRunSysDesignAttemptProcedure,
+		svc.RunSysDesignAttempt,
+		connect.WithSchema(mockPipelineServiceMethods.ByName("RunSysDesignAttempt")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mockPipelineServiceRunBehavioralAttemptHandler := connect.NewUnaryHandler(
+		MockPipelineServiceRunBehavioralAttemptProcedure,
+		svc.RunBehavioralAttempt,
+		connect.WithSchema(mockPipelineServiceMethods.ByName("RunBehavioralAttempt")),
 		connect.WithHandlerOptions(opts...),
 	)
 	mockPipelineServiceAdminListCompaniesHandler := connect.NewUnaryHandler(
@@ -1040,6 +1148,14 @@ func NewMockPipelineServiceHandler(svc MockPipelineServiceHandler, opts ...conne
 			mockPipelineServiceSubmitAnswerHandler.ServeHTTP(w, r)
 		case MockPipelineServiceFinishStageProcedure:
 			mockPipelineServiceFinishStageHandler.ServeHTTP(w, r)
+		case MockPipelineServiceRunAlgoAttemptProcedure:
+			mockPipelineServiceRunAlgoAttemptHandler.ServeHTTP(w, r)
+		case MockPipelineServiceRunCodingAttemptProcedure:
+			mockPipelineServiceRunCodingAttemptHandler.ServeHTTP(w, r)
+		case MockPipelineServiceRunSysDesignAttemptProcedure:
+			mockPipelineServiceRunSysDesignAttemptHandler.ServeHTTP(w, r)
+		case MockPipelineServiceRunBehavioralAttemptProcedure:
+			mockPipelineServiceRunBehavioralAttemptHandler.ServeHTTP(w, r)
 		case MockPipelineServiceAdminListCompaniesProcedure:
 			mockPipelineServiceAdminListCompaniesHandler.ServeHTTP(w, r)
 		case MockPipelineServiceAdminCreateCompanyProcedure:
@@ -1147,6 +1263,22 @@ func (UnimplementedMockPipelineServiceHandler) SubmitAnswer(context.Context, *co
 
 func (UnimplementedMockPipelineServiceHandler) FinishStage(context.Context, *connect.Request[v1.FinishStageRequest]) (*connect.Response[v1.PipelineStage], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.MockPipelineService.FinishStage is not implemented"))
+}
+
+func (UnimplementedMockPipelineServiceHandler) RunAlgoAttempt(context.Context, *connect.Request[v1.RunAlgoAttemptRequest]) (*connect.Response[v1.AlgoVerdict], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.MockPipelineService.RunAlgoAttempt is not implemented"))
+}
+
+func (UnimplementedMockPipelineServiceHandler) RunCodingAttempt(context.Context, *connect.Request[v1.RunCodingAttemptRequest]) (*connect.Response[v1.CodingVerdict], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.MockPipelineService.RunCodingAttempt is not implemented"))
+}
+
+func (UnimplementedMockPipelineServiceHandler) RunSysDesignAttempt(context.Context, *connect.Request[v1.RunSysDesignAttemptRequest]) (*connect.Response[v1.SysDesignVerdict], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.MockPipelineService.RunSysDesignAttempt is not implemented"))
+}
+
+func (UnimplementedMockPipelineServiceHandler) RunBehavioralAttempt(context.Context, *connect.Request[v1.RunBehavioralAttemptRequest]) (*connect.Response[v1.BehavioralVerdict], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.MockPipelineService.RunBehavioralAttempt is not implemented"))
 }
 
 func (UnimplementedMockPipelineServiceHandler) AdminListCompanies(context.Context, *connect.Request[v1.AdminListMockCompaniesRequest]) (*connect.Response[v1.AdminListMockCompaniesResponse], error) {

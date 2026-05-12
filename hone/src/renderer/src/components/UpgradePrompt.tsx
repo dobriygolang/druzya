@@ -6,146 +6,131 @@
 //   - Boards/Rooms create аналогично
 //   - При попытке cross-device sync на free tier (Settings)
 //
-// UX: blocking modal с двумя actions — Upgrade (пока stub'нём на /pricing
-// URL когда страница появится) и Dismiss. Стиль — winter palette,
-// fadein animation.
+// UX: blocking modal с двумя actions — Upgrade (открывает /pricing в default
+// browser) и Dismiss. 2026-05-12: migrated to foundation Modal primitive
+// (focus trap, escape, scroll lock, restore focus, in/out motion). Tokens —
+// b/w + red rule, no hardcoded #fff.
 
-import { useEffect } from 'react';
+import { useCallback, useState } from 'react';
 
 import { useQuotaStore } from '../stores/quota';
+import { Modal } from './primitives/Modal';
+import { motion as motionTokens } from '../lib/design-tokens';
 
 export function UpgradePrompt() {
   const message = useQuotaStore((s) => s.upgradePromptMessage);
   const tier = useQuotaStore((s) => s.tier);
   const dismiss = useQuotaStore((s) => s.dismissUpgradePrompt);
+  const [open, setOpen] = useState(true);
 
-  // Esc closes.
-  useEffect(() => {
-    if (!message) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') dismiss();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [message, dismiss]);
+  // Smooth exit: flip open → Modal exit anim → store dismiss.
+  const close = useCallback(() => {
+    setOpen(false);
+    window.setTimeout(dismiss, motionTokens.dur.medium);
+  }, [dismiss]);
 
   if (!message) return null;
 
   return (
-    <div
-      className="fadein"
-      onClick={dismiss}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.6)',
-        backdropFilter: 'blur(6px)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 32,
-        animationDuration: '160ms',
-      }}
-    >
+    <Modal open={open} onClose={close} size="sm">
       <div
-        onClick={(e) => e.stopPropagation()}
+        className="mono"
         style={{
-          maxWidth: 480,
-          width: '100%',
-          padding: '28px 30px',
-          background: 'rgba(20,20,22,0.96)',
-          backdropFilter: 'blur(18px)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          borderRadius: 14,
-          color: 'var(--ink)',
-          fontFamily: 'Inter, system-ui, sans-serif',
+          position: 'relative',
+          fontSize: 10,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-40)',
+          marginBottom: 10,
+          paddingLeft: 12,
         }}
       >
-        <div
-          className="mono"
+        <span
+          aria-hidden="true"
           style={{
-            fontSize: 10,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: 'var(--ink-40)',
-            marginBottom: 10,
+            position: 'absolute',
+            left: 0,
+            top: 2,
+            bottom: 2,
+            width: 1.5,
+            background: 'var(--red)',
           }}
-        >
-          {tier === 'free' ? 'Free tier limit' : 'Quota exceeded'}
-        </div>
-        <h2
-          style={{
-            margin: 0,
-            fontSize: 20,
-            fontWeight: 500,
-            letterSpacing: '-0.01em',
-            color: 'var(--ink)',
-            lineHeight: 1.3,
-            marginBottom: 12,
-          }}
-        >
-          Time to upgrade
-        </h2>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13.5,
-            color: 'var(--ink-60)',
-            lineHeight: 1.6,
-            marginBottom: 22,
-          }}
-        >
-          {message}
-        </p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button
-            onClick={dismiss}
-            style={{
-              padding: '9px 16px',
-              borderRadius: 8,
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: 'var(--ink-60)',
-              fontSize: 13,
-              cursor: 'pointer',
-              transition: 'background-color 140ms ease, color 140ms ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-              e.currentTarget.style.color = 'var(--ink)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--ink-60)';
-            }}
-          >
-            Not now
-          </button>
-          <button
-            onClick={() => {
-              const url = 'https://druz9.online/pricing';
-              const bridge = typeof window !== 'undefined' ? window.hone : undefined;
-              if (bridge) void bridge.shell.openExternal(url);
-              else window.open(url, '_blank');
-              dismiss();
-            }}
-            style={{
-              padding: '9px 18px',
-              borderRadius: 8,
-              background: '#fff',
-              color: '#000',
-              border: 'none',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            View plans →
-          </button>
-        </div>
+        />
+        {tier === 'free' ? 'Free tier limit' : 'Quota exceeded'}
       </div>
-    </div>
+      <h2
+        style={{
+          margin: 0,
+          fontSize: 20,
+          fontWeight: 500,
+          letterSpacing: '-0.01em',
+          color: 'var(--ink)',
+          lineHeight: 1.3,
+          marginBottom: 12,
+        }}
+      >
+        Time to upgrade
+      </h2>
+      <p
+        style={{
+          margin: 0,
+          fontSize: 13.5,
+          color: 'var(--ink-60)',
+          lineHeight: 1.6,
+          marginBottom: 22,
+        }}
+      >
+        {message}
+      </p>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <button
+          onClick={close}
+          style={{
+            padding: '9px 16px',
+            borderRadius: 8,
+            background: 'transparent',
+            border: '1px solid var(--hair-2)',
+            color: 'var(--ink-60)',
+            fontSize: 13,
+            cursor: 'pointer',
+            transition:
+              'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--hair)';
+            e.currentTarget.style.color = 'var(--ink)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--ink-60)';
+          }}
+        >
+          Not now
+        </button>
+        <button
+          onClick={() => {
+            const url = 'https://druz9.online/pricing';
+            const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+            if (bridge) void bridge.shell.openExternal(url);
+            else window.open(url, '_blank');
+            close();
+          }}
+          style={{
+            padding: '9px 18px',
+            borderRadius: 8,
+            background: 'var(--ink)',
+            color: 'var(--bg)',
+            border: 'none',
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition:
+              'transform var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+        >
+          View plans →
+        </button>
+      </div>
+    </Modal>
   );
 }

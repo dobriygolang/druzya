@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddExternalActivityRequest, AddListeningMaterialRequest, AddQueueItemRequest, AddReadingMaterialRequest, AddTaskCommentRequest, AddVocabRequest, ArchiveListeningMaterialRequest, ArchiveListeningMaterialResponse, ArchiveReadingMaterialRequest, ArchiveReadingMaterialResponse, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteExternalActivityRequest, DeleteExternalActivityResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, EndReadingSessionRequest, EndReadingSessionResponse, ExternalActivity, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetListeningMaterialRequest, GetNoteConnectionsRequest, GetNoteRequest, GetReadingMaterialRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetUserSettingsRequest, GetWhiteboardRequest, GradeCodeReviewRequest, GradeCodeReviewResponse, GradeEnglishWritingRequest, GradeEnglishWritingResponse, ImportCueSessionRequest, IngestYouTubeListeningRequest, ListAtlasNodeTracksRequest, ListAtlasNodeTracksResponse, ListCueSessionsRequest, ListCueSessionsResponse, ListeningMaterial, ListExternalActivityRequest, ListExternalActivityResponse, ListFoldersRequest, ListFoldersResponse, ListListeningMaterialsRequest, ListListeningMaterialsResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListReadingMaterialsRequest, ListReadingMaterialsResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListVocabBySourceMaterialRequest, ListVocabDueRequest, ListVocabDueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, ReadingMaterial, ReadingSession, RecordStandupRequest, RecordStandupResponse, ReviewVocabRequest, SaveCritiqueAsNoteRequest, SearchAtlasTopicsRequest, SearchAtlasTopicsResponse, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, SetActiveTrackRequest, SetEnglishActiveRequest, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, StartReadingSessionRequest, Stats, SuggestNoteLinksRequest, SuggestNoteLinksResponse, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateBookProgressRequest, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, UserSettings, VocabEntry, Whiteboard } from "./hone_pb.js";
+import { AddExternalActivityRequest, AddListeningMaterialRequest, AddQueueItemRequest, AddReadingMaterialRequest, AddTaskCommentRequest, AddVocabRequest, ArchiveListeningMaterialRequest, ArchiveListeningMaterialResponse, ArchiveReadingMaterialRequest, ArchiveReadingMaterialResponse, BulkAutoCategoriseEvent, BulkAutoCategoriseRequest, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteExternalActivityRequest, DeleteExternalActivityResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, EndReadingSessionRequest, EndReadingSessionResponse, ExternalActivity, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetListeningMaterialRequest, GetNoteConnectionsRequest, GetNoteRequest, GetReadingMaterialRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetUserSettingsRequest, GetWhiteboardRequest, GradeCodeReviewRequest, GradeCodeReviewResponse, GradeEnglishWritingRequest, GradeEnglishWritingResponse, GradeSpeakingRequest, GradeSpeakingResponse, ImportCueSessionRequest, IngestYouTubeListeningRequest, ListAtlasNodeTracksRequest, ListAtlasNodeTracksResponse, ListCueSessionsRequest, ListCueSessionsResponse, ListeningMaterial, ListExternalActivityRequest, ListExternalActivityResponse, ListFoldersRequest, ListFoldersResponse, ListListeningMaterialsRequest, ListListeningMaterialsResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListReadingMaterialsRequest, ListReadingMaterialsResponse, ListSpeakingExercisesRequest, ListSpeakingExercisesResponse, ListSpeakingHistoryRequest, ListSpeakingHistoryResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListVocabBySourceMaterialRequest, ListVocabDueRequest, ListVocabDueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, ReadingMaterial, ReadingSession, RecordStandupRequest, RecordStandupResponse, ReviewVocabRequest, SaveCritiqueAsNoteRequest, SearchAtlasTopicsRequest, SearchAtlasTopicsResponse, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, SetActiveTrackRequest, SetEnglishActiveRequest, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, StartReadingSessionRequest, Stats, SuggestNoteLinksRequest, SuggestNoteLinksResponse, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateBookProgressRequest, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateTaskKindRequest, UpdateWhiteboardRequest, UserSettings, VocabEntry, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -444,6 +444,30 @@ export const HoneService = {
       kind: MethodKind.Unary,
     },
     /**
+     * Phase J / H3 (P1, 2026-05-12) — manual kind override + bulk re-categorise.
+     *
+     * @generated from rpc druz9.v1.HoneService.UpdateTaskKind
+     */
+    updateTaskKind: {
+      name: "UpdateTaskKind",
+      I: UpdateTaskKindRequest,
+      O: Task,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Server-streams categorise events as each task is processed. Frontend
+     * consumes via Connect stream client (the existing SSE cursor path stays
+     * for cursor.move / card.move; this is a one-shot scoped stream).
+     *
+     * @generated from rpc druz9.v1.HoneService.BulkAutoCategorise
+     */
+    bulkAutoCategorise: {
+      name: "BulkAutoCategorise",
+      I: BulkAutoCategoriseRequest,
+      O: BulkAutoCategoriseEvent,
+      kind: MethodKind.ServerStreaming,
+    },
+    /**
      * ─── Publish-to-web ────────────────────────────────────────────────
      * The HTML viewer at /p/{slug} stays chi-direct (renders Markdown into
      * sandboxed HTML with strict CSP headers — vanguard's JSON-only codec
@@ -777,6 +801,43 @@ export const HoneService = {
       name: "GradeCodeReview",
       I: GradeCodeReviewRequest,
       O: GradeCodeReviewResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Speaking modality (H4 / Phase J 2026-05-12) ──────────────────
+     * Shadowing exercise loop: list canned prompts → record mic audio →
+     * STT-grade against reference text → persist session for drift trend.
+     * Без Speaking Hone English ≈ Reader; H4 закрывает 4-modality hub.
+     *
+     * @generated from rpc druz9.v1.HoneService.ListSpeakingExercises
+     */
+    listSpeakingExercises: {
+      name: "ListSpeakingExercises",
+      I: ListSpeakingExercisesRequest,
+      O: ListSpeakingExercisesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GradeSpeaking — base64-encoded webm/opus audio + reference text.
+     * STT (Groq Whisper) → LLM compare transcript vs reference → pronunciation
+     * & fluency scores + word-level diff + 1-line coach feedback. Persists
+     * a speaking_sessions row idempotent via client_session_id.
+     *
+     * @generated from rpc druz9.v1.HoneService.GradeSpeaking
+     */
+    gradeSpeaking: {
+      name: "GradeSpeaking",
+      I: GradeSpeakingRequest,
+      O: GradeSpeakingResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ListSpeakingHistory
+     */
+    listSpeakingHistory: {
+      name: "ListSpeakingHistory",
+      I: ListSpeakingHistoryRequest,
+      O: ListSpeakingHistoryResponse,
       kind: MethodKind.Unary,
     },
   }

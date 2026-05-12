@@ -13,7 +13,7 @@ const button = cva(
   [
     'inline-flex items-center justify-center gap-2',
     'font-sans font-medium whitespace-nowrap select-none',
-    'transition-colors duration-150',
+    'transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
     'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
     'disabled:opacity-50 disabled:pointer-events-none',
   ],

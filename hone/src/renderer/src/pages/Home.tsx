@@ -6,6 +6,11 @@
 //      (не red, не pulsate); если не running — пусто как раньше
 //   3. Reflection-prompt — после auto-end таймера, inline в нижнем правом
 //      углу, не модалка-блокер
+//
+// 2026-05-12: v2 visual language — letter-spacing 0.08em canonical (was
+// mix of 0.14/0.18/0.22), hairline tokens (var(--hair)/--hair-2 instead
+// of inline rgba), motion tokens for transitions, focus-ring on inputs.
+
 import { memo, useEffect, useRef, useState } from 'react';
 
 interface ReflectionPrompt {
@@ -20,16 +25,15 @@ interface HomePageProps {
   pinnedTitle: string | null;
   reflectionPrompt: ReflectionPrompt | null;
   onStop: () => void;
-  onSubmitReflection: (text: string) => void | Promise<void>;
+  // H2 (Phase J 2026-05-12) — grade ∈ [1,5] или 0 (juzer skipped grade,
+  // submitted notes only). undefined never passed — caller всегда подставляет 0.
+  onSubmitReflection: (text: string, grade: number) => void | Promise<void>;
   onDismissReflection: () => void;
 }
 
-// Phase R3 cooldown — `remain` flips every second (1Hz pomodoro tick) but
-// the only place it influences output is the `pinnedTitle && (remain < 25*60)`
-// guard. Custom comparator: bucket remain into a single "below 25 min?"
-// boolean and skip re-render unless that bucket flips. The big mm:ss
-// timer on this page was previously removed by Sergey (see the commented
-// block below), so this is safe.
+// R10 (Phase A 2026-05-12) — subtle persistent timer на верхнем правом
+// показывает mm:ss tick-by-tick, поэтому remain должна re-render каждую
+// секунду когда running. Idle case (running=false) — remain игнорим.
 function homeArePropsEqual(a: HomePageProps, b: HomePageProps): boolean {
   if (a.running !== b.running) return false;
   if (a.pinnedTitle !== b.pinnedTitle) return false;
@@ -37,12 +41,21 @@ function homeArePropsEqual(a: HomePageProps, b: HomePageProps): boolean {
   if (a.onStop !== b.onStop) return false;
   if (a.onSubmitReflection !== b.onSubmitReflection) return false;
   if (a.onDismissReflection !== b.onDismissReflection) return false;
-  // remain — only relevant via the < 25min boundary. Coalesce into a
-  // bucket so a 1Hz tick doesn't bust memo unless it crosses the line.
-  const aBucket = a.remain < 25 * 60;
-  const bBucket = b.remain < 25 * 60;
-  return aBucket === bBucket;
+  // Idle — remain не visible, не triggerим re-render.
+  if (!a.running && !b.running) return true;
+  // Running — full equality on remain (1Hz tick → 60 re-renders/min on Home,
+  // acceptable trade-off для visible persistent timer).
+  return a.remain === b.remain;
 }
+
+const captionMono: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+};
 
 export const HomePage = memo(HomePageImpl, homeArePropsEqual);
 
@@ -62,45 +75,83 @@ function HomePageImpl({
     <>
       {pinnedTitle && (running || remain < 25 * 60) && (
         <div
-          className="mono fadein"
+          className="motion-page-in"
           style={{
+            ...captionMono,
             position: 'absolute',
             top: 100,
             left: 0,
             right: 0,
             textAlign: 'center',
-            fontSize: 11,
-            letterSpacing: '0.18em',
-            color: 'var(--ink-40)',
+            display: 'inline-flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 10,
           }}
         >
-          WORKING ON · {pinnedTitle.toUpperCase()}
+          {/* v2 signature — red signal stripe before "WORKING ON" denotes live focus. */}
+          <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)' }} />
+          <span>WORKING ON · {pinnedTitle.toUpperCase()}</span>
         </div>
       )}
 
-      {/* Большой mm:ss таймер на главном canvas удалён по просьбе юзера —
-          выглядел агрессивно. Время продолжает идти в Dock'е (внизу
-          страницы), pinned-task label выше остаётся. Юзер сам видит
-          оставшееся время в нижней части. */}
-      {/* Suppress unused-var warning for mm/ss when timer not rendered. */}
-      {false && running && <span>{mm}:{ss}</span>}
+      {/* R10 (Phase A 2026-05-12) — subtle persistent timer на верхнем-правом
+          углу. Не агрессивный (был big-center variant который Sergey удалил
+          раньше): теперь это quiet mono-font hint для periferal vision.
+          Только когда running; в idle — invisible. */}
+      {running && (
+        <div
+          aria-live="off"
+          style={{
+            position: 'absolute',
+            top: 36,
+            right: 36,
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+            fontSize: 11,
+            fontWeight: 500,
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '0.08em',
+            color: 'var(--ink-40)',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            opacity: 0.7,
+          }}
+          title={`${mm} минут ${ss} секунд осталось`}
+        >
+          {mm}:{ss}
+        </div>
+      )}
 
       {running && (
         <button
           onClick={onStop}
-          className="focus-ring mono"
+          className="focus-ring motion-press"
           style={{
             position: 'absolute',
             bottom: 100,
             left: '50%',
             transform: 'translateX(-50%)',
             padding: '7px 16px',
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
             fontSize: 10,
-            letterSpacing: '0.18em',
-            color: 'var(--ink-40)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            fontWeight: 600,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-60)',
+            border: '1px solid var(--hair-2)',
             borderRadius: 999,
             background: 'transparent',
+            cursor: 'pointer',
+            transition:
+              'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+            e.currentTarget.style.color = 'var(--ink)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--ink-60)';
           }}
         >
           STOP
@@ -124,10 +175,14 @@ function ReflectionInline({
   onDismiss,
 }: {
   prompt: ReflectionPrompt;
-  onSubmit: (text: string) => void | Promise<void>;
+  onSubmit: (text: string, grade: number) => void | Promise<void>;
   onDismiss: () => void;
 }) {
   const [value, setValue] = useState('');
+  // H2 (Phase J 2026-05-12) — grade 0 = "no rating", 1..5 = explicit.
+  // Юзер может submit'ить только notes без grade — тогда grade=0 уезжает,
+  // backend сохраняет NULL в grade column.
+  const [grade, setGrade] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -138,7 +193,7 @@ function ReflectionInline({
   const submit = async () => {
     setSubmitting(true);
     try {
-      await onSubmit(value);
+      await onSubmit(value, grade);
     } finally {
       setSubmitting(false);
     }
@@ -152,30 +207,90 @@ function ReflectionInline({
       e.preventDefault();
       onDismiss();
     }
+    // Quick-select grade via number keys 1-5 while focused on input.
+    if (!submitting && /^[1-5]$/.test(e.key)) {
+      const candidate = parseInt(e.key, 10);
+      if (Number.isFinite(candidate)) {
+        e.preventDefault();
+        setGrade((g) => (g === candidate ? 0 : candidate));
+      }
+    }
   };
 
   const mins = Math.round(prompt.secondsFocused / 60);
 
   return (
     <div
-      className="fadein"
+      className="motion-modal-in"
+      role="dialog"
+      aria-label="Reflection note"
       style={{
         position: 'absolute',
         bottom: 100,
         right: 32,
-        width: 360,
+        maxWidth: 380,
+        minWidth: 320,
         padding: '16px 18px',
-        background: 'rgba(8,8,8,0.92)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 12,
+        background: 'rgba(8, 8, 8, 0.92)',
+        border: '1px solid var(--hair-2)',
+        borderRadius: 'var(--radius-outer)',
         backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
       }}
     >
+      <div style={{ ...captionMono, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+        {/* Red signal dot — "live reflection moment", not decorative. */}
+        <span aria-hidden="true" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--red)' }} />
+        <span>{mins} MIN DONE · OPTIONAL NOTE</span>
+      </div>
+      {/* H2 (Phase J 2026-05-12) — grade picker. Hairline-bordered 1-5 dots,
+          mono captions. B/W only, никакого colour-coding по value (хотя
+          градиент по shade удобен для сканирования). */}
       <div
-        className="mono"
-        style={{ fontSize: 10, letterSpacing: '0.22em', color: 'var(--ink-40)' }}
+        role="radiogroup"
+        aria-label="Session grade"
+        style={{
+          marginTop: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
       >
-        {mins} MIN DONE · OPTIONAL NOTE
+        <span style={{ ...captionMono, fontSize: 10, color: 'var(--ink-40)', marginRight: 4 }}>
+          GRADE
+        </span>
+        {[1, 2, 3, 4, 5].map((n) => {
+          const active = grade === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={`Grade ${n} of 5`}
+              disabled={submitting}
+              onClick={() => setGrade(active ? 0 : n)}
+              className="focus-ring motion-press"
+              style={{
+                width: 22,
+                height: 22,
+                padding: 0,
+                fontSize: 11,
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                fontWeight: 600,
+                color: active ? 'var(--ink)' : 'var(--ink-60)',
+                background: active ? 'rgba(255,255,255,0.10)' : 'transparent',
+                border: `1px solid ${active ? 'var(--ink)' : 'var(--hair-2)'}`,
+                borderRadius: 999,
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                transition:
+                  'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard)',
+              }}
+            >
+              {n}
+            </button>
+          );
+        })}
       </div>
       <input
         ref={inputRef}
@@ -184,50 +299,59 @@ function ReflectionInline({
         onKeyDown={onKey}
         placeholder="What did you do?"
         disabled={submitting}
+        aria-label="Reflection note"
         style={{
-          marginTop: 10,
+          marginTop: 12,
           width: '100%',
           fontSize: 14,
           color: 'var(--ink)',
           padding: '6px 0',
-          borderBottom: '1px solid rgba(255,255,255,0.12)',
+          border: 0,
+          borderBottom: '1px solid var(--hair-2)',
           background: 'transparent',
+          outline: 'none',
+          transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
         }}
+        onFocus={(e) => (e.currentTarget.style.borderBottomColor = 'var(--ink)')}
+        onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
       />
-      <div
-        style={{
-          marginTop: 12,
-          display: 'flex',
-          gap: 8,
-          justifyContent: 'flex-end',
-        }}
-      >
+      <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button
           onClick={onDismiss}
           disabled={submitting}
-          className="mono"
+          className="focus-ring motion-press"
           style={{
-            padding: '5px 10px',
-            fontSize: 10,
-            letterSpacing: '0.14em',
-            color: 'var(--ink-40)',
+            ...captionMono,
+            padding: '6px 12px',
             background: 'transparent',
+            border: 0,
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
           }}
+          onMouseEnter={(e) => {
+            if (!submitting) e.currentTarget.style.color = 'var(--ink-60)';
+          }}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
         >
           DISMISS
         </button>
         <button
           onClick={() => void submit()}
-          disabled={submitting || !value.trim()}
-          className="focus-ring mono"
+          // H2 (Phase J): grade OR notes — either один enough to submit.
+          // Plain dismiss = explicit decline; SAVE on either lever closes loop.
+          disabled={submitting || (!value.trim() && grade === 0)}
+          className="focus-ring motion-press"
           style={{
-            padding: '5px 12px',
-            fontSize: 10,
-            letterSpacing: '0.14em',
-            color: value.trim() ? 'var(--ink)' : 'var(--ink-40)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            ...captionMono,
+            padding: '6px 14px',
+            color: value.trim() || grade > 0 ? 'var(--ink)' : 'var(--ink-40)',
+            border: '1px solid var(--hair-2)',
             borderRadius: 999,
             background: 'transparent',
+            cursor: submitting || (!value.trim() && grade === 0) ? 'not-allowed' : 'pointer',
+            opacity: submitting ? 0.6 : 1,
+            transition:
+              'color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
           {submitting ? '…' : 'SAVE ↵'}

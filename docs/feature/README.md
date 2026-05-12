@@ -1,29 +1,37 @@
 # docs/feature — текущие инициативы
 
-Только активные инициативы. Закрытые волны не храним (история живёт в коде / git log).
+Активные продуктовые initiative. Закрытые волны не храним — история живёт в коде + git log.
 
-**Последнее обновление:** 2026-05-01
+**Последнее обновление:** 2026-05-12
 
 ## Содержание
 
 | Файл | О чём |
 |---|---|
-| [identity.md](./identity.md) | Кто мы, кто не мы, какие 3 трека делаем, drop-list |
-| [ai-tutor.md](./ai-tutor.md) | AI-tutor architecture (4-слойная память) — день 1+2+3 закрыты |
+| [identity.md](identity.md) | **Каноническая identity** (2026-05-11 clarification): AI-guide, ranking-proxy, freemium, что мы НЕ |
+| [ai-tutor.md](ai-tutor.md) | AI-tutor architecture (4-слойная память) — episodic / facts / summary / persona |
+| [implementation-plan.md](implementation-plan.md) | Phase progress pointer (закрытые фазы) + текущий focus |
 
 ## Стратегический контекст (TL;DR)
 
-druz9 = **AI-coach с памятью + free tutor-toolkit + Hone focus-app** для подготовки senior IT-разрабов к собесу. 3 трека: **Go senior / ML engineering / English**.
+druz9 = **AI-guide** который watches external learning + ставит цели + предсказывает готовность. **Не** content platform.
 
-Двусторонний рынок без денежного шага: тутор бесплатно получает toolkit (assignments, snapshot, brief, calendar, reading library), приводит своих студентов через invite-код. Студенты получают AI-coach 24/7 + AI-mock + Atlas + Hone между сессиями с тутором.
+**Three surfaces:** web (entry + AI-mock + content), Hone (daily focus, solo), Cue (stealth tray).
 
-## Что строим
+**3 tracks:** Go senior · ML engineering · English (opt-in).
 
-См [identity.md](./identity.md). Маркетплейс / `tg_coach` / `feed` / `clubs` / `arena` / `lobby` / `slot` / `rating` / `events` / `daily` / `quiz` уже выпилены (Wave R0-Wave6). Текущий фокус — Phase 8 (tutor pages) / 9 (web editor cursor labels) / 12 (welcome) — см [implementation-plan.md](./implementation-plan.md).
+## Текущий focus
+
+**Phases A-H полностью shipped 2026-05-12** в single-day marathon session (17 parallel agents). Phase I (final polish + Admin Phase 3 + launch readiness) — текущая.
+
+Полный snapshot реализации в [implementation-plan.md](implementation-plan.md). Что осталось:
+- **Admin Phase 3** (~6 weeks): A/B test framework, Audit log, Fine-grained roles
+- **Cue process masquerade builds** (~1-2 weeks): signed Notes.app / Telegram.app separate bundles (runtime tray swap уже live)
+- **Polish post-launch:** Light theme kill switch, browser extension Firefox port, Stripe trial periods/refunds/multi-currency, voice audio upload, Hone Dock 6 focus modes (currently 2)
 
 ## Правила работы с папкой
 
-1. Активная инициатива → файл в этой папке. Закрылась → удаляем
+1. Активная инициатива → файл здесь. Закрылась → удаляем
 2. Каждый файл self-contained, читается отдельно
 3. Decision log в начале файла: цель → tradeoffs → план. Не narrative
 4. **При расхождении с реальностью — доверяй коду и обновляй документ**

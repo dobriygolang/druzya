@@ -96,6 +96,8 @@ export function DeveloperToolsSection() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         title="power user feature"
+        aria-expanded={open}
+        aria-controls="developer-tools-panel"
         className="mono"
         style={{
           display: 'flex',
@@ -104,9 +106,9 @@ export function DeveloperToolsSection() {
           padding: 0,
           background: 'transparent',
           border: 'none',
-          color: 'rgba(255,255,255,0.55)',
+          color: 'var(--ink-60)',
           fontSize: 10,
-          letterSpacing: '.24em',
+          letterSpacing: '0.08em',
           textTransform: 'uppercase',
           cursor: 'pointer',
           fontFamily: 'inherit',
@@ -114,23 +116,23 @@ export function DeveloperToolsSection() {
       >
         <span>{open ? '▾' : '▸'}</span>
         <span>developer tools</span>
-        <span style={{ color: 'rgba(255,255,255,0.3)' }}>· optional · advanced</span>
+        <span style={{ color: 'var(--ink-40)' }}>· optional · advanced</span>
       </button>
 
       {open && (
-        <div style={{ marginTop: 16 }}>
+        <div id="developer-tools-panel" style={{ marginTop: 16 }}>
           <div
             style={{
               padding: '14px 16px',
-              border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: 6,
-              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid var(--hair)',
+              borderRadius: 'var(--radius-inner)',
+              background: 'var(--hair)',
             }}
           >
-            <div className="mono" style={{ fontSize: 10, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', marginBottom: 4 }}>
+            <div className="mono" style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-60)', marginBottom: 4 }}>
               collaboration rooms
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: 'var(--ink-60)', marginBottom: 12 }}>
               {quota
                 ? `active ${quota.activeCount} of ${quota.maxActive} · tier ${quota.tier}`
                 : 'loading…'}
@@ -158,8 +160,9 @@ export function DeveloperToolsSection() {
             </div>
 
             {error && (
-              <div className="mono" style={{ fontSize: 11, color: '#FF3B30', marginBottom: 10 }}>
-                {error}
+              <div className="mono" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 11, color: 'var(--red)', marginBottom: 10 }}>
+                <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 5, flex: '0 0 auto' }} />
+                <span>{error}</span>
               </div>
             )}
 
@@ -187,7 +190,7 @@ export function DeveloperToolsSection() {
               </div>
             )}
 
-            <div className="mono" style={{ marginTop: 14, fontSize: 9.5, color: 'rgba(255,255,255,0.35)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+            <div className="mono" style={{ marginTop: 14, fontSize: 9.5, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               free tier: 3 active · 24h ttl · 3 ppl max
             </div>
           </div>
@@ -218,14 +221,14 @@ function RoomRow({
         gap: 10,
         padding: '8px 10px',
         marginTop: 6,
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid rgba(255,255,255,0.05)',
-        borderRadius: 4,
+        background: 'var(--hair)',
+        border: '1px solid var(--hair)',
+        borderRadius: 'var(--radius-inner)',
         flexWrap: 'wrap',
         minWidth: 0,
       }}
     >
-      <span className="mono" style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+      <span className="mono" style={{ fontSize: 10, color: 'var(--ink-60)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
         {room.kind}
       </span>
       <a
@@ -234,9 +237,9 @@ function RoomRow({
         rel="noopener noreferrer"
         style={{
           fontSize: 12,
-          color: 'rgba(255,255,255,0.85)',
+          color: 'var(--ink-90)',
           textDecoration: 'none',
-          borderBottom: '1px dashed rgba(255,255,255,0.18)',
+          borderBottom: '1px dashed var(--hair-2)',
           flex: 1,
           minWidth: 0,
           overflow: 'hidden',
@@ -246,16 +249,16 @@ function RoomRow({
       >
         {room.title || `${room.kind} · ${room.id.slice(0, 8)}`}
       </a>
-      <span className="mono" style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)' }}>
+      <span className="mono" style={{ fontSize: 9.5, color: 'var(--ink-40)' }}>
         {room.expiresAt ? formatExpiry(room.expiresAt) : ''}
       </span>
       {past && onRestore && (
-        <button type="button" disabled={busy} onClick={onRestore} className="mono" style={btnSmall()}>
+        <button type="button" disabled={busy} onClick={onRestore} className="mono focus-ring motion-press" style={btnSmall()}>
           restore
         </button>
       )}
       {!past && onDelete && (
-        <button type="button" disabled={busy} onClick={onDelete} className="mono" style={btnSmall()}>
+        <button type="button" disabled={busy} onClick={onDelete} className="mono focus-ring motion-press" style={btnSmall()}>
           delete
         </button>
       )}
@@ -274,8 +277,8 @@ function formatExpiry(d: Date): string {
 function hdr(): React.CSSProperties {
   return {
     fontSize: 9.5,
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: '.12em',
+    color: 'var(--ink-40)',
+    letterSpacing: '0.08em',
     textTransform: 'uppercase',
     marginBottom: 4,
   };
@@ -284,12 +287,12 @@ function hdr(): React.CSSProperties {
 function btn(): React.CSSProperties {
   return {
     padding: '6px 12px',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    color: 'rgba(255,255,255,0.85)',
-    borderRadius: 4,
+    background: 'var(--hair)',
+    border: '1px solid var(--hair-2)',
+    color: 'var(--ink-90)',
+    borderRadius: 'var(--radius-inner)',
     fontSize: 11,
-    letterSpacing: '.06em',
+    letterSpacing: '0.08em',
     textTransform: 'uppercase',
     cursor: 'pointer',
     fontFamily: 'inherit',
@@ -300,11 +303,11 @@ function btnSmall(): React.CSSProperties {
   return {
     padding: '3px 8px',
     background: 'transparent',
-    border: '1px solid rgba(255,255,255,0.12)',
-    color: 'rgba(255,255,255,0.55)',
-    borderRadius: 3,
+    border: '1px solid var(--hair-2)',
+    color: 'var(--ink-60)',
+    borderRadius: 'var(--radius-inner)',
     fontSize: 9.5,
-    letterSpacing: '.06em',
+    letterSpacing: '0.08em',
     textTransform: 'uppercase',
     cursor: 'pointer',
     fontFamily: 'inherit',

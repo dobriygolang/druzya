@@ -4,23 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"go/format"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
-	authApp "druz9/auth/app"
 	monolithServices "druz9/cmd/monolith/services"
-	authServices "druz9/cmd/monolith/services/auth"
 	subscriptionServices "druz9/cmd/monolith/services/subscription"
 	editorApp "druz9/editor/app"
 	editorDomain "druz9/editor/domain"
 	editorInfra "druz9/editor/infra"
 	editorPorts "druz9/editor/ports"
-	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedMw "druz9/shared/pkg/middleware"
 	"druz9/shared/pkg/ratelimit"
@@ -30,44 +25,37 @@ import (
 	"github.com/google/uuid"
 )
 
-// NewEditor wires the collaborative-code editor (bible §3.1): rooms, role
-// resolution, invite tokens, replay uploader, freeze + the WS hub. The
-// invite secret falls back to the JWT secret when EDITOR_INVITE_SECRET is
-// unset — same behaviour as the pre-refactor monolith.
+// NewEditor wires the solo code editor surface. D4/Stream F (2026-05-12) —
+// peer-collab dropped: Yjs WS hub, freeze gates, invite-link tokens, replay
+// upload, guest-join. Что осталось:
+//
+//   - Connect-RPC: CreateRoom, GetRoom, RunCode, GetVisibility/SetVisibility.
+//   - REST aliases for the above + Format + Delete + snapshot save/load.
+//
+// Frontend single surface — frontend/src/pages/editor/EditorPage.tsx; Hone
+// больше не открывает editor inline (B/E hotkey deeplink'и в web).
 func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 	rooms := editorInfra.NewRooms(d.Pool)
 	parts := editorInfra.NewParticipants(d.Pool)
-	replay := editorInfra.NewStubReplayUploader(d.Cfg.MinIO.Endpoint, time.Hour)
-	hub := editorPorts.NewHub(d.Log)
-	hub.RoomResolver = rooms.Get
-	hub.RoleResolver = parts.GetRole
-
-	inviteSecret := os.Getenv("EDITOR_INVITE_SECRET")
-	if inviteSecret == "" {
-		inviteSecret = d.Cfg.Auth.JWTSecret
-	}
 
 	create := &editorApp.CreateRoom{
 		Rooms: rooms, Participants: parts,
 		Log: d.Log, Now: d.Now, RoomTTL: 6 * time.Hour,
 	}
 	get := &editorApp.GetRoom{Rooms: rooms, Participants: parts}
-	freeze := &editorApp.Freeze{
-		Rooms: rooms, Participants: parts,
-		Notifier: hub, Log: d.Log,
-	}
-	invite := &editorApp.CreateInvite{
-		Rooms:   rooms,
-		Secret:  []byte(inviteSecret),
-		TTL:     24 * time.Hour,
-		BaseURL: d.Cfg.Notify.PublicBaseURL,
-		Now:     d.Now,
-	}
-	replayUC := &editorApp.Replay{
-		Rooms: rooms, Participants: parts,
-		Uploader: replay,
-		Flush:    hub.FlushRoom,
-	}
+	// Freeze / Invite / Replay use cases — peer-collab artefacts. Still
+	// instantiated as nil stubs так что NewEditorServer signature
+	// остаётся неизменной (proto RPC declarations не пересобраны). Все
+	// эти RPCs возвращают connect.CodeUnimplemented через nil-guard'ы
+	// внутри use case'ов (см. editorApp.Freeze.Do / CreateInvite.Do /
+	// Replay.Do — ranger возвращает Unimplemented если Notifier == nil).
+	var freeze *editorApp.Freeze
+	var invite *editorApp.CreateInvite
+	var replayUC *editorApp.Replay
+	_ = freeze
+	_ = invite
+	_ = replayUC
+
 	// Judge0 wiring for RunCode. JUDGE0_URL must be set in non-dev profiles —
 	// the use case fails loudly otherwise (anti-fallback policy: better an
 	// honest 503 with "sandbox unavailable" than a placeholder result).
@@ -103,8 +91,6 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 		Limiter:      limiter,
 		Now:          d.Now,
 	}
-	// Phase 2 quota check для CreateRoom: free-tier лимит на active shared
-	// rooms. nil-safe (см. EnforceCreate semantics).
 	editorCreateCheck := func(ctx context.Context, userID uuid.UUID) error {
 		return subscriptionServices.EnforceCreate(ctx, d, userID,
 			editorDomainQuotaField,
@@ -116,10 +102,9 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 			})
 	}
 	server := editorPorts.NewEditorServer(
-		create, get, invite, freeze, replayUC, runUC, "/ws/editor", d.Log, editorCreateCheck,
+		create, get, invite, freeze, replayUC, runUC, "", d.Log, editorCreateCheck,
 	)
 	server.Rooms = rooms // for the visibility GET/SET RPCs
-	wsh := editorPorts.NewWSHandler(hub, authServices.EditorTokenVerifier{Issuer: d.TokenIssuer}, rooms, parts, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewEditorServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("editor", connectPath, connectHandler)
@@ -131,50 +116,27 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 		MountREST: func(r chi.Router) {
 			r.Post("/editor/room", transcoder.ServeHTTP)
 			r.Get("/editor/room/{roomId}", transcoder.ServeHTTP)
-			// freeze/invite/replay REST aliases удалены 2026-05-05 —
-			// Hone client'ы дёргают Connect-RPC напрямую (FreezeRoom /
-			// CreateInvite / ReplayRoom через transport.ts). REST-aliases
-			// никогда не вызывались, оставляем proto endpoints без REST-mount.
 			r.Post("/editor/room/{roomId}/run", transcoder.ServeHTTP)
 			r.Get("/editor/room/{roomId}/visibility", transcoder.ServeHTTP)
 			r.Post("/editor/room/{roomId}/visibility", transcoder.ServeHTTP)
-			// DeleteRoom — REST shortcut. Editor domain pока не имеет
-			// DeleteRoom RPC в proto (whiteboard_rooms имеет), и регенерация
-			// proto + clients тяжёлый change. Inline SQL handler покрывает
-			// UX-кейс «owner хочет удалить комнату» без proto-изменений.
 			edh := &editorDeleteHandler{
 				uc:  &editorApp.DeleteRoom{Rooms: rooms},
 				log: d.Log,
 			}
 			r.Delete("/editor/room/{roomId}", edh.handle)
-			// Format — реальный gofmt через go/format std-lib. Inline-handler,
-			// не RPC: для format'а не нужны participant-checks (это idempotent
-			// transformation), не нужен sandbox, не нужен rate-limit.
 			fh := &editorFormatHandler{log: d.Log}
 			r.Post("/editor/room/{roomId}/format", fh.handle)
+			// D4 Stream F (2026-05-12) — solo snapshot persistence.
+			sh := &editorSnapshotHandler{rooms: rooms, log: d.Log}
+			r.Get("/editor/room/{roomId}/snapshot", sh.get)
+			r.Put("/editor/room/{roomId}/snapshot", sh.put)
 		},
-		MountPublicREST: func(r chi.Router) {
-			egj := &editorGuestJoinHandler{
-				rooms:    rooms,
-				parts:    parts,
-				issuer:   d.TokenIssuer,
-				log:      d.Log,
-				guestTTL: 24 * time.Hour,
-			}
-			r.Post("/editor/room/{roomId}/guest-join", egj.handle)
-		},
-		MountWS: func(ws chi.Router) {
-			ws.Get("/editor/{roomId}", wsh.Handle)
-		},
+		// MountPublicREST / MountWS / hub shutdown — D4 Stream F (2026-05-12)
+		// удалены: guest-join был peer-collab only, WS hub снесён целиком.
 		Background: []func(ctx context.Context){
-			// Phase 4 — auto-downgrade free-tier shared code-rooms после TTL.
-			// Mirror'ит whiteboard cron из quota_enforce.go.
 			func(ctx context.Context) {
 				go subscriptionServices.RunFreeTierShareDowngradeEditor(ctx, d.Pool, d.Log)
 			},
-		},
-		Shutdown: []func(ctx context.Context) error{
-			func(ctx context.Context) error { hub.CloseAll(); return nil },
 		},
 	}
 }
@@ -182,8 +144,7 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 // ─── Editor delete REST handler ───────────────────────────────────────────
 //
 // DELETE /api/v1/editor/room/{id}. Owner-only. Каскад удаляет участников
-// через FK ON DELETE CASCADE (см. migrations). WS hub при следующем
-// broadcast'е увидит «room not found» и закроет коннекты.
+// через FK ON DELETE CASCADE (см. migrations).
 type editorDeleteHandler struct {
 	uc  *editorApp.DeleteRoom
 	log *slog.Logger
@@ -202,8 +163,6 @@ func (h *editorDeleteHandler) handle(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.uc.Run(r.Context(), roomID, uid); err != nil {
 		if errors.Is(err, editorDomain.ErrNotFound) {
-			// Либо не owner, либо room уже не существует. Возвращаем 404 без
-			// различения — не утечка инфы про чужие комнаты.
 			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
 			return
 		}
@@ -214,101 +173,98 @@ func (h *editorDeleteHandler) handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// ─── Editor guest-join REST handler ───────────────────────────────────────
+// editorDomainQuotaField — accessor для domain.QuotaPolicy.ActiveSharedRooms.
+func editorDomainQuotaField(p subDomain.QuotaPolicy) int {
+	return p.ActiveSharedRooms
+}
+
+// ─── Snapshot REST handler (D4 Stream F, 2026-05-12) ─────────────────────
 //
-// Mirror whiteboard guestJoinHandler. Создаёт ephemeral user-row + adds as
-// participant + mints JWT. visibility=private → 403.
-
-type editorGuestJoinHandler struct {
-	rooms    editorDomain.RoomRepo
-	parts    editorDomain.ParticipantRepo
-	issuer   *authApp.TokenIssuer
-	log      *slog.Logger
-	guestTTL time.Duration
+// GET  /api/v1/editor/room/{roomId}/snapshot → {code} | 404
+// PUT  /api/v1/editor/room/{roomId}/snapshot   body: {code}
+//
+// Owner-only write; чтение любому залогиненному (read-only deeplinks).
+// Code blob — plain UTF-8 string (no base64, не binary), хранится в
+// editor_rooms.code TEXT column (см. migration 00091_drop_peer_collab).
+type editorSnapshotHandler struct {
+	rooms editorDomain.RoomRepo
+	log   *slog.Logger
 }
 
-type editorGuestJoinRequest struct {
-	Name string `json:"name"`
+type editorSnapshotPutRequest struct {
+	Code string `json:"code"`
 }
 
-type editorGuestJoinResponse struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int    `json:"expires_in_sec"`
-	UserID      string `json:"user_id"`
-	Username    string `json:"username"`
-	Role        string `json:"role"`
+type editorSnapshotGetResponse struct {
+	Code string `json:"code"`
 }
 
-func (h *editorGuestJoinHandler) handle(w http.ResponseWriter, r *http.Request) {
+func (h *editorSnapshotHandler) get(w http.ResponseWriter, r *http.Request) {
+	if _, ok := sharedMw.UserIDFromContext(r.Context()); !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
 	roomID, err := uuid.Parse(chi.URLParam(r, "roomId"))
 	if err != nil {
 		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
 		return
 	}
-	var body editorGuestJoinRequest
+	code, err := h.rooms.GetCode(r.Context(), roomID)
+	if err != nil {
+		if errors.Is(err, editorDomain.ErrNotFound) {
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		h.log.ErrorContext(r.Context(), "editor.snapshot.get", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(editorSnapshotGetResponse{Code: code})
+}
+
+func (h *editorSnapshotHandler) put(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
+	roomID, err := uuid.Parse(chi.URLParam(r, "roomId"))
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
+		return
+	}
+	var body editorSnapshotPutRequest
 	if decodeErr := json.NewDecoder(r.Body).Decode(&body); decodeErr != nil {
 		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
 		return
 	}
-	name := strings.TrimSpace(body.Name)
-	if name == "" {
-		name = "guest"
+	// Cap on body — обычно <50 KiB; 2 MiB cap защищает от accidental
+	// gigabyte uploads.
+	if len(body.Code) > 2<<20 {
+		http.Error(w, `{"error":{"code":"too_large"}}`, http.StatusRequestEntityTooLarge)
+		return
 	}
-	if len(name) > 40 {
-		name = name[:40]
-	}
-
 	room, err := h.rooms.Get(r.Context(), roomID)
 	if err != nil {
 		if errors.Is(err, editorDomain.ErrNotFound) {
 			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
 			return
 		}
-		h.log.ErrorContext(r.Context(), "editor.guest_join: rooms.Get", slog.Any("err", err))
+		h.log.ErrorContext(r.Context(), "editor.snapshot.put.get", slog.Any("err", err))
 		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
 		return
 	}
-	if time.Now().UTC().After(room.ExpiresAt) {
-		http.Error(w, `{"error":{"code":"expired"}}`, http.StatusGone)
+	if room.OwnerID != uid {
+		http.Error(w, `{"error":{"code":"forbidden"}}`, http.StatusForbidden)
 		return
 	}
-	if room.Visibility == editorDomain.VisibilityPrivate {
-		http.Error(w, `{"error":{"code":"forbidden","message":"private room: guests not allowed"}}`,
-			http.StatusForbidden)
-		return
-	}
-
-	// Wave-15: guest is fully session-only — no INSERT into users, no
-	// participants row. Identity = transient UUID + chosen display name
-	// carried inside the JWT (`dn` claim). WS handler trusts the JWT
-	// scope check; cursor labels come from the client-side awareness
-	// state seeded with `dn`.
-	guestUUID := uuid.New()
-
-	scope := fmt.Sprintf("editor:%s", roomID.String())
-	tok, expiresIn, err := h.issuer.MintScopedWithDisplayName(
-		guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram, scope, name, h.guestTTL,
-	)
-	if err != nil {
-		h.log.ErrorContext(r.Context(), "editor.guest_join: mint", slog.Any("err", err))
+	if err := h.rooms.SaveCode(r.Context(), roomID, body.Code); err != nil {
+		h.log.ErrorContext(r.Context(), "editor.snapshot.put.save", slog.Any("err", err))
 		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(editorGuestJoinResponse{
-		AccessToken: tok,
-		ExpiresIn:   expiresIn,
-		UserID:      guestUUID.String(),
-		Username:    name,
-		Role:        "guest",
-	})
-}
-
-// editorDomainQuotaField — accessor для domain.QuotaPolicy.ActiveSharedRooms.
-// См. whiteboardDomainQuotaField для аналогичного pattern'а в whiteboard_rooms.go.
-func editorDomainQuotaField(p subDomain.QuotaPolicy) int {
-	return p.ActiveSharedRooms
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // ─── Format handler (real gofmt) ─────────────────────────────────────────
@@ -316,12 +272,7 @@ func editorDomainQuotaField(p subDomain.QuotaPolicy) int {
 // POST /api/v1/editor/room/{roomId}/format  body: {code, language}
 // → 200 {code: <formatted>, changed: bool, language: "go"|"python"|...}
 //
-// Только Go формат сейчас (go/format stdlib — то же что gofmt CLI). Python
-// требует black/yapf binary в runtime (не gotcha — добавим в Phase 2 через
-// /usr/bin/python3 -m black). JS/TS — prettier требует node + npm bundle,
-// тоже отдельный ticket. Для go/python/js/ts если formatter недоступен —
-// отдаём 200 с changed=false, original code, без error'а: UX «format не
-// получился» = silent no-op, а не red toast.
+// Только Go формат сейчас (go/format stdlib — то же что gofmt CLI).
 type editorFormatHandler struct {
 	log *slog.Logger
 }
@@ -344,7 +295,7 @@ func (h *editorFormatHandler) handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
 		return
 	}
-	_ = uid // format non-destructive; participant-check не нужен, любой залогиненный.
+	_ = uid
 
 	var body editorFormatRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -362,8 +313,6 @@ func (h *editorFormatHandler) handle(w http.ResponseWriter, r *http.Request) {
 	case "go", "language_go", "1":
 		formatted, err := format.Source([]byte(body.Code))
 		if err != nil {
-			// Syntax error → возвращаем оригинал + error. UI покажет toast
-			// «format failed: <syntax err>», юзер чинит код, повторяет.
 			resp.Error = err.Error()
 		} else {
 			s := string(formatted)
@@ -373,9 +322,6 @@ func (h *editorFormatHandler) handle(w http.ResponseWriter, r *http.Request) {
 	case "python", "language_python", "2",
 		"javascript", "language_javascript", "3",
 		"typescript", "language_typescript", "4":
-		// Не реализовано — formatter binary'и не bundled. Отдаём original
-		// code без error'а; frontend показывает «format unsupported for
-		// this language» если хочет, или silent no-op.
 		resp.Error = "formatter not available for this language"
 	default:
 		resp.Error = "unknown language"
@@ -383,3 +329,7 @@ func (h *editorFormatHandler) handle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }
+
+// Compile-time: ensure unused imports are exercised when wire-up still
+// references them through transcoder above.
+var _ = (*editorApp.GetRoom)(nil)

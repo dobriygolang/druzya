@@ -87,6 +87,19 @@ const (
 	// CopilotServiceCheckBlockProcedure is the fully-qualified name of the CopilotService's CheckBlock
 	// RPC.
 	CopilotServiceCheckBlockProcedure = "/druz9.v1.CopilotService/CheckBlock"
+	// CopilotServiceParseCVProcedure is the fully-qualified name of the CopilotService's ParseCV RPC.
+	CopilotServiceParseCVProcedure = "/druz9.v1.CopilotService/ParseCV"
+	// CopilotServiceParseJDProcedure is the fully-qualified name of the CopilotService's ParseJD RPC.
+	CopilotServiceParseJDProcedure = "/druz9.v1.CopilotService/ParseJD"
+	// CopilotServiceStartInterviewPrepProcedure is the fully-qualified name of the CopilotService's
+	// StartInterviewPrep RPC.
+	CopilotServiceStartInterviewPrepProcedure = "/druz9.v1.CopilotService/StartInterviewPrep"
+	// CopilotServiceGetActiveInterviewPrepProcedure is the fully-qualified name of the CopilotService's
+	// GetActiveInterviewPrep RPC.
+	CopilotServiceGetActiveInterviewPrepProcedure = "/druz9.v1.CopilotService/GetActiveInterviewPrep"
+	// CopilotServiceEndInterviewPrepProcedure is the fully-qualified name of the CopilotService's
+	// EndInterviewPrep RPC.
+	CopilotServiceEndInterviewPrepProcedure = "/druz9.v1.CopilotService/EndInterviewPrep"
 )
 
 // CopilotServiceClient is a client for the druz9.v1.CopilotService service.
@@ -135,6 +148,28 @@ type CopilotServiceClient interface {
 	// "help disabled" hint. The Analyze/Chat RPCs apply the same gate
 	// server-side as defense-in-depth (Connect PermissionDenied).
 	CheckBlock(context.Context, *connect.Request[v1.CheckBlockRequest]) (*connect.Response[v1.CheckBlockResponse], error)
+	// ParseCV runs the user-uploaded résumé through the free LLM chain and
+	// returns a structured ParsedCV. No persistence — purely the parsing
+	// step of the wizard. Caller invokes after the user picks a file +
+	// commits to "next step".
+	ParseCV(context.Context, *connect.Request[v1.ParseCVRequest]) (*connect.Response[v1.ParseCVResponse], error)
+	// ParseJD parses the JD via the same chain. Accepts either text body
+	// or URL — URL fetching is best-effort (returns FailedPrecondition if
+	// the host blocks; client should fall back to text).
+	ParseJD(context.Context, *connect.Request[v1.ParseJDRequest]) (*connect.Response[v1.ParseJDResponse], error)
+	// StartInterviewPrep commits parsed CV + JD as the user's CURRENT
+	// active prep context. Replaces any prior prep (single-active per
+	// user). Subsequent Analyze / Chat / Suggest turns consult the row
+	// and prepend a tailored system block — the moat vs Cluely.
+	StartInterviewPrep(context.Context, *connect.Request[v1.StartInterviewPrepRequest]) (*connect.Response[v1.StartInterviewPrepResponse], error)
+	// GetActiveInterviewPrep returns the user's current prep row (if any).
+	// Empty when no active prep. The desktop client uses this to show a
+	// status chip in Settings + Compact, and to surface the "End prep
+	// mode" button.
+	GetActiveInterviewPrep(context.Context, *connect.Request[v1.GetActiveInterviewPrepRequest]) (*connect.Response[v1.GetActiveInterviewPrepResponse], error)
+	// EndInterviewPrep clears the user's active prep so future suggestions
+	// stop injecting it. Idempotent — no-op when there is no active prep.
+	EndInterviewPrep(context.Context, *connect.Request[v1.EndInterviewPrepRequest]) (*connect.Response[v1.EndInterviewPrepResponse], error)
 }
 
 // NewCopilotServiceClient constructs a client for the druz9.v1.CopilotService service. By default,
@@ -232,25 +267,60 @@ func NewCopilotServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(copilotServiceMethods.ByName("CheckBlock")),
 			connect.WithClientOptions(opts...),
 		),
+		parseCV: connect.NewClient[v1.ParseCVRequest, v1.ParseCVResponse](
+			httpClient,
+			baseURL+CopilotServiceParseCVProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("ParseCV")),
+			connect.WithClientOptions(opts...),
+		),
+		parseJD: connect.NewClient[v1.ParseJDRequest, v1.ParseJDResponse](
+			httpClient,
+			baseURL+CopilotServiceParseJDProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("ParseJD")),
+			connect.WithClientOptions(opts...),
+		),
+		startInterviewPrep: connect.NewClient[v1.StartInterviewPrepRequest, v1.StartInterviewPrepResponse](
+			httpClient,
+			baseURL+CopilotServiceStartInterviewPrepProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("StartInterviewPrep")),
+			connect.WithClientOptions(opts...),
+		),
+		getActiveInterviewPrep: connect.NewClient[v1.GetActiveInterviewPrepRequest, v1.GetActiveInterviewPrepResponse](
+			httpClient,
+			baseURL+CopilotServiceGetActiveInterviewPrepProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("GetActiveInterviewPrep")),
+			connect.WithClientOptions(opts...),
+		),
+		endInterviewPrep: connect.NewClient[v1.EndInterviewPrepRequest, v1.EndInterviewPrepResponse](
+			httpClient,
+			baseURL+CopilotServiceEndInterviewPrepProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("EndInterviewPrep")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // copilotServiceClient implements CopilotServiceClient.
 type copilotServiceClient struct {
-	analyze            *connect.Client[v1.AnalyzeRequest, v1.AnalyzeEvent]
-	chat               *connect.Client[v1.ChatRequest, v1.ChatEvent]
-	listHistory        *connect.Client[v1.ListCopilotHistoryRequest, v1.ListCopilotHistoryResponse]
-	getConversation    *connect.Client[v1.GetCopilotConversationRequest, v1.CopilotConversationDetail]
-	deleteConversation *connect.Client[v1.DeleteCopilotConversationRequest, v1.DeleteCopilotConversationResponse]
-	listProviders      *connect.Client[v1.ListCopilotProvidersRequest, v1.ListCopilotProvidersResponse]
-	getQuota           *connect.Client[v1.GetCopilotQuotaRequest, v1.CopilotQuota]
-	getDesktopConfig   *connect.Client[v1.GetDesktopConfigRequest, v1.DesktopConfig]
-	rateMessage        *connect.Client[v1.RateCopilotMessageRequest, v1.RateCopilotMessageResponse]
-	startSession       *connect.Client[v1.StartCopilotSessionRequest, v1.CopilotSession]
-	endSession         *connect.Client[v1.EndCopilotSessionRequest, v1.CopilotSession]
-	getSessionAnalysis *connect.Client[v1.GetCopilotSessionAnalysisRequest, v1.CopilotSessionAnalysis]
-	listSessions       *connect.Client[v1.ListCopilotSessionsRequest, v1.ListCopilotSessionsResponse]
-	checkBlock         *connect.Client[v1.CheckBlockRequest, v1.CheckBlockResponse]
+	analyze                *connect.Client[v1.AnalyzeRequest, v1.AnalyzeEvent]
+	chat                   *connect.Client[v1.ChatRequest, v1.ChatEvent]
+	listHistory            *connect.Client[v1.ListCopilotHistoryRequest, v1.ListCopilotHistoryResponse]
+	getConversation        *connect.Client[v1.GetCopilotConversationRequest, v1.CopilotConversationDetail]
+	deleteConversation     *connect.Client[v1.DeleteCopilotConversationRequest, v1.DeleteCopilotConversationResponse]
+	listProviders          *connect.Client[v1.ListCopilotProvidersRequest, v1.ListCopilotProvidersResponse]
+	getQuota               *connect.Client[v1.GetCopilotQuotaRequest, v1.CopilotQuota]
+	getDesktopConfig       *connect.Client[v1.GetDesktopConfigRequest, v1.DesktopConfig]
+	rateMessage            *connect.Client[v1.RateCopilotMessageRequest, v1.RateCopilotMessageResponse]
+	startSession           *connect.Client[v1.StartCopilotSessionRequest, v1.CopilotSession]
+	endSession             *connect.Client[v1.EndCopilotSessionRequest, v1.CopilotSession]
+	getSessionAnalysis     *connect.Client[v1.GetCopilotSessionAnalysisRequest, v1.CopilotSessionAnalysis]
+	listSessions           *connect.Client[v1.ListCopilotSessionsRequest, v1.ListCopilotSessionsResponse]
+	checkBlock             *connect.Client[v1.CheckBlockRequest, v1.CheckBlockResponse]
+	parseCV                *connect.Client[v1.ParseCVRequest, v1.ParseCVResponse]
+	parseJD                *connect.Client[v1.ParseJDRequest, v1.ParseJDResponse]
+	startInterviewPrep     *connect.Client[v1.StartInterviewPrepRequest, v1.StartInterviewPrepResponse]
+	getActiveInterviewPrep *connect.Client[v1.GetActiveInterviewPrepRequest, v1.GetActiveInterviewPrepResponse]
+	endInterviewPrep       *connect.Client[v1.EndInterviewPrepRequest, v1.EndInterviewPrepResponse]
 }
 
 // Analyze calls druz9.v1.CopilotService.Analyze.
@@ -323,6 +393,31 @@ func (c *copilotServiceClient) CheckBlock(ctx context.Context, req *connect.Requ
 	return c.checkBlock.CallUnary(ctx, req)
 }
 
+// ParseCV calls druz9.v1.CopilotService.ParseCV.
+func (c *copilotServiceClient) ParseCV(ctx context.Context, req *connect.Request[v1.ParseCVRequest]) (*connect.Response[v1.ParseCVResponse], error) {
+	return c.parseCV.CallUnary(ctx, req)
+}
+
+// ParseJD calls druz9.v1.CopilotService.ParseJD.
+func (c *copilotServiceClient) ParseJD(ctx context.Context, req *connect.Request[v1.ParseJDRequest]) (*connect.Response[v1.ParseJDResponse], error) {
+	return c.parseJD.CallUnary(ctx, req)
+}
+
+// StartInterviewPrep calls druz9.v1.CopilotService.StartInterviewPrep.
+func (c *copilotServiceClient) StartInterviewPrep(ctx context.Context, req *connect.Request[v1.StartInterviewPrepRequest]) (*connect.Response[v1.StartInterviewPrepResponse], error) {
+	return c.startInterviewPrep.CallUnary(ctx, req)
+}
+
+// GetActiveInterviewPrep calls druz9.v1.CopilotService.GetActiveInterviewPrep.
+func (c *copilotServiceClient) GetActiveInterviewPrep(ctx context.Context, req *connect.Request[v1.GetActiveInterviewPrepRequest]) (*connect.Response[v1.GetActiveInterviewPrepResponse], error) {
+	return c.getActiveInterviewPrep.CallUnary(ctx, req)
+}
+
+// EndInterviewPrep calls druz9.v1.CopilotService.EndInterviewPrep.
+func (c *copilotServiceClient) EndInterviewPrep(ctx context.Context, req *connect.Request[v1.EndInterviewPrepRequest]) (*connect.Response[v1.EndInterviewPrepResponse], error) {
+	return c.endInterviewPrep.CallUnary(ctx, req)
+}
+
 // CopilotServiceHandler is an implementation of the druz9.v1.CopilotService service.
 type CopilotServiceHandler interface {
 	// Analyze is the primary entry point: the user triggered a hotkey, took
@@ -369,6 +464,28 @@ type CopilotServiceHandler interface {
 	// "help disabled" hint. The Analyze/Chat RPCs apply the same gate
 	// server-side as defense-in-depth (Connect PermissionDenied).
 	CheckBlock(context.Context, *connect.Request[v1.CheckBlockRequest]) (*connect.Response[v1.CheckBlockResponse], error)
+	// ParseCV runs the user-uploaded résumé through the free LLM chain and
+	// returns a structured ParsedCV. No persistence — purely the parsing
+	// step of the wizard. Caller invokes after the user picks a file +
+	// commits to "next step".
+	ParseCV(context.Context, *connect.Request[v1.ParseCVRequest]) (*connect.Response[v1.ParseCVResponse], error)
+	// ParseJD parses the JD via the same chain. Accepts either text body
+	// or URL — URL fetching is best-effort (returns FailedPrecondition if
+	// the host blocks; client should fall back to text).
+	ParseJD(context.Context, *connect.Request[v1.ParseJDRequest]) (*connect.Response[v1.ParseJDResponse], error)
+	// StartInterviewPrep commits parsed CV + JD as the user's CURRENT
+	// active prep context. Replaces any prior prep (single-active per
+	// user). Subsequent Analyze / Chat / Suggest turns consult the row
+	// and prepend a tailored system block — the moat vs Cluely.
+	StartInterviewPrep(context.Context, *connect.Request[v1.StartInterviewPrepRequest]) (*connect.Response[v1.StartInterviewPrepResponse], error)
+	// GetActiveInterviewPrep returns the user's current prep row (if any).
+	// Empty when no active prep. The desktop client uses this to show a
+	// status chip in Settings + Compact, and to surface the "End prep
+	// mode" button.
+	GetActiveInterviewPrep(context.Context, *connect.Request[v1.GetActiveInterviewPrepRequest]) (*connect.Response[v1.GetActiveInterviewPrepResponse], error)
+	// EndInterviewPrep clears the user's active prep so future suggestions
+	// stop injecting it. Idempotent — no-op when there is no active prep.
+	EndInterviewPrep(context.Context, *connect.Request[v1.EndInterviewPrepRequest]) (*connect.Response[v1.EndInterviewPrepResponse], error)
 }
 
 // NewCopilotServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -462,6 +579,36 @@ func NewCopilotServiceHandler(svc CopilotServiceHandler, opts ...connect.Handler
 		connect.WithSchema(copilotServiceMethods.ByName("CheckBlock")),
 		connect.WithHandlerOptions(opts...),
 	)
+	copilotServiceParseCVHandler := connect.NewUnaryHandler(
+		CopilotServiceParseCVProcedure,
+		svc.ParseCV,
+		connect.WithSchema(copilotServiceMethods.ByName("ParseCV")),
+		connect.WithHandlerOptions(opts...),
+	)
+	copilotServiceParseJDHandler := connect.NewUnaryHandler(
+		CopilotServiceParseJDProcedure,
+		svc.ParseJD,
+		connect.WithSchema(copilotServiceMethods.ByName("ParseJD")),
+		connect.WithHandlerOptions(opts...),
+	)
+	copilotServiceStartInterviewPrepHandler := connect.NewUnaryHandler(
+		CopilotServiceStartInterviewPrepProcedure,
+		svc.StartInterviewPrep,
+		connect.WithSchema(copilotServiceMethods.ByName("StartInterviewPrep")),
+		connect.WithHandlerOptions(opts...),
+	)
+	copilotServiceGetActiveInterviewPrepHandler := connect.NewUnaryHandler(
+		CopilotServiceGetActiveInterviewPrepProcedure,
+		svc.GetActiveInterviewPrep,
+		connect.WithSchema(copilotServiceMethods.ByName("GetActiveInterviewPrep")),
+		connect.WithHandlerOptions(opts...),
+	)
+	copilotServiceEndInterviewPrepHandler := connect.NewUnaryHandler(
+		CopilotServiceEndInterviewPrepProcedure,
+		svc.EndInterviewPrep,
+		connect.WithSchema(copilotServiceMethods.ByName("EndInterviewPrep")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.CopilotService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CopilotServiceAnalyzeProcedure:
@@ -492,6 +639,16 @@ func NewCopilotServiceHandler(svc CopilotServiceHandler, opts ...connect.Handler
 			copilotServiceListSessionsHandler.ServeHTTP(w, r)
 		case CopilotServiceCheckBlockProcedure:
 			copilotServiceCheckBlockHandler.ServeHTTP(w, r)
+		case CopilotServiceParseCVProcedure:
+			copilotServiceParseCVHandler.ServeHTTP(w, r)
+		case CopilotServiceParseJDProcedure:
+			copilotServiceParseJDHandler.ServeHTTP(w, r)
+		case CopilotServiceStartInterviewPrepProcedure:
+			copilotServiceStartInterviewPrepHandler.ServeHTTP(w, r)
+		case CopilotServiceGetActiveInterviewPrepProcedure:
+			copilotServiceGetActiveInterviewPrepHandler.ServeHTTP(w, r)
+		case CopilotServiceEndInterviewPrepProcedure:
+			copilotServiceEndInterviewPrepHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -555,4 +712,24 @@ func (UnimplementedCopilotServiceHandler) ListSessions(context.Context, *connect
 
 func (UnimplementedCopilotServiceHandler) CheckBlock(context.Context, *connect.Request[v1.CheckBlockRequest]) (*connect.Response[v1.CheckBlockResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.CheckBlock is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) ParseCV(context.Context, *connect.Request[v1.ParseCVRequest]) (*connect.Response[v1.ParseCVResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.ParseCV is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) ParseJD(context.Context, *connect.Request[v1.ParseJDRequest]) (*connect.Response[v1.ParseJDResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.ParseJD is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) StartInterviewPrep(context.Context, *connect.Request[v1.StartInterviewPrepRequest]) (*connect.Response[v1.StartInterviewPrepResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.StartInterviewPrep is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) GetActiveInterviewPrep(context.Context, *connect.Request[v1.GetActiveInterviewPrepRequest]) (*connect.Response[v1.GetActiveInterviewPrepResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.GetActiveInterviewPrep is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) EndInterviewPrep(context.Context, *connect.Request[v1.EndInterviewPrepRequest]) (*connect.Response[v1.EndInterviewPrepResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.EndInterviewPrep is not implemented"))
 }

@@ -26,8 +26,8 @@ type ReasonCopy = {
 const REASONS: Record<string, ReasonCopy> = {
   'card-declined': {
     title: 'Банк отклонил карту',
-    body: 'Это типичная ситуация — банк может блокировать платежи на иностранные сервисы или из-за лимита. Попробуй другую карту или способ оплаты (СБП, Tinkoff).',
-    hint: 'Если используешь карту другой страны — попробуй СБП.',
+    body: 'Это типичная ситуация — банк может блокировать платежи на иностранные сервисы или из-за лимита. Попробуй другую карту или способ оплаты.',
+    hint: 'Если используешь карту другой страны — попробуй другую карту или подключи BYOK.',
   },
   'insufficient-funds': {
     title: 'Недостаточно средств',
@@ -40,6 +40,11 @@ const REASONS: Record<string, ReasonCopy> = {
   network: {
     title: 'Не получилось связаться с платёжным шлюзом',
     body: 'Скорее всего, временные неполадки сети. Подожди минуту и попробуй ещё раз.',
+  },
+  cancelled: {
+    title: 'Оплата отменена',
+    body: 'Ты вернулся со Stripe без оплаты. Можно попробовать снова — или подключить свой LLM-ключ (BYOK) и получить Pro бесплатно.',
+    hint: 'BYOK даёт те же Pro-фичи без подписки.',
   },
   unknown: {
     title: 'Оплата не прошла',
@@ -56,10 +61,19 @@ export default function CheckoutFailure() {
     <AppShellV2>
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-4 py-12 sm:px-8 lg:py-20">
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="grid h-16 w-16 place-items-center rounded-full bg-danger/15 ring-4 ring-danger/10">
-            <AlertTriangle className="h-8 w-8 text-danger" />
+          <div
+            className="grid h-16 w-16 place-items-center rounded-full"
+            style={{
+              background: 'rgba(255, 59, 48, 0.10)',
+              boxShadow: '0 0 0 4px rgba(255, 59, 48, 0.06)',
+            }}
+          >
+            <AlertTriangle className="h-8 w-8" style={{ color: 'var(--red)' }} />
           </div>
-          <span className="font-mono text-[11px] uppercase tracking-wider text-danger">
+          <span
+            className="font-mono text-[11px] uppercase tracking-[0.08em]"
+            style={{ color: 'var(--red)' }}
+          >
             оплата не прошла
           </span>
           <h1 className="font-display text-2xl font-bold text-text-primary lg:text-3xl">
@@ -67,14 +81,14 @@ export default function CheckoutFailure() {
           </h1>
           <p className="max-w-[480px] text-sm leading-relaxed text-text-secondary">{copy.body}</p>
           {copy.hint && (
-            <p className="rounded-md bg-warn/10 px-3 py-2 font-mono text-[11px] text-warn">
+            <p className="rounded-md bg-surface-2 px-3 py-2 font-mono text-[11px] text-text-secondary">
               {copy.hint}
             </p>
           )}
         </div>
 
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link to="/checkout?plan=pro&period=monthly" className="flex-1 sm:flex-initial">
+          <Link to="/settings/billing" className="flex-1 sm:flex-initial">
             <Button variant="primary" size="lg" className="w-full sm:w-auto">
               Попробовать снова
             </Button>
@@ -95,6 +109,10 @@ export default function CheckoutFailure() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <a
               href="mailto:support@druz9.app?subject=Не%20прошла%20оплата"
+              style={{
+                transition:
+                  'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+              }}
               className="flex flex-1 items-center gap-3 rounded-lg border border-border bg-surface-1 px-4 py-3 text-[13px] font-semibold text-text-primary hover:border-border-strong"
             >
               <Mail className="h-4 w-4 text-text-muted" />
@@ -104,6 +122,10 @@ export default function CheckoutFailure() {
               href="https://t.me/druz9_support"
               target="_blank"
               rel="noreferrer"
+              style={{
+                transition:
+                  'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+              }}
               className="flex flex-1 items-center gap-3 rounded-lg border border-border bg-surface-1 px-4 py-3 text-[13px] font-semibold text-text-primary hover:border-border-strong"
             >
               <Send className="h-4 w-4 text-text-muted" />
@@ -112,7 +134,7 @@ export default function CheckoutFailure() {
           </div>
         </Card>
 
-        <p className="font-mono text-[10px] text-text-muted">
+        <p className="font-mono text-[10px] tracking-[0.08em] text-text-muted">
           код причины · {reasonKey}
         </p>
       </div>

@@ -159,7 +159,8 @@ func aiModelToProto(m domain.AIModel) *pb.AIModel {
 	out := &pb.AIModel{
 		Id: m.ID, ModelId: m.ModelID, Label: m.Label, Provider: m.Provider,
 		Tier: m.Tier, IsEnabled: m.IsEnabled,
-		UseForArena: m.UseForArena, UseForInsight: m.UseForInsight, UseForMock: m.UseForMock,
+		// UseForArena dropped 2026-05-12 (D8).
+		UseForInsight: m.UseForInsight, UseForMock: m.UseForMock,
 		SortOrder: int32(m.SortOrder),
 		CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt,
 	}
@@ -198,10 +199,7 @@ func aiModelUpsertFromProto(p *pb.AIModelUpsert) domain.AIModelUpsert {
 		v := p.CostPer_1KOutputUsd
 		out.CostPerKOutputUSD = &v
 	}
-	if p.HasUseForArena {
-		v := p.UseForArena
-		out.UseForArena = &v
-	}
+	// HasUseForArena dropped 2026-05-12 (D8).
 	if p.HasUseForInsight {
 		v := p.UseForInsight
 		out.UseForInsight = &v

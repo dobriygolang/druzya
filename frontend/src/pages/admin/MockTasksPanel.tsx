@@ -91,6 +91,7 @@ export function MockTasksPanel() {
               type="checkbox"
               checked={activeOnly}
               onChange={(e) => setActiveOnly(e.target.checked)}
+              style={{ accentColor: 'rgb(var(--ink))' }}
             />
             <span className="font-mono text-[11px] text-text-secondary">только active</span>
           </label>
@@ -103,11 +104,27 @@ export function MockTasksPanel() {
         ) : list.data && list.data.length > 0 ? (
           <ul className="flex flex-col gap-1.5">
             {list.data.map((t) => (
-              <li key={t.id}>
+              <li key={t.id} style={{ position: 'relative' }}>
+                {selectedId === t.id && (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      left: -2,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 1.5,
+                      height: 24,
+                      background: 'var(--red)',
+                      zIndex: 1,
+                    }}
+                  />
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedId(t.id)}
-                  className={`flex w-full flex-col gap-1 rounded-md border px-3 py-2 text-left transition-colors ${
+                  aria-pressed={selectedId === t.id}
+                  className={`flex w-full flex-col gap-1 rounded-md border px-3 py-2 text-left transition-[color,background,border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${
                     selectedId === t.id
                       ? 'border-text-primary bg-surface-2'
                       : 'border-border bg-surface-1 hover:border-border-strong'
@@ -162,12 +179,13 @@ function ChipRow<T extends string>({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+      <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
         {label}
       </span>
       <button
         type="button"
         onClick={() => onChange(undefined)}
+        aria-pressed={value === undefined}
         className={`rounded-full border px-2 py-0.5 font-mono text-[10px] ${
           value === undefined
             ? 'border-text-primary bg-text-primary/10 text-text-primary'
@@ -181,6 +199,7 @@ function ChipRow<T extends string>({
           key={o}
           type="button"
           onClick={() => onChange(value === o ? undefined : o)}
+          aria-pressed={value === o}
           className={`rounded-full border px-2 py-0.5 font-mono text-[10px] ${
             value === o
               ? 'border-text-primary bg-text-primary/10 text-text-primary'
@@ -255,7 +274,7 @@ function CreateTaskModal({
       >
         <h3 className="font-display text-sm font-bold text-text-primary">Новая задача</h3>
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">stage</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">stage</span>
           <select
             value={stage}
             onChange={(e) => setStage(e.target.value as StageKind)}
@@ -267,7 +286,7 @@ function CreateTaskModal({
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">language</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">language</span>
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as TaskLanguage)}
@@ -358,7 +377,8 @@ function TaskDetailEditor({ taskId }: { taskId: string }) {
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`-mb-px border-b-2 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors ${
+            aria-pressed={tab === t}
+            className={`-mb-px border-b-2 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors ${
               tab === t
                 ? 'border-text-primary text-text-primary'
                 : 'border-transparent text-text-muted hover:text-text-secondary'
@@ -438,7 +458,7 @@ function BodyTab({ task }: { task: MockTask }) {
       <FormField label="title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">stage</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">stage</span>
           <select
             value={stage}
             onChange={(e) => setStage(e.target.value as StageKind)}
@@ -448,7 +468,7 @@ function BodyTab({ task }: { task: MockTask }) {
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">language</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">language</span>
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as TaskLanguage)}
@@ -481,7 +501,7 @@ function BodyTab({ task }: { task: MockTask }) {
           onChange={(e) => setTimeLimit(e.currentTarget.value)}
         />
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">strictness</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">strictness</span>
           <select
             value={strictnessId}
             onChange={(e) => setStrictnessId(e.target.value)}
@@ -494,7 +514,7 @@ function BodyTab({ task }: { task: MockTask }) {
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">llm_model</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">llm_model</span>
           <select
             value={llmModel}
             onChange={(e) => setLlmModel(e.target.value)}
@@ -598,7 +618,7 @@ function QuestionsTab({ task }: { task: MockTask }) {
         onSubmit={add}
         className="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-3"
       >
-        <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           + добавить вопрос
         </div>
         <FormField
@@ -666,6 +686,7 @@ function TaskQuestionRow({ taskId, q }: { taskId: string; q: TaskQuestion }) {
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
             className="rounded border border-border px-2 py-0.5 font-mono text-[10px] text-text-secondary"
           >
             {open ? '−' : 'edit'}
@@ -721,14 +742,14 @@ function MarkdownArea({
   const chars = useMemo(() => value.length, [value])
   return (
     <div className="flex flex-col gap-1">
-      <label className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">
+      <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         {label}
       </label>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={minRows}
-        className="resize-y whitespace-pre-wrap rounded-md border border-border bg-bg/40 px-3 py-2 font-mono text-[12px] text-text-primary outline-none transition-colors focus:border-text-primary"
+        className="resize-y whitespace-pre-wrap border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))] focus:border-b-[1.5px]"
         style={{ minHeight: minRows >= 12 ? 300 : undefined }}
       />
       <div className="self-end font-mono text-[9px] text-text-muted">{chars} chars</div>
@@ -795,7 +816,7 @@ function TestsTab({ task }: { task: MockTask }) {
       )}
 
       <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-1 p-3">
-        <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           Add case
         </div>
         <textarea
@@ -803,20 +824,21 @@ function TestsTab({ task }: { task: MockTask }) {
           placeholder="stdin"
           rows={3}
           onChange={(e) => setDraft({ ...draft, input: e.currentTarget.value })}
-          className="rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+          className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
         />
         <textarea
           value={draft.expected}
           placeholder="expected stdout"
           rows={2}
           onChange={(e) => setDraft({ ...draft, expected: e.currentTarget.value })}
-          className="rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+          className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
         />
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
             checked={draft.hidden}
             onChange={(e) => setDraft({ ...draft, hidden: e.currentTarget.checked })}
+            style={{ accentColor: 'rgb(var(--ink))' }}
           />
           <span className="font-mono text-[11px] text-text-secondary">is_hidden</span>
         </label>
@@ -889,19 +911,20 @@ function TestCaseRow({
         value={input}
         rows={3}
         onChange={(e) => setInput(e.currentTarget.value)}
-        className="rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+        className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
       />
       <textarea
         value={expected}
         rows={2}
         onChange={(e) => setExpected(e.currentTarget.value)}
-        className="rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+        className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
       />
       <label className="flex items-center gap-2">
         <input
           type="checkbox"
           checked={hidden}
           onChange={(e) => setHidden(e.currentTarget.checked)}
+          style={{ accentColor: 'rgb(var(--ink))' }}
         />
         <span className="font-mono text-[11px] text-text-secondary">is_hidden</span>
       </label>
@@ -1052,7 +1075,7 @@ export function BulkImportDialog({ onClose }: { onClose: () => void }) {
           }}
           rows={12}
           placeholder='[{"stage_kind":"algo","language":"python","difficulty":1,"title":"Two Sum","body_md":"...","active":true,"test_cases":[{"input":"2,7\n9","expected_output":"0 1"}]}]'
-          className="w-full rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+          className="w-full border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
         />
         {err && <div className="text-[12px] text-danger">{err}</div>}
 

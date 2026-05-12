@@ -21,6 +21,6 @@
       "@generated/*": ["../frontend/src/api/generated/*"]
     }
   },
-  "include": ["src/renderer/**/*", "src/preload/**/*", "src/shared/**/*"],
+  "include": ["src/renderer/**/*", "src/preload/**/*", "src/shared/**/*", "src/test/**/*"],
   "exclude": ["src/main/**/*", "out", "dist", "node_modules"]
 }

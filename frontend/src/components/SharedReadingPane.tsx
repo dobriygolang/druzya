@@ -63,7 +63,7 @@ export function SharedReadingPane() {
 
       <form onSubmit={submit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             Название
           </span>
           <input
@@ -75,7 +75,7 @@ export function SharedReadingPane() {
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             Ссылка (optional)
           </span>
           <input
@@ -87,7 +87,7 @@ export function SharedReadingPane() {
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             Заметка (optional)
           </span>
           <textarea
@@ -118,7 +118,7 @@ export function SharedReadingPane() {
       </form>
 
       <div className="mt-6 border-t border-border pt-4">
-        <h3 className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+        <h3 className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
           Прошлые recommendations
         </h3>
         {historyQ.isPending ? (

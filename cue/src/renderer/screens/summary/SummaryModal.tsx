@@ -25,6 +25,7 @@ import {
   Tag,
 } from '../../components/d9';
 import { exportConversationAsMarkdown } from '../../lib/export-markdown';
+import { openWebSession, openWebAtlasNode } from '../../lib/web-handoff';
 import { useConversationStore } from '../../stores/conversation';
 
 type Tab = 'summary' | 'transcript' | 'usage';
@@ -73,8 +74,16 @@ export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: P
   };
 
   const share = () => {
-    if (!analysis.reportUrl) return;
-    void window.druz9.shell.openExternal(analysis.reportUrl);
+    if (analysis.reportUrl) {
+      void window.druz9.shell.openExternal(analysis.reportUrl);
+      return;
+    }
+    // X5 fallback: when backend hasn't shared reportUrl (BYOK / offline),
+    // we can still open the user's session list on web — they'll see the
+    // session ingested via IngestInterviewSession once they're online.
+    if (analysis.sessionId) {
+      openWebSession(analysis.sessionId);
+    }
   };
 
   const headerTitle = analysis.title || 'Session summary';
@@ -166,7 +175,7 @@ export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: P
           {notesFilePath && (
             <NotesActions filePath={notesFilePath} />
           )}
-          {analysis.reportUrl && (
+          {(analysis.reportUrl || analysis.sessionId) && (
             <button
               onClick={share}
               style={{
@@ -181,8 +190,9 @@ export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: P
                 fontFamily: 'inherit',
                 transition: 'background var(--motion-dur-small) var(--motion-ease-standard)',
               }}
+              title={analysis.reportUrl ? 'Открыть отчёт' : 'Открыть сессию на druz9.online'}
             >
-              Открыть в браузере
+              {analysis.reportUrl ? 'Открыть в браузере' : 'View on druz9.online'}
             </button>
           )}
           <IconButton title="Закрыть (Esc)" onClick={onClose}>
@@ -306,6 +316,43 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {a.keyTopics.map((t, i) => (
               <Tag key={i}>{t}</Tag>
+            ))}
+          </div>
+          {/* X5 (Phase J P2 2026-05-12) — atlas handoff. Each key topic
+              could be a node user is struggling on; one-click jump to
+              web Atlas with that topic highlighted. We pick the first
+              topic by default (other topics still accessible via
+              transcript or copy-as-markdown). */}
+          <div
+            style={{
+              marginTop: 10,
+              display: 'flex',
+              gap: 14,
+              flexWrap: 'wrap',
+              fontSize: 11,
+              letterSpacing: '0.04em',
+              color: 'var(--d9-ink-mute)',
+            }}
+          >
+            {a.keyTopics.slice(0, 3).map((t, i) => (
+              <button
+                key={`atlas-${i}`}
+                type="button"
+                onClick={() => openWebAtlasNode(t.toLowerCase().replace(/\s+/g, '-'))}
+                style={{
+                  background: 'transparent',
+                  border: 0,
+                  padding: 0,
+                  font: 'inherit',
+                  color: 'inherit',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: 2,
+                  cursor: 'pointer',
+                }}
+                title={`Открыть «${t}» в web Atlas`}
+              >
+                review «{t}» on atlas →
+              </button>
             ))}
           </div>
         </Section>

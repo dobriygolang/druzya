@@ -1,37 +1,47 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, HelpCircle, Shield } from 'lucide-react'
+import { Bell, Menu, Search, X, Languages, User, LogOut, Settings, HelpCircle, Shield } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { MobileBottomNav } from './MobileBottomNav'
 import { Palette } from './Palette'
+import { QuickLogModal } from './QuickLogModal'
 import { Avatar } from './Avatar'
 import { DegradedBanner } from './global-error/DegradedBanner'
 import { NotificationsBell } from './notifications/NotificationsBell'
 import { NotificationsDrawer } from './notifications/NotificationsDrawer'
 import { cn } from '../lib/cn'
-import { useTheme, getEffectiveTheme } from '../lib/theme'
 import { changeLanguage, currentLanguage, LANG_LIST, type Lang } from '../lib/i18n'
 import { useAdminDashboardQuery } from '../lib/queries/admin'
 import { useUnreadCountQuery } from '../lib/queries/notifications'
+import { useProfileQuery } from '../lib/queries/profile'
 import { logoutCurrentSession } from '../lib/queries/auth'
+import { SkipToContent } from './a11y/SkipToContent'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useMotion } from '../lib/motion-presets'
 
 // Главная навигация — только 6 ключевых разделов. Остальное (Друзья, Помощь,
 // Настройки, Выход) уехало в user-menu под аватаром, чтобы header не был
 // перегружен (раньше было 8 nav-items + 5 кнопок справа = 13 элементов).
+//
+// Stream D (2026-05-12) — «Tutor» отображается только если у пользователя
+// включён tutor_mode_enabled. Тогглится в /profile (TutorRoleToggle).
+// Это совпадает с identity.md: tutor mode — role toggle, не отдельное
+// приложение, не paywall.
 function useNavItems() {
-  return [
+  const profile = useProfileQuery()
+  const isTutor = Boolean(profile.data?.tutor_mode_enabled)
+  const base = [
     // Pivot 2026-05-03: /today первым — action-driven landing для авторизованного
-    // юзера. Atlas остаётся как «карта тем». Insights / Circles / Codex /
-    // Vacancies — secondary surfaces.
+    // юзера. Atlas остаётся как «карта тем». Insights / Codex — secondary surfaces.
     { to: '/today', label: 'Today' },
     { to: '/atlas', label: 'Atlas' },
     { to: '/mock', label: 'Mock' },
     { to: '/insights', label: 'Insights' },
-    { to: '/tutor', label: 'Tutor' },
+    ...(isTutor ? [{ to: '/tutor', label: 'Tutor' }] : []),
     { to: '/codex', label: 'Codex' },
-    { to: '/vacancies', label: 'Vacancies' },
-  ] as const
+  ]
+  return base
 }
 
 function Logo() {
@@ -57,6 +67,7 @@ function NavItem({ to, label, onClick }: { to: string; label: string; onClick?: 
       <Link
         to={to}
         onClick={onClick}
+        aria-current={active ? 'page' : undefined}
         className={cn(
           'block rounded-md px-3.5 py-2 text-sm transition-colors',
           active
@@ -70,22 +81,7 @@ function NavItem({ to, label, onClick }: { to: string; label: string; onClick?: 
   )
 }
 
-function ThemeToggleButton() {
-  const { toggle, theme } = useTheme()
-  const effective = theme === 'auto' ? getEffectiveTheme() : (theme as 'dark' | 'light')
-  const Icon = effective === 'dark' ? Sun : Moon
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      className="grid h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2"
-      aria-label="Toggle theme"
-      title="Toggle theme"
-    >
-      <Icon className="h-5 w-5" />
-    </button>
-  )
-}
+// ThemeToggleButton removed 2026-05-11 (CI4 kill switch) — see lib/theme.ts.
 
 // LanguageToggleButton — dropdown со всеми 4 языками (RU/EN/KZ/UA).
 // Выбор персистится в localStorage внутри changeLanguage → languageChanged
@@ -250,6 +246,7 @@ function TopNav({ onOpenNotifications, unreadCount, onOpenPalette }: {
   const [menuOpen, setMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const menuTrapRef = useFocusTrap(menuOpen)
 
   // Закрываем user-menu по клику снаружи.
   useEffect(() => {
@@ -295,7 +292,9 @@ function TopNav({ onOpenNotifications, unreadCount, onOpenPalette }: {
         >
           <Search className="h-5 w-5" />
         </button>
-        <ThemeToggleButton />
+        {/* CI4 (2026-05-11): light theme killed (kill switch over AAA audit
+            per roadmap anti-pattern #16). ThemeToggleButton removed from
+            header — dark-only across all surfaces. */}
         <LanguageToggleButton />
         <NotificationsBell unreadCount={unreadCount} onClick={onOpenNotifications} />
         {/* Avatar + dropdown — кликабельный, открывает user-menu */}
@@ -315,13 +314,14 @@ function TopNav({ onOpenNotifications, unreadCount, onOpenPalette }: {
           type="button"
           className="grid h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2 lg:hidden"
           aria-label="Menu"
+          aria-expanded={menuOpen}
           onClick={() => setMenuOpen(true)}
         >
           <Menu className="h-5 w-5" />
         </button>
       </div>
       {menuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+        <div ref={menuTrapRef} className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
@@ -382,9 +382,11 @@ function SessionExpiredToast() {
 
 export function AppShellV2({ children }: { children: ReactNode }) {
   const location = useLocation()
-  const reduced = useReducedMotion()
   const [notifOpen, setNotifOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  // F5 (2026-05-12): Cmd+L global hotkey opens QuickLogModal from any auth'd
+  // page. Mirrors Hone's quick-capture muscle memory.
+  const [quickLogOpen, setQuickLogOpen] = useState(false)
   // Unread count drives both the header bell badge and the mobile-nav profile
   // tab badge. The hook polls every 60s and degrades to 0 on errors so a
   // backend outage doesn't surface a misleading count.
@@ -397,36 +399,79 @@ export function AppShellV2({ children }: { children: ReactNode }) {
     return () => document.body.classList.remove('v2')
   }, [])
 
-  // Reset scroll on route change.
+  // Phase J / X1 (P0) — fire idempotent install heartbeat once after the
+  // user lands on any authenticated page. Backend ON CONFLICT keeps the
+  // call cheap; the once-per-session guard is in installs.ts.
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [location.pathname])
+    void import('../lib/queries/installs').then(({ recordWebInstallOnce }) => {
+      void recordWebInstallOnce()
+    })
+  }, [])
+
+  // Reset scroll on route change — но только когда нет hash. Если есть
+  // location.hash (e.g. /today#activity из insight CTA), позволяем
+  // hash-scroll эффекту обработать (scrollIntoView с smooth).
+  useEffect(() => {
+    if (!location.hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    }
+  }, [location.pathname, location.hash])
+
+  // Hash-scroll: когда юзер navigates на /today#activity (insight CTA / app
+  // links), плавно scroll к anchor + tiny outline pulse чтобы attention
+  // landed правильно. Anti-fallback: если element не найден, тихо игнорируем
+  // — не симулируем scroll к top.
+  useEffect(() => {
+    if (!location.hash) return
+    const id = location.hash.slice(1)
+    // Wait one tick чтобы page контент успел отрендериться.
+    const t = setTimeout(() => {
+      const el = document.getElementById(id)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      // Pulse outline 1.2s — без accent color, просто border highlight.
+      el.classList.add('hash-pulse')
+      setTimeout(() => el.classList.remove('hash-pulse'), 1200)
+    }, 80)
+    return () => clearTimeout(t)
+  }, [location.pathname, location.hash])
 
   // Cmd+K (Ctrl+K on Linux/Win) toggles the command palette. Mirrors the
   // Hone shortcut so muscle memory transfers between web and desktop.
+  // Cmd+L opens QuickLog для одно-click activity log из любого page.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey
+      // Skip когда юзер печатает в textarea / input — Cmd+L там используется
+      // браузером для отображения URL (если focus вне editable, наш handler
+      // первый и preventDefault'нёт это поведение).
+      const target = e.target as HTMLElement | null
+      const editable =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable
       if (isMod && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPaletteOpen((p) => !p)
+      } else if (isMod && e.key.toLowerCase() === 'l' && !editable) {
+        e.preventDefault()
+        setQuickLogOpen((p) => !p)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const motionProps = reduced
-    ? {}
-    : {
-        initial: { opacity: 0, y: 12 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -12 },
-        transition: { duration: 0.25, ease: 'easeOut' as const },
-      }
+  // v2 page transition — large/emphasized in, medium/accelerate out. Reuses
+  // design-token durations (--motion-dur-*) and ease curves so every route
+  // transition feels the same as modal/drawer/popover anims. useMotion
+  // handles prefers-reduced-motion internally.
+  const motionProps = useMotion('pageTransition')
 
   return (
     <div className="min-h-screen bg-bg text-text-primary">
+      {/* a11y: keyboard-only skip-link, first focusable element on the page. */}
+      <SkipToContent />
       {/* Wave-11 global error chrome — sticky degraded banner at the very
           top of the page. Mounts when the apiClient routes a 5xx through
           degradedBus.report(). Renders nothing in the happy path. */}
@@ -438,17 +483,20 @@ export function AppShellV2({ children }: { children: ReactNode }) {
       />
       <NotificationsDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
       {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
+      {quickLogOpen && <QuickLogModal onClose={() => setQuickLogOpen(false)} />}
       <SessionExpiredToast />
       <AnimatePresence mode="wait">
         <motion.main
           key={location.pathname}
+          id="main"
+          tabIndex={-1}
           {...motionProps}
           // Reserve space at the bottom for the mobile bottom-nav so
           // the FAB doesn't cover content. 72px = 64 nav + 8 FAB-overflow,
           // plus the iPhone safe-area inset. Class is sm:pb-0 because the
           // bar itself is hidden on sm+ breakpoints.
           style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
-          className="sm:!pb-0"
+          className="sm:!pb-0 focus:outline-none"
         >
           {children}
         </motion.main>

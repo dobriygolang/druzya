@@ -1,7 +1,7 @@
 // cms_cache.go — Redis read-through cache for the podcast CMS surface.
 //
-// Mirrors the pattern in vacancies/infra/cache.go but trimmed to the four
-// reads the CMS surface actually exercises. TTLs (per spec):
+// Trimmed to the four reads the CMS surface actually exercises. TTLs
+// (per spec):
 //
 //   - List           → 5 min
 //   - Categories     → 5 min
@@ -38,8 +38,8 @@ const (
 	cmsCacheKeyVersion   = "v1"
 )
 
-// CMSKV is the slice of Redis the CMS cache uses. Mirrors
-// vacancies.infra.KV but kept private to this domain to avoid coupling.
+// CMSKV is the slice of Redis the CMS cache uses. Kept private to this
+// domain to avoid coupling.
 type CMSKV interface {
 	Get(ctx context.Context, key string) (string, error)
 	Set(ctx context.Context, key string, value []byte, ttl time.Duration) error

@@ -44,9 +44,9 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
 
   const color =
     pct >= 100
-      ? '#ff6a6a'
+      ? 'var(--red)'
       : pct >= 80
-      ? '#ffaa55'
+      ? 'var(--ink)'
       : 'var(--ink-60)';
 
   // Over-limit state: показываем «N · LIMIT 1» с явным индикатором что
@@ -73,7 +73,7 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
           gap: 6,
           padding: '4px 8px',
           fontSize: 9,
-          letterSpacing: '0.16em',
+          letterSpacing: '0.08em',
           textTransform: 'uppercase',
           color: color,
         }}
@@ -102,7 +102,7 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
                 inset: 0,
                 width: `${pct}%`,
                 background: color,
-                transition: 'width 220ms ease, background-color 220ms ease',
+                transition: 'width var(--motion-dur-medium) var(--motion-ease-standard), background-color var(--motion-dur-medium) var(--motion-ease-standard)',
               }}
             />
           </div>
@@ -111,8 +111,20 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
     );
   }
 
+  // X2 (P0) — full variant теперь clickable когда usage ≥80% или overLimit.
+  // Раньше bar был purely visual → юзер видел "9 / 10 SYNCED" и не понимал
+  // куда тыкать. Click open'ит UpgradeModal с relevant feature context.
+  const nearOrOver = !isUnlimited && (overLimit || pct >= 80);
+  const onUpgradeClick = nearOrOver
+    ? () => {
+        void import('./UpgradeModal').then(({ requestUpgrade }) => {
+          requestUpgrade(upgradeContextFor(resource));
+        });
+      }
+    : undefined;
+
   // full variant
-  return (
+  const fullInner = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-90)' }}>
         <span>{LABELS[resource]}</span>
@@ -140,13 +152,71 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
               inset: 0,
               width: `${pct}%`,
               background: color,
-              transition: 'width 220ms ease, background-color 220ms ease',
+              transition: 'width var(--motion-dur-medium) var(--motion-ease-standard), background-color var(--motion-dur-medium) var(--motion-ease-standard)',
             }}
           />
         </div>
       )}
+      {nearOrOver && (
+        <div style={{ fontSize: 11, color: 'var(--ink-40)', marginTop: 2 }}>
+          {overLimit ? 'Over free-tier limit · click to upgrade' : 'Approaching limit · upgrade to Pro'}
+        </div>
+      )}
     </div>
   );
+  if (!nearOrOver) return fullInner;
+  return (
+    <button
+      type="button"
+      onClick={onUpgradeClick}
+      className="focus-ring"
+      style={{
+        width: '100%',
+        padding: 0,
+        background: 'transparent',
+        border: 0,
+        textAlign: 'left',
+        color: 'inherit',
+        font: 'inherit',
+        cursor: 'pointer',
+      }}
+    >
+      {fullInner}
+    </button>
+  );
+}
+
+function upgradeContextFor(r: QuotaResource): { feature: string; label: string; benefit: string } {
+  switch (r) {
+    case 'synced_notes':
+      return {
+        feature: 'cross_device_sync',
+        label: 'synced notes',
+        benefit:
+          'Pro lifts the synced-notes cap and keeps notes mirrored across desktop and other devices.',
+      };
+    case 'active_shared_boards':
+      return {
+        feature: 'cross_device_sync',
+        label: 'shared boards',
+        benefit:
+          'Pro keeps shared whiteboards always-on and bumps the cap so you can collaborate without expiring share-windows.',
+      };
+    case 'active_shared_rooms':
+      return {
+        feature: 'cross_device_sync',
+        label: 'shared code-rooms',
+        benefit:
+          'Pro keeps code-rooms always-on and bumps the cap so you can pair-program without 24-hour share-windows expiring.',
+      };
+    case 'ai_this_month':
+      return {
+        feature: 'llm_unlimited',
+        label: 'AI calls this month',
+        benefit:
+          'Pro removes the monthly AI-call cap and routes you through the priority Cerebras/Groq cascade for sharper, faster answers.',
+      };
+  }
 }
 
 function readUsage(u: QuotaUsage, r: QuotaResource): number {

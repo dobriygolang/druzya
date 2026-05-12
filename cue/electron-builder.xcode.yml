@@ -1,0 +1,25 @@
+# Masquerade build: Xcode alias bundle. See electron-builder.notes.yml
+# for the full rationale.
+extends: electron-builder.yml
+productName: Xcode
+appId: app.druzya.copilot.alias.xcode
+directories:
+  output: dist/mac-xcode
+mac:
+  icon: resources/masquerade/xcode.icns
+  extendInfo:
+    LSUIElement: true
+    CFBundleName: Xcode
+    CFBundleDisplayName: Xcode
+    CFBundleURLTypes: []
+afterPack: scripts/afterPack-masquerade.cjs
+extraMetadata:
+  productName: Xcode
+  masqueradePreset: xcode
+artifactName: Xcode-${version}-${arch}.${ext}
+# Per-preset update channel — см. electron-builder.notes.yml для полного
+# объяснения. Xcode-disguise auto-updates только Xcode-disguise.
+publish:
+  - provider: github
+    channel: masquerade-xcode
+    releaseType: draft

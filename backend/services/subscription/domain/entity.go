@@ -38,13 +38,14 @@ const (
 	ProviderBoosty   Provider = "boosty"
 	ProviderYookassa Provider = "yookassa"
 	ProviderTBank    Provider = "tbank"
-	ProviderAdmin    Provider = "admin" // ручная выдача без оплаты (тест / поддержка)
+	ProviderStripe   Provider = "stripe" // Stream-C: международная оплата
+	ProviderAdmin    Provider = "admin"  // ручная выдача без оплаты (тест / поддержка)
 )
 
 // IsValid — sanity check перед INSERT'ом.
 func (p Provider) IsValid() bool {
 	switch p {
-	case ProviderBoosty, ProviderYookassa, ProviderTBank, ProviderAdmin:
+	case ProviderBoosty, ProviderYookassa, ProviderTBank, ProviderStripe, ProviderAdmin:
 		return true
 	}
 	return false

@@ -26,6 +26,7 @@ import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { Avatar } from '../components/Avatar'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { WSStatus } from '../components/ws/WSStatus'
 import { useChannel } from '../lib/ws'
 import {
@@ -37,7 +38,13 @@ import {
 
 function ErrorChip() {
   return (
-    <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
+    <span
+      className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.08em]"
+      style={{
+        background: 'rgb(var(--ink) / 0.06)',
+        color: 'var(--red)',
+      }}
+    >
       Не удалось загрузить
     </span>
   )
@@ -70,8 +77,12 @@ function MatchHeader({
   return (
     <div className="flex h-[80px] items-center justify-between gap-2 border-b border-border bg-surface-1 px-4 sm:px-8">
       <div className="hidden items-center gap-3 sm:flex">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-success">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" />
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface-2 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: 'var(--red)' }}
+          />
           AI INTERVIEW · LIVE
         </span>
       </div>
@@ -101,7 +112,14 @@ function InterviewerPanel() {
           <Avatar size="md" gradient="cyan-violet" initials="AI" status="online" />
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-text-primary">AI Interviewer</span>
-            <span className="font-mono text-[11px] text-success">● Слушает</span>
+            <span className="flex items-center gap-1 font-mono text-[11px] tracking-[0.08em] text-text-secondary">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ background: 'var(--red)' }}
+              />
+              Слушает
+            </span>
           </div>
         </div>
         <Sparkles className="h-4 w-4 text-text-secondary" />
@@ -109,7 +127,7 @@ function InterviewerPanel() {
       <div className="flex flex-1 items-center justify-center rounded-lg bg-surface-2 border border-border-strong">
         <div className="flex flex-col items-center gap-2">
           <Video className="h-10 w-10 text-text-muted" />
-          <span className="font-mono text-[11px] text-text-muted">video stream</span>
+          <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">video stream</span>
         </div>
       </div>
     </Card>
@@ -119,7 +137,7 @@ function InterviewerPanel() {
 function QuestionPanel({ title, description }: { title: string; description: string }) {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         ВОПРОС
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">{title}</h3>
@@ -133,7 +151,7 @@ function QuestionPanel({ title, description }: { title: string; description: str
 function TechLeadEMPanel() {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         TECH LEAD · EM
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
@@ -153,7 +171,7 @@ function TechLeadEMPanel() {
         ].map(([key, ru]) => (
           <div
             key={key}
-            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
             <div className="text-text-muted">{ru}</div>
@@ -170,7 +188,7 @@ function TechLeadEMPanel() {
 function SystemDesignSeniorPanel() {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         SENIOR · SYSTEM DESIGN
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
@@ -190,7 +208,7 @@ function SystemDesignSeniorPanel() {
         ].map(([key, ru]) => (
           <div
             key={key}
-            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
             <div className="text-text-muted">{ru}</div>
@@ -207,7 +225,7 @@ function SystemDesignSeniorPanel() {
 function SysanalystPanel() {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         SYSTEMS ANALYST
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
@@ -228,7 +246,7 @@ function SysanalystPanel() {
         ].map(([key, ru]) => (
           <div
             key={key}
-            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
             <div className="text-text-muted">{ru}</div>
@@ -245,7 +263,7 @@ function SysanalystPanel() {
 function ProductAnalystPanel() {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         PRODUCT ANALYST
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
@@ -266,7 +284,7 @@ function ProductAnalystPanel() {
         ].map(([key, ru]) => (
           <div
             key={key}
-            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
             <div className="text-text-muted">{ru}</div>
@@ -281,7 +299,7 @@ function ProductAnalystPanel() {
 function QAPanel() {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         QA / SDET
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
@@ -302,7 +320,7 @@ function QAPanel() {
         ].map(([key, ru]) => (
           <div
             key={key}
-            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
             <div className="text-text-muted">{ru}</div>
@@ -317,7 +335,7 @@ function QAPanel() {
 function DevOpsPanel() {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         DEVOPS / SRE
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
@@ -338,7 +356,7 @@ function DevOpsPanel() {
         ].map(([key, ru]) => (
           <div
             key={key}
-            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
             <div className="text-text-muted">{ru}</div>
@@ -356,7 +374,7 @@ function DevOpsPanel() {
 function EnglishHRPanel() {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         ENGLISH HR ROUND
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
@@ -375,7 +393,7 @@ function EnglishHRPanel() {
         ].map(([key, ru]) => (
           <div
             key={key}
-            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider text-text-secondary"
+            className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
             <div className="text-text-muted">{ru}</div>
@@ -399,13 +417,14 @@ function ControlsCard({
     <button
       onClick={onClick}
       className={[
-        'grid h-11 w-11 place-items-center rounded-full border',
+        'grid h-11 w-11 place-items-center rounded-full border transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)]',
         danger
-          ? 'border-danger/40 bg-danger/15 text-danger hover:bg-danger/25'
+          ? 'border-border-strong bg-surface-1 text-text-primary hover:bg-surface-2'
           : active
             ? 'border-border-strong bg-text-primary/10 text-text-primary hover:bg-text-primary/15'
             : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary',
       ].join(' ')}
+      style={danger ? { color: 'var(--red)' } : undefined}
     >
       <Icon className="h-4 w-4" />
     </button>
@@ -421,11 +440,14 @@ function ControlsCard({
 }
 
 function StressCard({ stress }: { stress: Stress }) {
-  const items: { label: string; value: number; color: string }[] = [
-    { label: 'Паузы', value: stress.pauses_score, color: 'bg-text-primary/60' },
-    { label: 'Backspaces', value: stress.backspace_score, color: 'bg-warn' },
-    { label: 'Хаос', value: stress.chaos_score, color: 'bg-text-primary' },
-    { label: 'Paste-попытки', value: stress.paste_attempts, color: 'bg-danger' },
+  // Opacity stratification on the ink ramp — keeps the four signals visually
+  // distinct without resorting to multi-hue chips. The most acute signal
+  // (paste-attempts = exfil temptation) gets the red stripe overlay.
+  const items: { label: string; value: number; opacity: number; flag: boolean }[] = [
+    { label: 'Паузы', value: stress.pauses_score, opacity: 0.55, flag: false },
+    { label: 'Backspaces', value: stress.backspace_score, opacity: 0.7, flag: false },
+    { label: 'Хаос', value: stress.chaos_score, opacity: 0.9, flag: false },
+    { label: 'Paste-попытки', value: stress.paste_attempts, opacity: 1, flag: true },
   ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
@@ -437,13 +459,22 @@ function StressCard({ stress }: { stress: Stress }) {
         <div key={m.label} className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <span className="text-[12px] text-text-secondary">{m.label}</span>
-            <span className="font-mono text-[12px] font-semibold text-text-primary">{m.value}</span>
+            <span className="font-mono text-[12px] font-semibold tracking-[0.08em] text-text-primary">
+              {m.value}
+            </span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-black/40">
+          <div className="relative h-1.5 overflow-hidden rounded-full bg-surface-3">
             <div
-              className={`h-full transition-all duration-700 ${m.color}`}
-              style={{ width: `${Math.min(100, m.value)}%` }}
+              className="h-full bg-text-primary transition-[width] duration-[var(--motion-dur-xlarge)] ease-[var(--motion-ease-emphasized)]"
+              style={{ width: `${Math.min(100, m.value)}%`, opacity: m.opacity }}
             />
+            {m.flag && m.value > 0 && (
+              <span
+                aria-hidden
+                className="absolute left-0 top-0 h-full w-[1.5px]"
+                style={{ background: 'var(--red)' }}
+              />
+            )}
           </div>
         </div>
       ))}
@@ -515,7 +546,14 @@ function MessageBox({
         <Mic className="h-4 w-4" />
       </button>
       <input
-        className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary outline-none focus:border-text-primary"
+        className="flex-1 border-0 border-b border-solid bg-transparent px-1 py-2 text-[13px] text-text-primary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] focus:outline-none"
+        style={{ borderBottomColor: 'var(--hair-2)' }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderBottomColor = 'rgb(var(--ink))'
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderBottomColor = 'var(--hair-2)'
+        }}
         placeholder="Ответьте интервьюеру…"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -691,49 +729,54 @@ export default function MockSessionPage() {
       </div>
       <div className="flex flex-col gap-4 px-4 py-4 sm:px-8 lg:flex-row">
         <div className="flex w-full flex-col gap-4 lg:w-[360px]">
-          {isEnglishHR ? (
-            <EnglishHRPanel />
-          ) : isSeniorSD ? (
-            <SystemDesignSeniorPanel />
-          ) : isTechLead ? (
-            <TechLeadEMPanel />
-          ) : isSysanalyst ? (
-            <SysanalystPanel />
-          ) : isProductAnalyst ? (
-            <ProductAnalystPanel />
-          ) : isQA ? (
-            <QAPanel />
-          ) : isDevOps ? (
-            <DevOpsPanel />
-          ) : (
-            <QuestionPanel title={qTitle} description={qDesc} />
-          )}
+          <ErrorBoundary section="Брифинг секции">
+            {isEnglishHR ? (
+              <EnglishHRPanel />
+            ) : isSeniorSD ? (
+              <SystemDesignSeniorPanel />
+            ) : isTechLead ? (
+              <TechLeadEMPanel />
+            ) : isSysanalyst ? (
+              <SysanalystPanel />
+            ) : isProductAnalyst ? (
+              <ProductAnalystPanel />
+            ) : isQA ? (
+              <QAPanel />
+            ) : isDevOps ? (
+              <DevOpsPanel />
+            ) : (
+              <QuestionPanel title={qTitle} description={qDesc} />
+            )}
+          </ErrorBoundary>
           <div className="hidden lg:block">
-            <InterviewerPanel />
+            <ErrorBoundary section="AI интервьюер">
+              <InterviewerPanel />
+            </ErrorBoundary>
           </div>
         </div>
         <div className="flex min-h-[300px] min-w-0 flex-1 flex-col gap-4 sm:min-h-[400px]">
           {!isFreeform && <EditorPlaceholder />}
-          <TranscriptCard messages={liveLines} pending={sendMutation.isPending && !streamingDelta} />
+          <ErrorBoundary section="Диалог">
+            <TranscriptCard messages={liveLines} pending={sendMutation.isPending && !streamingDelta} />
+          </ErrorBoundary>
           <MessageBox
             value={draft}
             onChange={setDraft}
             onSend={sendCurrentDraft}
             sending={sendMutation.isPending}
             micOn={micOn}
-            toggleMic={() => {
-              setMicOn((on) => !on)
-              // Voice route is registered as /voice-mock/:sessionId (see App.tsx).
-              // Sending users to /mock/:sessionId/voice 404'd.
-              if (!micOn && sessionId) navigate(`/voice-mock/${sessionId}`)
-            }}
+            toggleMic={() => setMicOn((on) => !on)}
           />
         </div>
         <div className="flex w-full flex-col gap-4 lg:w-[320px]">
           <ControlsCard micOn={micOn} toggleMic={() => setMicOn((v) => !v)} onLeave={onFinish} />
           {/* StressCard is hidden for free-form rounds — there's no stress
               profile for a conversational round (no editor → no keystroke signals). */}
-          {!isFreeform && <StressCard stress={stress} />}
+          {!isFreeform && (
+            <ErrorBoundary section="Стресс-метрики">
+              <StressCard stress={stress} />
+            </ErrorBoundary>
+          )}
         </div>
       </div>
     </AppShellV2>

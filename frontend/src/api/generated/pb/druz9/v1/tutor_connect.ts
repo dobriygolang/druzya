@@ -15,7 +15,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { TutorAcceptInviteRequest, TutorActivityResponse, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorAssignment, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorCancelEventRequest, TutorCancelEventResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCompleteEventRequest, TutorCompleteEventResponse, TutorCreateEventRequest, TutorCreateGroupEventRequest, TutorCreateInviteRequest, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorEvent, TutorGenerateBriefRequest, TutorGetActivityRequest, TutorGetEventRSVPCountRequest, TutorGetEventRSVPCountResponse, TutorGetSessionNotesRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorInviteByUsernameRequest, TutorJoinEventRequest, TutorJoinEventResponse, TutorLeaveEventRequest, TutorLeaveEventResponse, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListEventsRequest, TutorListEventsResponse, TutorListInvitesRequest, TutorListInvitesResponse, TutorListMyTutorsRequest, TutorListPendingAssignmentsRequest, TutorListPendingInvitesForMeRequest, TutorListPendingInvitesForMeResponse, TutorListSharedReadingRequest, TutorListSharedReadingResponse, TutorListStudentsRequest, TutorListStudentsResponse, TutorListUpcomingEventsRequest, TutorListUpcomingGroupEventsRequest, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPushAssignmentRequest, TutorPushSharedReadingRequest, TutorPushSharedReadingResponse, TutorRelationship, TutorRevokeInviteRequest, TutorSaveSessionNotesRequest, TutorSessionNotes, TutorStudentSnapshot } from "./tutor_pb.js";
+import { TutorAcceptInviteRequest, TutorActivityResponse, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorArchiveReadingPathRequest, TutorArchiveReadingPathResponse, TutorAssignment, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorCancelEventRequest, TutorCancelEventResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCompleteEventRequest, TutorCompleteEventResponse, TutorCreateEventRequest, TutorCreateGroupEventRequest, TutorCreateInviteRequest, TutorCreateReadingPathRequest, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorEvent, TutorGenerateBriefRequest, TutorGetActivityRequest, TutorGetEventRSVPCountRequest, TutorGetEventRSVPCountResponse, TutorGetSessionNotesRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorInviteByUsernameRequest, TutorJoinEventRequest, TutorJoinEventResponse, TutorLeaveEventRequest, TutorLeaveEventResponse, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListEventsRequest, TutorListEventsResponse, TutorListInvitesRequest, TutorListInvitesResponse, TutorListMyTutorsRequest, TutorListPendingAssignmentsRequest, TutorListPendingInvitesForMeRequest, TutorListPendingInvitesForMeResponse, TutorListReadingPathsRequest, TutorListReadingPathsResponse, TutorListSharedReadingRequest, TutorListSharedReadingResponse, TutorListStudentsRequest, TutorListStudentsResponse, TutorListUpcomingEventsRequest, TutorListUpcomingGroupEventsRequest, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPushAssignmentRequest, TutorPushSharedReadingRequest, TutorPushSharedReadingResponse, TutorReadingPath, TutorRelationship, TutorRevokeInviteRequest, TutorSaveSessionNotesRequest, TutorSessionNotes, TutorStudentSnapshot, TutorUpdateReadingPathRequest } from "./tutor_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -428,6 +428,42 @@ export const TutorService = {
       name: "SaveSessionNotes",
       I: TutorSaveSessionNotesRequest,
       O: TutorSessionNotes,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.ListReadingPaths
+     */
+    listReadingPaths: {
+      name: "ListReadingPaths",
+      I: TutorListReadingPathsRequest,
+      O: TutorListReadingPathsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.CreateReadingPath
+     */
+    createReadingPath: {
+      name: "CreateReadingPath",
+      I: TutorCreateReadingPathRequest,
+      O: TutorReadingPath,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.UpdateReadingPath
+     */
+    updateReadingPath: {
+      name: "UpdateReadingPath",
+      I: TutorUpdateReadingPathRequest,
+      O: TutorReadingPath,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.ArchiveReadingPath
+     */
+    archiveReadingPath: {
+      name: "ArchiveReadingPath",
+      I: TutorArchiveReadingPathRequest,
+      O: TutorArchiveReadingPathResponse,
       kind: MethodKind.Unary,
     },
   }

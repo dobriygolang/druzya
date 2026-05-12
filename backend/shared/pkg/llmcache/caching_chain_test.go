@@ -67,7 +67,7 @@ func TestCachingChain_HitReturnsCache(t *testing.T) {
 	cc := &CachingChain{Chain: chain, Cache: cache, Log: discardLog()}
 
 	resp, err := cc.Chat(context.Background(), llmchain.Request{
-		Task:     llmchain.TaskVacanciesJSON,
+		Task:     llmchain.TaskInsightProse,
 		Messages: []llmchain.Message{{Role: llmchain.RoleUser, Content: "hello"}},
 	})
 	if err != nil {
@@ -90,7 +90,7 @@ func TestCachingChain_MissDelegatesAndStores(t *testing.T) {
 	cc := &CachingChain{Chain: chain, Cache: cache, Log: discardLog()}
 
 	resp, err := cc.Chat(context.Background(), llmchain.Request{
-		Task:     llmchain.TaskVacanciesJSON,
+		Task:     llmchain.TaskInsightProse,
 		Messages: []llmchain.Message{{Role: llmchain.RoleUser, Content: "hello"}},
 	})
 	if err != nil {
@@ -113,7 +113,7 @@ func TestCachingChain_LookupErrorFallsThrough(t *testing.T) {
 	cc := &CachingChain{Chain: chain, Cache: cache, Log: discardLog()}
 
 	resp, err := cc.Chat(context.Background(), llmchain.Request{
-		Task:     llmchain.TaskVacanciesJSON,
+		Task:     llmchain.TaskInsightProse,
 		Messages: []llmchain.Message{{Role: llmchain.RoleUser, Content: "hi"}},
 	})
 	if err != nil {
@@ -173,7 +173,7 @@ func TestCachingChain_ChainErrorSkipsStore(t *testing.T) {
 	cc := &CachingChain{Chain: chain, Cache: cache, Log: discardLog()}
 
 	_, err := cc.Chat(context.Background(), llmchain.Request{
-		Task:     llmchain.TaskVacanciesJSON,
+		Task:     llmchain.TaskInsightProse,
 		Messages: []llmchain.Message{{Role: llmchain.RoleUser, Content: "x"}},
 	})
 	if err == nil {
@@ -203,14 +203,14 @@ func TestBuildCacheKey_Deterministic(t *testing.T) {
 
 func TestNoopCache_AllMiss(t *testing.T) {
 	c := NoopCache{}
-	_, hit, err := c.Lookup(context.Background(), llmchain.TaskVacanciesJSON, "anything")
+	_, hit, err := c.Lookup(context.Background(), llmchain.TaskInsightProse, "anything")
 	if err != nil {
 		t.Fatalf("noop lookup must not error: %v", err)
 	}
 	if hit {
 		t.Fatalf("noop lookup must never hit")
 	}
-	if err := c.Store(context.Background(), llmchain.TaskVacanciesJSON, "k", llmchain.Response{}); err != nil {
+	if err := c.Store(context.Background(), llmchain.TaskInsightProse, "k", llmchain.Response{}); err != nil {
 		t.Fatalf("noop store must not error: %v", err)
 	}
 	if err := c.Close(); err != nil {

@@ -9,6 +9,9 @@
 // empty fields. Юзер заполняет руками.
 //
 // Designed для embed в step UI / atlas-node detail.
+//
+// 2026-05-12: migrated to foundation Modal primitive. Field underline-only
+// styling per v2 spec. Cmd+Enter shortcut preserved.
 import { useEffect, useRef, useState } from 'react';
 
 import {
@@ -19,6 +22,8 @@ import {
   type Target,
 } from '../api/curation';
 import { enqueue as enqueueOutbox } from '../offline/outbox';
+import { Modal } from './primitives/Modal';
+import { motion as motionTokens } from '../lib/design-tokens';
 
 interface Props {
   target: Target;
@@ -39,6 +44,7 @@ export function AddResourceModal({
   onClose,
   onAdded,
 }: Props) {
+  const [open, setOpen] = useState(true);
   const [url, setUrl] = useState('');
   const [resource, setResource] = useState<Resource>(blankResource(''));
   const [phase, setPhase] = useState<'url' | 'preview' | 'submit'>('url');
@@ -48,13 +54,15 @@ export function AddResourceModal({
   const [fetchInfo, setFetchInfo] = useState<{ strategy: string; error: string } | null>(null);
   const urlRef = useRef<HTMLInputElement | null>(null);
 
+  // Smooth exit: flip open → Modal exit anim → parent unmounts after dur.medium.
+  function close() {
+    setOpen(false);
+    window.setTimeout(onClose, motionTokens.dur.medium);
+  }
+
+  // Cmd+Enter shortcut — Modal handles ESC; we only need the submit shortcut.
   useEffect(() => {
-    setTimeout(() => urlRef.current?.focus(), 60);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         if (phase === 'url') void doPreview();
@@ -140,216 +148,206 @@ export function AddResourceModal({
   }
 
   return (
-    <div
-      role="dialog"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.55)',
-        backdropFilter: 'blur(6px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 80,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 540,
-          maxWidth: '92vw',
-          background: '#0a0a0a',
-          border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: 10,
-          padding: '26px 28px 22px',
-          color: 'rgba(255,255,255,0.92)',
-        }}
-      >
-        <div className="mono" style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: '.18em', textTransform: 'uppercase' }}>
-          {originalUrl ? 'replace resource' : 'add resource'}
+    <Modal open={open} onClose={close} size="md" initialFocusRef={urlRef as React.RefObject<HTMLElement>}>
+      <div style={captionMonoUppercase}>
+        {originalUrl ? 'replace resource' : 'add resource'}
+      </div>
+      {originalUrl && (
+        <div style={{ fontSize: 12, color: 'var(--ink-40)', marginTop: 6, wordBreak: 'break-all' }}>
+          replacing: {originalUrl}
         </div>
-        {originalUrl && (
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>
-            replacing: {originalUrl}
-          </div>
-        )}
+      )}
 
-        <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
-          <input
-            ref={urlRef}
-            type="url"
-            value={url}
-            placeholder="https://…"
-            onChange={(e) => setUrl(e.target.value)}
-            disabled={phase !== 'url'}
-            style={{
-              flex: '1 1 200px',
-              minWidth: 0,
-              padding: '8px 10px',
-              fontSize: 13,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 5,
-              color: 'rgba(255,255,255,0.92)',
-              outline: 'none',
-            }}
-          />
-          {phase === 'url' && (
-            <button
-              type="button"
-              onClick={() => void doPaste()}
-              className="mono"
-              style={{
-                padding: '0 10px',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(255,255,255,0.7)',
-                borderRadius: 5,
-                fontSize: 10,
-                letterSpacing: '.08em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-              }}
-            >
-              paste
-            </button>
-          )}
-        </div>
-
+      <div className="flex-wrap-row" style={{ marginTop: 18, gap: 10, alignItems: 'baseline' }}>
+        <input
+          ref={urlRef}
+          type="url"
+          value={url}
+          placeholder="https://…"
+          onChange={(e) => setUrl(e.target.value)}
+          disabled={phase !== 'url'}
+          className="min-w-0"
+          aria-label="Resource URL"
+          style={underlineInput}
+          onFocus={(e) => (e.currentTarget.style.borderBottomColor = 'var(--ink)')}
+          onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
+        />
         {phase === 'url' && (
-          <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <button
-              type="button"
-              onClick={onClose}
-              className="mono"
-              style={{
-                padding: '6px 12px',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(255,255,255,0.6)',
-                borderRadius: 5,
-                fontSize: 11,
-                letterSpacing: '.08em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-              }}
-            >
-              cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => void doPreview()}
-              disabled={busy || !url.trim()}
-              className="mono"
-              style={{
-                padding: '6px 14px',
-                background: '#fff',
-                color: '#000',
-                border: 'none',
-                borderRadius: 5,
-                fontSize: 11,
-                letterSpacing: '.08em',
-                textTransform: 'uppercase',
-                cursor: busy ? 'progress' : 'pointer',
-                opacity: !url.trim() ? 0.5 : 1,
-              }}
-            >
-              {busy ? 'reading…' : 'fetch · ⌘⏎'}
-            </button>
-          </div>
-        )}
-
-        {phase === 'preview' && (
-          <>
-            <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {manual && (
-                <div className="mono" style={{ fontSize: 10, color: '#FF3B30', letterSpacing: '.08em', textTransform: 'uppercase' }}>
-                  ai couldn't read this — fill manually ({fetchInfo?.error || fetchInfo?.strategy})
-                </div>
-              )}
-              <Field label="title" value={resource.title} onChange={(v) => setResource({ ...resource, title: v })} />
-              <Field label="why" value={resource.why} onChange={(v) => setResource({ ...resource, why: v })} placeholder="why is this useful here?" />
-              <Field
-                label="topics"
-                value={resource.topicsCovered.join(', ')}
-                onChange={(v) =>
-                  setResource({ ...resource, topicsCovered: v.split(',').map((s) => s.trim()).filter(Boolean) })
-                }
-                placeholder="atlas_node_ids comma-separated"
-              />
-              <Field
-                label="summary"
-                value={resource.summary}
-                onChange={(v) => setResource({ ...resource, summary: v })}
-                placeholder="2-3 sentences"
-                multiline
-              />
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Field
-                  label="depth"
-                  value={resource.depth}
-                  onChange={(v) => setResource({ ...resource, depth: v })}
-                  placeholder="intro|intuition|deep|reference"
-                />
-                <Field
-                  label="minutes"
-                  value={String(resource.minutes || '')}
-                  onChange={(v) => setResource({ ...resource, minutes: parseInt(v, 10) || 0 })}
-                  placeholder="~"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="mono" style={{ marginTop: 12, fontSize: 11, color: '#FF3B30' }}>
-                {error}
-              </div>
-            )}
-
-            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={busy}
-                className="mono"
-                style={{
-                  padding: '6px 12px',
-                  background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  color: 'rgba(255,255,255,0.6)',
-                  borderRadius: 5,
-                  fontSize: 11,
-                  letterSpacing: '.08em',
-                  textTransform: 'uppercase',
-                  cursor: busy ? 'not-allowed' : 'pointer',
-                }}
-              >
-                cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void doAdd()}
-                disabled={busy}
-                className="mono"
-                style={{
-                  padding: '6px 14px',
-                  background: '#fff',
-                  color: '#000',
-                  border: 'none',
-                  borderRadius: 5,
-                  fontSize: 11,
-                  letterSpacing: '.08em',
-                  textTransform: 'uppercase',
-                  cursor: busy ? 'progress' : 'pointer',
-                }}
-              >
-                {busy ? 'saving…' : 'add resource · ⌘⏎'}
-              </button>
-            </div>
-          </>
+          <button
+            type="button"
+            onClick={() => void doPaste()}
+            className="mono focus-ring motion-press"
+            style={ghostBtnSm}
+          >
+            paste
+          </button>
         )}
       </div>
+
+      {phase === 'url' && (
+        <FooterActions
+          cancelLabel="cancel"
+          submitLabel={busy ? 'reading…' : 'fetch · ⌘⏎'}
+          onCancel={close}
+          onSubmit={() => void doPreview()}
+          busy={busy}
+          submitDisabled={!url.trim()}
+        />
+      )}
+
+      {phase === 'preview' && (
+        <>
+          <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {manual && (
+              <div className="mono" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 11, color: 'var(--red)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 5, flex: '0 0 auto' }} />
+                <span>ai couldn't read this — fill manually ({fetchInfo?.error || fetchInfo?.strategy})</span>
+              </div>
+            )}
+            <Field label="title" value={resource.title} onChange={(v) => setResource({ ...resource, title: v })} />
+            <Field label="why" value={resource.why} onChange={(v) => setResource({ ...resource, why: v })} placeholder="why is this useful here?" />
+            <Field
+              label="topics"
+              value={resource.topicsCovered.join(', ')}
+              onChange={(v) =>
+                setResource({ ...resource, topicsCovered: v.split(',').map((s) => s.trim()).filter(Boolean) })
+              }
+              placeholder="atlas_node_ids comma-separated"
+            />
+            <Field
+              label="summary"
+              value={resource.summary}
+              onChange={(v) => setResource({ ...resource, summary: v })}
+              placeholder="2-3 sentences"
+              multiline
+            />
+            <div className="flex-wrap-row" style={{ gap: 14 }}>
+              <Field
+                label="depth"
+                value={resource.depth}
+                onChange={(v) => setResource({ ...resource, depth: v })}
+                placeholder="intro|intuition|deep|reference"
+              />
+              <Field
+                label="minutes"
+                value={String(resource.minutes || '')}
+                onChange={(v) => setResource({ ...resource, minutes: parseInt(v, 10) || 0 })}
+                placeholder="~"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="mono" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, fontSize: 11, color: 'var(--red)' }}>
+              <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 5, flex: '0 0 auto' }} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <FooterActions
+            cancelLabel="cancel"
+            submitLabel={busy ? 'saving…' : 'add resource · ⌘⏎'}
+            onCancel={close}
+            onSubmit={() => void doAdd()}
+            busy={busy}
+          />
+        </>
+      )}
+    </Modal>
+  );
+}
+
+// Shared v2 styles for the modal interior — caption-mono uppercase header,
+// underline input, ghost button, primary white pill.
+
+const captionMonoUppercase: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-60)',
+};
+
+const underlineInput: React.CSSProperties = {
+  flex: '1 1 200px',
+  minWidth: 0,
+  padding: '8px 0',
+  fontSize: 14,
+  background: 'transparent',
+  border: 0,
+  borderBottom: '1px solid var(--hair-2)',
+  color: 'var(--ink)',
+  outline: 'none',
+  transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
+};
+
+const ghostBtnSm: React.CSSProperties = {
+  padding: '6px 12px',
+  background: 'transparent',
+  border: '1px solid var(--hair-2)',
+  color: 'var(--ink-60)',
+  borderRadius: 'var(--radius-inner)',
+  fontSize: 10,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  cursor: 'pointer',
+};
+
+const primaryPillSm: React.CSSProperties = {
+  padding: '7px 16px',
+  background: 'var(--ink)',
+  color: 'var(--surface)',
+  border: 0,
+  borderRadius: 'var(--radius-inner)',
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  cursor: 'pointer',
+  transition:
+    'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard)',
+};
+
+function FooterActions({
+  cancelLabel,
+  submitLabel,
+  onCancel,
+  onSubmit,
+  busy,
+  submitDisabled = false,
+}: {
+  cancelLabel: string;
+  submitLabel: string;
+  onCancel: () => void;
+  onSubmit: () => void;
+  busy: boolean;
+  submitDisabled?: boolean;
+}) {
+  return (
+    <div style={{ marginTop: 22, display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={busy}
+        className="mono focus-ring motion-press"
+        style={{ ...ghostBtnSm, cursor: busy ? 'not-allowed' : 'pointer' }}
+      >
+        {cancelLabel}
+      </button>
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={busy || submitDisabled}
+        className="mono focus-ring motion-press"
+        style={{
+          ...primaryPillSm,
+          cursor: busy ? 'progress' : 'pointer',
+          opacity: submitDisabled ? 0.5 : 1,
+        }}
+      >
+        {submitLabel}
+      </button>
     </div>
   );
 }
@@ -367,9 +365,15 @@ function Field({
   placeholder?: string;
   multiline?: boolean;
 }) {
+  const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderBottomColor = 'var(--ink)';
+  };
+  const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderBottomColor = 'var(--hair-2)';
+  };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: '1 1 140px', minWidth: 0 }}>
-      <span className="mono" style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.4)', letterSpacing: '.12em', textTransform: 'uppercase' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 140px', minWidth: 0 }}>
+      <span className="mono" style={{ fontSize: 10, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
         {label}
       </span>
       {multiline ? (
@@ -377,17 +381,20 @@ function Field({
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
           rows={2}
           style={{
-            padding: '6px 9px',
-            fontSize: 12.5,
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 4,
-            color: 'rgba(255,255,255,0.92)',
+            padding: '6px 0',
+            fontSize: 13,
+            background: 'transparent',
+            border: 0,
+            borderBottom: '1px solid var(--hair-2)',
+            color: 'var(--ink)',
             outline: 'none',
             resize: 'vertical',
             fontFamily: 'inherit',
+            transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
           }}
         />
       ) : (
@@ -396,14 +403,17 @@ function Field({
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
           style={{
-            padding: '6px 9px',
-            fontSize: 12.5,
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 4,
-            color: 'rgba(255,255,255,0.92)',
+            padding: '6px 0',
+            fontSize: 13,
+            background: 'transparent',
+            border: 0,
+            borderBottom: '1px solid var(--hair-2)',
+            color: 'var(--ink)',
             outline: 'none',
+            transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
           }}
         />
       )}

@@ -64,7 +64,7 @@ func TestSemanticCache_StoreThenHit(t *testing.T) {
 
 	ctx := context.Background()
 	want := llmchain.Response{Content: "cached answer", Provider: llmchain.ProviderGroq, Model: "x"}
-	if err := c.Store(ctx, llmchain.TaskVacanciesJSON, "hello world", want); err != nil {
+	if err := c.Store(ctx, llmchain.TaskInsightProse, "hello world", want); err != nil {
 		t.Fatalf("Store: %v", err)
 	}
 	// Закрываем канал и ждём воркер, чтобы гарантированно увидеть entry.
@@ -80,7 +80,7 @@ func TestSemanticCache_StoreThenHit(t *testing.T) {
 	}).(*SemanticCache)
 	defer c2.Close()
 
-	resp, hit, err := c2.Lookup(ctx, llmchain.TaskVacanciesJSON, "hello world")
+	resp, hit, err := c2.Lookup(ctx, llmchain.TaskInsightProse, "hello world")
 	if err != nil {
 		t.Fatalf("Lookup: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestSemanticCache_DistantPromptMisses(t *testing.T) {
 	}).(*SemanticCache)
 	ctx := context.Background()
 	want := llmchain.Response{Content: "apples"}
-	_ = c.Store(ctx, llmchain.TaskVacanciesJSON, "apples", want)
+	_ = c.Store(ctx, llmchain.TaskInsightProse, "apples", want)
 	_ = c.Close()
 
 	c2 := NewSemanticCache(rds, emb, Options{
@@ -110,7 +110,7 @@ func TestSemanticCache_DistantPromptMisses(t *testing.T) {
 	}).(*SemanticCache)
 	defer c2.Close()
 
-	_, hit, err := c2.Lookup(ctx, llmchain.TaskVacanciesJSON, "completely unrelated distant prompt")
+	_, hit, err := c2.Lookup(ctx, llmchain.TaskInsightProse, "completely unrelated distant prompt")
 	if err != nil {
 		t.Fatalf("Lookup: %v", err)
 	}
@@ -154,13 +154,13 @@ func TestSemanticCache_Eviction(t *testing.T) {
 	// Кладём больше лимита. Batch-evict сработает при ZCARD > max.
 	for i := 0; i < 120; i++ {
 		key := "prompt-" + itoa(i)
-		_ = c.Store(ctx, llmchain.TaskVacanciesJSON, key, llmchain.Response{Content: key})
+		_ = c.Store(ctx, llmchain.TaskInsightProse, key, llmchain.Response{Content: key})
 	}
 	_ = c.Close()
 
 	// Верифицируем через прямой ZCARD что размер не разнёсся в небеса
 	// (должно быть не более MaxEntriesPerTask после batch-eviction).
-	card, err := rds.ZCard(ctx, keyLRU(llmchain.TaskVacanciesJSON)).Result()
+	card, err := rds.ZCard(ctx, keyLRU(llmchain.TaskInsightProse)).Result()
 	if err != nil {
 		t.Fatalf("ZCard: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestSemanticCache_StoreAfterCloseDoesNotPanic(t *testing.T) {
 			t.Fatalf("Store panicked after Close: %v", r)
 		}
 	}()
-	_ = c.Store(context.Background(), llmchain.TaskVacanciesJSON, "k", llmchain.Response{})
+	_ = c.Store(context.Background(), llmchain.TaskInsightProse, "k", llmchain.Response{})
 }
 
 func TestSemanticCache_NilRedisReturnsNoop(t *testing.T) {

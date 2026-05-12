@@ -48,24 +48,52 @@ export default function HelpPage() {
 
   return (
     <AppShellV2>
-      {/* Hero с поиском */}
-      <div className="relative h-auto overflow-hidden bg-surface-3 border-b border-border-strong lg:h-[240px]">
-        <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-8 sm:px-8 lg:py-0">
-          <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl lg:text-[36px]">
+      {/* Hero с поиском — underline-only search foundation, ink-ramp chips */}
+      <div
+        className="relative h-auto overflow-hidden bg-surface-3 lg:h-[240px]"
+        style={{ borderBottom: '1px solid var(--hair-2)' }}
+      >
+        <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-10 sm:px-8 lg:py-0">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em]"
+            style={{
+              background: 'rgba(var(--ink), 0.06)',
+              color: 'var(--ink-60)',
+            }}
+          >
+            <span
+              className="inline-block h-1 w-1 rounded-full"
+              style={{ background: 'var(--red)' }}
+              aria-hidden
+            />
+            HELP · ПОДДЕРЖКА
+          </span>
+          <h1
+            className="font-display text-3xl font-extrabold sm:text-4xl lg:text-[40px]"
+            style={{ color: 'rgb(var(--ink))' }}
+          >
             Чем помочь?
           </h1>
-          <p className="text-center text-sm text-text-secondary">
-            Поиск по {HELP_TOTAL_ARTICLES} статьям, чат с поддержкой и контакты
+          <p className="text-center text-sm" style={{ color: 'var(--ink-60)' }}>
+            Поиск по <span className="font-display tabular-nums" style={{ color: 'rgb(var(--ink))' }}>{HELP_TOTAL_ARTICLES}</span>{' '}
+            статьям, чат с поддержкой и контакты
           </p>
-          <div className="flex h-12 w-full max-w-[720px] items-center gap-3 rounded-xl border border-white/20 bg-bg/60 px-4 backdrop-blur">
-            <Search className="h-5 w-5 shrink-0 text-text-muted" />
+          <div
+            className="flex h-11 w-full max-w-[720px] items-center gap-3 px-1"
+            style={{
+              borderBottom: '1px solid var(--hair-2)',
+              transition: 'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+            }}
+          >
+            <Search className="h-5 w-5 shrink-0" style={{ color: 'var(--ink-40)' }} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+              style={{ color: 'rgb(var(--ink))' }}
               placeholder="Введи вопрос или ключевое слово…"
             />
-            <span className="hidden font-mono text-[11px] text-text-muted sm:inline">⌘K</span>
+            <span className="hidden font-mono text-[11px] sm:inline" style={{ color: 'var(--ink-40)' }}>⌘K</span>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             {HELP_QUICK_QUESTIONS.map((c) => (
@@ -73,7 +101,14 @@ export default function HelpPage() {
                 key={c}
                 type="button"
                 onClick={() => setSearch(c)}
-                className="rounded-full border border-white/20 bg-bg/40 px-3 py-1 text-xs text-text-primary hover:bg-bg/60"
+                className="rounded-full px-3 py-1 text-xs"
+                style={{
+                  border: '1px solid var(--hair-2)',
+                  background: 'rgba(var(--ink), 0.04)',
+                  color: 'rgb(var(--ink))',
+                  transition:
+                    'background var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard)',
+                }}
               >
                 {c}
               </button>
@@ -316,8 +351,17 @@ function SupportForm() {
     ? (mutation.error instanceof Error ? mutation.error.message : 'Не удалось отправить')
     : null
 
+  // Underline-only inputs — foundation form style. No surface fill or
+  // border ring; focus ramps the bottom hair to full ink via the
+  // motion-small token. Aligns with hero search.
+  const fieldStyle: React.CSSProperties = {
+    borderBottom: '1px solid var(--hair-2)',
+    color: 'rgb(var(--ink))',
+    background: 'transparent',
+    transition: 'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+  }
   return (
-    <Card className="flex-col gap-3 border-border-strong bg-surface-2 border border-border-strong p-5">
+    <Card className="flex-col gap-3 border border-border-strong bg-surface-2 p-5">
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 rounded-full bg-success ring-2 ring-success/30" />
         <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">
@@ -325,10 +369,12 @@ function SupportForm() {
         </span>
       </div>
       <h3 className="font-display text-lg font-bold text-text-primary">Написать в поддержку</h3>
-      <p className="text-xs text-white/80">Среднее время ответа — 1–2 часа в рабочее время</p>
+      <p className="text-xs" style={{ color: 'var(--ink-60)' }}>
+        Среднее время ответа — 1–2 часа в рабочее время
+      </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <p className="font-mono text-[10px] tracking-[0.12em] text-white/60">
+        <p className="font-mono text-[10px] tracking-[0.08em]" style={{ color: 'var(--ink-40)' }}>
           КАНАЛ · TELEGRAM
         </p>
 
@@ -336,7 +382,8 @@ function SupportForm() {
           value={contactValue}
           onChange={(e) => setContactValue(e.target.value)}
           placeholder="@username"
-          className="rounded-md border border-white/30 bg-bg/60 px-3 py-2 text-[13px] text-text-primary placeholder:text-white/50 focus:border-white focus:outline-none"
+          className="px-1 py-2 text-[13px] placeholder:text-white/40 focus:outline-none"
+          style={fieldStyle}
           required
         />
 
@@ -345,7 +392,8 @@ function SupportForm() {
           onChange={(e) => setSubject(e.target.value)}
           placeholder="Тема (необязательно)"
           maxLength={200}
-          className="rounded-md border border-white/30 bg-bg/60 px-3 py-2 text-[13px] text-text-primary placeholder:text-white/50 focus:border-white focus:outline-none"
+          className="px-1 py-2 text-[13px] placeholder:text-white/40 focus:outline-none"
+          style={fieldStyle}
         />
 
         <div>
@@ -355,10 +403,11 @@ function SupportForm() {
             placeholder="Опиши проблему: что произошло, что ожидал, какие шаги привели к багу"
             rows={4}
             maxLength={maxMsgLen}
-            className="w-full resize-y rounded-md border border-white/30 bg-bg/60 px-3 py-2 text-[13px] text-text-primary placeholder:text-white/50 focus:border-white focus:outline-none"
+            className="w-full resize-y px-1 py-2 text-[13px] placeholder:text-white/40 focus:outline-none"
+            style={fieldStyle}
             required
           />
-          <div className="mt-1 flex justify-end text-[10px] text-white/60">
+          <div className="mt-1 flex justify-end text-[10px]" style={{ color: 'var(--ink-40)' }}>
             {remaining < 200 ? `${remaining} символов` : ''}
           </div>
         </div>

@@ -6,7 +6,12 @@
 // CheckoutPage сам разрулит «нужен логин».
 //
 // Anti-pattern budget: 0 timer-pressure, 0 «осталось 4 места», 0 dark
-// patterns. Premium = warn-gold (per _rules.md), Pro = warn→pink gradient.
+// patterns.
+//
+// 2026-05-12: v2 visual language — hairline plan cards (no warn/pink
+// gradient tint, no success bg), opacity stratification for emphasis,
+// red signal stripe on emphasised plan (Pro), letter-spacing 0.08em
+// canonical, motion-tokens for transitions.
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -24,7 +29,8 @@ type PlanCardData = {
   name: string
   tagline: string
   cta: string
-  emphasis: 'normal' | 'warn' | 'warn-pink'
+  /** Emphasis stratifies via opacity + signal stripe, NOT hue. */
+  emphasis: 'normal' | 'emphasised' | 'top'
 }
 
 const PLANS: PlanCardData[] = [
@@ -40,14 +46,14 @@ const PLANS: PlanCardData[] = [
     name: 'Pro',
     tagline: 'AI Coach без лимитов + полный атлас навыков',
     cta: 'Подключить Pro',
-    emphasis: 'warn',
+    emphasis: 'emphasised',
   },
   {
     tier: 'max',
     name: 'Max',
     tagline: 'Для тех, кто готовится плотно: всё Pro + voice mock + приоритет',
     cta: 'Подключить Max',
-    emphasis: 'warn-pink',
+    emphasis: 'top',
   },
 ]
 
@@ -172,14 +178,11 @@ export default function PricingPage() {
 function Header({ period, setPeriod }: { period: BillingPeriod; setPeriod: (p: BillingPeriod) => void }) {
   return (
     <div className="flex flex-col items-center gap-5 text-center">
-      <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">
+      <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
         тарифы
       </span>
       <h1 className="font-display text-3xl font-bold leading-[1.1] text-text-primary lg:text-[40px]">
-        Один план — одна{' '}
-        <span className="bg-surface-2 border border-border-strong bg-clip-text text-transparent">
-          цель
-        </span>
+        Один план — одна цель
       </h1>
       <p className="max-w-[560px] text-sm text-text-secondary">
         Никаких скрытых лимитов, trial-ловушек и навязчивых уведомлений. Free хватит, чтобы попробовать.
@@ -203,7 +206,8 @@ function PeriodToggle({
         type="button"
         onClick={() => setPeriod('monthly')}
         className={cn(
-          'rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors',
+          'rounded-full px-4 py-1.5 text-[13px] font-semibold',
+          'transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
           period === 'monthly' ? 'bg-text-primary text-bg' : 'text-text-secondary hover:text-text-primary',
         )}
       >
@@ -213,12 +217,13 @@ function PeriodToggle({
         type="button"
         onClick={() => setPeriod('annual')}
         className={cn(
-          'flex items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors',
+          'flex items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-semibold',
+          'transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
           period === 'annual' ? 'bg-text-primary text-bg' : 'text-text-secondary hover:text-text-primary',
         )}
       >
         Годовая
-        <span className="rounded-full bg-success/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-success">
+        <span className="rounded-full border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.08em] text-text-primary">
           −20%
         </span>
       </button>
@@ -239,21 +244,28 @@ function PlanGrid({ period }: { period: BillingPeriod }) {
 function PlanCard({ plan, period }: { plan: PlanCardData; period: BillingPeriod }) {
   const price = PRICE_TABLE[plan.tier][period]
   const emphasis = plan.emphasis
+  const stratified = emphasis !== 'normal'
   return (
     <Card
       className={cn(
-        'flex-col gap-5 p-6',
-        emphasis === 'warn' && 'border-warn/40 bg-gradient-to-br from-warn/10 to-transparent',
-        emphasis === 'warn-pink' && 'border-warn/50 bg-gradient-to-br from-warn/15 to-transparent',
+        'relative flex-col gap-5 p-6',
+        stratified && 'border-border-strong',
       )}
     >
+      {emphasis === 'top' && (
+        <span
+          aria-hidden="true"
+          className="absolute top-6 right-6 inline-block"
+          style={{ width: 24, height: 1.5, background: 'var(--red)' }}
+        />
+      )}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
           <h3 className="font-display text-xl font-bold text-text-primary">{plan.name}</h3>
           <span className="text-[12px] text-text-secondary">{plan.tagline}</span>
         </div>
-        {emphasis === 'warn-pink' && (
-          <span className="rounded-md bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-text-secondary">
+        {emphasis === 'top' && (
+          <span className="rounded-md border border-border bg-surface-2 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-text-primary">
             популярный
           </span>
         )}
@@ -264,7 +276,7 @@ function PlanCard({ plan, period }: { plan: PlanCardData; period: BillingPeriod 
           {plan.tier === 'free' ? '0 ₽' : formatRub(price, period)}
         </span>
         {plan.tier !== 'free' && period === 'annual' && (
-          <span className="font-mono text-[11px] text-text-muted">
+          <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">
             {price} ₽ в год
           </span>
         )}
@@ -282,7 +294,8 @@ function PlanCard({ plan, period }: { plan: PlanCardData; period: BillingPeriod 
         <Link
           to={`/checkout?plan=${plan.tier}&period=${period}`}
           className={cn(
-            'flex h-10 items-center justify-center rounded-lg px-4 text-[14px] font-semibold transition-colors',
+            'flex h-10 items-center justify-center rounded-lg px-4 text-[14px] font-semibold',
+            'transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
             'bg-text-primary text-bg hover:bg-text-primary-hover',
           )}
         >
@@ -298,11 +311,11 @@ function PlanCard({ plan, period }: { plan: PlanCardData; period: BillingPeriod 
               {v === false ? (
                 <X className="h-4 w-4 shrink-0 text-text-muted" />
               ) : (
-                <Check className="h-4 w-4 shrink-0 text-success" strokeWidth={3} />
+                <Check className="h-4 w-4 shrink-0 text-text-primary" strokeWidth={3} />
               )}
               <span className="flex-1">{f.label}</span>
               {typeof v === 'string' && (
-                <span className="font-mono text-[11px] text-text-muted">{v}</span>
+                <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">{v}</span>
               )}
             </li>
           )
@@ -317,11 +330,11 @@ function ComparisonTable() {
     <div className="flex flex-col gap-5">
       <h2 className="font-display text-2xl font-bold text-text-primary">Что входит в каждый тариф</h2>
       <Card className="flex-col gap-0 p-0">
-        <div className="grid grid-cols-4 border-b border-border px-6 py-3 text-[12px] font-semibold uppercase tracking-wider text-text-muted">
+        <div className="grid grid-cols-4 border-b border-border px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-text-muted">
           <div>Возможность</div>
           <div className="text-center">Free</div>
-          <div className="text-center text-warn">Premium</div>
-          <div className="text-center text-text-secondary">Pro</div>
+          <div className="text-center text-text-primary">Pro</div>
+          <div className="text-center text-text-secondary">Max</div>
         </div>
         {FEATURES.map((row, i) => (
           <div
@@ -339,9 +352,9 @@ function ComparisonTable() {
                   {v === false ? (
                     <X className="mx-auto h-4 w-4 text-text-muted" />
                   ) : v === true ? (
-                    <Check className="mx-auto h-4 w-4 text-success" strokeWidth={3} />
+                    <Check className="mx-auto h-4 w-4 text-text-primary" strokeWidth={3} />
                   ) : (
-                    <span className="font-mono text-[12px] text-text-secondary">{v}</span>
+                    <span className="font-mono text-[12px] tracking-[0.08em] text-text-secondary">{v}</span>
                   )}
                 </div>
               )
@@ -372,7 +385,8 @@ function FaqSection() {
                 <span className="text-[14px] font-semibold text-text-primary">{item.q}</span>
                 <ChevronDown
                   className={cn(
-                    'h-4 w-4 shrink-0 text-text-muted transition-transform',
+                    'h-4 w-4 shrink-0 text-text-muted',
+                    'transition-transform duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
                     isOpen && 'rotate-180',
                   )}
                 />

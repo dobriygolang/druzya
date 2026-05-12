@@ -50,12 +50,30 @@ func (uc *UpdateSettings) Do(ctx context.Context, userID uuid.UUID, s domain.Set
 	if err := uc.Repo.UpdateSettings(ctx, userID, s); err != nil {
 		return domain.Settings{}, fmt.Errorf("profile.UpdateSettings: %w", err)
 	}
+	// Stream D (2026-05-12) — tutor_mode_enabled lives on its own
+	// repo method (kept out of UpdateSettings' main tx so this PR doesn't
+	// require regenerating the sqlc GetProfileBundle query). The field-mask
+	// gate keeps partial PUTs from clobbering an explicit OFF.
+	if s.HasTutorModeEnabled {
+		if err := uc.Repo.SetTutorModeEnabled(ctx, userID, s.TutorModeEnabled); err != nil {
+			return domain.Settings{}, fmt.Errorf("profile.UpdateSettings: tutor mode: %w", err)
+		}
+	}
 	// Re-read so the returned Settings reflects derived columns the write
 	// path computes (notably onboarding_completed which the DB stamps with
 	// NOW() on first true-write).
 	out, err := uc.Repo.GetSettings(ctx, userID)
 	if err != nil {
 		return domain.Settings{}, fmt.Errorf("profile.UpdateSettings: re-read: %w", err)
+	}
+	// Surface the just-written flag on the response. We only touch this
+	// when the caller actually wrote it — otherwise the legacy GetSettings
+	// path (which doesn't read tutor_mode_enabled) stays untouched, keeping
+	// older tests' mock expectations honest.
+	if s.HasTutorModeEnabled {
+		if cur, err := uc.Repo.GetTutorModeEnabled(ctx, userID); err == nil {
+			out.TutorModeEnabled = cur
+		}
 	}
 	return out, nil
 }

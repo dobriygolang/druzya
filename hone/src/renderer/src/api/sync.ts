@@ -19,6 +19,7 @@
 
 import { API_BASE_URL, DEV_BEARER_TOKEN } from './config';
 import { useSessionStore } from '../stores/session';
+import { emitConflict } from '../components/ConflictModal';
 
 const CURSOR_KEY = 'hone:sync:cursor';
 
@@ -162,5 +163,107 @@ export async function pushOperations(operations: PushOperation[]): Promise<PushR
     body: JSON.stringify({ operations }),
   });
   if (!resp.ok) throw new Error(`push: ${resp.status}`);
-  return (await resp.json()) as PushResponse;
+  const result = (await resp.json()) as PushResponse;
+  // Per-op conflicts с reason='version_mismatch' surfaces через ConflictModal.
+  // Backend сейчас не возвращает version_mismatch (PushChanges UC только
+  // ApplyDelete + upsert-skip), но wire ставим now — когда C-6 Yjs upsert
+  // path добавится, conflict surfacing уже работает без касания page'ей.
+  // delete_failed / bad_op / unsupported table — НЕ conflict'ы для юзера,
+  // не surfacing'ем (логируются caller'ом).
+  for (const conflict of result.conflicts) {
+    if (conflict.reason !== 'version_mismatch') continue;
+    const op = operations[conflict.index];
+    if (!op || op.op !== 'upsert' || !op.row) continue;
+    // Hoist row из union'а — после async boundary TS теряет narrowing.
+    const opRow: Record<string, unknown> = op.row;
+    const opTable: SyncTable = op.table;
+    const localBody = serializeForDiff(opRow);
+    const rowId = (op.rowId ?? (opRow.id as string | undefined)) ?? '';
+    void fetchSyncRowSnapshot(opTable, rowId)
+      .then((server) => {
+        emitConflict({
+          kind: opTable.replace(/^hone_/, '').replace(/s$/, ''),
+          id: rowId,
+          local: { body: localBody },
+          server: {
+            body: server ? serializeForDiff(server) : '',
+            updatedAt:
+              (server?.updated_at as string | undefined) ??
+              (server?.updatedAt as string | undefined) ??
+              '',
+          },
+          onKeepLocal: async () => {
+            // Re-push с обновлённым version'ом из server snapshot'а.
+            // Caller (sync orchestrator) проверит result.conflicts на
+            // повторе.
+            const nextOp: PushOperation = {
+              op: 'upsert',
+              table: opTable,
+              row: server ? { ...opRow, version: server.version } : opRow,
+            };
+            await pushOperations([nextOp]);
+          },
+          onAcceptServer: async () => {
+            // Pull side подтянет server snapshot на следующем cycle;
+            // sync orchestrator drop'ит local pending change.
+            window.dispatchEvent(
+              new CustomEvent('hone:sync-accept-server', {
+                detail: { table: opTable, rowId },
+              }),
+            );
+          },
+          onMergeManually: async (merged) => {
+            const nextOp: PushOperation = {
+              op: 'upsert',
+              table: opTable,
+              row: {
+                ...opRow,
+                body_md: merged,
+                version: server?.version ?? opRow.version,
+              },
+            };
+            await pushOperations([nextOp]);
+          },
+        });
+      })
+      .catch(() => {
+        /* snapshot fetch упал — modal не показываем; следующий pull сам */
+      });
+  }
+  return result;
+}
+
+// serializeForDiff — выбирает наиболее «human-readable» поле из row для
+// ConflictModal'овского side-by-side diff'а. hone_notes → body_md;
+// whiteboards → state_json; иначе JSON-stringify всего объекта. Дешёво и
+// не зависит от table-схемы.
+function serializeForDiff(row: Record<string, unknown>): string {
+  const body =
+    (row.body_md as string | undefined) ??
+    (row.state_json as string | undefined) ??
+    (row.bodyMd as string | undefined) ??
+    (row.stateJson as string | undefined);
+  if (typeof body === 'string') return body;
+  try {
+    return JSON.stringify(row, null, 2);
+  } catch {
+    return String(row);
+  }
+}
+
+// fetchSyncRowSnapshot — best-effort GET of one row by id. Используется
+// для composing server-side ConflictPayload. Возвращает null если backend
+// не отдал row (404 / network) — caller тогда показывает empty server side.
+async function fetchSyncRowSnapshot(
+  table: SyncTable,
+  rowId: string,
+): Promise<Record<string, unknown> | null> {
+  if (!rowId) return null;
+  try {
+    const r = await pullChanges({ cursor: null, tables: [table] });
+    const rows = r.changed[table] ?? [];
+    return rows.find((row) => (row.id as string | undefined) === rowId) ?? null;
+  } catch {
+    return null;
+  }
 }

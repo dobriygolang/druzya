@@ -6,10 +6,11 @@
 //
 // Hide-rules (HIDE_ON regex list):
 //   /onboarding/*  — guided flow shouldn't have escape hatches
-//   /voice-mock/*  — mic active, tap by mistake breaks the call
 //   /auth/* /login /welcome — unauth user, tabs go nowhere
 //   /mock/{id}     — immersive session
 // Default: show.
+// Note (D7 2026-05-12): /voice-mock standalone deleted — route now
+// redirects to /mock, no hide-rule needed.
 //
 // Safe-area: paddingBottom uses env(safe-area-inset-bottom) so the bar
 // stays above the iPhone home indicator.
@@ -29,7 +30,6 @@ const TABS = [
 // rather than negating in JSX (less likely to drift).
 const HIDE_ON: RegExp[] = [
   /^\/onboarding(\/|$)/,
-  /^\/voice-mock(\/|$)/,
   /^\/auth(\/|$)/,
   /^\/login$/,
   /^\/welcome(\/|$)/,
@@ -110,7 +110,7 @@ function Tab({
       }}
       className={({ isActive }) =>
         cn(
-          'relative flex flex-col items-center gap-0.5 py-1 select-none transition-transform duration-[120ms]',
+          'relative flex flex-col items-center gap-0.5 py-1 select-none transition-transform duration-[var(--motion-dur-small)]',
           'active:scale-[0.92]',
           isActive ? 'text-text-primary' : 'text-text-muted',
         )
@@ -121,8 +121,10 @@ function Tab({
           <div
             className={cn(
               'relative grid place-items-center',
+              // CI4 (Phase A 2026-05-12) — bump primary FAB to 44×44 для
+              // iOS HIG / WCAG touch target compliance (was h-9 w-9 = 36px).
               primary &&
-                'rounded-full border border-border-strong bg-surface-2 h-9 w-9 -mt-2',
+                'rounded-full border border-border-strong bg-surface-2 h-11 w-11 -mt-3',
             )}
           >
             <Icon
@@ -139,9 +141,10 @@ function Tab({
               <span
                 className={cn(
                   'absolute -top-1 -right-2 grid place-items-center rounded-full bg-danger',
-                  'font-mono font-bold text-white ring-2 ring-bg tabular-nums',
+                  'font-mono font-bold ring-2 ring-bg tabular-nums',
                   'h-[15px] min-w-[15px] px-1 text-[8px]',
                 )}
+                style={{ color: 'rgb(var(--ink))' }}
                 aria-label={unreadAria ?? String(badge)}
               >
                 {badge > 99 ? '99+' : badge}
@@ -151,7 +154,7 @@ function Tab({
           {showLabels ? (
             <span
               className={cn(
-                'font-mono text-[9px] uppercase tracking-wider',
+                'font-mono text-[9px] uppercase tracking-[0.08em]',
                 isActive && 'font-semibold',
               )}
             >

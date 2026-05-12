@@ -86,18 +86,26 @@ function AdminInner() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {TABS.map((t) => (
             <button
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className={`rounded-full border px-3.5 py-1.5 text-[13px] ${
+              aria-pressed={t.key === tab}
+              className={`relative rounded-full border px-3.5 py-1.5 text-[13px] tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${
                 t.key === tab
                   ? 'border-text-primary bg-text-primary/15 text-text-primary'
                   : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong hover:text-text-primary'
               }`}
             >
+              {t.key === tab && (
+                <span
+                  aria-hidden
+                  className="absolute -left-px top-1/2 h-3 w-[1.5px] -translate-y-1/2 rounded-full"
+                  style={{ background: 'var(--red)' }}
+                />
+              )}
               {t.label}
             </button>
           ))}
@@ -157,7 +165,9 @@ function ApplicationRow({ app, canModerate }: { app: InterviewerApplication; can
       )}
       {app.decision_note && (
         <div className="rounded-md border border-border bg-surface-2 px-3 py-2 text-xs text-text-secondary">
-          <span className="font-mono text-[11px] uppercase tracking-wide text-text-muted">Решение модератора:</span>{' '}
+          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
+            Решение модератора:
+          </span>{' '}
           {app.decision_note}
         </div>
       )}
@@ -169,7 +179,7 @@ function ApplicationRow({ app, canModerate }: { app: InterviewerApplication; can
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Комментарий (опционально, кандидат увидит)"
-            className="w-full rounded-md border border-border bg-surface-2 px-2 py-1.5 text-sm text-text-primary"
+            className="w-full resize-none border-0 border-b border-border bg-transparent px-0 py-2 text-sm text-text-primary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] placeholder:text-text-muted focus:border-text-primary"
           />
           <div className="flex flex-wrap gap-2">
             <Button
@@ -189,7 +199,15 @@ function ApplicationRow({ app, canModerate }: { app: InterviewerApplication; can
             </Button>
           </div>
           {errMsg && (
-            <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+            <div
+              className="relative rounded-md border border-border bg-surface-2 px-3 py-2 pl-4 text-sm"
+              style={{ color: 'var(--red)' }}
+            >
+              <span
+                aria-hidden
+                className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-md"
+                style={{ background: 'var(--red)' }}
+              />
               {errMsg}
             </div>
           )}

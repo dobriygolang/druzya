@@ -4125,6 +4125,16 @@ export class Task extends Message<Task> {
    */
   completedAt?: Timestamp;
 
+  /**
+   * Phase J / H3 (2026-05-12): manual_kind_override marks tasks where
+   * the user explicitly chose a kind via the chip picker. Background
+   * auto-categorisers (BulkAutoCategorise / coach_listener) skip rows
+   * with this flag set. Resets only on explicit user request.
+   *
+   * @generated from field: bool manual_kind_override = 14;
+   */
+  manualKindOverride = false;
+
   constructor(data?: PartialMessage<Task>) {
     super();
     proto3.util.initPartial(data, this);
@@ -4146,6 +4156,7 @@ export class Task extends Message<Task> {
     { no: 11, name: "created_at", kind: "message", T: Timestamp },
     { no: 12, name: "updated_at", kind: "message", T: Timestamp },
     { no: 13, name: "completed_at", kind: "message", T: Timestamp },
+    { no: 14, name: "manual_kind_override", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Task {
@@ -4162,6 +4173,70 @@ export class Task extends Message<Task> {
 
   static equals(a: Task | PlainMessage<Task> | undefined, b: Task | PlainMessage<Task> | undefined): boolean {
     return proto3.util.equals(Task, a, b);
+  }
+}
+
+/**
+ * TaskAutoCategoryHint — emitted by the categoriser when it auto-assigns
+ * a kind. Surfaced by the client as a transient toast «Auto-tagged as
+ * <Kind>» with a chevron «Why?» that expands the reasoning. Not persisted
+ * — frontend keeps it in-memory for the toast lifetime (5s).
+ *
+ * @generated from message druz9.v1.TaskAutoCategoryHint
+ */
+export class TaskAutoCategoryHint extends Message<TaskAutoCategoryHint> {
+  /**
+   * @generated from field: string task_id = 1;
+   */
+  taskId = "";
+
+  /**
+   * @generated from field: druz9.v1.TaskKind kind = 2;
+   */
+  kind = TaskKind.UNSPECIFIED;
+
+  /**
+   * 1-2 sentence LLM explanation, e.g. «Mentioned 'binary search' + 'O(log n)' → algorithmic question».
+   *
+   * @generated from field: string reasoning = 3;
+   */
+  reasoning = "";
+
+  /**
+   * 0..1 — LLM self-confidence; client suppresses toast below ~0.4.
+   *
+   * @generated from field: float confidence = 4;
+   */
+  confidence = 0;
+
+  constructor(data?: PartialMessage<TaskAutoCategoryHint>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TaskAutoCategoryHint";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "task_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "kind", kind: "enum", T: proto3.getEnumType(TaskKind) },
+    { no: 3, name: "reasoning", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "confidence", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TaskAutoCategoryHint {
+    return new TaskAutoCategoryHint().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TaskAutoCategoryHint {
+    return new TaskAutoCategoryHint().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TaskAutoCategoryHint {
+    return new TaskAutoCategoryHint().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TaskAutoCategoryHint | PlainMessage<TaskAutoCategoryHint> | undefined, b: TaskAutoCategoryHint | PlainMessage<TaskAutoCategoryHint> | undefined): boolean {
+    return proto3.util.equals(TaskAutoCategoryHint, a, b);
   }
 }
 
@@ -4346,6 +4421,187 @@ export class CreateTaskRequest extends Message<CreateTaskRequest> {
 
   static equals(a: CreateTaskRequest | PlainMessage<CreateTaskRequest> | undefined, b: CreateTaskRequest | PlainMessage<CreateTaskRequest> | undefined): boolean {
     return proto3.util.equals(CreateTaskRequest, a, b);
+  }
+}
+
+/**
+ * UpdateTaskKindRequest — manual override path. When user picks a different
+ * kind via the chip picker, frontend calls this. Backend sets kind and
+ * flips manual_kind_override = true so background re-categorisers skip
+ * the row going forward.
+ *
+ * @generated from message druz9.v1.UpdateTaskKindRequest
+ */
+export class UpdateTaskKindRequest extends Message<UpdateTaskKindRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: druz9.v1.TaskKind kind = 2;
+   */
+  kind = TaskKind.UNSPECIFIED;
+
+  /**
+   * When true (default for user-driven override), backend persists
+   * manual_kind_override=true so auto-categorisers leave the row alone.
+   * When false (used internally by re-categoriser path), preserves
+   * existing flag value.
+   *
+   * @generated from field: bool manual_override = 3;
+   */
+  manualOverride = false;
+
+  constructor(data?: PartialMessage<UpdateTaskKindRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UpdateTaskKindRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "kind", kind: "enum", T: proto3.getEnumType(TaskKind) },
+    { no: 3, name: "manual_override", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateTaskKindRequest {
+    return new UpdateTaskKindRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateTaskKindRequest {
+    return new UpdateTaskKindRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateTaskKindRequest {
+    return new UpdateTaskKindRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateTaskKindRequest | PlainMessage<UpdateTaskKindRequest> | undefined, b: UpdateTaskKindRequest | PlainMessage<UpdateTaskKindRequest> | undefined): boolean {
+    return proto3.util.equals(UpdateTaskKindRequest, a, b);
+  }
+}
+
+/**
+ * BulkAutoCategoriseRequest — kick off auto-categorise for a set of
+ * user-owned tasks. When task_ids is empty, server picks all eligible
+ * open tasks (kind=custom OR manual_kind_override=false).
+ *
+ * @generated from message druz9.v1.BulkAutoCategoriseRequest
+ */
+export class BulkAutoCategoriseRequest extends Message<BulkAutoCategoriseRequest> {
+  /**
+   * @generated from field: repeated string task_ids = 1;
+   */
+  taskIds: string[] = [];
+
+  constructor(data?: PartialMessage<BulkAutoCategoriseRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.BulkAutoCategoriseRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "task_ids", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BulkAutoCategoriseRequest {
+    return new BulkAutoCategoriseRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BulkAutoCategoriseRequest {
+    return new BulkAutoCategoriseRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BulkAutoCategoriseRequest {
+    return new BulkAutoCategoriseRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BulkAutoCategoriseRequest | PlainMessage<BulkAutoCategoriseRequest> | undefined, b: BulkAutoCategoriseRequest | PlainMessage<BulkAutoCategoriseRequest> | undefined): boolean {
+    return proto3.util.equals(BulkAutoCategoriseRequest, a, b);
+  }
+}
+
+/**
+ * BulkAutoCategoriseEvent — one streaming progress packet. Frontend
+ * shows toasts as events arrive and renders «X / N» progress chip.
+ *
+ * @generated from message druz9.v1.BulkAutoCategoriseEvent
+ */
+export class BulkAutoCategoriseEvent extends Message<BulkAutoCategoriseEvent> {
+  /**
+   * @generated from field: string task_id = 1;
+   */
+  taskId = "";
+
+  /**
+   * @generated from field: druz9.v1.TaskKind kind = 2;
+   */
+  kind = TaskKind.UNSPECIFIED;
+
+  /**
+   * @generated from field: string reasoning = 3;
+   */
+  reasoning = "";
+
+  /**
+   * @generated from field: float confidence = 4;
+   */
+  confidence = 0;
+
+  /**
+   * true when this is the terminal packet (server done iterating).
+   * Frontend can use to close the «categorising…» chip and stop spinner.
+   *
+   * @generated from field: bool done = 5;
+   */
+  done = false;
+
+  /**
+   * total / processed help client surface a «12 of 27 categorised» pill.
+   *
+   * @generated from field: int32 processed = 6;
+   */
+  processed = 0;
+
+  /**
+   * @generated from field: int32 total = 7;
+   */
+  total = 0;
+
+  constructor(data?: PartialMessage<BulkAutoCategoriseEvent>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.BulkAutoCategoriseEvent";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "task_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "kind", kind: "enum", T: proto3.getEnumType(TaskKind) },
+    { no: 3, name: "reasoning", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "confidence", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 5, name: "done", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "processed", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BulkAutoCategoriseEvent {
+    return new BulkAutoCategoriseEvent().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BulkAutoCategoriseEvent {
+    return new BulkAutoCategoriseEvent().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BulkAutoCategoriseEvent {
+    return new BulkAutoCategoriseEvent().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BulkAutoCategoriseEvent | PlainMessage<BulkAutoCategoriseEvent> | undefined, b: BulkAutoCategoriseEvent | PlainMessage<BulkAutoCategoriseEvent> | undefined): boolean {
+    return proto3.util.equals(BulkAutoCategoriseEvent, a, b);
   }
 }
 
@@ -6919,6 +7175,528 @@ export class GradeCodeReviewResponse extends Message<GradeCodeReviewResponse> {
 
   static equals(a: GradeCodeReviewResponse | PlainMessage<GradeCodeReviewResponse> | undefined, b: GradeCodeReviewResponse | PlainMessage<GradeCodeReviewResponse> | undefined): boolean {
     return proto3.util.equals(GradeCodeReviewResponse, a, b);
+  }
+}
+
+/**
+ * SpeakingExercise — one canned shadowing prompt. Audio (reference TTS)
+ * deliberately optional in MVP: client can `say` через native TTS or read
+ * text. `level` ∈ B1/B2/C1; client filters dropdown server-side cheap так
+ * что keep all in single list response.
+ *
+ * @generated from message druz9.v1.SpeakingExercise
+ */
+export class SpeakingExercise extends Message<SpeakingExercise> {
+  /**
+   * stable slug, e.g. "algo-1" / "greet-2"
+   *
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * "B1" | "B2" | "C1"
+   *
+   * @generated from field: string level = 2;
+   */
+  level = "";
+
+  /**
+   * free-form category label (interview / daily / sysdesign)
+   *
+   * @generated from field: string topic = 3;
+   */
+  topic = "";
+
+  /**
+   * text the user must shadow (1-2 sentences)
+   *
+   * @generated from field: string prompt = 4;
+   */
+  prompt = "";
+
+  /**
+   * audio_url — reference TTS asset. Empty in MVP (TTS deferred); client
+   * falls back to read-text + native speechSynthesis.
+   *
+   * @generated from field: string audio_url = 5;
+   */
+  audioUrl = "";
+
+  constructor(data?: PartialMessage<SpeakingExercise>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SpeakingExercise";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "level", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "topic", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "audio_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SpeakingExercise {
+    return new SpeakingExercise().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SpeakingExercise {
+    return new SpeakingExercise().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SpeakingExercise {
+    return new SpeakingExercise().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SpeakingExercise | PlainMessage<SpeakingExercise> | undefined, b: SpeakingExercise | PlainMessage<SpeakingExercise> | undefined): boolean {
+    return proto3.util.equals(SpeakingExercise, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListSpeakingExercisesRequest
+ */
+export class ListSpeakingExercisesRequest extends Message<ListSpeakingExercisesRequest> {
+  /**
+   * level — optional filter; empty = all levels.
+   *
+   * @generated from field: string level = 1;
+   */
+  level = "";
+
+  constructor(data?: PartialMessage<ListSpeakingExercisesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListSpeakingExercisesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "level", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSpeakingExercisesRequest {
+    return new ListSpeakingExercisesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSpeakingExercisesRequest {
+    return new ListSpeakingExercisesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSpeakingExercisesRequest {
+    return new ListSpeakingExercisesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListSpeakingExercisesRequest | PlainMessage<ListSpeakingExercisesRequest> | undefined, b: ListSpeakingExercisesRequest | PlainMessage<ListSpeakingExercisesRequest> | undefined): boolean {
+    return proto3.util.equals(ListSpeakingExercisesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListSpeakingExercisesResponse
+ */
+export class ListSpeakingExercisesResponse extends Message<ListSpeakingExercisesResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.SpeakingExercise items = 1;
+   */
+  items: SpeakingExercise[] = [];
+
+  constructor(data?: PartialMessage<ListSpeakingExercisesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListSpeakingExercisesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: SpeakingExercise, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSpeakingExercisesResponse {
+    return new ListSpeakingExercisesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSpeakingExercisesResponse {
+    return new ListSpeakingExercisesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSpeakingExercisesResponse {
+    return new ListSpeakingExercisesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListSpeakingExercisesResponse | PlainMessage<ListSpeakingExercisesResponse> | undefined, b: ListSpeakingExercisesResponse | PlainMessage<ListSpeakingExercisesResponse> | undefined): boolean {
+    return proto3.util.equals(ListSpeakingExercisesResponse, a, b);
+  }
+}
+
+/**
+ * WordDiff — per-token comparison between reference prompt and user
+ * transcript. status ∈ "match" | "miss" | "extra" | "substitute".
+ * expected/actual carry the corresponding word; "" for miss/extra slots.
+ *
+ * @generated from message druz9.v1.WordDiff
+ */
+export class WordDiff extends Message<WordDiff> {
+  /**
+   * @generated from field: string status = 1;
+   */
+  status = "";
+
+  /**
+   * @generated from field: string expected = 2;
+   */
+  expected = "";
+
+  /**
+   * @generated from field: string actual = 3;
+   */
+  actual = "";
+
+  constructor(data?: PartialMessage<WordDiff>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.WordDiff";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "expected", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "actual", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): WordDiff {
+    return new WordDiff().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): WordDiff {
+    return new WordDiff().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): WordDiff {
+    return new WordDiff().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: WordDiff | PlainMessage<WordDiff> | undefined, b: WordDiff | PlainMessage<WordDiff> | undefined): boolean {
+    return proto3.util.equals(WordDiff, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GradeSpeakingRequest
+ */
+export class GradeSpeakingRequest extends Message<GradeSpeakingRequest> {
+  /**
+   * exercise_id picks which prompt the user shadowed. Server fetches the
+   * reference text + level from speaking_exercises (LIKE seed_resources
+   * pattern — fixed JSON table, no per-user content).
+   *
+   * @generated from field: string exercise_id = 1;
+   */
+  exerciseId = "";
+
+  /**
+   * client_session_id — UUIDv4 from Hone; idempotency-key for replay safety.
+   *
+   * @generated from field: string client_session_id = 2;
+   */
+  clientSessionId = "";
+
+  /**
+   * audio_base64 — raw audio bytes, base64-encoded. webm/opus expected
+   * (Hone MediaRecorder default); backend re-uses transcription service.
+   * Max 5MB pre-base64 (~6.7MB encoded) → enforced server-side; longer
+   * shadowing clips don't make sense.
+   *
+   * @generated from field: string audio_base64 = 3;
+   */
+  audioBase64 = "";
+
+  /**
+   * mime_type — passed verbatim to Whisper provider for format detection.
+   * Defaults to "audio/webm" when empty.
+   *
+   * @generated from field: string mime_type = 4;
+   */
+  mimeType = "";
+
+  /**
+   * duration_ms — measured client-side; used for fluency timing variance
+   * (target = len(prompt_words) * 380ms). 0 = unknown → server estimates.
+   *
+   * @generated from field: int32 duration_ms = 5;
+   */
+  durationMs = 0;
+
+  constructor(data?: PartialMessage<GradeSpeakingRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GradeSpeakingRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "exercise_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "client_session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "audio_base64", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "mime_type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "duration_ms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GradeSpeakingRequest {
+    return new GradeSpeakingRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GradeSpeakingRequest {
+    return new GradeSpeakingRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GradeSpeakingRequest {
+    return new GradeSpeakingRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GradeSpeakingRequest | PlainMessage<GradeSpeakingRequest> | undefined, b: GradeSpeakingRequest | PlainMessage<GradeSpeakingRequest> | undefined): boolean {
+    return proto3.util.equals(GradeSpeakingRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GradeSpeakingResponse
+ */
+export class GradeSpeakingResponse extends Message<GradeSpeakingResponse> {
+  /**
+   * server-assigned speaking_sessions.id (UUID)
+   *
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string user_transcript = 2;
+   */
+  userTranscript = "";
+
+  /**
+   * 0..100
+   *
+   * @generated from field: int32 pronunciation_score = 3;
+   */
+  pronunciationScore = 0;
+
+  /**
+   * 0..100
+   *
+   * @generated from field: int32 fluency_score = 4;
+   */
+  fluencyScore = 0;
+
+  /**
+   * ≤140 chars one-liner
+   *
+   * @generated from field: string coach_feedback = 5;
+   */
+  coachFeedback = "";
+
+  /**
+   * @generated from field: repeated druz9.v1.WordDiff word_diffs = 6;
+   */
+  wordDiffs: WordDiff[] = [];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp;
+
+  constructor(data?: PartialMessage<GradeSpeakingResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GradeSpeakingResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "user_transcript", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "pronunciation_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "fluency_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "coach_feedback", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "word_diffs", kind: "message", T: WordDiff, repeated: true },
+    { no: 7, name: "created_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GradeSpeakingResponse {
+    return new GradeSpeakingResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GradeSpeakingResponse {
+    return new GradeSpeakingResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GradeSpeakingResponse {
+    return new GradeSpeakingResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GradeSpeakingResponse | PlainMessage<GradeSpeakingResponse> | undefined, b: GradeSpeakingResponse | PlainMessage<GradeSpeakingResponse> | undefined): boolean {
+    return proto3.util.equals(GradeSpeakingResponse, a, b);
+  }
+}
+
+/**
+ * SpeakingSession — one history row.
+ *
+ * @generated from message druz9.v1.SpeakingSession
+ */
+export class SpeakingSession extends Message<SpeakingSession> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string exercise_id = 2;
+   */
+  exerciseId = "";
+
+  /**
+   * @generated from field: string prompt = 3;
+   */
+  prompt = "";
+
+  /**
+   * @generated from field: string user_transcript = 4;
+   */
+  userTranscript = "";
+
+  /**
+   * @generated from field: int32 pronunciation_score = 5;
+   */
+  pronunciationScore = 0;
+
+  /**
+   * @generated from field: int32 fluency_score = 6;
+   */
+  fluencyScore = 0;
+
+  /**
+   * @generated from field: string coach_feedback = 7;
+   */
+  coachFeedback = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 8;
+   */
+  createdAt?: Timestamp;
+
+  constructor(data?: PartialMessage<SpeakingSession>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SpeakingSession";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "exercise_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "user_transcript", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "pronunciation_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "fluency_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "coach_feedback", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "created_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SpeakingSession {
+    return new SpeakingSession().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SpeakingSession {
+    return new SpeakingSession().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SpeakingSession {
+    return new SpeakingSession().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SpeakingSession | PlainMessage<SpeakingSession> | undefined, b: SpeakingSession | PlainMessage<SpeakingSession> | undefined): boolean {
+    return proto3.util.equals(SpeakingSession, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListSpeakingHistoryRequest
+ */
+export class ListSpeakingHistoryRequest extends Message<ListSpeakingHistoryRequest> {
+  /**
+   * 0 → server default (14), max 100
+   *
+   * @generated from field: int32 limit = 1;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListSpeakingHistoryRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListSpeakingHistoryRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSpeakingHistoryRequest {
+    return new ListSpeakingHistoryRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSpeakingHistoryRequest {
+    return new ListSpeakingHistoryRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSpeakingHistoryRequest {
+    return new ListSpeakingHistoryRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListSpeakingHistoryRequest | PlainMessage<ListSpeakingHistoryRequest> | undefined, b: ListSpeakingHistoryRequest | PlainMessage<ListSpeakingHistoryRequest> | undefined): boolean {
+    return proto3.util.equals(ListSpeakingHistoryRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListSpeakingHistoryResponse
+ */
+export class ListSpeakingHistoryResponse extends Message<ListSpeakingHistoryResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.SpeakingSession items = 1;
+   */
+  items: SpeakingSession[] = [];
+
+  constructor(data?: PartialMessage<ListSpeakingHistoryResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListSpeakingHistoryResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: SpeakingSession, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSpeakingHistoryResponse {
+    return new ListSpeakingHistoryResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListSpeakingHistoryResponse {
+    return new ListSpeakingHistoryResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListSpeakingHistoryResponse {
+    return new ListSpeakingHistoryResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListSpeakingHistoryResponse | PlainMessage<ListSpeakingHistoryResponse> | undefined, b: ListSpeakingHistoryResponse | PlainMessage<ListSpeakingHistoryResponse> | undefined): boolean {
+    return proto3.util.equals(ListSpeakingHistoryResponse, a, b);
   }
 }
 

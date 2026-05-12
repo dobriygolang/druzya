@@ -71,8 +71,6 @@ type Options struct {
 // DefaultCacheableTasks — список task'ов кешируемых по умолчанию. Все
 // выбраны по критерию "детерминированный на одинаковом input'е":
 //
-//   - TaskVacanciesJSON — JSON-парсинг вакансии, one-shot strict-JSON.
-//     Одинаковая вакансия у двух юзеров → один и тот же результат.
 //   - TaskCodingHint — подсказки по конкретной kata; та же kata → та же
 //     подсказка, и latency-sensitive (первый байт должен прилететь ≤1s —
 //     cache-hit укладывается в 30ms).
@@ -90,7 +88,6 @@ type Options struct {
 //   - TaskReasoning / TaskCodeReview — sup-user input (код юзера),
 //     семантические дубликаты редки и ложный hit особо вреден.
 var DefaultCacheableTasks = []llmchain.Task{
-	llmchain.TaskVacanciesJSON,
 	llmchain.TaskCodingHint,
 	llmchain.TaskSysDesignCritique,
 	llmchain.TaskSummarize,

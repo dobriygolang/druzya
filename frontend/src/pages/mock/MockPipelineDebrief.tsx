@@ -122,7 +122,20 @@ export default function MockPipelineDebrief() {
         <DebriefHero pipeline={pipeline} companyName={company?.name ?? null} />
 
         <section className="flex flex-col gap-3">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
+            Радар по этапам
+          </div>
+          <Card variant="default" padding="lg" className="flex flex-col items-center gap-3">
+            <PipelineRadar stages={stages} />
+            <div className="font-mono text-[10px] text-text-secondary text-center max-w-md">
+              Каждая ось — нормализованный score этапа (0..5). Точка-индикатор —
+              средняя по всем заполненным осям.
+            </div>
+          </Card>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
             По этапам
           </div>
           <div className="flex flex-col gap-2">
@@ -134,7 +147,7 @@ export default function MockPipelineDebrief() {
 
         {topMissing.length > 0 && (
           <section className="flex flex-col gap-2">
-            <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
               Главное, что упустил
             </div>
             <Card variant="default" padding="lg">
@@ -182,7 +195,7 @@ function DebriefHero({
   if (v === 'cancelled') {
     return (
       <Card variant="default" padding="lg" className="flex flex-col gap-2">
-        <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
           Прервано
         </div>
         <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
@@ -196,20 +209,30 @@ function DebriefHero({
   }
 
   const isPass = v === 'pass'
-  const cls = isPass
-    ? 'border-success bg-success/10'
-    : 'border-danger bg-danger/10'
   const Icon = isPass ? CheckCircle2 : XCircle
-  const iconCls = isPass ? 'text-success' : 'text-danger'
   const title = isPass ? 'Сдал собес' : 'Не сдал'
   const sub = isPass
     ? 'Хорошая работа — продолжай в том же духе.'
     : 'Готовься ещё. Слабые места — ниже.'
 
   return (
-    <Card variant="default" padding="lg" className={['flex flex-col gap-3 border', cls].join(' ')}>
+    <Card
+      variant="default"
+      padding="lg"
+      className="relative flex flex-col gap-3 border border-border-strong bg-surface-2"
+    >
+      {!isPass && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 h-full w-[1.5px]"
+          style={{ background: 'var(--red)' }}
+        />
+      )}
       <div className="flex items-center gap-3">
-        <Icon className={['h-8 w-8', iconCls].join(' ')} />
+        <Icon
+          className="h-8 w-8 text-text-primary"
+          style={!isPass ? { color: 'var(--red)' } : undefined}
+        />
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
             {title}
@@ -218,7 +241,7 @@ function DebriefHero({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <div className="font-mono text-3xl font-bold text-text-primary">
+        <div className="font-mono text-3xl font-bold tabular-nums text-text-primary">
           {total}
           <span className="text-sm text-text-secondary ml-1">/ 100</span>
         </div>
@@ -235,14 +258,10 @@ function DebriefHero({
 function StageRow({ stage }: { stage: PipelineStage }) {
   const [open, setOpen] = useState<boolean>(false)
   const hasFeedback = !!stage.ai_feedback_md
-  const verdictCls =
-    stage.verdict === 'pass'
-      ? 'text-success'
-      : stage.verdict === 'fail'
-        ? 'text-danger'
-        : stage.verdict === 'borderline'
-          ? 'text-warn'
-          : 'text-text-secondary'
+  // Red signal stripe + ink ramp opacity instead of multi-hue verdict text:
+  // pass = full ink, borderline/fail = red accent on icon/label.
+  const isFail = stage.verdict === 'fail'
+  const isBorderline = stage.verdict === 'borderline'
   const verdictLabel =
     stage.status === 'skipped'
       ? 'skipped'
@@ -261,12 +280,19 @@ function StageRow({ stage }: { stage: PipelineStage }) {
         : null
 
   return (
-    <Card variant="default" padding="md" className="flex flex-col gap-2">
+    <Card variant="default" padding="md" className="relative flex flex-col gap-2">
+      {(isFail || isBorderline) && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-lg"
+          style={{ background: 'var(--red)' }}
+        />
+      )}
       <button
         type="button"
         onClick={() => hasFeedback && setOpen((v) => !v)}
         className={[
-          'flex items-center gap-3 text-left',
+          'flex items-center gap-3 text-left transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)]',
           hasFeedback ? 'cursor-pointer' : 'cursor-default',
         ].join(' ')}
         disabled={!hasFeedback}
@@ -274,12 +300,16 @@ function StageRow({ stage }: { stage: PipelineStage }) {
         <span className="font-display font-bold text-text-primary w-32 truncate">
           {STAGE_LABEL[stage.stage_kind]}
         </span>
-        <span className={['flex items-center gap-1 text-sm font-medium', verdictCls].join(' ')}>
+        <span
+          className="flex items-center gap-1 text-sm font-medium tracking-[0.08em] text-text-primary"
+          style={isFail || isBorderline ? { color: 'var(--red)' } : undefined}
+        >
           {VIcon && <VIcon className="h-4 w-4" />}
           {verdictLabel}
         </span>
-        <span className="font-mono text-sm text-text-primary ml-auto">
-          {stage.score ?? '—'}<span className="text-text-secondary">/100</span>
+        <span className="font-mono text-sm tabular-nums text-text-primary ml-auto">
+          {stage.score ?? '—'}
+          <span className="text-text-secondary">/100</span>
         </span>
         {hasFeedback &&
           (open ? (
@@ -324,4 +354,166 @@ function formatDate(iso: string | null): string {
   } catch {
     return ''
   }
+}
+
+// ── PipelineRadar — 5-axis radar across all stages ──────────────────────
+//
+// Each canonical stage (HR / Algo / Coding / SysDesign / Behavioral) maps
+// to one axis. Score is normalized to 0..5 by dividing the stage's 0..100
+// score by 20. Stages without a score (skipped / not finished) render the
+// axis at 0 — visible as a notch toward centre.
+//
+// B/W only: stroke-based polygon (no fill), tick labels in monospace, axis
+// labels in uppercase. No gradient / glow / colored markers.
+
+const RADAR_AXES: { kind: PipelineStage['stage_kind']; label: string }[] = [
+  { kind: 'hr', label: 'HR' },
+  { kind: 'algo', label: 'Algo' },
+  { kind: 'coding', label: 'Coding' },
+  { kind: 'sysdesign', label: 'SysDesign' },
+  { kind: 'behavioral', label: 'Behav' },
+]
+
+function PipelineRadar({ stages }: { stages: PipelineStage[] }) {
+  // Build a kind → 0..5 value map. Missing stage = 0.
+  const byKind = new Map<PipelineStage['stage_kind'], number>()
+  for (const s of stages) {
+    const raw = s.score ?? 0
+    const v = Math.max(0, Math.min(5, raw / 20))
+    byKind.set(s.stage_kind, v)
+  }
+
+  const cx = 150
+  const cy = 150
+  const r = 110
+  const n = RADAR_AXES.length
+  // 5 axes evenly spaced clockwise from 12 o'clock.
+  const axisGeometry = RADAR_AXES.map((a, i) => {
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / n
+    return { ...a, angle, value: byKind.get(a.kind) ?? 0 }
+  })
+
+  // Polygon points for the score path.
+  const valuePoints = axisGeometry
+    .map((a) => {
+      const ratio = a.value / 5
+      const x = cx + Math.cos(a.angle) * r * ratio
+      const y = cy + Math.sin(a.angle) * r * ratio
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+
+  // Grid rings — 5 concentric pentagons.
+  const ringPoints = (step: number) => {
+    const rr = (r * step) / 5
+    return axisGeometry
+      .map((a) => {
+        const x = cx + Math.cos(a.angle) * rr
+        const y = cy + Math.sin(a.angle) * rr
+        return `${x.toFixed(1)},${y.toFixed(1)}`
+      })
+      .join(' ')
+  }
+
+  const filled = axisGeometry.filter((a) => a.value > 0)
+  const avg =
+    filled.length === 0
+      ? 0
+      : filled.reduce((acc, a) => acc + a.value, 0) / filled.length
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <svg
+        viewBox="0 0 300 300"
+        className="w-full max-w-[320px]"
+        aria-label="Mock interview 5-axis radar"
+      >
+        {/* Grid rings */}
+        {[1, 2, 3, 4, 5].map((step) => (
+          <polygon
+            key={step}
+            points={ringPoints(step)}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={0.5}
+            className="text-border"
+          />
+        ))}
+        {/* Axis spokes */}
+        {axisGeometry.map((a, i) => (
+          <line
+            key={i}
+            x1={cx}
+            y1={cy}
+            x2={cx + Math.cos(a.angle) * r}
+            y2={cy + Math.sin(a.angle) * r}
+            stroke="currentColor"
+            strokeWidth={0.5}
+            className="text-border"
+          />
+        ))}
+        {/* Score polygon */}
+        <polygon
+          points={valuePoints}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.75}
+          className="text-text-primary"
+        />
+        {/* Per-axis ticks (the score dots) */}
+        {axisGeometry.map((a, i) => {
+          const ratio = a.value / 5
+          const x = cx + Math.cos(a.angle) * r * ratio
+          const y = cy + Math.sin(a.angle) * r * ratio
+          return (
+            <circle
+              key={i}
+              cx={x}
+              cy={y}
+              r={2.5}
+              className="fill-text-primary"
+            />
+          )
+        })}
+        {/* Axis labels + numeric values */}
+        {axisGeometry.map((a, i) => {
+          const lx = cx + Math.cos(a.angle) * (r + 22)
+          const ly = cy + Math.sin(a.angle) * (r + 22)
+          return (
+            <g key={i}>
+              <text
+                x={lx}
+                y={ly - 5}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="fill-text-secondary"
+                style={{ fontFamily: 'monospace', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' }}
+              >
+                {a.label}
+              </text>
+              <text
+                x={lx}
+                y={ly + 7}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="fill-text-primary"
+                style={{ fontFamily: 'monospace', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}
+              >
+                {a.value.toFixed(1)}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
+          Среднее
+        </span>
+        <span className="font-mono text-lg font-bold text-text-primary tabular-nums">
+          {avg.toFixed(1)}
+          <span className="text-xs text-text-secondary ml-0.5">/ 5</span>
+        </span>
+      </div>
+    </div>
+  )
 }

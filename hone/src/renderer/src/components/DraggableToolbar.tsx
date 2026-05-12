@@ -215,8 +215,8 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
         maxWidth: collapsed ? COLLAPSED_WIDTH : 720,
         overflow: 'hidden',
         transition:
-          'max-width 240ms cubic-bezier(0.2, 0.7, 0.2, 1),' +
-          'padding 240ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+          'max-width var(--motion-dur-medium) var(--motion-ease-standard),' +
+          'padding var(--motion-dur-medium) var(--motion-ease-standard)',
       }}
     >
       <button
@@ -258,6 +258,9 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
         type="button"
         onClick={() => setCollapsed((c) => !c)}
         title={collapsed ? 'Expand toolbar' : 'Collapse toolbar'}
+        aria-label={collapsed ? 'Expand toolbar' : 'Collapse toolbar'}
+        aria-expanded={!collapsed}
+        aria-pressed={collapsed}
         style={{
           width: 20,
           height: 24,
@@ -271,7 +274,7 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
           padding: 0,
           marginRight: 4,
           flexShrink: 0,
-          transition: 'color 140ms ease',
+          transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.color = 'var(--ink)';
@@ -291,7 +294,7 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
           strokeLinejoin="round"
           style={{
             transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
-            transition: 'transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+            transition: 'transform var(--motion-dur-medium) var(--motion-ease-standard)',
           }}
         >
           <polyline points="3 2 7 5 3 8" />
@@ -306,7 +309,7 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
           margin: '0 4px 0 0',
           flexShrink: 0,
           opacity: collapsed ? 0 : 1,
-          transition: 'opacity 200ms ease',
+          transition: 'opacity var(--motion-dur-medium) var(--motion-ease-standard)',
         }}
       />
       <div
@@ -316,7 +319,7 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
           gap: 4,
           opacity: collapsed ? 0 : 1,
           pointerEvents: collapsed ? 'none' : 'auto',
-          transition: 'opacity 180ms ease',
+          transition: 'opacity var(--motion-dur-medium) var(--motion-ease-standard)',
         }}
       >
         {children}

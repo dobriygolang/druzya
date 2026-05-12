@@ -18,6 +18,7 @@ import {
   getResourceTrail,
   getSkillRadar,
   getCoachStats,
+  getMemoryStats,
   setLearningMode as rpcSetMode,
   logResource,
   type NextAction,
@@ -26,7 +27,18 @@ import {
   type SkillRadar,
   type ResourceTouch,
   type CoachStats,
+  type MemoryStats,
+  type PrimaryGoal,
 } from '../api/intelligence';
+import { useGoalStore, daysUntil, formatGoalChip } from '../stores/goal';
+import { GoalEditModal } from '../components/GoalEditModal';
+import { trackEvent } from '../api/events';
+import {
+  openWebMock,
+  openDruz9Web,
+  openWebAtlasStruggle,
+  openWebInsights,
+} from '../lib/cross-app-links';
 
 type Mode = 'explore' | 'commit' | 'deep';
 
@@ -53,6 +65,25 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
   const [trail, setTrail] = useState<ResourceTrail | null>(null);
   const [radar, setRadar] = useState<SkillRadar | null>(null);
   const [stats, setStats] = useState<CoachStats | null>(null);
+  // F1 (Phase B — 2026-05-12): memory trust indicator. Total30d из
+  // EpisodeRepo.Stats30d через /intelligence/memory/stats RPC. Не fatal
+  // если отвалится — coach surface работает и без него; failure тихо
+  // оставляет badge в «coach» fallback.
+  const [memoryStats, setMemoryStats] = useState<MemoryStats | null>(null);
+
+  // CI1 (Phase A W2): visible error state для auxiliary fetches. Hero
+  // next-action имеет свой `nextError` (рендерится HeroCard inline);
+  // mode-switch имеет `modeError`. Остальные 4 (fork/stats/trail/radar) —
+  // optional auxiliaries: страница работает и без них, но silent fail
+  // ломает доверие. Один combined банер показывается если хоть одна
+  // упала, retry бампит auxReload и refetch'ит всё четыре разом.
+  const [auxError, setAuxError] = useState<string | null>(null);
+  const [auxReload, setAuxReload] = useState(0);
+
+  // F2 (2026-05-12) — primary goal chip near header. Hidden когда no goal
+  // (anti-fallback: не показываем fake-цель). Click → edit modal.
+  const activeGoal = useGoalStore((s) => s.active);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
 
   // Initial: hydrate fork snapshot — оно содержит current mode из learning_state.
   useEffect(() => {
@@ -65,13 +96,14 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
           setMode(r.mode);
         }
       })
-      .catch(() => {
-        /* fork data optional на первом mount */
+      .catch((err) => {
+        if (cancelled) return;
+        setAuxError(`Fork snapshot: ${(err as Error)?.message ?? 'failed'}`);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [auxReload]);
 
   // Snapshot stats — 4 KPIs. Cheap aggregations from existing readers.
   useEffect(() => {
@@ -80,13 +112,15 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
       .then((r) => {
         if (!cancelled) setStats(r);
       })
-      .catch(() => {
-        if (!cancelled) setStats(null);
+      .catch((err) => {
+        if (cancelled) return;
+        setStats(null);
+        setAuxError((prev) => prev ?? `Stats: ${(err as Error)?.message ?? 'failed'}`);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [auxReload]);
 
   // Activity trail — last 7 days. Cheap read; не зависит от mode.
   useEffect(() => {
@@ -95,13 +129,33 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
       .then((r) => {
         if (!cancelled) setTrail(r);
       })
-      .catch(() => {
-        if (!cancelled) setTrail(null);
+      .catch((err) => {
+        if (cancelled) return;
+        setTrail(null);
+        setAuxError((prev) => prev ?? `Activity: ${(err as Error)?.message ?? 'failed'}`);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [auxReload]);
+
+  // Memory stats — F1 trust indicator («coach помнит N событий»). Тихий
+  // failure: silent setMemoryStats(null) если backend lulls — badge просто
+  // fallback'нется в «coach» без N. Не разбавляем auxError — это
+  // optional decoration, не core data.
+  useEffect(() => {
+    let cancelled = false;
+    getMemoryStats()
+      .then((r) => {
+        if (!cancelled) setMemoryStats(r);
+      })
+      .catch(() => {
+        if (!cancelled) setMemoryStats(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [auxReload]);
 
   // Hero next-action — cached 1/day на бэке.
   useEffect(() => {
@@ -132,8 +186,10 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
       .then((r) => {
         if (!cancelled) setFork(r);
       })
-      .catch(() => {
-        if (!cancelled) setFork(null);
+      .catch((err) => {
+        if (cancelled) return;
+        setFork(null);
+        setAuxError((prev) => prev ?? `Fork: ${(err as Error)?.message ?? 'failed'}`);
       })
       .finally(() => {
         if (!cancelled) setForkLoading(false);
@@ -157,13 +213,15 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
       .then((r) => {
         if (!cancelled) setRadar(r);
       })
-      .catch(() => {
-        if (!cancelled) setRadar(null);
+      .catch((err) => {
+        if (cancelled) return;
+        setRadar(null);
+        setAuxError((prev) => prev ?? `Radar: ${(err as Error)?.message ?? 'failed'}`);
       });
     return () => {
       cancelled = true;
     };
-  }, [mode, fork?.currentBranch]);
+  }, [mode, fork?.currentBranch, auxReload]);
 
   // Hero CTA handlers — wired в backend (LogResource + GetNextAction).
   const refetchAction = async (force: boolean) => {
@@ -182,6 +240,7 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
   const onStart = () => {
     if (!next || !onStartFocus) return;
     const title = next.target ? `coach · ${next.actionKind} · ${next.target}` : `coach · ${next.actionKind}`;
+    trackEvent('coach_action_start', { action_kind: next.actionKind, mode });
     onStartFocus({ pinnedTitle: title });
   };
 
@@ -237,6 +296,9 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
             onModeClick={onModeClick}
             modeIdx={modeIdx}
             exploreWeek={fork?.exploreWeekIndex}
+            memoryStats={memoryStats}
+            goal={activeGoal}
+            onGoalClick={() => setGoalModalOpen(true)}
           />
 
           {modeError && (
@@ -256,6 +318,26 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
               }}
             >
               {modeError}
+            </div>
+          )}
+
+          {auxError && (
+            <div className="data-loader-error" style={{ margin: '12px 0' }}>
+              <div className="data-loader-error-stripe" />
+              <div className="data-loader-error-body">
+                <div className="data-loader-error-label">Часть данных не загрузилась</div>
+                <div className="data-loader-error-detail">{auxError}</div>
+                <button
+                  type="button"
+                  className="data-loader-error-retry"
+                  onClick={() => {
+                    setAuxError(null);
+                    setAuxReload((n) => n + 1);
+                  }}
+                >
+                  retry
+                </button>
+              </div>
             </div>
           )}
 
@@ -279,11 +361,204 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
           )}
 
           <ActivityFeed trail={trail} />
+
+          {/* Phase J / X4 (P1) — identity contextual reminder. Hone Coach
+              даёт single next-action; full chat thread + 5-stage mock
+              живут в web. Когда next-action упоминает «mock» / «sysdesign» /
+              «interview» — показываем actionable chip с deep-link. Иначе —
+              тихий footer-line. Footer-line всегда subtle (text-secondary,
+              small), не CTA-banner. */}
+          <CrossAppReminder action={next} />
         </div>
 
         <AICursor />
       </div>
+
+      {goalModalOpen && activeGoal && (
+        <GoalEditModal goal={activeGoal} onClose={() => setGoalModalOpen(false)} />
+      )}
     </>
+  );
+};
+
+/**
+ * CrossAppReminder — Phase J / X4 (P1). Subtle footer на Coach page.
+ *
+ * Tier 1 (action mentions mock/interview): clickable chip → openWebMock().
+ * Tier 2 (всегда): tiny footer-line «for full 5-stage mock interviews, see
+ * druz9.online → /mock».
+ *
+ * Не CTA-banner, не блокирующий разводчик. Просто чтобы юзер знал что
+ * Hone не делает полный mock loop — это live в web.
+ */
+const CrossAppReminder: React.FC<{ action: NextAction | null }> = ({ action }) => {
+  // Parse action target / kind / rationale на mock-related keywords.
+  // EN + RU чтобы поймать оба языка LLM output'а.
+  const text = `${action?.target ?? ''} ${action?.actionKind ?? ''} ${action?.rationale ?? ''}`.toLowerCase();
+  const hasMockKeyword = /\b(mock|sysdesign|sys-design|system design|interview|собес|собесе|интервью|мок)\b/.test(text);
+
+  // Tracking — focus_end event уже tracking'ит inside App. Здесь — отдельный
+  // touchpoint для понимания насколько reminder reaches click. Не add'им new
+  // event схему, переиспользуем coach_action_start с extra context.
+  const onChipClick = (): void => {
+    trackEvent('cross_app_open', { source: 'coach_chip', target: 'web_mock' });
+    openWebMock();
+  };
+  const onFooterClick = (): void => {
+    trackEvent('cross_app_open', { source: 'coach_footer', target: 'web_root' });
+    openDruz9Web();
+  };
+
+  return (
+    <div
+      style={{
+        marginTop: 28,
+        paddingTop: 18,
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      {hasMockKeyword && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+            Looks like a mock-style task —
+          </span>
+          <button
+            type="button"
+            onClick={onChipClick}
+            className="focus-ring"
+            style={{
+              padding: '4px 10px',
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 4,
+              color: 'rgba(255,255,255,0.85)',
+              fontSize: 11,
+              fontFamily: monoFont,
+              letterSpacing: '0.04em',
+              cursor: 'pointer',
+            }}
+            title="Open druz9.online → /mock for the full 5-stage pipeline"
+          >
+            open mock pipeline →
+          </button>
+        </div>
+      )}
+      {/* X5 (Phase J P2 2026-05-12) — deeper CTAs depending on action target.
+          When target looks like an atlas anchor («node:…», «track:…»), allow
+          jump to the struggle highlight surface on web Atlas. When action is
+          a review type, jump to web Insights timeline. Both nil-safe — only
+          render when the action target/text actually matches. */}
+      <CoachActionDeepCTAs action={action} />
+      <p
+        style={{
+          margin: 0,
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.4)',
+          lineHeight: 1.5,
+          fontFamily: monoFont,
+          letterSpacing: '0.02em',
+        }}
+      >
+        Hone = тихий ежедневный coach. For full 5-stage mock interviews,
+        Skill Atlas, and Codex curation, see{' '}
+        <button
+          type="button"
+          onClick={onFooterClick}
+          style={{
+            background: 'transparent',
+            border: 0,
+            padding: 0,
+            color: 'rgba(255,255,255,0.7)',
+            textDecoration: 'underline',
+            textUnderlineOffset: 2,
+            cursor: 'pointer',
+            font: 'inherit',
+          }}
+        >
+          druz9.online
+        </button>
+        .
+      </p>
+    </div>
+  );
+};
+
+// CoachActionDeepCTAs — X5 (Phase J P2 2026-05-12) deep handoff CTAs.
+// Parses action target and decides which web surface to surface as one-line
+// link. Stays subtle: text-only, no visual weight beyond CrossAppReminder.
+const CoachActionDeepCTAs: React.FC<{ action: NextAction | null }> = ({ action }) => {
+  if (!action) return null;
+  const target = (action.target ?? '').trim();
+  const kind = (action.actionKind ?? '').toLowerCase();
+
+  // Atlas-anchor target — «node:dist-sharding» / «track:senior-backend».
+  const atlasMatch = target.match(/^(?:node|atlas|track):(.+)$/i);
+  const insightMatch = kind === 'review_resource' || kind === 'reflection';
+
+  if (!atlasMatch && !insightMatch) return null;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 14,
+        alignItems: 'center',
+        fontFamily: monoFont,
+        fontSize: 10,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: 'rgba(255,255,255,0.4)',
+      }}
+    >
+      {atlasMatch && (
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent('cross_app_open', { source: 'coach_deep_cta', target: 'web_atlas_struggle' });
+            openWebAtlasStruggle(target.toLowerCase());
+          }}
+          style={{
+            background: 'transparent',
+            border: 0,
+            padding: 0,
+            font: 'inherit',
+            color: 'inherit',
+            textDecoration: 'underline',
+            textUnderlineOffset: 2,
+            cursor: 'pointer',
+          }}
+          title="Открыть Atlas с focus на этот узел"
+        >
+          view on web atlas →
+        </button>
+      )}
+      {insightMatch && (
+        <button
+          type="button"
+          onClick={() => {
+            trackEvent('cross_app_open', { source: 'coach_deep_cta', target: 'web_insights' });
+            openWebInsights();
+          }}
+          style={{
+            background: 'transparent',
+            border: 0,
+            padding: 0,
+            font: 'inherit',
+            color: 'inherit',
+            textDecoration: 'underline',
+            textUnderlineOffset: 2,
+            cursor: 'pointer',
+          }}
+          title="Открыть Insights timeline на web"
+        >
+          insights timeline →
+        </button>
+      )}
+    </div>
   );
 };
 
@@ -294,18 +569,68 @@ const CoachHeader: React.FC<{
   onModeClick: (m: Mode) => void;
   modeIdx: number;
   exploreWeek?: number;
-}> = ({ mode, onModeClick, modeIdx, exploreWeek }) => (
+  memoryStats?: MemoryStats | null;
+  goal?: PrimaryGoal | null;
+  onGoalClick?: () => void;
+}> = ({ mode, onModeClick, modeIdx, exploreWeek, memoryStats, goal, onGoalClick }) => {
+  // F2: red stripe только когда deadline < 14 дней AND ещё не прошёл —
+  // urgent visual hint. B/W rule: 1.5px red stripe only.
+  const dN = daysUntil(goal?.target_date);
+  const urgent = goal !== null && goal !== undefined && dN !== null && dN > 0 && dN < 14;
+  return (
   <header style={headerWrap}>
     <div style={headerLeft}>
-      <span style={{ ...dimColor(0.5), fontSize: 11, fontFamily: monoFont, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <span style={{ ...dimColor(0.5), fontSize: 11, fontFamily: monoFont, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         coach
       </span>
+      {/* F2 goal chip — hidden когда no goal (anti-fallback). Click → edit. */}
+      {goal && (
+        <button
+          type="button"
+          onClick={onGoalClick}
+          title="Edit goal"
+          style={{
+            ...chipStyle,
+            position: 'relative',
+            cursor: 'pointer',
+            background: '#111',
+            border: '1px solid rgba(255,255,255,0.07)',
+            color: 'rgba(255,255,255,0.85)',
+            fontFamily: monoFont,
+          }}
+        >
+          {urgent && (
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 1.5,
+                background: '#FF3B30',
+                borderTopLeftRadius: 4,
+                borderTopRightRadius: 4,
+              }}
+            />
+          )}
+          {`Цель: ${formatGoalChip(goal)}`}
+        </button>
+      )}
+      {/* F1 trust badge: показывается только когда есть события. До этого
+        фолбек — голый «coach», без fake-пустого «knows 0 events» (anti-
+        fallback rule: не симулируем несуществующую память). */}
+      {memoryStats && memoryStats.total30d > 0 && (
+        <span style={chipStyle}>
+          {`помнит ${memoryStats.total30d} ${memoryStats.total30d >= 10 ? 'событий · 30 дн' : 'событий'}`}
+        </span>
+      )}
       {mode === 'explore' && exploreWeek !== undefined && exploreWeek > 0 && (
         <span style={chipStyle}>{`explore · w${exploreWeek}`}</span>
       )}
     </div>
 
-    <div style={modeBox}>
+    <div role="tablist" aria-label="Learning mode" style={modeBox}>
       <div
         aria-hidden
         style={{
@@ -317,6 +642,9 @@ const CoachHeader: React.FC<{
         <button
           key={m.key}
           onClick={() => onModeClick(m.key)}
+          role="tab"
+          aria-selected={mode === m.key}
+          aria-pressed={mode === m.key}
           style={{
             ...modeBtn,
             color: mode === m.key ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.5)',
@@ -329,7 +657,8 @@ const CoachHeader: React.FC<{
 
     <div style={{ width: 80 }} aria-hidden />
   </header>
-);
+  );
+};
 
 // ── hero card ───────────────────────────────────────────────────────────
 
@@ -454,7 +783,7 @@ const SnapshotPanel: React.FC<{
   return (
     <aside style={snapshotCard}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <span style={{ ...dimColor(0.5), fontSize: 11, fontFamily: monoFont, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <span style={{ ...dimColor(0.5), fontSize: 11, fontFamily: monoFont, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           snapshot
         </span>
         <span style={chipStyle}>{mode}</span>
@@ -469,7 +798,7 @@ const SnapshotPanel: React.FC<{
       </ul>
 
       <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-        <div style={{ ...dimColor(0.5), fontSize: 11, fontFamily: monoFont, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+        <div style={{ ...dimColor(0.5), fontSize: 11, fontFamily: monoFont, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
           5-axis · {rubricLabel}
           {radar && (
             <span style={{ float: 'right', ...dimColor(0.3) }}>
@@ -676,7 +1005,7 @@ const ActivityFeed: React.FC<{ trail: ResourceTrail | null }> = ({ trail }) => {
     <section style={feedCard} className="coach-stagger" aria-label="recent activity">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
         <h2 style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', margin: 0 }}>recent activity</h2>
-        <span style={{ ...dimColor(0.3), fontSize: 11, fontFamily: monoFont, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <span style={{ ...dimColor(0.3), fontSize: 11, fontFamily: monoFont, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           last 7d
         </span>
       </div>
@@ -743,7 +1072,7 @@ const ActivityRow: React.FC<{ ev: ResourceTouch }> = ({ ev }) => {
           fontSize: 10,
           fontFamily: monoFont,
           textTransform: 'uppercase',
-          letterSpacing: '0.06em',
+          letterSpacing: '0.08em',
           color: tag.color,
           minWidth: 80,
         }}
@@ -811,7 +1140,7 @@ const AICursor: React.FC = () => {
         top: pos.y,
         pointerEvents: 'none',
         opacity: pos.visible ? 1 : 0,
-        transition: 'opacity 320ms cubic-bezier(0.2,0.7,0.2,1), left 1100ms cubic-bezier(0.2,0.7,0.2,1), top 1100ms cubic-bezier(0.2,0.7,0.2,1)',
+        transition: 'opacity var(--motion-dur-medium) var(--motion-ease-standard), left 1100ms var(--motion-ease-standard), top 1100ms var(--motion-ease-standard)',
         zIndex: 50,
       }}
     >
@@ -826,7 +1155,7 @@ const AICursor: React.FC = () => {
           fontSize: 10,
           fontFamily: monoFont,
           textTransform: 'uppercase',
-          letterSpacing: '0.06em',
+          letterSpacing: '0.08em',
           background: 'rgba(255,255,255,0.92)',
           color: '#000',
           padding: '3px 7px',
@@ -848,13 +1177,13 @@ const CoachStyles: React.FC = () => (
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.coach-page-enter { animation: coachPageFade 220ms cubic-bezier(0.2,0.7,0.2,1) both; }
+.coach-page-enter { animation: coachPageFade var(--motion-dur-medium) var(--motion-ease-standard) both; }
 
 @keyframes coachFadeUp {
   from { opacity: 0; transform: translateY(9px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.coach-stagger > *               { opacity: 0; animation: coachFadeUp 480ms cubic-bezier(0.2,0.7,0.2,1) forwards; }
+.coach-stagger > *               { opacity: 0; animation: coachFadeUp var(--motion-dur-xlarge) var(--motion-ease-standard) forwards; }
 .coach-stagger > *:nth-child(1)  { animation-delay:  60ms; }
 .coach-stagger > *:nth-child(2)  { animation-delay: 130ms; }
 .coach-stagger > *:nth-child(3)  { animation-delay: 200ms; }
@@ -996,7 +1325,7 @@ const leaningBadge: React.CSSProperties = {
   fontSize: 10,
   fontFamily: monoFont,
   textTransform: 'uppercase',
-  letterSpacing: '0.06em',
+  letterSpacing: '0.08em',
   padding: '3px 8px',
   borderRadius: 4,
 };
@@ -1011,7 +1340,7 @@ const fillTrack: React.CSSProperties = {
 const fillFill: React.CSSProperties = {
   height: '100%',
   background: 'rgba(255,255,255,0.7)',
-  transition: 'width 320ms cubic-bezier(0.2,0.7,0.2,1)',
+  transition: 'width var(--motion-dur-medium) var(--motion-ease-standard)',
 };
 
 const heroChips: React.CSSProperties = {
@@ -1047,7 +1376,7 @@ const whyLabel: React.CSSProperties = {
   fontSize: 10,
   fontFamily: monoFont,
   textTransform: 'uppercase',
-  letterSpacing: '0.06em',
+  letterSpacing: '0.08em',
   color: 'rgba(255,255,255,0.3)',
   marginTop: 3,
 };
@@ -1098,7 +1427,7 @@ const modeIndicator: React.CSSProperties = {
   border: '1px solid rgba(255,255,255,0.12)',
   width: 'calc(33.33% - 2px)',
   borderRadius: 6,
-  transition: 'transform 220ms cubic-bezier(0.2,0.7,0.2,1)',
+  transition: 'transform var(--motion-dur-medium) var(--motion-ease-standard)',
 };
 
 const modeBtn: React.CSSProperties = {
@@ -1123,7 +1452,7 @@ const chipStyle: React.CSSProperties = {
   fontSize: 10,
   fontFamily: monoFont,
   textTransform: 'uppercase',
-  letterSpacing: '0.06em',
+  letterSpacing: '0.08em',
   background: '#111',
   border: '1px solid rgba(255,255,255,0.07)',
   color: 'rgba(255,255,255,0.7)',

@@ -25,17 +25,18 @@ import { AIModelsPanel } from './AIModelsPanel'
 import { LLMChainPanel } from './LLMChainPanel'
 import { PersonasPanel } from './PersonasPanel'
 import { MockCompaniesPanel } from './MockCompaniesPanel'
+import { CompanyManagerPage } from './companies/CompanyManagerPage'
 import { MockTasksPanel } from './MockTasksPanel'
 import { MockQuestionsPanel } from './MockQuestionsPanel'
 import { MockStrictnessPanel } from './MockStrictnessPanel'
 import { QuotasPanel } from './QuotasPanel'
 import { CopilotPlansPanel } from './CopilotPlansPanel'
-import { TracksObservabilityPanel } from './TracksObservabilityPanel'
-import { EnglishHRObservabilityPanel } from './EnglishHRObservabilityPanel'
-import { MockBlockObservabilityPanel } from './MockBlockObservabilityPanel'
-import { IntelligenceObservabilityPanel } from './IntelligenceObservabilityPanel'
-import { LLMObservabilityPanel } from './LLMObservabilityPanel'
+import { ObservabilityDashboard } from './ObservabilityDashboard'
 import { RoomsPanel } from './RoomsPanel'
+import { GoalPresetsPanel } from './goals/GoalPresetsPanel'
+import { CoachPromptsPanel } from './coach/CoachPromptsPanel'
+import { NotificationTemplatesPanel } from './notifications/NotificationTemplatesPanel'
+import { ABExperimentsPanel } from './ab/ABExperimentsPanel'
 
 export default function AdminPage() {
   const profile = useProfileQuery()
@@ -88,8 +89,10 @@ export default function AdminPage() {
                           ? 'Персоны'
                           : tab === 'llm_chain'
                             ? 'LLM Chain'
-                            : tab === 'mock_companies'
-                              ? 'Mock · компании'
+                            : tab === 'mock_company_manager'
+                              ? 'Company Manager'
+                              : tab === 'mock_companies'
+                              ? 'Mock · компании (legacy)'
                               : tab === 'mock_tasks'
                                 ? 'Mock · задачи'
                                 : tab === 'mock_questions'
@@ -100,15 +103,19 @@ export default function AdminPage() {
                                       ? 'Subscription · квоты'
                                       : tab === 'copilot_plans'
                                         ? 'Copilot · тарифы'
-                                        : tab === 'obs_tracks'
-                                          ? 'Observability · tracks'
-                                          : tab === 'obs_english_hr'
-                                            ? 'Observability · English HR'
-                                            : tab === 'obs_mock_block'
-                                              ? 'Observability · mock-block'
-                                              : tab === 'obs_intelligence'
-                                                ? 'Observability · coach'
-                                                : 'AI Modельки'}
+                                        : tab === 'observability'
+                                          ? 'Observability'
+                                          : tab === 'rooms'
+                                            ? 'Rooms · moderation'
+                                            : tab === 'goal_presets'
+                                              ? 'Goal presets'
+                                              : tab === 'coach_prompts'
+                                                ? 'Coach prompts'
+                                                : tab === 'notification_templates'
+                                                  ? 'Notifications'
+                                                  : tab === 'ab_experiments'
+                                                    ? 'A/B experiments'
+                                                    : 'AI Modельки'}
             </h1>
             <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
           </div>
@@ -122,18 +129,19 @@ export default function AdminPage() {
         {tab === 'ai_models' && <AIModelsPanel />}
         {tab === 'llm_chain' && <LLMChainPanel />}
         {tab === 'personas' && <PersonasPanel />}
+        {tab === 'mock_company_manager' && <CompanyManagerPage />}
         {tab === 'mock_companies' && <MockCompaniesPanel />}
         {tab === 'mock_tasks' && <MockTasksPanel />}
         {tab === 'mock_questions' && <MockQuestionsPanel />}
         {tab === 'mock_strictness' && <MockStrictnessPanel />}
         {tab === 'quotas' && <QuotasPanel />}
         {tab === 'copilot_plans' && <CopilotPlansPanel />}
-        {tab === 'obs_tracks' && <TracksObservabilityPanel />}
-        {tab === 'obs_english_hr' && <EnglishHRObservabilityPanel />}
-        {tab === 'obs_mock_block' && <MockBlockObservabilityPanel />}
-        {tab === 'obs_intelligence' && <IntelligenceObservabilityPanel />}
-        {tab === 'obs_llm' && <LLMObservabilityPanel />}
+        {tab === 'observability' && <ObservabilityDashboard />}
         {tab === 'rooms' && <RoomsPanel />}
+        {tab === 'goal_presets' && <GoalPresetsPanel />}
+        {tab === 'coach_prompts' && <CoachPromptsPanel />}
+        {tab === 'notification_templates' && <NotificationTemplatesPanel />}
+        {tab === 'ab_experiments' && <ABExperimentsPanel />}
       </main>
     </div>
   )

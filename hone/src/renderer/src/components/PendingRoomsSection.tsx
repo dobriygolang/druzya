@@ -55,7 +55,7 @@ export function PendingRoomsSection({ kind, label }: Props) {
     <>
       <div
         className="mono"
-        style={{ fontSize: 9, letterSpacing: '.18em', color: 'var(--ink-40)', padding: '4px 14px 6px' }}
+        style={{ fontSize: 9, letterSpacing: '0.08em', color: 'var(--ink-40)', padding: '4px 14px 6px' }}
       >
         {label}
       </div>
@@ -84,7 +84,9 @@ function PendingRow({ op }: { op: OutboxOp }) {
       : typeof navigator !== 'undefined' && !navigator.onLine
         ? 'queued (offline)'
         : 'creating…';
-  const dotColor = op.dead ? '#ff6a6a' : op.attempts > 0 ? '#ffaa55' : 'rgba(255,255,255,0.45)';
+  // Dot stratification (no chroma): dead → red signal; retry-in-progress
+  // → ink-60 (muted); fresh op → ink-40 (faintest live indicator).
+  const dotColor = op.dead ? 'var(--red)' : op.attempts > 0 ? 'var(--ink-60)' : 'var(--ink-40)';
 
   return (
     <div
@@ -97,7 +99,7 @@ function PendingRow({ op }: { op: OutboxOp }) {
         padding: '8px 12px 8px 14px',
         margin: '1px 0',
         borderRadius: 7,
-        background: hover ? 'rgba(255,255,255,0.04)' : 'transparent',
+        background: hover ? 'var(--hair)' : 'transparent',
         opacity: 0.78,
       }}
     >
@@ -130,8 +132,8 @@ function PendingRow({ op }: { op: OutboxOp }) {
         className="mono"
         style={{
           fontSize: 9,
-          letterSpacing: '0.14em',
-          color: op.dead ? '#ff6a6a' : 'var(--ink-40)',
+          letterSpacing: '0.08em',
+          color: op.dead ? 'var(--red)' : 'var(--ink-40)',
           flexShrink: 0,
         }}
       >
@@ -161,14 +163,15 @@ function PendingRow({ op }: { op: OutboxOp }) {
           className="focus-ring"
           style={{
             background: 'transparent',
-            border: '1px solid rgba(255,106,106,0.4)',
-            color: '#ff6a6a',
+            border: '1px solid var(--red)',
+            color: 'var(--red)',
             borderRadius: 5,
             fontSize: 9,
-            letterSpacing: '0.14em',
+            letterSpacing: '0.08em',
             padding: '2px 6px',
             cursor: 'pointer',
             flexShrink: 0,
+            opacity: 0.7,
           }}
         >
           RETRY

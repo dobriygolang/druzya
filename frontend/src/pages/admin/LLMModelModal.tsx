@@ -1,6 +1,39 @@
+// 2026-05-12: migrated to foundation Modal primitive (focus trap, ESC,
+// scroll lock, smooth in/out). Underline-only inputs per v2 spec.
+
 import { useState, type FormEvent } from 'react'
+import { Modal } from '../../components/primitives/Modal'
+import { motion as motionTokens } from '../../lib/design-tokens'
 import { Button } from '../../components/Button'
 import type { AdminLLMModel, AdminLLMModelUpsertBody } from '../../lib/queries/ai'
+
+const captionMonoLabel: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+  fontSize: 10,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+}
+
+const underlineInput: React.CSSProperties = {
+  height: 34,
+  padding: '6px 0',
+  background: 'transparent',
+  border: 0,
+  borderBottom: '1px solid var(--hair-2)',
+  color: 'rgb(var(--ink))',
+  fontSize: 14,
+  outline: 'none',
+  transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
+}
+
+const onFocusBorder = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderBottomColor = 'rgb(var(--ink))'
+}
+const onBlurBorder = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+  e.currentTarget.style.borderBottomColor = 'var(--hair-2)'
+}
 
 export function LLMModelModal({
   initial,
@@ -13,6 +46,7 @@ export function LLMModelModal({
   onClose: () => void
   onSave: (body: AdminLLMModelUpsertBody) => Promise<void>
 }) {
+  const [open, setOpen] = useState(true)
   const [modelId, setModelId] = useState(initial?.model_id ?? '')
   const [label, setLabel] = useState(initial?.label ?? '')
   const [provider, setProvider] = useState(initial?.provider ?? '')
@@ -32,6 +66,11 @@ export function LLMModelModal({
   const [useMock, setUseMock] = useState(initial?.use_for_mock ?? true)
   const [sortOrder, setSortOrder] = useState(String(initial?.sort_order ?? 0))
   const [error, setError] = useState<string | null>(null)
+
+  const close = () => {
+    setOpen(false)
+    window.setTimeout(onClose, motionTokens.dur.medium)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -62,137 +101,110 @@ export function LLMModelModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div className="w-full max-w-xl rounded-lg border border-border bg-surface-1 p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-display text-sm font-bold text-text-primary">
-            {initial ? 'Редактировать модель' : 'Новая модель'}
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="font-mono text-xs text-text-muted hover:text-text-primary"
+    <Modal open={open} onClose={close} size="lg" title={initial ? 'Редактировать модель' : 'Новая модель'}>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 14 }}>
+        <label className="md:col-span-2" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>model_id * (OpenRouter id)</span>
+          <input
+            value={modelId}
+            onChange={(e) => setModelId(e.target.value)}
+            placeholder="openai/gpt-4o"
+            disabled={!!initial}
+            style={{ ...underlineInput, fontFamily: "'JetBrains Mono', ui-monospace, monospace", opacity: initial ? 0.6 : 1 }}
+            onFocus={onFocusBorder}
+            onBlur={onBlurBorder}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>label *</span>
+          <input value={label} onChange={(e) => setLabel(e.target.value)} style={underlineInput} onFocus={onFocusBorder} onBlur={onBlurBorder} />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>provider *</span>
+          <input
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+            placeholder="openai / anthropic / …"
+            style={underlineInput}
+            onFocus={onFocusBorder}
+            onBlur={onBlurBorder}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>tier</span>
+          <select
+            value={tier}
+            onChange={(e) => setTier(e.target.value as 'free' | 'pro' | 'max')}
+            style={{ ...underlineInput, appearance: 'none', cursor: 'pointer' }}
+            onFocus={onFocusBorder}
+            onBlur={onBlurBorder}
           >
-            ✕
-          </button>
+            <option value="free">free</option>
+            <option value="pro">pro</option>
+            <option value="max">max</option>
+          </select>
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>sort_order</span>
+          <input value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} type="number" style={underlineInput} onFocus={onFocusBorder} onBlur={onBlurBorder} />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>context_window</span>
+          <input value={contextWindow} onChange={(e) => setContextWindow(e.target.value)} type="number" placeholder="128000" style={underlineInput} onFocus={onFocusBorder} onBlur={onBlurBorder} />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>cost / 1k in (USD)</span>
+          <input value={costIn} onChange={(e) => setCostIn(e.target.value)} type="number" step="0.000001" style={underlineInput} onFocus={onFocusBorder} onBlur={onBlurBorder} />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>cost / 1k out (USD)</span>
+          <input value={costOut} onChange={(e) => setCostOut(e.target.value)} type="number" step="0.000001" style={underlineInput} onFocus={onFocusBorder} onBlur={onBlurBorder} />
+        </label>
+        <div className="md:col-span-2 flex-wrap-row" style={{ gap: 16, paddingTop: 6 }}>
+          <CheckboxLabel checked={isEnabled} onChange={setIsEnabled} label="is_enabled" />
+          <CheckboxLabel checked={useArena} onChange={setUseArena} label="use_for_arena · legacy" title="Backend поле use_for_arena (legacy имя — выпиливается при следующем proto-bump'е)." />
+          <CheckboxLabel checked={useInsight} onChange={setUseInsight} label="use_for_insight" />
+          <CheckboxLabel checked={useMock} onChange={setUseMock} label="use_for_mock" />
         </div>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="flex flex-col gap-1 md:col-span-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">model_id * (OpenRouter id)</span>
-            <input
-              value={modelId}
-              onChange={(e) => setModelId(e.target.value)}
-              placeholder="openai/gpt-4o"
-              disabled={!!initial}
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 font-mono text-sm text-text-primary disabled:opacity-60"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">label *</span>
-            <input
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">provider *</span>
-            <input
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              placeholder="openai / anthropic / …"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">tier</span>
-            <select
-              value={tier}
-              onChange={(e) => setTier(e.target.value as 'free' | 'pro' | 'max')}
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-            >
-              <option value="free">free</option>
-              <option value="pro">pro</option>
-              <option value="max">max</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">sort_order</span>
-            <input
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              type="number"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">context_window</span>
-            <input
-              value={contextWindow}
-              onChange={(e) => setContextWindow(e.target.value)}
-              type="number"
-              placeholder="128000"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">cost / 1k in (USD)</span>
-            <input
-              value={costIn}
-              onChange={(e) => setCostIn(e.target.value)}
-              type="number"
-              step="0.000001"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">cost / 1k out (USD)</span>
-            <input
-              value={costOut}
-              onChange={(e) => setCostOut(e.target.value)}
-              type="number"
-              step="0.000001"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-            />
-          </label>
-          <div className="md:col-span-2 flex flex-wrap gap-4 pt-1">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={isEnabled} onChange={(e) => setIsEnabled(e.target.checked)} className="h-4 w-4" />
-              <span className="text-sm text-text-secondary">is_enabled</span>
-            </label>
-            <label className="flex items-center gap-2" title="Backend поле use_for_arena (legacy имя — выпиливается при следующем proto-bump'е).">
-              <input type="checkbox" checked={useArena} onChange={(e) => setUseArena(e.target.checked)} className="h-4 w-4" />
-              <span className="text-sm text-text-secondary">use_for_arena · legacy</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={useInsight} onChange={(e) => setUseInsight(e.target.checked)} className="h-4 w-4" />
-              <span className="text-sm text-text-secondary">use_for_insight</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={useMock} onChange={(e) => setUseMock(e.target.checked)} className="h-4 w-4" />
-              <span className="text-sm text-text-secondary">use_for_mock</span>
-            </label>
-          </div>
-          {error && (
-            <p className="md:col-span-2 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
-              {error}
-            </p>
-          )}
-          <div className="md:col-span-2 flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-              Отмена
-            </Button>
-            <Button type="submit" size="sm" disabled={busy}>
-              {busy ? 'Сохраняем…' : initial ? 'Сохранить' : 'Создать'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {error && (
+          <p
+            role="alert"
+            className="md:col-span-2"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              padding: '8px 12px',
+              border: '1px solid rgba(255, 59, 48, 0.4)',
+              borderRadius: 'var(--radius-inner)',
+              fontSize: 12,
+              color: 'var(--red)',
+              background: 'transparent',
+              margin: 0,
+            }}
+          >
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 1.5, minHeight: 16, background: 'var(--red)', marginTop: 4, flex: '0 0 auto' }} />
+            {error}
+          </p>
+        )}
+        <div className="md:col-span-2" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 6 }}>
+          <Button type="button" variant="ghost" size="sm" onClick={close}>
+            Отмена
+          </Button>
+          <Button type="submit" size="sm" disabled={busy}>
+            {busy ? 'Сохраняем…' : initial ? 'Сохранить' : 'Создать'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function CheckboxLabel({ checked, onChange, label, title }: { checked: boolean; onChange: (v: boolean) => void; label: string; title?: string }) {
+  return (
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} title={title}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'rgb(var(--ink))', cursor: 'pointer' }} />
+      <span style={{ fontSize: 13, color: 'var(--ink-60)' }}>{label}</span>
+    </label>
   )
 }

@@ -125,7 +125,7 @@ export function FloatingToolbar({
         alignItems: 'center',
         gap: 1,
         zIndex: 60,
-        animationDuration: '120ms',
+        animationDuration: 'var(--motion-dur-small)',
       }}
     >
       {linkMode ? (
@@ -190,6 +190,8 @@ function Btn({
     <button
       type="button"
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onMouseDown={(e) => e.preventDefault()}
@@ -212,7 +214,7 @@ function Btn({
         fontFamily: mono ? 'var(--font-mono, monospace)' : 'inherit',
         cursor: 'pointer',
         padding: 0,
-        transition: 'background-color 140ms ease, color 140ms ease',
+        transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
         display: 'inline-grid',
         placeItems: 'center',
       }}

@@ -8,6 +8,8 @@
 // right edit is in this file.
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import {
   Search,
   Sun,
@@ -16,7 +18,6 @@ import {
   Map as MapIcon,
   MessageSquare,
   BookOpen,
-  Briefcase,
   Settings,
   type LucideIcon,
 } from 'lucide-react'
@@ -47,7 +48,6 @@ export function Palette({ onClose }: PaletteProps) {
       { id: 'insights', label: 'Insights', icon: BarChart3, shortcut: ['I'], to: '/insights' },
       { id: 'tutor', label: 'Coach', icon: MessageSquare, shortcut: ['C'], to: '/tutor' },
       { id: 'codex', label: 'Codex', icon: BookOpen, shortcut: ['X'], to: '/codex' },
-      { id: 'vacancies', label: 'Vacancies', icon: Briefcase, shortcut: ['V'], to: '/vacancies' },
       { id: 'settings', label: 'Settings', icon: Settings, shortcut: [','], to: '/settings' },
     ],
     [],
@@ -87,8 +87,11 @@ export function Palette({ onClose }: PaletteProps) {
     }
   }
 
+  const trapRef = useFocusTrap(true)
+
   return (
     <div
+      ref={trapRef}
       className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh]"
       style={{
         background: 'rgba(0,0,0,0.62)',
@@ -108,10 +111,10 @@ export function Palette({ onClose }: PaletteProps) {
           height: 'fit-content',
           background: 'rgba(12,12,12,0.96)',
           border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 14,
+          borderRadius: 'var(--radius-outer)',
           overflow: 'hidden',
           boxShadow: '0 40px 100px -20px rgba(0,0,0,0.85)',
-          animation: 'druz9-fade-up 240ms cubic-bezier(.2,.7,.2,1) both',
+          animation: 'druz9-fade-up var(--motion-dur-medium) var(--motion-ease-standard) both',
         }}
       >
         <div
@@ -166,7 +169,7 @@ export function Palette({ onClose }: PaletteProps) {
                   border: 'none',
                   cursor: 'pointer',
                   textAlign: 'left',
-                  transition: 'background-color 120ms cubic-bezier(.2,.7,.2,1)',
+                  transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard)',
                 }}
               >
                 <span

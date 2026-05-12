@@ -640,7 +640,7 @@ const notionLikeHighlight = HighlightStyle.define([
     tag: t.monospace,
     fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
     fontSize: '0.9em',
-    background: 'rgba(255,255,255,0.06)',
+    background: 'var(--hair)',
     padding: '1px 5px',
     borderRadius: '4px',
   },
@@ -751,7 +751,7 @@ class ToggleSummaryWidget extends WidgetType {
       'color:var(--ink-40)',
       'font-size:10px',
       'cursor:pointer',
-      'transition:color 140ms ease',
+      'transition:color var(--motion-dur-small) var(--motion-ease-standard)',
     ].join(';');
     tri.addEventListener('mouseenter', () => {
       tri.style.color = 'var(--ink-60)';
@@ -911,12 +911,12 @@ class FenceWidget extends WidgetType {
       'font-family:var(--font-mono, monospace)',
       'letter-spacing:0.08em',
       'color:var(--ink-40)',
-      'background:rgba(255,255,255,0.04)',
-      'border:1px solid rgba(255,255,255,0.06)',
+      'background:var(--hair)',
+      'border:1px solid var(--hair)',
       'border-radius:4px',
       'padding:2px 6px',
       'cursor:pointer',
-      'transition:color 140ms ease',
+      'transition:color var(--motion-dur-small) var(--motion-ease-standard)',
     ].join(';');
     pill.addEventListener('mouseenter', () => {
       pill.style.color = 'var(--ink-60)';
@@ -946,7 +946,7 @@ class FenceWidget extends WidgetType {
       'padding:2px 4px',
       'cursor:pointer',
       'opacity:0.6',
-      'transition:opacity 140ms ease',
+      'transition:opacity var(--motion-dur-small) var(--motion-ease-standard)',
     ].join(';');
     copy.addEventListener('mouseenter', () => {
       copy.style.opacity = '1';
@@ -998,7 +998,7 @@ function openLangDropdown(
     'background:rgba(20,20,22,0.96)',
     'backdrop-filter:blur(18px)',
     '-webkit-backdrop-filter:blur(18px)',
-    'border:1px solid rgba(255,255,255,0.08)',
+    'border:1px solid var(--hair)',
     'box-shadow:0 8px 32px rgba(0,0,0,0.5)',
     'border-radius:10px',
     'padding:6px',
@@ -1021,13 +1021,13 @@ function openLangDropdown(
       `color:${lang === current ? 'var(--ink)' : 'var(--ink-90)'}`,
       'font-size:12px',
       'font-family:var(--font-mono, monospace)',
-      'letter-spacing:0.04em',
+      'letter-spacing:0.08em',
       'text-align:left',
       'cursor:pointer',
-      'transition:background-color 140ms ease',
+      'transition:background-color var(--motion-dur-small) var(--motion-ease-standard)',
     ].join(';');
     item.addEventListener('mouseenter', () => {
-      item.style.background = 'rgba(255,255,255,0.06)';
+      item.style.background = 'var(--hair)';
       item.style.color = 'var(--ink)';
     });
     item.addEventListener('mouseleave', () => {
@@ -1185,7 +1185,7 @@ class CheckboxWidget extends WidgetType {
       'height:14px',
       'margin:0 4px 0 0',
       'border-radius:3px',
-      'border:1.5px solid rgba(255,255,255,0.2)',
+      'border:1.5px solid var(--ink-20)',
       'background:transparent',
       'cursor:pointer',
       'vertical-align:-2px',
@@ -1320,7 +1320,7 @@ function notionTheme() {
         color: 'var(--ink-60)',
       },
       '.cm-md-code-line': {
-        background: 'rgba(255,255,255,0.04)',
+        background: 'var(--hair)',
         fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
         fontSize: '13.5px',
         paddingLeft: '14px',

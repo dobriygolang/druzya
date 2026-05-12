@@ -114,7 +114,6 @@ export const VIRTUAL_IDS = [
 // добавить сюда, иначе админ-таблица её не покажет и hot-swap модели
 // (без redeploy'а) для этой задачи не будет работать.
 export const KNOWN_TASKS = [
-  'vacancies_json',
   'insight_prose',
   'copilot_stream',
   'reasoning',

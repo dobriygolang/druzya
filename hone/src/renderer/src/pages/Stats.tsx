@@ -12,64 +12,54 @@
 //
 // StatsOverlay (S-key from home) остаётся параллельно — он lighter-weight
 // "peek" версия. Эта page — full dashboard для tab navigation.
-import React, { useEffect, useMemo, useState } from 'react';
+//
+// 2026-05-12: v2 visual language — hairline-only cards (был `#0a0a0a` fill),
+// letter-spacing 0.08em canonical, foundation `.motion-stagger` + `.motion-page-in`
+// classes (inline keyframes удалены), range picker hairline active state.
+import React, { useMemo, useState } from 'react';
 
 import { getStats, type HoneStats, type FocusDay } from '../api/hone';
-import { getCoachStats, type CoachStats } from '../api/intelligence';
+import {
+  getCoachStats,
+  listFocusReflections,
+  type CoachStats,
+  type FocusReflectionEntry,
+} from '../api/intelligence';
 import { listExternalActivity, type ExternalActivity, type ExternalSource } from '../api/external';
 import { ExternalActivityModal } from '../components/ExternalActivityModal';
+import { useDataState } from '../hooks/useDataState';
+import { openWebProfileMemory, openWebInsights } from '../lib/cross-app-links';
 
 type Range = '7d' | '30d' | '90d';
 
 export const Stats: React.FC = () => {
   const [range, setRange] = useState<Range>('7d');
-  const [stats, setStats] = useState<HoneStats | null>(null);
-  const [coach, setCoach] = useState<CoachStats | null>(null);
-  const [activity, setActivity] = useState<ExternalActivity[]>([]);
   // logOpen state retired — Sergey 2026-05-05: no manual logging button.
   const [reload, setReload] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    getStats()
-      .then((r) => {
-        if (!cancelled) setStats(r);
-      })
-      .catch(() => {
-        if (!cancelled) setStats(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reload]);
+  // CI1 (Phase A W2): unify async fetch state via useDataState. Previously
+  // each .catch set state to null silently — KPIs would just show «—» without
+  // any indication something failed. Now we surface error stripe + retry via
+  // <ErrorStripe> below.
+  const statsState = useDataState(() => getStats(), [reload]);
+  const coachState = useDataState(() => getCoachStats(), [reload]);
+  const activityState = useDataState(
+    () => listExternalActivity({ limit: 30 }),
+    [reload],
+  );
+  // H2 (Phase J 2026-05-12) — pomodoro grade trend. Window matches range
+  // picker; default 30 covers the typical "how am I doing?" question.
+  const reflectionsWindow =
+    range === '7d' ? 7 : range === '30d' ? 30 : 90;
+  const reflectionsState = useDataState(
+    () => listFocusReflections(reflectionsWindow),
+    [reload, reflectionsWindow],
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    getCoachStats()
-      .then((r) => {
-        if (!cancelled) setCoach(r);
-      })
-      .catch(() => {
-        if (!cancelled) setCoach(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reload]);
-
-  useEffect(() => {
-    let cancelled = false;
-    listExternalActivity({ limit: 30 })
-      .then((r) => {
-        if (!cancelled) setActivity(r);
-      })
-      .catch(() => {
-        if (!cancelled) setActivity([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reload]);
+  const stats: HoneStats | null = statsState.data;
+  const coach: CoachStats | null = coachState.data;
+  const activity: ExternalActivity[] = activityState.data ?? [];
+  const reflections: FocusReflectionEntry[] = reflectionsState.data ?? [];
 
   const focusDays = useMemo(() => padToSevenDays(stats?.lastSevenDays ?? []), [stats]);
   const totalFocusMin = useMemo(
@@ -78,14 +68,29 @@ export const Stats: React.FC = () => {
   );
   const topTopics = useMemo(() => deriveTopTopics(activity), [activity]);
 
+  // First non-null error wins — Stats has 3 sources; if all three failed
+  // they're likely failing for the same reason (network / auth), so we
+  // show one combined stripe with a single retry that bumps `reload`.
+  const firstError =
+    (statsState.status === 'error' && statsState.error) ||
+    (coachState.status === 'error' && coachState.error) ||
+    (activityState.status === 'error' && activityState.error) ||
+    null;
+
   return (
     <>
-      <StatsStyles />
-      <div style={shell} className="stats-page-enter">
+      <div style={shell} className="motion-page-in">
         <div style={innerWrap}>
           <Header range={range} setRange={setRange} />
 
-          <div style={kpiRow} className="stats-stagger">
+          {firstError && (
+            <ErrorStripe
+              message={firstError.message}
+              onRetry={() => setReload((n) => n + 1)}
+            />
+          )}
+
+          <div style={kpiRow} className="motion-stagger">
             <KpiCard
               label="focus today"
               value={coach ? `${coach.focusTodayMin}` : '—'}
@@ -112,15 +117,26 @@ export const Stats: React.FC = () => {
             />
           </div>
 
-          <div style={midRow} className="stats-stagger">
+          <div style={midRow} className="motion-stagger">
             <FocusHeatmap days={focusDays} />
             <TopTopicsCard topics={topTopics} />
           </div>
+
+          {/* H2 (Phase J 2026-05-12) — pomodoro grade trend.
+              Single-row sparkline + summary line: «N reflections · avg 3.4».
+              Empty-state placeholder когда юзер ещё ничего не submit'ил. */}
+          <GradeTrendCard items={reflections} windowDays={reflectionsWindow} />
 
           <ActivityFeed
             items={activity}
             onDeleted={() => setReload((n) => n + 1)}
           />
+
+          {/* X5 (Phase J P2 2026-05-12) — cross-product analytics handoff.
+              Stats KPIs are summary cards; full breakdown (weekly reports,
+              insight timeline) lives on druz9.online. Two discreet links
+              в стиле остального footer'а. */}
+          <StatsWebHandoff />
         </div>
       </div>
 
@@ -146,27 +162,21 @@ const Header: React.FC<{
   setRange: (r: Range) => void;
 }> = ({ range, setRange }) => (
   <header style={headerWrap}>
-    <span
-      style={{
-        ...dimColor(0.5),
-        fontSize: 11,
-        fontFamily: monoFont,
-        textTransform: 'uppercase',
-        letterSpacing: '0.06em',
-      }}
-    >
-      stats
-    </span>
-    <div style={rangeBox}>
+    <span style={captionMonoSmall}>stats</span>
+    <div role="tablist" aria-label="Date range" style={rangeBox}>
       {(['7d', '30d', '90d'] as Range[]).map((r) => (
         <button
           key={r}
           onClick={() => setRange(r)}
+          role="tab"
+          aria-selected={range === r}
+          aria-pressed={range === r}
+          className="focus-ring motion-press"
           style={{
             ...rangeBtn,
-            color: range === r ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.5)',
-            background: range === r ? '#161616' : 'transparent',
-            borderColor: range === r ? 'rgba(255,255,255,0.12)' : 'transparent',
+            color: range === r ? 'var(--ink)' : 'var(--ink-60)',
+            background: range === r ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+            borderColor: range === r ? 'var(--hair-2)' : 'transparent',
           }}
         >
           {r}
@@ -174,6 +184,30 @@ const Header: React.FC<{
       ))}
     </div>
   </header>
+);
+
+// ── ErrorStripe (CI1 Phase A W2) ────────────────────────────────────────
+//
+// Shows one combined stripe + retry button when any of Stats' three async
+// sources (getStats / getCoachStats / listExternalActivity) failed. Single
+// retry bumps the shared `reload` tick so all three refetch together —
+// they fail together too in 90%+ cases (network drop / 401), so giving the
+// user three separate retry affordances is noise.
+
+const ErrorStripe: React.FC<{ message: string; onRetry: () => void }> = ({
+  message,
+  onRetry,
+}) => (
+  <div className="data-loader-error" style={{ marginBottom: 16 }}>
+    <div className="data-loader-error-stripe" />
+    <div className="data-loader-error-body">
+      <div className="data-loader-error-label">Stats не загружаются</div>
+      {message && <div className="data-loader-error-detail">{message}</div>}
+      <button type="button" className="data-loader-error-retry focus-ring motion-press" onClick={onRetry}>
+        retry
+      </button>
+    </div>
+  </div>
 );
 
 // ── KPI card ────────────────────────────────────────────────────────────
@@ -185,25 +219,12 @@ const KpiCard: React.FC<{ label: string; value: string; unit: string; hint: stri
   hint,
 }) => (
   <div style={kpiCard}>
-    <div
-      style={{
-        ...dimColor(0.5),
-        fontSize: 10,
-        fontFamily: monoFont,
-        textTransform: 'uppercase',
-        letterSpacing: '0.06em',
-        marginBottom: 8,
-      }}
-    >
-      {label}
-    </div>
+    <div style={{ ...captionMonoTiny, marginBottom: 8 }}>{label}</div>
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
       <span style={kpiValue}>{value}</span>
-      {unit && <span style={{ ...dimColor(0.5), fontSize: 13, fontFamily: monoFont }}>{unit}</span>}
+      {unit && <span style={{ color: 'var(--ink-60)', fontSize: 13, fontFamily: monoFont }}>{unit}</span>}
     </div>
-    {hint && (
-      <div style={{ ...dimColor(0.3), fontSize: 11, fontFamily: monoFont, marginTop: 6 }}>{hint}</div>
-    )}
+    {hint && <div style={{ color: 'var(--ink-40)', fontSize: 11, fontFamily: monoFont, marginTop: 6 }}>{hint}</div>}
   </div>
 );
 
@@ -222,25 +243,15 @@ const FocusHeatmap: React.FC<{ days: FocusDay[] }> = ({ days }) => {
         }}
       >
         <h2 style={cardTitle}>focused time</h2>
-        <span
-          style={{
-            ...dimColor(0.3),
-            fontSize: 11,
-            fontFamily: monoFont,
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-          }}
-        >
-          last 7d
-        </span>
+        <span style={captionMonoSmall}>last 7d</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 140 }}>
         {days.map((d) => {
           const ratio = d.seconds / max;
           const min = Math.round(d.seconds / 60);
           return (
-            <div key={d.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-              <div style={{ ...dimColor(0.3), fontSize: 10, fontFamily: monoFont }}>
+            <div key={d.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <div style={{ color: 'var(--ink-40)', fontSize: 10, fontFamily: monoFont }}>
                 {min || '·'}
               </div>
               <div
@@ -250,13 +261,13 @@ const FocusHeatmap: React.FC<{ days: FocusDay[] }> = ({ days }) => {
                   height: `${Math.max(3, ratio * 100)}%`,
                   background:
                     d.seconds === 0
-                      ? 'rgba(255,255,255,0.05)'
-                      : `rgba(255,255,255,${0.25 + ratio * 0.55})`,
+                      ? 'rgba(255, 255, 255, 0.05)'
+                      : `rgba(255, 255, 255, ${0.25 + ratio * 0.55})`,
                   borderRadius: 3,
-                  transition: 'height 320ms cubic-bezier(0.2,0.7,0.2,1)',
+                  transition: 'height var(--motion-dur-large) var(--motion-ease-emphasized)',
                 }}
               />
-              <div style={{ ...dimColor(0.5), fontSize: 10, fontFamily: monoFont }}>
+              <div style={{ color: 'var(--ink-60)', fontSize: 10, fontFamily: monoFont }}>
                 {weekdayShort(d.date)}
               </div>
             </div>
@@ -296,7 +307,7 @@ const TopTopicsCard: React.FC<{ topics: Topic[] }> = ({ topics }) => (
   <div style={card}>
     <h2 style={{ ...cardTitle, marginBottom: 16 }}>top topics</h2>
     {topics.length === 0 ? (
-      <div style={{ ...dimColor(0.5), fontSize: 12 }}>
+      <div style={{ color: 'var(--ink-60)', fontSize: 12 }}>
         no external activity yet — log a session to start tracking.
       </div>
     ) : (
@@ -306,17 +317,20 @@ const TopTopicsCard: React.FC<{ topics: Topic[] }> = ({ topics }) => (
             key={t.label}
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 50px 60px',
+              gridTemplateColumns: 'minmax(0, 1fr) 56px 64px',
               alignItems: 'center',
               gap: 8,
               padding: '6px 0',
+              minWidth: 0,
             }}
           >
-            <span style={{ fontSize: 13, ...dimColor(0.85) }}>{t.label}</span>
-            <span style={{ ...dimColor(0.5), fontSize: 11, fontFamily: monoFont, textAlign: 'right' }}>
+            <span style={{ fontSize: 13, color: 'var(--ink-90)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t.label}
+            </span>
+            <span style={{ color: 'var(--ink-60)', fontSize: 11, fontFamily: monoFont, textAlign: 'right' }}>
               {t.minutes}m
             </span>
-            <div style={{ position: 'relative', height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2 }}>
+            <div style={{ position: 'relative', height: 4, background: 'var(--hair-2)', borderRadius: 2 }}>
               <div
                 style={{
                   position: 'absolute',
@@ -324,8 +338,9 @@ const TopTopicsCard: React.FC<{ topics: Topic[] }> = ({ topics }) => (
                   top: 0,
                   bottom: 0,
                   width: `${Math.min(100, t.share * 100)}%`,
-                  background: 'rgba(255,255,255,0.7)',
+                  background: 'rgba(255, 255, 255, 0.7)',
                   borderRadius: 2,
+                  transition: 'width var(--motion-dur-large) var(--motion-ease-emphasized)',
                 }}
               />
             </div>
@@ -336,6 +351,168 @@ const TopTopicsCard: React.FC<{ topics: Topic[] }> = ({ topics }) => (
   </div>
 );
 
+// ── grade trend (H2 Phase J 2026-05-12) ────────────────────────────────
+//
+// Closed-loop visualization: после того как юзер submit'ит grade в Hone
+// reflection prompt, бар появляется тут. B/W-only — высота столбика
+// proportional to grade (max=5), хайрлайн-граница, mono cap'tions.
+//
+// Empty-state guidance говорит юзеру что чарт оживёт после пары pomodoro.
+
+const GradeTrendCard: React.FC<{
+  items: FocusReflectionEntry[];
+  windowDays: number;
+}> = ({ items, windowDays }) => {
+  // Only entries with explicit grade (skip 0 = no-rating). Coach prompt
+  // and chart обе на grade-based statistics — notes-only entries не
+  // прибавляют сигнала "как сейчас".
+  const graded = useMemo(() => items.filter((it) => it.grade >= 1 && it.grade <= 5), [items]);
+  const avg = useMemo(() => {
+    if (graded.length === 0) return 0;
+    const sum = graded.reduce((a, b) => a + b.grade, 0);
+    return sum / graded.length;
+  }, [graded]);
+  // Newest-first arrives; chart reads left→right oldest→newest.
+  const orderedAsc = useMemo(() => [...graded].slice().reverse(), [graded]);
+
+  return (
+    <section style={feedCard} className="motion-stagger">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          marginBottom: 12,
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <h2 style={cardTitle}>grade trend</h2>
+        <span style={captionMonoSmall}>last {windowDays}d</span>
+      </div>
+
+      {graded.length === 0 ? (
+        <div style={{ color: 'var(--ink-60)', fontSize: 12 }}>
+          no reflections yet — grade a pomodoro 1-5 to start your trend.
+        </div>
+      ) : (
+        <>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: 3,
+              height: 64,
+              minWidth: 0,
+            }}
+            aria-label="Pomodoro grade trend"
+          >
+            {orderedAsc.map((r) => {
+              const ratio = r.grade / 5;
+              const dateLabel = r.endedAt
+                ? r.endedAt.toISOString().slice(0, 10)
+                : '?';
+              return (
+                <div
+                  key={r.reflectionId}
+                  title={`${dateLabel} · grade ${r.grade}/5 · ${Math.round(r.durationSeconds / 60)}m ${r.focusMode}`}
+                  style={{
+                    flex: 1,
+                    minWidth: 4,
+                    maxWidth: 24,
+                    height: `${Math.max(8, ratio * 100)}%`,
+                    background: `rgba(255, 255, 255, ${0.25 + ratio * 0.55})`,
+                    borderRadius: 2,
+                    transition: 'height var(--motion-dur-large) var(--motion-ease-emphasized)',
+                  }}
+                />
+              );
+            })}
+          </div>
+          <div
+            style={{
+              marginTop: 12,
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 16,
+              flexWrap: 'wrap',
+              fontFamily: monoFont,
+              fontSize: 11,
+              color: 'var(--ink-60)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            <span>
+              <span style={{ color: 'var(--ink)' }}>{graded.length}</span>
+              {' '}reflections
+            </span>
+            <span>
+              avg{' '}
+              <span style={{ color: 'var(--ink)' }}>{avg.toFixed(1)}</span>
+              {' '}/ 5
+            </span>
+            {items.length > graded.length && (
+              <span style={{ color: 'var(--ink-40)' }}>
+                +{items.length - graded.length} note-only
+              </span>
+            )}
+          </div>
+        </>
+      )}
+    </section>
+  );
+};
+
+// ── X5 (Phase J P2 2026-05-12) web handoff footer ──────────────────────
+
+const StatsWebHandoff: React.FC = () => {
+  return (
+    <div
+      style={{
+        marginTop: 24,
+        paddingTop: 18,
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 18,
+        fontFamily: 'monospace',
+        fontSize: 10,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: 'rgba(255,255,255,0.4)',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => openWebInsights()}
+        style={linkBtn}
+        title="Открыть Insights stream в браузере (druz9.online)"
+      >
+        view insight timeline →
+      </button>
+      <button
+        type="button"
+        onClick={() => openWebProfileMemory()}
+        style={linkBtn}
+        title="Открыть Memory timeline в браузере (druz9.online)"
+      >
+        full memory timeline →
+      </button>
+    </div>
+  );
+};
+
+const linkBtn: React.CSSProperties = {
+  background: 'transparent',
+  border: 0,
+  padding: 0,
+  font: 'inherit',
+  color: 'inherit',
+  textDecoration: 'underline',
+  textUnderlineOffset: 2,
+  cursor: 'pointer',
+};
+
 // ── activity feed ──────────────────────────────────────────────────────
 
 const ActivityFeed: React.FC<{
@@ -344,7 +521,7 @@ const ActivityFeed: React.FC<{
 }> = ({ items, onDeleted }) => {
   void onDeleted; // delete UC wired в following iteration
   return (
-    <section style={feedCard} className="stats-stagger">
+    <section style={feedCard} className="motion-stagger">
       <div
         style={{
           display: 'flex',
@@ -361,32 +538,21 @@ const ActivityFeed: React.FC<{
       </div>
 
       {items.length === 0 ? (
-        <div style={{ ...dimColor(0.5), fontSize: 12 }}>
+        <div style={{ color: 'var(--ink-60)', fontSize: 12 }}>
           no entries yet — track LeetCode / Coursera / books / YouTube here, daily-brief reads them.
         </div>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {items.slice(0, 10).map((it) => (
             <li key={it.id} style={feedRow}>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontFamily: monoFont,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  ...dimColor(0.5),
-                  minWidth: 80,
-                }}
-              >
-                {it.source}
-              </span>
-              <span style={{ flex: 1, fontSize: 13, ...dimColor(0.85) }}>
+              <span style={{ ...captionMonoTiny, minWidth: 80, flex: '0 0 auto' }}>{it.source}</span>
+              <span style={{ flex: 1, fontSize: 13, color: 'var(--ink-90)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {it.topicFreeText || it.topicAtlasNodeId || '(no topic)'}
               </span>
-              <span style={{ fontFamily: monoFont, fontSize: 12, ...dimColor(0.5), whiteSpace: 'nowrap' }}>
+              <span style={{ fontFamily: monoFont, fontSize: 12, color: 'var(--ink-60)', whiteSpace: 'nowrap' }}>
                 {it.durationMin}m
               </span>
-              <span style={{ fontFamily: monoFont, fontSize: 11, ...dimColor(0.3), whiteSpace: 'nowrap' }}>
+              <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--ink-40)', whiteSpace: 'nowrap' }}>
                 {formatAgo(it.occurredAt)}
               </span>
             </li>
@@ -432,17 +598,34 @@ function formatAgo(occurredAt: Date | null): string {
 
 // ── design tokens ───────────────────────────────────────────────────────
 
-const monoFont =
-  '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const monoFont = "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
+
+const captionMonoSmall: React.CSSProperties = {
+  fontFamily: monoFont,
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+};
+
+const captionMonoTiny: React.CSSProperties = {
+  fontFamily: monoFont,
+  fontSize: 10,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+};
 
 const shell: React.CSSProperties = {
   position: 'absolute',
   inset: 0,
   overflowY: 'auto',
-  background: '#000',
-  color: 'rgba(255,255,255,0.92)',
+  background: 'var(--bg)',
+  color: 'var(--ink)',
   padding: '60px 28px 96px',
-  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   letterSpacing: '-0.005em',
 };
 
@@ -458,15 +641,16 @@ const headerWrap: React.CSSProperties = {
   paddingTop: 8,
   paddingBottom: 20,
   gap: 16,
+  flexWrap: 'wrap',
 };
 
 const rangeBox: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   padding: 4,
-  background: '#111',
-  border: '1px solid rgba(255,255,255,0.07)',
-  borderRadius: 8,
+  background: 'transparent',
+  border: '1px solid var(--hair-2)',
+  borderRadius: 'var(--radius-inner)',
   gap: 4,
 };
 
@@ -477,61 +661,65 @@ const rangeBtn: React.CSSProperties = {
   letterSpacing: '0.02em',
   borderRadius: 6,
   minWidth: 56,
-  background: 'transparent',
   border: '1px solid transparent',
   cursor: 'pointer',
   fontFamily: monoFont,
+  transition:
+    'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
 };
-
-// btnGhost retired with manual log button (Sergey 2026-05-05).
 
 const kpiRow: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, 1fr)',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
   gap: 16,
   marginBottom: 16,
 };
 
 const kpiCard: React.CSSProperties = {
-  background: '#0a0a0a',
-  border: '1px solid rgba(255,255,255,0.07)',
-  borderRadius: 12,
+  background: 'transparent',
+  border: '1px solid var(--hair-2)',
+  borderRadius: 'var(--radius-outer)',
   padding: 20,
+  minWidth: 0,
 };
 
 const kpiValue: React.CSSProperties = {
   fontSize: 32,
   fontWeight: 600,
+  letterSpacing: '-0.018em',
   lineHeight: 1,
-  color: '#fff',
+  color: 'var(--ink)',
 };
 
 const midRow: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(2, 1fr)',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
   gap: 16,
   marginBottom: 16,
 };
 
 const card: React.CSSProperties = {
-  background: '#0a0a0a',
-  border: '1px solid rgba(255,255,255,0.07)',
-  borderRadius: 12,
+  background: 'transparent',
+  border: '1px solid var(--hair-2)',
+  borderRadius: 'var(--radius-outer)',
   padding: 24,
+  minWidth: 0,
 };
 
 const feedCard: React.CSSProperties = {
-  background: '#0a0a0a',
-  border: '1px solid rgba(255,255,255,0.07)',
-  borderRadius: 12,
+  background: 'transparent',
+  border: '1px solid var(--hair-2)',
+  borderRadius: 'var(--radius-outer)',
   padding: 20,
+  minWidth: 0,
 };
 
 const cardTitle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 600,
-  letterSpacing: '-0.01em',
+  letterSpacing: '-0.012em',
   margin: 0,
+  color: 'var(--ink)',
 };
 
 const feedRow: React.CSSProperties = {
@@ -539,31 +727,8 @@ const feedRow: React.CSSProperties = {
   alignItems: 'center',
   gap: 12,
   padding: '8px 0',
-  borderTop: '1px solid rgba(255,255,255,0.07)',
+  borderTop: '1px solid var(--hair)',
+  minWidth: 0,
 };
-
-function dimColor(opacity: number): React.CSSProperties {
-  return { color: `rgba(255,255,255,${opacity})` };
-}
-
-const StatsStyles: React.FC = () => (
-  <style>{`
-@keyframes statsFade {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.stats-page-enter { animation: statsFade 220ms cubic-bezier(0.2,0.7,0.2,1) both; }
-
-@keyframes statsRise {
-  from { opacity: 0; transform: translateY(9px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.stats-stagger > * { opacity: 0; animation: statsRise 480ms cubic-bezier(0.2,0.7,0.2,1) forwards; }
-.stats-stagger > *:nth-child(1) { animation-delay: 60ms; }
-.stats-stagger > *:nth-child(2) { animation-delay: 130ms; }
-.stats-stagger > *:nth-child(3) { animation-delay: 200ms; }
-.stats-stagger > *:nth-child(4) { animation-delay: 270ms; }
-`}</style>
-);
 
 export default Stats;

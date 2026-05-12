@@ -10,6 +10,27 @@ import { THEME_IDS, type ThemeId } from '../components/CanvasBg';
 
 const SETTINGS_KEY = 'hone:settings';
 const THEME_KEY = 'hone:theme';
+const FOCUS_MODE_KEY = 'hone:focusMode';
+
+/**
+ * FocusMode — 6 timer modes. Mirrors backend hone_focus_mode_valid CHECK
+ * (migration 00067):
+ *  pomodoro  — 25-min cycles, post-finish reflection
+ *  stopwatch — count up без cap
+ *  free      — no timer, just session tracking (manual stop)
+ *  plan      — multi-block sequence (50 min focus + 10 break × 3 для MVP)
+ *  pinned    — pinned task → focus tied to task; ends when task marked done
+ *  countdown — fixed minutes (configured pomodoroMinutes)
+ */
+export const FOCUS_MODES = [
+  'pomodoro',
+  'stopwatch',
+  'free',
+  'plan',
+  'pinned',
+  'countdown',
+] as const;
+export type FocusMode = (typeof FOCUS_MODES)[number];
 
 interface HoneSettings {
   pomodoroMinutes: number;
@@ -71,4 +92,26 @@ export function readStoredTheme(): ThemeId {
   return 'winter';
 }
 
-export const PREFS_KEYS = { SETTINGS_KEY, THEME_KEY } as const;
+/** Read the persisted focus mode. Falls back to 'pomodoro' (= legacy
+ *  'countdown' default). */
+export function readFocusMode(): FocusMode {
+  if (typeof window === 'undefined') return 'pomodoro';
+  try {
+    const v = window.localStorage.getItem(FOCUS_MODE_KEY);
+    if (v && (FOCUS_MODES as readonly string[]).includes(v)) return v as FocusMode;
+  } catch {
+    /* ignore */
+  }
+  return 'pomodoro';
+}
+
+export function writeFocusMode(mode: FocusMode): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(FOCUS_MODE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
+}
+
+export const PREFS_KEYS = { SETTINGS_KEY, THEME_KEY, FOCUS_MODE_KEY } as const;

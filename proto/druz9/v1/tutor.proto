@@ -387,6 +387,60 @@ message TutorPeekInviteResponse {
   string tutor_display = 2;
 }
 
+// ─── Reading paths (Stream D, 2026-05-12) ────────────────────────────
+//
+// A reading path = ordered sequence of atlas-node-keys + resource-ids the
+// tutor curates for a student/cohort to walk through. Complements
+// TutorSharedMaterial (one-off broadcast) — paths are reusable curricula.
+//
+// V1 surface: tutor CRUD only. Assigning a path to a student is handled
+// out-of-band via assignments (future iteration may add a dedicated
+// TutorAssignPath RPC bumping assigned_count).
+
+message TutorReadingPath {
+  string id              = 1;
+  string tutor_id        = 2;
+  string name            = 3;
+  string description     = 4;
+  // Ordered atlas_node_keys to walk through. Max 200 (CHECK constraint).
+  repeated string atlas_node_keys = 5;
+  // Ordered resource_ids (external_resources.id). Max 200.
+  repeated string resource_ids    = 6;
+  // Denormalised counter, kept in sync by future assignment UC.
+  int32  assigned_count  = 7;
+  google.protobuf.Timestamp archived_at = 8;
+  google.protobuf.Timestamp created_at  = 9;
+  google.protobuf.Timestamp updated_at  = 10;
+}
+
+message TutorListReadingPathsRequest {
+  int32 limit   = 1; // 0 → server default (50), max 200
+  string cursor = 2; // opaque keyset cursor (created_at DESC, id DESC)
+}
+
+message TutorListReadingPathsResponse {
+  repeated TutorReadingPath items = 1;
+  string next_cursor = 2;
+}
+
+message TutorCreateReadingPathRequest {
+  string name        = 1;
+  string description = 2;
+  repeated string atlas_node_keys = 3;
+  repeated string resource_ids    = 4;
+}
+
+message TutorUpdateReadingPathRequest {
+  string path_id     = 1;
+  string name        = 2;
+  string description = 3;
+  repeated string atlas_node_keys = 4;
+  repeated string resource_ids    = 5;
+}
+
+message TutorArchiveReadingPathRequest  { string path_id = 1; }
+message TutorArchiveReadingPathResponse {}
+
 service TutorService {
   // CreateInvite — tutor-authenticated. tutor_id taken from bearer.
   rpc CreateInvite(TutorCreateInviteRequest) returns (TutorInvite) {
@@ -639,6 +693,36 @@ service TutorService {
   rpc SaveSessionNotes(TutorSaveSessionNotesRequest) returns (TutorSessionNotes) {
     option (google.api.http) = {
       put: "/api/v1/tutor/students/{student_id}/notes"
+      body: "*"
+    };
+  }
+
+  // ── Reading paths (Stream D, 2026-05-12) ──────────────────────────
+  //
+  // Tutor-side CRUD for curated atlas-node sequences. Backend enforces
+  // tutor_id from bearer; per-row auth via `WHERE tutor_id = $caller`.
+
+  rpc ListReadingPaths(TutorListReadingPathsRequest) returns (TutorListReadingPathsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/paths"};
+  }
+
+  rpc CreateReadingPath(TutorCreateReadingPathRequest) returns (TutorReadingPath) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/paths"
+      body: "*"
+    };
+  }
+
+  rpc UpdateReadingPath(TutorUpdateReadingPathRequest) returns (TutorReadingPath) {
+    option (google.api.http) = {
+      put: "/api/v1/tutor/paths/{path_id}"
+      body: "*"
+    };
+  }
+
+  rpc ArchiveReadingPath(TutorArchiveReadingPathRequest) returns (TutorArchiveReadingPathResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/paths/{path_id}/archive"
       body: "*"
     };
   }

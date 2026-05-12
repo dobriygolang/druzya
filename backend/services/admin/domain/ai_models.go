@@ -15,7 +15,7 @@ type AIModel struct {
 	ContextWindow     *int
 	CostPerKInputUSD  *float64
 	CostPerKOutputUSD *float64
-	UseForArena       bool
+	// UseForArena removed 2026-05-12 (D8) — see migration 00088.
 	UseForInsight     bool
 	UseForMock        bool
 	SortOrder         int
@@ -35,7 +35,7 @@ type AIModelUpsert struct {
 	ContextWindow     *int
 	CostPerKInputUSD  *float64
 	CostPerKOutputUSD *float64
-	UseForArena       *bool
+	// UseForArena removed 2026-05-12 (D8).
 	UseForInsight     *bool
 	UseForMock        *bool
 	SortOrder         *int

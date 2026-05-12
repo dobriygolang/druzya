@@ -28,7 +28,7 @@ import {
 import { useAuthStore } from '../../stores/auth';
 import { useHotkeyOverridesStore } from '../../stores/hotkey-overrides';
 import { useAppearanceStore } from '../../stores/appearance';
-import { usePaywallStore } from '../../stores/paywall';
+import { useInterviewPrepStore } from '../../stores/interview-prep';
 import { useQuotaStore } from '../../stores/quota';
 import {
   useTranscriptionLangStore,
@@ -287,6 +287,7 @@ function GeneralTab({
           }
         />
         <SubscriptionCard quota={quota} />
+        <InterviewPrepRow />
         <StealthRow />
         <HistoryRetentionRow />
 
@@ -295,6 +296,56 @@ function GeneralTab({
         <MasqueradeRow />
       </div>
     </>
+  );
+}
+
+// InterviewPrepRow — Phase J / C6 settings entry point. Shows the
+// current active prep status (company · role · since-when) and exposes
+// "Открыть мастер" / "Завершить" actions. Polls active state on mount
+// so the panel reflects truth when the wizard runs in another window.
+function InterviewPrepRow() {
+  const active = useInterviewPrepStore((s) => s.active);
+  const bootstrap = useInterviewPrepStore((s) => s.bootstrap);
+  const endPrep = useInterviewPrepStore((s) => s.end);
+  useEffect(() => {
+    void bootstrap();
+  }, [bootstrap]);
+
+  const sinceLabel = active.active && active.startedAt
+    ? new Date(active.startedAt).toLocaleString('ru-RU', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
+  const hint = active.active
+    ? `Активна${sinceLabel ? ` · с ${sinceLabel}` : ''}${
+        active.company ? ` · ${active.company}` : ''
+      }${active.role ? ` · ${active.role}` : ''}`
+    : 'Загрузи CV и описание вакансии — Cue подгонит подсказки под конкретное интервью.';
+
+  return (
+    <Row
+      title="Подготовка к интервью"
+      hint={hint}
+      control={
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void window.druz9.interviewPrep.open()}
+          >
+            {active.active ? 'Открыть мастер' : 'Начать'}
+          </Button>
+          {active.active && (
+            <Button variant="ghost" size="sm" onClick={() => void endPrep()}>
+              Завершить
+            </Button>
+          )}
+        </div>
+      }
+    />
   );
 }
 // VoiceSourceRow удалён — теперь два источника (системный звук и
@@ -345,7 +396,10 @@ function SubscriptionCard({
   quota: ReturnType<typeof useQuotaStore.getState>['quota'];
 }) {
   const { config } = useConfig();
-  const showPaywall = usePaywallStore((s) => s.show);
+  // X2 (P0) — старый showPaywall (Boosty server-driven copy) больше не
+  // wire'аем в Settings → Subscription CTA. CTA теперь ведёт в context-aware
+  // UpgradeModal (общий с palette / quota-meter triggers). PaywallStore
+  // остаётся для conversation.ts rate_limited auto-pop'а.
   const refreshQuota = useQuotaStore((s) => s.refresh);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -420,7 +474,24 @@ function SubscriptionCard({
             Управлять на Boosty →
           </Button>
         ) : (
-          <Button variant="primary" size="sm" onClick={() => showPaywall()}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              // X2 (P0) — explicit user intent (clicked Pro в Settings) →
+              // unified UpgradeModal с general context. Boosty PaywallModal
+              // оставлен для rate_limited auto-pop'а и для тех кому нужен
+              // server-driven copy.
+              void import('../../components/UpgradeModal').then(({ requestUpgrade }) => {
+                requestUpgrade({
+                  feature: 'general',
+                  label: 'an overview of Pro',
+                  benefit:
+                    'Pro unlocks unlimited LLM calls, 8h sessions, premium personas, Cerebras/Groq priority cascade and deep readiness analytics.',
+                });
+              });
+            }}
+          >
             Обновить план
           </Button>
         )}
@@ -1664,7 +1735,115 @@ function PermissionsTab() {
           refresh={refresh}
         />
       </div>
+
+      <OnboardingReentry />
     </>
+  );
+}
+
+/**
+ * OnboardingReentry — surfaces three re-run affordances for the wizard
+ * we ship on first launch. Lives at the bottom of the Permissions tab
+ * because that's the screen users land on when something feels broken
+ * ("why is screen-record off?" → they're here → "let me re-run the
+ * wizard with the demo").
+ *
+ *   • Re-run welcome flow      — wipe flag + open onboarding from
+ *                                step one. Includes the stealth demo
+ *                                + the permission cards.
+ *   • Re-check permissions     — synchronous probe, surfaces toast
+ *                                with current snapshot. Useful when
+ *                                user just flipped a Settings toggle
+ *                                and wants to confirm Cue saw it
+ *                                without restarting.
+ *   • Open System Preferences  — direct deep-link to the macOS
+ *                                Privacy & Security pane.
+ */
+function OnboardingReentry() {
+  const [busy, setBusy] = useState(false);
+  const [lastProbeAt, setLastProbeAt] = useState<string>('');
+
+  const onRerun = async () => {
+    setBusy(true);
+    try {
+      await window.druz9.onboarding.reset();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[settings] onboarding.reset failed:', err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onRecheck = async () => {
+    setBusy(true);
+    try {
+      const p = await window.druz9.permissions.check();
+      const ts = new Date().toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      setLastProbeAt(`${ts} · screen=${p.screenRecording} · mic=${p.microphone} · a11y=${p.accessibility}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onOpenPrivacy = () => {
+    // Generic Privacy & Security root — user picks the specific pane
+    // (Screen Recording / Accessibility / Microphone) from there.
+    void window.druz9.shell.openExternal(
+      'x-apple.systempreferences:com.apple.preference.security?Privacy',
+    );
+  };
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div
+        style={{
+          fontSize: 10,
+          color: 'var(--d9-ink-ghost)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          marginBottom: 12,
+          fontFamily: 'var(--d9-font-mono)',
+        }}
+      >
+        Онбординг
+      </div>
+      <Row
+        title="Пройти онбординг снова"
+        hint="Откроет приветственный wizard со скриншот-демо и пояснениями по доступам. Полезно когда хочется пересмотреть, что Cue невидим при демонстрации."
+        control={
+          <Button variant="secondary" size="sm" onClick={() => void onRerun()} disabled={busy}>
+            Открыть wizard
+          </Button>
+        }
+      />
+      <Row
+        title="Re-check доступов"
+        hint={
+          lastProbeAt
+            ? `Последняя проверка: ${lastProbeAt}`
+            : 'Сделать живой запрос к macOS TCC без рестарта приложения.'
+        }
+        control={
+          <Button variant="ghost" size="sm" onClick={() => void onRecheck()} disabled={busy}>
+            Проверить
+          </Button>
+        }
+      />
+      <Row
+        title="Системные настройки"
+        hint="Прямая ссылка на Privacy & Security в System Settings."
+        control={
+          <Button variant="ghost" size="sm" onClick={onOpenPrivacy}>
+            Открыть
+          </Button>
+        }
+      />
+    </div>
   );
 }
 

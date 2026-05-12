@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Compass, Map as MapIcon, Shield, Sparkles, Target, TrendingUp, Trophy } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { InsightStrip } from '../components/InsightStrip'
 import { useMockLeaderboardQuery } from '../lib/queries/mockPipeline'
 import { useAtlasQuery } from '../lib/queries/profile'
@@ -21,15 +22,14 @@ import {
 } from '../lib/queries/intelligence'
 
 // Phase 4.4 — severity-based UI tokens. Stripe = top border colour;
-// pill = badge background+text. Critical = red, warn = amber, nudge =
-// blue, cruise = muted. Pill только показывается на non-cruise чтобы
-// не визуально шуметь на спокойных днях.
-// B/W rule: только critical держит #FF3B30 (signal), остальные —
-// ink-ramp. Severity передаётся textом + opacity, не hue.
+// pill = badge background+text. B/W rule: только critical держит
+// `var(--red)` (single signal accent — point/stripe), остальные —
+// ink-ramp opacity stratification. Severity передаётся textом + opacity,
+// не hue.
 const SEVERITY_STRIP: Record<CoachSeverity, string> = {
- critical: '#FF3B30',
- warn: 'rgba(255,255,255,0.55)',
- nudge: 'rgba(255,255,255,0.35)',
+ critical: 'var(--red)',
+ warn: 'rgba(var(--ink), 0.55)',
+ nudge: 'rgba(var(--ink), 0.35)',
  cruise: 'transparent',
 }
 const SEVERITY_PILL: Record<CoachSeverity, string> = {
@@ -58,7 +58,7 @@ export default function InsightsPage() {
  <AppShellV2>
  <div className="flex flex-col gap-8 px-4 py-6 sm:px-8 lg:px-20 lg:py-10">
  <header className="flex flex-col gap-3">
- <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-muted">
+ <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
  last 30 days
  </span>
  <div className="flex flex-col gap-1.5 lg:flex-row lg:items-end lg:justify-between lg:gap-4">
@@ -103,26 +103,34 @@ export default function InsightsPage() {
 
  {/* Top row — three live intel widgets */}
  <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+ <ErrorBoundary section="Daily brief">
  <WeeklyDigestCard />
+ </ErrorBoundary>
+ <ErrorBoundary section="Stage performance">
  <StagePerformanceCard
  rows={overview?.stage_performance ?? []}
  loading={overviewQ.isPending}
  errored={overviewQ.isError}
  />
+ </ErrorBoundary>
+ <ErrorBoundary section="Score trajectory">
  <ScoreTrajectoryCard
  series={overview?.score_trajectory ?? []}
  loading={overviewQ.isPending}
  errored={overviewQ.isError}
  />
+ </ErrorBoundary>
  </section>
 
  {/* Patterns to sharpen — wider card, important block */}
  <section>
+ <ErrorBoundary section="Patterns to sharpen">
  <PatternsCard
  patterns={overview?.recurring_patterns ?? []}
  loading={overviewQ.isPending}
  errored={overviewQ.isError}
  />
+ </ErrorBoundary>
  </section>
 
  {/* English HR trend — Wave 1 of docs/feature/english.md. Hidden
@@ -132,7 +140,9 @@ export default function InsightsPage() {
      pipeline blocks above. */}
  {overview?.english_hr && overview.english_hr.total_sessions > 0 && (
  <section>
+ <ErrorBoundary section="English HR trend">
  <EnglishHRTrendCard trend={overview.english_hr} />
+ </ErrorBoundary>
  </section>
  )}
 
@@ -149,12 +159,16 @@ export default function InsightsPage() {
  Open full view <ArrowRight className="h-3.5 w-3.5" />
  </Link>
  </div>
+ <ErrorBoundary section="Atlas preview">
  <AtlasPreviewCard />
+ </ErrorBoundary>
  </section>
 
  {/* Mock leaderboard — fairness-watermarked, real data. */}
  <section className="flex flex-col gap-3">
+ <ErrorBoundary section="Mock leaderboard">
  <LeaderboardCard />
+ </ErrorBoundary>
  </section>
  </div>
  </AppShellV2>
@@ -183,12 +197,12 @@ function WeeklyDigestCard() {
  >
  <div className="flex items-center gap-2">
  <Sparkles className="h-4 w-4 text-text-primary" />
- <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary">
  AI coach · today
  </span>
  {brief && severity !== 'cruise' && (
  <span
- className={`ml-auto rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${pillTone}`}
+ className={`ml-auto rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${pillTone}`}
  title={brief.severity_reason || severity}
  >
  {severity}
@@ -230,7 +244,7 @@ function WeeklyDigestCard() {
  className="flex items-start gap-2 rounded-md border border-border bg-surface-2 p-2 text-[12px] text-text-secondary"
  >
  <span
- className="mt-0.5 inline-flex shrink-0 rounded border border-border bg-surface-1 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-text-muted"
+ className="mt-0.5 inline-flex shrink-0 rounded border border-border bg-surface-1 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted"
  >
  {kindLabel(r.kind)}
  </span>
@@ -315,7 +329,7 @@ function CoachSummaryCard({ summary }: { summary: string }) {
  >
  <div className="flex items-center gap-2">
  <Sparkles className="h-4 w-4 text-text-primary" />
- <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary">
  AI Coach · this month
  </span>
  </div>
@@ -352,7 +366,7 @@ function StagePerformanceCard({
  <Card className="flex-col gap-3 p-5" interactive={false}>
  <div className="flex items-center gap-2">
  <Target className="h-4 w-4 text-text-primary" />
- <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary">
  Performance by stage
  </span>
  </div>
@@ -426,7 +440,7 @@ function ScoreTrajectoryCard({
  <Card className="flex-col gap-3 p-5" interactive={false}>
  <div className="flex items-center gap-2">
  <TrendingUp className="h-4 w-4 text-text-primary" />
- <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary">
  Score trajectory
  </span>
  </div>
@@ -498,11 +512,15 @@ function Sparkline({ points }: { points: ScoreTrajectoryPoint[] }) {
   >
    <title>{`${Math.round(p.score)}/100 · ${p.verdict.toUpperCase()} · ${new Date(p.finished_at).toLocaleDateString()} — click for debrief`}</title>
   </circle>
+  {/* Verdict encoding via ink-ramp + single red signal:
+      pass → full ink, fail → var(--red). No hue gradient pair —
+      red is the only allowed accent (b/w rule). */}
   <circle
    cx={xs[i]}
    cy={ys[i]}
    r={1.6}
-   className={`pointer-events-none ${p.verdict === 'pass' ? 'fill-success' : 'fill-danger'}`}
+   className="pointer-events-none"
+   style={{ fill: p.verdict === 'pass' ? 'rgb(var(--ink))' : 'var(--red)' }}
   />
  </g>
  ))}
@@ -529,7 +547,7 @@ function PatternsCard({
  <Card className="flex-col gap-3 p-5" interactive={false}>
  <div className="flex items-center gap-2">
  <Compass className="h-4 w-4 text-text-primary" />
- <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary">
  Patterns to sharpen
  </span>
  </div>
@@ -586,7 +604,7 @@ function AtlasPreviewCard() {
  <div className="flex flex-col gap-1">
  <div className="flex items-center gap-2">
  <MapIcon className="h-4 w-4 text-text-primary" />
- <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary">
  Atlas
  </span>
  </div>
@@ -615,7 +633,7 @@ function AtlasPreviewCard() {
 function AtlasMiniStat({ label, value }: { label: string; value: string }) {
  return (
  <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
- <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+ <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
  {label}
  </span>
  <span className="font-display text-lg font-bold text-text-primary">{value}</span>
@@ -631,12 +649,12 @@ function LeaderboardCard() {
  <div className="flex items-start justify-between gap-3">
  <div className="flex items-center gap-2">
  <Trophy className="h-4 w-4 text-text-primary" />
- <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-primary">
  Mock leaderboard · Top 10
  </span>
  </div>
  <span
-  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted"
+  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted"
   title="Учитываются только пайплайны, пройденные с выключенным AI-ассистом."
  >
  <Shield className="h-3 w-3" />
@@ -698,7 +716,7 @@ function EnglishHRTrendCard({ trend }: { trend: EnglishHRTrend }) {
  <Card className="flex-col gap-4 p-5" interactive={false}>
  <div className="flex items-baseline justify-between gap-3">
  <h3 className="font-display text-lg font-bold text-text-primary">English HR · trend</h3>
- <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">last 30 days</span>
+ <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">last 30 days</span>
  </div>
  <div className="grid grid-cols-3 gap-3">
  <Stat label="Sessions" value={String(trend.total_sessions)} />
@@ -708,7 +726,7 @@ function EnglishHRTrendCard({ trend }: { trend: EnglishHRTrend }) {
  {trend.trajectory.length > 0 && (
  <div className="flex flex-col gap-2">
  <div className="flex items-baseline justify-between text-text-secondary">
- <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">trajectory</span>
+ <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">trajectory</span>
  <span className="font-mono text-[11px] text-text-muted">last: {lastDate}</span>
  </div>
  <EnglishHRSparkline points={trend.trajectory} onPick={(id) => navigate(`/mock/${id}/result`)} />
@@ -721,7 +739,7 @@ function EnglishHRTrendCard({ trend }: { trend: EnglishHRTrend }) {
 function Stat({ label, value }: { label: string; value: string }) {
  return (
  <div className="rounded-lg border border-border bg-surface-2 px-3 py-2.5">
- <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{label}</div>
+ <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">{label}</div>
  <div className="font-display text-lg font-bold tabular-nums text-text-primary">{value}</div>
  </div>
  )

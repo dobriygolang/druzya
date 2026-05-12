@@ -94,6 +94,7 @@ export function AIModelsPanel() {
                         type="button"
                         disabled={toggleMut.isPending}
                         onClick={() => toggleMut.mutate(m.model_id)}
+                        aria-pressed={m.is_enabled}
                         className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
                           m.is_enabled
                             ? 'bg-success/20 text-success'

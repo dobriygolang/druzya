@@ -24,7 +24,7 @@ const card = cva(['relative flex min-w-0 flex-col overflow-hidden text-text-prim
       selected: 'bg-surface-2 border border-text-primary rounded-xl',
     },
     interactive: {
-      true: 'transition-colors duration-150 hover:border-border-strong cursor-pointer',
+      true: 'transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-border-strong cursor-pointer',
       false: '',
     },
     padding: {
@@ -53,8 +53,12 @@ export interface CardProps
 const CardRoot = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant, interactive, padding, ...props }, ref) => {
     const reduced = useReducedMotion();
+    // Hero-treatment 2026-05-12: hardcoded 0.2s → motion-medium token
+    // (240ms canonical). Framer-motion transitions don't accept CSS var
+    // strings, so we mirror the dur-small motion token (160ms) as a number
+    // here — small fits hover-lift micro-interaction better than medium.
     const motionProps = interactive && !reduced
-      ? { whileHover: { y: -2 }, transition: { duration: 0.2 } }
+      ? { whileHover: { y: -2 }, transition: { duration: 0.16, ease: [0.2, 0.7, 0.2, 1] as const } }
       : {};
     return (
       <motion.div

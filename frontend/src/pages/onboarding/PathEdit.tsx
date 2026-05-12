@@ -5,13 +5,15 @@
 // Юзер пришёл с /onboarding/path?preset=...; видит группированный список
 // тем; toggle'ит чекбоксы какие SKIP'нуть. Save → сохраняем выбор в
 // localStorage (V1) → /today.
+//
+// 2026-05-12: v2 visual language — hairline checkbox rows, white-filled
+// checkmark when active (no `accent` color), caption-mono labels 0.08em.
 
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 
 import { OnboardingLayout } from './_shared/Layout'
-import { Button } from '../../components/Button'
 import { findPreset } from './pathPresets'
 
 const STATE_KEY = 'onboarding:path:state'
@@ -20,6 +22,15 @@ interface SavedState {
   presetId: string
   // node ids которые юзер пометил «знаю / не учить».
   skip: string[]
+}
+
+const captionMono: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
 }
 
 export default function PathEdit() {
@@ -55,10 +66,25 @@ export default function PathEdit() {
   if (!preset) {
     return (
       <OnboardingLayout step={1}>
-        <div className="mx-auto max-w-md px-4 py-16 text-center">
-          <p className="text-text-secondary">Preset не найден.</p>
-          <Link to="/onboarding/path" className="mt-4 inline-block">
-            <Button variant="primary">Выбрать другой</Button>
+        <div className="mx-auto px-4 py-16 text-center" style={{ maxWidth: 460 }}>
+          <p style={{ color: 'var(--ink-60)', fontSize: 14 }}>Preset не найден.</p>
+          <Link
+            to="/onboarding/path"
+            className="focus-ring motion-press"
+            style={{
+              display: 'inline-flex',
+              marginTop: 16,
+              padding: '10px 22px',
+              background: 'rgb(var(--ink))',
+              color: 'rgb(var(--color-bg))',
+              border: 0,
+              borderRadius: 'var(--radius-inner)',
+              fontSize: 14,
+              fontWeight: 500,
+              textDecoration: 'none',
+            }}
+          >
+            Выбрать другой
           </Link>
         </div>
       </OnboardingLayout>
@@ -81,38 +107,77 @@ export default function PathEdit() {
 
   return (
     <OnboardingLayout step={1}>
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+      <div className="mx-auto px-4 py-10 sm:py-14" style={{ maxWidth: 760 }}>
         <Link
           to="/onboarding/path"
-          className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary"
+          className="focus-ring"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 12,
+            color: 'var(--ink-60)',
+            textDecoration: 'none',
+            padding: '4px 8px',
+            borderRadius: 6,
+            transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
         >
-          <ArrowLeft className="h-3 w-3" /> К выбору пути
+          <ArrowLeft style={{ width: 12, height: 12 }} /> К выбору пути
         </Link>
-        <header className="mt-3 mb-2">
-          <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">
-            ПУТЬ · {preset.title}
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-bold leading-tight">
+        <header style={{ marginTop: 14, marginBottom: 12 }}>
+          <div style={captionMono}>ПУТЬ · {preset.title.toUpperCase()}</div>
+          <h1
+            style={{
+              margin: '8px 0 0',
+              fontSize: 'var(--type-h1-size)',
+              lineHeight: 'var(--type-h1-lh)',
+              letterSpacing: 'var(--type-h1-ls)',
+              fontWeight: 'var(--type-h1-weight)',
+              color: 'rgb(var(--ink))',
+            }}
+          >
             Что уже знаешь?
           </h1>
-          <p className="mt-2 text-[14px] text-text-secondary">
-            Сними галочки с тем, которые точно знаешь — мы пропустим их в
-            рекомендациях. Можно вернуться и поменять позже.
+          <p
+            style={{
+              margin: '12px 0 0',
+              maxWidth: 540,
+              fontSize: 'var(--type-body-size)',
+              lineHeight: 'var(--type-body-lh)',
+              color: 'var(--ink-60)',
+            }}
+          >
+            Сними галочки с тем, которые точно знаешь — мы пропустим их в рекомендациях.
+            Можно вернуться и поменять позже.
           </p>
         </header>
 
-        <div className="mb-3 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-          <span>Учить: <b className="text-text-primary">{totalLearn}</b></span>
-          <span>Пропустить: <b className="text-text-primary">{totalSkip}</b></span>
+        <div
+          className="flex-wrap-row"
+          style={{ marginBottom: 16, gap: 16, alignItems: 'center', color: 'var(--ink-60)', fontSize: 12 }}
+        >
+          <span style={captionMono}>
+            Учить:{' '}
+            <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+              {totalLearn}
+            </strong>
+          </span>
+          <span style={captionMono}>
+            Пропустить:{' '}
+            <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+              {totalSkip}
+            </strong>
+          </span>
         </div>
 
-        <div className="flex flex-col gap-5">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {Object.entries(grouped).map(([group, nodes]) => (
             <section key={group}>
-              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-                {group}
-              </div>
-              <ul className="flex flex-col gap-1">
+              <div style={{ ...captionMono, fontSize: 10, marginBottom: 8 }}>{group}</div>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {nodes.map((n) => {
                   const isSkipped = skip.has(n.id)
                   return (
@@ -127,25 +192,52 @@ export default function PathEdit() {
                             return next
                           })
                         }}
-                        className={`group flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
-                          isSkipped
-                            ? 'border-border bg-surface-2/50 opacity-60'
-                            : 'border-border bg-surface-2 hover:border-accent'
-                        }`}
+                        className="focus-ring motion-press"
+                        aria-pressed={!isSkipped}
+                        style={{
+                          display: 'flex',
+                          width: '100%',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: '10px 14px',
+                          border: '1px solid var(--hair-2)',
+                          background: 'transparent',
+                          borderRadius: 'var(--radius-inner)',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          opacity: isSkipped ? 0.5 : 1,
+                          transition:
+                            'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSkipped) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.22)'
+                        }}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--hair-2)')}
                       >
                         <span
-                          className={`grid h-4 w-4 place-items-center rounded border ${
-                            isSkipped
-                              ? 'border-border bg-transparent'
-                              : 'border-accent bg-accent'
-                          }`}
+                          aria-hidden="true"
+                          style={{
+                            display: 'grid',
+                            placeItems: 'center',
+                            width: 16,
+                            height: 16,
+                            border: isSkipped ? '1px solid var(--hair-2)' : 0,
+                            borderRadius: 4,
+                            background: isSkipped ? 'transparent' : 'rgb(var(--ink))',
+                            color: 'rgb(var(--color-bg))',
+                            flex: '0 0 auto',
+                          }}
                         >
-                          {!isSkipped && <Check className="h-3 w-3 text-bg" />}
+                          {!isSkipped && <Check style={{ width: 12, height: 12 }} />}
                         </span>
                         <span
-                          className={`flex-1 text-[13px] ${
-                            isSkipped ? 'line-through text-text-muted' : 'text-text-primary'
-                          }`}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            fontSize: 13,
+                            color: isSkipped ? 'var(--ink-40)' : 'rgb(var(--ink))',
+                            textDecoration: isSkipped ? 'line-through' : 'none',
+                          }}
                         >
                           {n.title}
                         </span>
@@ -158,15 +250,29 @@ export default function PathEdit() {
           ))}
         </div>
 
-        <div className="mt-8 flex justify-end">
-          <Button
-            variant="primary"
-            size="md"
-            iconRight={<ArrowRight className="h-4 w-4" />}
+        <div style={{ marginTop: 32, display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
             onClick={finish}
+            className="focus-ring motion-press"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 22px',
+              background: 'rgb(var(--ink))',
+              color: 'rgb(var(--color-bg))',
+              border: 0,
+              borderRadius: 'var(--radius-inner)',
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition:
+                'background-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+            }}
           >
-            Сохранить и начать
-          </Button>
+            Сохранить и начать <ArrowRight style={{ width: 16, height: 16 }} />
+          </button>
         </div>
       </div>
     </OnboardingLayout>

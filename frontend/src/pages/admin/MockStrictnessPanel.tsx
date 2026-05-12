@@ -106,7 +106,7 @@ function CreateProfileForm({ onClose }: { onClose: () => void }) {
       <PenaltySlider label="must_mention_penalty" value={mustMention} onChange={setMustMention} />
       <PenaltySlider label="hallucination_penalty" value={hallucination} onChange={setHallucination} />
       <label className="flex items-center gap-2">
-        <input type="checkbox" checked={bias} onChange={(e) => setBias(e.target.checked)} />
+        <input type="checkbox" checked={bias} onChange={(e) => setBias(e.target.checked)} style={{ accentColor: 'rgb(var(--ink))' }} />
         <span className="font-mono text-[11px] text-text-secondary">bias_toward_fail</span>
       </label>
       <FormField
@@ -192,6 +192,7 @@ function ProfileCard({ profile }: { profile: StrictnessProfile }) {
             onClick={() =>
               update.mutate({ id: profile.id, body: { active: !profile.active } })
             }
+            aria-pressed={profile.active}
             className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] ${
               profile.active ? 'bg-success/20 text-success' : 'bg-surface-3 text-text-muted'
             }`}
@@ -207,7 +208,7 @@ function ProfileCard({ profile }: { profile: StrictnessProfile }) {
       <PenaltySlider label="hallucination_penalty" value={hallucination} onChange={setHallucination} />
 
       <label className="flex items-center gap-2">
-        <input type="checkbox" checked={bias} onChange={(e) => setBias(e.target.checked)} />
+        <input type="checkbox" checked={bias} onChange={(e) => setBias(e.target.checked)} style={{ accentColor: 'rgb(var(--ink))' }} />
         <span className="font-mono text-[11px] text-text-secondary">bias_toward_fail</span>
       </label>
 
@@ -215,7 +216,8 @@ function ProfileCard({ profile }: { profile: StrictnessProfile }) {
         <button
           type="button"
           onClick={() => setTplOpen((o) => !o)}
-          className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-secondary hover:text-text-primary"
+          aria-expanded={tplOpen}
+          className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary"
         >
           {tplOpen ? '− custom_prompt_template' : '+ custom_prompt_template'}
         </button>
@@ -224,7 +226,7 @@ function ProfileCard({ profile }: { profile: StrictnessProfile }) {
             value={tpl}
             onChange={(e) => setTpl(e.target.value)}
             rows={5}
-            className="mt-1 w-full resize-y rounded-md border border-border bg-bg/40 px-3 py-2 font-mono text-[12px] text-text-primary outline-none transition-colors focus:border-text-primary"
+            className="mt-1 w-full resize-y border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))] focus:border-b-[1.5px]"
           />
         )}
       </div>
@@ -248,7 +250,7 @@ function PenaltySlider({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">
+      <span className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         <span>{label}</span>
         <span className="text-text-primary">{value.toFixed(2)}</span>
       </span>

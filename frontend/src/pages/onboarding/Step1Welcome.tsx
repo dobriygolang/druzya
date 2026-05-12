@@ -2,8 +2,13 @@
 // Single value-prop H1 + 3 mini-cards (mock / atlas / coach) — identity
 // 2026-05-04: arena/duels/ELO выпилены, продукт = AI-mock + Skill Atlas
 // + AI-coach. Skip-route ведёт на /atlas (Atlas — основная карта).
+//
+// 2026-05-12: v2 visual language — h1/body via type tokens, hairline cards
+// (no surface fill), ghost + primary pill buttons with motion-press +
+// focus-ring + token-based hover transitions.
 
 import { useNavigate } from 'react-router-dom'
+
 import { OnboardingLayout } from './_shared/Layout'
 import { useOnboarding } from './_shared/useOnboarding'
 
@@ -25,43 +30,127 @@ export default function Step1Welcome() {
 
   return (
     <OnboardingLayout step={1}>
-      <div className="max-w-[640px] mx-auto text-center pt-8">
-        <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-3">
+      <div className="mx-auto text-center" style={{ maxWidth: 640, paddingTop: 32 }}>
+        <div
+          style={{
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+            fontSize: 11,
+            fontWeight: 500,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-40)',
+            marginBottom: 14,
+          }}
+        >
           onboarding · 1 из 5
         </div>
-        <h1 className="font-display text-3xl lg:text-[40px] font-bold leading-[1.05] mb-4">
-          <span className="text-text-primary">druz9</span>
+        <h1
+          style={{
+            margin: 0,
+            marginBottom: 16,
+            fontSize: 'var(--type-h1-size)',
+            lineHeight: 'var(--type-h1-lh)',
+            letterSpacing: 'var(--type-h1-ls)',
+            fontWeight: 'var(--type-h1-weight)',
+            color: 'rgb(var(--ink))',
+          }}
+        >
+          <span style={{ color: 'rgb(var(--ink))' }}>druz9</span>
           {' — подготовка к Senior IT-собесам'}
         </h1>
-        <p className="text-text-secondary text-[15px] leading-relaxed max-w-[520px] mx-auto mb-8">
-          Strict mock с watermark, AI-coach с памятью, карта прогресса. Для тех, у кого
-          есть база и нужна объективная оценка готовности.
+        <p
+          className="mx-auto"
+          style={{
+            margin: '0 auto 32px',
+            maxWidth: 540,
+            fontSize: 'var(--type-body-size)',
+            lineHeight: 'var(--type-body-lh)',
+            color: 'var(--ink-60)',
+          }}
+        >
+          Strict mock с watermark, AI-coach с памятью, карта прогресса. Для тех, у кого есть база
+          и нужна объективная оценка готовности.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
+        <div
+          className="auto-fit-grid"
+          style={{
+            ['--auto-fit-min' as string]: '160px',
+            ['--gap' as string]: '10px',
+            marginBottom: 40,
+          }}
+        >
           {VALUE_PROPS.map((v) => (
-            <div key={v.kicker} className="rounded-lg border border-border bg-surface-1 p-3">
-              <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted mb-1">{v.kicker}</div>
-              <div className="font-display text-sm font-bold">{v.title}</div>
+            <div
+              key={v.kicker}
+              style={{
+                padding: '14px 16px',
+                border: '1px solid var(--hair)',
+                borderRadius: 'var(--radius-inner)',
+                background: 'transparent',
+                textAlign: 'left',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                  fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: 'var(--ink-40)',
+                  marginBottom: 4,
+                }}
+              >
+                {v.kicker}
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  letterSpacing: '-0.005em',
+                  color: 'rgb(var(--ink))',
+                }}
+              >
+                {v.title}
+              </div>
             </div>
           ))}
         </div>
-        <div className="flex items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={next}
-            className="rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-medium text-sm px-5 py-2.5"
-          >
+        <div className="flex-wrap-row" style={{ justifyContent: 'center', gap: 12 }}>
+          <button type="button" onClick={next} className="focus-ring motion-press" style={primaryPill}>
             Начать →
           </button>
-          <button
-            type="button"
-            onClick={defer}
-            className="rounded-md border border-border bg-surface-1 text-text-secondary font-medium text-sm px-4 py-2.5 hover:bg-surface-2"
-          >
+          <button type="button" onClick={defer} className="focus-ring motion-press" style={ghostPill}>
             Не сейчас
           </button>
         </div>
       </div>
     </OnboardingLayout>
   )
+}
+
+const primaryPill: React.CSSProperties = {
+  padding: '10px 22px',
+  background: 'rgb(var(--ink))',
+  color: 'rgb(var(--color-bg))',
+  border: 0,
+  borderRadius: 'var(--radius-inner)',
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: 'pointer',
+  transition:
+    'background-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+}
+
+const ghostPill: React.CSSProperties = {
+  padding: '10px 18px',
+  background: 'transparent',
+  color: 'var(--ink-60)',
+  border: '1px solid var(--hair-2)',
+  borderRadius: 'var(--radius-inner)',
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: 'pointer',
+  transition:
+    'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
 }

@@ -10,6 +10,10 @@
 // chip, body markdown (rendered as preserved-whitespace), and a Done
 // button that flips completed_at. After complete the row disappears
 // from the pending feed (server-side filter).
+//
+// 2026-05-12: v2 visual language — hairline cards, status stripes use
+// ink-ramp + var(--red) only (was red/yellow/blue palette violating b/w
+// rule), caption-mono 0.08em canonical.
 
 import { useCallback, useEffect, useState } from 'react';
 
@@ -49,6 +53,17 @@ function formatDue(d: Date | null): string {
   if (h < 24) return `due in ${h}h`;
   return `due ${d.toLocaleDateString()}`;
 }
+
+const monoFont = "'JetBrains Mono', ui-monospace, monospace";
+
+const captionMonoTiny: React.CSSProperties = {
+  fontFamily: monoFont,
+  fontSize: 10,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+};
 
 export function TutorAssignmentsPage() {
   const [state, setState] = useState<State>(INITIAL);
@@ -90,11 +105,10 @@ export function TutorAssignmentsPage() {
 
   return (
     <div
-      className="fadein"
+      className="motion-page-in"
       style={{
         position: 'absolute',
         inset: 0,
-        animationDuration: '320ms',
         paddingTop: 96,
         paddingBottom: 120,
         overflowY: 'auto',
@@ -102,32 +116,31 @@ export function TutorAssignmentsPage() {
     >
       <div style={{ width: 720, maxWidth: '92%', margin: '0 auto', padding: '0 24px' }}>
         <header style={{ marginBottom: 24 }}>
-          <div
-            className="mono"
-            style={{
-              fontSize: 10,
-              letterSpacing: '0.24em',
-              color: 'var(--ink-40)',
-              marginBottom: 4,
-            }}
-          >
-            FROM YOUR TUTOR
-          </div>
+          <div style={{ ...captionMonoTiny, marginBottom: 6 }}>FROM YOUR TUTOR</div>
           <h1
             style={{
               margin: 0,
-              fontSize: 40,
-              fontWeight: 500,
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
+              fontSize: 'var(--type-h1-size)',
+              lineHeight: 'var(--type-h1-lh)',
+              letterSpacing: 'var(--type-h1-ls)',
+              fontWeight: 'var(--type-h1-weight)',
               color: 'var(--ink)',
             }}
           >
             Assignments
           </h1>
-          <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--ink-60)', maxWidth: 520 }}>
-            Здесь — то, что прислал тутор. Жми <span className="mono">Done</span> когда сделал;
-            он увидит галочку и дельту относительно due-даты.
+          <p
+            style={{
+              margin: '12px 0 0',
+              fontSize: 'var(--type-body-size)',
+              lineHeight: 'var(--type-body-lh)',
+              color: 'var(--ink-60)',
+              maxWidth: 540,
+            }}
+          >
+            Здесь — то, что прислал тутор. Жми{' '}
+            <span style={{ fontFamily: monoFont, fontSize: 13, color: 'var(--ink)' }}>Done</span>{' '}
+            когда сделал; он увидит галочку и дельту относительно due-даты.
           </p>
         </header>
 
@@ -135,8 +148,18 @@ export function TutorAssignmentsPage() {
           <p style={{ color: 'var(--ink-40)', fontSize: 13 }}>Loading…</p>
         )}
         {state.status === 'error' && (
-          <p style={{ color: 'var(--ink-60)', fontSize: 13 }}>
-            Не удалось загрузить: {state.error}
+          <p
+            role="alert"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              fontSize: 13,
+              color: 'var(--red)',
+            }}
+          >
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 8, flex: '0 0 auto' }} />
+            <span>Не удалось загрузить: {state.error}</span>
           </p>
         )}
         {state.status === 'ok' && state.items.length === 0 && (
@@ -144,21 +167,13 @@ export function TutorAssignmentsPage() {
             style={{
               padding: 32,
               textAlign: 'center',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid var(--hair-2)',
+              borderRadius: 'var(--radius-outer)',
+              background: 'transparent',
             }}
           >
-            <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-60)' }}>
-              Заданий нет.
-            </p>
-            <p
-              style={{
-                margin: '8px 0 0',
-                fontSize: 12,
-                color: 'var(--ink-40)',
-              }}
-            >
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-60)' }}>Заданий нет.</p>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--ink-40)' }}>
               Если ждёшь чего-то от тутора — спроси на ближайшей сессии.
             </p>
           </div>
@@ -166,6 +181,7 @@ export function TutorAssignmentsPage() {
 
         {state.status === 'ok' && state.items.length > 0 && (
           <ul
+            className="motion-stagger"
             style={{
               listStyle: 'none',
               padding: 0,
@@ -201,29 +217,43 @@ function AssignmentCard({
   onDone: () => void;
 }) {
   const status = rowStatus(assignment);
+  // B/W + red rule: overdue → var(--red) (canonical accent for "live alert"),
+  // due_soon → ink-ramp 60% (urgency без второго hue), open → ink-ramp 30%
+  // (calm). Same semantic, no chromatic noise.
   const stripe =
     status === 'overdue'
-      ? 'rgb(248, 113, 113)'
+      ? 'var(--red)'
       : status === 'due_soon'
-        ? 'rgb(251, 191, 36)'
-        : 'rgb(96, 165, 250)';
+        ? 'rgba(255, 255, 255, 0.6)'
+        : 'rgba(255, 255, 255, 0.3)';
+  const dueColor =
+    status === 'overdue' ? 'var(--red)' : status === 'due_soon' ? 'var(--ink)' : 'var(--ink-60)';
 
   return (
     <article
       style={{
         padding: '14px 16px 12px',
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'transparent',
+        border: '1px solid var(--hair-2)',
         borderLeft: `3px solid ${stripe}`,
-        borderRadius: 12,
+        borderRadius: 'var(--radius-outer)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+      {status === 'overdue' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          {/* v2 signature — red signal stripe для overdue assignments. */}
+          <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)' }} />
+          <span style={{ ...captionMonoTiny, color: 'var(--red)' }}>OVERDUE</span>
+        </div>
+      )}
+      <div className="flex-wrap-row" style={{ alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
         <h2
           style={{
             margin: 0,
-            fontSize: 16,
-            fontWeight: 500,
+            fontSize: 'var(--type-h3-size)',
+            lineHeight: 'var(--type-h3-lh)',
+            letterSpacing: 'var(--type-h3-ls)',
+            fontWeight: 'var(--type-h3-weight)',
             color: 'var(--ink)',
             flex: 1,
             minWidth: 0,
@@ -233,12 +263,10 @@ function AssignmentCard({
         </h2>
         {assignment.dueAt && (
           <span
-            className="mono"
             style={{
-              fontSize: 10,
-              letterSpacing: '0.16em',
-              color: stripe,
-              textTransform: 'uppercase',
+              ...captionMonoTiny,
+              color: dueColor,
+              flex: '0 0 auto',
             }}
           >
             {formatDue(assignment.dueAt)}
@@ -249,7 +277,7 @@ function AssignmentCard({
       {assignment.bodyMd && (
         <pre
           style={{
-            margin: '8px 0 12px',
+            margin: '10px 0 14px',
             whiteSpace: 'pre-wrap',
             fontFamily: 'inherit',
             fontSize: 14,
@@ -261,31 +289,33 @@ function AssignmentCard({
         </pre>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="flex-wrap-row" style={{ alignItems: 'center', gap: 12 }}>
         <button
           type="button"
           onClick={onDone}
           disabled={busy}
+          className="focus-ring motion-press"
           style={{
-            background: 'rgba(255,255,255,0.1)',
-            border: '1px solid rgba(255,255,255,0.16)',
-            color: 'var(--ink)',
-            padding: '6px 14px',
-            borderRadius: 8,
+            background: 'var(--ink)',
+            border: 0,
+            color: 'var(--bg, #000)',
+            padding: '7px 16px',
+            borderRadius: 'var(--radius-inner)',
             fontSize: 13,
+            fontWeight: 500,
             cursor: busy ? 'not-allowed' : 'pointer',
             opacity: busy ? 0.6 : 1,
+            transition:
+              'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
           {busy ? 'Saving…' : '✓ Done'}
         </button>
         {assignment.createdAt && (
           <span
-            className="mono"
             style={{
+              ...captionMonoTiny,
               fontSize: 10,
-              letterSpacing: '0.12em',
-              color: 'var(--ink-40)',
             }}
           >
             received {assignment.createdAt.toLocaleDateString()}

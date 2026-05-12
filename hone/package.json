@@ -11,7 +11,9 @@
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:mac-dev": "electron-vite build && electron-builder --mac dir --arm64 --config.mac.identity=null --config.mac.hardenedRuntime=false --config.mac.gatekeeperAssess=false && codesign --force --deep --sign - 'dist/mac-arm64/Hone.app'",
     "lint": "eslint 'src/**/*.{ts,tsx,jsx}'",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@bufbuild/protobuf": "1.10.0",
@@ -49,7 +51,10 @@
     "electron": "41.2.2",
     "electron-builder": "26.8.1",
     "electron-vite": "^3.0.0",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^15.11.7",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "vitest": "^2.1.9"
   }
 }

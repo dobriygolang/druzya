@@ -28,26 +28,36 @@ import {
 } from '../api/intelligence';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
-// Phase 4.4 — severity tokens. Stripe paints a 3px top border на panel,
+// Phase 4.4 — severity tokens. Stripe paints a 1.5px top border на panel,
 // pill = compact badge in header. Cruise (default) hides pill чтобы не
 // шуметь на спокойных днях.
+//
+// B/W + red rule: `critical` is the only severity allowed to wear --red;
+// warn/nudge fall back на ink-ramp — ink-60 (warn) and ink-40 (nudge) —
+// чтобы избегать chromatic tints (amber/blue) в Hone-палитре.
 const SEVERITY_STRIPE: Record<CoachSeverity, string> = {
-  critical: 'rgb(239, 68, 68)',
-  warn: 'rgb(245, 158, 11)',
-  nudge: 'rgb(59, 130, 246)',
+  critical: 'var(--red)',
+  warn: 'var(--ink-60)',
+  nudge: 'var(--ink-40)',
   cruise: 'transparent',
 };
 const SEVERITY_PILL_BG: Record<CoachSeverity, string> = {
-  critical: 'rgba(239, 68, 68, 0.16)',
-  warn: 'rgba(245, 158, 11, 0.16)',
-  nudge: 'rgba(59, 130, 246, 0.16)',
-  cruise: 'rgba(255,255,255,0.04)',
+  critical: 'var(--surface-2)',
+  warn: 'var(--surface-2)',
+  nudge: 'var(--surface-2)',
+  cruise: 'var(--hair)',
 };
 const SEVERITY_PILL_FG: Record<CoachSeverity, string> = {
-  critical: 'rgb(248, 113, 113)',
-  warn: 'rgb(251, 191, 36)',
-  nudge: 'rgb(96, 165, 250)',
-  cruise: 'rgba(255,255,255,0.5)',
+  critical: 'var(--red)',
+  warn: 'var(--ink-90)',
+  nudge: 'var(--ink-60)',
+  cruise: 'var(--ink-60)',
+};
+const SEVERITY_PILL_BORDER: Record<CoachSeverity, string> = {
+  critical: 'var(--red)',
+  warn: 'var(--hair-2)',
+  nudge: 'var(--hair-2)',
+  cruise: 'var(--hair)',
 };
 
 const CACHE_PREFIX = 'hone:daily-brief:cache:';
@@ -189,21 +199,21 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
         minHeight: 140,
         padding: '14px 16px 12px',
         borderRadius: 14,
-        background: 'rgba(20, 20, 22, 0.78)',
+        background: 'var(--surface)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        border: '1px solid var(--hair)',
         borderTop:
           severity === 'cruise'
-            ? '1px solid rgba(255,255,255,0.06)'
-            : `3px solid ${stripeColor}`,
-        boxShadow: '0 6px 28px rgba(0,0,0,0.35)',
-        color: 'rgba(255,255,255,0.92)',
+            ? '1px solid var(--hair)'
+            : `1.5px solid ${stripeColor}`,
+        boxShadow: '0 6px 28px var(--bg)',
+        color: 'var(--ink-90)',
         fontFamily: 'ui-sans-serif, -apple-system, system-ui, sans-serif',
         zIndex: 4,
         opacity: mounted ? 1 : 0,
         transform: mounted ? 'translateX(0)' : 'translateX(-24px)',
-        transition: 'opacity 380ms ease, transform 380ms ease',
+        transition: 'opacity var(--motion-dur-large) var(--motion-ease-standard), transform var(--motion-dur-large) var(--motion-ease-standard)',
         pointerEvents: 'auto',
       }}
     >
@@ -221,8 +231,9 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
           style={{
             flex: 1,
             fontSize: 9,
-            letterSpacing: '0.18em',
-            color: 'rgba(255,255,255,0.32)',
+            letterSpacing: '0.08em',
+            color: 'var(--ink-40)',
+            textTransform: 'uppercase',
           }}
         >
           {memStats === null
@@ -241,9 +252,9 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
               background: SEVERITY_PILL_BG[severity],
               color: SEVERITY_PILL_FG[severity],
               fontSize: 9,
-              letterSpacing: '0.16em',
+              letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              border: `1px solid ${SEVERITY_PILL_FG[severity]}33`,
+              border: `1px solid ${SEVERITY_PILL_BORDER[severity]}`,
             }}
           >
             {severity}
@@ -257,7 +268,7 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
           {loading && !brief
             ? <BreathingDots />
             : errored
-            ? <span style={{ color: 'rgba(255,255,255,0.5)' }}>Coach is offline</span>
+            ? <span style={{ color: 'var(--ink-40)' }}>Coach is offline</span>
             : brief?.headline ?? '—'}
         </div>
         <button
@@ -268,19 +279,36 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
             background: 'transparent',
             border: 'none',
             cursor: loading ? 'default' : 'pointer',
-            color: 'rgba(255,255,255,0.55)',
+            color: 'var(--ink-60)',
             fontSize: 14,
             padding: 4,
             borderRadius: 6,
             display: 'inline-flex',
             transform: loading ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 600ms ease',
+            transition: 'transform var(--motion-dur-xlarge) var(--motion-ease-standard)',
           }}
           title="Force refresh (limited 1/h)"
         >
           ↻
         </button>
       </div>
+
+      {/* CI1: explicit retry affordance when fetch failed (not just the
+       * ambiguous «↻» icon — Sergey 2026-05-12). Hidden когда есть cached
+       * brief — там headline уже что-то полезное показывает; кнопка только
+       * для cold-start failure. */}
+      {errored && !brief && !loading && (
+        <div style={{ marginTop: 8, marginBottom: 8 }}>
+          <button
+            type="button"
+            className="data-loader-error-retry focus-ring motion-press"
+            onClick={refresh}
+            style={{ padding: 0 }}
+          >
+            retry
+          </button>
+        </div>
+      )}
 
       {/* Narrative */}
       {brief?.narrative ? (
@@ -289,7 +317,7 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
             margin: '8px 0 12px',
             fontSize: 13,
             lineHeight: 1.5,
-            color: 'rgba(255,255,255,0.6)',
+            color: 'var(--ink-60)',
           }}
         >
           {brief.narrative}
@@ -337,17 +365,32 @@ function RecChip({
   return (
     <div
       style={{
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         gap: 4,
-        background: ack === 'follow' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: ack === 'follow' ? 'var(--hair)' : 'var(--surface-2)',
+        border: '1px solid var(--hair)',
         borderRadius: 8,
         opacity: dimmed ? 0.4 : 1,
         textDecoration: dimmed ? 'line-through' : 'none',
-        transition: 'opacity 220ms ease, background-color 180ms ease',
+        transition: 'opacity var(--motion-dur-medium) var(--motion-ease-standard), background-color var(--motion-dur-medium) var(--motion-ease-standard)',
+        overflow: 'hidden',
       }}
     >
+      {ack === 'follow' && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 1.5,
+            background: 'var(--red)',
+          }}
+        />
+      )}
       <button
         onClick={isAdvice ? undefined : onClick}
         title={rec.rationale}
@@ -357,7 +400,7 @@ function RecChip({
           background: 'transparent',
           border: 'none',
           padding: '7px 10px',
-          color: 'rgba(255,255,255,0.85)',
+          color: 'var(--ink-90)',
           fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
           fontSize: 12,
           lineHeight: 1.35,
@@ -404,13 +447,13 @@ function FeedbackBtn({
         cursor: 'pointer',
         opacity: 0.4,
         borderRadius: 4,
-        transition: 'opacity 150ms ease, background-color 150ms ease, color 150ms ease',
-        color: 'rgba(255,255,255,0.85)',
+        transition: 'opacity var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+        color: 'var(--ink-90)',
         padding: 0,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.opacity = '1';
-        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+        e.currentTarget.style.background = 'var(--hair)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.opacity = '0.4';
@@ -452,7 +495,7 @@ function BreathingDots() {
       style={{
         display: 'inline-flex',
         gap: 4,
-        color: 'rgba(255,255,255,0.5)',
+        color: 'var(--ink-40)',
         fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
         fontSize: 14,
       }}

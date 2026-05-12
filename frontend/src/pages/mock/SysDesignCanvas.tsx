@@ -185,7 +185,7 @@ export function SysDesignCanvas({
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,30%)_1fr_minmax(280px,28%)] gap-4">
       {/* ── Brief column ────────────────────────────────────── */}
       <Card variant="default" padding="md" className="lg:sticky lg:top-4 lg:self-start flex flex-col gap-3">
-        <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
           Задача
         </div>
         <h3 className="font-display text-base font-bold text-text-primary whitespace-pre-wrap">
@@ -198,7 +198,7 @@ export function SysDesignCanvas({
         )}
         {attempt.task_functional_requirements_md ? (
           <div className="mt-1 rounded-md border border-border bg-surface-1 p-3">
-            <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-1">
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
               Функциональные требования
             </div>
             <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
@@ -214,18 +214,28 @@ export function SysDesignCanvas({
           <div className="flex flex-wrap items-center justify-between gap-2 px-1">
             <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-text-secondary">
               {draft.serverDraftFailed ? (
-                <span className="rounded-md border border-danger/50 bg-danger/10 px-2 py-0.5 text-danger">
-                  ⚠ автосейв полностью выкл — жми Submit
+                <span className="relative rounded-md border border-border-strong bg-surface-1 px-2 py-0.5 pl-3 text-text-primary">
+                  <span
+                    aria-hidden
+                    className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-md"
+                    style={{ background: 'var(--red)' }}
+                  />
+                  автосейв полностью выкл — жми Submit
                 </span>
               ) : draft.quotaExceeded ? (
-                <span className="rounded-md border border-warn/50 bg-warn/10 px-2 py-0.5 text-warn">
+                <span className="relative rounded-md border border-border-strong bg-surface-1 px-2 py-0.5 pl-3 text-text-primary">
+                  <span
+                    aria-hidden
+                    className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-md"
+                    style={{ background: 'var(--red)' }}
+                  />
                   локалка переполнена → пишем на сервер
                 </span>
               ) : (
                 <span>автосейв · 24ч</span>
               )}
               {draft.fullscreenAlive && (
-                <span className="rounded-md border border-success/50 bg-success/10 px-2 py-0.5 text-success">
+                <span className="rounded-md border border-border-strong bg-surface-2 px-2 py-0.5 text-text-primary">
                   доска открыта в новой вкладке
                 </span>
               )}
@@ -233,7 +243,7 @@ export function SysDesignCanvas({
             <button
               type="button"
               onClick={() => window.open(`/mock/canvas/${attempt.id}`, '_blank', 'noopener')}
-              className="flex items-center gap-1.5 rounded-md border border-border-strong bg-surface-1 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-primary hover:bg-surface-2"
+              className="flex items-center gap-1.5 rounded-md border border-border-strong bg-surface-1 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary hover:bg-surface-2"
             >
               <ExternalLink className="h-3 w-3" />
               На весь экран
@@ -253,7 +263,7 @@ export function SysDesignCanvas({
             <button
               type="button"
               onClick={() => setRestoreBanner(null)}
-              className="font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-text-primary"
+              className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted hover:text-text-primary"
             >
               скрыть
             </button>
@@ -301,7 +311,7 @@ export function SysDesignCanvas({
           </div>
         ) : attempt.user_excalidraw_scene_json ? (
           <div className="flex flex-col gap-2">
-            <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
               Что сдал
             </div>
             <div className="relative h-[400px] lg:h-[600px] overflow-hidden rounded-lg border border-border bg-black">
@@ -333,7 +343,7 @@ export function SysDesignCanvas({
           // Legacy rows written before F-3 v2: we still have a data URL but
           // no scene blob — fall back to <img>. New rows always have scene.
           <Card variant="default" padding="sm" className="overflow-hidden">
-            <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-2">
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-2">
               Что сдал
             </div>
             <img
@@ -377,8 +387,13 @@ export function SysDesignCanvas({
               disabled={submit.isPending}
             />
             {clientErr && (
-              <div className="flex items-center gap-2 rounded-lg border border-danger bg-danger/10 px-3 py-2 text-sm text-danger">
-                <AlertCircle className="h-4 w-4 shrink-0" />
+              <div className="relative flex items-center gap-2 rounded-lg border border-border-strong bg-surface-1 px-3 py-2 pl-4 text-sm text-text-primary">
+                <span
+                  aria-hidden
+                  className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-lg"
+                  style={{ background: 'var(--red)' }}
+                />
+                <AlertCircle className="h-4 w-4 shrink-0" style={{ color: 'var(--red)' }} />
                 <span>{clientErr}</span>
               </div>
             )}
@@ -398,7 +413,7 @@ export function SysDesignCanvas({
           <>
             {nonFunctionalMD || attempt.user_answer_md ? (
               <Card variant="default" padding="md" className="flex flex-col gap-1">
-                <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+                <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
                   Нефункциональные (что сдал)
                 </div>
                 <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
@@ -408,7 +423,7 @@ export function SysDesignCanvas({
             ) : null}
             {attempt.user_context_md ? (
               <Card variant="default" padding="md" className="flex flex-col gap-1">
-                <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+                <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
                   Контекст (что сдал)
                 </div>
                 <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
@@ -463,7 +478,7 @@ function CharField({
   const overflow = value.length > MAX_CHARS
   return (
     <div className="flex flex-col gap-1">
-      <label className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+      <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
         {label}
       </label>
       <textarea
@@ -472,13 +487,18 @@ function CharField({
         disabled={disabled}
         rows={6}
         placeholder={placeholder}
-        className="w-full resize-y rounded-lg border border-border-strong bg-surface-1 p-3 font-mono text-xs whitespace-pre-wrap text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-text-primary/40"
+        className="w-full resize-y border-0 border-b border-solid bg-transparent p-3 font-mono text-xs whitespace-pre-wrap text-text-primary placeholder:text-text-secondary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] focus:outline-none"
+        style={{ borderBottomColor: 'var(--hair-2)' }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderBottomColor = 'rgb(var(--ink))'
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderBottomColor = 'var(--hair-2)'
+        }}
       />
       <div
-        className={[
-          'self-end font-mono text-[10px]',
-          overflow ? 'text-danger' : 'text-text-secondary',
-        ].join(' ')}
+        className="self-end font-mono text-[10px] tracking-[0.08em] text-text-secondary"
+        style={overflow ? { color: 'var(--red)' } : undefined}
       >
         {value.length} / {MAX_CHARS}
       </div>
@@ -491,28 +511,37 @@ function CharField({
 function CanvasVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
   const v = attempt.ai_verdict
   const score = attempt.ai_score ?? 0
-  const cls =
-    v === 'pass'
-      ? 'border-success bg-success/10 text-success'
-      : v === 'fail'
-        ? 'border-danger bg-danger/10 text-danger'
-        : v === 'borderline'
-          ? 'border-warn bg-warn/10 text-warn'
-          : 'border-border bg-surface-1 text-text-secondary'
+  const fail = v === 'fail'
+  const borderline = v === 'borderline'
   const label =
     v === 'pass' ? 'PASS' : v === 'fail' ? 'FAIL' : v === 'borderline' ? 'BORDERLINE' : v
   const Icon = v === 'pass' ? CheckCircle2 : v === 'fail' ? XCircle : AlertCircle
 
   return (
     <div className="flex flex-col gap-2">
-      <div className={['flex items-center gap-2 rounded-lg border px-3 py-2', cls].join(' ')}>
-        <Icon className="h-4 w-4" />
-        <span className="font-display text-sm font-bold uppercase">{label}</span>
-        <span className="font-mono text-sm">· {score}/100</span>
+      <div className="relative flex items-center gap-2 rounded-lg border border-border-strong bg-surface-1 px-3 py-2 text-text-primary">
+        {(fail || borderline) && (
+          <span
+            aria-hidden
+            className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-lg"
+            style={{ background: 'var(--red)' }}
+          />
+        )}
+        <Icon
+          className="h-4 w-4"
+          style={fail || borderline ? { color: 'var(--red)' } : undefined}
+        />
+        <span
+          className="font-display text-sm font-bold uppercase tracking-[0.08em]"
+          style={fail || borderline ? { color: 'var(--red)' } : undefined}
+        >
+          {label}
+        </span>
+        <span className="font-mono text-sm tabular-nums">· {score}/100</span>
       </div>
       {attempt.ai_feedback_md && (
         <Card variant="default" padding="md" className="font-sans">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-1">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
             Feedback
           </div>
           <div className="text-sm text-text-primary whitespace-pre-wrap">
@@ -522,7 +551,7 @@ function CanvasVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
       )}
       {attempt.ai_missing_points.length > 0 && (
         <div className="rounded-lg border border-border bg-surface-1 p-3">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-1">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
             Что упустил
           </div>
           <ul className="list-disc list-inside text-sm text-text-secondary space-y-0.5">

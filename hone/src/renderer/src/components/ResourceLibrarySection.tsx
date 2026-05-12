@@ -51,17 +51,19 @@ export function ResourceLibrarySection() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls="resource-library-panel"
         className="mono"
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 'var(--gap-row)',
           padding: 0,
           background: 'transparent',
           border: 'none',
-          color: 'rgba(255,255,255,0.55)',
+          color: 'var(--ink-60)',
           fontSize: 10,
-          letterSpacing: '.24em',
+          letterSpacing: '0.08em',
           textTransform: 'uppercase',
           cursor: 'pointer',
           fontFamily: 'inherit',
@@ -69,35 +71,36 @@ export function ResourceLibrarySection() {
       >
         <span>{open ? '▾' : '▸'}</span>
         <span>my learning resources</span>
-        <span style={{ color: 'rgba(255,255,255,0.3)' }}>· bookmarks for ai</span>
+        <span style={{ color: 'var(--ink-40)' }}>· bookmarks for ai</span>
       </button>
 
       {open && (
         <div
+          id="resource-library-panel"
           style={{
             marginTop: 16,
             padding: '14px 16px',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 6,
-            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid var(--hair)',
+            borderRadius: 'var(--radius-inner)',
+            background: 'var(--hair)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <span className="mono" style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: '.16em', textTransform: 'uppercase' }}>
+            <span className="mono" style={{ fontSize: 10, color: 'var(--ink-60)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               {resources.length === 0 ? 'no resources yet' : `${resources.length} saved`}
             </span>
             <button
               type="button"
               onClick={() => setAddOpen(true)}
-              className="mono"
+              className="mono focus-ring motion-press"
               style={{
                 padding: '5px 10px',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(255,255,255,0.85)',
-                borderRadius: 4,
+                background: 'var(--hair)',
+                border: '1px solid var(--hair-2)',
+                color: 'var(--ink-90)',
+                borderRadius: 'var(--radius-inner)',
                 fontSize: 10.5,
-                letterSpacing: '.06em',
+                letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -108,16 +111,17 @@ export function ResourceLibrarySection() {
           </div>
 
           {error && (
-            <div className="mono" style={{ fontSize: 11, color: '#FF3B30', marginBottom: 10 }}>
-              {error}
+            <div className="mono" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 11, color: 'var(--red)', marginBottom: 10 }}>
+              <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 5, flex: '0 0 auto' }} />
+              <span>{error}</span>
             </div>
           )}
 
           {resources.length === 0 && !error && (
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: 'var(--ink-40)', lineHeight: 1.5 }}>
               add urls you read · ai uses these to tune your plan and notes auto-link.
               <br />
-              <span style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <span style={{ color: 'var(--ink-40)' }}>
                 each url goes through best-effort fetch + ai-extract; you confirm fields.
               </span>
             </div>

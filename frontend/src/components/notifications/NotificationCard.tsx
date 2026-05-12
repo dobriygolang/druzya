@@ -80,11 +80,20 @@ export function NotificationCard(props: NotificationCardProps) {
     <div
       onMouseEnter={handleAreaClick}
       className={cn(
-        'group flex items-start gap-3 px-4 py-3 transition-colors',
+        'group relative flex items-start gap-3 px-4 py-3 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
         unread ? 'bg-text-primary/5' : 'bg-transparent',
         'hover:bg-surface-2',
       )}
     >
+      {/* Unread = active selection. Red 1.5×24px signal stripe (B/W rule —
+        single accent encoding «новое требует внимания»). */}
+      {unread && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-1/2 h-6 w-[1.5px] -translate-y-1/2 rounded-r-sm"
+          style={{ background: 'var(--red)' }}
+        />
+      )}
       <UnreadDot unread={unread} />
       <Glyph item={item} kind={kind} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -151,7 +160,7 @@ function Header({ item }: { item: NotificationItem; kind: CardKind }) {
           <span className="text-text-secondary">{item.body}</span>
         </>
       ) : null}
-      <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+      <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         {relativeTime(item.created_at)}
       </div>
     </div>
@@ -244,7 +253,7 @@ function ActionBtn({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[12px] font-semibold transition-colors disabled:opacity-50',
+        'inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[12px] font-semibold transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] disabled:opacity-50',
         tone === 'primary'
           ? 'bg-text-primary text-bg hover:bg-text-primary-hover'
           : 'border border-border bg-surface-2 text-text-secondary hover:text-text-primary',

@@ -142,12 +142,23 @@ export function TutorAssignmentsBanner({ running, onOpenAll }: Props) {
   if (!top) return null;
 
   const status = rowStatus(top);
-  const stripe =
-    status === 'overdue'
-      ? 'rgb(248, 113, 113)'
-      : status === 'due_soon'
-        ? 'rgb(251, 191, 36)'
-        : 'rgb(96, 165, 250)';
+  // B/W rule per memory/feedback_color_rule.md: canonical red for live/
+  // overdue signal only — other statuses fall back to ink-ramp opacity.
+  // Red 1.5px stripe is the active-state hero. due_soon keeps the same
+  // red at lower opacity (visually softer urgency), open hides the stripe
+  // entirely (hair border only).
+  const isOverdue = status === 'overdue';
+  const isDueSoon = status === 'due_soon';
+  const stripeColor = isOverdue
+    ? 'var(--red)'
+    : isDueSoon
+      ? 'rgba(255, 59, 48, 0.5)'
+      : 'transparent';
+  const dueLabelColor = isOverdue
+    ? 'var(--red)'
+    : isDueSoon
+      ? 'var(--ink-90)'
+      : 'var(--ink-60)';
   const moreCount = items.length - 1;
 
   return (
@@ -159,13 +170,32 @@ export function TutorAssignmentsBanner({ running, onOpenAll }: Props) {
         left: 32,
         width: 380,
         padding: '12px 14px',
-        background: 'rgba(8,8,8,0.92)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderLeft: `3px solid ${stripe}`,
-        borderRadius: 12,
+        paddingLeft: isOverdue || isDueSoon ? 18 : 14,
+        background: 'rgba(8, 8, 8, 0.92)',
+        border: '1px solid var(--hair)',
+        borderRadius: 'var(--radius-outer)',
         backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
       }}
     >
+      {/* Red signal stripe — 1.5×24px vertical bar pinned to the leading
+       * edge. Only renders when there's urgency (overdue/due_soon). Open
+       * status shows no stripe — hair border alone. */}
+      {(isOverdue || isDueSoon) && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 1.5,
+            height: 24,
+            background: stripeColor,
+            borderRadius: 1,
+          }}
+        />
+      )}
       <div
         style={{
           display: 'flex',
@@ -178,7 +208,7 @@ export function TutorAssignmentsBanner({ running, onOpenAll }: Props) {
           className="mono"
           style={{
             fontSize: 9,
-            letterSpacing: '0.22em',
+            letterSpacing: '0.08em',
             color: 'var(--ink-40)',
           }}
         >
@@ -189,8 +219,8 @@ export function TutorAssignmentsBanner({ running, onOpenAll }: Props) {
             className="mono"
             style={{
               fontSize: 9,
-              letterSpacing: '0.16em',
-              color: stripe,
+              letterSpacing: '0.08em',
+              color: dueLabelColor,
               textTransform: 'uppercase',
               marginLeft: 'auto',
             }}
@@ -222,14 +252,14 @@ export function TutorAssignmentsBanner({ running, onOpenAll }: Props) {
           type="button"
           onClick={() => void onDone(top.id)}
           disabled={busyId === top.id}
-          className="mono"
+          className="mono focus-ring motion-press"
           style={{
             padding: '4px 10px',
             fontSize: 10,
-            letterSpacing: '0.16em',
+            letterSpacing: '0.08em',
             color: 'var(--ink)',
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'var(--hair)',
+            border: '1px solid var(--hair-2)',
             borderRadius: 999,
             cursor: busyId === top.id ? 'not-allowed' : 'pointer',
             opacity: busyId === top.id ? 0.6 : 1,
@@ -240,15 +270,16 @@ export function TutorAssignmentsBanner({ running, onOpenAll }: Props) {
         <button
           type="button"
           onClick={onOpenAll}
-          className="mono"
+          className="mono focus-ring motion-press"
           style={{
             padding: '4px 10px',
             fontSize: 10,
-            letterSpacing: '0.16em',
+            letterSpacing: '0.08em',
             color: 'var(--ink-40)',
             background: 'transparent',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid var(--hair)',
             borderRadius: 999,
+            cursor: 'pointer',
           }}
         >
           {moreCount > 0 ? `OPEN · +${moreCount} MORE` : 'OPEN'}

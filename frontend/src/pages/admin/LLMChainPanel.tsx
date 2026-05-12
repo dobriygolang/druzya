@@ -237,7 +237,7 @@ function TestModelSection() {
           placeholder="model id"
           list={`models-${provider}`}
           disabled={busy}
-          className="rounded border border-border bg-surface-2 px-2 py-1.5 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none disabled:opacity-60"
+          className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] disabled:opacity-60"
         />
         <ProviderModelDatalist provider={provider} />
 
@@ -255,7 +255,7 @@ function TestModelSection() {
         onChange={(e) => setPrompt(e.target.value)}
         placeholder='Prompt (опционально, default: "Reply with exactly: ok")'
         disabled={busy}
-        className="mt-2 w-full rounded border border-border bg-surface-2 px-2 py-1.5 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none disabled:opacity-60"
+        className="mt-2 w-full border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] disabled:opacity-60"
       />
 
       {result && (
@@ -409,7 +409,7 @@ function ProviderKeysEditor({
   return (
     <div className="rounded border border-border bg-surface-2 p-3">
       <header className="mb-2 flex items-center justify-between">
-        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-primary">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-text-primary">
           {provider}
         </span>
         {keys.length > 0 && (
@@ -430,7 +430,7 @@ function ProviderKeysEditor({
                 onChange(next)
               }}
               placeholder="API key"
-              className="flex-1 rounded border border-border bg-surface-1 px-2 py-1 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none"
+              className="flex-1 border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
             />
             {!reveal && k && (
               <span
@@ -608,7 +608,7 @@ function TaskMapSection({
                         onChange={(e) => setCell(task, p, e.target.value)}
                         placeholder="—"
                         list={`models-${p}`}
-                        className="w-full rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none"
+                        className="w-full border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
                       />
                       <ProviderModelDatalist provider={p} />
                     </td>
@@ -796,7 +796,7 @@ function VirtualChainCard({
         // править.
         <div className="flex flex-col gap-2 rounded border border-dashed border-border bg-surface-1 px-3 py-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
               Defaults из tier.go (read-only)
             </span>
             {defaultChain.length > 0 && (
@@ -867,7 +867,7 @@ function VirtualChainCard({
                   onChange={(e) => updateStep(i, { model: e.target.value })}
                   placeholder="model_id"
                   list={`models-${step.provider}`}
-                  className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none"
+                  className="flex-1 border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
                 />
                 <button
                   onClick={() => void testStep(i, step)}

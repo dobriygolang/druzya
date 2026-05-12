@@ -40,13 +40,18 @@ type NextAction struct {
 // Calendar pivot 2026-05-04: UpcomingEvents removed alongside personal_events.
 // Coach next-action no longer factors interview-window pressure; track step
 // + fork mode + recent mocks remain the active inputs.
+//
+// Phase J 2026-05-12: RecentFocusReflections added so prompt видит «вчера
+// 25 min on prefix-sum, grade 2, stuck on joins» — directly inflects today's
+// recommendation rationale.
 type NextActionInput struct {
-	UserID        uuid.UUID
-	LearningState LearningStateView
-	RecentMocks   []domain.MockSessionSummary
-	Fork          domain.ForkProgressSnapshot
-	ResourceTrail domain.ResourceEngagement
-	ActiveTrack   *ActiveTrackStep
+	UserID                 uuid.UUID
+	LearningState          LearningStateView
+	RecentMocks            []domain.MockSessionSummary
+	Fork                   domain.ForkProgressSnapshot
+	ResourceTrail          domain.ResourceEngagement
+	ActiveTrack            *ActiveTrackStep
+	RecentFocusReflections []domain.FocusReflection
 }
 
 // LearningStateView — slim projection (UC не импортирует learning_state
@@ -156,6 +161,38 @@ func buildNextActionPrompt(in NextActionInput) string {
 	if in.ResourceTrail.UnfinishedCount > 0 || len(in.ResourceTrail.MarkedUnhelpful) > 0 {
 		fmt.Fprintf(&b, "\nRESOURCE TRAIL: %d unfinished · %d unhelpful\n",
 			in.ResourceTrail.UnfinishedCount, len(in.ResourceTrail.MarkedUnhelpful))
+	}
+
+	// Recent focus reflections — H2 (Phase J). Each entry carries grade +
+	// notes from a finished pomodoro. Coach использует чтобы rationale цитировал
+	// конкретный pain («previously stuck on X with grade 2 — try Y today»).
+	if len(in.RecentFocusReflections) > 0 {
+		b.WriteString("\nRECENT FOCUS REFLECTIONS (newest first):\n")
+		// Cap at 5 entries — prompt budget conservation.
+		max := len(in.RecentFocusReflections)
+		if max > 5 {
+			max = 5
+		}
+		for i := 0; i < max; i++ {
+			r := in.RecentFocusReflections[i]
+			grade := "no grade"
+			if r.Grade != nil {
+				grade = fmt.Sprintf("grade %d/5", *r.Grade)
+			}
+			task := r.TaskPinned
+			if task == "" {
+				task = r.FocusMode
+			}
+			note := r.Notes
+			if len(note) > 160 {
+				note = note[:160] + "…"
+			}
+			if note == "" {
+				note = "(no note)"
+			}
+			fmt.Fprintf(&b, "  - %s · %d min · %s · on %q · %q\n",
+				r.EndedAt.Format("2006-01-02"), r.DurationSeconds/60, grade, task, note)
+		}
 	}
 
 	b.WriteString("\nReturn the single most-important next action.")

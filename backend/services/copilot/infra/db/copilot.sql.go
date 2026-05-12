@@ -173,6 +173,29 @@ func (q *Queries) DetachDocumentFromSession(ctx context.Context, arg DetachDocum
 	return result.RowsAffected(), nil
 }
 
+const endActiveInterviewPreps = `-- name: EndActiveInterviewPreps :execrows
+
+UPDATE interview_prep_sessions
+   SET ended_at = now()
+ WHERE user_id = $1
+   AND ended_at IS NULL
+`
+
+// =============================================================================
+// Interview prep sessions (Phase J / C6)
+// =============================================================================
+// Stamps ended_at on every active prep for the user. Called inside
+// StartInterviewPrep's transaction before the new INSERT so the partial
+// unique index doesn't trip. Idempotent — returns 0 when there is no
+// active row.
+func (q *Queries) EndActiveInterviewPreps(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, endActiveInterviewPreps, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const endCopilotSession = `-- name: EndCopilotSession :execrows
 UPDATE copilot_sessions
    SET finished_at = now()
@@ -188,6 +211,30 @@ type EndCopilotSessionParams struct {
 
 func (q *Queries) EndCopilotSession(ctx context.Context, arg EndCopilotSessionParams) (int64, error) {
 	result, err := q.db.Exec(ctx, endCopilotSession, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const endInterviewPrepByID = `-- name: EndInterviewPrepByID :execrows
+UPDATE interview_prep_sessions
+   SET ended_at = now()
+ WHERE id = $1
+   AND user_id = $2
+   AND ended_at IS NULL
+`
+
+type EndInterviewPrepByIDParams struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// Targeted end (when the client passes a specific session_id). Scoped
+// to user_id for auth — returns 0 affected when the id belongs to
+// another user.
+func (q *Queries) EndInterviewPrepByID(ctx context.Context, arg EndInterviewPrepByIDParams) (int64, error) {
+	result, err := q.db.Exec(ctx, endInterviewPrepByID, arg.ID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
@@ -214,6 +261,35 @@ func (q *Queries) FailCopilotSessionReport(ctx context.Context, arg FailCopilotS
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getActiveInterviewPrep = `-- name: GetActiveInterviewPrep :one
+SELECT id, user_id, parsed_cv, parsed_jd, cv_text, jd_text,
+       company, role, started_at, ended_at
+  FROM interview_prep_sessions
+ WHERE user_id = $1
+   AND ended_at IS NULL
+`
+
+// Returns the user's single live prep row (ended_at IS NULL). The partial
+// unique index guarantees ≤1; sqlc maps "no rows" → pgx.ErrNoRows which
+// the app layer translates to "no active prep".
+func (q *Queries) GetActiveInterviewPrep(ctx context.Context, userID pgtype.UUID) (InterviewPrepSession, error) {
+	row := q.db.QueryRow(ctx, getActiveInterviewPrep, userID)
+	var i InterviewPrepSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ParsedCv,
+		&i.ParsedJd,
+		&i.CvText,
+		&i.JdText,
+		&i.Company,
+		&i.Role,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
 }
 
 const getCopilotConversation = `-- name: GetCopilotConversation :one
@@ -468,6 +544,50 @@ func (q *Queries) InsertCopilotMessage(ctx context.Context, arg InsertCopilotMes
 		&i.LatencyMs,
 		&i.Rating,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertInterviewPrepSession = `-- name: InsertInterviewPrepSession :one
+INSERT INTO interview_prep_sessions (
+    user_id, parsed_cv, parsed_jd, cv_text, jd_text, company, role
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, user_id, parsed_cv, parsed_jd, cv_text, jd_text,
+          company, role, started_at, ended_at
+`
+
+type InsertInterviewPrepSessionParams struct {
+	UserID   pgtype.UUID
+	ParsedCv []byte
+	ParsedJd []byte
+	CvText   pgtype.Text
+	JdText   pgtype.Text
+	Company  pgtype.Text
+	Role     pgtype.Text
+}
+
+func (q *Queries) InsertInterviewPrepSession(ctx context.Context, arg InsertInterviewPrepSessionParams) (InterviewPrepSession, error) {
+	row := q.db.QueryRow(ctx, insertInterviewPrepSession,
+		arg.UserID,
+		arg.ParsedCv,
+		arg.ParsedJd,
+		arg.CvText,
+		arg.JdText,
+		arg.Company,
+		arg.Role,
+	)
+	var i InterviewPrepSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ParsedCv,
+		&i.ParsedJd,
+		&i.CvText,
+		&i.JdText,
+		&i.Company,
+		&i.Role,
+		&i.StartedAt,
+		&i.EndedAt,
 	)
 	return i, err
 }

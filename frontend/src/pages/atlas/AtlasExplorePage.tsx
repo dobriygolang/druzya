@@ -18,6 +18,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { useAtlasQuery, type Atlas } from '../../lib/queries/profile'
 import { AtlasCanvas } from '../../components/atlas/AtlasCanvas'
 import { AtlasMobileRoadmap } from '../../components/atlas/AtlasMobileRoadmap'
@@ -81,6 +82,7 @@ function AtlasV2Toggle({ on, onToggle }: { on: boolean; onToggle: (v: boolean) =
     <button
       type="button"
       onClick={() => onToggle(!on)}
+      aria-pressed={on}
       className="rounded-md border border-border bg-bg-secondary px-2 py-1 font-mono text-[11px] text-text-secondary hover:text-text-primary"
       aria-label="Toggle atlas v2 layout"
     >
@@ -141,20 +143,20 @@ function AtlasV2Surface({
         />
         {fullscreen && (
           <div className="fixed inset-0 z-50 flex flex-col">
-            {/* backdrop fade-in 160ms */}
+            {/* backdrop fade-in — foundation motion small/decelerate */}
             <div
-              className={`absolute inset-0 bg-black transition-opacity duration-200 ease-out motion-reduce:transition-none ${
+              className={`absolute inset-0 bg-black transition-opacity duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] motion-reduce:transition-none ${
                 animateIn ? 'opacity-60' : 'opacity-0'
               }`}
               onClick={() => setFullscreen(false)}
               role="presentation"
             />
-            {/* sheet · slide-from-bottom 240ms cubic-bezier(0.2,0.8,0.2,1) */}
+            {/* sheet · slide-from-bottom — foundation motion medium/emphasized */}
             <div
               className="relative mt-auto flex h-full max-h-full flex-col bg-bg motion-reduce:transition-none"
               style={{
                 transform: animateIn ? 'translateY(0)' : 'translateY(100%)',
-                transition: 'transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+                transition: 'transform var(--motion-dur-medium) var(--motion-ease-emphasized)',
               }}
             >
               <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
@@ -166,7 +168,7 @@ function AtlasV2Surface({
                 >
                   <span>←</span> {t('atlas.close')}
                 </button>
-                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-primary">
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary">
                   ◆ atlas · full map
                 </span>
                 <span className="w-[68px]" aria-hidden />
@@ -335,12 +337,11 @@ function GraphSkeleton() {
   return (
     <div className="relative flex-1" style={{ minHeight: 'min(720px, 60vh)' }}>
       <div
-        className="absolute inset-0 animate-pulse"
+        className="absolute inset-0 animate-pulse bg-bg"
         style={{
           // Phase-4: removed violet-tinted radial backdrop. Atlas skeleton
-          // sits on a flat near-black with the Hone starfield class so empty
-          // state still feels alive without a colored gradient.
-          background: '#0A0A0A',
+          // sits on the canonical bg token so empty state inherits theme
+          // without a hardcoded near-black.
         }}
       />
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-xs text-text-muted">
@@ -441,7 +442,9 @@ export default function AtlasExplorePage() {
           </div>
         )}
         {pinnedNodes.length > 0 && (
-          <PinnedRibbon nodes={pinnedNodes} onSelect={setSelectedKey} />
+          <ErrorBoundary section="Pinned ribbon">
+            <PinnedRibbon nodes={pinnedNodes} onSelect={setSelectedKey} />
+          </ErrorBoundary>
         )}
         {!isLoading && !isError && atlas && atlas.nodes.length > 0 && (
           <AtlasFilters
@@ -453,39 +456,41 @@ export default function AtlasExplorePage() {
             setStatus={setStatus}
           />
         )}
-        <div className="flex flex-col lg:flex-row">
-          {isLoading ? (
-            <GraphSkeleton />
-          ) : isError || !atlas ? (
-            <div className="flex flex-1 items-center justify-center bg-bg p-8">
-              <div className="flex max-w-md flex-col items-center gap-3 text-center">
-                <AlertCircle className="h-8 w-8 text-danger" />
-                <p className="text-sm text-text-secondary">
-                  Не удалось загрузить атлас. Попробуй обновить — если ошибка
-                  повторяется, проверь подключение.
-                </p>
-                <Button
-                  variant="primary"
-                  icon={<RotateCcw className="h-3.5 w-3.5" />}
-                  onClick={() => void refetch()}
-                >
-                  Повторить
-                </Button>
+        <ErrorBoundary section="Atlas canvas" onRetry={() => void refetch()}>
+          <div className="flex flex-col lg:flex-row">
+            {isLoading ? (
+              <GraphSkeleton />
+            ) : isError || !atlas ? (
+              <div className="flex flex-1 items-center justify-center bg-bg p-8">
+                <div className="flex max-w-md flex-col items-center gap-3 text-center">
+                  <AlertCircle className="h-8 w-8 text-danger" />
+                  <p className="text-sm text-text-secondary">
+                    Не удалось загрузить атлас. Попробуй обновить — если ошибка
+                    повторяется, проверь подключение.
+                  </p>
+                  <Button
+                    variant="primary"
+                    icon={<RotateCcw className="h-3.5 w-3.5" />}
+                    onClick={() => void refetch()}
+                  >
+                    Повторить
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : atlas.nodes.length === 0 ? (
-            <EmptyProgressCTA />
-          ) : (
-            // Atlas-bug 2026-04: previously an `isProgressEmpty` branch
-            // rendered EmptyProgressCTA AND the canvas stacked, producing
-            // two visible blocks ("Атлас пока пуст" on top + the canvas
-            // below). The v2 canvas already has its own onboarding-beacon
-            // (3 hub-adjacent pulse) for zero-mastered users; the legacy
-            // canvas shows all nodes as locked/not_started which is
-            // informative enough. Single render path now.
-            renderSurface(atlas, selectedKey, setSelectedKey, highlightKeys, viewMode, v2On)
-          )}
-        </div>
+            ) : atlas.nodes.length === 0 ? (
+              <EmptyProgressCTA />
+            ) : (
+              // Atlas-bug 2026-04: previously an `isProgressEmpty` branch
+              // rendered EmptyProgressCTA AND the canvas stacked, producing
+              // two visible blocks ("Атлас пока пуст" on top + the canvas
+              // below). The v2 canvas already has its own onboarding-beacon
+              // (3 hub-adjacent pulse) for zero-mastered users; the legacy
+              // canvas shows all nodes as locked/not_started which is
+              // informative enough. Single render path now.
+              renderSurface(atlas, selectedKey, setSelectedKey, highlightKeys, viewMode, v2On)
+            )}
+          </div>
+        </ErrorBoundary>
         <LegendStrip />
       </div>
       {selectedNode && atlas && (

@@ -58,11 +58,27 @@ export function MockCompaniesPanel() {
         ) : (
           <ul className="flex flex-col gap-1.5">
             {companies.map((c) => (
-              <li key={c.id}>
+              <li key={c.id} style={{ position: 'relative' }}>
+                {selectedId === c.id && (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      left: -2,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 1.5,
+                      height: 24,
+                      background: 'var(--red)',
+                      zIndex: 1,
+                    }}
+                  />
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedId(c.id)}
-                  className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
+                  aria-pressed={selectedId === c.id}
+                  className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-[color,background,border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${
                     selectedId === c.id
                       ? 'border-text-primary bg-surface-2'
                       : 'border-border bg-surface-1 hover:border-border-strong'
@@ -211,6 +227,7 @@ function CompanyDetail({ company }: { company: Company }) {
             onClick={() =>
               toggleActive.mutate({ id: company.id, active: !company.active })
             }
+            aria-pressed={company.active}
             className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] ${
               company.active ? 'bg-success/20 text-success' : 'bg-surface-3 text-text-muted'
             }`}
@@ -353,7 +370,7 @@ function CompanyQuestionsInline({ companyId }: { companyId: string }) {
         onSubmit={submit}
         className="flex flex-col gap-2 rounded-md border border-text-primary/30 bg-text-primary/[0.03] p-3"
       >
-        <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           + добавить вопрос для этой компании
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -372,7 +389,7 @@ function CompanyQuestionsInline({ companyId }: { companyId: string }) {
             value={draftBody}
             onChange={(e) => setDraftBody(e.target.value)}
             placeholder="Текст вопроса"
-            className="flex-1 rounded-md border border-border bg-bg/40 px-2 py-1.5 text-[12px] text-text-primary"
+            className="flex-1 border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
           />
         </div>
         <textarea
@@ -380,7 +397,7 @@ function CompanyQuestionsInline({ companyId }: { companyId: string }) {
           onChange={(e) => setDraftExpected(e.target.value)}
           rows={2}
           placeholder="Образец ответа (для AI-судьи) — можно оставить пустым"
-          className="rounded-md border border-border bg-bg/40 px-2 py-1.5 font-mono text-[11px] text-text-primary"
+          className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[11px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
         />
         {err && <div className="text-[12px] text-danger">{err}</div>}
         <div className="flex justify-end">
@@ -517,7 +534,7 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
 
               <div className="grid flex-1 gap-2 sm:grid-cols-2">
                 <label className="flex flex-col gap-1">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+                  <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
                     stage
                   </span>
                   <select
@@ -536,7 +553,7 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
                 </label>
 
                 <label className="flex flex-col gap-1">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+                  <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
                     strictness
                   </span>
                   <select
@@ -562,13 +579,14 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
                     type="checkbox"
                     checked={s.optional}
                     onChange={(e) => setStage(i, { optional: e.target.checked })}
+                    style={{ accentColor: 'rgb(var(--ink))' }}
                   />
                   <span className="font-mono text-[11px] text-text-secondary">optional</span>
                 </label>
 
                 {s.stage_kind === 'coding' && (
                   <div className="flex flex-col gap-1 sm:col-span-2">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
                       language_pool
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -585,6 +603,7 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
                                   : [...s.language_pool, l],
                               })
                             }}
+                            aria-pressed={on}
                             className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] ${
                               on
                                 ? 'border-text-primary bg-text-primary/10 text-text-primary'
@@ -601,7 +620,7 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
 
                 {(s.stage_kind === 'hr' || s.stage_kind === 'behavioral') && (
                   <div className="flex flex-col gap-2 sm:col-span-2">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
                       Question sampling
                     </span>
                     <div className="grid grid-cols-2 gap-2">
@@ -656,7 +675,7 @@ function PoolLimitInput({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+      <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
         {label}
       </span>
       <input
@@ -672,7 +691,7 @@ function PoolLimitInput({
           if (!Number.isFinite(n)) return
           onChange(Math.max(0, Math.min(50, Math.round(n))))
         }}
-        className="rounded-md border border-border bg-bg/40 px-2 py-1.5 font-mono text-[12px] text-text-primary"
+        className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
       />
     </label>
   )
@@ -706,7 +725,7 @@ function CandidatePreview({ companyId }: { companyId: string }) {
         <h3 className="font-display text-sm font-bold text-text-primary">
           Что увидит кандидат
         </h3>
-        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           live preview · по текущей конфигурации
         </span>
       </div>
@@ -727,7 +746,7 @@ function CandidatePreview({ companyId }: { companyId: string }) {
                     {stageLabel[s.stage_kind]}
                   </span>
                   {s.optional && (
-                    <span className="rounded-full border border-border bg-bg/40 px-1.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
+                    <span className="rounded-full border border-border bg-bg/40 px-1.5 font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
                       optional
                     </span>
                   )}

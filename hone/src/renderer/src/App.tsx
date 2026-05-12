@@ -22,6 +22,11 @@ import { TrafficLightsHover } from './components/TrafficLightsHover';
 import { Dock } from './components/Dock';
 import { LoginScreen } from './components/LoginScreen';
 import { OnboardingModal } from './components/OnboardingModal';
+import { CueInstallSuggestion } from './components/CueInstallSuggestion';
+import {
+  IdentityIntroModal,
+  shouldShowIdentityIntro,
+} from './components/onboarding/IdentityIntroModal';
 import { Palette, type PageId, type PaletteAction } from './components/Palette';
 import { DailyBriefPanel } from './components/DailyBriefPanel';
 import { TutorAssignmentsBanner } from './components/TutorAssignmentsBanner';
@@ -29,20 +34,38 @@ import { TutorAssignmentsBanner } from './components/TutorAssignmentsBanner';
 // (см. components/TodayStandupBanner.tsx).
 import { UpdateToast } from './components/UpdateToast';
 import { OfflineBanner } from './components/OfflineBanner';
+import { CategorizeToastContainer } from './components/taskboard/CategorizeToast';
+import { ConflictModal, useConflictListener } from './components/ConflictModal';
 import { HomePage } from './pages/Home';
 import { type StartFocusArgs } from './pages/Today';
 import { VaultUnlockGate } from './components/VaultUnlockGate';
 import { UpgradePrompt } from './components/UpgradePrompt';
+import { UpgradeModal } from './components/UpgradeModal';
 import { useQuotaStore } from './stores/quota';
-import { BoardsTabsChrome } from './components/BoardsTabsChrome';
+// BoardsTabsChrome removed 2026-05-12 (D4/Stream F) — Whiteboard / Editor
+// migrated to web solo. Hone hotkeys (B / E) теперь открывают browser tab.
 import { EnglishTabsChrome, type EnglishTab } from './components/EnglishTabsChrome';
 import { TutorTabsChrome, type TutorTab } from './components/TutorTabsChrome';
 import { useTrackStore } from './stores/track';
 import { UpcomingEventChip } from './components/UpcomingEventChip';
-import { readStoredTheme, readPomodoroSeconds } from './stores/prefs';
+import {
+  readStoredTheme,
+  readPomodoroSeconds,
+  readFocusMode,
+  writeFocusMode,
+  FOCUS_MODES,
+  type FocusMode,
+} from './stores/prefs';
 import { useSessionStore } from './stores/session';
 import { startFocusSession, endFocusSession } from './api/hone';
 import { notify } from './api/notifications';
+import { AnimatedStatsOverlay } from './components/AnimatedStatsOverlay';
+import { EnglishOffPlaceholder } from './components/EnglishOffPlaceholder';
+import { PageSkeleton } from './components/Skeleton';
+import { useGlobalHotkeys } from './hooks/useGlobalHotkeys';
+import { useTrackpadSwipe } from './hooks/useTrackpadSwipe';
+import { useHoneSync } from './hooks/useHoneSync';
+import { trackEvent, installTelemetryAutoFlush } from './api/events';
 
 // Lazy pages — each ships in its own chunk. Heavy editors (Editor with
 // CodeMirror, SharedBoards with Excalidraw, Notes with Milkdown) are the
@@ -53,33 +76,37 @@ const Coach = lazy(() => import('./pages/Coach').then((m) => ({ default: m.Coach
 const Stats = lazy(() => import('./pages/Stats').then((m) => ({ default: m.Stats })));
 const TaskBoardPage = lazy(() => import('./pages/TaskBoard').then((m) => ({ default: m.TaskBoardPage })));
 const NotesPage = lazy(() => import('./pages/Notes').then((m) => ({ default: m.NotesPage })));
-const PodcastsPage = lazy(() => import('./pages/Podcasts').then((m) => ({ default: m.PodcastsPage })));
-const SharedBoardsPage = lazy(() => import('./pages/SharedBoards').then((m) => ({ default: m.SharedBoardsPage })));
-const EditorPage = lazy(() => import('./pages/Editor').then((m) => ({ default: m.EditorPage })));
+// D5 (2026-05-12) — Podcasts migrated to web (/podcasts). Hone стал pure
+// focus cockpit; content surfaces (articles + podcasts) живут в web.
+// D4 (2026-05-12, Stream F) — SharedBoardsPage / EditorPage migrated to web
+// solo (/whiteboard/:id + /editor/:id). Peer-collab WS dropped; Hone больше
+// не загружает Excalidraw + CodeMirror bundle. B / E hotkeys теперь
+// открывают browser tab (см. onKey handler ниже).
 const ReadingPage = lazy(() => import('./pages/Reading').then((m) => ({ default: m.ReadingPage })));
 const WritingPage = lazy(() => import('./pages/Writing').then((m) => ({ default: m.WritingPage })));
 const TutorAssignmentsPage = lazy(() =>
   import('./pages/TutorAssignments').then((m) => ({ default: m.TutorAssignmentsPage })),
 );
 const ListeningPage = lazy(() => import('./pages/Listening').then((m) => ({ default: m.ListeningPage })));
+const SpeakingPage = lazy(() => import('./pages/Speaking').then((m) => ({ default: m.SpeakingPage })));
 const EnglishOverviewPage = lazy(() =>
   import('./pages/EnglishOverview').then((m) => ({ default: m.EnglishOverviewPage })),
 );
 const CalendarPage = lazy(() => import('./pages/Calendar').then((m) => ({ default: m.CalendarPage })));
+const MemoryTimelinePage = lazy(() => import('./pages/MemoryTimeline').then((m) => ({ default: m.MemoryTimelinePage })));
 const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
 
-// Heavy overlays — only mounted on demand. StatsOverlay pulls in stats UI
-// surface; Copilot is rarely opened (palette / hotkey only).
-const StatsOverlay = lazy(() =>
-  import('./components/StatsOverlay').then((m) => ({ default: m.StatsOverlay })),
-);
+// Heavy overlays — only mounted on demand.
+// StatsOverlay вынесен в AnimatedStatsOverlay (отдельный файл), Copilot —
+// rarely opened (palette / hotkey only).
 const Copilot = lazy(() => import('./components/Copilot').then((m) => ({ default: m.Copilot })));
 
-// Empty Suspense fallback — pages animate in via CSS fadein already, and
-// the canvas backdrop covers the viewport, so a spinner here would just
-// flash. Prefer null over a stub.
+// Suspense fallback: shimmer skeleton чтобы lazy-chunk загрузка не выглядела
+// как «ничего не происходит». Геометрия generic (header strip + 3 KPI + 2
+// large cards) — не имитирует конкретную page, а заполняет canvas-area так
+// чтобы юзер видел «что-то грузится» до first paint лейаута.
 const PageSuspense = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={null}>{children}</Suspense>
+  <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
 );
 
 // Pomodoro duration — initialised from localStorage so Settings changes
@@ -91,10 +118,18 @@ const ONBOARDING_KEY = 'hone:onboarded:v2';
 
 // ReflectionPrompt — что показывает Home после завершения сессии. Не
 // модалка-блокер (как было в FocusPage), просто inline-инпут в углу.
+//
+// H2 (Phase J 2026-05-12): добавлены focusMode + startedAt + endedAt чтобы
+// payload передаваемый в SaveFocusReflection RPC был complete. taskPinned —
+// optional pinned-task title если у юзера был.
 interface ReflectionPrompt {
   sessionId: string;
   secondsFocused: number;
   pomodorosCompleted: number;
+  focusMode: 'pomodoro' | 'countdown' | 'plan';
+  startedAt: Date;
+  endedAt: Date;
+  taskPinned?: string;
 }
 
 export default function App() {
@@ -128,22 +163,91 @@ export default function App() {
     void hydrateTrack();
   }, [hydrateTrack]);
 
-  const [page, setPageRaw] = useState<PageId>('home');
+  // CI4 (Phase A 2026-05-12) — listen для emitConflict() events из outbox
+  // 409 paths. Modal mount ниже подхватывает state из conflict store.
+  useConflictListener();
+
+  // CI2 (Phase A W3 — 2026-05-11): persist last page в sessionStorage so a
+  // reload (Cmd+R, electron-updater restart, devtools-reload) lands you
+  // back where you were. Previously every reload bounced юзера на home —
+  // breaks the «Hone remembers context» promise. sessionStorage (NOT
+  // localStorage) is the right scope: cross-window restore would surprise
+  // — each Hone window has its own page context.
+  const PAGE_STORAGE_KEY = 'hone:lastPage:v1';
+  const VALID_PAGES = new Set<PageId>([
+    'home', 'today', 'coach', 'notes', 'stats',
+    // 'editor' / 'shared_boards' removed 2026-05-12 (D4/Stream F) —
+    // migrated to web solo (/whiteboard/:id + /editor/:id).
+    'english_overview',
+    'reading', 'writing', 'assignments', 'listening', 'speaking',
+    'calendar', 'memory', 'settings',
+  ]);
+  const readStoredPage = (): PageId => {
+    if (typeof window === 'undefined') return 'home';
+    try {
+      const v = window.sessionStorage.getItem(PAGE_STORAGE_KEY);
+      if (v && VALID_PAGES.has(v as PageId)) return v as PageId;
+    } catch {
+      /* sessionStorage may be unavailable (private mode) — fall through */
+    }
+    return 'home';
+  };
+  const [page, setPageRaw] = useState<PageId>(() => readStoredPage());
   // setPage обёрнут в View Transitions API — Chromium фиксирует snapshot
   // текущего DOM, обновляет state, и анимирует old↔new через ::view-transition.
   // CSS правила лежат в globals.css (page-fade in/out).
   // Если API недоступен (старый Chromium / fallback) — обычный setState.
+  //
+  // sessionStorage write happens внутри функционального updater'а так что
+  // single setState вызов = single React render и одна view transition; ни
+  // dual-render ни race с functional `next` (которая зависит от current).
   const setPage = useCallback((next: PageId | ((p: PageId) => PageId)) => {
+    const update = () => {
+      setPageRaw((current) => {
+        const resolved = typeof next === 'function'
+          ? (next as (p: PageId) => PageId)(current)
+          : next;
+        try {
+          window.sessionStorage.setItem(PAGE_STORAGE_KEY, resolved);
+        } catch {
+          /* sessionStorage недоступен — restore просто не сработает */
+        }
+        if (resolved !== current) {
+          trackEvent('page_view', { page: resolved, from: current });
+        }
+        return resolved;
+      });
+    };
     const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
     if (typeof doc.startViewTransition === 'function') {
-      doc.startViewTransition(() => setPageRaw(next));
+      doc.startViewTransition(update);
     } else {
-      setPageRaw(next);
+      update();
     }
   }, []);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteOpen, setPaletteOpenRaw] = useState(false);
+  // Wrap setPaletteOpen чтобы трекать palette_open из любого пути (⌘K hotkey,
+  // dock-menu, programmatic open). Single source of telemetry для consistency.
+  const setPaletteOpen = useCallback((next: boolean | ((p: boolean) => boolean)) => {
+    setPaletteOpenRaw((prev) => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      if (resolved && !prev) {
+        trackEvent('palette_open');
+      }
+      return resolved;
+    });
+  }, []);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  // Phase J / X1 (P0) — show «install Cue» suggestion exactly once after
+  // the user's first completed focus session, gated on backend confirming
+  // they don't have Cue installed yet.
+  const [cueSuggestionOpen, setCueSuggestionOpen] = useState(false);
+  // Phase J / X4 (P1) — identity-discovery modal. Триггерится через
+  // useEffect ниже (после auth, только если OnboardingModal не висит и
+  // localStorage flag пустой). Settings → Ecosystem может re-open
+  // программно через window event 'hone:open-identity-intro'.
+  const [identityIntroOpen, setIdentityIntroOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   // Theme — initial значение читаем из localStorage. Settings page пишет
   // в тот же ключ + дёргает onThemeChange (нам), так что CanvasBg
@@ -158,16 +262,17 @@ export default function App() {
 
   const [remain, setRemain] = useState(pomodoroSecs);
   const [running, setRunning] = useState(false);
-  const [mode, setMode] = useState<'countdown' | 'stopwatch'>('countdown');
+  // 6-mode focus selector. Persisted в localStorage через writeFocusMode;
+  // bootstrap читает readFocusMode на mount чтобы restore с прошлого
+  // session'а. См. stores/prefs.ts FOCUS_MODES.
+  const [mode, setMode] = useState<FocusMode>(() => readFocusMode());
   const [vol, setVol] = useState(40);
 
-  // Volume slider в Dock'е управляет ОБОИМИ — podcast playback'ом и
-  // ambient cosmic music'ой. Один Dock-slider → один volume для всех
-  // audio bus'ов. Раньше vol был чисто-визуальный, подкаст играл full.
+  // Volume slider в Dock'е управляет ambient cosmic music'ой.
+  // (Podcast playback переехал в web /podcasts — D5 2026-05-12; podcast-audio
+  // module остался для backward compat но больше не consumed Hone'ом.)
   useEffect(() => {
-    void import('./audio/podcast-audio').then((m) => m.setVolume(vol / 100));
     // Ambient громче 50% не даём — он SFX background, не main content.
-    // 50% Dock → 0.25 ambient; даёт подкастам/таймеру audio space'ом.
     void import('./audio/ambient-music').then((m) => m.setAmbientVolume((vol / 100) * 0.5));
   }, [vol]);
 
@@ -180,12 +285,9 @@ export default function App() {
 
   const [pinnedTitle, setPinnedTitle] = useState<string | null>(null);
   const [pinnedPlanItemId, setPinnedPlanItemId] = useState<string | null>(null);
-  // initialRoomId: при переходе из Events на event со ссылкой на комнату
-  // App ставит сюда room-id; целевая страница (editor / shared_boards)
-  // подхватывает это на mount и сразу открывает комнату вместо list.
-  // Single-shot — после consume сбрасываем в null.
-  const [initialEditorRoom, setInitialEditorRoom] = useState<string | null>(null);
-  const [initialBoardRoom, setInitialBoardRoom] = useState<string | null>(null);
+  // initialEditorRoom / initialBoardRoom — refs к локально-открытым boards
+  // и code-rooms — удалены 2026-05-12 (D4/Stream F). Любые deeplinks на
+  // конкретную комнату теперь открываются как web URL.
   // Brief-driven navigation hooks: when DailyBriefPanel'е жмут review_note
   // или unblock chip, кладём target_id сюда; целевая страница подхватывает
   // на mount и сбрасывает back to null. Single-shot semantics.
@@ -196,6 +298,10 @@ export default function App() {
   // Sentinel для backend session — null значит "не идёт". Создаётся при
   // первом переходе в running, гасится в finishSession.
   const sessionRef = useRef<string | null>(null);
+  // H2 (Phase J 2026-05-12) — startedAt timestamp фиксируется на момент
+  // session start; используется в ReflectionPrompt чтобы SaveFocusReflection
+  // получил корректный (startedAt, endedAt) window для backend prompt'а.
+  const sessionStartedAtRef = useRef<Date | null>(null);
   const [reflectionPrompt, setReflectionPrompt] = useState<ReflectionPrompt | null>(null);
 
   // ── Bootstrap: session + pomodoro snapshot + IPC subscribers ────────────
@@ -207,6 +313,8 @@ export default function App() {
     void import('./offline/wire').then((m) => m.wireOutboxExecutors());
     void import('./offline/ydoc-migrate').then((m) => m.installYDocMigrationHook());
     void import('./offline/outbox').then((m) => m.installOutboxAutoDrain());
+    // Phase A telemetry: 30s auto-flush + flush-on-pagehide. Idempotent.
+    installTelemetryAutoFlush();
     const bridge = typeof window !== 'undefined' ? window.hone : undefined;
     if (!bridge) return;
 
@@ -277,11 +385,34 @@ export default function App() {
     setOnboardingOpen(true);
   }, [status]);
 
+  // ── Identity-discovery modal (Phase J / X4 P1) ──────────────────────────
+  // Триггер: signed_in + OnboardingModal закрыт + identity-flag не выставлен.
+  // Ждём пока OnboardingModal закроется (если был открыт) чтобы не stack'ить
+  // 2 modal'я. Юзер может re-open из Settings → window event subscription.
+  useEffect(() => {
+    if (status !== 'signed_in') return;
+    if (onboardingOpen) return;
+    if (!shouldShowIdentityIntro()) return;
+    setIdentityIntroOpen(true);
+  }, [status, onboardingOpen]);
+
+  // Settings «Show intro again» dispatches this — re-opens modal без
+  // page-reload (flag уже очищен внутри Settings handler'а).
+  useEffect(() => {
+    const onOpen = (): void => setIdentityIntroOpen(true);
+    window.addEventListener('hone:open-identity-intro', onOpen);
+    return () => window.removeEventListener('hone:open-identity-intro', onOpen);
+  }, []);
+
   // ── Device bootstrap (Phase C-3.1) ──────────────────────────────────────
   // Регистрируем устройство при первом успешном логине. Errors глотаем —
   // sync feature просто не активируется до следующего запуска. Free-tier
   // 1-device limit (DeviceLimitError) НЕ блокирует app, юзер увидит
   // «Replace device» в Settings → Devices.
+  //
+  // F2 (2026-05-12) — primary goal: hydrate + subscribe в той же useEffect.
+  // Не отдельный hook — offline-first, errors swallowed; subscribe ставит
+  // window focus listener для re-fetch'а (юзер мог edit'нуть goal в web).
   useEffect(() => {
     if (status !== 'signed_in') return;
     void import('./api/device').then(({ ensureDevice }) => {
@@ -289,6 +420,36 @@ export default function App() {
         /* limit / network — silent; повторим на следующем запуске */
       });
     });
+    // Phase J / X1 (P0) — fire idempotent install heartbeat to the
+    // backend so we know the user actually launched Hone (not just signed
+    // up via web). Result may carry trial_pro_granted=true on FIRST
+    // install across all 3 surfaces; we surface the celebratory toast
+    // via a window event so UpgradePrompt / settings can react too.
+    void import('./api/intelligence').then(({ recordAppInstall }) => {
+      void recordAppInstall('hone', '0.0.1').then((r) => {
+        if (r.trialProGranted) {
+          try {
+            window.dispatchEvent(
+              new CustomEvent('hone:trial-pro-granted', {
+                detail: { until: r.trialProUntil },
+              }),
+            );
+          } catch {
+            /* CustomEvent unsupported в old WebView — silent */
+          }
+        }
+      }).catch(() => {
+        /* network / 401 — heartbeat is best-effort, retry next launch */
+      });
+    });
+    let goalUnsub: (() => void) | undefined;
+    void import('./stores/goal').then(({ useGoalStore }) => {
+      void useGoalStore.getState().hydrate();
+      goalUnsub = useGoalStore.getState().subscribe();
+    });
+    return () => {
+      if (goalUnsub) goalUnsub();
+    };
   }, [status]);
 
   // ── Vault auto-lock (Phase C-7) ─────────────────────────────────────────
@@ -300,74 +461,8 @@ export default function App() {
   }, [status]);
 
   // ── Sync replication (Phase C-4) ────────────────────────────────────────
-  // На login: full bootstrap pull → IndexedDB cache. После — polling каждые
-  // 30s + immediate pull on window focus / online events. Errors silent
-  // (sync — best-effort, не должен ломать app). При 401 device_revoked
-  // sync.ts internally trigger'ит session.clear() — see api/sync.ts.
-  //
-  // Phase R3 cooldown — sync interval pauses when the app is in the
-  // background (`document.hidden`). When the user comes back to Hone, the
-  // visibilitychange handler triggers an immediate pull and resumes the
-  // 30s cadence. This stops Hone from waking the laptop's NIC every 30s
-  // while the user is in IDE / browser / Slack, which was a major heat
-  // contributor on M1 Airs.
   const userId = useSessionStore((s) => s.userId);
-  useEffect(() => {
-    if (status !== 'signed_in' || !userId) return;
-    let stopped = false;
-    let timer: number | null = null;
-
-    const runPull = async () => {
-      if (stopped) return;
-      try {
-        const { pullUntilCaughtUp, getStoredCursor, setStoredCursor } = await import('./api/sync');
-        const { applyPullResponse } = await import('./api/localCache');
-        const resp = await pullUntilCaughtUp(getStoredCursor());
-        await applyPullResponse(userId, resp);
-        setStoredCursor(resp.cursor);
-      } catch {
-        /* silent retry on next tick */
-      }
-    };
-
-    const startTimer = () => {
-      if (timer !== null) return;
-      timer = window.setInterval(() => void runPull(), 30_000);
-    };
-    const stopTimer = () => {
-      if (timer === null) return;
-      window.clearInterval(timer);
-      timer = null;
-    };
-
-    void runPull(); // initial
-    if (typeof document === 'undefined' || !document.hidden) startTimer();
-
-    const onFocus = () => void runPull();
-    const onOnline = () => void runPull();
-    const onVisibility = () => {
-      if (document.hidden) {
-        stopTimer();
-      } else {
-        // Returned to the app — pull immediately (catch up on missed
-        // changes), then resume the cadence.
-        void runPull();
-        startTimer();
-      }
-    };
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('online', onOnline);
-    document.addEventListener('visibilitychange', onVisibility);
-
-
-    return () => {
-      stopped = true;
-      stopTimer();
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('online', onOnline);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [status, userId]);
+  useHoneSync(status, userId);
 
   const dismissOnboarding = () => {
     setOnboardingOpen(false);
@@ -379,12 +474,29 @@ export default function App() {
   };
 
   // ── Pomodoro tick + persist ─────────────────────────────────────────────
+  // 6 focus modes:
+  //   pomodoro/countdown → счёт ВНИЗ (auto-end на 0).
+  //   stopwatch → счёт ВВЕРХ без cap.
+  //   pinned → счёт ВВЕРХ (auto-end когда task → done, обрабатывается извне).
+  //   plan → счёт ВНИЗ (cycle multi-block, MVP = 50 focus + 10 break × 3).
+  //   free → tick'аем счётчик ВВЕРХ просто для UI session duration.
   useEffect(() => {
     if (!running) return;
-    const id = window.setInterval(
-      () => setRemain((r) => (mode === 'countdown' ? Math.max(0, r - 1) : r + 1)),
-      1000,
-    );
+    const id = window.setInterval(() => {
+      setRemain((r) => {
+        switch (mode) {
+          case 'pomodoro':
+          case 'countdown':
+          case 'plan':
+            return Math.max(0, r - 1);
+          case 'stopwatch':
+          case 'free':
+          case 'pinned':
+          default:
+            return r + 1;
+        }
+      });
+    }, 1000);
     return () => window.clearInterval(id);
   }, [running, mode]);
 
@@ -443,6 +555,10 @@ export default function App() {
     if (!running || sessionRef.current) return;
     const planItemId = pinnedPlanItemId ?? undefined;
     const pinned = pinnedTitle ?? undefined;
+    // H2 (Phase J) — fix startedAt at the local "user pressed start" moment
+    // (Date.now). Backend session row уже знает свой own started_at; этот
+    // ref только для reflection payload — клиентский timer-truth.
+    sessionStartedAtRef.current = new Date();
     startFocusSession({ planItemId, pinnedTitle: pinned, mode: 'pomodoro' })
       .then((s) => {
         sessionRef.current = s.id;
@@ -459,24 +575,54 @@ export default function App() {
       const secondsFocused = Math.max(0, pomodoroSecsRef.current - remain);
       const pomodorosCompleted = remain === 0 ? 1 : 0;
       sessionRef.current = null;
+      const trimmed = reflection.trim();
+      const payload = {
+        sessionId: id,
+        pomodorosCompleted,
+        secondsFocused,
+        reflection: trimmed,
+      };
+      // Offline-first rule: reflection — pure user-data, нельзя терять.
+      // Без reflection — silent skip OK, backend закроет session по timeout.
+      const queueIfNeeded = async () => {
+        if (!trimmed) return;
+        try {
+          const { enqueue } = await import('./offline/outbox');
+          await enqueue('focus.end', payload);
+        } catch {
+          /* outbox недоступен (IDB закрыт?) — данные потеряны, но это lower
+             priority чем silent UX. Логи в Sentry поднимут если массово. */
+        }
+      };
+      // Telemetry: focus_end fires unconditionally (online или offline path).
+      // had_reflection отделяет «taймer закончился без feedback» от «юзер
+      // подвёл итог» — это разные signal'ы для product analysis.
+      trackEvent('focus_end', {
+        seconds_focused: secondsFocused,
+        pomodoros_completed: pomodorosCompleted,
+        had_reflection: trimmed.length > 0 ? 'true' : 'false',
+      });
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await queueIfNeeded();
+        return;
+      }
       try {
-        await endFocusSession({
-          sessionId: id,
-          pomodorosCompleted,
-          secondsFocused,
-          reflection: reflection.trim(),
-        });
+        await endFocusSession(payload);
       } catch {
-        /* silent — сессия уже была живой, бэкенд авто-закроет по timeout */
+        await queueIfNeeded();
       }
     },
     [remain],
   );
 
-  // Auto-end когда countdown-таймер дотикивает до 0. Stopwatch (∞)
-  // автоматически НЕ финиширует — юзер сам Stop / Reset.
+  // Auto-end когда countdown-таймер дотикивает до 0.
+  //   pomodoro / countdown → finishSession + reflection prompt.
+  //   plan → cycle к next block (упрощённый MVP — пока также finishSession;
+  //          multi-block sequence flow выйдет следующей итерацией).
+  //   stopwatch / free / pinned → юзер сам Stop / Reset.
   useEffect(() => {
-    if (mode !== 'countdown') return;
+    const isCountdownLike = mode === 'pomodoro' || mode === 'countdown' || mode === 'plan';
+    if (!isCountdownLike) return;
     if (running && remain === 0) {
       setRunning(false);
       const id = sessionRef.current;
@@ -487,18 +633,57 @@ export default function App() {
       // settings.notifications + permission, no-op'ит если отключено.
       void notify('Focus session complete', 'Pomodoro finished — take a break.');
       if (id) {
+        const endedAt = new Date();
+        const startedAt = sessionStartedAtRef.current ?? new Date(endedAt.getTime() - seconds * 1000);
         setReflectionPrompt({
           sessionId: id,
           secondsFocused: seconds,
           pomodorosCompleted: 1,
+          focusMode: mode as 'pomodoro' | 'countdown' | 'plan',
+          startedAt,
+          endedAt,
+          taskPinned: pinnedTitle ?? undefined,
         });
       }
+      sessionStartedAtRef.current = null;
       setRemain(pomodoroSecsRef.current);
+      // Phase J / X1 (P0) — after the user's first completed focus
+      // session, check if Cue is installed and, if not, nudge them.
+      // Once-only logic: localStorage flag guards against repeat shows.
+      // We do this AFTER setRemain so the reflection modal already mounted
+      // and the suggestion lands on top, not in front of the timer ring.
+      void (async () => {
+        try {
+          const { wasCueSuggestionDismissed } = await import('./components/CueInstallSuggestion');
+          if (wasCueSuggestionDismissed()) return;
+          const { getInstalledApps } = await import('./api/intelligence');
+          const installs = await getInstalledApps();
+          const hasCue = installs.some((it) => it.app === 'cue');
+          if (!hasCue) setCueSuggestionOpen(true);
+        } catch {
+          /* network / 401 — suggestion is best-effort, never throws */
+        }
+      })();
     }
-  }, [remain, running, mode, finishSession]);
+  }, [remain, running, mode, finishSession, pinnedTitle]);
 
+  // initialFor: per-mode initial remain value.
+  //   pomodoro / countdown / plan → pomodoroSecsRef (count-down baseline)
+  //   stopwatch / free / pinned → 0 (count-up)
   const initialFor = useCallback(
-    (m: 'countdown' | 'stopwatch') => (m === 'countdown' ? pomodoroSecsRef.current : 0),
+    (m: FocusMode) => {
+      switch (m) {
+        case 'pomodoro':
+        case 'countdown':
+        case 'plan':
+          return pomodoroSecsRef.current;
+        case 'stopwatch':
+        case 'free':
+        case 'pinned':
+        default:
+          return 0;
+      }
+    },
     [],
   );
 
@@ -508,12 +693,18 @@ export default function App() {
     setRemain(initialFor(mode));
   }, [finishSession, initialFor, mode]);
 
+  // Cycle через FOCUS_MODES в порядке объявления; персистим выбор в
+  // localStorage чтобы restore с прошлого session'а. Switching modes
+  // сбрасывает remain в initialFor(next) — running сессия завершается
+  // через finishSession.
   const toggleMode = useCallback(() => {
     void finishSession();
     setRunning(false);
     setMode((m) => {
-      const next = m === 'countdown' ? 'stopwatch' : 'countdown';
+      const idx = FOCUS_MODES.indexOf(m);
+      const next = FOCUS_MODES[(idx + 1) % FOCUS_MODES.length];
       setRemain(initialFor(next));
+      writeFocusMode(next);
       return next;
     });
   }, [finishSession, initialFor]);
@@ -525,6 +716,10 @@ export default function App() {
     setRemain(pomodoroSecsRef.current);
     setRunning(true);
     setPage('home');
+    trackEvent('focus_start', {
+      has_plan_item: args?.planItemId ? 'true' : 'false',
+      has_pinned_title: args?.pinnedTitle ? 'true' : 'false',
+    });
   }, []);
 
   const stopFocus = useCallback(() => {
@@ -573,176 +768,24 @@ export default function App() {
   }, []);
 
   // ── Global keyboard ─────────────────────────────────────────────────────
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const isMod = e.metaKey || e.ctrlKey;
-      const target = e.target as HTMLElement | null;
-      const isText =
-        target !== null &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          (target as HTMLElement).isContentEditable);
-
-      if (isMod && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setPaletteOpen((p) => !p);
-        return;
-      }
-      // ⌘S — global sidebar toggle. Каждая страница (Notes / Editor /
-      // SharedBoards) слушает `hone:toggle-sidebar` window event и сворачивает
-      // свою sidebar'у. Раньше юзер должен был кликать collapse-arrow.
-      if (isMod && e.key.toLowerCase() === 's' && !e.shiftKey) {
-        // Не вызываем preventDefault для НЕ-text контекста — но в text input
-        // ⌘S обычно reserved для browser save. Мы фильтруем isText выше во
-        // внешнем path letter-shortcuts'е, тут же ⌘S ловится до этого фильтра.
-        // Для безопасности фильтруем сами.
-        if (!isText) {
-          e.preventDefault();
-          window.dispatchEvent(new CustomEvent('hone:toggle-sidebar'));
-          return;
-        }
-      }
-      // Copilot ⌘⇧Space hotkey удалён по просьбе юзера — Copilot UI не
-      // используется. Оставляем сам компонент в дереве (см. ниже), но
-      // глобального hotkey нет; openImpl(`copilot`) из Palette всё ещё
-      // работает если кто-то его дёрнет, но в палитре action тоже скрыт.
-
-      if (e.key === 'Escape') {
-        if (onboardingOpen) {
-          dismissOnboarding();
-          return;
-        }
-        if (copilotOpen) {
-          setCopilotOpen(false);
-          return;
-        }
-        if (paletteOpen) {
-          setPaletteOpen(false);
-          return;
-        }
-        if (statsOpen) {
-          setStatsOpen(false);
-          return;
-        }
-        if (page !== 'home') {
-          goHome();
-          return;
-        }
-        return;
-      }
-      // Hotkey-nav должна работать через overlays — openImpl сам
-      // закроет stats overlay при переключении.
-      if (isText || paletteOpen || onboardingOpen) return;
-
-      // КРИТИЧНО: на страницах с canvas-input'ом (boards, editor) plain
-      // letter-shortcuts conflict'ят с инструментами Excalidraw (S = laser
-      // pointer, R = rectangle, etc) и с CodeMirror typing. Раньше юзер
-      // на boards нажимал «s» (думая что laser tool) → открывался Stats
-      // overlay поверх доски. Теперь plain-letter shortcuts на этих
-      // страницах disabled — юзер пользуется ⌘K palette для навигации.
-      if (page === 'shared_boards' || page === 'editor') return;
-
-      // КРИТИЧНО: skip ALL letter-navigation когда любой modifier нажат.
-      // Раньше юзер давил ⌘C в DevTools console чтобы скопировать error
-      // — App'ов handler ловил `e.code='KeyC'` → `open('editor')` →
-      // copy не срабатывал (browser default уже отменён или React batch
-      // забрал focus). Letter-shortcuts ТОЛЬКО для plain-key presses
-      // (no Cmd/Ctrl/Alt). ⌘K/⌘S обработаны ВЫШЕ; всё остальное —
-      // browser default (copy, paste, etc).
-      if (isMod || e.altKey) return;
-
-      // Используем `e.code` (физический keycode) вместо `e.key` (зависит от
-      // layout'а). Это нужно потому что юзер на русской раскладке давит
-      // physical-key 'B' получит `e.key='и'` — и наш switch не сработает.
-      // С `e.code='KeyB'` shortcut срабатывает на ОБОИХ layouts identically.
-      // Comma — `e.code='Comma'` тоже layout-independent.
-      // Toggle semantics: pressing the same key while the target page/overlay
-      // is already showing returns to home. Lets the user dismiss without
-      // hunting for ESC or moving the mouse.
-      const code = e.code;
-      const toggleTo = (id: PageId | 'stats') => {
-        if (id === 'stats') {
-          if (statsOpen) {
-            setStatsOpen(false);
-          } else {
-            open('stats');
-          }
-          return;
-        }
-        if (page === id) {
-          goHome();
-        } else {
-          open(id);
-        }
-      };
-      if (code === 'KeyT') toggleTo('today');
-      else if (code === 'KeyN') toggleTo('notes');
-      else if (code === 'KeyB') toggleTo('shared_boards');
-      else if (code === 'KeyC') toggleTo('editor');
-      else if (code === 'KeyS') toggleTo('stats');
-      else if (code === 'KeyP') toggleTo('podcasts');
-      else if (code === 'KeyR' && englishVisible) toggleTo('reading');
-      else if (code === 'KeyW' && englishVisible) toggleTo('writing');
-      else if (code === 'KeyA') toggleTo('assignments');
-      else if (code === 'KeyL' && englishVisible) toggleTo('listening');
-      else if (code === 'KeyM') toggleTo('calendar');
-      else if (code === 'Comma') toggleTo('settings');
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paletteOpen, copilotOpen, onboardingOpen, page, statsOpen, englishVisible]);
+  useGlobalHotkeys({
+    page,
+    paletteOpen,
+    copilotOpen,
+    onboardingOpen,
+    statsOpen,
+    englishVisible,
+    setPaletteOpen,
+    setCopilotOpen,
+    setStatsOpen,
+    dismissOnboarding,
+    goHome,
+    open,
+    openStats: () => open('stats'),
+  });
 
   // ── Trackpad horizontal swipe — Mac-style 2-finger gesture ─────────────
-  // 2-finger swipe ВЛЕВО (deltaX > 0, content scroll'ит вправо) → открыть
-  // Stats overlay. Swipe ВПРАВО (deltaX < 0) — закрыть Stats / вернуться.
-  // Mac trackpad шлёт wheel-event'ы с `deltaX` как continuous flow, не
-  // discrete как mouse-wheel — так что нужна threshold'ная аккумуляция в
-  // rolling window'е, иначе один micro-swipe запустит overlay.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    let accDx = 0; // accumulator
-    let lastEvtAt = 0;
-    let cooldownUntil = 0;
-    const THRESHOLD = 140; // px — после которого fire'им action
-    const RESET_GAP_MS = 300; // если паузу >300ms — сбрасываем accumulator
-    const COOLDOWN_MS = 700; // после fire — игнорируем дальнейшие deltas
-    const onWheel = (e: WheelEvent) => {
-      const now = Date.now();
-      if (now < cooldownUntil) return;
-      // Игнорируем vertical-doмinant'ы (классический mouse-wheel scroll
-      // вверх-вниз) — нам нужен только горизонтальный pure swipe.
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) * 1.5) return;
-      // Mouse-wheel'ы обычно дают deltaMode=DOM_DELTA_LINE (1), trackpad —
-      // DOM_DELTA_PIXEL (0). Reject не-pixel input — это явно mouse, не
-      // trackpad swipe.
-      if (e.deltaMode !== 0) return;
-      // Пауза → reset accumulator.
-      if (now - lastEvtAt > RESET_GAP_MS) accDx = 0;
-      lastEvtAt = now;
-      accDx += e.deltaX;
-      if (accDx > THRESHOLD) {
-        // Swipe LEFT (content скроллится вправо, finger пошёл влево) →
-        // открываем Stats.
-        if (!statsOpen) {
-          setStatsOpen(true);
-        }
-        accDx = 0;
-        cooldownUntil = now + COOLDOWN_MS;
-      } else if (accDx < -THRESHOLD) {
-        // Swipe RIGHT — закрываем Stats если открыт; иначе no-op (пока).
-        if (statsOpen) {
-          setStatsOpen(false);
-        }
-        accDx = 0;
-        cooldownUntil = now + COOLDOWN_MS;
-      }
-    };
-    // passive=true — мы не e.preventDefault'им (хотим чтобы scroll тоже
-    // работал normally на других элементах).
-    window.addEventListener('wheel', onWheel, { passive: true });
-    return () => window.removeEventListener('wheel', onWheel);
-  }, [statsOpen]);
+  useTrackpadSwipe(statsOpen, setStatsOpen);
 
   const canvasMode: CanvasMode = page === 'home' || page === 'stats' ? 'full' : 'quiet';
 
@@ -801,13 +844,10 @@ export default function App() {
        * stack + Settings.englishActive, а legacy «general/dev/go» triple
        * confusing для юзера и duplicate'ит state. Если track-aware filtering
        * нужно — добавим как Settings dropdown, не header chip. */}
-      {/* Versionmark скрываем в editor'е: CodeMirror использует Escape для
-          своих UI-affordances (закрытие autocomplete, выход из каретки), а
-          лишний "esc HOME" hint в углу шумит. На остальных страницах он
-          остаётся как глобальная подсказка возврата. */}
-      {page !== 'editor' && (
-        <Versionmark escHint={page !== 'home'} onEsc={goHome} />
-      )}
+      {/* Versionmark — глобальная подсказка возврата. Раньше скрывался на
+          editor page (CodeMirror использует Escape) — D4 2026-05-12 editor
+          мигрирован в web, гард больше не нужен. */}
+      <Versionmark escHint={page !== 'home'} onEsc={goHome} />
 
       {/* Daily Brief panel — bottom-left on Home, hidden during running focus.
           AI-coach слой: показывается даже когда focus ≠ active, но не отвлекает
@@ -858,18 +898,52 @@ export default function App() {
           pinnedTitle={pinnedTitle}
           reflectionPrompt={reflectionPrompt}
           onStop={stopFocus}
-          onSubmitReflection={async (text) => {
-            const id = reflectionPrompt?.sessionId;
-            if (!id) return;
-            // Reflection приходит ПОСЛЕ finishSession (backend уже закрыл
-            // сессию автоматически по auto-end). Re-call endFocusSession
-            // не имеет смысла — она idempotent на session_id, но
-            // EndFocusSession в hone-bible ждёт активную сессию.
-            // Вместо повторного end делаем noop: reflection просто
-            // dismiss'ится и в Today bible предложит юзеру записать.
-            // Фактическое сохранение reflection — отдельная RPC future
-            // task; для MVP просто прячем prompt.
-            void text;
+          onSubmitReflection={async (text, grade) => {
+            const prompt = reflectionPrompt;
+            if (!prompt) return;
+            const trimmed = text.trim();
+            // H2 (Phase J 2026-05-12) — offline-friendly persistence.
+            // SaveFocusReflection идемпотентна через (user_id, session_id),
+            // так что drain re-attempt после offline gap безопасен.
+            const payload = {
+              sessionId: prompt.sessionId,
+              focusMode: prompt.focusMode,
+              durationSeconds: prompt.secondsFocused,
+              grade: typeof grade === 'number' ? grade : 0,
+              notes: trimmed,
+              taskPinned: prompt.taskPinned ?? '',
+              // ISO strings для outbox JSON-serialisation; executor parse'ит обратно.
+              startedAt: prompt.startedAt.toISOString(),
+              endedAt: prompt.endedAt.toISOString(),
+            };
+            const queueIfNeeded = async (): Promise<void> => {
+              try {
+                const { enqueue } = await import('./offline/outbox');
+                await enqueue('focus.reflection', payload);
+              } catch {
+                /* outbox недоступен — данные потеряны; редкая degenerate ветка */
+              }
+            };
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+              await queueIfNeeded();
+              setReflectionPrompt(null);
+              return;
+            }
+            try {
+              const { saveFocusReflection } = await import('./api/intelligence');
+              await saveFocusReflection({
+                sessionId: prompt.sessionId,
+                focusMode: prompt.focusMode,
+                durationSeconds: prompt.secondsFocused,
+                grade: typeof grade === 'number' ? grade : 0,
+                notes: trimmed,
+                taskPinned: prompt.taskPinned ?? '',
+                startedAt: prompt.startedAt,
+                endedAt: prompt.endedAt,
+              });
+            } catch {
+              await queueIfNeeded();
+            }
             setReflectionPrompt(null);
           }}
           onDismissReflection={() => setReflectionPrompt(null)}
@@ -889,37 +963,15 @@ export default function App() {
             />
           </VaultUnlockGate>
         )}
-        {/* page === 'board' removed — единый поток через shared_boards.
-            Private/public — это лишь вопрос с кем поделили URL комнаты. */}
-        {/* Stats теперь overlay (см. statsOpen ниже). Старая StatsPage снята. */}
-        {page === 'podcasts' && <PodcastsPage />}
-        {/* Boards / Code rooms — два отдельных page'а. Tabs вынесены в
-            top chrome (BoardsTabsChrome ниже), сами страницы рендерятся
-            напрямую без BoardsHub-обёртки. Caller сам решает что
-            показывать; tabs перебрасывают через setPage. */}
-        {page === 'shared_boards' && (
-          <SharedBoardsPage
-            initialRoomId={initialBoardRoom}
-            onConsumeInitial={() => setInitialBoardRoom(null)}
-          />
-        )}
-        {page === 'editor' && (
-          <EditorPage
-            initialRoomId={initialEditorRoom}
-            onConsumeInitial={() => setInitialEditorRoom(null)}
-          />
-        )}
+        {/* D5 (2026-05-12) — page 'podcasts' migrated to web /podcasts. */}
+        {/* D4 (2026-05-12) — page 'shared_boards' / 'editor' migrated to
+            web solo (/whiteboard/:id + /editor/:id). Hone B / E hotkeys
+            теперь открывают browser tab; BoardsTabsChrome удалён. */}
       </PageSuspense>
-      {(page === 'shared_boards' || page === 'editor') && (
-        <BoardsTabsChrome
-          current={page}
-          onChange={(t) => openImpl(t)}
-        />
-      )}
       {/* English-loop hub chrome — surfaces R/W/L страницы как один
           логический hub. Palette сейчас один entry «English · Read ·
           Write · Listen», конкретный child выбирается через табы. */}
-      {englishVisible && (page === 'reading' || page === 'writing' || page === 'listening' || page === 'english_overview') && (
+      {englishVisible && (page === 'reading' || page === 'writing' || page === 'listening' || page === 'speaking' || page === 'english_overview') && (
         <EnglishTabsChrome
           current={page as EnglishTab}
           onChange={(t) => openImpl(t)}
@@ -949,19 +1001,21 @@ export default function App() {
           />
         )}
 
-        {(page === 'english_overview' || page === 'reading' || page === 'writing' || page === 'listening') &&
+        {(page === 'english_overview' || page === 'reading' || page === 'writing' || page === 'listening' || page === 'speaking') &&
           (englishVisible ? (
             <>
               {page === 'english_overview' && <EnglishOverviewPage onOpen={openImpl} />}
               {page === 'reading' && <ReadingPage />}
               {page === 'writing' && <WritingPage />}
               {page === 'listening' && <ListeningPage />}
+              {page === 'speaking' && <SpeakingPage />}
             </>
           ) : (
             <EnglishOffPlaceholder onActivate={() => setPage('settings')} />
           ))}
         {page === 'assignments' && <TutorAssignmentsPage />}
         {page === 'calendar' && <CalendarPage />}
+        {page === 'memory' && <MemoryTimelinePage />}
       </PageSuspense>
 
       <Dock
@@ -993,115 +1047,32 @@ export default function App() {
         </Suspense>
       )}
       {onboardingOpen && <OnboardingModal onClose={dismissOnboarding} />}
+      {identityIntroOpen && (
+        <IdentityIntroModal onClose={() => setIdentityIntroOpen(false)} />
+      )}
+      <CueInstallSuggestion
+        open={cueSuggestionOpen}
+        onClose={() => setCueSuggestionOpen(false)}
+      />
       <UpdateToast />
       <OfflineBanner />
       <UpgradePrompt />
+      {/* Phase J / H3 (P1, 2026-05-12) — global toast surface used by
+          TaskBoard (auto-categorise hints) and other pages (generic info
+          confirmations). Reads from useToastStore — multiple producers,
+          one mount. */}
+      <CategorizeToastContainer />
+      {/* X2 (P0) — context-aware Pro upgrade modal. Mounted globally; fires
+          via `useQuotaStore.showUpgradeModal({...})` from gating sites.
+          Different from UpgradePrompt above: that one is for storage-quota
+          errors (note/board/room create returned 402). This one is for
+          per-feature Pro gating (calendar sync, deep analytics, etc.). */}
+      <UpgradeModal />
+      {/* CI4 (Phase A 2026-05-12) — 409 conflict resolution modal.
+          Listens via window event from outbox 409 handlers + renders
+          three-way diff (keep local / accept server / merge manually). */}
+      <ConflictModal />
     </div>
   );
 }
 
-// AnimatedStatsOverlay — обёртка вокруг <StatsOverlay/>, которая откладывает
-// unmount на длительность slide-to-right анимации, чтобы юзер видел плавный
-// уход карточек вправо вместо мгновенного снятия.
-function AnimatedStatsOverlay({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
-  const [mounted, setMounted] = useState(open);
-  const [closing, setClosing] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setMounted(true);
-      setClosing(false);
-      return;
-    }
-    if (!mounted) return;
-    setClosing(true);
-    const t = window.setTimeout(() => {
-      setMounted(false);
-      setClosing(false);
-    }, 360); // slide-to-right (220ms) + max delay (120ms) + buffer
-    return () => window.clearTimeout(t);
-  }, [open, mounted]);
-
-  if (!mounted) return null;
-  return (
-    <Suspense fallback={null}>
-      <StatsOverlay onClose={onClose} closing={closing} />
-    </Suspense>
-  );
-}
-
-// EnglishOffPlaceholder — рендерится когда юзер навигирует на Reading /
-// Writing / Listening / Overview, но english_active = false. Sergey
-// 2026-05-03: «если пользователь не выбрал English вектор — нет смысла
-// пихать в Hone». Показываем CTA «активируй» ведущий в Settings.
-function EnglishOffPlaceholder({ onActivate }: { onActivate: () => void }) {
-  return (
-    <div
-      className="fadein"
-      style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        animationDuration: '320ms',
-      }}
-    >
-      <div style={{ maxWidth: 460, padding: 32, textAlign: 'center' }}>
-        <div
-          className="mono"
-          style={{
-            fontSize: 10,
-            letterSpacing: '0.24em',
-            color: 'var(--ink-40)',
-            marginBottom: 12,
-          }}
-        >
-          ENGLISH HUB · OFF
-        </div>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 28,
-            fontWeight: 500,
-            letterSpacing: '-0.02em',
-            color: 'var(--ink)',
-          }}
-        >
-          English-loop отключён
-        </h1>
-        <p
-          style={{
-            marginTop: 12,
-            fontSize: 13,
-            lineHeight: 1.55,
-            color: 'var(--ink-60)',
-          }}
-        >
-          Reading / Writing / Listening + vocab SRS — это отдельный модуль.
-          Включи его в Settings, если готовишься к English-собесу или хочешь
-          подтянуть уровень с тутором.
-        </p>
-        <button
-          type="button"
-          onClick={onActivate}
-          className="mono focus-ring"
-          style={{
-            marginTop: 20,
-            padding: '8px 16px',
-            fontSize: 11,
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            color: 'var(--ink-90)',
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.18)',
-            borderRadius: 999,
-            cursor: 'pointer',
-          }}
-        >
-          Открыть Settings
-        </button>
-      </div>
-    </div>
-  );
-}

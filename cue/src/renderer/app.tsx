@@ -6,11 +6,13 @@
 import { useEffect, useState } from 'react';
 
 import { PaywallPortal } from './components/PaywallPortal';
+import { UpgradeModal } from './components/UpgradeModal';
 import { AreaOverlayScreen } from './screens/area-overlay/AreaOverlayScreen';
 import { CompactScreen } from './screens/compact/CompactScreen';
 import { EnglishPolishScreen } from './screens/english-polish/EnglishPolishScreen';
 import { ExpandedScreen } from './screens/expanded/ExpandedScreen';
 import { HistoryScreen } from './screens/history/HistoryScreen';
+import { InterviewPrepWizard } from './screens/interview-prep/InterviewPrepWizard';
 import { OnboardingScreen } from './screens/onboarding/OnboardingScreen';
 import { PickerScreen } from './screens/picker/PickerScreen';
 import { SettingsScreen } from './screens/settings/SettingsScreen';
@@ -28,7 +30,8 @@ type Route =
   | 'picker'
   | 'toast'
   | 'tray-popup'
-  | 'english-polish';
+  | 'english-polish'
+  | 'interview-prep';
 
 function readRoute(): Route {
   // Hash may carry a query string (e.g. #/picker?kind=model), strip it.
@@ -42,7 +45,8 @@ function readRoute(): Route {
     h === 'picker' ||
     h === 'toast' ||
     h === 'tray-popup' ||
-    h === 'english-polish'
+    h === 'english-polish' ||
+    h === 'interview-prep'
   )
     return h;
   return 'compact';
@@ -81,6 +85,7 @@ export function App() {
   if (route === 'toast') return <ToastScreen />;
   if (route === 'tray-popup') return <TrayScreen />;
   if (route === 'english-polish') return <EnglishPolishScreen />;
+  if (route === 'interview-prep') return <InterviewPrepWizard />;
 
   const screen =
     route === 'compact' ? <CompactScreen /> :
@@ -93,6 +98,11 @@ export function App() {
     <>
       {screen}
       <PaywallPortal />
+      {/* X2 (P0) — context-aware Pro upgrade modal. Distinct from PaywallPortal
+          above: PaywallPortal pops on stream rate_limited errors с server-driven
+          Boosty copy; UpgradeModal pops при попытке конкретной Pro feature
+          (premium persona, 8h session, calendar sync) с pre-filled context. */}
+      <UpgradeModal />
     </>
   );
 }

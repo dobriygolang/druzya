@@ -105,7 +105,7 @@ func WithUserRole(ctx context.Context, role string) context.Context {
 // UserTierFromContext извлекает subscription tier'а пользователя. Возвращает
 // пустую строку если middleware не резолвила его (например юзер неавторизован,
 // subscription-service недоступен — graceful fail-open).
-// Caller-ы LLM-chain-а (copilot, vacancies, profile) читают это значение и
+// Caller-ы LLM-chain-а (copilot, profile, mock) читают это значение и
 // кладут в llmchain.Request.UserTier для paid-model gate'а.
 func UserTierFromContext(ctx context.Context) string {
 	v, _ := ctx.Value(ctxKeyUserTier).(string)

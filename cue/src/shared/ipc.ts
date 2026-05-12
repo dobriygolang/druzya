@@ -68,6 +68,20 @@ export const invokeChannels = {
   permissionsRequest: 'permissions:request',
   permissionsOpenSettings: 'permissions:open-settings',
 
+  /** Renderer → main: onboarding wizard reached the CompleteScreen.
+   *  Main writes userData/onboarding-completed.flag and broadcasts the
+   *  open of the compact window. Idempotent — safe to call from a
+   *  re-run flow even when the flag already exists. */
+  onboardingComplete: 'onboarding:complete',
+  /** Renderer → main: read the persisted first-run flag. Used by the
+   *  OnboardingFlow itself when the user re-opens onboarding from
+   *  Settings — we want to skip already-granted permission cards
+   *  unless the user explicitly clicks "Re-check". */
+  onboardingIsCompleted: 'onboarding:is-completed',
+  /** Renderer (Settings) → main: clear the flag and re-open the
+   *  onboarding window from scratch. Used by "Re-run welcome flow". */
+  onboardingReset: 'onboarding:reset',
+
   historyList: 'history:list',
   historyGet: 'history:get',
   historyDelete: 'history:delete',
@@ -110,6 +124,25 @@ export const invokeChannels = {
   // the existing /api/v1/hone/writing/grade endpoint (auth lives in
   // main, so the API call is naturally proxied here).
   englishPolishGrade: 'english:polish-grade',
+
+  // Phase J / C6 (2026-05-12) — Interview prep wizard. Main process
+  // owns the bearer auth + the optional local PDF extraction step.
+  // Renderer drives the wizard UI and dispatches via these channels.
+  /** Pick a CV file via native open-dialog. Main extracts text locally
+   *  (PDF via pdf-parse, md/txt as utf-8). Returns null on cancel. */
+  interviewPrepPickCV: 'interview-prep:pick-cv',
+  /** Send CV text to backend ParseCV. */
+  interviewPrepParseCV: 'interview-prep:parse-cv',
+  /** Send JD text or URL to backend ParseJD. */
+  interviewPrepParseJD: 'interview-prep:parse-jd',
+  /** Commit parsed CV+JD as the user's active prep. */
+  interviewPrepStart: 'interview-prep:start',
+  /** Get the user's current active prep (empty when none). */
+  interviewPrepGetActive: 'interview-prep:get-active',
+  /** Clear active prep. */
+  interviewPrepEnd: 'interview-prep:end',
+  /** Open the interview-prep wizard window. */
+  interviewPrepOpen: 'interview-prep:open',
 
   /** Renderer → main: ask to broadcast "open provider picker" to the
    *  expanded window. Main handles showing the expanded window too. */
@@ -392,7 +425,10 @@ export type WindowName =
   | 'tray-popup'
   // Wave 6.2 — Cue English mode. Mini panel that opens via ⌃⇧L,
   // reads the clipboard, and shows GradeEnglishWriting feedback.
-  | 'english-polish';
+  | 'english-polish'
+  // Phase J / C6 — Interview-prep wizard. Separate window (not first-run
+  // onboarding) for the "Upload CV → Upload JD → Start practice" flow.
+  | 'interview-prep';
 
 /** Picker kind — which dropdown the compact opens in the floating picker
  *  window. Persona / Model each reuse their own dropdown component. */
@@ -538,6 +574,13 @@ export interface AudioCaptureTranscriptEvent {
   // следующий event; на isFinal — добавляет в commit-массив и сбрасывает
   // партиал.
   isFinal: boolean;
+  /** Diarization label (C4):
+   *   - mic source: always 0 (the user, "Я")
+   *   - system source: 1..N clustered per-utterance via RMS+ZCR features
+   *   - undefined for partial frames OR старые backend builds — renderer
+   *     fallback'нётся на source-based label ("Я" / "Они").
+   */
+  speakerId?: number;
 }
 
 export interface AudioCaptureErrorEvent {
@@ -550,6 +593,12 @@ export interface CoachSuggestionEvent {
   question: string;
   text: string;
   latencyMs: number;
+  /**
+   * True when backend injected cross-product context (goal/memory/
+   * activity/radar) into the LLM call. UI surfaces subtle hint.
+   * C3 (Phase J 2026-05-12).
+   */
+  contextUsed: boolean;
 }
 export interface CoachStatusEvent {
   enabled: boolean;
@@ -645,6 +694,25 @@ export interface Druz9API {
     check: () => Promise<PermissionState>;
     request: (kind: PermissionKind) => Promise<void>;
     openSettings: (kind: PermissionKind) => Promise<void>;
+  };
+
+  /**
+   * Onboarding wizard lifecycle. The wizard window itself is just one
+   * of the routes; these three calls own the persisted first-run flag
+   * + the hand-off to the compact window once the user is done.
+   */
+  onboarding: {
+    /** Mark onboarding done + close the onboarding window + open compact.
+     *  No-op if already completed. */
+    complete: () => Promise<void>;
+    /** Sync over IPC: returns whether the persisted flag exists. The
+     *  renderer uses this when "Re-run welcome flow" is clicked from
+     *  Settings — we open the window, then the wizard can decide
+     *  whether to skip cards the user already granted. */
+    isCompleted: () => Promise<boolean>;
+    /** Wipe the flag + re-open onboarding from step one. Used by the
+     *  Settings → Permissions → "Re-run welcome flow" button. */
+    reset: () => Promise<void>;
   };
   history: {
     list: (
@@ -855,8 +923,90 @@ export interface Druz9API {
     polish: (text: string) => Promise<EnglishPolishResult>;
   };
 
+  /**
+   * Phase J / C6 — interview-prep wizard.
+   * Bearer auth + optional local PDF extraction live in main.
+   */
+  interviewPrep: {
+    /** Open the wizard window. Idempotent — focuses if already open. */
+    open: () => Promise<void>;
+    /** Native open-dialog + local text extraction (PDF / md / txt). */
+    pickCV: () => Promise<PickCVResultDTO>;
+    /** Backend ParseCV. Caller provides either text (from pickCV) or
+     *  bytes (raw upload that main forwards). */
+    parseCV: (input: { text: string; filename?: string }) => Promise<ParseCVResultDTO>;
+    /** Backend ParseJD. Caller passes EITHER text OR url. */
+    parseJD: (input: { text?: string; url?: string }) => Promise<ParseJDResultDTO>;
+    /** Commit parsed CV+JD as active prep. */
+    start: (input: {
+      parsedCV: ParsedCVDTO;
+      parsedJD: ParsedJDDTO;
+      cvText: string;
+      jdText: string;
+    }) => Promise<StartPrepResultDTO>;
+    /** Read current active prep. Empty when none. */
+    getActive: () => Promise<ActivePrepDTO>;
+    /** Clear active prep. Idempotent. */
+    end: () => Promise<void>;
+  };
+
   /** Subscribe to a main-process event. Returns an unsubscribe function. */
   on: <T = unknown>(channel: string, handler: (payload: T) => void) => () => void;
+}
+
+// Phase J / C6 — Interview prep wire shapes. Mirrors the proto fields
+// 1:1 so the IPC translator in main is a flat key-copy.
+export interface ParsedCVDTO {
+  name: string;
+  experienceYears: number;
+  currentRole: string;
+  topSkills: string[];
+  summary: string;
+  education: string;
+}
+
+export interface ParsedJDDTO {
+  company: string;
+  role: string;
+  seniority: string;
+  keySkills: string[];
+  descriptionSummary: string;
+  language: string;
+}
+
+export interface ParseCVResultDTO {
+  parsed: ParsedCVDTO;
+  model: string;
+}
+
+export interface ParseJDResultDTO {
+  parsed: ParsedJDDTO;
+  model: string;
+}
+
+export interface ActivePrepDTO {
+  active: boolean;
+  sessionId: string;
+  parsedCV: ParsedCVDTO;
+  parsedJD: ParsedJDDTO;
+  startedAt: string; // ISO-8601, empty when active=false
+  company: string;
+  role: string;
+}
+
+export interface StartPrepResultDTO {
+  sessionId: string;
+  startedAt: string;
+  prepPromptPreview: string;
+}
+
+export interface PickCVResultDTO {
+  /** Extracted plain text from the picked file. Empty on cancel. */
+  text: string;
+  /** Original filename for display ("Sergey_CV.pdf"). Empty on cancel. */
+  filename: string;
+  /** True iff user picked a file and main extracted text. */
+  ok: boolean;
 }
 
 // Wave 6.2 wire shape returned by `english.polish`. Mirrors

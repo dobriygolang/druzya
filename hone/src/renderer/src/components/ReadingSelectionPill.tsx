@@ -94,7 +94,7 @@ export function ReadingSelectionPill({ containerRef, materialTitle }: Props) {
         <button
           type="button"
           onClick={onAsk}
-          className="mono focus-ring"
+          className="mono focus-ring motion-press"
           style={{
             position: 'absolute',
             left: pill.x,
@@ -103,14 +103,14 @@ export function ReadingSelectionPill({ containerRef, materialTitle }: Props) {
             zIndex: 50,
             padding: '5px 10px',
             fontSize: 10,
-            letterSpacing: '0.16em',
+            letterSpacing: '0.08em',
             textTransform: 'uppercase',
             color: 'var(--ink-90)',
-            background: 'var(--bg-elevated, #161616)',
-            border: '1px solid rgba(255,255,255,0.22)',
+            background: 'var(--surface-2)',
+            border: '1px solid var(--hair-2)',
             borderRadius: 999,
             cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
           }}
         >
           ✦ Объяснить

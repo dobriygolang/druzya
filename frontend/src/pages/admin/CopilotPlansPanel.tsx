@@ -130,7 +130,7 @@ export function CopilotPlansPanel() {
           }
           list="known-virtual-chains"
           placeholder="druz9/turbo"
-          className="w-full max-w-md rounded border border-border bg-surface-2 px-3 py-2 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none"
+          className="w-full max-w-md border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
         />
         <datalist id="known-virtual-chains">
           {KNOWN_VIRTUAL_CHAINS.map((v) => (
@@ -160,7 +160,7 @@ function PlanCard({
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-4">
       <header className="flex items-center justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{tier}</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">{tier}</span>
         {plan.requests_cap === -1 && (
           <span className="rounded bg-success/15 px-2 py-0.5 font-mono text-[10px] text-success">∞</span>
         )}
@@ -243,12 +243,12 @@ function PlanCard({
 // ── small helpers ─────────────────────────────────────────────────────
 
 const inputClass =
-  'w-full rounded border border-border bg-surface-2 px-2 py-1.5 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none'
+  'w-full border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{label}</span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">{label}</span>
       {children}
     </label>
   )

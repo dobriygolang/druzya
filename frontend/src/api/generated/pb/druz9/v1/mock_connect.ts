@@ -12,7 +12,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AdminBulkImportTasksRequest, AdminBulkImportTasksResponse, AdminCreateCompanyQuestionRequest, AdminCreateDefaultQuestionRequest, AdminCreateMockCompanyRequest, AdminCreateMockTaskQuestionRequest, AdminCreateMockTaskRequest, AdminCreateStrictnessRequest, AdminCreateTestCaseRequest, AdminDeleteCompanyQuestionRequest, AdminDeleteDefaultQuestionRequest, AdminDeleteMockTaskQuestionRequest, AdminDeleteTestCaseRequest, AdminGetCompanyStagesRequest, AdminGetCompanyStagesResponse, AdminGetMockTaskRequest, AdminGetMockTaskResponse, AdminListCompanyQuestionsRequest, AdminListCompanyQuestionsResponse, AdminListDefaultQuestionsRequest, AdminListDefaultQuestionsResponse, AdminListMockCompaniesRequest, AdminListMockCompaniesResponse, AdminListMockTasksRequest, AdminListMockTasksResponse, AdminListStrictnessRequest, AdminListStrictnessResponse, AdminListTestCasesRequest, AdminListTestCasesResponse, AdminReplaceCompanyStagesRequest, AdminToggleMockCompanyActiveRequest, AdminToggleMockTaskActiveRequest, AdminUpdateCompanyQuestionRequest, AdminUpdateDefaultQuestionRequest, AdminUpdateMockCompanyRequest, AdminUpdateMockTaskQuestionRequest, AdminUpdateMockTaskRequest, AdminUpdateStrictnessRequest, AdminUpdateTestCaseRequest, AIStrictnessProfile, AttemptFinalisedRequest, AttemptFinalisedResponse, CancelMockPipelineRequest, CreateMockPipelineRequest, FinishStageRequest, GetMockLeaderboardRequest, GetMockLeaderboardResponse, GetMockPipelineRequest, ListMockCompaniesRequest, ListMockCompaniesResponse, ListMockPipelinesRequest, ListMockPipelinesResponse, MockCompanyQuestion, MockDefaultQuestion, MockPipeline, MockTask, MockTaskQuestion, MockTaskTestCase, PipelineAttempt, PipelineCompany, PipelineStage, StageWithAttempts, StartNextStageRequest, SubmitAnswerRequest } from "./mock_pb.js";
+import { AdminBulkImportTasksRequest, AdminBulkImportTasksResponse, AdminCreateCompanyQuestionRequest, AdminCreateDefaultQuestionRequest, AdminCreateMockCompanyRequest, AdminCreateMockTaskQuestionRequest, AdminCreateMockTaskRequest, AdminCreateStrictnessRequest, AdminCreateTestCaseRequest, AdminDeleteCompanyQuestionRequest, AdminDeleteDefaultQuestionRequest, AdminDeleteMockTaskQuestionRequest, AdminDeleteTestCaseRequest, AdminGetCompanyStagesRequest, AdminGetCompanyStagesResponse, AdminGetMockTaskRequest, AdminGetMockTaskResponse, AdminListCompanyQuestionsRequest, AdminListCompanyQuestionsResponse, AdminListDefaultQuestionsRequest, AdminListDefaultQuestionsResponse, AdminListMockCompaniesRequest, AdminListMockCompaniesResponse, AdminListMockTasksRequest, AdminListMockTasksResponse, AdminListStrictnessRequest, AdminListStrictnessResponse, AdminListTestCasesRequest, AdminListTestCasesResponse, AdminReplaceCompanyStagesRequest, AdminToggleMockCompanyActiveRequest, AdminToggleMockTaskActiveRequest, AdminUpdateCompanyQuestionRequest, AdminUpdateDefaultQuestionRequest, AdminUpdateMockCompanyRequest, AdminUpdateMockTaskQuestionRequest, AdminUpdateMockTaskRequest, AdminUpdateStrictnessRequest, AdminUpdateTestCaseRequest, AIStrictnessProfile, AlgoVerdict, AttemptFinalisedRequest, AttemptFinalisedResponse, BehavioralVerdict, CancelMockPipelineRequest, CodingVerdict, CreateMockPipelineRequest, FinishStageRequest, GetMockLeaderboardRequest, GetMockLeaderboardResponse, GetMockPipelineRequest, ListMockCompaniesRequest, ListMockCompaniesResponse, ListMockPipelinesRequest, ListMockPipelinesResponse, MockCompanyQuestion, MockDefaultQuestion, MockPipeline, MockTask, MockTaskQuestion, MockTaskTestCase, PipelineAttempt, PipelineCompany, PipelineStage, RunAlgoAttemptRequest, RunBehavioralAttemptRequest, RunCodingAttemptRequest, RunSysDesignAttemptRequest, StageWithAttempts, StartNextStageRequest, SubmitAnswerRequest, SysDesignVerdict } from "./mock_pb.js";
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -129,6 +129,54 @@ export const MockPipelineService = {
       name: "FinishStage",
       I: FinishStageRequest,
       O: PipelineStage,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RunAlgoAttempt — "Run tests" для Algo стадии: прогон кода через Judge0
+     * sandbox без persist'а в pipeline_attempts. Возвращает per-test
+     * verdict. Для финальной оценки используется SubmitAnswer.
+     *
+     * @generated from rpc druz9.v1.MockPipelineService.RunAlgoAttempt
+     */
+    runAlgoAttempt: {
+      name: "RunAlgoAttempt",
+      I: RunAlgoAttemptRequest,
+      O: AlgoVerdict,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RunCodingAttempt — «Get rubric» для Coding стадии: LLM rubric grading
+     * open-ended кода без persist'а. Для финальной оценки — SubmitAnswer.
+     *
+     * @generated from rpc druz9.v1.MockPipelineService.RunCodingAttempt
+     */
+    runCodingAttempt: {
+      name: "RunCodingAttempt",
+      I: RunCodingAttemptRequest,
+      O: CodingVerdict,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RunSysDesignAttempt — 5-axis rubric (availability / consistency /
+     * scalability / cost / simplicity) text-only. Без persist'а.
+     *
+     * @generated from rpc druz9.v1.MockPipelineService.RunSysDesignAttempt
+     */
+    runSysDesignAttempt: {
+      name: "RunSysDesignAttempt",
+      I: RunSysDesignAttemptRequest,
+      O: SysDesignVerdict,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RunBehavioralAttempt — STAR rubric для behavioral. Без persist'а.
+     *
+     * @generated from rpc druz9.v1.MockPipelineService.RunBehavioralAttempt
+     */
+    runBehavioralAttempt: {
+      name: "RunBehavioralAttempt",
+      I: RunBehavioralAttemptRequest,
+      O: BehavioralVerdict,
       kind: MethodKind.Unary,
     },
     /**

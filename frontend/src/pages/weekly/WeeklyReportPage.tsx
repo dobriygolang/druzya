@@ -8,14 +8,32 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
-import { useWeeklyReportQuery } from '../../lib/queries/weekly'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
+import { DataLoader } from '../../components/DataLoader'
+import { useWeeklyReportQuery, type WeeklyReport } from '../../lib/queries/weekly'
 import { isoWeekKey } from './utils'
 import { HeaderRow, TldrCards } from './HeaderRow'
 import { AiInsight } from './InsightsPanels'
 import { GoalsChecklist } from './GoalsChecklist'
 
+function WeeklySkeleton() {
+  return (
+    <div className="flex flex-col gap-6 px-4 pb-10 pt-6 sm:px-8 lg:gap-7 lg:px-20">
+      <div className="h-12 w-1/3 animate-pulse rounded bg-surface-2" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-28 animate-pulse rounded-xl bg-surface-2" />
+        ))}
+      </div>
+      <div className="h-32 animate-pulse rounded-xl bg-surface-2" />
+      <div className="h-48 animate-pulse rounded-xl bg-surface-2" />
+    </div>
+  )
+}
+
 export default function WeeklyReportPage() {
-  const { data, isLoading } = useWeeklyReportQuery()
+  const weeklyQ = useWeeklyReportQuery()
+  const { data, isLoading } = weeklyQ
 
   // weekISO для localStorage ключа целей. Если бэк ещё не отдал week_start,
   // используем текущую дату — пользователь не дождётся загрузки чтоб начать
@@ -36,12 +54,39 @@ export default function WeeklyReportPage() {
         </Link>
         <span className="ml-2 text-sm text-text-muted">/ Weekly</span>
       </div>
-      <HeaderRow report={data} isLoading={isLoading} />
-      <div className="flex flex-col gap-6 px-4 pb-10 pt-6 sm:px-8 lg:gap-7 lg:px-20">
-        <TldrCards report={data} />
-        <AiInsight text={data?.ai_insight ?? ''} />
-        <GoalsChecklist weekISO={weekISO} />
-      </div>
+      <ErrorBoundary section="Weekly report">
+        <DataLoader<WeeklyReport>
+          state={weeklyQ}
+          section="Weekly report"
+          skeleton={
+            <>
+              <HeaderRow report={undefined} isLoading={isLoading} />
+              <WeeklySkeleton />
+            </>
+          }
+          // Empty state — отчёт без действий всё-равно рендерим (показываем
+          // GoalsChecklist даже если week_start пуст). Поэтому пропускаем
+          // empty-check.
+          empty={() => false}
+        >
+          {(report) => (
+            <>
+              <HeaderRow report={report} isLoading={false} />
+              <div className="flex flex-col gap-6 px-4 pb-10 pt-6 sm:px-8 lg:gap-7 lg:px-20">
+                <ErrorBoundary section="TL;DR">
+                  <TldrCards report={report} />
+                </ErrorBoundary>
+                <ErrorBoundary section="AI insight">
+                  <AiInsight text={report?.ai_insight ?? ''} />
+                </ErrorBoundary>
+                <ErrorBoundary section="Goals checklist">
+                  <GoalsChecklist weekISO={weekISO} />
+                </ErrorBoundary>
+              </div>
+            </>
+          )}
+        </DataLoader>
+      </ErrorBoundary>
     </AppShellV2>
   )
 }

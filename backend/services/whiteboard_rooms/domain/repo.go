@@ -39,20 +39,6 @@ type ParticipantRepo interface {
 	Exists(ctx context.Context, roomID, userID uuid.UUID) (bool, error)
 }
 
-// TokenVerifier validates a JWT at the WS handshake (mirrors editor).
-//
-// VerifyScoped дополнительно проверяет JWT scope claim:
-//   - если token's Scope пустой → unrestricted (обычный access-token), accept
-//   - если non-empty → должен в точности равняться expectedScope, иначе reject
-//
-// Используется для guest-токенов: scope = "whiteboard:<roomID>" минтится при
-// guest-join, на WS upgrade'е сверяется с URL room_id. Cross-room replay
-// (guest token room A → попытка подключиться к room B) → 403.
-type TokenVerifier interface {
-	Verify(raw string) (uuid.UUID, error)
-	VerifyScoped(raw string, expectedScope string) (uuid.UUID, error)
-	// VerifyScopedFull additionally returns the JWT role + display-name
-	// claim. WS handler uses these to skip the participants-row auto-
-	// join for guests (their UUID is transient — would FK-fail).
-	VerifyScopedFull(raw string, expectedScope string) (uid uuid.UUID, role string, displayName string, err error)
-}
+// TokenVerifier removed 2026-05-12 (D4/Stream F) — WS handshake gone (peer-
+// collab dropped). Connect-RPC auth уже handled by sharedMw на router-level;
+// нам больше не нужен per-domain JWT verifier.

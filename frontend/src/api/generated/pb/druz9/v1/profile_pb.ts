@@ -17,6 +17,42 @@ import { CharClass, Language, Section, SubscriptionPlan, UserRole } from "./comm
 import { NotificationPreferences } from "./notify_pb.js";
 
 /**
+ * AppSurface — wire-closed set of install surfaces. Strings would tempt
+ * the client into typos; an enum lets the server reject unknown values
+ * at protowire decode time.
+ *
+ * @generated from enum druz9.v1.AppSurface
+ */
+export enum AppSurface {
+  /**
+   * @generated from enum value: APP_SURFACE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: APP_SURFACE_WEB = 1;
+   */
+  WEB = 1,
+
+  /**
+   * @generated from enum value: APP_SURFACE_HONE = 2;
+   */
+  HONE = 2,
+
+  /**
+   * @generated from enum value: APP_SURFACE_CUE = 3;
+   */
+  CUE = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(AppSurface)
+proto3.util.setEnumType(AppSurface, "druz9.v1.AppSurface", [
+  { no: 0, name: "APP_SURFACE_UNSPECIFIED" },
+  { no: 1, name: "APP_SURFACE_WEB" },
+  { no: 2, name: "APP_SURFACE_HONE" },
+  { no: 3, name: "APP_SURFACE_CUE" },
+]);
+
+/**
  * InterviewerApplicationStatus — wire-закрытый набор статусов заявки.
  * NOT_SUBMITTED — synthetic из GetMyInterviewerApplication когда юзер
  * никогда не подавал; в DB row не хранится (DB CHECK = pending|approved|
@@ -326,6 +362,17 @@ export class ProfileFull extends Message<ProfileFull> {
    */
   role = UserRole.UNSPECIFIED;
 
+  /**
+   * tutor_mode_enabled — self-toggle flag (Stream D, 2026-05-12). When ON
+   * the AppShell shows tutor nav items + /tutor sub-surfaces. Independent
+   * from `role` (which stays user|interviewer|admin|ai_tutor) so any user
+   * can opt into tutor mode without an admin approval gate. Free per
+   * identity.md — paywall lives on Pro-tier evaluation, not on this toggle.
+   *
+   * @generated from field: bool tutor_mode_enabled = 19;
+   */
+  tutorModeEnabled = false;
+
   constructor(data?: PartialMessage<ProfileFull>) {
     super();
     proto3.util.initPartial(data, this);
@@ -352,6 +399,7 @@ export class ProfileFull extends Message<ProfileFull> {
     { no: 16, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 17, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 18, name: "role", kind: "enum", T: proto3.getEnumType(UserRole) },
+    { no: 19, name: "tutor_mode_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ProfileFull {
@@ -1598,6 +1646,14 @@ export class ProfileSettings extends Message<ProfileSettings> {
    */
   focusClass?: string;
 
+  /**
+   * tutor_mode_enabled — write-side counterpart of ProfileFull.tutor_mode_enabled
+   * (Stream D, 2026-05-12). `optional` so partial updates do not clobber.
+   *
+   * @generated from field: optional bool tutor_mode_enabled = 9;
+   */
+  tutorModeEnabled?: boolean;
+
   constructor(data?: PartialMessage<ProfileSettings>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1614,6 +1670,7 @@ export class ProfileSettings extends Message<ProfileSettings> {
     { no: 6, name: "ai_insight_model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "onboarding_completed", kind: "scalar", T: 8 /* ScalarType.BOOL */, opt: true },
     { no: 8, name: "focus_class", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
+    { no: 9, name: "tutor_mode_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */, opt: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ProfileSettings {
@@ -2156,6 +2213,233 @@ export class SetAtlasNodePrefResponse extends Message<SetAtlasNodePrefResponse> 
 }
 
 /**
+ * RecordAppInstallRequest — sent on app launch as an idempotent heartbeat.
+ * app_version is informational (e.g. "0.9.3"); server stores latest seen.
+ *
+ * @generated from message druz9.v1.RecordAppInstallRequest
+ */
+export class RecordAppInstallRequest extends Message<RecordAppInstallRequest> {
+  /**
+   * @generated from field: druz9.v1.AppSurface app = 1;
+   */
+  app = AppSurface.UNSPECIFIED;
+
+  /**
+   * @generated from field: string app_version = 2;
+   */
+  appVersion = "";
+
+  constructor(data?: PartialMessage<RecordAppInstallRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RecordAppInstallRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "app", kind: "enum", T: proto3.getEnumType(AppSurface) },
+    { no: 2, name: "app_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RecordAppInstallRequest {
+    return new RecordAppInstallRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RecordAppInstallRequest {
+    return new RecordAppInstallRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RecordAppInstallRequest {
+    return new RecordAppInstallRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RecordAppInstallRequest | PlainMessage<RecordAppInstallRequest> | undefined, b: RecordAppInstallRequest | PlainMessage<RecordAppInstallRequest> | undefined): boolean {
+    return proto3.util.equals(RecordAppInstallRequest, a, b);
+  }
+}
+
+/**
+ * RecordAppInstallResponse — returns the resulting row + a flag indicating
+ * whether THIS call triggered a trial Pro grant (first install across all
+ * three surfaces). Client can use it to celebrate without an extra RPC.
+ *
+ * @generated from message druz9.v1.RecordAppInstallResponse
+ */
+export class RecordAppInstallResponse extends Message<RecordAppInstallResponse> {
+  /**
+   * @generated from field: druz9.v1.InstalledApp install = 1;
+   */
+  install?: InstalledApp;
+
+  /**
+   * @generated from field: bool trial_pro_granted = 2;
+   */
+  trialProGranted = false;
+
+  /**
+   * trial_pro_until — RFC3339; empty when trial was not granted (already
+   * had Pro / already redeemed trial / not-first-install).
+   *
+   * @generated from field: string trial_pro_until = 3;
+   */
+  trialProUntil = "";
+
+  constructor(data?: PartialMessage<RecordAppInstallResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RecordAppInstallResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "install", kind: "message", T: InstalledApp },
+    { no: 2, name: "trial_pro_granted", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "trial_pro_until", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RecordAppInstallResponse {
+    return new RecordAppInstallResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RecordAppInstallResponse {
+    return new RecordAppInstallResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RecordAppInstallResponse {
+    return new RecordAppInstallResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RecordAppInstallResponse | PlainMessage<RecordAppInstallResponse> | undefined, b: RecordAppInstallResponse | PlainMessage<RecordAppInstallResponse> | undefined): boolean {
+    return proto3.util.equals(RecordAppInstallResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetInstalledAppsRequest
+ */
+export class GetInstalledAppsRequest extends Message<GetInstalledAppsRequest> {
+  constructor(data?: PartialMessage<GetInstalledAppsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetInstalledAppsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetInstalledAppsRequest {
+    return new GetInstalledAppsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetInstalledAppsRequest {
+    return new GetInstalledAppsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetInstalledAppsRequest {
+    return new GetInstalledAppsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetInstalledAppsRequest | PlainMessage<GetInstalledAppsRequest> | undefined, b: GetInstalledAppsRequest | PlainMessage<GetInstalledAppsRequest> | undefined): boolean {
+    return proto3.util.equals(GetInstalledAppsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetInstalledAppsResponse
+ */
+export class GetInstalledAppsResponse extends Message<GetInstalledAppsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.InstalledApp installs = 1;
+   */
+  installs: InstalledApp[] = [];
+
+  constructor(data?: PartialMessage<GetInstalledAppsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetInstalledAppsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "installs", kind: "message", T: InstalledApp, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetInstalledAppsResponse {
+    return new GetInstalledAppsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetInstalledAppsResponse {
+    return new GetInstalledAppsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetInstalledAppsResponse {
+    return new GetInstalledAppsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetInstalledAppsResponse | PlainMessage<GetInstalledAppsResponse> | undefined, b: GetInstalledAppsResponse | PlainMessage<GetInstalledAppsResponse> | undefined): boolean {
+    return proto3.util.equals(GetInstalledAppsResponse, a, b);
+  }
+}
+
+/**
+ * InstalledApp mirrors a row in user_app_installs.
+ *
+ * @generated from message druz9.v1.InstalledApp
+ */
+export class InstalledApp extends Message<InstalledApp> {
+  /**
+   * @generated from field: druz9.v1.AppSurface app = 1;
+   */
+  app = AppSurface.UNSPECIFIED;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp first_seen_at = 2;
+   */
+  firstSeenAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_seen_at = 3;
+   */
+  lastSeenAt?: Timestamp;
+
+  /**
+   * @generated from field: string app_version = 4;
+   */
+  appVersion = "";
+
+  constructor(data?: PartialMessage<InstalledApp>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.InstalledApp";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "app", kind: "enum", T: proto3.getEnumType(AppSurface) },
+    { no: 2, name: "first_seen_at", kind: "message", T: Timestamp },
+    { no: 3, name: "last_seen_at", kind: "message", T: Timestamp },
+    { no: 4, name: "app_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): InstalledApp {
+    return new InstalledApp().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): InstalledApp {
+    return new InstalledApp().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): InstalledApp {
+    return new InstalledApp().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: InstalledApp | PlainMessage<InstalledApp> | undefined, b: InstalledApp | PlainMessage<InstalledApp> | undefined): boolean {
+    return proto3.util.equals(InstalledApp, a, b);
+  }
+}
+
+/**
  * @generated from message druz9.v1.AllocateAtlasSkillResponse
  */
 export class AllocateAtlasSkillResponse extends Message<AllocateAtlasSkillResponse> {
@@ -2217,111 +2501,6 @@ export class AllocateAtlasSkillResponse extends Message<AllocateAtlasSkillRespon
 
   static equals(a: AllocateAtlasSkillResponse | PlainMessage<AllocateAtlasSkillResponse> | undefined, b: AllocateAtlasSkillResponse | PlainMessage<AllocateAtlasSkillResponse> | undefined): boolean {
     return proto3.util.equals(AllocateAtlasSkillResponse, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.GetAIVacanciesModelRequest
- */
-export class GetAIVacanciesModelRequest extends Message<GetAIVacanciesModelRequest> {
-  constructor(data?: PartialMessage<GetAIVacanciesModelRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.GetAIVacanciesModelRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIVacanciesModelRequest {
-    return new GetAIVacanciesModelRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIVacanciesModelRequest {
-    return new GetAIVacanciesModelRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIVacanciesModelRequest {
-    return new GetAIVacanciesModelRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: GetAIVacanciesModelRequest | PlainMessage<GetAIVacanciesModelRequest> | undefined, b: GetAIVacanciesModelRequest | PlainMessage<GetAIVacanciesModelRequest> | undefined): boolean {
-    return proto3.util.equals(GetAIVacanciesModelRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.SetAIVacanciesModelRequest
- */
-export class SetAIVacanciesModelRequest extends Message<SetAIVacanciesModelRequest> {
-  /**
-   * @generated from field: string model_id = 1;
-   */
-  modelId = "";
-
-  constructor(data?: PartialMessage<SetAIVacanciesModelRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.SetAIVacanciesModelRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "model_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetAIVacanciesModelRequest {
-    return new SetAIVacanciesModelRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetAIVacanciesModelRequest {
-    return new SetAIVacanciesModelRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetAIVacanciesModelRequest {
-    return new SetAIVacanciesModelRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: SetAIVacanciesModelRequest | PlainMessage<SetAIVacanciesModelRequest> | undefined, b: SetAIVacanciesModelRequest | PlainMessage<SetAIVacanciesModelRequest> | undefined): boolean {
-    return proto3.util.equals(SetAIVacanciesModelRequest, a, b);
-  }
-}
-
-/**
- * @generated from message druz9.v1.AIVacanciesModel
- */
-export class AIVacanciesModel extends Message<AIVacanciesModel> {
-  /**
-   * @generated from field: string model_id = 1;
-   */
-  modelId = "";
-
-  constructor(data?: PartialMessage<AIVacanciesModel>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.AIVacanciesModel";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "model_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AIVacanciesModel {
-    return new AIVacanciesModel().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AIVacanciesModel {
-    return new AIVacanciesModel().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AIVacanciesModel {
-    return new AIVacanciesModel().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: AIVacanciesModel | PlainMessage<AIVacanciesModel> | undefined, b: AIVacanciesModel | PlainMessage<AIVacanciesModel> | undefined): boolean {
-    return proto3.util.equals(AIVacanciesModel, a, b);
   }
 }
 

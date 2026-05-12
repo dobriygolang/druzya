@@ -7,10 +7,11 @@
 //
 //   2. A single place to add error normalisation when we start caring
 //      about connect.CodeUnavailable → "AI offline" banners.
-import { createPromiseClient } from '@connectrpc/connect';
+import { ConnectError, Code, createPromiseClient } from '@connectrpc/connect';
 import { HoneService } from '@generated/pb/druz9/v1/hone_connect';
 
 import { transport } from './transport';
+import { emitConflict } from '../components/ConflictModal';
 
 // ─── Domain-shaped POJOs ────────────────────────────────────────────────────
 
@@ -557,20 +558,76 @@ export async function updateWhiteboard(args: {
   stateJson: string;
   expectedVersion: number;
 }): Promise<Whiteboard> {
-  const resp = await client.updateWhiteboard({
-    id: args.id,
-    title: args.title,
-    stateJson: args.stateJson,
-    expectedVersion: args.expectedVersion,
-  });
-  return {
-    id: resp.id,
-    title: resp.title,
-    stateJson: resp.stateJson,
-    createdAt: protoTs(resp.createdAt),
-    updatedAt: protoTs(resp.updatedAt),
-    version: resp.version,
-  };
+  try {
+    const resp = await client.updateWhiteboard({
+      id: args.id,
+      title: args.title,
+      stateJson: args.stateJson,
+      expectedVersion: args.expectedVersion,
+    });
+    return {
+      id: resp.id,
+      title: resp.title,
+      stateJson: resp.stateJson,
+      createdAt: protoTs(resp.createdAt),
+      updatedAt: protoTs(resp.updatedAt),
+      version: resp.version,
+    };
+  } catch (err) {
+    // Optimistic-concurrency: backend maps ErrStaleVersion → Code.Aborted
+    // (см. backend/services/hone/domain/errors.go + ports/server.go).
+    // Pull fresh server snapshot, fire ConflictModal с тремя resolution
+    // handler'ами, и пробросим исходную ошибку наверх — caller увидит
+    // failure и сможет abort UI-side save. Modal сам выберет path и
+    // вернёт результат через handlers.
+    if (err instanceof ConnectError && err.code === Code.Aborted) {
+      try {
+        const server = await getWhiteboard(args.id);
+        emitConflict({
+          kind: 'whiteboard',
+          id: args.id,
+          local: {
+            title: args.title,
+            body: args.stateJson,
+          },
+          server: {
+            title: server.title,
+            body: server.stateJson,
+            updatedAt: server.updatedAt?.toISOString() ?? '',
+          },
+          onKeepLocal: async () => {
+            // Re-issue update с актуальным server version'ом — local wins.
+            await updateWhiteboard({
+              id: args.id,
+              title: args.title,
+              stateJson: args.stateJson,
+              expectedVersion: server.version,
+            });
+          },
+          onAcceptServer: async () => {
+            // No-op на server-side: server state уже current. Caller
+            // должен заново загрузить snapshot — модал не имеет ref'а
+            // на caller'ский state. Listener в Whiteboard page может
+            // подхватить `hone:whiteboard-refetch` event'ом если нужно.
+            window.dispatchEvent(
+              new CustomEvent('hone:whiteboard-refetch', { detail: { id: args.id } }),
+            );
+          },
+          onMergeManually: async (merged) => {
+            await updateWhiteboard({
+              id: args.id,
+              title: args.title,
+              stateJson: merged,
+              expectedVersion: server.version,
+            });
+          },
+        });
+      } catch {
+        /* fallback — fresh snapshot fetch упал, modal не покажем */
+      }
+    }
+    throw err;
+  }
 }
 
 export async function deleteWhiteboard(id: string): Promise<void> {

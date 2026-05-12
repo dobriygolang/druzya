@@ -1,7 +1,6 @@
 // ai_models.proto — Connect-RPC contract for the LLM model catalogue.
 //
-// Public list: anonymous-readable, narrows by use-surface (arena / insight
-// / mock / vacancies).
+// Public list: anonymous-readable, narrows by use-surface (insight / mock).
 //
 // Admin CRUD: model_id includes a provider prefix (`mistralai/mistral-7b`)
 // so the URL pattern uses `{model_id=**}` to capture slash-containing
@@ -52,7 +51,8 @@ message AIModel {
   bool has_cost_input = 10;
   double cost_per_1k_output_usd = 11;
   bool has_cost_output = 12;
-  bool use_for_arena = 13;
+  reserved 13; // use_for_arena removed 2026-05-12 (D8) — see migration 00088
+  reserved "use_for_arena";
   bool use_for_insight = 14;
   bool use_for_mock = 15;
   int32 sort_order = 16;
@@ -79,8 +79,8 @@ message AIModelUpsert {
   bool has_cost_input = 10;
   double cost_per_1k_output_usd = 11;
   bool has_cost_output = 12;
-  bool use_for_arena = 13;
-  bool has_use_for_arena = 14;
+  reserved 13, 14; // use_for_arena + has_use_for_arena removed 2026-05-12 (D8)
+  reserved "use_for_arena", "has_use_for_arena";
   bool use_for_insight = 15;
   bool has_use_for_insight = 16;
   bool use_for_mock = 17;

@@ -50,19 +50,25 @@ const honeMarkdownHighlight = HighlightStyle.define([
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strikethrough, textDecoration: 'line-through' },
   // ── Markdown markers (# / ``` / > / **) ─────────────────────────────────
-  { tag: t.processingInstruction, color: 'rgba(255,255,255,0.32)' },
-  { tag: t.contentSeparator, color: 'rgba(255,255,255,0.32)' },
+  // Ink-ramp opacity per b/w rule — markers are de-emphasized via opacity,
+  // not hue. CodeMirror requires literal color strings (no CSS-var support
+  // in HighlightStyle), so we keep raw rgba() but tune them to the same
+  // ramp as globals.css var(--ink-NN). See feedback_color_rule.md.
+  { tag: t.processingInstruction, color: 'rgba(255, 255, 255, 0.32)' },
+  { tag: t.contentSeparator, color: 'rgba(255, 255, 255, 0.32)' },
   // ── Links ───────────────────────────────────────────────────────────────
-  { tag: t.link, color: '#7fb3ff', textDecoration: 'underline' },
-  { tag: t.url, color: 'rgba(255,255,255,0.4)' },
+  // No hue — underline is the affordance, full ink keeps it legible. URLs
+  // in source-mode drop to ink-40 (matches --ink-40 ramp).
+  { tag: t.link, color: 'rgba(255, 255, 255, 0.9)', textDecoration: 'underline' },
+  { tag: t.url, color: 'rgba(255, 255, 255, 0.4)' },
   // ── Inline + fenced monospace по умолчанию ──────────────────────────────
   {
     tag: t.monospace,
     fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
     fontSize: '13.5px',
-    color: '#d4d4d4',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
-  { tag: t.quote, color: 'rgba(255,255,255,0.65)', fontStyle: 'italic' },
+  { tag: t.quote, color: 'rgba(255, 255, 255, 0.6)', fontStyle: 'italic' },
   { tag: t.list, color: 'var(--ink)' },
 
   // ── Code syntax (для языков внутри fenced ```) ──────────────────────────
@@ -271,20 +277,20 @@ const baseTheme = EditorView.theme(
       borderLeftWidth: '2px',
     },
     '.cm-selectionBackground, ::selection': {
-      backgroundColor: 'rgba(255,255,255,0.18) !important',
+      backgroundColor: 'rgba(255, 255, 255, 0.18) !important',
     },
     '.cm-activeLine': {
       backgroundColor: 'transparent',
     },
     '&.cm-focused .cm-selectionBackground, &.cm-focused ::selection': {
-      backgroundColor: 'rgba(255,255,255,0.22) !important',
+      backgroundColor: 'rgba(255, 255, 255, 0.22) !important',
     },
     // ── Fenced code block backdrop ─────────────────────────────────────────
     // Каждая строка внутри ```...``` получает класс через ViewPlugin'е
     // выше. Все три класса (top/mid/bottom) — общий бекграунд + mono font;
     // top/bottom добавляют скруглённые внешние углы.
     '.cm-fenced-top, .cm-fenced-mid, .cm-fenced-bottom': {
-      backgroundColor: 'rgba(255,255,255,0.04)',
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
       paddingLeft: '14px',
       paddingRight: '14px',
       fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',

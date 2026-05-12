@@ -328,8 +328,6 @@ function scopeFromPath(path: string): string {
   if (clean.startsWith('profile/me/atlas')) return 'atlas'
   if (clean.startsWith('ai/coach') || clean.startsWith('ai/insight')) return 'ai-coach'
   if (clean.startsWith('arena/match')) return 'arena'
-  if (clean.startsWith('voice')) return 'voice-mock'
-  if (clean.startsWith('vacancies')) return 'vacancies'
   const seg = clean.split('/')[0] || 'api'
   return seg
 }

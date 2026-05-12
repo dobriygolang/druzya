@@ -1,0 +1,25 @@
+# Masquerade build: Slack alias bundle. See electron-builder.notes.yml
+# for the full rationale.
+extends: electron-builder.yml
+productName: Slack
+appId: app.druzya.copilot.alias.slack
+directories:
+  output: dist/mac-slack
+mac:
+  icon: resources/masquerade/slack.icns
+  extendInfo:
+    LSUIElement: true
+    CFBundleName: Slack
+    CFBundleDisplayName: Slack
+    CFBundleURLTypes: []
+afterPack: scripts/afterPack-masquerade.cjs
+extraMetadata:
+  productName: Slack
+  masqueradePreset: slack
+artifactName: Slack-${version}-${arch}.${ext}
+# Per-preset update channel — см. electron-builder.notes.yml для полного
+# объяснения. Slack-disguise auto-updates только Slack-disguise.
+publish:
+  - provider: github
+    channel: masquerade-slack
+    releaseType: draft

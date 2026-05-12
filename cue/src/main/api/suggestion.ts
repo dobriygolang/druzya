@@ -33,6 +33,13 @@ export interface SuggestionResult {
   latencyMs: number;
   tokensIn: number;
   tokensOut: number;
+  /**
+   * True when the backend injected cross-product context (goal, recent
+   * Coach memory, activity_log, skill radar) into the LLM prompt. UI
+   * surfaces a subtle "Personalized from your druz9 activity" hint —
+   * this is the unique moat vs Cluely. C3 (Phase J 2026-05-12).
+   */
+  contextUsed: boolean;
 }
 
 export interface SuggestionClient {
@@ -101,6 +108,7 @@ export function createSuggestionClient(cfg: RuntimeConfig): SuggestionClient {
       latencyMs: Number(raw.latency_ms ?? raw.latencyMs ?? 0),
       tokensIn: Number(raw.tokens_in ?? raw.tokensIn ?? 0),
       tokensOut: Number(raw.tokens_out ?? raw.tokensOut ?? 0),
+      contextUsed: Boolean(raw.context_used ?? raw.contextUsed ?? false),
     };
   };
 

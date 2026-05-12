@@ -30,3 +30,22 @@ export const WEB_BASE_URL =
 // юзер-сценарии логин через LoginScreen → druz9://auth deep-link.
 export const DEV_BEARER_TOKEN: string | null =
   (import.meta.env.VITE_DRUZ9_DEV_TOKEN ?? '').trim() || null;
+
+// Pro-upgrade landing — открывается из UpgradeModal CTA в системном
+// браузере. Backend на /upgrade редиректит в Stripe Checkout (см.
+// `backend/services/subscription/` — уже implemented, мы тут только URL
+// строим). Query params: `source=hone` для attribution + `feature=<slug>`
+// для analytics («какой trigger чаще ведёт к конверсии»).
+//
+// `PRO_UPGRADE_URL_BASE` без trailing slash — UpgradeModal сам клеит
+// `?source=hone&feature=<key>`. Override через VITE_DRUZ9_PRO_URL if needed.
+export const PRO_UPGRADE_URL_BASE =
+  (import.meta.env.VITE_DRUZ9_PRO_URL as string | undefined)?.trim() ||
+  'https://druz9.online/upgrade';
+
+// BYOK landing — separate route чтобы юзер мог зайти, добавить API key
+// своего провайдера (OpenAI/Anthropic/Groq/etc.) и Pro features unlock'нутся
+// бесплатно. Web страница уже сделана, эта константа просто point'ит туда.
+export const PRO_BYOK_URL =
+  (import.meta.env.VITE_DRUZ9_BYOK_URL as string | undefined)?.trim() ||
+  'https://druz9.online/byok';

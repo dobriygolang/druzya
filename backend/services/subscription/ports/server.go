@@ -30,11 +30,20 @@ var _ druz9v1connect.SubscriptionServiceHandler = (*SubscriptionServer)(nil)
 //
 // Pivot 2026-05-01: LinkBoostyUC + SyncBoostyUC удалены вместе с
 // Boosty marketplace.
+//
+// Stream-C 2026-05-12: добавлен CheckTier + BYOK UC'ы. Существующие
+// GetTier/SetTier остаются для legacy (GetMyTier — raw subscriptions
+// row); CheckTier — composite (paid + BYOK + tutor signal).
 type SubscriptionServer struct {
-	GetTierUC  *app.GetTier
-	SetTierUC  *app.SetTier
-	GetQuotaUC *app.GetQuota
-	Log        *slog.Logger
+	GetTierUC               *app.GetTier
+	SetTierUC               *app.SetTier
+	GetQuotaUC              *app.GetQuota
+	CheckTierUC             *app.CheckTier
+	SetBYOKKeyUC            *app.SetBYOKKey
+	RemoveBYOKKeyUC         *app.RemoveBYOKKey
+	CreateCheckoutSessionUC *app.CreateCheckoutSession
+	CancelSubscriptionUC    *app.CancelSubscription
+	Log                     *slog.Logger
 }
 
 // NewSubscriptionServer — конструктор.

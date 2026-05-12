@@ -168,6 +168,12 @@ const (
 	// HoneServiceAddTaskCommentProcedure is the fully-qualified name of the HoneService's
 	// AddTaskComment RPC.
 	HoneServiceAddTaskCommentProcedure = "/druz9.v1.HoneService/AddTaskComment"
+	// HoneServiceUpdateTaskKindProcedure is the fully-qualified name of the HoneService's
+	// UpdateTaskKind RPC.
+	HoneServiceUpdateTaskKindProcedure = "/druz9.v1.HoneService/UpdateTaskKind"
+	// HoneServiceBulkAutoCategoriseProcedure is the fully-qualified name of the HoneService's
+	// BulkAutoCategorise RPC.
+	HoneServiceBulkAutoCategoriseProcedure = "/druz9.v1.HoneService/BulkAutoCategorise"
 	// HoneServicePublishNoteProcedure is the fully-qualified name of the HoneService's PublishNote RPC.
 	HoneServicePublishNoteProcedure = "/druz9.v1.HoneService/PublishNote"
 	// HoneServiceUnpublishNoteProcedure is the fully-qualified name of the HoneService's UnpublishNote
@@ -259,6 +265,15 @@ const (
 	// HoneServiceGradeCodeReviewProcedure is the fully-qualified name of the HoneService's
 	// GradeCodeReview RPC.
 	HoneServiceGradeCodeReviewProcedure = "/druz9.v1.HoneService/GradeCodeReview"
+	// HoneServiceListSpeakingExercisesProcedure is the fully-qualified name of the HoneService's
+	// ListSpeakingExercises RPC.
+	HoneServiceListSpeakingExercisesProcedure = "/druz9.v1.HoneService/ListSpeakingExercises"
+	// HoneServiceGradeSpeakingProcedure is the fully-qualified name of the HoneService's GradeSpeaking
+	// RPC.
+	HoneServiceGradeSpeakingProcedure = "/druz9.v1.HoneService/GradeSpeaking"
+	// HoneServiceListSpeakingHistoryProcedure is the fully-qualified name of the HoneService's
+	// ListSpeakingHistory RPC.
+	HoneServiceListSpeakingHistoryProcedure = "/druz9.v1.HoneService/ListSpeakingHistory"
 )
 
 // HoneServiceClient is a client for the druz9.v1.HoneService service.
@@ -321,6 +336,12 @@ type HoneServiceClient interface {
 	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
 	ListTaskComments(context.Context, *connect.Request[v1.ListTaskCommentsRequest]) (*connect.Response[v1.ListTaskCommentsResponse], error)
 	AddTaskComment(context.Context, *connect.Request[v1.AddTaskCommentRequest]) (*connect.Response[v1.TaskComment], error)
+	// Phase J / H3 (P1, 2026-05-12) — manual kind override + bulk re-categorise.
+	UpdateTaskKind(context.Context, *connect.Request[v1.UpdateTaskKindRequest]) (*connect.Response[v1.Task], error)
+	// Server-streams categorise events as each task is processed. Frontend
+	// consumes via Connect stream client (the existing SSE cursor path stays
+	// for cursor.move / card.move; this is a one-shot scoped stream).
+	BulkAutoCategorise(context.Context, *connect.Request[v1.BulkAutoCategoriseRequest]) (*connect.ServerStreamForClient[v1.BulkAutoCategoriseEvent], error)
 	// ─── Publish-to-web ────────────────────────────────────────────────
 	// The HTML viewer at /p/{slug} stays chi-direct (renders Markdown into
 	// sandboxed HTML with strict CSP headers — vanguard's JSON-only codec
@@ -391,6 +412,17 @@ type HoneServiceClient interface {
 	// clarity/tone. Same one-shot, no-persistence pattern as the
 	// writing grader.
 	GradeCodeReview(context.Context, *connect.Request[v1.GradeCodeReviewRequest]) (*connect.Response[v1.GradeCodeReviewResponse], error)
+	// ─── Speaking modality (H4 / Phase J 2026-05-12) ──────────────────
+	// Shadowing exercise loop: list canned prompts → record mic audio →
+	// STT-grade against reference text → persist session for drift trend.
+	// Без Speaking Hone English ≈ Reader; H4 закрывает 4-modality hub.
+	ListSpeakingExercises(context.Context, *connect.Request[v1.ListSpeakingExercisesRequest]) (*connect.Response[v1.ListSpeakingExercisesResponse], error)
+	// GradeSpeaking — base64-encoded webm/opus audio + reference text.
+	// STT (Groq Whisper) → LLM compare transcript vs reference → pronunciation
+	// & fluency scores + word-level diff + 1-line coach feedback. Persists
+	// a speaking_sessions row idempotent via client_session_id.
+	GradeSpeaking(context.Context, *connect.Request[v1.GradeSpeakingRequest]) (*connect.Response[v1.GradeSpeakingResponse], error)
+	ListSpeakingHistory(context.Context, *connect.Request[v1.ListSpeakingHistoryRequest]) (*connect.Response[v1.ListSpeakingHistoryResponse], error)
 }
 
 // NewHoneServiceClient constructs a client for the druz9.v1.HoneService service. By default, it
@@ -662,6 +694,18 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("AddTaskComment")),
 			connect.WithClientOptions(opts...),
 		),
+		updateTaskKind: connect.NewClient[v1.UpdateTaskKindRequest, v1.Task](
+			httpClient,
+			baseURL+HoneServiceUpdateTaskKindProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("UpdateTaskKind")),
+			connect.WithClientOptions(opts...),
+		),
+		bulkAutoCategorise: connect.NewClient[v1.BulkAutoCategoriseRequest, v1.BulkAutoCategoriseEvent](
+			httpClient,
+			baseURL+HoneServiceBulkAutoCategoriseProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("BulkAutoCategorise")),
+			connect.WithClientOptions(opts...),
+		),
 		publishNote: connect.NewClient[v1.PublishNoteRequest, v1.PublishNoteResponse](
 			httpClient,
 			baseURL+HoneServicePublishNoteProcedure,
@@ -854,6 +898,24 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("GradeCodeReview")),
 			connect.WithClientOptions(opts...),
 		),
+		listSpeakingExercises: connect.NewClient[v1.ListSpeakingExercisesRequest, v1.ListSpeakingExercisesResponse](
+			httpClient,
+			baseURL+HoneServiceListSpeakingExercisesProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListSpeakingExercises")),
+			connect.WithClientOptions(opts...),
+		),
+		gradeSpeaking: connect.NewClient[v1.GradeSpeakingRequest, v1.GradeSpeakingResponse](
+			httpClient,
+			baseURL+HoneServiceGradeSpeakingProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GradeSpeaking")),
+			connect.WithClientOptions(opts...),
+		),
+		listSpeakingHistory: connect.NewClient[v1.ListSpeakingHistoryRequest, v1.ListSpeakingHistoryResponse](
+			httpClient,
+			baseURL+HoneServiceListSpeakingHistoryProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListSpeakingHistory")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -902,6 +964,8 @@ type honeServiceClient struct {
 	deleteTask                *connect.Client[v1.DeleteTaskRequest, v1.DeleteTaskResponse]
 	listTaskComments          *connect.Client[v1.ListTaskCommentsRequest, v1.ListTaskCommentsResponse]
 	addTaskComment            *connect.Client[v1.AddTaskCommentRequest, v1.TaskComment]
+	updateTaskKind            *connect.Client[v1.UpdateTaskKindRequest, v1.Task]
+	bulkAutoCategorise        *connect.Client[v1.BulkAutoCategoriseRequest, v1.BulkAutoCategoriseEvent]
 	publishNote               *connect.Client[v1.PublishNoteRequest, v1.PublishNoteResponse]
 	unpublishNote             *connect.Client[v1.UnpublishNoteRequest, v1.UnpublishNoteResponse]
 	publishStatus             *connect.Client[v1.PublishStatusRequest, v1.PublishStatusResponse]
@@ -934,6 +998,9 @@ type honeServiceClient struct {
 	setActiveTrack            *connect.Client[v1.SetActiveTrackRequest, v1.UserSettings]
 	setEnglishActive          *connect.Client[v1.SetEnglishActiveRequest, v1.UserSettings]
 	gradeCodeReview           *connect.Client[v1.GradeCodeReviewRequest, v1.GradeCodeReviewResponse]
+	listSpeakingExercises     *connect.Client[v1.ListSpeakingExercisesRequest, v1.ListSpeakingExercisesResponse]
+	gradeSpeaking             *connect.Client[v1.GradeSpeakingRequest, v1.GradeSpeakingResponse]
+	listSpeakingHistory       *connect.Client[v1.ListSpeakingHistoryRequest, v1.ListSpeakingHistoryResponse]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -1151,6 +1218,16 @@ func (c *honeServiceClient) AddTaskComment(ctx context.Context, req *connect.Req
 	return c.addTaskComment.CallUnary(ctx, req)
 }
 
+// UpdateTaskKind calls druz9.v1.HoneService.UpdateTaskKind.
+func (c *honeServiceClient) UpdateTaskKind(ctx context.Context, req *connect.Request[v1.UpdateTaskKindRequest]) (*connect.Response[v1.Task], error) {
+	return c.updateTaskKind.CallUnary(ctx, req)
+}
+
+// BulkAutoCategorise calls druz9.v1.HoneService.BulkAutoCategorise.
+func (c *honeServiceClient) BulkAutoCategorise(ctx context.Context, req *connect.Request[v1.BulkAutoCategoriseRequest]) (*connect.ServerStreamForClient[v1.BulkAutoCategoriseEvent], error) {
+	return c.bulkAutoCategorise.CallServerStream(ctx, req)
+}
+
 // PublishNote calls druz9.v1.HoneService.PublishNote.
 func (c *honeServiceClient) PublishNote(ctx context.Context, req *connect.Request[v1.PublishNoteRequest]) (*connect.Response[v1.PublishNoteResponse], error) {
 	return c.publishNote.CallUnary(ctx, req)
@@ -1311,6 +1388,21 @@ func (c *honeServiceClient) GradeCodeReview(ctx context.Context, req *connect.Re
 	return c.gradeCodeReview.CallUnary(ctx, req)
 }
 
+// ListSpeakingExercises calls druz9.v1.HoneService.ListSpeakingExercises.
+func (c *honeServiceClient) ListSpeakingExercises(ctx context.Context, req *connect.Request[v1.ListSpeakingExercisesRequest]) (*connect.Response[v1.ListSpeakingExercisesResponse], error) {
+	return c.listSpeakingExercises.CallUnary(ctx, req)
+}
+
+// GradeSpeaking calls druz9.v1.HoneService.GradeSpeaking.
+func (c *honeServiceClient) GradeSpeaking(ctx context.Context, req *connect.Request[v1.GradeSpeakingRequest]) (*connect.Response[v1.GradeSpeakingResponse], error) {
+	return c.gradeSpeaking.CallUnary(ctx, req)
+}
+
+// ListSpeakingHistory calls druz9.v1.HoneService.ListSpeakingHistory.
+func (c *honeServiceClient) ListSpeakingHistory(ctx context.Context, req *connect.Request[v1.ListSpeakingHistoryRequest]) (*connect.Response[v1.ListSpeakingHistoryResponse], error) {
+	return c.listSpeakingHistory.CallUnary(ctx, req)
+}
+
 // HoneServiceHandler is an implementation of the druz9.v1.HoneService service.
 type HoneServiceHandler interface {
 	// ─── Plan ───────────────────────────────────────────────────────────
@@ -1371,6 +1463,12 @@ type HoneServiceHandler interface {
 	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
 	ListTaskComments(context.Context, *connect.Request[v1.ListTaskCommentsRequest]) (*connect.Response[v1.ListTaskCommentsResponse], error)
 	AddTaskComment(context.Context, *connect.Request[v1.AddTaskCommentRequest]) (*connect.Response[v1.TaskComment], error)
+	// Phase J / H3 (P1, 2026-05-12) — manual kind override + bulk re-categorise.
+	UpdateTaskKind(context.Context, *connect.Request[v1.UpdateTaskKindRequest]) (*connect.Response[v1.Task], error)
+	// Server-streams categorise events as each task is processed. Frontend
+	// consumes via Connect stream client (the existing SSE cursor path stays
+	// for cursor.move / card.move; this is a one-shot scoped stream).
+	BulkAutoCategorise(context.Context, *connect.Request[v1.BulkAutoCategoriseRequest], *connect.ServerStream[v1.BulkAutoCategoriseEvent]) error
 	// ─── Publish-to-web ────────────────────────────────────────────────
 	// The HTML viewer at /p/{slug} stays chi-direct (renders Markdown into
 	// sandboxed HTML with strict CSP headers — vanguard's JSON-only codec
@@ -1441,6 +1539,17 @@ type HoneServiceHandler interface {
 	// clarity/tone. Same one-shot, no-persistence pattern as the
 	// writing grader.
 	GradeCodeReview(context.Context, *connect.Request[v1.GradeCodeReviewRequest]) (*connect.Response[v1.GradeCodeReviewResponse], error)
+	// ─── Speaking modality (H4 / Phase J 2026-05-12) ──────────────────
+	// Shadowing exercise loop: list canned prompts → record mic audio →
+	// STT-grade against reference text → persist session for drift trend.
+	// Без Speaking Hone English ≈ Reader; H4 закрывает 4-modality hub.
+	ListSpeakingExercises(context.Context, *connect.Request[v1.ListSpeakingExercisesRequest]) (*connect.Response[v1.ListSpeakingExercisesResponse], error)
+	// GradeSpeaking — base64-encoded webm/opus audio + reference text.
+	// STT (Groq Whisper) → LLM compare transcript vs reference → pronunciation
+	// & fluency scores + word-level diff + 1-line coach feedback. Persists
+	// a speaking_sessions row idempotent via client_session_id.
+	GradeSpeaking(context.Context, *connect.Request[v1.GradeSpeakingRequest]) (*connect.Response[v1.GradeSpeakingResponse], error)
+	ListSpeakingHistory(context.Context, *connect.Request[v1.ListSpeakingHistoryRequest]) (*connect.Response[v1.ListSpeakingHistoryResponse], error)
 }
 
 // NewHoneServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1708,6 +1817,18 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("AddTaskComment")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceUpdateTaskKindHandler := connect.NewUnaryHandler(
+		HoneServiceUpdateTaskKindProcedure,
+		svc.UpdateTaskKind,
+		connect.WithSchema(honeServiceMethods.ByName("UpdateTaskKind")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceBulkAutoCategoriseHandler := connect.NewServerStreamHandler(
+		HoneServiceBulkAutoCategoriseProcedure,
+		svc.BulkAutoCategorise,
+		connect.WithSchema(honeServiceMethods.ByName("BulkAutoCategorise")),
+		connect.WithHandlerOptions(opts...),
+	)
 	honeServicePublishNoteHandler := connect.NewUnaryHandler(
 		HoneServicePublishNoteProcedure,
 		svc.PublishNote,
@@ -1900,6 +2021,24 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("GradeCodeReview")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceListSpeakingExercisesHandler := connect.NewUnaryHandler(
+		HoneServiceListSpeakingExercisesProcedure,
+		svc.ListSpeakingExercises,
+		connect.WithSchema(honeServiceMethods.ByName("ListSpeakingExercises")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceGradeSpeakingHandler := connect.NewUnaryHandler(
+		HoneServiceGradeSpeakingProcedure,
+		svc.GradeSpeaking,
+		connect.WithSchema(honeServiceMethods.ByName("GradeSpeaking")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListSpeakingHistoryHandler := connect.NewUnaryHandler(
+		HoneServiceListSpeakingHistoryProcedure,
+		svc.ListSpeakingHistory,
+		connect.WithSchema(honeServiceMethods.ByName("ListSpeakingHistory")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.HoneService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HoneServiceGenerateDailyPlanProcedure:
@@ -1988,6 +2127,10 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceListTaskCommentsHandler.ServeHTTP(w, r)
 		case HoneServiceAddTaskCommentProcedure:
 			honeServiceAddTaskCommentHandler.ServeHTTP(w, r)
+		case HoneServiceUpdateTaskKindProcedure:
+			honeServiceUpdateTaskKindHandler.ServeHTTP(w, r)
+		case HoneServiceBulkAutoCategoriseProcedure:
+			honeServiceBulkAutoCategoriseHandler.ServeHTTP(w, r)
 		case HoneServicePublishNoteProcedure:
 			honeServicePublishNoteHandler.ServeHTTP(w, r)
 		case HoneServiceUnpublishNoteProcedure:
@@ -2052,6 +2195,12 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceSetEnglishActiveHandler.ServeHTTP(w, r)
 		case HoneServiceGradeCodeReviewProcedure:
 			honeServiceGradeCodeReviewHandler.ServeHTTP(w, r)
+		case HoneServiceListSpeakingExercisesProcedure:
+			honeServiceListSpeakingExercisesHandler.ServeHTTP(w, r)
+		case HoneServiceGradeSpeakingProcedure:
+			honeServiceGradeSpeakingHandler.ServeHTTP(w, r)
+		case HoneServiceListSpeakingHistoryProcedure:
+			honeServiceListSpeakingHistoryHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2233,6 +2382,14 @@ func (UnimplementedHoneServiceHandler) AddTaskComment(context.Context, *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddTaskComment is not implemented"))
 }
 
+func (UnimplementedHoneServiceHandler) UpdateTaskKind(context.Context, *connect.Request[v1.UpdateTaskKindRequest]) (*connect.Response[v1.Task], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.UpdateTaskKind is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) BulkAutoCategorise(context.Context, *connect.Request[v1.BulkAutoCategoriseRequest], *connect.ServerStream[v1.BulkAutoCategoriseEvent]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.BulkAutoCategorise is not implemented"))
+}
+
 func (UnimplementedHoneServiceHandler) PublishNote(context.Context, *connect.Request[v1.PublishNoteRequest]) (*connect.Response[v1.PublishNoteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.PublishNote is not implemented"))
 }
@@ -2359,4 +2516,16 @@ func (UnimplementedHoneServiceHandler) SetEnglishActive(context.Context, *connec
 
 func (UnimplementedHoneServiceHandler) GradeCodeReview(context.Context, *connect.Request[v1.GradeCodeReviewRequest]) (*connect.Response[v1.GradeCodeReviewResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GradeCodeReview is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListSpeakingExercises(context.Context, *connect.Request[v1.ListSpeakingExercisesRequest]) (*connect.Response[v1.ListSpeakingExercisesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListSpeakingExercises is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GradeSpeaking(context.Context, *connect.Request[v1.GradeSpeakingRequest]) (*connect.Response[v1.GradeSpeakingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GradeSpeaking is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListSpeakingHistory(context.Context, *connect.Request[v1.ListSpeakingHistoryRequest]) (*connect.Response[v1.ListSpeakingHistoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListSpeakingHistory is not implemented"))
 }

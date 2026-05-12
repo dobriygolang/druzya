@@ -18,11 +18,15 @@ import (
 // Calendar pivot 2026-05-04: CalendarReader/UpcomingEvents removed alongside
 // personal_events drop. Coach next-action no longer factors interview-window
 // pressure; mocks + track step + fork mode remain the active inputs.
+//
+// Phase J 2026-05-12: focusReflections reader added so prompt видит recent
+// pomodoro grade+notes — direct lever для «previously stuck on X» rationale.
 type nextActionLoader struct {
-	fork          *intelInfra.ForkProgressReader
-	resourceTrail *intelInfra.ResourceEngagementReader
-	mocks         *intelInfra.MockReader
-	tracks        *intelInfra.TrackReader
+	fork             *intelInfra.ForkProgressReader
+	resourceTrail    *intelInfra.ResourceEngagementReader
+	mocks            *intelInfra.MockReader
+	tracks           *intelInfra.TrackReader
+	focusReflections *intelInfra.FocusReflectionsPostgres
 }
 
 // LoadNextActionContext implements intelPorts.NextActionContextLoader.
@@ -69,6 +73,20 @@ func (l *nextActionLoader) LoadNextActionContext(
 		}
 	}
 	_ = intelDomain.ActiveTrack{}
+
+	// Phase J — recent focus reflections (last 14 days). Cap'нем cпеc'ом
+	// 5 entries в prompt builder'е; reader возвращает up to 1000 чтобы
+	// downstream Stats/Recall тоже мог использовать тот же snapshot.
+	if l.focusReflections != nil {
+		if refl, err := l.focusReflections.ListRecent(ctx, userID, 14); err == nil {
+			// Cap at 10 to keep NextActionInput payload small. Prompt builder
+			// дополнительно режет до 5.
+			if len(refl) > 10 {
+				refl = refl[:10]
+			}
+			out.RecentFocusReflections = refl
+		}
+	}
 
 	return out, nil
 }

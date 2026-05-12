@@ -44,6 +44,20 @@ func (q *Queries) ApproveInterviewerApplication(ctx context.Context, arg Approve
 	return i, err
 }
 
+const countUserAppInstalls = `-- name: CountUserAppInstalls :one
+SELECT COUNT(*)::bigint FROM user_app_installs WHERE user_id = $1
+`
+
+// Used by RecordAppInstall trial-grant gate: «is this the very first
+// install row for the user (any app)». Returns the count BEFORE the
+// caller wrote the new row, so caller checks count == 0.
+func (q *Queries) CountUserAppInstalls(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUserAppInstalls, userID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countWeeklyActivity = `-- name: CountWeeklyActivity :one
 SELECT
   0::int AS katas_passed,
@@ -161,6 +175,7 @@ func (q *Queries) GetMyInterviewerApplication(ctx context.Context, userID pgtype
 const getProfileBundle = `-- name: GetProfileBundle :one
 
 SELECT u.id, u.username, u.role, u.locale, u.display_name, u.created_at,
+       u.tutor_mode_enabled,
        p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
        p.updated_at,
        s.plan, s.status, s.current_period_end
@@ -178,6 +193,7 @@ type GetProfileBundleRow struct {
 	Locale           string
 	DisplayName      pgtype.Text
 	CreatedAt        pgtype.Timestamptz
+	TutorModeEnabled bool
 	CharClass        string
 	Level            int32
 	TotalXp          int64
@@ -189,6 +205,7 @@ type GetProfileBundleRow struct {
 
 // Queries consumed by sqlc; mirror the hand-rolled pgx code in infra/postgres.go.
 // v2: email column dropped from users; xp/level moved to user_xp.
+// Stream D (2026-05-12): tutor_mode_enabled surfaced for AppShell RBAC.
 func (q *Queries) GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProfileBundleRow, error) {
 	row := q.db.QueryRow(ctx, getProfileBundle, id)
 	var i GetProfileBundleRow
@@ -199,6 +216,7 @@ func (q *Queries) GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProf
 		&i.Locale,
 		&i.DisplayName,
 		&i.CreatedAt,
+		&i.TutorModeEnabled,
 		&i.CharClass,
 		&i.Level,
 		&i.TotalXp,
@@ -242,6 +260,39 @@ func (q *Queries) GetProfilePublic(ctx context.Context, username string) (GetPro
 		&i.TotalXp,
 	)
 	return i, err
+}
+
+const listAppInstalls = `-- name: ListAppInstalls :many
+SELECT user_id, app, first_seen_at, last_seen_at, app_version
+  FROM user_app_installs
+ WHERE user_id = $1
+ ORDER BY first_seen_at ASC
+`
+
+func (q *Queries) ListAppInstalls(ctx context.Context, userID pgtype.UUID) ([]UserAppInstall, error) {
+	rows, err := q.db.Query(ctx, listAppInstalls, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UserAppInstall{}
+	for rows.Next() {
+		var i UserAppInstall
+		if err := rows.Scan(
+			&i.UserID,
+			&i.App,
+			&i.FirstSeenAt,
+			&i.LastSeenAt,
+			&i.AppVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listInterviewerApplications = `-- name: ListInterviewerApplications :many
@@ -420,4 +471,49 @@ type UpdateProfileXPLevelParams struct {
 func (q *Queries) UpdateProfileXPLevel(ctx context.Context, arg UpdateProfileXPLevelParams) error {
 	_, err := q.db.Exec(ctx, updateProfileXPLevel, arg.UserID, arg.Level, arg.TotalXp)
 	return err
+}
+
+const upsertAppInstall = `-- name: UpsertAppInstall :one
+INSERT INTO user_app_installs(user_id, app, app_version)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, app) DO UPDATE
+   SET last_seen_at = now(),
+       app_version  = CASE WHEN EXCLUDED.app_version <> ''
+                           THEN EXCLUDED.app_version
+                           ELSE user_app_installs.app_version END
+RETURNING user_id, app, first_seen_at, last_seen_at, app_version,
+          (xmax = 0) AS inserted
+`
+
+type UpsertAppInstallParams struct {
+	UserID     pgtype.UUID
+	App        string
+	AppVersion string
+}
+
+type UpsertAppInstallRow struct {
+	UserID      pgtype.UUID
+	App         string
+	FirstSeenAt pgtype.Timestamptz
+	LastSeenAt  pgtype.Timestamptz
+	AppVersion  string
+	Inserted    bool
+}
+
+// Phase J / X1 (P0). Idempotent heartbeat from web / Hone / Cue.
+// xmax = 0 on the returned row means INSERT path; xmax != 0 means UPDATE
+// path (existing row touched). That bit drives the «is this the first
+// install row for the user across all 3 apps» trial-grant check upstream.
+func (q *Queries) UpsertAppInstall(ctx context.Context, arg UpsertAppInstallParams) (UpsertAppInstallRow, error) {
+	row := q.db.QueryRow(ctx, upsertAppInstall, arg.UserID, arg.App, arg.AppVersion)
+	var i UpsertAppInstallRow
+	err := row.Scan(
+		&i.UserID,
+		&i.App,
+		&i.FirstSeenAt,
+		&i.LastSeenAt,
+		&i.AppVersion,
+		&i.Inserted,
+	)
+	return i, err
 }

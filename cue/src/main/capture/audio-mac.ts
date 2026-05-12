@@ -44,8 +44,12 @@ export interface AudioCaptureEvents {
   /** Each successfully transcribed delta from the streaming server.
    *  windowSec is the audio duration covered by the chunk (server-side
    *  windowing, typically 1-2s). isFinal=true marks an end-of-utterance
-   *  boundary the renderer should commit; false = preliminary partial. */
-  onTranscript: (text: string, windowSec: number, isFinal: boolean) => void;
+   *  boundary the renderer should commit; false = preliminary partial.
+   *
+   *  speakerId — C4 diarization label. For mic source: always 0 (the
+   *  user, "Я"). For system source: 1..N clustered по голосам. May be
+   *  undefined for backwards-compat / partial frames. */
+  onTranscript: (text: string, windowSec: number, isFinal: boolean, speakerId?: number) => void;
   onError: (message: string) => void;
 }
 
@@ -162,7 +166,13 @@ export function createAudioCapture(
                 const text = msg.text?.trim() ?? '';
                 if (!text) return;
                 const dur = typeof msg.duration === 'number' ? msg.duration : 0;
-                events.onTranscript(text, dur, msg.type === 'final');
+                // Diarization (C4): backend tags each final delta с speaker_id.
+                // Mic source server-side всегда speaker_id=0 (omitempty drops
+                // его на wire), system source = 1..N. Если поле отсутствует
+                // (старый сервер / partial frame), пробрасываем undefined —
+                // renderer fall back'нётся на source-based label.
+                const speakerId = typeof msg.speaker_id === 'number' ? msg.speaker_id : undefined;
+                events.onTranscript(text, dur, msg.type === 'final', speakerId);
                 return;
               }
               case 'error':
@@ -200,6 +210,9 @@ export function createAudioCapture(
             cfg.defaultLocale === 'en'
               ? 'Live meeting transcript. Technical discussion: software, AI, code.'
               : 'Запись встречи: технический разговор о софте, AI, коде, druzya, druz9, copilot, Hone, Cue.',
+          // C4 diarization: backend uses source param to route speaker
+          // labels. mic → always speaker 0 ("Я"), system → 1..N clustered.
+          source,
         },
       )
         .then((handle) => {

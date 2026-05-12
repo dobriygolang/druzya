@@ -12,6 +12,7 @@ use (
 	./backend/services/curation
 	./backend/services/documents
 	./backend/services/editor
+	./backend/services/google_calendar
 	./backend/services/hone
 	./backend/services/intelligence
 	./backend/services/learning_state
@@ -23,10 +24,10 @@ use (
 	./backend/services/storage
 	./backend/services/subscription
 	./backend/services/sync
+	./backend/services/telemetry
 	./backend/services/tracks
 	./backend/services/transcription
 	./backend/services/tutor
-	./backend/services/vacancies
 	./backend/services/whiteboard_rooms
 	./backend/shared
 )

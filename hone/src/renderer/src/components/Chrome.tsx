@@ -30,7 +30,7 @@ export function Wordmark() {
           letterSpacing: '0.32em',
           color: 'var(--ink)',
           paddingBottom: 6,
-          borderBottom: '1px solid rgba(255,255,255,0.5)',
+          borderBottom: '1px solid var(--ink-60)',
           display: 'inline-block',
         }}
       >
@@ -69,7 +69,7 @@ export function Versionmark(_: VersionmarkProps) {
         style={{
           fontSize: 10,
           color: 'var(--ink-40)',
-          letterSpacing: '0.18em',
+          letterSpacing: '0.08em',
           background: 'transparent',
           padding: 0,
         }}

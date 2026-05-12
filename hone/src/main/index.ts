@@ -25,9 +25,7 @@
 
 import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, shell } from 'electron';
 import { init as sentryInit, IPCMode } from '@sentry/electron/main';
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { URL } from 'node:url';
 
 import {
   eventChannels,
@@ -40,6 +38,7 @@ import { clearSession, loadSession, saveSession } from './keychain';
 import { clearVaultPassphrase, loadVaultPassphrase, saveVaultPassphrase } from './vaultKeychain';
 import { loadPomodoro, savePomodoro } from './pomodoro_store';
 import { quitAndInstall, startPeriodicCheck, wireUpdater } from './updater';
+import { parseDeepLink, dispatchIntent } from './auth/deeplink';
 
 // Backend host. Main can't import the renderer alias due to electron-vite's
 // split bundles, so we duplicate the resolution logic here.
@@ -251,65 +250,18 @@ function createMainWindow(): BrowserWindow {
 // Сохраняем и доставим после ready-to-show.
 let pendingDeepLink: string | null = null;
 
+// dispatchDeepLink — thin wrapper over the auth/deeplink intent router.
+// X5 (Phase J P2 2026-05-12): scattered if-chains migrated into a typed
+// parseDeepLink + dispatchIntent in ./auth/deeplink.ts. This function
+// only handles the «queue when window not ready» concern.
 function dispatchDeepLink(url: string): void {
   if (!mainWindow || mainWindow.isDestroyed()) {
     pendingDeepLink = url;
     return;
   }
-
-  // druz9://auth — extract tokens, persist, broadcast authChanged.
-  if (url.startsWith('druz9://auth')) {
-    const session = parseAuthURL(url);
-    if (session) {
-      void saveSession(session).catch(() => {
-        // Не падаем: даже если keychain не доступен, рендереру всё
-        // равно скажем «есть сессия» — она проживёт до перезапуска.
-      });
-      mainWindow.webContents.send(eventChannels.authChanged, session);
-    }
-  }
-
-  // druz9://notes/import?path=<base64> — Cue meeting notes deep link.
-  if (url.startsWith('druz9://notes/import')) {
-    void (async () => {
-      try {
-        const u = new URL(url);
-        const encoded = u.searchParams.get('path');
-        if (encoded) {
-          const filePath = Buffer.from(encoded, 'base64').toString('utf-8');
-          const raw = await readFile(filePath, 'utf-8');
-          const analysis = JSON.parse(raw) as unknown;
-          mainWindow.webContents.send(eventChannels.cueNoteImport, { filePath, analysis });
-        }
-      } catch {
-        // If file read fails, fall through to generic deepLink so renderer
-        // can show an error or ignore.
-      }
-    })();
-  }
-
-  // druz9://focus[/start][?task=...&title=...] — рендерер сам решит.
-  // Generic forward для всех остальных.
-  mainWindow.webContents.send(eventChannels.deepLink, { url });
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.focus();
-}
-
-function parseAuthURL(raw: string): AuthSession | null {
-  try {
-    const u = new URL(raw);
-    const token = u.searchParams.get('token');
-    const userId = u.searchParams.get('user');
-    if (!token || !userId) return null;
-    return {
-      userId,
-      accessToken: token,
-      refreshToken: u.searchParams.get('refresh') ?? '',
-      expiresAt: Number(u.searchParams.get('exp') ?? 0),
-    };
-  } catch {
-    return null;
-  }
+  const intent = parseDeepLink(url);
+  if (!intent) return;
+  void dispatchIntent(intent, { window: mainWindow });
 }
 
 app.on('second-instance', (_event, argv) => {

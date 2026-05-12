@@ -49,6 +49,10 @@ import {
   type StageKind,
 } from '../../lib/queries/mockPipeline'
 import { SysDesignCanvas } from './SysDesignCanvas'
+import { AlgoStage } from './AlgoStage'
+import { CodingStage } from './CodingStage'
+import { SysDesignStage } from './SysDesignStage'
+import { BehavioralStage } from './BehavioralStage'
 
 const STAGE_ORDER_DISPLAY: StageKind[] = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral']
 
@@ -182,7 +186,7 @@ export default function MockPipelinePage() {
         {/* Top bar */}
         <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-0.5">
-            <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
               druz9 mock
             </div>
             <h1 className="font-display text-xl sm:text-2xl font-bold text-text-primary">
@@ -198,7 +202,7 @@ export default function MockPipelinePage() {
 
           <main className="min-w-0 flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
                 {STAGE_LABEL[currentStage.stage_kind]} · {currentStage.status === 'in_progress' ? 'in_progress' : currentStage.status}
               </span>
             </div>
@@ -213,11 +217,31 @@ export default function MockPipelinePage() {
                   startNext.reset()
                 }}
               />
-            ) : currentStage.stage_kind === 'hr' ||
-              currentStage.stage_kind === 'algo' ||
-              currentStage.stage_kind === 'coding' ||
-              currentStage.stage_kind === 'sysdesign' ||
-              currentStage.stage_kind === 'behavioral' ? (
+            ) : currentStage.stage_kind === 'algo' ? (
+              <AlgoStage
+                key={currentStage.id}
+                stage={currentStage}
+                pipelineId={pipeline.id}
+              />
+            ) : currentStage.stage_kind === 'coding' ? (
+              <CodingStage
+                key={currentStage.id}
+                stage={currentStage}
+                pipelineId={pipeline.id}
+              />
+            ) : currentStage.stage_kind === 'sysdesign' ? (
+              <SysDesignStage
+                key={currentStage.id}
+                stage={currentStage}
+                pipelineId={pipeline.id}
+              />
+            ) : currentStage.stage_kind === 'behavioral' ? (
+              <BehavioralStage
+                key={currentStage.id}
+                stage={currentStage}
+                pipelineId={pipeline.id}
+              />
+            ) : currentStage.stage_kind === 'hr' ? (
               <StageChat
                 key={currentStage.id}
                 stage={currentStage}
@@ -250,15 +274,17 @@ function StageProgressDots({ pipeline }: { pipeline: Pipeline }) {
         const s = byKind.get(kind)
         const isCurrent = s && s.ordinal === pipeline.current_stage_idx
         const cls = stageDotClass(s?.status, s?.verdict, !!isCurrent)
+        const isRed = cls === '__red__'
         return (
           <span
             key={kind}
             title={STAGE_LABEL[kind]}
             className={[
               'h-2.5 w-2.5 rounded-full',
-              cls,
+              isRed ? '' : cls,
               isCurrent ? 'ring-2 ring-text-primary/40' : '',
             ].join(' ')}
+            style={isRed ? { background: 'var(--red)' } : undefined}
           />
         )
       })}
@@ -271,11 +297,14 @@ function stageDotClass(
   verdict: PipelineStage['verdict'] | undefined,
   isCurrent: boolean,
 ): string {
+  // Stratify on the ink ramp; fail/borderline get the red flag in callers via
+  // an explicit inline style (see StageStatusDot below), since a 2px dot
+  // can't fit a 1.5px signal stripe.
   if (!status) return 'bg-surface-2'
   if (status === 'finished') {
-    if (verdict === 'pass') return 'bg-success'
-    if (verdict === 'fail') return 'bg-danger'
-    if (verdict === 'borderline') return 'bg-warn'
+    if (verdict === 'pass') return 'bg-text-primary'
+    if (verdict === 'fail') return '__red__'
+    if (verdict === 'borderline') return '__red__'
     return 'bg-text-secondary'
   }
   if (status === 'in_progress') return 'bg-text-primary animate-pulse'
@@ -298,7 +327,7 @@ function StagesSidebar({
   const sorted = [...(pipeline.stages ?? [])].sort((a, b) => a.ordinal - b.ordinal)
   return (
     <aside className="flex flex-col gap-2">
-      <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary px-1">
+      <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary px-1">
         Этапы
       </div>
       <ul className="flex flex-col gap-1.5">
@@ -348,7 +377,14 @@ function StageStatusDot({
   isCurrent: boolean
 }) {
   const cls = stageDotClass(status, verdict, isCurrent)
-  return <span className={['h-2 w-2 rounded-full shrink-0', cls].join(' ')} aria-hidden />
+  const isRed = cls === '__red__'
+  return (
+    <span
+      className={['h-2 w-2 rounded-full shrink-0', isRed ? '' : cls].join(' ')}
+      style={isRed ? { background: 'var(--red)' } : undefined}
+      aria-hidden
+    />
+  )
 }
 
 // ── StageLoadingSkeleton ────────────────────────────────────────────────
@@ -382,7 +418,7 @@ function StageChat({ stage, pipelineId }: { stage: PipelineStage; pipelineId: st
     return (
       <Card variant="default" padding="lg" className="text-sm text-text-secondary">
         <div className="flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 text-warn" />
+          <AlertCircle className="h-4 w-4" style={{ color: 'var(--red)' }} />
           <span>
             {isCodeLike
               ? 'Для этого этапа ещё не настроены задачи в пуле компании. Попроси админа добавить mock_task через /admin → Mock Tasks.'
@@ -523,7 +559,7 @@ function QuestionCard({
       ref={cardRef as React.RefObject<HTMLDivElement>}
     >
       <div className="flex items-baseline gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
           {attempt.kind === 'task_solve' ? `T${ordinal}` : `Q${ordinal}`}
         </span>
         {attempt.kind !== 'task_solve' && (
@@ -553,7 +589,7 @@ function QuestionCard({
       {isAnswered && (
         <div className="flex flex-col gap-3">
           <div className="rounded-lg border border-border bg-surface-1 p-3">
-            <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-1">
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
               Твой ответ
             </div>
             <div className="text-sm text-text-primary whitespace-pre-wrap font-mono">
@@ -583,12 +619,12 @@ function TaskBrief({ content, criteria }: { content: string; criteria: PipelineA
   return (
     <div className="flex flex-col gap-3">
       {mentionsComplexity && (
-        <div className="self-start rounded-full border border-border-strong bg-surface-2 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+        <div className="self-start rounded-full border border-border-strong bg-surface-2 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
           Алгоритм · O(n) target
         </div>
       )}
       <div className="rounded-lg border border-border-strong bg-surface-2 p-5">
-        <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-2">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-2">
           Задача
         </div>
         <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-text-primary">
@@ -627,10 +663,17 @@ function TextAnswerForm({ attemptId, pipelineId }: { attemptId: string; pipeline
         disabled={submit.isPending}
         rows={6}
         placeholder="Твой ответ…"
-        className="w-full resize-y rounded-lg border border-border-strong bg-surface-1 p-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-text-primary/40"
+        className="w-full resize-y border-0 border-b border-solid bg-transparent p-3 text-sm text-text-primary placeholder:text-text-secondary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] focus:outline-none"
+        style={{ borderBottomColor: 'var(--hair-2)' }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderBottomColor = 'rgb(var(--ink))'
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderBottomColor = 'var(--hair-2)'
+        }}
       />
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[10px] text-text-secondary">
+        <span className="font-mono text-[10px] tracking-[0.08em] text-text-secondary">
           {draft.length} символов · ⌘+Enter — отправить
         </span>
         <Button
@@ -772,7 +815,7 @@ function ComingSoonAttempt({ attempt, ordinal }: { attempt: PipelineAttempt; ord
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
           A{ordinal}
         </span>
         <h3 className="font-display text-base font-bold text-text-primary">
@@ -791,25 +834,36 @@ function ComingSoonAttempt({ attempt, ordinal }: { attempt: PipelineAttempt; ord
 function VerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
   const v = attempt.ai_verdict
   const score = attempt.ai_score ?? 0
-  const cls =
-    v === 'pass'
-      ? 'border-success bg-success/10 text-success'
-      : v === 'fail'
-        ? 'border-danger bg-danger/10 text-danger'
-        : v === 'borderline'
-          ? 'border-warn bg-warn/10 text-warn'
-          : 'border-border bg-surface-1 text-text-secondary'
+  // Red signal stripe replaces danger/warn hue chips; ink ramp carries the
+  // remaining signal (pass = full opacity, borderline = 0.7, neutral = 0.5).
+  const fail = v === 'fail'
+  const borderline = v === 'borderline'
   const label = v === 'pass' ? 'PASS' : v === 'fail' ? 'FAIL' : v === 'borderline' ? 'BORDERLINE' : v
   const Icon = v === 'pass' ? CheckCircle2 : v === 'fail' ? XCircle : AlertCircle
 
   return (
     <div className="flex flex-col gap-3">
-      <div className={['flex items-center gap-2 rounded-lg border px-3 py-2', cls].join(' ')}>
-        <Icon className="h-4 w-4" />
-        <span className="font-display text-sm font-bold uppercase">{label}</span>
-        <span className="font-mono text-sm">· {score}/100</span>
+      <div className="relative flex items-center gap-2 rounded-lg border border-border-strong bg-surface-1 px-3 py-2 text-text-primary">
+        {(fail || borderline) && (
+          <span
+            aria-hidden
+            className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-lg"
+            style={{ background: 'var(--red)' }}
+          />
+        )}
+        <Icon
+          className="h-4 w-4"
+          style={fail || borderline ? { color: 'var(--red)' } : undefined}
+        />
+        <span
+          className="font-display text-sm font-bold uppercase tracking-[0.08em]"
+          style={fail || borderline ? { color: 'var(--red)' } : undefined}
+        >
+          {label}
+        </span>
+        <span className="font-mono text-sm tracking-[0.08em]">· {score}/100</span>
         {attempt.ai_water_score !== null && attempt.ai_water_score > 30 && (
-          <span className="font-mono text-[10px] ml-auto opacity-70">
+          <span className="font-mono text-[10px] tracking-[0.08em] ml-auto opacity-70">
             water {attempt.ai_water_score}%
           </span>
         )}
@@ -817,7 +871,7 @@ function VerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
 
       {attempt.ai_feedback_md && (
         <Card variant="default" padding="md" className="font-sans">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-1">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
             Feedback
           </div>
           <div className="text-sm text-text-primary whitespace-pre-wrap">
@@ -828,7 +882,7 @@ function VerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
 
       {attempt.ai_missing_points.length > 0 && (
         <div className="rounded-lg border border-border bg-surface-1 p-3">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-1">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
             Что упустил
           </div>
           <ul className="list-disc list-inside text-sm text-text-secondary space-y-0.5">
@@ -848,9 +902,14 @@ function StageStartError({ error, onRetry }: { error: unknown; onRetry: () => vo
   const msg = error instanceof Error ? error.message : String(error)
   const isNoTask = /no\s*task/i.test(msg)
   return (
-    <Card variant="default" padding="lg" className="flex flex-col gap-3">
+    <Card variant="default" padding="lg" className="relative flex flex-col gap-3">
+      <span
+        aria-hidden
+        className="absolute left-0 top-0 h-full w-[1.5px]"
+        style={{ background: 'var(--red)' }}
+      />
       <div className="flex items-center gap-2">
-        <AlertCircle className="h-4 w-4 text-warn" />
+        <AlertCircle className="h-4 w-4" style={{ color: 'var(--red)' }} />
         <span className="font-display text-sm font-bold text-text-primary">
           {isNoTask ? 'Нет задач для этого этапа' : 'Не удалось поднять этап'}
         </span>
@@ -890,7 +949,7 @@ function ComingSoonStage({
   }
   return (
     <Card variant="default" padding="lg" className="flex flex-col gap-3">
-      <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+      <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
         {STAGE_LABEL[kind]} · stub
       </div>
       <h2 className="font-display text-lg font-bold text-text-primary">

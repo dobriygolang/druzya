@@ -226,12 +226,66 @@ jobs:
         working-directory: cue
         run: npm run typecheck
 
+      # Wave 3 K (Phase J / C7) — stealth-boundary regression harness
+      # (windows/* + hardening + permissions + cursor/freeze-bridge +
+      # masquerade-config validation). Pure-TS unit tests; real screen-
+      # capture e2e lives in cue/native/stealth-verifier (local-only,
+      # CI runners can't meaningfully test NSWindowSharingNone).
+      - name: Test
+        working-directory: cue
+        run: npm run test
+
       # electron-vite bundles main/preload/renderer into plain JS; the
       # output is OS-agnostic. We skip electron-builder packaging in CI —
       # it requires macOS signing certs (for DMG) and Windows EV certs
       # (for code signing). Packaging happens in the release workflow.
       - name: Build
         working-directory: cue
+        run: npm run build
+
+  hone:
+    name: Hone — typecheck + test + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: hone/package-lock.json
+
+      - name: Cache hone node_modules
+        uses: actions/cache@v4
+        with:
+          path: hone/node_modules
+          key: nm-hone-${{ runner.os }}-node20-${{ hashFiles('hone/package-lock.json') }}
+          restore-keys: |
+            nm-hone-${{ runner.os }}-node20-
+
+      # Same reason as the cue / frontend jobs: the lockfile references an
+      # internal artifactory proxy that GitHub runners cannot reach.
+      - name: Rewrite npm registry URLs to public registry
+        working-directory: hone
+        run: |
+          sed -i 's|https://artifactory\.s\.o3\.ru/artifactory/api/npm/npm-all-virtual|https://registry.npmjs.org|g' package-lock.json
+          echo "registry=https://registry.npmjs.org/" > .npmrc
+
+      - name: Install
+        working-directory: hone
+        run: npm ci --no-audit --no-fund --prefer-offline
+
+      - name: Typecheck
+        working-directory: hone
+        run: npm run typecheck
+
+      # H7 (Phase J) — outbox / wire / lifecycle тесты. Vitest + fake-indexeddb
+      # + happy-dom; не требует backend'а — все RPC mock'аются.
+      - name: Test
+        working-directory: hone
+        run: npm run test
+
+      - name: Build
+        working-directory: hone
         run: npm run build
 
   proto:

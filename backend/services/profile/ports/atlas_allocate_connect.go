@@ -1,7 +1,6 @@
-// atlas_allocate_connect.go — Connect-RPC adapter for the atlas/allocate +
-// ai-vacancies-model endpoints. The chi handlers (atlas_allocate_handler.go,
-// ai_vacancies_model_handler.go) are kept for tests but no longer mounted
-// by the wirer.
+// atlas_allocate_connect.go — Connect-RPC adapter for the atlas/allocate
+// endpoint. The chi handler (atlas_allocate_handler.go) is kept for tests
+// but no longer mounted by the wirer.
 package ports
 
 import (
@@ -52,42 +51,4 @@ func (s *ProfileServer) AllocateAtlasSkill(
 		resp.UpdatedAt = out.UpdatedAt.UTC().Format(time.RFC3339)
 	}
 	return connect.NewResponse(resp), nil
-}
-
-func (s *ProfileServer) GetAIVacanciesModel(
-	ctx context.Context,
-	_ *connect.Request[pb.GetAIVacanciesModelRequest],
-) (*connect.Response[pb.AIVacanciesModel], error) {
-	if s.H.VacanciesModel == nil {
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("not_wired"))
-	}
-	uid, ok := sharedMw.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-	}
-	id, err := s.H.VacanciesModel.GetVacanciesModel(ctx, uid)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
-		}
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal"))
-	}
-	return connect.NewResponse(&pb.AIVacanciesModel{ModelId: id}), nil
-}
-
-func (s *ProfileServer) SetAIVacanciesModel(
-	ctx context.Context,
-	req *connect.Request[pb.SetAIVacanciesModelRequest],
-) (*connect.Response[pb.AIVacanciesModel], error) {
-	if s.H.VacanciesModel == nil {
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("not_wired"))
-	}
-	uid, ok := sharedMw.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-	}
-	if err := s.H.VacanciesModel.SetVacanciesModel(ctx, uid, req.Msg.ModelId); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal"))
-	}
-	return connect.NewResponse(&pb.AIVacanciesModel{ModelId: req.Msg.ModelId}), nil
 }

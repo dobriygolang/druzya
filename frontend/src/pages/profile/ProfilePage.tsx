@@ -9,7 +9,7 @@
 //   1. Header: имя, аватар, member-since, settings link
 //   2. Active study mode (general / dev / ml / english / go) с CTA сменить
 //   3. AI-tutors — adopted персоны со ссылкой на чат
-//   4. Quick links — /mock, /tasks, /atlas, /codex, /vacancies
+//   4. Quick links — /mock, /tasks, /atlas, /codex
 //   5. Weekly report
 //
 // Старые компоненты ProfileHeader/ProfileOverview/ProfilePanels оставлены
@@ -22,7 +22,6 @@ import {
   ArrowRight,
   BookOpen,
   Brain,
-  Briefcase,
   ListChecks,
   Map as MapIcon,
   Settings as SettingsIcon,
@@ -32,6 +31,10 @@ import {
 
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
+import { DataBackupCard } from '../../components/DataBackupCard'
+import { TutorRoleToggle } from '../../components/TutorRoleToggle'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
+import { DataLoader } from '../../components/DataLoader'
 import {
   useProfileQuery,
   usePublicProfileQuery,
@@ -126,36 +129,58 @@ export default function ProfilePage() {
   const publicQuery = usePublicProfileQuery(isOwn ? undefined : params.username)
   const active = isOwn ? ownQuery : publicQuery
 
-  if (active.isLoading) return <ProfileSkeleton />
-  if (active.isError) {
+  // 404 special-case must short-circuit before DataLoader's generic
+  // error branch — "пользователь не существует" — это не «попробуй
+  // позже», а другой UX.
+  if (!isOwn && active.isError) {
     const status = (active.error as ApiError | null)?.status
-    if (!isOwn && status === 404) {
+    if (status === 404) {
       return <ProfileNotFound username={params.username ?? ''} />
     }
-    return <ProfileError onRetry={() => active.refetch()} />
   }
 
-  const data = active.data
-  if (!data) return <ProfileSkeleton />
-
-  const username = (data as Profile | PublicProfile).username
-  const displayName = (data as Profile | PublicProfile).display_name ?? username
-  const avatarUrl = (data as Profile).avatar_url ?? ''
-  const createdAt = isOwn ? (data as Profile).created_at : undefined
+  // Bridge `active` to DataLoader: оба запроса возвращают совместимый
+  // shape (data/isLoading/isError/refetch), но TS не выводит union type
+  // из тернарного оператора. DataLoader ожидает QueryState<T> с одним
+  // типом — берём Profile | PublicProfile.
+  const loaderState = {
+    data: active.data as Profile | PublicProfile | undefined,
+    isLoading: active.isLoading,
+    isError: active.isError,
+    error: active.error,
+    refetch: () => active.refetch(),
+  }
 
   return (
-    <AppShellV2>
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 sm:px-8 sm:py-14">
-        <Header
-          username={username}
-          displayName={displayName}
-          avatarUrl={avatarUrl}
-          createdAt={createdAt}
-          isOwn={isOwn}
-        />
-        {isOwn ? <OwnProfileBody /> : <PublicProfileBody username={username} />}
-      </div>
-    </AppShellV2>
+    <ErrorBoundary section="Профиль">
+      <DataLoader<Profile | PublicProfile>
+        state={loaderState}
+        section="Профиль"
+        skeleton={<ProfileSkeleton />}
+        errorContent={(_e, retry) => <ProfileError onRetry={retry} />}
+      >
+        {(data) => {
+          const username = data.username
+          const displayName = data.display_name ?? username
+          const avatarUrl = (data as Profile).avatar_url ?? ''
+          const createdAt = isOwn ? (data as Profile).created_at : undefined
+          return (
+            <AppShellV2>
+              <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 sm:px-8 sm:py-14">
+                <Header
+                  username={username}
+                  displayName={displayName}
+                  avatarUrl={avatarUrl}
+                  createdAt={createdAt}
+                  isOwn={isOwn}
+                />
+                {isOwn ? <OwnProfileBody /> : <PublicProfileBody username={username} />}
+              </div>
+            </AppShellV2>
+          )
+        }}
+      </DataLoader>
+    </ErrorBoundary>
   )
 }
 
@@ -213,13 +238,27 @@ function OwnProfileBody() {
   const activeTrack = trackQ.data?.activeTrack ?? 'general'
 
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-      <PendingInvitesCard />
-      <ActiveTrackCard track={activeTrack} />
-      <AITutorsCard />
-      <HumanTutorsCard />
-      <QuickLinksCard />
-      <WeeklyReportCard />
+    <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <ErrorBoundary section="Pending invites">
+          <PendingInvitesCard />
+        </ErrorBoundary>
+        <ActiveTrackCard track={activeTrack} />
+        <ErrorBoundary section="AI-coach'и">
+          <AITutorsCard />
+        </ErrorBoundary>
+        <ErrorBoundary section="Human-туторы">
+          <HumanTutorsCard />
+        </ErrorBoundary>
+        <QuickLinksCard />
+        <WeeklyReportCard />
+      </div>
+      {/* Stream D (2026-05-12) — tutor mode role toggle. Free, self-serve.
+          On → unlocks /tutor in the AppShell nav. */}
+      <TutorRoleToggle />
+      {/* R8 prep + Phase A 2026-05-12: data backup/restore — gives юзеру
+          portable backup пока backend persistence не подключен. */}
+      <DataBackupCard />
     </div>
   )
 }
@@ -251,7 +290,7 @@ function Card({
       className={`flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-5 ${className}`}
     >
       <header className="flex items-center gap-2">
-        {icon && <span className="text-accent">{icon}</span>}
+        {icon && <span className="text-text-secondary">{icon}</span>}
         <h2 className="font-display text-base font-bold leading-tight">{title}</h2>
       </header>
       {children}
@@ -265,7 +304,7 @@ function ActiveTrackCard({ track }: { track: ActiveTrack }) {
     <Card icon={<Target className="h-4 w-4" />} title="Активный режим подготовки">
       <div className="flex flex-col gap-2">
         <div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             mode
           </span>
           <div className="font-display text-2xl font-bold leading-tight">{meta.label}</div>
@@ -317,13 +356,13 @@ function AITutorsCard() {
                 <div className="truncate text-[13px] font-medium text-text-primary">
                   {p.display_name}
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                   {p.scope_track_kind}
                 </div>
               </div>
               <Link
                 to={`/tutor/ai/${encodeURIComponent(p.slug)}`}
-                className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-secondary hover:text-text-primary"
+                className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary"
               >
                 открыть →
               </Link>
@@ -353,9 +392,21 @@ function PendingInvitesCard() {
           return (
             <li
               key={inv.id}
-              className="flex items-center gap-3 rounded-md border border-accent/30 bg-accent/5 px-3 py-2"
+              className="relative flex items-center gap-3 rounded-md border border-border-strong bg-surface-2/60 px-3 py-2"
             >
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-3 text-[12px] font-bold text-text-primary">
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 1.5,
+                  height: 24,
+                  background: 'var(--red)',
+                }}
+              />
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-2 text-[12px] font-bold text-text-primary">
                 {inv.tutor_display_avatar ? (
                   <img src={inv.tutor_display_avatar} alt={name} className="h-full w-full rounded-full object-cover" />
                 ) : (
@@ -385,7 +436,7 @@ function PendingInvitesCard() {
         })}
       </ul>
       {accept.isError && (
-        <span className="text-[12px] text-warn">
+        <span className="text-[12px]" style={{ color: 'var(--red)' }}>
           {accept.error instanceof ApiError ? accept.error.body : 'Не удалось принять'}
         </span>
       )}
@@ -418,15 +469,19 @@ function HumanTutorsCard() {
       ) : (
         <ul className="flex flex-col gap-2">
           {humans.map((r) => {
-            const name = r.display_name?.trim() || r.display_username || r.tutor_id.slice(0, 8)
+            // Defensive: tutor_id might be undefined in stale cache rows;
+            // fallback to '?' avoids the .slice() crash that previously
+            // threw to ErrorBoundary.
+            const tutorIdShort = (r.tutor_id ?? '').slice(0, 8) || '?'
+            const name = r.display_name?.trim() || r.display_username || tutorIdShort
             const username = r.display_username ?? ''
-            const initial = (r.display_name || r.display_username || '?').slice(0, 1).toUpperCase()
+            const initial = ((r.display_name || r.display_username || '?') || '?').slice(0, 1).toUpperCase()
             return (
               <li
                 key={r.id}
                 className="flex items-center gap-3 rounded-md bg-surface-2 px-3 py-2"
               >
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-3 text-[12px] font-bold text-text-primary">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-2 text-[12px] font-bold text-text-primary">
                   {r.display_avatar_url ? (
                     <img
                       src={r.display_avatar_url}
@@ -478,12 +533,6 @@ function QuickLinksCard() {
       hint: 'Curated reading library.',
       icon: <BookOpen className="h-4 w-4" />,
     },
-    {
-      to: '/vacancies',
-      label: 'Вакансии',
-      hint: 'Анализ вакансии → прицельный mock.',
-      icon: <Briefcase className="h-4 w-4" />,
-    },
   ]
   return (
     <Card title="Куда дальше" className="sm:col-span-2">
@@ -492,9 +541,13 @@ function QuickLinksCard() {
           <li key={l.to}>
             <Link
               to={l.to}
-              className="group flex items-start gap-3 rounded-md border border-border bg-surface-2 px-3 py-2.5 transition-colors hover:bg-surface-3"
+              style={{
+                transition:
+                  'background-color var(--motion-dur-small) var(--motion-ease-standard)',
+              }}
+              className="group flex items-start gap-3 rounded-md border border-border bg-surface-2 px-3 py-2.5 hover:bg-surface-2/80"
             >
-              <span className="mt-0.5 text-text-secondary group-hover:text-accent">{l.icon}</span>
+              <span className="mt-0.5 text-text-secondary group-hover:text-text-primary">{l.icon}</span>
               <span className="flex-1">
                 <span className="block text-[13px] font-medium text-text-primary">{l.label}</span>
                 <span className="block text-[11.5px] text-text-muted">{l.hint}</span>

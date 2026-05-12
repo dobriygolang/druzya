@@ -58,6 +58,12 @@ message ProfileFull {
   // role зеркалирует users.role. Используется фронтом для RBAC-гейтов
   // (например, кнопка «Создать слот» доступна только interviewer/admin).
   UserRole role = 18;
+  // tutor_mode_enabled — self-toggle flag (Stream D, 2026-05-12). When ON
+  // the AppShell shows tutor nav items + /tutor sub-surfaces. Independent
+  // from `role` (which stays user|interviewer|admin|ai_tutor) so any user
+  // can opt into tutor mode without an admin approval gate. Free per
+  // identity.md — paywall lives on Pro-tier evaluation, not on this toggle.
+  bool tutor_mode_enabled = 19;
 }
 
 // SectionRating mirrors the top-level OpenAPI SectionRating (rating.proto
@@ -325,6 +331,9 @@ message ProfileSettings {
   // value ⇒ InvalidArgument (anti-fallback: no silent default). `optional`
   // so empty string is distinguishable from "field omitted".
   optional string focus_class = 8;
+  // tutor_mode_enabled — write-side counterpart of ProfileFull.tutor_mode_enabled
+  // (Stream D, 2026-05-12). `optional` so partial updates do not clobber.
+  optional bool tutor_mode_enabled = 9;
 }
 
 // UpdateProfileSettingsRequest wraps the ProfileSettings payload. OpenAPI
@@ -444,21 +453,6 @@ service ProfileService {
     };
   }
 
-  // GetAIVacanciesModel returns the user's chosen LLM for the AI vacancy
-  // recommender. Empty string means "server default".
-  rpc GetAIVacanciesModel(GetAIVacanciesModelRequest) returns (AIVacanciesModel) {
-    option (google.api.http) = {get: "/api/v1/profile/me/ai-vacancies-model"};
-  }
-
-  // SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
-  // to clear the override and fall back to the server default.
-  rpc SetAIVacanciesModel(SetAIVacanciesModelRequest) returns (AIVacanciesModel) {
-    option (google.api.http) = {
-      put: "/api/v1/profile/me/ai-vacancies-model"
-      body: "*"
-    };
-  }
-
   // GetUserTracks returns the caller's active tracks (multi-track Atlas,
   // см docs/feature/tracks.md). New users get an empty list and must
   // pass through onboarding-fork; existing users were backfilled in
@@ -494,6 +488,25 @@ service ProfileService {
       post: "/api/v1/profile/me/atlas/pref"
       body: "*"
     };
+  }
+
+  // RecordAppInstall — Phase J / X1 (P0). Fired by web/hone/cue on launch
+  // (idempotent heartbeat). Server uses ON CONFLICT (user_id, app) DO UPDATE
+  // SET last_seen_at = now(). First row across all three apps flips a
+  // free-tier user into a 7d Pro trial via subscription.grant_trial_pro.
+  rpc RecordAppInstall(RecordAppInstallRequest) returns (RecordAppInstallResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/profile/me/installs"
+      body: "*"
+    };
+  }
+
+  // GetInstalledApps — Phase J / X1 (P0). Reads the user's install matrix.
+  // Hone uses this to decide whether to show «install Cue» suggestion after
+  // a completed focus session; web reads it to surface cross-app CTAs in
+  // /all-set and Settings.
+  rpc GetInstalledApps(GetInstalledAppsRequest) returns (GetInstalledAppsResponse) {
+    option (google.api.http) = {get: "/api/v1/profile/me/installs"};
   }
 }
 
@@ -539,21 +552,54 @@ message SetAtlasNodePrefResponse {
   bool ok = 1;
 }
 
+// AppSurface — wire-closed set of install surfaces. Strings would tempt
+// the client into typos; an enum lets the server reject unknown values
+// at protowire decode time.
+enum AppSurface {
+  APP_SURFACE_UNSPECIFIED = 0;
+  APP_SURFACE_WEB  = 1;
+  APP_SURFACE_HONE = 2;
+  APP_SURFACE_CUE  = 3;
+}
+
+// RecordAppInstallRequest — sent on app launch as an idempotent heartbeat.
+// app_version is informational (e.g. "0.9.3"); server stores latest seen.
+message RecordAppInstallRequest {
+  AppSurface app = 1;
+  string app_version = 2;
+}
+
+// RecordAppInstallResponse — returns the resulting row + a flag indicating
+// whether THIS call triggered a trial Pro grant (first install across all
+// three surfaces). Client can use it to celebrate without an extra RPC.
+message RecordAppInstallResponse {
+  InstalledApp install = 1;
+  bool trial_pro_granted = 2;
+  // trial_pro_until — RFC3339; empty when trial was not granted (already
+  // had Pro / already redeemed trial / not-first-install).
+  string trial_pro_until = 3;
+}
+
+message GetInstalledAppsRequest {}
+
+message GetInstalledAppsResponse {
+  repeated InstalledApp installs = 1;
+}
+
+// InstalledApp mirrors a row in user_app_installs.
+message InstalledApp {
+  AppSurface app = 1;
+  google.protobuf.Timestamp first_seen_at = 2;
+  google.protobuf.Timestamp last_seen_at = 3;
+  string app_version = 4;
+}
+
 message AllocateAtlasSkillResponse {
   string key = 1;
   int32 progress = 2;
   bool unlocked = 3;
   string unlocked_at = 4;        // RFC3339, empty when not unlocked
   string updated_at = 5;         // RFC3339
-}
-
-message GetAIVacanciesModelRequest {}
-message SetAIVacanciesModelRequest {
-  string model_id = 1;
-}
-
-message AIVacanciesModel {
-  string model_id = 1;
 }
 
 // BecomeInterviewerRequest carries an optional motivation paragraph the

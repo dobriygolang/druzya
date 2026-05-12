@@ -34,8 +34,8 @@ import (
 //
 // JSON mode: Ollama 0.5+ поддерживает response_format через OpenAI-
 // совместимый слой. Для Qwen 2.5 3B формат соблюдается, но хуже чем у
-// cloud 70B — не полагаемся на это для критичных парсеров (VacanciesJSON
-// всё равно идёт через Groq/Cerebras primary).
+// cloud 70B — не полагаемся на это для критичных парсеров (JSON-задачи
+// всё равно идут через Groq/Cerebras primary).
 //
 // Vision: Qwen 2.5 3B — text-only; supportsVision=false.
 

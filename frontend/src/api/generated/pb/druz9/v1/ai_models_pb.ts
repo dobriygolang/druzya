@@ -1,7 +1,6 @@
 // ai_models.proto — Connect-RPC contract for the LLM model catalogue.
 //
-// Public list: anonymous-readable, narrows by use-surface (arena / insight
-// / mock / vacancies).
+// Public list: anonymous-readable, narrows by use-surface (insight / mock).
 //
 // Admin CRUD: model_id includes a provider prefix (`mistralai/mistral-7b`)
 // so the URL pattern uses `{model_id=**}` to capture slash-containing
@@ -234,11 +233,6 @@ export class AIModel extends Message<AIModel> {
   hasCostOutput = false;
 
   /**
-   * @generated from field: bool use_for_arena = 13;
-   */
-  useForArena = false;
-
-  /**
    * @generated from field: bool use_for_insight = 14;
    */
   useForInsight = false;
@@ -287,7 +281,6 @@ export class AIModel extends Message<AIModel> {
     { no: 10, name: "has_cost_input", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 11, name: "cost_per_1k_output_usd", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
     { no: 12, name: "has_cost_output", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 13, name: "use_for_arena", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 14, name: "use_for_insight", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 15, name: "use_for_mock", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 16, name: "sort_order", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
@@ -417,16 +410,6 @@ export class AIModelUpsert extends Message<AIModelUpsert> {
   hasCostOutput = false;
 
   /**
-   * @generated from field: bool use_for_arena = 13;
-   */
-  useForArena = false;
-
-  /**
-   * @generated from field: bool has_use_for_arena = 14;
-   */
-  hasUseForArena = false;
-
-  /**
    * @generated from field: bool use_for_insight = 15;
    */
   useForInsight = false;
@@ -476,8 +459,6 @@ export class AIModelUpsert extends Message<AIModelUpsert> {
     { no: 10, name: "has_cost_input", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 11, name: "cost_per_1k_output_usd", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
     { no: 12, name: "has_cost_output", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 13, name: "use_for_arena", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 14, name: "has_use_for_arena", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 15, name: "use_for_insight", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 16, name: "has_use_for_insight", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 17, name: "use_for_mock", kind: "scalar", T: 8 /* ScalarType.BOOL */ },

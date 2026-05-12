@@ -456,7 +456,7 @@ function CueFrameFade() {
 
 function CueIdeBackdrop({ dim = false }: { dim?: boolean }) {
   return (
-    <div style={{ position: 'absolute', inset: 0, padding: '46px 24px 24px', opacity: dim ? 0.4 : 1, transition: 'opacity .3s' }}>
+    <div style={{ position: 'absolute', inset: 0, padding: '46px 24px 24px', opacity: dim ? 0.4 : 1, transition: 'opacity var(--motion-dur-large) var(--motion-ease-standard)' }}>
       <div className="mono" style={{ fontSize: 11, color: 'var(--ink-40)', lineHeight: 1.6 }}>
         <span style={{ color: 'var(--ink-60)' }}>func</span>{' '}
         <span style={{ color: '#fff' }}>acquireLock</span>(ctx, key) {'{'}

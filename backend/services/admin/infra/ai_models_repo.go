@@ -25,19 +25,18 @@ type AIModels struct {
 // NewAIModels wraps a pool.
 func NewAIModels(pool *pgxpool.Pool) *AIModels { return &AIModels{pool: pool} }
 
+// use_for_arena dropped 2026-05-12 (D8) — see migration 00088.
 const adminLLMModelCols = `
 	id, model_id, label, provider, tier, is_enabled,
 	context_window, cost_per_1k_input_usd, cost_per_1k_output_usd,
-	use_for_arena, use_for_insight, use_for_mock, sort_order,
+	use_for_insight, use_for_mock, sort_order,
 	to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
 	to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`
 
 // allowedUseSurfaces — `?use=...` filter values mapped to DB columns.
 var allowedUseSurfaces = map[string]string{
-	"arena":     "use_for_arena",
-	"insight":   "use_for_insight",
-	"mock":      "use_for_mock",
-	"vacancies": "use_for_vacancies",
+	"insight": "use_for_insight",
+	"mock":    "use_for_mock",
 }
 
 func scanAIModel(row pgx.Row) (domain.AIModel, error) {
@@ -45,7 +44,7 @@ func scanAIModel(row pgx.Row) (domain.AIModel, error) {
 	err := row.Scan(
 		&d.ID, &d.ModelID, &d.Label, &d.Provider, &d.Tier, &d.IsEnabled,
 		&d.ContextWindow, &d.CostPerKInputUSD, &d.CostPerKOutputUSD,
-		&d.UseForArena, &d.UseForInsight, &d.UseForMock, &d.SortOrder,
+		&d.UseForInsight, &d.UseForMock, &d.SortOrder,
 		&d.CreatedAt, &d.UpdatedAt,
 	)
 	if err != nil {
@@ -83,10 +82,7 @@ func (a *AIModels) Create(ctx context.Context, in domain.AIModelUpsert) (domain.
 	if in.IsEnabled != nil {
 		enabled = *in.IsEnabled
 	}
-	useArena, useInsight, useMock := true, true, true
-	if in.UseForArena != nil {
-		useArena = *in.UseForArena
-	}
+	useInsight, useMock := true, true
 	if in.UseForInsight != nil {
 		useInsight = *in.UseForInsight
 	}
@@ -101,12 +97,12 @@ func (a *AIModels) Create(ctx context.Context, in domain.AIModelUpsert) (domain.
 		INSERT INTO llm_models (
 			model_id, label, provider, tier, is_enabled,
 			context_window, cost_per_1k_input_usd, cost_per_1k_output_usd,
-			use_for_arena, use_for_insight, use_for_mock, sort_order
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+			use_for_insight, use_for_mock, sort_order
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		RETURNING `+adminLLMModelCols,
 		in.ModelID, in.Label, in.Provider, tier, enabled,
 		in.ContextWindow, in.CostPerKInputUSD, in.CostPerKOutputUSD,
-		useArena, useInsight, useMock, sortOrder)
+		useInsight, useMock, sortOrder)
 	out, err := scanAIModel(row)
 	if err != nil {
 		return domain.AIModel{}, fmt.Errorf("admin.AIModels.Create: %w", err)
@@ -126,16 +122,15 @@ func (a *AIModels) Update(ctx context.Context, modelID string, in domain.AIModel
 		  context_window = COALESCE($6, context_window),
 		  cost_per_1k_input_usd = COALESCE($7, cost_per_1k_input_usd),
 		  cost_per_1k_output_usd = COALESCE($8, cost_per_1k_output_usd),
-		  use_for_arena = COALESCE($9, use_for_arena),
-		  use_for_insight = COALESCE($10, use_for_insight),
-		  use_for_mock = COALESCE($11, use_for_mock),
-		  sort_order = COALESCE($12, sort_order),
+		  use_for_insight = COALESCE($9, use_for_insight),
+		  use_for_mock = COALESCE($10, use_for_mock),
+		  sort_order = COALESCE($11, sort_order),
 		  updated_at = now()
 		WHERE model_id = $1
 		RETURNING `+adminLLMModelCols,
 		modelID, in.Label, in.Provider, tier, in.IsEnabled,
 		in.ContextWindow, in.CostPerKInputUSD, in.CostPerKOutputUSD,
-		in.UseForArena, in.UseForInsight, in.UseForMock, in.SortOrder)
+		in.UseForInsight, in.UseForMock, in.SortOrder)
 	out, err := scanAIModel(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

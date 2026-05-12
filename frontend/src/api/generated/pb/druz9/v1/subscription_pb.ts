@@ -481,3 +481,238 @@ export class AdminSetTierResponse extends Message<AdminSetTierResponse> {
   }
 }
 
+/**
+ * TierInfo — Stream-C tier projection. Отличает источник tier'а:
+ *   "free"  → нет ни paid Pro, ни BYOK
+ *   "pro"   → paid через Stripe/Boosty
+ *   "byok"  → юзер привязал свой LLM API key
+ *   "tutor" → user играет роль tutor'а (≥1 student). NOT a paywall —
+ *             информационный флаг для UI («ты в tutor-режиме»).
+ *
+ * @generated from message druz9.v1.TierInfo
+ */
+export class TierInfo extends Message<TierInfo> {
+  /**
+   * canonical Tier value ("free"|"pro"|"max")
+   *
+   * @generated from field: string tier = 1;
+   */
+  tier = "";
+
+  /**
+   * источник tier'а (см. message-комментарий)
+   *
+   * @generated from field: string source = 2;
+   */
+  source = "";
+
+  /**
+   * expiry для paid Pro; nil для free / bessrochny admin / byok
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 3;
+   */
+  expiresAt?: Timestamp;
+
+  /**
+   * для UI: какой провайдер ключа подключён в byok (openrouter/groq/...).
+   * Пусто для не-byok source.
+   *
+   * @generated from field: string byok_provider = 4;
+   */
+  byokProvider = "";
+
+  constructor(data?: PartialMessage<TierInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TierInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "tier", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "source", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "expires_at", kind: "message", T: Timestamp },
+    { no: 4, name: "byok_provider", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TierInfo {
+    return new TierInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TierInfo {
+    return new TierInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TierInfo {
+    return new TierInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TierInfo | PlainMessage<TierInfo> | undefined, b: TierInfo | PlainMessage<TierInfo> | undefined): boolean {
+    return proto3.util.equals(TierInfo, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SetBYOKKeyRequest
+ */
+export class SetBYOKKeyRequest extends Message<SetBYOKKeyRequest> {
+  /**
+   * 'openrouter'|'groq'|'cerebras'|'anthropic'|'openai'
+   *
+   * @generated from field: string provider = 1;
+   */
+  provider = "";
+
+  /**
+   * plain, передаётся по TLS; шифруется на сервере
+   *
+   * @generated from field: string api_key = 2;
+   */
+  apiKey = "";
+
+  constructor(data?: PartialMessage<SetBYOKKeyRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SetBYOKKeyRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "provider", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "api_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetBYOKKeyRequest {
+    return new SetBYOKKeyRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetBYOKKeyRequest {
+    return new SetBYOKKeyRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetBYOKKeyRequest {
+    return new SetBYOKKeyRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetBYOKKeyRequest | PlainMessage<SetBYOKKeyRequest> | undefined, b: SetBYOKKeyRequest | PlainMessage<SetBYOKKeyRequest> | undefined): boolean {
+    return proto3.util.equals(SetBYOKKeyRequest, a, b);
+  }
+}
+
+/**
+ * CreateCheckoutSessionRequest — Stripe Checkout payload. Server lazy-create'ит
+ * stripe_customer_id для юзера если ещё нет.
+ *
+ * @generated from message druz9.v1.CreateCheckoutSessionRequest
+ */
+export class CreateCheckoutSessionRequest extends Message<CreateCheckoutSessionRequest> {
+  /**
+   * Куда Stripe редиректит после успешной оплаты (absolute URL).
+   *
+   * @generated from field: string success_url = 1;
+   */
+  successUrl = "";
+
+  /**
+   * Куда после cancel / back (absolute URL).
+   *
+   * @generated from field: string cancel_url = 2;
+   */
+  cancelUrl = "";
+
+  /**
+   * Optional price_id override. Пусто = server use STRIPE_PRICE_ID_PRO_MONTHLY.
+   * Зарезервировано для будущего Max tier.
+   *
+   * @generated from field: string price_id = 3;
+   */
+  priceId = "";
+
+  /**
+   * trial_days — explicit trial period override. 0 = server applies default
+   * (7 дней first-time subscribers, иначе 0). >0 = принудительный trial этой
+   * длины. <0 не сериализуется (proto uint32); чтобы отключить trial для
+   * паид-юзера используется существующая paid-subscription detection.
+   *
+   * @generated from field: uint32 trial_days = 4;
+   */
+  trialDays = 0;
+
+  constructor(data?: PartialMessage<CreateCheckoutSessionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CreateCheckoutSessionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "cancel_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "price_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "trial_days", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateCheckoutSessionRequest {
+    return new CreateCheckoutSessionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateCheckoutSessionRequest {
+    return new CreateCheckoutSessionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateCheckoutSessionRequest {
+    return new CreateCheckoutSessionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateCheckoutSessionRequest | PlainMessage<CreateCheckoutSessionRequest> | undefined, b: CreateCheckoutSessionRequest | PlainMessage<CreateCheckoutSessionRequest> | undefined): boolean {
+    return proto3.util.equals(CreateCheckoutSessionRequest, a, b);
+  }
+}
+
+/**
+ * CheckoutSessionResponse — то, что фронт получает из CreateCheckoutSession.
+ * Фронт делает window.location = checkout_url; session_id логируется на
+ * случай support-ticket'а («не открылась оплата» — id для дебага).
+ *
+ * @generated from message druz9.v1.CheckoutSessionResponse
+ */
+export class CheckoutSessionResponse extends Message<CheckoutSessionResponse> {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId = "";
+
+  /**
+   * @generated from field: string checkout_url = 2;
+   */
+  checkoutUrl = "";
+
+  constructor(data?: PartialMessage<CheckoutSessionResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CheckoutSessionResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "checkout_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CheckoutSessionResponse {
+    return new CheckoutSessionResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CheckoutSessionResponse {
+    return new CheckoutSessionResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CheckoutSessionResponse {
+    return new CheckoutSessionResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CheckoutSessionResponse | PlainMessage<CheckoutSessionResponse> | undefined, b: CheckoutSessionResponse | PlainMessage<CheckoutSessionResponse> | undefined): boolean {
+    return proto3.util.equals(CheckoutSessionResponse, a, b);
+  }
+}
+

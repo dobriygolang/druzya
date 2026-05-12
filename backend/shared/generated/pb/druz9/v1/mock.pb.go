@@ -1596,6 +1596,794 @@ func (x *FinishStageRequest) GetId() string {
 	return ""
 }
 
+type AlgoTestResult struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Ordinal        int32                  `protobuf:"varint,1,opt,name=ordinal,proto3" json:"ordinal,omitempty"`
+	Passed         bool                   `protobuf:"varint,2,opt,name=passed,proto3" json:"passed,omitempty"`
+	Input          string                 `protobuf:"bytes,3,opt,name=input,proto3" json:"input,omitempty"`                                         // empty for hidden cases
+	ExpectedOutput string                 `protobuf:"bytes,4,opt,name=expected_output,json=expectedOutput,proto3" json:"expected_output,omitempty"` // empty for hidden cases
+	ActualOutput   string                 `protobuf:"bytes,5,opt,name=actual_output,json=actualOutput,proto3" json:"actual_output,omitempty"`       // empty for hidden cases / non-completed runs
+	Stderr         string                 `protobuf:"bytes,6,opt,name=stderr,proto3" json:"stderr,omitempty"`                                       // compile / runtime error text (empty when ok)
+	IsHidden       bool                   `protobuf:"varint,7,opt,name=is_hidden,json=isHidden,proto3" json:"is_hidden,omitempty"`
+	RuntimeMs      int32                  `protobuf:"varint,8,opt,name=runtime_ms,json=runtimeMs,proto3" json:"runtime_ms,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AlgoTestResult) Reset() {
+	*x = AlgoTestResult{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AlgoTestResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AlgoTestResult) ProtoMessage() {}
+
+func (x *AlgoTestResult) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AlgoTestResult.ProtoReflect.Descriptor instead.
+func (*AlgoTestResult) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AlgoTestResult) GetOrdinal() int32 {
+	if x != nil {
+		return x.Ordinal
+	}
+	return 0
+}
+
+func (x *AlgoTestResult) GetPassed() bool {
+	if x != nil {
+		return x.Passed
+	}
+	return false
+}
+
+func (x *AlgoTestResult) GetInput() string {
+	if x != nil {
+		return x.Input
+	}
+	return ""
+}
+
+func (x *AlgoTestResult) GetExpectedOutput() string {
+	if x != nil {
+		return x.ExpectedOutput
+	}
+	return ""
+}
+
+func (x *AlgoTestResult) GetActualOutput() string {
+	if x != nil {
+		return x.ActualOutput
+	}
+	return ""
+}
+
+func (x *AlgoTestResult) GetStderr() string {
+	if x != nil {
+		return x.Stderr
+	}
+	return ""
+}
+
+func (x *AlgoTestResult) GetIsHidden() bool {
+	if x != nil {
+		return x.IsHidden
+	}
+	return false
+}
+
+func (x *AlgoTestResult) GetRuntimeMs() int32 {
+	if x != nil {
+		return x.RuntimeMs
+	}
+	return 0
+}
+
+type AlgoVerdict struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Passed             int32                  `protobuf:"varint,1,opt,name=passed,proto3" json:"passed,omitempty"` // count of cases that exactly-matched
+	Total              int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	RuntimeMs          int32                  `protobuf:"varint,3,opt,name=runtime_ms,json=runtimeMs,proto3" json:"runtime_ms,omitempty"`                            // max runtime across visible cases
+	MemoryKb           int32                  `protobuf:"varint,4,opt,name=memory_kb,json=memoryKb,proto3" json:"memory_kb,omitempty"`                               // max memory across visible cases (0 when unavailable)
+	SandboxUnavailable bool                   `protobuf:"varint,5,opt,name=sandbox_unavailable,json=sandboxUnavailable,proto3" json:"sandbox_unavailable,omitempty"` // true when Judge0 is not wired / language unsupported
+	Status             string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`                                                    // free-form short status: "ok" | "compile_error" | "runtime_error" | "unavailable"
+	Tests              []*AlgoTestResult      `protobuf:"bytes,7,rep,name=tests,proto3" json:"tests,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *AlgoVerdict) Reset() {
+	*x = AlgoVerdict{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AlgoVerdict) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AlgoVerdict) ProtoMessage() {}
+
+func (x *AlgoVerdict) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AlgoVerdict.ProtoReflect.Descriptor instead.
+func (*AlgoVerdict) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AlgoVerdict) GetPassed() int32 {
+	if x != nil {
+		return x.Passed
+	}
+	return 0
+}
+
+func (x *AlgoVerdict) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *AlgoVerdict) GetRuntimeMs() int32 {
+	if x != nil {
+		return x.RuntimeMs
+	}
+	return 0
+}
+
+func (x *AlgoVerdict) GetMemoryKb() int32 {
+	if x != nil {
+		return x.MemoryKb
+	}
+	return 0
+}
+
+func (x *AlgoVerdict) GetSandboxUnavailable() bool {
+	if x != nil {
+		return x.SandboxUnavailable
+	}
+	return false
+}
+
+func (x *AlgoVerdict) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AlgoVerdict) GetTests() []*AlgoTestResult {
+	if x != nil {
+		return x.Tests
+	}
+	return nil
+}
+
+type RunAlgoAttemptRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`             // attempt_id (must be a task_solve attempt)
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`         // raw source (NOT fenced markdown)
+	Language      string                 `protobuf:"bytes,3,opt,name=language,proto3" json:"language,omitempty"` // shared enum: go|python|javascript|typescript
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunAlgoAttemptRequest) Reset() {
+	*x = RunAlgoAttemptRequest{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunAlgoAttemptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunAlgoAttemptRequest) ProtoMessage() {}
+
+func (x *RunAlgoAttemptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunAlgoAttemptRequest.ProtoReflect.Descriptor instead.
+func (*RunAlgoAttemptRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *RunAlgoAttemptRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RunAlgoAttemptRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *RunAlgoAttemptRequest) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+type CodingVerdict struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Score          int32                  `protobuf:"varint,1,opt,name=score,proto3" json:"score,omitempty"` // 1..5 rubric score
+	Strengths      []string               `protobuf:"bytes,2,rep,name=strengths,proto3" json:"strengths,omitempty"`
+	Weaknesses     []string               `protobuf:"bytes,3,rep,name=weaknesses,proto3" json:"weaknesses,omitempty"`
+	SuggestedLines []int32                `protobuf:"varint,4,rep,packed,name=suggested_lines,json=suggestedLines,proto3" json:"suggested_lines,omitempty"` // 1-based line numbers
+	RubricMd       string                 `protobuf:"bytes,5,opt,name=rubric_md,json=rubricMd,proto3" json:"rubric_md,omitempty"`                           // 2-4 sentence summary
+	Unavailable    bool                   `protobuf:"varint,6,opt,name=unavailable,proto3" json:"unavailable,omitempty"`                                    // true when LLM down / parse failed
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CodingVerdict) Reset() {
+	*x = CodingVerdict{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CodingVerdict) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CodingVerdict) ProtoMessage() {}
+
+func (x *CodingVerdict) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CodingVerdict.ProtoReflect.Descriptor instead.
+func (*CodingVerdict) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *CodingVerdict) GetScore() int32 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
+}
+
+func (x *CodingVerdict) GetStrengths() []string {
+	if x != nil {
+		return x.Strengths
+	}
+	return nil
+}
+
+func (x *CodingVerdict) GetWeaknesses() []string {
+	if x != nil {
+		return x.Weaknesses
+	}
+	return nil
+}
+
+func (x *CodingVerdict) GetSuggestedLines() []int32 {
+	if x != nil {
+		return x.SuggestedLines
+	}
+	return nil
+}
+
+func (x *CodingVerdict) GetRubricMd() string {
+	if x != nil {
+		return x.RubricMd
+	}
+	return ""
+}
+
+func (x *CodingVerdict) GetUnavailable() bool {
+	if x != nil {
+		return x.Unavailable
+	}
+	return false
+}
+
+type RunCodingAttemptRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`             // attempt_id (must be a task_solve attempt under coding stage)
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`         // raw source (NOT fenced markdown)
+	Language      string                 `protobuf:"bytes,3,opt,name=language,proto3" json:"language,omitempty"` // free-form language hint (go|python|js|ts|...)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunCodingAttemptRequest) Reset() {
+	*x = RunCodingAttemptRequest{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunCodingAttemptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunCodingAttemptRequest) ProtoMessage() {}
+
+func (x *RunCodingAttemptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunCodingAttemptRequest.ProtoReflect.Descriptor instead.
+func (*RunCodingAttemptRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *RunCodingAttemptRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RunCodingAttemptRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *RunCodingAttemptRequest) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+type SysDesignAxes struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Availability  int32                  `protobuf:"varint,1,opt,name=availability,proto3" json:"availability,omitempty"` // 1..5
+	Consistency   int32                  `protobuf:"varint,2,opt,name=consistency,proto3" json:"consistency,omitempty"`   // 1..5
+	Scalability   int32                  `protobuf:"varint,3,opt,name=scalability,proto3" json:"scalability,omitempty"`   // 1..5
+	Cost          int32                  `protobuf:"varint,4,opt,name=cost,proto3" json:"cost,omitempty"`                 // 1..5
+	Simplicity    int32                  `protobuf:"varint,5,opt,name=simplicity,proto3" json:"simplicity,omitempty"`     // 1..5
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SysDesignAxes) Reset() {
+	*x = SysDesignAxes{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SysDesignAxes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SysDesignAxes) ProtoMessage() {}
+
+func (x *SysDesignAxes) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SysDesignAxes.ProtoReflect.Descriptor instead.
+func (*SysDesignAxes) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *SysDesignAxes) GetAvailability() int32 {
+	if x != nil {
+		return x.Availability
+	}
+	return 0
+}
+
+func (x *SysDesignAxes) GetConsistency() int32 {
+	if x != nil {
+		return x.Consistency
+	}
+	return 0
+}
+
+func (x *SysDesignAxes) GetScalability() int32 {
+	if x != nil {
+		return x.Scalability
+	}
+	return 0
+}
+
+func (x *SysDesignAxes) GetCost() int32 {
+	if x != nil {
+		return x.Cost
+	}
+	return 0
+}
+
+func (x *SysDesignAxes) GetSimplicity() int32 {
+	if x != nil {
+		return x.Simplicity
+	}
+	return 0
+}
+
+type SysDesignVerdict struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Axes              *SysDesignAxes         `protobuf:"bytes,1,opt,name=axes,proto3" json:"axes,omitempty"`
+	NarrativeCritique string                 `protobuf:"bytes,2,opt,name=narrative_critique,json=narrativeCritique,proto3" json:"narrative_critique,omitempty"`
+	MissingConcepts   []string               `protobuf:"bytes,3,rep,name=missing_concepts,json=missingConcepts,proto3" json:"missing_concepts,omitempty"`
+	Unavailable       bool                   `protobuf:"varint,4,opt,name=unavailable,proto3" json:"unavailable,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *SysDesignVerdict) Reset() {
+	*x = SysDesignVerdict{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SysDesignVerdict) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SysDesignVerdict) ProtoMessage() {}
+
+func (x *SysDesignVerdict) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SysDesignVerdict.ProtoReflect.Descriptor instead.
+func (*SysDesignVerdict) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SysDesignVerdict) GetAxes() *SysDesignAxes {
+	if x != nil {
+		return x.Axes
+	}
+	return nil
+}
+
+func (x *SysDesignVerdict) GetNarrativeCritique() string {
+	if x != nil {
+		return x.NarrativeCritique
+	}
+	return ""
+}
+
+func (x *SysDesignVerdict) GetMissingConcepts() []string {
+	if x != nil {
+		return x.MissingConcepts
+	}
+	return nil
+}
+
+func (x *SysDesignVerdict) GetUnavailable() bool {
+	if x != nil {
+		return x.Unavailable
+	}
+	return false
+}
+
+type RunSysDesignAttemptRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                            // attempt_id
+	CanvasJson    string                 `protobuf:"bytes,2,opt,name=canvas_json,json=canvasJson,proto3" json:"canvas_json,omitempty"`          // Excalidraw scene blob serialised
+	NarrationText string                 `protobuf:"bytes,3,opt,name=narration_text,json=narrationText,proto3" json:"narration_text,omitempty"` // trade-offs / context paragraph
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunSysDesignAttemptRequest) Reset() {
+	*x = RunSysDesignAttemptRequest{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunSysDesignAttemptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunSysDesignAttemptRequest) ProtoMessage() {}
+
+func (x *RunSysDesignAttemptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunSysDesignAttemptRequest.ProtoReflect.Descriptor instead.
+func (*RunSysDesignAttemptRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *RunSysDesignAttemptRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RunSysDesignAttemptRequest) GetCanvasJson() string {
+	if x != nil {
+		return x.CanvasJson
+	}
+	return ""
+}
+
+func (x *RunSysDesignAttemptRequest) GetNarrationText() string {
+	if x != nil {
+		return x.NarrationText
+	}
+	return ""
+}
+
+type BehavioralAxes struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Situation     int32                  `protobuf:"varint,1,opt,name=situation,proto3" json:"situation,omitempty"` // 1..5
+	Task          int32                  `protobuf:"varint,2,opt,name=task,proto3" json:"task,omitempty"`           // 1..5
+	Action        int32                  `protobuf:"varint,3,opt,name=action,proto3" json:"action,omitempty"`       // 1..5
+	Result        int32                  `protobuf:"varint,4,opt,name=result,proto3" json:"result,omitempty"`       // 1..5
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BehavioralAxes) Reset() {
+	*x = BehavioralAxes{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BehavioralAxes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BehavioralAxes) ProtoMessage() {}
+
+func (x *BehavioralAxes) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BehavioralAxes.ProtoReflect.Descriptor instead.
+func (*BehavioralAxes) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *BehavioralAxes) GetSituation() int32 {
+	if x != nil {
+		return x.Situation
+	}
+	return 0
+}
+
+func (x *BehavioralAxes) GetTask() int32 {
+	if x != nil {
+		return x.Task
+	}
+	return 0
+}
+
+func (x *BehavioralAxes) GetAction() int32 {
+	if x != nil {
+		return x.Action
+	}
+	return 0
+}
+
+func (x *BehavioralAxes) GetResult() int32 {
+	if x != nil {
+		return x.Result
+	}
+	return 0
+}
+
+type BehavioralVerdict struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Axes               *BehavioralAxes        `protobuf:"bytes,1,opt,name=axes,proto3" json:"axes,omitempty"`
+	CommunicationScore int32                  `protobuf:"varint,2,opt,name=communication_score,json=communicationScore,proto3" json:"communication_score,omitempty"` // 1..5
+	BodyMd             string                 `protobuf:"bytes,3,opt,name=body_md,json=bodyMd,proto3" json:"body_md,omitempty"`
+	Unavailable        bool                   `protobuf:"varint,4,opt,name=unavailable,proto3" json:"unavailable,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *BehavioralVerdict) Reset() {
+	*x = BehavioralVerdict{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BehavioralVerdict) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BehavioralVerdict) ProtoMessage() {}
+
+func (x *BehavioralVerdict) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BehavioralVerdict.ProtoReflect.Descriptor instead.
+func (*BehavioralVerdict) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *BehavioralVerdict) GetAxes() *BehavioralAxes {
+	if x != nil {
+		return x.Axes
+	}
+	return nil
+}
+
+func (x *BehavioralVerdict) GetCommunicationScore() int32 {
+	if x != nil {
+		return x.CommunicationScore
+	}
+	return 0
+}
+
+func (x *BehavioralVerdict) GetBodyMd() string {
+	if x != nil {
+		return x.BodyMd
+	}
+	return ""
+}
+
+func (x *BehavioralVerdict) GetUnavailable() bool {
+	if x != nil {
+		return x.Unavailable
+	}
+	return false
+}
+
+type RunBehavioralAttemptRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                   // attempt_id
+	AnswerText    string                 `protobuf:"bytes,2,opt,name=answer_text,json=answerText,proto3" json:"answer_text,omitempty"` // user's STAR answer (text)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunBehavioralAttemptRequest) Reset() {
+	*x = RunBehavioralAttemptRequest{}
+	mi := &file_druz9_v1_mock_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunBehavioralAttemptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunBehavioralAttemptRequest) ProtoMessage() {}
+
+func (x *RunBehavioralAttemptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_mock_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunBehavioralAttemptRequest.ProtoReflect.Descriptor instead.
+func (*RunBehavioralAttemptRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *RunBehavioralAttemptRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RunBehavioralAttemptRequest) GetAnswerText() string {
+	if x != nil {
+		return x.AnswerText
+	}
+	return ""
+}
+
 type AdminListMockCompaniesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// active=true — фильтр по active=true; иначе все.
@@ -1606,7 +2394,7 @@ type AdminListMockCompaniesRequest struct {
 
 func (x *AdminListMockCompaniesRequest) Reset() {
 	*x = AdminListMockCompaniesRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[21]
+	mi := &file_druz9_v1_mock_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1618,7 +2406,7 @@ func (x *AdminListMockCompaniesRequest) String() string {
 func (*AdminListMockCompaniesRequest) ProtoMessage() {}
 
 func (x *AdminListMockCompaniesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[21]
+	mi := &file_druz9_v1_mock_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1631,7 +2419,7 @@ func (x *AdminListMockCompaniesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListMockCompaniesRequest.ProtoReflect.Descriptor instead.
 func (*AdminListMockCompaniesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{21}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *AdminListMockCompaniesRequest) GetActiveOnly() bool {
@@ -1650,7 +2438,7 @@ type AdminListMockCompaniesResponse struct {
 
 func (x *AdminListMockCompaniesResponse) Reset() {
 	*x = AdminListMockCompaniesResponse{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[22]
+	mi := &file_druz9_v1_mock_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1662,7 +2450,7 @@ func (x *AdminListMockCompaniesResponse) String() string {
 func (*AdminListMockCompaniesResponse) ProtoMessage() {}
 
 func (x *AdminListMockCompaniesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[22]
+	mi := &file_druz9_v1_mock_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1675,7 +2463,7 @@ func (x *AdminListMockCompaniesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListMockCompaniesResponse.ProtoReflect.Descriptor instead.
 func (*AdminListMockCompaniesResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{22}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *AdminListMockCompaniesResponse) GetItems() []*PipelineCompany {
@@ -1703,7 +2491,7 @@ type MockCompanyInput struct {
 
 func (x *MockCompanyInput) Reset() {
 	*x = MockCompanyInput{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[23]
+	mi := &file_druz9_v1_mock_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1715,7 +2503,7 @@ func (x *MockCompanyInput) String() string {
 func (*MockCompanyInput) ProtoMessage() {}
 
 func (x *MockCompanyInput) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[23]
+	mi := &file_druz9_v1_mock_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1728,7 +2516,7 @@ func (x *MockCompanyInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockCompanyInput.ProtoReflect.Descriptor instead.
 func (*MockCompanyInput) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{23}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *MockCompanyInput) GetSlug() string {
@@ -1803,7 +2591,7 @@ type AdminCreateMockCompanyRequest struct {
 
 func (x *AdminCreateMockCompanyRequest) Reset() {
 	*x = AdminCreateMockCompanyRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[24]
+	mi := &file_druz9_v1_mock_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1815,7 +2603,7 @@ func (x *AdminCreateMockCompanyRequest) String() string {
 func (*AdminCreateMockCompanyRequest) ProtoMessage() {}
 
 func (x *AdminCreateMockCompanyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[24]
+	mi := &file_druz9_v1_mock_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1828,7 +2616,7 @@ func (x *AdminCreateMockCompanyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminCreateMockCompanyRequest.ProtoReflect.Descriptor instead.
 func (*AdminCreateMockCompanyRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{24}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *AdminCreateMockCompanyRequest) GetCompany() *MockCompanyInput {
@@ -1848,7 +2636,7 @@ type AdminUpdateMockCompanyRequest struct {
 
 func (x *AdminUpdateMockCompanyRequest) Reset() {
 	*x = AdminUpdateMockCompanyRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[25]
+	mi := &file_druz9_v1_mock_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1860,7 +2648,7 @@ func (x *AdminUpdateMockCompanyRequest) String() string {
 func (*AdminUpdateMockCompanyRequest) ProtoMessage() {}
 
 func (x *AdminUpdateMockCompanyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[25]
+	mi := &file_druz9_v1_mock_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1873,7 +2661,7 @@ func (x *AdminUpdateMockCompanyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminUpdateMockCompanyRequest.ProtoReflect.Descriptor instead.
 func (*AdminUpdateMockCompanyRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{25}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *AdminUpdateMockCompanyRequest) GetId() string {
@@ -1900,7 +2688,7 @@ type AdminToggleMockCompanyActiveRequest struct {
 
 func (x *AdminToggleMockCompanyActiveRequest) Reset() {
 	*x = AdminToggleMockCompanyActiveRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[26]
+	mi := &file_druz9_v1_mock_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1912,7 +2700,7 @@ func (x *AdminToggleMockCompanyActiveRequest) String() string {
 func (*AdminToggleMockCompanyActiveRequest) ProtoMessage() {}
 
 func (x *AdminToggleMockCompanyActiveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[26]
+	mi := &file_druz9_v1_mock_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1925,7 +2713,7 @@ func (x *AdminToggleMockCompanyActiveRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AdminToggleMockCompanyActiveRequest.ProtoReflect.Descriptor instead.
 func (*AdminToggleMockCompanyActiveRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{26}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *AdminToggleMockCompanyActiveRequest) GetId() string {
@@ -1962,7 +2750,7 @@ type AIStrictnessProfile struct {
 
 func (x *AIStrictnessProfile) Reset() {
 	*x = AIStrictnessProfile{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[27]
+	mi := &file_druz9_v1_mock_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1974,7 +2762,7 @@ func (x *AIStrictnessProfile) String() string {
 func (*AIStrictnessProfile) ProtoMessage() {}
 
 func (x *AIStrictnessProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[27]
+	mi := &file_druz9_v1_mock_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1987,7 +2775,7 @@ func (x *AIStrictnessProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AIStrictnessProfile.ProtoReflect.Descriptor instead.
 func (*AIStrictnessProfile) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{27}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *AIStrictnessProfile) GetId() string {
@@ -2076,7 +2864,7 @@ type AdminListStrictnessRequest struct {
 
 func (x *AdminListStrictnessRequest) Reset() {
 	*x = AdminListStrictnessRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[28]
+	mi := &file_druz9_v1_mock_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2088,7 +2876,7 @@ func (x *AdminListStrictnessRequest) String() string {
 func (*AdminListStrictnessRequest) ProtoMessage() {}
 
 func (x *AdminListStrictnessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[28]
+	mi := &file_druz9_v1_mock_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2101,7 +2889,7 @@ func (x *AdminListStrictnessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListStrictnessRequest.ProtoReflect.Descriptor instead.
 func (*AdminListStrictnessRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{28}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *AdminListStrictnessRequest) GetActiveOnly() bool {
@@ -2120,7 +2908,7 @@ type AdminListStrictnessResponse struct {
 
 func (x *AdminListStrictnessResponse) Reset() {
 	*x = AdminListStrictnessResponse{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[29]
+	mi := &file_druz9_v1_mock_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2132,7 +2920,7 @@ func (x *AdminListStrictnessResponse) String() string {
 func (*AdminListStrictnessResponse) ProtoMessage() {}
 
 func (x *AdminListStrictnessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[29]
+	mi := &file_druz9_v1_mock_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2145,7 +2933,7 @@ func (x *AdminListStrictnessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListStrictnessResponse.ProtoReflect.Descriptor instead.
 func (*AdminListStrictnessResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{29}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *AdminListStrictnessResponse) GetItems() []*AIStrictnessProfile {
@@ -2171,7 +2959,7 @@ type MockStrictnessInput struct {
 
 func (x *MockStrictnessInput) Reset() {
 	*x = MockStrictnessInput{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[30]
+	mi := &file_druz9_v1_mock_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2183,7 +2971,7 @@ func (x *MockStrictnessInput) String() string {
 func (*MockStrictnessInput) ProtoMessage() {}
 
 func (x *MockStrictnessInput) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[30]
+	mi := &file_druz9_v1_mock_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2196,7 +2984,7 @@ func (x *MockStrictnessInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockStrictnessInput.ProtoReflect.Descriptor instead.
 func (*MockStrictnessInput) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{30}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *MockStrictnessInput) GetSlug() string {
@@ -2264,7 +3052,7 @@ type AdminCreateStrictnessRequest struct {
 
 func (x *AdminCreateStrictnessRequest) Reset() {
 	*x = AdminCreateStrictnessRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[31]
+	mi := &file_druz9_v1_mock_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2276,7 +3064,7 @@ func (x *AdminCreateStrictnessRequest) String() string {
 func (*AdminCreateStrictnessRequest) ProtoMessage() {}
 
 func (x *AdminCreateStrictnessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[31]
+	mi := &file_druz9_v1_mock_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2289,7 +3077,7 @@ func (x *AdminCreateStrictnessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminCreateStrictnessRequest.ProtoReflect.Descriptor instead.
 func (*AdminCreateStrictnessRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{31}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *AdminCreateStrictnessRequest) GetProfile() *MockStrictnessInput {
@@ -2309,7 +3097,7 @@ type AdminUpdateStrictnessRequest struct {
 
 func (x *AdminUpdateStrictnessRequest) Reset() {
 	*x = AdminUpdateStrictnessRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[32]
+	mi := &file_druz9_v1_mock_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2321,7 +3109,7 @@ func (x *AdminUpdateStrictnessRequest) String() string {
 func (*AdminUpdateStrictnessRequest) ProtoMessage() {}
 
 func (x *AdminUpdateStrictnessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[32]
+	mi := &file_druz9_v1_mock_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2334,7 +3122,7 @@ func (x *AdminUpdateStrictnessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminUpdateStrictnessRequest.ProtoReflect.Descriptor instead.
 func (*AdminUpdateStrictnessRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{32}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *AdminUpdateStrictnessRequest) GetId() string {
@@ -2376,7 +3164,7 @@ type MockTask struct {
 
 func (x *MockTask) Reset() {
 	*x = MockTask{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[33]
+	mi := &file_druz9_v1_mock_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2388,7 +3176,7 @@ func (x *MockTask) String() string {
 func (*MockTask) ProtoMessage() {}
 
 func (x *MockTask) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[33]
+	mi := &file_druz9_v1_mock_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2401,7 +3189,7 @@ func (x *MockTask) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockTask.ProtoReflect.Descriptor instead.
 func (*MockTask) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{33}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *MockTask) GetId() string {
@@ -2532,7 +3320,7 @@ type MockTaskQuestion struct {
 
 func (x *MockTaskQuestion) Reset() {
 	*x = MockTaskQuestion{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[34]
+	mi := &file_druz9_v1_mock_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2544,7 +3332,7 @@ func (x *MockTaskQuestion) String() string {
 func (*MockTaskQuestion) ProtoMessage() {}
 
 func (x *MockTaskQuestion) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[34]
+	mi := &file_druz9_v1_mock_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2557,7 +3345,7 @@ func (x *MockTaskQuestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockTaskQuestion.ProtoReflect.Descriptor instead.
 func (*MockTaskQuestion) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{34}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *MockTaskQuestion) GetId() string {
@@ -2620,7 +3408,7 @@ type AdminListMockTasksRequest struct {
 
 func (x *AdminListMockTasksRequest) Reset() {
 	*x = AdminListMockTasksRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[35]
+	mi := &file_druz9_v1_mock_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2632,7 +3420,7 @@ func (x *AdminListMockTasksRequest) String() string {
 func (*AdminListMockTasksRequest) ProtoMessage() {}
 
 func (x *AdminListMockTasksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[35]
+	mi := &file_druz9_v1_mock_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2645,7 +3433,7 @@ func (x *AdminListMockTasksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListMockTasksRequest.ProtoReflect.Descriptor instead.
 func (*AdminListMockTasksRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{35}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *AdminListMockTasksRequest) GetStageKind() string {
@@ -2678,7 +3466,7 @@ type AdminListMockTasksResponse struct {
 
 func (x *AdminListMockTasksResponse) Reset() {
 	*x = AdminListMockTasksResponse{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[36]
+	mi := &file_druz9_v1_mock_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2690,7 +3478,7 @@ func (x *AdminListMockTasksResponse) String() string {
 func (*AdminListMockTasksResponse) ProtoMessage() {}
 
 func (x *AdminListMockTasksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[36]
+	mi := &file_druz9_v1_mock_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2703,7 +3491,7 @@ func (x *AdminListMockTasksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListMockTasksResponse.ProtoReflect.Descriptor instead.
 func (*AdminListMockTasksResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{36}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *AdminListMockTasksResponse) GetItems() []*MockTask {
@@ -2722,7 +3510,7 @@ type AdminGetMockTaskRequest struct {
 
 func (x *AdminGetMockTaskRequest) Reset() {
 	*x = AdminGetMockTaskRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[37]
+	mi := &file_druz9_v1_mock_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2734,7 +3522,7 @@ func (x *AdminGetMockTaskRequest) String() string {
 func (*AdminGetMockTaskRequest) ProtoMessage() {}
 
 func (x *AdminGetMockTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[37]
+	mi := &file_druz9_v1_mock_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2747,7 +3535,7 @@ func (x *AdminGetMockTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminGetMockTaskRequest.ProtoReflect.Descriptor instead.
 func (*AdminGetMockTaskRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{37}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *AdminGetMockTaskRequest) GetId() string {
@@ -2768,7 +3556,7 @@ type AdminGetMockTaskResponse struct {
 
 func (x *AdminGetMockTaskResponse) Reset() {
 	*x = AdminGetMockTaskResponse{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[38]
+	mi := &file_druz9_v1_mock_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2780,7 +3568,7 @@ func (x *AdminGetMockTaskResponse) String() string {
 func (*AdminGetMockTaskResponse) ProtoMessage() {}
 
 func (x *AdminGetMockTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[38]
+	mi := &file_druz9_v1_mock_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2793,7 +3581,7 @@ func (x *AdminGetMockTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminGetMockTaskResponse.ProtoReflect.Descriptor instead.
 func (*AdminGetMockTaskResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{38}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *AdminGetMockTaskResponse) GetTask() *MockTask {
@@ -2832,7 +3620,7 @@ type MockTaskInput struct {
 
 func (x *MockTaskInput) Reset() {
 	*x = MockTaskInput{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[39]
+	mi := &file_druz9_v1_mock_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2844,7 +3632,7 @@ func (x *MockTaskInput) String() string {
 func (*MockTaskInput) ProtoMessage() {}
 
 func (x *MockTaskInput) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[39]
+	mi := &file_druz9_v1_mock_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2857,7 +3645,7 @@ func (x *MockTaskInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockTaskInput.ProtoReflect.Descriptor instead.
 func (*MockTaskInput) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{39}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *MockTaskInput) GetStageKind() string {
@@ -2960,7 +3748,7 @@ type AdminCreateMockTaskRequest struct {
 
 func (x *AdminCreateMockTaskRequest) Reset() {
 	*x = AdminCreateMockTaskRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[40]
+	mi := &file_druz9_v1_mock_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2972,7 +3760,7 @@ func (x *AdminCreateMockTaskRequest) String() string {
 func (*AdminCreateMockTaskRequest) ProtoMessage() {}
 
 func (x *AdminCreateMockTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[40]
+	mi := &file_druz9_v1_mock_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2985,7 +3773,7 @@ func (x *AdminCreateMockTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminCreateMockTaskRequest.ProtoReflect.Descriptor instead.
 func (*AdminCreateMockTaskRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{40}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *AdminCreateMockTaskRequest) GetTask() *MockTaskInput {
@@ -3005,7 +3793,7 @@ type AdminUpdateMockTaskRequest struct {
 
 func (x *AdminUpdateMockTaskRequest) Reset() {
 	*x = AdminUpdateMockTaskRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[41]
+	mi := &file_druz9_v1_mock_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3017,7 +3805,7 @@ func (x *AdminUpdateMockTaskRequest) String() string {
 func (*AdminUpdateMockTaskRequest) ProtoMessage() {}
 
 func (x *AdminUpdateMockTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[41]
+	mi := &file_druz9_v1_mock_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3030,7 +3818,7 @@ func (x *AdminUpdateMockTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminUpdateMockTaskRequest.ProtoReflect.Descriptor instead.
 func (*AdminUpdateMockTaskRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{41}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *AdminUpdateMockTaskRequest) GetId() string {
@@ -3057,7 +3845,7 @@ type AdminToggleMockTaskActiveRequest struct {
 
 func (x *AdminToggleMockTaskActiveRequest) Reset() {
 	*x = AdminToggleMockTaskActiveRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[42]
+	mi := &file_druz9_v1_mock_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3069,7 +3857,7 @@ func (x *AdminToggleMockTaskActiveRequest) String() string {
 func (*AdminToggleMockTaskActiveRequest) ProtoMessage() {}
 
 func (x *AdminToggleMockTaskActiveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[42]
+	mi := &file_druz9_v1_mock_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3082,7 +3870,7 @@ func (x *AdminToggleMockTaskActiveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminToggleMockTaskActiveRequest.ProtoReflect.Descriptor instead.
 func (*AdminToggleMockTaskActiveRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{42}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *AdminToggleMockTaskActiveRequest) GetId() string {
@@ -3111,7 +3899,7 @@ type MockTaskQuestionInput struct {
 
 func (x *MockTaskQuestionInput) Reset() {
 	*x = MockTaskQuestionInput{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[43]
+	mi := &file_druz9_v1_mock_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3123,7 +3911,7 @@ func (x *MockTaskQuestionInput) String() string {
 func (*MockTaskQuestionInput) ProtoMessage() {}
 
 func (x *MockTaskQuestionInput) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[43]
+	mi := &file_druz9_v1_mock_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3136,7 +3924,7 @@ func (x *MockTaskQuestionInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockTaskQuestionInput.ProtoReflect.Descriptor instead.
 func (*MockTaskQuestionInput) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{43}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *MockTaskQuestionInput) GetBody() string {
@@ -3177,7 +3965,7 @@ type AdminCreateMockTaskQuestionRequest struct {
 
 func (x *AdminCreateMockTaskQuestionRequest) Reset() {
 	*x = AdminCreateMockTaskQuestionRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[44]
+	mi := &file_druz9_v1_mock_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3189,7 +3977,7 @@ func (x *AdminCreateMockTaskQuestionRequest) String() string {
 func (*AdminCreateMockTaskQuestionRequest) ProtoMessage() {}
 
 func (x *AdminCreateMockTaskQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[44]
+	mi := &file_druz9_v1_mock_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3202,7 +3990,7 @@ func (x *AdminCreateMockTaskQuestionRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AdminCreateMockTaskQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AdminCreateMockTaskQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{44}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *AdminCreateMockTaskQuestionRequest) GetTaskId() string {
@@ -3229,7 +4017,7 @@ type AdminUpdateMockTaskQuestionRequest struct {
 
 func (x *AdminUpdateMockTaskQuestionRequest) Reset() {
 	*x = AdminUpdateMockTaskQuestionRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[45]
+	mi := &file_druz9_v1_mock_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3241,7 +4029,7 @@ func (x *AdminUpdateMockTaskQuestionRequest) String() string {
 func (*AdminUpdateMockTaskQuestionRequest) ProtoMessage() {}
 
 func (x *AdminUpdateMockTaskQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[45]
+	mi := &file_druz9_v1_mock_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3254,7 +4042,7 @@ func (x *AdminUpdateMockTaskQuestionRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AdminUpdateMockTaskQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AdminUpdateMockTaskQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{45}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *AdminUpdateMockTaskQuestionRequest) GetId() string {
@@ -3280,7 +4068,7 @@ type AdminDeleteMockTaskQuestionRequest struct {
 
 func (x *AdminDeleteMockTaskQuestionRequest) Reset() {
 	*x = AdminDeleteMockTaskQuestionRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[46]
+	mi := &file_druz9_v1_mock_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3292,7 +4080,7 @@ func (x *AdminDeleteMockTaskQuestionRequest) String() string {
 func (*AdminDeleteMockTaskQuestionRequest) ProtoMessage() {}
 
 func (x *AdminDeleteMockTaskQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[46]
+	mi := &file_druz9_v1_mock_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3305,7 +4093,7 @@ func (x *AdminDeleteMockTaskQuestionRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AdminDeleteMockTaskQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AdminDeleteMockTaskQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{46}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *AdminDeleteMockTaskQuestionRequest) GetId() string {
@@ -3329,7 +4117,7 @@ type MockTaskTestCase struct {
 
 func (x *MockTaskTestCase) Reset() {
 	*x = MockTaskTestCase{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[47]
+	mi := &file_druz9_v1_mock_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3341,7 +4129,7 @@ func (x *MockTaskTestCase) String() string {
 func (*MockTaskTestCase) ProtoMessage() {}
 
 func (x *MockTaskTestCase) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[47]
+	mi := &file_druz9_v1_mock_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3354,7 +4142,7 @@ func (x *MockTaskTestCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockTaskTestCase.ProtoReflect.Descriptor instead.
 func (*MockTaskTestCase) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{47}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *MockTaskTestCase) GetId() string {
@@ -3411,7 +4199,7 @@ type MockTaskTestCaseInput struct {
 
 func (x *MockTaskTestCaseInput) Reset() {
 	*x = MockTaskTestCaseInput{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[48]
+	mi := &file_druz9_v1_mock_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3423,7 +4211,7 @@ func (x *MockTaskTestCaseInput) String() string {
 func (*MockTaskTestCaseInput) ProtoMessage() {}
 
 func (x *MockTaskTestCaseInput) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[48]
+	mi := &file_druz9_v1_mock_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3436,7 +4224,7 @@ func (x *MockTaskTestCaseInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockTaskTestCaseInput.ProtoReflect.Descriptor instead.
 func (*MockTaskTestCaseInput) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{48}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *MockTaskTestCaseInput) GetInput() string {
@@ -3476,7 +4264,7 @@ type AdminListTestCasesRequest struct {
 
 func (x *AdminListTestCasesRequest) Reset() {
 	*x = AdminListTestCasesRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[49]
+	mi := &file_druz9_v1_mock_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3488,7 +4276,7 @@ func (x *AdminListTestCasesRequest) String() string {
 func (*AdminListTestCasesRequest) ProtoMessage() {}
 
 func (x *AdminListTestCasesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[49]
+	mi := &file_druz9_v1_mock_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3501,7 +4289,7 @@ func (x *AdminListTestCasesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListTestCasesRequest.ProtoReflect.Descriptor instead.
 func (*AdminListTestCasesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{49}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *AdminListTestCasesRequest) GetTaskId() string {
@@ -3520,7 +4308,7 @@ type AdminListTestCasesResponse struct {
 
 func (x *AdminListTestCasesResponse) Reset() {
 	*x = AdminListTestCasesResponse{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[50]
+	mi := &file_druz9_v1_mock_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3532,7 +4320,7 @@ func (x *AdminListTestCasesResponse) String() string {
 func (*AdminListTestCasesResponse) ProtoMessage() {}
 
 func (x *AdminListTestCasesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[50]
+	mi := &file_druz9_v1_mock_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3545,7 +4333,7 @@ func (x *AdminListTestCasesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListTestCasesResponse.ProtoReflect.Descriptor instead.
 func (*AdminListTestCasesResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{50}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *AdminListTestCasesResponse) GetItems() []*MockTaskTestCase {
@@ -3565,7 +4353,7 @@ type AdminCreateTestCaseRequest struct {
 
 func (x *AdminCreateTestCaseRequest) Reset() {
 	*x = AdminCreateTestCaseRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[51]
+	mi := &file_druz9_v1_mock_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3577,7 +4365,7 @@ func (x *AdminCreateTestCaseRequest) String() string {
 func (*AdminCreateTestCaseRequest) ProtoMessage() {}
 
 func (x *AdminCreateTestCaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[51]
+	mi := &file_druz9_v1_mock_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3590,7 +4378,7 @@ func (x *AdminCreateTestCaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminCreateTestCaseRequest.ProtoReflect.Descriptor instead.
 func (*AdminCreateTestCaseRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{51}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *AdminCreateTestCaseRequest) GetTaskId() string {
@@ -3617,7 +4405,7 @@ type AdminUpdateTestCaseRequest struct {
 
 func (x *AdminUpdateTestCaseRequest) Reset() {
 	*x = AdminUpdateTestCaseRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[52]
+	mi := &file_druz9_v1_mock_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3629,7 +4417,7 @@ func (x *AdminUpdateTestCaseRequest) String() string {
 func (*AdminUpdateTestCaseRequest) ProtoMessage() {}
 
 func (x *AdminUpdateTestCaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[52]
+	mi := &file_druz9_v1_mock_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3642,7 +4430,7 @@ func (x *AdminUpdateTestCaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminUpdateTestCaseRequest.ProtoReflect.Descriptor instead.
 func (*AdminUpdateTestCaseRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{52}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *AdminUpdateTestCaseRequest) GetId() string {
@@ -3668,7 +4456,7 @@ type AdminDeleteTestCaseRequest struct {
 
 func (x *AdminDeleteTestCaseRequest) Reset() {
 	*x = AdminDeleteTestCaseRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[53]
+	mi := &file_druz9_v1_mock_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3680,7 +4468,7 @@ func (x *AdminDeleteTestCaseRequest) String() string {
 func (*AdminDeleteTestCaseRequest) ProtoMessage() {}
 
 func (x *AdminDeleteTestCaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[53]
+	mi := &file_druz9_v1_mock_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3693,7 +4481,7 @@ func (x *AdminDeleteTestCaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminDeleteTestCaseRequest.ProtoReflect.Descriptor instead.
 func (*AdminDeleteTestCaseRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{53}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *AdminDeleteTestCaseRequest) GetId() string {
@@ -3720,7 +4508,7 @@ type MockDefaultQuestion struct {
 
 func (x *MockDefaultQuestion) Reset() {
 	*x = MockDefaultQuestion{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[54]
+	mi := &file_druz9_v1_mock_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3732,7 +4520,7 @@ func (x *MockDefaultQuestion) String() string {
 func (*MockDefaultQuestion) ProtoMessage() {}
 
 func (x *MockDefaultQuestion) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[54]
+	mi := &file_druz9_v1_mock_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3745,7 +4533,7 @@ func (x *MockDefaultQuestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockDefaultQuestion.ProtoReflect.Descriptor instead.
 func (*MockDefaultQuestion) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{54}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *MockDefaultQuestion) GetId() string {
@@ -3818,7 +4606,7 @@ type MockDefaultQuestionInput struct {
 
 func (x *MockDefaultQuestionInput) Reset() {
 	*x = MockDefaultQuestionInput{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[55]
+	mi := &file_druz9_v1_mock_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3830,7 +4618,7 @@ func (x *MockDefaultQuestionInput) String() string {
 func (*MockDefaultQuestionInput) ProtoMessage() {}
 
 func (x *MockDefaultQuestionInput) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[55]
+	mi := &file_druz9_v1_mock_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3843,7 +4631,7 @@ func (x *MockDefaultQuestionInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockDefaultQuestionInput.ProtoReflect.Descriptor instead.
 func (*MockDefaultQuestionInput) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{55}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *MockDefaultQuestionInput) GetStageKind() string {
@@ -3898,7 +4686,7 @@ type AdminListDefaultQuestionsRequest struct {
 
 func (x *AdminListDefaultQuestionsRequest) Reset() {
 	*x = AdminListDefaultQuestionsRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[56]
+	mi := &file_druz9_v1_mock_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3910,7 +4698,7 @@ func (x *AdminListDefaultQuestionsRequest) String() string {
 func (*AdminListDefaultQuestionsRequest) ProtoMessage() {}
 
 func (x *AdminListDefaultQuestionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[56]
+	mi := &file_druz9_v1_mock_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3923,7 +4711,7 @@ func (x *AdminListDefaultQuestionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListDefaultQuestionsRequest.ProtoReflect.Descriptor instead.
 func (*AdminListDefaultQuestionsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{56}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *AdminListDefaultQuestionsRequest) GetStageKind() string {
@@ -3949,7 +4737,7 @@ type AdminListDefaultQuestionsResponse struct {
 
 func (x *AdminListDefaultQuestionsResponse) Reset() {
 	*x = AdminListDefaultQuestionsResponse{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[57]
+	mi := &file_druz9_v1_mock_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3961,7 +4749,7 @@ func (x *AdminListDefaultQuestionsResponse) String() string {
 func (*AdminListDefaultQuestionsResponse) ProtoMessage() {}
 
 func (x *AdminListDefaultQuestionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[57]
+	mi := &file_druz9_v1_mock_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3974,7 +4762,7 @@ func (x *AdminListDefaultQuestionsResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AdminListDefaultQuestionsResponse.ProtoReflect.Descriptor instead.
 func (*AdminListDefaultQuestionsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{57}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *AdminListDefaultQuestionsResponse) GetItems() []*MockDefaultQuestion {
@@ -3993,7 +4781,7 @@ type AdminCreateDefaultQuestionRequest struct {
 
 func (x *AdminCreateDefaultQuestionRequest) Reset() {
 	*x = AdminCreateDefaultQuestionRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[58]
+	mi := &file_druz9_v1_mock_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4005,7 +4793,7 @@ func (x *AdminCreateDefaultQuestionRequest) String() string {
 func (*AdminCreateDefaultQuestionRequest) ProtoMessage() {}
 
 func (x *AdminCreateDefaultQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[58]
+	mi := &file_druz9_v1_mock_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4018,7 +4806,7 @@ func (x *AdminCreateDefaultQuestionRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AdminCreateDefaultQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AdminCreateDefaultQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{58}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *AdminCreateDefaultQuestionRequest) GetQuestion() *MockDefaultQuestionInput {
@@ -4038,7 +4826,7 @@ type AdminUpdateDefaultQuestionRequest struct {
 
 func (x *AdminUpdateDefaultQuestionRequest) Reset() {
 	*x = AdminUpdateDefaultQuestionRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[59]
+	mi := &file_druz9_v1_mock_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4050,7 +4838,7 @@ func (x *AdminUpdateDefaultQuestionRequest) String() string {
 func (*AdminUpdateDefaultQuestionRequest) ProtoMessage() {}
 
 func (x *AdminUpdateDefaultQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[59]
+	mi := &file_druz9_v1_mock_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4063,7 +4851,7 @@ func (x *AdminUpdateDefaultQuestionRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AdminUpdateDefaultQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AdminUpdateDefaultQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{59}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *AdminUpdateDefaultQuestionRequest) GetId() string {
@@ -4089,7 +4877,7 @@ type AdminDeleteDefaultQuestionRequest struct {
 
 func (x *AdminDeleteDefaultQuestionRequest) Reset() {
 	*x = AdminDeleteDefaultQuestionRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[60]
+	mi := &file_druz9_v1_mock_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4101,7 +4889,7 @@ func (x *AdminDeleteDefaultQuestionRequest) String() string {
 func (*AdminDeleteDefaultQuestionRequest) ProtoMessage() {}
 
 func (x *AdminDeleteDefaultQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[60]
+	mi := &file_druz9_v1_mock_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4114,7 +4902,7 @@ func (x *AdminDeleteDefaultQuestionRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AdminDeleteDefaultQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AdminDeleteDefaultQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{60}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *AdminDeleteDefaultQuestionRequest) GetId() string {
@@ -4142,7 +4930,7 @@ type MockCompanyQuestion struct {
 
 func (x *MockCompanyQuestion) Reset() {
 	*x = MockCompanyQuestion{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[61]
+	mi := &file_druz9_v1_mock_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4154,7 +4942,7 @@ func (x *MockCompanyQuestion) String() string {
 func (*MockCompanyQuestion) ProtoMessage() {}
 
 func (x *MockCompanyQuestion) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[61]
+	mi := &file_druz9_v1_mock_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4167,7 +4955,7 @@ func (x *MockCompanyQuestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockCompanyQuestion.ProtoReflect.Descriptor instead.
 func (*MockCompanyQuestion) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{61}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *MockCompanyQuestion) GetId() string {
@@ -4247,7 +5035,7 @@ type MockCompanyQuestionInput struct {
 
 func (x *MockCompanyQuestionInput) Reset() {
 	*x = MockCompanyQuestionInput{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[62]
+	mi := &file_druz9_v1_mock_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4259,7 +5047,7 @@ func (x *MockCompanyQuestionInput) String() string {
 func (*MockCompanyQuestionInput) ProtoMessage() {}
 
 func (x *MockCompanyQuestionInput) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[62]
+	mi := &file_druz9_v1_mock_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4272,7 +5060,7 @@ func (x *MockCompanyQuestionInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockCompanyQuestionInput.ProtoReflect.Descriptor instead.
 func (*MockCompanyQuestionInput) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{62}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *MockCompanyQuestionInput) GetStageKind() string {
@@ -4327,7 +5115,7 @@ type AdminListCompanyQuestionsRequest struct {
 
 func (x *AdminListCompanyQuestionsRequest) Reset() {
 	*x = AdminListCompanyQuestionsRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[63]
+	mi := &file_druz9_v1_mock_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4339,7 +5127,7 @@ func (x *AdminListCompanyQuestionsRequest) String() string {
 func (*AdminListCompanyQuestionsRequest) ProtoMessage() {}
 
 func (x *AdminListCompanyQuestionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[63]
+	mi := &file_druz9_v1_mock_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4352,7 +5140,7 @@ func (x *AdminListCompanyQuestionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminListCompanyQuestionsRequest.ProtoReflect.Descriptor instead.
 func (*AdminListCompanyQuestionsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{63}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *AdminListCompanyQuestionsRequest) GetCompanyId() string {
@@ -4378,7 +5166,7 @@ type AdminListCompanyQuestionsResponse struct {
 
 func (x *AdminListCompanyQuestionsResponse) Reset() {
 	*x = AdminListCompanyQuestionsResponse{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[64]
+	mi := &file_druz9_v1_mock_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4390,7 +5178,7 @@ func (x *AdminListCompanyQuestionsResponse) String() string {
 func (*AdminListCompanyQuestionsResponse) ProtoMessage() {}
 
 func (x *AdminListCompanyQuestionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[64]
+	mi := &file_druz9_v1_mock_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4403,7 +5191,7 @@ func (x *AdminListCompanyQuestionsResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AdminListCompanyQuestionsResponse.ProtoReflect.Descriptor instead.
 func (*AdminListCompanyQuestionsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{64}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *AdminListCompanyQuestionsResponse) GetItems() []*MockCompanyQuestion {
@@ -4423,7 +5211,7 @@ type AdminCreateCompanyQuestionRequest struct {
 
 func (x *AdminCreateCompanyQuestionRequest) Reset() {
 	*x = AdminCreateCompanyQuestionRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[65]
+	mi := &file_druz9_v1_mock_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4435,7 +5223,7 @@ func (x *AdminCreateCompanyQuestionRequest) String() string {
 func (*AdminCreateCompanyQuestionRequest) ProtoMessage() {}
 
 func (x *AdminCreateCompanyQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[65]
+	mi := &file_druz9_v1_mock_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4448,7 +5236,7 @@ func (x *AdminCreateCompanyQuestionRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AdminCreateCompanyQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AdminCreateCompanyQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{65}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *AdminCreateCompanyQuestionRequest) GetCompanyId() string {
@@ -4475,7 +5263,7 @@ type AdminUpdateCompanyQuestionRequest struct {
 
 func (x *AdminUpdateCompanyQuestionRequest) Reset() {
 	*x = AdminUpdateCompanyQuestionRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[66]
+	mi := &file_druz9_v1_mock_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4487,7 +5275,7 @@ func (x *AdminUpdateCompanyQuestionRequest) String() string {
 func (*AdminUpdateCompanyQuestionRequest) ProtoMessage() {}
 
 func (x *AdminUpdateCompanyQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[66]
+	mi := &file_druz9_v1_mock_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4500,7 +5288,7 @@ func (x *AdminUpdateCompanyQuestionRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AdminUpdateCompanyQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AdminUpdateCompanyQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{66}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *AdminUpdateCompanyQuestionRequest) GetId() string {
@@ -4526,7 +5314,7 @@ type AdminDeleteCompanyQuestionRequest struct {
 
 func (x *AdminDeleteCompanyQuestionRequest) Reset() {
 	*x = AdminDeleteCompanyQuestionRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[67]
+	mi := &file_druz9_v1_mock_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4538,7 +5326,7 @@ func (x *AdminDeleteCompanyQuestionRequest) String() string {
 func (*AdminDeleteCompanyQuestionRequest) ProtoMessage() {}
 
 func (x *AdminDeleteCompanyQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[67]
+	mi := &file_druz9_v1_mock_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4551,7 +5339,7 @@ func (x *AdminDeleteCompanyQuestionRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AdminDeleteCompanyQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AdminDeleteCompanyQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{67}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *AdminDeleteCompanyQuestionRequest) GetId() string {
@@ -4583,7 +5371,7 @@ type MockCompanyStage struct {
 
 func (x *MockCompanyStage) Reset() {
 	*x = MockCompanyStage{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[68]
+	mi := &file_druz9_v1_mock_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4595,7 +5383,7 @@ func (x *MockCompanyStage) String() string {
 func (*MockCompanyStage) ProtoMessage() {}
 
 func (x *MockCompanyStage) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[68]
+	mi := &file_druz9_v1_mock_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4608,7 +5396,7 @@ func (x *MockCompanyStage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockCompanyStage.ProtoReflect.Descriptor instead.
 func (*MockCompanyStage) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{68}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *MockCompanyStage) GetStageKind() string {
@@ -4690,7 +5478,7 @@ type AdminGetCompanyStagesRequest struct {
 
 func (x *AdminGetCompanyStagesRequest) Reset() {
 	*x = AdminGetCompanyStagesRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[69]
+	mi := &file_druz9_v1_mock_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4702,7 +5490,7 @@ func (x *AdminGetCompanyStagesRequest) String() string {
 func (*AdminGetCompanyStagesRequest) ProtoMessage() {}
 
 func (x *AdminGetCompanyStagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[69]
+	mi := &file_druz9_v1_mock_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4715,7 +5503,7 @@ func (x *AdminGetCompanyStagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminGetCompanyStagesRequest.ProtoReflect.Descriptor instead.
 func (*AdminGetCompanyStagesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{69}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *AdminGetCompanyStagesRequest) GetCompanyId() string {
@@ -4734,7 +5522,7 @@ type AdminGetCompanyStagesResponse struct {
 
 func (x *AdminGetCompanyStagesResponse) Reset() {
 	*x = AdminGetCompanyStagesResponse{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[70]
+	mi := &file_druz9_v1_mock_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4746,7 +5534,7 @@ func (x *AdminGetCompanyStagesResponse) String() string {
 func (*AdminGetCompanyStagesResponse) ProtoMessage() {}
 
 func (x *AdminGetCompanyStagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[70]
+	mi := &file_druz9_v1_mock_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4759,7 +5547,7 @@ func (x *AdminGetCompanyStagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminGetCompanyStagesResponse.ProtoReflect.Descriptor instead.
 func (*AdminGetCompanyStagesResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{70}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *AdminGetCompanyStagesResponse) GetItems() []*MockCompanyStage {
@@ -4779,7 +5567,7 @@ type AdminReplaceCompanyStagesRequest struct {
 
 func (x *AdminReplaceCompanyStagesRequest) Reset() {
 	*x = AdminReplaceCompanyStagesRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[71]
+	mi := &file_druz9_v1_mock_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4791,7 +5579,7 @@ func (x *AdminReplaceCompanyStagesRequest) String() string {
 func (*AdminReplaceCompanyStagesRequest) ProtoMessage() {}
 
 func (x *AdminReplaceCompanyStagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[71]
+	mi := &file_druz9_v1_mock_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4804,7 +5592,7 @@ func (x *AdminReplaceCompanyStagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminReplaceCompanyStagesRequest.ProtoReflect.Descriptor instead.
 func (*AdminReplaceCompanyStagesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{71}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *AdminReplaceCompanyStagesRequest) GetCompanyId() string {
@@ -4833,7 +5621,7 @@ type MockBulkTestCase struct {
 
 func (x *MockBulkTestCase) Reset() {
 	*x = MockBulkTestCase{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[72]
+	mi := &file_druz9_v1_mock_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4845,7 +5633,7 @@ func (x *MockBulkTestCase) String() string {
 func (*MockBulkTestCase) ProtoMessage() {}
 
 func (x *MockBulkTestCase) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[72]
+	mi := &file_druz9_v1_mock_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4858,7 +5646,7 @@ func (x *MockBulkTestCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockBulkTestCase.ProtoReflect.Descriptor instead.
 func (*MockBulkTestCase) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{72}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *MockBulkTestCase) GetInput() string {
@@ -4910,7 +5698,7 @@ type MockBulkTaskImportItem struct {
 
 func (x *MockBulkTaskImportItem) Reset() {
 	*x = MockBulkTaskImportItem{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[73]
+	mi := &file_druz9_v1_mock_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4922,7 +5710,7 @@ func (x *MockBulkTaskImportItem) String() string {
 func (*MockBulkTaskImportItem) ProtoMessage() {}
 
 func (x *MockBulkTaskImportItem) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[73]
+	mi := &file_druz9_v1_mock_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4935,7 +5723,7 @@ func (x *MockBulkTaskImportItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockBulkTaskImportItem.ProtoReflect.Descriptor instead.
 func (*MockBulkTaskImportItem) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{73}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *MockBulkTaskImportItem) GetStageKind() string {
@@ -5041,7 +5829,7 @@ type MockBulkImportResult struct {
 
 func (x *MockBulkImportResult) Reset() {
 	*x = MockBulkImportResult{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[74]
+	mi := &file_druz9_v1_mock_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5053,7 +5841,7 @@ func (x *MockBulkImportResult) String() string {
 func (*MockBulkImportResult) ProtoMessage() {}
 
 func (x *MockBulkImportResult) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[74]
+	mi := &file_druz9_v1_mock_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5066,7 +5854,7 @@ func (x *MockBulkImportResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MockBulkImportResult.ProtoReflect.Descriptor instead.
 func (*MockBulkImportResult) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{74}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *MockBulkImportResult) GetIndex() int32 {
@@ -5106,7 +5894,7 @@ type AdminBulkImportTasksRequest struct {
 
 func (x *AdminBulkImportTasksRequest) Reset() {
 	*x = AdminBulkImportTasksRequest{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[75]
+	mi := &file_druz9_v1_mock_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5118,7 +5906,7 @@ func (x *AdminBulkImportTasksRequest) String() string {
 func (*AdminBulkImportTasksRequest) ProtoMessage() {}
 
 func (x *AdminBulkImportTasksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[75]
+	mi := &file_druz9_v1_mock_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5131,7 +5919,7 @@ func (x *AdminBulkImportTasksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminBulkImportTasksRequest.ProtoReflect.Descriptor instead.
 func (*AdminBulkImportTasksRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{75}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *AdminBulkImportTasksRequest) GetTasks() []*MockBulkTaskImportItem {
@@ -5150,7 +5938,7 @@ type AdminBulkImportTasksResponse struct {
 
 func (x *AdminBulkImportTasksResponse) Reset() {
 	*x = AdminBulkImportTasksResponse{}
-	mi := &file_druz9_v1_mock_proto_msgTypes[76]
+	mi := &file_druz9_v1_mock_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5162,7 +5950,7 @@ func (x *AdminBulkImportTasksResponse) String() string {
 func (*AdminBulkImportTasksResponse) ProtoMessage() {}
 
 func (x *AdminBulkImportTasksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_mock_proto_msgTypes[76]
+	mi := &file_druz9_v1_mock_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5175,7 +5963,7 @@ func (x *AdminBulkImportTasksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminBulkImportTasksResponse.ProtoReflect.Descriptor instead.
 func (*AdminBulkImportTasksResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{76}
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *AdminBulkImportTasksResponse) GetResults() []*MockBulkImportResult {
@@ -5318,7 +6106,75 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12$\n" +
 	"\x0euser_answer_md\x18\x02 \x01(\tR\fuserAnswerMd\"$\n" +
 	"\x12FinishStageRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"@\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xfa\x01\n" +
+	"\x0eAlgoTestResult\x12\x18\n" +
+	"\aordinal\x18\x01 \x01(\x05R\aordinal\x12\x16\n" +
+	"\x06passed\x18\x02 \x01(\bR\x06passed\x12\x14\n" +
+	"\x05input\x18\x03 \x01(\tR\x05input\x12'\n" +
+	"\x0fexpected_output\x18\x04 \x01(\tR\x0eexpectedOutput\x12#\n" +
+	"\ractual_output\x18\x05 \x01(\tR\factualOutput\x12\x16\n" +
+	"\x06stderr\x18\x06 \x01(\tR\x06stderr\x12\x1b\n" +
+	"\tis_hidden\x18\a \x01(\bR\bisHidden\x12\x1d\n" +
+	"\n" +
+	"runtime_ms\x18\b \x01(\x05R\truntimeMs\"\xf0\x01\n" +
+	"\vAlgoVerdict\x12\x16\n" +
+	"\x06passed\x18\x01 \x01(\x05R\x06passed\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x1d\n" +
+	"\n" +
+	"runtime_ms\x18\x03 \x01(\x05R\truntimeMs\x12\x1b\n" +
+	"\tmemory_kb\x18\x04 \x01(\x05R\bmemoryKb\x12/\n" +
+	"\x13sandbox_unavailable\x18\x05 \x01(\bR\x12sandboxUnavailable\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12.\n" +
+	"\x05tests\x18\a \x03(\v2\x18.druz9.v1.AlgoTestResultR\x05tests\"W\n" +
+	"\x15RunAlgoAttemptRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12\x1a\n" +
+	"\blanguage\x18\x03 \x01(\tR\blanguage\"\xcb\x01\n" +
+	"\rCodingVerdict\x12\x14\n" +
+	"\x05score\x18\x01 \x01(\x05R\x05score\x12\x1c\n" +
+	"\tstrengths\x18\x02 \x03(\tR\tstrengths\x12\x1e\n" +
+	"\n" +
+	"weaknesses\x18\x03 \x03(\tR\n" +
+	"weaknesses\x12'\n" +
+	"\x0fsuggested_lines\x18\x04 \x03(\x05R\x0esuggestedLines\x12\x1b\n" +
+	"\trubric_md\x18\x05 \x01(\tR\brubricMd\x12 \n" +
+	"\vunavailable\x18\x06 \x01(\bR\vunavailable\"Y\n" +
+	"\x17RunCodingAttemptRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12\x1a\n" +
+	"\blanguage\x18\x03 \x01(\tR\blanguage\"\xab\x01\n" +
+	"\rSysDesignAxes\x12\"\n" +
+	"\favailability\x18\x01 \x01(\x05R\favailability\x12 \n" +
+	"\vconsistency\x18\x02 \x01(\x05R\vconsistency\x12 \n" +
+	"\vscalability\x18\x03 \x01(\x05R\vscalability\x12\x12\n" +
+	"\x04cost\x18\x04 \x01(\x05R\x04cost\x12\x1e\n" +
+	"\n" +
+	"simplicity\x18\x05 \x01(\x05R\n" +
+	"simplicity\"\xbb\x01\n" +
+	"\x10SysDesignVerdict\x12+\n" +
+	"\x04axes\x18\x01 \x01(\v2\x17.druz9.v1.SysDesignAxesR\x04axes\x12-\n" +
+	"\x12narrative_critique\x18\x02 \x01(\tR\x11narrativeCritique\x12)\n" +
+	"\x10missing_concepts\x18\x03 \x03(\tR\x0fmissingConcepts\x12 \n" +
+	"\vunavailable\x18\x04 \x01(\bR\vunavailable\"t\n" +
+	"\x1aRunSysDesignAttemptRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vcanvas_json\x18\x02 \x01(\tR\n" +
+	"canvasJson\x12%\n" +
+	"\x0enarration_text\x18\x03 \x01(\tR\rnarrationText\"r\n" +
+	"\x0eBehavioralAxes\x12\x1c\n" +
+	"\tsituation\x18\x01 \x01(\x05R\tsituation\x12\x12\n" +
+	"\x04task\x18\x02 \x01(\x05R\x04task\x12\x16\n" +
+	"\x06action\x18\x03 \x01(\x05R\x06action\x12\x16\n" +
+	"\x06result\x18\x04 \x01(\x05R\x06result\"\xad\x01\n" +
+	"\x11BehavioralVerdict\x12,\n" +
+	"\x04axes\x18\x01 \x01(\v2\x18.druz9.v1.BehavioralAxesR\x04axes\x12/\n" +
+	"\x13communication_score\x18\x02 \x01(\x05R\x12communicationScore\x12\x17\n" +
+	"\abody_md\x18\x03 \x01(\tR\x06bodyMd\x12 \n" +
+	"\vunavailable\x18\x04 \x01(\bR\vunavailable\"N\n" +
+	"\x1bRunBehavioralAttemptRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vanswer_text\x18\x02 \x01(\tR\n" +
+	"answerText\"@\n" +
 	"\x1dAdminListMockCompaniesRequest\x12\x1f\n" +
 	"\vactive_only\x18\x01 \x01(\bR\n" +
 	"activeOnly\"Q\n" +
@@ -5631,7 +6487,7 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	" MOCK_ATTEMPT_VERDICT_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cMOCK_ATTEMPT_VERDICT_PENDING\x10\x01\x12\x1d\n" +
 	"\x19MOCK_ATTEMPT_VERDICT_PASS\x10\x02\x12\x1d\n" +
-	"\x19MOCK_ATTEMPT_VERDICT_FAIL\x10\x032\xa4,\n" +
+	"\x19MOCK_ATTEMPT_VERDICT_FAIL\x10\x032\xc30\n" +
 	"\x13MockPipelineService\x12x\n" +
 	"\rListCompanies\x12\".druz9.v1.ListMockCompaniesRequest\x1a#.druz9.v1.ListMockCompaniesResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/v1/mock/companies\x12l\n" +
 	"\vGetPipeline\x12 .druz9.v1.GetMockPipelineRequest\x1a\x16.druz9.v1.MockPipeline\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/mock/pipelines/{id}\x12x\n" +
@@ -5642,7 +6498,11 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x10AttemptFinalised\x12!.druz9.v1.AttemptFinalisedRequest\x1a\".druz9.v1.AttemptFinalisedResponse\",\x82\xd3\xe4\x93\x02&\x12$/api/v1/mock/attempts/{id}/finalised\x12\x87\x01\n" +
 	"\x0eStartNextStage\x12\x1f.druz9.v1.StartNextStageRequest\x1a\x1b.druz9.v1.StageWithAttempts\"7\x82\xd3\xe4\x93\x021:\x01*\",/api/v1/mock/pipelines/{id}/start-next-stage\x12v\n" +
 	"\fSubmitAnswer\x12\x1d.druz9.v1.SubmitAnswerRequest\x1a\x19.druz9.v1.PipelineAttempt\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/mock/attempts/{id}/submit\x12p\n" +
-	"\vFinishStage\x12\x1c.druz9.v1.FinishStageRequest\x1a\x17.druz9.v1.PipelineStage\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/mock/stages/{id}/finish\x12\x8d\x01\n" +
+	"\vFinishStage\x12\x1c.druz9.v1.FinishStageRequest\x1a\x17.druz9.v1.PipelineStage\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/mock/stages/{id}/finish\x12x\n" +
+	"\x0eRunAlgoAttempt\x12\x1f.druz9.v1.RunAlgoAttemptRequest\x1a\x15.druz9.v1.AlgoVerdict\".\x82\xd3\xe4\x93\x02(:\x01*\"#/api/v1/mock/attempts/{id}/run-algo\x12\x80\x01\n" +
+	"\x10RunCodingAttempt\x12!.druz9.v1.RunCodingAttemptRequest\x1a\x17.druz9.v1.CodingVerdict\"0\x82\xd3\xe4\x93\x02*:\x01*\"%/api/v1/mock/attempts/{id}/run-coding\x12\x8c\x01\n" +
+	"\x13RunSysDesignAttempt\x12$.druz9.v1.RunSysDesignAttemptRequest\x1a\x1a.druz9.v1.SysDesignVerdict\"3\x82\xd3\xe4\x93\x02-:\x01*\"(/api/v1/mock/attempts/{id}/run-sysdesign\x12\x90\x01\n" +
+	"\x14RunBehavioralAttempt\x12%.druz9.v1.RunBehavioralAttemptRequest\x1a\x1b.druz9.v1.BehavioralVerdict\"4\x82\xd3\xe4\x93\x02.:\x01*\")/api/v1/mock/attempts/{id}/run-behavioral\x12\x8d\x01\n" +
 	"\x12AdminListCompanies\x12'.druz9.v1.AdminListMockCompaniesRequest\x1a(.druz9.v1.AdminListMockCompaniesResponse\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/v1/admin/mock/companies\x12\x81\x01\n" +
 	"\x12AdminCreateCompany\x12'.druz9.v1.AdminCreateMockCompanyRequest\x1a\x19.druz9.v1.PipelineCompany\"'\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/api/v1/admin/mock/companies\x12\x86\x01\n" +
 	"\x12AdminUpdateCompany\x12'.druz9.v1.AdminUpdateMockCompanyRequest\x1a\x19.druz9.v1.PipelineCompany\",\x82\xd3\xe4\x93\x02&:\x01*2!/api/v1/admin/mock/companies/{id}\x12\x96\x01\n" +
@@ -5688,7 +6548,7 @@ func file_druz9_v1_mock_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_mock_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_druz9_v1_mock_proto_msgTypes = make([]protoimpl.MessageInfo, 77)
+var file_druz9_v1_mock_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
 var file_druz9_v1_mock_proto_goTypes = []any{
 	(MockPipelineVerdict)(0),                    // 0: druz9.v1.MockPipelineVerdict
 	(MockAttemptVerdict)(0),                     // 1: druz9.v1.MockAttemptVerdict
@@ -5713,211 +6573,233 @@ var file_druz9_v1_mock_proto_goTypes = []any{
 	(*StartNextStageRequest)(nil),               // 20: druz9.v1.StartNextStageRequest
 	(*SubmitAnswerRequest)(nil),                 // 21: druz9.v1.SubmitAnswerRequest
 	(*FinishStageRequest)(nil),                  // 22: druz9.v1.FinishStageRequest
-	(*AdminListMockCompaniesRequest)(nil),       // 23: druz9.v1.AdminListMockCompaniesRequest
-	(*AdminListMockCompaniesResponse)(nil),      // 24: druz9.v1.AdminListMockCompaniesResponse
-	(*MockCompanyInput)(nil),                    // 25: druz9.v1.MockCompanyInput
-	(*AdminCreateMockCompanyRequest)(nil),       // 26: druz9.v1.AdminCreateMockCompanyRequest
-	(*AdminUpdateMockCompanyRequest)(nil),       // 27: druz9.v1.AdminUpdateMockCompanyRequest
-	(*AdminToggleMockCompanyActiveRequest)(nil), // 28: druz9.v1.AdminToggleMockCompanyActiveRequest
-	(*AIStrictnessProfile)(nil),                 // 29: druz9.v1.AIStrictnessProfile
-	(*AdminListStrictnessRequest)(nil),          // 30: druz9.v1.AdminListStrictnessRequest
-	(*AdminListStrictnessResponse)(nil),         // 31: druz9.v1.AdminListStrictnessResponse
-	(*MockStrictnessInput)(nil),                 // 32: druz9.v1.MockStrictnessInput
-	(*AdminCreateStrictnessRequest)(nil),        // 33: druz9.v1.AdminCreateStrictnessRequest
-	(*AdminUpdateStrictnessRequest)(nil),        // 34: druz9.v1.AdminUpdateStrictnessRequest
-	(*MockTask)(nil),                            // 35: druz9.v1.MockTask
-	(*MockTaskQuestion)(nil),                    // 36: druz9.v1.MockTaskQuestion
-	(*AdminListMockTasksRequest)(nil),           // 37: druz9.v1.AdminListMockTasksRequest
-	(*AdminListMockTasksResponse)(nil),          // 38: druz9.v1.AdminListMockTasksResponse
-	(*AdminGetMockTaskRequest)(nil),             // 39: druz9.v1.AdminGetMockTaskRequest
-	(*AdminGetMockTaskResponse)(nil),            // 40: druz9.v1.AdminGetMockTaskResponse
-	(*MockTaskInput)(nil),                       // 41: druz9.v1.MockTaskInput
-	(*AdminCreateMockTaskRequest)(nil),          // 42: druz9.v1.AdminCreateMockTaskRequest
-	(*AdminUpdateMockTaskRequest)(nil),          // 43: druz9.v1.AdminUpdateMockTaskRequest
-	(*AdminToggleMockTaskActiveRequest)(nil),    // 44: druz9.v1.AdminToggleMockTaskActiveRequest
-	(*MockTaskQuestionInput)(nil),               // 45: druz9.v1.MockTaskQuestionInput
-	(*AdminCreateMockTaskQuestionRequest)(nil),  // 46: druz9.v1.AdminCreateMockTaskQuestionRequest
-	(*AdminUpdateMockTaskQuestionRequest)(nil),  // 47: druz9.v1.AdminUpdateMockTaskQuestionRequest
-	(*AdminDeleteMockTaskQuestionRequest)(nil),  // 48: druz9.v1.AdminDeleteMockTaskQuestionRequest
-	(*MockTaskTestCase)(nil),                    // 49: druz9.v1.MockTaskTestCase
-	(*MockTaskTestCaseInput)(nil),               // 50: druz9.v1.MockTaskTestCaseInput
-	(*AdminListTestCasesRequest)(nil),           // 51: druz9.v1.AdminListTestCasesRequest
-	(*AdminListTestCasesResponse)(nil),          // 52: druz9.v1.AdminListTestCasesResponse
-	(*AdminCreateTestCaseRequest)(nil),          // 53: druz9.v1.AdminCreateTestCaseRequest
-	(*AdminUpdateTestCaseRequest)(nil),          // 54: druz9.v1.AdminUpdateTestCaseRequest
-	(*AdminDeleteTestCaseRequest)(nil),          // 55: druz9.v1.AdminDeleteTestCaseRequest
-	(*MockDefaultQuestion)(nil),                 // 56: druz9.v1.MockDefaultQuestion
-	(*MockDefaultQuestionInput)(nil),            // 57: druz9.v1.MockDefaultQuestionInput
-	(*AdminListDefaultQuestionsRequest)(nil),    // 58: druz9.v1.AdminListDefaultQuestionsRequest
-	(*AdminListDefaultQuestionsResponse)(nil),   // 59: druz9.v1.AdminListDefaultQuestionsResponse
-	(*AdminCreateDefaultQuestionRequest)(nil),   // 60: druz9.v1.AdminCreateDefaultQuestionRequest
-	(*AdminUpdateDefaultQuestionRequest)(nil),   // 61: druz9.v1.AdminUpdateDefaultQuestionRequest
-	(*AdminDeleteDefaultQuestionRequest)(nil),   // 62: druz9.v1.AdminDeleteDefaultQuestionRequest
-	(*MockCompanyQuestion)(nil),                 // 63: druz9.v1.MockCompanyQuestion
-	(*MockCompanyQuestionInput)(nil),            // 64: druz9.v1.MockCompanyQuestionInput
-	(*AdminListCompanyQuestionsRequest)(nil),    // 65: druz9.v1.AdminListCompanyQuestionsRequest
-	(*AdminListCompanyQuestionsResponse)(nil),   // 66: druz9.v1.AdminListCompanyQuestionsResponse
-	(*AdminCreateCompanyQuestionRequest)(nil),   // 67: druz9.v1.AdminCreateCompanyQuestionRequest
-	(*AdminUpdateCompanyQuestionRequest)(nil),   // 68: druz9.v1.AdminUpdateCompanyQuestionRequest
-	(*AdminDeleteCompanyQuestionRequest)(nil),   // 69: druz9.v1.AdminDeleteCompanyQuestionRequest
-	(*MockCompanyStage)(nil),                    // 70: druz9.v1.MockCompanyStage
-	(*AdminGetCompanyStagesRequest)(nil),        // 71: druz9.v1.AdminGetCompanyStagesRequest
-	(*AdminGetCompanyStagesResponse)(nil),       // 72: druz9.v1.AdminGetCompanyStagesResponse
-	(*AdminReplaceCompanyStagesRequest)(nil),    // 73: druz9.v1.AdminReplaceCompanyStagesRequest
-	(*MockBulkTestCase)(nil),                    // 74: druz9.v1.MockBulkTestCase
-	(*MockBulkTaskImportItem)(nil),              // 75: druz9.v1.MockBulkTaskImportItem
-	(*MockBulkImportResult)(nil),                // 76: druz9.v1.MockBulkImportResult
-	(*AdminBulkImportTasksRequest)(nil),         // 77: druz9.v1.AdminBulkImportTasksRequest
-	(*AdminBulkImportTasksResponse)(nil),        // 78: druz9.v1.AdminBulkImportTasksResponse
-	(*timestamppb.Timestamp)(nil),               // 79: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                       // 80: google.protobuf.Empty
+	(*AlgoTestResult)(nil),                      // 23: druz9.v1.AlgoTestResult
+	(*AlgoVerdict)(nil),                         // 24: druz9.v1.AlgoVerdict
+	(*RunAlgoAttemptRequest)(nil),               // 25: druz9.v1.RunAlgoAttemptRequest
+	(*CodingVerdict)(nil),                       // 26: druz9.v1.CodingVerdict
+	(*RunCodingAttemptRequest)(nil),             // 27: druz9.v1.RunCodingAttemptRequest
+	(*SysDesignAxes)(nil),                       // 28: druz9.v1.SysDesignAxes
+	(*SysDesignVerdict)(nil),                    // 29: druz9.v1.SysDesignVerdict
+	(*RunSysDesignAttemptRequest)(nil),          // 30: druz9.v1.RunSysDesignAttemptRequest
+	(*BehavioralAxes)(nil),                      // 31: druz9.v1.BehavioralAxes
+	(*BehavioralVerdict)(nil),                   // 32: druz9.v1.BehavioralVerdict
+	(*RunBehavioralAttemptRequest)(nil),         // 33: druz9.v1.RunBehavioralAttemptRequest
+	(*AdminListMockCompaniesRequest)(nil),       // 34: druz9.v1.AdminListMockCompaniesRequest
+	(*AdminListMockCompaniesResponse)(nil),      // 35: druz9.v1.AdminListMockCompaniesResponse
+	(*MockCompanyInput)(nil),                    // 36: druz9.v1.MockCompanyInput
+	(*AdminCreateMockCompanyRequest)(nil),       // 37: druz9.v1.AdminCreateMockCompanyRequest
+	(*AdminUpdateMockCompanyRequest)(nil),       // 38: druz9.v1.AdminUpdateMockCompanyRequest
+	(*AdminToggleMockCompanyActiveRequest)(nil), // 39: druz9.v1.AdminToggleMockCompanyActiveRequest
+	(*AIStrictnessProfile)(nil),                 // 40: druz9.v1.AIStrictnessProfile
+	(*AdminListStrictnessRequest)(nil),          // 41: druz9.v1.AdminListStrictnessRequest
+	(*AdminListStrictnessResponse)(nil),         // 42: druz9.v1.AdminListStrictnessResponse
+	(*MockStrictnessInput)(nil),                 // 43: druz9.v1.MockStrictnessInput
+	(*AdminCreateStrictnessRequest)(nil),        // 44: druz9.v1.AdminCreateStrictnessRequest
+	(*AdminUpdateStrictnessRequest)(nil),        // 45: druz9.v1.AdminUpdateStrictnessRequest
+	(*MockTask)(nil),                            // 46: druz9.v1.MockTask
+	(*MockTaskQuestion)(nil),                    // 47: druz9.v1.MockTaskQuestion
+	(*AdminListMockTasksRequest)(nil),           // 48: druz9.v1.AdminListMockTasksRequest
+	(*AdminListMockTasksResponse)(nil),          // 49: druz9.v1.AdminListMockTasksResponse
+	(*AdminGetMockTaskRequest)(nil),             // 50: druz9.v1.AdminGetMockTaskRequest
+	(*AdminGetMockTaskResponse)(nil),            // 51: druz9.v1.AdminGetMockTaskResponse
+	(*MockTaskInput)(nil),                       // 52: druz9.v1.MockTaskInput
+	(*AdminCreateMockTaskRequest)(nil),          // 53: druz9.v1.AdminCreateMockTaskRequest
+	(*AdminUpdateMockTaskRequest)(nil),          // 54: druz9.v1.AdminUpdateMockTaskRequest
+	(*AdminToggleMockTaskActiveRequest)(nil),    // 55: druz9.v1.AdminToggleMockTaskActiveRequest
+	(*MockTaskQuestionInput)(nil),               // 56: druz9.v1.MockTaskQuestionInput
+	(*AdminCreateMockTaskQuestionRequest)(nil),  // 57: druz9.v1.AdminCreateMockTaskQuestionRequest
+	(*AdminUpdateMockTaskQuestionRequest)(nil),  // 58: druz9.v1.AdminUpdateMockTaskQuestionRequest
+	(*AdminDeleteMockTaskQuestionRequest)(nil),  // 59: druz9.v1.AdminDeleteMockTaskQuestionRequest
+	(*MockTaskTestCase)(nil),                    // 60: druz9.v1.MockTaskTestCase
+	(*MockTaskTestCaseInput)(nil),               // 61: druz9.v1.MockTaskTestCaseInput
+	(*AdminListTestCasesRequest)(nil),           // 62: druz9.v1.AdminListTestCasesRequest
+	(*AdminListTestCasesResponse)(nil),          // 63: druz9.v1.AdminListTestCasesResponse
+	(*AdminCreateTestCaseRequest)(nil),          // 64: druz9.v1.AdminCreateTestCaseRequest
+	(*AdminUpdateTestCaseRequest)(nil),          // 65: druz9.v1.AdminUpdateTestCaseRequest
+	(*AdminDeleteTestCaseRequest)(nil),          // 66: druz9.v1.AdminDeleteTestCaseRequest
+	(*MockDefaultQuestion)(nil),                 // 67: druz9.v1.MockDefaultQuestion
+	(*MockDefaultQuestionInput)(nil),            // 68: druz9.v1.MockDefaultQuestionInput
+	(*AdminListDefaultQuestionsRequest)(nil),    // 69: druz9.v1.AdminListDefaultQuestionsRequest
+	(*AdminListDefaultQuestionsResponse)(nil),   // 70: druz9.v1.AdminListDefaultQuestionsResponse
+	(*AdminCreateDefaultQuestionRequest)(nil),   // 71: druz9.v1.AdminCreateDefaultQuestionRequest
+	(*AdminUpdateDefaultQuestionRequest)(nil),   // 72: druz9.v1.AdminUpdateDefaultQuestionRequest
+	(*AdminDeleteDefaultQuestionRequest)(nil),   // 73: druz9.v1.AdminDeleteDefaultQuestionRequest
+	(*MockCompanyQuestion)(nil),                 // 74: druz9.v1.MockCompanyQuestion
+	(*MockCompanyQuestionInput)(nil),            // 75: druz9.v1.MockCompanyQuestionInput
+	(*AdminListCompanyQuestionsRequest)(nil),    // 76: druz9.v1.AdminListCompanyQuestionsRequest
+	(*AdminListCompanyQuestionsResponse)(nil),   // 77: druz9.v1.AdminListCompanyQuestionsResponse
+	(*AdminCreateCompanyQuestionRequest)(nil),   // 78: druz9.v1.AdminCreateCompanyQuestionRequest
+	(*AdminUpdateCompanyQuestionRequest)(nil),   // 79: druz9.v1.AdminUpdateCompanyQuestionRequest
+	(*AdminDeleteCompanyQuestionRequest)(nil),   // 80: druz9.v1.AdminDeleteCompanyQuestionRequest
+	(*MockCompanyStage)(nil),                    // 81: druz9.v1.MockCompanyStage
+	(*AdminGetCompanyStagesRequest)(nil),        // 82: druz9.v1.AdminGetCompanyStagesRequest
+	(*AdminGetCompanyStagesResponse)(nil),       // 83: druz9.v1.AdminGetCompanyStagesResponse
+	(*AdminReplaceCompanyStagesRequest)(nil),    // 84: druz9.v1.AdminReplaceCompanyStagesRequest
+	(*MockBulkTestCase)(nil),                    // 85: druz9.v1.MockBulkTestCase
+	(*MockBulkTaskImportItem)(nil),              // 86: druz9.v1.MockBulkTaskImportItem
+	(*MockBulkImportResult)(nil),                // 87: druz9.v1.MockBulkImportResult
+	(*AdminBulkImportTasksRequest)(nil),         // 88: druz9.v1.AdminBulkImportTasksRequest
+	(*AdminBulkImportTasksResponse)(nil),        // 89: druz9.v1.AdminBulkImportTasksResponse
+	(*timestamppb.Timestamp)(nil),               // 90: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                       // 91: google.protobuf.Empty
 }
 var file_druz9_v1_mock_proto_depIdxs = []int32{
-	79,  // 0: druz9.v1.PipelineCompany.created_at:type_name -> google.protobuf.Timestamp
-	79,  // 1: druz9.v1.PipelineCompany.updated_at:type_name -> google.protobuf.Timestamp
+	90,  // 0: druz9.v1.PipelineCompany.created_at:type_name -> google.protobuf.Timestamp
+	90,  // 1: druz9.v1.PipelineCompany.updated_at:type_name -> google.protobuf.Timestamp
 	0,   // 2: druz9.v1.MockPipeline.verdict:type_name -> druz9.v1.MockPipelineVerdict
-	79,  // 3: druz9.v1.MockPipeline.started_at:type_name -> google.protobuf.Timestamp
-	79,  // 4: druz9.v1.MockPipeline.finished_at:type_name -> google.protobuf.Timestamp
+	90,  // 3: druz9.v1.MockPipeline.started_at:type_name -> google.protobuf.Timestamp
+	90,  // 4: druz9.v1.MockPipeline.finished_at:type_name -> google.protobuf.Timestamp
 	2,   // 5: druz9.v1.ListMockCompaniesResponse.items:type_name -> druz9.v1.PipelineCompany
 	3,   // 6: druz9.v1.ListMockPipelinesResponse.items:type_name -> druz9.v1.MockPipeline
 	4,   // 7: druz9.v1.GetMockLeaderboardResponse.items:type_name -> druz9.v1.MockLeaderboardEntry
 	1,   // 8: druz9.v1.AttemptFinalisedResponse.verdict:type_name -> druz9.v1.MockAttemptVerdict
-	79,  // 9: druz9.v1.PipelineStage.started_at:type_name -> google.protobuf.Timestamp
-	79,  // 10: druz9.v1.PipelineStage.finished_at:type_name -> google.protobuf.Timestamp
+	90,  // 9: druz9.v1.PipelineStage.started_at:type_name -> google.protobuf.Timestamp
+	90,  // 10: druz9.v1.PipelineStage.finished_at:type_name -> google.protobuf.Timestamp
 	17,  // 11: druz9.v1.PipelineAttempt.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
 	1,   // 12: druz9.v1.PipelineAttempt.ai_verdict:type_name -> druz9.v1.MockAttemptVerdict
-	79,  // 13: druz9.v1.PipelineAttempt.ai_judged_at:type_name -> google.protobuf.Timestamp
-	79,  // 14: druz9.v1.PipelineAttempt.created_at:type_name -> google.protobuf.Timestamp
+	90,  // 13: druz9.v1.PipelineAttempt.ai_judged_at:type_name -> google.protobuf.Timestamp
+	90,  // 14: druz9.v1.PipelineAttempt.created_at:type_name -> google.protobuf.Timestamp
 	16,  // 15: druz9.v1.StageWithAttempts.stage:type_name -> druz9.v1.PipelineStage
 	18,  // 16: druz9.v1.StageWithAttempts.attempts:type_name -> druz9.v1.PipelineAttempt
-	2,   // 17: druz9.v1.AdminListMockCompaniesResponse.items:type_name -> druz9.v1.PipelineCompany
-	25,  // 18: druz9.v1.AdminCreateMockCompanyRequest.company:type_name -> druz9.v1.MockCompanyInput
-	25,  // 19: druz9.v1.AdminUpdateMockCompanyRequest.company:type_name -> druz9.v1.MockCompanyInput
-	79,  // 20: druz9.v1.AIStrictnessProfile.created_at:type_name -> google.protobuf.Timestamp
-	79,  // 21: druz9.v1.AIStrictnessProfile.updated_at:type_name -> google.protobuf.Timestamp
-	29,  // 22: druz9.v1.AdminListStrictnessResponse.items:type_name -> druz9.v1.AIStrictnessProfile
-	32,  // 23: druz9.v1.AdminCreateStrictnessRequest.profile:type_name -> druz9.v1.MockStrictnessInput
-	32,  // 24: druz9.v1.AdminUpdateStrictnessRequest.profile:type_name -> druz9.v1.MockStrictnessInput
-	17,  // 25: druz9.v1.MockTask.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	79,  // 26: druz9.v1.MockTask.created_at:type_name -> google.protobuf.Timestamp
-	79,  // 27: druz9.v1.MockTask.updated_at:type_name -> google.protobuf.Timestamp
-	17,  // 28: druz9.v1.MockTaskQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	79,  // 29: druz9.v1.MockTaskQuestion.created_at:type_name -> google.protobuf.Timestamp
-	35,  // 30: druz9.v1.AdminListMockTasksResponse.items:type_name -> druz9.v1.MockTask
-	35,  // 31: druz9.v1.AdminGetMockTaskResponse.task:type_name -> druz9.v1.MockTask
-	36,  // 32: druz9.v1.AdminGetMockTaskResponse.questions:type_name -> druz9.v1.MockTaskQuestion
-	17,  // 33: druz9.v1.MockTaskInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	41,  // 34: druz9.v1.AdminCreateMockTaskRequest.task:type_name -> druz9.v1.MockTaskInput
-	41,  // 35: druz9.v1.AdminUpdateMockTaskRequest.task:type_name -> druz9.v1.MockTaskInput
-	17,  // 36: druz9.v1.MockTaskQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	45,  // 37: druz9.v1.AdminCreateMockTaskQuestionRequest.question:type_name -> druz9.v1.MockTaskQuestionInput
-	45,  // 38: druz9.v1.AdminUpdateMockTaskQuestionRequest.question:type_name -> druz9.v1.MockTaskQuestionInput
-	49,  // 39: druz9.v1.AdminListTestCasesResponse.items:type_name -> druz9.v1.MockTaskTestCase
-	50,  // 40: druz9.v1.AdminCreateTestCaseRequest.test_case:type_name -> druz9.v1.MockTaskTestCaseInput
-	50,  // 41: druz9.v1.AdminUpdateTestCaseRequest.test_case:type_name -> druz9.v1.MockTaskTestCaseInput
-	17,  // 42: druz9.v1.MockDefaultQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	79,  // 43: druz9.v1.MockDefaultQuestion.created_at:type_name -> google.protobuf.Timestamp
-	17,  // 44: druz9.v1.MockDefaultQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	56,  // 45: druz9.v1.AdminListDefaultQuestionsResponse.items:type_name -> druz9.v1.MockDefaultQuestion
-	57,  // 46: druz9.v1.AdminCreateDefaultQuestionRequest.question:type_name -> druz9.v1.MockDefaultQuestionInput
-	57,  // 47: druz9.v1.AdminUpdateDefaultQuestionRequest.question:type_name -> druz9.v1.MockDefaultQuestionInput
-	17,  // 48: druz9.v1.MockCompanyQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	79,  // 49: druz9.v1.MockCompanyQuestion.created_at:type_name -> google.protobuf.Timestamp
-	17,  // 50: druz9.v1.MockCompanyQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	63,  // 51: druz9.v1.AdminListCompanyQuestionsResponse.items:type_name -> druz9.v1.MockCompanyQuestion
-	64,  // 52: druz9.v1.AdminCreateCompanyQuestionRequest.question:type_name -> druz9.v1.MockCompanyQuestionInput
-	64,  // 53: druz9.v1.AdminUpdateCompanyQuestionRequest.question:type_name -> druz9.v1.MockCompanyQuestionInput
-	70,  // 54: druz9.v1.AdminGetCompanyStagesResponse.items:type_name -> druz9.v1.MockCompanyStage
-	70,  // 55: druz9.v1.AdminReplaceCompanyStagesRequest.items:type_name -> druz9.v1.MockCompanyStage
-	17,  // 56: druz9.v1.MockBulkTaskImportItem.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	74,  // 57: druz9.v1.MockBulkTaskImportItem.test_cases:type_name -> druz9.v1.MockBulkTestCase
-	75,  // 58: druz9.v1.AdminBulkImportTasksRequest.tasks:type_name -> druz9.v1.MockBulkTaskImportItem
-	76,  // 59: druz9.v1.AdminBulkImportTasksResponse.results:type_name -> druz9.v1.MockBulkImportResult
-	5,   // 60: druz9.v1.MockPipelineService.ListCompanies:input_type -> druz9.v1.ListMockCompaniesRequest
-	7,   // 61: druz9.v1.MockPipelineService.GetPipeline:input_type -> druz9.v1.GetMockPipelineRequest
-	8,   // 62: druz9.v1.MockPipelineService.ListPipelines:input_type -> druz9.v1.ListMockPipelinesRequest
-	10,  // 63: druz9.v1.MockPipelineService.GetLeaderboard:input_type -> druz9.v1.GetMockLeaderboardRequest
-	12,  // 64: druz9.v1.MockPipelineService.CreatePipeline:input_type -> druz9.v1.CreateMockPipelineRequest
-	13,  // 65: druz9.v1.MockPipelineService.CancelPipeline:input_type -> druz9.v1.CancelMockPipelineRequest
-	14,  // 66: druz9.v1.MockPipelineService.AttemptFinalised:input_type -> druz9.v1.AttemptFinalisedRequest
-	20,  // 67: druz9.v1.MockPipelineService.StartNextStage:input_type -> druz9.v1.StartNextStageRequest
-	21,  // 68: druz9.v1.MockPipelineService.SubmitAnswer:input_type -> druz9.v1.SubmitAnswerRequest
-	22,  // 69: druz9.v1.MockPipelineService.FinishStage:input_type -> druz9.v1.FinishStageRequest
-	23,  // 70: druz9.v1.MockPipelineService.AdminListCompanies:input_type -> druz9.v1.AdminListMockCompaniesRequest
-	26,  // 71: druz9.v1.MockPipelineService.AdminCreateCompany:input_type -> druz9.v1.AdminCreateMockCompanyRequest
-	27,  // 72: druz9.v1.MockPipelineService.AdminUpdateCompany:input_type -> druz9.v1.AdminUpdateMockCompanyRequest
-	28,  // 73: druz9.v1.MockPipelineService.AdminToggleCompanyActive:input_type -> druz9.v1.AdminToggleMockCompanyActiveRequest
-	30,  // 74: druz9.v1.MockPipelineService.AdminListStrictness:input_type -> druz9.v1.AdminListStrictnessRequest
-	33,  // 75: druz9.v1.MockPipelineService.AdminCreateStrictness:input_type -> druz9.v1.AdminCreateStrictnessRequest
-	34,  // 76: druz9.v1.MockPipelineService.AdminUpdateStrictness:input_type -> druz9.v1.AdminUpdateStrictnessRequest
-	37,  // 77: druz9.v1.MockPipelineService.AdminListTasks:input_type -> druz9.v1.AdminListMockTasksRequest
-	39,  // 78: druz9.v1.MockPipelineService.AdminGetTask:input_type -> druz9.v1.AdminGetMockTaskRequest
-	42,  // 79: druz9.v1.MockPipelineService.AdminCreateTask:input_type -> druz9.v1.AdminCreateMockTaskRequest
-	43,  // 80: druz9.v1.MockPipelineService.AdminUpdateTask:input_type -> druz9.v1.AdminUpdateMockTaskRequest
-	44,  // 81: druz9.v1.MockPipelineService.AdminToggleTaskActive:input_type -> druz9.v1.AdminToggleMockTaskActiveRequest
-	46,  // 82: druz9.v1.MockPipelineService.AdminCreateTaskQuestion:input_type -> druz9.v1.AdminCreateMockTaskQuestionRequest
-	47,  // 83: druz9.v1.MockPipelineService.AdminUpdateTaskQuestion:input_type -> druz9.v1.AdminUpdateMockTaskQuestionRequest
-	48,  // 84: druz9.v1.MockPipelineService.AdminDeleteTaskQuestion:input_type -> druz9.v1.AdminDeleteMockTaskQuestionRequest
-	51,  // 85: druz9.v1.MockPipelineService.AdminListTestCases:input_type -> druz9.v1.AdminListTestCasesRequest
-	53,  // 86: druz9.v1.MockPipelineService.AdminCreateTestCase:input_type -> druz9.v1.AdminCreateTestCaseRequest
-	54,  // 87: druz9.v1.MockPipelineService.AdminUpdateTestCase:input_type -> druz9.v1.AdminUpdateTestCaseRequest
-	55,  // 88: druz9.v1.MockPipelineService.AdminDeleteTestCase:input_type -> druz9.v1.AdminDeleteTestCaseRequest
-	58,  // 89: druz9.v1.MockPipelineService.AdminListDefaultQuestions:input_type -> druz9.v1.AdminListDefaultQuestionsRequest
-	60,  // 90: druz9.v1.MockPipelineService.AdminCreateDefaultQuestion:input_type -> druz9.v1.AdminCreateDefaultQuestionRequest
-	61,  // 91: druz9.v1.MockPipelineService.AdminUpdateDefaultQuestion:input_type -> druz9.v1.AdminUpdateDefaultQuestionRequest
-	62,  // 92: druz9.v1.MockPipelineService.AdminDeleteDefaultQuestion:input_type -> druz9.v1.AdminDeleteDefaultQuestionRequest
-	65,  // 93: druz9.v1.MockPipelineService.AdminListCompanyQuestions:input_type -> druz9.v1.AdminListCompanyQuestionsRequest
-	67,  // 94: druz9.v1.MockPipelineService.AdminCreateCompanyQuestion:input_type -> druz9.v1.AdminCreateCompanyQuestionRequest
-	68,  // 95: druz9.v1.MockPipelineService.AdminUpdateCompanyQuestion:input_type -> druz9.v1.AdminUpdateCompanyQuestionRequest
-	69,  // 96: druz9.v1.MockPipelineService.AdminDeleteCompanyQuestion:input_type -> druz9.v1.AdminDeleteCompanyQuestionRequest
-	71,  // 97: druz9.v1.MockPipelineService.AdminGetCompanyStages:input_type -> druz9.v1.AdminGetCompanyStagesRequest
-	73,  // 98: druz9.v1.MockPipelineService.AdminReplaceCompanyStages:input_type -> druz9.v1.AdminReplaceCompanyStagesRequest
-	77,  // 99: druz9.v1.MockPipelineService.AdminBulkImportTasks:input_type -> druz9.v1.AdminBulkImportTasksRequest
-	6,   // 100: druz9.v1.MockPipelineService.ListCompanies:output_type -> druz9.v1.ListMockCompaniesResponse
-	3,   // 101: druz9.v1.MockPipelineService.GetPipeline:output_type -> druz9.v1.MockPipeline
-	9,   // 102: druz9.v1.MockPipelineService.ListPipelines:output_type -> druz9.v1.ListMockPipelinesResponse
-	11,  // 103: druz9.v1.MockPipelineService.GetLeaderboard:output_type -> druz9.v1.GetMockLeaderboardResponse
-	3,   // 104: druz9.v1.MockPipelineService.CreatePipeline:output_type -> druz9.v1.MockPipeline
-	80,  // 105: druz9.v1.MockPipelineService.CancelPipeline:output_type -> google.protobuf.Empty
-	15,  // 106: druz9.v1.MockPipelineService.AttemptFinalised:output_type -> druz9.v1.AttemptFinalisedResponse
-	19,  // 107: druz9.v1.MockPipelineService.StartNextStage:output_type -> druz9.v1.StageWithAttempts
-	18,  // 108: druz9.v1.MockPipelineService.SubmitAnswer:output_type -> druz9.v1.PipelineAttempt
-	16,  // 109: druz9.v1.MockPipelineService.FinishStage:output_type -> druz9.v1.PipelineStage
-	24,  // 110: druz9.v1.MockPipelineService.AdminListCompanies:output_type -> druz9.v1.AdminListMockCompaniesResponse
-	2,   // 111: druz9.v1.MockPipelineService.AdminCreateCompany:output_type -> druz9.v1.PipelineCompany
-	2,   // 112: druz9.v1.MockPipelineService.AdminUpdateCompany:output_type -> druz9.v1.PipelineCompany
-	80,  // 113: druz9.v1.MockPipelineService.AdminToggleCompanyActive:output_type -> google.protobuf.Empty
-	31,  // 114: druz9.v1.MockPipelineService.AdminListStrictness:output_type -> druz9.v1.AdminListStrictnessResponse
-	29,  // 115: druz9.v1.MockPipelineService.AdminCreateStrictness:output_type -> druz9.v1.AIStrictnessProfile
-	29,  // 116: druz9.v1.MockPipelineService.AdminUpdateStrictness:output_type -> druz9.v1.AIStrictnessProfile
-	38,  // 117: druz9.v1.MockPipelineService.AdminListTasks:output_type -> druz9.v1.AdminListMockTasksResponse
-	40,  // 118: druz9.v1.MockPipelineService.AdminGetTask:output_type -> druz9.v1.AdminGetMockTaskResponse
-	35,  // 119: druz9.v1.MockPipelineService.AdminCreateTask:output_type -> druz9.v1.MockTask
-	35,  // 120: druz9.v1.MockPipelineService.AdminUpdateTask:output_type -> druz9.v1.MockTask
-	80,  // 121: druz9.v1.MockPipelineService.AdminToggleTaskActive:output_type -> google.protobuf.Empty
-	36,  // 122: druz9.v1.MockPipelineService.AdminCreateTaskQuestion:output_type -> druz9.v1.MockTaskQuestion
-	36,  // 123: druz9.v1.MockPipelineService.AdminUpdateTaskQuestion:output_type -> druz9.v1.MockTaskQuestion
-	80,  // 124: druz9.v1.MockPipelineService.AdminDeleteTaskQuestion:output_type -> google.protobuf.Empty
-	52,  // 125: druz9.v1.MockPipelineService.AdminListTestCases:output_type -> druz9.v1.AdminListTestCasesResponse
-	49,  // 126: druz9.v1.MockPipelineService.AdminCreateTestCase:output_type -> druz9.v1.MockTaskTestCase
-	49,  // 127: druz9.v1.MockPipelineService.AdminUpdateTestCase:output_type -> druz9.v1.MockTaskTestCase
-	80,  // 128: druz9.v1.MockPipelineService.AdminDeleteTestCase:output_type -> google.protobuf.Empty
-	59,  // 129: druz9.v1.MockPipelineService.AdminListDefaultQuestions:output_type -> druz9.v1.AdminListDefaultQuestionsResponse
-	56,  // 130: druz9.v1.MockPipelineService.AdminCreateDefaultQuestion:output_type -> druz9.v1.MockDefaultQuestion
-	56,  // 131: druz9.v1.MockPipelineService.AdminUpdateDefaultQuestion:output_type -> druz9.v1.MockDefaultQuestion
-	80,  // 132: druz9.v1.MockPipelineService.AdminDeleteDefaultQuestion:output_type -> google.protobuf.Empty
-	66,  // 133: druz9.v1.MockPipelineService.AdminListCompanyQuestions:output_type -> druz9.v1.AdminListCompanyQuestionsResponse
-	63,  // 134: druz9.v1.MockPipelineService.AdminCreateCompanyQuestion:output_type -> druz9.v1.MockCompanyQuestion
-	63,  // 135: druz9.v1.MockPipelineService.AdminUpdateCompanyQuestion:output_type -> druz9.v1.MockCompanyQuestion
-	80,  // 136: druz9.v1.MockPipelineService.AdminDeleteCompanyQuestion:output_type -> google.protobuf.Empty
-	72,  // 137: druz9.v1.MockPipelineService.AdminGetCompanyStages:output_type -> druz9.v1.AdminGetCompanyStagesResponse
-	80,  // 138: druz9.v1.MockPipelineService.AdminReplaceCompanyStages:output_type -> google.protobuf.Empty
-	78,  // 139: druz9.v1.MockPipelineService.AdminBulkImportTasks:output_type -> druz9.v1.AdminBulkImportTasksResponse
-	100, // [100:140] is the sub-list for method output_type
-	60,  // [60:100] is the sub-list for method input_type
-	60,  // [60:60] is the sub-list for extension type_name
-	60,  // [60:60] is the sub-list for extension extendee
-	0,   // [0:60] is the sub-list for field type_name
+	23,  // 17: druz9.v1.AlgoVerdict.tests:type_name -> druz9.v1.AlgoTestResult
+	28,  // 18: druz9.v1.SysDesignVerdict.axes:type_name -> druz9.v1.SysDesignAxes
+	31,  // 19: druz9.v1.BehavioralVerdict.axes:type_name -> druz9.v1.BehavioralAxes
+	2,   // 20: druz9.v1.AdminListMockCompaniesResponse.items:type_name -> druz9.v1.PipelineCompany
+	36,  // 21: druz9.v1.AdminCreateMockCompanyRequest.company:type_name -> druz9.v1.MockCompanyInput
+	36,  // 22: druz9.v1.AdminUpdateMockCompanyRequest.company:type_name -> druz9.v1.MockCompanyInput
+	90,  // 23: druz9.v1.AIStrictnessProfile.created_at:type_name -> google.protobuf.Timestamp
+	90,  // 24: druz9.v1.AIStrictnessProfile.updated_at:type_name -> google.protobuf.Timestamp
+	40,  // 25: druz9.v1.AdminListStrictnessResponse.items:type_name -> druz9.v1.AIStrictnessProfile
+	43,  // 26: druz9.v1.AdminCreateStrictnessRequest.profile:type_name -> druz9.v1.MockStrictnessInput
+	43,  // 27: druz9.v1.AdminUpdateStrictnessRequest.profile:type_name -> druz9.v1.MockStrictnessInput
+	17,  // 28: druz9.v1.MockTask.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	90,  // 29: druz9.v1.MockTask.created_at:type_name -> google.protobuf.Timestamp
+	90,  // 30: druz9.v1.MockTask.updated_at:type_name -> google.protobuf.Timestamp
+	17,  // 31: druz9.v1.MockTaskQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	90,  // 32: druz9.v1.MockTaskQuestion.created_at:type_name -> google.protobuf.Timestamp
+	46,  // 33: druz9.v1.AdminListMockTasksResponse.items:type_name -> druz9.v1.MockTask
+	46,  // 34: druz9.v1.AdminGetMockTaskResponse.task:type_name -> druz9.v1.MockTask
+	47,  // 35: druz9.v1.AdminGetMockTaskResponse.questions:type_name -> druz9.v1.MockTaskQuestion
+	17,  // 36: druz9.v1.MockTaskInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	52,  // 37: druz9.v1.AdminCreateMockTaskRequest.task:type_name -> druz9.v1.MockTaskInput
+	52,  // 38: druz9.v1.AdminUpdateMockTaskRequest.task:type_name -> druz9.v1.MockTaskInput
+	17,  // 39: druz9.v1.MockTaskQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	56,  // 40: druz9.v1.AdminCreateMockTaskQuestionRequest.question:type_name -> druz9.v1.MockTaskQuestionInput
+	56,  // 41: druz9.v1.AdminUpdateMockTaskQuestionRequest.question:type_name -> druz9.v1.MockTaskQuestionInput
+	60,  // 42: druz9.v1.AdminListTestCasesResponse.items:type_name -> druz9.v1.MockTaskTestCase
+	61,  // 43: druz9.v1.AdminCreateTestCaseRequest.test_case:type_name -> druz9.v1.MockTaskTestCaseInput
+	61,  // 44: druz9.v1.AdminUpdateTestCaseRequest.test_case:type_name -> druz9.v1.MockTaskTestCaseInput
+	17,  // 45: druz9.v1.MockDefaultQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	90,  // 46: druz9.v1.MockDefaultQuestion.created_at:type_name -> google.protobuf.Timestamp
+	17,  // 47: druz9.v1.MockDefaultQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	67,  // 48: druz9.v1.AdminListDefaultQuestionsResponse.items:type_name -> druz9.v1.MockDefaultQuestion
+	68,  // 49: druz9.v1.AdminCreateDefaultQuestionRequest.question:type_name -> druz9.v1.MockDefaultQuestionInput
+	68,  // 50: druz9.v1.AdminUpdateDefaultQuestionRequest.question:type_name -> druz9.v1.MockDefaultQuestionInput
+	17,  // 51: druz9.v1.MockCompanyQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	90,  // 52: druz9.v1.MockCompanyQuestion.created_at:type_name -> google.protobuf.Timestamp
+	17,  // 53: druz9.v1.MockCompanyQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	74,  // 54: druz9.v1.AdminListCompanyQuestionsResponse.items:type_name -> druz9.v1.MockCompanyQuestion
+	75,  // 55: druz9.v1.AdminCreateCompanyQuestionRequest.question:type_name -> druz9.v1.MockCompanyQuestionInput
+	75,  // 56: druz9.v1.AdminUpdateCompanyQuestionRequest.question:type_name -> druz9.v1.MockCompanyQuestionInput
+	81,  // 57: druz9.v1.AdminGetCompanyStagesResponse.items:type_name -> druz9.v1.MockCompanyStage
+	81,  // 58: druz9.v1.AdminReplaceCompanyStagesRequest.items:type_name -> druz9.v1.MockCompanyStage
+	17,  // 59: druz9.v1.MockBulkTaskImportItem.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	85,  // 60: druz9.v1.MockBulkTaskImportItem.test_cases:type_name -> druz9.v1.MockBulkTestCase
+	86,  // 61: druz9.v1.AdminBulkImportTasksRequest.tasks:type_name -> druz9.v1.MockBulkTaskImportItem
+	87,  // 62: druz9.v1.AdminBulkImportTasksResponse.results:type_name -> druz9.v1.MockBulkImportResult
+	5,   // 63: druz9.v1.MockPipelineService.ListCompanies:input_type -> druz9.v1.ListMockCompaniesRequest
+	7,   // 64: druz9.v1.MockPipelineService.GetPipeline:input_type -> druz9.v1.GetMockPipelineRequest
+	8,   // 65: druz9.v1.MockPipelineService.ListPipelines:input_type -> druz9.v1.ListMockPipelinesRequest
+	10,  // 66: druz9.v1.MockPipelineService.GetLeaderboard:input_type -> druz9.v1.GetMockLeaderboardRequest
+	12,  // 67: druz9.v1.MockPipelineService.CreatePipeline:input_type -> druz9.v1.CreateMockPipelineRequest
+	13,  // 68: druz9.v1.MockPipelineService.CancelPipeline:input_type -> druz9.v1.CancelMockPipelineRequest
+	14,  // 69: druz9.v1.MockPipelineService.AttemptFinalised:input_type -> druz9.v1.AttemptFinalisedRequest
+	20,  // 70: druz9.v1.MockPipelineService.StartNextStage:input_type -> druz9.v1.StartNextStageRequest
+	21,  // 71: druz9.v1.MockPipelineService.SubmitAnswer:input_type -> druz9.v1.SubmitAnswerRequest
+	22,  // 72: druz9.v1.MockPipelineService.FinishStage:input_type -> druz9.v1.FinishStageRequest
+	25,  // 73: druz9.v1.MockPipelineService.RunAlgoAttempt:input_type -> druz9.v1.RunAlgoAttemptRequest
+	27,  // 74: druz9.v1.MockPipelineService.RunCodingAttempt:input_type -> druz9.v1.RunCodingAttemptRequest
+	30,  // 75: druz9.v1.MockPipelineService.RunSysDesignAttempt:input_type -> druz9.v1.RunSysDesignAttemptRequest
+	33,  // 76: druz9.v1.MockPipelineService.RunBehavioralAttempt:input_type -> druz9.v1.RunBehavioralAttemptRequest
+	34,  // 77: druz9.v1.MockPipelineService.AdminListCompanies:input_type -> druz9.v1.AdminListMockCompaniesRequest
+	37,  // 78: druz9.v1.MockPipelineService.AdminCreateCompany:input_type -> druz9.v1.AdminCreateMockCompanyRequest
+	38,  // 79: druz9.v1.MockPipelineService.AdminUpdateCompany:input_type -> druz9.v1.AdminUpdateMockCompanyRequest
+	39,  // 80: druz9.v1.MockPipelineService.AdminToggleCompanyActive:input_type -> druz9.v1.AdminToggleMockCompanyActiveRequest
+	41,  // 81: druz9.v1.MockPipelineService.AdminListStrictness:input_type -> druz9.v1.AdminListStrictnessRequest
+	44,  // 82: druz9.v1.MockPipelineService.AdminCreateStrictness:input_type -> druz9.v1.AdminCreateStrictnessRequest
+	45,  // 83: druz9.v1.MockPipelineService.AdminUpdateStrictness:input_type -> druz9.v1.AdminUpdateStrictnessRequest
+	48,  // 84: druz9.v1.MockPipelineService.AdminListTasks:input_type -> druz9.v1.AdminListMockTasksRequest
+	50,  // 85: druz9.v1.MockPipelineService.AdminGetTask:input_type -> druz9.v1.AdminGetMockTaskRequest
+	53,  // 86: druz9.v1.MockPipelineService.AdminCreateTask:input_type -> druz9.v1.AdminCreateMockTaskRequest
+	54,  // 87: druz9.v1.MockPipelineService.AdminUpdateTask:input_type -> druz9.v1.AdminUpdateMockTaskRequest
+	55,  // 88: druz9.v1.MockPipelineService.AdminToggleTaskActive:input_type -> druz9.v1.AdminToggleMockTaskActiveRequest
+	57,  // 89: druz9.v1.MockPipelineService.AdminCreateTaskQuestion:input_type -> druz9.v1.AdminCreateMockTaskQuestionRequest
+	58,  // 90: druz9.v1.MockPipelineService.AdminUpdateTaskQuestion:input_type -> druz9.v1.AdminUpdateMockTaskQuestionRequest
+	59,  // 91: druz9.v1.MockPipelineService.AdminDeleteTaskQuestion:input_type -> druz9.v1.AdminDeleteMockTaskQuestionRequest
+	62,  // 92: druz9.v1.MockPipelineService.AdminListTestCases:input_type -> druz9.v1.AdminListTestCasesRequest
+	64,  // 93: druz9.v1.MockPipelineService.AdminCreateTestCase:input_type -> druz9.v1.AdminCreateTestCaseRequest
+	65,  // 94: druz9.v1.MockPipelineService.AdminUpdateTestCase:input_type -> druz9.v1.AdminUpdateTestCaseRequest
+	66,  // 95: druz9.v1.MockPipelineService.AdminDeleteTestCase:input_type -> druz9.v1.AdminDeleteTestCaseRequest
+	69,  // 96: druz9.v1.MockPipelineService.AdminListDefaultQuestions:input_type -> druz9.v1.AdminListDefaultQuestionsRequest
+	71,  // 97: druz9.v1.MockPipelineService.AdminCreateDefaultQuestion:input_type -> druz9.v1.AdminCreateDefaultQuestionRequest
+	72,  // 98: druz9.v1.MockPipelineService.AdminUpdateDefaultQuestion:input_type -> druz9.v1.AdminUpdateDefaultQuestionRequest
+	73,  // 99: druz9.v1.MockPipelineService.AdminDeleteDefaultQuestion:input_type -> druz9.v1.AdminDeleteDefaultQuestionRequest
+	76,  // 100: druz9.v1.MockPipelineService.AdminListCompanyQuestions:input_type -> druz9.v1.AdminListCompanyQuestionsRequest
+	78,  // 101: druz9.v1.MockPipelineService.AdminCreateCompanyQuestion:input_type -> druz9.v1.AdminCreateCompanyQuestionRequest
+	79,  // 102: druz9.v1.MockPipelineService.AdminUpdateCompanyQuestion:input_type -> druz9.v1.AdminUpdateCompanyQuestionRequest
+	80,  // 103: druz9.v1.MockPipelineService.AdminDeleteCompanyQuestion:input_type -> druz9.v1.AdminDeleteCompanyQuestionRequest
+	82,  // 104: druz9.v1.MockPipelineService.AdminGetCompanyStages:input_type -> druz9.v1.AdminGetCompanyStagesRequest
+	84,  // 105: druz9.v1.MockPipelineService.AdminReplaceCompanyStages:input_type -> druz9.v1.AdminReplaceCompanyStagesRequest
+	88,  // 106: druz9.v1.MockPipelineService.AdminBulkImportTasks:input_type -> druz9.v1.AdminBulkImportTasksRequest
+	6,   // 107: druz9.v1.MockPipelineService.ListCompanies:output_type -> druz9.v1.ListMockCompaniesResponse
+	3,   // 108: druz9.v1.MockPipelineService.GetPipeline:output_type -> druz9.v1.MockPipeline
+	9,   // 109: druz9.v1.MockPipelineService.ListPipelines:output_type -> druz9.v1.ListMockPipelinesResponse
+	11,  // 110: druz9.v1.MockPipelineService.GetLeaderboard:output_type -> druz9.v1.GetMockLeaderboardResponse
+	3,   // 111: druz9.v1.MockPipelineService.CreatePipeline:output_type -> druz9.v1.MockPipeline
+	91,  // 112: druz9.v1.MockPipelineService.CancelPipeline:output_type -> google.protobuf.Empty
+	15,  // 113: druz9.v1.MockPipelineService.AttemptFinalised:output_type -> druz9.v1.AttemptFinalisedResponse
+	19,  // 114: druz9.v1.MockPipelineService.StartNextStage:output_type -> druz9.v1.StageWithAttempts
+	18,  // 115: druz9.v1.MockPipelineService.SubmitAnswer:output_type -> druz9.v1.PipelineAttempt
+	16,  // 116: druz9.v1.MockPipelineService.FinishStage:output_type -> druz9.v1.PipelineStage
+	24,  // 117: druz9.v1.MockPipelineService.RunAlgoAttempt:output_type -> druz9.v1.AlgoVerdict
+	26,  // 118: druz9.v1.MockPipelineService.RunCodingAttempt:output_type -> druz9.v1.CodingVerdict
+	29,  // 119: druz9.v1.MockPipelineService.RunSysDesignAttempt:output_type -> druz9.v1.SysDesignVerdict
+	32,  // 120: druz9.v1.MockPipelineService.RunBehavioralAttempt:output_type -> druz9.v1.BehavioralVerdict
+	35,  // 121: druz9.v1.MockPipelineService.AdminListCompanies:output_type -> druz9.v1.AdminListMockCompaniesResponse
+	2,   // 122: druz9.v1.MockPipelineService.AdminCreateCompany:output_type -> druz9.v1.PipelineCompany
+	2,   // 123: druz9.v1.MockPipelineService.AdminUpdateCompany:output_type -> druz9.v1.PipelineCompany
+	91,  // 124: druz9.v1.MockPipelineService.AdminToggleCompanyActive:output_type -> google.protobuf.Empty
+	42,  // 125: druz9.v1.MockPipelineService.AdminListStrictness:output_type -> druz9.v1.AdminListStrictnessResponse
+	40,  // 126: druz9.v1.MockPipelineService.AdminCreateStrictness:output_type -> druz9.v1.AIStrictnessProfile
+	40,  // 127: druz9.v1.MockPipelineService.AdminUpdateStrictness:output_type -> druz9.v1.AIStrictnessProfile
+	49,  // 128: druz9.v1.MockPipelineService.AdminListTasks:output_type -> druz9.v1.AdminListMockTasksResponse
+	51,  // 129: druz9.v1.MockPipelineService.AdminGetTask:output_type -> druz9.v1.AdminGetMockTaskResponse
+	46,  // 130: druz9.v1.MockPipelineService.AdminCreateTask:output_type -> druz9.v1.MockTask
+	46,  // 131: druz9.v1.MockPipelineService.AdminUpdateTask:output_type -> druz9.v1.MockTask
+	91,  // 132: druz9.v1.MockPipelineService.AdminToggleTaskActive:output_type -> google.protobuf.Empty
+	47,  // 133: druz9.v1.MockPipelineService.AdminCreateTaskQuestion:output_type -> druz9.v1.MockTaskQuestion
+	47,  // 134: druz9.v1.MockPipelineService.AdminUpdateTaskQuestion:output_type -> druz9.v1.MockTaskQuestion
+	91,  // 135: druz9.v1.MockPipelineService.AdminDeleteTaskQuestion:output_type -> google.protobuf.Empty
+	63,  // 136: druz9.v1.MockPipelineService.AdminListTestCases:output_type -> druz9.v1.AdminListTestCasesResponse
+	60,  // 137: druz9.v1.MockPipelineService.AdminCreateTestCase:output_type -> druz9.v1.MockTaskTestCase
+	60,  // 138: druz9.v1.MockPipelineService.AdminUpdateTestCase:output_type -> druz9.v1.MockTaskTestCase
+	91,  // 139: druz9.v1.MockPipelineService.AdminDeleteTestCase:output_type -> google.protobuf.Empty
+	70,  // 140: druz9.v1.MockPipelineService.AdminListDefaultQuestions:output_type -> druz9.v1.AdminListDefaultQuestionsResponse
+	67,  // 141: druz9.v1.MockPipelineService.AdminCreateDefaultQuestion:output_type -> druz9.v1.MockDefaultQuestion
+	67,  // 142: druz9.v1.MockPipelineService.AdminUpdateDefaultQuestion:output_type -> druz9.v1.MockDefaultQuestion
+	91,  // 143: druz9.v1.MockPipelineService.AdminDeleteDefaultQuestion:output_type -> google.protobuf.Empty
+	77,  // 144: druz9.v1.MockPipelineService.AdminListCompanyQuestions:output_type -> druz9.v1.AdminListCompanyQuestionsResponse
+	74,  // 145: druz9.v1.MockPipelineService.AdminCreateCompanyQuestion:output_type -> druz9.v1.MockCompanyQuestion
+	74,  // 146: druz9.v1.MockPipelineService.AdminUpdateCompanyQuestion:output_type -> druz9.v1.MockCompanyQuestion
+	91,  // 147: druz9.v1.MockPipelineService.AdminDeleteCompanyQuestion:output_type -> google.protobuf.Empty
+	83,  // 148: druz9.v1.MockPipelineService.AdminGetCompanyStages:output_type -> druz9.v1.AdminGetCompanyStagesResponse
+	91,  // 149: druz9.v1.MockPipelineService.AdminReplaceCompanyStages:output_type -> google.protobuf.Empty
+	89,  // 150: druz9.v1.MockPipelineService.AdminBulkImportTasks:output_type -> druz9.v1.AdminBulkImportTasksResponse
+	107, // [107:151] is the sub-list for method output_type
+	63,  // [63:107] is the sub-list for method input_type
+	63,  // [63:63] is the sub-list for extension type_name
+	63,  // [63:63] is the sub-list for extension extendee
+	0,   // [0:63] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_mock_proto_init() }
@@ -5931,7 +6813,7 @@ func file_druz9_v1_mock_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_mock_proto_rawDesc), len(file_druz9_v1_mock_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   77,
+			NumMessages:   88,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

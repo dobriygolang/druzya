@@ -336,6 +336,134 @@ export function useFinishStageMutation(pipelineId: string | undefined) {
   })
 }
 
+// ── Algo stage «Run tests» (R2) ─────────────────────────────────────────
+//
+// Dry-run sandboxed execution against the task's test-cases. Does NOT
+// persist anything to pipeline_attempts — that flow stays on SubmitAnswer.
+// Hidden test cases come back with input/expected/actual blanked but still
+// counted in passed/total so the candidate sees the real ratio.
+
+export type AlgoTestResult = {
+  ordinal: number
+  passed: boolean
+  input: string
+  expected_output: string
+  actual_output: string
+  stderr: string
+  is_hidden: boolean
+  runtime_ms: number
+}
+
+export type AlgoVerdict = {
+  passed: number
+  total: number
+  runtime_ms: number
+  memory_kb: number
+  sandbox_unavailable: boolean
+  status: 'ok' | 'compile_error' | 'runtime_error' | 'unavailable' | 'invalid' | string
+  tests: AlgoTestResult[]
+}
+
+export function useRunAlgoMutation() {
+  return useMutation({
+    mutationFn: async (input: { attemptId: string; code: string; language: string }) => {
+      return api<AlgoVerdict>(`/mock/attempts/${input.attemptId}/run-algo`, {
+        method: 'POST',
+        body: JSON.stringify({ code: input.code, language: input.language }),
+      })
+    },
+  })
+}
+
+// ── Coding stage rubric (R2 closing wave) ───────────────────────────────────
+//
+// Open-ended code grading via free LLM cascade. Unlike Algo (Judge0 exact
+// match), returns a 1..5 rubric score + strengths/weaknesses + suggested line
+// numbers. Anti-fallback: `unavailable=true` surfaces visibly in UI instead
+// of pretending a score happened.
+
+export type CodingVerdict = {
+  score: number
+  strengths: string[]
+  weaknesses: string[]
+  suggested_lines: number[]
+  rubric_md: string
+  unavailable: boolean
+}
+
+export function useRunCodingMutation() {
+  return useMutation({
+    mutationFn: async (input: { attemptId: string; code: string; language: string }) => {
+      return api<CodingVerdict>(`/mock/attempts/${input.attemptId}/run-coding`, {
+        method: 'POST',
+        body: JSON.stringify({ code: input.code, language: input.language }),
+      })
+    },
+  })
+}
+
+// ── SysDesign stage rubric ──────────────────────────────────────────────────
+//
+// 5-axis text-only rubric (availability / consistency / scalability / cost /
+// simplicity). Pairs with the SubmitCanvas vision judge — this UC is the
+// cheap iterative knob; vision judge is the final-grade path.
+
+export type SysDesignAxes = {
+  availability: number
+  consistency: number
+  scalability: number
+  cost: number
+  simplicity: number
+}
+
+export type SysDesignVerdict = {
+  axes: SysDesignAxes
+  narrative_critique: string
+  missing_concepts: string[]
+  unavailable: boolean
+}
+
+export function useRunSysDesignMutation() {
+  return useMutation({
+    mutationFn: async (input: { attemptId: string; canvasJson: string; narrationText: string }) => {
+      return api<SysDesignVerdict>(`/mock/attempts/${input.attemptId}/run-sysdesign`, {
+        method: 'POST',
+        body: JSON.stringify({
+          canvas_json: input.canvasJson,
+          narration_text: input.narrationText,
+        }),
+      })
+    },
+  })
+}
+
+// ── Behavioral stage rubric ─────────────────────────────────────────────────
+
+export type BehavioralAxes = {
+  situation: number
+  task: number
+  action: number
+  result: number
+}
+
+export type BehavioralVerdict = {
+  axes: BehavioralAxes
+  communication_score: number
+  body_md: string
+  unavailable: boolean
+}
+
+export function useRunBehavioralMutation() {
+  return useMutation({
+    mutationFn: async (input: { attemptId: string; answerText: string }) => {
+      return api<BehavioralVerdict>(`/mock/attempts/${input.attemptId}/run-behavioral`, {
+        method: 'POST',
+        body: JSON.stringify({ answer_text: input.answerText }),
+      })
+    },
+  })
+}
+
 export function useCancelPipelineMutation(pipelineId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({

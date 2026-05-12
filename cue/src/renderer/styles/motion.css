@@ -1,0 +1,128 @@
+/**
+ * Cue motion preset classes — keyframes + utility classes that read
+ * --motion-dur-* and --motion-ease-* from _tokens.generated.css.
+ *
+ * Byte-identical to hone/src/renderer/src/styles/motion.css. If you edit one,
+ * edit the other. (Single source via emit.mjs is a future option.)
+ *
+ * Usage:
+ *   <div className="motion-stagger">...</div>
+ *   <div className="motion-modal-in">...</div>
+ *
+ * Reduced-motion is handled centrally in _tokens.generated.css.
+ * Legacy keyframes (d9-pulse, d9-dropdown-in, d9-thinking-dots) stay until each
+ * consumer migrates to .motion-* names.
+ */
+
+@keyframes motion-page-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes motion-page-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-3px); }
+}
+
+@keyframes motion-modal-in {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes motion-modal-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.97) translateY(8px); }
+}
+
+@keyframes motion-scrim-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes motion-scrim-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes motion-stagger-item {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes motion-success-flash {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* d9-fade-in — generic 200ms opacity ramp used by area-overlay capture
+   confirmation dot and similar subtle cues. */
+@keyframes d9-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.motion-page-in {
+  animation: motion-page-in var(--motion-dur-large) var(--motion-ease-emphasized) both;
+}
+
+.motion-page-out {
+  animation: motion-page-out var(--motion-dur-medium) var(--motion-ease-accelerate) both;
+}
+
+.motion-modal-in {
+  animation: motion-modal-in var(--motion-dur-large) var(--motion-ease-emphasized) 60ms both;
+}
+
+.motion-modal-out {
+  animation: motion-modal-out var(--motion-dur-medium) var(--motion-ease-accelerate) both;
+}
+
+.motion-scrim-in {
+  animation: motion-scrim-in var(--motion-dur-medium) var(--motion-ease-standard) both;
+}
+
+.motion-scrim-out {
+  animation: motion-scrim-out var(--motion-dur-medium) var(--motion-ease-accelerate) both;
+}
+
+.motion-stagger > * {
+  animation: motion-stagger-item var(--motion-dur-medium) var(--motion-ease-emphasized) both;
+  opacity: 0;
+}
+.motion-stagger > *:nth-child(1) { animation-delay: 60ms; }
+.motion-stagger > *:nth-child(2) { animation-delay: 120ms; }
+.motion-stagger > *:nth-child(3) { animation-delay: 180ms; }
+.motion-stagger > *:nth-child(4) { animation-delay: 240ms; }
+.motion-stagger > *:nth-child(5) { animation-delay: 300ms; }
+.motion-stagger > *:nth-child(6) { animation-delay: 360ms; }
+.motion-stagger > *:nth-child(7) { animation-delay: 420ms; }
+.motion-stagger > *:nth-child(8) { animation-delay: 480ms; }
+.motion-stagger > *:nth-child(n+9) {
+  animation-delay: 0ms;
+  animation-duration: var(--motion-dur-small);
+}
+
+.motion-hover-lift {
+  transition:
+    transform var(--motion-dur-small) var(--motion-ease-standard),
+    border-color var(--motion-dur-small) var(--motion-ease-standard),
+    background-color var(--motion-dur-small) var(--motion-ease-standard);
+}
+.motion-hover-lift:hover {
+  transform: translateY(-1px);
+}
+
+.motion-press {
+  transition: transform var(--motion-dur-micro) var(--motion-ease-standard);
+}
+.motion-press:active {
+  transform: scale(0.985);
+}
+
+.motion-focus-ring-grow {
+  transition: box-shadow var(--motion-dur-small) var(--motion-ease-decelerate);
+}
+
+.motion-success-flash {
+  animation: motion-success-flash var(--motion-dur-large) var(--motion-ease-emphasized) both;
+}

@@ -89,7 +89,7 @@ function WelcomeWizard({ onJump }: { onJump: (t: Tab) => void }) {
   return (
     <section className="rounded-xl border border-text-primary/30 bg-text-primary/[0.04] p-5">
       <div className="mb-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           first-run setup
         </span>
         <h2 className="mt-1 font-display text-lg font-bold text-text-primary">

@@ -87,6 +87,9 @@ type Handler struct {
 	// присутствует — handler/CreateTask может зовать UC чтобы инфер'ить
 	// column/tags. Caller-side gate (не каждый task стоит LLM-call'а).
 	CategoriseTask *CategoriseTask
+	// Phase J / H3 (P1, 2026-05-12) — bulk recategorise + manual override.
+	BulkAutoCategorise *BulkAutoCategorise
+	UpdateTaskKind     *UpdateTaskKind
 
 	// Publish-to-web (everything except the HTML viewer at /p/{slug}).
 	PublishNote     *PublishNote
@@ -123,6 +126,13 @@ type Handler struct {
 	ListListeningMaterials   *ListListeningMaterials
 	ArchiveListeningMaterial *ArchiveListeningMaterial
 	IngestYouTubeListening   *IngestYouTubeListening
+
+	// Speaking-модуль (Phase J / H4 2026-05-12). Fourth English modality —
+	// shadowing exercises with STT-based pronunciation grading. Без
+	// Speaking Hone English hub ≈ Reader; H4 closes the 4-modality loop.
+	ListSpeakingExercises *ListSpeakingExercises
+	GradeSpeaking         *GradeSpeaking
+	ListSpeakingHistory   *ListSpeakingHistory
 
 	// Reading: Book-source progress (Wave 2026-05-03).
 	UpdateBookProgress *UpdateBookProgress

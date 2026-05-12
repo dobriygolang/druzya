@@ -72,6 +72,58 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 	roomsHandler := adminPorts.NewAdminRoomsHandler(&adminApp.AdminRoomsReader{Pool: d.Pool}, d.Log)
 	llmObservHandler := adminPorts.NewAdminObservabilityLLMHandler(&adminApp.ObservabilityReader{Pool: d.Pool}, d.Log)
 
+	// R7 Phase 1 — Company Manager redesign (validate + templates).
+	// chi-direct admin endpoints, role check inside handler.
+	stageTemplatesRepo := adminInfra.NewStageTemplates(d.Pool)
+	stageReplacer := adminInfra.NewStageReplacer(d.Pool)
+	pipelineValidator := adminInfra.NewPipelineValidator(d.Pool)
+	pipelineHandler := adminPorts.NewPipelineHandler(
+		&adminApp.ValidatePipeline{Reader: pipelineValidator},
+		&adminApp.ListStageTemplates{Repo: stageTemplatesRepo},
+		&adminApp.ApplyStageTemplate{Repo: stageTemplatesRepo, Replacer: stageReplacer},
+		d.Log,
+	)
+
+	// Admin Phase 2 — goal presets CRUD + public read для GoalWizard
+	// quick-start pills. chi-direct, role check inside handler.
+	goalPresetsRepo := adminInfra.NewGoalPresets(d.Pool)
+	goalPresetsHandler := adminPorts.NewGoalPresetsHandler(
+		&adminApp.ListGoalPresets{Repo: goalPresetsRepo},
+		&adminApp.CreateGoalPreset{Repo: goalPresetsRepo},
+		&adminApp.UpdateGoalPreset{Repo: goalPresetsRepo},
+		&adminApp.DeactivateGoalPreset{Repo: goalPresetsRepo},
+		d.Log,
+	)
+
+	// Admin Phase 2 — coach prompt templates (LLM prompt CMS).
+	coachPromptsRepo := adminInfra.NewCoachPrompts(d.Pool)
+	coachPromptsHandler := adminPorts.NewCoachPromptsHandler(
+		&adminApp.ListCoachPrompts{Repo: coachPromptsRepo},
+		&adminApp.CreateCoachPrompt{Repo: coachPromptsRepo},
+		&adminApp.UpdateCoachPrompt{Repo: coachPromptsRepo},
+		&adminApp.DeactivateCoachPrompt{Repo: coachPromptsRepo},
+		d.Log,
+	)
+
+	// Admin Phase 2 — notification templates (per-channel compose).
+	notificationTemplatesRepo := adminInfra.NewNotificationTemplates(d.Pool)
+	notificationTemplatesHandler := adminPorts.NewNotificationTemplatesHandler(
+		&adminApp.ListNotificationTemplates{Repo: notificationTemplatesRepo},
+		&adminApp.CreateNotificationTemplate{Repo: notificationTemplatesRepo},
+		&adminApp.UpdateNotificationTemplate{Repo: notificationTemplatesRepo},
+		&adminApp.DeactivateNotificationTemplate{Repo: notificationTemplatesRepo},
+		d.Log,
+	)
+
+	// Admin Phase 2 — A/B experiment scaffold (minimal: list/create/status).
+	abExperimentsRepo := adminInfra.NewABExperiments(d.Pool)
+	abExperimentsHandler := adminPorts.NewABExperimentsHandler(
+		&adminApp.ListABExperiments{Repo: abExperimentsRepo},
+		&adminApp.CreateABExperiment{Repo: abExperimentsRepo},
+		&adminApp.SetABExperimentStatus{Repo: abExperimentsRepo},
+		d.Log,
+	)
+
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
@@ -112,6 +164,40 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/admin/rooms/bulk-archive", roomsHandler.HandleBulkArchive)
 			r.Get("/admin/observability/llm", llmObservHandler.HandleRollups)
 			r.Get("/admin/observability/eval-runs", llmObservHandler.HandleEvalRuns)
+
+			// R7 Phase 1 — pipeline editor (validate + templates).
+			r.Get("/admin/mock/companies/{id}/validate", pipelineHandler.HandleValidate)
+			r.Get("/admin/mock/stage-templates", pipelineHandler.HandleListTemplates)
+			r.Post("/admin/mock/companies/{id}/apply-template", pipelineHandler.HandleApplyTemplate)
+
+			// Admin Phase 2 — goal presets CRUD (admin-only).
+			r.Get("/admin/goal-presets", goalPresetsHandler.HandleListAdmin)
+			r.Post("/admin/goal-presets", goalPresetsHandler.HandleCreate)
+			r.Patch("/admin/goal-presets/{id}", goalPresetsHandler.HandleUpdate)
+			r.Post("/admin/goal-presets/{id}/deactivate", goalPresetsHandler.HandleDeactivate)
+
+			// Public read of active presets для GoalWizard quick-start.
+			// Auth required (gated REST chain), но НЕ admin role — sits
+			// alongside /companies в той же sub-router.
+			r.Get("/goal-presets", goalPresetsHandler.HandleListPublic)
+
+			// Admin Phase 2 — coach prompt templates (LLM prompt CMS).
+			r.Get("/admin/coach-prompts", coachPromptsHandler.HandleList)
+			r.Post("/admin/coach-prompts", coachPromptsHandler.HandleCreate)
+			r.Patch("/admin/coach-prompts/{id}", coachPromptsHandler.HandleUpdate)
+			r.Post("/admin/coach-prompts/{id}/deactivate", coachPromptsHandler.HandleDeactivate)
+
+			// Admin Phase 2 — notification templates editor.
+			r.Get("/admin/notification-templates", notificationTemplatesHandler.HandleList)
+			r.Post("/admin/notification-templates", notificationTemplatesHandler.HandleCreate)
+			r.Patch("/admin/notification-templates/{id}", notificationTemplatesHandler.HandleUpdate)
+			r.Post("/admin/notification-templates/{id}/deactivate", notificationTemplatesHandler.HandleDeactivate)
+
+			// Admin Phase 2 — A/B experiment scaffold (Phase 3 will add
+			// bucketing, assignment, и stats analytics).
+			r.Get("/admin/ab-experiments", abExperimentsHandler.HandleList)
+			r.Post("/admin/ab-experiments", abExperimentsHandler.HandleCreate)
+			r.Post("/admin/ab-experiments/{id}/status", abExperimentsHandler.HandleSetStatus)
 		},
 	}
 }

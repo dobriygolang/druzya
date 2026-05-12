@@ -63,14 +63,14 @@ export function ReferenceCriteriaEditor({
     <div className="flex flex-col gap-3">
       {(Object.keys(LABELS) as Section[]).map((s) => (
         <div key={s} className="flex flex-col gap-1.5">
-          <label className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">
+          <label className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
             {LABELS[s]}
           </label>
           <textarea
             value={draft[s]}
             onChange={(e) => update(s, e.target.value)}
             rows={4}
-            className="resize-y rounded-md border border-border bg-bg/40 px-3 py-2 font-mono text-[12px] text-text-primary outline-none transition-colors focus:border-text-primary"
+            className="resize-y border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[12px] text-text-primary outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))] focus:border-b-[1.5px]"
             placeholder="Один пункт на строку"
           />
         </div>

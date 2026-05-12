@@ -680,7 +680,9 @@ func coachMemoryPolicy(past []domain.Episode) string {
 			domain.EpisodeCodexArticleOpened,
 			domain.EpisodeCueConversationMemory,
 			domain.EpisodeWeeklyMemorySummary,
-			domain.EpisodeExternalActivity:
+			domain.EpisodeExternalActivity,
+			domain.EpisodeCueSession,
+			domain.EpisodeFocusReflectionAdded:
 			// not used for coach memory policy
 		}
 	}

@@ -79,6 +79,21 @@ type Task struct {
 	UpdatedAt          time.Time
 	CompletedAt        *time.Time
 	DismissedAt        *time.Time
+	// ManualKindOverride — true after user explicitly picked a kind via
+	// the chip-picker. Background re-categorisers (BulkAutoCategorise,
+	// coach-listener) MUST skip rows with this flag set. Reset to false
+	// only via explicit user request (UI: «Auto-categorise this card»).
+	ManualKindOverride bool
+}
+
+// CategoryHint — explanation packet emitted by auto-categorise. Stored
+// transiently in cursor-bus events / RPC responses (NOT in hone_tasks);
+// surfaced by the UI as a toast «Auto-tagged as <kind> · why?». No
+// persistence — the toast is ephemeral and reasoning regen-cheap (8B LLM).
+type CategoryHint struct {
+	Kind       TaskKind
+	Reasoning  string  // 1-2 sentence LLM explanation, e.g. «Mentioned 'binary search' + 'O(log n)'»
+	Confidence float32 // 0..1, 0 = unknown
 }
 
 // TaskCommentAuthor — `ai` (coach) or `user`.
@@ -117,6 +132,16 @@ type TaskRepo interface {
 	// SetStatus moves a task between columns and stamps completed_at /
 	// dismissed_at when entering the corresponding terminal column.
 	SetStatus(ctx context.Context, userID, taskID uuid.UUID, status TaskStatus) (Task, error)
+	// SetKind changes the task's kind. When `manualOverride=true` flips
+	// hone_tasks.manual_kind_override = true so auto-categorisers skip
+	// this row on subsequent passes (user-asserted truth). When false
+	// (auto-categorise path), preserves the existing override flag.
+	SetKind(ctx context.Context, userID, taskID uuid.UUID, kind TaskKind, manualOverride bool) (Task, error)
+	// ListAutoCategorisable returns user tasks eligible for bulk
+	// auto-categorise: open status (todo|in_progress|in_review), kind
+	// IN (custom OR manual_kind_override=false). Caller drives ordering
+	// (oldest-first feels natural — backlog cleanup).
+	ListAutoCategorisable(ctx context.Context, userID uuid.UUID, limit int) ([]Task, error)
 	// AutoDismissOlderThan flips status='todo' rows older than cutoff to
 	// 'dismissed' (TTL sweep). Returns affected count.
 	AutoDismissOlderThan(ctx context.Context, cutoff time.Time) (int64, error)

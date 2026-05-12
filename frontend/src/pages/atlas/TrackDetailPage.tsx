@@ -93,7 +93,10 @@ export default function TrackDetailPage() {
   const currentIdx = progress?.enrolment.current_step ?? 0
   const nextStep = enrolled && !completed ? steps[currentIdx] : undefined
 
-  const accent = track.accent_color || '#A78BFA'
+  // B/W only: no hue accents. Track accent is read but only emitted as an
+  // ink-ramp value in inline styles (legacy `track.accent_color` is now
+  // rendered as either canonical white or hair-2 line — never coloured fill).
+  const accent = 'rgb(var(--ink))'
   const practiceRunning = false
 
   // Practice ведёт в /mock — там юзер выбирает компанию и стартует pipeline.
@@ -174,7 +177,7 @@ function Hero({
   return (
     <div
       className="border-b border-border bg-surface-1 px-4 py-6 sm:px-8 lg:px-20 lg:py-8"
-      style={{ borderTop: `3px solid ${accent}` }}
+      style={{ borderTop: '1px solid var(--hair-2)' }}
     >
       <div className="flex flex-col gap-3">
         <Link
@@ -212,7 +215,7 @@ function Hero({
             <div className="h-1 flex-1 overflow-hidden rounded-full bg-bg">
               <div
                 className="h-full transition-all"
-                style={{ width: `${progressPct(progress)}%`, backgroundColor: accent }}
+                style={{ width: `${progressPct(progress)}%`, background: accent }}
               />
             </div>
           </div>
@@ -271,12 +274,21 @@ function StepCard({
   return (
     <li
       className={`relative flex gap-4 rounded-xl border p-4 transition-colors ${borderClass} ${bgClass}`}
-      style={
-        status === 'current'
-          ? { boxShadow: `inset 3px 0 0 ${accent}` }
-          : undefined
-      }
     >
+      {status === 'current' && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: '1.5px',
+            height: '24px',
+            background: 'var(--red)',
+          }}
+        />
+      )}
       <StepBullet status={status} accent={accent} index={step.step_index} />
       <div className="flex flex-col gap-2 min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2 flex-wrap">
@@ -338,8 +350,12 @@ function StepBullet({
   if (status === 'current') {
     return (
       <span
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full font-mono text-[11px] font-bold"
-        style={{ backgroundColor: accent, color: '#0A0A0A' }}
+        className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-bg font-mono text-[11px] font-bold text-text-primary"
+        style={{
+          border: '1.5px solid rgb(var(--ink))',
+          background: accent,
+          color: 'rgb(var(--bg, 0 0 0))',
+        }}
       >
         {index + 1}
       </span>
@@ -428,10 +444,10 @@ function SidebarCTA({
       {!enrolled && (
         <Button
           size="md"
+          variant="primary"
           onClick={onJoin}
           disabled={joinPending}
           icon={joinPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-          style={{ backgroundColor: accent, color: '#0A0A0A' }}
         >
           Вступить
         </Button>
@@ -440,10 +456,10 @@ function SidebarCTA({
       {enrolled && paused && (
         <Button
           size="md"
+          variant="primary"
           onClick={onJoin}
           disabled={joinPending}
           icon={joinPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-          style={{ backgroundColor: accent, color: '#0A0A0A' }}
         >
           Возобновить
         </Button>
@@ -455,8 +471,12 @@ function SidebarCTA({
             type="button"
             onClick={onPractice}
             disabled={practicePending}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-4 font-sans text-[14px] font-medium text-bg transition-colors hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: accent }}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-4 font-sans text-[14px] font-medium text-bg transition-[background-color,color,opacity] hover:opacity-90 disabled:opacity-50"
+            style={{
+              background: accent,
+              transitionDuration: 'var(--motion-dur-small)',
+              transitionTimingFunction: 'var(--motion-ease-standard)',
+            }}
           >
             {practicePending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

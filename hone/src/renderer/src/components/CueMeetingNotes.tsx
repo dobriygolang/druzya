@@ -126,10 +126,11 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
       >
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
+            className="mono"
             style={{
               fontSize: 11,
               color: 'var(--ink-40)',
-              letterSpacing: '0.04em',
+              letterSpacing: '0.08em',
               textTransform: 'uppercase',
               marginBottom: 6,
             }}
@@ -182,7 +183,7 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
                   borderRadius: 8,
                   background: 'var(--surface)',
                   border: '1px solid var(--hair)',
-                  boxShadow: '0 12px 28px -6px rgba(0,0,0,0.55)',
+                  boxShadow: '0 12px 28px -6px var(--bg)',
                 }}
               >
                 <ShareItem onClick={() => void handleCopyPublicLink()}>Public link</ShareItem>
@@ -233,6 +234,7 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
             key={t}
             onClick={() => setTab(t)}
             style={{
+              position: 'relative',
               padding: '6px 14px',
               borderRadius: 6,
               fontSize: 13,
@@ -241,7 +243,7 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
               color: tab === t ? 'var(--ink-90)' : 'var(--ink-40)',
               border: '1px solid transparent',
               cursor: 'pointer',
-              transition: 'background 120ms, color 120ms',
+              transition: 'background var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
             }}
             onMouseEnter={(e) => {
               if (tab !== t) e.currentTarget.style.color = 'var(--ink-60)';
@@ -251,6 +253,20 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
             }}
           >
             {t === 'summary' ? 'Summary' : 'Transcript'}
+            {tab === t && (
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: 14,
+                  right: 14,
+                  bottom: 2,
+                  height: 1.5,
+                  background: 'var(--red)',
+                  borderRadius: 1,
+                }}
+              />
+            )}
           </button>
         ))}
       </div>
@@ -267,9 +283,13 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
         </div>
       </div>
 
-      {/* Toast — bottom-right floating */}
+      {/* Toast — bottom-right floating. role=status + aria-live=polite so
+          screen readers announce sync/share results without stealing focus. */}
       {toast && (
         <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
           style={{
             position: 'absolute',
             bottom: 24,
@@ -280,7 +300,7 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
             borderRadius: 8,
             fontSize: 12.5,
             border: '1px solid var(--hair)',
-            boxShadow: '0 12px 28px -6px rgba(0,0,0,0.55)',
+            boxShadow: '0 12px 28px -6px var(--bg)',
             pointerEvents: 'none',
             zIndex: 50,
             maxWidth: 360,
@@ -429,7 +449,7 @@ function ActionButton({
         fontSize: 12,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.6 : 1,
-        transition: 'background 120ms, border-color 120ms, color 120ms',
+        transition: 'background var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
         fontFamily: 'inherit',
       }}
     >
@@ -472,7 +492,7 @@ function ShareItem({ onClick, children }: { onClick: () => void; children: React
         border: 'none',
         borderRadius: 5,
         cursor: 'pointer',
-        transition: 'background 120ms',
+        transition: 'background var(--motion-dur-small) var(--motion-ease-standard)',
       }}
     >
       {children}

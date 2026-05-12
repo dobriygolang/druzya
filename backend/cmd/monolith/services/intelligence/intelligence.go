@@ -64,6 +64,22 @@ type IntelligenceModule struct {
 	LogResourceUC *intelApp.LogResource
 	// InsightsRepo — public для curation_producers_cron (Phase 3.5d).
 	InsightsRepo *intelInfra.InsightsPostgres
+	// GetUserContextUC — C3 cross-product context fetcher (Phase J).
+	// Public чтобы copilot-bootstrap мог обернуть его в
+	// UserContextProvider adapter (Redis-cached) и заинжектить
+	// в Suggest + Analyze.
+	GetUserContextUC *intelApp.GetUserContext
+
+	// X5 Atlas struggle marks (Phase J P2). Re-exposed public так что:
+	//   • Cue ingestion path (services/intelligence/app/ingest_session_transcript.go
+	//     side-effect adapter в bootstrap) может писать struggle сигналы
+	//     по low-rating stages,
+	//   • Hone reflection path (SaveFocusReflection side-effect) может
+	//     писать при grade ≤2,
+	//   • Mock pipeline (services/mock_interview) может писать при weak
+	//     axis-score через event bus.
+	MarkAtlasStruggleUC  *intelApp.MarkAtlasStruggle
+	ListAtlasStrugglesUC *intelApp.ListAtlasStruggles
 }
 
 func New(d monolithServices.Deps) IntelligenceModule {
@@ -234,16 +250,111 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		Focus: focusR,
 		Mocks: mockR,
 	}
+
+	// ── F2 LLM-driven milestones (2026-05-12) ──────────────────────────
+	// (Defined before goal UCs так что они могут invalidate milestone cache
+	// on goal mutation.)
+	milestonesRepo := intelInfra.NewMilestonesPostgres(d.Pool)
+
+	// ── F2 primary goal CRUD (2026-05-12) ──────────────────────────────
+	primaryGoalsRepo := intelInfra.NewPrimaryGoals(d.Pool)
+	server.CreateGoalUC = &intelApp.CreateGoal{Repo: primaryGoalsRepo, Now: d.Now}
+	server.GetActiveGoalUC = &intelApp.GetActiveGoal{Repo: primaryGoalsRepo}
+	server.UpdateGoalUC = &intelApp.UpdateGoal{
+		Repo: primaryGoalsRepo, Now: d.Now, Milestones: milestonesRepo,
+	}
+	server.DeactivateGoalUC = &intelApp.DeactivateGoal{
+		Repo: primaryGoalsRepo, Milestones: milestonesRepo,
+	}
+
+	// ── F2 LLM milestones wiring (continued) ─────────────────────────
+	server.GenerateMilestonesUC = &intelApp.GenerateMilestones{
+		Repo:  milestonesRepo,
+		Goals: primaryGoalsRepo,
+		Chain: d.LLMChain, // nil-safe — UC returns ErrLLMUnavailable when chain is nil
+		Log:   d.Log,
+		Now:   d.Now,
+	}
+	server.GetMilestonesUC = &intelApp.GetMilestones{Repo: milestonesRepo, Goals: primaryGoalsRepo}
+	server.MarkMilestoneDoneUC = &intelApp.MarkMilestoneDone{Repo: milestonesRepo}
+
+	// ── R3 Per-node coverage (2026-05-12) ──────────────────────────────
+	nodeCoverageReader := intelInfra.NewNodeCoveragePostgres(d.Pool)
+	server.GetNodeCoverageUC = &intelApp.GetNodeCoverage{Reader: nodeCoverageReader}
+
+	// ── F1 Memory expansion Phase 2 (2026-05-12) ───────────────────────
+	memoryEntriesReader := intelInfra.NewMemoryEntriesPostgres(d.Pool)
+	server.ListMemoryEntriesUC = &intelApp.ListMemoryEntries{Reader: memoryEntriesReader}
+	server.DeleteMemoryEntryUC = &intelApp.DeleteMemoryEntry{Reader: memoryEntriesReader}
+	server.EditMemoryEntryUC = &intelApp.EditMemoryEntry{Reader: memoryEntriesReader}
+
+	// ── X5 Atlas struggle marks (Phase J P2 2026-05-12) ────────────────
+	// Cross-product handoff: any service can write «user stuck on X»
+	// here; web AtlasPage reads via ListAtlasStruggles. Constructed BEFORE
+	// F10/H2 wire-up so those UCs can inject MarkAtlasStruggle as a
+	// side-effect port.
+	atlasStruggleRepo := intelInfra.NewAtlasStrugglePostgres(d.Pool)
+	markAtlasStruggleUC := &intelApp.MarkAtlasStruggle{
+		Repo: atlasStruggleRepo,
+		Now:  d.Now,
+	}
+	listAtlasStrugglesUC := &intelApp.ListAtlasStruggles{Repo: atlasStruggleRepo}
+	clearAtlasStruggleUC := &intelApp.ClearAtlasStruggle{Repo: atlasStruggleRepo}
+	server.MarkAtlasStruggleUC = markAtlasStruggleUC
+	server.ListAtlasStrugglesUC = listAtlasStrugglesUC
+	server.ClearAtlasStruggleUC = clearAtlasStruggleUC
+
+	// ── F10 Cue session ingestion (2026-05-12) ─────────────────────────
+	interviewSessionsRepo := intelInfra.NewInterviewSessions(d.Pool)
+	server.IngestInterviewSessionUC = &intelApp.IngestSessionTranscript{
+		Repo:   interviewSessionsRepo,
+		Memory: memory, // *intelApp.Memory satisfies MemoryWriter via AppendAsync
+		Now:    d.Now,
+		// X5: when stages have self_rating ≤2, the UC fires a MarkAtlasStruggle
+		// per stage. nil-safe — if StruggleMark is nil, the side-effect is skipped.
+		StruggleMark: markAtlasStruggleUC,
+	}
+	server.ListInterviewSessionsUC = &intelApp.ListInterviewSessions{Repo: interviewSessionsRepo}
+
+	// ── H2 Focus reflection persistence (Phase J 2026-05-12) ───────────
+	focusReflectionsRepo := intelInfra.NewFocusReflectionsPostgres(d.Pool)
+	server.SaveFocusReflectionUC = &intelApp.SaveFocusReflection{
+		Repo:   focusReflectionsRepo,
+		Memory: memory, // appends EpisodeFocusReflectionAdded для DailyBrief/Recall
+		Now:    d.Now,
+		// X5: when grade ≤2 AND task_pinned looks like an atlas node id,
+		// fire MarkAtlasStruggle so the web AtlasPage highlights it.
+		// nil-safe — UC checks StruggleMark before calling.
+		StruggleMark: markAtlasStruggleUC,
+	}
+	server.ListFocusReflectionsUC = &intelApp.ListFocusReflections{Repo: focusReflectionsRepo}
+
+	// ── C3 Cross-product context (Phase J 2026-05-12) ───────────────────
+	// AtlasReader stays nil until atlas-retrieval hook lands (TODO in
+	// intelligence/app/get_user_context.go). Goals + Episodes +
+	// ResourceEng + Mocks readers already wired above.
+	getUserContextUC := &intelApp.GetUserContext{
+		Goals:            primaryGoalsRepo,
+		Episodes:         episodes,
+		ResourceEng:      resourceEngagementR,
+		Mocks:            mockR,
+		MemoryLimit:      12,
+		MemoryWindowDays: 14,
+		Now:              d.Now,
+	}
+	server.GetUserContextUC = getUserContextUC
+
 	if d.LLMChain != nil {
 		server.NextActionUC = &intelApp.GetNextAction{
 			Chain: d.LLMChain,
 			Log:   d.Log,
 		}
 		server.NextActionContext = &nextActionLoader{
-			fork:          forkProgressR,
-			resourceTrail: resourceEngagementR,
-			mocks:         mockR,
-			tracks:        trackR,
+			fork:             forkProgressR,
+			resourceTrail:    resourceEngagementR,
+			mocks:            mockR,
+			tracks:           trackR,
+			focusReflections: focusReflectionsRepo,
 		}
 	}
 
@@ -316,15 +427,18 @@ func New(d monolithServices.Deps) IntelligenceModule {
 				func(ctx context.Context) { go insightsSweep.Run(ctx) },
 			},
 		},
-		Memory:         memory,
-		Hook:           newIntelligenceMemoryHook(memory, d.Log),
-		MockHook:       newMockMemoryHook(memory, d.Log),
-		ExternalReader: externalR,
-		FocusReader:    focusR,
-		MockReader:     mockR,
-		SkillReader:    skillR,
-		LinkSuggester:  &intelApp.SuggestNoteLinks{Chain: d.LLMChain},
-		LogResourceUC:  server.LogResourceUC,
-		InsightsRepo:   insightsRepo,
+		Memory:           memory,
+		Hook:             newIntelligenceMemoryHook(memory, d.Log),
+		MockHook:         newMockMemoryHook(memory, d.Log),
+		ExternalReader:   externalR,
+		FocusReader:      focusR,
+		MockReader:       mockR,
+		SkillReader:      skillR,
+		LinkSuggester:        &intelApp.SuggestNoteLinks{Chain: d.LLMChain},
+		LogResourceUC:        server.LogResourceUC,
+		InsightsRepo:         insightsRepo,
+		GetUserContextUC:     getUserContextUC,
+		MarkAtlasStruggleUC:  markAtlasStruggleUC,
+		ListAtlasStrugglesUC: listAtlasStrugglesUC,
 	}
 }

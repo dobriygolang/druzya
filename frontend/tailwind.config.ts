@@ -10,6 +10,12 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      screens: {
+        // Tailwind defaults (sm/md/lg/xl/2xl) carry through; we add ultra-wide
+        // breakpoints for 4K and wider monitors. Matches design-tokens.ts.
+        '3xl': '1920px',
+        '4xl': '2560px',
+      },
       colors: {
         bg: 'rgb(var(--color-bg) / <alpha-value>)',
         surface: {

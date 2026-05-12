@@ -17,7 +17,11 @@
     "build:masquerade:all": "bash scripts/build-masquerade.sh",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
-    "build:native-mac": "./native/audio-mac/build.sh && ./native/CursorHelper/build.sh"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke:stealth": "bash scripts/smoke-stealth.sh",
+    "build:native-mac": "./native/audio-mac/build.sh && ./native/CursorHelper/build.sh",
+    "build:stealth-verifier": "./native/stealth-verifier/build.sh"
   },
   "dependencies": {
     "@connectrpc/connect": "^1.4.0",
@@ -45,8 +49,10 @@
     "electron": "41.2.2",
     "electron-builder": "26.8.1",
     "electron-vite": "^3.0.0",
+    "happy-dom": "^15.11.7",
     "js-yaml": "^4.1.0",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "vitest": "^2.1.9"
   }
 }

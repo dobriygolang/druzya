@@ -17,8 +17,13 @@ export function HeaderRow({ report, isLoading }: { report?: WeeklyReport; isLoad
   }, [report?.week_start])
 
   return (
-    <div className="flex flex-col items-start gap-4 px-4 pt-6 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-20 lg:pt-8">
-      <div className="flex flex-col gap-1.5">
+    <div className="relative flex flex-col items-start gap-4 px-4 pt-6 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-20 lg:pt-8">
+      <span
+        aria-hidden
+        className="absolute left-4 top-7 hidden h-10 w-[1.5px] sm:block sm:left-8 lg:left-20"
+        style={{ background: 'var(--red)' }}
+      />
+      <div className="flex flex-col gap-1.5 sm:pl-4">
         <h1 className="font-display text-2xl lg:text-[32px] font-bold leading-[1.1] text-text-primary">
           {weekN ? `Неделя ${weekN}` : isLoading ? 'Загрузка…' : 'Неделя'}
         </h1>
@@ -43,23 +48,25 @@ export function TldrCards({ report }: { report?: WeeklyReport }) {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <div className="flex flex-col gap-2 rounded-2xl bg-surface-2 p-5 ring-1 ring-success/30">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-success">
+      {/* Best section — strong rung on the ink ramp. */}
+      <div className="flex flex-col gap-2 rounded-2xl border border-border-strong bg-surface-2 p-5">
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">
           ЛУЧШАЯ СЕКЦИЯ
         </span>
         {best ? (
           <>
             <span className="font-display text-xl font-extrabold text-text-primary">{best.name}</span>
             <span className="text-[12px] text-text-secondary">
-              {best.sub} · <span className="text-success">{best.xp}</span>
+              {best.sub} · <span className="text-text-primary">{best.xp}</span>
             </span>
           </>
         ) : (
           <span className="text-[12px] text-text-muted">Сыграй несколько матчей.</span>
         )}
       </div>
-      <div className="flex flex-col gap-2 rounded-2xl bg-surface-2 p-5 ring-1 ring-warn/30">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-warn">СТРИК</span>
+      {/* Streak — muted rung on the ink ramp. */}
+      <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface-2 p-5">
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">СТРИК</span>
         <span className="font-display text-xl font-extrabold text-text-primary">
           {streak} {streak > 0 ? 'дней' : '—'}
         </span>
@@ -69,15 +76,25 @@ export function TldrCards({ report }: { report?: WeeklyReport }) {
             : `лучший: ${bestStreak} дн`}
         </span>
       </div>
-      <div className="flex flex-col gap-2 rounded-2xl bg-surface-2 p-5 ring-1 ring-danger/30">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-danger">
+      {/* Focus next — red signal stripe (active selection / weak spot). */}
+      <div className="relative flex flex-col gap-2 overflow-hidden rounded-2xl border border-border bg-surface-2 p-5">
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 h-full w-[1.5px]"
+          style={{ background: 'var(--red)' }}
+        />
+        <span
+          className="font-mono text-[11px] font-semibold tracking-[0.08em]"
+          style={{ color: 'var(--red)' }}
+        >
           ФОКУС НА СЛЕДУЮЩУЮ
         </span>
         {weakest ? (
           <>
             <span className="font-display text-xl font-extrabold text-text-primary">{weakest.name}</span>
             <span className="text-[12px] text-text-secondary">
-              {weakest.sub} · <span className="text-danger">{weakest.xp}</span>
+              {weakest.sub} ·{' '}
+              <span style={{ color: 'var(--red)' }}>{weakest.xp}</span>
             </span>
           </>
         ) : (

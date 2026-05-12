@@ -26,10 +26,8 @@ type Handler struct {
 	ListAppsUC     *app.ListInterviewerApplications
 	ApproveAppUC   *app.ApproveInterviewerApplication
 	RejectAppUC    *app.RejectInterviewerApplication
-	// AllocateAtlas + VacanciesModel power the atlas/allocate and
-	// ai-vacancies-model RPCs migrated off chi in Phase K.12.
-	AllocateAtlas  *app.AllocateAtlasNode
-	VacanciesModel AIVacanciesModelRepo
+	// AllocateAtlas powers the atlas/allocate RPC migrated off chi in Phase K.12.
+	AllocateAtlas *app.AllocateAtlasNode
 	// ClassifyAtlasTodo (Phase 3.1) — user-driven atlas через free-form
 	// TODO. nil-safe: handler возвращает Unavailable, фронт прячет UI.
 	ClassifyAtlasTodo *app.ClassifyAtlasTodo
@@ -38,6 +36,9 @@ type Handler struct {
 	// profile UCs.
 	GetUserTracks *app.GetUserTracks
 	SetUserTracks *app.SetUserTracks
+	// Phase J / X1 (P0) — single onboarding funnel.
+	RecordAppInstall *app.RecordAppInstall
+	GetInstalledApps *app.GetInstalledApps
 	// ReportFetcher — необязательный опитимизирующий wrapper (Redis-cache).
 	// Если nil, GetMyReport вызывает GetReport напрямую. В проде wired в
 	// cmd/monolith/services/profile.go.

@@ -16,6 +16,7 @@ import (
 	context "context"
 	v1 "druz9/shared/generated/pb/druz9/v1"
 	errors "errors"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -52,6 +53,21 @@ const (
 	// SubscriptionServiceGetQuotaProcedure is the fully-qualified name of the SubscriptionService's
 	// GetQuota RPC.
 	SubscriptionServiceGetQuotaProcedure = "/druz9.v1.SubscriptionService/GetQuota"
+	// SubscriptionServiceGetTierProcedure is the fully-qualified name of the SubscriptionService's
+	// GetTier RPC.
+	SubscriptionServiceGetTierProcedure = "/druz9.v1.SubscriptionService/GetTier"
+	// SubscriptionServiceSetBYOKKeyProcedure is the fully-qualified name of the SubscriptionService's
+	// SetBYOKKey RPC.
+	SubscriptionServiceSetBYOKKeyProcedure = "/druz9.v1.SubscriptionService/SetBYOKKey"
+	// SubscriptionServiceRemoveBYOKKeyProcedure is the fully-qualified name of the
+	// SubscriptionService's RemoveBYOKKey RPC.
+	SubscriptionServiceRemoveBYOKKeyProcedure = "/druz9.v1.SubscriptionService/RemoveBYOKKey"
+	// SubscriptionServiceCreateCheckoutSessionProcedure is the fully-qualified name of the
+	// SubscriptionService's CreateCheckoutSession RPC.
+	SubscriptionServiceCreateCheckoutSessionProcedure = "/druz9.v1.SubscriptionService/CreateCheckoutSession"
+	// SubscriptionServiceCancelSubscriptionProcedure is the fully-qualified name of the
+	// SubscriptionService's CancelSubscription RPC.
+	SubscriptionServiceCancelSubscriptionProcedure = "/druz9.v1.SubscriptionService/CancelSubscription"
 )
 
 // SubscriptionServiceClient is a client for the druz9.v1.SubscriptionService service.
@@ -69,6 +85,28 @@ type SubscriptionServiceClient interface {
 	// chi handler returned a "degraded" zero snapshot on errors; the proto
 	// RPC keeps that contract.
 	GetQuota(context.Context, *connect.Request[v1.GetQuotaRequest]) (*connect.Response[v1.QuotaSnapshot], error)
+	// GetTier — Stream-C MVP: возвращает эффективный tier + источник
+	// (free/pro/byok/tutor) + expiry. Это «правильная» проекция для UI:
+	// отличает paid Pro от BYOK-unlocked Pro, тогда как GetMyTier даёт
+	// только запись из subscriptions table.
+	GetTier(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.TierInfo], error)
+	// SetBYOKKey — юзер приносит свой LLM API key. Сервер валидирует ключ
+	// против test-endpoint'а провайдера (1 token min request) и сохраняет
+	// в зашифрованном виде (AES-256-GCM, env BYOK_ENCRYPTION_KEY).
+	// Возвращает обновлённый TierInfo (source='byok' on success).
+	SetBYOKKey(context.Context, *connect.Request[v1.SetBYOKKeyRequest]) (*connect.Response[v1.TierInfo], error)
+	// RemoveBYOKKey — снять BYOK-ключ. После этого юзер откатывается к
+	// прежнему source (free или paid Pro).
+	RemoveBYOKKey(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.TierInfo], error)
+	// CreateCheckoutSession — Stream-C Stripe MVP. Запускает Checkout flow:
+	// backend создаёт Session, фронт редиректит на checkout_url. После оплаты
+	// webhook checkout.session.completed выставляет tier=Pro.
+	CreateCheckoutSession(context.Context, *connect.Request[v1.CreateCheckoutSessionRequest]) (*connect.Response[v1.CheckoutSessionResponse], error)
+	// CancelSubscription — отмена автопродления. Stripe выставляет
+	// cancel_at_period_end=true; до period_end юзер сохраняет Pro доступ.
+	// После period_end webhook customer.subscription.deleted откатит tier
+	// в Free.
+	CancelSubscription(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewSubscriptionServiceClient constructs a client for the druz9.v1.SubscriptionService service. By
@@ -106,15 +144,50 @@ func NewSubscriptionServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(subscriptionServiceMethods.ByName("GetQuota")),
 			connect.WithClientOptions(opts...),
 		),
+		getTier: connect.NewClient[emptypb.Empty, v1.TierInfo](
+			httpClient,
+			baseURL+SubscriptionServiceGetTierProcedure,
+			connect.WithSchema(subscriptionServiceMethods.ByName("GetTier")),
+			connect.WithClientOptions(opts...),
+		),
+		setBYOKKey: connect.NewClient[v1.SetBYOKKeyRequest, v1.TierInfo](
+			httpClient,
+			baseURL+SubscriptionServiceSetBYOKKeyProcedure,
+			connect.WithSchema(subscriptionServiceMethods.ByName("SetBYOKKey")),
+			connect.WithClientOptions(opts...),
+		),
+		removeBYOKKey: connect.NewClient[emptypb.Empty, v1.TierInfo](
+			httpClient,
+			baseURL+SubscriptionServiceRemoveBYOKKeyProcedure,
+			connect.WithSchema(subscriptionServiceMethods.ByName("RemoveBYOKKey")),
+			connect.WithClientOptions(opts...),
+		),
+		createCheckoutSession: connect.NewClient[v1.CreateCheckoutSessionRequest, v1.CheckoutSessionResponse](
+			httpClient,
+			baseURL+SubscriptionServiceCreateCheckoutSessionProcedure,
+			connect.WithSchema(subscriptionServiceMethods.ByName("CreateCheckoutSession")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelSubscription: connect.NewClient[emptypb.Empty, emptypb.Empty](
+			httpClient,
+			baseURL+SubscriptionServiceCancelSubscriptionProcedure,
+			connect.WithSchema(subscriptionServiceMethods.ByName("CancelSubscription")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // subscriptionServiceClient implements SubscriptionServiceClient.
 type subscriptionServiceClient struct {
-	getMyTier       *connect.Client[v1.GetMyTierRequest, v1.GetMyTierResponse]
-	getTierByUserID *connect.Client[v1.GetTierByUserIDRequest, v1.GetTierByUserIDResponse]
-	adminSetTier    *connect.Client[v1.AdminSetTierRequest, v1.AdminSetTierResponse]
-	getQuota        *connect.Client[v1.GetQuotaRequest, v1.QuotaSnapshot]
+	getMyTier             *connect.Client[v1.GetMyTierRequest, v1.GetMyTierResponse]
+	getTierByUserID       *connect.Client[v1.GetTierByUserIDRequest, v1.GetTierByUserIDResponse]
+	adminSetTier          *connect.Client[v1.AdminSetTierRequest, v1.AdminSetTierResponse]
+	getQuota              *connect.Client[v1.GetQuotaRequest, v1.QuotaSnapshot]
+	getTier               *connect.Client[emptypb.Empty, v1.TierInfo]
+	setBYOKKey            *connect.Client[v1.SetBYOKKeyRequest, v1.TierInfo]
+	removeBYOKKey         *connect.Client[emptypb.Empty, v1.TierInfo]
+	createCheckoutSession *connect.Client[v1.CreateCheckoutSessionRequest, v1.CheckoutSessionResponse]
+	cancelSubscription    *connect.Client[emptypb.Empty, emptypb.Empty]
 }
 
 // GetMyTier calls druz9.v1.SubscriptionService.GetMyTier.
@@ -137,6 +210,31 @@ func (c *subscriptionServiceClient) GetQuota(ctx context.Context, req *connect.R
 	return c.getQuota.CallUnary(ctx, req)
 }
 
+// GetTier calls druz9.v1.SubscriptionService.GetTier.
+func (c *subscriptionServiceClient) GetTier(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.TierInfo], error) {
+	return c.getTier.CallUnary(ctx, req)
+}
+
+// SetBYOKKey calls druz9.v1.SubscriptionService.SetBYOKKey.
+func (c *subscriptionServiceClient) SetBYOKKey(ctx context.Context, req *connect.Request[v1.SetBYOKKeyRequest]) (*connect.Response[v1.TierInfo], error) {
+	return c.setBYOKKey.CallUnary(ctx, req)
+}
+
+// RemoveBYOKKey calls druz9.v1.SubscriptionService.RemoveBYOKKey.
+func (c *subscriptionServiceClient) RemoveBYOKKey(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.TierInfo], error) {
+	return c.removeBYOKKey.CallUnary(ctx, req)
+}
+
+// CreateCheckoutSession calls druz9.v1.SubscriptionService.CreateCheckoutSession.
+func (c *subscriptionServiceClient) CreateCheckoutSession(ctx context.Context, req *connect.Request[v1.CreateCheckoutSessionRequest]) (*connect.Response[v1.CheckoutSessionResponse], error) {
+	return c.createCheckoutSession.CallUnary(ctx, req)
+}
+
+// CancelSubscription calls druz9.v1.SubscriptionService.CancelSubscription.
+func (c *subscriptionServiceClient) CancelSubscription(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
+	return c.cancelSubscription.CallUnary(ctx, req)
+}
+
 // SubscriptionServiceHandler is an implementation of the druz9.v1.SubscriptionService service.
 type SubscriptionServiceHandler interface {
 	// GetMyTier — эндпоинт для авторизованного пользователя. user_id
@@ -152,6 +250,28 @@ type SubscriptionServiceHandler interface {
 	// chi handler returned a "degraded" zero snapshot on errors; the proto
 	// RPC keeps that contract.
 	GetQuota(context.Context, *connect.Request[v1.GetQuotaRequest]) (*connect.Response[v1.QuotaSnapshot], error)
+	// GetTier — Stream-C MVP: возвращает эффективный tier + источник
+	// (free/pro/byok/tutor) + expiry. Это «правильная» проекция для UI:
+	// отличает paid Pro от BYOK-unlocked Pro, тогда как GetMyTier даёт
+	// только запись из subscriptions table.
+	GetTier(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.TierInfo], error)
+	// SetBYOKKey — юзер приносит свой LLM API key. Сервер валидирует ключ
+	// против test-endpoint'а провайдера (1 token min request) и сохраняет
+	// в зашифрованном виде (AES-256-GCM, env BYOK_ENCRYPTION_KEY).
+	// Возвращает обновлённый TierInfo (source='byok' on success).
+	SetBYOKKey(context.Context, *connect.Request[v1.SetBYOKKeyRequest]) (*connect.Response[v1.TierInfo], error)
+	// RemoveBYOKKey — снять BYOK-ключ. После этого юзер откатывается к
+	// прежнему source (free или paid Pro).
+	RemoveBYOKKey(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.TierInfo], error)
+	// CreateCheckoutSession — Stream-C Stripe MVP. Запускает Checkout flow:
+	// backend создаёт Session, фронт редиректит на checkout_url. После оплаты
+	// webhook checkout.session.completed выставляет tier=Pro.
+	CreateCheckoutSession(context.Context, *connect.Request[v1.CreateCheckoutSessionRequest]) (*connect.Response[v1.CheckoutSessionResponse], error)
+	// CancelSubscription — отмена автопродления. Stripe выставляет
+	// cancel_at_period_end=true; до period_end юзер сохраняет Pro доступ.
+	// После period_end webhook customer.subscription.deleted откатит tier
+	// в Free.
+	CancelSubscription(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewSubscriptionServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -185,6 +305,36 @@ func NewSubscriptionServiceHandler(svc SubscriptionServiceHandler, opts ...conne
 		connect.WithSchema(subscriptionServiceMethods.ByName("GetQuota")),
 		connect.WithHandlerOptions(opts...),
 	)
+	subscriptionServiceGetTierHandler := connect.NewUnaryHandler(
+		SubscriptionServiceGetTierProcedure,
+		svc.GetTier,
+		connect.WithSchema(subscriptionServiceMethods.ByName("GetTier")),
+		connect.WithHandlerOptions(opts...),
+	)
+	subscriptionServiceSetBYOKKeyHandler := connect.NewUnaryHandler(
+		SubscriptionServiceSetBYOKKeyProcedure,
+		svc.SetBYOKKey,
+		connect.WithSchema(subscriptionServiceMethods.ByName("SetBYOKKey")),
+		connect.WithHandlerOptions(opts...),
+	)
+	subscriptionServiceRemoveBYOKKeyHandler := connect.NewUnaryHandler(
+		SubscriptionServiceRemoveBYOKKeyProcedure,
+		svc.RemoveBYOKKey,
+		connect.WithSchema(subscriptionServiceMethods.ByName("RemoveBYOKKey")),
+		connect.WithHandlerOptions(opts...),
+	)
+	subscriptionServiceCreateCheckoutSessionHandler := connect.NewUnaryHandler(
+		SubscriptionServiceCreateCheckoutSessionProcedure,
+		svc.CreateCheckoutSession,
+		connect.WithSchema(subscriptionServiceMethods.ByName("CreateCheckoutSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	subscriptionServiceCancelSubscriptionHandler := connect.NewUnaryHandler(
+		SubscriptionServiceCancelSubscriptionProcedure,
+		svc.CancelSubscription,
+		connect.WithSchema(subscriptionServiceMethods.ByName("CancelSubscription")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.SubscriptionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SubscriptionServiceGetMyTierProcedure:
@@ -195,6 +345,16 @@ func NewSubscriptionServiceHandler(svc SubscriptionServiceHandler, opts ...conne
 			subscriptionServiceAdminSetTierHandler.ServeHTTP(w, r)
 		case SubscriptionServiceGetQuotaProcedure:
 			subscriptionServiceGetQuotaHandler.ServeHTTP(w, r)
+		case SubscriptionServiceGetTierProcedure:
+			subscriptionServiceGetTierHandler.ServeHTTP(w, r)
+		case SubscriptionServiceSetBYOKKeyProcedure:
+			subscriptionServiceSetBYOKKeyHandler.ServeHTTP(w, r)
+		case SubscriptionServiceRemoveBYOKKeyProcedure:
+			subscriptionServiceRemoveBYOKKeyHandler.ServeHTTP(w, r)
+		case SubscriptionServiceCreateCheckoutSessionProcedure:
+			subscriptionServiceCreateCheckoutSessionHandler.ServeHTTP(w, r)
+		case SubscriptionServiceCancelSubscriptionProcedure:
+			subscriptionServiceCancelSubscriptionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -218,4 +378,24 @@ func (UnimplementedSubscriptionServiceHandler) AdminSetTier(context.Context, *co
 
 func (UnimplementedSubscriptionServiceHandler) GetQuota(context.Context, *connect.Request[v1.GetQuotaRequest]) (*connect.Response[v1.QuotaSnapshot], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.GetQuota is not implemented"))
+}
+
+func (UnimplementedSubscriptionServiceHandler) GetTier(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.TierInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.GetTier is not implemented"))
+}
+
+func (UnimplementedSubscriptionServiceHandler) SetBYOKKey(context.Context, *connect.Request[v1.SetBYOKKeyRequest]) (*connect.Response[v1.TierInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.SetBYOKKey is not implemented"))
+}
+
+func (UnimplementedSubscriptionServiceHandler) RemoveBYOKKey(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.TierInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.RemoveBYOKKey is not implemented"))
+}
+
+func (UnimplementedSubscriptionServiceHandler) CreateCheckoutSession(context.Context, *connect.Request[v1.CreateCheckoutSessionRequest]) (*connect.Response[v1.CheckoutSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.CreateCheckoutSession is not implemented"))
+}
+
+func (UnimplementedSubscriptionServiceHandler) CancelSubscription(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SubscriptionService.CancelSubscription is not implemented"))
 }

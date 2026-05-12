@@ -9,6 +9,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Calendar, ExternalLink, Users } from 'lucide-react'
 
 import { AppShellV2 } from '../../components/AppShell'
+import { Modal } from '../../components/primitives/Modal'
 import {
   createEvent,
   getCircle,
@@ -40,6 +41,8 @@ export default function CircleDetailPage() {
     recurrence: 'none' as EventRecurrence,
   })
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [leaveOpen, setLeaveOpen] = useState(false)
+  const [leaving, setLeaving] = useState(false)
 
   const reload = useCallback(async () => {
     if (!circleId) return
@@ -93,13 +96,15 @@ export default function CircleDetailPage() {
 
   const onLeave = async () => {
     if (!circleId) return
-    if (!confirm('Leave this circle?')) return
+    setLeaving(true)
     try {
       await leaveCircle(circleId)
       // Cannot navigate from here without router import — redirect via location.
       window.location.href = '/circles'
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+      setLeaving(false)
+      setLeaveOpen(false)
     }
   }
 
@@ -108,14 +113,25 @@ export default function CircleDetailPage() {
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8 lg:py-14">
         <Link
           to="/circles"
-          className="mb-6 inline-flex items-center gap-1 text-[12px] font-mono uppercase tracking-wider text-text-muted transition-colors hover:text-text-primary"
+          className="mb-6 inline-flex items-center gap-1 text-[12px] font-mono uppercase tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
         >
           <ArrowLeft className="h-3 w-3" /> All circles
         </Link>
 
         {error && (
-          <div className="mb-6 rounded-lg border border-border bg-surface-2 px-4 py-2.5 text-[13px] text-text-secondary">
-            {error}
+          <div className="mb-6 flex items-start gap-3 rounded-lg border border-border bg-surface-2 px-4 py-2.5 text-[13px] text-text-secondary">
+            <span
+              aria-hidden="true"
+              style={{
+                display: 'inline-block',
+                width: 1.5,
+                minHeight: 16,
+                background: 'var(--red)',
+                marginTop: 4,
+                flex: '0 0 auto',
+              }}
+            />
+            <span className="flex-1">{error}</span>
           </div>
         )}
 
@@ -130,14 +146,14 @@ export default function CircleDetailPage() {
               {circle.description && (
                 <p className="mt-2 text-[14px] text-text-secondary">{circle.description}</p>
               )}
-              <div className="mt-3 flex items-center gap-4 text-[12px] font-mono uppercase tracking-wider text-text-muted">
+              <div className="mt-3 flex items-center gap-4 text-[12px] font-mono uppercase tracking-[0.08em] text-text-muted">
                 <span className="inline-flex items-center gap-1">
                   <Users className="h-3 w-3" />
                   {circle.member_count || circle.members?.length || 1} members
                 </span>
                 <button
-                  onClick={() => void onLeave()}
-                  className="text-text-muted transition-colors hover:text-text-primary"
+                  onClick={() => setLeaveOpen(true)}
+                  className="text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
                 >
                   Leave
                 </button>
@@ -146,7 +162,7 @@ export default function CircleDetailPage() {
 
             {circle.members && circle.members.length > 0 && (
               <section className="mb-10">
-                <div className="mb-3 text-[11px] uppercase tracking-wider text-text-muted">
+                <div className="mb-3 text-[11px] uppercase tracking-[0.08em] text-text-muted">
                   Members
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -157,7 +173,7 @@ export default function CircleDetailPage() {
                     >
                       {m.username || m.user_id.slice(0, 6)}
                       {m.role === 'admin' && (
-                        <span className="text-[10px] font-mono uppercase text-text-primary">admin</span>
+                        <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-text-primary">admin</span>
                       )}
                     </span>
                   ))}
@@ -167,12 +183,12 @@ export default function CircleDetailPage() {
 
             <section>
               <div className="mb-3 flex items-center justify-between">
-                <div className="text-[11px] uppercase tracking-wider text-text-muted">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-text-muted">
                   Events
                 </div>
                 <button
                   onClick={() => setShowForm((s) => !s)}
-                  className="text-[12px] font-medium text-text-primary transition-colors hover:underline"
+                  className="text-[12px] font-medium text-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:underline"
                 >
                   {showForm ? 'Cancel' : '+ New event'}
                 </button>
@@ -187,27 +203,27 @@ export default function CircleDetailPage() {
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                     placeholder="Friday Read · Chapter 4"
-                    className="w-full bg-transparent text-[15px] font-medium text-text-primary outline-none placeholder:text-text-muted"
+                    className="w-full border-b border-[var(--hair-2)] bg-transparent py-1.5 text-[15px] font-medium text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
                   />
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     placeholder="Что обсудим"
                     rows={2}
-                    className="w-full resize-none bg-transparent text-[13px] text-text-secondary outline-none placeholder:text-text-muted"
+                    className="w-full resize-none border-b border-[var(--hair-2)] bg-transparent py-1.5 text-[13px] text-text-secondary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
                   />
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    <label className="text-[12px] text-text-muted">
+                    <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                       Date
                       <input
                         type="date"
                         required
                         value={form.starts_date}
                         onChange={(e) => setForm({ ...form, starts_date: e.target.value })}
-                        className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[13px] text-text-primary"
+                        className="mt-1 w-full border-b border-[var(--hair-2)] bg-transparent px-1 py-1.5 text-[13px] text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
                       />
                     </label>
-                    <label className="text-[12px] text-text-muted">
+                    <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                       Time
                       <input
                         type="time"
@@ -215,10 +231,10 @@ export default function CircleDetailPage() {
                         step={300}
                         value={form.starts_time}
                         onChange={(e) => setForm({ ...form, starts_time: e.target.value })}
-                        className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[13px] text-text-primary"
+                        className="mt-1 w-full border-b border-[var(--hair-2)] bg-transparent px-1 py-1.5 text-[13px] text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
                       />
                     </label>
-                    <label className="text-[12px] text-text-muted">
+                    <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                       Duration (min)
                       <input
                         type="number"
@@ -226,11 +242,11 @@ export default function CircleDetailPage() {
                         step={5}
                         value={form.duration_min}
                         onChange={(e) => setForm({ ...form, duration_min: Number(e.target.value) })}
-                        className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[13px] text-text-primary"
+                        className="mt-1 w-full border-b border-[var(--hair-2)] bg-transparent px-1 py-1.5 text-[13px] text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
                       />
                     </label>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider">
+                  <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em]">
                     <span className="text-text-muted">quick</span>
                     {datetimePresets().map((p) => (
                       <button
@@ -239,7 +255,7 @@ export default function CircleDetailPage() {
                         onClick={() =>
                           setForm({ ...form, starts_date: p.date, starts_time: p.time })
                         }
-                        className="rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-text-secondary hover:border-text-primary hover:text-text-primary"
+                        className="rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-text-primary hover:text-text-primary"
                       >
                         {p.label}
                       </button>
@@ -248,26 +264,26 @@ export default function CircleDetailPage() {
                   <button
                     type="button"
                     onClick={() => setShowAdvanced((v) => !v)}
-                    className="font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-text-primary"
+                    className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
                   >
                     {showAdvanced ? 'Hide advanced' : 'Advanced ▾'}
                   </button>
                   {showAdvanced && (
                     <div className="space-y-3 border-t border-border pt-3">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="text-[12px] text-text-muted">
+                        <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                           Editor room id (optional)
                           <input
                             value={form.editor_room_id}
                             onChange={(e) => setForm({ ...form, editor_room_id: e.target.value })}
                             placeholder="UUID комнаты-редактора"
-                            className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 font-mono text-[11px] text-text-primary"
+                            className="mt-1 w-full border-b border-[var(--hair-2)] bg-transparent px-1 py-1.5 font-mono text-[11px] text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
                           />
                           <span className="mt-1 block font-mono text-[10px] text-text-muted">
                             из URL <code className="text-text-secondary">/editor/&lt;id&gt;</code> — UUID после слэша
                           </span>
                         </label>
-                        <label className="text-[12px] text-text-muted">
+                        <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                           Whiteboard room id (optional)
                           <input
                             value={form.whiteboard_room_id}
@@ -275,7 +291,7 @@ export default function CircleDetailPage() {
                               setForm({ ...form, whiteboard_room_id: e.target.value })
                             }
                             placeholder="UUID доски"
-                            className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 font-mono text-[11px] text-text-primary"
+                            className="mt-1 w-full border-b border-[var(--hair-2)] bg-transparent px-1 py-1.5 font-mono text-[11px] text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
                           />
                           <span className="mt-1 block font-mono text-[10px] text-text-muted">
                             из URL <code className="text-text-secondary">/whiteboard/&lt;id&gt;</code>
@@ -285,14 +301,14 @@ export default function CircleDetailPage() {
                       <p className="rounded-md border border-border bg-surface-2 px-3 py-2 text-[11px] text-text-secondary">
                         Если укажешь — на карточке event'а появятся кнопки «Open editor» / «Open whiteboard» с прямой ссылкой на эту комнату.
                       </p>
-                      <label className="block text-[12px] text-text-muted">
+                      <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                         Recurrence
                         <select
                           value={form.recurrence}
                           onChange={(e) =>
                             setForm({ ...form, recurrence: e.target.value as EventRecurrence })
                           }
-                          className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[13px] text-text-primary"
+                          className="mt-1 w-full border-b border-[var(--hair-2)] bg-transparent px-1 py-1.5 text-[13px] text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
                         >
                           <option value="none">One-off</option>
                           <option value="weekly_friday">Weekly · Friday</option>
@@ -309,7 +325,7 @@ export default function CircleDetailPage() {
                         !form.starts_date ||
                         !form.starts_time
                       }
-                      className="rounded-lg bg-text-primary px-4 py-2 text-[13px] font-semibold text-bg disabled:opacity-50"
+                      className="rounded-lg bg-[rgb(var(--ink))] px-4 py-2 text-[13px] font-semibold text-bg transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] disabled:opacity-50"
                     >
                       {submitting ? 'Saving…' : 'Create event'}
                     </button>
@@ -326,21 +342,35 @@ export default function CircleDetailPage() {
                   {events.map((ev) => (
                     <li
                       key={ev.id}
-                      className="relative overflow-hidden rounded-lg border border-border bg-surface-1 p-4 pl-5"
+                      className="relative overflow-hidden rounded-lg border border-border bg-surface-1 p-4 pl-5 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
                       style={{
-                        // Colored left stripe — deterministic HSL hashed off
-                        // the event's circle id so events from the same
-                        // circle visually group, while events from different
-                        // circles are obviously distinct in a mixed list.
-                        boxShadow: `inset 4px 0 0 0 ${eventStripeColor(ev.circle_id)}`,
+                        // Ink-ramp left stripe — deterministic alpha hashed off
+                        // the event's circle id so events from the same circle
+                        // visually group via consistent ink opacity. B/W only:
+                        // no hue / saturation. The next/imminent event also
+                        // gets a red signal accent below.
+                        boxShadow: `inset 4px 0 0 0 ${eventStripeInk(ev.circle_id)}`,
                       }}
                     >
+                      {isImminentEvent(ev.starts_at) && (
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            position: 'absolute',
+                            top: 14,
+                            right: 14,
+                            width: 1.5,
+                            height: 14,
+                            background: 'var(--red)',
+                          }}
+                        />
+                      )}
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-[15px] font-semibold text-text-primary">
                             {ev.title}
                           </div>
-                          <div className="mt-0.5 flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-text-muted">
+                          <div className="mt-0.5 flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.08em] text-text-muted">
                             <Calendar className="h-3 w-3" />
                             {new Date(ev.starts_at).toLocaleString()}
                             <span>·</span>
@@ -359,7 +389,7 @@ export default function CircleDetailPage() {
                               {ev.editor_room_id && (
                                 <Link
                                   to={`/editor/${ev.editor_room_id}`}
-                                  className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface-2 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-text-primary hover:bg-surface-3"
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface-2 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-3"
                                 >
                                   <ExternalLink className="h-3 w-3" />
                                   Editor
@@ -368,7 +398,7 @@ export default function CircleDetailPage() {
                               {ev.whiteboard_room_id && (
                                 <Link
                                   to={`/whiteboard/${ev.whiteboard_room_id}`}
-                                  className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface-2 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-text-primary hover:bg-surface-3"
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface-2 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-3"
                                 >
                                   <ExternalLink className="h-3 w-3" />
                                   Whiteboard
@@ -377,7 +407,7 @@ export default function CircleDetailPage() {
                             </div>
                           )}
                         </div>
-                        <span className="text-[11px] font-mono uppercase tracking-wider text-text-muted">
+                        <span className="text-[11px] font-mono uppercase tracking-[0.08em] text-text-muted">
                           {(ev.participants?.length ?? 0)} going
                         </span>
                       </div>
@@ -389,20 +419,57 @@ export default function CircleDetailPage() {
           </>
         )}
       </div>
+      <Modal
+        open={leaveOpen}
+        onClose={() => {
+          if (!leaving) setLeaveOpen(false)
+        }}
+        title="Leave this circle?"
+        description="You can re-join from Discover later — your events stay attached to the circle."
+        size="sm"
+      >
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setLeaveOpen(false)}
+            disabled={leaving}
+            className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[13px] font-mono uppercase tracking-[0.08em] text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void onLeave()}
+            disabled={leaving}
+            className="rounded-md bg-[rgb(var(--ink))] px-4 py-1.5 text-[13px] font-semibold text-bg transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] disabled:opacity-50"
+          >
+            {leaving ? 'Leaving…' : 'Leave'}
+          </button>
+        </div>
+      </Modal>
     </AppShellV2>
   )
 }
 
-// eventStripeColor — deterministic HSL hash off circle id. Same circle
-// always renders the same hue across sessions, so the user sees consistent
-// grouping in mixed-circle event lists. Saturation/lightness are fixed
-// to keep the stripe quiet enough to not fight other UI accents.
-function eventStripeColor(circleID: string): string {
+// eventStripeInk — B/W-only stripe. Deterministic alpha hash off circle id so
+// events from the same circle visually group via consistent ink opacity, while
+// the design language (no hue, no saturation) is preserved. Five steps in the
+// 0.2–0.6 ink-alpha ramp keep all stripes legible on the dark surface.
+function eventStripeInk(circleID: string): string {
   let h = 0
   for (let i = 0; i < circleID.length; i++) {
     h = (h * 31 + circleID.charCodeAt(i)) >>> 0
   }
-  return `hsl(${h % 360}, 55%, 55%)`
+  const steps = [0.2, 0.3, 0.4, 0.5, 0.6]
+  return `rgba(255, 255, 255, ${steps[h % steps.length]})`
+}
+
+// isImminentEvent — true when the event starts within the next hour. Used
+// to render the single red signal accent (1.5×14px stripe) — at most one
+// event in the list is "next up", so the eye locks onto it immediately.
+function isImminentEvent(startsAt: string): boolean {
+  const ms = new Date(startsAt).getTime() - Date.now()
+  return ms > 0 && ms <= 60 * 60_000
 }
 
 // eventCountdown — short relative-to-now label ("через 23 мин",

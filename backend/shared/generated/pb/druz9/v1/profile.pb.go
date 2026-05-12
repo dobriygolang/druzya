@@ -31,6 +31,61 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// AppSurface — wire-closed set of install surfaces. Strings would tempt
+// the client into typos; an enum lets the server reject unknown values
+// at protowire decode time.
+type AppSurface int32
+
+const (
+	AppSurface_APP_SURFACE_UNSPECIFIED AppSurface = 0
+	AppSurface_APP_SURFACE_WEB         AppSurface = 1
+	AppSurface_APP_SURFACE_HONE        AppSurface = 2
+	AppSurface_APP_SURFACE_CUE         AppSurface = 3
+)
+
+// Enum value maps for AppSurface.
+var (
+	AppSurface_name = map[int32]string{
+		0: "APP_SURFACE_UNSPECIFIED",
+		1: "APP_SURFACE_WEB",
+		2: "APP_SURFACE_HONE",
+		3: "APP_SURFACE_CUE",
+	}
+	AppSurface_value = map[string]int32{
+		"APP_SURFACE_UNSPECIFIED": 0,
+		"APP_SURFACE_WEB":         1,
+		"APP_SURFACE_HONE":        2,
+		"APP_SURFACE_CUE":         3,
+	}
+)
+
+func (x AppSurface) Enum() *AppSurface {
+	p := new(AppSurface)
+	*p = x
+	return p
+}
+
+func (x AppSurface) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AppSurface) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_profile_proto_enumTypes[0].Descriptor()
+}
+
+func (AppSurface) Type() protoreflect.EnumType {
+	return &file_druz9_v1_profile_proto_enumTypes[0]
+}
+
+func (x AppSurface) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AppSurface.Descriptor instead.
+func (AppSurface) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{0}
+}
+
 // InterviewerApplicationStatus — wire-закрытый набор статусов заявки.
 // NOT_SUBMITTED — synthetic из GetMyInterviewerApplication когда юзер
 // никогда не подавал; в DB row не хранится (DB CHECK = pending|approved|
@@ -74,11 +129,11 @@ func (x InterviewerApplicationStatus) String() string {
 }
 
 func (InterviewerApplicationStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_profile_proto_enumTypes[0].Descriptor()
+	return file_druz9_v1_profile_proto_enumTypes[1].Descriptor()
 }
 
 func (InterviewerApplicationStatus) Type() protoreflect.EnumType {
-	return &file_druz9_v1_profile_proto_enumTypes[0]
+	return &file_druz9_v1_profile_proto_enumTypes[1]
 }
 
 func (x InterviewerApplicationStatus) Number() protoreflect.EnumNumber {
@@ -87,7 +142,7 @@ func (x InterviewerApplicationStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use InterviewerApplicationStatus.Descriptor instead.
 func (InterviewerApplicationStatus) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{0}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{1}
 }
 
 // Track mirrors the `track_kind` Postgres enum from migration 00006. Wire
@@ -139,11 +194,11 @@ func (x Track) String() string {
 }
 
 func (Track) Descriptor() protoreflect.EnumDescriptor {
-	return file_druz9_v1_profile_proto_enumTypes[1].Descriptor()
+	return file_druz9_v1_profile_proto_enumTypes[2].Descriptor()
 }
 
 func (Track) Type() protoreflect.EnumType {
-	return &file_druz9_v1_profile_proto_enumTypes[1]
+	return &file_druz9_v1_profile_proto_enumTypes[2]
 }
 
 func (x Track) Number() protoreflect.EnumNumber {
@@ -152,7 +207,7 @@ func (x Track) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Track.Descriptor instead.
 func (Track) EnumDescriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{1}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{2}
 }
 
 // Attributes mirrors OpenAPI Attributes.
@@ -306,9 +361,15 @@ type ProfileFull struct {
 	Email string `protobuf:"bytes,17,opt,name=email,proto3" json:"email,omitempty"`
 	// role зеркалирует users.role. Используется фронтом для RBAC-гейтов
 	// (например, кнопка «Создать слот» доступна только interviewer/admin).
-	Role          UserRole `protobuf:"varint,18,opt,name=role,proto3,enum=druz9.v1.UserRole" json:"role,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Role UserRole `protobuf:"varint,18,opt,name=role,proto3,enum=druz9.v1.UserRole" json:"role,omitempty"`
+	// tutor_mode_enabled — self-toggle flag (Stream D, 2026-05-12). When ON
+	// the AppShell shows tutor nav items + /tutor sub-surfaces. Independent
+	// from `role` (which stays user|interviewer|admin|ai_tutor) so any user
+	// can opt into tutor mode without an admin approval gate. Free per
+	// identity.md — paywall lives on Pro-tier evaluation, not on this toggle.
+	TutorModeEnabled bool `protobuf:"varint,19,opt,name=tutor_mode_enabled,json=tutorModeEnabled,proto3" json:"tutor_mode_enabled,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ProfileFull) Reset() {
@@ -465,6 +526,13 @@ func (x *ProfileFull) GetRole() UserRole {
 		return x.Role
 	}
 	return UserRole_USER_ROLE_UNSPECIFIED
+}
+
+func (x *ProfileFull) GetTutorModeEnabled() bool {
+	if x != nil {
+		return x.TutorModeEnabled
+	}
+	return false
 }
 
 // SectionRating mirrors the top-level OpenAPI SectionRating (rating.proto
@@ -1875,9 +1943,12 @@ type ProfileSettings struct {
 	// Validated server-side against the same set as the DB CHECK. Invalid
 	// value ⇒ InvalidArgument (anti-fallback: no silent default). `optional`
 	// so empty string is distinguishable from "field omitted".
-	FocusClass    *string `protobuf:"bytes,8,opt,name=focus_class,json=focusClass,proto3,oneof" json:"focus_class,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	FocusClass *string `protobuf:"bytes,8,opt,name=focus_class,json=focusClass,proto3,oneof" json:"focus_class,omitempty"`
+	// tutor_mode_enabled — write-side counterpart of ProfileFull.tutor_mode_enabled
+	// (Stream D, 2026-05-12). `optional` so partial updates do not clobber.
+	TutorModeEnabled *bool `protobuf:"varint,9,opt,name=tutor_mode_enabled,json=tutorModeEnabled,proto3,oneof" json:"tutor_mode_enabled,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ProfileSettings) Reset() {
@@ -1964,6 +2035,13 @@ func (x *ProfileSettings) GetFocusClass() string {
 		return *x.FocusClass
 	}
 	return ""
+}
+
+func (x *ProfileSettings) GetTutorModeEnabled() bool {
+	if x != nil && x.TutorModeEnabled != nil {
+		return *x.TutorModeEnabled
+	}
+	return false
 }
 
 // UpdateProfileSettingsRequest wraps the ProfileSettings payload. OpenAPI
@@ -2576,6 +2654,274 @@ func (x *SetAtlasNodePrefResponse) GetOk() bool {
 	return false
 }
 
+// RecordAppInstallRequest — sent on app launch as an idempotent heartbeat.
+// app_version is informational (e.g. "0.9.3"); server stores latest seen.
+type RecordAppInstallRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	App           AppSurface             `protobuf:"varint,1,opt,name=app,proto3,enum=druz9.v1.AppSurface" json:"app,omitempty"`
+	AppVersion    string                 `protobuf:"bytes,2,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecordAppInstallRequest) Reset() {
+	*x = RecordAppInstallRequest{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordAppInstallRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordAppInstallRequest) ProtoMessage() {}
+
+func (x *RecordAppInstallRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordAppInstallRequest.ProtoReflect.Descriptor instead.
+func (*RecordAppInstallRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *RecordAppInstallRequest) GetApp() AppSurface {
+	if x != nil {
+		return x.App
+	}
+	return AppSurface_APP_SURFACE_UNSPECIFIED
+}
+
+func (x *RecordAppInstallRequest) GetAppVersion() string {
+	if x != nil {
+		return x.AppVersion
+	}
+	return ""
+}
+
+// RecordAppInstallResponse — returns the resulting row + a flag indicating
+// whether THIS call triggered a trial Pro grant (first install across all
+// three surfaces). Client can use it to celebrate without an extra RPC.
+type RecordAppInstallResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Install         *InstalledApp          `protobuf:"bytes,1,opt,name=install,proto3" json:"install,omitempty"`
+	TrialProGranted bool                   `protobuf:"varint,2,opt,name=trial_pro_granted,json=trialProGranted,proto3" json:"trial_pro_granted,omitempty"`
+	// trial_pro_until — RFC3339; empty when trial was not granted (already
+	// had Pro / already redeemed trial / not-first-install).
+	TrialProUntil string `protobuf:"bytes,3,opt,name=trial_pro_until,json=trialProUntil,proto3" json:"trial_pro_until,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecordAppInstallResponse) Reset() {
+	*x = RecordAppInstallResponse{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordAppInstallResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordAppInstallResponse) ProtoMessage() {}
+
+func (x *RecordAppInstallResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordAppInstallResponse.ProtoReflect.Descriptor instead.
+func (*RecordAppInstallResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *RecordAppInstallResponse) GetInstall() *InstalledApp {
+	if x != nil {
+		return x.Install
+	}
+	return nil
+}
+
+func (x *RecordAppInstallResponse) GetTrialProGranted() bool {
+	if x != nil {
+		return x.TrialProGranted
+	}
+	return false
+}
+
+func (x *RecordAppInstallResponse) GetTrialProUntil() string {
+	if x != nil {
+		return x.TrialProUntil
+	}
+	return ""
+}
+
+type GetInstalledAppsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInstalledAppsRequest) Reset() {
+	*x = GetInstalledAppsRequest{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstalledAppsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstalledAppsRequest) ProtoMessage() {}
+
+func (x *GetInstalledAppsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstalledAppsRequest.ProtoReflect.Descriptor instead.
+func (*GetInstalledAppsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{33}
+}
+
+type GetInstalledAppsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Installs      []*InstalledApp        `protobuf:"bytes,1,rep,name=installs,proto3" json:"installs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInstalledAppsResponse) Reset() {
+	*x = GetInstalledAppsResponse{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInstalledAppsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInstalledAppsResponse) ProtoMessage() {}
+
+func (x *GetInstalledAppsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInstalledAppsResponse.ProtoReflect.Descriptor instead.
+func (*GetInstalledAppsResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *GetInstalledAppsResponse) GetInstalls() []*InstalledApp {
+	if x != nil {
+		return x.Installs
+	}
+	return nil
+}
+
+// InstalledApp mirrors a row in user_app_installs.
+type InstalledApp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	App           AppSurface             `protobuf:"varint,1,opt,name=app,proto3,enum=druz9.v1.AppSurface" json:"app,omitempty"`
+	FirstSeenAt   *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=first_seen_at,json=firstSeenAt,proto3" json:"first_seen_at,omitempty"`
+	LastSeenAt    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_seen_at,json=lastSeenAt,proto3" json:"last_seen_at,omitempty"`
+	AppVersion    string                 `protobuf:"bytes,4,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstalledApp) Reset() {
+	*x = InstalledApp{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstalledApp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstalledApp) ProtoMessage() {}
+
+func (x *InstalledApp) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstalledApp.ProtoReflect.Descriptor instead.
+func (*InstalledApp) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *InstalledApp) GetApp() AppSurface {
+	if x != nil {
+		return x.App
+	}
+	return AppSurface_APP_SURFACE_UNSPECIFIED
+}
+
+func (x *InstalledApp) GetFirstSeenAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FirstSeenAt
+	}
+	return nil
+}
+
+func (x *InstalledApp) GetLastSeenAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSeenAt
+	}
+	return nil
+}
+
+func (x *InstalledApp) GetAppVersion() string {
+	if x != nil {
+		return x.AppVersion
+	}
+	return ""
+}
+
 type AllocateAtlasSkillResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -2589,7 +2935,7 @@ type AllocateAtlasSkillResponse struct {
 
 func (x *AllocateAtlasSkillResponse) Reset() {
 	*x = AllocateAtlasSkillResponse{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[31]
+	mi := &file_druz9_v1_profile_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2601,7 +2947,7 @@ func (x *AllocateAtlasSkillResponse) String() string {
 func (*AllocateAtlasSkillResponse) ProtoMessage() {}
 
 func (x *AllocateAtlasSkillResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[31]
+	mi := &file_druz9_v1_profile_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2614,7 +2960,7 @@ func (x *AllocateAtlasSkillResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AllocateAtlasSkillResponse.ProtoReflect.Descriptor instead.
 func (*AllocateAtlasSkillResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{31}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *AllocateAtlasSkillResponse) GetKey() string {
@@ -2652,130 +2998,6 @@ func (x *AllocateAtlasSkillResponse) GetUpdatedAt() string {
 	return ""
 }
 
-type GetAIVacanciesModelRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetAIVacanciesModelRequest) Reset() {
-	*x = GetAIVacanciesModelRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[32]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetAIVacanciesModelRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetAIVacanciesModelRequest) ProtoMessage() {}
-
-func (x *GetAIVacanciesModelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[32]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetAIVacanciesModelRequest.ProtoReflect.Descriptor instead.
-func (*GetAIVacanciesModelRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{32}
-}
-
-type SetAIVacanciesModelRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ModelId       string                 `protobuf:"bytes,1,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetAIVacanciesModelRequest) Reset() {
-	*x = SetAIVacanciesModelRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[33]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetAIVacanciesModelRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetAIVacanciesModelRequest) ProtoMessage() {}
-
-func (x *SetAIVacanciesModelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[33]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetAIVacanciesModelRequest.ProtoReflect.Descriptor instead.
-func (*SetAIVacanciesModelRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{33}
-}
-
-func (x *SetAIVacanciesModelRequest) GetModelId() string {
-	if x != nil {
-		return x.ModelId
-	}
-	return ""
-}
-
-type AIVacanciesModel struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ModelId       string                 `protobuf:"bytes,1,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AIVacanciesModel) Reset() {
-	*x = AIVacanciesModel{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[34]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AIVacanciesModel) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AIVacanciesModel) ProtoMessage() {}
-
-func (x *AIVacanciesModel) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[34]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AIVacanciesModel.ProtoReflect.Descriptor instead.
-func (*AIVacanciesModel) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{34}
-}
-
-func (x *AIVacanciesModel) GetModelId() string {
-	if x != nil {
-		return x.ModelId
-	}
-	return ""
-}
-
 // BecomeInterviewerRequest carries an optional motivation paragraph the
 // applicant ships to admins to nudge approval.
 type BecomeInterviewerRequest struct {
@@ -2787,7 +3009,7 @@ type BecomeInterviewerRequest struct {
 
 func (x *BecomeInterviewerRequest) Reset() {
 	*x = BecomeInterviewerRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[35]
+	mi := &file_druz9_v1_profile_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2799,7 +3021,7 @@ func (x *BecomeInterviewerRequest) String() string {
 func (*BecomeInterviewerRequest) ProtoMessage() {}
 
 func (x *BecomeInterviewerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[35]
+	mi := &file_druz9_v1_profile_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2812,7 +3034,7 @@ func (x *BecomeInterviewerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BecomeInterviewerRequest.ProtoReflect.Descriptor instead.
 func (*BecomeInterviewerRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{35}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *BecomeInterviewerRequest) GetMotivation() string {
@@ -2830,7 +3052,7 @@ type GetMyInterviewerApplicationRequest struct {
 
 func (x *GetMyInterviewerApplicationRequest) Reset() {
 	*x = GetMyInterviewerApplicationRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[36]
+	mi := &file_druz9_v1_profile_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2842,7 +3064,7 @@ func (x *GetMyInterviewerApplicationRequest) String() string {
 func (*GetMyInterviewerApplicationRequest) ProtoMessage() {}
 
 func (x *GetMyInterviewerApplicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[36]
+	mi := &file_druz9_v1_profile_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2855,7 +3077,7 @@ func (x *GetMyInterviewerApplicationRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetMyInterviewerApplicationRequest.ProtoReflect.Descriptor instead.
 func (*GetMyInterviewerApplicationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{36}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{38}
 }
 
 // InterviewerApplication mirrors a row in `interviewer_applications`.
@@ -2879,7 +3101,7 @@ type InterviewerApplication struct {
 
 func (x *InterviewerApplication) Reset() {
 	*x = InterviewerApplication{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[37]
+	mi := &file_druz9_v1_profile_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2891,7 +3113,7 @@ func (x *InterviewerApplication) String() string {
 func (*InterviewerApplication) ProtoMessage() {}
 
 func (x *InterviewerApplication) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[37]
+	mi := &file_druz9_v1_profile_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2904,7 +3126,7 @@ func (x *InterviewerApplication) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterviewerApplication.ProtoReflect.Descriptor instead.
 func (*InterviewerApplication) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{37}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *InterviewerApplication) GetId() string {
@@ -2986,7 +3208,7 @@ type InterviewerApplicationList struct {
 
 func (x *InterviewerApplicationList) Reset() {
 	*x = InterviewerApplicationList{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[38]
+	mi := &file_druz9_v1_profile_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2998,7 +3220,7 @@ func (x *InterviewerApplicationList) String() string {
 func (*InterviewerApplicationList) ProtoMessage() {}
 
 func (x *InterviewerApplicationList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[38]
+	mi := &file_druz9_v1_profile_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3011,7 +3233,7 @@ func (x *InterviewerApplicationList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterviewerApplicationList.ProtoReflect.Descriptor instead.
 func (*InterviewerApplicationList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{38}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *InterviewerApplicationList) GetItems() []*InterviewerApplication {
@@ -3031,7 +3253,7 @@ type ListInterviewerApplicationsRequest struct {
 
 func (x *ListInterviewerApplicationsRequest) Reset() {
 	*x = ListInterviewerApplicationsRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[39]
+	mi := &file_druz9_v1_profile_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3043,7 +3265,7 @@ func (x *ListInterviewerApplicationsRequest) String() string {
 func (*ListInterviewerApplicationsRequest) ProtoMessage() {}
 
 func (x *ListInterviewerApplicationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[39]
+	mi := &file_druz9_v1_profile_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3056,7 +3278,7 @@ func (x *ListInterviewerApplicationsRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ListInterviewerApplicationsRequest.ProtoReflect.Descriptor instead.
 func (*ListInterviewerApplicationsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{39}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ListInterviewerApplicationsRequest) GetStatus() InterviewerApplicationStatus {
@@ -3076,7 +3298,7 @@ type ApproveInterviewerApplicationRequest struct {
 
 func (x *ApproveInterviewerApplicationRequest) Reset() {
 	*x = ApproveInterviewerApplicationRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[40]
+	mi := &file_druz9_v1_profile_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3088,7 +3310,7 @@ func (x *ApproveInterviewerApplicationRequest) String() string {
 func (*ApproveInterviewerApplicationRequest) ProtoMessage() {}
 
 func (x *ApproveInterviewerApplicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[40]
+	mi := &file_druz9_v1_profile_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3101,7 +3323,7 @@ func (x *ApproveInterviewerApplicationRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use ApproveInterviewerApplicationRequest.ProtoReflect.Descriptor instead.
 func (*ApproveInterviewerApplicationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{40}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ApproveInterviewerApplicationRequest) GetApplicationId() string {
@@ -3128,7 +3350,7 @@ type RejectInterviewerApplicationRequest struct {
 
 func (x *RejectInterviewerApplicationRequest) Reset() {
 	*x = RejectInterviewerApplicationRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[41]
+	mi := &file_druz9_v1_profile_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3140,7 +3362,7 @@ func (x *RejectInterviewerApplicationRequest) String() string {
 func (*RejectInterviewerApplicationRequest) ProtoMessage() {}
 
 func (x *RejectInterviewerApplicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[41]
+	mi := &file_druz9_v1_profile_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3153,7 +3375,7 @@ func (x *RejectInterviewerApplicationRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use RejectInterviewerApplicationRequest.ProtoReflect.Descriptor instead.
 func (*RejectInterviewerApplicationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{41}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *RejectInterviewerApplicationRequest) GetApplicationId() string {
@@ -3186,7 +3408,7 @@ type UserTrack struct {
 
 func (x *UserTrack) Reset() {
 	*x = UserTrack{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[42]
+	mi := &file_druz9_v1_profile_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3198,7 +3420,7 @@ func (x *UserTrack) String() string {
 func (*UserTrack) ProtoMessage() {}
 
 func (x *UserTrack) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[42]
+	mi := &file_druz9_v1_profile_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3211,7 +3433,7 @@ func (x *UserTrack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserTrack.ProtoReflect.Descriptor instead.
 func (*UserTrack) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{42}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *UserTrack) GetTrack() Track {
@@ -3258,7 +3480,7 @@ type UserTracks struct {
 
 func (x *UserTracks) Reset() {
 	*x = UserTracks{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[43]
+	mi := &file_druz9_v1_profile_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3270,7 +3492,7 @@ func (x *UserTracks) String() string {
 func (*UserTracks) ProtoMessage() {}
 
 func (x *UserTracks) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[43]
+	mi := &file_druz9_v1_profile_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3283,7 +3505,7 @@ func (x *UserTracks) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserTracks.ProtoReflect.Descriptor instead.
 func (*UserTracks) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{43}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *UserTracks) GetItems() []*UserTrack {
@@ -3301,7 +3523,7 @@ type GetUserTracksRequest struct {
 
 func (x *GetUserTracksRequest) Reset() {
 	*x = GetUserTracksRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[44]
+	mi := &file_druz9_v1_profile_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3313,7 +3535,7 @@ func (x *GetUserTracksRequest) String() string {
 func (*GetUserTracksRequest) ProtoMessage() {}
 
 func (x *GetUserTracksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[44]
+	mi := &file_druz9_v1_profile_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3326,7 +3548,7 @@ func (x *GetUserTracksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserTracksRequest.ProtoReflect.Descriptor instead.
 func (*GetUserTracksRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{44}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{46}
 }
 
 type SetUserTracksRequest struct {
@@ -3340,7 +3562,7 @@ type SetUserTracksRequest struct {
 
 func (x *SetUserTracksRequest) Reset() {
 	*x = SetUserTracksRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[45]
+	mi := &file_druz9_v1_profile_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3352,7 +3574,7 @@ func (x *SetUserTracksRequest) String() string {
 func (*SetUserTracksRequest) ProtoMessage() {}
 
 func (x *SetUserTracksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[45]
+	mi := &file_druz9_v1_profile_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3365,7 +3587,7 @@ func (x *SetUserTracksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetUserTracksRequest.ProtoReflect.Descriptor instead.
 func (*SetUserTracksRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{45}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *SetUserTracksRequest) GetItems() []*UserTrack {
@@ -3388,7 +3610,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x04will\x18\x04 \x01(\x05R\x04will\"\x8f\x01\n" +
 	"\x13ProfileSubscription\x12.\n" +
 	"\x04plan\x18\x01 \x01(\x0e2\x1a.druz9.v1.SubscriptionPlanR\x04plan\x12H\n" +
-	"\x12current_period_end\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\"\x8e\x05\n" +
+	"\x12current_period_end\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\"\xbc\x05\n" +
 	"\vProfileFull\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12!\n" +
@@ -3415,7 +3637,8 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\x10 \x01(\tR\tavatarUrl\x12\x14\n" +
 	"\x05email\x18\x11 \x01(\tR\x05email\x12&\n" +
-	"\x04role\x18\x12 \x01(\x0e2\x12.druz9.v1.UserRoleR\x04role\"\xb6\x01\n" +
+	"\x04role\x18\x12 \x01(\x0e2\x12.druz9.v1.UserRoleR\x04role\x12,\n" +
+	"\x12tutor_mode_enabled\x18\x13 \x01(\bR\x10tutorModeEnabled\"\xb6\x01\n" +
 	"\x14ProfileSectionRating\x12+\n" +
 	"\asection\x18\x01 \x01(\x0e2\x11.druz9.v1.SectionR\asection\x12\x10\n" +
 	"\x03elo\x18\x02 \x01(\x05R\x03elo\x12#\n" +
@@ -3552,7 +3775,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"ai_insight\x18\x13 \x01(\tR\taiInsight\x12\x1f\n" +
 	"\vshare_token\x18\x15 \x01(\tR\n" +
 	"shareToken\x12'\n" +
-	"\x0ffeatured_metric\x18\x16 \x01(\tR\x0efeaturedMetricJ\x04\b\x14\x10\x15R\x16achievements_this_week\"\xb3\x03\n" +
+	"\x0ffeatured_metric\x18\x16 \x01(\tR\x0efeaturedMetricJ\x04\b\x14\x10\x15R\x16achievements_this_week\"\xfd\x03\n" +
 	"\x0fProfileSettings\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12=\n" +
 	"\x10default_language\x18\x02 \x01(\x0e2\x12.druz9.v1.LanguageR\x0fdefaultLanguage\x12\x16\n" +
@@ -3562,9 +3785,11 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x10ai_insight_model\x18\x06 \x01(\tR\x0eaiInsightModel\x126\n" +
 	"\x14onboarding_completed\x18\a \x01(\bH\x00R\x13onboardingCompleted\x88\x01\x01\x12$\n" +
 	"\vfocus_class\x18\b \x01(\tH\x01R\n" +
-	"focusClass\x88\x01\x01B\x17\n" +
+	"focusClass\x88\x01\x01\x121\n" +
+	"\x12tutor_mode_enabled\x18\t \x01(\bH\x02R\x10tutorModeEnabled\x88\x01\x01B\x17\n" +
 	"\x15_onboarding_completedB\x0e\n" +
-	"\f_focus_class\"U\n" +
+	"\f_focus_classB\x15\n" +
+	"\x13_tutor_mode_enabled\"U\n" +
 	"\x1cUpdateProfileSettingsRequest\x125\n" +
 	"\bsettings\x18\x01 \x01(\v2\x19.druz9.v1.ProfileSettingsR\bsettings\"\x15\n" +
 	"\x13GetMyProfileRequest\"\x13\n" +
@@ -3599,7 +3824,25 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x06pinned\x18\x02 \x01(\bR\x06pinned\x12\x16\n" +
 	"\x06hidden\x18\x03 \x01(\bR\x06hidden\"*\n" +
 	"\x18SetAtlasNodePrefResponse\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok\"\xa6\x01\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"b\n" +
+	"\x17RecordAppInstallRequest\x12&\n" +
+	"\x03app\x18\x01 \x01(\x0e2\x14.druz9.v1.AppSurfaceR\x03app\x12\x1f\n" +
+	"\vapp_version\x18\x02 \x01(\tR\n" +
+	"appVersion\"\xa0\x01\n" +
+	"\x18RecordAppInstallResponse\x120\n" +
+	"\ainstall\x18\x01 \x01(\v2\x16.druz9.v1.InstalledAppR\ainstall\x12*\n" +
+	"\x11trial_pro_granted\x18\x02 \x01(\bR\x0ftrialProGranted\x12&\n" +
+	"\x0ftrial_pro_until\x18\x03 \x01(\tR\rtrialProUntil\"\x19\n" +
+	"\x17GetInstalledAppsRequest\"N\n" +
+	"\x18GetInstalledAppsResponse\x122\n" +
+	"\binstalls\x18\x01 \x03(\v2\x16.druz9.v1.InstalledAppR\binstalls\"\xd5\x01\n" +
+	"\fInstalledApp\x12&\n" +
+	"\x03app\x18\x01 \x01(\x0e2\x14.druz9.v1.AppSurfaceR\x03app\x12>\n" +
+	"\rfirst_seen_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\vfirstSeenAt\x12<\n" +
+	"\flast_seen_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"lastSeenAt\x12\x1f\n" +
+	"\vapp_version\x18\x04 \x01(\tR\n" +
+	"appVersion\"\xa6\x01\n" +
 	"\x1aAllocateAtlasSkillResponse\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1a\n" +
 	"\bprogress\x18\x02 \x01(\x05R\bprogress\x12\x1a\n" +
@@ -3607,12 +3850,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\vunlocked_at\x18\x04 \x01(\tR\n" +
 	"unlockedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x05 \x01(\tR\tupdatedAt\"\x1c\n" +
-	"\x1aGetAIVacanciesModelRequest\"7\n" +
-	"\x1aSetAIVacanciesModelRequest\x12\x19\n" +
-	"\bmodel_id\x18\x01 \x01(\tR\amodelId\"-\n" +
-	"\x10AIVacanciesModel\x12\x19\n" +
-	"\bmodel_id\x18\x01 \x01(\tR\amodelId\":\n" +
+	"updated_at\x18\x05 \x01(\tR\tupdatedAt\":\n" +
 	"\x18BecomeInterviewerRequest\x12\x1e\n" +
 	"\n" +
 	"motivation\x18\x01 \x01(\tR\n" +
@@ -3657,7 +3895,13 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2\x13.druz9.v1.UserTrackR\x05items\"\x16\n" +
 	"\x14GetUserTracksRequest\"A\n" +
 	"\x14SetUserTracksRequest\x12)\n" +
-	"\x05items\x18\x01 \x03(\v2\x13.druz9.v1.UserTrackR\x05items*\x86\x02\n" +
+	"\x05items\x18\x01 \x03(\v2\x13.druz9.v1.UserTrackR\x05items*i\n" +
+	"\n" +
+	"AppSurface\x12\x1b\n" +
+	"\x17APP_SURFACE_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fAPP_SURFACE_WEB\x10\x01\x12\x14\n" +
+	"\x10APP_SURFACE_HONE\x10\x02\x12\x13\n" +
+	"\x0fAPP_SURFACE_CUE\x10\x03*\x86\x02\n" +
 	"\x1cInterviewerApplicationStatus\x12.\n" +
 	"*INTERVIEWER_APPLICATION_STATUS_UNSPECIFIED\x10\x00\x120\n" +
 	",INTERVIEWER_APPLICATION_STATUS_NOT_SUBMITTED\x10\x01\x12*\n" +
@@ -3671,7 +3915,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x10TRACK_SYSANALYST\x10\x03\x12\x19\n" +
 	"\x15TRACK_PRODUCT_ANALYST\x10\x04\x12\f\n" +
 	"\bTRACK_QA\x10\x05\x12\x11\n" +
-	"\rTRACK_ENGLISH\x10\x062\x8d\x13\n" +
+	"\rTRACK_ENGLISH\x10\x062\xfc\x12\n" +
 	"\x0eProfileService\x12`\n" +
 	"\fGetMyProfile\x12\x1d.druz9.v1.GetMyProfileRequest\x1a\x15.druz9.v1.ProfileFull\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/profile/me\x12a\n" +
 	"\n" +
@@ -3685,13 +3929,13 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x1bListInterviewerApplications\x12,.druz9.v1.ListInterviewerApplicationsRequest\x1a$.druz9.v1.InterviewerApplicationList\".\x82\xd3\xe4\x93\x02(\x12&/api/v1/admin/interviewer-applications\x12\xbd\x01\n" +
 	"\x1dApproveInterviewerApplication\x12..druz9.v1.ApproveInterviewerApplicationRequest\x1a .druz9.v1.InterviewerApplication\"J\x82\xd3\xe4\x93\x02D:\x01*\"?/api/v1/admin/interviewer-applications/{application_id}/approve\x12\xba\x01\n" +
 	"\x1cRejectInterviewerApplication\x12-.druz9.v1.RejectInterviewerApplicationRequest\x1a .druz9.v1.InterviewerApplication\"I\x82\xd3\xe4\x93\x02C:\x01*\">/api/v1/admin/interviewer-applications/{application_id}/reject\x12\x8d\x01\n" +
-	"\x12AllocateAtlasSkill\x12#.druz9.v1.AllocateAtlasSkillRequest\x1a$.druz9.v1.AllocateAtlasSkillResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/profile/me/atlas/allocate\x12\x86\x01\n" +
-	"\x13GetAIVacanciesModel\x12$.druz9.v1.GetAIVacanciesModelRequest\x1a\x1a.druz9.v1.AIVacanciesModel\"-\x82\xd3\xe4\x93\x02'\x12%/api/v1/profile/me/ai-vacancies-model\x12\x89\x01\n" +
-	"\x13SetAIVacanciesModel\x12$.druz9.v1.SetAIVacanciesModelRequest\x1a\x1a.druz9.v1.AIVacanciesModel\"0\x82\xd3\xe4\x93\x02*:\x01*\x1a%/api/v1/profile/me/ai-vacancies-model\x12h\n" +
+	"\x12AllocateAtlasSkill\x12#.druz9.v1.AllocateAtlasSkillRequest\x1a$.druz9.v1.AllocateAtlasSkillResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/profile/me/atlas/allocate\x12h\n" +
 	"\rGetUserTracks\x12\x1e.druz9.v1.GetUserTracksRequest\x1a\x14.druz9.v1.UserTracks\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/profile/me/tracks\x12k\n" +
 	"\rSetUserTracks\x12\x1e.druz9.v1.SetUserTracksRequest\x1a\x14.druz9.v1.UserTracks\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\x1a\x19/api/v1/profile/me/tracks\x12\x86\x01\n" +
 	"\x11ClassifyAtlasTodo\x12\".druz9.v1.ClassifyAtlasTodoRequest\x1a#.druz9.v1.ClassifyAtlasTodoResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/v1/profile/me/atlas/todo\x12\x83\x01\n" +
-	"\x10SetAtlasNodePref\x12!.druz9.v1.SetAtlasNodePrefRequest\x1a\".druz9.v1.SetAtlasNodePrefResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/v1/profile/me/atlas/prefB\x89\x01\n" +
+	"\x10SetAtlasNodePref\x12!.druz9.v1.SetAtlasNodePrefRequest\x1a\".druz9.v1.SetAtlasNodePrefResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/v1/profile/me/atlas/pref\x12\x81\x01\n" +
+	"\x10RecordAppInstall\x12!.druz9.v1.RecordAppInstallRequest\x1a\".druz9.v1.RecordAppInstallResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/v1/profile/me/installs\x12~\n" +
+	"\x10GetInstalledApps\x12!.druz9.v1.GetInstalledAppsRequest\x1a\".druz9.v1.GetInstalledAppsResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/profile/me/installsB\x89\x01\n" +
 	"\fcom.druz9.v1B\fProfileProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -3706,150 +3950,159 @@ func file_druz9_v1_profile_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_profile_proto_rawDescData
 }
 
-var file_druz9_v1_profile_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
+var file_druz9_v1_profile_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
 var file_druz9_v1_profile_proto_goTypes = []any{
-	(InterviewerApplicationStatus)(0),            // 0: druz9.v1.InterviewerApplicationStatus
-	(Track)(0),                                   // 1: druz9.v1.Track
-	(*Attributes)(nil),                           // 2: druz9.v1.Attributes
-	(*ProfileSubscription)(nil),                  // 3: druz9.v1.ProfileSubscription
-	(*ProfileFull)(nil),                          // 4: druz9.v1.ProfileFull
-	(*ProfileSectionRating)(nil),                 // 5: druz9.v1.ProfileSectionRating
-	(*SkillNode)(nil),                            // 6: druz9.v1.SkillNode
-	(*KataRef)(nil),                              // 7: druz9.v1.KataRef
-	(*SkillEdge)(nil),                            // 8: druz9.v1.SkillEdge
-	(*SkillAtlas)(nil),                           // 9: druz9.v1.SkillAtlas
-	(*ProfilePublic)(nil),                        // 10: druz9.v1.ProfilePublic
-	(*ReportMetrics)(nil),                        // 11: druz9.v1.ReportMetrics
-	(*ReportWeakness)(nil),                       // 12: druz9.v1.ReportWeakness
-	(*RecommendationAction)(nil),                 // 13: druz9.v1.RecommendationAction
-	(*Recommendation)(nil),                       // 14: druz9.v1.Recommendation
-	(*SectionBreakdown)(nil),                     // 15: druz9.v1.SectionBreakdown
-	(*WeekComparison)(nil),                       // 16: druz9.v1.WeekComparison
-	(*EloPoint)(nil),                             // 17: druz9.v1.EloPoint
-	(*PercentileView)(nil),                       // 18: druz9.v1.PercentileView
-	(*WeeklyReport)(nil),                         // 19: druz9.v1.WeeklyReport
-	(*ProfileSettings)(nil),                      // 20: druz9.v1.ProfileSettings
-	(*UpdateProfileSettingsRequest)(nil),         // 21: druz9.v1.UpdateProfileSettingsRequest
-	(*GetMyProfileRequest)(nil),                  // 22: druz9.v1.GetMyProfileRequest
-	(*GetMyAtlasRequest)(nil),                    // 23: druz9.v1.GetMyAtlasRequest
-	(*GetMyReportRequest)(nil),                   // 24: druz9.v1.GetMyReportRequest
-	(*GetPublicProfileRequest)(nil),              // 25: druz9.v1.GetPublicProfileRequest
-	(*GetWeeklyShareRequest)(nil),                // 26: druz9.v1.GetWeeklyShareRequest
-	(*AllocateAtlasSkillRequest)(nil),            // 27: druz9.v1.AllocateAtlasSkillRequest
-	(*ClassifyAtlasTodoRequest)(nil),             // 28: druz9.v1.ClassifyAtlasTodoRequest
-	(*UserAtlasNode)(nil),                        // 29: druz9.v1.UserAtlasNode
-	(*ClassifyAtlasTodoResponse)(nil),            // 30: druz9.v1.ClassifyAtlasTodoResponse
-	(*SetAtlasNodePrefRequest)(nil),              // 31: druz9.v1.SetAtlasNodePrefRequest
-	(*SetAtlasNodePrefResponse)(nil),             // 32: druz9.v1.SetAtlasNodePrefResponse
-	(*AllocateAtlasSkillResponse)(nil),           // 33: druz9.v1.AllocateAtlasSkillResponse
-	(*GetAIVacanciesModelRequest)(nil),           // 34: druz9.v1.GetAIVacanciesModelRequest
-	(*SetAIVacanciesModelRequest)(nil),           // 35: druz9.v1.SetAIVacanciesModelRequest
-	(*AIVacanciesModel)(nil),                     // 36: druz9.v1.AIVacanciesModel
-	(*BecomeInterviewerRequest)(nil),             // 37: druz9.v1.BecomeInterviewerRequest
-	(*GetMyInterviewerApplicationRequest)(nil),   // 38: druz9.v1.GetMyInterviewerApplicationRequest
-	(*InterviewerApplication)(nil),               // 39: druz9.v1.InterviewerApplication
-	(*InterviewerApplicationList)(nil),           // 40: druz9.v1.InterviewerApplicationList
-	(*ListInterviewerApplicationsRequest)(nil),   // 41: druz9.v1.ListInterviewerApplicationsRequest
-	(*ApproveInterviewerApplicationRequest)(nil), // 42: druz9.v1.ApproveInterviewerApplicationRequest
-	(*RejectInterviewerApplicationRequest)(nil),  // 43: druz9.v1.RejectInterviewerApplicationRequest
-	(*UserTrack)(nil),                            // 44: druz9.v1.UserTrack
-	(*UserTracks)(nil),                           // 45: druz9.v1.UserTracks
-	(*GetUserTracksRequest)(nil),                 // 46: druz9.v1.GetUserTracksRequest
-	(*SetUserTracksRequest)(nil),                 // 47: druz9.v1.SetUserTracksRequest
-	nil,                                          // 48: druz9.v1.RecommendationAction.ParamsEntry
-	(SubscriptionPlan)(0),                        // 49: druz9.v1.SubscriptionPlan
-	(*timestamppb.Timestamp)(nil),                // 50: google.protobuf.Timestamp
-	(CharClass)(0),                               // 51: druz9.v1.CharClass
-	(UserRole)(0),                                // 52: druz9.v1.UserRole
-	(Section)(0),                                 // 53: druz9.v1.Section
-	(Language)(0),                                // 54: druz9.v1.Language
-	(*NotificationPreferences)(nil),              // 55: druz9.v1.NotificationPreferences
+	(AppSurface)(0),                              // 0: druz9.v1.AppSurface
+	(InterviewerApplicationStatus)(0),            // 1: druz9.v1.InterviewerApplicationStatus
+	(Track)(0),                                   // 2: druz9.v1.Track
+	(*Attributes)(nil),                           // 3: druz9.v1.Attributes
+	(*ProfileSubscription)(nil),                  // 4: druz9.v1.ProfileSubscription
+	(*ProfileFull)(nil),                          // 5: druz9.v1.ProfileFull
+	(*ProfileSectionRating)(nil),                 // 6: druz9.v1.ProfileSectionRating
+	(*SkillNode)(nil),                            // 7: druz9.v1.SkillNode
+	(*KataRef)(nil),                              // 8: druz9.v1.KataRef
+	(*SkillEdge)(nil),                            // 9: druz9.v1.SkillEdge
+	(*SkillAtlas)(nil),                           // 10: druz9.v1.SkillAtlas
+	(*ProfilePublic)(nil),                        // 11: druz9.v1.ProfilePublic
+	(*ReportMetrics)(nil),                        // 12: druz9.v1.ReportMetrics
+	(*ReportWeakness)(nil),                       // 13: druz9.v1.ReportWeakness
+	(*RecommendationAction)(nil),                 // 14: druz9.v1.RecommendationAction
+	(*Recommendation)(nil),                       // 15: druz9.v1.Recommendation
+	(*SectionBreakdown)(nil),                     // 16: druz9.v1.SectionBreakdown
+	(*WeekComparison)(nil),                       // 17: druz9.v1.WeekComparison
+	(*EloPoint)(nil),                             // 18: druz9.v1.EloPoint
+	(*PercentileView)(nil),                       // 19: druz9.v1.PercentileView
+	(*WeeklyReport)(nil),                         // 20: druz9.v1.WeeklyReport
+	(*ProfileSettings)(nil),                      // 21: druz9.v1.ProfileSettings
+	(*UpdateProfileSettingsRequest)(nil),         // 22: druz9.v1.UpdateProfileSettingsRequest
+	(*GetMyProfileRequest)(nil),                  // 23: druz9.v1.GetMyProfileRequest
+	(*GetMyAtlasRequest)(nil),                    // 24: druz9.v1.GetMyAtlasRequest
+	(*GetMyReportRequest)(nil),                   // 25: druz9.v1.GetMyReportRequest
+	(*GetPublicProfileRequest)(nil),              // 26: druz9.v1.GetPublicProfileRequest
+	(*GetWeeklyShareRequest)(nil),                // 27: druz9.v1.GetWeeklyShareRequest
+	(*AllocateAtlasSkillRequest)(nil),            // 28: druz9.v1.AllocateAtlasSkillRequest
+	(*ClassifyAtlasTodoRequest)(nil),             // 29: druz9.v1.ClassifyAtlasTodoRequest
+	(*UserAtlasNode)(nil),                        // 30: druz9.v1.UserAtlasNode
+	(*ClassifyAtlasTodoResponse)(nil),            // 31: druz9.v1.ClassifyAtlasTodoResponse
+	(*SetAtlasNodePrefRequest)(nil),              // 32: druz9.v1.SetAtlasNodePrefRequest
+	(*SetAtlasNodePrefResponse)(nil),             // 33: druz9.v1.SetAtlasNodePrefResponse
+	(*RecordAppInstallRequest)(nil),              // 34: druz9.v1.RecordAppInstallRequest
+	(*RecordAppInstallResponse)(nil),             // 35: druz9.v1.RecordAppInstallResponse
+	(*GetInstalledAppsRequest)(nil),              // 36: druz9.v1.GetInstalledAppsRequest
+	(*GetInstalledAppsResponse)(nil),             // 37: druz9.v1.GetInstalledAppsResponse
+	(*InstalledApp)(nil),                         // 38: druz9.v1.InstalledApp
+	(*AllocateAtlasSkillResponse)(nil),           // 39: druz9.v1.AllocateAtlasSkillResponse
+	(*BecomeInterviewerRequest)(nil),             // 40: druz9.v1.BecomeInterviewerRequest
+	(*GetMyInterviewerApplicationRequest)(nil),   // 41: druz9.v1.GetMyInterviewerApplicationRequest
+	(*InterviewerApplication)(nil),               // 42: druz9.v1.InterviewerApplication
+	(*InterviewerApplicationList)(nil),           // 43: druz9.v1.InterviewerApplicationList
+	(*ListInterviewerApplicationsRequest)(nil),   // 44: druz9.v1.ListInterviewerApplicationsRequest
+	(*ApproveInterviewerApplicationRequest)(nil), // 45: druz9.v1.ApproveInterviewerApplicationRequest
+	(*RejectInterviewerApplicationRequest)(nil),  // 46: druz9.v1.RejectInterviewerApplicationRequest
+	(*UserTrack)(nil),                            // 47: druz9.v1.UserTrack
+	(*UserTracks)(nil),                           // 48: druz9.v1.UserTracks
+	(*GetUserTracksRequest)(nil),                 // 49: druz9.v1.GetUserTracksRequest
+	(*SetUserTracksRequest)(nil),                 // 50: druz9.v1.SetUserTracksRequest
+	nil,                                          // 51: druz9.v1.RecommendationAction.ParamsEntry
+	(SubscriptionPlan)(0),                        // 52: druz9.v1.SubscriptionPlan
+	(*timestamppb.Timestamp)(nil),                // 53: google.protobuf.Timestamp
+	(CharClass)(0),                               // 54: druz9.v1.CharClass
+	(UserRole)(0),                                // 55: druz9.v1.UserRole
+	(Section)(0),                                 // 56: druz9.v1.Section
+	(Language)(0),                                // 57: druz9.v1.Language
+	(*NotificationPreferences)(nil),              // 58: druz9.v1.NotificationPreferences
 }
 var file_druz9_v1_profile_proto_depIdxs = []int32{
-	49, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
-	50, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
-	51, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
-	2,  // 3: druz9.v1.ProfileFull.attributes:type_name -> druz9.v1.Attributes
-	3,  // 4: druz9.v1.ProfileFull.subscription:type_name -> druz9.v1.ProfileSubscription
-	50, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
-	52, // 6: druz9.v1.ProfileFull.role:type_name -> druz9.v1.UserRole
-	53, // 7: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
-	53, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
-	50, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
-	50, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
-	7,  // 11: druz9.v1.SkillNode.recommended_kata:type_name -> druz9.v1.KataRef
-	6,  // 12: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
-	8,  // 13: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
-	51, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
-	5,  // 15: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
-	9,  // 16: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
-	48, // 17: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
-	13, // 18: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
-	53, // 19: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
-	11, // 20: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
-	12, // 21: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
-	14, // 22: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
-	15, // 23: druz9.v1.WeeklyReport.strong_sections:type_name -> druz9.v1.SectionBreakdown
-	15, // 24: druz9.v1.WeeklyReport.weak_sections:type_name -> druz9.v1.SectionBreakdown
-	16, // 25: druz9.v1.WeeklyReport.weekly_xp:type_name -> druz9.v1.WeekComparison
-	17, // 26: druz9.v1.WeeklyReport.elo_series:type_name -> druz9.v1.EloPoint
-	18, // 27: druz9.v1.WeeklyReport.percentiles:type_name -> druz9.v1.PercentileView
-	54, // 28: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
-	55, // 29: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
-	20, // 30: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
-	29, // 31: druz9.v1.ClassifyAtlasTodoResponse.new_node:type_name -> druz9.v1.UserAtlasNode
-	0,  // 32: druz9.v1.InterviewerApplication.status:type_name -> druz9.v1.InterviewerApplicationStatus
-	50, // 33: druz9.v1.InterviewerApplication.reviewed_at:type_name -> google.protobuf.Timestamp
-	50, // 34: druz9.v1.InterviewerApplication.created_at:type_name -> google.protobuf.Timestamp
-	39, // 35: druz9.v1.InterviewerApplicationList.items:type_name -> druz9.v1.InterviewerApplication
-	0,  // 36: druz9.v1.ListInterviewerApplicationsRequest.status:type_name -> druz9.v1.InterviewerApplicationStatus
-	1,  // 37: druz9.v1.UserTrack.track:type_name -> druz9.v1.Track
-	50, // 38: druz9.v1.UserTrack.started_at:type_name -> google.protobuf.Timestamp
-	50, // 39: druz9.v1.UserTrack.last_active_at:type_name -> google.protobuf.Timestamp
-	44, // 40: druz9.v1.UserTracks.items:type_name -> druz9.v1.UserTrack
-	44, // 41: druz9.v1.SetUserTracksRequest.items:type_name -> druz9.v1.UserTrack
-	22, // 42: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
-	23, // 43: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
-	24, // 44: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
-	21, // 45: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
-	25, // 46: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
-	26, // 47: druz9.v1.ProfileService.GetWeeklyShare:input_type -> druz9.v1.GetWeeklyShareRequest
-	37, // 48: druz9.v1.ProfileService.BecomeInterviewer:input_type -> druz9.v1.BecomeInterviewerRequest
-	38, // 49: druz9.v1.ProfileService.GetMyInterviewerApplication:input_type -> druz9.v1.GetMyInterviewerApplicationRequest
-	41, // 50: druz9.v1.ProfileService.ListInterviewerApplications:input_type -> druz9.v1.ListInterviewerApplicationsRequest
-	42, // 51: druz9.v1.ProfileService.ApproveInterviewerApplication:input_type -> druz9.v1.ApproveInterviewerApplicationRequest
-	43, // 52: druz9.v1.ProfileService.RejectInterviewerApplication:input_type -> druz9.v1.RejectInterviewerApplicationRequest
-	27, // 53: druz9.v1.ProfileService.AllocateAtlasSkill:input_type -> druz9.v1.AllocateAtlasSkillRequest
-	34, // 54: druz9.v1.ProfileService.GetAIVacanciesModel:input_type -> druz9.v1.GetAIVacanciesModelRequest
-	35, // 55: druz9.v1.ProfileService.SetAIVacanciesModel:input_type -> druz9.v1.SetAIVacanciesModelRequest
-	46, // 56: druz9.v1.ProfileService.GetUserTracks:input_type -> druz9.v1.GetUserTracksRequest
-	47, // 57: druz9.v1.ProfileService.SetUserTracks:input_type -> druz9.v1.SetUserTracksRequest
-	28, // 58: druz9.v1.ProfileService.ClassifyAtlasTodo:input_type -> druz9.v1.ClassifyAtlasTodoRequest
-	31, // 59: druz9.v1.ProfileService.SetAtlasNodePref:input_type -> druz9.v1.SetAtlasNodePrefRequest
-	4,  // 60: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
-	9,  // 61: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
-	19, // 62: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
-	20, // 63: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
-	10, // 64: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
-	19, // 65: druz9.v1.ProfileService.GetWeeklyShare:output_type -> druz9.v1.WeeklyReport
-	39, // 66: druz9.v1.ProfileService.BecomeInterviewer:output_type -> druz9.v1.InterviewerApplication
-	39, // 67: druz9.v1.ProfileService.GetMyInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
-	40, // 68: druz9.v1.ProfileService.ListInterviewerApplications:output_type -> druz9.v1.InterviewerApplicationList
-	39, // 69: druz9.v1.ProfileService.ApproveInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
-	39, // 70: druz9.v1.ProfileService.RejectInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
-	33, // 71: druz9.v1.ProfileService.AllocateAtlasSkill:output_type -> druz9.v1.AllocateAtlasSkillResponse
-	36, // 72: druz9.v1.ProfileService.GetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
-	36, // 73: druz9.v1.ProfileService.SetAIVacanciesModel:output_type -> druz9.v1.AIVacanciesModel
-	45, // 74: druz9.v1.ProfileService.GetUserTracks:output_type -> druz9.v1.UserTracks
-	45, // 75: druz9.v1.ProfileService.SetUserTracks:output_type -> druz9.v1.UserTracks
-	30, // 76: druz9.v1.ProfileService.ClassifyAtlasTodo:output_type -> druz9.v1.ClassifyAtlasTodoResponse
-	32, // 77: druz9.v1.ProfileService.SetAtlasNodePref:output_type -> druz9.v1.SetAtlasNodePrefResponse
-	60, // [60:78] is the sub-list for method output_type
-	42, // [42:60] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	52, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
+	53, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
+	54, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
+	3,  // 3: druz9.v1.ProfileFull.attributes:type_name -> druz9.v1.Attributes
+	4,  // 4: druz9.v1.ProfileFull.subscription:type_name -> druz9.v1.ProfileSubscription
+	53, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
+	55, // 6: druz9.v1.ProfileFull.role:type_name -> druz9.v1.UserRole
+	56, // 7: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
+	56, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
+	53, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
+	53, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
+	8,  // 11: druz9.v1.SkillNode.recommended_kata:type_name -> druz9.v1.KataRef
+	7,  // 12: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
+	9,  // 13: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
+	54, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
+	6,  // 15: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
+	10, // 16: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
+	51, // 17: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
+	14, // 18: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
+	56, // 19: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
+	12, // 20: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
+	13, // 21: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
+	15, // 22: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
+	16, // 23: druz9.v1.WeeklyReport.strong_sections:type_name -> druz9.v1.SectionBreakdown
+	16, // 24: druz9.v1.WeeklyReport.weak_sections:type_name -> druz9.v1.SectionBreakdown
+	17, // 25: druz9.v1.WeeklyReport.weekly_xp:type_name -> druz9.v1.WeekComparison
+	18, // 26: druz9.v1.WeeklyReport.elo_series:type_name -> druz9.v1.EloPoint
+	19, // 27: druz9.v1.WeeklyReport.percentiles:type_name -> druz9.v1.PercentileView
+	57, // 28: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
+	58, // 29: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
+	21, // 30: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
+	30, // 31: druz9.v1.ClassifyAtlasTodoResponse.new_node:type_name -> druz9.v1.UserAtlasNode
+	0,  // 32: druz9.v1.RecordAppInstallRequest.app:type_name -> druz9.v1.AppSurface
+	38, // 33: druz9.v1.RecordAppInstallResponse.install:type_name -> druz9.v1.InstalledApp
+	38, // 34: druz9.v1.GetInstalledAppsResponse.installs:type_name -> druz9.v1.InstalledApp
+	0,  // 35: druz9.v1.InstalledApp.app:type_name -> druz9.v1.AppSurface
+	53, // 36: druz9.v1.InstalledApp.first_seen_at:type_name -> google.protobuf.Timestamp
+	53, // 37: druz9.v1.InstalledApp.last_seen_at:type_name -> google.protobuf.Timestamp
+	1,  // 38: druz9.v1.InterviewerApplication.status:type_name -> druz9.v1.InterviewerApplicationStatus
+	53, // 39: druz9.v1.InterviewerApplication.reviewed_at:type_name -> google.protobuf.Timestamp
+	53, // 40: druz9.v1.InterviewerApplication.created_at:type_name -> google.protobuf.Timestamp
+	42, // 41: druz9.v1.InterviewerApplicationList.items:type_name -> druz9.v1.InterviewerApplication
+	1,  // 42: druz9.v1.ListInterviewerApplicationsRequest.status:type_name -> druz9.v1.InterviewerApplicationStatus
+	2,  // 43: druz9.v1.UserTrack.track:type_name -> druz9.v1.Track
+	53, // 44: druz9.v1.UserTrack.started_at:type_name -> google.protobuf.Timestamp
+	53, // 45: druz9.v1.UserTrack.last_active_at:type_name -> google.protobuf.Timestamp
+	47, // 46: druz9.v1.UserTracks.items:type_name -> druz9.v1.UserTrack
+	47, // 47: druz9.v1.SetUserTracksRequest.items:type_name -> druz9.v1.UserTrack
+	23, // 48: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
+	24, // 49: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
+	25, // 50: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
+	22, // 51: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
+	26, // 52: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
+	27, // 53: druz9.v1.ProfileService.GetWeeklyShare:input_type -> druz9.v1.GetWeeklyShareRequest
+	40, // 54: druz9.v1.ProfileService.BecomeInterviewer:input_type -> druz9.v1.BecomeInterviewerRequest
+	41, // 55: druz9.v1.ProfileService.GetMyInterviewerApplication:input_type -> druz9.v1.GetMyInterviewerApplicationRequest
+	44, // 56: druz9.v1.ProfileService.ListInterviewerApplications:input_type -> druz9.v1.ListInterviewerApplicationsRequest
+	45, // 57: druz9.v1.ProfileService.ApproveInterviewerApplication:input_type -> druz9.v1.ApproveInterviewerApplicationRequest
+	46, // 58: druz9.v1.ProfileService.RejectInterviewerApplication:input_type -> druz9.v1.RejectInterviewerApplicationRequest
+	28, // 59: druz9.v1.ProfileService.AllocateAtlasSkill:input_type -> druz9.v1.AllocateAtlasSkillRequest
+	49, // 60: druz9.v1.ProfileService.GetUserTracks:input_type -> druz9.v1.GetUserTracksRequest
+	50, // 61: druz9.v1.ProfileService.SetUserTracks:input_type -> druz9.v1.SetUserTracksRequest
+	29, // 62: druz9.v1.ProfileService.ClassifyAtlasTodo:input_type -> druz9.v1.ClassifyAtlasTodoRequest
+	32, // 63: druz9.v1.ProfileService.SetAtlasNodePref:input_type -> druz9.v1.SetAtlasNodePrefRequest
+	34, // 64: druz9.v1.ProfileService.RecordAppInstall:input_type -> druz9.v1.RecordAppInstallRequest
+	36, // 65: druz9.v1.ProfileService.GetInstalledApps:input_type -> druz9.v1.GetInstalledAppsRequest
+	5,  // 66: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
+	10, // 67: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
+	20, // 68: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
+	21, // 69: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
+	11, // 70: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
+	20, // 71: druz9.v1.ProfileService.GetWeeklyShare:output_type -> druz9.v1.WeeklyReport
+	42, // 72: druz9.v1.ProfileService.BecomeInterviewer:output_type -> druz9.v1.InterviewerApplication
+	42, // 73: druz9.v1.ProfileService.GetMyInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
+	43, // 74: druz9.v1.ProfileService.ListInterviewerApplications:output_type -> druz9.v1.InterviewerApplicationList
+	42, // 75: druz9.v1.ProfileService.ApproveInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
+	42, // 76: druz9.v1.ProfileService.RejectInterviewerApplication:output_type -> druz9.v1.InterviewerApplication
+	39, // 77: druz9.v1.ProfileService.AllocateAtlasSkill:output_type -> druz9.v1.AllocateAtlasSkillResponse
+	48, // 78: druz9.v1.ProfileService.GetUserTracks:output_type -> druz9.v1.UserTracks
+	48, // 79: druz9.v1.ProfileService.SetUserTracks:output_type -> druz9.v1.UserTracks
+	31, // 80: druz9.v1.ProfileService.ClassifyAtlasTodo:output_type -> druz9.v1.ClassifyAtlasTodoResponse
+	33, // 81: druz9.v1.ProfileService.SetAtlasNodePref:output_type -> druz9.v1.SetAtlasNodePrefResponse
+	35, // 82: druz9.v1.ProfileService.RecordAppInstall:output_type -> druz9.v1.RecordAppInstallResponse
+	37, // 83: druz9.v1.ProfileService.GetInstalledApps:output_type -> druz9.v1.GetInstalledAppsResponse
+	66, // [66:84] is the sub-list for method output_type
+	48, // [48:66] is the sub-list for method input_type
+	48, // [48:48] is the sub-list for extension type_name
+	48, // [48:48] is the sub-list for extension extendee
+	0,  // [0:48] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_profile_proto_init() }
@@ -3865,8 +4118,8 @@ func file_druz9_v1_profile_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_profile_proto_rawDesc), len(file_druz9_v1_profile_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   47,
+			NumEnums:      3,
+			NumMessages:   49,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

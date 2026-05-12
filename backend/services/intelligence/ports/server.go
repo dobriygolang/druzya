@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"druz9/intelligence/app"
 	"druz9/intelligence/domain"
@@ -21,6 +22,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -55,6 +57,46 @@ type IntelligenceServer struct {
 	ResourceTrailReader domain.ResourceEngagementReader
 	SkillRadarUC        *app.GetSkillRadar
 	CoachStatsUC        *app.GetCoachStats
+
+	// F2 primary goal CRUD (2026-05-12). nil-safe — handlers return
+	// Unavailable until bootstrap wires repo.
+	CreateGoalUC     *app.CreateGoal
+	GetActiveGoalUC  *app.GetActiveGoal
+	UpdateGoalUC     *app.UpdateGoal
+	DeactivateGoalUC *app.DeactivateGoal
+
+	// F10 Cue session ingestion (2026-05-12). nil-safe.
+	IngestInterviewSessionUC *app.IngestSessionTranscript
+	ListInterviewSessionsUC  *app.ListInterviewSessions
+
+	// F2 LLM-driven milestones (2026-05-12). nil-safe.
+	GenerateMilestonesUC *app.GenerateMilestones
+	GetMilestonesUC      *app.GetMilestones
+	MarkMilestoneDoneUC  *app.MarkMilestoneDone
+
+	// R3 Per-node coverage (2026-05-12). nil-safe.
+	GetNodeCoverageUC *app.GetNodeCoverage
+
+	// F1 Memory expansion Phase 2 (2026-05-12). nil-safe.
+	ListMemoryEntriesUC *app.ListMemoryEntries
+	DeleteMemoryEntryUC *app.DeleteMemoryEntry
+	// F1 Memory expansion launch-polish (2026-05-12). nil-safe.
+	EditMemoryEntryUC *app.EditMemoryEntry
+
+	// H2 Focus reflection persistence (Phase J 2026-05-12). nil-safe.
+	SaveFocusReflectionUC  *app.SaveFocusReflection
+	ListFocusReflectionsUC *app.ListFocusReflections
+
+	// C3 Cross-product context (Phase J 2026-05-12). nil-safe — when
+	// not wired, GetUserContext returns Unavailable. Cue copilot reads
+	// directly via in-process adapter, not via this RPC — the RPC is
+	// here for parity (web /admin can debug a user's context bundle).
+	GetUserContextUC *app.GetUserContext
+
+	// X5 Atlas struggle marks (Phase J P2 2026-05-12). nil-safe.
+	MarkAtlasStruggleUC  *app.MarkAtlasStruggle
+	ListAtlasStrugglesUC *app.ListAtlasStruggles
+	ClearAtlasStruggleUC *app.ClearAtlasStruggle
 }
 
 // LearningStateMutator — handler-injected port для SetLearningMode +
@@ -668,4 +710,764 @@ func (s *IntelligenceServer) GetCoachStats(
 		LastMockScore:   int32(out.LastMockScore),
 		LastMockSection: out.LastMockSection,
 	}), nil
+}
+
+// ── F2 Goal CRUD handlers (2026-05-12) ───────────────────────────────────
+
+// CreateGoal implements druz9.v1.IntelligenceService/CreateGoal.
+func (s *IntelligenceServer) CreateGoal(
+	ctx context.Context,
+	req *connect.Request[pb.CreateGoalRequest],
+) (*connect.Response[pb.Goal], error) {
+	if s.CreateGoalUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.CreateGoal: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	kind, err := goalKindFromProto(req.Msg.GetKind())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	g, err := s.CreateGoalUC.Do(ctx, app.CreateGoalInput{
+		UserID:        uid,
+		Kind:          kind,
+		TargetCompany: req.Msg.GetTargetCompany(),
+		TargetLevel:   req.Msg.GetTargetLevel(),
+		TargetText:    req.Msg.GetTargetText(),
+		TargetDate:    req.Msg.GetTargetDate(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.CreateGoal: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(primaryGoalToProto(g)), nil
+}
+
+// GetActiveGoal implements druz9.v1.IntelligenceService/GetActiveGoal.
+func (s *IntelligenceServer) GetActiveGoal(
+	ctx context.Context,
+	_ *connect.Request[emptypb.Empty],
+) (*connect.Response[pb.Goal], error) {
+	if s.GetActiveGoalUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.GetActiveGoal: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	g, err := s.GetActiveGoalUC.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetActiveGoal: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(primaryGoalToProto(g)), nil
+}
+
+// UpdateGoal implements druz9.v1.IntelligenceService/UpdateGoal.
+func (s *IntelligenceServer) UpdateGoal(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateGoalRequest],
+) (*connect.Response[pb.Goal], error) {
+	if s.UpdateGoalUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.UpdateGoal: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	goalID, err := uuid.Parse(req.Msg.GetId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id: %w", err))
+	}
+	kind, err := goalKindFromProto(req.Msg.GetKind())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	g, err := s.UpdateGoalUC.Do(ctx, app.UpdateGoalInput{
+		UserID:        uid,
+		GoalID:        goalID,
+		Kind:          kind,
+		TargetCompany: req.Msg.GetTargetCompany(),
+		TargetLevel:   req.Msg.GetTargetLevel(),
+		TargetText:    req.Msg.GetTargetText(),
+		TargetDate:    req.Msg.GetTargetDate(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.UpdateGoal: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(primaryGoalToProto(g)), nil
+}
+
+// DeactivateGoal implements druz9.v1.IntelligenceService/DeactivateGoal.
+func (s *IntelligenceServer) DeactivateGoal(
+	ctx context.Context,
+	req *connect.Request[pb.DeactivateGoalRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	if s.DeactivateGoalUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.DeactivateGoal: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	goalID, err := uuid.Parse(req.Msg.GetId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id: %w", err))
+	}
+	if err := s.DeactivateGoalUC.Do(ctx, uid, goalID); err != nil {
+		return nil, fmt.Errorf("intelligence.DeactivateGoal: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
+func primaryGoalToProto(g domain.PrimaryGoal) *pb.Goal {
+	out := &pb.Goal{
+		Id:            g.ID.String(),
+		Kind:          goalKindToProto(g.Kind),
+		TargetCompany: g.TargetCompany,
+		TargetLevel:   g.TargetLevel,
+		TargetText:    g.TargetText,
+		Active:        g.Active,
+		CreatedAt:     timestamppb.New(g.CreatedAt.UTC()),
+		UpdatedAt:     timestamppb.New(g.UpdatedAt.UTC()),
+	}
+	if g.TargetDate != nil {
+		out.TargetDate = g.TargetDate.UTC().Format("2006-01-02")
+	}
+	return out
+}
+
+func goalKindFromProto(k pb.GoalKind) (domain.PrimaryGoalKind, error) {
+	switch k {
+	case pb.GoalKind_GOAL_KIND_TOP_TIER_CO:
+		return domain.PrimaryGoalKindTopTierCo, nil
+	case pb.GoalKind_GOAL_KIND_ANY_SENIOR:
+		return domain.PrimaryGoalKindAnySenior, nil
+	case pb.GoalKind_GOAL_KIND_ML_OFFER:
+		return domain.PrimaryGoalKindMLOffer, nil
+	case pb.GoalKind_GOAL_KIND_ENGLISH_TARGET:
+		return domain.PrimaryGoalKindEnglishTarget, nil
+	case pb.GoalKind_GOAL_KIND_CUSTOM:
+		return domain.PrimaryGoalKindCustom, nil
+	}
+	return "", fmt.Errorf("unknown goal_kind: %v", k)
+}
+
+func goalKindToProto(k domain.PrimaryGoalKind) pb.GoalKind {
+	switch k {
+	case domain.PrimaryGoalKindTopTierCo:
+		return pb.GoalKind_GOAL_KIND_TOP_TIER_CO
+	case domain.PrimaryGoalKindAnySenior:
+		return pb.GoalKind_GOAL_KIND_ANY_SENIOR
+	case domain.PrimaryGoalKindMLOffer:
+		return pb.GoalKind_GOAL_KIND_ML_OFFER
+	case domain.PrimaryGoalKindEnglishTarget:
+		return pb.GoalKind_GOAL_KIND_ENGLISH_TARGET
+	case domain.PrimaryGoalKindCustom:
+		return pb.GoalKind_GOAL_KIND_CUSTOM
+	}
+	return pb.GoalKind_GOAL_KIND_UNSPECIFIED
+}
+
+// ── F10 Cue session handlers (2026-05-12) ───────────────────────────────
+
+// IngestInterviewSession implements druz9.v1.IntelligenceService/IngestInterviewSession.
+func (s *IntelligenceServer) IngestInterviewSession(
+	ctx context.Context,
+	req *connect.Request[pb.IngestInterviewSessionRequest],
+) (*connect.Response[pb.InterviewSession], error) {
+	if s.IngestInterviewSessionUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.IngestInterviewSession: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stages := make([]domain.InterviewStage, 0, len(req.Msg.GetStages()))
+	for _, st := range req.Msg.GetStages() {
+		stages = append(stages, domain.InterviewStage{
+			Stage:      st.GetStage(),
+			SelfRating: int(st.GetSelfRating()),
+			Notes:      st.GetNotes(),
+		})
+	}
+	var completedAt time.Time
+	if ts := req.Msg.GetCompletedAt(); ts != nil {
+		completedAt = ts.AsTime()
+	}
+	out, err := s.IngestInterviewSessionUC.Do(ctx, app.IngestInterviewSessionInput{
+		UserID:        uid,
+		Company:       req.Msg.GetCompany(),
+		Persona:       req.Msg.GetPersona(),
+		Stages:        stages,
+		AISummary:     req.Msg.GetAiSummary(),
+		RawTranscript: req.Msg.GetRawTranscript(),
+		CompletedAt:   completedAt,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.IngestInterviewSession: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(interviewSessionToProto(out)), nil
+}
+
+// ListInterviewSessions implements druz9.v1.IntelligenceService/ListInterviewSessions.
+func (s *IntelligenceServer) ListInterviewSessions(
+	ctx context.Context,
+	req *connect.Request[pb.ListInterviewSessionsRequest],
+) (*connect.Response[pb.ListInterviewSessionsResponse], error) {
+	if s.ListInterviewSessionsUC == nil {
+		// nil-safe — return empty list.
+		return connect.NewResponse(&pb.ListInterviewSessionsResponse{}), nil
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.ListInterviewSessionsUC.Do(ctx, app.ListInterviewSessionsInput{
+		UserID: uid,
+		Limit:  int(req.Msg.GetLimit()),
+		Offset: int(req.Msg.GetOffset()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.ListInterviewSessions: %w", s.toConnectErr(err))
+	}
+	resp := &pb.ListInterviewSessionsResponse{
+		Items: make([]*pb.InterviewSession, 0, len(out.Items)),
+		Total: int32(out.Total),
+	}
+	for _, it := range out.Items {
+		resp.Items = append(resp.Items, interviewSessionToProto(it))
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func interviewSessionToProto(s domain.InterviewSession) *pb.InterviewSession {
+	out := &pb.InterviewSession{
+		Id:            s.ID.String(),
+		Company:       s.Company,
+		Persona:       s.Persona,
+		AiSummary:     s.AISummary,
+		RawTranscript: s.RawTranscript,
+		CompletedAt:   timestamppb.New(s.CompletedAt.UTC()),
+	}
+	for _, st := range s.Stages {
+		out.Stages = append(out.Stages, &pb.InterviewStage{
+			Stage:      st.Stage,
+			SelfRating: int32(st.SelfRating),
+			Notes:      st.Notes,
+		})
+	}
+	return out
+}
+
+// ── F2 LLM-driven milestone handlers (2026-05-12) ────────────────────────
+
+// GenerateMilestones implements druz9.v1.IntelligenceService/GenerateMilestones.
+func (s *IntelligenceServer) GenerateMilestones(
+	ctx context.Context,
+	_ *connect.Request[emptypb.Empty],
+) (*connect.Response[pb.MilestonesResponse], error) {
+	if s.GenerateMilestonesUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.GenerateMilestones: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.GenerateMilestonesUC.Do(ctx, app.GenerateMilestonesInput{
+		UserID: uid,
+		Force:  true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GenerateMilestones: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(milestonesToProto(items)), nil
+}
+
+// GetMilestones implements druz9.v1.IntelligenceService/GetMilestones.
+func (s *IntelligenceServer) GetMilestones(
+	ctx context.Context,
+	_ *connect.Request[emptypb.Empty],
+) (*connect.Response[pb.MilestonesResponse], error) {
+	if s.GetMilestonesUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.GetMilestones: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.GetMilestonesUC.Do(ctx, uid)
+	if err != nil {
+		// NotFound (no active goal) — UI трактует как «empty milestones»; пробрасываем.
+		return nil, fmt.Errorf("intelligence.GetMilestones: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(milestonesToProto(items)), nil
+}
+
+// MarkMilestoneDone implements druz9.v1.IntelligenceService/MarkMilestoneDone.
+func (s *IntelligenceServer) MarkMilestoneDone(
+	ctx context.Context,
+	req *connect.Request[pb.MarkMilestoneDoneRequest],
+) (*connect.Response[pb.Milestone], error) {
+	if s.MarkMilestoneDoneUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.MarkMilestoneDone: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, perr := uuid.Parse(req.Msg.GetId())
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id: %w", perr))
+	}
+	m, err := s.MarkMilestoneDoneUC.Do(ctx, app.MarkMilestoneDoneInput{
+		UserID:      uid,
+		MilestoneID: id,
+		Done:        req.Msg.GetDone(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.MarkMilestoneDone: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(milestoneToProto(m)), nil
+}
+
+func milestonesToProto(items []domain.Milestone) *pb.MilestonesResponse {
+	out := &pb.MilestonesResponse{Items: make([]*pb.Milestone, 0, len(items))}
+	var newest time.Time
+	for _, m := range items {
+		out.Items = append(out.Items, milestoneToProto(m))
+		if m.GeneratedAt.After(newest) {
+			newest = m.GeneratedAt
+		}
+	}
+	if !newest.IsZero() {
+		out.GeneratedAt = timestamppb.New(newest.UTC())
+	}
+	return out
+}
+
+func milestoneToProto(m domain.Milestone) *pb.Milestone {
+	out := &pb.Milestone{
+		Id:        m.ID.String(),
+		WeekIndex: int32(m.WeekIndex),
+		WeekStart: m.WeekStart.UTC().Format("2006-01-02"),
+		Title:     m.Title,
+		Detail:    m.Detail,
+		Category:  string(m.Category),
+	}
+	if m.DoneAt != nil {
+		out.Done = true
+		out.DoneAt = timestamppb.New(m.DoneAt.UTC())
+	}
+	return out
+}
+
+// ── R3 Per-node coverage handler (2026-05-12) ────────────────────────────
+
+// GetNodeCoverage implements druz9.v1.IntelligenceService/GetNodeCoverage.
+func (s *IntelligenceServer) GetNodeCoverage(
+	ctx context.Context,
+	req *connect.Request[pb.GetNodeCoverageRequest],
+) (*connect.Response[pb.GetNodeCoverageResponse], error) {
+	if s.GetNodeCoverageUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.GetNodeCoverage: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	keys := req.Msg.GetNodeKeys()
+	// Drop empty strings silently — client sometimes ships placeholder entries.
+	filtered := make([]string, 0, len(keys))
+	for _, k := range keys {
+		if strings.TrimSpace(k) != "" {
+			filtered = append(filtered, k)
+		}
+	}
+	items, err := s.GetNodeCoverageUC.Do(ctx, app.GetNodeCoverageInput{
+		UserID:   uid,
+		NodeKeys: filtered,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetNodeCoverage: %w", s.toConnectErr(err))
+	}
+	out := &pb.GetNodeCoverageResponse{Items: make([]*pb.NodeCoverage, 0, len(items))}
+	for _, c := range items {
+		entry := &pb.NodeCoverage{
+			NodeKey:        c.NodeKey,
+			State:          string(c.State),
+			MatchCount_30D: int32(c.MatchCount30d),
+			MatchCount_7D:  int32(c.MatchCount7d),
+		}
+		if !c.LastMatchAt.IsZero() {
+			entry.LastMatchAt = timestamppb.New(c.LastMatchAt.UTC())
+		}
+		out.Items = append(out.Items, entry)
+	}
+	return connect.NewResponse(out), nil
+}
+
+// ── F1 Memory expansion Phase 2 handlers (2026-05-12) ────────────────────
+
+// ListMemoryEntries implements druz9.v1.IntelligenceService/ListMemoryEntries.
+func (s *IntelligenceServer) ListMemoryEntries(
+	ctx context.Context,
+	req *connect.Request[pb.ListMemoryEntriesRequest],
+) (*connect.Response[pb.ListMemoryEntriesResponse], error) {
+	if s.ListMemoryEntriesUC == nil {
+		// nil-safe — empty list keeps the /profile transparency panel renderable.
+		return connect.NewResponse(&pb.ListMemoryEntriesResponse{}), nil
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var since time.Time
+	if ts := req.Msg.GetSince(); ts != nil {
+		since = ts.AsTime()
+	}
+	res, err := s.ListMemoryEntriesUC.Do(ctx, app.ListMemoryEntriesInput{
+		UserID: uid,
+		Kind:   strings.TrimSpace(req.Msg.GetKind()),
+		Since:  since,
+		Limit:  int(req.Msg.GetLimit()),
+		Offset: int(req.Msg.GetOffset()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.ListMemoryEntries: %w", s.toConnectErr(err))
+	}
+	out := &pb.ListMemoryEntriesResponse{
+		Items: make([]*pb.MemoryEntry, 0, len(res.Items)),
+		Total: int32(res.Total),
+	}
+	for _, ep := range res.Items {
+		out.Items = append(out.Items, memoryEntryToProto(ep))
+	}
+	return connect.NewResponse(out), nil
+}
+
+// DeleteMemoryEntry implements druz9.v1.IntelligenceService/DeleteMemoryEntry.
+func (s *IntelligenceServer) DeleteMemoryEntry(
+	ctx context.Context,
+	req *connect.Request[pb.DeleteMemoryEntryRequest],
+) (*connect.Response[emptypb.Empty], error) {
+	if s.DeleteMemoryEntryUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.DeleteMemoryEntry: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, perr := uuid.Parse(req.Msg.GetId())
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id: %w", perr))
+	}
+	if err := s.DeleteMemoryEntryUC.Do(ctx, uid, id); err != nil {
+		return nil, fmt.Errorf("intelligence.DeleteMemoryEntry: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&emptypb.Empty{}), nil
+}
+
+// EditMemoryEntry implements druz9.v1.IntelligenceService/EditMemoryEntry.
+// Validation (length, empty content) живёт в UC; handler делает только uuid
+// parsing + auth gate.
+func (s *IntelligenceServer) EditMemoryEntry(
+	ctx context.Context,
+	req *connect.Request[pb.EditMemoryEntryRequest],
+) (*connect.Response[pb.MemoryEntry], error) {
+	if s.EditMemoryEntryUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.EditMemoryEntry: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, perr := uuid.Parse(req.Msg.GetId())
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id: %w", perr))
+	}
+	ep, err := s.EditMemoryEntryUC.Do(ctx, app.EditMemoryEntryInput{
+		UserID:    uid,
+		EpisodeID: id,
+		Content:   req.Msg.GetContent(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.EditMemoryEntry: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(memoryEntryToProto(ep)), nil
+}
+
+func memoryEntryToProto(e domain.Episode) *pb.MemoryEntry {
+	out := &pb.MemoryEntry{
+		Id:         e.ID.String(),
+		Kind:       string(e.Kind),
+		Content:    e.Summary,
+		Source:     memorySourceLabel(e.Kind),
+		Importance: 0,
+	}
+	if !e.OccurredAt.IsZero() {
+		out.OccurredAt = timestamppb.New(e.OccurredAt.UTC())
+	}
+	if e.EditedAt != nil && !e.EditedAt.IsZero() {
+		out.EditedAt = timestamppb.New(e.EditedAt.UTC())
+	}
+	return out
+}
+
+// memorySourceLabel — short product-label produced server-side for UI grouping.
+// Pure mapping; no DB. Empty string когда kind не имеет очевидного владельца.
+func memorySourceLabel(k domain.EpisodeKind) string {
+	switch k {
+	case domain.EpisodeBriefEmitted, domain.EpisodeBriefFollowed, domain.EpisodeBriefDismissed,
+		domain.EpisodeQAQuery, domain.EpisodeQAAnswered, domain.EpisodeWeeklyMemorySummary:
+		return "coach"
+	case domain.EpisodeReflectionAdded, domain.EpisodeStandupRecorded,
+		domain.EpisodePlanSkipped, domain.EpisodePlanCompleted,
+		domain.EpisodeNoteCreated, domain.EpisodeFocusSessionDone, domain.EpisodeExternalActivity,
+		domain.EpisodeFocusReflectionAdded:
+		return "hone"
+	case domain.EpisodeMockPipelineFinished:
+		return "mock"
+	case domain.EpisodeCodexArticleOpened:
+		return "codex"
+	case domain.EpisodeCueConversationMemory, domain.EpisodeCueSession:
+		return "cue"
+	}
+	return ""
+}
+
+// ── H2 Focus reflection persistence handlers (Phase J 2026-05-12) ────────
+
+// SaveFocusReflection implements druz9.v1.IntelligenceService/SaveFocusReflection.
+// Idempotent on (user_id, session_id) — Hone outbox replay безопасен.
+func (s *IntelligenceServer) SaveFocusReflection(
+	ctx context.Context,
+	req *connect.Request[pb.SaveFocusReflectionRequest],
+) (*connect.Response[pb.SaveFocusReflectionResponse], error) {
+	if s.SaveFocusReflectionUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.SaveFocusReflection: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	m := req.Msg
+	var startedAt, endedAt time.Time
+	if ts := m.GetStartedAt(); ts != nil {
+		startedAt = ts.AsTime()
+	}
+	if ts := m.GetEndedAt(); ts != nil {
+		endedAt = ts.AsTime()
+	}
+	res, err := s.SaveFocusReflectionUC.Do(ctx, app.SaveFocusReflectionInput{
+		UserID:          uid,
+		SessionID:       m.GetSessionId(),
+		FocusMode:       m.GetFocusMode(),
+		DurationSeconds: int(m.GetDurationSeconds()),
+		Grade:           int(m.GetGrade()),
+		Notes:           m.GetNotes(),
+		TaskPinned:      m.GetTaskPinned(),
+		StartedAt:       startedAt,
+		EndedAt:         endedAt,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.SaveFocusReflection: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.SaveFocusReflectionResponse{ReflectionId: res.ID.String()}), nil
+}
+
+// ListFocusReflections implements druz9.v1.IntelligenceService/ListFocusReflections.
+// Used by Hone /stats grade-trend chart.
+func (s *IntelligenceServer) ListFocusReflections(
+	ctx context.Context,
+	req *connect.Request[pb.ListFocusReflectionsRequest],
+) (*connect.Response[pb.ListFocusReflectionsResponse], error) {
+	if s.ListFocusReflectionsUC == nil {
+		// nil-safe — пустой список держит chart renderable когда backend
+		// еще не wired (e.g. tests).
+		return connect.NewResponse(&pb.ListFocusReflectionsResponse{}), nil
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.ListFocusReflectionsUC.Do(ctx, app.ListFocusReflectionsInput{
+		UserID:     uid,
+		WindowDays: int(req.Msg.GetWindowDays()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.ListFocusReflections: %w", s.toConnectErr(err))
+	}
+	out := &pb.ListFocusReflectionsResponse{
+		Items: make([]*pb.FocusReflectionEntry, 0, len(res.Items)),
+	}
+	for _, r := range res.Items {
+		grade := int32(0)
+		if r.Grade != nil {
+			grade = int32(*r.Grade)
+		}
+		out.Items = append(out.Items, &pb.FocusReflectionEntry{
+			ReflectionId:    r.ID.String(),
+			EndedAt:         timestamppb.New(r.EndedAt.UTC()),
+			Grade:           grade,
+			FocusMode:       r.FocusMode,
+			DurationSeconds: int32(r.DurationSeconds),
+		})
+	}
+	return connect.NewResponse(out), nil
+}
+
+// ── C3 Cross-product context handler (Phase J 2026-05-12) ────────────────
+
+// GetUserContext implements druz9.v1.IntelligenceService/GetUserContext.
+// Returns the compact bundle the Cue copilot uses to personalise its
+// suggestion prompt. Auth-scoped via UserIDFromContext.
+func (s *IntelligenceServer) GetUserContext(
+	ctx context.Context,
+	_ *connect.Request[pb.GetUserContextRequest],
+) (*connect.Response[pb.GetUserContextResponse], error) {
+	if s.GetUserContextUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.GetUserContext: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	bundle, err := s.GetUserContextUC.Do(ctx, app.GetUserContextInput{UserID: uid})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetUserContext: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.GetUserContextResponse{
+		Context: userContextToProto(bundle),
+	}), nil
+}
+
+// userContextToProto translates the domain bundle into the wire shape.
+// Goal struct is reused via primaryGoalToProto. nil sub-fields are NOT
+// emitted as proto-null — instead we emit empty messages so the client
+// always reads a well-formed payload (UI checks repeated.length / scalar zero).
+func userContextToProto(b app.UserContextBundle) *pb.UserContext {
+	out := &pb.UserContext{
+		Activity: &pb.ActivitySummary{
+			Last_7DCount:  int32(b.Activity.Last7dCount),
+			Last_30DCount: int32(b.Activity.Last30dCount),
+			TopKinds:      b.Activity.TopKinds,
+		},
+		Radar: &pb.SkillRadarSnapshot{
+			Rubric:        b.Radar.Rubric,
+			Axes:          b.Radar.Axes,
+			AxisScores:    b.Radar.AxisScores,
+			WeakestAxis:   b.Radar.WeakestAxis,
+			StrongestAxis: b.Radar.StrongestAxis,
+		},
+	}
+	if b.ActiveGoal != nil {
+		out.ActiveGoal = primaryGoalToProto(*b.ActiveGoal)
+	}
+	out.RecentMemory = make([]*pb.CoachMemoryEntry, 0, len(b.RecentMemory))
+	for _, m := range b.RecentMemory {
+		out.RecentMemory = append(out.RecentMemory, &pb.CoachMemoryEntry{
+			Kind:       m.Kind,
+			Summary:    m.Summary,
+			OccurredAt: timestamppb.New(m.OccurredAt.UTC()),
+			HoursAgo:   int32(m.HoursAgo),
+		})
+	}
+	out.RelevantResources = make([]*pb.AtlasResourceRef, 0, len(b.RelevantResources))
+	for _, r := range b.RelevantResources {
+		out.RelevantResources = append(out.RelevantResources, &pb.AtlasResourceRef{
+			Id:    r.ID,
+			Title: r.Title,
+			Url:   r.URL,
+			Kind:  r.Kind,
+		})
+	}
+	return out
+}
+
+// ── X5 Atlas struggle handlers (Phase J P2 2026-05-12) ──────────────────
+//
+// All three handlers are nil-safe; tests / partial bootstrap can call them
+// without wiring the UC trio. Auth-scoped via requireUser — atlas marks are
+// strictly per-user and never leak across accounts.
+
+// MarkAtlasStruggle implements druz9.v1.IntelligenceService/MarkAtlasStruggle.
+func (s *IntelligenceServer) MarkAtlasStruggle(
+	ctx context.Context,
+	req *connect.Request[pb.MarkAtlasStruggleRequest],
+) (*connect.Response[pb.MarkAtlasStruggleResponse], error) {
+	if s.MarkAtlasStruggleUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.MarkAtlasStruggle: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.MarkAtlasStruggleUC.Do(ctx, app.MarkAtlasStruggleInput{
+		UserID:      uid,
+		AtlasNodeID: req.Msg.GetAtlasNodeId(),
+		Source:      req.Msg.GetSource(),
+		Confidence:  req.Msg.GetConfidence(),
+		Note:        req.Msg.GetNote(),
+	}); err != nil {
+		return nil, fmt.Errorf("intelligence.MarkAtlasStruggle: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.MarkAtlasStruggleResponse{Ok: true}), nil
+}
+
+// ListAtlasStruggles implements druz9.v1.IntelligenceService/ListAtlasStruggles.
+func (s *IntelligenceServer) ListAtlasStruggles(
+	ctx context.Context,
+	req *connect.Request[pb.ListAtlasStrugglesRequest],
+) (*connect.Response[pb.ListAtlasStrugglesResponse], error) {
+	if s.ListAtlasStrugglesUC == nil {
+		// nil-safe — пустой список держит web AtlasPage render'имым когда
+		// backend ещё не wired (e.g. dev без LLM stack).
+		return connect.NewResponse(&pb.ListAtlasStrugglesResponse{}), nil
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.ListAtlasStrugglesUC.Do(ctx, app.ListAtlasStrugglesInput{
+		UserID:     uid,
+		WindowDays: int(req.Msg.GetWindowDays()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.ListAtlasStruggles: %w", s.toConnectErr(err))
+	}
+	resp := &pb.ListAtlasStrugglesResponse{
+		Items: make([]*pb.AtlasStruggleMark, 0, len(out.Items)),
+	}
+	for _, m := range out.Items {
+		resp.Items = append(resp.Items, &pb.AtlasStruggleMark{
+			AtlasNodeId: m.AtlasNodeID,
+			Source:      string(m.Source),
+			Confidence:  m.Confidence,
+			Note:        m.Note,
+			MarkedAt:    timestamppb.New(m.MarkedAt.UTC()),
+		})
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ClearAtlasStruggle implements druz9.v1.IntelligenceService/ClearAtlasStruggle.
+func (s *IntelligenceServer) ClearAtlasStruggle(
+	ctx context.Context,
+	req *connect.Request[pb.ClearAtlasStruggleRequest],
+) (*connect.Response[pb.ClearAtlasStruggleResponse], error) {
+	if s.ClearAtlasStruggleUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("intelligence.ClearAtlasStruggle: not wired"))
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.ClearAtlasStruggleUC.Do(ctx, app.ClearAtlasStruggleInput{
+		UserID:      uid,
+		AtlasNodeID: req.Msg.GetAtlasNodeId(),
+	}); err != nil {
+		return nil, fmt.Errorf("intelligence.ClearAtlasStruggle: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.ClearAtlasStruggleResponse{Ok: true}), nil
 }

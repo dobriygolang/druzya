@@ -281,8 +281,6 @@ func stepKindToProto(k tracksDomain.StepKind) pb.TrackStepKind {
 	switch k {
 	case tracksDomain.StepKindKata:
 		return pb.TrackStepKind_TRACK_STEP_KIND_KATA
-	case tracksDomain.StepKindArena:
-		return pb.TrackStepKind_TRACK_STEP_KIND_ARENA
 	case tracksDomain.StepKindMock:
 		return pb.TrackStepKind_TRACK_STEP_KIND_MOCK
 	case tracksDomain.StepKindCodexRead:

@@ -29,6 +29,13 @@ type ProfileRepo interface {
 	GetSettings(ctx context.Context, userID uuid.UUID) (Settings, error)
 	UpdateSettings(ctx context.Context, userID uuid.UUID, s Settings) error
 
+	// Stream D (2026-05-12) — auxiliary read/write for the
+	// users.tutor_mode_enabled flag (migration 00093). Kept out of
+	// GetSettings/UpdateSettings so the UC layer can decide whether to
+	// invoke them (PUT may omit the field; Bundle reads always include).
+	GetTutorModeEnabled(ctx context.Context, userID uuid.UUID) (bool, error)
+	SetTutorModeEnabled(ctx context.Context, userID uuid.UUID, enabled bool) error
+
 	// UpdateRole rewrites users.role. Used by BecomeInterviewer to promote
 	// a regular user; idempotent (no-op when current role is already >= role).
 	UpdateRole(ctx context.Context, userID uuid.UUID, role string) error
@@ -64,6 +71,22 @@ type ProfileRepo interface {
 	// bulk insert в одной транзакции; started_at сохраняется для треков,
 	// которые остались, и проставляется now() для новых.
 	SetUserTracks(ctx context.Context, userID uuid.UUID, items []UserTrack) ([]UserTrack, error)
+
+	// ── Phase J / X1 (P0) install tracking ───────────────────────────────
+	// UpsertAppInstall idempotently records a heartbeat from one surface
+	// (web / hone / cue). `inserted` is true ONLY when this call created
+	// a fresh row — used by the trial-Pro grant gate. installCountBefore
+	// is the number of rows for this user that existed BEFORE the upsert,
+	// also for the trial gate.
+	UpsertAppInstall(
+		ctx context.Context,
+		userID uuid.UUID,
+		app AppSurface,
+		appVersion string,
+	) (install AppInstall, inserted bool, installCountBefore int64, err error)
+
+	// ListAppInstalls returns all install rows for a user, oldest-first.
+	ListAppInstalls(ctx context.Context, userID uuid.UUID) ([]AppInstall, error)
 }
 
 // Bundle is the joined shape of GET /profile/me.

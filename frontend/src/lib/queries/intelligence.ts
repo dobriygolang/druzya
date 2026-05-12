@@ -57,6 +57,8 @@ const STALE_MS = 10 * 60 * 1000
 
 export const intelligenceKeys = {
   brief: () => ['intelligence', 'daily-brief'] as const,
+  memoryStats: () => ['intelligence', 'memory-stats'] as const,
+  atlasStruggles: () => ['intelligence', 'atlas-struggles'] as const,
 }
 
 export function useDailyBriefQuery() {
@@ -71,6 +73,97 @@ export function useDailyBriefQuery() {
     staleTime: STALE_MS,
     // 503 (LLM unavailable) — частая в dev'е без OpenRouter ключа. Не
     // ретраим, показываем placeholder card.
+    retry: false,
+  })
+}
+
+// MemoryStats — F1 trust indicator (Phase B 2026-05-12). Backend endpoint:
+// GET /api/v1/intelligence/memory/stats (см intelligence.proto:337). Возвращает
+// сколько событий coach «помнит» за 30 дней + breakdown по kind. Используется
+// на AITutorChatPage (badge «coach помнит N событий») и в Hone DailyBriefPanel.
+//
+// `byKind` keys mirror domain.EpisodeKind constants: brief_emitted /
+// brief_followed / reflection_added / mock_pipeline_finished / standup_recorded
+// и т.д. (16 видов total).
+export interface MemoryStats {
+  total30d: number
+  byKind: Record<string, number>
+}
+
+// Wire shape: backend кодирует камень_кейс protobuf-имена в snake_case JSON.
+// total_30d → total30d на frontend, by_kind → byKind. Хранится в snake_case
+// чтобы api<T> deserialise работал zero-cost (matches generated TS types).
+interface MemoryStatsWire {
+  total_30d?: number
+  by_kind?: Record<string, number>
+}
+
+export function useMemoryStatsQuery() {
+  return useQuery({
+    queryKey: intelligenceKeys.memoryStats(),
+    queryFn: async (): Promise<MemoryStats> => {
+      const wire = await api<MemoryStatsWire>('/intelligence/memory/stats')
+      return {
+        total30d: wire.total_30d ?? 0,
+        byKind: wire.by_kind ?? {},
+      }
+    },
+    // Memory stats — slow-changing trust indicator. 5 min staleTime
+    // достаточно: episode counter инкрементится 1-2 раза в час максимум.
+    staleTime: 5 * 60 * 1000,
+    // 401 на /memory/stats → апи-клиент сам редиректит на /welcome, ретраить
+    // нет смысла. Backend errors допустимо показывать как «coach is learning…»
+    // (badge fallback in CoachMemoryHeader).
+    retry: false,
+  })
+}
+
+// ── X5 Atlas struggle marks (Phase J P2 2026-05-12) ─────────────────────
+//
+// Cross-product handoff: Cue session analysis + Hone reflection emit
+// MarkAtlasStruggle when user is stuck on a topic. Web Atlas reads via
+// useAtlasStrugglesQuery and renders subtle b/w indicators (single red
+// dot per CLAUDE.md rule) on matched nodes.
+//
+// Endpoint: GET /api/v1/intelligence/atlas/struggle?window_days=30
+// 503/empty → silent fallback (empty array, no struggle highlights).
+
+export interface AtlasStruggleMark {
+  atlasNodeId: string
+  source: 'cue_session' | 'hone_reflection' | 'mock_stage' | 'manual'
+  confidence: number
+  note: string
+  markedAt: string
+}
+
+interface AtlasStruggleWire {
+  atlas_node_id?: string
+  source?: string
+  confidence?: number
+  note?: string
+  marked_at?: string
+}
+
+interface ListAtlasStrugglesWire {
+  items?: AtlasStruggleWire[]
+}
+
+export function useAtlasStrugglesQuery(windowDays = 30) {
+  return useQuery({
+    queryKey: [...intelligenceKeys.atlasStruggles(), windowDays],
+    queryFn: async (): Promise<AtlasStruggleMark[]> => {
+      const wire = await api<ListAtlasStrugglesWire>(
+        `/intelligence/atlas/struggle?window_days=${windowDays}`,
+      )
+      return (wire.items ?? []).map((w) => ({
+        atlasNodeId: w.atlas_node_id ?? '',
+        source: (w.source as AtlasStruggleMark['source']) ?? 'manual',
+        confidence: w.confidence ?? 0.5,
+        note: w.note ?? '',
+        markedAt: w.marked_at ?? '',
+      }))
+    },
+    staleTime: 5 * 60 * 1000,
     retry: false,
   })
 }

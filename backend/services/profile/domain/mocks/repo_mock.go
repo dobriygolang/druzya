@@ -176,6 +176,36 @@ func (mr *MockProfileRepoMockRecorder) GetSettings(ctx, userID any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSettings", reflect.TypeOf((*MockProfileRepo)(nil).GetSettings), ctx, userID)
 }
 
+// GetTutorModeEnabled mocks base method.
+func (m *MockProfileRepo) GetTutorModeEnabled(ctx context.Context, userID uuid.UUID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTutorModeEnabled", ctx, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTutorModeEnabled indicates an expected call of GetTutorModeEnabled.
+func (mr *MockProfileRepoMockRecorder) GetTutorModeEnabled(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTutorModeEnabled", reflect.TypeOf((*MockProfileRepo)(nil).GetTutorModeEnabled), ctx, userID)
+}
+
+// ListAppInstalls mocks base method.
+func (m *MockProfileRepo) ListAppInstalls(ctx context.Context, userID uuid.UUID) ([]domain.AppInstall, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAppInstalls", ctx, userID)
+	ret0, _ := ret[0].([]domain.AppInstall)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAppInstalls indicates an expected call of ListAppInstalls.
+func (mr *MockProfileRepoMockRecorder) ListAppInstalls(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAppInstalls", reflect.TypeOf((*MockProfileRepo)(nil).ListAppInstalls), ctx, userID)
+}
+
 // ListInterviewerApplications mocks base method.
 func (m *MockProfileRepo) ListInterviewerApplications(ctx context.Context, status string) ([]domain.InterviewerApplication, error) {
 	m.ctrl.T.Helper()
@@ -236,6 +266,20 @@ func (mr *MockProfileRepoMockRecorder) RejectInterviewerApplication(ctx, applica
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RejectInterviewerApplication", reflect.TypeOf((*MockProfileRepo)(nil).RejectInterviewerApplication), ctx, applicationID, adminID, note)
 }
 
+// SetTutorModeEnabled mocks base method.
+func (m *MockProfileRepo) SetTutorModeEnabled(ctx context.Context, userID uuid.UUID, enabled bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetTutorModeEnabled", ctx, userID, enabled)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetTutorModeEnabled indicates an expected call of SetTutorModeEnabled.
+func (mr *MockProfileRepoMockRecorder) SetTutorModeEnabled(ctx, userID, enabled any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTutorModeEnabled", reflect.TypeOf((*MockProfileRepo)(nil).SetTutorModeEnabled), ctx, userID, enabled)
+}
+
 // SetUserTracks mocks base method.
 func (m *MockProfileRepo) SetUserTracks(ctx context.Context, userID uuid.UUID, items []domain.UserTrack) ([]domain.UserTrack, error) {
 	m.ctrl.T.Helper()
@@ -292,6 +336,23 @@ func (m *MockProfileRepo) UpdateSettings(ctx context.Context, userID uuid.UUID, 
 func (mr *MockProfileRepoMockRecorder) UpdateSettings(ctx, userID, s any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSettings", reflect.TypeOf((*MockProfileRepo)(nil).UpdateSettings), ctx, userID, s)
+}
+
+// UpsertAppInstall mocks base method.
+func (m *MockProfileRepo) UpsertAppInstall(ctx context.Context, userID uuid.UUID, app domain.AppSurface, appVersion string) (domain.AppInstall, bool, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpsertAppInstall", ctx, userID, app, appVersion)
+	ret0, _ := ret[0].(domain.AppInstall)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(int64)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// UpsertAppInstall indicates an expected call of UpsertAppInstall.
+func (mr *MockProfileRepoMockRecorder) UpsertAppInstall(ctx, userID, app, appVersion any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertAppInstall", reflect.TypeOf((*MockProfileRepo)(nil).UpsertAppInstall), ctx, userID, app, appVersion)
 }
 
 // UpsertSkillNode mocks base method.

@@ -17,6 +17,7 @@ syntax = "proto3";
 package druz9.v1;
 
 import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
@@ -310,6 +311,337 @@ message LogResourceResponse {
   bool   note_create_failed    = 3;
 }
 
+// ── F2 Goal CRUD (2026-05-12) ────────────────────────────────────────────
+//
+// Single-active "primary goal" per user — mirrors frontend localStorage MVP
+// (frontend/src/lib/goal.ts). Backed by user_primary_goals table (migration
+// 00086). 5 kinds — top_tier_co / any_senior / ml_offer / english_target /
+// custom. Conceptually distinct from the existing /api/v1/goals chi-direct
+// CRUD (job_target/skill_target/track_target workflow goals с status).
+
+enum GoalKind {
+  GOAL_KIND_UNSPECIFIED    = 0;
+  GOAL_KIND_TOP_TIER_CO    = 1;  // Senior at specific top-tier company
+  GOAL_KIND_ANY_SENIOR     = 2;  // Senior at any company
+  GOAL_KIND_ML_OFFER       = 3;  // ML Engineer offer
+  GOAL_KIND_ENGLISH_TARGET = 4;  // TOEFL 100+ / IELTS 7+ / CEFR-B2+
+  GOAL_KIND_CUSTOM         = 5;  // free-text, AI parses
+}
+
+message Goal {
+  string                    id              = 1;
+  GoalKind                  kind            = 2;
+  string                    target_company  = 3;
+  string                    target_level    = 4;
+  string                    target_text     = 5;
+  // target_date — ISO yyyy-mm-dd; "" если не задано.
+  string                    target_date     = 6;
+  bool                      active          = 7;
+  google.protobuf.Timestamp created_at      = 8;
+  google.protobuf.Timestamp updated_at      = 9;
+}
+
+message CreateGoalRequest {
+  GoalKind kind           = 1;
+  string   target_company = 2;
+  string   target_level   = 3;
+  string   target_text    = 4;
+  string   target_date    = 5; // ISO yyyy-mm-dd; "" allowed
+}
+
+message UpdateGoalRequest {
+  // id MUST refer to a goal owned by the caller; otherwise NotFound.
+  string   id             = 1;
+  GoalKind kind           = 2;
+  string   target_company = 3;
+  string   target_level   = 4;
+  string   target_text    = 5;
+  string   target_date    = 6;
+}
+
+message DeactivateGoalRequest {
+  string id = 1;
+}
+
+// ── F10 Interview-session ingestion (2026-05-12) ─────────────────────────
+//
+// Cue end-of-session POSTs transcript + per-stage log. Backend stores the
+// session row + ALSO writes a coach_episodes row (kind=cue_session) so the
+// existing memory layer surfaces it in DailyBrief / Recall.
+//
+// NB: messages prefixed `Interview*` чтобы развести с hone.proto.CueSession
+// (file-based imported transcript). Здесь — live ingestion из Cue desktop'а.
+
+message InterviewStage {
+  string stage        = 1; // 'hr' | 'algo' | 'sysdesign' | 'coding' | 'behavioral' | 'other'
+  int32  self_rating  = 2; // 1..5, 0 = unrated
+  string notes        = 3;
+}
+
+message InterviewSession {
+  string                    id              = 1;
+  string                    company         = 2;
+  string                    persona         = 3;
+  repeated InterviewStage   stages          = 4;
+  string                    ai_summary      = 5;
+  string                    raw_transcript  = 6;
+  google.protobuf.Timestamp completed_at    = 7;
+}
+
+message IngestInterviewSessionRequest {
+  string                  company        = 1;
+  string                  persona        = 2;
+  repeated InterviewStage stages         = 3;
+  string                  ai_summary     = 4;
+  string                  raw_transcript = 5;
+  // completed_at — RFC3339; empty → server time.
+  google.protobuf.Timestamp completed_at = 6;
+}
+
+message ListInterviewSessionsRequest {
+  int32 limit  = 1; // 0 → server default (20), max 100
+  int32 offset = 2;
+}
+
+message ListInterviewSessionsResponse {
+  repeated InterviewSession items = 1;
+  int32                     total = 2;
+}
+
+// ── F2 LLM-driven milestones (2026-05-12) ────────────────────────────────
+//
+// 10-12 weekly checkpoints decomposed from the active PrimaryGoal by the
+// free LLM cascade. Cache 30d per (user, goal) — milestones are roadmap,
+// not daily action. GenerateMilestones forces regeneration; GetMilestones
+// returns the cached set (empty array if no generation yet).
+
+message Milestone {
+  string id          = 1;
+  int32  week_index  = 2;
+  // week_start — ISO yyyy-mm-dd Monday of the milestone's week.
+  string week_start  = 3;
+  string title       = 4;
+  string detail      = 5;
+  // category ∈ foundation | practice | mock | reflection | final.
+  string category    = 6;
+  bool                      done    = 7;
+  google.protobuf.Timestamp done_at = 8;
+}
+
+message MilestonesResponse {
+  repeated Milestone items = 1;
+  // generated_at — newest milestone's GeneratedAt timestamp. Zero when empty.
+  google.protobuf.Timestamp generated_at = 2;
+}
+
+message MarkMilestoneDoneRequest {
+  string id   = 1;
+  bool   done = 2;
+}
+
+// ── R3 Per-node coverage (2026-05-12) ────────────────────────────────────
+//
+// Backend mirror of frontend lib/atlasCoverage.ts heuristic. Aggregates
+// user_resource_log по atlas_node_id за 30d window; state derivation matches
+// the heuristic (3+ → covered, 1-2 recent → partial, 1-2 cold → struggling,
+// 0 → not_yet).
+
+message NodeCoverage {
+  string node_key         = 1;
+  // state ∈ covered | partial | struggling | not_yet.
+  string state            = 2;
+  int32  match_count_30d  = 3;
+  int32  match_count_7d   = 4;
+  google.protobuf.Timestamp last_match_at = 5;
+}
+
+message GetNodeCoverageRequest {
+  repeated string node_keys = 1;
+}
+
+message GetNodeCoverageResponse {
+  repeated NodeCoverage items = 1;
+}
+
+// ── F1 Memory expansion Phase 2 (2026-05-12) ─────────────────────────────
+//
+// /profile transparency surface — user sees what the AI remembers and can
+// soft-delete individual entries.
+
+message MemoryEntry {
+  string id      = 1;
+  // kind mirrors domain.EpisodeKind (brief_emitted/cue_session/etc.).
+  string kind    = 2;
+  // content — single-line summary stored in coach_episodes.summary.
+  string content = 3;
+  // source — short label ('hone', 'cue', 'mock', 'coach') derived server-side
+  // from kind для UI grouping. May be empty.
+  string source = 4;
+  // importance — float in [0..1] reserved для будущей weighting; 0 = unscored.
+  double importance = 5;
+  google.protobuf.Timestamp occurred_at = 6;
+  google.protobuf.Timestamp expires_at  = 7;
+  // edited_at — non-nil если юзер уточнял formulation через EditMemoryEntry.
+  // UI рисует subtle «edited» индикатор когда set.
+  google.protobuf.Timestamp edited_at  = 8;
+}
+
+message ListMemoryEntriesRequest {
+  // kind — optional filter; empty string = all kinds.
+  string kind = 1;
+  // since — optional lower bound on occurred_at. Empty → unrestricted.
+  google.protobuf.Timestamp since = 2;
+  int32  limit  = 3;  // 0 → server default (50), max 200
+  int32  offset = 4;
+}
+
+message ListMemoryEntriesResponse {
+  repeated MemoryEntry items = 1;
+  int32                total = 2;
+}
+
+message DeleteMemoryEntryRequest {
+  string id = 1;
+}
+
+// EditMemoryEntryRequest — юзер уточняет formulation entry'и. Content
+// валидируется backend'ом: trim + length [1..2000] runes.
+message EditMemoryEntryRequest {
+  string id      = 1;
+  string content = 2;
+}
+
+// ── C3 Cross-product context injection (Phase J 2026-05-12) ─────────────
+//
+// Compact bundle the Cue copilot fetches before building an interview /
+// meeting suggestion prompt. The unique moat vs Cluely: Cue knows the
+// user's primary goal + recent Coach memory + activity_log + skill radar
+// → suggestion is personalised ("remember last week Coach said start
+// with bottleneck analysis"), not generic.
+//
+// Token budget: caller MUST keep the formatted prompt block under
+// ~500 tokens. Reader truncates aggressively when fields exceed sane
+// thresholds.
+
+// CoachMemoryEntry — one episode from coach_episodes the suggestion
+// prompt may reference. Minimal projection (id+kind+summary+occurred_at) —
+// payload is intentionally NOT exposed (security: don't leak full
+// reflection bodies into a transcript-tail context).
+message CoachMemoryEntry {
+  string kind        = 1;   // 'brief_emitted' | 'reflection_added' | 'mock_pipeline_finished' | …
+  string summary     = 2;   // single-line gist
+  google.protobuf.Timestamp occurred_at = 3;
+  // hours_ago pre-computed server-side ("2 days ago" framing).
+  int32 hours_ago    = 4;
+}
+
+// ActivitySummary — rolled-up user_resource_log counts (last 7d / 30d).
+message ActivitySummary {
+  int32  last_7d_count   = 1;
+  int32  last_30d_count  = 2;
+  // top_kinds — distinct atlas_node_id prefixes / resource kinds, most-
+  // frequent first. Server caps at 5 entries.
+  repeated string top_kinds = 3;
+}
+
+// SkillRadarSnapshot — compact 5-axis projection. Same shape as
+// SkillRadar but flattened для context block.
+message SkillRadarSnapshot {
+  string rubric = 1;
+  // axes is paired with axis_scores 1:1 — server emits both in same order.
+  repeated string  axes         = 2;
+  repeated double  axis_scores  = 3;   // 0..1
+  // weakest / strongest highlight axis_key labels for quick prompt phrasing.
+  string weakest_axis   = 4;
+  string strongest_axis = 5;
+}
+
+// AtlasResourceRef — top-N relevant resources for the user's active goal +
+// recent activity. Stub: empty until atlas-retrieval API lands. Kept in
+// the schema so clients render the section once data flows.
+message AtlasResourceRef {
+  string id    = 1;
+  string title = 2;
+  string url   = 3;
+  // kind ∈ 'book' | 'course' | 'article' | 'paper'.
+  string kind  = 4;
+}
+
+// UserContext — the full bundle Cue uses to personalise a suggestion. All
+// fields are optional — missing data ≠ error. Reader degrades to "no
+// context" silently if every sub-field is empty.
+message UserContext {
+  // active_goal — null when the user has no active primary goal.
+  // Reuses Goal message (same definition above).
+  Goal active_goal = 1;
+  // recent_memory — last 10-15 coach episodes (newest first).
+  repeated CoachMemoryEntry recent_memory = 2;
+  // activity — last 7d / 30d activity_log summary.
+  ActivitySummary activity = 3;
+  // radar — skill-radar snapshot (default 'dev_senior' rubric).
+  SkillRadarSnapshot radar = 4;
+  // relevant_resources — top-5 atlas hits. Empty until atlas retrieval
+  // hook wired (see TODO in intelligence.app.GetUserContext).
+  repeated AtlasResourceRef relevant_resources = 5;
+}
+
+message GetUserContextRequest {
+  // user_id is taken from auth context — no body fields. Persona-tuning
+  // happens in the caller (Cue copilot trims sections per persona).
+}
+
+message GetUserContextResponse {
+  UserContext context = 1;
+}
+
+// ── H2 Focus reflection persistence (Phase J 2026-05-12) ─────────────────
+//
+// Hone end-of-pomodoro reflection prompt раньше собирал grade + notes,
+// но они не сохранялись («// future RPC» comment в App.tsx). Эта пара RPC
+// закрывает loop: SaveFocusReflection пишет в focus_reflections (idempotent
+// через session_id), ListFocusReflections даёт /stats grade-trend chart.
+// Coach next-action prompt также читает recent reflections — context-aware
+// recommendations («previously stuck on X with grade 2 — try Y today»).
+//
+// focus_mode mirrors hone domain enum: pomodoro|stopwatch|free|plan|pinned|countdown.
+// grade ∈ [1,5], 0 = no rating (only notes submitted).
+
+message SaveFocusReflectionRequest {
+  // session_id — client-generated UUID, должно совпадать с hone_focus_sessions.id.
+  // Idempotency: backend UNIQUE(user_id, session_id) → replay safe.
+  string session_id        = 1;
+  string focus_mode        = 2;
+  int32  duration_seconds  = 3;
+  // grade ∈ [1,5]; 0 = no rating (only notes).
+  int32  grade             = 4;
+  string notes             = 5;
+  string task_pinned       = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp ended_at   = 8;
+}
+
+message SaveFocusReflectionResponse {
+  string reflection_id = 1;
+}
+
+// FocusReflectionEntry — projection для /stats grade-trend chart.
+message FocusReflectionEntry {
+  string                    reflection_id    = 1;
+  google.protobuf.Timestamp ended_at         = 2;
+  int32                     grade            = 3;  // 0 если NULL
+  string                    focus_mode       = 4;
+  int32                     duration_seconds = 5;
+}
+
+message ListFocusReflectionsRequest {
+  // window_days — окно (default 30, hard cap 365).
+  int32 window_days = 1;
+}
+
+message ListFocusReflectionsResponse {
+  repeated FocusReflectionEntry items = 1;
+}
+
 service IntelligenceService {
   rpc GetDailyBrief(GetDailyBriefRequest) returns (DailyBrief) {
     option (google.api.http) = {
@@ -398,4 +730,179 @@ service IntelligenceService {
   rpc GetCoachStats(GetCoachStatsRequest) returns (CoachStats) {
     option (google.api.http) = { get: "/api/v1/intelligence/coach-stats" };
   }
+
+  // ── F2 Goal CRUD (2026-05-12) ────────────────────────────────────────
+  rpc CreateGoal(CreateGoalRequest) returns (Goal) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/goals/primary"
+      body: "*"
+    };
+  }
+  // GetActiveGoal returns NotFound when the user has no active primary goal.
+  rpc GetActiveGoal(google.protobuf.Empty) returns (Goal) {
+    option (google.api.http) = { get: "/api/v1/intelligence/goals/primary/active" };
+  }
+  rpc UpdateGoal(UpdateGoalRequest) returns (Goal) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/goals/primary/update"
+      body: "*"
+    };
+  }
+  rpc DeactivateGoal(DeactivateGoalRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/goals/primary/deactivate"
+      body: "*"
+    };
+  }
+
+  // ── F10 Interview-session ingestion (2026-05-12) ────────────────────
+  rpc IngestInterviewSession(IngestInterviewSessionRequest) returns (InterviewSession) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/interview-sessions/ingest"
+      body: "*"
+    };
+  }
+  rpc ListInterviewSessions(ListInterviewSessionsRequest) returns (ListInterviewSessionsResponse) {
+    option (google.api.http) = { get: "/api/v1/intelligence/interview-sessions" };
+  }
+
+  // ── F2 LLM-driven milestones (2026-05-12) ───────────────────────────
+  rpc GenerateMilestones(google.protobuf.Empty) returns (MilestonesResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/milestones/generate"
+      body: "*"
+    };
+  }
+  rpc GetMilestones(google.protobuf.Empty) returns (MilestonesResponse) {
+    option (google.api.http) = { get: "/api/v1/intelligence/milestones" };
+  }
+  rpc MarkMilestoneDone(MarkMilestoneDoneRequest) returns (Milestone) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/milestones/{id}/done"
+      body: "*"
+    };
+  }
+
+  // ── R3 Per-node coverage (2026-05-12) ───────────────────────────────
+  rpc GetNodeCoverage(GetNodeCoverageRequest) returns (GetNodeCoverageResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/atlas/coverage"
+      body: "*"
+    };
+  }
+
+  // ── F1 Memory expansion Phase 2 (2026-05-12) ────────────────────────
+  rpc ListMemoryEntries(ListMemoryEntriesRequest) returns (ListMemoryEntriesResponse) {
+    option (google.api.http) = { get: "/api/v1/intelligence/memory/entries" };
+  }
+  rpc DeleteMemoryEntry(DeleteMemoryEntryRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/memory/entries/{id}/delete"
+      body: "*"
+    };
+  }
+  rpc EditMemoryEntry(EditMemoryEntryRequest) returns (MemoryEntry) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/memory/entries/{id}/edit"
+      body: "*"
+    };
+  }
+
+  // ── H2 Focus reflection persistence (Phase J 2026-05-12) ──────────────
+  rpc SaveFocusReflection(SaveFocusReflectionRequest) returns (SaveFocusReflectionResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/focus-reflections"
+      body: "*"
+    };
+  }
+  rpc ListFocusReflections(ListFocusReflectionsRequest) returns (ListFocusReflectionsResponse) {
+    option (google.api.http) = { get: "/api/v1/intelligence/focus-reflections" };
+  }
+
+  // ── C3 Cross-product context (Phase J 2026-05-12) ─────────────────────
+  // GetUserContext returns the compact bundle Cue copilot injects into the
+  // suggestion prompt: active goal + recent Coach memory + activity_log +
+  // skill radar + Atlas refs. user_id derives from auth context.
+  rpc GetUserContext(GetUserContextRequest) returns (GetUserContextResponse) {
+    option (google.api.http) = { get: "/api/v1/intelligence/user-context" };
+  }
+
+  // ── X5 Cross-product handoff: Atlas struggle marks (Phase J 2026-05-12) ─
+  //
+  // Bidirectional handoff signal: Cue session analysis OR Hone reflection
+  // submits MarkAtlasStruggle("dist-sharding") → web Atlas highlights that
+  // node next time the user opens it. Per-user override of the curated
+  // atlas graph. Source distinguishes provenance (cue_session / hone_reflection
+  // / mock_stage) for future debug/analytics.
+  rpc MarkAtlasStruggle(MarkAtlasStruggleRequest) returns (MarkAtlasStruggleResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/atlas/struggle/mark"
+      body: "*"
+    };
+  }
+  rpc ListAtlasStruggles(ListAtlasStrugglesRequest) returns (ListAtlasStrugglesResponse) {
+    option (google.api.http) = { get: "/api/v1/intelligence/atlas/struggle" };
+  }
+  rpc ClearAtlasStruggle(ClearAtlasStruggleRequest) returns (ClearAtlasStruggleResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/atlas/struggle/clear"
+      body: "*"
+    };
+  }
+}
+
+// ── X5 Atlas struggle marks messages (Phase J 2026-05-12) ────────────────
+//
+// Compact contract. Single row per (user, atlas_node_id) — latest write
+// wins (idempotent ON CONFLICT). Confidence ∈ [0,1] lets multiple sources
+// of evidence aggregate via max() in the UI («cue rated low + reflection
+// flagged → strong»). Empty source defaults to "manual" в repo.
+
+message MarkAtlasStruggleRequest {
+  // atlas_node_id — stable key (`tracks/system-design/dist-sharding` or
+  // user-cluster id). Frontend sends whatever atlas_nodes.id it has.
+  string atlas_node_id = 1;
+  // source ∈ 'cue_session' | 'hone_reflection' | 'mock_stage' | 'manual'.
+  // Server validates closed set; empty → 'manual'.
+  string source = 2;
+  // confidence ∈ [0,1]. Caller's strength signal: low Cue rating (1/5) →
+  // 0.9, low reflection grade (2/5) → 0.7, etc. UI may pick highest among
+  // duplicate sources.
+  double confidence = 3;
+  // note — optional one-line context that surfaces in tooltip («grade 2
+  // — stuck on joins»). Max 280 chars; truncated server-side.
+  string note = 4;
+}
+
+message MarkAtlasStruggleResponse {
+  bool ok = 1;
+}
+
+message ListAtlasStrugglesRequest {
+  // window_days — only return marks newer than now()-N days. Default 30,
+  // hard cap 365. 0 → server default.
+  int32 window_days = 1;
+}
+
+// AtlasStruggleMark — projection over user_atlas_struggle_marks.
+message AtlasStruggleMark {
+  string atlas_node_id = 1;
+  string source = 2;
+  double confidence = 3;
+  string note = 4;
+  google.protobuf.Timestamp marked_at = 5;
+}
+
+message ListAtlasStrugglesResponse {
+  repeated AtlasStruggleMark items = 1;
+}
+
+// ClearAtlasStruggle — explicit user gesture («I'm not stuck anymore»),
+// removes the row. Idempotent — clearing a non-existent mark returns ok.
+message ClearAtlasStruggleRequest {
+  string atlas_node_id = 1;
+}
+
+message ClearAtlasStruggleResponse {
+  bool ok = 1;
 }

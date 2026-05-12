@@ -825,3 +825,110 @@ func (mr *MockMockSessionGateMockRecorder) HasActiveBlockingSession(ctx, userID 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasActiveBlockingSession", reflect.TypeOf((*MockMockSessionGate)(nil).HasActiveBlockingSession), ctx, userID)
 }
+
+// MockInterviewPrepRepo is a mock of InterviewPrepRepo interface.
+type MockInterviewPrepRepo struct {
+	ctrl     *gomock.Controller
+	recorder *MockInterviewPrepRepoMockRecorder
+	isgomock struct{}
+}
+
+// MockInterviewPrepRepoMockRecorder is the mock recorder for MockInterviewPrepRepo.
+type MockInterviewPrepRepoMockRecorder struct {
+	mock *MockInterviewPrepRepo
+}
+
+// NewMockInterviewPrepRepo creates a new mock instance.
+func NewMockInterviewPrepRepo(ctrl *gomock.Controller) *MockInterviewPrepRepo {
+	mock := &MockInterviewPrepRepo{ctrl: ctrl}
+	mock.recorder = &MockInterviewPrepRepoMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockInterviewPrepRepo) EXPECT() *MockInterviewPrepRepoMockRecorder {
+	return m.recorder
+}
+
+// EndActive mocks base method.
+func (m *MockInterviewPrepRepo) EndActive(ctx context.Context, userID, sessionID uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EndActive", ctx, userID, sessionID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EndActive indicates an expected call of EndActive.
+func (mr *MockInterviewPrepRepoMockRecorder) EndActive(ctx, userID, sessionID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EndActive", reflect.TypeOf((*MockInterviewPrepRepo)(nil).EndActive), ctx, userID, sessionID)
+}
+
+// GetActive mocks base method.
+func (m *MockInterviewPrepRepo) GetActive(ctx context.Context, userID uuid.UUID) (domain.InterviewPrep, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActive", ctx, userID)
+	ret0, _ := ret[0].(domain.InterviewPrep)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActive indicates an expected call of GetActive.
+func (mr *MockInterviewPrepRepoMockRecorder) GetActive(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActive", reflect.TypeOf((*MockInterviewPrepRepo)(nil).GetActive), ctx, userID)
+}
+
+// StartActive mocks base method.
+func (m *MockInterviewPrepRepo) StartActive(ctx context.Context, userID uuid.UUID, parsedCV domain.ParsedCV, parsedJD domain.ParsedJD, cvText, jdText string) (domain.InterviewPrep, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartActive", ctx, userID, parsedCV, parsedJD, cvText, jdText)
+	ret0, _ := ret[0].(domain.InterviewPrep)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StartActive indicates an expected call of StartActive.
+func (mr *MockInterviewPrepRepoMockRecorder) StartActive(ctx, userID, parsedCV, parsedJD, cvText, jdText any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartActive", reflect.TypeOf((*MockInterviewPrepRepo)(nil).StartActive), ctx, userID, parsedCV, parsedJD, cvText, jdText)
+}
+
+// MockInterviewPrepProvider is a mock of InterviewPrepProvider interface.
+type MockInterviewPrepProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockInterviewPrepProviderMockRecorder
+	isgomock struct{}
+}
+
+// MockInterviewPrepProviderMockRecorder is the mock recorder for MockInterviewPrepProvider.
+type MockInterviewPrepProviderMockRecorder struct {
+	mock *MockInterviewPrepProvider
+}
+
+// NewMockInterviewPrepProvider creates a new mock instance.
+func NewMockInterviewPrepProvider(ctrl *gomock.Controller) *MockInterviewPrepProvider {
+	mock := &MockInterviewPrepProvider{ctrl: ctrl}
+	mock.recorder = &MockInterviewPrepProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockInterviewPrepProvider) EXPECT() *MockInterviewPrepProviderMockRecorder {
+	return m.recorder
+}
+
+// LoadActivePrep mocks base method.
+func (m *MockInterviewPrepProvider) LoadActivePrep(ctx context.Context, userID uuid.UUID) (domain.InterviewPrep, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadActivePrep", ctx, userID)
+	ret0, _ := ret[0].(domain.InterviewPrep)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadActivePrep indicates an expected call of LoadActivePrep.
+func (mr *MockInterviewPrepProviderMockRecorder) LoadActivePrep(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadActivePrep", reflect.TypeOf((*MockInterviewPrepProvider)(nil).LoadActivePrep), ctx, userID)
+}

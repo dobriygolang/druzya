@@ -4,9 +4,8 @@
 // (user-id, weekISO) — LLM output for a finished week is stable, so the same
 // page-reload cost is paid once per week per user.
 //
-// We deliberately re-implement the thin HTTP client here (rather than reusing
-// vacancies/infra) to keep cross-domain coupling out: the two extractors will
-// drift independently as their prompts evolve.
+// Implements its own thin HTTP client (no shared extractor pkg) so the
+// insight prompt evolves independently of anything else.
 package infra
 
 import (

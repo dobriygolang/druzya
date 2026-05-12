@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>druz9</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body class="dark">
+    <header class="hdr">
+      <strong>druz9</strong>
+      <span class="muted mono">activity capture</span>
+    </header>
+
+    <section id="queue-section" class="section">
+      <h2 class="mono small uppercase">Pending</h2>
+      <ul id="queue-list" class="list"></ul>
+      <p id="queue-empty" class="muted small" hidden>Ничего нового. Содержимое появится после finished detections.</p>
+    </section>
+
+    <section class="section">
+      <h2 class="mono small uppercase">Mode</h2>
+      <div class="row">
+        <label class="radio">
+          <input type="radio" name="mode" value="confirm" />
+          <span>Confirm каждое</span>
+        </label>
+        <label class="radio">
+          <input type="radio" name="mode" value="auto" />
+          <span>Auto-log</span>
+        </label>
+        <label class="radio">
+          <input type="radio" name="mode" value="off" />
+          <span>Off</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="mono small uppercase">Account</h2>
+      <div id="auth-state" class="row">
+        <span id="auth-status" class="small muted">не подключен</span>
+        <button id="auth-btn" class="btn">Подключить</button>
+      </div>
+      <p class="muted small">
+        Нужен только для sync. Без token — queue копится в браузере и попадёт в trajectory когда юзер импортирует backup.
+      </p>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

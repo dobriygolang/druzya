@@ -169,3 +169,57 @@ curl https://api.твойсервер.tld/api/v1/copilot/desktop-config \
 | Поменять иконку приложения | `cue/resources/icon.icns` (см. `resources/README.md`) |
 | Поменять имя в Dock на лету | Settings → Общее → Маскировка (пользователь сам) |
 | Поменять имя в Activity Monitor | нужен альтернативный `.app` билд (Phase 6+) |
+
+---
+
+## 3. CI release pipeline для masquerade builds
+
+Auto-build 4 disguise bundles (Notes/Telegram/Slack/Xcode) при push'е release tag'а — без локальной сборки на твоём маке.
+
+### Триггер релиза
+
+```bash
+# Tag по семверу + push — GitHub Action собирает + подписывает + нотарайзит
+# + создаёт draft release c 4 .dmg
+git tag cue-masquerade-v0.1.0
+git push origin cue-masquerade-v0.1.0
+```
+
+После завершения (≈ 25-30 min для всех 4 параллельно) GitHub Releases получит draft со всеми артефактами. Проверь payload → нажми **Publish release**.
+
+### Ручной trigger (smoke-test без tag'а)
+
+GitHub UI → Actions → **Cue Masquerade Release** → **Run workflow** → выбери preset (`notes`/`telegram`/`slack`/`xcode`/`all`). Без tag'а draft release НЕ создаётся, билд лежит только как workflow artifact (30 дней retention).
+
+### Required GitHub Secrets
+
+Set'ятся в **Settings → Secrets and variables → Actions** репозитория:
+
+| Secret | Что |
+|---|---|
+| `APPLE_ID` | Apple ID email (для notarisation) |
+| `APPLE_APP_PASSWORD` | App-specific password (НЕ Apple ID password) — генерируется на appleid.apple.com → Sign-In and Security → App-Specific Passwords |
+| `APPLE_TEAM_ID` | 10-char Team ID из Apple Developer Account |
+| `CSC_LINK` | Base64-encoded `.p12` Developer ID Application cert (`base64 -i cert.p12 \| pbcopy`) |
+| `CSC_KEY_PASSWORD` | Password для `.p12` файла |
+
+Без secrets workflow всё ещё работает — выдаёт **unsigned** билд, годится только для smoke-теста. Production distribution требует все 5.
+
+### Update channels
+
+Каждый preset имеет свой electron-updater channel:
+- Notes-disguise читает `masquerade-notes` channel → auto-updates только Notes
+- Telegram-disguise → `masquerade-telegram` channel
+- и т.д.
+
+Это значит что один и тот же GitHub Release раздаёт 4 независимых update feed'а (по `latest-mac.yml` per preset). Telegram-disguise НЕ обновится случайно до Notes-disguise — channel мисматч блокирует.
+
+### Validate-only workflow
+
+`.github/workflows/cue-masquerade-validate.yml` запускается на PR, который меняет `electron-builder.<preset>.yml` / `scripts/build-masquerade.*` / `afterPack-masquerade.cjs`. Проверяет:
+- 4 YAML файла существуют + parse'ятся
+- Каждый имеет productName/appId/CFBundleName/LSUIElement/afterPack
+- `build-masquerade.mjs --skip-build` работает
+- Workflow YAML синтаксически валиден через actionlint
+
+Без полной сборки — для гейта на PR достаточно lint-уровня проверки.

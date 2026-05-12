@@ -141,6 +141,18 @@ const (
 	// TutorServiceSaveSessionNotesProcedure is the fully-qualified name of the TutorService's
 	// SaveSessionNotes RPC.
 	TutorServiceSaveSessionNotesProcedure = "/druz9.v1.TutorService/SaveSessionNotes"
+	// TutorServiceListReadingPathsProcedure is the fully-qualified name of the TutorService's
+	// ListReadingPaths RPC.
+	TutorServiceListReadingPathsProcedure = "/druz9.v1.TutorService/ListReadingPaths"
+	// TutorServiceCreateReadingPathProcedure is the fully-qualified name of the TutorService's
+	// CreateReadingPath RPC.
+	TutorServiceCreateReadingPathProcedure = "/druz9.v1.TutorService/CreateReadingPath"
+	// TutorServiceUpdateReadingPathProcedure is the fully-qualified name of the TutorService's
+	// UpdateReadingPath RPC.
+	TutorServiceUpdateReadingPathProcedure = "/druz9.v1.TutorService/UpdateReadingPath"
+	// TutorServiceArchiveReadingPathProcedure is the fully-qualified name of the TutorService's
+	// ArchiveReadingPath RPC.
+	TutorServiceArchiveReadingPathProcedure = "/druz9.v1.TutorService/ArchiveReadingPath"
 )
 
 // TutorServiceClient is a client for the druz9.v1.TutorService service.
@@ -255,6 +267,10 @@ type TutorServiceClient interface {
 	// SaveSessionNotes — upsert markdown-блока. Empty body разрешён
 	// («очистил блок»). Auto-save из UI по дебаунсу 1.5s.
 	SaveSessionNotes(context.Context, *connect.Request[v1.TutorSaveSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error)
+	ListReadingPaths(context.Context, *connect.Request[v1.TutorListReadingPathsRequest]) (*connect.Response[v1.TutorListReadingPathsResponse], error)
+	CreateReadingPath(context.Context, *connect.Request[v1.TutorCreateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error)
+	UpdateReadingPath(context.Context, *connect.Request[v1.TutorUpdateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error)
+	ArchiveReadingPath(context.Context, *connect.Request[v1.TutorArchiveReadingPathRequest]) (*connect.Response[v1.TutorArchiveReadingPathResponse], error)
 }
 
 // NewTutorServiceClient constructs a client for the druz9.v1.TutorService service. By default, it
@@ -466,6 +482,30 @@ func NewTutorServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(tutorServiceMethods.ByName("SaveSessionNotes")),
 			connect.WithClientOptions(opts...),
 		),
+		listReadingPaths: connect.NewClient[v1.TutorListReadingPathsRequest, v1.TutorListReadingPathsResponse](
+			httpClient,
+			baseURL+TutorServiceListReadingPathsProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ListReadingPaths")),
+			connect.WithClientOptions(opts...),
+		),
+		createReadingPath: connect.NewClient[v1.TutorCreateReadingPathRequest, v1.TutorReadingPath](
+			httpClient,
+			baseURL+TutorServiceCreateReadingPathProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("CreateReadingPath")),
+			connect.WithClientOptions(opts...),
+		),
+		updateReadingPath: connect.NewClient[v1.TutorUpdateReadingPathRequest, v1.TutorReadingPath](
+			httpClient,
+			baseURL+TutorServiceUpdateReadingPathProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("UpdateReadingPath")),
+			connect.WithClientOptions(opts...),
+		),
+		archiveReadingPath: connect.NewClient[v1.TutorArchiveReadingPathRequest, v1.TutorArchiveReadingPathResponse](
+			httpClient,
+			baseURL+TutorServiceArchiveReadingPathProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ArchiveReadingPath")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -504,6 +544,10 @@ type tutorServiceClient struct {
 	getEventRSVPCount                 *connect.Client[v1.TutorGetEventRSVPCountRequest, v1.TutorGetEventRSVPCountResponse]
 	getSessionNotes                   *connect.Client[v1.TutorGetSessionNotesRequest, v1.TutorSessionNotes]
 	saveSessionNotes                  *connect.Client[v1.TutorSaveSessionNotesRequest, v1.TutorSessionNotes]
+	listReadingPaths                  *connect.Client[v1.TutorListReadingPathsRequest, v1.TutorListReadingPathsResponse]
+	createReadingPath                 *connect.Client[v1.TutorCreateReadingPathRequest, v1.TutorReadingPath]
+	updateReadingPath                 *connect.Client[v1.TutorUpdateReadingPathRequest, v1.TutorReadingPath]
+	archiveReadingPath                *connect.Client[v1.TutorArchiveReadingPathRequest, v1.TutorArchiveReadingPathResponse]
 }
 
 // CreateInvite calls druz9.v1.TutorService.CreateInvite.
@@ -671,6 +715,26 @@ func (c *tutorServiceClient) SaveSessionNotes(ctx context.Context, req *connect.
 	return c.saveSessionNotes.CallUnary(ctx, req)
 }
 
+// ListReadingPaths calls druz9.v1.TutorService.ListReadingPaths.
+func (c *tutorServiceClient) ListReadingPaths(ctx context.Context, req *connect.Request[v1.TutorListReadingPathsRequest]) (*connect.Response[v1.TutorListReadingPathsResponse], error) {
+	return c.listReadingPaths.CallUnary(ctx, req)
+}
+
+// CreateReadingPath calls druz9.v1.TutorService.CreateReadingPath.
+func (c *tutorServiceClient) CreateReadingPath(ctx context.Context, req *connect.Request[v1.TutorCreateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error) {
+	return c.createReadingPath.CallUnary(ctx, req)
+}
+
+// UpdateReadingPath calls druz9.v1.TutorService.UpdateReadingPath.
+func (c *tutorServiceClient) UpdateReadingPath(ctx context.Context, req *connect.Request[v1.TutorUpdateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error) {
+	return c.updateReadingPath.CallUnary(ctx, req)
+}
+
+// ArchiveReadingPath calls druz9.v1.TutorService.ArchiveReadingPath.
+func (c *tutorServiceClient) ArchiveReadingPath(ctx context.Context, req *connect.Request[v1.TutorArchiveReadingPathRequest]) (*connect.Response[v1.TutorArchiveReadingPathResponse], error) {
+	return c.archiveReadingPath.CallUnary(ctx, req)
+}
+
 // TutorServiceHandler is an implementation of the druz9.v1.TutorService service.
 type TutorServiceHandler interface {
 	// CreateInvite — tutor-authenticated. tutor_id taken from bearer.
@@ -783,6 +847,10 @@ type TutorServiceHandler interface {
 	// SaveSessionNotes — upsert markdown-блока. Empty body разрешён
 	// («очистил блок»). Auto-save из UI по дебаунсу 1.5s.
 	SaveSessionNotes(context.Context, *connect.Request[v1.TutorSaveSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error)
+	ListReadingPaths(context.Context, *connect.Request[v1.TutorListReadingPathsRequest]) (*connect.Response[v1.TutorListReadingPathsResponse], error)
+	CreateReadingPath(context.Context, *connect.Request[v1.TutorCreateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error)
+	UpdateReadingPath(context.Context, *connect.Request[v1.TutorUpdateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error)
+	ArchiveReadingPath(context.Context, *connect.Request[v1.TutorArchiveReadingPathRequest]) (*connect.Response[v1.TutorArchiveReadingPathResponse], error)
 }
 
 // NewTutorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -990,6 +1058,30 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(tutorServiceMethods.ByName("SaveSessionNotes")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tutorServiceListReadingPathsHandler := connect.NewUnaryHandler(
+		TutorServiceListReadingPathsProcedure,
+		svc.ListReadingPaths,
+		connect.WithSchema(tutorServiceMethods.ByName("ListReadingPaths")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceCreateReadingPathHandler := connect.NewUnaryHandler(
+		TutorServiceCreateReadingPathProcedure,
+		svc.CreateReadingPath,
+		connect.WithSchema(tutorServiceMethods.ByName("CreateReadingPath")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceUpdateReadingPathHandler := connect.NewUnaryHandler(
+		TutorServiceUpdateReadingPathProcedure,
+		svc.UpdateReadingPath,
+		connect.WithSchema(tutorServiceMethods.ByName("UpdateReadingPath")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceArchiveReadingPathHandler := connect.NewUnaryHandler(
+		TutorServiceArchiveReadingPathProcedure,
+		svc.ArchiveReadingPath,
+		connect.WithSchema(tutorServiceMethods.ByName("ArchiveReadingPath")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.TutorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TutorServiceCreateInviteProcedure:
@@ -1058,6 +1150,14 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 			tutorServiceGetSessionNotesHandler.ServeHTTP(w, r)
 		case TutorServiceSaveSessionNotesProcedure:
 			tutorServiceSaveSessionNotesHandler.ServeHTTP(w, r)
+		case TutorServiceListReadingPathsProcedure:
+			tutorServiceListReadingPathsHandler.ServeHTTP(w, r)
+		case TutorServiceCreateReadingPathProcedure:
+			tutorServiceCreateReadingPathHandler.ServeHTTP(w, r)
+		case TutorServiceUpdateReadingPathProcedure:
+			tutorServiceUpdateReadingPathHandler.ServeHTTP(w, r)
+		case TutorServiceArchiveReadingPathProcedure:
+			tutorServiceArchiveReadingPathHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1197,4 +1297,20 @@ func (UnimplementedTutorServiceHandler) GetSessionNotes(context.Context, *connec
 
 func (UnimplementedTutorServiceHandler) SaveSessionNotes(context.Context, *connect.Request[v1.TutorSaveSessionNotesRequest]) (*connect.Response[v1.TutorSessionNotes], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.SaveSessionNotes is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) ListReadingPaths(context.Context, *connect.Request[v1.TutorListReadingPathsRequest]) (*connect.Response[v1.TutorListReadingPathsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ListReadingPaths is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) CreateReadingPath(context.Context, *connect.Request[v1.TutorCreateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.CreateReadingPath is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) UpdateReadingPath(context.Context, *connect.Request[v1.TutorUpdateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.UpdateReadingPath is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) ArchiveReadingPath(context.Context, *connect.Request[v1.TutorArchiveReadingPathRequest]) (*connect.Response[v1.TutorArchiveReadingPathResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ArchiveReadingPath is not implemented"))
 }

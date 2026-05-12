@@ -1,28 +1,71 @@
-// OfflineBanner — top-of-screen полоска. Показывается:
-//   1. navigator offline → амбер «Offline · sync paused»
-//   2. online но pending op'ы в outbox'е (т.е. недавно были offline, сейчас
-//      drain'ятся) → синий «Syncing N pending changes»
+// OfflineBanner — top-of-screen полоска. 5-state taxonomy:
 //
-// Когда оба false (online + outbox empty), баннер null.
+//   1. online                — banner null (hidden)
+//   2. network_offline       — navigator.onLine === false. Red stripe
+//                              «Нет сети, изменения в outbox».
+//   3. server_unreachable    — network on, но /healthz probe failed.
+//                              Yellow stripe «Сервер недоступен, retry в 30s».
+//   4. degraded              — health probe slow (>2.5s) или 5xx-ratio
+//                              elevated. Info stripe «Бэкенд медленный».
+//   5. reconnecting          — recovering из offline/unreachable: первый
+//                              successful probe после failed → 3s window
+//                              «Восстанавливаем» с pulse dot.
+//
+// Plus two derived states ortogonal состоянию connection: pending outbox
+// (drain ongoing) и dead ops (manual retry).
+//
+// Server probe — lightweight HEAD на API_BASE_URL/api/v1/sync/devices с
+// noauth тайм-аутом. Любой response (даже 401) = «server reachable»;
+// network error / abort = unreachable. Каждые 15s when online, 30s when
+// network_offline (быстрее придёт в себя).
 import { useEffect, useRef, useState } from 'react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { drainAll, listAll, listPending, subscribe } from '../offline/outbox';
+import { API_BASE_URL } from '../api/config';
+
+type ServerState = 'unknown' | 'ok' | 'degraded' | 'unreachable';
+
+const PROBE_OK_BUDGET_MS = 2500;
+const PROBE_TIMEOUT_MS = 5000;
+const PROBE_INTERVAL_MS = 15_000;
+
+async function probeServer(): Promise<{ state: ServerState; latency: number }> {
+  const started = performance.now();
+  const ctl = new AbortController();
+  const timer = window.setTimeout(() => ctl.abort(), PROBE_TIMEOUT_MS);
+  try {
+    // Любой 2xx/3xx/4xx — server отвечает. 401 OK для нашей цели.
+    const resp = await fetch(`${API_BASE_URL}/api/v1/sync/devices`, {
+      method: 'HEAD',
+      signal: ctl.signal,
+    });
+    const latency = performance.now() - started;
+    // 5xx → degraded; иначе ok / slow → degraded.
+    if (resp.status >= 500) return { state: 'degraded', latency };
+    return { state: latency > PROBE_OK_BUDGET_MS ? 'degraded' : 'ok', latency };
+  } catch {
+    return { state: 'unreachable', latency: performance.now() - started };
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
 
 export function OfflineBanner() {
   const online = useOnlineStatus();
   const [pendingCount, setPendingCount] = useState(0);
   const [deadCount, setDeadCount] = useState(0);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+  const [serverState, setServerState] = useState<ServerState>('unknown');
+  const [recovered, setRecovered] = useState<number | null>(null);
   // Phase R3 cooldown — refs mirror state so the polling effect can
-  // short-circuit reads without busting the effect's dep array. Without
-  // these we'd either re-create the interval/subscription on every count
-  // change (effect dep churn) or skip-condition would always read the
-  // stale closure values from mount.
+  // short-circuit reads without busting the effect's dep array.
   const pendingCountRef = useRef(0);
   const deadCountRef = useRef(0);
   pendingCountRef.current = pendingCount;
   deadCountRef.current = deadCount;
+  const prevServerStateRef = useRef<ServerState>('unknown');
 
+  // Outbox poll loop (unchanged).
   useEffect(() => {
     let cancelled = false;
     const refresh = () => {
@@ -32,21 +75,13 @@ export function OfflineBanner() {
           setPendingCount(pending.length);
           setDeadCount(all.filter((op) => op.dead).length);
         })
-        .catch(() => {
-          /* swallow — outbox IDB может быть недоступна на первом mount'е */
-        });
+        .catch(() => {});
     };
     refresh();
     const unsub = subscribe(() => {
-      // subscribe fires при successful drain → bump lastSync
       setLastSyncAt(Date.now());
       refresh();
     });
-    // Phase R3 cooldown — was a flat 5s IDB scan regardless of state. The
-    // outbox is event-driven via subscribe() above, so when we're online
-    // with nothing queued and no dead ops, the periodic re-scan is pure
-    // heat — `subscribe` already wakes us up the moment anything enqueues.
-    // We still tick during a drain so the count updates smoothly.
     const t = window.setInterval(() => {
       const isOnline = typeof navigator === 'undefined' ? true : navigator.onLine;
       if (isOnline && pendingCountRef.current === 0 && deadCountRef.current === 0) return;
@@ -59,26 +94,74 @@ export function OfflineBanner() {
     };
   }, []);
 
-  // Phase 11b — manual retry для dead ops. Stuck-ops через 5 attempts
-  // помечаются dead — без button они никогда не drain'ятся снова.
+  // Server-probe loop. Only runs when navigator says we're online — when
+  // offline, network is the diagnosed root cause, no need to probe.
+  useEffect(() => {
+    if (!online) {
+      setServerState('unknown');
+      return;
+    }
+    let cancelled = false;
+    const tick = async () => {
+      const r = await probeServer();
+      if (cancelled) return;
+      // Detect recovery: was unreachable/degraded, now ok.
+      const prev = prevServerStateRef.current;
+      if (r.state === 'ok' && (prev === 'unreachable' || prev === 'degraded')) {
+        setRecovered(Date.now());
+      }
+      prevServerStateRef.current = r.state;
+      setServerState(r.state);
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), PROBE_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [online]);
+
   async function manualRetry() {
     await drainAll();
   }
 
-  // B/W rule: только `dead` (оператор должен дёрнуться) держит #FF3B30,
-  // остальное — ink-ramp на чёрном. Severity передаётся текстом + opacity.
-  if (!online) {
-    return (
-      <BannerStrip tone="muted">
-        ● Offline · {pendingCount > 0 ? `${pendingCount} change(s) queued` : 'sharing & sync paused'}
-      </BannerStrip>
-    );
-  }
+  // ── State machine ────────────────────────────────────────────────────
+  // Priority: dead-ops > network_offline > server_unreachable > degraded
+  // > reconnecting > syncing > just-synced > null.
+
   if (deadCount > 0) {
     return (
       <BannerStrip tone="danger" interactive>
         <span>⚠ {deadCount} change{deadCount === 1 ? '' : 's'} stuck</span>
         <button onClick={() => void manualRetry()} style={retryBtn}>retry</button>
+      </BannerStrip>
+    );
+  }
+  if (!online) {
+    return (
+      <BannerStrip tone="danger">
+        ● Нет сети · {pendingCount > 0 ? `${pendingCount} change(s) в outbox` : 'изменения в outbox'}
+      </BannerStrip>
+    );
+  }
+  if (serverState === 'unreachable') {
+    return (
+      <BannerStrip tone="warn">
+        ● Сервер недоступен · retry через 30s
+      </BannerStrip>
+    );
+  }
+  if (serverState === 'degraded') {
+    return (
+      <BannerStrip tone="ink-dim">
+        ⚠ Бэкенд медленный · sync продолжается
+      </BannerStrip>
+    );
+  }
+  if (recovered !== null && Date.now() - recovered < 3000) {
+    return (
+      <BannerStrip tone="ink" pulse>
+        ● Восстанавливаем…
       </BannerStrip>
     );
   }
@@ -108,18 +191,21 @@ const retryBtn: React.CSSProperties = {
   borderRadius: 3,
   fontSize: 10,
   fontFamily: 'inherit',
-  letterSpacing: '0.12em',
+  letterSpacing: '0.08em',
   textTransform: 'uppercase',
   cursor: 'pointer',
   pointerEvents: 'auto',
 };
 
-type BannerTone = 'muted' | 'ink' | 'ink-dim' | 'danger';
+type BannerTone = 'muted' | 'ink' | 'ink-dim' | 'warn' | 'danger';
 
+// Tones: B/W ink ramp по умолчанию; danger использует #FF3B30 как stripe-
+// карту (top edge), warn — yellow accent но через ink-ramp с border.
 const TONE_BG: Record<BannerTone, string> = {
   muted: 'rgba(255,255,255,0.10)',
   ink: 'rgba(255,255,255,0.16)',
   'ink-dim': 'rgba(255,255,255,0.08)',
+  warn: 'rgba(255,255,255,0.12)',
   danger: '#FF3B30',
 };
 
@@ -127,14 +213,22 @@ function BannerStrip({
   tone,
   children,
   interactive = false,
+  pulse = false,
 }: {
   tone: BannerTone;
   children: React.ReactNode;
   interactive?: boolean;
+  pulse?: boolean;
 }) {
+  // Warn = ink-toned stripe + 1.5px red top border (red as stripe, not bg —
+  // см feedback_color_rule.md).
+  const isWarn = tone === 'warn';
   return (
     <div
-      className="fadein mono"
+      className={`fadein mono${pulse ? ' red-pulse' : ''}`}
+      role={tone === 'danger' ? 'alert' : 'status'}
+      aria-live={tone === 'danger' ? 'assertive' : 'polite'}
+      aria-atomic="true"
       style={{
         position: 'fixed',
         top: 0,
@@ -143,16 +237,17 @@ function BannerStrip({
         padding: '6px 12px',
         textAlign: 'center',
         fontSize: 10.5,
-        letterSpacing: '0.18em',
+        letterSpacing: '0.08em',
         textTransform: 'uppercase',
-        color: '#FFFFFF',
+        color: 'var(--ink)',
         background: TONE_BG[tone],
         backdropFilter: tone === 'danger' ? 'none' : 'blur(8px)',
         WebkitBackdropFilter: tone === 'danger' ? 'none' : 'blur(8px)',
+        borderTop: isWarn ? '1.5px solid #FF3B30' : 'none',
         borderBottom: '1px solid rgba(255,255,255,0.10)',
         zIndex: 1000,
         pointerEvents: interactive ? 'auto' : 'none',
-        animationDuration: '180ms',
+        animationDuration: 'var(--motion-dur-medium)',
       }}
     >
       {children}

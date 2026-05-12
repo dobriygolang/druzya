@@ -30,6 +30,7 @@ import {
 } from '../../components/d9';
 import { IconHistory, IconSend } from '../../components/icons';
 import { ProviderPicker } from '../../components/ProviderPicker';
+import { SpeakerLabel } from '../../components/SpeakerLabel';
 import { useConfig } from '../../hooks/use-config';
 import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
 // Appearance slider now writes --d9-window-alpha globally via app.tsx —
@@ -43,6 +44,7 @@ import { useSelectedModelStore } from '../../stores/selected-model';
 import { useSessionStore } from '../../stores/session';
 import { useAudioCaptureStore } from '../../stores/audio-capture';
 import { useCoachStore } from '../../stores/coach';
+import { useInterviewPrepStore } from '../../stores/interview-prep';
 import { SummaryModal } from '../summary/SummaryModal';
 
 export function ExpandedScreen() {
@@ -515,6 +517,10 @@ export function ExpandedScreen() {
         <div style={{ display: 'flex', gap: 2, alignItems: 'center', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <VoiceToggleCombined />
           <AttachedDocsBadge />
+          {/* Phase J / C6 — Interview Prep entry point. Subtle hairline
+              button; the chip lights up via the active-prep store when
+              the user has loaded CV+JD. */}
+          <InterviewPrepChip />
           <ChatActionsOverflow
             messages={messages}
             saveChatStatus={saveChatStatus}
@@ -571,6 +577,11 @@ export function ExpandedScreen() {
       {/* Live transcript ticker — visible only when macOS system-
           audio capture is running or has accumulated chunks. */}
       <LiveTranscriptStrip draft={draft} setDraft={setDraft} />
+
+      {/* C4 speaker labels bar — visible when diarizer found 2+ distinct
+          system speakers. Allows user to relabel ("Recruiter", "Engineer",
+          ...) which propagates через composeMerged в LLM context. */}
+      <SpeakerLabelsBar />
 
       {/* Auto-suggest pill — скрыт во время recording: AI-suggestion
           релевантен когда юзер слушает (после паузы), но во время
@@ -863,12 +874,25 @@ function buildPaletteActions(ctx: {
     );
   }
   // Subscription actions — always surfaced so users can find them via search.
+  // X2 (P0) — palette upgrade теперь open'ит unified UpgradeModal с general
+  // context'ом (юзер искал «upgrade» в palette → значит explicit intent,
+  // не near-cap auto-trigger). PaywallModal остаётся для rate_limited
+  // auto-pop'а — это разные voronkы конверсии.
   if (ctx.isFreePlan) {
     list.push({
       id: 'upgrade',
       label: 'Обновить план',
-      hint: 'Pro / Max на Boosty',
-      run: ctx.showPaywall,
+      hint: 'Pro 990₽/mo · Cerebras priority · 8h sessions',
+      run: () => {
+        void import('../../components/UpgradeModal').then(({ requestUpgrade }) => {
+          requestUpgrade({
+            feature: 'general',
+            label: 'an overview of Pro',
+            benefit:
+              'Pro unlocks unlimited LLM calls, 8h sessions, premium personas, Cerebras/Groq priority cascade and deep readiness analytics.',
+          });
+        });
+      },
     });
   }
   list.push({
@@ -1566,6 +1590,28 @@ function AutoSuggestPill({
               >
                 {suggestion.text}
               </div>
+              {/*
+                C3 personalization hint (Phase J 2026-05-12). Surfaced
+                only when backend injected the user's goal / Coach
+                memory / activity / skill radar into the LLM prompt.
+                This is the unique moat vs Cluely — a quiet brag, not
+                a banner. text-secondary so it doesn't fight the
+                suggestion text for attention.
+              */}
+              {suggestion.contextUsed && (
+                <div
+                  style={{
+                    marginTop: 4,
+                    fontSize: 9.5,
+                    color: 'var(--d9-ink-ghost)',
+                    letterSpacing: '0.02em',
+                    fontStyle: 'italic',
+                  }}
+                  title="Backend injected your active goal + recent Coach memory + activity log into the prompt"
+                >
+                  Personalized from your druz9 activity
+                </div>
+              )}
             </>
           ) : null}
         </div>
@@ -1646,6 +1692,63 @@ function LiveTranscriptStrip(_props: { draft: string; setDraft: (s: string) => v
       {micActive && <ActivePill label="Микрофон" />}
       {sys.error && <ErrorPill label="Слушать" message={sys.error} />}
       {mic.error && <ErrorPill label="Микрофон" message={mic.error} />}
+    </div>
+  );
+}
+
+/**
+ * C4 SpeakerLabelsBar — surfaces distinct speaker chips для manual relabel.
+ * Появляется только когда diarizer нашёл ≥2 разных speaker'ов в system
+ * source ИЛИ когда оба source'а активны (mic vs system labelling важно
+ * для LLM context'а). В одинаковом-source / single-speaker scenario'е
+ * скрыта — иначе noise. Mic / speaker_0 — read-only «Я» chip (см. SpeakerLabel).
+ */
+function SpeakerLabelsBar() {
+  const systemChunks = useAudioCaptureStore((s) => s.system.chunks);
+  const micChunks = useAudioCaptureStore((s) => s.mic.chunks);
+
+  // Извлекаем distinct system speakerIds. Sorted ascending для стабильного
+  // ordering (юзер видит ту же последовательность каждый раз).
+  const systemSpeakerIds = (() => {
+    const set = new Set<number>();
+    for (const c of systemChunks) {
+      if (typeof c.speakerId === 'number') set.add(c.speakerId);
+    }
+    return Array.from(set).sort((a, b) => a - b);
+  })();
+
+  const hasMic = micChunks.length > 0;
+  const hasMultipleSystem = systemSpeakerIds.length >= 2;
+  const visible = hasMultipleSystem || (hasMic && systemSpeakerIds.length >= 1);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      style={{
+        padding: '4px 12px 0',
+        display: 'flex',
+        gap: 4,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        WebkitAppRegion: 'no-drag',
+      } as React.CSSProperties}
+    >
+      <span
+        style={{
+          fontSize: 10,
+          color: 'var(--d9-ink-ghost)',
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          marginRight: 4,
+        }}
+      >
+        Speakers
+      </span>
+      {hasMic && <SpeakerLabel speakerId={0} source="mic" compact />}
+      {systemSpeakerIds.map((id) => (
+        <SpeakerLabel key={`sys-${id}`} speakerId={id} source="system" compact />
+      ))}
     </div>
   );
 }
@@ -1926,6 +2029,58 @@ function SourceMenuItem({
  * upload) lives in Settings where there's room for a drop-zone and
  * list. Keeping the badge simple avoids a second picker-panel to own.
  */
+function InterviewPrepChip() {
+  // C6 (Phase J) — Interview-prep entry point. Two visual states:
+  //   1. No active prep → "Prep" pill in muted hairline, click opens
+  //      the wizard.
+  //   2. Active prep    → "Prep · {role}" pill in bright ink, click
+  //      still opens the wizard so the user can swap CV/JD or end.
+  // Bootstrap the active prep on mount so the chip reflects reality
+  // even after the wizard ran in a separate renderer process.
+  const active = useInterviewPrepStore((s) => s.active);
+  const bootstrap = useInterviewPrepStore((s) => s.bootstrap);
+  useEffect(() => {
+    void bootstrap();
+  }, [bootstrap]);
+
+  const label = active.active
+    ? active.role || active.company || 'Prep'
+    : 'Prep';
+  const title = active.active
+    ? `Active prep · ${[active.company, active.role].filter(Boolean).join(' · ') || 'CV+JD загружены'}. Клик: открыть мастер.`
+    : 'Подготовка к интервью — загрузи CV+JD до встречи';
+  return (
+    <button
+      type="button"
+      onClick={() => void window.druz9.interviewPrep.open()}
+      title={title}
+      style={{
+        padding: '4px 10px',
+        marginRight: 4,
+        borderRadius: 7,
+        background: active.active ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+        border: '0.5px solid var(--d9-hairline-b)',
+        color: active.active ? 'var(--d9-ink)' : 'var(--d9-ink-mute)',
+        fontSize: 11.5,
+        fontFamily: 'inherit',
+        letterSpacing: '-0.005em',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        maxWidth: 160,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}
+    >
+      {active.active ? 'Prep · ' : 'Prep'}{active.active ? truncate(label, 14) : ''}
+    </button>
+  );
+}
+
+function truncate(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1) + '…';
+}
+
 function AttachedDocsBadge() {
   const current = useSessionStore((s) => s.current);
   const attached = useSessionStore((s) => s.attachedDocIds);

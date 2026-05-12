@@ -27,6 +27,13 @@ export interface CoachSuggestion {
   text: string;
   latencyMs: number;
   at: number;
+  /**
+   * True when backend injected cross-product context (goal/memory/
+   * activity/radar) into the LLM call. AutoSuggestPill surfaces a
+   * subtle "Personalized from your druz9 activity" hint when set.
+   * C3 (Phase J 2026-05-12). This is the unique moat vs Cluely.
+   */
+  contextUsed: boolean;
 }
 
 interface State {
@@ -64,6 +71,7 @@ export const useCoachStore = create<State>((set, get) => ({
             text: ev.text,
             latencyMs: ev.latencyMs,
             at: Date.now(),
+            contextUsed: ev.contextUsed ?? false,
           },
           error: null,
         });

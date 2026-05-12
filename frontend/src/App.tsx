@@ -34,6 +34,7 @@ const LegalTermsPage = lazy(() => import('./pages/LegalTermsPage'))
 const LegalPrivacyPage = lazy(() => import('./pages/LegalPrivacyPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AuthCallbackYandexPage = lazy(() => import('./pages/AuthCallbackYandexPage'))
+const GoogleCalendarCallbackPage = lazy(() => import('./pages/auth/GoogleCalendarCallback'))
 const AllSetPage = lazy(() => import('./pages/AllSetPage'))
 const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage'))
 // Wave 2.6 — tutor dashboard. Both routes are tutor-authenticated; the
@@ -45,6 +46,7 @@ const AITutorChatPage = lazy(() => import('./pages/AITutorChatPage'))
 // living under /onboarding/{welcome,class,skill,task}. Step 5 is a tour
 // overlay on /sanctum (mounted via ?tour=1 query param).
 const OnbStep0 = lazy(() => import('./pages/onboarding/Step0Tracks'))
+const DiagnosticQuiz = lazy(() => import('./pages/onboarding/DiagnosticQuiz'))
 const OnbPath = lazy(() => import('./pages/onboarding/StepPath'))
 const OnbPathEdit = lazy(() => import('./pages/onboarding/PathEdit'))
 const OnbPathCustom = lazy(() => import('./pages/onboarding/PathCustom'))
@@ -60,19 +62,26 @@ const MockCompanyPicker = lazy(() => import('./pages/mock/MockCompanyPicker'))
 const MockPipelinePage = lazy(() => import('./pages/mock/MockPipelinePage'))
 const MockPipelineDebrief = lazy(() => import('./pages/mock/MockPipelineDebrief'))
 const MockCanvasFullscreen = lazy(() => import('./pages/mock/MockCanvasFullscreen'))
+// F8 (Phase D, 2026-05-12) — mini-mock diagnostic mode. Single-page flow,
+// localStorage-backed result feeds F3 readiness.
+const MockDiagnosticPage = lazy(() => import('./pages/mock/DiagnosticPage'))
+// D5 (2026-05-12) — podcasts back from Hone. Web content surface теперь
+// hosts both articles (/codex) и podcasts (/podcasts) под KnowledgeHubTabs.
+const PodcastsPage = lazy(() => import('./pages/PodcastsPage'))
+// F1 Phase 2 (2026-05-12) — user-facing AI memory audit. Reads
+// IntelligenceService.ListMemoryEntries (Agent I backend).
+const MemoryPage = lazy(() => import('./pages/MemoryPage'))
 // Phase-4 ADR-001 Wave 1+2 — `cohort`, `achievements`, `warroom` removed.
 // Frontend pages deleted; routes redirect to /circles or /profile.
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
-const VoiceMockPage = lazy(() => import('./pages/VoiceMockPage'))
+// /voice-mock standalone deleted (D7 2026-05-12) — voice answer теперь
+// inline-инпут BehavioralStage'а; старые ссылки редиректим на /mock.
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminInterviewerApplicationsPage = lazy(() => import('./pages/AdminInterviewerApplicationsPage'))
 const StatusPage = lazy(() => import('./pages/StatusPage'))
-const VacanciesPage = lazy(() => import('./pages/VacanciesPage'))
-const VacancyDetailPage = lazy(() => import('./pages/VacancyDetailPage'))
-const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'))
 // Wave-11 — premium subscription flow (5 screens). /pricing is public; the
 // other three live behind whatever auth-state /sanctum reaches them with —
 // the routes themselves don't gate, AppShell + apiClient do.
@@ -90,9 +99,13 @@ const CheckoutFailure = lazy(() => import('./pages/checkout/CheckoutFailure'))
 // поверхности; Hone только показывает + RSVP.
 const CirclesPage = lazy(() => import('./pages/circles/CirclesPage'))
 const CircleDetailPage = lazy(() => import('./pages/circles/CircleDetailPage'))
-// Phase 3 — Clubs MVP: structured sessions inside circles.
-const WhiteboardSharePage = lazy(() => import('./pages/WhiteboardSharePage'))
-const EditorRoomSharePage = lazy(() => import('./pages/EditorRoomSharePage'))
+// D4 (Stream F, 2026-05-12) — Whiteboard / Editor migrated from Hone to web
+// в solo-mode. Peer-collab WS (Yjs / awareness / presence) dropped. Legacy
+// WhiteboardSharePage / EditorRoomSharePage оставлены под их же URL'ами
+// в виде новых SoloWhiteboardPage / SoloEditorPage; multi-player «share»
+// flow сворачивается, обёртка над solo persistence.
+const WhiteboardPage = lazy(() => import('./pages/whiteboard/WhiteboardPage'))
+const EditorPage = lazy(() => import('./pages/editor/EditorPage'))
 
 export default function App() {
   return (
@@ -122,8 +135,15 @@ export default function App() {
             a profile sub-section. ProfilePage's tab strip also surfaces this
             tab so users can navigate without changing URL manually. */}
         <Route path="/profile/weekly" element={<WeeklyReportPage />} />
+        {/* R8 Phase A 2026-05-12: Settings absorbed под /profile/settings.
+            Старый /settings редиректит — внешние ссылки и нав уже работают.
+            Реальный merge UI (single page с tabs) — Phase A next iteration; пока
+            same component, новый URL. */}
+        <Route path="/profile/settings" element={<SettingsPage />} />
+        {/* F1 Phase 2 (2026-05-12) — user-facing AI memory audit surface. */}
+        <Route path="/profile/memory" element={<MemoryPage />} />
         <Route path="/profile/:username" element={<ProfilePage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings" element={<Navigate to="/profile/settings" replace />} />
         <Route path="/welcome" element={<WelcomePage />} />
         {/* Pivot 2026-05-04: legacy redirects /welcome/demo /copilot /hone
             удалены. NotFound теперь — честный ответ для устаревших URL'ов. */}
@@ -131,6 +151,7 @@ export default function App() {
         <Route path="/legal/privacy" element={<LegalPrivacyPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback/yandex" element={<AuthCallbackYandexPage />} />
+        <Route path="/auth/google-calendar-callback" element={<GoogleCalendarCallbackPage />} />
         {/* Bare /onboarding redirects to the Wave-10 entry step. The old
             OnboardingPage (3-step ?step=N flow) was deprecated in favour
             of the per-step routes below — a bare hit was rendering empty. */}
@@ -161,11 +182,19 @@ export default function App() {
         <Route path="/onboarding/class" element={<OnbStep2 />} />
         <Route path="/onboarding/skill" element={<OnbStep3 />} />
         <Route path="/onboarding/task" element={<OnbStep4 />} />
+        {/* F9 Diagnostic Quiz (Phase B, 2026-05-12 MVP) — 8 Q's Go track →
+            3 first actions + suggested goal preset. localStorage-backed,
+            no backend dependency. Entry: banner on /atlas, /today, header
+            user-menu. Result: ?step=done query subroute. */}
+        <Route path="/diagnostic" element={<DiagnosticQuiz />} />
         {/* Wave-11 mock-pipeline routes — registered BEFORE the legacy
             /mock/:sessionId so the literal "pipeline" segment wins router
             ranking. /mock (no params) is the company picker; the
             single-shot mock session UI keeps its old URL shape. */}
         <Route path="/mock" element={<MockCompanyPicker />} />
+        {/* F8 mini-mock — registered BEFORE :sessionId so literal segment
+            wins router ranking. */}
+        <Route path="/mock/diagnostic" element={<MockDiagnosticPage />} />
         <Route path="/mock/pipeline/:pipelineId" element={<MockPipelinePage />} />
         <Route path="/mock/pipeline/:pipelineId/debrief" element={<MockPipelineDebrief />} />
         {/* Standalone "большая доска" tab — opened via window.open from
@@ -185,15 +214,15 @@ export default function App() {
         */}
         {/* WAVE-13 — /weekly kept as 301-style redirect to /profile/weekly. */}
         <Route path="/weekly" element={<Navigate to="/profile/weekly" replace />} />
-        {/* /podcasts перенесён в Hone (P hotkey). /report и /cohort/warroom
-            redirect-routes удалены — NotFound для устаревших ссылок. */}
-        <Route path="/voice-mock/:sessionId" element={<VoiceMockPage />} />
+        {/* D5 2026-05-12: /podcasts вернулся в web (Hone перестал быть
+            content surface). KnowledgeHubTabs показывает Articles + Podcasts. */}
+        <Route path="/podcasts" element={<PodcastsPage />} />
+        {/* Legacy voice-mock route → /mock (D7 cleanup 2026-05-12). */}
+        <Route path="/voice-mock" element={<Navigate to="/mock" replace />} />
+        <Route path="/voice-mock/:sessionId" element={<Navigate to="/mock" replace />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/interviewers" element={<AdminInterviewerApplicationsPage />} />
         <Route path="/status" element={<StatusPage />} />
-        <Route path="/vacancies" element={<VacanciesPage />} />
-        <Route path="/vacancies/:source/:externalId" element={<VacancyDetailPage />} />
-        <Route path="/applications" element={<ApplicationsPage />} />
         {/* Wave-11: premium subscription flow. /pricing — public route
             (рендерится для гостей тоже, не дёргает /profile/me). */}
         <Route path="/pricing" element={<PricingPage />} />
@@ -204,8 +233,10 @@ export default function App() {
         {/* Lobby/lobbies routes удалены 2026-05-01 (см pivot-arena-drop.md). */}
         <Route path="/circles" element={<CirclesPage />} />
         <Route path="/circles/:circleId" element={<CircleDetailPage />} />
-        <Route path="/whiteboard/:roomId" element={<WhiteboardSharePage />} />
-        <Route path="/editor/:roomId" element={<EditorRoomSharePage />} />
+        {/* D4 Stream F (2026-05-12) — solo Whiteboard / Editor (Hone→web). */}
+        <Route path="/whiteboard/:id" element={<WhiteboardPage />} />
+        <Route path="/whiteboard/:id/view" element={<WhiteboardPage readOnly />} />
+        <Route path="/editor/:id" element={<EditorPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>

@@ -105,7 +105,7 @@ export function PodcastsPanel() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+              className="h-9 border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 text-sm text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -113,7 +113,7 @@ export function PodcastsPanel() {
             <input
               value={host}
               onChange={(e) => setHost(e.target.value)}
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+              className="h-9 border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 text-sm text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
             />
           </label>
           <label className="flex flex-col gap-1 md:col-span-2">
@@ -122,7 +122,7 @@ export function PodcastsPanel() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary"
+              className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 text-sm text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -147,7 +147,7 @@ export function PodcastsPanel() {
               onChange={(e) => setEpisodeNum(e.target.value)}
               type="number"
               min="1"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+              className="h-9 border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 text-sm text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -158,7 +158,7 @@ export function PodcastsPanel() {
               value={durationSec}
               readOnly
               placeholder="загрузи файл — длительность подставится сама"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-muted"
+              className="h-9 border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 text-sm text-text-muted"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -167,7 +167,7 @@ export function PodcastsPanel() {
               value={coverUrl}
               onChange={(e) => setCoverUrl(e.target.value)}
               type="url"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+              className="h-9 border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 text-sm text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
             />
           </label>
           <label className="flex items-center gap-2 self-end">
@@ -176,6 +176,7 @@ export function PodcastsPanel() {
               checked={isPublished}
               onChange={(e) => setIsPublished(e.target.checked)}
               className="h-4 w-4"
+              style={{ accentColor: 'rgb(var(--ink))' }}
             />
             <span className="text-sm text-text-secondary">Опубликовать сразу</span>
           </label>
@@ -225,7 +226,7 @@ export function PodcastsPanel() {
             <div className="md:col-span-2">
               <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
                 <div
-                  className="h-full bg-text-primary transition-[width] duration-100"
+                  className="h-full bg-text-primary transition-[width] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
                   style={{ width: `${Math.round(progress * 100)}%` }}
                 />
               </div>

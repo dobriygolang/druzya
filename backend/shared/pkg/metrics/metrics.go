@@ -331,41 +331,6 @@ var CacheSetErrorsTotal = prometheus.NewCounterVec(
 	[]string{"module"},
 )
 
-// VacanciesParserErrorsTotal counts hard parser failures (fetch / decode /
-// non-2xx) per source. Loud sibling of the previous "log + return []" that
-// used to mask broken sources. Alert when one source's rate jumps.
-var VacanciesParserErrorsTotal = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "druz9_vacancies_parser_errors_total",
-		Help: "Hard parser failures (fetch/decode/non-2xx) per source. Sync continues to next source.",
-	},
-	[]string{"source"},
-)
-
-// VacanciesCacheRefreshErrorsTotal counts per-source refresh failures in the
-// in-memory vacancies cache. Anti-fallback: a failure does NOT zero the
-// bucket; the prior fetch survives so one portal outage doesn't blank the
-// catalogue. Alert when one source's rate climbs.
-var VacanciesCacheRefreshErrorsTotal = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "druz9_vacancies_cache_refresh_errors_total",
-		Help: "Per-source vacancies cache refresh failures. Prior bucket retained.",
-	},
-	[]string{"source"},
-)
-
-// VacanciesDetailsFetchErrorsTotal counts per-source detail-endpoint
-// failures (Phase 4 lazy detail enrichment). Anti-fallback: on failure the
-// detail cache returns the listing snapshot as VacancyDetails — never a
-// fabricated description. Alert when one source's rate climbs.
-var VacanciesDetailsFetchErrorsTotal = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "druz9_vacancies_details_fetch_errors_total",
-		Help: "Per-source detail enrichment failures (lazy detail cache).",
-	},
-	[]string{"source"},
-)
-
 func init() {
 	Registry.MustRegister(
 		HTTPRequestsTotal, HTTPRequestDuration, HTTPErrorsTotal,
@@ -375,9 +340,7 @@ func init() {
 		Judge0PendingSubmissions,
 		MatchesStartedTotal, MatchesFinishedTotal,
 		MockSessionsTotal, QueueWaitSeconds, ActiveUsers,
-		CacheSetErrorsTotal, VacanciesParserErrorsTotal,
-		VacanciesCacheRefreshErrorsTotal,
-		VacanciesDetailsFetchErrorsTotal,
+		CacheSetErrorsTotal,
 		PgxPoolAcquiredConns, PgxPoolIdleConns, PgxPoolTotalConns,
 		PgxPoolMaxConns, PgxPoolAcquireWaitSeconds, PgxPoolCanceledAcquires,
 		EventbusPublishedTotal, EventbusHandledTotal, EventbusFailedTotal,

@@ -19,6 +19,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 import { ArrowRight, Check, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { EmptyState } from '../EmptyState'
@@ -105,10 +107,12 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
     navigate(path)
   }
 
+  const trapRef = useFocusTrap(open)
+
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Уведомления">
+        <div ref={trapRef} className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Уведомления">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -253,6 +257,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         'rounded-md px-2.5 py-1.5 text-[12px] font-semibold transition-colors',
         active ? 'bg-surface-2 text-text-primary' : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary',
@@ -276,6 +281,7 @@ function ChipButton({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         'shrink-0 rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors',
         active

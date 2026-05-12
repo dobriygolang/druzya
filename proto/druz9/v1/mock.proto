@@ -208,6 +208,124 @@ message FinishStageRequest {
   string id = 1; // stage_id
 }
 
+// ─── Algo stage: Run tests (dry run, no persist) ───────────────────────────
+//
+// RunAlgoAttempt is the «Run tests» button on the Algo stage editor. It
+// executes the candidate's code against the visible test-cases for the task
+// rooted on the attempt and returns a verdict WITHOUT persisting anything
+// to pipeline_attempts. Final grading goes through SubmitAnswer (which is
+// already wired to the same Judge0 sandbox via the orchestrator).
+//
+// Hidden test-cases are evaluated server-side but not returned in the
+// per-test list — only the pass/total counts include them. Output truncation:
+// stdout / stderr / expected on each AlgoTestResult are clipped to 2 KB to
+// keep responses bounded.
+
+message AlgoTestResult {
+  int32 ordinal = 1;
+  bool passed = 2;
+  string input = 3;            // empty for hidden cases
+  string expected_output = 4;  // empty for hidden cases
+  string actual_output = 5;    // empty for hidden cases / non-completed runs
+  string stderr = 6;           // compile / runtime error text (empty when ok)
+  bool is_hidden = 7;
+  int32 runtime_ms = 8;
+}
+
+message AlgoVerdict {
+  int32 passed = 1;             // count of cases that exactly-matched
+  int32 total = 2;
+  int32 runtime_ms = 3;         // max runtime across visible cases
+  int32 memory_kb = 4;          // max memory across visible cases (0 when unavailable)
+  bool sandbox_unavailable = 5; // true when Judge0 is not wired / language unsupported
+  string status = 6;            // free-form short status: "ok" | "compile_error" | "runtime_error" | "unavailable"
+  repeated AlgoTestResult tests = 7;
+}
+
+message RunAlgoAttemptRequest {
+  string id = 1;          // attempt_id (must be a task_solve attempt)
+  string code = 2;        // raw source (NOT fenced markdown)
+  string language = 3;    // shared enum: go|python|javascript|typescript
+}
+
+// ─── Coding stage: open-ended rubric grading ────────────────────────────────
+//
+// RunCodingAttempt is the «Get rubric» button on the Coding stage editor.
+// Unlike Algo (Judge0 exact-match), Coding tasks are open-ended (refactor,
+// implement a feature) and graded by the free LLM cascade against a 5-point
+// rubric. Returns score (1..5), strengths, weaknesses, and a list of
+// 1-based line numbers the LLM thinks the candidate should revisit. Final
+// grading still flows through SubmitAnswer.
+
+message CodingVerdict {
+  int32 score = 1;                       // 1..5 rubric score
+  repeated string strengths = 2;
+  repeated string weaknesses = 3;
+  repeated int32 suggested_lines = 4;    // 1-based line numbers
+  string rubric_md = 5;                  // 2-4 sentence summary
+  bool unavailable = 6;                  // true when LLM down / parse failed
+}
+
+message RunCodingAttemptRequest {
+  string id = 1;          // attempt_id (must be a task_solve attempt under coding stage)
+  string code = 2;        // raw source (NOT fenced markdown)
+  string language = 3;    // free-form language hint (go|python|js|ts|...)
+}
+
+// ─── SysDesign stage: 5-axis rubric grading ─────────────────────────────────
+//
+// RunSysDesignAttempt evaluates an Excalidraw scene + narration text on five
+// axes (1..5 each). Distinct from canvas judge (SubmitCanvas) which is a
+// vision-call producing one 0..100 score; this UC is text-only rubric for
+// iterative «check before final submit» use.
+
+message SysDesignAxes {
+  int32 availability = 1; // 1..5
+  int32 consistency = 2;  // 1..5
+  int32 scalability = 3;  // 1..5
+  int32 cost = 4;         // 1..5
+  int32 simplicity = 5;   // 1..5
+}
+
+message SysDesignVerdict {
+  SysDesignAxes axes = 1;
+  string narrative_critique = 2;
+  repeated string missing_concepts = 3;
+  bool unavailable = 4;
+}
+
+message RunSysDesignAttemptRequest {
+  string id = 1;             // attempt_id
+  string canvas_json = 2;    // Excalidraw scene blob serialised
+  string narration_text = 3; // trade-offs / context paragraph
+}
+
+// ─── Behavioral stage: STAR rubric grading ─────────────────────────────────
+//
+// RunBehavioralAttempt grades an answer on STAR axes (Situation / Task /
+// Action / Result) plus a communication clarity score. Used by the
+// Behavioral stage's «Run rubric» button (iterative knob); final grading
+// still flows through SubmitAnswer.
+
+message BehavioralAxes {
+  int32 situation = 1; // 1..5
+  int32 task = 2;      // 1..5
+  int32 action = 3;    // 1..5
+  int32 result = 4;    // 1..5
+}
+
+message BehavioralVerdict {
+  BehavioralAxes axes = 1;
+  int32 communication_score = 2; // 1..5
+  string body_md = 3;
+  bool unavailable = 4;
+}
+
+message RunBehavioralAttemptRequest {
+  string id = 1;          // attempt_id
+  string answer_text = 2; // user's STAR answer (text)
+}
+
 // ─── Admin: companies ───────────────────────────────────────────────────────
 
 message AdminListMockCompaniesRequest {
@@ -666,6 +784,42 @@ service MockPipelineService {
   rpc FinishStage(FinishStageRequest) returns (PipelineStage) {
     option (google.api.http) = {
       post: "/api/v1/mock/stages/{id}/finish"
+      body: "*"
+    };
+  }
+
+  // RunAlgoAttempt — "Run tests" для Algo стадии: прогон кода через Judge0
+  // sandbox без persist'а в pipeline_attempts. Возвращает per-test
+  // verdict. Для финальной оценки используется SubmitAnswer.
+  rpc RunAlgoAttempt(RunAlgoAttemptRequest) returns (AlgoVerdict) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/attempts/{id}/run-algo"
+      body: "*"
+    };
+  }
+
+  // RunCodingAttempt — «Get rubric» для Coding стадии: LLM rubric grading
+  // open-ended кода без persist'а. Для финальной оценки — SubmitAnswer.
+  rpc RunCodingAttempt(RunCodingAttemptRequest) returns (CodingVerdict) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/attempts/{id}/run-coding"
+      body: "*"
+    };
+  }
+
+  // RunSysDesignAttempt — 5-axis rubric (availability / consistency /
+  // scalability / cost / simplicity) text-only. Без persist'а.
+  rpc RunSysDesignAttempt(RunSysDesignAttemptRequest) returns (SysDesignVerdict) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/attempts/{id}/run-sysdesign"
+      body: "*"
+    };
+  }
+
+  // RunBehavioralAttempt — STAR rubric для behavioral. Без persist'а.
+  rpc RunBehavioralAttempt(RunBehavioralAttemptRequest) returns (BehavioralVerdict) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/attempts/{id}/run-behavioral"
       body: "*"
     };
   }

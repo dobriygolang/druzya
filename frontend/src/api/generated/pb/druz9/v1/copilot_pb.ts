@@ -2115,6 +2115,16 @@ export class CopilotDone extends Message<CopilotDone> {
    */
   runningSummaryChars = 0;
 
+  /**
+   * C3 (Phase J 2026-05-12) — true когда backend инжектил cross-product
+   * context (goal + memory + activity + radar + atlas) в system-prompt
+   * этого turn'а. UI рисует subtle «Personalized from your druz9
+   * activity» hint — это unique moat vs Cluely.
+   *
+   * @generated from field: bool context_used = 11;
+   */
+  contextUsed = false;
+
   constructor(data?: PartialMessage<CopilotDone>) {
     super();
     proto3.util.initPartial(data, this);
@@ -2133,6 +2143,7 @@ export class CopilotDone extends Message<CopilotDone> {
     { no: 8, name: "compaction_threshold", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 9, name: "compaction_triggered", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 10, name: "running_summary_chars", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 11, name: "context_used", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CopilotDone {
@@ -2864,6 +2875,689 @@ export class CheckBlockRequest extends Message<CheckBlockRequest> {
 
   static equals(a: CheckBlockRequest | PlainMessage<CheckBlockRequest> | undefined, b: CheckBlockRequest | PlainMessage<CheckBlockRequest> | undefined): boolean {
     return proto3.util.equals(CheckBlockRequest, a, b);
+  }
+}
+
+/**
+ * ParsedCV — LLM-extracted shape of the user's résumé. Every field is
+ * optional; the parser leaves blanks when the source is ambiguous rather
+ * than hallucinating. Stored verbatim alongside the original text on the
+ * interview_prep_sessions row.
+ *
+ * @generated from message druz9.v1.ParsedCV
+ */
+export class ParsedCV extends Message<ParsedCV> {
+  /**
+   * Display name as the LLM read it ("Sergey D."). Optional.
+   *
+   * @generated from field: string name = 1;
+   */
+  name = "";
+
+  /**
+   * Best-effort total years of experience (0 when unknown).
+   *
+   * @generated from field: int32 experience_years = 2;
+   */
+  experienceYears = 0;
+
+  /**
+   * Current job title as parsed ("Senior Backend Engineer"). Optional.
+   *
+   * @generated from field: string current_role = 3;
+   */
+  currentRole = "";
+
+  /**
+   * Up to 12 top skills the parser identified. Order-significant — most
+   * prominent first. Empty when no skills detected.
+   *
+   * @generated from field: repeated string top_skills = 4;
+   */
+  topSkills: string[] = [];
+
+  /**
+   * 1-3 sentence elevator pitch derived from the CV. Empty when input is
+   * too thin to summarise. Used directly in the suggestion-prompt prep
+   * block.
+   *
+   * @generated from field: string summary = 5;
+   */
+  summary = "";
+
+  /**
+   * Highest education level if mentioned ("MS Computer Science, MIT").
+   *
+   * @generated from field: string education = 6;
+   */
+  education = "";
+
+  constructor(data?: PartialMessage<ParsedCV>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ParsedCV";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "experience_years", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "current_role", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "top_skills", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 5, name: "summary", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "education", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ParsedCV {
+    return new ParsedCV().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ParsedCV {
+    return new ParsedCV().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ParsedCV {
+    return new ParsedCV().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ParsedCV | PlainMessage<ParsedCV> | undefined, b: ParsedCV | PlainMessage<ParsedCV> | undefined): boolean {
+    return proto3.util.equals(ParsedCV, a, b);
+  }
+}
+
+/**
+ * ParsedJD — LLM-extracted shape of the target job description. Same
+ * optional-by-default contract as ParsedCV.
+ *
+ * @generated from message druz9.v1.ParsedJD
+ */
+export class ParsedJD extends Message<ParsedJD> {
+  /**
+   * Hiring company ("Google"). Empty when not stated.
+   *
+   * @generated from field: string company = 1;
+   */
+  company = "";
+
+  /**
+   * Role title ("Senior Backend Engineer"). Empty when not stated.
+   *
+   * @generated from field: string role = 2;
+   */
+  role = "";
+
+  /**
+   * Seniority level if extractable ("L4", "Senior", "Staff").
+   *
+   * @generated from field: string seniority = 3;
+   */
+  seniority = "";
+
+  /**
+   * Up to 12 skills the JD calls out. Order = priority in the listing.
+   *
+   * @generated from field: repeated string key_skills = 4;
+   */
+  keySkills: string[] = [];
+
+  /**
+   * 1-3 sentence summary of what the role expects day-to-day. Powers
+   * the prep block injected into Cue suggestions.
+   *
+   * @generated from field: string description_summary = 5;
+   */
+  descriptionSummary = "";
+
+  /**
+   * Detected language ("ru" / "en" / "").
+   *
+   * @generated from field: string language = 6;
+   */
+  language = "";
+
+  constructor(data?: PartialMessage<ParsedJD>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ParsedJD";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "company", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "role", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "seniority", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "key_skills", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 5, name: "description_summary", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ParsedJD {
+    return new ParsedJD().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ParsedJD {
+    return new ParsedJD().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ParsedJD {
+    return new ParsedJD().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ParsedJD | PlainMessage<ParsedJD> | undefined, b: ParsedJD | PlainMessage<ParsedJD> | undefined): boolean {
+    return proto3.util.equals(ParsedJD, a, b);
+  }
+}
+
+/**
+ * ParseCVRequest — caller sends ONE of cv_bytes (PDF/binary) or cv_text.
+ * When both are populated, cv_text wins (cv_bytes assumed to be a fallback
+ * for clients that couldn't extract text locally).
+ *
+ * @generated from message druz9.v1.ParseCVRequest
+ */
+export class ParseCVRequest extends Message<ParseCVRequest> {
+  /**
+   * Plain-text or markdown body of the CV. Preferred path — Cue desktop
+   * extracts via Electron's built-in pdf.js before calling.
+   *
+   * @generated from field: string cv_text = 1;
+   */
+  cvText = "";
+
+  /**
+   * Raw PDF bytes for backend extraction. Fallback path. Capped at ~3MB
+   * by the handler; oversized inputs return InvalidArgument.
+   *
+   * @generated from field: bytes cv_bytes = 2;
+   */
+  cvBytes = new Uint8Array(0);
+
+  /**
+   * MIME type hint for cv_bytes ("application/pdf"). Ignored for text.
+   *
+   * @generated from field: string mime_type = 3;
+   */
+  mimeType = "";
+
+  /**
+   * Filename hint for nicer error messages and parser context. Optional.
+   *
+   * @generated from field: string filename = 4;
+   */
+  filename = "";
+
+  constructor(data?: PartialMessage<ParseCVRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ParseCVRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "cv_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "cv_bytes", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 3, name: "mime_type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "filename", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ParseCVRequest {
+    return new ParseCVRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ParseCVRequest {
+    return new ParseCVRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ParseCVRequest {
+    return new ParseCVRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ParseCVRequest | PlainMessage<ParseCVRequest> | undefined, b: ParseCVRequest | PlainMessage<ParseCVRequest> | undefined): boolean {
+    return proto3.util.equals(ParseCVRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ParseCVResponse
+ */
+export class ParseCVResponse extends Message<ParseCVResponse> {
+  /**
+   * @generated from field: druz9.v1.ParsedCV parsed = 1;
+   */
+  parsed?: ParsedCV;
+
+  /**
+   * Echo of the model id that produced the parse (e.g. "groq/llama-3.3-
+   * 70b-versatile"). Useful for client-side telemetry + debug.
+   *
+   * @generated from field: string model = 2;
+   */
+  model = "";
+
+  constructor(data?: PartialMessage<ParseCVResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ParseCVResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "parsed", kind: "message", T: ParsedCV },
+    { no: 2, name: "model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ParseCVResponse {
+    return new ParseCVResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ParseCVResponse {
+    return new ParseCVResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ParseCVResponse {
+    return new ParseCVResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ParseCVResponse | PlainMessage<ParseCVResponse> | undefined, b: ParseCVResponse | PlainMessage<ParseCVResponse> | undefined): boolean {
+    return proto3.util.equals(ParseCVResponse, a, b);
+  }
+}
+
+/**
+ * ParseJDRequest — caller sends ONE of jd_text or jd_url. When both are
+ * populated, jd_text wins. URL fetching is best-effort: 404 / 5xx / TLS
+ * failures fall back with a clear error suggesting the user paste text.
+ *
+ * @generated from message druz9.v1.ParseJDRequest
+ */
+export class ParseJDRequest extends Message<ParseJDRequest> {
+  /**
+   * Plain-text JD body. Preferred path.
+   *
+   * @generated from field: string jd_text = 1;
+   */
+  jdText = "";
+
+  /**
+   * Job-board URL (LinkedIn, hh.ru, druz9 self-hosted, etc.). Backend
+   * fetches → strips HTML → parses. May fail with FailedPrecondition
+   * when the host rejects bot traffic — caller should retry with text.
+   *
+   * @generated from field: string jd_url = 2;
+   */
+  jdUrl = "";
+
+  constructor(data?: PartialMessage<ParseJDRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ParseJDRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "jd_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "jd_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ParseJDRequest {
+    return new ParseJDRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ParseJDRequest {
+    return new ParseJDRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ParseJDRequest {
+    return new ParseJDRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ParseJDRequest | PlainMessage<ParseJDRequest> | undefined, b: ParseJDRequest | PlainMessage<ParseJDRequest> | undefined): boolean {
+    return proto3.util.equals(ParseJDRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ParseJDResponse
+ */
+export class ParseJDResponse extends Message<ParseJDResponse> {
+  /**
+   * @generated from field: druz9.v1.ParsedJD parsed = 1;
+   */
+  parsed?: ParsedJD;
+
+  /**
+   * @generated from field: string model = 2;
+   */
+  model = "";
+
+  constructor(data?: PartialMessage<ParseJDResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ParseJDResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "parsed", kind: "message", T: ParsedJD },
+    { no: 2, name: "model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ParseJDResponse {
+    return new ParseJDResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ParseJDResponse {
+    return new ParseJDResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ParseJDResponse {
+    return new ParseJDResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ParseJDResponse | PlainMessage<ParseJDResponse> | undefined, b: ParseJDResponse | PlainMessage<ParseJDResponse> | undefined): boolean {
+    return proto3.util.equals(ParseJDResponse, a, b);
+  }
+}
+
+/**
+ * StartInterviewPrepRequest — commits parsed CV + JD as the user's active
+ * prep context. Replaces any prior active prep (single-active per user).
+ * Caller has already validated the parses via the UI review step.
+ *
+ * @generated from message druz9.v1.StartInterviewPrepRequest
+ */
+export class StartInterviewPrepRequest extends Message<StartInterviewPrepRequest> {
+  /**
+   * @generated from field: druz9.v1.ParsedCV parsed_cv = 1;
+   */
+  parsedCv?: ParsedCV;
+
+  /**
+   * @generated from field: druz9.v1.ParsedJD parsed_jd = 2;
+   */
+  parsedJd?: ParsedJD;
+
+  /**
+   * Raw CV text the user uploaded — stored on the row for later re-parse
+   * / "use last CV" affordance. Empty allowed.
+   *
+   * @generated from field: string cv_text = 3;
+   */
+  cvText = "";
+
+  /**
+   * Raw JD text the user pasted (or fetched from jd_url) — stored on the
+   * row for the same reason.
+   *
+   * @generated from field: string jd_text = 4;
+   */
+  jdText = "";
+
+  constructor(data?: PartialMessage<StartInterviewPrepRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.StartInterviewPrepRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "parsed_cv", kind: "message", T: ParsedCV },
+    { no: 2, name: "parsed_jd", kind: "message", T: ParsedJD },
+    { no: 3, name: "cv_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "jd_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StartInterviewPrepRequest {
+    return new StartInterviewPrepRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): StartInterviewPrepRequest {
+    return new StartInterviewPrepRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): StartInterviewPrepRequest {
+    return new StartInterviewPrepRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: StartInterviewPrepRequest | PlainMessage<StartInterviewPrepRequest> | undefined, b: StartInterviewPrepRequest | PlainMessage<StartInterviewPrepRequest> | undefined): boolean {
+    return proto3.util.equals(StartInterviewPrepRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.StartInterviewPrepResponse
+ */
+export class StartInterviewPrepResponse extends Message<StartInterviewPrepResponse> {
+  /**
+   * Session id of the new active prep row.
+   *
+   * @generated from field: string session_id = 1;
+   */
+  sessionId = "";
+
+  /**
+   * Server-side timestamp of when prep was activated.
+   *
+   * @generated from field: google.protobuf.Timestamp started_at = 2;
+   */
+  startedAt?: Timestamp;
+
+  /**
+   * Echo of the formatted system-prompt block that will be injected into
+   * subsequent Analyze/Chat/Suggest turns. The client may surface this in
+   * a "what Cue will know during the interview" disclosure card.
+   *
+   * @generated from field: string prep_prompt_preview = 3;
+   */
+  prepPromptPreview = "";
+
+  constructor(data?: PartialMessage<StartInterviewPrepResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.StartInterviewPrepResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "started_at", kind: "message", T: Timestamp },
+    { no: 3, name: "prep_prompt_preview", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StartInterviewPrepResponse {
+    return new StartInterviewPrepResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): StartInterviewPrepResponse {
+    return new StartInterviewPrepResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): StartInterviewPrepResponse {
+    return new StartInterviewPrepResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: StartInterviewPrepResponse | PlainMessage<StartInterviewPrepResponse> | undefined, b: StartInterviewPrepResponse | PlainMessage<StartInterviewPrepResponse> | undefined): boolean {
+    return proto3.util.equals(StartInterviewPrepResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetActiveInterviewPrepRequest
+ */
+export class GetActiveInterviewPrepRequest extends Message<GetActiveInterviewPrepRequest> {
+  constructor(data?: PartialMessage<GetActiveInterviewPrepRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetActiveInterviewPrepRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetActiveInterviewPrepRequest {
+    return new GetActiveInterviewPrepRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetActiveInterviewPrepRequest {
+    return new GetActiveInterviewPrepRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetActiveInterviewPrepRequest {
+    return new GetActiveInterviewPrepRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetActiveInterviewPrepRequest | PlainMessage<GetActiveInterviewPrepRequest> | undefined, b: GetActiveInterviewPrepRequest | PlainMessage<GetActiveInterviewPrepRequest> | undefined): boolean {
+    return proto3.util.equals(GetActiveInterviewPrepRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetActiveInterviewPrepResponse
+ */
+export class GetActiveInterviewPrepResponse extends Message<GetActiveInterviewPrepResponse> {
+  /**
+   * active=false when the user has no active prep; the other fields are
+   * unset in that case. The client renders an empty prompt to upload CV+JD.
+   *
+   * @generated from field: bool active = 1;
+   */
+  active = false;
+
+  /**
+   * @generated from field: string session_id = 2;
+   */
+  sessionId = "";
+
+  /**
+   * @generated from field: druz9.v1.ParsedCV parsed_cv = 3;
+   */
+  parsedCv?: ParsedCV;
+
+  /**
+   * @generated from field: druz9.v1.ParsedJD parsed_jd = 4;
+   */
+  parsedJd?: ParsedJD;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 5;
+   */
+  startedAt?: Timestamp;
+
+  /**
+   * Convenience accessors for compact UI rows (avoids re-parsing on the
+   * client). Empty when the parser couldn't extract.
+   *
+   * @generated from field: string company = 6;
+   */
+  company = "";
+
+  /**
+   * @generated from field: string role = 7;
+   */
+  role = "";
+
+  constructor(data?: PartialMessage<GetActiveInterviewPrepResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetActiveInterviewPrepResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "active", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "parsed_cv", kind: "message", T: ParsedCV },
+    { no: 4, name: "parsed_jd", kind: "message", T: ParsedJD },
+    { no: 5, name: "started_at", kind: "message", T: Timestamp },
+    { no: 6, name: "company", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "role", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetActiveInterviewPrepResponse {
+    return new GetActiveInterviewPrepResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetActiveInterviewPrepResponse {
+    return new GetActiveInterviewPrepResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetActiveInterviewPrepResponse {
+    return new GetActiveInterviewPrepResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetActiveInterviewPrepResponse | PlainMessage<GetActiveInterviewPrepResponse> | undefined, b: GetActiveInterviewPrepResponse | PlainMessage<GetActiveInterviewPrepResponse> | undefined): boolean {
+    return proto3.util.equals(GetActiveInterviewPrepResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.EndInterviewPrepRequest
+ */
+export class EndInterviewPrepRequest extends Message<EndInterviewPrepRequest> {
+  /**
+   * Optional — when empty, the user's CURRENT active prep is ended.
+   *
+   * @generated from field: string session_id = 1;
+   */
+  sessionId = "";
+
+  constructor(data?: PartialMessage<EndInterviewPrepRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.EndInterviewPrepRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EndInterviewPrepRequest {
+    return new EndInterviewPrepRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EndInterviewPrepRequest {
+    return new EndInterviewPrepRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EndInterviewPrepRequest {
+    return new EndInterviewPrepRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EndInterviewPrepRequest | PlainMessage<EndInterviewPrepRequest> | undefined, b: EndInterviewPrepRequest | PlainMessage<EndInterviewPrepRequest> | undefined): boolean {
+    return proto3.util.equals(EndInterviewPrepRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.EndInterviewPrepResponse
+ */
+export class EndInterviewPrepResponse extends Message<EndInterviewPrepResponse> {
+  constructor(data?: PartialMessage<EndInterviewPrepResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.EndInterviewPrepResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EndInterviewPrepResponse {
+    return new EndInterviewPrepResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EndInterviewPrepResponse {
+    return new EndInterviewPrepResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EndInterviewPrepResponse {
+    return new EndInterviewPrepResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EndInterviewPrepResponse | PlainMessage<EndInterviewPrepResponse> | undefined, b: EndInterviewPrepResponse | PlainMessage<EndInterviewPrepResponse> | undefined): boolean {
+    return proto3.util.equals(EndInterviewPrepResponse, a, b);
   }
 }
 

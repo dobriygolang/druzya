@@ -904,7 +904,7 @@ export function RichMarkdownEditor({ value, onChange, placeholder }: RichMarkdow
                 height: 14,
                 margin: 0,
                 borderRadius: 3,
-                border: '1.5px solid rgba(255,255,255,0.2)',
+                border: '1.5px solid var(--ink-20)',
                 background: 'transparent',
                 cursor: 'pointer',
                 accentColor: t.checked ? 'var(--ink)' : 'var(--ink-60)',
@@ -950,12 +950,12 @@ export function RichMarkdownEditor({ value, onChange, placeholder }: RichMarkdow
                   fontFamily: 'var(--font-mono, monospace)',
                   letterSpacing: '0.08em',
                   color: 'var(--ink-40)',
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'var(--hair)',
+                  border: '1px solid var(--hair)',
                   borderRadius: 4,
                   padding: '2px 6px',
                   cursor: 'pointer',
-                  transition: 'color 140ms ease',
+                  transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.color = 'var(--ink-60)';
@@ -1116,7 +1116,7 @@ function CopyFenceBtn({ onClick }: { onClick: () => void }) {
         padding: '2px 4px',
         cursor: 'pointer',
         opacity: 0.6,
-        transition: 'opacity 140ms ease, color 140ms ease',
+        transition: 'opacity var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.opacity = '1';
@@ -1168,7 +1168,7 @@ function FenceLangDropdown({
         background: 'rgba(20,20,22,0.96)',
         backdropFilter: 'blur(18px)',
         WebkitBackdropFilter: 'blur(18px)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        border: '1px solid var(--hair)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         borderRadius: 10,
         padding: 6,
@@ -1193,13 +1193,13 @@ function FenceLangDropdown({
             color: lang === current ? 'var(--ink)' : 'var(--ink-90)',
             fontSize: 12,
             fontFamily: 'var(--font-mono, monospace)',
-            letterSpacing: '0.04em',
+            letterSpacing: '0.08em',
             textAlign: 'left',
             cursor: 'pointer',
-            transition: 'background-color 140ms ease',
+            transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+            e.currentTarget.style.background = 'var(--hair)';
             e.currentTarget.style.color = 'var(--ink)';
           }}
           onMouseLeave={(e) => {

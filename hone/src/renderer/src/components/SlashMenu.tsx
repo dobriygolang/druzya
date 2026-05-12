@@ -212,6 +212,8 @@ export function SlashMenu({ x, y, query, editor, onClose, onBeforeAction }: Slas
   return createPortal(
     <div
       ref={ref}
+      role="listbox"
+      aria-label="Insert block"
       className="fadein"
       onMouseDown={(e) => e.preventDefault()} // не отбираем focus у редактора
       style={{
@@ -229,14 +231,14 @@ export function SlashMenu({ x, y, query, editor, onClose, onBeforeAction }: Slas
         minWidth: 320,
         maxHeight: 360,
         overflowY: 'auto',
-        animationDuration: '140ms',
+        animationDuration: 'var(--motion-dur-small)',
       }}
     >
       <div
         className="mono"
         style={{
           fontSize: 9,
-          letterSpacing: '0.18em',
+          letterSpacing: '0.08em',
           textTransform: 'uppercase',
           color: 'var(--ink-40)',
           padding: '6px 10px 6px',
@@ -281,6 +283,8 @@ function SlashItem({
   return (
     <button
       data-slash-idx={idx}
+      role="option"
+      aria-selected={active}
       onMouseEnter={onHover}
       // mousedown — чтобы не потерять focus в editor'е.
       onMouseDown={(e) => {
@@ -302,7 +306,7 @@ function SlashItem({
         border: 'none',
         cursor: 'pointer',
         textAlign: 'left',
-        transition: 'background-color 140ms ease, color 140ms ease',
+        transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
       }}
     >
       <span style={{ fontSize: 13 }}>{cmd.label}</span>

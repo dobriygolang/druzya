@@ -46,6 +46,15 @@ import {
 import { useTrackStore } from '../stores/track';
 import { DeveloperToolsSection } from '../components/DeveloperToolsSection';
 import { ResourceLibrarySection } from '../components/ResourceLibrarySection';
+import {
+  IdentityCard,
+  PRODUCTS,
+  type ProductInfo,
+} from '../components/onboarding/IdentityCard';
+import {
+  resetIdentityIntroShown,
+} from '../components/onboarding/IdentityIntroModal';
+import { openCueInstall, openDruz9Web } from '../lib/cross-app-links';
 
 interface HoneSettings {
   pomodoroMinutes: number;
@@ -260,6 +269,19 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
         </SectionGroup>
 
         {/* ════════════════════════════════════════════════════════
+            ECOSYSTEM — Phase J / X4 (P1) identity discovery. Trio of
+            druz9 surfaces: Hone / web / Cue. Source-of-truth для copy
+            живёт в components/onboarding/IdentityCard.tsx (PRODUCTS). */}
+        <SectionGroup title="Ecosystem">
+          <Section
+            title="DRUZ9 SURFACES"
+            hint="Hone — daily focus. druz9.online — practice + mocks. Cue — live interview copilot."
+          >
+            <EcosystemSection />
+          </Section>
+        </SectionGroup>
+
+        {/* ════════════════════════════════════════════════════════
             PRIVACY — vault E2E. Отдельной группой потому что есть
             уникальный «no recovery» tradeoff и стоит выделить. */}
         <SectionGroup title="Privacy">
@@ -315,7 +337,7 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
                 color: 'rgba(255,255,255,0.7)',
                 borderRadius: 5,
                 fontSize: 11,
-                letterSpacing: '.08em',
+                letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -364,7 +386,7 @@ function SectionGroup({ title, children }: { title: string; children: React.Reac
 
 function SectionHead({ label }: { label: string }) {
   return (
-    <div className="mono" style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-40)' }}>
+    <div className="mono" style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)' }}>
       {label}
     </div>
   );
@@ -381,7 +403,7 @@ function Section({
 }) {
   return (
     <section style={{ margin: '0 0 44px' }}>
-      <div className="mono" style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-60)' }}>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-60)' }}>
         {title}
       </div>
       {hint && (
@@ -404,6 +426,10 @@ function ThemeCard({
   return (
     <button
       onClick={onPick}
+      role="radio"
+      aria-checked={active}
+      aria-pressed={active}
+      aria-label={`Theme: ${labelFor(id)}`}
       className="surface lift"
       style={{
         position: 'relative',
@@ -443,7 +469,7 @@ function ThemeCard({
             className="mono"
             style={{
               fontSize: 10,
-              letterSpacing: '.18em',
+              letterSpacing: '0.08em',
               color: active ? 'var(--ink)' : 'var(--ink-60)',
               textTransform: 'uppercase',
             }}
@@ -455,7 +481,7 @@ function ThemeCard({
               className="mono"
               style={{
                 fontSize: 9,
-                letterSpacing: '.16em',
+                letterSpacing: '0.08em',
                 color: 'var(--ink)',
                 padding: '2px 6px',
                 borderRadius: 4,
@@ -536,6 +562,10 @@ function Toggle({
   return (
     <button
       onClick={() => onChange(!value)}
+      role="switch"
+      aria-checked={value}
+      aria-pressed={value}
+      aria-label={label}
       className="focus-ring"
       style={{
         display: 'inline-flex',
@@ -604,7 +634,7 @@ function SubscriptionUsageSection() {
   const tierLabel = tier === 'ascended' ? 'Ascended' : tier === 'seeker' ? 'Seeker' : 'Free';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div className="mono" style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--ink-60)', marginBottom: 6 }}>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-60)', marginBottom: 6 }}>
         TIER: {tierLabel.toUpperCase()}
       </div>
       <QuotaUsageBar resource="synced_notes" variant="full" />
@@ -676,7 +706,7 @@ function StorageSection() {
           className="mono"
           style={{
             fontSize: 10,
-            letterSpacing: '0.18em',
+            letterSpacing: '0.08em',
             padding: '3px 8px',
             borderRadius: 999,
             border: '1px solid var(--ink-20)',
@@ -699,7 +729,7 @@ function StorageSection() {
             width: `${pct}%`,
             height: '100%',
             background: overSoft ? 'rgba(255,140,90,0.85)' : 'var(--ink-90)',
-            transition: 'width 240ms ease, background-color 180ms ease',
+            transition: 'width var(--motion-dur-medium) var(--motion-ease-standard), background-color var(--motion-dur-medium) var(--motion-ease-standard)',
           }}
         />
       </div>
@@ -707,24 +737,63 @@ function StorageSection() {
           ниже-cap'е: юзер может профилактически чистить старое. */}
       <ArchiveControl onDone={() => setTick((t) => t + 1)} />
       {data.tier === 'free' && (
-        <div
+        <button
+          type="button"
+          onClick={() => {
+            // X2 (P0) — actionable теперь. Раньше декларативный banner →
+            // юзер читал и забывал. Открываем UpgradeModal с context'ом
+            // cross_device_sync чтобы Stripe attribution знала источник.
+            void import('../components/UpgradeModal').then(({ requestUpgrade }) => {
+              requestUpgrade({
+                feature: 'cross_device_sync',
+                label: 'cross-device sync',
+                benefit:
+                  'Pro syncs notes, whiteboards and coach memory across desktop and other devices — 10 GB on Seeker, 100 GB on Ascended.',
+              });
+            });
+          }}
+          className="focus-ring"
           style={{
             marginTop: 14,
+            width: '100%',
             padding: '12px 14px',
             borderRadius: 10,
             border: '1px solid var(--ink-10)',
             background: 'var(--surface)',
+            textAlign: 'left',
+            color: 'inherit',
+            cursor: 'pointer',
+            font: 'inherit',
+            transition:
+              'border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--ink-20)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--ink-10)';
           }}
         >
-          <div style={{ fontSize: 13, color: 'var(--ink-90)', marginBottom: 4 }}>
-            Sync across devices · Seeker
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 8,
+              marginBottom: 4,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ fontSize: 13, color: 'var(--ink-90)' }}>
+              Sync across devices · Pro
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--ink-40)' }}>See plans →</span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--ink-60)', lineHeight: 1.45 }}>
             Free tier keeps data on this device only. Upgrade to sync notes,
-            whiteboards and coach memory between desktop and other devices —
-            10&nbsp;GB on Seeker, 100&nbsp;GB on Ascended.
+            whiteboards and coach memory between desktop and other devices.
           </div>
-        </div>
+        </button>
       )}
     </div>
   );
@@ -767,7 +836,7 @@ function ArchiveControl({ onDone }: { onDone: () => void }) {
           color: 'var(--ink-90)',
           cursor: busy ? 'default' : 'pointer',
           opacity: busy ? 0.5 : 1,
-          transition: 'opacity 150ms ease, background-color 150ms ease',
+          transition: 'opacity var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard)',
         }}
       >
         {busy ? 'Archiving…' : 'Archive 10 oldest notes'}
@@ -801,7 +870,7 @@ function SignOutSection() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div className="mono" style={{ fontSize: 11, color: 'var(--ink-40)', letterSpacing: '0.06em' }}>
+      <div className="mono" style={{ fontSize: 11, color: 'var(--ink-40)', letterSpacing: '0.08em' }}>
         Signed in as {userId ? `${userId.slice(0, 8)}…${userId.slice(-4)}` : 'unknown'}
       </div>
       <button
@@ -827,7 +896,7 @@ function SignOutSection() {
           border: 'none',
           borderRadius: 8,
           cursor: busy ? 'default' : 'pointer',
-          transition: 'background-color 160ms ease',
+          transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard)',
         }}
       >
         {busy ? 'Signing out…' : 'Sign out'}
@@ -1304,7 +1373,7 @@ function VaultStatusBadge({ state }: { state: 'none' | 'locked' | 'unlocked' }) 
       className="mono"
       style={{
         fontSize: 10,
-        letterSpacing: '0.18em',
+        letterSpacing: '0.08em',
         padding: '4px 10px',
         borderRadius: 999,
         border: `1px solid ${color}`,
@@ -1342,7 +1411,7 @@ function VaultButton({
         color: 'var(--ink-90)',
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        transition: 'background-color 160ms ease, opacity 160ms ease',
+        transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard)',
       }}
       onMouseEnter={(e) => {
         if (!disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
@@ -1380,5 +1449,73 @@ function EnglishToggleSection() {
         label={englishActive ? 'on' : 'off'}
       />
     </Section>
+  );
+}
+
+// EcosystemSection — Phase J / X4 (P1) identity-discovery surface в Settings.
+// Renders the same 3-card trio как IdentityIntroModal, плюс «Show intro
+// again» button. PRODUCTS / IdentityCard — single source-of-truth, копия
+// copy здесь не нужна.
+function EcosystemSection() {
+  const products: ProductInfo[] = [
+    { ...PRODUCTS.hone, current: true },
+    {
+      ...PRODUCTS.web,
+      onCta: () => {
+        openDruz9Web();
+      },
+    },
+    {
+      ...PRODUCTS.cue,
+      onCta: () => {
+        openCueInstall();
+      },
+    },
+  ];
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          flexWrap: 'wrap',
+          alignItems: 'stretch',
+        }}
+      >
+        {products.map((p) => (
+          <IdentityCard key={p.key} info={p} />
+        ))}
+      </div>
+      <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => {
+            // Clear flag + dispatch event — App.tsx subscribes and opens
+            // modal без полного reload (отличается от Onboarding flow,
+            // который reload'ит чтобы re-trigger profile wizard).
+            resetIdentityIntroShown();
+            window.dispatchEvent(new CustomEvent('hone:open-identity-intro'));
+          }}
+          className="mono focus-ring"
+          style={{
+            padding: '6px 12px',
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.7)',
+            borderRadius: 5,
+            fontSize: 11,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          show intro again
+        </button>
+        <span style={{ fontSize: 12, color: 'var(--ink-40)', lineHeight: 1.5 }}>
+          Re-opens the first-run identity intro modal.
+        </span>
+      </div>
+    </div>
   );
 }

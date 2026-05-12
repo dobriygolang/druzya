@@ -340,6 +340,10 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 					domain.EpisodeBriefDismissed,
 					domain.EpisodeQAQuery,
 					domain.EpisodeQAAnswered,
+					// H2 (Phase J) — focus reflections (with grade) surface
+					// в "past coach interactions" prompt section. Coach видит
+					// «3 days ago user reflected "stuck on joins" grade 2».
+					domain.EpisodeFocusReflectionAdded,
 				},
 				// Tighter than the historical 60-day window: older brief
 				// signals lead to recommendations referencing what the user
@@ -513,6 +517,8 @@ func briefFreshnessEpisodeKinds() []domain.EpisodeKind {
 		domain.EpisodeMockPipelineFinished,
 		domain.EpisodeCodexArticleOpened,
 		domain.EpisodeCueConversationMemory,
+		// H2 (Phase J): new reflection invalidates cached brief.
+		domain.EpisodeFocusReflectionAdded,
 	}
 }
 

@@ -26,6 +26,10 @@ export type Profile = {
   // only «Создать слот» CTA on /slots). Wire enum is the canonical proto
   // string (USER_ROLE_INTERVIEWER, …) — accept both forms in helpers below.
   role?: string
+  // tutor_mode_enabled mirrors users.tutor_mode_enabled (migration 00093).
+  // Self-toggle flag — independent from role. When true the AppShell shows
+  // tutor nav items + /tutor sub-surfaces unlock. Free per identity.md.
+  tutor_mode_enabled?: boolean
 }
 
 // isInterviewerOrAdmin matches the backend SlotService.CreateSlot guard
@@ -223,6 +227,39 @@ export function useProfileQuery() {
     queryFn: () => api<Profile>('/profile/me'),
     staleTime: PROFILE_STALE_MS,
     gcTime: PROFILE_GC_MS,
+  })
+}
+
+// ── Settings PATCH (Stream D, 2026-05-12) ──────────────────────────────
+//
+// useUpdateSettingsMutation — partial-update wrapper around PUT
+// /profile/me/settings. The backend `ProfileSettings` payload supports
+// proto3 `optional` field-mask gating, so omitted keys leave the column
+// untouched. Used by /profile surfaces (TutorRoleToggle) that need to
+// flip a single field without round-tripping the whole settings shape.
+export type ProfilePatch = {
+  display_name?: string
+  locale?: string
+  voice_mode_enabled?: boolean
+  ai_insight_model?: string
+  // tutor_mode_enabled — Stream D toggle. Optional so omitting it does
+  // not clobber the stored value.
+  tutor_mode_enabled?: boolean
+}
+
+export function useUpdateSettingsMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: ProfilePatch) =>
+      api<unknown>('/profile/me/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ settings: patch }),
+      }),
+    onSuccess: () => {
+      // Invalidate the bundle so derived UI (AppShell nav gating)
+      // reflects the new value on the next render.
+      void qc.invalidateQueries({ queryKey: profileQueryKeys.me() })
+    },
   })
 }
 

@@ -19,9 +19,9 @@ import (
 //     "is this provider slow?" decision toward "this provider was
 //     failing earlier today".
 //
-//   • Per-task segmentation. Groq's llama-3.1-8b on VacanciesJSON (short,
-//     strict-JSON) has a completely different latency profile than the
-//     same provider's llama-3.3-70b on InsightProse (long prose, 400
+//   • Per-task segmentation. Groq's llama-3.1-8b on CodingHint (short,
+//     low-latency hint) has a completely different latency profile than
+//     the same provider's llama-3.3-70b on InsightProse (long prose, 400
 //     output tokens). Reordering by a global "Groq is fast" would make
 //     the wrong decision for one of them; we key by (provider, model,
 //     task) so each latency profile stays isolated.

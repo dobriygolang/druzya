@@ -25,6 +25,7 @@ import (
 	copilotServices "druz9/cmd/monolith/services/copilot"
 	curationServices "druz9/cmd/monolith/services/curation"
 	editorServices "druz9/cmd/monolith/services/editor"
+	googleCalendarServices "druz9/cmd/monolith/services/google_calendar"
 	honeServices "druz9/cmd/monolith/services/hone"
 	intelligenceService "druz9/cmd/monolith/services/intelligence"
 	notifyServices "druz9/cmd/monolith/services/notify"
@@ -34,6 +35,7 @@ import (
 	storageServices "druz9/cmd/monolith/services/storage"
 	subscriptionServices "druz9/cmd/monolith/services/subscription"
 	syncServices "druz9/cmd/monolith/services/sync"
+	telemetryServices "druz9/cmd/monolith/services/telemetry"
 	tracksServices "druz9/cmd/monolith/services/tracks"
 	tutorServices "druz9/cmd/monolith/services/tutor"
 	whiteboardRoomsServices "druz9/cmd/monolith/services/whiteboard_rooms"
@@ -224,6 +226,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	deps.IntelligenceMemory = intelligenceMod.Memory
 	deps.IntelligenceLinkSuggester = intelligenceMod.LinkSuggester
 	deps.IntelligenceLogResource = intelligenceMod.LogResourceUC
+	// C3 cross-product context — copilot bootstrap wraps в cached
+	// adapter и заинжектит в Suggest + Analyze (Phase J).
+	deps.IntelligenceUserContext = intelligenceMod.GetUserContextUC
 	// External-activity → coach_episode bridge. Hone AddExternalActivity
 	// UC использует это чтобы AI-tutor recall + daily-brief видели
 	// внешнее обучение (LeetCode / Coursera / books) как часть памяти.
@@ -261,11 +266,18 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		editorServices.NewEditor(deps),
 		podcastServices.NewPodcast(deps),
 		adminServices.NewAdmin(deps),
-		adminServices.NewVacancies(deps),
 		// Phase-4 ADR-001 — `achievements` removed (gamification cut, no UI surface).
+		// 2026-05-11 — `vacancies` bounded context removed (off-identity: druz9 is
+		// an AI-guide, not a job board).
 		// Phase 1.7 — `friends` removed (social graph lives in TG channel + circles).
 		honeServices.NewHone(deps),
 		curationServices.NewCuration(deps),
+		// F6 heuristic auto-promote — pure-Go signal refresher +
+		// promote/deprecate toggles. Runs every 6h. Sits beside the
+		// LLM-validated intelligence.AutoPromoteCron (daily) — both
+		// are idempotent and operate on disjoint state via partial
+		// indexes (promoted_at IS NULL / deprecated_at IS NULL).
+		curationServices.NewAutoPromoteCron(deps),
 		roomsServices.NewRooms(deps),
 		roomsServices.NewSweepCron(deps),
 		intelligenceMod.Module,
@@ -273,6 +285,10 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		intelligenceService.NewCurationProducersCron(deps, intelligenceMod.InsightsRepo),
 		whiteboardRoomsServices.NewWhiteboardRooms(deps),
 		circlesMod.Module,
+		// Stream E: Google Calendar two-way sync. OAuth flow + 5-min pull
+		// cron. Module degrades gracefully when GOOGLE_CLIENT_ID/SECRET unset
+		// (RPCs return ErrUpstream from Google API, cron disabled).
+		googleCalendarServices.NewGoogleCalendar(deps),
 		aiMockServices.NewMockInterview(deps),
 		// Pivot 2026-05-04: calendar bounded context выпилен — нулевые
 		// frontend-вызовы /calendar/events*, ribbon на Hone Today
@@ -282,6 +298,11 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		// Phase 2 — curated learning Tracks (bounded context tracks).
 		// Reads are auth-gated so the catalogue can show enrolment state.
 		tracksServices.NewTracks(deps),
+		// Phase A (2026-05-12, brainstorm follow-up) — opt-in product
+		// telemetry. Single batch-write endpoint POST /telemetry/events;
+		// 90-day retention via migration 00102. Без этого Phase B-I roadmap
+		// шипает фичи на guess'ах.
+		telemetryServices.NewTelemetry(deps),
 		// Wave 2 of docs/feature/tutor.md — tutor as distribution
 		// channel. Briefer wired via llmchain (Wave 2.5); the
 		// constructor returns nil when LLMChain is nil (offline /

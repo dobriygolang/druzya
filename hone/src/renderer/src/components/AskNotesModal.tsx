@@ -5,10 +5,16 @@
 //
 // History: localStorage hone:notes:qa-history хранит последние 10 вопросов;
 // показываем как chips под input'ом, пока inputs пустой.
-import { useCallback, useEffect, useRef, useState } from 'react';
+//
+// 2026-05-12: migrated to foundation Modal primitive (focus trap, esc, scroll
+// lock, restore focus, smooth in/out). Citation chip blue tint removed —
+// b/w + red rule per memory/feedback_color_rule.md.
+import { useCallback, useRef, useState } from 'react';
 
 import { askNotes, type AskAnswer, type Citation } from '../api/intelligence';
 import { MarkdownView } from './MarkdownView';
+import { Modal } from './primitives/Modal';
+import { motion as motionTokens } from '../lib/design-tokens';
 
 const HISTORY_KEY = 'hone:notes:qa-history';
 const HISTORY_MAX = 10;
@@ -43,6 +49,7 @@ export interface AskNotesModalProps {
 }
 
 export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
+  const [open, setOpen] = useState(true);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(false);
   const [answer, setAnswer] = useState<AskAnswer | null>(null);
@@ -50,20 +57,10 @@ export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
   const [history, setHistory] = useState<string[]>(() => loadHistory());
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Auto-focus on mount.
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  // Esc to close.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+  // Smooth exit: flip open → Modal exit anim → parent unmounts.
+  const close = useCallback(() => {
+    setOpen(false);
+    window.setTimeout(onClose, motionTokens.dur.medium);
   }, [onClose]);
 
   const submit = useCallback(
@@ -87,38 +84,8 @@ export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
   );
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.45)',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        paddingTop: '14vh',
-        zIndex: 50,
-        backdropFilter: 'blur(4px)',
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 480,
-          maxWidth: '92vw',
-          maxHeight: '70vh',
-          background: 'rgba(28,28,30,0.96)',
-          color: 'rgba(255,255,255,0.92)',
-          borderRadius: 14,
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 20px 64px rgba(0,0,0,0.55)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          fontFamily: 'ui-sans-serif, -apple-system, system-ui, sans-serif',
-          animation: 'askPop 220ms ease-out',
-        }}
-      >
+    <Modal open={open} onClose={close} size="md" initialFocusRef={inputRef as React.RefObject<HTMLElement>}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minHeight: 220, maxHeight: '60vh' }}>
         <input
           ref={inputRef}
           type="text"
@@ -132,29 +99,33 @@ export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
             }
           }}
           style={{
+            flex: '0 0 auto',
             background: 'transparent',
-            border: 'none',
+            border: 0,
+            borderBottom: '1px solid var(--hair-2)',
             outline: 'none',
-            padding: '14px 18px',
-            fontSize: 14,
-            color: 'rgba(255,255,255,0.95)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            padding: '8px 0 10px',
+            fontSize: 15,
+            color: 'var(--ink)',
+            transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
           }}
+          onFocus={(e) => (e.currentTarget.style.borderBottomColor = 'var(--ink)')}
+          onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
         />
 
         <div
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '14px 18px',
             fontSize: 13,
             lineHeight: 1.55,
+            color: 'var(--ink-90)',
           }}
         >
           {/* History chips when empty */}
-          {!loading && !answer && !error && (
-            history.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {!loading && !answer && !error &&
+            (history.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {history.map((h, i) => (
                   <button
                     key={i}
@@ -162,6 +133,7 @@ export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
                       setQ(h);
                       void submit(h);
                     }}
+                    className="focus-ring motion-hover-lift"
                     style={chipStyle}
                   >
                     {h.length > 40 ? `${h.slice(0, 40)}…` : h}
@@ -169,14 +141,13 @@ export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
                 ))}
               </div>
             ) : (
-              <div style={{ color: 'rgba(255,255,255,0.4)' }}>
+              <div style={{ color: 'var(--ink-40)' }}>
                 Type a question and press Enter. I’ll search your notes and answer with citations.
               </div>
-            )
-          )}
+            ))}
 
           {loading && (
-            <div style={{ display: 'flex', gap: 6, color: 'rgba(255,255,255,0.5)' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', color: 'var(--ink-60)' }}>
               <span style={dotStyle(0)} />
               <span style={dotStyle(180)} />
               <span style={dotStyle(360)} />
@@ -184,8 +155,9 @@ export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
           )}
 
           {error && (
-            <div style={{ color: 'rgba(255,180,180,0.85)' }}>
-              Coach is offline.
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, color: 'var(--red)' }}>
+              <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 8 }} />
+              <span>Coach is offline.</span>
             </div>
           )}
 
@@ -195,12 +167,12 @@ export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
               {answer.citations.length > 0 && (
                 <div
                   style={{
-                    marginTop: 14,
-                    paddingTop: 10,
-                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    marginTop: 16,
+                    paddingTop: 12,
+                    borderTop: '1px solid var(--hair)',
                     display: 'flex',
                     flexWrap: 'wrap',
-                    gap: 6,
+                    gap: 8,
                   }}
                 >
                   {answer.citations.map((c, i) => (
@@ -210,7 +182,7 @@ export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
                       citation={c}
                       onClick={() => {
                         onOpenNote(c.noteId);
-                        onClose();
+                        close();
                       }}
                     />
                   ))}
@@ -220,19 +192,21 @@ export function AskNotesModal({ onClose, onOpenNote }: AskNotesModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
 const chipStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: 'transparent',
+  border: '1px solid var(--hair-2)',
   borderRadius: 999,
-  padding: '4px 10px',
+  padding: '5px 12px',
   fontSize: 12,
-  color: 'rgba(255,255,255,0.75)',
+  color: 'var(--ink-60)',
   fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
   cursor: 'pointer',
+  transition:
+    'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
 };
 
 function dotStyle(delay: number): React.CSSProperties {
@@ -255,28 +229,32 @@ function CitationChip({
   citation: Citation;
   onClick: () => void;
 }) {
+  // b/w + red rule: no blue tint. Citation chips use the same hairline ghost
+  // as history chips, with a leading [N] index in --red to mark them as
+  // load-bearing references (signal-stripe equivalent for inline chips).
   return (
     <button
       onClick={onClick}
       title={citation.snippet}
+      className="focus-ring motion-hover-lift"
       style={{
         ...chipStyle,
-        background: 'rgba(120,160,255,0.07)',
-        borderColor: 'rgba(120,160,255,0.18)',
-        color: 'rgba(190,210,255,0.92)',
+        color: 'var(--ink)',
       }}
     >
-      [{idx}] {citation.title.length > 32 ? `${citation.title.slice(0, 32)}…` : citation.title}
+      <span style={{ color: 'var(--red)', marginRight: 4 }}>[{idx}]</span>
+      {citation.title.length > 32 ? `${citation.title.slice(0, 32)}…` : citation.title}
     </button>
   );
 }
 
-// Inject pop keyframes (shared brief dot keyframes installed by DailyBriefPanel).
+// Inject briefDot keyframes once (shared with DailyBriefPanel — defensive guard
+// keeps it idempotent if either modal mounts first). Modal entry/exit anim is
+// owned by the foundation Modal — no askPop keyframe here anymore.
 if (typeof document !== 'undefined' && !document.getElementById('hone-ask-kf')) {
   const style = document.createElement('style');
   style.id = 'hone-ask-kf';
   style.textContent = `
-    @keyframes askPop { from { opacity: 0; transform: scale(0.96) } to { opacity: 1; transform: scale(1) } }
     @keyframes briefDot { 0%,100% { opacity: 0.3 } 50% { opacity: 1 } }
   `;
   document.head.appendChild(style);

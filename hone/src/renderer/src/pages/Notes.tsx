@@ -24,6 +24,7 @@ import { CueMeetingNotes, buildCueMarkdown } from '../components/CueMeetingNotes
 import { ConnectError, Code } from '@connectrpc/connect';
 
 import { AskNotesModal } from '../components/AskNotesModal';
+import { ConnectionPanel } from '../components/notes/ConnectionPanel';
 import { Kbd } from '../components/primitives/Kbd';
 import { RichMarkdownEditor } from '../components/RichMarkdownEditor';
 import { MarkdownSourceEditor } from '../components/MarkdownSourceEditor';
@@ -61,6 +62,7 @@ import {
   type NoteMeta,
 } from '../api/storage';
 import { getRow } from '../api/localCache';
+import { trackEvent } from '../api/events';
 import { useSessionStore } from '../stores/session';
 import { useQuotaStore } from '../stores/quota';
 import {
@@ -88,6 +90,16 @@ const SIDEBAR_COLLAPSED_KEY = 'hone:notes:sidebar-collapsed';
 const SIDEBAR_MIN = 220;
 const SIDEBAR_MAX = 460;
 const SIDEBAR_DEFAULT = 280;
+// Right-sidebar ConnectionPanel — fixed width (panel design не resize'ится).
+// `collapsed` персистится в localStorage чтобы юзер не открывал/закрывал
+// каждый запуск; default = expanded (это главная differentiator-фича vs
+// Obsidian/Notion AI — visible by default).
+const RIGHT_PANEL_COLLAPSED_KEY = 'hone:notes:right-panel-collapsed';
+const RIGHT_PANEL_W = 280;
+const RIGHT_PANEL_COLLAPSED_W = 28;
+// Threshold under which the panel auto-collapses on mount — на узких
+// окнах оно бы съело editor. Юзер всё равно может открыть через ⌘⇧J.
+const RIGHT_PANEL_AUTO_COLLAPSE_PX = 900;
 
 export interface NotesPageProps {
   initialSelectedId?: string | null;
@@ -150,6 +162,28 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
   });
+  // Right-sidebar ConnectionPanel collapsed state. SSR-safe default = false;
+  // localStorage rules; auto-collapse под порогом ширины (см effect ниже).
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const stored = window.localStorage.getItem(RIGHT_PANEL_COLLAPSED_KEY);
+    if (stored === '1') return true;
+    if (stored === '0') return false;
+    // Default: collapsed on narrow viewports, expanded otherwise.
+    return window.innerWidth < RIGHT_PANEL_AUTO_COLLAPSE_PX;
+  });
+  // Persist + relayout on toggle. Persist даже если автозакрыли — explicit
+  // юзер-выбор уважаем дальше.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(RIGHT_PANEL_COLLAPSED_KEY, rightPanelCollapsed ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [rightPanelCollapsed]);
+  const toggleRightPanel = useCallback(() => {
+    setRightPanelCollapsed((c) => !c);
+  }, []);
   const sidebarMountedRef = useRef(false);
   useEffect(() => {
     try {
@@ -608,13 +642,21 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCueNote]);
 
-  // ⌘J connections / ⌘⇧L AskNotes / ⌘N create.
+  // ⌘J connections (modal) / ⌘⇧J side-panel toggle / ⌘⇧L AskNotes / ⌘N create.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.shiftKey && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         setAskOpen(true);
+        return;
+      }
+      // ⌘⇧J — toggle persistent ConnectionPanel (right sidebar).
+      // Distinct from ⌘J (modal overlay) — the panel is the always-on
+      // surface; modal is the deep-dive variant.
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        toggleRightPanel();
         return;
       }
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'j') {
@@ -708,6 +750,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
 
     try {
       const n = await createNote('Untitled', '');
+      trackEvent('note_create');
       // Replace temp-row with real one, swap selectedId.
       setList((prev) => ({
         ...prev,
@@ -904,6 +947,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
       }
 
       const result = await shareNoteToWeb(effectiveId, plaintextMd);
+      trackEvent('note_publish');
       if (result.url) {
         try {
           await navigator.clipboard.writeText(result.url);
@@ -1204,6 +1248,15 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
+  // Grid template — left sidebar + handle + editor + right ConnectionPanel.
+  // Each column is conditional so the grid stays valid when components are
+  // hidden (otherwise the Editor's auto-placement column collapses to 0).
+  // Right panel: full width when expanded, rail width when collapsed.
+  const rightColW = rightPanelCollapsed ? RIGHT_PANEL_COLLAPSED_W : RIGHT_PANEL_W;
+  const gridCols = sidebarCollapsed
+    ? `1fr ${rightColW}px`
+    : `${sidebarW}px 6px 1fr ${rightColW}px`;
+
   return (
     <div
       className="fadein"
@@ -1213,11 +1266,11 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
         paddingTop: 80,
         paddingBottom: 80,
         display: 'grid',
-        // КРИТИЧНО: при collapsed — single-column grid, иначе Editor с
-        // одним in-flow child'ом auto-flow'ится в column 1 и схлопывается
-        // до нуля ширины (NotesExpandSidebarButton — position:absolute,
-        // в grid flow не участвует).
-        gridTemplateColumns: sidebarCollapsed ? `1fr` : `${sidebarW}px 6px 1fr`,
+        // КРИТИЧНО: при collapsed — single-column grid + right panel,
+        // иначе Editor с одним in-flow child'ом auto-flow'ится в column 1
+        // и схлопывается до нуля ширины (NotesExpandSidebarButton —
+        // position:absolute, в grid flow не участвует).
+        gridTemplateColumns: gridCols,
         animationDuration: '320ms',
       }}
     >
@@ -1284,6 +1337,22 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
           onCreate={handleCreate}
         />
       )}
+
+      {/* Right-sidebar ConnectionPanel — always rendered (collapses to rail).
+          When viewing a Cue session noteId is null and the panel shows an
+          empty state ("Pick a note to see related ideas."). */}
+      <ConnectionPanel
+        noteId={active?.id ?? null}
+        noteTitle={draftTitle}
+        noteBody={draftBody}
+        onPickNote={(id) => {
+          setActiveCueNote(null);
+          setActiveCueSessionId(null);
+          setSelectedId(id);
+        }}
+        collapsed={rightPanelCollapsed}
+        onToggleCollapsed={toggleRightPanel}
+      />
 
       {connectionsOpen && active && (
         <ConnectionsPanel
@@ -1519,7 +1588,7 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
           padding: '4px 14px 2px',
           fontSize: 9.5,
           fontWeight: 600,
-          letterSpacing: '0.10em',
+          letterSpacing: '0.08em',
           textTransform: 'uppercase',
           color: 'var(--ink-40)',
           display: 'flex',
@@ -1578,7 +1647,7 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
               flex: 1,
               fontSize: 9.5,
               fontWeight: 600,
-              letterSpacing: '0.10em',
+              letterSpacing: '0.08em',
               textTransform: 'uppercase',
               color: 'var(--ink-40)',
             }}>
@@ -1853,10 +1922,10 @@ function NotesRetentionHint() {
         className="mono"
         style={{
           fontSize: 9,
-          letterSpacing: '0.16em',
+          letterSpacing: '0.08em',
           textTransform: 'uppercase',
           color: hover ? 'var(--ink-60)' : 'var(--ink-40)',
-          transition: 'color 160ms ease',
+          transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
         }}
       >
         Auto-archive after 90d
@@ -2500,6 +2569,11 @@ function FolderRow({
         : 'transparent';
   return (
     <div
+      role="treeitem"
+      aria-selected={active}
+      aria-current={active ? 'page' : undefined}
+      aria-expanded={expandable ? expanded : undefined}
+      aria-level={level + 1}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onClick={onClick}
@@ -2545,6 +2619,10 @@ function FolderRow({
           e.stopPropagation();
           if (expandable && onToggleExpand) onToggleExpand();
         }}
+        aria-label={expanded ? 'Collapse folder' : 'Expand folder'}
+        aria-expanded={expandable ? expanded : undefined}
+        aria-hidden={!expandable}
+        tabIndex={expandable ? 0 : -1}
         style={{
           width: 14,
           height: 14,
@@ -2622,7 +2700,7 @@ function FolderRow({
             padding: 0,
             transition: 'color 140ms ease',
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#ff6a6a')}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--red)')}
           onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
         >
           <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
@@ -2676,7 +2754,7 @@ const NoteRow = memo(NoteRowImpl, (prev, next) => {
   );
 });
 
-function NoteRowImpl({ note, active, folders, onSelect, onDelete, onPublish, onUnpublish, onSyncToCloud, onCloudToLocal, onMove }: NoteRowProps) {
+function NoteRowImpl({ note, active, encrypted, folders, onSelect, onDelete, onPublish, onUnpublish, onSyncToCloud, onCloudToLocal, onMove }: NoteRowProps) {
   const [hover, setHover] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pubStatus, setPubStatus] = useState<PublishStatus | null>(null);
@@ -2756,9 +2834,35 @@ function NoteRowImpl({ note, active, folders, onSelect, onDelete, onPublish, onU
             textOverflow: 'ellipsis',
             transition: 'color 160ms ease',
             lineHeight: 1.4,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
           }}
         >
-          {note.title || 'Untitled'}
+          {/* Vault-encrypted indicator — 11px lock at title leading edge.
+              Distinct from the publish/private button on the row trailing
+              edge: this one is read-only and indicates body-encryption
+              (vault-locked), not publish state. */}
+          {encrypted && (
+            <span
+              title="Vault-encrypted note"
+              aria-label="Vault-encrypted"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                color: 'var(--ink-60)',
+                flexShrink: 0,
+              }}
+            >
+              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </span>
+          )}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {note.title || 'Untitled'}
+          </span>
         </div>
         <div
           className="mono"
@@ -2815,14 +2919,14 @@ function NoteRowImpl({ note, active, folders, onSelect, onDelete, onPublish, onU
         (() => {
           const isPublic = !!pubStatus?.published;
           const lockColor = isPublic
-            ? 'rgba(127,212,155,0.95)' // green — public
-            : 'rgba(255,106,106,0.95)'; // red — private
+            ? 'var(--ink)'      // bright ink — published (noteworthy state)
+            : 'var(--ink-60)';  // dimmed ink — private (default state)
           const lockBg = isPublic
-            ? 'rgba(127,212,155,0.10)'
-            : 'rgba(255,106,106,0.08)';
+            ? 'rgba(255,255,255,0.08)'
+            : 'transparent';
           const lockBorder = isPublic
-            ? 'rgba(127,212,155,0.30)'
-            : 'rgba(255,106,106,0.22)';
+            ? 'rgba(255,255,255,0.22)'
+            : 'rgba(255,255,255,0.10)';
           return (
             <button
               onClick={(e) => {
@@ -2841,8 +2945,8 @@ function NoteRowImpl({ note, active, folders, onSelect, onDelete, onPublish, onU
               style={{
                 display: 'grid',
                 placeItems: 'center',
-                width: 22,
-                height: 22,
+                width: 28,
+                height: 28,
                 background: lockBg,
                 border: `1px solid ${lockBorder}`,
                 borderRadius: 5,
@@ -2905,8 +3009,8 @@ function NoteRowImpl({ note, active, folders, onSelect, onDelete, onPublish, onU
         className="focus-ring"
         title="More"
         style={{
-          width: 22,
-          height: 22,
+          width: 28,
+          height: 28,
           display: 'grid',
           placeItems: 'center',
           background: menuOpen ? 'rgba(255,255,255,0.08)' : 'transparent',
@@ -3103,7 +3207,7 @@ function DropdownLabel({ children }: { children: React.ReactNode }) {
       className="mono"
       style={{
         fontSize: 9,
-        letterSpacing: '0.18em',
+        letterSpacing: '0.08em',
         textTransform: 'uppercase',
         color: 'var(--ink-40)',
         padding: '6px 10px 4px',
@@ -3144,7 +3248,7 @@ function DropdownItem({
           ? 'transparent'
           : hover
             ? danger
-              ? 'rgba(255,80,80,0.10)'
+              ? 'rgba(255, 59, 48, 0.10)'
               : 'rgba(255,255,255,0.06)'
             : 'transparent',
         border: 'none',
@@ -3152,7 +3256,7 @@ function DropdownItem({
         color: disabled
           ? 'var(--ink-40)'
           : danger
-            ? '#ff6a6a'
+            ? 'var(--red)'
             : hover
               ? 'var(--ink)'
               : 'var(--ink-90)',
@@ -3160,7 +3264,7 @@ function DropdownItem({
         cursor: disabled ? 'default' : 'pointer',
         textAlign: 'left',
         opacity: disabled ? 0.6 : 1,
-        transition: 'background-color 140ms ease, color 140ms ease',
+        transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
       }}
     >
       <span style={{ display: 'inline-flex', color: 'inherit' }}>{icon}</span>
@@ -3405,7 +3509,7 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
                   style={{
                     padding: '3px 8px',
                     fontSize: 9.5,
-                    letterSpacing: '0.14em',
+                    letterSpacing: '0.08em',
                     textTransform: 'uppercase',
                     color: isActive ? 'var(--ink)' : 'var(--ink-40)',
                     background: isActive
@@ -3414,7 +3518,7 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
                     border: '1px solid rgba(255,255,255,0.06)',
                     borderRadius: 4,
                     cursor: 'pointer',
-                    transition: 'background 140ms ease, color 140ms ease',
+                    transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
                   }}
                 >
                   {p.label}
@@ -3435,7 +3539,7 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
             bottom: 30,
             left: 80,
             fontSize: 10,
-            color: '#ff6a6a',
+            color: 'var(--red)',
           }}
         >
           {activeError}
@@ -3565,6 +3669,25 @@ function EmptyState({ onCreate, dim = false }: { onCreate: () => void; dim?: boo
       >
         + New note
       </button>
+      {/* Phase J / X4 (P1) — identity reminder, only on truly-empty state
+          (not when "pick a note" dim mode). Notes являются private to Hone;
+          для shareable / whiteboard collab — web /editor + /whiteboard. */}
+      {!dim && (
+        <p
+          style={{
+            margin: 0,
+            marginTop: 4,
+            fontSize: 11,
+            color: 'var(--ink-40)',
+            lineHeight: 1.5,
+            maxWidth: 360,
+            textAlign: 'center',
+          }}
+        >
+          Notes here are private to Hone. For public sharing or whiteboard
+          collaboration, see druz9.online.
+        </p>
+      )}
     </div>
   );
 }
@@ -3601,6 +3724,9 @@ function Toast({ text }: { text: string }) {
   return (
     <div
       className="fadein"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       style={{
         position: 'fixed',
         // Поднимаем над Dock'ом (Dock у нас bottom: 36, ~36px высотой =
@@ -3620,7 +3746,7 @@ function Toast({ text }: { text: string }) {
         color: 'var(--ink)',
         fontSize: 13,
         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-        animationDuration: '180ms',
+        animationDuration: 'var(--motion-dur-medium)',
       }}
     >
       {text}
@@ -3646,6 +3772,9 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [aiItems, setAiItems] = useState<NoteLinkSuggestion[]>([]);
   const [aiErr, setAiErr] = useState<string | null>(null);
+  // CI1: retry counter — bumps re-trigger обоих effect'ов (embed stream +
+  // AI rerank) без дублирования fetch-логики.
+  const [reload, setReload] = useState(0);
   // toast — single-line «linking … » при первом приходе AI-suggestion'ов.
   // Auto-hide через 4с; undo пока no-op (suggestion эфемерна — accept'нуть
   // её = вставить markdown-ссылку в body, что юзер делает руками).
@@ -3673,7 +3802,7 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [noteId]);
+  }, [noteId, reload]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3702,7 +3831,7 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [noteId]);
+  }, [noteId, reload]);
 
   useEffect(() => {
     if (!toast) return;
@@ -3746,7 +3875,7 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
           overflowY: 'auto',
         }}
       >
-        <div className="mono" style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-40)' }}>
+        <div className="mono" style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)' }}>
           CONNECTIONS {status === 'loading' && '· STREAMING…'}
         </div>
         <h3 style={{ margin: '10px 0 24px', fontSize: 22, fontWeight: 400, letterSpacing: '-0.015em' }}>
@@ -3754,9 +3883,23 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
         </h3>
 
         {status === 'error' && (
-          <p style={{ fontSize: 13, color: 'var(--ink-60)' }}>
-            {err?.includes('embedding') ? 'Embeddings not available yet.' : err}
-          </p>
+          // CI1: stripe + retry — вместо silent plain text.
+          <div className="data-loader-error" style={{ marginTop: 4 }}>
+            <div className="data-loader-error-stripe" />
+            <div className="data-loader-error-body">
+              <div className="data-loader-error-label">
+                {err?.includes('embedding') ? 'Embeddings not available yet.' : 'Connections failed'}
+              </div>
+              {err && <div className="data-loader-error-detail">{err}</div>}
+              <button
+                type="button"
+                className="data-loader-error-retry focus-ring motion-press"
+                onClick={() => setReload((n) => n + 1)}
+              >
+                retry
+              </button>
+            </div>
+          </div>
         )}
         {status === 'ok' && items.length === 0 && (
           <p style={{ fontSize: 13, color: 'var(--ink-60)' }}>
@@ -3806,7 +3949,7 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
             className="mono"
             style={{
               fontSize: 10,
-              letterSpacing: '.24em',
+              letterSpacing: '0.08em',
               color: 'var(--ink-40)',
               display: 'flex',
               alignItems: 'center',
@@ -3823,11 +3966,25 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
           </div>
 
           {aiStatus === 'error' && (
-            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--ink-60)' }}>
-              {aiErr?.includes('llm') || aiErr?.includes('LLM')
-                ? 'AI rerank temporarily unavailable.'
-                : aiErr}
-            </p>
+            // CI1: stripe + retry для AI-rerank секции.
+            <div className="data-loader-error" style={{ marginTop: 10 }}>
+              <div className="data-loader-error-stripe" />
+              <div className="data-loader-error-body">
+                <div className="data-loader-error-label">
+                  {aiErr?.includes('llm') || aiErr?.includes('LLM')
+                    ? 'AI rerank temporarily unavailable'
+                    : 'AI rerank failed'}
+                </div>
+                {aiErr && <div className="data-loader-error-detail">{aiErr}</div>}
+                <button
+                  type="button"
+                  className="data-loader-error-retry focus-ring motion-press"
+                  onClick={() => setReload((n) => n + 1)}
+                >
+                  retry
+                </button>
+              </div>
+            </div>
           )}
           {aiStatus === 'ok' && aiItems.length === 0 && (
             <p style={{ marginTop: 10, fontSize: 12, color: 'var(--ink-60)' }}>
@@ -3844,7 +4001,7 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
                   marginBottom: 8,
                   borderRadius: 6,
                   background: i === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-                  borderLeft: i === 0 ? '1.5px solid #FF3B30' : '1px solid rgba(255,255,255,0.07)',
+                  borderLeft: i === 0 ? '1.5px solid var(--red)' : '1px solid rgba(255,255,255,0.07)',
                 }}
               >
                 <button
@@ -3887,7 +4044,7 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
           </ul>
         </div>
 
-        <div className="mono" style={{ marginTop: 20, fontSize: 10, color: 'var(--ink-40)', letterSpacing: '.12em' }}>
+        <div className="mono" style={{ marginTop: 20, fontSize: 10, color: 'var(--ink-40)', letterSpacing: '0.08em' }}>
           ESC TO CLOSE
         </div>
       </aside>
@@ -3909,19 +4066,20 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
             border: '1px solid rgba(255,255,255,0.12)',
             borderRadius: 8,
             fontSize: 10,
-            letterSpacing: '.06em',
+            letterSpacing: '0.08em',
             textTransform: 'uppercase',
             color: 'var(--ink-70)',
             boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
           }}
         >
           <span
+            className="red-pulse"
             style={{
               width: 6,
               height: 6,
               borderRadius: 999,
-              background: '#FF3B30',
-              boxShadow: '0 0 0 2px rgba(255,59,48,0.18)',
+              background: 'var(--red)',
+              boxShadow: '0 0 0 2px rgba(255, 59, 48, 0.18)',
             }}
           />
           <span>
@@ -3952,14 +4110,29 @@ function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
 function ErrorPane({ message, code }: { message: string; code: Code | null }) {
   let headline = 'Notes offline.';
   if (code === Code.Unauthenticated) headline = 'Sign in to view notes.';
+  // CI1: retry via 'hone:sync-changed' event — единственный hook на котором
+  // fetchList уже подписан. Re-dispatching заставит useEffect refetch'нуть
+  // list без необходимости поднимать setReload в parent (Notes уже 4300+
+  // строк — touch'аем минимум).
+  const onRetry = () => {
+    window.dispatchEvent(new CustomEvent('hone:sync-changed'));
+  };
   return (
-    <div>
-      <p style={{ fontSize: 14, color: 'var(--ink-60)' }}>{headline}</p>
-      {message && (
-        <p className="mono" style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-40)' }}>
-          {message}
-        </p>
-      )}
+    <div className="data-loader-error" style={{ maxWidth: 480 }}>
+      <div className="data-loader-error-stripe" />
+      <div className="data-loader-error-body">
+        <div className="data-loader-error-label">{headline}</div>
+        {message && <div className="data-loader-error-detail">{message}</div>}
+        {code !== Code.Unauthenticated && (
+          <button
+            type="button"
+            className="data-loader-error-retry focus-ring motion-press"
+            onClick={onRetry}
+          >
+            retry
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -4196,7 +4369,7 @@ function EncryptedEditorView({
           {unlocking ? 'Unlocking…' : 'Unlock Vault'}
         </button>
         {error ? (
-          <div style={{ fontSize: 12, color: '#ff6a6a' }}>{error}</div>
+          <div style={{ fontSize: 12, color: 'var(--red)' }}>{error}</div>
         ) : null}
       </div>
     );
@@ -4270,9 +4443,12 @@ function SaveStatusIndicator({ status }: { status: 'idle' | 'saving' | 'saved' }
   if (status === 'idle') return null;
   return (
     <span
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       style={{
-        color: status === 'saved' ? 'rgba(127, 212, 155, 0.85)' : 'var(--ink-60)',
-        transition: 'color 220ms ease, opacity 220ms ease',
+        color: status === 'saved' ? 'var(--ink)' : 'var(--ink-60)',
+        transition: 'color var(--motion-dur-medium) var(--motion-ease-standard), opacity var(--motion-dur-medium) var(--motion-ease-standard)',
       }}
     >
       {status === 'saving' ? 'Saving…' : 'Saved'}

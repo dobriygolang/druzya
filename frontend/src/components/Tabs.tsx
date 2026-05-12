@@ -120,19 +120,19 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
     //   is hairline-bordered so the segments read as one unit.
     const styles: Record<TabsVariant, string> = {
       pills: cn(
-        'px-3 h-9 rounded-full text-[13px] font-medium transition-colors',
+        'px-3 h-9 rounded-full text-[13px] font-medium transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
         active
           ? 'bg-text-primary/10 text-text-primary'
           : 'text-text-secondary hover:text-text-primary hover:bg-text-primary/5',
       ),
       underline: cn(
-        'relative h-10 px-1 text-[14px] font-medium transition-colors',
+        'relative h-10 px-1 text-[14px] font-medium transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
         active
           ? 'text-text-primary after:absolute after:left-0 after:right-0 after:-bottom-px after:h-px after:bg-text-primary'
           : 'text-text-muted hover:text-text-primary',
       ),
       segmented: cn(
-        'px-3 h-8 rounded-md text-[13px] font-medium transition-colors',
+        'px-3 h-8 rounded-md text-[13px] font-medium transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
         active
           ? 'bg-surface-2 text-text-primary'
           : 'text-text-secondary hover:text-text-primary',

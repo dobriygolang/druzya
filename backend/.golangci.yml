@@ -60,7 +60,6 @@ linters-settings:
           - pkg: "druz9/sync"
           - pkg: "druz9/tg_coach"
           - pkg: "druz9/transcription"
-          - pkg: "druz9/vacancies"
           - pkg: "druz9/whiteboard_rooms"
   wrapcheck:
     ignoreSigs:

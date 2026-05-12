@@ -19,7 +19,7 @@ export function AiInsight({ text }: { text: string }) {
           <Brain className="h-5 w-5 text-text-secondary" />
           <h3 className="font-display text-lg font-bold text-text-primary">AI insight недели</h3>
         </div>
-        <p className="font-mono text-[10px] uppercase tracking-wide text-text-muted">
+        <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           Сгенерировано Claude Sonnet 4
         </p>
       </div>

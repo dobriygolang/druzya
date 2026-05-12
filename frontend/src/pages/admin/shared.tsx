@@ -21,17 +21,18 @@ export type Tab =
   | 'personas'
   | 'atlas'
   | 'mock_companies'
+  | 'mock_company_manager'
   | 'mock_tasks'
   | 'mock_questions'
   | 'mock_strictness'
   | 'quotas'
   | 'copilot_plans'
-  | 'obs_tracks'
-  | 'obs_english_hr'
-  | 'obs_mock_block'
-  | 'obs_intelligence'
-  | 'obs_llm'
+  | 'observability'
   | 'rooms'
+  | 'goal_presets'
+  | 'coach_prompts'
+  | 'notification_templates'
+  | 'ab_experiments'
 
 type Item = { id: Tab; label: string; chip?: string; chipColor?: string }
 type Group = { id: string; label: string; defaultOpen: boolean; items: Item[] }
@@ -79,7 +80,8 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
       label: 'Mock interviews',
       defaultOpen: true,
       items: [
-        { id: 'mock_companies', label: 'Компании' },
+        { id: 'mock_company_manager', label: 'Company Manager' },
+        { id: 'mock_companies', label: 'Компании (legacy)' },
         { id: 'mock_tasks', label: 'Задачи' },
         { id: 'mock_questions', label: 'Вопросы' },
         { id: 'mock_strictness', label: 'Строгость AI' },
@@ -93,6 +95,7 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
         { id: 'codex', label: 'Codex · статьи' },
         { id: 'podcasts', label: 'Подкасты' },
         { id: 'atlas', label: 'Atlas CMS' },
+        { id: 'goal_presets', label: 'Goal presets' },
       ],
     },
     {
@@ -103,6 +106,16 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
         { id: 'ai_models', label: 'Модели' },
         { id: 'llm_chain', label: 'LLM Chain ⚡' },
         { id: 'personas', label: 'Персоны' },
+        { id: 'coach_prompts', label: 'Coach prompts' },
+      ],
+    },
+    {
+      id: 'growth',
+      label: 'Growth',
+      defaultOpen: false,
+      items: [
+        { id: 'notification_templates', label: 'Notifications' },
+        { id: 'ab_experiments', label: 'A/B experiments' },
       ],
     },
     {
@@ -119,11 +132,7 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
       label: 'Observability',
       defaultOpen: false,
       items: [
-        { id: 'obs_tracks', label: 'Tracks · adoption' },
-        { id: 'obs_english_hr', label: 'English HR · health' },
-        { id: 'obs_mock_block', label: 'Mock-block · strictness' },
-        { id: 'obs_intelligence', label: 'Intelligence · coach' },
-        { id: 'obs_llm', label: 'LLM · per-task rollups' },
+        { id: 'observability', label: 'Observability dashboard' },
       ],
     },
     {
@@ -187,7 +196,8 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
               <button
                 type="button"
                 onClick={() => toggleGroup(g.id)}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted hover:text-text-primary"
+                aria-expanded={isOpen}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted hover:text-text-primary"
               >
                 {isOpen ? (
                   <ChevronDown className="h-3 w-3" />
@@ -205,6 +215,7 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
                     <button
                       key={it.id}
                       onClick={() => setTab(it.id)}
+                      aria-pressed={it.id === tab}
                       className={`flex items-center justify-between rounded-md px-3 py-1.5 text-[13px] ${
                         it.id === tab
                           ? 'border-l-2 border-text-primary bg-text-primary/5 text-text-primary'

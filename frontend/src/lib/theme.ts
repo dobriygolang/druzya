@@ -1,82 +1,42 @@
-import { useEffect, useState, useCallback } from 'react'
+// theme.ts — dark-only kill switch (CI4 Phase A W3 cleanup, 2026-05-11).
+//
+// Light theme tokens were never AAA-audited and Hone aesthetic is dark-first
+// across all three surfaces (web / Hone / Cue). Per roadmap anti-pattern #16
+// — kill switch was chosen over running the full contrast audit (saves ~1
+// day work). Public API kept stable so callers don't break; toggle and set
+// are no-ops, theme is always 'dark'. Re-introducing light is a 2-line
+// revert if we ever change our minds.
+import { useCallback, useState } from 'react'
 
 export type ThemeMode = 'dark' | 'light' | 'auto'
-const STORAGE_KEY = 'druz9_theme'
 
-function readStored(): ThemeMode {
-  if (typeof window === 'undefined') return 'dark'
-  const v = window.localStorage.getItem(STORAGE_KEY)
-  if (v === 'dark' || v === 'light' || v === 'auto') return v
-  return 'dark'
-}
-
-function resolveEffective(mode: ThemeMode): 'dark' | 'light' {
-  if (mode === 'auto') {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
-    }
-    return 'dark'
-  }
-  return mode
-}
-
-function applyTheme(mode: ThemeMode) {
+function applyDark() {
   if (typeof document === 'undefined') return
-  const effective = resolveEffective(mode)
   const root = document.documentElement
-  root.classList.remove('dark', 'light')
-  root.classList.add(effective)
-  root.dataset.theme = effective
+  root.classList.remove('light')
+  root.classList.add('dark')
+  root.dataset.theme = 'dark'
 }
 
-// Применяем как можно раньше при загрузке модуля, чтобы избежать стартовой вспышки
 if (typeof document !== 'undefined') {
-  applyTheme(readStored())
-}
-
-type Listener = (m: ThemeMode) => void
-const listeners = new Set<Listener>()
-let current: ThemeMode = readStored()
-
-function setMode(mode: ThemeMode) {
-  current = mode
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY, mode)
-  }
-  applyTheme(mode)
-  listeners.forEach((l) => l(mode))
+  applyDark()
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<ThemeMode>(current)
+  // State retained для API совместимости (компоненты деструктурируют
+  // `theme`); функционально это всегда 'dark'.
+  const [theme] = useState<ThemeMode>('dark')
 
-  useEffect(() => {
-    const l: Listener = (m) => setThemeState(m)
-    listeners.add(l)
-    return () => {
-      listeners.delete(l)
-    }
+  const set = useCallback((_m: ThemeMode) => {
+    // No-op: dark-only kill switch.
   }, [])
-
-  // Слушаем изменения системной color scheme в режиме auto
-  useEffect(() => {
-    if (theme !== 'auto') return
-    if (typeof window === 'undefined' || !window.matchMedia) return
-    const mql = window.matchMedia('(prefers-color-scheme: light)')
-    const handler = () => applyTheme('auto')
-    mql.addEventListener?.('change', handler)
-    return () => mql.removeEventListener?.('change', handler)
-  }, [theme])
-
-  const set = useCallback((m: ThemeMode) => setMode(m), [])
   const toggle = useCallback(() => {
-    const effective = resolveEffective(current)
-    setMode(effective === 'dark' ? 'light' : 'dark')
+    // No-op: dark-only kill switch.
   }, [])
 
   return { theme, set, toggle }
 }
 
 export function getEffectiveTheme(): 'dark' | 'light' {
-  return resolveEffective(current)
+  return 'dark'
 }

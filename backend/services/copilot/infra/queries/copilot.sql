@@ -305,3 +305,44 @@ UPDATE copilot_quotas
        models_allowed = $4,
        updated_at     = now()
  WHERE user_id = $1;
+
+-- =============================================================================
+-- Interview prep sessions (Phase J / C6)
+-- =============================================================================
+
+-- name: EndActiveInterviewPreps :execrows
+-- Stamps ended_at on every active prep for the user. Called inside
+-- StartInterviewPrep's transaction before the new INSERT so the partial
+-- unique index doesn't trip. Idempotent — returns 0 when there is no
+-- active row.
+UPDATE interview_prep_sessions
+   SET ended_at = now()
+ WHERE user_id = $1
+   AND ended_at IS NULL;
+
+-- name: InsertInterviewPrepSession :one
+INSERT INTO interview_prep_sessions (
+    user_id, parsed_cv, parsed_jd, cv_text, jd_text, company, role
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, user_id, parsed_cv, parsed_jd, cv_text, jd_text,
+          company, role, started_at, ended_at;
+
+-- name: GetActiveInterviewPrep :one
+-- Returns the user's single live prep row (ended_at IS NULL). The partial
+-- unique index guarantees ≤1; sqlc maps "no rows" → pgx.ErrNoRows which
+-- the app layer translates to "no active prep".
+SELECT id, user_id, parsed_cv, parsed_jd, cv_text, jd_text,
+       company, role, started_at, ended_at
+  FROM interview_prep_sessions
+ WHERE user_id = $1
+   AND ended_at IS NULL;
+
+-- name: EndInterviewPrepByID :execrows
+-- Targeted end (when the client passes a specific session_id). Scoped
+-- to user_id for auth — returns 0 affected when the id belongs to
+-- another user.
+UPDATE interview_prep_sessions
+   SET ended_at = now()
+ WHERE id = $1
+   AND user_id = $2
+   AND ended_at IS NULL;

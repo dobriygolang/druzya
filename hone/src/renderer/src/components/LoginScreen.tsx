@@ -187,7 +187,7 @@ export function LoginScreen() {
 
   return (
     <div
-      className="fadein"
+      className="motion-page-in"
       style={{
         position: 'absolute',
         inset: 0,
@@ -195,38 +195,36 @@ export function LoginScreen() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#000',
+        background: 'var(--bg)',
       }}
     >
       <Wordmark />
-      <div style={{ maxWidth: 420, textAlign: 'center', padding: '0 32px' }}>
-        <div
-          className="mono"
-          style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-40)' }}
-        >
-          QUIET COCKPIT FOR DEVELOPERS
-        </div>
+      <div style={{ maxWidth: 480, width: '100%', textAlign: 'center', padding: '0 32px' }}>
+        <div style={captionMonoSmall}>QUIET COCKPIT FOR DEVELOPERS</div>
         <h1
           style={{
-            margin: '20px 0 8px',
-            fontSize: 36,
-            fontWeight: 400,
-            letterSpacing: '-0.025em',
-            lineHeight: 1.05,
+            margin: '22px 0 12px',
+            fontSize: 'var(--type-h1-size)',
+            lineHeight: 'var(--type-h1-lh)',
+            letterSpacing: 'var(--type-h1-ls)',
+            fontWeight: 'var(--type-h1-weight)',
+            color: 'var(--ink)',
           }}
         >
           Sign in to start.
         </h1>
         <p
           style={{
-            fontSize: 14,
+            margin: 0,
+            fontSize: 'var(--type-body-size)',
+            lineHeight: 'var(--type-body-lh)',
             color: 'var(--ink-60)',
-            marginTop: 12,
-            lineHeight: 1.6,
+            maxWidth: '60ch',
+            marginInline: 'auto',
           }}
         >
-          Hone uses your druz9 account. Подтверди вход в Telegram, мы поймаем
-          подтверждение автоматически.
+          Hone uses your druz9 account. Подтверди вход в Telegram, мы поймаем подтверждение
+          автоматически.
         </p>
 
         {phase.kind === 'awaiting' ? (
@@ -235,15 +233,19 @@ export function LoginScreen() {
           <button
             onClick={() => void onSignIn()}
             disabled={phase.kind === 'starting'}
-            className="focus-ring"
+            className="focus-ring motion-press"
             style={{
               marginTop: 32,
               padding: '11px 24px',
-              borderRadius: 999,
-              background: phase.kind === 'starting' ? 'rgba(255,255,255,0.08)' : '#fff',
-              color: phase.kind === 'starting' ? 'var(--ink-60)' : '#000',
-              fontSize: 13,
+              borderRadius: 'var(--radius-inner)',
+              background: phase.kind === 'starting' ? 'transparent' : 'var(--ink)',
+              border: phase.kind === 'starting' ? '1px solid var(--hair-2)' : '0',
+              color: phase.kind === 'starting' ? 'var(--ink-60)' : 'var(--bg)',
+              fontSize: 14,
               fontWeight: 500,
+              cursor: phase.kind === 'starting' ? 'progress' : 'pointer',
+              transition:
+                'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
             }}
           >
             {phase.kind === 'starting' ? 'Connecting…' : 'Sign in via Telegram'}
@@ -251,13 +253,37 @@ export function LoginScreen() {
         )}
 
         {phase.kind === 'expired' && (
-          <p className="mono" style={{ marginTop: 16, fontSize: 11, color: 'var(--ink-40)' }}>
+          <p
+            style={{
+              marginTop: 18,
+              ...captionMonoSmall,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)' }} />
             CODE EXPIRED — TRY AGAIN
           </p>
         )}
         {phase.kind === 'error' && (
-          <p className="mono" style={{ marginTop: 16, fontSize: 11, color: 'var(--red)' }}>
-            {phase.message}
+          <p
+            role="alert"
+            style={{
+              marginTop: 18,
+              display: 'inline-flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              fontSize: 11,
+              color: 'var(--red)',
+              maxWidth: '60ch',
+              textAlign: 'left',
+              fontFamily: monoFont,
+              letterSpacing: '0.08em',
+            }}
+          >
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 6, flex: '0 0 auto' }} />
+            <span>{phase.message}</span>
           </p>
         )}
 
@@ -267,61 +293,70 @@ export function LoginScreen() {
         {import.meta.env.DEV && (
           <div
             style={{
-              marginTop: 40,
-              paddingTop: 20,
-              borderTop: '1px dashed rgba(255,255,255,0.1)',
+              marginTop: 44,
+              paddingTop: 22,
+              borderTop: '1px dashed var(--hair-2)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 10,
+              gap: 12,
             }}
           >
             <div
-              className="mono"
               style={{
-                fontSize: 9.5,
-                letterSpacing: '.2em',
-                color: 'rgba(255,255,255,0.35)',
-                textTransform: 'uppercase',
+                ...captionMonoSmall,
+                fontSize: 10,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
               }}
             >
+              <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)' }} />
               dev only · insecure · local backend with DEV_AUTH=true
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div className="flex-wrap-row" style={{ gap: 10, alignItems: 'baseline', justifyContent: 'center' }}>
               <input
                 type="text"
                 value={devUsername}
                 onChange={(e) => setDevUsername(e.target.value)}
                 placeholder="username"
                 disabled={devBusy}
-                className="focus-ring"
+                aria-label="DEV username"
+                className="focus-ring min-w-0"
                 style={{
-                  width: 140,
-                  padding: '6px 10px',
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  borderRadius: 5,
-                  color: 'rgba(255,255,255,0.92)',
-                  fontSize: 12,
+                  flex: '0 1 160px',
+                  minWidth: 0,
+                  padding: '6px 0',
+                  background: 'transparent',
+                  border: 0,
+                  borderBottom: '1px solid var(--hair-2)',
+                  color: 'var(--ink)',
+                  fontSize: 13,
                   outline: 'none',
                   fontFamily: 'inherit',
+                  transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
                 }}
+                onFocus={(e) => (e.currentTarget.style.borderBottomColor = 'var(--ink)')}
+                onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
               />
               <button
                 onClick={() => void devLogin()}
                 disabled={devBusy || !devUsername.trim()}
-                className="focus-ring mono"
+                className="focus-ring motion-press"
                 style={{
-                  padding: '6px 14px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.18)',
-                  color: 'rgba(255,255,255,0.85)',
-                  borderRadius: 5,
-                  fontSize: 10.5,
-                  letterSpacing: '.08em',
+                  padding: '7px 16px',
+                  background: 'var(--ink)',
+                  color: 'var(--bg)',
+                  border: 0,
+                  borderRadius: 'var(--radius-inner)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
                   textTransform: 'uppercase',
-                  cursor: devBusy ? 'progress' : 'pointer',
-                  fontFamily: 'inherit',
+                  cursor: devBusy || !devUsername.trim() ? 'not-allowed' : 'pointer',
+                  opacity: devBusy || !devUsername.trim() ? 0.5 : 1,
+                  transition:
+                    'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
                 }}
               >
                 {devBusy ? 'signing in…' : 'dev login'}
@@ -349,56 +384,74 @@ function AwaitingPanel({ flow, onCancel }: { flow: TelegramStart; onCancel: () =
     await window.hone?.shell.openExternal(flow.deepLink);
   };
   return (
-    <div style={{ marginTop: 28 }}>
+    <div style={{ marginTop: 32 }}>
       <div
+        className="flex-wrap-row"
         style={{
           padding: '14px 18px',
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 10,
-          display: 'flex',
+          background: 'transparent',
+          border: '1px solid var(--hair-2)',
+          borderRadius: 'var(--radius-inner)',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
         }}
       >
-        <div style={{ textAlign: 'left' }}>
+        <div style={{ textAlign: 'left', minWidth: 0 }}>
+          <div style={{ ...captionMonoTiny }}>CODE</div>
           <div
-            className="mono"
-            style={{ fontSize: 9, letterSpacing: '.18em', color: 'var(--ink-40)' }}
+            style={{
+              fontFamily: monoFont,
+              fontSize: 22,
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              color: 'var(--ink)',
+              marginTop: 4,
+            }}
           >
-            CODE
-          </div>
-          <div className="mono" style={{ fontSize: 22, letterSpacing: '.12em', marginTop: 2 }}>
             {flow.code}
           </div>
         </div>
         <button
           onClick={() => void onCopy()}
-          className="focus-ring mono"
+          className="focus-ring motion-press"
           style={{
-            padding: '6px 12px',
-            fontSize: 10,
-            letterSpacing: '.14em',
+            ...captionMonoSmall,
+            padding: '6px 14px',
             color: copied ? 'var(--ink)' : 'var(--ink-60)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid var(--hair-2)',
             borderRadius: 999,
             background: 'transparent',
+            cursor: 'pointer',
+            transition:
+              'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
           {copied ? '✓ COPIED' : 'COPY'}
         </button>
       </div>
-      <p style={{ marginTop: 14, fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
-        Открой бота в Telegram и нажми Start. Если бот не открылся
-        автоматически — клик{' '}
+      <p
+        style={{
+          marginTop: 16,
+          fontSize: 13,
+          color: 'var(--ink-60)',
+          lineHeight: 1.55,
+          textAlign: 'left',
+        }}
+      >
+        Открой бота в Telegram и нажми Start. Если бот не открылся автоматически — клик{' '}
         <button
           onClick={() => void onReopenBot()}
+          className="focus-ring"
           style={{
             color: 'var(--ink)',
             textDecoration: 'underline',
             background: 'transparent',
+            border: 0,
             padding: 0,
+            cursor: 'pointer',
+            fontSize: 'inherit',
+            fontFamily: 'inherit',
           }}
         >
           сюда
@@ -406,25 +459,57 @@ function AwaitingPanel({ flow, onCancel }: { flow: TelegramStart; onCancel: () =
         .
       </p>
       <p
-        className="mono"
-        style={{ marginTop: 12, fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)' }}
-      >
-        WAITING FOR CONFIRMATION…
-      </p>
-      <button
-        onClick={onCancel}
-        className="mono"
         style={{
-          marginTop: 16,
-          padding: '5px 12px',
-          fontSize: 10,
-          letterSpacing: '.14em',
-          color: 'var(--ink-40)',
-          background: 'transparent',
+          marginTop: 14,
+          ...captionMonoSmall,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 10,
         }}
       >
-        CANCEL
-      </button>
+        <span aria-hidden="true" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--red)' }} />
+        WAITING FOR CONFIRMATION…
+      </p>
+      <div>
+        <button
+          onClick={onCancel}
+          className="focus-ring motion-press"
+          style={{
+            ...captionMonoSmall,
+            marginTop: 16,
+            padding: '6px 14px',
+            background: 'transparent',
+            border: '1px solid var(--hair)',
+            borderRadius: 'var(--radius-inner)',
+            cursor: 'pointer',
+            transition: 'color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+        >
+          CANCEL
+        </button>
+      </div>
     </div>
   );
 }
+
+// ── tokens ──────────────────────────────────────────────────────────────
+
+const monoFont = "'JetBrains Mono', ui-monospace, monospace";
+
+const captionMonoSmall: React.CSSProperties = {
+  fontFamily: monoFont,
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+};
+
+const captionMonoTiny: React.CSSProperties = {
+  fontFamily: monoFont,
+  fontSize: 9,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+};

@@ -112,7 +112,7 @@ func TestChain_Chat_HappyPath_FirstProvider(t *testing.T) {
 		ProviderCerebras: cerebras,
 	}, []Provider{ProviderGroq, ProviderCerebras})
 
-	resp, err := c.Chat(context.Background(), Request{Task: TaskVacanciesJSON, Messages: []Message{{Role: RoleUser, Content: "x"}}})
+	resp, err := c.Chat(context.Background(), Request{Task: TaskInsightProse, Messages: []Message{{Role: RoleUser, Content: "x"}}})
 	if err != nil {
 		t.Fatalf("Chat: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestChain_Chat_FallsThrough_On429(t *testing.T) {
 		ProviderGroq: groq, ProviderCerebras: cerebras,
 	}, []Provider{ProviderGroq, ProviderCerebras})
 
-	resp, err := c.Chat(context.Background(), Request{Task: TaskVacanciesJSON, Messages: []Message{{Role: RoleUser, Content: "x"}}})
+	resp, err := c.Chat(context.Background(), Request{Task: TaskInsightProse, Messages: []Message{{Role: RoleUser, Content: "x"}}})
 	if err != nil {
 		t.Fatalf("Chat: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestChain_Chat_FallsThrough_On429(t *testing.T) {
 		t.Errorf("expected cerebras, got %+v", resp)
 	}
 	// Groq should be cooled now — next call skips it.
-	_, _ = c.Chat(context.Background(), Request{Task: TaskVacanciesJSON, Messages: []Message{{Role: RoleUser, Content: "y"}}})
+	_, _ = c.Chat(context.Background(), Request{Task: TaskInsightProse, Messages: []Message{{Role: RoleUser, Content: "y"}}})
 	// Only first call touched groq; the second went straight to cerebras.
 	if len(groq.calls) != 1 {
 		t.Errorf("expected groq cooled after 429, but called %d times", len(groq.calls))
@@ -188,7 +188,7 @@ func TestChain_Chat_BadRequest_IsFatal(t *testing.T) {
 		ProviderGroq: groq, ProviderCerebras: cerebras,
 	}, []Provider{ProviderGroq, ProviderCerebras})
 
-	_, err := c.Chat(context.Background(), Request{Task: TaskVacanciesJSON, Messages: []Message{{Role: RoleUser, Content: "x"}}})
+	_, err := c.Chat(context.Background(), Request{Task: TaskInsightProse, Messages: []Message{{Role: RoleUser, Content: "x"}}})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -212,7 +212,7 @@ func TestChain_Chat_Unauthorized_FallsThroughButCoolsLong(t *testing.T) {
 		ProviderGroq: groq, ProviderCerebras: cerebras,
 	}, []Provider{ProviderGroq, ProviderCerebras})
 
-	resp, err := c.Chat(context.Background(), Request{Task: TaskVacanciesJSON, Messages: []Message{{Role: RoleUser, Content: "x"}}})
+	resp, err := c.Chat(context.Background(), Request{Task: TaskInsightProse, Messages: []Message{{Role: RoleUser, Content: "x"}}})
 	if err != nil {
 		t.Fatalf("Chat: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestChain_Chat_Unauthorized_FallsThroughButCoolsLong(t *testing.T) {
 		t.Errorf("got %+v", resp)
 	}
 	// Groq cooled ~1h — advance clock 10min, still cooled.
-	groqState := c.stateOf(ProviderGroq, c.taskMap.ModelFor(TaskVacanciesJSON, ProviderGroq))
+	groqState := c.stateOf(ProviderGroq, c.taskMap.ModelFor(TaskInsightProse, ProviderGroq))
 	blocked, _, reason := groqState.blocked(time.Now().Add(10 * time.Minute))
 	if !blocked {
 		t.Errorf("expected groq still cooled after 10min, reason=%q", reason)
@@ -240,7 +240,7 @@ func TestChain_Chat_AllFail(t *testing.T) {
 		ProviderGroq: groq, ProviderCerebras: cerebras, ProviderOpenRouter: openrouter,
 	}, []Provider{ProviderGroq, ProviderCerebras, ProviderOpenRouter})
 
-	_, err := c.Chat(context.Background(), Request{Task: TaskVacanciesJSON, Messages: []Message{{Role: RoleUser, Content: "x"}}})
+	_, err := c.Chat(context.Background(), Request{Task: TaskInsightProse, Messages: []Message{{Role: RoleUser, Content: "x"}}})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -499,17 +499,17 @@ func TestChain_ReordersByLatency_WhenBothWarm(t *testing.T) {
 		ProviderGroq: groq, ProviderCerebras: cerebras,
 	}, []Provider{ProviderGroq, ProviderCerebras})
 
-	groqModel := c.taskMap.ModelFor(TaskVacanciesJSON, ProviderGroq)
-	cerebrasModel := c.taskMap.ModelFor(TaskVacanciesJSON, ProviderCerebras)
+	groqModel := c.taskMap.ModelFor(TaskInsightProse, ProviderGroq)
+	cerebrasModel := c.taskMap.ModelFor(TaskInsightProse, ProviderCerebras)
 	// Pre-seed: Groq slow (5s), Cerebras fast (200ms). 15 samples each
 	// clears the minSamplesForReorder floor.
 	for i := 0; i < 15; i++ {
-		c.latency.Record(ProviderGroq, groqModel, TaskVacanciesJSON, 5*time.Second)
-		c.latency.Record(ProviderCerebras, cerebrasModel, TaskVacanciesJSON, 200*time.Millisecond)
+		c.latency.Record(ProviderGroq, groqModel, TaskInsightProse, 5*time.Second)
+		c.latency.Record(ProviderCerebras, cerebrasModel, TaskInsightProse, 200*time.Millisecond)
 	}
 
 	resp, err := c.Chat(context.Background(), Request{
-		Task:     TaskVacanciesJSON,
+		Task:     TaskInsightProse,
 		Messages: []Message{{Role: RoleUser, Content: "x"}},
 	})
 	if err != nil {
@@ -538,7 +538,7 @@ func TestChain_ColdStart_PreservesStaticOrder(t *testing.T) {
 	// No seeded latency data. Expect first call to honor the static
 	// LLM_CHAIN_ORDER even though nothing is learned yet.
 	resp, err := c.Chat(context.Background(), Request{
-		Task:     TaskVacanciesJSON,
+		Task:     TaskInsightProse,
 		Messages: []Message{{Role: RoleUser, Content: "x"}},
 	})
 	if err != nil {

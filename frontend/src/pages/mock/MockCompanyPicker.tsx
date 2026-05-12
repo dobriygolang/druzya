@@ -16,8 +16,8 @@
 // Anti-fallback:
 //   - Companies fetched live via useMockCompaniesQuery. No hardcoded list.
 //   - When the backend orchestrator is gated (Wave-12), the query throws
-//     `mock_pipeline.coming_soon` and we render the EmptyState that links
-//     to the existing single-shot /voice-mock so users still have a path.
+//     `mock_pipeline.coming_soon` and we render the EmptyState with a retry
+//     CTA (the legacy /voice-mock fallback was dropped in D7 2026-05-12).
 
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -165,7 +165,7 @@ export default function MockCompanyPicker() {
     <AppShellV2>
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         <header className="flex flex-col gap-1">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">Mock Interview</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">Mock Interview</div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
             Выбери компанию для собеса
           </h1>
@@ -176,10 +176,15 @@ export default function MockCompanyPicker() {
         </header>
 
         {focusNodeId && focusTitle && (
-          <div className="flex items-start gap-3 rounded-xl border border-accent/40 bg-accent/5 p-4">
-            <Target className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+          <div className="relative flex items-start gap-3 rounded-xl border border-border-strong bg-surface-2 p-4 pl-5">
+            <span
+              aria-hidden
+              className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-xl"
+              style={{ background: 'var(--red)' }}
+            />
+            <Target className="mt-0.5 h-4 w-4 shrink-0 text-text-primary" />
             <div className="flex-1">
-              <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                 Mock с фокусом из Atlas
               </div>
               <div className="mt-0.5 text-[14px] font-medium text-text-primary">
@@ -200,7 +205,7 @@ export default function MockCompanyPicker() {
           className="flex flex-col gap-2 rounded-xl border border-border bg-surface-1 p-4"
           aria-label="Какие секции тренировать"
         >
-          <legend className="font-mono text-[10px] uppercase tracking-wider text-text-muted px-1">
+          <legend className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted px-1">
             Секции пайплайна
           </legend>
           <p className="text-xs text-text-secondary">
@@ -219,7 +224,7 @@ export default function MockCompanyPicker() {
                   onClick={() => toggleSection(opt.id)}
                   title={opt.hint}
                   className={[
-                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-xs transition-colors',
+                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-xs tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)]',
                     checked
                       ? 'border-text-primary bg-text-primary text-bg'
                       : 'border-border bg-surface-2 text-text-secondary hover:border-text-primary/40 hover:text-text-primary',
@@ -237,7 +242,7 @@ export default function MockCompanyPicker() {
           className="flex flex-col gap-2 rounded-xl border border-border bg-surface-1 p-4"
           aria-label="Режим AI-помощника"
         >
-          <legend className="font-mono text-[10px] uppercase tracking-wider text-text-muted px-1">
+          <legend className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted px-1">
             AI-помощник во время собеса
           </legend>
           <AiAssistOption
@@ -261,9 +266,8 @@ export default function MockCompanyPicker() {
           <EmptyState
             variant="coming-soon"
             title="Multi-stage Mock Interview"
-            body="Запускается в Wave-12. Сейчас доступен одиночный mock /voice-mock — голосовая нейрока без многоступенчатого пайплайна."
-            cta={{ label: 'Открыть /voice-mock', onClick: () => navigate('/voice-mock') }}
-            secondaryCta={{ label: 'Назад в Atlas', onClick: () => navigate('/atlas') }}
+            body="Запускается в Wave-12. Загляни чуть позже — мульти-стейдж pipeline скоро будет доступен."
+            cta={{ label: 'Назад в Atlas', onClick: () => navigate('/atlas') }}
           />
         )}
 
@@ -299,7 +303,15 @@ export default function MockCompanyPicker() {
         )}
 
         {create.isError && (
-          <div className="text-sm text-danger" role="alert">
+          <div
+            className="relative pl-3 text-sm text-text-primary"
+            role="alert"
+          >
+            <span
+              aria-hidden
+              className="absolute left-0 top-0 h-full w-[1.5px]"
+              style={{ background: 'var(--red)' }}
+            />
             Не удалось запустить пайплайн: {(create.error as Error).message}
           </div>
         )}
@@ -328,12 +340,19 @@ function AiAssistOption({
       aria-checked={checked}
       onClick={onSelect}
       className={[
-        'flex items-start gap-3 rounded-lg border p-3 text-left transition-colors',
+        'relative flex items-start gap-3 rounded-lg border p-3 text-left transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)]',
         checked
           ? 'border-text-primary bg-text-primary/10'
           : 'border-border bg-surface-2 hover:border-border-strong',
       ].join(' ')}
     >
+      {checked && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-lg"
+          style={{ background: 'var(--red)' }}
+        />
+      )}
       <span
         className={[
           'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
@@ -382,7 +401,7 @@ function FirstRunSteps() {
   return (
     <div className="rounded-xl border border-border bg-surface-1 p-4">
       <div className="mb-3">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           Как это работает
         </span>
       </div>

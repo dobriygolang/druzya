@@ -1,21 +1,30 @@
 // Dock — the persistent bottom timer pill. Visible on every page; HomePage
 // рисует свой большой mm:ss поверх когда running.
 //
-// Режимы таймера:
-//   countdown — pomodoro 25:00 → 0 (default). Auto-end при 0 поднимает
-//               reflection prompt.
-//   stopwatch — ∞ от 00:00 вверх; никаких auto-end, юзер сам Stop.
+// 6 focus modes (mirrors backend hone_focus_mode_valid CHECK миграция 00067):
+//   pomodoro  — 25-min cycles + reflection prompt после finish'а
+//   stopwatch — ∞ от 00:00 вверх; auto-end не срабатывает
+//   free      — no timer, session tracked без mm:ss (для свободного флоу)
+//   plan      — multi-block sequence (50 focus + 10 break × 3 для MVP)
+//   pinned    — focus tied к pinned task; ends когда task → done
+//   countdown — fixed minutes (configured pomodoroMinutes)
 //
 // Hover на time-area:
-//   default → mode-marker (⊙ или ∞) + mm:ss
-//   hover   → две круглые кнопки (toggle-mode + reset) ВМЕСТО time-area,
-//             вписанные в общий mini-pill. Время скрыто. Smooth fade
-//             через --t-fast.
+//   default → mode-marker + mm:ss
+//   hover   → две круглые кнопки (cycle-mode + reset) ВМЕСТО time-area
+//
+// Mode pill (после dock'а) — отдельный mini-pill с 6 кружочками; click
+// switches mode + resets timer. Сама секция collapse'ится в иконку
+// текущего режима после 1.2s idle.
 import { memo, useRef, useState, type ReactNode } from 'react';
 
-import { Icon } from './primitives/Icon';
+import { Icon, type IconName } from './primitives/Icon';
+import type { FocusMode } from '../stores/prefs';
 
-export type TimerMode = 'countdown' | 'stopwatch';
+// Legacy alias — старые callers (App.tsx pomodoro tick loop) знали только
+// 'countdown'|'stopwatch'. Оставляем shorthand чтобы не переписывать App
+// полностью; внутренне Dock работает с FocusMode (6 значений).
+export type TimerMode = FocusMode;
 
 interface DockProps {
   onMenu: () => void;
@@ -69,7 +78,7 @@ export function Dock({
       }}
       className="no-select"
     >
-      <DockBtn onClick={onMenu} title="Menu (⌘K)">
+      <DockBtn onClick={onMenu} title="Menu (⌘K)" ariaLabel="Open menu">
         <Icon name="menu" size={14} />
       </DockBtn>
       <Divider />
@@ -82,7 +91,12 @@ export function Dock({
         onReset={onReset}
       />
       <Divider />
-      <DockBtn onClick={onToggle} title={running ? 'Pause' : 'Play'}>
+      <DockBtn
+        onClick={onToggle}
+        title={running ? 'Pause' : 'Play'}
+        ariaLabel={running ? 'Pause timer' : 'Play timer'}
+        ariaPressed={running}
+      >
         <Icon name={running ? 'pause' : 'play'} size={12} />
       </DockBtn>
       <Divider />
@@ -100,6 +114,38 @@ interface TimerAreaProps {
   onReset: () => void;
 }
 
+// MODE_LABEL — короткие подписи для tooltip'ов / aria-label'ов. Порядок
+// в массиве задаёт cycle-order для hover toggle.
+const MODE_ORDER: FocusMode[] = ['pomodoro', 'countdown', 'stopwatch', 'free', 'plan', 'pinned'];
+
+const MODE_LABEL: Record<FocusMode, string> = {
+  pomodoro: 'Pomodoro · 25:00 → 0 + reflection',
+  countdown: 'Countdown · фиксированные минуты',
+  stopwatch: 'Stopwatch · считает вверх',
+  free: 'Free · без таймера, ручной stop',
+  plan: 'Plan · 50/10 × 3 sequence',
+  pinned: 'Pinned · focus до завершения task',
+};
+
+// Renderer для mode-indicator в default-row TimerArea + collapsed mode-pill.
+// Возвращает icon name из ./primitives/Icon set'а.
+function modeIcon(mode: FocusMode): { name: IconName; size: number } {
+  switch (mode) {
+    case 'stopwatch':
+      return { name: 'infinity', size: 13 };
+    case 'free':
+      return { name: 'play', size: 11 };
+    case 'plan':
+      return { name: 'menu', size: 11 };
+    case 'pinned':
+      return { name: 'rewind', size: 11 };
+    case 'pomodoro':
+    case 'countdown':
+    default:
+      return { name: 'circle', size: 11 };
+  }
+}
+
 // TimerArea — узкий swap-контейнер с фиксированной шириной чтобы при
 // hover-смене контента dock не «дёргался» (layout shift). Время и
 // hover-кнопки cross-fade'ятся через position: absolute.
@@ -110,6 +156,12 @@ interface TimerAreaProps {
 function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaProps) {
   const [hover, setHover] = useState(false);
   const ROW = 30;
+  // Free / pinned не показывают mm:ss — для этих режимов рисуем mode-name.
+  const showTime = mode === 'pomodoro' || mode === 'countdown' || mode === 'stopwatch';
+  // Next mode in cycle — для tooltip'а «куда переключит».
+  const idx = MODE_ORDER.indexOf(mode);
+  const nextMode = MODE_ORDER[(idx + 1) % MODE_ORDER.length];
+  const { name: modeIconName, size: modeIconSize } = modeIcon(mode);
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -131,7 +183,7 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
           // time видна). На hover сдвигаем вниз на ROW — controls
           // въезжают, time уезжает.
           transform: `translateY(${hover ? 0 : -ROW}px)`,
-          transition: 'transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+          transition: 'transform var(--motion-dur-large) var(--motion-ease-standard)',
         }}
       >
         {/* Row 0: hover controls (изначально скрыты сверху). Иконки чуть
@@ -154,12 +206,15 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
         >
           <DockBtn
             onClick={onToggleMode}
-            title={mode === 'countdown' ? 'Switch to ∞' : 'Switch to pomodoro'}
+            // Tooltip показывает current + следующий режим в cycle.
+            title={`${MODE_LABEL[mode]} · → ${MODE_LABEL[nextMode]}`}
+            ariaLabel={`Current: ${mode}. Switch to ${nextMode} mode`}
+            ariaPressed={mode !== 'pomodoro'}
             small
           >
-            <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={15} />
+            <Icon name={modeIconName} size={Math.max(13, modeIconSize)} />
           </DockBtn>
-          <DockBtn onClick={onReset} title="Reset" small>
+          <DockBtn onClick={onReset} title="Reset · сбросить таймер" ariaLabel="Reset timer" small>
             <Icon name="rewind" size={15} />
           </DockBtn>
         </div>
@@ -174,23 +229,12 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
             gap: 7,
           }}
         >
-          {/* Mode indicator: ∞ для stopwatch, dot для countdown.
-              Dot — нейтральный (без красного pulse'а): pure outline когда
-              not running, filled white-60 когда running. Раньше был
-              «var(--red)» + animation red-pulse — юзер просил убрать только
-              краснотy и мигание, но не сам индикатор. */}
-          {mode === 'stopwatch' ? (
+          {/* Mode indicator: иконка зависит от режима.
+              Для pomodoro/countdown — нейтральный dot (filled когда running).
+              Для остальных — соответствующий glyph из Icon set'а. */}
+          {mode === 'pomodoro' || mode === 'countdown' ? (
             <span
-              style={{
-                color: running ? 'var(--ink-90)' : 'var(--ink-40)',
-                display: 'flex',
-                transition: 'color var(--t-fast)',
-              }}
-            >
-              <Icon name="infinity" size={13} />
-            </span>
-          ) : (
-            <span
+              title={MODE_LABEL[mode]}
               style={{
                 width: 9,
                 height: 9,
@@ -201,17 +245,42 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
                   'background-color var(--t-fast), border-color var(--t-fast)',
               }}
             />
+          ) : (
+            <span
+              title={MODE_LABEL[mode]}
+              style={{
+                color: running ? 'var(--ink-90)' : 'var(--ink-40)',
+                display: 'flex',
+                transition: 'color var(--t-fast)',
+              }}
+            >
+              <Icon name={modeIconName} size={modeIconSize} />
+            </span>
           )}
-          <span
-            className="mono"
-            style={{
-              fontSize: 14,
-              letterSpacing: '0.04em',
-              color: 'var(--ink)',
-            }}
-          >
-            {mm}:{ss}
-          </span>
+          {showTime ? (
+            <span
+              className="mono"
+              style={{
+                fontSize: 14,
+                letterSpacing: '0.04em',
+                color: 'var(--ink)',
+              }}
+            >
+              {mm}:{ss}
+            </span>
+          ) : (
+            <span
+              className="mono"
+              style={{
+                fontSize: 11,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: 'var(--ink-60)',
+              }}
+            >
+              {mode}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -223,14 +292,18 @@ interface DockBtnProps {
   onClick?: () => void;
   title?: string;
   small?: boolean;
+  ariaLabel?: string;
+  ariaPressed?: boolean;
 }
 
-function DockBtn({ children, onClick, title, small = false }: DockBtnProps) {
+function DockBtn({ children, onClick, title, small = false, ariaLabel, ariaPressed }: DockBtnProps) {
   const size = small ? 24 : 28;
   return (
     <button
       onClick={onClick}
       title={title}
+      aria-label={ariaLabel ?? title}
+      aria-pressed={ariaPressed}
       className="focus-ring surface"
       style={{
         width: size,
@@ -378,6 +451,8 @@ function VolumeBtnImpl({ vol, onVol }: VolumeBtnProps) {
         <DockBtn
           onClick={handleClick}
           title={vol === 0 ? 'Click to unmute' : `Volume ${vol}% · click to mute`}
+          ariaLabel={vol === 0 ? 'Unmute volume' : `Mute volume (currently ${vol} percent)`}
+          ariaPressed={vol === 0}
         >
           {/* Mute indicator: когда vol=0, иконка меняет цвет на dimmed +
               рисуется diagonal strike-through через absolute-positioned
@@ -390,7 +465,7 @@ function VolumeBtnImpl({ vol, onVol }: VolumeBtnProps) {
               alignItems: 'center',
               justifyContent: 'center',
               opacity: vol === 0 ? 0.5 : 1,
-              transition: 'opacity 180ms ease',
+              transition: 'opacity var(--motion-dur-medium) var(--motion-ease-standard)',
             }}
           >
             <Icon name="volume" size={12} />
@@ -433,10 +508,10 @@ function VolumeBtnImpl({ vol, onVol }: VolumeBtnProps) {
           overflow: 'visible',
           zIndex: 11,
           transition:
-            'width 220ms cubic-bezier(0.2, 0.7, 0.2, 1),' +
-            'opacity 180ms cubic-bezier(0.2, 0.7, 0.2, 1),' +
-            'transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1),' +
-            'border-color 180ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+            'width var(--motion-dur-medium) var(--motion-ease-standard),' +
+            'opacity var(--motion-dur-medium) var(--motion-ease-standard),' +
+            'transform var(--motion-dur-medium) var(--motion-ease-standard),' +
+            'border-color var(--motion-dur-medium) var(--motion-ease-standard)',
           pointerEvents: open ? 'auto' : 'none',
         }}
       >

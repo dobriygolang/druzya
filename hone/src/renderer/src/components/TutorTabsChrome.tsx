@@ -2,6 +2,14 @@
 // (Assignments / Calendar). Mirrors EnglishTabsChrome / BoardsTabsChrome.
 // Hotkeys A / M остаются работать напрямую — chrome это visual hub
 // indicator, не отдельная страница.
+//
+// NOTE (foundation Tabs primitive @ ./primitives/Tabs):
+// Foundation `Tabs` доступен (variants: underline | segmented), но не
+// покрывает floating-pill chrome semantics этого компонента (rounded 999,
+// blurred backdrop, absolute top-center, per-tab kbd chip, Electron
+// WebkitAppRegion двухслойную разметку). Миграция сейчас compromise'нула
+// бы UX. Оставляем inline до расширения foundation primitive новым `pill`
+// variant + endAdornment slot.
 import type { ReactNode } from 'react';
 
 import type { PageId } from './Palette';
@@ -67,6 +75,9 @@ function TabBtn({
   return (
     <button
       onClick={onClick}
+      role="tab"
+      aria-selected={active}
+      aria-pressed={active}
       className="row focus-ring"
       style={{
         display: 'inline-flex',
@@ -80,7 +91,7 @@ function TabBtn({
         fontWeight: 500,
         border: 'none',
         cursor: 'pointer',
-        transition: 'background-color 140ms ease, color 140ms ease',
+        transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
       }}
       onMouseEnter={(e) => {
         if (!active) {

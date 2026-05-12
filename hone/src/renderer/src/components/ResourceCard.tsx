@@ -87,13 +87,27 @@ export function ResourceCard({
         position: 'relative',
         padding: '12px 14px',
         marginBottom: 8,
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        background: 'var(--surface-2)',
+        border: '1px solid var(--hair)',
         borderRadius: 6,
-        transition: 'border-color 150ms ease',
-        ...(hover ? { borderColor: 'rgba(255,255,255,0.15)' } : null),
+        transition: 'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+        ...(hover ? { borderColor: 'var(--hair-2)' } : null),
+        overflow: 'hidden',
       }}
     >
+      {userAdded && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 1.5,
+            background: 'var(--red)',
+          }}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
         <a
           href={resource.url}
@@ -101,9 +115,9 @@ export function ResourceCard({
           rel="noopener noreferrer"
           style={{
             fontSize: 13.5,
-            color: 'rgba(255,255,255,0.92)',
+            color: 'var(--ink-90)',
             textDecoration: 'none',
-            borderBottom: '1px dashed rgba(255,255,255,0.18)',
+            borderBottom: '1px dashed var(--hair-2)',
             paddingBottom: 1,
             minWidth: 0,
             overflow: 'hidden',
@@ -119,12 +133,12 @@ export function ResourceCard({
             className="mono"
             style={{
               fontSize: 9,
-              color: 'rgba(255,255,255,0.5)',
-              letterSpacing: '.12em',
+              color: 'var(--ink-60)',
+              letterSpacing: '0.08em',
               textTransform: 'uppercase',
               padding: '1px 6px',
               borderRadius: 999,
-              border: '1px solid rgba(255,255,255,0.12)',
+              border: '1px solid var(--hair-2)',
               flexShrink: 0,
             }}
           >
@@ -134,12 +148,12 @@ export function ResourceCard({
       </div>
 
       {resource.why && (
-        <div style={{ marginTop: 4, fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--ink-60)', lineHeight: 1.5 }}>
           {resource.why}
         </div>
       )}
 
-      <div className="mono" style={{ marginTop: 6, fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'flex', gap: 8 }}>
+      <div className="mono" style={{ marginTop: 6, fontSize: 10, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'flex', gap: 8 }}>
         {resource.kind && <span>{resource.kind}</span>}
         {resource.minutes > 0 && <span>· ~{resource.minutes}m</span>}
         {resource.level && <span>· {resource.level}</span>}
@@ -155,7 +169,7 @@ export function ResourceCard({
             marginTop: 8,
             flexWrap: 'wrap',
             fontSize: 9,
-            letterSpacing: '.08em',
+            letterSpacing: '0.08em',
             textTransform: 'uppercase',
           }}
         >
@@ -201,14 +215,14 @@ export function ResourceCard({
               flex: 1,
               padding: '5px 8px',
               fontSize: 11,
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'var(--surface)',
+              border: '1px solid var(--hair-2)',
               borderRadius: 4,
-              color: 'rgba(255,255,255,0.92)',
+              color: 'var(--ink-90)',
               outline: 'none',
             }}
           />
-          <button type="button" disabled={busy} onClick={() => void doUnhelpful()} style={hoverActionStyle('#fff', '#000')}>
+          <button type="button" disabled={busy} onClick={() => void doUnhelpful()} style={hoverActionStyle('var(--ink)', 'var(--bg)')}>
             ok
           </button>
           <button type="button" disabled={busy} onClick={() => setConfirmUnhelpful(false)} style={hoverActionStyle()}>
@@ -220,15 +234,19 @@ export function ResourceCard({
   );
 }
 
-function hoverActionStyle(bg = 'rgba(255,255,255,0.06)', color = 'rgba(255,255,255,0.7)'): React.CSSProperties {
+function hoverActionStyle(bg = 'var(--hair)', color = 'var(--ink-60)'): React.CSSProperties {
   return {
     padding: '3px 7px',
     background: bg,
-    border: '1px solid rgba(255,255,255,0.12)',
+    border: '1px solid var(--hair-2)',
     color,
     borderRadius: 4,
     cursor: 'pointer',
     fontSize: 9,
     fontFamily: 'inherit',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    transition:
+      'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard)',
   };
 }

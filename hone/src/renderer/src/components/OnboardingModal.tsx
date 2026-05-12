@@ -1,17 +1,20 @@
-// OnboardingModal v2 — Phase 6 3-step wizard (Sergey 2026-05-04).
+// OnboardingModal v2 — Phase 6 4-step wizard (Sergey 2026-05-04).
 //
 // Step 1: pick stack (Go / ML / DE / English / Other-explore)
 // Step 2: pick mode (Explore / Commit / Deep) — shapes coach behavior
 // Step 3: shortcuts tour (⌘K / T / C / F / N)
+// Step 4: free vs pro — soft tier exposure (no push, юзер всегда может skip)
 //
 // Storage:
 //   - localStorage.hone:profile:v2 — { stack, mode, savedAt }
 //   - localStorage.hone:onboarded:v2 = '1' (gate в App.tsx)
 //
 // Recovery: «Open onboarding again» в Settings → стирает onboarded flag.
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { Kbd } from './primitives/Kbd';
+import { Modal } from './primitives/Modal';
+import { motion as motionTokens } from '../lib/design-tokens';
 
 interface OnboardingModalProps {
   onClose: () => void;
@@ -63,84 +66,55 @@ const SHORTCUTS: { k: string; l: string; d: string }[] = [
   { k: 'N', l: 'new note', d: 'capture anywhere · auto-link to atlas' },
 ];
 
+type Step = 1 | 2 | 3 | 4;
+
 export function OnboardingModal({ onClose }: OnboardingModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [open, setOpen] = useState(true);
+  const [step, setStep] = useState<Step>(1);
   const [stack, setStack] = useState<Stack | null>(null);
   const [mode, setMode] = useState<Mode | null>(null);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // Smooth exit: flip open → Modal plays exit anim → parent unmounts after dur.medium.
+  function close() {
+    setOpen(false);
+    window.setTimeout(onClose, motionTokens.dur.medium);
+  }
 
   function finish() {
     saveProfile({ stack, mode, savedAt: Date.now() });
-    onClose();
+    close();
   }
 
   return (
-    <div
-      role="dialog"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.7)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 90,
-      }}
-    >
-      <div
-        style={{
-          width: 640,
-          maxWidth: '92vw',
-          background: '#0a0a0a',
-          border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: 12,
-          color: 'rgba(255,255,255,0.92)',
-          overflow: 'hidden',
-        }}
-      >
-        <StepHeader step={step} />
-        <div style={{ padding: '24px 30px 20px' }}>
-          {step === 1 && (
-            <StackPicker selected={stack} onPick={setStack} />
-          )}
-          {step === 2 && (
-            <ModePicker selected={mode} onPick={setMode} />
-          )}
-          {step === 3 && <ShortcutsTour />}
-        </div>
-        <Footer
-          step={step}
-          canNext={step === 1 ? !!stack : step === 2 ? !!mode : true}
-          onBack={() => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s))}
-          onNext={() => setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s))}
-          onSkip={onClose}
-          onFinish={finish}
-        />
+    <Modal open={open} onClose={close} size="lg">
+      <StepHeader step={step} />
+      <div style={{ padding: '24px 0 4px' }}>
+        {step === 1 && <StackPicker selected={stack} onPick={setStack} />}
+        {step === 2 && <ModePicker selected={mode} onPick={setMode} />}
+        {step === 3 && <ShortcutsTour />}
+        {step === 4 && <TierTour />}
       </div>
-    </div>
+      <Footer
+        step={step}
+        canNext={step === 1 ? !!stack : step === 2 ? !!mode : true}
+        onBack={() => setStep((s) => (s > 1 ? ((s - 1) as Step) : s))}
+        onNext={() => setStep((s) => (s < 4 ? ((s + 1) as Step) : s))}
+        onSkip={close}
+        onFinish={finish}
+      />
+    </Modal>
   );
 }
 
-function StepHeader({ step }: { step: 1 | 2 | 3 }) {
-  const titles = ['pick stack', 'pick mode', 'shortcuts tour'];
+function StepHeader({ step }: { step: Step }) {
+  const titles = ['pick stack', 'pick mode', 'shortcuts tour', 'free vs pro'];
   return (
-    <div style={{ padding: '20px 30px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+    <div style={{ paddingBottom: 12, borderBottom: '1px solid var(--hair)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10 }}>
-        <span className="mono" style={mono10}>step {step} of 3</span>
+        <span className="mono" style={mono10}>step {step} of 4</span>
         <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
         <div style={{ display: 'flex', gap: 5 }}>
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
               style={{
@@ -166,11 +140,14 @@ function StackPicker({ selected, onPick }: { selected: Stack | null; onPick: (s:
       <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
         what are you preparing for? pick one — you can always change later in settings.
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+      <div role="radiogroup" aria-label="Stack" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
         {STACKS.map((s) => (
           <button
             key={s.k}
             onClick={() => onPick(s.k)}
+            role="radio"
+            aria-checked={selected === s.k}
+            aria-pressed={selected === s.k}
             style={pickStyle(selected === s.k)}
           >
             <div style={glyphStyle()}>{s.g}</div>
@@ -193,11 +170,14 @@ function ModePicker({ selected, onPick }: { selected: Mode | null; onPick: (m: M
       <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
         mode shapes coach behavior · daily UI · what gets pinned to today.
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+      <div role="radiogroup" aria-label="Mode" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
         {MODES.map((m) => (
           <button
             key={m.k}
             onClick={() => onPick(m.k)}
+            role="radio"
+            aria-checked={selected === m.k}
+            aria-pressed={selected === m.k}
             style={{
               ...pickStyle(selected === m.k),
               flexDirection: 'column' as const,
@@ -252,6 +232,119 @@ function ShortcutsTour() {
   );
 }
 
+// TierTour — soft exposure of free vs pro tiers. Sergey 2026-05-12: «pro
+// tier — текст в Settings который никто не открывает». Onboarding step 4
+// показывает что разблокирует Pro, без push: stay on free — кнопка primary,
+// «activate pro» — secondary external link на /profile в web.
+//
+// Free / Pro списки — соответствуют memory/feedback_monetization.md tier matrix.
+// Source of truth для cents/currency живёт в backend subscription service;
+// здесь UI value-prop, не actual price processor.
+const FREE_FEATURES = [
+  'AI-coach с памятью · unlimited',
+  'Atlas curation + Codex opinion',
+  'Hone focus cockpit + offline outbox',
+  'Cue 20 suggestions / day',
+  'Reflection grading + activity log',
+];
+
+const PRO_FEATURES = [
+  'AI-mock unlimited · 5-stage pipeline',
+  'Cue unlimited LLM · premium personas',
+  'Deep analytics + readiness predictions',
+  'Google Calendar sync + tutor scheduling',
+  'Priority Cerebras / Groq routing',
+];
+
+function TierTour() {
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
+        free covers learning. pro covers evaluation — interview prep, deep
+        analytics, unlimited mock. byok escape: activate pro features for free
+        by bringing your own LLM key.
+      </p>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 12,
+        }}
+      >
+        <TierColumn title="free" tag="default" features={FREE_FEATURES} accent={false} />
+        <TierColumn title="pro" tag="990 ₽ / mo · or byok" features={PRO_FEATURES} accent />
+      </div>
+      <p
+        style={{
+          fontSize: 11.5,
+          color: 'rgba(255,255,255,0.5)',
+          marginTop: 14,
+          lineHeight: 1.5,
+        }}
+      >
+        no credit card required to start. activate pro later from Settings →
+        Subscription, or skip — you can use Hone fully on free.
+      </p>
+    </div>
+  );
+}
+
+function TierColumn({
+  title,
+  tag,
+  features,
+  accent,
+}: {
+  title: string;
+  tag: string;
+  features: ReadonlyArray<string>;
+  accent: boolean;
+}) {
+  return (
+    <div
+      style={{
+        padding: '14px 14px',
+        background: 'rgba(255,255,255,0.02)',
+        border: accent ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.07)',
+        borderRadius: 6,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{title}</span>
+        <span className="mono" style={{ ...mono10, color: 'rgba(255,255,255,0.5)' }}>{tag}</span>
+      </div>
+      <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {features.map((f) => (
+          <li
+            key={f}
+            style={{
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.78)',
+              lineHeight: 1.4,
+              paddingLeft: 14,
+              position: 'relative',
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: '0.55em',
+                width: 4,
+                height: 4,
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.5)',
+              }}
+            />
+            {f}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Footer({
   step,
   canNext,
@@ -260,7 +353,7 @@ function Footer({
   onSkip,
   onFinish,
 }: {
-  step: 1 | 2 | 3;
+  step: Step;
   canNext: boolean;
   onBack: () => void;
   onNext: () => void;
@@ -270,13 +363,13 @@ function Footer({
   return (
     <div
       style={{
-        padding: '14px 30px',
-        borderTop: '1px solid rgba(255,255,255,0.07)',
+        marginTop: 16,
+        paddingTop: 14,
+        borderTop: '1px solid var(--hair)',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
         flexWrap: 'wrap',
-        background: 'rgba(255,255,255,0.02)',
       }}
     >
       <button onClick={onSkip} className="mono" style={btnGhost()}>
@@ -288,13 +381,13 @@ function Footer({
           back
         </button>
       )}
-      {step < 3 ? (
+      {step < 4 ? (
         <button onClick={onNext} disabled={!canNext} className="mono" style={btnPrimary(!canNext)}>
           next →
         </button>
       ) : (
         <button onClick={onFinish} className="mono" style={btnPrimary(false)}>
-          finish
+          stay on free
         </button>
       )}
     </div>
@@ -303,7 +396,7 @@ function Footer({
 
 const mono10 = {
   fontSize: 10,
-  letterSpacing: '.12em',
+  letterSpacing: '0.08em',
   textTransform: 'uppercase' as const,
   color: 'rgba(255,255,255,0.4)',
   fontFamily: "'JetBrains Mono', monospace",
@@ -322,7 +415,7 @@ function pickStyle(selected: boolean): React.CSSProperties {
     alignItems: 'flex-start',
     gap: 12,
     fontFamily: 'inherit',
-    transition: 'border-color 150ms ease',
+    transition: 'border-color var(--motion-dur-small) var(--motion-ease-standard)',
   };
 }
 

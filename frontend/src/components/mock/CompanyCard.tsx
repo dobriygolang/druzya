@@ -36,8 +36,8 @@ export function CompanyCard({ company, onSelect, loading }: CompanyCardProps) {
       onClick={() => onSelect(company.id)}
       disabled={loading}
       className={cn(
-        'group relative flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-4 text-left',
-        'transition-colors hover:border-border-strong hover:bg-surface-2',
+        'card-lift group relative flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-4 text-left',
+        'hover:border-border-strong hover:bg-surface-2',
         'disabled:opacity-60 disabled:cursor-wait',
       )}
     >

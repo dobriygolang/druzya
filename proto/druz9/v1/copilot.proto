@@ -416,6 +416,11 @@ message CopilotDone {
   int32 compaction_threshold = 8;      // порог при котором triggers компакция (default 15)
   bool  compaction_triggered = 9;      // true если в этом turn'е window перешёл порог
   int32 running_summary_chars = 10;    // длина текущего RunningSummary (0 если ни разу не сжимали)
+  // C3 (Phase J 2026-05-12) — true когда backend инжектил cross-product
+  // context (goal + memory + activity + radar + atlas) в system-prompt
+  // этого turn'а. UI рисует subtle «Personalized from your druz9
+  // activity» hint — это unique moat vs Cluely.
+  bool context_used = 11;
 }
 
 // CopilotStreamError terminates the stream with a structured error. After
@@ -513,6 +518,146 @@ message RateCopilotMessageResponse {}
 // show "help disabled" UI and skip the LLM call. The Analyze/Chat RPCs also
 // enforce server-side as defense-in-depth.
 message CheckBlockRequest {}
+
+// ============================================================================
+//  Interview prep (Phase J / C6 — P1, 2026-05-12)
+// ============================================================================
+//
+// «Upload CV → Upload JD → Start practice session» wizard that runs inside
+// Cue BEFORE the interview. Backend parses both blobs through the free LLM
+// chain (structured-output JSON) and stores the result as the user's
+// CURRENT interview-prep context. The copilot's Analyze / Chat / Suggest
+// paths consult `GetActiveInterviewPrep` server-side and prepend a tailored
+// system block («Target: Google L4 Backend; user has 5y Go + 2y Python …»)
+// — this is the unique moat vs Cluely, which has no per-interview prep.
+
+// ParsedCV — LLM-extracted shape of the user's résumé. Every field is
+// optional; the parser leaves blanks when the source is ambiguous rather
+// than hallucinating. Stored verbatim alongside the original text on the
+// interview_prep_sessions row.
+message ParsedCV {
+  // Display name as the LLM read it ("Sergey D."). Optional.
+  string name = 1;
+  // Best-effort total years of experience (0 when unknown).
+  int32 experience_years = 2;
+  // Current job title as parsed ("Senior Backend Engineer"). Optional.
+  string current_role = 3;
+  // Up to 12 top skills the parser identified. Order-significant — most
+  // prominent first. Empty when no skills detected.
+  repeated string top_skills = 4;
+  // 1-3 sentence elevator pitch derived from the CV. Empty when input is
+  // too thin to summarise. Used directly in the suggestion-prompt prep
+  // block.
+  string summary = 5;
+  // Highest education level if mentioned ("MS Computer Science, MIT").
+  string education = 6;
+}
+
+// ParsedJD — LLM-extracted shape of the target job description. Same
+// optional-by-default contract as ParsedCV.
+message ParsedJD {
+  // Hiring company ("Google"). Empty when not stated.
+  string company = 1;
+  // Role title ("Senior Backend Engineer"). Empty when not stated.
+  string role = 2;
+  // Seniority level if extractable ("L4", "Senior", "Staff").
+  string seniority = 3;
+  // Up to 12 skills the JD calls out. Order = priority in the listing.
+  repeated string key_skills = 4;
+  // 1-3 sentence summary of what the role expects day-to-day. Powers
+  // the prep block injected into Cue suggestions.
+  string description_summary = 5;
+  // Detected language ("ru" / "en" / "").
+  string language = 6;
+}
+
+// ParseCVRequest — caller sends ONE of cv_bytes (PDF/binary) or cv_text.
+// When both are populated, cv_text wins (cv_bytes assumed to be a fallback
+// for clients that couldn't extract text locally).
+message ParseCVRequest {
+  // Plain-text or markdown body of the CV. Preferred path — Cue desktop
+  // extracts via Electron's built-in pdf.js before calling.
+  string cv_text = 1;
+  // Raw PDF bytes for backend extraction. Fallback path. Capped at ~3MB
+  // by the handler; oversized inputs return InvalidArgument.
+  bytes cv_bytes = 2;
+  // MIME type hint for cv_bytes ("application/pdf"). Ignored for text.
+  string mime_type = 3;
+  // Filename hint for nicer error messages and parser context. Optional.
+  string filename = 4;
+}
+
+message ParseCVResponse {
+  ParsedCV parsed = 1;
+  // Echo of the model id that produced the parse (e.g. "groq/llama-3.3-
+  // 70b-versatile"). Useful for client-side telemetry + debug.
+  string model = 2;
+}
+
+// ParseJDRequest — caller sends ONE of jd_text or jd_url. When both are
+// populated, jd_text wins. URL fetching is best-effort: 404 / 5xx / TLS
+// failures fall back with a clear error suggesting the user paste text.
+message ParseJDRequest {
+  // Plain-text JD body. Preferred path.
+  string jd_text = 1;
+  // Job-board URL (LinkedIn, hh.ru, druz9 self-hosted, etc.). Backend
+  // fetches → strips HTML → parses. May fail with FailedPrecondition
+  // when the host rejects bot traffic — caller should retry with text.
+  string jd_url = 2;
+}
+
+message ParseJDResponse {
+  ParsedJD parsed = 1;
+  string model = 2;
+}
+
+// StartInterviewPrepRequest — commits parsed CV + JD as the user's active
+// prep context. Replaces any prior active prep (single-active per user).
+// Caller has already validated the parses via the UI review step.
+message StartInterviewPrepRequest {
+  ParsedCV parsed_cv = 1;
+  ParsedJD parsed_jd = 2;
+  // Raw CV text the user uploaded — stored on the row for later re-parse
+  // / "use last CV" affordance. Empty allowed.
+  string cv_text = 3;
+  // Raw JD text the user pasted (or fetched from jd_url) — stored on the
+  // row for the same reason.
+  string jd_text = 4;
+}
+
+message StartInterviewPrepResponse {
+  // Session id of the new active prep row.
+  string session_id = 1;
+  // Server-side timestamp of when prep was activated.
+  google.protobuf.Timestamp started_at = 2;
+  // Echo of the formatted system-prompt block that will be injected into
+  // subsequent Analyze/Chat/Suggest turns. The client may surface this in
+  // a "what Cue will know during the interview" disclosure card.
+  string prep_prompt_preview = 3;
+}
+
+message GetActiveInterviewPrepRequest {}
+
+message GetActiveInterviewPrepResponse {
+  // active=false when the user has no active prep; the other fields are
+  // unset in that case. The client renders an empty prompt to upload CV+JD.
+  bool active = 1;
+  string session_id = 2;
+  ParsedCV parsed_cv = 3;
+  ParsedJD parsed_jd = 4;
+  google.protobuf.Timestamp started_at = 5;
+  // Convenience accessors for compact UI rows (avoids re-parsing on the
+  // client). Empty when the parser couldn't extract.
+  string company = 6;
+  string role = 7;
+}
+
+message EndInterviewPrepRequest {
+  // Optional — when empty, the user's CURRENT active prep is ended.
+  string session_id = 1;
+}
+
+message EndInterviewPrepResponse {}
 
 // CheckBlockResponse describes whether the caller is currently barred from
 // consulting Cue. Phase-4 ADR-001 (Wave 3) — fed by an ai_mock session row
@@ -636,5 +781,56 @@ service CopilotService {
   // server-side as defense-in-depth (Connect PermissionDenied).
   rpc CheckBlock(CheckBlockRequest) returns (CheckBlockResponse) {
     option (google.api.http) = {get: "/api/v1/copilot/check-block"};
+  }
+
+  // ---- Interview prep (Phase J / C6) ----
+
+  // ParseCV runs the user-uploaded résumé through the free LLM chain and
+  // returns a structured ParsedCV. No persistence — purely the parsing
+  // step of the wizard. Caller invokes after the user picks a file +
+  // commits to "next step".
+  rpc ParseCV(ParseCVRequest) returns (ParseCVResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/copilot/interview-prep/parse-cv"
+      body: "*"
+    };
+  }
+
+  // ParseJD parses the JD via the same chain. Accepts either text body
+  // or URL — URL fetching is best-effort (returns FailedPrecondition if
+  // the host blocks; client should fall back to text).
+  rpc ParseJD(ParseJDRequest) returns (ParseJDResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/copilot/interview-prep/parse-jd"
+      body: "*"
+    };
+  }
+
+  // StartInterviewPrep commits parsed CV + JD as the user's CURRENT
+  // active prep context. Replaces any prior prep (single-active per
+  // user). Subsequent Analyze / Chat / Suggest turns consult the row
+  // and prepend a tailored system block — the moat vs Cluely.
+  rpc StartInterviewPrep(StartInterviewPrepRequest) returns (StartInterviewPrepResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/copilot/interview-prep/start"
+      body: "*"
+    };
+  }
+
+  // GetActiveInterviewPrep returns the user's current prep row (if any).
+  // Empty when no active prep. The desktop client uses this to show a
+  // status chip in Settings + Compact, and to surface the "End prep
+  // mode" button.
+  rpc GetActiveInterviewPrep(GetActiveInterviewPrepRequest) returns (GetActiveInterviewPrepResponse) {
+    option (google.api.http) = {get: "/api/v1/copilot/interview-prep/active"};
+  }
+
+  // EndInterviewPrep clears the user's active prep so future suggestions
+  // stop injecting it. Idempotent — no-op when there is no active prep.
+  rpc EndInterviewPrep(EndInterviewPrepRequest) returns (EndInterviewPrepResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/copilot/interview-prep/end"
+      body: "*"
+    };
   }
 }

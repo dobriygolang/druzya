@@ -109,6 +109,40 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 	}
 
 	server := miPorts.NewServer(handlers, orch, d.Log)
+	// R2: Algo «Run tests» dry-run. Shares the same Judge0 sandbox as the
+	// orchestrator's SubmitAnswer override, but bypasses the LLM judge so
+	// candidates can iterate quickly without burning provider quota.
+	server.AlgoGrader = &miApp.AlgoGrader{
+		Sandbox:  sandbox,
+		Attempts: attempts,
+		Tasks:    tasks,
+		Stages:   pipelineStages,
+		Log:      d.Log,
+	}
+	// R2 (closing wave): Coding / SysDesign / Behavioral iterative rubric
+	// graders. All three share the free LLM cascade (d.LLMChain); when the
+	// chain is nil (no provider configured) graders degrade to a structured
+	// unavailable verdict instead of faking a score.
+	server.CodingGrader = &miApp.CodingGrader{
+		Chain:    d.LLMChain,
+		Attempts: attempts,
+		Tasks:    tasks,
+		Stages:   pipelineStages,
+		Log:      d.Log,
+	}
+	server.SysDesignGrader = &miApp.SysDesignGrader{
+		Chain:    d.LLMChain,
+		Attempts: attempts,
+		Tasks:    tasks,
+		Stages:   pipelineStages,
+		Log:      d.Log,
+	}
+	server.BehavioralGrader = &miApp.BehavioralGrader{
+		Chain:    d.LLMChain,
+		Attempts: attempts,
+		Stages:   pipelineStages,
+		Log:      d.Log,
+	}
 
 	// Phase: incremental chi→proto migration. 4 public read endpoints
 	// (/mock/companies, /mock/pipelines, /mock/pipelines/{id},
@@ -138,6 +172,12 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/mock/pipelines/{id}/start-next-stage", transcoder.ServeHTTP)
 			r.Post("/mock/attempts/{id}/submit", transcoder.ServeHTTP)
 			r.Post("/mock/stages/{id}/finish", transcoder.ServeHTTP)
+			// R2: Algo «Run tests» (dry-run, no persist).
+			r.Post("/mock/attempts/{id}/run-algo", transcoder.ServeHTTP)
+			// R2 (closing): Coding / SysDesign / Behavioral rubric runs.
+			r.Post("/mock/attempts/{id}/run-coding", transcoder.ServeHTTP)
+			r.Post("/mock/attempts/{id}/run-sysdesign", transcoder.ServeHTTP)
+			r.Post("/mock/attempts/{id}/run-behavioral", transcoder.ServeHTTP)
 			// slice 4 (admin companies + strictness):
 			r.Get("/admin/mock/companies", transcoder.ServeHTTP)
 			r.Post("/admin/mock/companies", transcoder.ServeHTTP)

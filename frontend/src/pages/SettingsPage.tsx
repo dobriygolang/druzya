@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   User,
   CreditCard,
@@ -12,9 +12,6 @@ import {
   Copy,
   Send,
   Globe,
-  Monitor,
-  Sun,
-  Moon,
   Languages,
   Check,
   Layers,
@@ -25,18 +22,14 @@ import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { FormField } from '../components/FormField'
 import { AIModelRow, PremiumUpgradeHint } from '../components/AIModelRow'
+import { GoogleCalendarSection } from '../components/GoogleCalendarSection'
 import { cn } from '../lib/cn'
 import { useProfileQuery } from '../lib/queries/profile'
 import { useAIModelsQuery } from '../lib/queries/ai'
 import { useNotificationPrefsQuery, useUpdatePrefs } from '../lib/queries/notifications'
 import { api } from '../lib/apiClient'
-import {
-  useAIVacanciesModelQuery,
-  useUpdateAIVacanciesModel,
-  useUpdateProfileSettings,
-} from '../lib/queries/settings'
+import { useUpdateProfileSettings } from '../lib/queries/settings'
 import { gradientStyleForUser } from '../lib/avatarGradients'
-import { useTheme, type ThemeMode } from '../lib/theme'
 import { changeLanguage, currentLanguage, type Lang } from '../lib/i18n'
 import { BillingTab } from './settings/BillingTab'
 import { TracksTab } from './settings/TracksTab'
@@ -79,6 +72,7 @@ function Sidebar({ active, setActive }: { active: NavId; setActive: (id: NavId) 
           <button
             key={item.id}
             onClick={() => setActive(item.id)}
+            aria-pressed={isActive}
             className={cn(
               'flex h-10 shrink-0 items-center gap-2.5 rounded-md px-3 text-[13px] font-semibold transition-colors',
               isActive
@@ -169,7 +163,7 @@ function AccountInfoCard() {
         <InfoRow label={t('rows.id')}>
           <div className="flex items-center gap-2">
             <span className="font-mono text-[13px] text-text-primary">{id}</span>
-            <button className="grid h-7 w-7 place-items-center rounded-md text-text-muted hover:bg-surface-2 hover:text-text-primary">
+            <button className="grid h-9 w-9 place-items-center rounded-md text-text-muted hover:bg-surface-2 hover:text-text-primary">
               <Copy className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -299,12 +293,9 @@ function IntegrationRow({
 
 function AppearanceCard() {
   const { t } = useTranslation('settings')
-  const { theme, set } = useTheme()
-  const options: { id: ThemeMode; icon: typeof Sun; label: string; desc: string }[] = [
-    { id: 'auto', icon: Monitor, label: t('theme_auto'), desc: t('theme_auto_desc') },
-    { id: 'dark', icon: Moon, label: t('theme_dark'), desc: t('theme_dark_desc') },
-    { id: 'light', icon: Sun, label: t('theme_light'), desc: t('theme_light_desc') },
-  ]
+  // CI4 (2026-05-11): theme picker removed — light theme killed per roadmap
+  // anti-pattern #16 (kill switch over AAA audit). Card retained для
+  // language picker; theme controls collapsed into single read-only label.
   const [, force] = useState(0)
   const [lang, setLang] = useState<Lang>(currentLanguage())
   const onLang = (l: Lang) => {
@@ -317,35 +308,9 @@ function AppearanceCard() {
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <span className="text-[14px] font-semibold text-text-primary">{t('theme_label')}</span>
-          <span className="text-[12px] text-text-muted">{t('theme_desc')}</span>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {options.map((o) => {
-            const Icon = o.icon
-            const active = theme === o.id
-            return (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => set(o.id)}
-                className={cn(
-                  'relative flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all',
-                  active
-                    ? 'border-text-primary bg-text-primary/10'
-                    : 'border-border bg-surface-1 hover:border-border-strong',
-                )}
-              >
-                {active && (
-                  <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-text-primary text-bg">
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </span>
-                )}
-                <Icon className="h-5 w-5 text-text-primary" />
-                <span className="text-[14px] font-bold text-text-primary">{o.label}</span>
-                <span className="font-mono text-[11px] text-text-muted">{o.desc}</span>
-              </button>
-            )
-          })}
+          <span className="text-[12px] text-text-muted">
+            Dark theme — B/W aesthetic across web / Hone / Cue. Light theme is not supported.
+          </span>
         </div>
       </div>
 
@@ -507,102 +472,38 @@ function AICoachCard() {
   )
 }
 
-// VacanciesModelCard — mirrors AICoachCard but targets the extractor that
-// powers the «Разобрать» flow on /vacancies. Hydrates from the dedicated
-// GET /profile/me/ai-vacancies-model (unlike insight's seed-from-empty),
-// so the row reflects the user's stored preference on mount. Uses the
-// `?use=vacancies` filter so only JSON-capable models show up.
-function VacanciesModelCard() {
-  const { data: profile } = useProfileQuery()
-  const { data: catalogue, isLoading, isError } = useAIModelsQuery('vacancies')
-  const { data: current } = useAIVacanciesModelQuery()
-  const update = useUpdateAIVacanciesModel()
-  const tier = profile?.tier ?? 'free'
-  const isPaid = tier === 'pro' || tier === 'max'
-  const items = catalogue?.items ?? []
-  const available = catalogue?.available ?? false
-  const selected = current?.model_id ?? ''
-
-  const onPick = (id: string) => {
-    const model = items.find((m) => m.id === id)
-    if (model && model.tier !== 'free' && !isPaid) return
-    update.mutate(id)
-  }
-
-  return (
-    <Card className="flex-col gap-4 p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-1">
-          <h3 className="font-display text-lg font-bold text-text-primary">
-            Разбор вакансий — модель
-          </h3>
-          <p className="text-[12px] text-text-muted">
-            Выбор LLM для извлечения скиллов из вакансии при клике «Разобрать»
-            на /vacancies. Пусто ⇒ бесплатная qwen3-coder. Работают только
-            модели, надёжно держащие strict-JSON вывод.
-          </p>
-        </div>
-        {update.isPending && (
-          <span className="font-mono text-[10px] text-text-muted">saving…</span>
-        )}
-      </div>
-
-      {isLoading && (
-        <div className="font-mono text-[11px] text-text-muted">loading…</div>
-      )}
-      {isError && (
-        <div className="rounded-md bg-danger/15 px-3 py-2 font-mono text-[11px] text-danger">
-          Не удалось загрузить каталог моделей
-        </div>
-      )}
-      {!isLoading && !isError && !available && (
-        <div className="rounded-md bg-surface-2 px-3 py-2 font-mono text-[11px] text-text-muted">
-          Разбор вакансий сейчас отключён (OPENROUTER_API_KEY не задан)
-        </div>
-      )}
-      {available && items.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <AIModelRow
-            id=""
-            label="По умолчанию (бесплатная)"
-            meta="сервер использует qwen3-coder:free"
-            tier="free"
-            selected={selected === ''}
-            onSelect={onPick}
-          />
-          {items.map((m) => {
-            const locked = m.tier !== 'free' && !isPaid
-            return (
-              <AIModelRow
-                key={m.id}
-                id={m.id}
-                label={m.label}
-                meta={`${m.provider} · ${m.id}`}
-                tier={m.tier}
-                selected={selected === m.id}
-                locked={locked}
-                isVirtual={m.is_virtual}
-                onSelect={onPick}
-              />
-            )
-          })}
-          {!isPaid && items.some((m) => m.tier !== 'free') && (
-            <PremiumUpgradeHint />
-          )}
-        </div>
-      )}
-      {update.isError && (
-        <div className="rounded-md bg-danger/15 px-3 py-2 font-mono text-[11px] text-danger">
-          Не удалось сохранить выбор
-        </div>
-      )}
-    </Card>
-  )
+// R8 (Phase A W3 — 2026-05-11): URL ?tab=X support так что /profile → Settings
+// deep-links могут открывать конкретный раздел. Полное merge /profile + /settings
+// → /profile (plan R8) отложено; minimal step — URL routability сейчас.
+const TAB_IDS = new Set<NavId>([
+  'account', 'tracks', 'billing', 'integrations',
+  'notifications', 'ai', 'privacy', 'appearance', 'danger',
+])
+function readTabFromQuery(params: URLSearchParams): NavId {
+  const t = params.get('tab')
+  return t && TAB_IDS.has(t as NavId) ? (t as NavId) : 'account'
 }
 
 export default function SettingsPage() {
   const { t } = useTranslation('settings')
-  const [active, setActive] = useState<NavId>('account')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [active, setActiveRaw] = useState<NavId>(() => readTabFromQuery(searchParams))
+  // Keep URL in sync when user clicks sidebar items (replaceState — back
+  // button shouldn't restore an internal tab swap, only the page itself).
+  const setActive = (next: NavId) => {
+    setActiveRaw(next)
+    const params = new URLSearchParams(searchParams)
+    if (next === 'account') params.delete('tab')
+    else params.set('tab', next)
+    setSearchParams(params, { replace: true })
+  }
+  // Sync external URL changes (e.g. deep links from ProfilePage / NotificationsBell)
+  // into local state без forcing a remount.
+  useEffect(() => {
+    const next = readTabFromQuery(searchParams)
+    if (next !== active) setActiveRaw(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
   return (
     <AppShellV2>
       <div className="flex flex-col gap-8 px-4 py-6 sm:px-8 lg:px-10 lg:py-10">
@@ -627,14 +528,14 @@ export default function SettingsPage() {
             )}
             {active === 'tracks' && <TracksTab />}
             {active === 'billing' && <BillingTab />}
-            {active === 'integrations' && <IntegrationsCard />}
-            {active === 'notifications' && <NotificationsCard />}
-            {active === 'ai' && (
+            {active === 'integrations' && (
               <>
-                <AICoachCard />
-                <VacanciesModelCard />
+                <IntegrationsCard />
+                <GoogleCalendarSection />
               </>
             )}
+            {active === 'notifications' && <NotificationsCard />}
+            {active === 'ai' && <AICoachCard />}
             {active === 'privacy' && <PrivacyCard />}
             {active === 'appearance' && <AppearanceCard />}
             {active === 'danger' && <DangerCard />}
@@ -768,7 +669,7 @@ function DangerCard() {
         на их стороне — их надо отменить отдельно.
       </p>
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-1 p-3">
-        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
           Чтобы подтвердить, введи свой username
         </span>
         <input

@@ -71,6 +71,10 @@ type ConversationDoneFrame struct {
 	CompactionThreshold int
 	CompactionTriggered bool
 	RunningSummaryChars int
+	// ContextUsed — true когда backend инжектил cross-product context
+	// (goal/memory/activity/radar) в system-prompt этого turn'а. Cue
+	// рисует subtle hint в expanded окне. C3 (Phase J).
+	ContextUsed bool
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -188,6 +192,19 @@ type Analyze struct {
 	// running_summary. См. backend/shared/pkg/compaction.
 	Compactor     *compaction.Worker
 	CompactionCfg compaction.Config
+
+	// UserContext — optional cross-product context provider (C3, Phase J).
+	// When wired, Analyze fetches the user's goal + recent Coach memory +
+	// activity + radar BEFORE the LLM call and injects it as a system
+	// message. Same shape as Suggest.UserContext. nil-safe.
+	UserContext domain.UserContextProvider
+
+	// InterviewPrep — optional active-prep provider (C6, Phase J). When
+	// the user uploaded CV+JD via the wizard, Analyze fetches the
+	// parsed shapes and injects a tailored system block AFTER the
+	// cross-product context (same ordering rationale as Suggest). nil-
+	// safe.
+	InterviewPrep domain.InterviewPrepProvider
 
 	Log *slog.Logger
 	Now func() time.Time
@@ -359,7 +376,20 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 	// the top-K hits are effectively random.
 	docsContext := uc.buildDocsContext(ctx, haveLive, liveSession, in.PromptText)
 
-	llmMessages := buildLLMMessages(window.RunningSummary, docsContext, in.PersonaSystemPrompt, turnsToMessages(window.Tail), in.PromptText, in.Attachments)
+	// C3 cross-product context. Persona-tuning happens at the prompt
+	// formatter — Analyze treats sessions as "interview" by default
+	// because Analyze is the screenshot-driven path that Cue fires on
+	// hotkey (typically during an interview). If we ever distinguish
+	// meeting vs interview at the Analyze level, plumb it here.
+	contextBlock, contextUsed := uc.loadContextBlock(ctx, in.UserID, domain.ContextPersonaInterview)
+	// C6 interview-prep — injected after the cross-product block (see
+	// loadInterviewPrepBlock comment for ordering rationale).
+	prepBlock, prepUsed := uc.loadInterviewPrepBlock(ctx, in.UserID)
+	if prepUsed {
+		contextUsed = true
+	}
+
+	llmMessages := buildLLMMessages(window.RunningSummary, docsContext, contextBlock, prepBlock, in.PersonaSystemPrompt, turnsToMessages(window.Tail), in.PromptText, in.Attachments)
 
 	// Open the LLM stream.
 	events, err := uc.LLM.Stream(ctx, domain.CompletionRequest{
@@ -387,8 +417,70 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 		isFirstTurn: in.ConversationID == uuid.Nil,
 		userPrompt:  in.PromptText,
 		priorWindow: window,
+		contextUsed: contextUsed,
 	})
 	return out, nil
+}
+
+// loadInterviewPrepBlock pulls the active interview-prep row and formats
+// it as a system-prompt block. nil-safe + error-tolerant on the same
+// "context fetch must never fail Analyze" contract as loadContextBlock.
+//
+// Block is empty when:
+//   - provider unwired (Analyze.InterviewPrep == nil);
+//   - LoadActivePrep returned an error (logged + swallowed);
+//   - the row's parsed shapes carry no usable signal.
+func (uc *Analyze) loadInterviewPrepBlock(
+	ctx context.Context,
+	userID uuid.UUID,
+) (string, bool) {
+	if uc.InterviewPrep == nil {
+		return "", false
+	}
+	prep, err := uc.InterviewPrep.LoadActivePrep(ctx, userID)
+	if err != nil {
+		if uc.Log != nil {
+			uc.Log.WarnContext(ctx, "copilot.Analyze: prep load failed — continuing without",
+				slog.Any("err", err), slog.String("user", userID.String()))
+		}
+		return "", false
+	}
+	block := domain.FormatInterviewPrepBlock(prep)
+	if strings.TrimSpace(block) == "" {
+		return "", false
+	}
+	return block, true
+}
+
+// loadContextBlock pulls the cross-product context bundle and formats it
+// for prompt-injection. nil-safe (no provider → empty + false). Errors
+// from the provider are LOGGED but never propagated — Analyze must not
+// fail because a cross-product reader hiccupped. Returns (block, used)
+// where used=true iff the block is non-empty.
+func (uc *Analyze) loadContextBlock(
+	ctx context.Context,
+	userID uuid.UUID,
+	persona domain.ContextPersona,
+) (string, bool) {
+	if uc.UserContext == nil {
+		return "", false
+	}
+	bundle, err := uc.UserContext.LoadUserContext(ctx, userID)
+	if err != nil {
+		if uc.Log != nil {
+			uc.Log.WarnContext(ctx, "copilot.Analyze: context load failed — continuing without",
+				slog.Any("err", err), slog.String("user", userID.String()))
+		}
+		return "", false
+	}
+	if bundle.IsEmpty() {
+		return "", false
+	}
+	block := domain.FormatContextPrompt(bundle, persona)
+	if strings.TrimSpace(block) == "" {
+		return "", false
+	}
+	return block, true
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -413,6 +505,11 @@ type pumpCtx struct {
 	// текущего user/assistant turn'а. Если NeedsCompaction=true, мы после
 	// успешной завершения stream'а сабмитим Job воркеру (см. Analyze.Compactor).
 	priorWindow compaction.Window
+	// contextUsed — true когда buildLLMMessages принял непустой
+	// cross-product context block (C3). Прокидывается в Done frame
+	// чтобы Cue desktop мог нарисовать "Personalized from your druz9
+	// activity" hint.
+	contextUsed bool
 }
 
 // pump bridges the provider's StreamEvent channel into the use-case's
@@ -535,6 +632,7 @@ func (uc *Analyze) pump(ctx context.Context, p pumpCtx) {
 		CompactionThreshold: cfg.Threshold,
 		CompactionTriggered: compactionTriggered,
 		RunningSummaryChars: len(p.priorWindow.RunningSummary),
+		ContextUsed:         p.contextUsed,
 	}}
 
 	// Фоновая компакция: формируем полный набор turns = priorWindow.tail +
@@ -654,20 +752,29 @@ func (uc *Analyze) priorMessages(ctx context.Context, conversationID, currentUse
 }
 
 // buildLLMMessages packs the system prompt + optional running-summary +
-// optional RAG docs context + prior tail + current user turn (with images)
-// into the provider-agnostic shape.
+// optional cross-product context + optional interview-prep block +
+// optional RAG docs context + prior tail + current user turn (with
+// images) into the provider-agnostic shape.
 //
 // Ordering rationale:
 //  1. systemPrompt — always first, sets the assistant's baseline behavior.
-//  2. runningSummary — если есть, compressed history (пост-компакции).
-//  3. docsContext — RAG hits from user's attached documents. Goes AFTER
+//  2. personaPrompt — user-active persona ("React Expert"), high priority.
+//  3. userContext — C3 cross-product context (goal + memory + activity +
+//     radar). Goes BEFORE the conversation summary so the LLM treats
+//     it as identity-prior; subsequent summary/docs/prior turns are
+//     read in this lens.
+//  4. interviewPrepBlock — C6 active prep (CV + JD). Lives AFTER
+//     userContext so per-interview prior dominates the generic
+//     learning-history when the two conflict.
+//  5. runningSummary — если есть, compressed history (пост-компакции).
+//  6. docsContext — RAG hits from user's attached documents. Goes AFTER
 //     the summary so the assistant reads domain facts before replaying
 //     the conversational thread; this reduces the chance of the LLM
 //     latching onto an old summary fact that the new docs override.
-//  4. prior tail — raw recent turns.
-//  5. current user turn — with images.
-func buildLLMMessages(runningSummary, docsContext, personaPrompt string, prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
-	out := make([]domain.LLMMessage, 0, len(prior)+5)
+//  7. prior tail — raw recent turns.
+//  8. current user turn — with images.
+func buildLLMMessages(runningSummary, docsContext, userContext, interviewPrepBlock, personaPrompt string, prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
+	out := make([]domain.LLMMessage, 0, len(prior)+7)
 	out = append(out, domain.LLMMessage{Role: enums.MessageRoleSystem, Content: systemPrompt})
 	// Persona — отдельный system message сразу после base. До summary/docs
 	// чтобы persona-instructions имели приоритет в context'е модели. История
@@ -675,6 +782,23 @@ func buildLLMMessages(runningSummary, docsContext, personaPrompt string, prior [
 	// (раньше был баг: prepend на frontend'е → дубли в каждом turn'е →
 	// LLM реагировала на pattern «Persona: ... text»).
 	if s := strings.TrimSpace(personaPrompt); s != "" {
+		out = append(out, domain.LLMMessage{
+			Role:    enums.MessageRoleSystem,
+			Content: s,
+		})
+	}
+	// C3 cross-product context — injected before summary/docs so the
+	// LLM treats "who is this user, what are they working toward" as
+	// identity-prior. Empty string when provider unwired / bundle empty.
+	if s := strings.TrimSpace(userContext); s != "" {
+		out = append(out, domain.LLMMessage{
+			Role:    enums.MessageRoleSystem,
+			Content: s,
+		})
+	}
+	// C6 interview-prep block — per-interview prior (parsed CV + JD).
+	// Empty when the user hasn't run the wizard.
+	if s := strings.TrimSpace(interviewPrepBlock); s != "" {
 		out = append(out, domain.LLMMessage{
 			Role:    enums.MessageRoleSystem,
 			Content: s,

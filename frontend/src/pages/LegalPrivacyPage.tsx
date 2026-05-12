@@ -9,20 +9,38 @@ const LAST_UPDATED = '24 апреля 2026'
 
 export default function LegalPrivacyPage() {
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-white/10 bg-black/85 px-6 py-5 backdrop-blur">
+    <div className="min-h-screen bg-bg text-text-primary">
+      <header
+        className="border-b px-6 py-5 backdrop-blur"
+        style={{
+          borderColor: 'rgba(var(--ink), 0.10)',
+          background: 'rgba(0, 0, 0, 0.85)',
+        }}
+      >
         <div className="mx-auto flex max-w-[860px] items-center justify-between">
-          <Link to="/welcome" className="font-display text-[15px] font-semibold text-white">
+          <Link
+            to="/welcome"
+            className="font-display text-[15px] font-semibold tracking-[0.08em] text-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
+          >
             druz9
           </Link>
-          <nav className="flex gap-5 text-[13px] text-white/60">
-            <Link to="/legal/terms" className="hover:text-white">
+          <nav className="flex gap-5 text-[13px]" style={{ color: 'rgba(var(--ink), 0.60)' }}>
+            <Link
+              to="/legal/terms"
+              className="tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
+            >
               Terms
             </Link>
-            <Link to="/hone" className="hover:text-white">
+            <Link
+              to="/hone"
+              className="tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
+            >
               Hone
             </Link>
-            <Link to="/copilot" className="hover:text-white">
+            <Link
+              to="/copilot"
+              className="tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
+            >
               Cue
             </Link>
           </nav>
@@ -30,17 +48,25 @@ export default function LegalPrivacyPage() {
       </header>
 
       <main className="mx-auto max-w-[760px] px-6 py-16">
-        <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-white/40">
+        <div
+          className="font-mono text-[10px] uppercase tracking-[0.08em]"
+          style={{ color: 'rgba(var(--ink), 0.40)' }}
+        >
           Privacy Policy
         </div>
-        <h1 className="mt-3 font-display text-[36px] font-normal tracking-[-0.025em] text-white sm:text-[44px]">
+        <h1 className="mt-3 font-display text-[36px] font-normal tracking-[-0.025em] text-text-primary sm:text-[44px]">
           Политика приватности
         </h1>
-        <p className="mt-3 text-[12.5px] text-white/50">Последнее обновление: {LAST_UPDATED}</p>
+        <p className="mt-3 text-[12.5px]" style={{ color: 'rgba(var(--ink), 0.50)' }}>
+          Последнее обновление: {LAST_UPDATED}
+        </p>
 
-        <article className="mt-10 space-y-8 text-[14.5px] leading-[1.7] text-white/80">
+        <article
+          className="mt-10 space-y-8 text-[14.5px] leading-[1.7]"
+          style={{ color: 'rgba(var(--ink), 0.80)' }}
+        >
           <section>
-            <h2 className="mb-3 text-[18px] font-medium text-white">1. Что мы собираем</h2>
+            <h2 className="mb-3 text-[18px] font-medium text-text-primary">1. Что мы собираем</h2>
             <ul className="list-disc space-y-1 pl-5">
               <li>
                 <b>Учётные данные</b>: id пользователя Yandex/Telegram, имя и
@@ -66,7 +92,7 @@ export default function LegalPrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-[18px] font-medium text-white">2. Чего мы НЕ собираем</h2>
+            <h2 className="mb-3 text-[18px] font-medium text-text-primary">2. Чего мы НЕ собираем</h2>
             <ul className="list-disc space-y-1 pl-5">
               <li>Снимки экрана, аудио, файлы с диска — никогда.</li>
               <li>
@@ -80,7 +106,7 @@ export default function LegalPrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-[18px] font-medium text-white">3. Где хранится</h2>
+            <h2 className="mb-3 text-[18px] font-medium text-text-primary">3. Где хранится</h2>
             <p>
               Primary storage — Postgres в РФ (Selectel, MSK). Embeddings
               (bge-small) — в той же БД, как float4[] массив. Session tokens —
@@ -92,7 +118,7 @@ export default function LegalPrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-[18px] font-medium text-white">4. AI-провайдеры</h2>
+            <h2 className="mb-3 text-[18px] font-medium text-text-primary">4. AI-провайдеры</h2>
             <p>
               Для AI-фич (plan-synthesis, critique, suggest) мы используем
               OpenRouter → OpenAI / DeepSeek / Qwen. Payload'ом идёт только та
@@ -104,7 +130,7 @@ export default function LegalPrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-[18px] font-medium text-white">5. Ваши права (152-ФЗ)</h2>
+            <h2 className="mb-3 text-[18px] font-medium text-text-primary">5. Ваши права (152-ФЗ)</h2>
             <ul className="list-disc space-y-1 pl-5">
               <li>
                 <b>Доступ</b> — экспорт всех ваших данных в JSON через
@@ -128,7 +154,7 @@ export default function LegalPrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-[18px] font-medium text-white">6. Cookies</h2>
+            <h2 className="mb-3 text-[18px] font-medium text-text-primary">6. Cookies</h2>
             <p>
               Сессионные cookies (HttpOnly, Secure) для refresh-токена.
               Аналитических cookies нет. Ни Facebook Pixel, ни VK pixel.
@@ -136,17 +162,23 @@ export default function LegalPrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-[18px] font-medium text-white">7. Дети</h2>
+            <h2 className="mb-3 text-[18px] font-medium text-text-primary">7. Дети</h2>
             <p>
               Сервис ориентирован на разработчиков и не предназначен для
               детей до 14 лет. Если вы обнаружили аккаунт несовершеннолетнего
-              — напишите на <code className="rounded bg-white/10 px-1.5 py-0.5">abuse@druz9.ru</code>,
-              удалим.
+              — напишите на{' '}
+              <code
+                className="rounded px-1.5 py-0.5"
+                style={{ background: 'rgba(var(--ink), 0.10)' }}
+              >
+                abuse@druz9.ru
+              </code>
+              , удалим.
             </p>
           </section>
 
           <section>
-            <h2 className="mb-3 text-[18px] font-medium text-white">8. Инциденты</h2>
+            <h2 className="mb-3 text-[18px] font-medium text-text-primary">8. Инциденты</h2>
             <p>
               В случае data-breach'а мы уведомляем затронутых пользователей в
               течение 72 часов по каналу связи, указанному в настройках, и
@@ -155,14 +187,27 @@ export default function LegalPrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-[18px] font-medium text-white">9. Контакты</h2>
+            <h2 className="mb-3 text-[18px] font-medium text-text-primary">9. Контакты</h2>
             <p>
-              DPO / privacy-вопросы — <code className="rounded bg-white/10 px-1.5 py-0.5">privacy@druz9.ru</code>.
+              DPO / privacy-вопросы —{' '}
+              <code
+                className="rounded px-1.5 py-0.5"
+                style={{ background: 'rgba(var(--ink), 0.10)' }}
+              >
+                privacy@druz9.ru
+              </code>
+              .
             </p>
           </section>
         </article>
 
-        <div className="mt-16 border-t border-white/10 pt-6 text-[12.5px] text-white/40">
+        <div
+          className="mt-16 border-t pt-6 text-[12.5px]"
+          style={{
+            borderColor: 'rgba(var(--ink), 0.10)',
+            color: 'rgba(var(--ink), 0.40)',
+          }}
+        >
           Финальная редактура с юристом по 152-ФЗ и GDPR (для ЕС-пользователей
           через VPN) ожидается до public v1 launch'а.
         </div>

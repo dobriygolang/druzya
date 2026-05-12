@@ -92,6 +92,12 @@ type TutorServer struct {
 	GetSessionNotesUC  *app.GetSessionNotes
 	SaveSessionNotesUC *app.SaveSessionNotes
 
+	// Stream D (2026-05-12) — reading paths CRUD.
+	ListReadingPathsUC   *app.ListReadingPaths
+	CreateReadingPathUC  *app.CreateReadingPath
+	UpdateReadingPathUC  *app.UpdateReadingPath
+	ArchiveReadingPathUC *app.ArchiveReadingPath
+
 	// Wave 5.2b — calendar events. Same nil-safe pattern.
 	CreateEventUC                  *app.CreateEvent
 	CancelEventUC                  *app.CancelEvent
@@ -1200,3 +1206,11 @@ func toSessionNotesProto(n domain.SessionNotes) *pb.TutorSessionNotes {
 	}
 	return out
 }
+
+// ── Reading paths (Stream D, 2026-05-12) ─────────────────────────────
+//
+// Handlers live in server_paths.go behind a build tag (`tutorpaths`)
+// because they reference pb.TutorReadingPath* types that are produced
+// only after `make generate` runs against the extended tutor.proto.
+// Pre-regen the file is excluded and the rest of the package builds
+// cleanly; post-regen Sergey removes the build tag (one-line edit).

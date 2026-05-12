@@ -44,8 +44,8 @@ func (d Difficulty) IsValid() bool {
 type StepKind string
 
 const (
-	StepKindKata       StepKind = "kata"
-	StepKindArena      StepKind = "arena"
+	StepKindKata StepKind = "kata"
+	// Arena removed 2026-05-12 (D8) — see migration 00085. Seed-rows remapped to mock.
 	StepKindMock       StepKind = "mock"
 	StepKindCodexRead  StepKind = "codex_read"
 	StepKindFocusBlock StepKind = "focus_block"
@@ -54,7 +54,7 @@ const (
 // IsValid returns true for known step kinds.
 func (k StepKind) IsValid() bool {
 	switch k {
-	case StepKindKata, StepKindArena, StepKindMock, StepKindCodexRead, StepKindFocusBlock:
+	case StepKindKata, StepKindMock, StepKindCodexRead, StepKindFocusBlock:
 		return true
 	}
 	return false

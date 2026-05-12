@@ -22,10 +22,10 @@ require (
 	druz9/profile v0.0.0-00010101000000-000000000000
 	druz9/rooms v0.0.0-00010101000000-000000000000
 	druz9/shared v0.0.0
+	druz9/telemetry v0.0.0
 	druz9/tracks v0.0.0
 	druz9/transcription v0.0.0-00010101000000-000000000000
 	druz9/tutor v0.0.0-00010101000000-000000000000
-	druz9/vacancies v0.0.0-00010101000000-000000000000
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
@@ -39,6 +39,7 @@ require github.com/pgvector/pgvector-go v0.3.0 // indirect
 
 require (
 	druz9/circles v0.0.0
+	druz9/google_calendar v0.0.0
 	druz9/storage v0.0.0
 	druz9/subscription v0.0.0
 	druz9/sync v0.0.0
@@ -113,8 +114,6 @@ replace druz9/podcast => ../../services/podcast
 
 replace druz9/admin => ../../services/admin
 
-replace druz9/vacancies => ../../services/vacancies
-
 replace druz9/hone => ../../services/hone
 
 replace druz9/intelligence => ../../services/intelligence
@@ -135,6 +134,8 @@ replace druz9/whiteboard_rooms => ../../services/whiteboard_rooms
 
 replace druz9/circles => ../../services/circles
 
+replace druz9/google_calendar => ../../services/google_calendar
+
 replace druz9/mock_interview => ../../services/mock_interview
 
 replace druz9/sync => ../../services/sync
@@ -142,6 +143,8 @@ replace druz9/sync => ../../services/sync
 replace druz9/storage => ../../services/storage
 
 replace druz9/tracks => ../../services/tracks
+
+replace druz9/telemetry => ../../services/telemetry
 
 replace druz9/curation => ../../services/curation
 

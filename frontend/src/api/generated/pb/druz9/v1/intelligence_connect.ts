@@ -19,8 +19,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AckInsightRequest, AckInsightResponse, AckRecommendationRequest, AckRecommendationResponse, AskAnswer, AskNotesRequest, CoachStats, DailyBrief, ForkSnapshot, GetCoachStatsRequest, GetDailyBriefRequest, GetForkSnapshotRequest, GetMemoryStatsRequest, GetNextActionRequest, GetResourceTrailRequest, GetSkillRadarRequest, LearningStateView, ListInsightsRequest, ListInsightsResponse, LogResourceRequest, LogResourceResponse, MemoryStats, NextAction, ResourceTrail, SetForkBranchRequest, SetLearningModeRequest, SkillRadar } from "./intelligence_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import { AckInsightRequest, AckInsightResponse, AckRecommendationRequest, AckRecommendationResponse, AskAnswer, AskNotesRequest, ClearAtlasStruggleRequest, ClearAtlasStruggleResponse, CoachStats, CreateGoalRequest, DailyBrief, DeactivateGoalRequest, DeleteMemoryEntryRequest, EditMemoryEntryRequest, ForkSnapshot, GetCoachStatsRequest, GetDailyBriefRequest, GetForkSnapshotRequest, GetMemoryStatsRequest, GetNextActionRequest, GetNodeCoverageRequest, GetNodeCoverageResponse, GetResourceTrailRequest, GetSkillRadarRequest, GetUserContextRequest, GetUserContextResponse, Goal, IngestInterviewSessionRequest, InterviewSession, LearningStateView, ListAtlasStrugglesRequest, ListAtlasStrugglesResponse, ListFocusReflectionsRequest, ListFocusReflectionsResponse, ListInsightsRequest, ListInsightsResponse, ListInterviewSessionsRequest, ListInterviewSessionsResponse, ListMemoryEntriesRequest, ListMemoryEntriesResponse, LogResourceRequest, LogResourceResponse, MarkAtlasStruggleRequest, MarkAtlasStruggleResponse, MarkMilestoneDoneRequest, MemoryEntry, MemoryStats, Milestone, MilestonesResponse, NextAction, ResourceTrail, SaveFocusReflectionRequest, SaveFocusReflectionResponse, SetForkBranchRequest, SetLearningModeRequest, SkillRadar, UpdateGoalRequest } from "./intelligence_pb.js";
+import { Empty, MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service druz9.v1.IntelligenceService
@@ -174,6 +174,204 @@ export const IntelligenceService = {
       name: "GetCoachStats",
       I: GetCoachStatsRequest,
       O: CoachStats,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── F2 Goal CRUD (2026-05-12) ────────────────────────────────────────
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.CreateGoal
+     */
+    createGoal: {
+      name: "CreateGoal",
+      I: CreateGoalRequest,
+      O: Goal,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetActiveGoal returns NotFound when the user has no active primary goal.
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.GetActiveGoal
+     */
+    getActiveGoal: {
+      name: "GetActiveGoal",
+      I: Empty,
+      O: Goal,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.UpdateGoal
+     */
+    updateGoal: {
+      name: "UpdateGoal",
+      I: UpdateGoalRequest,
+      O: Goal,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.DeactivateGoal
+     */
+    deactivateGoal: {
+      name: "DeactivateGoal",
+      I: DeactivateGoalRequest,
+      O: Empty,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── F10 Interview-session ingestion (2026-05-12) ────────────────────
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.IngestInterviewSession
+     */
+    ingestInterviewSession: {
+      name: "IngestInterviewSession",
+      I: IngestInterviewSessionRequest,
+      O: InterviewSession,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.ListInterviewSessions
+     */
+    listInterviewSessions: {
+      name: "ListInterviewSessions",
+      I: ListInterviewSessionsRequest,
+      O: ListInterviewSessionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── F2 LLM-driven milestones (2026-05-12) ───────────────────────────
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.GenerateMilestones
+     */
+    generateMilestones: {
+      name: "GenerateMilestones",
+      I: Empty,
+      O: MilestonesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.GetMilestones
+     */
+    getMilestones: {
+      name: "GetMilestones",
+      I: Empty,
+      O: MilestonesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.MarkMilestoneDone
+     */
+    markMilestoneDone: {
+      name: "MarkMilestoneDone",
+      I: MarkMilestoneDoneRequest,
+      O: Milestone,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── R3 Per-node coverage (2026-05-12) ───────────────────────────────
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.GetNodeCoverage
+     */
+    getNodeCoverage: {
+      name: "GetNodeCoverage",
+      I: GetNodeCoverageRequest,
+      O: GetNodeCoverageResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── F1 Memory expansion Phase 2 (2026-05-12) ────────────────────────
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.ListMemoryEntries
+     */
+    listMemoryEntries: {
+      name: "ListMemoryEntries",
+      I: ListMemoryEntriesRequest,
+      O: ListMemoryEntriesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.DeleteMemoryEntry
+     */
+    deleteMemoryEntry: {
+      name: "DeleteMemoryEntry",
+      I: DeleteMemoryEntryRequest,
+      O: Empty,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.EditMemoryEntry
+     */
+    editMemoryEntry: {
+      name: "EditMemoryEntry",
+      I: EditMemoryEntryRequest,
+      O: MemoryEntry,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── H2 Focus reflection persistence (Phase J 2026-05-12) ──────────────
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.SaveFocusReflection
+     */
+    saveFocusReflection: {
+      name: "SaveFocusReflection",
+      I: SaveFocusReflectionRequest,
+      O: SaveFocusReflectionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.ListFocusReflections
+     */
+    listFocusReflections: {
+      name: "ListFocusReflections",
+      I: ListFocusReflectionsRequest,
+      O: ListFocusReflectionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── C3 Cross-product context (Phase J 2026-05-12) ─────────────────────
+     * GetUserContext returns the compact bundle Cue copilot injects into the
+     * suggestion prompt: active goal + recent Coach memory + activity_log +
+     * skill radar + Atlas refs. user_id derives from auth context.
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.GetUserContext
+     */
+    getUserContext: {
+      name: "GetUserContext",
+      I: GetUserContextRequest,
+      O: GetUserContextResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── X5 Cross-product handoff: Atlas struggle marks (Phase J 2026-05-12) ─
+     *
+     * Bidirectional handoff signal: Cue session analysis OR Hone reflection
+     * submits MarkAtlasStruggle("dist-sharding") → web Atlas highlights that
+     * node next time the user opens it. Per-user override of the curated
+     * atlas graph. Source distinguishes provenance (cue_session / hone_reflection
+     * / mock_stage) for future debug/analytics.
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.MarkAtlasStruggle
+     */
+    markAtlasStruggle: {
+      name: "MarkAtlasStruggle",
+      I: MarkAtlasStruggleRequest,
+      O: MarkAtlasStruggleResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.ListAtlasStruggles
+     */
+    listAtlasStruggles: {
+      name: "ListAtlasStruggles",
+      I: ListAtlasStrugglesRequest,
+      O: ListAtlasStrugglesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.IntelligenceService.ClearAtlasStruggle
+     */
+    clearAtlasStruggle: {
+      name: "ClearAtlasStruggle",
+      I: ClearAtlasStruggleRequest,
+      O: ClearAtlasStruggleResponse,
       kind: MethodKind.Unary,
     },
   }

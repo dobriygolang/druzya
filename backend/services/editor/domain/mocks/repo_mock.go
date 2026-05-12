@@ -181,6 +181,35 @@ func (mr *MockRoomRepoMockRecorder) Get(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRoomRepo)(nil).Get), ctx, id)
 }
 
+// GetCode mocks base method.
+func (m *MockRoomRepo) GetCode(ctx context.Context, id uuid.UUID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCode", ctx, id)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCode indicates an expected call of GetCode.
+func (mr *MockRoomRepoMockRecorder) GetCode(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCode", reflect.TypeOf((*MockRoomRepo)(nil).GetCode), ctx, id)
+}
+
+// SaveCode mocks base method.
+func (m *MockRoomRepo) SaveCode(ctx context.Context, id uuid.UUID, code string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveCode", ctx, id, code)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveCode indicates an expected call of SaveCode.
+func (mr *MockRoomRepoMockRecorder) SaveCode(ctx, id, code any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveCode", reflect.TypeOf((*MockRoomRepo)(nil).SaveCode), ctx, id, code)
+}
+
 // SetVisibility mocks base method.
 func (m *MockRoomRepo) SetVisibility(ctx context.Context, id uuid.UUID, v domain.Visibility) error {
 	m.ctrl.T.Helper()

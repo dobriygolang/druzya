@@ -129,8 +129,8 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
           className="mono"
           style={{
             fontSize: 10,
-            letterSpacing: '0.2em',
-            color: '#ff6a6a',
+            letterSpacing: '0.08em',
+            color: 'var(--red)',
             textTransform: 'uppercase',
           }}
         >
@@ -168,7 +168,7 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
             margin: 0,
             fontSize: 10,
             color: 'var(--ink-40)',
-            letterSpacing: '0.06em',
+            letterSpacing: '0.08em',
             maxWidth: 420,
             textAlign: 'center',
             wordBreak: 'break-all',
@@ -318,14 +318,14 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
         gap: 16,
         padding: 32,
         background: '#000',
-        animationDuration: '160ms',
+        animationDuration: 'var(--motion-dur-small)',
       }}
     >
       <div
         className="mono"
         style={{
           fontSize: 10,
-          letterSpacing: '0.2em',
+          letterSpacing: '0.08em',
           color: 'var(--ink-40)',
           textTransform: 'uppercase',
         }}
@@ -432,7 +432,7 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
                 borderRadius: 6,
                 cursor: busy ? 'default' : 'pointer',
                 fontFamily: 'var(--font-mono, monospace)',
-                transition: 'color 140ms ease, background-color 140ms ease',
+                transition: 'color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard)',
               }}
               onMouseEnter={(e) => {
                 if (busy) return;
@@ -451,7 +451,7 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
                 className="mono"
                 style={{
                   fontSize: 10,
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0.08em',
                   color: 'var(--ink-40)',
                   padding: '4px 0',
                   wordBreak: 'break-all',
@@ -459,7 +459,7 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
                 }}
               >
                 {pwd1}
-                <div style={{ marginTop: 4, color: '#ff6a6a', fontSize: 9 }}>
+                <div style={{ marginTop: 4, color: 'var(--red)', fontSize: 9 }}>
                   ⚠ Save this somewhere safe (password manager).
                   If lost, your notes cannot be recovered.
                 </div>
@@ -470,7 +470,7 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
         {error && (
           <div
             className="mono"
-            style={{ fontSize: 11, color: '#ff6a6a', letterSpacing: '0.06em', textAlign: 'center' }}
+            style={{ fontSize: 11, color: 'var(--red)', letterSpacing: '0.08em', textAlign: 'center' }}
           >
             {error}
           </div>
@@ -487,7 +487,7 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
             cursor: busy ? 'default' : 'pointer',
             fontSize: 13.5,
             fontWeight: 500,
-            transition: 'background-color 160ms ease, color 160ms ease',
+            transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
           {busy
@@ -501,7 +501,7 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
         className="mono"
         style={{
           fontSize: 9,
-          letterSpacing: '0.16em',
+          letterSpacing: '0.08em',
           color: 'var(--ink-40)',
           textTransform: 'uppercase',
           marginTop: 14,
@@ -524,7 +524,7 @@ function CenterMsg({ text }: { text: string }) {
         justifyContent: 'center',
         color: 'var(--ink-40)',
         fontSize: 12,
-        letterSpacing: '0.18em',
+        letterSpacing: '0.08em',
         textTransform: 'uppercase',
         fontFamily: 'var(--font-mono, monospace)',
       }}

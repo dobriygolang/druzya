@@ -20,6 +20,7 @@ import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { TutorOnboardingModal, isTutorOnboarded } from '../components/TutorOnboardingModal'
 import { SharedReadingPane } from '../components/SharedReadingPane'
+import { ReadingPathsPane } from '../components/ReadingPathsPane'
 import { Sparkline } from '../components/Sparkline'
 import { ApiError } from '../lib/apiClient'
 import {
@@ -52,17 +53,25 @@ const STATUS_LABEL: Record<TutorInviteStatus, string> = {
   INVITE_STATUS_EXPIRED: 'истёк',
 }
 
-type DashTab = 'overview' | 'students' | 'library' | 'calendar'
+type DashTab = 'overview' | 'students' | 'library' | 'paths' | 'calendar'
 
 const TABS: { id: DashTab; label: string; hint: string }[] = [
   { id: 'overview', label: 'Обзор', hint: 'Активность за 30 дней + быстрые действия' },
   { id: 'students', label: 'Студенты', hint: 'Invites + active relationships' },
   { id: 'library', label: 'Reading library', hint: 'Shared reading material для всех студентов' },
+  // Stream D (2026-05-12) — curated atlas-node sequences.
+  { id: 'paths', label: 'Paths', hint: 'Curated reading paths из atlas-узлов' },
   { id: 'calendar', label: 'Календарь', hint: 'Sessions + broadcast assignments' },
 ]
 
 function isDashTab(s: string | undefined): s is DashTab {
-  return s === 'overview' || s === 'students' || s === 'library' || s === 'calendar'
+  return (
+    s === 'overview' ||
+    s === 'students' ||
+    s === 'library' ||
+    s === 'paths' ||
+    s === 'calendar'
+  )
 }
 
 export default function TutorDashboardPage() {
@@ -82,11 +91,11 @@ export default function TutorDashboardPage() {
         <header className="flex flex-col gap-2">
           <Link
             to="/welcome"
-            className="font-mono text-[12px] tracking-[0.2em] text-text-muted hover:text-text-primary"
+            className="font-mono text-[12px] tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
           >
             ← druz9
           </Link>
-          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-text-muted">
+          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
             Tutor · dashboard
           </span>
           <h1 className="font-display text-3xl font-bold leading-tight">
@@ -107,12 +116,25 @@ export default function TutorDashboardPage() {
                 type="button"
                 onClick={() => switchTab(t.id)}
                 aria-pressed={isActive}
-                className={`relative -mb-px px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors ${
+                className={`relative -mb-px px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${
                   isActive
                     ? 'text-text-primary'
                     : 'text-text-muted hover:text-text-secondary'
                 }`}
               >
+                {isActive && (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      left: 12,
+                      top: 8,
+                      width: 1.5,
+                      height: 14,
+                      background: 'var(--red)',
+                    }}
+                  />
+                )}
                 {t.label}
                 {isActive && (
                   <span className="absolute inset-x-0 bottom-0 h-[2px] bg-text-primary" />
@@ -141,6 +163,8 @@ export default function TutorDashboardPage() {
 
         {tab === 'library' && <SharedReadingPane />}
 
+        {tab === 'paths' && <ReadingPathsPane />}
+
         {tab === 'calendar' && (
           <>
             <BroadcastPane />
@@ -165,7 +189,7 @@ function ActivityPane() {
     <section className="flex flex-col gap-3">
       <header className="flex items-center justify-between">
         <h2 className="font-display text-xl font-semibold">Активность · 30d</h2>
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           {q.isPending ? 'loading…' : 'tutor analytics'}
         </span>
       </header>
@@ -188,7 +212,7 @@ function ActivityPane() {
           </p>
         )}
         {a && (a.events_completed ?? 0) + (a.events_cancelled ?? 0) > 0 && (
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             Cancellation rate · {((a.cancellation_rate ?? 0) * 100).toFixed(0)}%
           </div>
         )}
@@ -219,7 +243,7 @@ function Stat({
   const hasSpark = sparkline && sparkline.length > 1 && sparkline.some((v) => v > 0)
   return (
     <div className="rounded-lg border border-border bg-surface-2 px-3 py-2.5">
-      <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{label}</div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">{label}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${valueCls}`}>{value}</div>
       {hasSpark && (
         <Sparkline
@@ -325,29 +349,55 @@ function EventsPane() {
           <button
             type="button"
             onClick={() => setMode('1on1')}
-            className={`rounded-md border px-2.5 py-1 ${mode === '1on1' ? 'border-text-primary text-text-primary' : 'border-border text-text-muted'}`}
+            className={`relative rounded-md border px-2.5 py-1 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${mode === '1on1' ? 'border-text-primary text-text-primary' : 'border-border text-text-muted'}`}
           >
+            {mode === '1on1' && (
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: -1,
+                  top: 4,
+                  bottom: 4,
+                  width: 1.5,
+                  background: 'var(--red)',
+                }}
+              />
+            )}
             1-on-1
           </button>
           <button
             type="button"
             onClick={() => setMode('group')}
-            className={`rounded-md border px-2.5 py-1 ${mode === 'group' ? 'border-text-primary text-text-primary' : 'border-border text-text-muted'}`}
+            className={`relative rounded-md border px-2.5 py-1 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${mode === 'group' ? 'border-text-primary text-text-primary' : 'border-border text-text-muted'}`}
           >
+            {mode === 'group' && (
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: -1,
+                  top: 4,
+                  bottom: 4,
+                  width: 1.5,
+                  background: 'var(--red)',
+                }}
+              />
+            )}
             Group (circle)
           </button>
         </div>
         <form onSubmit={submit} className="flex flex-col gap-3">
           {mode === '1on1' ? (
             <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                 Student
               </span>
               <select
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
                 required
-                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-text-primary focus:outline-none"
+                className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
               >
                 <option value="">— выбери студента —</option>
                 {students.map((rel) => (
@@ -366,14 +416,14 @@ function EventsPane() {
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                   Circle
                 </span>
                 <select
                   value={circleId}
                   onChange={(e) => setCircleId(e.target.value)}
                   required
-                  className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary focus:border-text-primary focus:outline-none"
+                  className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
                 >
                   <option value="">— выбери circle —</option>
                   {ownedCircles.map((c) => (
@@ -389,7 +439,7 @@ function EventsPane() {
                 )}
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                   Capacity
                 </span>
                 <input
@@ -402,7 +452,7 @@ function EventsPane() {
                   min={1}
                   max={200}
                   required
-                  className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary"
+                  className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
                 />
               </label>
             </div>
@@ -414,7 +464,7 @@ function EventsPane() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Weekly 1-on-1 — review chapter 4"
             maxLength={240}
-            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+            className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
             required
           />
           <textarea
@@ -423,12 +473,12 @@ function EventsPane() {
             placeholder="Optional agenda, prep notes, links to materials…"
             rows={3}
             maxLength={4000}
-            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+            className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
           />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                 Scheduled at
               </span>
               <input
@@ -436,11 +486,11 @@ function EventsPane() {
                 value={whenLocal}
                 onChange={(e) => setWhenLocal(e.target.value)}
                 required
-                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary"
+                className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                 Duration (min)
               </span>
               <input
@@ -454,7 +504,7 @@ function EventsPane() {
                 max={480}
                 step={5}
                 required
-                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary"
+                className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
               />
             </label>
           </div>
@@ -465,7 +515,7 @@ function EventsPane() {
             onChange={(e) => setMeetURL(e.target.value)}
             placeholder="Optional meet link (Zoom / Meet / Telegram voice)"
             maxLength={2000}
-            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+            className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
           />
 
           <div className="flex items-center gap-3">
@@ -578,7 +628,7 @@ function EventRow({
           )}
           {event.session_note && (
             <div className="mt-2 rounded-md border border-success/30 bg-success/5 px-2.5 py-1.5">
-              <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-success/80">
+              <div className="font-mono text-[9px] uppercase tracking-[0.08em] text-success/80">
                 Session note
               </div>
               <pre className="mt-0.5 whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-text-secondary">
@@ -588,12 +638,12 @@ function EventRow({
           )}
         </div>
         <span
-          className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider ${badge.cls}`}
+          className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] ${badge.cls}`}
         >
           {badge.label}
         </span>
       </div>
-      <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+      <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         {sched && (
           <span>
             {sched.toLocaleString(undefined, {
@@ -630,7 +680,7 @@ function EventRow({
                 }
               }}
               disabled={completing}
-              className="rounded-md border border-success/40 bg-success/5 px-2 py-0.5 text-success hover:bg-success/10 disabled:opacity-50"
+              className="rounded-md border border-success/40 bg-success/5 px-2 py-0.5 text-success transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-success/10 disabled:opacity-50"
             >
               ✓ Mark complete
             </button>
@@ -645,7 +695,7 @@ function EventRow({
                 }
               }}
               disabled={cancelling}
-              className="rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn hover:bg-warn/10 disabled:opacity-50"
+              className="rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-warn/10 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -719,7 +769,7 @@ function BroadcastPane() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Read chapter 4 — The Black Swan"
             maxLength={240}
-            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+            className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
             required
           />
           <textarea
@@ -728,17 +778,17 @@ function BroadcastPane() {
             placeholder="Optional shared instructions, links, focus questions…"
             rows={4}
             maxLength={8000}
-            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+            className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
           />
           <label className="flex items-center gap-3 text-sm text-text-secondary">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted shrink-0">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted shrink-0">
               Due (optional)
             </span>
             <input
               type="datetime-local"
               value={due}
               onChange={(e) => setDue(e.target.value)}
-              className="rounded-md border border-border bg-surface-2 px-2 py-1 text-sm text-text-primary"
+              className="border-b border-[var(--hair-2)] bg-transparent px-1 py-1 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
             />
           </label>
           <div className="flex items-center gap-3">
@@ -780,7 +830,7 @@ function BroadcastResultCard({ result }: { result: TutorBroadcastResult }) {
       }`}
       interactive={false}
     >
-      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+      <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         Результат
       </div>
       <p className="text-sm">
@@ -818,14 +868,14 @@ function InvitesPane() {
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-xl font-semibold">Приглашения</h2>
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           {items.length}
         </span>
       </div>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             Пригласить @username (рекомендуется)
           </span>
           <p className="text-[11px] text-text-muted">
@@ -838,7 +888,7 @@ function InvitesPane() {
               value={username}
               onChange={(e) => setUsername(e.target.value.replace(/^@/, '').trim())}
               placeholder="anya123"
-              className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+              className="flex-1 border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
             />
             <Button
               onClick={() => {
@@ -872,7 +922,7 @@ function InvitesPane() {
         </label>
         <hr className="border-border" />
         <label className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             Открытый код (для отправки out-of-band)
           </span>
           <input
@@ -880,7 +930,7 @@ function InvitesPane() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Anya · с Habr · English-track"
-            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+            className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
           />
         </label>
         <Button
@@ -948,7 +998,7 @@ function InviteRow({
           )}
         </div>
         <span
-          className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
+          className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] ${
             isActive
               ? 'border-success/40 bg-success/10 text-success'
               : 'border-border bg-surface-2 text-text-muted'
@@ -966,7 +1016,7 @@ function InviteRow({
             // tutor can still grab the link.
             void copyToClipboard(url)
           }}
-          className="rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary hover:border-text-primary hover:text-text-primary"
+          className="rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-text-primary hover:text-text-primary"
         >
           Скопировать ссылку
         </button>
@@ -975,7 +1025,7 @@ function InviteRow({
             type="button"
             onClick={onRevoke}
             disabled={revoking}
-            className="rounded-md border border-warn/40 bg-warn/5 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-warn hover:bg-warn/10 disabled:opacity-50"
+            className="rounded-md border border-warn/40 bg-warn/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-warn transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-warn/10 disabled:opacity-50"
           >
             Отозвать
           </button>
@@ -997,7 +1047,7 @@ function StudentsPane() {
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-xl font-semibold">Студенты</h2>
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           {items.length}
         </span>
       </div>
@@ -1052,13 +1102,13 @@ function StudentRow({
           >
             student-{shortId}
           </Link>
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             с {since}
           </div>
         </div>
         <Link
           to={`/tutor/students/${relationship.student_id}`}
-          className="shrink-0 rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary hover:border-text-primary hover:text-text-primary"
+          className="shrink-0 rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary hover:border-text-primary hover:text-text-primary"
         >
           Открыть
         </Link>
@@ -1072,7 +1122,7 @@ function StudentRow({
             }
           }}
           disabled={ending}
-          className="rounded-md border border-warn/40 bg-warn/5 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-warn hover:bg-warn/10 disabled:opacity-50"
+          className="rounded-md border border-warn/40 bg-warn/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-warn transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-warn/10 disabled:opacity-50"
         >
           Завершить отношения
         </button>
@@ -1094,9 +1144,24 @@ function PendingRow({ label }: { label: string }) {
 
 function ErrorRow({ message }: { message: string }) {
   return (
-    <Card className="flex-col gap-1 border-danger/40 bg-danger/5 p-4" interactive={false}>
-      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-danger">Ошибка</div>
-      <p className="text-[13px] leading-relaxed text-text-secondary">{message}</p>
+    <Card className="flex-row items-start gap-3 p-4" interactive={false}>
+      <span
+        aria-hidden="true"
+        style={{
+          display: 'inline-block',
+          width: 1.5,
+          minHeight: 36,
+          background: 'var(--red)',
+          marginTop: 2,
+          flex: '0 0 auto',
+        }}
+      />
+      <div className="flex flex-1 flex-col gap-1">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--red)' }}>
+          Ошибка
+        </div>
+        <p className="text-[13px] leading-relaxed text-text-secondary">{message}</p>
+      </div>
     </Card>
   )
 }

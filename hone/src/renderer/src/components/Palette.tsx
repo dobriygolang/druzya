@@ -6,9 +6,16 @@
 // `items` is kept inline (not a prop) because the set is the product's
 // surface area; if a new destination needs to appear in the palette, the
 // right change is here, not at the call site.
+//
+// Recent section (2026-05-12) — last 5 ran commands пишутся в localStorage
+// (`hone:palette:recent:v1`) и рендерятся сверху над основным списком
+// когда q пустой. Каждый click bumps id на верх рекенди. Кейс: юзер
+// часто скачет между Today / Notes / Coach — без recents в палитре
+// каждый раз skim'ит весь list.
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon, type IconName } from './primitives/Icon';
+import { trackEvent } from '../api/events';
 
 export type PageId =
   | 'home'
@@ -16,15 +23,16 @@ export type PageId =
   | 'coach' // Phase 2 (2026-05-04) — learning-companion surface (mode switcher + fork + hero next-action)
   | 'notes'
   | 'stats'
-  | 'podcasts'
-  | 'editor'
-  | 'shared_boards' // единый boards-флоу (private/public — кому отдан URL)
+  // 'podcasts' removed 2026-05-12 (D5) — migrated to web /podcasts.
+  // 'editor' / 'shared_boards' removed 2026-05-12 (D4/Stream F) — migrated to web solo.
   | 'english_overview' // Hub overview: stats + recent + due vocab
   | 'reading' // Wave 4 — English Reading-модуль (library + reader + SRS)
   | 'writing' // Wave 4.4 — English Writing-as-Focus draft + AI feedback
+  | 'speaking' // Phase J / H4 — English Speaking shadowing exercises
   | 'assignments' // Wave 5.1d — pending tutor-pushed assignments
   | 'listening' // Wave 6.1 — English Listening with transcript + click-on-word
   | 'calendar' // Wave 5.2b — upcoming tutor-scheduled events
+  | 'memory' // Phase B preview (2026-05-12) — what Coach remembers, by source
   | 'settings';
 // PaletteAction — то, что палетка может попросить App'а сделать.
 // `standup` — переходит на Today page (banner там сам решит показываться
@@ -45,16 +53,45 @@ interface PaletteItem {
   id: string;
   label: string;
   icon: IconName;
-  shortcut: string[]; // массив букв; рендерим каждую отдельным «чипом»
+  /** Optional shortcut chips; не каждая команда имеет hotkey (e.g. memory). */
+  shortcut?: string[];
   run: () => void;
   /** Group label for visual section header. Items with same `section` cluster together. */
   section?: string;
+}
+
+// Recent commands persisted via localStorage. Cap = 5; вторичное состояние
+// не reactive — палетка перезагружает recents на mount каждый раз.
+const RECENT_KEY = 'hone:palette:recent:v1';
+const RECENT_CAP = 5;
+
+function readRecent(): string[] {
+  try {
+    const raw = window.localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((v) => typeof v === 'string').slice(0, RECENT_CAP) : [];
+  } catch {
+    return [];
+  }
+}
+
+function bumpRecent(id: string): void {
+  try {
+    const prev = readRecent().filter((v) => v !== id);
+    const next = [id, ...prev].slice(0, RECENT_CAP);
+    window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    /* quota / private mode — silently drop */
+  }
 }
 
 export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProps) {
   const [idx, setIdx] = useState(0);
   const [q, setQ] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  // Snapshot recents at mount — палетка живёт коротко, не нужно reactivity.
+  const recentIds = useMemo(() => readRecent(), []);
 
   // Phase 11 (Sergey 2026-05-04) — Hone-native only. Palette = focus
   // cockpit shortcuts; web-pages открываются через контекстные deeplinks
@@ -63,7 +100,7 @@ export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProp
   // chip). См memory/project_hone — «Hone consumes, Web produces».
   //
   // Removed: Tutor (assignments + sessions, A·M), Boards · Code rooms (D·B·E),
-  // Group events (V), Podcasts (P), «Stats dashboard» duplicate (G·S).
+  // Group events (V), «Stats dashboard» duplicate (G·S).
   // English-hub переименован в «English» (палитра ведёт на overview tab).
   const items: PaletteItem[] = useMemo(
     () => [
@@ -72,14 +109,10 @@ export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProp
       { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'], section: 'Daily', run: () => onOpen('stats') },
 
       { id: 'notes', label: 'Notes', icon: 'note', shortcut: ['N'], section: 'Capture', run: () => onOpen('notes') },
-      {
-        id: 'shared_boards',
-        label: 'TaskBoard',
-        icon: 'grid',
-        shortcut: ['B'],
-        section: 'Capture',
-        run: () => onOpen('shared_boards'),
-      },
+      { id: 'memory', label: 'Memory', icon: 'sparkle', section: 'Capture', run: () => onOpen('memory') },
+      // 'shared_boards' palette entry removed 2026-05-12 (D4/Stream F) —
+      // migrated to web solo. Hone Palette B-shortcut освобождён (см. App.tsx
+      // onKey handler — KeyB теперь openExternal('/whiteboard/new')).
 
       ...(englishVisible
         ? [
@@ -99,10 +132,32 @@ export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProp
     [onOpen, englishVisible],
   );
 
+  // Recents — реcонструируем как PaletteItem'ы из айдишек. Не показываем
+  // что юзера нет в текущем items (например English-entry скрыт через
+  // englishVisible=false): filter mismatch — drop'нем чтобы клик не
+  // привёл к dead-action'у.
+  const recentItems = useMemo<PaletteItem[]>(() => {
+    if (!recentIds.length) return [];
+    const byId = new Map(items.map((i) => [i.id, i] as const));
+    return recentIds
+      .map((id) => byId.get(id))
+      .filter((i): i is PaletteItem => !!i);
+  }, [recentIds, items]);
+
+  // Сортировка для рендера: когда q пустой — recents сверху, потом все
+  // items минус то что уже было в recents (без дублей). Когда q задан —
+  // обычная фильтрация по подстроке, no recents.
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return s ? items.filter((i) => i.label.toLowerCase().includes(s)) : items;
-  }, [q, items]);
+    if (s) return items.filter((i) => i.label.toLowerCase().includes(s));
+    if (recentItems.length === 0) return items;
+    const recentIdSet = new Set(recentItems.map((i) => i.id));
+    return [...recentItems, ...items.filter((i) => !recentIdSet.has(i.id))];
+  }, [q, items, recentItems]);
+
+  // Сколько topовых items в filtered относятся к recents — нужно для
+  // вставки section header'а перед первым и разделителя после последнего.
+  const recentHeadCount = q.trim() ? 0 : recentItems.length;
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -122,6 +177,8 @@ export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProp
       e.preventDefault();
       const it = filtered[idx];
       if (it) {
+        bumpRecent(it.id);
+        trackEvent('palette_select', { id: it.id, source: 'keyboard' });
         it.run();
         onClose();
       }
@@ -194,20 +251,29 @@ export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProp
         </div>
 
         {/* items */}
-        <div style={{ padding: '4px 0' }}>
+        <div role="listbox" aria-label="Commands" style={{ padding: '4px 0' }}>
           {filtered.map((it, i) => {
             const active = i === idx;
-            // Sergey 2026-05-03: «убрать названия Capture / Daily и так
-            // далее» — категории-заголовки убраны, palette теперь flat
-            // search-list (fuzzy уже фильтрует по labels).
+            // Recent section: header вставляем перед первым recent (i===0),
+            // separator — перед первым «обычным» (i===recentHeadCount).
+            // Sergey 2026-05-03 убрал плоские section labels, но Recent —
+            // отдельный case: сигнал «эти команды ты часто запускаешь».
+            const isRecentHeader = recentHeadCount > 0 && i === 0;
+            const isAllHeader = recentHeadCount > 0 && i === recentHeadCount;
             return (
               <div key={it.id}>
+              {isRecentHeader && <SectionHeader>Recent</SectionHeader>}
+              {isAllHeader && <SectionHeader>All</SectionHeader>}
               <button
                 onMouseEnter={() => setIdx(i)}
                 onClick={() => {
+                  bumpRecent(it.id);
+                  trackEvent('palette_select', { id: it.id, source: 'click' });
                   it.run();
                   onClose();
                 }}
+                role="option"
+                aria-selected={active}
                 className="row"
                 style={{
                   width: '100%',
@@ -247,7 +313,7 @@ export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProp
                   {it.label}
                 </span>
                 <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  {it.shortcut.map((k, ki) => (
+                  {(it.shortcut ?? []).map((k, ki) => (
                     <span
                       key={ki}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
@@ -304,6 +370,26 @@ export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProp
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+// SectionHeader — лёгкий разделитель между Recent и All. Mono uppercase
+// 9px, обоснованный padding чтобы header не путался с item'ом.
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        padding: '8px 14px 4px',
+        fontSize: 9,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        color: 'var(--ink-40)',
+        fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+        userSelect: 'none',
+      }}
+    >
+      {children}
     </div>
   );
 }

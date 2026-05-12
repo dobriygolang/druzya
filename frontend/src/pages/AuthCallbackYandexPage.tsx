@@ -121,11 +121,14 @@ export default function AuthCallbackYandexPage() {
       <div className="flex max-w-md flex-col items-center gap-4 px-4 text-center">
         {error ? (
           <>
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+              auth error
+            </div>
             <h1 className="font-display text-2xl font-bold">Не удалось войти</h1>
             <p className="text-[14px] text-text-muted">{error}</p>
             <Link
               to="/login"
-              className="mt-2 inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface-1 px-4 text-[14px] font-medium text-text-primary hover:bg-surface-2"
+              className="mt-2 inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface-1 px-4 text-[14px] font-medium tracking-[0.08em] text-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-2"
             >
               Вернуться к входу
             </Link>
@@ -133,7 +136,7 @@ export default function AuthCallbackYandexPage() {
         ) : (
           <>
             <Loader2 className="h-8 w-8 animate-spin text-text-secondary" />
-            <p className="text-[14px] text-text-muted">Заходим в твой профиль…</p>
+            <p className="text-[14px] tracking-[0.08em] text-text-muted">Заходим в твой профиль…</p>
           </>
         )}
       </div>

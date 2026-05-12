@@ -711,7 +711,7 @@ export function GraphCanvas({
         style={{
           transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
           transformOrigin: 'center center',
-          transition: dragRef.current ? 'none' : 'transform 0.15s ease-out',
+          transition: dragRef.current ? 'none' : 'transform var(--motion-dur-small) var(--motion-ease-decelerate)',
         }}
       >
         <svg

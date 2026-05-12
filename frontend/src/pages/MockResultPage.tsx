@@ -20,14 +20,22 @@ import {
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
+import { Modal } from '../components/primitives/Modal'
 import { AICoachPill } from '../components/AICoachPill'
 import { useActiveStudyModeQuery } from '../lib/queries/honeSettings'
 import { useMockReportQuery, useMockSessionQuery, normalizeMockReportStatus } from '../lib/queries/mock'
 import { API_BASE } from '../lib/apiClient'
+import { openHoneCoach, openHoneFocusSession, isHoneDeepLinkSupported } from '../lib/hone-handoff'
 
 function ErrorChip() {
   return (
-    <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
+    <span
+      className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.08em]"
+      style={{
+        background: 'rgb(var(--ink) / 0.06)',
+        color: 'var(--red)',
+      }}
+    >
       Не удалось загрузить
     </span>
   )
@@ -76,6 +84,11 @@ function Header({
 function Hero({ overall }: { overall: number }) {
   return (
     <div className="relative flex flex-col items-start justify-between gap-4 overflow-hidden border-b border-border-strong bg-surface-2 px-4 py-6 sm:px-6 lg:h-[200px] lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:py-0">
+      <span
+        aria-hidden
+        className="absolute left-0 top-0 h-full w-[1.5px]"
+        style={{ background: 'var(--red)' }}
+      />
       <div className="flex flex-col gap-2">
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">
           <Sparkles className="h-3 w-3" /> AI MOCK · ЗАВЕРШЁН
@@ -87,12 +100,12 @@ function Hero({ overall }: { overall: number }) {
       </div>
       <div className="flex flex-col items-end gap-2">
         <span
-          className="rounded-lg border-2 border-warn bg-warn/10 px-4 py-2 font-display text-[18px] font-extrabold tracking-wide text-warn"
+          className="rounded-lg border border-border-strong bg-surface-1 px-4 py-2 font-display text-[18px] font-extrabold tracking-[0.08em] text-text-primary"
           style={{ fontFamily: '"Geist Mono", monospace' }}
         >
           STRONG MIDDLE
         </span>
-        <span className="font-mono text-[11px] text-text-muted">verdict</span>
+        <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">verdict</span>
       </div>
     </div>
   )
@@ -109,19 +122,29 @@ function SectionCard({
   variant: 'success' | 'warn'
   comment: string
 }) {
-  const color = variant === 'success' ? 'text-success' : 'text-warn'
-  const bar = variant === 'success' ? 'bg-success' : 'bg-warn'
+  // Variant maps to opacity stratification on the ink ramp instead of
+  // green/yellow hue chips — B/W only design.
+  const valueOpacity = variant === 'success' ? '1' : '0.62'
+  const barOpacity = variant === 'success' ? '1' : '0.45'
   return (
     <Card className="flex-1 flex-col gap-2 p-5" interactive={false}>
       <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
         {label.toUpperCase()}
       </span>
       <div className="flex items-baseline gap-2">
-        <span className={`font-display text-[28px] font-extrabold ${color}`}>{value}</span>
+        <span
+          className="font-display text-[28px] font-extrabold text-text-primary"
+          style={{ opacity: valueOpacity }}
+        >
+          {value}
+        </span>
         <span className="text-[12px] text-text-muted">/ 100</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-black/30">
-        <div className={`h-full ${bar}`} style={{ width: `${value}%` }} />
+      <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
+        <div
+          className="h-full bg-text-primary transition-[width] duration-[var(--motion-dur-medium)] ease-[var(--motion-ease-emphasized)]"
+          style={{ width: `${value}%`, opacity: barOpacity }}
+        />
       </div>
       <p className="text-[12px] leading-relaxed text-text-secondary">{comment}</p>
     </Card>
@@ -130,11 +153,11 @@ function SectionCard({
 
 function StrengthsCard({ items }: { items: string[] }) {
   return (
-    <Card className="flex-col gap-3 border-success/40 p-[22px]" interactive={false}>
-      <h3 className="font-display text-base font-bold text-success">Сильные стороны</h3>
+    <Card className="flex-col gap-3 border-border-strong p-[22px]" interactive={false}>
+      <h3 className="font-display text-base font-bold text-text-primary">Сильные стороны</h3>
       {items.map((t, i) => (
         <div key={i} className="flex items-start gap-2">
-          <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-text-primary" />
           <span className="text-[13px] text-text-secondary">{t}</span>
         </div>
       ))}
@@ -144,11 +167,16 @@ function StrengthsCard({ items }: { items: string[] }) {
 
 function WeaknessesCard({ items }: { items: string[] }) {
   return (
-    <Card className="flex-col gap-3 border-danger/40 p-[22px]" interactive={false}>
-      <h3 className="font-display text-base font-bold text-danger">Слабые места</h3>
+    <Card className="relative flex-col gap-3 border-border-strong p-[22px]" interactive={false}>
+      <span
+        aria-hidden
+        className="absolute left-0 top-0 h-full w-[1.5px]"
+        style={{ background: 'var(--red)' }}
+      />
+      <h3 className="font-display text-base font-bold text-text-primary">Слабые места</h3>
       {items.map((t, i) => (
         <div key={i} className="flex items-start gap-2">
-          <X className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+          <X className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--red)' }} />
           <span className="text-[13px] text-text-secondary">{t}</span>
         </div>
       ))}
@@ -163,10 +191,8 @@ function RecsCard({ items }: { items: { p: string; text: string }[] }) {
       {items.map((it, i) => (
         <div key={i} className="flex items-start gap-2">
           <span
-            className={[
-              'rounded px-1.5 py-0.5 font-mono text-[10px] font-bold',
-              it.p === 'P1' ? 'bg-danger/30 text-danger' : 'bg-warn/30 text-warn',
-            ].join(' ')}
+            className="rounded border border-border-strong bg-surface-1 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.08em] text-text-primary"
+            style={it.p === 'P1' ? { borderColor: 'var(--red)', color: 'var(--red)' } : undefined}
           >
             {it.p}
           </span>
@@ -183,21 +209,37 @@ function StressTimelineCard() {
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-text-primary">Стресс по времени</h3>
-        <span className="font-mono text-[11px] text-danger">peak 32:00</span>
+        <span
+          className="font-mono text-[11px] tracking-[0.08em]"
+          style={{ color: 'var(--red)' }}
+        >
+          peak 32:00
+        </span>
       </div>
       <div className="flex h-24 items-end gap-1.5">
-        {bars.map((h, i) => (
-          <div
-            key={i}
-            className={[
-              'flex-1 rounded-t',
-              h > 80 ? 'bg-danger' : h > 60 ? 'bg-warn' : 'bg-text-primary/40',
-            ].join(' ')}
-            style={{ height: `${h}%` }}
-          />
-        ))}
+        {bars.map((h, i) => {
+          // Stratify by opacity on the ink ramp — no hue states.
+          const peak = h > 80
+          const elevated = h > 60
+          const opacity = peak ? 1 : elevated ? 0.7 : 0.35
+          return (
+            <div
+              key={i}
+              className="relative flex-1 rounded-t bg-text-primary"
+              style={{ height: `${h}%`, opacity }}
+            >
+              {peak && (
+                <span
+                  aria-hidden
+                  className="absolute left-0 top-0 h-full w-[1.5px] rounded-tl"
+                  style={{ background: 'var(--red)' }}
+                />
+              )}
+            </div>
+          )
+        })}
       </div>
-      <div className="flex justify-between font-mono text-[10px] text-text-muted">
+      <div className="flex justify-between font-mono text-[10px] tracking-[0.08em] text-text-muted">
         <span>0:00</span>
         <span>30:00</span>
         <span>45:00</span>
@@ -220,10 +262,15 @@ function CompanyScoreCard() {
       {rows.map((r) => (
         <div key={r.c} className="flex items-center gap-3">
           <span className="w-16 text-[13px] text-text-secondary">{r.c}</span>
-          <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-black/30">
-            <div className="h-full bg-text-primary" style={{ width: `${r.v}%` }} />
+          <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
+            <div
+              className="h-full bg-text-primary transition-[width] duration-[var(--motion-dur-medium)] ease-[var(--motion-ease-emphasized)]"
+              style={{ width: `${r.v}%` }}
+            />
           </div>
-          <span className="font-mono text-[12px] font-semibold text-text-primary">{r.v}%</span>
+          <span className="font-mono text-[12px] font-semibold tracking-[0.08em] text-text-primary">
+            {r.v}%
+          </span>
         </div>
       ))}
     </Card>
@@ -244,25 +291,36 @@ function ApplyCard() {
   )
 }
 
-function PremiumModal({ onClose }: { onClose: () => void }) {
+function PremiumModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="w-full max-w-md rounded-xl border border-warn/40 bg-surface-1 p-6 shadow-xl">
-        <h3 className="font-display text-lg font-bold text-warn">Премиум-голос только для подписчиков</h3>
-        <p className="mt-2 text-[13px] text-text-secondary">
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="sm"
+      title="Премиум-голос только для подписчиков"
+      description="Озвучка разбора с премиум-голосом доступна на тарифах Pro и Max. Базовый разбор (текст + браузерный TTS) уже включён в бесплатный тариф."
+    >
+      <div className="flex flex-col gap-4">
+        <p className="text-[13px] text-text-secondary">
           Озвучка разбора с премиум-голосом доступна на тарифах Pro и Max.
           Базовый разбор (текст + браузерный TTS) уже включён в бесплатный тариф.
         </p>
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onClose}>
             Не сейчас
           </Button>
-          <Button variant="primary" size="sm" onClick={() => { window.location.href = '/settings#billing' }}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              window.location.href = '/settings#billing'
+            }}
+          >
             Оформить подписку
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -411,7 +469,7 @@ export default function MockResultPage() {
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         {isError && <ErrorChip />}
         {isProcessing && (
-          <div className="flex items-center gap-2 rounded-lg border border-border-strong bg-text-primary/10 px-4 py-3 text-[13px] text-text-secondary">
+          <div className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface-2 px-4 py-3 text-[13px] text-text-secondary">
             <Loader2 className="h-4 w-4 animate-spin" />
             AI ещё обрабатывает интервью — отчёт появится через 30–60 секунд.
           </div>
@@ -509,6 +567,16 @@ export default function MockResultPage() {
             {strengths.length > 0 && <StrengthsCard items={strengths} />}
             {weaknesses.length > 0 && <WeaknessesCard items={weaknesses} />}
             {recs.length > 0 && <RecsCard items={recs} />}
+            {/* X5 (Phase J P2 2026-05-12) — Hone reflection handoff.
+                Mock post-stage moment is exactly when reflection is most
+                useful — Hone has a focused reflection prompt with grade/notes
+                that feeds Coach memory. Single-line link, B/W only. */}
+            {isHoneDeepLinkSupported() && (
+              <MockHoneHandoff
+                topWeakness={weaknesses[0] ?? ''}
+                section={session?.section ?? ''}
+              />
+            )}
             {!isFreeform && report?.stress_analysis && (
               <Card className="flex-col gap-2 p-5" interactive={false}>
                 <h3 className="font-display text-base font-bold text-text-primary">Стресс-анализ</h3>
@@ -533,7 +601,45 @@ export default function MockResultPage() {
           <audio src={audioURL} controls className="w-full" />
         )}
       </div>
-      {showPremium && <PremiumModal onClose={() => setShowPremium(false)} />}
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} />
     </AppShellV2>
+  )
+}
+
+// MockHoneHandoff — discrete X5 (Phase J P2 2026-05-12) handoff. Two CTAs
+// — «reflect in Hone» (opens Hone Coach with topic=mock-reflection) and
+// «practice top weakness» (opens Hone focus with goal=stage:<section>).
+// B/W only, hairline, no marketing tone — Sergey solo-quality bar.
+function MockHoneHandoff({ topWeakness, section }: { topWeakness: string; section: string }) {
+  const onReflect = () => openHoneCoach('mock-reflection', 'web_mock_reflect')
+  const onPractice = () => {
+    openHoneFocusSession({
+      goal: section ? `stage:${section.toLowerCase()}` : (topWeakness || 'mock-followup'),
+      mode: 'pomodoro',
+      duration: 25,
+      source: 'mock_result',
+    })
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-border bg-surface-1 px-4 py-3">
+      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+        next ·
+      </span>
+      <button
+        type="button"
+        onClick={onReflect}
+        className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
+      >
+        reflect in Hone →
+      </button>
+      <span className="font-mono text-[10px] text-text-muted">·</span>
+      <button
+        type="button"
+        onClick={onPractice}
+        className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
+      >
+        practice 25 min in Hone →
+      </button>
+    </div>
   )
 }

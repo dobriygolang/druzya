@@ -93,7 +93,8 @@ export default function CirclesPage() {
           <div className="ml-auto pb-2">
             <button
               onClick={() => setShowCreate((v) => !v)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-[12px] font-semibold text-text-primary transition-colors hover:bg-surface-2"
+              aria-expanded={showCreate}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-[12px] font-semibold text-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-2"
             >
               <Plus className="h-3.5 w-3.5" />
               {showCreate ? 'Close' : 'New circle'}
@@ -106,27 +107,27 @@ export default function CirclesPage() {
             onSubmit={onCreate}
             className="mb-6 rounded-xl border border-border bg-surface-1 p-5"
           >
-            <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
               New circle
             </div>
             <input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="DDIA Reading Club"
-              className="w-full bg-transparent text-[16px] font-medium text-text-primary outline-none placeholder:text-text-muted"
+              className="w-full border-b border-[var(--hair-2)] bg-transparent py-1.5 text-[16px] font-medium text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
             />
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="What we discuss (optional)"
               rows={2}
-              className="mt-2 w-full resize-none bg-transparent text-[13px] text-text-secondary outline-none placeholder:text-text-muted"
+              className="mt-3 w-full resize-none border-b border-[var(--hair-2)] bg-transparent py-1.5 text-[13px] text-text-secondary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
             />
             <div className="mt-3 flex items-center justify-end gap-2">
               <button
                 type="submit"
                 disabled={creating || !form.name.trim()}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-text-primary px-4 text-[13px] font-semibold text-bg disabled:opacity-50"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[rgb(var(--ink))] px-4 text-[13px] font-semibold text-bg transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
                 {creating ? 'Creating…' : 'Create'}
@@ -136,19 +137,30 @@ export default function CirclesPage() {
         )}
 
         {/* Search */}
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
+        <div className="mb-4 flex items-center gap-2 border-b border-border px-1 py-2 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus-within:border-[rgb(var(--ink))]">
           <Search className="h-4 w-4 text-text-muted" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name"
-            className="flex-1 bg-transparent text-[14px] text-text-primary outline-none placeholder:text-text-muted"
+            className="flex-1 bg-transparent text-[14px] text-[rgb(var(--ink))] outline-none placeholder:text-text-muted"
           />
         </div>
 
         {actionErr && (
-          <div className="mb-4 rounded-lg border border-border bg-surface-2 px-4 py-2.5 text-[13px] text-text-secondary">
-            {actionErr}
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-border bg-surface-2 px-4 py-2.5 text-[13px] text-text-secondary">
+            <span
+              aria-hidden="true"
+              style={{
+                display: 'inline-block',
+                width: 1.5,
+                minHeight: 16,
+                background: 'var(--red)',
+                marginTop: 4,
+                flex: '0 0 auto',
+              }}
+            />
+            <span className="flex-1">{actionErr}</span>
           </div>
         )}
 
@@ -178,13 +190,27 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={[
-        'relative px-4 pb-2 pt-1 font-sans text-[13px] transition-colors',
+        'relative px-4 pb-2 pt-1 font-sans text-[13px] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
         active
           ? 'font-semibold text-text-primary after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-text-primary'
           : 'text-text-secondary hover:text-text-primary',
       ].join(' ')}
     >
+      {active && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 12,
+            top: 6,
+            width: 1.5,
+            height: 14,
+            background: 'var(--red)',
+          }}
+        />
+      )}
       {label}
     </button>
   )
@@ -221,7 +247,7 @@ function MyCirclesList({
       {circles.map((c) => (
         <li
           key={c.id}
-          className="rounded-lg border border-border bg-surface-1 transition-colors hover:border-border-strong"
+          className="rounded-lg border border-border bg-surface-1 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-border-strong"
         >
           <Link to={`/circles/${c.id}`} className="block p-4">
             <div className="flex items-start justify-between gap-4">
@@ -235,7 +261,7 @@ function MyCirclesList({
                   </div>
                 )}
               </div>
-              <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-text-muted">
+              <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
                 <Users className="h-3 w-3" />
                 {c.member_count || 1}
               </span>
@@ -280,7 +306,7 @@ function DiscoverList({
       {circles.map((c) => (
         <li
           key={c.id}
-          className="rounded-lg border border-border bg-surface-1 p-4"
+          className="rounded-lg border border-border bg-surface-1 p-4 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -292,7 +318,7 @@ function DiscoverList({
                   {c.description}
                 </div>
               )}
-              <div className="mt-2 inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-text-muted">
+              <div className="mt-2 inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
                 <Users className="h-3 w-3" />
                 {c.member_count} member{c.member_count === 1 ? '' : 's'}
               </div>
@@ -300,7 +326,7 @@ function DiscoverList({
             <button
               type="button"
               onClick={() => onJoin(c.id)}
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-text-primary px-3 text-[12px] font-semibold text-bg hover:bg-text-primary/90"
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-[rgb(var(--ink))] px-3 text-[12px] font-semibold text-bg transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-text-primary/90"
             >
               Join
             </button>

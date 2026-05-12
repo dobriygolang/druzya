@@ -1306,6 +1306,709 @@ export class FinishStageRequest extends Message<FinishStageRequest> {
 }
 
 /**
+ * @generated from message druz9.v1.AlgoTestResult
+ */
+export class AlgoTestResult extends Message<AlgoTestResult> {
+  /**
+   * @generated from field: int32 ordinal = 1;
+   */
+  ordinal = 0;
+
+  /**
+   * @generated from field: bool passed = 2;
+   */
+  passed = false;
+
+  /**
+   * empty for hidden cases
+   *
+   * @generated from field: string input = 3;
+   */
+  input = "";
+
+  /**
+   * empty for hidden cases
+   *
+   * @generated from field: string expected_output = 4;
+   */
+  expectedOutput = "";
+
+  /**
+   * empty for hidden cases / non-completed runs
+   *
+   * @generated from field: string actual_output = 5;
+   */
+  actualOutput = "";
+
+  /**
+   * compile / runtime error text (empty when ok)
+   *
+   * @generated from field: string stderr = 6;
+   */
+  stderr = "";
+
+  /**
+   * @generated from field: bool is_hidden = 7;
+   */
+  isHidden = false;
+
+  /**
+   * @generated from field: int32 runtime_ms = 8;
+   */
+  runtimeMs = 0;
+
+  constructor(data?: PartialMessage<AlgoTestResult>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AlgoTestResult";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ordinal", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "passed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "input", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "expected_output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "actual_output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "stderr", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "is_hidden", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 8, name: "runtime_ms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AlgoTestResult {
+    return new AlgoTestResult().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AlgoTestResult {
+    return new AlgoTestResult().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AlgoTestResult {
+    return new AlgoTestResult().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AlgoTestResult | PlainMessage<AlgoTestResult> | undefined, b: AlgoTestResult | PlainMessage<AlgoTestResult> | undefined): boolean {
+    return proto3.util.equals(AlgoTestResult, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AlgoVerdict
+ */
+export class AlgoVerdict extends Message<AlgoVerdict> {
+  /**
+   * count of cases that exactly-matched
+   *
+   * @generated from field: int32 passed = 1;
+   */
+  passed = 0;
+
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
+  /**
+   * max runtime across visible cases
+   *
+   * @generated from field: int32 runtime_ms = 3;
+   */
+  runtimeMs = 0;
+
+  /**
+   * max memory across visible cases (0 when unavailable)
+   *
+   * @generated from field: int32 memory_kb = 4;
+   */
+  memoryKb = 0;
+
+  /**
+   * true when Judge0 is not wired / language unsupported
+   *
+   * @generated from field: bool sandbox_unavailable = 5;
+   */
+  sandboxUnavailable = false;
+
+  /**
+   * free-form short status: "ok" | "compile_error" | "runtime_error" | "unavailable"
+   *
+   * @generated from field: string status = 6;
+   */
+  status = "";
+
+  /**
+   * @generated from field: repeated druz9.v1.AlgoTestResult tests = 7;
+   */
+  tests: AlgoTestResult[] = [];
+
+  constructor(data?: PartialMessage<AlgoVerdict>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AlgoVerdict";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "passed", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "runtime_ms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "memory_kb", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "sandbox_unavailable", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "tests", kind: "message", T: AlgoTestResult, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AlgoVerdict {
+    return new AlgoVerdict().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AlgoVerdict {
+    return new AlgoVerdict().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AlgoVerdict {
+    return new AlgoVerdict().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AlgoVerdict | PlainMessage<AlgoVerdict> | undefined, b: AlgoVerdict | PlainMessage<AlgoVerdict> | undefined): boolean {
+    return proto3.util.equals(AlgoVerdict, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.RunAlgoAttemptRequest
+ */
+export class RunAlgoAttemptRequest extends Message<RunAlgoAttemptRequest> {
+  /**
+   * attempt_id (must be a task_solve attempt)
+   *
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * raw source (NOT fenced markdown)
+   *
+   * @generated from field: string code = 2;
+   */
+  code = "";
+
+  /**
+   * shared enum: go|python|javascript|typescript
+   *
+   * @generated from field: string language = 3;
+   */
+  language = "";
+
+  constructor(data?: PartialMessage<RunAlgoAttemptRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RunAlgoAttemptRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RunAlgoAttemptRequest {
+    return new RunAlgoAttemptRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RunAlgoAttemptRequest {
+    return new RunAlgoAttemptRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RunAlgoAttemptRequest {
+    return new RunAlgoAttemptRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RunAlgoAttemptRequest | PlainMessage<RunAlgoAttemptRequest> | undefined, b: RunAlgoAttemptRequest | PlainMessage<RunAlgoAttemptRequest> | undefined): boolean {
+    return proto3.util.equals(RunAlgoAttemptRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.CodingVerdict
+ */
+export class CodingVerdict extends Message<CodingVerdict> {
+  /**
+   * 1..5 rubric score
+   *
+   * @generated from field: int32 score = 1;
+   */
+  score = 0;
+
+  /**
+   * @generated from field: repeated string strengths = 2;
+   */
+  strengths: string[] = [];
+
+  /**
+   * @generated from field: repeated string weaknesses = 3;
+   */
+  weaknesses: string[] = [];
+
+  /**
+   * 1-based line numbers
+   *
+   * @generated from field: repeated int32 suggested_lines = 4;
+   */
+  suggestedLines: number[] = [];
+
+  /**
+   * 2-4 sentence summary
+   *
+   * @generated from field: string rubric_md = 5;
+   */
+  rubricMd = "";
+
+  /**
+   * true when LLM down / parse failed
+   *
+   * @generated from field: bool unavailable = 6;
+   */
+  unavailable = false;
+
+  constructor(data?: PartialMessage<CodingVerdict>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CodingVerdict";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "strengths", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 3, name: "weaknesses", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 4, name: "suggested_lines", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
+    { no: 5, name: "rubric_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "unavailable", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CodingVerdict {
+    return new CodingVerdict().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CodingVerdict {
+    return new CodingVerdict().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CodingVerdict {
+    return new CodingVerdict().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CodingVerdict | PlainMessage<CodingVerdict> | undefined, b: CodingVerdict | PlainMessage<CodingVerdict> | undefined): boolean {
+    return proto3.util.equals(CodingVerdict, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.RunCodingAttemptRequest
+ */
+export class RunCodingAttemptRequest extends Message<RunCodingAttemptRequest> {
+  /**
+   * attempt_id (must be a task_solve attempt under coding stage)
+   *
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * raw source (NOT fenced markdown)
+   *
+   * @generated from field: string code = 2;
+   */
+  code = "";
+
+  /**
+   * free-form language hint (go|python|js|ts|...)
+   *
+   * @generated from field: string language = 3;
+   */
+  language = "";
+
+  constructor(data?: PartialMessage<RunCodingAttemptRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RunCodingAttemptRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RunCodingAttemptRequest {
+    return new RunCodingAttemptRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RunCodingAttemptRequest {
+    return new RunCodingAttemptRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RunCodingAttemptRequest {
+    return new RunCodingAttemptRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RunCodingAttemptRequest | PlainMessage<RunCodingAttemptRequest> | undefined, b: RunCodingAttemptRequest | PlainMessage<RunCodingAttemptRequest> | undefined): boolean {
+    return proto3.util.equals(RunCodingAttemptRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SysDesignAxes
+ */
+export class SysDesignAxes extends Message<SysDesignAxes> {
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 availability = 1;
+   */
+  availability = 0;
+
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 consistency = 2;
+   */
+  consistency = 0;
+
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 scalability = 3;
+   */
+  scalability = 0;
+
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 cost = 4;
+   */
+  cost = 0;
+
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 simplicity = 5;
+   */
+  simplicity = 0;
+
+  constructor(data?: PartialMessage<SysDesignAxes>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SysDesignAxes";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "availability", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "consistency", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "scalability", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "cost", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "simplicity", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SysDesignAxes {
+    return new SysDesignAxes().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SysDesignAxes {
+    return new SysDesignAxes().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SysDesignAxes {
+    return new SysDesignAxes().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SysDesignAxes | PlainMessage<SysDesignAxes> | undefined, b: SysDesignAxes | PlainMessage<SysDesignAxes> | undefined): boolean {
+    return proto3.util.equals(SysDesignAxes, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SysDesignVerdict
+ */
+export class SysDesignVerdict extends Message<SysDesignVerdict> {
+  /**
+   * @generated from field: druz9.v1.SysDesignAxes axes = 1;
+   */
+  axes?: SysDesignAxes;
+
+  /**
+   * @generated from field: string narrative_critique = 2;
+   */
+  narrativeCritique = "";
+
+  /**
+   * @generated from field: repeated string missing_concepts = 3;
+   */
+  missingConcepts: string[] = [];
+
+  /**
+   * @generated from field: bool unavailable = 4;
+   */
+  unavailable = false;
+
+  constructor(data?: PartialMessage<SysDesignVerdict>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SysDesignVerdict";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "axes", kind: "message", T: SysDesignAxes },
+    { no: 2, name: "narrative_critique", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "missing_concepts", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 4, name: "unavailable", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SysDesignVerdict {
+    return new SysDesignVerdict().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SysDesignVerdict {
+    return new SysDesignVerdict().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SysDesignVerdict {
+    return new SysDesignVerdict().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SysDesignVerdict | PlainMessage<SysDesignVerdict> | undefined, b: SysDesignVerdict | PlainMessage<SysDesignVerdict> | undefined): boolean {
+    return proto3.util.equals(SysDesignVerdict, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.RunSysDesignAttemptRequest
+ */
+export class RunSysDesignAttemptRequest extends Message<RunSysDesignAttemptRequest> {
+  /**
+   * attempt_id
+   *
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * Excalidraw scene blob serialised
+   *
+   * @generated from field: string canvas_json = 2;
+   */
+  canvasJson = "";
+
+  /**
+   * trade-offs / context paragraph
+   *
+   * @generated from field: string narration_text = 3;
+   */
+  narrationText = "";
+
+  constructor(data?: PartialMessage<RunSysDesignAttemptRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RunSysDesignAttemptRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "canvas_json", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "narration_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RunSysDesignAttemptRequest {
+    return new RunSysDesignAttemptRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RunSysDesignAttemptRequest {
+    return new RunSysDesignAttemptRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RunSysDesignAttemptRequest {
+    return new RunSysDesignAttemptRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RunSysDesignAttemptRequest | PlainMessage<RunSysDesignAttemptRequest> | undefined, b: RunSysDesignAttemptRequest | PlainMessage<RunSysDesignAttemptRequest> | undefined): boolean {
+    return proto3.util.equals(RunSysDesignAttemptRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.BehavioralAxes
+ */
+export class BehavioralAxes extends Message<BehavioralAxes> {
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 situation = 1;
+   */
+  situation = 0;
+
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 task = 2;
+   */
+  task = 0;
+
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 action = 3;
+   */
+  action = 0;
+
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 result = 4;
+   */
+  result = 0;
+
+  constructor(data?: PartialMessage<BehavioralAxes>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.BehavioralAxes";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "situation", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "task", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "action", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "result", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BehavioralAxes {
+    return new BehavioralAxes().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BehavioralAxes {
+    return new BehavioralAxes().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BehavioralAxes {
+    return new BehavioralAxes().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BehavioralAxes | PlainMessage<BehavioralAxes> | undefined, b: BehavioralAxes | PlainMessage<BehavioralAxes> | undefined): boolean {
+    return proto3.util.equals(BehavioralAxes, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.BehavioralVerdict
+ */
+export class BehavioralVerdict extends Message<BehavioralVerdict> {
+  /**
+   * @generated from field: druz9.v1.BehavioralAxes axes = 1;
+   */
+  axes?: BehavioralAxes;
+
+  /**
+   * 1..5
+   *
+   * @generated from field: int32 communication_score = 2;
+   */
+  communicationScore = 0;
+
+  /**
+   * @generated from field: string body_md = 3;
+   */
+  bodyMd = "";
+
+  /**
+   * @generated from field: bool unavailable = 4;
+   */
+  unavailable = false;
+
+  constructor(data?: PartialMessage<BehavioralVerdict>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.BehavioralVerdict";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "axes", kind: "message", T: BehavioralAxes },
+    { no: 2, name: "communication_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "unavailable", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BehavioralVerdict {
+    return new BehavioralVerdict().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BehavioralVerdict {
+    return new BehavioralVerdict().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BehavioralVerdict {
+    return new BehavioralVerdict().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BehavioralVerdict | PlainMessage<BehavioralVerdict> | undefined, b: BehavioralVerdict | PlainMessage<BehavioralVerdict> | undefined): boolean {
+    return proto3.util.equals(BehavioralVerdict, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.RunBehavioralAttemptRequest
+ */
+export class RunBehavioralAttemptRequest extends Message<RunBehavioralAttemptRequest> {
+  /**
+   * attempt_id
+   *
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * user's STAR answer (text)
+   *
+   * @generated from field: string answer_text = 2;
+   */
+  answerText = "";
+
+  constructor(data?: PartialMessage<RunBehavioralAttemptRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RunBehavioralAttemptRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "answer_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RunBehavioralAttemptRequest {
+    return new RunBehavioralAttemptRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RunBehavioralAttemptRequest {
+    return new RunBehavioralAttemptRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RunBehavioralAttemptRequest {
+    return new RunBehavioralAttemptRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RunBehavioralAttemptRequest | PlainMessage<RunBehavioralAttemptRequest> | undefined, b: RunBehavioralAttemptRequest | PlainMessage<RunBehavioralAttemptRequest> | undefined): boolean {
+    return proto3.util.equals(RunBehavioralAttemptRequest, a, b);
+  }
+}
+
+/**
  * @generated from message druz9.v1.AdminListMockCompaniesRequest
  */
 export class AdminListMockCompaniesRequest extends Message<AdminListMockCompaniesRequest> {

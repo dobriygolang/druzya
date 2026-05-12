@@ -1,0 +1,62 @@
+// ab_experiments.go — Admin Phase 2: A/B experiment entity + repo port.
+//
+// Minimal scaffolding для admin surface. Variant rollout logic,
+// bucketing, statistics analytics — Phase 3.
+package domain
+
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// ABExperimentStatus — discrete set enforced на DB level via CHECK.
+const (
+	ABStatusDraft     = "draft"
+	ABStatusRunning   = "running"
+	ABStatusPaused    = "paused"
+	ABStatusCompleted = "completed"
+)
+
+// ABVariant — single variant inside an experiment.
+type ABVariant struct {
+	Name   string `json:"name"`
+	Weight int    `json:"weight"`
+}
+
+// ABExperiment mirrors an ab_experiments row.
+type ABExperiment struct {
+	ID         uuid.UUID
+	Slug       string
+	Hypothesis string
+	Variants   []ABVariant
+	MetricSlug string
+	Status     string
+	StartsAt   *time.Time
+	EndsAt     *time.Time
+	CreatedBy  *uuid.UUID
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+// ABExperimentUpsert — create payload.
+type ABExperimentUpsert struct {
+	Slug       string
+	Hypothesis string
+	Variants   []ABVariant
+	MetricSlug string
+	Status     string
+	StartsAt   *time.Time
+	EndsAt     *time.Time
+	CreatedBy  *uuid.UUID
+}
+
+// ABExperimentRepo — persistence port. Minimal CRUD; assignment +
+// stats — отдельные boundaries в Phase 3.
+type ABExperimentRepo interface {
+	List(ctx context.Context) ([]ABExperiment, error)
+	GetByID(ctx context.Context, id uuid.UUID) (ABExperiment, error)
+	Create(ctx context.Context, in ABExperimentUpsert) (ABExperiment, error)
+	SetStatus(ctx context.Context, id uuid.UUID, status string) (ABExperiment, error)
+}

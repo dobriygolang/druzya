@@ -1,10 +1,17 @@
 // /codex — каталог статей-знаний (System Design, алгоритмы, карьера...).
+//
+// R1 (Phase A 2026-05-12): ranking-proxy enhancements — source type icons,
+// sort dropdown, «Для тебя» AI-recommended section на основе F9 diagnostic
+// weakest area. Identity claim: druz9 ранжирует чужой content, не строит свой.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ArrowUpRight, Search } from 'lucide-react'
+import { ArrowUpRight, Search, Sparkles, ChevronDown } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { KnowledgeHubTabs } from '../components/KnowledgeHubTabs'
 import { Card } from '../components/Card'
+import { ErrorBoundary } from '../components/ErrorBoundary'
+import { DataLoader } from '../components/DataLoader'
+import { PersonalContextBanner } from '../components/PersonalContextBanner'
 import {
   pingCodexArticleOpened,
   useCodexArticlesQuery,
@@ -12,6 +19,14 @@ import {
   type CodexArticle as DBCodexArticle,
   type CodexCategory as DBCodexCategory,
 } from '../lib/queries/codex'
+import {
+  getSourceIcon,
+  pickRecommendedArticles,
+  sortArticles,
+  SORT_LABELS,
+  type CodexSortMode,
+} from '../lib/codexHelpers'
+import { loadProgress } from '../lib/diagnostic'
 
 type CodexArticle = DBCodexArticle
 
@@ -41,17 +56,34 @@ function categoriesFromArticles(articles: CodexArticle[]): RenderCategory[] {
 function Hero({ total }: { total: number }) {
   return (
     <section
-      className="flex flex-col items-start justify-center gap-3 px-4 py-8 sm:px-8 lg:px-20"
-      style={{ background: '#0A0A0A' }}
+      className="flex flex-col items-start justify-center gap-3 bg-surface-1 px-4 py-10 sm:px-8 lg:px-20 lg:py-12"
+      style={{ borderBottom: '1px solid var(--hair)' }}
     >
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em]"
+        style={{
+          background: 'rgba(var(--ink), 0.06)',
+          color: 'var(--ink-60)',
+        }}
+      >
+        <span
+          className="inline-block h-1 w-1 rounded-full"
+          style={{ background: 'var(--red)' }}
+          aria-hidden
+        />
         CODEX · БИБЛИОТЕКА ЗНАНИЙ
       </span>
-      <h1 className="font-display text-3xl font-bold leading-[1.1] text-text-primary lg:text-[36px]">
+      <h1 className="font-display text-3xl font-bold leading-[1.1] lg:text-[40px]"
+        style={{ color: 'rgb(var(--ink))' }}
+      >
         Что почитать к собесу
       </h1>
-      <p className="max-w-[640px] text-[15px] text-text-secondary">
-        {total} статей и референсов про System Design, алгоритмы, SQL,
+      <p
+        className="max-w-[640px] text-[15px] leading-relaxed"
+        style={{ color: 'var(--ink-60)' }}
+      >
+        <span className="font-display tabular-nums" style={{ color: 'rgb(var(--ink))' }}>{total}</span>{' '}
+        статей и референсов про System Design, алгоритмы, SQL,
         Go и поведенческие интервью. Все ссылки — на стабильные публичные
         источники: Wikipedia, MDN, RFC, официальные доки.
       </p>
@@ -110,14 +142,23 @@ function CategoryFilters({
 }
 
 function SearchBox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  // Underline-only form field — foundation style. Border-bottom only,
+  // no surface fill / box outline. Focus ramps the underline to full ink.
   return (
-    <div className="flex w-full max-w-md items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2">
-      <Search className="h-4 w-4 text-text-muted" />
+    <div
+      className="flex w-full max-w-md items-center gap-2 px-1 py-1.5"
+      style={{
+        borderBottom: '1px solid var(--hair-2)',
+        transition: 'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+      }}
+    >
+      <Search className="h-4 w-4" style={{ color: 'var(--ink-40)' }} />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Поиск по заголовку или описанию..."
-        className="w-full bg-transparent text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none"
+        className="w-full bg-transparent text-[13px] focus:outline-none"
+        style={{ color: 'rgb(var(--ink))' }}
       />
     </div>
   )
@@ -127,46 +168,136 @@ function ArticleCard({
   a,
   highlighted,
   articleRef,
+  recommended,
 }: {
   a: CodexArticle
   highlighted: boolean
   articleRef: (node: HTMLAnchorElement | null) => void
+  /** Marked если попал в «Для тебя» секцию — мелкий sparkle перед источником. */
+  recommended?: boolean
 }) {
   // Coach memory tap: when the user opens an article, ping the backend
   // so the Daily Brief can later say "ты регулярно читаешь sysdesign —
   // попробуй mock этого этапа".
+  const SourceIcon = getSourceIcon(a.source)
   return (
     <a
       ref={articleRef}
       href={a.href}
       target="_blank"
       rel="noopener noreferrer"
-      className={
-        highlighted
-          ? 'block scroll-mt-24 rounded-xl outline outline-2 outline-offset-4 outline-text-primary/70'
-          : 'block scroll-mt-24 rounded-xl'
-      }
+      className="relative block scroll-mt-24 rounded-xl"
       onClick={() => {
         if (a.id) pingCodexArticleOpened(a.id)
       }}
     >
+      {highlighted && (
+        // Red signal stripe — active card selection marker. 1.5px left
+        // rail; b/w rule: red is the only allowed accent and only as
+        // signal (not bg/fill/gradient).
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -left-[3px] top-3 bottom-3 w-[1.5px] rounded-full"
+          style={{ background: 'var(--red)' }}
+        />
+      )}
       <Card interactive className="flex-col gap-2 p-5">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em]"
+            style={{ color: 'var(--ink-40)' }}
+          >
             {a.category.replace('_', ' ')}
           </span>
-          <ArrowUpRight className="h-3.5 w-3.5 text-text-muted group-hover:text-text-primary" />
+          <ArrowUpRight
+            className="h-3.5 w-3.5"
+            style={{ color: 'var(--ink-40)' }}
+          />
         </div>
-        <h4 className="font-sans text-[15px] font-bold leading-tight text-text-primary">
+        <h4 className="font-sans text-[15px] font-bold leading-tight" style={{ color: 'rgb(var(--ink))' }}>
           {a.title}
         </h4>
-        <p className="text-[13px] leading-snug text-text-secondary">{a.description}</p>
-        <div className="mt-auto flex items-center justify-between pt-2">
-          <span className="font-mono text-[11px] text-text-muted">{a.source}</span>
-          <span className="font-mono text-[11px] text-text-muted">{a.read_min} мин</span>
+        <p className="text-[13px] leading-snug" style={{ color: 'var(--ink-60)' }}>{a.description}</p>
+        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px]"
+            style={{ color: 'var(--ink-40)' }}
+          >
+            {recommended && (
+              <Sparkles className="h-3 w-3" style={{ color: 'rgb(var(--ink))' }} aria-label="для тебя" />
+            )}
+            <SourceIcon className="h-3 w-3" aria-hidden />
+            {a.source}
+          </span>
+          <span className="font-mono text-[11px]" style={{ color: 'var(--ink-40)' }}>{a.read_min} мин</span>
         </div>
       </Card>
     </a>
+  )
+}
+
+// SortPicker — R1 ranking-proxy dropdown. Native <select> для keyboard a11y +
+// mobile native picker. Inline в toolbar над SearchBox.
+function SortPicker({ value, onChange }: { value: CodexSortMode; onChange: (v: CodexSortMode) => void }) {
+  return (
+    <label className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-[12.5px] text-text-secondary">
+      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+        Сортировка
+      </span>
+      <span className="relative inline-flex items-center">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value as CodexSortMode)}
+          className="appearance-none bg-transparent pr-6 text-[12.5px] font-semibold text-text-primary focus:outline-none"
+        >
+          {(Object.keys(SORT_LABELS) as CodexSortMode[]).map((mode) => (
+            <option key={mode} value={mode} className="bg-bg text-text-primary">
+              {SORT_LABELS[mode]}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-0 h-3.5 w-3.5 text-text-muted" />
+      </span>
+    </label>
+  )
+}
+
+// RecommendedSection — F9 diagnostic-driven «Для тебя». Hidden если нет
+// answers или ни одной article под weakest area (anti-fallback: не симулируем
+// случайные советы).
+function RecommendedSection({
+  articles,
+  highlightedSlug,
+  articleRef,
+}: {
+  articles: CodexArticle[]
+  highlightedSlug: string
+  articleRef: (slug: string, node: HTMLAnchorElement | null) => void
+}) {
+  if (articles.length === 0) return null
+  return (
+    <section className="px-4 pb-2 pt-4 sm:px-8 lg:px-20">
+      <header className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 text-text-primary" />
+          <h2 className="font-display text-base font-bold leading-tight text-text-primary">
+            Для тебя · по диагностике
+          </h2>
+        </div>
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+          weakest area · {articles.length}
+        </span>
+      </header>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {articles.map((a) => (
+          <ArticleCard
+            key={`rec-${a.category}-${a.slug}`}
+            a={a}
+            recommended
+            highlighted={highlightedSlug === a.slug}
+            articleRef={(node) => articleRef(a.slug, node)}
+          />
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -176,6 +307,7 @@ export default function CodexPage() {
   const initialTopic = searchParams.get('topic') || ALL
   const [category, setCategory] = useState<string>(initialTopic)
   const [q, setQ] = useState<string>('')
+  const [sortMode, setSortMode] = useState<CodexSortMode>('default')
   const articleRefs = useRef(new Map<string, HTMLAnchorElement | null>())
 
   const handleCategoryChange = (slug: string) => {
@@ -214,7 +346,7 @@ export default function CodexPage() {
   }, [requestedArticle, targetArticleKey])
 
   const norm = q.trim().toLowerCase()
-  const visible = articles.filter((a) => {
+  const filtered = articles.filter((a) => {
     if (category !== ALL && a.category !== category) return false
     if (norm.length === 0) return true
     return (
@@ -222,11 +354,38 @@ export default function CodexPage() {
       a.description.toLowerCase().includes(norm)
     )
   })
+  const visible = useMemo(() => sortArticles(filtered, sortMode), [filtered, sortMode])
   const countsByCat = useMemo(() => {
     const m = new Map<string, number>()
     for (const a of articles) m.set(a.category, (m.get(a.category) ?? 0) + 1)
     return m
   }, [articles])
+
+  // R1 «Для тебя» — recommended top на основе F9 diagnostic weakest. Скрыт
+  // когда: diagnostic не пройден ИЛИ юзер активно фильтрует (category или
+  // search) — это «дай по умолчанию», не «навязать рекомендации».
+  const [diagnosticWeakest, setDiagnosticWeakest] = useState<string | null>(() => {
+    const answers = loadProgress()
+    return (answers.weakest as string | undefined) ?? null
+  })
+  useEffect(() => {
+    // Refresh weakest если юзер прошёл diagnostic в другом таб'е. localStorage
+    // event fires только в чужих tab'ах — наш текущий tab подхватит после reload.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key && e.key.startsWith('druz9.diagnostic.answers')) {
+        const answers = loadProgress()
+        setDiagnosticWeakest((answers.weakest as string | undefined) ?? null)
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  const showRecommended = category === ALL && norm.length === 0
+  const recommendedArticles = useMemo(
+    () => (showRecommended ? pickRecommendedArticles(articles, diagnosticWeakest, 3) : []),
+    [showRecommended, articles, diagnosticWeakest],
+  )
 
   return (
     <AppShellV2>
@@ -234,6 +393,12 @@ export default function CodexPage() {
           under a single header entry. */}
       <KnowledgeHubTabs active="articles" />
       <Hero total={articles.length} />
+      {/* Personal context banner — reuses /atlas pattern. Encourages
+          juзера сначала пройти diagnostic / посмотреть план перед blind
+          чтением Codex articles. F2 + F5 reactive. */}
+      <div className="px-4 pt-5 sm:px-8 lg:px-20">
+        <PersonalContextBanner />
+      </div>
       <CategoryFilters
         active={category}
         onChange={handleCategoryChange}
@@ -241,50 +406,79 @@ export default function CodexPage() {
         countsByCat={countsByCat}
         categories={categories}
       />
-      <div className="px-4 pb-4 sm:px-8 lg:px-20">
+      <RecommendedSection
+        articles={recommendedArticles}
+        highlightedSlug={requestedArticle}
+        articleRef={(slug, node) => {
+          if (node) articleRefs.current.set(`rec-${slug}`, node)
+          else articleRefs.current.delete(`rec-${slug}`)
+        }}
+      />
+      <div className="flex flex-wrap items-center gap-3 px-4 pb-4 sm:px-8 lg:px-20">
         <SearchBox value={q} onChange={setQ} />
+        <SortPicker value={sortMode} onChange={setSortMode} />
       </div>
       <div className="px-4 pb-12 sm:px-8 lg:px-20">
-        {articlesQ.isLoading ? (
-          <Card className="flex-col gap-1 p-8 text-center">
-            <span className="font-display text-base font-bold text-text-primary">
-              Загружаем Codex
-            </span>
-          </Card>
-        ) : articlesQ.isError || categoriesQ.isError ? (
-          <Card className="flex-col gap-1 p-8 text-center">
-            <span className="font-display text-base font-bold text-text-primary">
-              Codex сейчас недоступен
-            </span>
-            <span className="text-sm text-text-secondary">
-              Не удалось загрузить статьи из backend.
-            </span>
-          </Card>
-        ) : visible.length === 0 ? (
-          <Card className="flex-col gap-1 p-8 text-center">
-            <span className="font-display text-base font-bold text-text-primary">
-              Ничего не нашлось
-            </span>
-            <span className="text-sm text-text-secondary">
-              Попробуй убрать фильтр категории или почистить поиск.
-            </span>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {visible.map((a) => (
-              <ArticleCard
-                key={visibleArticleKey(a)}
-                a={a}
-                highlighted={requestedArticle === articleSlug(a)}
-                articleRef={(node) => {
-                  const slug = articleSlug(a)
-                  if (node) articleRefs.current.set(slug, node)
-                  else articleRefs.current.delete(slug)
-                }}
-              />
-            ))}
-          </div>
-        )}
+        <ErrorBoundary section="Codex">
+          <DataLoader
+            state={articlesQ}
+            section="Codex"
+            skeleton={
+              <Card className="flex-col gap-1 p-8 text-center">
+                <span className="font-display text-base font-bold text-text-primary">
+                  Загружаем Codex
+                </span>
+              </Card>
+            }
+            errorContent={() => (
+              <Card className="flex-col gap-1 p-8 text-center">
+                <span className="font-display text-base font-bold text-text-primary">
+                  Codex сейчас недоступен
+                </span>
+                <span className="text-sm text-text-secondary">
+                  Не удалось загрузить статьи из backend.
+                </span>
+              </Card>
+            )}
+          >
+            {() => (
+              <>
+                {categoriesQ.isError && (
+                  <Card className="flex-col gap-1 p-4 text-center">
+                    <span className="text-sm text-text-secondary">
+                      Категории не подгрузились — используется fallback из статей.
+                    </span>
+                  </Card>
+                )}
+                {visible.length === 0 ? (
+                  <Card className="flex-col gap-1 p-8 text-center">
+                    <span className="font-display text-base font-bold text-text-primary">
+                      Ничего не нашлось
+                    </span>
+                    <span className="text-sm text-text-secondary">
+                      Попробуй убрать фильтр категории или почистить поиск.
+                    </span>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {visible.map((a) => (
+                      <ArticleCard
+                        key={visibleArticleKey(a)}
+                        a={a}
+                        highlighted={requestedArticle === articleSlug(a)}
+                        articleRef={(node) => {
+                          const slug = articleSlug(a)
+                          if (node) articleRefs.current.set(slug, node)
+                          else articleRefs.current.delete(slug)
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </DataLoader>
+        </ErrorBoundary>
       </div>
     </AppShellV2>
   )

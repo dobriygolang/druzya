@@ -2420,8 +2420,13 @@ type CopilotDone struct {
 	CompactionThreshold int32 `protobuf:"varint,8,opt,name=compaction_threshold,json=compactionThreshold,proto3" json:"compaction_threshold,omitempty"`    // порог при котором triggers компакция (default 15)
 	CompactionTriggered bool  `protobuf:"varint,9,opt,name=compaction_triggered,json=compactionTriggered,proto3" json:"compaction_triggered,omitempty"`    // true если в этом turn'е window перешёл порог
 	RunningSummaryChars int32 `protobuf:"varint,10,opt,name=running_summary_chars,json=runningSummaryChars,proto3" json:"running_summary_chars,omitempty"` // длина текущего RunningSummary (0 если ни разу не сжимали)
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// C3 (Phase J 2026-05-12) — true когда backend инжектил cross-product
+	// context (goal + memory + activity + radar + atlas) в system-prompt
+	// этого turn'а. UI рисует subtle «Personalized from your druz9
+	// activity» hint — это unique moat vs Cluely.
+	ContextUsed   bool `protobuf:"varint,11,opt,name=context_used,json=contextUsed,proto3" json:"context_used,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CopilotDone) Reset() {
@@ -2522,6 +2527,13 @@ func (x *CopilotDone) GetRunningSummaryChars() int32 {
 		return x.RunningSummaryChars
 	}
 	return 0
+}
+
+func (x *CopilotDone) GetContextUsed() bool {
+	if x != nil {
+		return x.ContextUsed
+	}
+	return false
 }
 
 // CopilotStreamError terminates the stream with a structured error. After
@@ -3426,6 +3438,791 @@ func (*CheckBlockRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{42}
 }
 
+// ParsedCV — LLM-extracted shape of the user's résumé. Every field is
+// optional; the parser leaves blanks when the source is ambiguous rather
+// than hallucinating. Stored verbatim alongside the original text on the
+// interview_prep_sessions row.
+type ParsedCV struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Display name as the LLM read it ("Sergey D."). Optional.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Best-effort total years of experience (0 when unknown).
+	ExperienceYears int32 `protobuf:"varint,2,opt,name=experience_years,json=experienceYears,proto3" json:"experience_years,omitempty"`
+	// Current job title as parsed ("Senior Backend Engineer"). Optional.
+	CurrentRole string `protobuf:"bytes,3,opt,name=current_role,json=currentRole,proto3" json:"current_role,omitempty"`
+	// Up to 12 top skills the parser identified. Order-significant — most
+	// prominent first. Empty when no skills detected.
+	TopSkills []string `protobuf:"bytes,4,rep,name=top_skills,json=topSkills,proto3" json:"top_skills,omitempty"`
+	// 1-3 sentence elevator pitch derived from the CV. Empty when input is
+	// too thin to summarise. Used directly in the suggestion-prompt prep
+	// block.
+	Summary string `protobuf:"bytes,5,opt,name=summary,proto3" json:"summary,omitempty"`
+	// Highest education level if mentioned ("MS Computer Science, MIT").
+	Education     string `protobuf:"bytes,6,opt,name=education,proto3" json:"education,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ParsedCV) Reset() {
+	*x = ParsedCV{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ParsedCV) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ParsedCV) ProtoMessage() {}
+
+func (x *ParsedCV) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ParsedCV.ProtoReflect.Descriptor instead.
+func (*ParsedCV) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *ParsedCV) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ParsedCV) GetExperienceYears() int32 {
+	if x != nil {
+		return x.ExperienceYears
+	}
+	return 0
+}
+
+func (x *ParsedCV) GetCurrentRole() string {
+	if x != nil {
+		return x.CurrentRole
+	}
+	return ""
+}
+
+func (x *ParsedCV) GetTopSkills() []string {
+	if x != nil {
+		return x.TopSkills
+	}
+	return nil
+}
+
+func (x *ParsedCV) GetSummary() string {
+	if x != nil {
+		return x.Summary
+	}
+	return ""
+}
+
+func (x *ParsedCV) GetEducation() string {
+	if x != nil {
+		return x.Education
+	}
+	return ""
+}
+
+// ParsedJD — LLM-extracted shape of the target job description. Same
+// optional-by-default contract as ParsedCV.
+type ParsedJD struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Hiring company ("Google"). Empty when not stated.
+	Company string `protobuf:"bytes,1,opt,name=company,proto3" json:"company,omitempty"`
+	// Role title ("Senior Backend Engineer"). Empty when not stated.
+	Role string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	// Seniority level if extractable ("L4", "Senior", "Staff").
+	Seniority string `protobuf:"bytes,3,opt,name=seniority,proto3" json:"seniority,omitempty"`
+	// Up to 12 skills the JD calls out. Order = priority in the listing.
+	KeySkills []string `protobuf:"bytes,4,rep,name=key_skills,json=keySkills,proto3" json:"key_skills,omitempty"`
+	// 1-3 sentence summary of what the role expects day-to-day. Powers
+	// the prep block injected into Cue suggestions.
+	DescriptionSummary string `protobuf:"bytes,5,opt,name=description_summary,json=descriptionSummary,proto3" json:"description_summary,omitempty"`
+	// Detected language ("ru" / "en" / "").
+	Language      string `protobuf:"bytes,6,opt,name=language,proto3" json:"language,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ParsedJD) Reset() {
+	*x = ParsedJD{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ParsedJD) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ParsedJD) ProtoMessage() {}
+
+func (x *ParsedJD) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ParsedJD.ProtoReflect.Descriptor instead.
+func (*ParsedJD) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *ParsedJD) GetCompany() string {
+	if x != nil {
+		return x.Company
+	}
+	return ""
+}
+
+func (x *ParsedJD) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *ParsedJD) GetSeniority() string {
+	if x != nil {
+		return x.Seniority
+	}
+	return ""
+}
+
+func (x *ParsedJD) GetKeySkills() []string {
+	if x != nil {
+		return x.KeySkills
+	}
+	return nil
+}
+
+func (x *ParsedJD) GetDescriptionSummary() string {
+	if x != nil {
+		return x.DescriptionSummary
+	}
+	return ""
+}
+
+func (x *ParsedJD) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+// ParseCVRequest — caller sends ONE of cv_bytes (PDF/binary) or cv_text.
+// When both are populated, cv_text wins (cv_bytes assumed to be a fallback
+// for clients that couldn't extract text locally).
+type ParseCVRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Plain-text or markdown body of the CV. Preferred path — Cue desktop
+	// extracts via Electron's built-in pdf.js before calling.
+	CvText string `protobuf:"bytes,1,opt,name=cv_text,json=cvText,proto3" json:"cv_text,omitempty"`
+	// Raw PDF bytes for backend extraction. Fallback path. Capped at ~3MB
+	// by the handler; oversized inputs return InvalidArgument.
+	CvBytes []byte `protobuf:"bytes,2,opt,name=cv_bytes,json=cvBytes,proto3" json:"cv_bytes,omitempty"`
+	// MIME type hint for cv_bytes ("application/pdf"). Ignored for text.
+	MimeType string `protobuf:"bytes,3,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	// Filename hint for nicer error messages and parser context. Optional.
+	Filename      string `protobuf:"bytes,4,opt,name=filename,proto3" json:"filename,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ParseCVRequest) Reset() {
+	*x = ParseCVRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ParseCVRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ParseCVRequest) ProtoMessage() {}
+
+func (x *ParseCVRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ParseCVRequest.ProtoReflect.Descriptor instead.
+func (*ParseCVRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *ParseCVRequest) GetCvText() string {
+	if x != nil {
+		return x.CvText
+	}
+	return ""
+}
+
+func (x *ParseCVRequest) GetCvBytes() []byte {
+	if x != nil {
+		return x.CvBytes
+	}
+	return nil
+}
+
+func (x *ParseCVRequest) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+func (x *ParseCVRequest) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+type ParseCVResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Parsed *ParsedCV              `protobuf:"bytes,1,opt,name=parsed,proto3" json:"parsed,omitempty"`
+	// Echo of the model id that produced the parse (e.g. "groq/llama-3.3-
+	// 70b-versatile"). Useful for client-side telemetry + debug.
+	Model         string `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ParseCVResponse) Reset() {
+	*x = ParseCVResponse{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ParseCVResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ParseCVResponse) ProtoMessage() {}
+
+func (x *ParseCVResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ParseCVResponse.ProtoReflect.Descriptor instead.
+func (*ParseCVResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *ParseCVResponse) GetParsed() *ParsedCV {
+	if x != nil {
+		return x.Parsed
+	}
+	return nil
+}
+
+func (x *ParseCVResponse) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+// ParseJDRequest — caller sends ONE of jd_text or jd_url. When both are
+// populated, jd_text wins. URL fetching is best-effort: 404 / 5xx / TLS
+// failures fall back with a clear error suggesting the user paste text.
+type ParseJDRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Plain-text JD body. Preferred path.
+	JdText string `protobuf:"bytes,1,opt,name=jd_text,json=jdText,proto3" json:"jd_text,omitempty"`
+	// Job-board URL (LinkedIn, hh.ru, druz9 self-hosted, etc.). Backend
+	// fetches → strips HTML → parses. May fail with FailedPrecondition
+	// when the host rejects bot traffic — caller should retry with text.
+	JdUrl         string `protobuf:"bytes,2,opt,name=jd_url,json=jdUrl,proto3" json:"jd_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ParseJDRequest) Reset() {
+	*x = ParseJDRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ParseJDRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ParseJDRequest) ProtoMessage() {}
+
+func (x *ParseJDRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ParseJDRequest.ProtoReflect.Descriptor instead.
+func (*ParseJDRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *ParseJDRequest) GetJdText() string {
+	if x != nil {
+		return x.JdText
+	}
+	return ""
+}
+
+func (x *ParseJDRequest) GetJdUrl() string {
+	if x != nil {
+		return x.JdUrl
+	}
+	return ""
+}
+
+type ParseJDResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Parsed        *ParsedJD              `protobuf:"bytes,1,opt,name=parsed,proto3" json:"parsed,omitempty"`
+	Model         string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ParseJDResponse) Reset() {
+	*x = ParseJDResponse{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ParseJDResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ParseJDResponse) ProtoMessage() {}
+
+func (x *ParseJDResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ParseJDResponse.ProtoReflect.Descriptor instead.
+func (*ParseJDResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *ParseJDResponse) GetParsed() *ParsedJD {
+	if x != nil {
+		return x.Parsed
+	}
+	return nil
+}
+
+func (x *ParseJDResponse) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+// StartInterviewPrepRequest — commits parsed CV + JD as the user's active
+// prep context. Replaces any prior active prep (single-active per user).
+// Caller has already validated the parses via the UI review step.
+type StartInterviewPrepRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	ParsedCv *ParsedCV              `protobuf:"bytes,1,opt,name=parsed_cv,json=parsedCv,proto3" json:"parsed_cv,omitempty"`
+	ParsedJd *ParsedJD              `protobuf:"bytes,2,opt,name=parsed_jd,json=parsedJd,proto3" json:"parsed_jd,omitempty"`
+	// Raw CV text the user uploaded — stored on the row for later re-parse
+	// / "use last CV" affordance. Empty allowed.
+	CvText string `protobuf:"bytes,3,opt,name=cv_text,json=cvText,proto3" json:"cv_text,omitempty"`
+	// Raw JD text the user pasted (or fetched from jd_url) — stored on the
+	// row for the same reason.
+	JdText        string `protobuf:"bytes,4,opt,name=jd_text,json=jdText,proto3" json:"jd_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartInterviewPrepRequest) Reset() {
+	*x = StartInterviewPrepRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartInterviewPrepRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartInterviewPrepRequest) ProtoMessage() {}
+
+func (x *StartInterviewPrepRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartInterviewPrepRequest.ProtoReflect.Descriptor instead.
+func (*StartInterviewPrepRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *StartInterviewPrepRequest) GetParsedCv() *ParsedCV {
+	if x != nil {
+		return x.ParsedCv
+	}
+	return nil
+}
+
+func (x *StartInterviewPrepRequest) GetParsedJd() *ParsedJD {
+	if x != nil {
+		return x.ParsedJd
+	}
+	return nil
+}
+
+func (x *StartInterviewPrepRequest) GetCvText() string {
+	if x != nil {
+		return x.CvText
+	}
+	return ""
+}
+
+func (x *StartInterviewPrepRequest) GetJdText() string {
+	if x != nil {
+		return x.JdText
+	}
+	return ""
+}
+
+type StartInterviewPrepResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Session id of the new active prep row.
+	SessionId string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// Server-side timestamp of when prep was activated.
+	StartedAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	// Echo of the formatted system-prompt block that will be injected into
+	// subsequent Analyze/Chat/Suggest turns. The client may surface this in
+	// a "what Cue will know during the interview" disclosure card.
+	PrepPromptPreview string `protobuf:"bytes,3,opt,name=prep_prompt_preview,json=prepPromptPreview,proto3" json:"prep_prompt_preview,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *StartInterviewPrepResponse) Reset() {
+	*x = StartInterviewPrepResponse{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartInterviewPrepResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartInterviewPrepResponse) ProtoMessage() {}
+
+func (x *StartInterviewPrepResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartInterviewPrepResponse.ProtoReflect.Descriptor instead.
+func (*StartInterviewPrepResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *StartInterviewPrepResponse) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *StartInterviewPrepResponse) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *StartInterviewPrepResponse) GetPrepPromptPreview() string {
+	if x != nil {
+		return x.PrepPromptPreview
+	}
+	return ""
+}
+
+type GetActiveInterviewPrepRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetActiveInterviewPrepRequest) Reset() {
+	*x = GetActiveInterviewPrepRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetActiveInterviewPrepRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetActiveInterviewPrepRequest) ProtoMessage() {}
+
+func (x *GetActiveInterviewPrepRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetActiveInterviewPrepRequest.ProtoReflect.Descriptor instead.
+func (*GetActiveInterviewPrepRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{51}
+}
+
+type GetActiveInterviewPrepResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// active=false when the user has no active prep; the other fields are
+	// unset in that case. The client renders an empty prompt to upload CV+JD.
+	Active    bool                   `protobuf:"varint,1,opt,name=active,proto3" json:"active,omitempty"`
+	SessionId string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ParsedCv  *ParsedCV              `protobuf:"bytes,3,opt,name=parsed_cv,json=parsedCv,proto3" json:"parsed_cv,omitempty"`
+	ParsedJd  *ParsedJD              `protobuf:"bytes,4,opt,name=parsed_jd,json=parsedJd,proto3" json:"parsed_jd,omitempty"`
+	StartedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	// Convenience accessors for compact UI rows (avoids re-parsing on the
+	// client). Empty when the parser couldn't extract.
+	Company       string `protobuf:"bytes,6,opt,name=company,proto3" json:"company,omitempty"`
+	Role          string `protobuf:"bytes,7,opt,name=role,proto3" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetActiveInterviewPrepResponse) Reset() {
+	*x = GetActiveInterviewPrepResponse{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetActiveInterviewPrepResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetActiveInterviewPrepResponse) ProtoMessage() {}
+
+func (x *GetActiveInterviewPrepResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetActiveInterviewPrepResponse.ProtoReflect.Descriptor instead.
+func (*GetActiveInterviewPrepResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *GetActiveInterviewPrepResponse) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *GetActiveInterviewPrepResponse) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *GetActiveInterviewPrepResponse) GetParsedCv() *ParsedCV {
+	if x != nil {
+		return x.ParsedCv
+	}
+	return nil
+}
+
+func (x *GetActiveInterviewPrepResponse) GetParsedJd() *ParsedJD {
+	if x != nil {
+		return x.ParsedJd
+	}
+	return nil
+}
+
+func (x *GetActiveInterviewPrepResponse) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *GetActiveInterviewPrepResponse) GetCompany() string {
+	if x != nil {
+		return x.Company
+	}
+	return ""
+}
+
+func (x *GetActiveInterviewPrepResponse) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+type EndInterviewPrepRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional — when empty, the user's CURRENT active prep is ended.
+	SessionId     string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndInterviewPrepRequest) Reset() {
+	*x = EndInterviewPrepRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndInterviewPrepRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndInterviewPrepRequest) ProtoMessage() {}
+
+func (x *EndInterviewPrepRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndInterviewPrepRequest.ProtoReflect.Descriptor instead.
+func (*EndInterviewPrepRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *EndInterviewPrepRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type EndInterviewPrepResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndInterviewPrepResponse) Reset() {
+	*x = EndInterviewPrepResponse{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndInterviewPrepResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndInterviewPrepResponse) ProtoMessage() {}
+
+func (x *EndInterviewPrepResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndInterviewPrepResponse.ProtoReflect.Descriptor instead.
+func (*EndInterviewPrepResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{54}
+}
+
 // CheckBlockResponse describes whether the caller is currently barred from
 // consulting Cue. Phase-4 ADR-001 (Wave 3) — fed by an ai_mock session row
 // where ai_assist=FALSE.
@@ -3445,7 +4242,7 @@ type CheckBlockResponse struct {
 
 func (x *CheckBlockResponse) Reset() {
 	*x = CheckBlockResponse{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[43]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3457,7 +4254,7 @@ func (x *CheckBlockResponse) String() string {
 func (*CheckBlockResponse) ProtoMessage() {}
 
 func (x *CheckBlockResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[43]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3470,7 +4267,7 @@ func (x *CheckBlockResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckBlockResponse.ProtoReflect.Descriptor instead.
 func (*CheckBlockResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{43}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *CheckBlockResponse) GetBlocked() bool {
@@ -3683,7 +4480,7 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\bmodel_id\x18\x04 \x01(\tR\amodelId\"=\n" +
 	"\x11CopilotTokenDelta\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\"\xc6\x03\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\"\xe9\x03\n" +
 	"\vCopilotDone\x120\n" +
 	"\x14assistant_message_id\x18\x01 \x01(\tR\x12assistantMessageId\x12\x1b\n" +
 	"\ttokens_in\x18\x02 \x01(\x05R\btokensIn\x12\x1d\n" +
@@ -3697,7 +4494,8 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\x14compaction_threshold\x18\b \x01(\x05R\x13compactionThreshold\x121\n" +
 	"\x14compaction_triggered\x18\t \x01(\bR\x13compactionTriggered\x122\n" +
 	"\x15running_summary_chars\x18\n" +
-	" \x01(\x05R\x13runningSummaryChars\"r\n" +
+	" \x01(\x05R\x13runningSummaryChars\x12!\n" +
+	"\fcontext_used\x18\v \x01(\bR\vcontextUsed\"r\n" +
 	"\x12CopilotStreamError\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12.\n" +
@@ -3745,7 +4543,63 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\x06rating\x18\x02 \x01(\x05R\x06rating\x12\x18\n" +
 	"\acomment\x18\x03 \x01(\tR\acomment\"\x1c\n" +
 	"\x1aRateCopilotMessageResponse\"\x13\n" +
-	"\x11CheckBlockRequest\"x\n" +
+	"\x11CheckBlockRequest\"\xc3\x01\n" +
+	"\bParsedCV\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12)\n" +
+	"\x10experience_years\x18\x02 \x01(\x05R\x0fexperienceYears\x12!\n" +
+	"\fcurrent_role\x18\x03 \x01(\tR\vcurrentRole\x12\x1d\n" +
+	"\n" +
+	"top_skills\x18\x04 \x03(\tR\ttopSkills\x12\x18\n" +
+	"\asummary\x18\x05 \x01(\tR\asummary\x12\x1c\n" +
+	"\teducation\x18\x06 \x01(\tR\teducation\"\xc2\x01\n" +
+	"\bParsedJD\x12\x18\n" +
+	"\acompany\x18\x01 \x01(\tR\acompany\x12\x12\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\x12\x1c\n" +
+	"\tseniority\x18\x03 \x01(\tR\tseniority\x12\x1d\n" +
+	"\n" +
+	"key_skills\x18\x04 \x03(\tR\tkeySkills\x12/\n" +
+	"\x13description_summary\x18\x05 \x01(\tR\x12descriptionSummary\x12\x1a\n" +
+	"\blanguage\x18\x06 \x01(\tR\blanguage\"}\n" +
+	"\x0eParseCVRequest\x12\x17\n" +
+	"\acv_text\x18\x01 \x01(\tR\x06cvText\x12\x19\n" +
+	"\bcv_bytes\x18\x02 \x01(\fR\acvBytes\x12\x1b\n" +
+	"\tmime_type\x18\x03 \x01(\tR\bmimeType\x12\x1a\n" +
+	"\bfilename\x18\x04 \x01(\tR\bfilename\"S\n" +
+	"\x0fParseCVResponse\x12*\n" +
+	"\x06parsed\x18\x01 \x01(\v2\x12.druz9.v1.ParsedCVR\x06parsed\x12\x14\n" +
+	"\x05model\x18\x02 \x01(\tR\x05model\"@\n" +
+	"\x0eParseJDRequest\x12\x17\n" +
+	"\ajd_text\x18\x01 \x01(\tR\x06jdText\x12\x15\n" +
+	"\x06jd_url\x18\x02 \x01(\tR\x05jdUrl\"S\n" +
+	"\x0fParseJDResponse\x12*\n" +
+	"\x06parsed\x18\x01 \x01(\v2\x12.druz9.v1.ParsedJDR\x06parsed\x12\x14\n" +
+	"\x05model\x18\x02 \x01(\tR\x05model\"\xaf\x01\n" +
+	"\x19StartInterviewPrepRequest\x12/\n" +
+	"\tparsed_cv\x18\x01 \x01(\v2\x12.druz9.v1.ParsedCVR\bparsedCv\x12/\n" +
+	"\tparsed_jd\x18\x02 \x01(\v2\x12.druz9.v1.ParsedJDR\bparsedJd\x12\x17\n" +
+	"\acv_text\x18\x03 \x01(\tR\x06cvText\x12\x17\n" +
+	"\ajd_text\x18\x04 \x01(\tR\x06jdText\"\xa6\x01\n" +
+	"\x1aStartInterviewPrepResponse\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x129\n" +
+	"\n" +
+	"started_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12.\n" +
+	"\x13prep_prompt_preview\x18\x03 \x01(\tR\x11prepPromptPreview\"\x1f\n" +
+	"\x1dGetActiveInterviewPrepRequest\"\xa2\x02\n" +
+	"\x1eGetActiveInterviewPrepResponse\x12\x16\n" +
+	"\x06active\x18\x01 \x01(\bR\x06active\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12/\n" +
+	"\tparsed_cv\x18\x03 \x01(\v2\x12.druz9.v1.ParsedCVR\bparsedCv\x12/\n" +
+	"\tparsed_jd\x18\x04 \x01(\v2\x12.druz9.v1.ParsedJDR\bparsedJd\x129\n" +
+	"\n" +
+	"started_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12\x18\n" +
+	"\acompany\x18\x06 \x01(\tR\acompany\x12\x12\n" +
+	"\x04role\x18\a \x01(\tR\x04role\"8\n" +
+	"\x17EndInterviewPrepRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\x1a\n" +
+	"\x18EndInterviewPrepResponse\"x\n" +
 	"\x12CheckBlockResponse\x12\x18\n" +
 	"\ablocked\x18\x01 \x01(\bR\ablocked\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x120\n" +
@@ -3783,7 +4637,7 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\x1fCOPILOT_ANALYSIS_STATUS_PENDING\x10\x01\x12#\n" +
 	"\x1fCOPILOT_ANALYSIS_STATUS_RUNNING\x10\x02\x12!\n" +
 	"\x1dCOPILOT_ANALYSIS_STATUS_READY\x10\x03\x12\"\n" +
-	"\x1eCOPILOT_ANALYSIS_STATUS_FAILED\x10\x042\x84\x0e\n" +
+	"\x1eCOPILOT_ANALYSIS_STATUS_FAILED\x10\x042\xa7\x13\n" +
 	"\x0eCopilotService\x12a\n" +
 	"\aAnalyze\x12\x18.druz9.v1.AnalyzeRequest\x1a\x16.druz9.v1.AnalyzeEvent\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/v1/copilot/analyze0\x01\x12u\n" +
 	"\x04Chat\x12\x15.druz9.v1.ChatRequest\x1a\x13.druz9.v1.ChatEvent\"?\x82\xd3\xe4\x93\x029:\x01*\"4/api/v1/copilot/conversations/{conversation_id}/chat0\x01\x12y\n" +
@@ -3800,7 +4654,12 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\x12GetSessionAnalysis\x12*.druz9.v1.GetCopilotSessionAnalysisRequest\x1a .druz9.v1.CopilotSessionAnalysis\"6\x82\xd3\xe4\x93\x020\x12./api/v1/copilot/sessions/{session_id}/analysis\x12}\n" +
 	"\fListSessions\x12$.druz9.v1.ListCopilotSessionsRequest\x1a%.druz9.v1.ListCopilotSessionsResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/copilot/sessions\x12l\n" +
 	"\n" +
-	"CheckBlock\x12\x1b.druz9.v1.CheckBlockRequest\x1a\x1c.druz9.v1.CheckBlockResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/copilot/check-blockB\x89\x01\n" +
+	"CheckBlock\x12\x1b.druz9.v1.CheckBlockRequest\x1a\x1c.druz9.v1.CheckBlockResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/copilot/check-block\x12r\n" +
+	"\aParseCV\x12\x18.druz9.v1.ParseCVRequest\x1a\x19.druz9.v1.ParseCVResponse\"2\x82\xd3\xe4\x93\x02,:\x01*\"'/api/v1/copilot/interview-prep/parse-cv\x12r\n" +
+	"\aParseJD\x12\x18.druz9.v1.ParseJDRequest\x1a\x19.druz9.v1.ParseJDResponse\"2\x82\xd3\xe4\x93\x02,:\x01*\"'/api/v1/copilot/interview-prep/parse-jd\x12\x90\x01\n" +
+	"\x12StartInterviewPrep\x12#.druz9.v1.StartInterviewPrepRequest\x1a$.druz9.v1.StartInterviewPrepResponse\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/v1/copilot/interview-prep/start\x12\x9a\x01\n" +
+	"\x16GetActiveInterviewPrep\x12'.druz9.v1.GetActiveInterviewPrepRequest\x1a(.druz9.v1.GetActiveInterviewPrepResponse\"-\x82\xd3\xe4\x93\x02'\x12%/api/v1/copilot/interview-prep/active\x12\x88\x01\n" +
+	"\x10EndInterviewPrep\x12!.druz9.v1.EndInterviewPrepRequest\x1a\".druz9.v1.EndInterviewPrepResponse\"-\x82\xd3\xe4\x93\x02':\x01*\"\"/api/v1/copilot/interview-prep/endB\x89\x01\n" +
 	"\fcom.druz9.v1B\fCopilotProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -3816,7 +4675,7 @@ func file_druz9_v1_copilot_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_copilot_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_druz9_v1_copilot_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_druz9_v1_copilot_proto_msgTypes = make([]protoimpl.MessageInfo, 57)
 var file_druz9_v1_copilot_proto_goTypes = []any{
 	(CopilotAttachmentKind)(0),                // 0: druz9.v1.CopilotAttachmentKind
 	(ClientOS)(0),                             // 1: druz9.v1.ClientOS
@@ -3867,23 +4726,35 @@ var file_druz9_v1_copilot_proto_goTypes = []any{
 	(*RateCopilotMessageRequest)(nil),         // 46: druz9.v1.RateCopilotMessageRequest
 	(*RateCopilotMessageResponse)(nil),        // 47: druz9.v1.RateCopilotMessageResponse
 	(*CheckBlockRequest)(nil),                 // 48: druz9.v1.CheckBlockRequest
-	(*CheckBlockResponse)(nil),                // 49: druz9.v1.CheckBlockResponse
-	nil,                                       // 50: druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
-	(*timestamppb.Timestamp)(nil),             // 51: google.protobuf.Timestamp
-	(MessageRole)(0),                          // 52: druz9.v1.MessageRole
-	(SubscriptionPlan)(0),                     // 53: druz9.v1.SubscriptionPlan
+	(*ParsedCV)(nil),                          // 49: druz9.v1.ParsedCV
+	(*ParsedJD)(nil),                          // 50: druz9.v1.ParsedJD
+	(*ParseCVRequest)(nil),                    // 51: druz9.v1.ParseCVRequest
+	(*ParseCVResponse)(nil),                   // 52: druz9.v1.ParseCVResponse
+	(*ParseJDRequest)(nil),                    // 53: druz9.v1.ParseJDRequest
+	(*ParseJDResponse)(nil),                   // 54: druz9.v1.ParseJDResponse
+	(*StartInterviewPrepRequest)(nil),         // 55: druz9.v1.StartInterviewPrepRequest
+	(*StartInterviewPrepResponse)(nil),        // 56: druz9.v1.StartInterviewPrepResponse
+	(*GetActiveInterviewPrepRequest)(nil),     // 57: druz9.v1.GetActiveInterviewPrepRequest
+	(*GetActiveInterviewPrepResponse)(nil),    // 58: druz9.v1.GetActiveInterviewPrepResponse
+	(*EndInterviewPrepRequest)(nil),           // 59: druz9.v1.EndInterviewPrepRequest
+	(*EndInterviewPrepResponse)(nil),          // 60: druz9.v1.EndInterviewPrepResponse
+	(*CheckBlockResponse)(nil),                // 61: druz9.v1.CheckBlockResponse
+	nil,                                       // 62: druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
+	(*timestamppb.Timestamp)(nil),             // 63: google.protobuf.Timestamp
+	(MessageRole)(0),                          // 64: druz9.v1.MessageRole
+	(SubscriptionPlan)(0),                     // 65: druz9.v1.SubscriptionPlan
 }
 var file_druz9_v1_copilot_proto_depIdxs = []int32{
-	51, // 0: druz9.v1.CopilotConversation.created_at:type_name -> google.protobuf.Timestamp
-	51, // 1: druz9.v1.CopilotConversation.updated_at:type_name -> google.protobuf.Timestamp
+	63, // 0: druz9.v1.CopilotConversation.created_at:type_name -> google.protobuf.Timestamp
+	63, // 1: druz9.v1.CopilotConversation.updated_at:type_name -> google.protobuf.Timestamp
 	4,  // 2: druz9.v1.CopilotSession.kind:type_name -> druz9.v1.CopilotSessionKind
-	51, // 3: druz9.v1.CopilotSession.started_at:type_name -> google.protobuf.Timestamp
-	51, // 4: druz9.v1.CopilotSession.finished_at:type_name -> google.protobuf.Timestamp
+	63, // 3: druz9.v1.CopilotSession.started_at:type_name -> google.protobuf.Timestamp
+	63, // 4: druz9.v1.CopilotSession.finished_at:type_name -> google.protobuf.Timestamp
 	5,  // 5: druz9.v1.CopilotSessionAnalysis.status:type_name -> druz9.v1.CopilotAnalysisStatus
-	50, // 6: druz9.v1.CopilotSessionAnalysis.section_scores:type_name -> druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
+	62, // 6: druz9.v1.CopilotSessionAnalysis.section_scores:type_name -> druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
 	8,  // 7: druz9.v1.CopilotSessionAnalysis.links:type_name -> druz9.v1.CopilotAnalysisLink
-	51, // 8: druz9.v1.CopilotSessionAnalysis.started_at:type_name -> google.protobuf.Timestamp
-	51, // 9: druz9.v1.CopilotSessionAnalysis.finished_at:type_name -> google.protobuf.Timestamp
+	63, // 8: druz9.v1.CopilotSessionAnalysis.started_at:type_name -> google.protobuf.Timestamp
+	63, // 9: druz9.v1.CopilotSessionAnalysis.finished_at:type_name -> google.protobuf.Timestamp
 	9,  // 10: druz9.v1.CopilotSessionAnalysis.action_items:type_name -> druz9.v1.CopilotAnalysisItem
 	10, // 11: druz9.v1.CopilotSessionAnalysis.terminology:type_name -> druz9.v1.CopilotAnalysisTerm
 	9,  // 12: druz9.v1.CopilotSessionAnalysis.decisions:type_name -> druz9.v1.CopilotAnalysisItem
@@ -3891,12 +4762,12 @@ var file_druz9_v1_copilot_proto_depIdxs = []int32{
 	4,  // 14: druz9.v1.StartCopilotSessionRequest.kind:type_name -> druz9.v1.CopilotSessionKind
 	4,  // 15: druz9.v1.ListCopilotSessionsRequest.kind:type_name -> druz9.v1.CopilotSessionKind
 	7,  // 16: druz9.v1.ListCopilotSessionsResponse.sessions:type_name -> druz9.v1.CopilotSession
-	52, // 17: druz9.v1.CopilotMessage.role:type_name -> druz9.v1.MessageRole
-	51, // 18: druz9.v1.CopilotMessage.created_at:type_name -> google.protobuf.Timestamp
+	64, // 17: druz9.v1.CopilotMessage.role:type_name -> druz9.v1.MessageRole
+	63, // 18: druz9.v1.CopilotMessage.created_at:type_name -> google.protobuf.Timestamp
 	6,  // 19: druz9.v1.CopilotConversationDetail.conversation:type_name -> druz9.v1.CopilotConversation
 	18, // 20: druz9.v1.CopilotConversationDetail.messages:type_name -> druz9.v1.CopilotMessage
-	53, // 21: druz9.v1.CopilotQuota.plan:type_name -> druz9.v1.SubscriptionPlan
-	51, // 22: druz9.v1.CopilotQuota.resets_at:type_name -> google.protobuf.Timestamp
+	65, // 21: druz9.v1.CopilotQuota.plan:type_name -> druz9.v1.SubscriptionPlan
+	63, // 22: druz9.v1.CopilotQuota.resets_at:type_name -> google.protobuf.Timestamp
 	3,  // 23: druz9.v1.CopilotProviderModel.speed_class:type_name -> druz9.v1.ModelSpeedClass
 	2,  // 24: druz9.v1.HotkeyBinding.action:type_name -> druz9.v1.HotkeyAction
 	21, // 25: druz9.v1.DesktopConfig.models:type_name -> druz9.v1.CopilotProviderModel
@@ -3922,40 +4793,58 @@ var file_druz9_v1_copilot_proto_depIdxs = []int32{
 	33, // 45: druz9.v1.ChatEvent.error:type_name -> druz9.v1.CopilotStreamError
 	6,  // 46: druz9.v1.ListCopilotHistoryResponse.conversations:type_name -> druz9.v1.CopilotConversation
 	21, // 47: druz9.v1.ListCopilotProvidersResponse.models:type_name -> druz9.v1.CopilotProviderModel
-	51, // 48: druz9.v1.CheckBlockResponse.until:type_name -> google.protobuf.Timestamp
-	29, // 49: druz9.v1.CopilotService.Analyze:input_type -> druz9.v1.AnalyzeRequest
-	35, // 50: druz9.v1.CopilotService.Chat:input_type -> druz9.v1.ChatRequest
-	37, // 51: druz9.v1.CopilotService.ListHistory:input_type -> druz9.v1.ListCopilotHistoryRequest
-	39, // 52: druz9.v1.CopilotService.GetConversation:input_type -> druz9.v1.GetCopilotConversationRequest
-	40, // 53: druz9.v1.CopilotService.DeleteConversation:input_type -> druz9.v1.DeleteCopilotConversationRequest
-	42, // 54: druz9.v1.CopilotService.ListProviders:input_type -> druz9.v1.ListCopilotProvidersRequest
-	44, // 55: druz9.v1.CopilotService.GetQuota:input_type -> druz9.v1.GetCopilotQuotaRequest
-	45, // 56: druz9.v1.CopilotService.GetDesktopConfig:input_type -> druz9.v1.GetDesktopConfigRequest
-	46, // 57: druz9.v1.CopilotService.RateMessage:input_type -> druz9.v1.RateCopilotMessageRequest
-	13, // 58: druz9.v1.CopilotService.StartSession:input_type -> druz9.v1.StartCopilotSessionRequest
-	14, // 59: druz9.v1.CopilotService.EndSession:input_type -> druz9.v1.EndCopilotSessionRequest
-	15, // 60: druz9.v1.CopilotService.GetSessionAnalysis:input_type -> druz9.v1.GetCopilotSessionAnalysisRequest
-	16, // 61: druz9.v1.CopilotService.ListSessions:input_type -> druz9.v1.ListCopilotSessionsRequest
-	48, // 62: druz9.v1.CopilotService.CheckBlock:input_type -> druz9.v1.CheckBlockRequest
-	34, // 63: druz9.v1.CopilotService.Analyze:output_type -> druz9.v1.AnalyzeEvent
-	36, // 64: druz9.v1.CopilotService.Chat:output_type -> druz9.v1.ChatEvent
-	38, // 65: druz9.v1.CopilotService.ListHistory:output_type -> druz9.v1.ListCopilotHistoryResponse
-	19, // 66: druz9.v1.CopilotService.GetConversation:output_type -> druz9.v1.CopilotConversationDetail
-	41, // 67: druz9.v1.CopilotService.DeleteConversation:output_type -> druz9.v1.DeleteCopilotConversationResponse
-	43, // 68: druz9.v1.CopilotService.ListProviders:output_type -> druz9.v1.ListCopilotProvidersResponse
-	20, // 69: druz9.v1.CopilotService.GetQuota:output_type -> druz9.v1.CopilotQuota
-	26, // 70: druz9.v1.CopilotService.GetDesktopConfig:output_type -> druz9.v1.DesktopConfig
-	47, // 71: druz9.v1.CopilotService.RateMessage:output_type -> druz9.v1.RateCopilotMessageResponse
-	7,  // 72: druz9.v1.CopilotService.StartSession:output_type -> druz9.v1.CopilotSession
-	7,  // 73: druz9.v1.CopilotService.EndSession:output_type -> druz9.v1.CopilotSession
-	12, // 74: druz9.v1.CopilotService.GetSessionAnalysis:output_type -> druz9.v1.CopilotSessionAnalysis
-	17, // 75: druz9.v1.CopilotService.ListSessions:output_type -> druz9.v1.ListCopilotSessionsResponse
-	49, // 76: druz9.v1.CopilotService.CheckBlock:output_type -> druz9.v1.CheckBlockResponse
-	63, // [63:77] is the sub-list for method output_type
-	49, // [49:63] is the sub-list for method input_type
-	49, // [49:49] is the sub-list for extension type_name
-	49, // [49:49] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	49, // 48: druz9.v1.ParseCVResponse.parsed:type_name -> druz9.v1.ParsedCV
+	50, // 49: druz9.v1.ParseJDResponse.parsed:type_name -> druz9.v1.ParsedJD
+	49, // 50: druz9.v1.StartInterviewPrepRequest.parsed_cv:type_name -> druz9.v1.ParsedCV
+	50, // 51: druz9.v1.StartInterviewPrepRequest.parsed_jd:type_name -> druz9.v1.ParsedJD
+	63, // 52: druz9.v1.StartInterviewPrepResponse.started_at:type_name -> google.protobuf.Timestamp
+	49, // 53: druz9.v1.GetActiveInterviewPrepResponse.parsed_cv:type_name -> druz9.v1.ParsedCV
+	50, // 54: druz9.v1.GetActiveInterviewPrepResponse.parsed_jd:type_name -> druz9.v1.ParsedJD
+	63, // 55: druz9.v1.GetActiveInterviewPrepResponse.started_at:type_name -> google.protobuf.Timestamp
+	63, // 56: druz9.v1.CheckBlockResponse.until:type_name -> google.protobuf.Timestamp
+	29, // 57: druz9.v1.CopilotService.Analyze:input_type -> druz9.v1.AnalyzeRequest
+	35, // 58: druz9.v1.CopilotService.Chat:input_type -> druz9.v1.ChatRequest
+	37, // 59: druz9.v1.CopilotService.ListHistory:input_type -> druz9.v1.ListCopilotHistoryRequest
+	39, // 60: druz9.v1.CopilotService.GetConversation:input_type -> druz9.v1.GetCopilotConversationRequest
+	40, // 61: druz9.v1.CopilotService.DeleteConversation:input_type -> druz9.v1.DeleteCopilotConversationRequest
+	42, // 62: druz9.v1.CopilotService.ListProviders:input_type -> druz9.v1.ListCopilotProvidersRequest
+	44, // 63: druz9.v1.CopilotService.GetQuota:input_type -> druz9.v1.GetCopilotQuotaRequest
+	45, // 64: druz9.v1.CopilotService.GetDesktopConfig:input_type -> druz9.v1.GetDesktopConfigRequest
+	46, // 65: druz9.v1.CopilotService.RateMessage:input_type -> druz9.v1.RateCopilotMessageRequest
+	13, // 66: druz9.v1.CopilotService.StartSession:input_type -> druz9.v1.StartCopilotSessionRequest
+	14, // 67: druz9.v1.CopilotService.EndSession:input_type -> druz9.v1.EndCopilotSessionRequest
+	15, // 68: druz9.v1.CopilotService.GetSessionAnalysis:input_type -> druz9.v1.GetCopilotSessionAnalysisRequest
+	16, // 69: druz9.v1.CopilotService.ListSessions:input_type -> druz9.v1.ListCopilotSessionsRequest
+	48, // 70: druz9.v1.CopilotService.CheckBlock:input_type -> druz9.v1.CheckBlockRequest
+	51, // 71: druz9.v1.CopilotService.ParseCV:input_type -> druz9.v1.ParseCVRequest
+	53, // 72: druz9.v1.CopilotService.ParseJD:input_type -> druz9.v1.ParseJDRequest
+	55, // 73: druz9.v1.CopilotService.StartInterviewPrep:input_type -> druz9.v1.StartInterviewPrepRequest
+	57, // 74: druz9.v1.CopilotService.GetActiveInterviewPrep:input_type -> druz9.v1.GetActiveInterviewPrepRequest
+	59, // 75: druz9.v1.CopilotService.EndInterviewPrep:input_type -> druz9.v1.EndInterviewPrepRequest
+	34, // 76: druz9.v1.CopilotService.Analyze:output_type -> druz9.v1.AnalyzeEvent
+	36, // 77: druz9.v1.CopilotService.Chat:output_type -> druz9.v1.ChatEvent
+	38, // 78: druz9.v1.CopilotService.ListHistory:output_type -> druz9.v1.ListCopilotHistoryResponse
+	19, // 79: druz9.v1.CopilotService.GetConversation:output_type -> druz9.v1.CopilotConversationDetail
+	41, // 80: druz9.v1.CopilotService.DeleteConversation:output_type -> druz9.v1.DeleteCopilotConversationResponse
+	43, // 81: druz9.v1.CopilotService.ListProviders:output_type -> druz9.v1.ListCopilotProvidersResponse
+	20, // 82: druz9.v1.CopilotService.GetQuota:output_type -> druz9.v1.CopilotQuota
+	26, // 83: druz9.v1.CopilotService.GetDesktopConfig:output_type -> druz9.v1.DesktopConfig
+	47, // 84: druz9.v1.CopilotService.RateMessage:output_type -> druz9.v1.RateCopilotMessageResponse
+	7,  // 85: druz9.v1.CopilotService.StartSession:output_type -> druz9.v1.CopilotSession
+	7,  // 86: druz9.v1.CopilotService.EndSession:output_type -> druz9.v1.CopilotSession
+	12, // 87: druz9.v1.CopilotService.GetSessionAnalysis:output_type -> druz9.v1.CopilotSessionAnalysis
+	17, // 88: druz9.v1.CopilotService.ListSessions:output_type -> druz9.v1.ListCopilotSessionsResponse
+	61, // 89: druz9.v1.CopilotService.CheckBlock:output_type -> druz9.v1.CheckBlockResponse
+	52, // 90: druz9.v1.CopilotService.ParseCV:output_type -> druz9.v1.ParseCVResponse
+	54, // 91: druz9.v1.CopilotService.ParseJD:output_type -> druz9.v1.ParseJDResponse
+	56, // 92: druz9.v1.CopilotService.StartInterviewPrep:output_type -> druz9.v1.StartInterviewPrepResponse
+	58, // 93: druz9.v1.CopilotService.GetActiveInterviewPrep:output_type -> druz9.v1.GetActiveInterviewPrepResponse
+	60, // 94: druz9.v1.CopilotService.EndInterviewPrep:output_type -> druz9.v1.EndInterviewPrepResponse
+	76, // [76:95] is the sub-list for method output_type
+	57, // [57:76] is the sub-list for method input_type
+	57, // [57:57] is the sub-list for extension type_name
+	57, // [57:57] is the sub-list for extension extendee
+	0,  // [0:57] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_copilot_proto_init() }
@@ -3982,7 +4871,7 @@ func file_druz9_v1_copilot_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_copilot_proto_rawDesc), len(file_druz9_v1_copilot_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   45,
+			NumMessages:   57,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

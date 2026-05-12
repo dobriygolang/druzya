@@ -35,6 +35,11 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	quotas := copilotInfra.NewQuotas(d.Pool)
 	sessions := copilotInfra.NewSessions(d.Pool)
 	reports := copilotInfra.NewReports(d.Pool)
+	// Phase J / C6 — interview-prep repo. Reads / writes
+	// interview_prep_sessions (DB v107). Implements both InterviewPrepRepo
+	// (writer-side: StartActive/GetActive/EndActive) and InterviewPrepProvider
+	// (reader-side, nil-safe per turn).
+	interviewPreps := copilotInfra.NewInterviewPreps(d.Pool)
 
 	// DynamicConfigProvider owns the SELECT against dynamic_config —
 	// cmd/ должен оставаться pure facade, поэтому per-tier config
@@ -105,6 +110,20 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		d.Log.Info("copilot: compaction worker disabled", "reason", cwErr)
 	}
 
+	// C3 (Phase J) — cross-product context provider for the Cue
+	// suggestion path. Wraps intelligence's GetUserContext UC with a
+	// 60s Redis cache. nil-safe at every level: when intelligence UC
+	// not wired (d.IntelligenceUserContext=nil) or Redis is down,
+	// suggestion path falls back to generic prompts gracefully.
+	//
+	// userContextProvider is a typed nil-or-adapter. We assign it as an
+	// interface field below; pass nil-interface (not typed nil) when
+	// adapter is unbuilt to keep nil-checks in callers cheap.
+	var userContextProvider copilotDomain.UserContextProvider
+	if adapter := newUserContextAdapter(d.IntelligenceUserContext, d.Redis, d.Log); adapter != nil {
+		userContextProvider = adapter
+	}
+
 	analyze := &copilotApp.Analyze{
 		Conversations: conversations,
 		Messages:      messages,
@@ -118,6 +137,12 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		MockGate:      mockGate,
 		Compactor:     compactor,
 		CompactionCfg: compactionCfg,
+		// C3 cross-product context (Phase J 2026-05-12). nil-safe.
+		UserContext: userContextProvider,
+		// C6 interview-prep (Phase J 2026-05-12). nil-safe — when the user
+		// hasn't run the wizard, LoadActivePrep returns an empty struct
+		// and the prep-block emission collapses to nothing.
+		InterviewPrep: interviewPreps,
 		Log:           d.Log,
 		Now:           d.Now,
 	}
@@ -153,6 +178,26 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	getAnalysis := &copilotApp.GetSessionAnalysis{Sessions: sessions, Reports: reports}
 	listSessions := &copilotApp.ListSessions{Sessions: sessions}
 	checkBlock := &copilotApp.CheckBlock{Gate: mockGate}
+
+	// Phase J / C6 — interview-prep wizard use cases. ParseCV / ParseJD
+	// use the same llmchain.ChatClient as Analyze (free LLM cascade) so
+	// no extra credentials needed. nil-safe wiring: if d.LLMChain is nil
+	// (dev without GROQ_API_KEY), the use cases would always 502 — we
+	// guard by leaving them unwired in that branch.
+	var (
+		parseCVUC    *copilotApp.ParseCV
+		parseJDUC    *copilotApp.ParseJD
+		startPrepUC  *copilotApp.StartInterviewPrep
+		getPrepUC    *copilotApp.GetActiveInterviewPrep
+		endPrepUC    *copilotApp.EndInterviewPrep
+	)
+	if d.LLMChain != nil {
+		parseCVUC = &copilotApp.ParseCV{Chain: d.LLMChain}
+		parseJDUC = &copilotApp.ParseJD{Chain: d.LLMChain}
+	}
+	startPrepUC = &copilotApp.StartInterviewPrep{Preps: interviewPreps}
+	getPrepUC = &copilotApp.GetActiveInterviewPrep{Preps: interviewPreps}
+	endPrepUC = &copilotApp.EndInterviewPrep{Preps: interviewPreps}
 	runAnalysis := &copilotApp.RunAnalysis{
 		Sessions:     sessions,
 		Messages:     messages,
@@ -171,6 +216,15 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		checkBlock,
 		d.Log,
 	)
+	// Phase J / C6 — attach interview-prep use cases. Direct field
+	// assignment (not constructor) keeps the NewCopilotServer signature
+	// stable across waves; the server's compile-time interface check
+	// covers the handler set.
+	server.ParseCVUC = parseCVUC
+	server.ParseJDUC = parseJDUC
+	server.StartInterviewPrepUC = startPrepUC
+	server.GetActiveInterviewPrepUC = getPrepUC
+	server.EndInterviewPrepUC = endPrepUC
 	// Burst rate-limit on Analyze/Chat (поверх per-day CopilotQuota).
 	// Защищает Groq pool от спайков одного юзера → не валит free-tier
 	// shared rate-limit для других. nil-safe: dev без Redis → no limit.
@@ -197,7 +251,18 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	// Auto-trigger suggestion endpoint (etap 3). Ephemeral — no
 	// conversation persistence. Shares the LLM provider with
 	// Analyze/Chat but with tighter temperature + token budget.
-	suggest := &copilotApp.Suggest{LLM: llm, Config: cfgProvider, TokenQuota: d.TokenQuota}
+	// C3 (Phase J): UserContext provider injects goal/memory/activity/
+	// radar as system-prompt prefix — moat vs Cluely. nil-safe.
+	// C6 (Phase J): InterviewPrep provider injects parsed CV+JD as a
+	// second system block — tailored per-interview prior.
+	suggest := &copilotApp.Suggest{
+		LLM:           llm,
+		Config:        cfgProvider,
+		TokenQuota:    d.TokenQuota,
+		UserContext:   userContextProvider,
+		InterviewPrep: interviewPreps,
+		Log:           d.Log,
+	}
 	var suggestLimiter *ratelimit.RedisFixedWindow
 	if d.Redis != nil {
 		suggestLimiter = ratelimit.NewRedisFixedWindow(d.Redis)

@@ -30,7 +30,16 @@ const adminRoleClaim = "admin"
 type Server struct {
 	H    *app.Handlers
 	Orch *app.Orchestrator
-	Log  *slog.Logger
+	// AlgoGrader powers RunAlgoAttempt. Nil-safe — the handler returns
+	// CodeUnavailable when missing (dev / sandbox-disabled environments).
+	AlgoGrader *app.AlgoGrader
+	// CodingGrader powers RunCodingAttempt — LLM rubric for open-ended code.
+	CodingGrader *app.CodingGrader
+	// SysDesignGrader powers RunSysDesignAttempt — 5-axis rubric for sysdesign.
+	SysDesignGrader *app.SysDesignGrader
+	// BehavioralGrader powers RunBehavioralAttempt — STAR rubric.
+	BehavioralGrader *app.BehavioralGrader
+	Log              *slog.Logger
 }
 
 // NewServer takes the use-case bundle plus the orchestrator (Phase B). The

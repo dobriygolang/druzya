@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
 	profileApp "druz9/profile/app"
@@ -19,6 +20,7 @@ import (
 	"druz9/shared/pkg/eventbus"
 	"druz9/shared/pkg/llmchain"
 	sharedMw "druz9/shared/pkg/middleware"
+	subApp "druz9/subscription/app"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -112,7 +114,6 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 		ApproveAppUC:   &profileApp.ApproveInterviewerApplication{Repo: cached},
 		RejectAppUC:    &profileApp.RejectInterviewerApplication{Repo: cached},
 		AllocateAtlas:  profileApp.NewAllocateAtlasNode(cached, d.Log),
-		VacanciesModel: pg, // non-cached: setting flips at most once/week
 		// Phase 3.1 — user-driven atlas. nil-safe: без llmchain endpoint
 		// возвращает Unimplemented, фронт прячет UI.
 		ClassifyAtlasTodo: buildClassifyAtlasTodo(d, atlasCat, userAtlas),
@@ -121,10 +122,20 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 		// load and the dataset per user is at most 6 rows.
 		GetUserTracks: &profileApp.GetUserTracks{Repo: pg},
 		SetUserTracks: &profileApp.SetUserTracks{Repo: pg},
-		ReportFetcher: reportCache,
-		Repo:          cached,
-		Pool:          d.Pool,
-		Log:           d.Log,
+		// Phase J / X1 (P0) — single onboarding funnel. TrialProGranter is
+		// wired up-front by WireSubscriptionQuota; nil-safe — if absent,
+		// heartbeat still records, trial side-effect is skipped.
+		RecordAppInstall: &profileApp.RecordAppInstall{
+			Repo:  cached,
+			Trial: trialGranterAdapter(d.TrialProGranter),
+			Log:   d.Log,
+			Clock: time.Now,
+		},
+		GetInstalledApps: &profileApp.GetInstalledApps{Repo: cached},
+		ReportFetcher:    reportCache,
+		Repo:             cached,
+		Pool:             d.Pool,
+		Log:              d.Log,
 	})
 	server := profilePorts.NewProfileServer(h)
 
@@ -149,8 +160,6 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/profile/me/atlas/allocate", transcoder.ServeHTTP)
 			r.Post("/profile/me/atlas/todo", transcoder.ServeHTTP)
 			r.Post("/profile/me/atlas/pref", transcoder.ServeHTTP)
-			r.Get("/profile/me/ai-vacancies-model", transcoder.ServeHTTP)
-			r.Put("/profile/me/ai-vacancies-model", transcoder.ServeHTTP)
 			// Multi-track persona (Wave 9.4) — GET читает текущий набор,
 			// PUT целиком заменяет (idempotent set-based update). Связано
 			// с onboarding Step0 + Welcome track-cards.
@@ -163,6 +172,9 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 			r.Get("/admin/interviewer-applications", transcoder.ServeHTTP)
 			r.Post("/admin/interviewer-applications/{application_id}/approve", transcoder.ServeHTTP)
 			r.Post("/admin/interviewer-applications/{application_id}/reject", transcoder.ServeHTTP)
+			// Phase J / X1 (P0) — install-tracking funnel.
+			r.Post("/profile/me/installs", transcoder.ServeHTTP)
+			r.Get("/profile/me/installs", transcoder.ServeHTTP)
 			r.Get("/profile/{username}", transcoder.ServeHTTP)
 
 			// Account deletion (Danger zone). Chi-direct because the
@@ -309,4 +321,35 @@ func (a *atlasClassifierAdapter) Classify(
 		return profileApp.AtlasClassifyResult{}, fmt.Errorf("parse atlas classify: %w", err)
 	}
 	return out, nil
+}
+
+// ── Phase J / X1 (P0) trial-granter adapter ────────────────────────────
+//
+// Bridges subscription.GrantFirstInstallTrial → profile.TrialProGranter
+// interface so the profile UC stays free of cross-service imports. nil
+// input → nil output → the UC checks for nil and skips the side-effect.
+func trialGranterAdapter(g *subApp.GrantFirstInstallTrial) profileApp.TrialProGranter {
+	if g == nil {
+		return nil
+	}
+	return &trialGranterImpl{uc: g}
+}
+
+// trialGranterImpl implements profile/app.TrialProGranter.
+type trialGranterImpl struct {
+	uc *subApp.GrantFirstInstallTrial
+}
+
+func (a *trialGranterImpl) GrantFirstInstallTrial(
+	ctx context.Context,
+	userID uuid.UUID,
+) (bool, time.Time, error) {
+	if a == nil || a.uc == nil {
+		return false, time.Time{}, nil
+	}
+	granted, until, err := a.uc.Do(ctx, userID)
+	if err != nil {
+		return false, time.Time{}, fmt.Errorf("trialGranterAdapter: %w", err)
+	}
+	return granted, until, nil
 }

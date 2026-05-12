@@ -94,17 +94,24 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 	// CreateTask request'ов мы не спавнили 1000 goroutines. Drop с
 	// warn'ом если pool full: task попадает в default todo, фронт
 	// сделает manual placement.
+	//
+	// Phase J / H3 (2026-05-12): categoriser now also infers kind +
+	// reasoning. Когда новый kind отличается от пришедшего из input
+	// (юзер выбрал custom и не уточнил, например), мы UPDATE'им kind
+	// и шлём CardCategorise event для toast'а. ManualKindOverride на
+	// этом пути false — юзер не явно выбирал, может всегда переписать.
 	if uc.Categoriser != nil {
 		userID := in.UserID
 		taskID := created.ID
 		title := in.Title
 		brief := in.BriefMD
 		skillKey := in.SkillKey
+		origKind := kind
 		work := func(catCtx context.Context) {
 			out, err := uc.Categoriser.Do(catCtx, CategoriseTaskInput{
 				Title:    title,
 				BriefMD:  brief,
-				Kind:     string(kind),
+				Kind:     string(origKind),
 				SkillKey: skillKey,
 			})
 			if err != nil {
@@ -113,12 +120,11 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 				}
 				return
 			}
+			// Column placement (existing logic).
 			if newStatus := domain.TaskStatus(out.Column); newStatus.IsValid() && newStatus != domain.TaskStatusToDo {
 				if _, err := uc.Tasks.SetStatus(catCtx, userID, taskID, newStatus); err != nil && uc.Log != nil {
 					uc.Log.Warn("hone.CreateTask: categorise SetStatus", "err", err, "task_id", taskID)
-					return
-				}
-				if uc.CursorBus != nil {
+				} else if uc.CursorBus != nil {
 					uc.CursorBus.Publish(catCtx, domain.CursorEvent{
 						Kind:       domain.CardMove,
 						UserID:     userID,
@@ -128,6 +134,41 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 						OccurredAt: time.Now().UTC(),
 					})
 				}
+			}
+			// Phase J / H3 — kind inference. Update only when LLM
+			// resolved a valid kind and it differs from the one the
+			// user provided (or both are non-custom — we still respect
+			// the user's explicit pick if they didn't choose «custom»).
+			detected := domain.TaskKind(out.Kind)
+			shouldOverride := detected.IsValid() && detected != origKind &&
+				(origKind == domain.TaskKindCustom || origKind == "")
+			if shouldOverride {
+				// Auto-categorise path: manualOverride=false. Repo
+				// guards against trampling a manual override even if
+				// caller mis-passes; here we know it's a freshly
+				// created task (no prior override possible).
+				if _, err := uc.Tasks.SetKind(catCtx, userID, taskID, detected, false); err != nil && uc.Log != nil {
+					uc.Log.Warn("hone.CreateTask: categorise SetKind", "err", err, "task_id", taskID)
+				}
+			}
+			// Toast event — only emit when there's actionable signal
+			// (kind shifted OR confidence high enough that explicit
+			// reassurance is useful). Suppress noisy low-confidence
+			// «I think this is custom» auto-confirmations.
+			if uc.CursorBus != nil && out.Reasoning != "" && (shouldOverride || out.Confidence >= 0.6) {
+				toastKind := detected
+				if !toastKind.IsValid() {
+					toastKind = origKind
+				}
+				uc.CursorBus.Publish(catCtx, domain.CursorEvent{
+					Kind:         domain.CardCategorise,
+					UserID:       userID,
+					TaskID:       taskID,
+					DetectedKind: toastKind,
+					Body:         out.Reasoning,
+					Confidence:   out.Confidence,
+					OccurredAt:   time.Now().UTC(),
+				})
 			}
 		}
 		if uc.CategoriserPool != nil {

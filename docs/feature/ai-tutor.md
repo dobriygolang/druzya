@@ -1,8 +1,15 @@
-# AI-tutor — design (2026-05-01)
+# AI-tutor — design (2026-05-01, F1 Phase 2 implemented 2026-05-12)
 
 **Цель:** дать студенту 24/7 «coach» по конкретной теме (algo / sql / sysdesign / english) — параллельно живому тутору на Boosty, либо как полностью бесплатная альтернатива.
 
 **Reuse-first принцип:** существующий `services/tutor` уже умеет приглашения, relationships, assignments, events, snapshots, briefs. AI-тутор — это просто `users.role='ai_tutor'` запись + персона + memory-слои.
+
+**F1 Phase 2 (2026-05-12) update:** memory surfaces now visible end-to-end:
+- `AITutorChatPage.tsx` CoachMemoryCard renders 5 slices: Goal · Readiness/Streak · Latest Cue session · Stats badge · Working summary
+- `/profile/memory` page (`MemoryPage.tsx`) shows full coach_episodes list (paginated by kind) с soft-delete; AI больше не uses deleted entries
+- Backend `intelligence.ListMemoryEntries` + `intelligence.DeleteMemoryEntry` UCs (migration 00094 added `coach_episodes.deleted_at`)
+- F10 ingestion: Cue session.end → `coach_episodes` row (kind=cue_session) → visible в Recall и DailyBrief
+- Markdown rendering for assistant messages (inline parser: bold/italic/code/links/lists, no heavy dep)
 
 ## Главная инженерная задача — память
 

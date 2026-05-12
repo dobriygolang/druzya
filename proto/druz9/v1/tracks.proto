@@ -14,7 +14,8 @@ option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
 enum TrackStepKind {
   TRACK_STEP_KIND_UNSPECIFIED  = 0;
   TRACK_STEP_KIND_KATA         = 1;
-  TRACK_STEP_KIND_ARENA        = 2;
+  reserved 2; // ARENA removed 2026-05-12 (D8) — see migration 00085.
+  reserved "TRACK_STEP_KIND_ARENA";
   TRACK_STEP_KIND_MOCK         = 3;
   TRACK_STEP_KIND_CODEX_READ   = 4;
   TRACK_STEP_KIND_FOCUS_BLOCK  = 5;

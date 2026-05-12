@@ -107,7 +107,7 @@ export function ListeningPage() {
       style={{
         position: 'absolute',
         inset: 0,
-        animationDuration: '320ms',
+        animationDuration: 'var(--motion-dur-large)',
         display: 'flex',
         flexDirection: 'row',
       }}
@@ -118,6 +118,7 @@ export function ListeningPage() {
         onAdd={() => setMode({ kind: 'adding' })}
         onOpen={(m) => void handleOpen(m)}
         onArchive={(id) => void handleArchive(id)}
+        onRefresh={() => setRefreshKey((k) => k + 1)}
       />
       <main style={{ flex: 1, minWidth: 0, position: 'relative', overflowY: 'auto', paddingTop: 64 }}>
         {mode.kind === 'library' && <WelcomePane onAdd={() => setMode({ kind: 'adding' })} />}
@@ -140,9 +141,10 @@ interface LibraryPaneProps {
   onAdd: () => void;
   onOpen: (m: ListeningMaterial) => void;
   onArchive: (id: string) => void;
+  onRefresh: () => void;
 }
 
-function LibraryPane({ state, activeId, onAdd, onOpen, onArchive }: LibraryPaneProps) {
+function LibraryPane({ state, activeId, onAdd, onOpen, onArchive, onRefresh }: LibraryPaneProps) {
   return (
     <aside
       style={{
@@ -164,7 +166,7 @@ function LibraryPane({ state, activeId, onAdd, onOpen, onArchive }: LibraryPaneP
           borderBottom: '1px solid rgba(255,255,255,0.04)',
         }}
       >
-        <div className="mono" style={{ fontSize: 10, letterSpacing: '0.24em', color: 'var(--ink-40)' }}>
+        <div className="mono" style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)' }}>
           LISTENING · LIBRARY
         </div>
         <button
@@ -191,10 +193,51 @@ function LibraryPane({ state, activeId, onAdd, onOpen, onArchive }: LibraryPaneP
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 16px' }}>
         {state.status === 'loading' && (
-          <p style={{ color: 'var(--ink-40)', fontSize: 12, padding: '8px 12px' }}>Loading…</p>
+          <ul
+            aria-busy="true"
+            aria-label="Loading library"
+            style={{ listStyle: 'none', padding: 0, margin: 0 }}
+          >
+            {/* CI1: height-stable skeleton matching item layout. */}
+            {Array.from({ length: 4 }).map((_, i) => (
+              <li key={i} style={{ padding: '10px 12px', margin: '2px 0' }}>
+                <div
+                  style={{
+                    height: 13,
+                    width: '70%',
+                    background: 'rgba(255,255,255,0.04)',
+                    borderRadius: 4,
+                    marginBottom: 8,
+                  }}
+                />
+                <div
+                  style={{
+                    height: 10,
+                    width: '40%',
+                    background: 'rgba(255,255,255,0.03)',
+                    borderRadius: 4,
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
         )}
         {state.status === 'error' && (
-          <p style={{ color: 'var(--ink-60)', fontSize: 12, padding: '8px 12px' }}>{state.error}</p>
+          // CI1: stripe + retry button (был silent plain text).
+          <div className="data-loader-error" style={{ margin: '8px 12px' }}>
+            <div className="data-loader-error-stripe" />
+            <div className="data-loader-error-body">
+              <div className="data-loader-error-label">Library не загрузилась</div>
+              <div className="data-loader-error-detail">{state.error}</div>
+              <button
+                type="button"
+                className="data-loader-error-retry focus-ring motion-press"
+                onClick={onRefresh}
+              >
+                retry
+              </button>
+            </div>
+          </div>
         )}
         {state.status === 'ok' && state.materials.length === 0 && (
           <div style={{ padding: '12px 12px', color: 'var(--ink-40)', fontSize: 12 }}>
@@ -211,6 +254,8 @@ function LibraryPane({ state, activeId, onAdd, onOpen, onArchive }: LibraryPaneP
                 <button
                   type="button"
                   onClick={() => onOpen(m)}
+                  aria-current={isActive ? 'page' : undefined}
+                  aria-pressed={isActive}
                   style={{
                     width: '100%',
                     textAlign: 'left',
@@ -240,7 +285,7 @@ function LibraryPane({ state, activeId, onAdd, onOpen, onArchive }: LibraryPaneP
                     style={{
                       marginTop: 4,
                       fontSize: 10,
-                      letterSpacing: '0.12em',
+                      letterSpacing: '0.08em',
                       color: 'var(--ink-40)',
                       display: 'flex',
                       gap: 8,
@@ -285,7 +330,7 @@ function WelcomePane({ onAdd }: { onAdd: () => void }) {
     <div style={{ width: 720, maxWidth: '92%', margin: '32px auto 0', padding: '0 24px' }}>
       <div
         className="mono"
-        style={{ fontSize: 10, letterSpacing: '0.24em', color: 'var(--ink-40)', marginBottom: 4 }}
+        style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)', marginBottom: 4 }}
       >
         LISTENING
       </div>
@@ -402,7 +447,7 @@ function AddForm({ onCancel, onAdded }: { onCancel: () => void; onAdded: () => v
     >
       <div
         className="mono"
-        style={{ fontSize: 10, letterSpacing: '0.24em', color: 'var(--ink-40)', marginBottom: 4 }}
+        style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)', marginBottom: 4 }}
       >
         LISTENING · ADD
       </div>
@@ -419,7 +464,7 @@ function AddForm({ onCancel, onAdded }: { onCancel: () => void; onAdded: () => v
       </h1>
 
       {/* Source tabs: YouTube (auto-captions) vs Manual (paste URL+transcript) */}
-      <div style={{ marginTop: 18, display: 'flex', gap: 4 }}>
+      <div role="tablist" aria-label="Audio source" style={{ marginTop: 18, display: 'flex', gap: 4 }}>
         <SourceTab active={source === 'youtube'} onClick={() => setSource('youtube')}>
           🎥 YouTube
         </SourceTab>
@@ -515,6 +560,9 @@ function SourceTab({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       type="button"
       onClick={onClick}
+      role="tab"
+      aria-selected={active}
+      aria-pressed={active}
       style={{
         padding: '6px 14px',
         fontSize: 12,
@@ -628,7 +676,7 @@ function Player({ material, onExit }: { material: ListeningMaterial; onExit: () 
           <header style={{ marginBottom: 24 }}>
             <div
               className="mono"
-              style={{ fontSize: 10, letterSpacing: '0.24em', color: 'var(--ink-40)', marginBottom: 4 }}
+              style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)', marginBottom: 4 }}
             >
               LISTENING
             </div>
@@ -741,7 +789,7 @@ function PlayerTransport({
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <span
           className="mono"
-          style={{ fontSize: 9, letterSpacing: '0.16em', color: 'var(--ink-40)' }}
+          style={{ fontSize: 9, letterSpacing: '0.08em', color: 'var(--ink-40)' }}
         >
           SPEED
         </span>
@@ -815,7 +863,7 @@ function Paragraph({ text, onWordClick }: { text: string; onWordClick: Transcrip
                 cursor: 'pointer',
                 borderRadius: 3,
                 padding: '0 1px',
-                transition: 'background 80ms',
+                transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard)',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -913,7 +961,7 @@ function VocabPopoverInput({ popover, onSave, onCancel }: VocabPopoverInputProps
         if (e.key === 'Escape') onCancel();
       }}
     >
-      <div className="mono" style={{ fontSize: 9, letterSpacing: '0.2em', color: 'var(--ink-40)' }}>
+      <div className="mono" style={{ fontSize: 9, letterSpacing: '0.08em', color: 'var(--ink-40)' }}>
         ADD TO SRS
       </div>
       <div style={{ marginTop: 4, fontSize: 16, fontWeight: 500, color: 'var(--ink)' }}>
@@ -959,7 +1007,7 @@ const labelStyle: React.CSSProperties = { display: 'block', marginTop: 14 };
 const labelTextStyle: React.CSSProperties = {
   display: 'block',
   fontSize: 10,
-  letterSpacing: '0.16em',
+  letterSpacing: '0.08em',
   color: 'var(--ink-40)',
   marginBottom: 6,
   fontFamily: 'ui-monospace, SFMono-Regular, monospace',

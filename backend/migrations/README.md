@@ -1,8 +1,23 @@
 # druz9 migrations
 
-Goose SQL поверх Postgres. Один консолидированный baseline `00001_baseline.sql` (~3.1k строк, финальная схема + Phase 1-4 / Wave 0-6 inline) + ~60 patch-миграций сверху.
+Goose SQL поверх Postgres. Один консолидированный baseline `00001_baseline.sql` (~3.1k строк, финальная схема + Phase 1-4 / Wave 0-6 inline) + ~80 patch-миграций сверху.
 
-Текущее состояние (2026-05-05): **64 `.sql` файла**, последний номер — `00081`. Гэпы (00002-15, 00053, 00069-71) — следствие consolidations и переименований; goose их игнорирует. Дубликат `00068` (focus_mode_check + drop_anticheat_attribute_columns) — оба уже применены на проде, ПЕРЕИМЕНОВЫВАТЬ НЕЛЬЗЯ (сломаешь goose).
+Текущее состояние (2026-05-12 marathon): последний номер — `00096` (goal_presets — admin Phase 2 starter). Гэпы (00002-15, 00053, 00069-71, 00084) — следствие consolidations, переименований и параллельных cleanup-волн; goose их игнорирует. Дубликат `00068` (focus_mode_check + drop_anticheat_attribute_columns) — оба уже применены на проде, ПЕРЕИМЕНОВЫВАТЬ НЕЛЬЗЯ (сломаешь goose).
+
+**2026-05-12 marathon миграции (00083 → 00096):**
+- 00083 — F6 resource_promotion_deprecate (+ deprecated_at/reason + partial index)
+- 00085 — D8 drop RPG leftovers (friendships, friend_codes, track_step_kind enum rebuild без 'arena')
+- 00086 — F2 user_primary_goals (single-active goal per user, 5 GoalKind enum)
+- 00087 — F10 cue_sessions (interview-session ingestion + JSONB stages)
+- 00088 — drop llm_models.use_for_arena (post-D8 cleanup)
+- 00089 — Stream C subscription_tiers (BYOK encrypted keys)
+- 00090 — Stream E google_calendar (credentials + events_synced + indexes)
+- 00091 — Stream F drop_peer_collab (editor_rooms.code col, presence/WS RAM-only — nothing to drop)
+- 00092 — R7 stage_templates (+ 5 builtin seeds: standard/yandex/ozon/pm/blank)
+- 00093 — Stream D tutor_mode_paths + users.tutor_mode_enabled
+- 00094 — F2 user_milestones + coach_episodes.deleted_at (memory soft-delete)
+- 00095 — Stripe stripe_subscriptions + stripe_customers
+- 00096 — Admin Phase 2 goal_presets (+ 8 builtin seeds)
 
 ## Как это работает
 
@@ -25,7 +40,7 @@ Apply'ит миграции CI deploy-step (`infra/deploy.sh` → `make migrate-
 | **Learning state (47, 56)** | Track progress | `learning_state`, `step_checkpoint_attempts` |
 | **Collab rooms (66)** | Editor / whiteboard | `editor_rooms` / `whiteboard_rooms` ALTER + `user_room_quota` |
 | **Observability (60, 63)** | Admin dashboards | `observability_*`, `admin_audit_log` (dropped в 67) |
-| **Cleanup / drops (29, 31-32, 34, 46, 67-68, 74-81)** | Удаление выпиленных модулей | drop arena/lobby/marketplace/slot/rating/review/events/anticheat/dead_schema/ai_credits/career_stage/daily_kata/orphans/personal_events/xp_events |
+| **Cleanup / drops (29, 31-32, 34, 46, 67-68, 74-82, 85)** | Удаление выпиленных модулей | drop arena/lobby/marketplace/slot/rating/review/events/anticheat/dead_schema/ai_credits/career_stage/daily_kata/orphans/personal_events/xp_events/vacancies/friendships + track_step_kind enum rebuild без 'arena' |
 | **Misc (25-26, 28, 37, 39, 59, 61, 72-73)** | company stages, tasks/mock seed, external_activity, ai_chat_quota, onboarding_version, perf_indexes, status_enums |
 
 ## Когда добавлять новый файл

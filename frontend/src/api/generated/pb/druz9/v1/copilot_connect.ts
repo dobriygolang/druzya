@@ -18,7 +18,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AnalyzeEvent, AnalyzeRequest, ChatEvent, ChatRequest, CheckBlockRequest, CheckBlockResponse, CopilotConversationDetail, CopilotQuota, CopilotSession, CopilotSessionAnalysis, DeleteCopilotConversationRequest, DeleteCopilotConversationResponse, DesktopConfig, EndCopilotSessionRequest, GetCopilotConversationRequest, GetCopilotQuotaRequest, GetCopilotSessionAnalysisRequest, GetDesktopConfigRequest, ListCopilotHistoryRequest, ListCopilotHistoryResponse, ListCopilotProvidersRequest, ListCopilotProvidersResponse, ListCopilotSessionsRequest, ListCopilotSessionsResponse, RateCopilotMessageRequest, RateCopilotMessageResponse, StartCopilotSessionRequest } from "./copilot_pb.js";
+import { AnalyzeEvent, AnalyzeRequest, ChatEvent, ChatRequest, CheckBlockRequest, CheckBlockResponse, CopilotConversationDetail, CopilotQuota, CopilotSession, CopilotSessionAnalysis, DeleteCopilotConversationRequest, DeleteCopilotConversationResponse, DesktopConfig, EndCopilotSessionRequest, EndInterviewPrepRequest, EndInterviewPrepResponse, GetActiveInterviewPrepRequest, GetActiveInterviewPrepResponse, GetCopilotConversationRequest, GetCopilotQuotaRequest, GetCopilotSessionAnalysisRequest, GetDesktopConfigRequest, ListCopilotHistoryRequest, ListCopilotHistoryResponse, ListCopilotProvidersRequest, ListCopilotProvidersResponse, ListCopilotSessionsRequest, ListCopilotSessionsResponse, ParseCVRequest, ParseCVResponse, ParseJDRequest, ParseJDResponse, RateCopilotMessageRequest, RateCopilotMessageResponse, StartCopilotSessionRequest, StartInterviewPrepRequest, StartInterviewPrepResponse } from "./copilot_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -195,6 +195,73 @@ export const CopilotService = {
       name: "CheckBlock",
       I: CheckBlockRequest,
       O: CheckBlockResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ParseCV runs the user-uploaded résumé through the free LLM chain and
+     * returns a structured ParsedCV. No persistence — purely the parsing
+     * step of the wizard. Caller invokes after the user picks a file +
+     * commits to "next step".
+     *
+     * @generated from rpc druz9.v1.CopilotService.ParseCV
+     */
+    parseCV: {
+      name: "ParseCV",
+      I: ParseCVRequest,
+      O: ParseCVResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ParseJD parses the JD via the same chain. Accepts either text body
+     * or URL — URL fetching is best-effort (returns FailedPrecondition if
+     * the host blocks; client should fall back to text).
+     *
+     * @generated from rpc druz9.v1.CopilotService.ParseJD
+     */
+    parseJD: {
+      name: "ParseJD",
+      I: ParseJDRequest,
+      O: ParseJDResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * StartInterviewPrep commits parsed CV + JD as the user's CURRENT
+     * active prep context. Replaces any prior prep (single-active per
+     * user). Subsequent Analyze / Chat / Suggest turns consult the row
+     * and prepend a tailored system block — the moat vs Cluely.
+     *
+     * @generated from rpc druz9.v1.CopilotService.StartInterviewPrep
+     */
+    startInterviewPrep: {
+      name: "StartInterviewPrep",
+      I: StartInterviewPrepRequest,
+      O: StartInterviewPrepResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetActiveInterviewPrep returns the user's current prep row (if any).
+     * Empty when no active prep. The desktop client uses this to show a
+     * status chip in Settings + Compact, and to surface the "End prep
+     * mode" button.
+     *
+     * @generated from rpc druz9.v1.CopilotService.GetActiveInterviewPrep
+     */
+    getActiveInterviewPrep: {
+      name: "GetActiveInterviewPrep",
+      I: GetActiveInterviewPrepRequest,
+      O: GetActiveInterviewPrepResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * EndInterviewPrep clears the user's active prep so future suggestions
+     * stop injecting it. Idempotent — no-op when there is no active prep.
+     *
+     * @generated from rpc druz9.v1.CopilotService.EndInterviewPrep
+     */
+    endInterviewPrep: {
+      name: "EndInterviewPrep",
+      I: EndInterviewPrepRequest,
+      O: EndInterviewPrepResponse,
       kind: MethodKind.Unary,
     },
   }

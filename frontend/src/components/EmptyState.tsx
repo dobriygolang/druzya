@@ -17,8 +17,8 @@
 //   coming-soon   — feature not shipped. Optional email-subscribe CTA.
 //   404-not-found — entity by id was deleted / invalid. Auto secondary
 //                   "back" wired through useNavigate.
-//   throttled     — backend rate-limited (typically 429 from /vacancies/
-//                   sync). Live countdown driven by retryAfterSec prop.
+//   throttled     — backend rate-limited (typically 429 from heavy sync).
+//                   Live countdown driven by retryAfterSec prop.
 //
 // Anti-fallback recap: this component never invents data. If body is
 // missing it shows just the kicker + title. If CTA is missing it shows
@@ -111,8 +111,8 @@ function useDefaults(variant: EmptyVariant): {
 
 function CtaButton({ cta, primary, disabled }: { cta: EmptyCta; primary: boolean; disabled?: boolean }) {
   const cls = primary
-    ? 'rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-semibold text-sm px-4 py-2 disabled:opacity-60 disabled:cursor-not-allowed'
-    : 'rounded-md border border-border bg-surface-1 text-text-secondary font-medium text-sm px-4 py-2 hover:bg-surface-2'
+    ? 'rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-semibold text-sm px-4 py-2 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] disabled:opacity-60 disabled:cursor-not-allowed'
+    : 'rounded-md border border-border bg-surface-1 text-text-secondary font-medium text-sm px-4 py-2 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-2'
   if (cta.href) {
     return (
       <a href={cta.href} className={cls}>
@@ -177,7 +177,7 @@ export function EmptyState(props: EmptyStateProps) {
       aria-live={props.variant === 'error' ? 'assertive' : 'polite'}
     >
       {!props.compact && <EmptyIllustration variant={props.variant} />}
-      <div className={cn('font-mono text-[10px] uppercase tracking-wider mb-2', def.tone)}>{kicker}</div>
+      <div className={cn('font-mono text-[10px] uppercase tracking-[0.08em] mb-2', def.tone)}>{kicker}</div>
       <h3 className="font-display text-lg font-bold mb-1.5 text-text-primary">{title}</h3>
       {body && (
         <p className="text-[13px] text-text-secondary mb-5 max-w-[380px] mx-auto leading-relaxed">{body}</p>

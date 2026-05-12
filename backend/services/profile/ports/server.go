@@ -351,6 +351,62 @@ func (s *ProfileServer) GetUserTracks(
 	return connect.NewResponse(toUserTracksProto(items)), nil
 }
 
+// RecordAppInstall implements (POST /profile/me/installs).
+// Phase J / X1 (P0). Idempotent heartbeat fired by web / Hone / Cue on
+// launch. First install across all 3 surfaces triggers a 7d Pro trial
+// via the subscription bounded context.
+func (s *ProfileServer) RecordAppInstall(
+	ctx context.Context,
+	req *connect.Request[pb.RecordAppInstallRequest],
+) (*connect.Response[pb.RecordAppInstallResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.H.RecordAppInstall == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("install tracking not wired"))
+	}
+	app, err := appSurfaceFromProto(req.Msg.GetApp())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	out, err := s.H.RecordAppInstall.Do(ctx, app.toInput(uid, req.Msg.GetAppVersion()))
+	if err != nil {
+		return nil, fmt.Errorf("profile.RecordAppInstall: %w", s.toConnectErr(err))
+	}
+	resp := &pb.RecordAppInstallResponse{
+		Install:         toInstallProto(out.Install),
+		TrialProGranted: out.TrialGranted,
+	}
+	if !out.TrialUntil.IsZero() {
+		resp.TrialProUntil = out.TrialUntil.UTC().Format(time.RFC3339)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// GetInstalledApps implements (GET /profile/me/installs).
+func (s *ProfileServer) GetInstalledApps(
+	ctx context.Context,
+	_ *connect.Request[pb.GetInstalledAppsRequest],
+) (*connect.Response[pb.GetInstalledAppsResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.H.GetInstalledApps == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("install tracking not wired"))
+	}
+	items, err := s.H.GetInstalledApps.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("profile.GetInstalledApps: %w", s.toConnectErr(err))
+	}
+	out := &pb.GetInstalledAppsResponse{Installs: make([]*pb.InstalledApp, 0, len(items))}
+	for _, it := range items {
+		out.Installs = append(out.Installs, toInstallProto(it))
+	}
+	return connect.NewResponse(out), nil
+}
+
 // SetUserTracks implements (/profile/me/tracks PUT). Replaces the user's
 // track list atomically. Empty list and missing primary are 400's.
 func (s *ProfileServer) SetUserTracks(
@@ -407,6 +463,8 @@ func toProfileFullProto(v app.ProfileView) *pb.ProfileFull {
 		},
 		Role: userRoleToProto(b.User.Role),
 	}
+	// Stream D (2026-05-12) — surface tutor_mode_enabled for AppShell RBAC.
+	out.TutorModeEnabled = b.User.TutorModeEnabled
 	if b.Subscription.CurrentPeriodEnd != nil {
 		out.Subscription.CurrentPeriodEnd = timestamppb.New(b.Subscription.CurrentPeriodEnd.UTC())
 	}
@@ -560,6 +618,9 @@ func toSettingsProto(s domain.Settings) *pb.ProfileSettings {
 		OnboardingCompleted: &onboarding,
 		FocusClass:          &focus,
 	}
+	// Stream D (2026-05-12) — emit tutor_mode_enabled.
+	tm := s.TutorModeEnabled
+	out.TutorModeEnabled = &tm
 	channels := make([]pb.NotificationChannel, 0, len(s.Notifications.Channels))
 	for _, c := range s.Notifications.Channels {
 		channels = append(channels, notificationChannelToProto(c))
@@ -589,6 +650,12 @@ func fromSettingsProto(req *pb.ProfileSettings) domain.Settings {
 	if req.FocusClass != nil {
 		s.HasFocusClass = true
 		s.FocusClass = req.GetFocusClass()
+	}
+	// Stream D (2026-05-12) — tutor_mode_enabled is `optional` so a PUT
+	// that omits the field leaves the column untouched.
+	if req.TutorModeEnabled != nil {
+		s.HasTutorModeEnabled = true
+		s.TutorModeEnabled = req.GetTutorModeEnabled()
 	}
 	if req.GetDefaultLanguage() != pb.Language_LANGUAGE_UNSPECIFIED {
 		s.DefaultLanguage = languageFromProto(req.GetDefaultLanguage())
@@ -782,6 +849,58 @@ func trackToProto(t domain.Track) pb.Track {
 	default:
 		return pb.Track_TRACK_UNSPECIFIED
 	}
+}
+
+// ── App install converters (Phase J / X1 (P0)) ─────────────────────────
+
+// appSurfaceWrapper carries the validated domain.AppSurface plus a helper
+// for building the UC input. Keeps the RPC body compact and tested.
+type appSurfaceWrapper struct{ v domain.AppSurface }
+
+func (w appSurfaceWrapper) toInput(uid uuid.UUID, version string) app.RecordAppInstallInput {
+	return app.RecordAppInstallInput{UserID: uid, App: w.v, AppVersion: version}
+}
+
+func appSurfaceFromProto(p pb.AppSurface) (appSurfaceWrapper, error) {
+	switch p {
+	case pb.AppSurface_APP_SURFACE_WEB:
+		return appSurfaceWrapper{v: domain.AppSurfaceWeb}, nil
+	case pb.AppSurface_APP_SURFACE_HONE:
+		return appSurfaceWrapper{v: domain.AppSurfaceHone}, nil
+	case pb.AppSurface_APP_SURFACE_CUE:
+		return appSurfaceWrapper{v: domain.AppSurfaceCue}, nil
+	case pb.AppSurface_APP_SURFACE_UNSPECIFIED:
+		return appSurfaceWrapper{}, fmt.Errorf("app surface is required")
+	default:
+		return appSurfaceWrapper{}, fmt.Errorf("unknown app surface %v", p)
+	}
+}
+
+func appSurfaceToProto(a domain.AppSurface) pb.AppSurface {
+	switch a {
+	case domain.AppSurfaceWeb:
+		return pb.AppSurface_APP_SURFACE_WEB
+	case domain.AppSurfaceHone:
+		return pb.AppSurface_APP_SURFACE_HONE
+	case domain.AppSurfaceCue:
+		return pb.AppSurface_APP_SURFACE_CUE
+	default:
+		return pb.AppSurface_APP_SURFACE_UNSPECIFIED
+	}
+}
+
+func toInstallProto(it domain.AppInstall) *pb.InstalledApp {
+	out := &pb.InstalledApp{
+		App:        appSurfaceToProto(it.App),
+		AppVersion: it.AppVersion,
+	}
+	if !it.FirstSeenAt.IsZero() {
+		out.FirstSeenAt = timestamppb.New(it.FirstSeenAt.UTC())
+	}
+	if !it.LastSeenAt.IsZero() {
+		out.LastSeenAt = timestamppb.New(it.LastSeenAt.UTC())
+	}
+	return out
 }
 
 func trackFromProto(t pb.Track) (domain.Track, error) {

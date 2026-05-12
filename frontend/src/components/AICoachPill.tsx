@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Loader2, Send, Sparkles, X } from 'lucide-react'
 
 import { Button } from './Button'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import {
   useAdoptAITutorMutation,
   useSendAITutorMessageMutation,
@@ -99,6 +100,8 @@ export function AICoachPill({
     }
   }
 
+  const trapRef = useFocusTrap(open)
+
   return (
     <>
       <button
@@ -111,7 +114,7 @@ export function AICoachPill({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[60] flex items-stretch justify-end" role="dialog" aria-modal="true">
+        <div ref={trapRef} className="fixed inset-0 z-[60] flex items-stretch justify-end" role="dialog" aria-modal="true">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setOpen(false)}
@@ -199,6 +202,7 @@ export function AICoachPill({
                 <Button
                   type="submit"
                   size="sm"
+                  aria-label="Send message"
                   disabled={!draft.trim() || !threadId || send.isPending}
                 >
                   <Send className="h-3.5 w-3.5" />

@@ -337,6 +337,26 @@ func (c *CachedRepo) UpdateSettings(ctx context.Context, userID uuid.UUID, s dom
 	return nil
 }
 
+// GetTutorModeEnabled — Stream D (2026-05-12). Cheap PK lookup; we let
+// it pass through (cache key would invalidate alongside the bundle anyway).
+func (c *CachedRepo) GetTutorModeEnabled(ctx context.Context, userID uuid.UUID) (bool, error) {
+	v, err := c.delegate.GetTutorModeEnabled(ctx, userID)
+	if err != nil {
+		return false, fmt.Errorf("profile.cache.GetTutorModeEnabled: %w", err)
+	}
+	return v, nil
+}
+
+// SetTutorModeEnabled — write pass-through with bundle invalidation so
+// the AppShell sees the new flag value on next /profile/me fetch.
+func (c *CachedRepo) SetTutorModeEnabled(ctx context.Context, userID uuid.UUID, enabled bool) error {
+	if err := c.delegate.SetTutorModeEnabled(ctx, userID, enabled); err != nil {
+		return fmt.Errorf("profile.cache.SetTutorModeEnabled: %w", err)
+	}
+	c.Invalidate(ctx, userID)
+	return nil
+}
+
 // UpdateRole — write pass-through with cache invalidation (role lives on the
 // User row inside the cached bundle).
 func (c *CachedRepo) UpdateRole(ctx context.Context, userID uuid.UUID, role string) error {
@@ -446,6 +466,32 @@ func (c *CachedRepo) SetUserTracks(ctx context.Context, userID uuid.UUID, items 
 	out, err := c.delegate.SetUserTracks(ctx, userID, items)
 	if err != nil {
 		return out, fmt.Errorf("profile.cache.SetUserTracks: %w", err)
+	}
+	return out, nil
+}
+
+// UpsertAppInstall — pass-through (Phase J / X1 (P0)). Heartbeats fire
+// at most a few times per session per app; caching adds nothing.
+func (c *CachedRepo) UpsertAppInstall(
+	ctx context.Context,
+	userID uuid.UUID,
+	app domain.AppSurface,
+	appVersion string,
+) (domain.AppInstall, bool, int64, error) {
+	install, inserted, before, err := c.delegate.UpsertAppInstall(ctx, userID, app, appVersion)
+	if err != nil {
+		return install, inserted, before, fmt.Errorf("profile.cache.UpsertAppInstall: %w", err)
+	}
+	return install, inserted, before, nil
+}
+
+// ListAppInstalls — pass-through. Per-user cardinality ≤ 3 rows; we read
+// it on-demand from Hone (post-focus-session check) which is rare. Caching
+// is not worth the invalidation complexity.
+func (c *CachedRepo) ListAppInstalls(ctx context.Context, userID uuid.UUID) ([]domain.AppInstall, error) {
+	out, err := c.delegate.ListAppInstalls(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("profile.cache.ListAppInstalls: %w", err)
 	}
 	return out, nil
 }

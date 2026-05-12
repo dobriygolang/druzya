@@ -34,8 +34,24 @@ type Querier interface {
 	// array_remove is a no-op when the id isn't present, which matches the
 	// idempotency we want on the Attach side.
 	DetachDocumentFromSession(ctx context.Context, arg DetachDocumentFromSessionParams) (int64, error)
+	// =============================================================================
+	// Interview prep sessions (Phase J / C6)
+	// =============================================================================
+	// Stamps ended_at on every active prep for the user. Called inside
+	// StartInterviewPrep's transaction before the new INSERT so the partial
+	// unique index doesn't trip. Idempotent — returns 0 when there is no
+	// active row.
+	EndActiveInterviewPreps(ctx context.Context, userID pgtype.UUID) (int64, error)
 	EndCopilotSession(ctx context.Context, arg EndCopilotSessionParams) (int64, error)
+	// Targeted end (when the client passes a specific session_id). Scoped
+	// to user_id for auth — returns 0 affected when the id belongs to
+	// another user.
+	EndInterviewPrepByID(ctx context.Context, arg EndInterviewPrepByIDParams) (int64, error)
 	FailCopilotSessionReport(ctx context.Context, arg FailCopilotSessionReportParams) (int64, error)
+	// Returns the user's single live prep row (ended_at IS NULL). The partial
+	// unique index guarantees ≤1; sqlc maps "no rows" → pgx.ErrNoRows which
+	// the app layer translates to "no active prep".
+	GetActiveInterviewPrep(ctx context.Context, userID pgtype.UUID) (InterviewPrepSession, error)
 	// summary_model — Phase VI: пробрасывается на read-side для drift-детекции
 	// (compactor сравнит с current model и форсирует regen при mismatch).
 	GetCopilotConversation(ctx context.Context, id pgtype.UUID) (GetCopilotConversationRow, error)
@@ -63,6 +79,7 @@ type Querier interface {
 	// Messages
 	// =============================================================================
 	InsertCopilotMessage(ctx context.Context, arg InsertCopilotMessageParams) (CopilotMessage, error)
+	InsertInterviewPrepSession(ctx context.Context, arg InsertInterviewPrepSessionParams) (InterviewPrepSession, error)
 	// Used by the analyzer to hydrate the session's full turn history.
 	ListConversationsInSession(ctx context.Context, sessionID pgtype.UUID) ([]ListConversationsInSessionRow, error)
 	// Keyset pagination by updated_at DESC, id DESC (stable order).

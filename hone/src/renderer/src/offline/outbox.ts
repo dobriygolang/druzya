@@ -58,7 +58,28 @@ export type OutboxOpKind =
   | 'reflection.submit'
   // Phase 4 (existing). Verify в Phase 4 wire — graceful enqueue если
   // log session offline.
-  | 'external_activity.log';
+  | 'external_activity.log'
+  // Phase A cleanup (2026-05-12) — focus session end. RPC `endFocusSession`
+  // ставит метку завершения + сохраняет reflection. Offline → reflection
+  // юзера терялся (silent catch). Backend закрывает session по таймауту,
+  // но reflection — pure user data, её надо сохранить. Drain отправит
+  // повторный end на ту же sessionId; если backend EndFocusSession не
+  // идемпотентна — second call вернёт ошибку, op станет dead после
+  // MAX_ATTEMPTS, reflection доедет с первой удачной попытки.
+  | 'focus.end'
+  // H2 (Phase J 2026-05-12) — structured pomodoro reflection (grade 1-5 +
+  // notes). RPC SaveFocusReflection идемпотентна через UNIQUE(user_id,
+  // session_id) ON CONFLICT DO UPDATE — repeat drain безопасен; latest
+  // grade/notes wins (юзер мог дополнить позже).
+  | 'focus.reflection'
+  // H4 (Phase J 2026-05-12) — Speaking submission. User recorded a
+  // shadowing exercise offline → audio blob serialised to base64 в
+  // payload, drained when online. Backend GradeSpeaking идемпотентна
+  // через UNIQUE(user_id, client_session_id) ON CONFLICT DO NOTHING —
+  // replay безопасен; первая успешная попытка фиксирует scores. Audio
+  // payload — 1-5MB — large for outbox but durable storage matters more
+  // than payload size for a feature that's only used periodically.
+  | 'speaking.submission';
 
 export interface OutboxOp {
   id: string; // client-generated uuid v4

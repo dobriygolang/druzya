@@ -43,10 +43,12 @@ export type AIModelsResponse = {
 }
 
 // `use` narrows the catalogue to models flagged for a specific feature
-// surface via the use_for_{arena,insight,mock,vacancies} columns in
-// llm_models. Omit for the full list. Backend validates the value and
-// returns 400 on unknown strings — we don't enforce client-side.
-export type AIModelUse = 'arena' | 'insight' | 'mock' | 'vacancies'
+// surface via the use_for_{arena,insight,mock} columns in llm_models.
+// Omit for the full list. Backend validates the value and returns 400 on
+// unknown strings — we don't enforce client-side. (arena flag is legacy;
+// will be dropped together with the track_step_kind enum value in a
+// later Phase A migration.)
+export type AIModelUse = 'arena' | 'insight' | 'mock'
 
 export function useAIModelsQuery(use?: AIModelUse) {
   const path = use ? `/ai/models?use=${encodeURIComponent(use)}` : '/ai/models'

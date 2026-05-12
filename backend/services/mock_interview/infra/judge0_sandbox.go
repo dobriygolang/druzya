@@ -18,6 +18,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -92,10 +93,14 @@ type j0Req struct {
 
 type j0Resp struct {
 	Stdout string `json:"stdout"`
+	Stderr string `json:"stderr"`
 	Status struct {
 		ID          int    `json:"id"`
 		Description string `json:"description"`
 	} `json:"status"`
+	CompileOutput string `json:"compile_output"`
+	Time          string `json:"time"`
+	Memory        int    `json:"memory"`
 }
 
 // Submit runs the user's code against every test case for the task. Returns
@@ -220,6 +225,123 @@ func equalsStdout(expected, actual string) bool {
 	return strings.TrimRight(expected, " \t\r\n") == strings.TrimRight(actual, " \t\r\n")
 }
 
+// SubmitDetailed runs every test case for the task and returns a slice with
+// per-case detail (stdout / stderr / runtime / memory). Hidden cases are
+// executed and counted but the caller (algo_grade.go) is responsible for
+// stripping their Input / Expected / Actual fields before returning to the
+// HTTP client.
+//
+// Same concurrency + transport rules as Submit. Aggregates a single
+// ErrSandboxUnavailable when ANY case hits transport failure — the partial
+// result slice is still returned so the UI can show progress for cases that
+// completed pre-failure.
+func (s *Judge0Sandbox) SubmitDetailed(ctx context.Context, code string, language enums.Language, taskID uuid.UUID) ([]domain.SandboxCaseResult, error) {
+	if !s.Available() {
+		return nil, fmt.Errorf("mock_interview.Judge0Sandbox.SubmitDetailed: %w", domain.ErrSandboxUnavailable)
+	}
+	if taskID == uuid.Nil {
+		return nil, fmt.Errorf("mock_interview.Judge0Sandbox.SubmitDetailed: %w: task_id required", domain.ErrSandboxUnavailable)
+	}
+	langID, ok := languageID(language)
+	if !ok {
+		return nil, fmt.Errorf("mock_interview.Judge0Sandbox.SubmitDetailed: %w: language %q", domain.ErrSandboxUnavailable, language)
+	}
+	cases, err := s.Cases.ListForTask(ctx, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("mock_interview.Judge0Sandbox.SubmitDetailed: load cases: %w", err)
+	}
+	if len(cases) == 0 {
+		return nil, fmt.Errorf("mock_interview.Judge0Sandbox.SubmitDetailed: %w: no test cases for task %s", domain.ErrSandboxUnavailable, taskID)
+	}
+	const maxConcurrent = 3
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(maxConcurrent)
+	results := make([]domain.SandboxCaseResult, len(cases))
+	for i, tc := range cases {
+		i, tc := i, tc
+		g.Go(func() error {
+			detail, runErr := s.runOneDetailed(gctx, code, tc.Input, tc.Expected, langID)
+			detail.Ordinal = tc.Ordinal
+			detail.IsHidden = tc.IsHidden
+			detail.Input = tc.Input
+			detail.Expected = tc.Expected
+			results[i] = detail
+			return runErr
+		})
+	}
+	if werr := g.Wait(); werr != nil {
+		s.Log.WarnContext(ctx, "mock_interview.Judge0Sandbox.SubmitDetailed: run failed",
+			slog.String("task_id", taskID.String()), slog.Any("err", werr))
+		return results, fmt.Errorf("mock_interview.Judge0Sandbox.SubmitDetailed: %w: %s", domain.ErrSandboxUnavailable, werr.Error())
+	}
+	return results, nil
+}
+
+// runOneDetailed — like runOne but captures stdout / stderr / time / memory.
+func (s *Judge0Sandbox) runOneDetailed(ctx context.Context, code, stdin, expected string, langID int) (domain.SandboxCaseResult, error) {
+	body, err := json.Marshal(j0Req{
+		SourceCode: base64.StdEncoding.EncodeToString([]byte(code)),
+		Stdin:      base64.StdEncoding.EncodeToString([]byte(stdin)),
+		LanguageID: langID,
+	})
+	if err != nil {
+		return domain.SandboxCaseResult{}, fmt.Errorf("marshal: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		s.BaseURL+"/submissions?base64_encoded=true&wait=true", bytes.NewReader(body))
+	if err != nil {
+		return domain.SandboxCaseResult{}, fmt.Errorf("build req: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.HTTP.Do(req)
+	if err != nil {
+		return domain.SandboxCaseResult{}, fmt.Errorf("do: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return domain.SandboxCaseResult{}, fmt.Errorf("read: %w", err)
+	}
+	if resp.StatusCode/100 != 2 {
+		return domain.SandboxCaseResult{}, fmt.Errorf("status %d: %s", resp.StatusCode, string(raw))
+	}
+	var out j0Resp
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return domain.SandboxCaseResult{}, fmt.Errorf("decode: %w", err)
+	}
+	stdoutBytes, _ := base64.StdEncoding.DecodeString(out.Stdout)
+	stderrBytes, _ := base64.StdEncoding.DecodeString(out.Stderr)
+	compileBytes, _ := base64.StdEncoding.DecodeString(out.CompileOutput)
+
+	stderrStr := string(stderrBytes)
+	if len(compileBytes) > 0 {
+		if stderrStr != "" {
+			stderrStr += "\n"
+		}
+		stderrStr += string(compileBytes)
+	}
+
+	runtimeMs := 0
+	if out.Time != "" {
+		if f, perr := strconv.ParseFloat(out.Time, 64); perr == nil {
+			runtimeMs = int(f * 1000)
+		}
+	}
+
+	passed := false
+	if out.Status.ID == judge0StatusAccepted {
+		passed = equalsStdout(expected, string(stdoutBytes))
+	}
+	return domain.SandboxCaseResult{
+		Passed:    passed,
+		Actual:    string(stdoutBytes),
+		Stderr:    stderrStr,
+		RuntimeMs: runtimeMs,
+		MemoryKB:  out.Memory,
+	}, nil
+}
+
+
 // ─── unconfigured fallback ───────────────────────────────────────────────
 
 // UnconfiguredSandbox — explicit no-op. Every Submit returns
@@ -239,6 +361,7 @@ func (UnconfiguredSandbox) Submit(_ context.Context, _ string, _ enums.Language,
 
 // Compile-time guards.
 var (
-	_ domain.SandboxExecutor = (*Judge0Sandbox)(nil)
-	_ domain.SandboxExecutor = (*UnconfiguredSandbox)(nil)
+	_ domain.SandboxExecutor         = (*Judge0Sandbox)(nil)
+	_ domain.DetailedSandboxExecutor = (*Judge0Sandbox)(nil)
+	_ domain.SandboxExecutor         = (*UnconfiguredSandbox)(nil)
 )

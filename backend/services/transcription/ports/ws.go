@@ -150,20 +150,43 @@ func (h *StreamHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	// Hint params (forwarded to Whisper). Empty → provider auto-detect.
 	language := r.URL.Query().Get("language")
 	prompt := r.URL.Query().Get("prompt")
+	// Source declared by the client — "mic" / "system". Used by the
+	// diarizer: mic = always speaker 0 (the user "Я"), system = dynamic
+	// speaker 1..N через RMS clustering. Empty / unknown → treated as
+	// system (backwards-compat for any client that doesn't pass it yet).
+	source := r.URL.Query().Get("source")
+	if source != "mic" && source != "system" {
+		source = "system"
+	}
 
-	h.serveStream(r.Context(), ws, uid, language, prompt)
+	h.serveStream(r.Context(), ws, uid, language, prompt, source)
 }
 
 // streamCtl — JSON envelope для control / response messages.
+//
+// SpeakerID semantics (C4):
+//   - 0 → mic source / the user ("Я"). Never assigned by diarizer.
+//   - 1..N → distinct voices in system audio, clustered per-utterance
+//     via RMS + ZCR features. Stable within a session, NOT across
+//     reconnects (client должен держать labels in renderer state).
+//   - Omitted (zero-value на wire без omitempty? — мы используем
+//     pointer-int omitempty) если diarization не активна / клиент
+//     старый.
+//
+// Source — копия `source` query param: "mic" / "system". Помогает
+// клиенту маршрутизировать delta в нужный slice без чтения локального
+// state'а.
 type streamCtl struct {
-	Type     string  `json:"type"`               // "reset" | "prompt" | "ping" — client→server
-	Text     string  `json:"text,omitempty"`     // server→client transcript / prompt update
-	Message  string  `json:"message,omitempty"`  // server→client error message
-	Language string  `json:"language,omitempty"` // language hint update or detected language
-	Duration float64 `json:"duration,omitempty"` // window duration in seconds
+	Type      string  `json:"type"`                // "reset" | "prompt" | "ping" — client→server
+	Text      string  `json:"text,omitempty"`      // server→client transcript / prompt update
+	Message   string  `json:"message,omitempty"`   // server→client error message
+	Language  string  `json:"language,omitempty"`  // language hint update or detected language
+	Duration  float64 `json:"duration,omitempty"`  // window duration in seconds
+	Source    string  `json:"source,omitempty"`    // "mic" | "system" (server→client only)
+	SpeakerID int     `json:"speaker_id,omitempty"` // 0=mic/user, 1..N=clustered system speakers
 }
 
-func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn, userID uuid.UUID, language, prompt string) {
+func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn, userID uuid.UUID, language, prompt, source string) {
 	ctx, cancel := context.WithCancel(rootCtx)
 	defer cancel()
 	defer ws.Close()
@@ -177,12 +200,17 @@ func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn,
 	// across BinaryMessage frames; rmsLast keeps last computed RMS for
 	// fast skip. promptOverride / languageOverride accept runtime updates
 	// from {"type":"prompt"} control frames без reconnect.
+	//
+	// Diarizer — per-WS-connection RMS clusterer. Mic source НЕ feed'ит
+	// clusterer (всегда speaker_id=0); system source — extracts features
+	// from window PCM до WAV-encoding и assigns speaker_id 1..N.
 	var (
 		bufMu            sync.Mutex
 		buf              []byte
 		windowSeq        int
 		languageOverride = language
 		promptOverride   = prompt
+		diarizer         = domain.NewRMSClusterer(0, 0) // default threshold + maxSpeakers
 	)
 
 	flushWindow := func(reason string) {
@@ -205,7 +233,16 @@ func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn,
 			return
 		}
 
-		go h.dispatchWindow(ctx, out, userID, owned, languageOverride, promptOverride, seq, reason)
+		// Speaker assignment: mic = 0 ("Я"), system = clustered 1..N.
+		// Diarizer.AssignSpeaker non-blocking (in-memory math); safe в
+		// serveStream goroutine — не делает I/O.
+		var speakerID int
+		if source == "system" {
+			feats := domain.ExtractFeatures(owned)
+			speakerID = diarizer.AssignSpeaker(feats)
+		} // else mic: speakerID stays 0.
+
+		go h.dispatchWindow(ctx, out, userID, owned, languageOverride, promptOverride, seq, reason, source, speakerID)
 	}
 
 	// Set deadlines + pong handler (ai_mock/editor pattern).
@@ -272,6 +309,10 @@ func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn,
 			switch ctl.Type {
 			case "reset":
 				// Flush whatever we have, reset utterance boundary.
+				// Diarizer state ПЕРЕжИВАЕТ reset — это просто end-of-
+				// utterance signal, не "new conversation". Если клиент
+				// хочет clear speakers (e.g. new call started), он сам
+				// откроет новое WS соединение.
 				flushWindow("reset")
 				bufMu.Lock()
 				buf = buf[:0]
@@ -303,7 +344,11 @@ func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn,
 // Multiple concurrent dispatches are fine — Groq accepts parallel calls,
 // and out.writeLoop is FIFO so deltas stay in send-order even if window
 // processing finishes out of order.
-func (h *StreamHandler) dispatchWindow(ctx context.Context, out *streamConn, userID uuid.UUID, pcm []byte, language, prompt string, seq int, reason string) {
+//
+// source / speakerID — diarization labels assigned BEFORE this call (см.
+// flushWindow). Carried through verbatim into out.send() so the client
+// can route delta into the correct slice.
+func (h *StreamHandler) dispatchWindow(ctx context.Context, out *streamConn, userID uuid.UUID, pcm []byte, language, prompt string, seq int, reason, source string, speakerID int) {
 	durSec := float64(len(pcm)) / float64(streamSampleRate*streamBytesPerFrame)
 	in := domain.TranscribeInput{
 		Audio:    pcm,
@@ -357,11 +402,17 @@ func (h *StreamHandler) dispatchWindow(ctx context.Context, out *streamConn, use
 	// MVP: каждый window = один "final" delta. Реальные partial'ы
 	// потребуют streaming-нативной модели (Deepgram). Cue UI уже
 	// поддерживает обе ветки (см. desktop side).
+	//
+	// Source + speaker_id carried verbatim — see flushWindow для assignment
+	// logic. С `omitempty` на speaker_id: 0 → не сериализуется (mic uses
+	// zero, but client может infer from source==mic; system never sends 0).
 	out.send(streamCtl{
-		Type:     "final",
-		Text:     res.Text,
-		Language: res.Language,
-		Duration: res.Duration,
+		Type:      "final",
+		Text:      res.Text,
+		Language:  res.Language,
+		Duration:  res.Duration,
+		Source:    source,
+		SpeakerID: speakerID,
 	})
 }
 

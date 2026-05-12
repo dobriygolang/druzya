@@ -7,6 +7,7 @@
 //   askNotes(question)    — RAG over the user's notes corpus with
 //                           citation parsing.
 import { createPromiseClient } from '@connectrpc/connect';
+import { Timestamp } from '@bufbuild/protobuf';
 import { IntelligenceService } from '@generated/pb/druz9/v1/intelligence_connect';
 import { BriefRecommendationKind, InsightSeverity } from '@generated/pb/druz9/v1/intelligence_pb';
 
@@ -43,6 +44,20 @@ export interface DailyBrief {
 export interface MemoryStats {
   total30d: number;
   byKind: Record<string, number>;
+}
+
+// MemoryEntry — single timeline row для /memory page (Phase B preview).
+// Mirrors proto MemoryEntry; source = 'hone' | 'cue' | 'mock' | 'coach'
+// for grouping. importance reserved для будущей weighting (0 = unscored).
+export interface MemoryEntry {
+  id: string;
+  kind: string;
+  content: string;
+  source: string;
+  importance: number;
+  occurredAt: Date | null;
+  expiresAt: Date | null;
+  editedAt: Date | null;
 }
 
 export interface Citation {
@@ -191,6 +206,42 @@ export async function getMemoryStats(): Promise<MemoryStats> {
     byKind[k] = Number(v);
   }
   return { total30d: resp.total30d, byKind };
+}
+
+// listMemoryEntries — Phase B preview: pull последних N memory entries для
+// /memory timeline page. kind = "" → all kinds.
+export async function listMemoryEntries(
+  args: { kind?: string; limit?: number; offset?: number } = {},
+): Promise<{ items: MemoryEntry[]; total: number }> {
+  const resp = await client.listMemoryEntries({
+    kind: args.kind ?? '',
+    limit: args.limit ?? 50,
+    offset: args.offset ?? 0,
+  });
+  return {
+    items: resp.items.map((e) => ({
+      id: e.id,
+      kind: e.kind,
+      content: e.content,
+      source: e.source,
+      importance: e.importance,
+      occurredAt: protoTs(e.occurredAt),
+      expiresAt: protoTs(e.expiresAt),
+      editedAt: protoTs(e.editedAt),
+    })),
+    total: resp.total,
+  };
+}
+
+// deleteMemoryEntry — soft delete (юзер контролирует что AI помнит).
+export async function deleteMemoryEntry(id: string): Promise<void> {
+  await client.deleteMemoryEntry({ id });
+}
+
+// editMemoryEntry — юзер уточняет formulation entry'и (например, mock summary
+// был сгенерирован LLM и нужна правка). Server валидирует content [1..2000].
+export async function editMemoryEntry(id: string, content: string): Promise<void> {
+  await client.editMemoryEntry({ id, content });
 }
 
 // ─── Ask Notes ──────────────────────────────────────────────────────────────
@@ -517,4 +568,243 @@ export async function getCoachStats(): Promise<CoachStats> {
     lastMockScore: r.lastMockScore ?? 0,
     lastMockSection: r.lastMockSection ?? '',
   };
+}
+
+// ── F2 Primary goal (2026-05-12) ────────────────────────────────────────
+//
+// Mirror web's lib/queries/primaryGoal.ts: hits chi-direct REST endpoints
+// (google.api.http transcoding) с snake_case wire shape. 404 на active GET
+// → null (no goal yet). Connect-RPC client намеренно не использется — wire
+// shape совпадает с web для shared cache/migration path.
+
+export type PrimaryGoalKind =
+  | 'GOAL_KIND_TOP_TIER_CO'
+  | 'GOAL_KIND_ANY_SENIOR'
+  | 'GOAL_KIND_ML_OFFER'
+  | 'GOAL_KIND_ENGLISH_TARGET'
+  | 'GOAL_KIND_CUSTOM';
+
+export interface PrimaryGoal {
+  id: string;
+  kind: PrimaryGoalKind;
+  target_company?: string;
+  target_level?: string;
+  target_text?: string;
+  target_date?: string; // ISO yyyy-mm-dd
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreatePrimaryGoalBody {
+  kind: PrimaryGoalKind;
+  target_company?: string;
+  target_level?: string;
+  target_text?: string;
+  target_date?: string;
+}
+
+export interface UpdatePrimaryGoalBody extends CreatePrimaryGoalBody {
+  id: string;
+}
+
+function goalAuthHeaders(): Record<string, string> {
+  const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
+  const h: Record<string, string> = { 'content-type': 'application/json' };
+  if (token) h.authorization = `Bearer ${token}`;
+  return h;
+}
+
+// getActiveGoal — 404 → null (юзер ещё не поставил цель). Любая другая
+// ошибка пробрасывается caller'у.
+export async function getActiveGoal(): Promise<PrimaryGoal | null> {
+  const resp = await fetch(
+    `${API_BASE_URL}/api/v1/intelligence/goals/primary/active`,
+    { headers: goalAuthHeaders() },
+  );
+  if (resp.status === 404) return null;
+  if (!resp.ok) throw new Error(`getActiveGoal: ${resp.status}`);
+  return (await resp.json()) as PrimaryGoal;
+}
+
+export async function createGoal(body: CreatePrimaryGoalBody): Promise<PrimaryGoal> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/intelligence/goals/primary`, {
+    method: 'POST',
+    headers: goalAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`createGoal: ${resp.status}`);
+  return (await resp.json()) as PrimaryGoal;
+}
+
+export async function updateGoal(body: UpdatePrimaryGoalBody): Promise<PrimaryGoal> {
+  const resp = await fetch(
+    `${API_BASE_URL}/api/v1/intelligence/goals/primary/update`,
+    {
+      method: 'POST',
+      headers: goalAuthHeaders(),
+      body: JSON.stringify(body),
+    },
+  );
+  if (!resp.ok) throw new Error(`updateGoal: ${resp.status}`);
+  return (await resp.json()) as PrimaryGoal;
+}
+
+// ── H2 Focus reflection persistence (Phase J 2026-05-12) ────────────────
+//
+// Hone end-of-pomodoro reflection prompt раньше собирал grade + notes,
+// но они не сохранялись. Эти wrappers закрывают loop: save через RPC
+// (online) или outbox (offline → retry on reconnect), list для grade-trend
+// chart на /stats.
+
+export type FocusMode =
+  | 'pomodoro'
+  | 'stopwatch'
+  | 'free'
+  | 'plan'
+  | 'pinned'
+  | 'countdown';
+
+export interface SaveFocusReflectionArgs {
+  sessionId: string;
+  focusMode: FocusMode;
+  durationSeconds: number;
+  // grade ∈ [1,5]; 0 = no rating (only notes submitted).
+  grade: number;
+  notes: string;
+  taskPinned?: string;
+  startedAt: Date;
+  endedAt: Date;
+}
+
+export interface SaveFocusReflectionResult {
+  reflectionId: string;
+}
+
+export interface FocusReflectionEntry {
+  reflectionId: string;
+  endedAt: Date | null;
+  grade: number; // 0 = no grade
+  focusMode: FocusMode | string;
+  durationSeconds: number;
+}
+
+// saveFocusReflection — direct online RPC. Caller обычно использует
+// queue-aware wrapper (см. App.tsx) который шлёт через outbox для
+// offline-first semantics. Этот wrapper — base call'ом.
+export async function saveFocusReflection(
+  args: SaveFocusReflectionArgs,
+): Promise<SaveFocusReflectionResult> {
+  const resp = await client.saveFocusReflection({
+    sessionId: args.sessionId,
+    focusMode: args.focusMode,
+    durationSeconds: Math.max(0, Math.floor(args.durationSeconds)),
+    grade: clampGrade(args.grade),
+    notes: args.notes,
+    taskPinned: args.taskPinned ?? '',
+    startedAt: Timestamp.fromDate(args.startedAt),
+    endedAt: Timestamp.fromDate(args.endedAt),
+  });
+  return { reflectionId: resp.reflectionId ?? '' };
+}
+
+export async function listFocusReflections(windowDays = 30): Promise<FocusReflectionEntry[]> {
+  const resp = await client.listFocusReflections({ windowDays });
+  return (resp.items ?? []).map((it) => ({
+    reflectionId: it.reflectionId ?? '',
+    endedAt: it.endedAt ? it.endedAt.toDate() : null,
+    grade: it.grade ?? 0,
+    focusMode: (it.focusMode ?? '') as FocusMode | string,
+    durationSeconds: it.durationSeconds ?? 0,
+  }));
+}
+
+function clampGrade(g: number): number {
+  if (!Number.isFinite(g)) return 0;
+  const r = Math.round(g);
+  if (r < 0) return 0;
+  if (r > 5) return 5;
+  return r;
+}
+
+// ── Phase J / X1 (P0) install tracking (single onboarding funnel) ──────
+//
+// Hone fires `recordAppInstall` once on startup (after auth) so the
+// backend knows the user actually launched the desktop app. First call
+// across all 3 surfaces (web/hone/cue) issues a 7-day Pro trial; the
+// server returns trial_pro_granted=true and Hone can show a celebratory
+// toast. Heartbeat is idempotent — subsequent launches just bump
+// last_seen_at.
+
+import { ProfileService } from '@generated/pb/druz9/v1/profile_connect';
+import { AppSurface } from '@generated/pb/druz9/v1/profile_pb';
+
+const profileClient = createPromiseClient(ProfileService, transport);
+
+export interface InstalledApp {
+  app: 'web' | 'hone' | 'cue';
+  firstSeenAt: Date | null;
+  lastSeenAt: Date | null;
+  appVersion: string;
+}
+
+export interface RecordAppInstallResult {
+  app: 'web' | 'hone' | 'cue';
+  trialProGranted: boolean;
+  // RFC3339 string from server; empty when no trial issued. Caller can
+  // parse via `new Date(trialProUntil)` if non-empty.
+  trialProUntil: string;
+}
+
+function appSurfaceFromString(a: string): AppSurface {
+  switch (a) {
+    case 'web':
+      return AppSurface.WEB;
+    case 'hone':
+      return AppSurface.HONE;
+    case 'cue':
+      return AppSurface.CUE;
+    default:
+      return AppSurface.UNSPECIFIED;
+  }
+}
+
+function appSurfaceToString(a: AppSurface): 'web' | 'hone' | 'cue' {
+  switch (a) {
+    case AppSurface.WEB:
+      return 'web';
+    case AppSurface.HONE:
+      return 'hone';
+    case AppSurface.CUE:
+      return 'cue';
+    default:
+      // Fall back to 'web' for unknown values — used only as a label,
+      // never as wire shape, so a misclassification is cosmetic.
+      return 'web';
+  }
+}
+
+export async function recordAppInstall(
+  app: 'web' | 'hone' | 'cue',
+  version: string,
+): Promise<RecordAppInstallResult> {
+  const resp = await profileClient.recordAppInstall({
+    app: appSurfaceFromString(app),
+    appVersion: version,
+  });
+  return {
+    app: resp.install ? appSurfaceToString(resp.install.app) : app,
+    trialProGranted: resp.trialProGranted,
+    trialProUntil: resp.trialProUntil ?? '',
+  };
+}
+
+export async function getInstalledApps(): Promise<InstalledApp[]> {
+  const resp = await profileClient.getInstalledApps({});
+  return (resp.installs ?? []).map((it) => ({
+    app: appSurfaceToString(it.app),
+    firstSeenAt: it.firstSeenAt ? it.firstSeenAt.toDate() : null,
+    lastSeenAt: it.lastSeenAt ? it.lastSeenAt.toDate() : null,
+    appVersion: it.appVersion ?? '',
+  }));
 }

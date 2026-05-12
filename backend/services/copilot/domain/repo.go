@@ -272,3 +272,32 @@ type MockSessionGate interface {
 	// zero time means "indeterminate, until the session is finished".
 	HasActiveBlockingSession(ctx context.Context, userID uuid.UUID) (blocked bool, until time.Time, err error)
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Interview prep (Phase J / C6)
+// ─────────────────────────────────────────────────────────────────────────
+
+// InterviewPrepRepo persists interview_prep_sessions rows. StartActive
+// uses a transaction to first stamp ended_at on any prior active row,
+// then insert the new one — so the partial unique index never trips.
+type InterviewPrepRepo interface {
+	// StartActive replaces the user's prior active prep (if any) with
+	// the supplied parsed shape. Returns the inserted row hydrated with
+	// server-assigned id + started_at.
+	StartActive(ctx context.Context, userID uuid.UUID, parsedCV ParsedCV, parsedJD ParsedJD, cvText, jdText string) (InterviewPrep, error)
+	// GetActive returns the user's single live prep row. Maps "no
+	// rows" → ErrNoActivePrep so callers can branch cleanly.
+	GetActive(ctx context.Context, userID uuid.UUID) (InterviewPrep, error)
+	// EndActive stamps ended_at on the user's CURRENT active prep
+	// (when sessionID == uuid.Nil) OR on the specific row (otherwise).
+	// Idempotent — returns nil when there is no active prep to end.
+	EndActive(ctx context.Context, userID uuid.UUID, sessionID uuid.UUID) error
+}
+
+// InterviewPrepProvider is the narrow port the Analyze / Chat / Suggest
+// use cases consume — same nil-safe pattern as UserContextProvider.
+// When the underlying repo is unwired or fails, callers proceed with an
+// empty prep (no error propagated).
+type InterviewPrepProvider interface {
+	LoadActivePrep(ctx context.Context, userID uuid.UUID) (InterviewPrep, error)
+}

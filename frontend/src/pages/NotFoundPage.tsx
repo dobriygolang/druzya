@@ -14,17 +14,20 @@ export default function NotFoundPage() {
   return (
     <div className="min-h-screen bg-bg text-text-primary">
       <header className="flex h-[72px] items-center border-b border-border bg-bg px-4 sm:px-8">
-        <Link to="/" className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]">
           <span className="grid h-8 w-8 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-lg font-extrabold text-text-primary">9</span>
           <span className="font-display text-lg font-bold text-text-primary">druz9</span>
         </Link>
       </header>
 
       <main className="flex min-h-[calc(100vh-72px)] flex-col items-center justify-center gap-6 px-6 py-12 sm:px-10 sm:py-[60px]">
-        <div className="font-mono text-6xl sm:text-7xl lg:text-[96px] leading-none font-extrabold text-text-primary">
-          <span className="text-text-primary">{'{ '}</span>
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+          fatal · 404
+        </div>
+        <div className="font-mono text-6xl sm:text-7xl lg:text-[96px] leading-none font-extrabold text-text-primary tracking-[-0.04em]">
+          <span className="text-text-muted">{'{ '}</span>
           404
-          <span className="text-text-primary">{' }'}</span>
+          <span className="text-text-muted">{' }'}</span>
         </div>
         <h1 className="font-display text-2xl font-bold text-text-primary">{t('not_found.title')}</h1>
         <p className="max-w-md text-center font-sans text-sm text-text-secondary">
@@ -44,7 +47,7 @@ export default function NotFoundPage() {
           <Link
             to="/atlas"
             data-testid="back-home"
-            className="inline-flex items-center gap-2 rounded-lg bg-text-primary px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-text-primary-hover"
+            className="inline-flex items-center gap-2 rounded-lg bg-text-primary px-4 py-2 text-sm font-semibold tracking-[0.08em] text-bg transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-text-primary-hover"
           >
             <Home className="h-4 w-4" />
             {t('not_found.home')}

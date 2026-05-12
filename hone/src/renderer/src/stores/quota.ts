@@ -32,6 +32,28 @@ export interface QuotaUsage {
   ai_this_month: number;
 }
 
+/**
+ * UpgradeContext — payload для unified Pro-upgrade modal (X2 P0).
+ * Pre-filled context чтобы юзер видел концентрированно «вы тыкнули X,
+ * Pro даёт Y» вместо generic «Pro required». Wiring через
+ * showUpgradeModal({...}); component читает из upgradeModalContext.
+ *
+ * `feature` — stable slug (unlimited_mock / long_session / etc.), used by
+ * UpgradeModal'ом для подложения liftStat и проброса в Stripe URL'е через
+ * source=hone&feature=<feature_key>.
+ */
+export interface UpgradeContext {
+  feature: string;
+  /** Human-readable feature name, e.g. "unlimited mock pipelines". */
+  label: string;
+  /** What Pro unlocks, full-sentence: "Run as many 5-stage AI-mocks…". */
+  benefit: string;
+  /** Optional per-feature stat. Modal renders only if present. */
+  liftStat?: string;
+  /** If false, hide BYOK alternative CTA. Defaults to true. */
+  byokAvailable?: boolean;
+}
+
 interface QuotaState {
   tier: Tier;
   policy: QuotaPolicy;
@@ -39,9 +61,13 @@ interface QuotaState {
   loaded: boolean;
   /** Last upgrade-prompt error message to show в modal'ке. null = hidden. */
   upgradePromptMessage: string | null;
+  /** Active upgrade-modal context (X2). null = modal hidden. */
+  upgradeModalContext: UpgradeContext | null;
   refresh: () => Promise<void>;
   showUpgradePrompt: (msg: string) => void;
   dismissUpgradePrompt: () => void;
+  showUpgradeModal: (ctx: UpgradeContext) => void;
+  dismissUpgradeModal: () => void;
 }
 
 const DEFAULT_POLICY: QuotaPolicy = {
@@ -65,6 +91,7 @@ export const useQuotaStore = create<QuotaState>((set) => ({
   usage: DEFAULT_USAGE,
   loaded: false,
   upgradePromptMessage: null,
+  upgradeModalContext: null,
   refresh: async () => {
     try {
       const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
@@ -99,6 +126,8 @@ export const useQuotaStore = create<QuotaState>((set) => ({
   },
   showUpgradePrompt: (msg: string) => set({ upgradePromptMessage: msg }),
   dismissUpgradePrompt: () => set({ upgradePromptMessage: null }),
+  showUpgradeModal: (ctx: UpgradeContext) => set({ upgradeModalContext: ctx }),
+  dismissUpgradeModal: () => set({ upgradeModalContext: null }),
 }));
 
 function normalizeTier(t: unknown): Tier {

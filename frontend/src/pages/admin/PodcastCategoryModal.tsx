@@ -1,6 +1,33 @@
+// 2026-05-12: migrated to foundation Modal primitive (focus trap, ESC,
+// scroll lock, restore focus, smooth in/out). Inputs underline-only per
+// v2 spec, error banner uses red signal stripe.
+
 import { useState, type FormEvent } from 'react'
+import { Modal } from '../../components/primitives/Modal'
+import { motion as motionTokens } from '../../lib/design-tokens'
 import { Button } from '../../components/Button'
 import type { PodcastCategory } from '../../lib/queries/podcasts'
+
+const captionMonoLabel: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+  fontSize: 10,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+}
+
+const underlineInput: React.CSSProperties = {
+  height: 34,
+  padding: '6px 0',
+  background: 'transparent',
+  border: 0,
+  borderBottom: '1px solid var(--hair-2)',
+  color: 'rgb(var(--ink))',
+  fontSize: 14,
+  outline: 'none',
+  transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
+}
 
 export function CategoryModal({
   categories,
@@ -13,11 +40,17 @@ export function CategoryModal({
   onCreate: (input: { slug: string; name: string; color?: string; sort_order?: number }) => Promise<void>
   busy: boolean
 }) {
+  const [open, setOpen] = useState(true)
   const [slug, setSlug] = useState('')
   const [name, setName] = useState('')
   const [color, setColor] = useState('#6c7af0')
   const [sortOrder, setSortOrder] = useState('100')
   const [error, setError] = useState<string | null>(null)
+
+  const close = () => {
+    setOpen(false)
+    window.setTimeout(onClose, motionTokens.dur.medium)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -40,94 +73,141 @@ export function CategoryModal({
     }
   }
 
+  const onFocusBorder = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.style.borderBottomColor = 'rgb(var(--ink))'
+  }
+  const onBlurBorder = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.style.borderBottomColor = 'var(--hair-2)'
+  }
+
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div className="w-full max-w-md rounded-lg border border-border bg-surface-1 p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-display text-sm font-bold text-text-primary">Категории подкастов</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="font-mono text-xs text-text-muted hover:text-text-primary"
+    <Modal open={open} onClose={close} size="sm" title="Категории подкастов">
+      <ul
+        style={{
+          margin: 0,
+          marginBottom: 18,
+          padding: 6,
+          listStyle: 'none',
+          maxHeight: 200,
+          overflowY: 'auto',
+          border: '1px solid var(--hair)',
+          borderRadius: 'var(--radius-inner)',
+          background: 'transparent',
+        }}
+      >
+        {categories.length === 0 && (
+          <li style={{ padding: '4px 8px', ...captionMonoLabel, fontSize: 11 }}>Категорий пока нет.</li>
+        )}
+        {categories.map((c) => (
+          <li
+            key={c.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '6px 8px',
+              fontSize: 13,
+            }}
           >
-            ✕
-          </button>
+            <span
+              aria-hidden
+              style={{ width: 10, height: 10, borderRadius: 999, background: c.color, flex: '0 0 auto' }}
+            />
+            <span style={{ color: 'rgb(var(--ink))' }}>{c.name}</span>
+            <span
+              style={{
+                marginLeft: 'auto',
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                fontSize: 10,
+                color: 'var(--ink-40)',
+              }}
+            >
+              {c.slug}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>Slug *</span>
+          <input
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="frontend-prod"
+            style={underlineInput}
+            onFocus={onFocusBorder}
+            onBlur={onBlurBorder}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={captionMonoLabel}>Название *</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Frontend в проде"
+            style={underlineInput}
+            onFocus={onFocusBorder}
+            onBlur={onBlurBorder}
+          />
+        </label>
+        <div className="flex-wrap-row" style={{ gap: 14 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0 }}>
+            <span style={captionMonoLabel}>Цвет</span>
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              style={{
+                height: 34,
+                width: '100%',
+                background: 'transparent',
+                border: '1px solid var(--hair-2)',
+                borderRadius: 'var(--radius-inner)',
+                cursor: 'pointer',
+              }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0 }}>
+            <span style={captionMonoLabel}>Sort order</span>
+            <input
+              type="number"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              style={underlineInput}
+              onFocus={onFocusBorder}
+              onBlur={onBlurBorder}
+            />
+          </label>
         </div>
-        <ul className="mb-4 max-h-[200px] overflow-y-auto rounded-md border border-border bg-surface-2 p-2">
-          {categories.length === 0 && (
-            <li className="px-2 py-1 font-mono text-[11px] text-text-muted">Категорий пока нет.</li>
-          )}
-          {categories.map((c) => (
-            <li key={c.id} className="flex items-center gap-2 px-2 py-1.5 text-sm">
-              <span
-                className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: c.color }}
-                aria-hidden
-              />
-              <span className="text-text-primary">{c.name}</span>
-              <span className="ml-auto font-mono text-[10px] text-text-muted">{c.slug}</span>
-            </li>
-          ))}
-        </ul>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Slug *</span>
-            <input
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="frontend-prod"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Название *</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Frontend в проде"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-            />
-          </label>
-          <div className="flex gap-2">
-            <label className="flex flex-1 flex-col gap-1">
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Цвет</span>
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="h-9 w-full rounded-md border border-border bg-surface-2"
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1">
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Sort order</span>
-              <input
-                type="number"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
-              />
-            </label>
-          </div>
-          {error && (
-            <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
-              {error}
-            </p>
-          )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-              Закрыть
-            </Button>
-            <Button type="submit" size="sm" disabled={busy}>
-              {busy ? 'Создаём…' : 'Создать категорию'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {error && (
+          <p
+            role="alert"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              padding: '8px 12px',
+              border: '1px solid rgba(255, 59, 48, 0.4)',
+              borderRadius: 'var(--radius-inner)',
+              fontSize: 12,
+              color: 'var(--red)',
+              background: 'transparent',
+              margin: 0,
+            }}
+          >
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 1.5, minHeight: 16, background: 'var(--red)', marginTop: 4, flex: '0 0 auto' }} />
+            {error}
+          </p>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
+          <Button type="button" variant="ghost" size="sm" onClick={close}>
+            Закрыть
+          </Button>
+          <Button type="submit" size="sm" disabled={busy}>
+            {busy ? 'Создаём…' : 'Создать категорию'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

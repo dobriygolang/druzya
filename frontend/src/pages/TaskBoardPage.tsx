@@ -31,6 +31,7 @@ import {
   X,
 } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
+import { Modal } from '../components/primitives/Modal'
 import { cn } from '../lib/cn'
 import {
   useTaskListQuery,
@@ -190,13 +191,21 @@ export default function TaskBoardPage() {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
+                aria-pressed={filter === f}
                 className={cn(
-                  'rounded-md px-3.5 py-1 text-xs font-medium tracking-wide transition-colors',
+                  'relative rounded-md px-3.5 py-1 text-xs font-medium tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
                   filter === f
                     ? 'bg-surface-3 text-text-primary'
                     : 'text-text-muted hover:bg-surface-2 hover:text-text-secondary',
                 )}
               >
+                {filter === f && (
+                  <span
+                    aria-hidden
+                    className="absolute bottom-0 left-1/2 h-[1.5px] w-4 -translate-x-1/2"
+                    style={{ background: 'var(--red)' }}
+                  />
+                )}
                 {f === 'all' ? 'All' : f === 'ai' ? 'AI-only' : 'My-only'}
               </button>
             ))}
@@ -231,10 +240,12 @@ export default function TaskBoardPage() {
         )}
         {tasksQ.isError && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20 text-text-muted">
-            <p className="text-sm text-danger">Не удалось загрузить задачи</p>
+            <p className="text-sm" style={{ color: 'var(--red)' }}>
+              Не удалось загрузить задачи
+            </p>
             <button
               onClick={() => tasksQ.refetch()}
-              className="rounded-md border border-border bg-surface-2 px-3 py-1 text-xs hover:border-border-strong hover:text-text-secondary"
+              className="rounded-md border border-border bg-surface-2 px-3 py-1 text-xs tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-border-strong hover:text-text-secondary"
             >
               Повторить
             </button>
@@ -287,7 +298,7 @@ export default function TaskBoardPage() {
           <Clock />
           <div className="h-[2px] flex-1 overflow-hidden rounded-sm bg-surface-3">
             <div
-              className="h-full rounded-sm bg-text-secondary transition-[width] duration-500 ease-out"
+              className="h-full rounded-sm bg-text-secondary transition-[width] duration-[var(--motion-dur-xlarge)] ease-[var(--motion-ease-decelerate)]"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -329,15 +340,20 @@ export default function TaskBoardPage() {
       )}
 
       {/* Modal */}
-      {createOpen && (
-        <CreateTaskModal
-          onClose={() => setCreateOpen(false)}
-          onCreated={() => toast('Task created')}
-        />
-      )}
+      <CreateTaskModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => toast('Task created')}
+      />
 
-      {/* Toasts */}
-      <div className="pointer-events-none fixed bottom-20 right-7 z-40 flex flex-col gap-1.5">
+      {/* Toasts — wrapped with role=status + aria-live so SR users hear
+          «Task created» / «Moved to In Progress» without focus changes. */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+        className="pointer-events-none fixed bottom-20 right-7 z-40 flex flex-col gap-1.5"
+      >
         {toasts.map((t) => (
           <div
             key={t.id}
@@ -456,7 +472,7 @@ function TaskCard({
       onContextMenu={onCtxMenu}
       onKeyDown={(e) => { if (e.key === 'Enter') onClick() }}
       className={cn(
-        'group relative flex cursor-grab rounded-[7px] bg-surface-2 transition-all duration-150 hover:-translate-y-px hover:bg-surface-3 hover:shadow-[0_2px_12px_rgba(0,0,0,0.25)] active:cursor-grabbing animate-in fade-in slide-in-from-top-1',
+        'group relative flex cursor-grab rounded-[7px] bg-surface-2 transition-all duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:-translate-y-px hover:bg-surface-3 hover:shadow-[0_2px_12px_rgba(0,0,0,0.25)] active:cursor-grabbing animate-in fade-in slide-in-from-top-1',
         dragging && 'scale-[0.97] opacity-35',
       )}
     >
@@ -474,7 +490,7 @@ function TaskCard({
         )}
         <div className="flex flex-wrap items-center gap-1.5">
           {task.skillKey && (
-            <span className="rounded-[3px] bg-border-strong px-1.5 py-px text-[9px] font-semibold tracking-wide text-text-secondary">
+            <span className="rounded-[3px] bg-border-strong px-1.5 py-px text-[9px] font-semibold tracking-[0.08em] text-text-secondary">
               {task.skillKey}
             </span>
           )}
@@ -487,7 +503,7 @@ function TaskCard({
           )}
           <span className="text-[10px] text-text-muted">{relativeAge(task.createdAt)}</span>
           {task.source === 'ai' ? (
-            <span className="rounded-[3px] bg-white/10 px-1.5 py-px text-[8px] font-bold tracking-wider text-text-primary">
+            <span className="rounded-[3px] bg-text-primary/10 px-1.5 py-px text-[8px] font-bold tracking-[0.08em] text-text-primary">
               AI
             </span>
           ) : (
@@ -498,7 +514,7 @@ function TaskCard({
               data-stop
               onClick={() => { window.open(task.deepLink, '_blank') }}
               title="Open"
-              className="ml-auto flex h-5 w-5 items-center justify-center rounded text-text-muted opacity-0 transition-all hover:bg-text-primary hover:text-bg group-hover:opacity-100"
+              className="ml-auto flex h-7 w-7 items-center justify-center rounded text-text-muted opacity-0 transition-all hover:bg-text-primary hover:text-bg group-hover:opacity-100"
             >
               <ArrowRight className="h-2.5 w-2.5" />
             </button>
@@ -574,10 +590,16 @@ function ContextMenu({
             onClose()
           }
         }}
-        className="flex w-full items-center gap-2 rounded px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-danger/10 hover:text-danger"
+        className="group/del flex w-full items-center gap-2 rounded px-3 py-1.5 text-xs text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-3"
+        style={
+          // Hover paints text in red; ink-ramp bg stays neutral.
+          undefined
+        }
       >
-        <Trash2 className="h-3 w-3" />
-        Delete
+        <Trash2 className="h-3 w-3 transition-colors duration-[var(--motion-dur-small)] group-hover/del:[color:var(--red)]" />
+        <span className="transition-colors duration-[var(--motion-dur-small)] group-hover/del:[color:var(--red)]">
+          Delete
+        </span>
       </button>
     </div>
   )
@@ -651,8 +673,10 @@ function TaskDrawer({
         <header className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <span className="text-xs font-semibold text-text-secondary">{c?.name ?? ''}</span>
           <button
+            type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
+            aria-label="Закрыть карточку"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -660,7 +684,7 @@ function TaskDrawer({
 
         <div className="scroll-thin flex-1 overflow-y-auto px-5 py-5">
           <div className={cn('mb-3 h-1 w-8 rounded-sm', k.strip)} />
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">
             {k.label}
           </div>
           <h2 className="mb-4 text-[17px] font-bold leading-tight tracking-tight text-text-primary">
@@ -747,17 +771,17 @@ function TaskDrawer({
             <p className="py-3 text-center text-xs text-text-muted">Комментариев пока нет</p>
           )}
 
-          <form onSubmit={onSubmit} className="mt-2 flex gap-2">
+          <form onSubmit={onSubmit} className="mt-2 flex items-end gap-2">
             <input
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Add a comment..."
-              className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-border-strong"
+              className="flex-1 border-0 border-b border-border bg-transparent px-0 py-2 text-xs text-text-primary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] placeholder:text-text-muted focus:border-text-primary"
             />
             <button
               type="submit"
               disabled={!body.trim() || add.isPending}
-              className="rounded-md border border-border bg-surface-3 px-3.5 py-2 text-[11px] font-medium text-text-secondary transition-all hover:border-border-strong hover:bg-border-strong hover:text-text-primary disabled:opacity-50"
+              className="rounded-md border border-border bg-surface-3 px-3.5 py-2 text-[11px] font-medium tracking-[0.08em] text-text-secondary transition-all duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-border-strong hover:bg-border-strong hover:text-text-primary disabled:opacity-50"
             >
               {add.isPending ? '…' : 'Send'}
             </button>
@@ -781,7 +805,15 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
 
 const CREATE_KINDS: TaskKindCanonical[] = ['algo', 'sysdesign', 'quiz', 'reflection', 'reading', 'custom']
 
-function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CreateTaskModal({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean
+  onClose: () => void
+  onCreated: () => void
+}) {
   const create = useCreateTaskMutation()
   const [title, setTitle] = useState('')
   const [kind, setKind] = useState<TaskKindCanonical>('custom')
@@ -790,10 +822,6 @@ function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [skillKey, setSkillKey] = useState('')
   const [showMore, setShowMore] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    titleRef.current?.focus()
-  }, [])
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -810,32 +838,30 @@ function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreate
   }
 
   return (
-    <div
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      className="fixed inset-0 z-[500] flex items-start justify-center bg-black/55 px-4 pt-[15vh] backdrop-blur-sm animate-in fade-in"
-    >
-      <form
-        onSubmit={onSubmit}
-        className="flex w-full max-w-[520px] flex-col gap-3 rounded-xl border border-border-strong bg-surface-1 p-4 shadow-[0_24px_48px_rgba(0,0,0,0.5)] animate-in zoom-in-95 fade-in"
-      >
-        {/* Title — большой inline-input, без label */}
-        <input
-          ref={titleRef}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Что нужно сделать?"
-          required
-          className="w-full bg-transparent text-base font-semibold text-text-primary placeholder:text-text-muted focus:outline-none"
-        />
+    <Modal open={open} onClose={onClose} size="sm" initialFocusRef={titleRef}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        {/* Title — underline-only field. Border-bottom = signal, no surrounding card. */}
+        <div className="flex flex-col">
+          <input
+            ref={titleRef}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Что нужно сделать?"
+            required
+            className="w-full border-0 border-b border-border bg-transparent pb-2 text-base font-semibold text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
+          />
+        </div>
 
-        {/* Brief — auto-grow textarea, тоже без label */}
-        <textarea
-          value={briefMd}
-          onChange={(e) => setBriefMd(e.target.value)}
-          placeholder="Описание (опционально)"
-          rows={2}
-          className="w-full resize-none bg-transparent text-sm leading-relaxed text-text-secondary placeholder:text-text-muted focus:outline-none"
-        />
+        {/* Brief — auto-grow textarea, underline-only */}
+        <div className="flex flex-col">
+          <textarea
+            value={briefMd}
+            onChange={(e) => setBriefMd(e.target.value)}
+            placeholder="Описание (опционально)"
+            rows={2}
+            className="w-full resize-none border-0 border-b border-border bg-transparent pb-2 text-sm leading-relaxed text-text-secondary placeholder:text-text-muted focus:border-text-primary focus:outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
+          />
+        </div>
 
         {/* Kind chips */}
         <div className="flex flex-wrap gap-1">
@@ -848,13 +874,21 @@ function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreate
                 key={k}
                 type="button"
                 onClick={() => setKind(k)}
+                aria-pressed={active}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors',
+                  'relative flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
                   active
                     ? 'border-border-strong bg-surface-3 text-text-primary'
                     : 'border-border bg-surface-2 text-text-muted hover:border-border-strong hover:text-text-secondary',
                 )}
               >
+                {active && (
+                  <span
+                    aria-hidden
+                    className="absolute -left-px top-1/2 h-3 w-[1.5px] -translate-y-1/2"
+                    style={{ background: 'var(--red)' }}
+                  />
+                )}
                 <Icon className={cn('h-3 w-3', active ? def.text : '')} />
                 {def.label}
               </button>
@@ -863,7 +897,7 @@ function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreate
         </div>
 
         {/* Priority — три точки, кликабельные */}
-        <div className="flex items-center gap-3 text-[11px] text-text-muted">
+        <div className="flex items-center gap-3 text-[11px] tracking-[0.08em] text-text-muted">
           <span>Priority</span>
           <div className="flex items-center gap-1">
             {[1, 2, 3].map((n) => (
@@ -873,7 +907,7 @@ function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreate
                 onClick={() => setPriority(n)}
                 title={n === 1 ? 'Low' : n === 2 ? 'Medium' : 'High'}
                 className={cn(
-                  'h-1.5 w-1.5 rounded-full transition-colors',
+                  'h-1.5 w-1.5 rounded-full transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]',
                   n <= priority ? 'bg-text-primary' : 'bg-border-strong hover:bg-text-muted',
                 )}
               />
@@ -882,7 +916,8 @@ function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <button
             type="button"
             onClick={() => setShowMore((v) => !v)}
-            className="ml-auto rounded text-[11px] text-text-muted hover:text-text-secondary"
+            aria-expanded={showMore}
+            className="ml-auto rounded text-[11px] tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-secondary"
           >
             {showMore ? 'Скрыть' : 'Дополнительно'}
           </button>
@@ -893,37 +928,39 @@ function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreate
             value={skillKey}
             onChange={(e) => setSkillKey(e.target.value)}
             placeholder="Skill tag (например, Binary Search)"
-            className="w-full rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs text-text-primary outline-none placeholder:text-text-muted focus:border-border-strong"
+            className="w-full border-0 border-b border-border bg-transparent pb-2 text-xs text-text-primary outline-none placeholder:text-text-muted focus:border-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
           />
         )}
 
         {create.isError && (
-          <p className="text-[11px] text-danger">Не удалось создать. Попробуй ещё раз.</p>
+          <p className="text-[11px]" style={{ color: 'var(--red)' }}>
+            Не удалось создать. Попробуй ещё раз.
+          </p>
         )}
 
         <div className="mt-1 flex items-center justify-between border-t border-border pt-3">
-          <span className="text-[10px] text-text-muted">
+          <span className="text-[10px] tracking-[0.08em] text-text-muted">
             ⌘↵ — отправить · Esc — закрыть
           </span>
           <div className="flex gap-1.5">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+              className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium tracking-[0.08em] text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-border-strong hover:text-text-primary"
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={!title.trim() || create.isPending}
-              className="rounded-md bg-text-primary px-4 py-1.5 text-xs font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="rounded-md bg-text-primary px-4 py-1.5 text-xs font-semibold tracking-[0.08em] text-bg transition-opacity duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:opacity-90 disabled:opacity-50"
             >
               {create.isPending ? 'Создаём…' : 'Создать'}
             </button>
           </div>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }
 

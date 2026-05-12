@@ -189,10 +189,10 @@ export function StatsOverlay({ onClose: _onClose, closing = false }: { onClose: 
               animationDelay: closing ? '0ms' : '320ms',
               padding: '10px 14px',
               background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: '1px solid var(--hair)',
               borderRadius: 10,
               fontSize: 11,
-              letterSpacing: '0.14em',
+              letterSpacing: '0.08em',
               color: 'var(--ink-40)',
               textAlign: 'center',
             }}
@@ -215,7 +215,7 @@ function BigCard({ children }: { children: React.ReactNode }) {
         background: 'rgba(28,28,30,0.85)',
         backdropFilter: 'blur(28px)',
         WebkitBackdropFilter: 'blur(28px)',
-        border: '1px solid rgba(255,255,255,0.05)',
+        border: '1px solid var(--hair)',
         borderRadius: 16,
         padding: 14,
       }}
@@ -258,7 +258,7 @@ function MetaLabel({ children }: { children: React.ReactNode }) {
       className="mono"
       style={{
         fontSize: 9.5,
-        letterSpacing: '0.18em',
+        letterSpacing: '0.08em',
         color: 'var(--ink-40)',
       }}
     >
@@ -396,7 +396,7 @@ function StreakCurve({ points }: { points: number[] }) {
         d={areaPath}
         fill={`url(#${gradId})`}
         opacity={animTick === 0 ? 0 : 1}
-        style={{ transition: 'opacity 900ms cubic-bezier(.2,.7,.2,1) 200ms' }}
+        style={{ transition: 'opacity var(--motion-dur-cinematic) cubic-bezier(.2,.7,.2,1) 200ms' }}
       />
       <path
         d={path}
@@ -406,7 +406,7 @@ function StreakCurve({ points }: { points: number[] }) {
         strokeLinecap="round"
         strokeDasharray={dashLen}
         strokeDashoffset={animTick === 0 ? dashLen : 0}
-        style={{ transition: 'stroke-dashoffset 1100ms cubic-bezier(.2,.7,.2,1)' }}
+        style={{ transition: 'stroke-dashoffset var(--motion-dur-cinematic) cubic-bezier(.2,.7,.2,1)' }}
       />
     </svg>
   );
@@ -463,7 +463,7 @@ function ReferenceBars({ days }: { days: FocusDay[] }) {
                   background: isToday ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.16)',
                   borderTopLeftRadius: 6,
                   borderTopRightRadius: 6,
-                  transition: `height 700ms cubic-bezier(.2,.7,.2,1) ${i * 60}ms`,
+                  transition: `height var(--motion-dur-xxlarge) cubic-bezier(.2,.7,.2,1) ${i * 60}ms`,
                 }}
               />
             </div>
@@ -620,7 +620,7 @@ function StreakRingCell({ streakDays, pct, goal }: { streakDays: number; pct: nu
           strokeDasharray={C}
           strokeDashoffset={offset}
           transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-          style={{ transition: 'stroke-dashoffset 900ms cubic-bezier(.2,.7,.2,1)' }}
+          style={{ transition: 'stroke-dashoffset var(--motion-dur-cinematic) cubic-bezier(.2,.7,.2,1)' }}
         />
       </svg>
       <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -640,7 +640,7 @@ function StreakRingCell({ streakDays, pct, goal }: { streakDays: number; pct: nu
 
 function CompareWeekCell({ thisHrs, prevHrs, deltaPct }: { thisHrs: number; prevHrs: number; deltaPct: number }) {
   const isUp = deltaPct >= 0;
-  const tone = isUp ? 'rgba(127,212,155,0.95)' : '#ff8c8c';
+  const tone = isUp ? 'var(--ink)' : 'var(--red)';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
@@ -663,7 +663,7 @@ function CompareWeekCell({ thisHrs, prevHrs, deltaPct }: { thisHrs: number; prev
 
 function GoalMeterCell({ todayMin, goalMin, pct }: { todayMin: number; goalMin: number; pct: number }) {
   const reached = pct >= 100;
-  const tone = reached ? 'rgba(127,212,155,0.95)' : 'rgba(255,255,255,0.85)';
+  const tone = reached ? 'var(--ink)' : 'rgba(255,255,255,0.85)';
   const [animTick, setAnimTick] = useState(0);
   useEffect(() => {
     const t = window.setTimeout(() => setAnimTick(1), 80);
@@ -694,7 +694,7 @@ function GoalMeterCell({ todayMin, goalMin, pct }: { todayMin: number; goalMin: 
             inset: 0,
             width: `${w}%`,
             background: tone,
-            transition: 'width 800ms cubic-bezier(.2,.7,.2,1)',
+            transition: 'width var(--motion-dur-cinematic) cubic-bezier(.2,.7,.2,1)',
           }}
         />
       </div>
@@ -717,7 +717,7 @@ function SimpleStatCell({ value, unit, label, sub }: { value: string; unit?: str
         {unit && <span style={{ fontSize: 10, color: 'var(--ink-40)' }}>{unit}</span>}
       </div>
       <div style={{ fontSize: 10, color: 'var(--ink-40)' }}>{label}</div>
-      {sub && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 1 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 9, color: 'var(--ink-20)', marginTop: 1 }}>{sub}</div>}
     </div>
   );
 }
@@ -786,7 +786,7 @@ function ExternalActivityCard() {
               className="mono"
               style={{
                 fontSize: 9,
-                letterSpacing: '0.14em',
+                letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 color: 'var(--ink-40)',
                 flexShrink: 0,

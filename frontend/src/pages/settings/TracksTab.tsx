@@ -151,7 +151,9 @@ export function TracksTab() {
   if (query.isError) {
     return (
       <Card>
-        <div className="p-6 text-accent text-sm">Не удалось загрузить треки. Обнови страницу.</div>
+        <div className="p-6 text-sm" style={{ color: 'var(--red)' }}>
+          Не удалось загрузить треки. Обнови страницу.
+        </div>
       </Card>
     )
   }
@@ -173,11 +175,29 @@ export function TracksTab() {
           return (
             <div
               key={c.wire}
+              style={{
+                transition:
+                  'border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard)',
+              }}
               className={cn(
-                'rounded-xl border p-4 transition-colors',
+                'relative rounded-xl border p-4',
                 selected ? 'border-text-primary bg-text-primary/5' : 'border-border hover:border-border-strong',
               )}
             >
+              {selected && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 1.5,
+                    height: 24,
+                    background: 'var(--red)',
+                  }}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => setLocal((s) => reduceClick(s, c.wire))}
@@ -208,8 +228,12 @@ export function TracksTab() {
                           next.set(c.wire, s)
                           return { ...prev, seniority: next }
                         })}
+                        style={{
+                          transition:
+                            'border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+                        }}
                         className={cn(
-                          'rounded-md border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors',
+                          'rounded-md border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em]',
                           active
                             ? 'border-text-primary bg-text-primary text-bg'
                             : 'border-border text-text-secondary hover:border-border-strong',
@@ -226,10 +250,14 @@ export function TracksTab() {
                 <button
                   type="button"
                   onClick={() => setLocal((prev) => ({ ...prev, primary: c.wire }))}
+                  style={{
+                    transition:
+                      'border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+                  }}
                   className={cn(
-                    'mt-3 w-full text-center rounded-md border px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors',
+                    'mt-3 w-full text-center rounded-md border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em]',
                     isPrimary
-                      ? 'border-accent bg-accent/10 text-accent'
+                      ? 'border-text-primary bg-text-primary/10 text-text-primary'
                       : 'border-border text-text-muted hover:border-border-strong',
                   )}
                   aria-pressed={isPrimary}
@@ -250,7 +278,7 @@ export function TracksTab() {
         </div>
         <div className="flex items-center gap-3">
           {save.isError && (
-            <span className="text-[12px] text-accent">
+            <span className="text-[12px]" style={{ color: 'var(--red)' }}>
               {save.error instanceof ApiError ? save.error.body : 'Ошибка сохранения'}
             </span>
           )}

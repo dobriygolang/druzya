@@ -10,8 +10,12 @@
 import { registerExecutor } from './outbox';
 import { setEditorRoomVisibility } from '../api/editor';
 import { setRoomVisibility as setWhiteboardRoomVisibility } from '../api/whiteboard';
+import { endFocusSession } from '../api/hone';
+import { saveFocusReflection } from '../api/intelligence';
+import { gradeSpeaking } from '../api/speaking';
 import { API_BASE_URL, DEV_BEARER_TOKEN } from '../api/config';
 import { useSessionStore } from '../stores/session';
+import { emitConflict } from '../components/ConflictModal';
 
 interface CreateEditorRoomPayload {
   // Client-generated UUID. Backend должен accept'ить с idempotency-key,
@@ -50,16 +54,71 @@ function rpcError(message: string, status: number): Error {
   });
 }
 
+/**
+ * Defensive 409 surfacing — если backend для outbox-эндпоинта когда-нибудь
+ * начнёт возвращать version_mismatch (e.g. при reflection.submit поверх
+ * stale-row'а), мы покажем ConflictModal вместо silent dead-letter в
+ * outbox'е. Все текущие outbox kinds — idempotent inserts через
+ * ON CONFLICT DO NOTHING + Idempotency-Key, поэтому 409 в норме не
+ * прилетит. Но wiring безопасный — body парсится best-effort, на любых
+ * проблемах просто проброс'ним original'ьную error без modal'а.
+ */
+async function maybeSurface409(
+  resp: Response,
+  kind: string,
+  opId: string,
+  payload: unknown,
+): Promise<void> {
+  if (resp.status !== 409) return;
+  type Body = { error?: { code?: string; message?: string }; server?: unknown };
+  let body: Body | null = null;
+  try {
+    body = (await resp.clone().json()) as Body;
+  } catch {
+    return;
+  }
+  if (body?.error?.code !== 'version_mismatch') return;
+  const local = JSON.stringify(payload, null, 2);
+  const server = body.server
+    ? JSON.stringify(body.server, null, 2)
+    : (body.error?.message ?? '');
+  emitConflict({
+    kind,
+    id: opId,
+    local: { body: local },
+    server: { body: server },
+    // Outbox-уровень: мы не знаем как «retry с server version», т.к.
+    // payload-shape kind-dependent. Все три handler'а сейчас no-op;
+    // юзер ткнёт Accept server (closes modal) → next sync pull заменит
+    // local cache актуальными данными. Этого достаточно как fallback —
+    // полный retry-merge per-kind можно добавить когда первый реально
+    // конфликтующий outbox-kind появится.
+    onKeepLocal: async () => {
+      /* no-op — backend гарантия идёт через DB-constraint, ре-try не имеет
+         смысла без version'а */
+    },
+    onAcceptServer: async () => {
+      /* no-op — next sync pull актуализирует local cache */
+    },
+    onMergeManually: async () => {
+      /* no-op — нет endpoint'а для re-submit с merged body */
+    },
+  });
+}
+
 export function wireOutboxExecutors(): void {
   // ── editor.create_room ────────────────────────────────────────────────
-  registerExecutor('editor.create_room', async (payload) => {
+  registerExecutor('editor.create_room', async (payload, opId) => {
     const p = payload as CreateEditorRoomPayload;
     const resp = await fetch(`${API_BASE_URL}/api/v1/editor/room`, {
       method: 'POST',
       headers: { ...authHeaders(), 'idempotency-key': p.clientId },
       body: JSON.stringify({ type: p.type, language: p.language }),
     });
-    if (!resp.ok) throw rpcError('editor.create_room', resp.status);
+    if (!resp.ok) {
+      await maybeSurface409(resp, 'editor_room', opId, payload);
+      throw rpcError('editor.create_room', resp.status);
+    }
     // Парсим server-assigned ID из response (нужен post-drain hook'у для
     // y-indexeddb migration: hone:editor:<clientId> → hone:editor:<serverId>).
     try {
@@ -99,14 +158,17 @@ export function wireOutboxExecutors(): void {
   });
 
   // ── whiteboard.create_room ────────────────────────────────────────────
-  registerExecutor('whiteboard.create_room', async (payload) => {
+  registerExecutor('whiteboard.create_room', async (payload, opId) => {
     const p = payload as CreateEditorRoomPayload;
     const resp = await fetch(`${API_BASE_URL}/api/v1/whiteboard/room`, {
       method: 'POST',
       headers: { ...authHeaders(), 'idempotency-key': p.clientId },
       body: '{}',
     });
-    if (!resp.ok) throw rpcError('whiteboard.create_room', resp.status);
+    if (!resp.ok) {
+      await maybeSurface409(resp, 'whiteboard_room', opId, payload);
+      throw rpcError('whiteboard.create_room', resp.status);
+    }
     try {
       const j = (await resp.json()) as { id?: string };
       return { serverId: j.id };
@@ -151,7 +213,10 @@ export function wireOutboxExecutors(): void {
       headers: { ...authHeaders(), 'idempotency-key': opId },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) throw rpcError('resource.add', resp.status);
+    if (!resp.ok) {
+      await maybeSurface409(resp, 'resource', opId, payload);
+      throw rpcError('resource.add', resp.status);
+    }
   });
 
   registerExecutor('resource.hide', async (payload, opId) => {
@@ -160,7 +225,10 @@ export function wireOutboxExecutors(): void {
       headers: { ...authHeaders(), 'idempotency-key': opId },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) throw rpcError('resource.hide', resp.status);
+    if (!resp.ok) {
+      await maybeSurface409(resp, 'resource', opId, payload);
+      throw rpcError('resource.hide', resp.status);
+    }
   });
 
   registerExecutor('resource.unhelpful', async (payload, opId) => {
@@ -169,7 +237,10 @@ export function wireOutboxExecutors(): void {
       headers: { ...authHeaders(), 'idempotency-key': opId },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) throw rpcError('resource.unhelpful', resp.status);
+    if (!resp.ok) {
+      await maybeSurface409(resp, 'resource', opId, payload);
+      throw rpcError('resource.unhelpful', resp.status);
+    }
   });
 
   registerExecutor('resource.replace', async (payload, opId) => {
@@ -178,7 +249,10 @@ export function wireOutboxExecutors(): void {
       headers: { ...authHeaders(), 'idempotency-key': opId },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) throw rpcError('resource.replace', resp.status);
+    if (!resp.ok) {
+      await maybeSurface409(resp, 'resource', opId, payload);
+      throw rpcError('resource.replace', resp.status);
+    }
   });
 
   // ── Phase 5 5a reflection.submit ──────────────────────────────────────
@@ -191,7 +265,24 @@ export function wireOutboxExecutors(): void {
       headers: { ...authHeaders(), 'idempotency-key': opId },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) throw rpcError('reflection.submit', resp.status);
+    if (!resp.ok) {
+      await maybeSurface409(resp, 'reflection', opId, payload);
+      throw rpcError('reflection.submit', resp.status);
+    }
+  });
+
+  // ── Phase A cleanup (2026-05-12) focus.end ────────────────────────────
+  // Drain re-attempts via Connect-RPC client (same path как online finish).
+  // Если backend не идемпотентен — non-2xx → throw → bumpAttempt → eventually
+  // dead после MAX_ATTEMPTS. Reflection text уже donated с первой попытки.
+  registerExecutor('focus.end', async (payload) => {
+    const p = payload as {
+      sessionId: string;
+      pomodorosCompleted: number;
+      secondsFocused: number;
+      reflection?: string;
+    };
+    await endFocusSession(p);
   });
 
   // ── Phase 4 external_activity.log ─────────────────────────────────────
@@ -202,6 +293,69 @@ export function wireOutboxExecutors(): void {
       headers: { ...authHeaders(), 'idempotency-key': opId },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) throw rpcError('external_activity.log', resp.status);
+    if (!resp.ok) {
+      await maybeSurface409(resp, 'external_activity', opId, payload);
+      throw rpcError('external_activity.log', resp.status);
+    }
+  });
+
+  // ── H2 focus.reflection (Phase J 2026-05-12) ──────────────────────────
+  // Backend SaveFocusReflection идемпотентна через UNIQUE(user_id, session_id)
+  // ON CONFLICT DO UPDATE — replay safe, latest write wins. Payload — JSON
+  // wire-shape с ISO-string timestamps (Date.toJSON), мы их parse'им обратно
+  // в Date перед invocation'ом RPC wrapper'а.
+  registerExecutor('focus.reflection', async (payload) => {
+    const p = payload as {
+      sessionId: string;
+      focusMode: string;
+      durationSeconds: number;
+      grade: number;
+      notes: string;
+      taskPinned?: string;
+      startedAt: string;
+      endedAt: string;
+    };
+    await saveFocusReflection({
+      sessionId: p.sessionId,
+      // Cast to FocusMode is safe — backend rejects invalid mode и помечает
+      // op nonRetryable через 4xx.
+      focusMode: p.focusMode as Parameters<typeof saveFocusReflection>[0]['focusMode'],
+      durationSeconds: p.durationSeconds,
+      grade: p.grade,
+      notes: p.notes,
+      taskPinned: p.taskPinned ?? '',
+      startedAt: new Date(p.startedAt),
+      endedAt: new Date(p.endedAt),
+    });
+  });
+
+  // ── H4 speaking.submission (Phase J 2026-05-12) ───────────────────────
+  // Backend GradeSpeaking is idempotent через UNIQUE(user_id,
+  // client_session_id) ON CONFLICT DO NOTHING — replay safe. Payload
+  // carries the audio as base64 (cannot store Blob directly в IDB через
+  // structured-clone когда некоторые browsers выкидывают unsupported
+  // mime). Mime + duration kept alongside so the drain reconstructs
+  // the exact request.
+  registerExecutor('speaking.submission', async (payload) => {
+    const p = payload as {
+      exerciseId: string;
+      clientSessionId: string;
+      audioBase64: string;
+      mimeType: string;
+      durationMs: number;
+    };
+    // Decode base64 → Blob → reuse the same gradeSpeaking wrapper as the
+    // online path. atob → Uint8Array conversion is the same across all
+    // Chromium versions Hone ships against.
+    const bin = atob(p.audioBase64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: p.mimeType || 'audio/webm' });
+    await gradeSpeaking({
+      exerciseId: p.exerciseId,
+      clientSessionId: p.clientSessionId,
+      audioBlob: blob,
+      durationMs: p.durationMs,
+    });
   });
 }

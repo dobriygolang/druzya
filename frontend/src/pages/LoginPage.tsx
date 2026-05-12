@@ -21,8 +21,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, Loader2, Send, X, Copy, ExternalLink, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, Loader2, Send, X, Copy, ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
 import {
   devLogin,
   pollTelegramAuth,
@@ -31,6 +32,9 @@ import {
   type PollSuccess,
   type TelegramStartResponse,
 } from '../lib/queries/auth'
+import { staggerContainer, staggerItem } from '../lib/motion-presets'
+import { Modal } from '../components/primitives/Modal'
+import { motion as motionTokens } from '../lib/design-tokens'
 
 const YANDEX_CLIENT_ID = import.meta.env.VITE_YANDEX_CLIENT_ID as string | undefined
 // Phase R3 cooldown — bumped 2000 → 3000ms. The TG bot side typically
@@ -231,97 +235,196 @@ export default function LoginPage() {
   const yandexHref = buildYandexAuthorizeURL()
 
   return (
-    <div className="min-h-screen bg-bg text-text-primary">
-      <header className="flex h-[72px] items-center justify-between border-b border-border bg-bg px-4 sm:px-8 lg:px-20">
-        <Link to="/welcome" className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-text-primary font-display text-lg font-extrabold text-bg">
+    <div
+      className="min-h-screen text-text-primary"
+      style={{ background: 'rgb(var(--color-bg))' }}
+    >
+      <header
+        className="flex items-center justify-between px-4 sm:px-8 lg:px-20"
+        style={{
+          height: 64,
+          borderBottom: '1px solid var(--hair)',
+        }}
+      >
+        <Link to="/welcome" className="flex items-center gap-2.5 focus-ring">
+          <span
+            className="grid place-items-center"
+            style={{
+              width: 28,
+              height: 28,
+              border: '1px solid var(--hair-2)',
+              borderRadius: 8,
+              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              fontWeight: 600,
+              fontSize: 14,
+              color: 'rgb(var(--ink))',
+            }}
+          >
             9
           </span>
-          <span className="font-display text-lg font-bold text-text-primary">druz9</span>
+          <span
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              letterSpacing: '-0.005em',
+              color: 'rgb(var(--ink))',
+            }}
+          >
+            druz9
+          </span>
         </Link>
-        <Link to="/welcome" className="text-sm font-medium text-text-muted hover:text-text-secondary">
+        <Link
+          to="/welcome"
+          className="focus-ring"
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+            color: 'var(--ink-60)',
+            transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
+            padding: '6px 10px',
+            borderRadius: 6,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
+        >
           {t('start')}
         </Link>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[420px] flex-col gap-8 px-4 py-12 sm:py-16">
-        {/* Раньше "Войти / Зарегистрироваться" перетекало в 3 строки на узких
-            экранах: длинное слово + слэш ломали wrap. Используем компактный
-            заголовок на mobile и полный — от sm. */}
-        <h1 className="font-display text-2xl font-extrabold leading-tight text-text-primary sm:text-3xl lg:text-4xl">
-          <span className="sm:hidden">Войти</span>
-          <span className="hidden sm:inline">Войти&nbsp;/ Зарегистрироваться</span>
-        </h1>
-        <p className="text-[14px] text-text-muted">
-          Один клик — и мы создадим профиль автоматически. Email и пароли больше не нужны.
-        </p>
+      <motion.main
+        className="mx-auto flex w-full flex-col px-4 py-12 sm:py-16"
+        style={{ maxWidth: 480, gap: 'var(--gap-section)' }}
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={staggerItem} className="flex flex-col" style={{ gap: 12 }}>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 'var(--type-h1-size)',
+              lineHeight: 'var(--type-h1-lh)',
+              letterSpacing: 'var(--type-h1-ls)',
+              fontWeight: 'var(--type-h1-weight)',
+              color: 'rgb(var(--ink))',
+            }}
+          >
+            <span className="sm:hidden">Войти</span>
+            <span className="hidden sm:inline">Войти / Зарегистрироваться</span>
+          </h1>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 'var(--type-body-size)',
+              lineHeight: 'var(--type-body-lh)',
+              color: 'var(--ink-60)',
+              maxWidth: '60ch',
+            }}
+          >
+            Один клик — и мы создадим профиль автоматически. Email и пароли больше не нужны.
+          </p>
+        </motion.div>
 
         {error && (
-          <div className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-danger">
+          <motion.div
+            variants={staggerItem}
+            role="alert"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              padding: '12px 16px',
+              border: '1px solid rgba(255, 59, 48, 0.4)',
+              borderRadius: 'var(--radius-inner)',
+              fontSize: 13,
+              color: 'var(--red)',
+              background: 'transparent',
+            }}
+          >
+            <span style={{ display: 'inline-block', width: 1.5, minHeight: 16, background: 'var(--red)', marginTop: 4 }} />
             {error}
-          </div>
+          </motion.div>
         )}
 
-        <div className="flex flex-col gap-4">
+        <motion.div variants={staggerItem} className="flex flex-col" style={{ gap: 'var(--gap-row)' }}>
           {/* Telegram — deep-link + код */}
-          <div>
-            <div className="mb-2 text-[13px] uppercase tracking-wider text-text-muted">Telegram</div>
-            <button
-              type="button"
-              onClick={handleTelegramClick}
-              disabled={tgStarting || tgPolling}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-text-primary/10 text-[15px] font-semibold text-text-primary transition-colors hover:bg-text-primary/20 disabled:cursor-wait disabled:opacity-60"
-            >
-              {tgStarting ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
-              Войти через Telegram
-            </button>
-          </div>
+          <SectionLabel>Telegram</SectionLabel>
+          <button
+            type="button"
+            onClick={handleTelegramClick}
+            disabled={tgStarting || tgPolling}
+            className="focus-ring motion-hover-lift motion-press"
+            style={ghostButton}
+          >
+            {tgStarting ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-[18px] w-[18px]" />}
+            <span>Войти через Telegram</span>
+          </button>
+        </motion.div>
 
+        <motion.div variants={staggerItem} className="flex flex-col" style={{ gap: 'var(--gap-row)' }}>
           {/* Yandex */}
-          <div>
-            <div className="mb-2 text-[13px] uppercase tracking-wider text-text-muted">Yandex ID</div>
-            {yandexHref ? (
-              <a
-                href={yandexHref}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-text-primary/10 text-[15px] font-semibold text-text-primary transition-colors hover:bg-text-primary/20"
-              >
-                Войти через Yandex
-                <ArrowRight className="h-5 w-5" />
-              </a>
-            ) : (
-              <div className="rounded-lg border border-border bg-surface-1 px-4 py-3 text-[13px] text-text-muted">
-                Yandex-логин не настроен (нет VITE_YANDEX_CLIENT_ID).
-              </div>
-            )}
-          </div>
-        </div>
+          <SectionLabel>Yandex ID</SectionLabel>
+          {yandexHref ? (
+            <a
+              href={yandexHref}
+              className="focus-ring motion-hover-lift motion-press"
+              style={ghostButton}
+            >
+              <span>Войти через Yandex</span>
+              <ArrowRight className="h-[18px] w-[18px]" />
+            </a>
+          ) : (
+            <div
+              style={{
+                padding: '12px 16px',
+                border: '1px solid var(--hair)',
+                borderRadius: 'var(--radius-inner)',
+                fontSize: 13,
+                color: 'var(--ink-40)',
+              }}
+            >
+              Yandex-логин не настроен (нет VITE_YANDEX_CLIENT_ID).
+            </div>
+          )}
+        </motion.div>
 
-        <p className="text-center text-[13px] text-text-muted">
+        <motion.p
+          variants={staggerItem}
+          style={{
+            margin: 0,
+            textAlign: 'center',
+            fontSize: 13,
+            color: 'var(--ink-40)',
+            maxWidth: '60ch',
+            alignSelf: 'center',
+          }}
+        >
           Первый раз? Просто нажми Yandex или Telegram — мы создадим профиль автоматически.
-        </p>
+        </motion.p>
 
         {/* DEV-ONLY login. Endpoint доступен ТОЛЬКО когда backend стартует
             с DEV_AUTH=true (response 404 иначе). Не показываем в production
             build — VITE_DEV_AUTH=true в .env.local включает UI. */}
         {import.meta.env.VITE_DEV_AUTH === 'true' && (
-          <DevLoginPane
-            onError={setError}
-            onSuccess={(r) => {
-              persistAuthTokens({
-                access_token: r.access_token,
-                refresh_token: r.refresh_token,
-                expires_in: r.expires_in,
-              })
-              const dest = r.is_new_user ? '/onboarding' : nextHref
-              navigate(dest, { replace: true })
-            }}
-          />
+          <motion.div variants={staggerItem}>
+            <DevLoginPane
+              onError={setError}
+              onSuccess={(r) => {
+                persistAuthTokens({
+                  access_token: r.access_token,
+                  refresh_token: r.refresh_token,
+                  expires_in: r.expires_in,
+                })
+                const dest = r.is_new_user ? '/onboarding' : nextHref
+                navigate(dest, { replace: true })
+              }}
+            />
+          </motion.div>
         )}
-      </main>
+      </motion.main>
 
       {tgFlow && (
         <TelegramCodeModal
@@ -334,6 +437,46 @@ export default function LoginPage() {
       )}
     </div>
   )
+}
+
+// v2 visual language helpers — section caption-mono uppercase + ghost button.
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 11,
+        fontWeight: 500,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+        color: 'var(--ink-40)',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+const ghostButton: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 10,
+  width: '100%',
+  minHeight: 44,
+  padding: '12px 20px',
+  border: '1px solid var(--hair-2)',
+  borderRadius: 'var(--radius-inner)',
+  background: 'transparent',
+  color: 'rgb(var(--ink))',
+  fontSize: 15,
+  fontWeight: 500,
+  letterSpacing: '-0.005em',
+  cursor: 'pointer',
+  textDecoration: 'none',
+  transition:
+    'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
 }
 
 function TelegramCodeModal({
@@ -349,79 +492,214 @@ function TelegramCodeModal({
   onCopy: () => void
   onCancel: () => void
 }) {
+  // Local open state for smooth exit animation. Parent unmounts TelegramCodeModal
+  // when tgFlow flips to null — we delay that by motion.dur.medium so the
+  // exit anim plays out.
+  const [open, setOpen] = useState(true)
+  const close = () => {
+    setOpen(false)
+    window.setTimeout(onCancel, motionTokens.dur.medium)
+  }
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
-      onClick={onCancel}
-    >
-      <div
-        className="relative w-full max-w-[420px] rounded-2xl border border-border bg-surface-1 p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open={open} onClose={close} size="sm">
+      <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 8 }}>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 'var(--type-h3-size)',
+            lineHeight: 'var(--type-h3-lh)',
+            letterSpacing: 'var(--type-h3-ls)',
+            fontWeight: 'var(--type-h3-weight)',
+            color: 'rgb(var(--ink))',
+          }}
+        >
+          Подтверди вход в Telegram
+        </h2>
         <button
           type="button"
           aria-label="Закрыть"
-          onClick={onCancel}
-          className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-md text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
+          onClick={close}
+          className="focus-ring"
+          style={{
+            display: 'grid',
+            placeItems: 'center',
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: 'transparent',
+            color: 'var(--ink-60)',
+            border: 0,
+            cursor: 'pointer',
+            flex: '0 0 auto',
+            transition:
+              'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+            e.currentTarget.style.color = 'rgb(var(--ink))'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = 'var(--ink-60)'
+          }}
         >
           <X className="h-5 w-5" />
         </button>
-        <h2 className="font-display text-xl font-bold text-text-primary">Подтверди вход в Telegram</h2>
-        <p className="mt-2 text-[13px] text-text-muted">
-          Мы открыли бота в новой вкладке. Если этого не произошло — нажми «Открыть Telegram» ниже.
-          После того как бот пришлёт «Готово», ты автоматически окажешься на сайте.
-        </p>
+      </header>
+      <p style={{ margin: 0, marginBottom: 20, fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
+        Мы открыли бота в новой вкладке. Если этого не произошло — нажми «Открыть Telegram» ниже.
+        После того как бот пришлёт «Готово», ты автоматически окажешься на сайте.
+      </p>
 
-        <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-border bg-bg px-4 py-3">
-          <div className="flex flex-col">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Код</span>
-            <span className="font-mono text-2xl font-bold tracking-[0.12em] text-text-primary">{code}</span>
-          </div>
-          <button
-            type="button"
-            onClick={onCopy}
-            className="grid h-10 w-10 place-items-center rounded-md border border-border text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
-            aria-label="Скопировать код"
+      <div
+        className="flex-wrap-row"
+        style={{
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '12px 16px',
+          border: '1px solid var(--hair-2)',
+          borderRadius: 'var(--radius-inner)',
+          background: 'transparent',
+        }}
+      >
+        <div className="flex flex-col" style={{ minWidth: 0 }}>
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              fontSize: 10,
+              fontWeight: 500,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-40)',
+            }}
           >
-            <Copy className="h-4 w-4" />
-          </button>
+            Код
+          </span>
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              fontSize: 24,
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              color: 'rgb(var(--ink))',
+            }}
+          >
+            {code}
+          </span>
         </div>
-
-        <a
-          href={deepLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-text-primary/10 text-[14px] font-semibold text-text-primary transition-colors hover:bg-text-primary/20"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Открыть Telegram
-        </a>
-
-        <div className="mt-4 flex items-center gap-2 text-[12px] text-text-muted">
-          {polling ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
-              Ждём подтверждения…
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="h-4 w-4 text-success" />
-              Готово.
-            </>
-          )}
-        </div>
-
         <button
           type="button"
-          onClick={onCancel}
-          className="mt-4 h-10 w-full rounded-lg border border-border text-[13px] font-medium text-text-muted transition-colors hover:bg-surface-2"
+          onClick={onCopy}
+          aria-label="Скопировать код"
+          className="focus-ring motion-press"
+          style={{
+            display: 'grid',
+            placeItems: 'center',
+            width: 40,
+            height: 40,
+            borderRadius: 'var(--radius-inner)',
+            border: '1px solid var(--hair-2)',
+            color: 'var(--ink-60)',
+            background: 'transparent',
+            cursor: 'pointer',
+            transition:
+              'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+            e.currentTarget.style.color = 'rgb(var(--ink))'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = 'var(--ink-60)'
+          }}
         >
-          Отмена
+          <Copy className="h-4 w-4" />
         </button>
       </div>
-    </div>
+
+      <a
+        href={deepLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="focus-ring motion-press"
+        style={{
+          marginTop: 14,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          minHeight: 44,
+          padding: '12px 20px',
+          border: '1px solid var(--hair-2)',
+          borderRadius: 'var(--radius-inner)',
+          background: 'transparent',
+          color: 'rgb(var(--ink))',
+          fontSize: 14,
+          fontWeight: 500,
+          textDecoration: 'none',
+          transition:
+            'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent'
+          e.currentTarget.style.borderColor = 'var(--hair-2)'
+        }}
+      >
+        <ExternalLink className="h-4 w-4" />
+        Открыть Telegram
+      </a>
+
+      <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--ink-60)' }}>
+        {polling ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Ждём подтверждения…
+          </>
+        ) : (
+          <>
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--red)' }} />
+            Готово.
+          </>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={close}
+        className="focus-ring motion-press"
+        style={{
+          marginTop: 14,
+          width: '100%',
+          padding: '10px 16px',
+          border: '1px solid var(--hair)',
+          borderRadius: 'var(--radius-inner)',
+          background: 'transparent',
+          fontSize: 13,
+          fontWeight: 500,
+          color: 'var(--ink-60)',
+          cursor: 'pointer',
+          transition:
+            'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+          e.currentTarget.style.color = 'rgb(var(--ink))'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent'
+          e.currentTarget.style.color = 'var(--ink-60)'
+        }}
+      >
+        Отмена
+      </button>
+    </Modal>
   )
 }
 
@@ -459,30 +737,81 @@ function DevLoginPane({ onSuccess, onError }: DevLoginPaneProps) {
   return (
     <form
       onSubmit={submit}
-      className="rounded-lg border border-white/20 bg-white/5 px-4 py-3"
+      style={{
+        padding: '16px 18px',
+        border: '1px solid var(--hair)',
+        borderRadius: 'var(--radius-outer)',
+        background: 'rgba(255, 255, 255, 0.02)',
+      }}
     >
-      <div className="mb-2 flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-text-secondary">
-        <span style={{ color: '#FF3B30' }}>●</span> DEV-only · DEV_AUTH=true
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          marginBottom: 14,
+          fontSize: 11,
+          fontWeight: 500,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+          color: 'var(--ink-60)',
+        }}
+      >
+        {/* Red signal stripe — 1.5×24px, the v2 metaphor: live/dev indicator. */}
+        <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: '#FF3B30' }} />
+        DEV-only · DEV_AUTH=true
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap-row" style={{ gap: 12, alignItems: 'baseline' }}>
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="username"
-          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+          className="min-w-0"
           disabled={busy}
+          aria-label="DEV username"
+          style={{
+            flex: '1 1 160px',
+            minWidth: 0,
+            padding: '10px 0',
+            border: 0,
+            borderBottom: '1px solid var(--hair-2)',
+            background: 'transparent',
+            color: 'rgb(var(--ink))',
+            fontSize: 14,
+            outline: 'none',
+            transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderBottomColor = 'rgb(var(--ink))')}
+          onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
         />
         <button
           type="submit"
           disabled={!username.trim() || busy}
-          className="rounded-md bg-text-primary px-4 py-2 text-[13px] font-semibold text-bg disabled:opacity-50"
+          className="focus-ring motion-press"
+          style={{
+            flex: '0 0 auto',
+            padding: '10px 18px',
+            background: 'rgb(var(--ink))',
+            color: 'rgb(var(--color-bg))',
+            border: 0,
+            borderRadius: 'var(--radius-inner)',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            opacity: !username.trim() || busy ? 0.5 : 1,
+            transition: 'opacity var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+          onMouseEnter={(e) => {
+            if (!busy && username.trim()) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.92)'
+          }}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--ink)')}
         >
           {busy ? '…' : 'Войти'}
         </button>
       </div>
-      <p className="mt-2 text-[11px] text-text-muted">
-        Никаких паролей. Создаёт/пере-логинит юзера по имени. Видно только
-        локально — на проде 404.
+      <p style={{ margin: 0, marginTop: 12, fontSize: 11, color: 'var(--ink-40)', lineHeight: 1.5 }}>
+        Никаких паролей. Создаёт/пере-логинит юзера по имени. Видно только локально — на проде 404.
       </p>
     </form>
   )

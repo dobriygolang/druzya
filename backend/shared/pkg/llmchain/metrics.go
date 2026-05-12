@@ -14,7 +14,7 @@ import (
 //	    — per-attempt counter. One increment per chain hop; a fallback
 //	      chain that eventually succeeds produces multiple increments
 //	      (one failed + one ok). Label "task" is the Task constant
-//	      ("vacancies_json" etc.); "status" is classLabel (ok /
+//	      ("insight_prose" etc.); "status" is classLabel (ok /
 //	      rate_limited / provider_down / timeout / unauthorized /
 //	      bad_request / not_supported / unknown).
 //

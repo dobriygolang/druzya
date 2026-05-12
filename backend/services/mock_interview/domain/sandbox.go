@@ -45,6 +45,23 @@ type SandboxResult struct {
 	Verdict     AttemptVerdict
 }
 
+// SandboxCaseResult — per-test outcome surfaced by SubmitDetailed. Used by
+// the Algo «Run tests» path so the frontend can show per-case pass/fail.
+// Hidden cases are still executed (and counted in Total/Passed) but the
+// caller is responsible for stripping their Input/Expected/Actual before
+// returning to the client.
+type SandboxCaseResult struct {
+	Ordinal    int
+	Passed     bool
+	Input      string
+	Expected   string
+	Actual     string
+	Stderr     string
+	IsHidden   bool
+	RuntimeMs  int
+	MemoryKB   int
+}
+
 // SandboxExecutor — code-execution adapter. Single Submit per attempt; the
 // implementation iterates over the task's grading rows internally. Returns
 // ErrSandboxUnavailable on transport / config / unsupported-language so the
@@ -52,4 +69,16 @@ type SandboxResult struct {
 type SandboxExecutor interface {
 	Available() bool
 	Submit(ctx context.Context, code string, language enums.Language, taskID uuid.UUID) (SandboxResult, error)
+}
+
+// DetailedSandboxExecutor — optional capability for per-case granularity.
+// Used by the Algo «Run tests» dry-run path. Implementations that don't
+// support it are gated via a type-assertion in the use case (orchestrator
+// keeps using the aggregate Submit path).
+type DetailedSandboxExecutor interface {
+	SandboxExecutor
+	// SubmitDetailed runs every test case and returns the per-case outcome
+	// alongside aggregate counts. Hidden cases are present in the slice
+	// with IsHidden=true; callers are responsible for redaction.
+	SubmitDetailed(ctx context.Context, code string, language enums.Language, taskID uuid.UUID) ([]SandboxCaseResult, error)
 }

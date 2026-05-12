@@ -37,7 +37,7 @@ func TestBuildSuggestMessages_Wrapping(t *testing.T) {
 		Question: "What's your experience with Go?",
 		Context:  "Earlier you mentioned you worked at Google.",
 		Persona:  "interview",
-	})
+	}, "", "")
 	if len(msgs) < 2 {
 		t.Fatalf("want ≥2 messages, got %d", len(msgs))
 	}

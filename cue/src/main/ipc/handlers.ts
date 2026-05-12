@@ -49,6 +49,8 @@ import { createMemoryClient } from '../api/memory';
 import { createAudioCapture, type AudioCaptureState } from '../capture/audio-mac';
 import { createSuggestionClient } from '../api/suggestion';
 import { createEnglishPolishClient } from '../api/english';
+import { createInterviewPrepClient } from '../api/interview-prep';
+import { extractCVText } from '../api/pdf-extractor';
 import { createTriggerPolicy } from '../coach/trigger-policy';
 import { loadAppearance, saveAppearance, type AppearancePrefs } from '../settings/appearance';
 import { createSessionManager, type SessionManager } from '../sessions/manager';
@@ -63,6 +65,11 @@ import {
   listOverrides,
   setOverride,
 } from '../hotkeys/registry';
+import {
+  clearOnboardingCompleted,
+  isOnboardingCompleted,
+  markOnboardingCompleted,
+} from '../onboarding/flag';
 import {
   checkPermissions,
   openPermissionPane,
@@ -490,6 +497,38 @@ export function registerHandlers(opts: RegisterOptions): void {
     await openPermissionPane(kind);
   });
 
+  // ── Onboarding ──
+  // The wizard window itself is created in main/index.ts on first boot
+  // (when the flag is absent). These handlers own:
+  //   1. completion — write the flag, close the wizard, open compact.
+  //   2. probe      — has the user finished onboarding before?
+  //   3. reset      — wipe the flag and re-open the wizard. Used from
+  //                   Settings → "Re-run welcome flow" for debug / when
+  //                   a user wants to revisit the stealth demo.
+  ipcMain.handle(invokeChannels.onboardingComplete, async () => {
+    await markOnboardingCompleted();
+    // Open compact first so the user never sees an empty desktop after
+    // the onboarding window closes. preloadWindow handles the picker
+    // so subsequent ⌘⇧Space is instant.
+    showWindow('compact', windowOptions);
+    // Then hide the onboarding window (not close — keep it warm for a
+    // possible re-open from Settings without paying the renderer-boot
+    // cost again). User can hard-close via the system close button if
+    // they want.
+    hideWindow('onboarding');
+  });
+  ipcMain.handle(invokeChannels.onboardingIsCompleted, async () =>
+    isOnboardingCompleted(),
+  );
+  ipcMain.handle(invokeChannels.onboardingReset, async () => {
+    await clearOnboardingCompleted();
+    // Hard-close so the next showWindow rebuilds the renderer fresh —
+    // otherwise the wizard would resume on whatever step the user was on
+    // when they last left it.
+    closeWindow('onboarding');
+    showWindow('onboarding', windowOptions);
+  });
+
   // ── History ──
   handleInTuple(
     invokeChannels.historyList,
@@ -892,11 +931,14 @@ export function registerHandlers(opts: RegisterOptions): void {
       console.log(`[handlers:audio:${source}] state→${state}`);
       broadcast(eventChannels.audioCaptureStateChanged, { source, state });
     },
-    onTranscript: (text: string, windowSec: number, isFinal: boolean) => {
+    onTranscript: (text: string, windowSec: number, isFinal: boolean, speakerId?: number) => {
       // Privacy: транскрипт длина — это metadata leak в crash logs / forensic.
       // Раньше был console.log — убран. Если нужен debug, вернуть с if (isDev).
-      void text; void windowSec; void isFinal;
-      broadcast(eventChannels.audioCaptureTranscript, { source, text, windowSec, isFinal });
+      void text; void windowSec; void isFinal; void speakerId;
+      // C4 diarization: backend tags final deltas с speaker_id. Mic source
+      // = 0 (the user), system source = 1..N. Если отсутствует (legacy/
+      // partial), renderer fallback'нётся на source-based label.
+      broadcast(eventChannels.audioCaptureTranscript, { source, text, windowSec, isFinal, speakerId });
       if (isFinal) {
         coachPolicy.onTranscript(text);
       }
@@ -941,6 +983,94 @@ export function registerHandlers(opts: RegisterOptions): void {
     coachPolicy.setEnabled(on);
   });
   ipcMain.handle(invokeChannels.coachGetAutoSuggest, async () => coachPolicy.isEnabled());
+
+  // ── Interview prep (Phase J / C6, 2026-05-12) ──
+  // Bearer auth lives in main; renderer never sees the token. PDF
+  // extraction is best-effort (see api/pdf-extractor.ts) — for scanned
+  // CVs the wizard falls back to "paste manually".
+  const interviewPrepREST = createInterviewPrepClient({
+    apiBaseURL,
+    updateFeedURL: '',
+    sentryDSN: '',
+    environment: '',
+    defaultLocale: 'ru',
+    isDev: false,
+  });
+
+  ipcMain.handle(invokeChannels.interviewPrepOpen, async () => {
+    showWindow('interview-prep', windowOptions);
+  });
+
+  ipcMain.handle(invokeChannels.interviewPrepPickCV, async () => {
+    const r = await dialog.showOpenDialog({
+      title: 'Select your CV',
+      properties: ['openFile'],
+      filters: [
+        { name: 'CV (PDF / Markdown / Text)', extensions: ['pdf', 'md', 'markdown', 'txt'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    });
+    if (r.canceled || r.filePaths.length === 0) {
+      return { text: '', filename: '', ok: false };
+    }
+    return extractCVText(r.filePaths[0]);
+  });
+
+  handleIn(
+    invokeChannels.interviewPrepParseCV,
+    z.object({
+      text: z.string().min(1).max(50_000),
+      filename: z.string().max(256).optional(),
+    }),
+    async (in_) => interviewPrepREST.parseCV(in_.text, in_.filename),
+  );
+
+  handleIn(
+    invokeChannels.interviewPrepParseJD,
+    z
+      .object({
+        text: z.string().max(30_000).optional(),
+        url: z.string().max(2000).optional(),
+      })
+      .refine((v) => Boolean(v.text || v.url), {
+        message: 'either text or url is required',
+      }),
+    async (in_) => interviewPrepREST.parseJD(in_.text, in_.url),
+  );
+
+  handleIn(
+    invokeChannels.interviewPrepStart,
+    z.object({
+      parsedCV: z.object({
+        name: z.string().max(200),
+        experienceYears: z.number().int().nonnegative().max(80),
+        currentRole: z.string().max(200),
+        topSkills: z.array(z.string().max(64)).max(20),
+        summary: z.string().max(2000),
+        education: z.string().max(500),
+      }),
+      parsedJD: z.object({
+        company: z.string().max(200),
+        role: z.string().max(200),
+        seniority: z.string().max(80),
+        keySkills: z.array(z.string().max(64)).max(20),
+        descriptionSummary: z.string().max(2000),
+        language: z.string().max(8),
+      }),
+      cvText: z.string().max(50_000),
+      jdText: z.string().max(30_000),
+    }),
+    async (in_) =>
+      interviewPrepREST.start(in_.parsedCV, in_.parsedJD, in_.cvText, in_.jdText),
+  );
+
+  ipcMain.handle(invokeChannels.interviewPrepGetActive, async () =>
+    interviewPrepREST.getActive(),
+  );
+
+  ipcMain.handle(invokeChannels.interviewPrepEnd, async () => {
+    await interviewPrepREST.end();
+  });
 
 }
 

@@ -34,7 +34,6 @@ type TrackStepKind int32
 const (
 	TrackStepKind_TRACK_STEP_KIND_UNSPECIFIED TrackStepKind = 0
 	TrackStepKind_TRACK_STEP_KIND_KATA        TrackStepKind = 1
-	TrackStepKind_TRACK_STEP_KIND_ARENA       TrackStepKind = 2
 	TrackStepKind_TRACK_STEP_KIND_MOCK        TrackStepKind = 3
 	TrackStepKind_TRACK_STEP_KIND_CODEX_READ  TrackStepKind = 4
 	TrackStepKind_TRACK_STEP_KIND_FOCUS_BLOCK TrackStepKind = 5
@@ -45,7 +44,6 @@ var (
 	TrackStepKind_name = map[int32]string{
 		0: "TRACK_STEP_KIND_UNSPECIFIED",
 		1: "TRACK_STEP_KIND_KATA",
-		2: "TRACK_STEP_KIND_ARENA",
 		3: "TRACK_STEP_KIND_MOCK",
 		4: "TRACK_STEP_KIND_CODEX_READ",
 		5: "TRACK_STEP_KIND_FOCUS_BLOCK",
@@ -53,7 +51,6 @@ var (
 	TrackStepKind_value = map[string]int32{
 		"TRACK_STEP_KIND_UNSPECIFIED": 0,
 		"TRACK_STEP_KIND_KATA":        1,
-		"TRACK_STEP_KIND_ARENA":       2,
 		"TRACK_STEP_KIND_MOCK":        3,
 		"TRACK_STEP_KIND_CODEX_READ":  4,
 		"TRACK_STEP_KIND_FOCUS_BLOCK": 5,
@@ -1701,14 +1698,13 @@ const file_druz9_v1_tracks_proto_rawDesc = "" +
 	"\x05group\x18\x03 \x01(\tR\x05group\x12\x12\n" +
 	"\x04hint\x18\x04 \x01(\tR\x04hint\"L\n" +
 	"\x1aGenerateCustomPathResponse\x12.\n" +
-	"\x05nodes\x18\x01 \x03(\v2\x18.druz9.v1.CustomPathNodeR\x05nodes*\xc0\x01\n" +
+	"\x05nodes\x18\x01 \x03(\v2\x18.druz9.v1.CustomPathNodeR\x05nodes*\xc2\x01\n" +
 	"\rTrackStepKind\x12\x1f\n" +
 	"\x1bTRACK_STEP_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
-	"\x14TRACK_STEP_KIND_KATA\x10\x01\x12\x19\n" +
-	"\x15TRACK_STEP_KIND_ARENA\x10\x02\x12\x18\n" +
+	"\x14TRACK_STEP_KIND_KATA\x10\x01\x12\x18\n" +
 	"\x14TRACK_STEP_KIND_MOCK\x10\x03\x12\x1e\n" +
 	"\x1aTRACK_STEP_KIND_CODEX_READ\x10\x04\x12\x1f\n" +
-	"\x1bTRACK_STEP_KIND_FOCUS_BLOCK\x10\x052\xff\t\n" +
+	"\x1bTRACK_STEP_KIND_FOCUS_BLOCK\x10\x05\"\x04\b\x02\x10\x02*\x15TRACK_STEP_KIND_ARENA2\xff\t\n" +
 	"\rTracksService\x12_\n" +
 	"\n" +
 	"ListTracks\x12\x1b.druz9.v1.ListTracksRequest\x1a\x1c.druz9.v1.ListTracksResponse\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/api/v1/tracks\x12`\n" +

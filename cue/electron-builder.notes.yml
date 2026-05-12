@@ -1,0 +1,41 @@
+# Masquerade build: Notes alias bundle.
+#
+# Inherits everything from electron-builder.yml (entitlements, hardened
+# runtime, native helpers, URL scheme) and overrides only the identity
+# fields that show up in Activity Monitor / Finder / Cmd+Tab so the
+# observer sees "Notes" instead of "Cue".
+#
+# afterPack-masquerade.cjs runs after electron-builder finishes the
+# bundle to forcibly rewrite Info.plist CFBundleName + CFBundleExecutable
+# — electron-builder's productName mapping is partial, and the executable
+# inside Contents/MacOS/ does NOT get renamed by default.
+extends: electron-builder.yml
+productName: Notes
+appId: app.druzya.copilot.alias.notes
+directories:
+  output: dist/mac-notes
+mac:
+  icon: resources/masquerade/notes.icns
+  extendInfo:
+    LSUIElement: true
+    CFBundleName: Notes
+    CFBundleDisplayName: Notes
+    # Wipe the druz9-cue:// URL scheme on alias bundles — only the real
+    # Cue bundle should claim it, otherwise macOS routes deeplinks
+    # randomly between bundles.
+    CFBundleURLTypes: []
+afterPack: scripts/afterPack-masquerade.cjs
+extraMetadata:
+  productName: Notes
+  masqueradePreset: notes
+artifactName: Notes-${version}-${arch}.${ext}
+# Per-preset update channel — Notes-disguise bundle reads latest-mac.yml
+# из `masquerade-notes` channel в GitHub Releases, поэтому update от
+# Telegram-disguise НЕ заразит Notes-disguise (и наоборот).
+# owner/repo резолвятся electron-builder'ом из GITHUB_TOKEN environment
+# на CI; в local build provider остаётся inert (--publish never в
+# package.json npm scripts).
+publish:
+  - provider: github
+    channel: masquerade-notes
+    releaseType: draft

@@ -3,6 +3,8 @@
    Legacy RPG pages still use /styles/tokens.css unchanged. */
 
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+@import './_tokens.generated.css';
+@import './_responsive.css';
 
 @tailwind base;
 @tailwind components;
@@ -55,30 +57,17 @@
     --red: #FF3B30;
   }
 
+  /* light theme killed 2026-05-12; force dark per Sergey identity (Hone
+     dark-only across all surfaces). theme.ts useTheme() returns 'dark'
+     and `set`/`toggle` are no-ops. Re-introducing light is a CSS revert
+     + theme.ts state change away. See memory/feedback_color_rule.md. */
   .light {
-    /* Light theme is no longer a primary target — Hone is dark-only and the
-       ecosystem signature is pure black. Tokens kept for any residual usage,
-       but cyan/pink/accent collapsed to ink for parity with .dark. */
-    --color-bg: 250 250 252;
-    --color-surface-1: 255 255 255;
-    --color-surface-2: 244 244 248;
-    --color-surface-3: 244 244 248;
-    --color-border: 226 226 232;
-    --color-border-strong: 200 200 210;
-    --color-text-primary: 16 16 28;
-    --color-text-secondary: 70 70 90;
-    --color-text-muted: 120 120 140;
-    --color-accent: 16 16 28;
-    --color-accent-hover: 40 40 60;
-    --color-success: 16 150 105;
-    --color-danger: 255 59 48;
-    --color-warn: 200 145 20;
-    --color-cyan: 16 16 28;
-    --color-pink: 16 16 28;
+    /* Inherits from :root,.dark — Tailwind `darkMode: 'class'` still scopes
+       dark utility variants under .dark, and HTML always carries .dark. */
   }
 
   html {
-    transition: background-color 200ms, color 200ms;
+    transition: background-color var(--motion-dur-medium) var(--motion-ease-standard), color var(--motion-dur-medium) var(--motion-ease-standard);
   }
 
   /* When body has the v2 class, modern bg + Inter takes over the page. */
@@ -178,6 +167,43 @@
   .hair-l  { border-left: 1px solid var(--hair); }
   .hair-r  { border-right: 1px solid var(--hair); }
 
+  /* ─── Surface elevation per visual-language v2 spec ─────────────────
+     4-step elevation ramp shared across web / Hone / Cue. e0 = flat,
+     e1 = card on bg, e2 = floating panel, e3 = modal / popover.
+     `--hair` / `--hair-2` are already defined above; we reference them
+     via fallback for safety if a page mounts outside .dark scope. */
+  .surface-e0 {
+    background: transparent;
+  }
+  .surface-e1 {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--hair, rgba(255, 255, 255, 0.08));
+  }
+  .surface-e2 {
+    background: #0a0a0a;
+    border: 1px solid var(--hair-2, rgba(255, 255, 255, 0.12));
+    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.4);
+  }
+  .surface-e3 {
+    background: #0a0a0a;
+    border: 1px solid var(--hair-2, rgba(255, 255, 255, 0.12));
+    box-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.85);
+  }
+
+  /* Card lift — 1px translate + hairline brighten on hover. Used by
+     v2 cards / list rows that already wear .surface-e1 or .hair. */
+  .card-lift {
+    transition: transform var(--motion-dur-small) var(--motion-ease-standard),
+                border-color var(--motion-dur-small) var(--motion-ease-standard);
+  }
+  .card-lift:hover {
+    transform: translateY(-1px);
+    border-color: var(--hair-2, rgba(255, 255, 255, 0.14));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-lift:hover { transform: none; }
+  }
+
   /* meditative starfield — static, very quiet */
   .starfield {
     position: absolute; inset: 0; pointer-events: none;
@@ -249,7 +275,7 @@
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .hone-fadein { animation: hone-fadein 600ms cubic-bezier(.2,.7,.2,1) both; }
+  .hone-fadein { animation: hone-fadein var(--motion-dur-xlarge) var(--motion-ease-standard) both; }
 
   /* Phase 11b — stagger entry animations (cards / list items / sections). */
   @keyframes druz9-fade-up {
@@ -258,7 +284,7 @@
   }
   .stagger > * {
     opacity: 0;
-    animation: druz9-fade-up 480ms cubic-bezier(.2,.7,.2,1) forwards;
+    animation: druz9-fade-up var(--motion-dur-xlarge) var(--motion-ease-standard) forwards;
   }
   .stagger > *:nth-child(1) { animation-delay:  60ms; }
   .stagger > *:nth-child(2) { animation-delay: 130ms; }
@@ -311,7 +337,7 @@
     letter-spacing: 0.04em;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     opacity: 0;
-    transition: opacity 180ms ease;
+    transition: opacity var(--motion-dur-small) var(--motion-ease-standard);
   }
   .cm-line:hover .cm-ySelectionCaret::before,
   .always-show-cursor-labels .cm-ySelectionCaret::before {
@@ -323,6 +349,29 @@
   @media (prefers-reduced-motion: reduce) {
     .cm-ySelectionCaret::before {
       transition: none;
+    }
+  }
+
+  /* Hash-scroll deep-link pulse — AppShellV2 navigation effect для
+     /today#activity и подобных insight CTAs. Border-only, чтобы B/W rule
+     не пострадал (no accent fill / no red). */
+  .hash-pulse {
+    animation: hash-pulse-anim 1.2s ease-out;
+  }
+  @keyframes hash-pulse-anim {
+    0% {
+      box-shadow: 0 0 0 0 rgb(var(--text-primary) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgb(var(--text-primary) / 0.16);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgb(var(--text-primary) / 0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hash-pulse {
+      animation: none;
     }
   }
 }

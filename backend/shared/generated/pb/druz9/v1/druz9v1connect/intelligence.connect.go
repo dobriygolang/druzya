@@ -25,6 +25,7 @@ import (
 	context "context"
 	v1 "druz9/shared/generated/pb/druz9/v1"
 	errors "errors"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -91,6 +92,63 @@ const (
 	// IntelligenceServiceGetCoachStatsProcedure is the fully-qualified name of the
 	// IntelligenceService's GetCoachStats RPC.
 	IntelligenceServiceGetCoachStatsProcedure = "/druz9.v1.IntelligenceService/GetCoachStats"
+	// IntelligenceServiceCreateGoalProcedure is the fully-qualified name of the IntelligenceService's
+	// CreateGoal RPC.
+	IntelligenceServiceCreateGoalProcedure = "/druz9.v1.IntelligenceService/CreateGoal"
+	// IntelligenceServiceGetActiveGoalProcedure is the fully-qualified name of the
+	// IntelligenceService's GetActiveGoal RPC.
+	IntelligenceServiceGetActiveGoalProcedure = "/druz9.v1.IntelligenceService/GetActiveGoal"
+	// IntelligenceServiceUpdateGoalProcedure is the fully-qualified name of the IntelligenceService's
+	// UpdateGoal RPC.
+	IntelligenceServiceUpdateGoalProcedure = "/druz9.v1.IntelligenceService/UpdateGoal"
+	// IntelligenceServiceDeactivateGoalProcedure is the fully-qualified name of the
+	// IntelligenceService's DeactivateGoal RPC.
+	IntelligenceServiceDeactivateGoalProcedure = "/druz9.v1.IntelligenceService/DeactivateGoal"
+	// IntelligenceServiceIngestInterviewSessionProcedure is the fully-qualified name of the
+	// IntelligenceService's IngestInterviewSession RPC.
+	IntelligenceServiceIngestInterviewSessionProcedure = "/druz9.v1.IntelligenceService/IngestInterviewSession"
+	// IntelligenceServiceListInterviewSessionsProcedure is the fully-qualified name of the
+	// IntelligenceService's ListInterviewSessions RPC.
+	IntelligenceServiceListInterviewSessionsProcedure = "/druz9.v1.IntelligenceService/ListInterviewSessions"
+	// IntelligenceServiceGenerateMilestonesProcedure is the fully-qualified name of the
+	// IntelligenceService's GenerateMilestones RPC.
+	IntelligenceServiceGenerateMilestonesProcedure = "/druz9.v1.IntelligenceService/GenerateMilestones"
+	// IntelligenceServiceGetMilestonesProcedure is the fully-qualified name of the
+	// IntelligenceService's GetMilestones RPC.
+	IntelligenceServiceGetMilestonesProcedure = "/druz9.v1.IntelligenceService/GetMilestones"
+	// IntelligenceServiceMarkMilestoneDoneProcedure is the fully-qualified name of the
+	// IntelligenceService's MarkMilestoneDone RPC.
+	IntelligenceServiceMarkMilestoneDoneProcedure = "/druz9.v1.IntelligenceService/MarkMilestoneDone"
+	// IntelligenceServiceGetNodeCoverageProcedure is the fully-qualified name of the
+	// IntelligenceService's GetNodeCoverage RPC.
+	IntelligenceServiceGetNodeCoverageProcedure = "/druz9.v1.IntelligenceService/GetNodeCoverage"
+	// IntelligenceServiceListMemoryEntriesProcedure is the fully-qualified name of the
+	// IntelligenceService's ListMemoryEntries RPC.
+	IntelligenceServiceListMemoryEntriesProcedure = "/druz9.v1.IntelligenceService/ListMemoryEntries"
+	// IntelligenceServiceDeleteMemoryEntryProcedure is the fully-qualified name of the
+	// IntelligenceService's DeleteMemoryEntry RPC.
+	IntelligenceServiceDeleteMemoryEntryProcedure = "/druz9.v1.IntelligenceService/DeleteMemoryEntry"
+	// IntelligenceServiceEditMemoryEntryProcedure is the fully-qualified name of the
+	// IntelligenceService's EditMemoryEntry RPC.
+	IntelligenceServiceEditMemoryEntryProcedure = "/druz9.v1.IntelligenceService/EditMemoryEntry"
+	// IntelligenceServiceSaveFocusReflectionProcedure is the fully-qualified name of the
+	// IntelligenceService's SaveFocusReflection RPC.
+	IntelligenceServiceSaveFocusReflectionProcedure = "/druz9.v1.IntelligenceService/SaveFocusReflection"
+	// IntelligenceServiceListFocusReflectionsProcedure is the fully-qualified name of the
+	// IntelligenceService's ListFocusReflections RPC.
+	IntelligenceServiceListFocusReflectionsProcedure = "/druz9.v1.IntelligenceService/ListFocusReflections"
+	// IntelligenceServiceGetUserContextProcedure is the fully-qualified name of the
+	// IntelligenceService's GetUserContext RPC.
+	IntelligenceServiceGetUserContextProcedure = "/druz9.v1.IntelligenceService/GetUserContext"
+	// IntelligenceServiceMarkAtlasStruggleProcedure is the fully-qualified name of the
+	// IntelligenceService's MarkAtlasStruggle RPC.
+	IntelligenceServiceMarkAtlasStruggleProcedure = "/druz9.v1.IntelligenceService/MarkAtlasStruggle"
+	// IntelligenceServiceListAtlasStrugglesProcedure is the fully-qualified name of the
+	// IntelligenceService's ListAtlasStruggles RPC.
+	IntelligenceServiceListAtlasStrugglesProcedure = "/druz9.v1.IntelligenceService/ListAtlasStruggles"
+	// IntelligenceServiceClearAtlasStruggleProcedure is the fully-qualified name of the
+	// IntelligenceService's ClearAtlasStruggle RPC.
+	IntelligenceServiceClearAtlasStruggleProcedure = "/druz9.v1.IntelligenceService/ClearAtlasStruggle"
 )
 
 // IntelligenceServiceClient is a client for the druz9.v1.IntelligenceService service.
@@ -121,6 +179,43 @@ type IntelligenceServiceClient interface {
 	GetSkillRadar(context.Context, *connect.Request[v1.GetSkillRadarRequest]) (*connect.Response[v1.SkillRadar], error)
 	// GetCoachStats — Phase 2 snapshot KPIs (streak / focus today / last mock / next mock).
 	GetCoachStats(context.Context, *connect.Request[v1.GetCoachStatsRequest]) (*connect.Response[v1.CoachStats], error)
+	// ── F2 Goal CRUD (2026-05-12) ────────────────────────────────────────
+	CreateGoal(context.Context, *connect.Request[v1.CreateGoalRequest]) (*connect.Response[v1.Goal], error)
+	// GetActiveGoal returns NotFound when the user has no active primary goal.
+	GetActiveGoal(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Goal], error)
+	UpdateGoal(context.Context, *connect.Request[v1.UpdateGoalRequest]) (*connect.Response[v1.Goal], error)
+	DeactivateGoal(context.Context, *connect.Request[v1.DeactivateGoalRequest]) (*connect.Response[emptypb.Empty], error)
+	// ── F10 Interview-session ingestion (2026-05-12) ────────────────────
+	IngestInterviewSession(context.Context, *connect.Request[v1.IngestInterviewSessionRequest]) (*connect.Response[v1.InterviewSession], error)
+	ListInterviewSessions(context.Context, *connect.Request[v1.ListInterviewSessionsRequest]) (*connect.Response[v1.ListInterviewSessionsResponse], error)
+	// ── F2 LLM-driven milestones (2026-05-12) ───────────────────────────
+	GenerateMilestones(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.MilestonesResponse], error)
+	GetMilestones(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.MilestonesResponse], error)
+	MarkMilestoneDone(context.Context, *connect.Request[v1.MarkMilestoneDoneRequest]) (*connect.Response[v1.Milestone], error)
+	// ── R3 Per-node coverage (2026-05-12) ───────────────────────────────
+	GetNodeCoverage(context.Context, *connect.Request[v1.GetNodeCoverageRequest]) (*connect.Response[v1.GetNodeCoverageResponse], error)
+	// ── F1 Memory expansion Phase 2 (2026-05-12) ────────────────────────
+	ListMemoryEntries(context.Context, *connect.Request[v1.ListMemoryEntriesRequest]) (*connect.Response[v1.ListMemoryEntriesResponse], error)
+	DeleteMemoryEntry(context.Context, *connect.Request[v1.DeleteMemoryEntryRequest]) (*connect.Response[emptypb.Empty], error)
+	EditMemoryEntry(context.Context, *connect.Request[v1.EditMemoryEntryRequest]) (*connect.Response[v1.MemoryEntry], error)
+	// ── H2 Focus reflection persistence (Phase J 2026-05-12) ──────────────
+	SaveFocusReflection(context.Context, *connect.Request[v1.SaveFocusReflectionRequest]) (*connect.Response[v1.SaveFocusReflectionResponse], error)
+	ListFocusReflections(context.Context, *connect.Request[v1.ListFocusReflectionsRequest]) (*connect.Response[v1.ListFocusReflectionsResponse], error)
+	// ── C3 Cross-product context (Phase J 2026-05-12) ─────────────────────
+	// GetUserContext returns the compact bundle Cue copilot injects into the
+	// suggestion prompt: active goal + recent Coach memory + activity_log +
+	// skill radar + Atlas refs. user_id derives from auth context.
+	GetUserContext(context.Context, *connect.Request[v1.GetUserContextRequest]) (*connect.Response[v1.GetUserContextResponse], error)
+	// ── X5 Cross-product handoff: Atlas struggle marks (Phase J 2026-05-12) ─
+	//
+	// Bidirectional handoff signal: Cue session analysis OR Hone reflection
+	// submits MarkAtlasStruggle("dist-sharding") → web Atlas highlights that
+	// node next time the user opens it. Per-user override of the curated
+	// atlas graph. Source distinguishes provenance (cue_session / hone_reflection
+	// / mock_stage) for future debug/analytics.
+	MarkAtlasStruggle(context.Context, *connect.Request[v1.MarkAtlasStruggleRequest]) (*connect.Response[v1.MarkAtlasStruggleResponse], error)
+	ListAtlasStruggles(context.Context, *connect.Request[v1.ListAtlasStrugglesRequest]) (*connect.Response[v1.ListAtlasStrugglesResponse], error)
+	ClearAtlasStruggle(context.Context, *connect.Request[v1.ClearAtlasStruggleRequest]) (*connect.Response[v1.ClearAtlasStruggleResponse], error)
 }
 
 // NewIntelligenceServiceClient constructs a client for the druz9.v1.IntelligenceService service. By
@@ -218,25 +313,158 @@ func NewIntelligenceServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(intelligenceServiceMethods.ByName("GetCoachStats")),
 			connect.WithClientOptions(opts...),
 		),
+		createGoal: connect.NewClient[v1.CreateGoalRequest, v1.Goal](
+			httpClient,
+			baseURL+IntelligenceServiceCreateGoalProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("CreateGoal")),
+			connect.WithClientOptions(opts...),
+		),
+		getActiveGoal: connect.NewClient[emptypb.Empty, v1.Goal](
+			httpClient,
+			baseURL+IntelligenceServiceGetActiveGoalProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GetActiveGoal")),
+			connect.WithClientOptions(opts...),
+		),
+		updateGoal: connect.NewClient[v1.UpdateGoalRequest, v1.Goal](
+			httpClient,
+			baseURL+IntelligenceServiceUpdateGoalProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("UpdateGoal")),
+			connect.WithClientOptions(opts...),
+		),
+		deactivateGoal: connect.NewClient[v1.DeactivateGoalRequest, emptypb.Empty](
+			httpClient,
+			baseURL+IntelligenceServiceDeactivateGoalProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("DeactivateGoal")),
+			connect.WithClientOptions(opts...),
+		),
+		ingestInterviewSession: connect.NewClient[v1.IngestInterviewSessionRequest, v1.InterviewSession](
+			httpClient,
+			baseURL+IntelligenceServiceIngestInterviewSessionProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("IngestInterviewSession")),
+			connect.WithClientOptions(opts...),
+		),
+		listInterviewSessions: connect.NewClient[v1.ListInterviewSessionsRequest, v1.ListInterviewSessionsResponse](
+			httpClient,
+			baseURL+IntelligenceServiceListInterviewSessionsProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("ListInterviewSessions")),
+			connect.WithClientOptions(opts...),
+		),
+		generateMilestones: connect.NewClient[emptypb.Empty, v1.MilestonesResponse](
+			httpClient,
+			baseURL+IntelligenceServiceGenerateMilestonesProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GenerateMilestones")),
+			connect.WithClientOptions(opts...),
+		),
+		getMilestones: connect.NewClient[emptypb.Empty, v1.MilestonesResponse](
+			httpClient,
+			baseURL+IntelligenceServiceGetMilestonesProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GetMilestones")),
+			connect.WithClientOptions(opts...),
+		),
+		markMilestoneDone: connect.NewClient[v1.MarkMilestoneDoneRequest, v1.Milestone](
+			httpClient,
+			baseURL+IntelligenceServiceMarkMilestoneDoneProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("MarkMilestoneDone")),
+			connect.WithClientOptions(opts...),
+		),
+		getNodeCoverage: connect.NewClient[v1.GetNodeCoverageRequest, v1.GetNodeCoverageResponse](
+			httpClient,
+			baseURL+IntelligenceServiceGetNodeCoverageProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GetNodeCoverage")),
+			connect.WithClientOptions(opts...),
+		),
+		listMemoryEntries: connect.NewClient[v1.ListMemoryEntriesRequest, v1.ListMemoryEntriesResponse](
+			httpClient,
+			baseURL+IntelligenceServiceListMemoryEntriesProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("ListMemoryEntries")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteMemoryEntry: connect.NewClient[v1.DeleteMemoryEntryRequest, emptypb.Empty](
+			httpClient,
+			baseURL+IntelligenceServiceDeleteMemoryEntryProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("DeleteMemoryEntry")),
+			connect.WithClientOptions(opts...),
+		),
+		editMemoryEntry: connect.NewClient[v1.EditMemoryEntryRequest, v1.MemoryEntry](
+			httpClient,
+			baseURL+IntelligenceServiceEditMemoryEntryProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("EditMemoryEntry")),
+			connect.WithClientOptions(opts...),
+		),
+		saveFocusReflection: connect.NewClient[v1.SaveFocusReflectionRequest, v1.SaveFocusReflectionResponse](
+			httpClient,
+			baseURL+IntelligenceServiceSaveFocusReflectionProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("SaveFocusReflection")),
+			connect.WithClientOptions(opts...),
+		),
+		listFocusReflections: connect.NewClient[v1.ListFocusReflectionsRequest, v1.ListFocusReflectionsResponse](
+			httpClient,
+			baseURL+IntelligenceServiceListFocusReflectionsProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("ListFocusReflections")),
+			connect.WithClientOptions(opts...),
+		),
+		getUserContext: connect.NewClient[v1.GetUserContextRequest, v1.GetUserContextResponse](
+			httpClient,
+			baseURL+IntelligenceServiceGetUserContextProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("GetUserContext")),
+			connect.WithClientOptions(opts...),
+		),
+		markAtlasStruggle: connect.NewClient[v1.MarkAtlasStruggleRequest, v1.MarkAtlasStruggleResponse](
+			httpClient,
+			baseURL+IntelligenceServiceMarkAtlasStruggleProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("MarkAtlasStruggle")),
+			connect.WithClientOptions(opts...),
+		),
+		listAtlasStruggles: connect.NewClient[v1.ListAtlasStrugglesRequest, v1.ListAtlasStrugglesResponse](
+			httpClient,
+			baseURL+IntelligenceServiceListAtlasStrugglesProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("ListAtlasStruggles")),
+			connect.WithClientOptions(opts...),
+		),
+		clearAtlasStruggle: connect.NewClient[v1.ClearAtlasStruggleRequest, v1.ClearAtlasStruggleResponse](
+			httpClient,
+			baseURL+IntelligenceServiceClearAtlasStruggleProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("ClearAtlasStruggle")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // intelligenceServiceClient implements IntelligenceServiceClient.
 type intelligenceServiceClient struct {
-	getDailyBrief     *connect.Client[v1.GetDailyBriefRequest, v1.DailyBrief]
-	askNotes          *connect.Client[v1.AskNotesRequest, v1.AskAnswer]
-	ackRecommendation *connect.Client[v1.AckRecommendationRequest, v1.AckRecommendationResponse]
-	getMemoryStats    *connect.Client[v1.GetMemoryStatsRequest, v1.MemoryStats]
-	listInsights      *connect.Client[v1.ListInsightsRequest, v1.ListInsightsResponse]
-	ackInsight        *connect.Client[v1.AckInsightRequest, v1.AckInsightResponse]
-	getNextAction     *connect.Client[v1.GetNextActionRequest, v1.NextAction]
-	getForkSnapshot   *connect.Client[v1.GetForkSnapshotRequest, v1.ForkSnapshot]
-	logResource       *connect.Client[v1.LogResourceRequest, v1.LogResourceResponse]
-	setLearningMode   *connect.Client[v1.SetLearningModeRequest, v1.LearningStateView]
-	setForkBranch     *connect.Client[v1.SetForkBranchRequest, v1.LearningStateView]
-	getResourceTrail  *connect.Client[v1.GetResourceTrailRequest, v1.ResourceTrail]
-	getSkillRadar     *connect.Client[v1.GetSkillRadarRequest, v1.SkillRadar]
-	getCoachStats     *connect.Client[v1.GetCoachStatsRequest, v1.CoachStats]
+	getDailyBrief          *connect.Client[v1.GetDailyBriefRequest, v1.DailyBrief]
+	askNotes               *connect.Client[v1.AskNotesRequest, v1.AskAnswer]
+	ackRecommendation      *connect.Client[v1.AckRecommendationRequest, v1.AckRecommendationResponse]
+	getMemoryStats         *connect.Client[v1.GetMemoryStatsRequest, v1.MemoryStats]
+	listInsights           *connect.Client[v1.ListInsightsRequest, v1.ListInsightsResponse]
+	ackInsight             *connect.Client[v1.AckInsightRequest, v1.AckInsightResponse]
+	getNextAction          *connect.Client[v1.GetNextActionRequest, v1.NextAction]
+	getForkSnapshot        *connect.Client[v1.GetForkSnapshotRequest, v1.ForkSnapshot]
+	logResource            *connect.Client[v1.LogResourceRequest, v1.LogResourceResponse]
+	setLearningMode        *connect.Client[v1.SetLearningModeRequest, v1.LearningStateView]
+	setForkBranch          *connect.Client[v1.SetForkBranchRequest, v1.LearningStateView]
+	getResourceTrail       *connect.Client[v1.GetResourceTrailRequest, v1.ResourceTrail]
+	getSkillRadar          *connect.Client[v1.GetSkillRadarRequest, v1.SkillRadar]
+	getCoachStats          *connect.Client[v1.GetCoachStatsRequest, v1.CoachStats]
+	createGoal             *connect.Client[v1.CreateGoalRequest, v1.Goal]
+	getActiveGoal          *connect.Client[emptypb.Empty, v1.Goal]
+	updateGoal             *connect.Client[v1.UpdateGoalRequest, v1.Goal]
+	deactivateGoal         *connect.Client[v1.DeactivateGoalRequest, emptypb.Empty]
+	ingestInterviewSession *connect.Client[v1.IngestInterviewSessionRequest, v1.InterviewSession]
+	listInterviewSessions  *connect.Client[v1.ListInterviewSessionsRequest, v1.ListInterviewSessionsResponse]
+	generateMilestones     *connect.Client[emptypb.Empty, v1.MilestonesResponse]
+	getMilestones          *connect.Client[emptypb.Empty, v1.MilestonesResponse]
+	markMilestoneDone      *connect.Client[v1.MarkMilestoneDoneRequest, v1.Milestone]
+	getNodeCoverage        *connect.Client[v1.GetNodeCoverageRequest, v1.GetNodeCoverageResponse]
+	listMemoryEntries      *connect.Client[v1.ListMemoryEntriesRequest, v1.ListMemoryEntriesResponse]
+	deleteMemoryEntry      *connect.Client[v1.DeleteMemoryEntryRequest, emptypb.Empty]
+	editMemoryEntry        *connect.Client[v1.EditMemoryEntryRequest, v1.MemoryEntry]
+	saveFocusReflection    *connect.Client[v1.SaveFocusReflectionRequest, v1.SaveFocusReflectionResponse]
+	listFocusReflections   *connect.Client[v1.ListFocusReflectionsRequest, v1.ListFocusReflectionsResponse]
+	getUserContext         *connect.Client[v1.GetUserContextRequest, v1.GetUserContextResponse]
+	markAtlasStruggle      *connect.Client[v1.MarkAtlasStruggleRequest, v1.MarkAtlasStruggleResponse]
+	listAtlasStruggles     *connect.Client[v1.ListAtlasStrugglesRequest, v1.ListAtlasStrugglesResponse]
+	clearAtlasStruggle     *connect.Client[v1.ClearAtlasStruggleRequest, v1.ClearAtlasStruggleResponse]
 }
 
 // GetDailyBrief calls druz9.v1.IntelligenceService.GetDailyBrief.
@@ -309,6 +537,101 @@ func (c *intelligenceServiceClient) GetCoachStats(ctx context.Context, req *conn
 	return c.getCoachStats.CallUnary(ctx, req)
 }
 
+// CreateGoal calls druz9.v1.IntelligenceService.CreateGoal.
+func (c *intelligenceServiceClient) CreateGoal(ctx context.Context, req *connect.Request[v1.CreateGoalRequest]) (*connect.Response[v1.Goal], error) {
+	return c.createGoal.CallUnary(ctx, req)
+}
+
+// GetActiveGoal calls druz9.v1.IntelligenceService.GetActiveGoal.
+func (c *intelligenceServiceClient) GetActiveGoal(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.Goal], error) {
+	return c.getActiveGoal.CallUnary(ctx, req)
+}
+
+// UpdateGoal calls druz9.v1.IntelligenceService.UpdateGoal.
+func (c *intelligenceServiceClient) UpdateGoal(ctx context.Context, req *connect.Request[v1.UpdateGoalRequest]) (*connect.Response[v1.Goal], error) {
+	return c.updateGoal.CallUnary(ctx, req)
+}
+
+// DeactivateGoal calls druz9.v1.IntelligenceService.DeactivateGoal.
+func (c *intelligenceServiceClient) DeactivateGoal(ctx context.Context, req *connect.Request[v1.DeactivateGoalRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.deactivateGoal.CallUnary(ctx, req)
+}
+
+// IngestInterviewSession calls druz9.v1.IntelligenceService.IngestInterviewSession.
+func (c *intelligenceServiceClient) IngestInterviewSession(ctx context.Context, req *connect.Request[v1.IngestInterviewSessionRequest]) (*connect.Response[v1.InterviewSession], error) {
+	return c.ingestInterviewSession.CallUnary(ctx, req)
+}
+
+// ListInterviewSessions calls druz9.v1.IntelligenceService.ListInterviewSessions.
+func (c *intelligenceServiceClient) ListInterviewSessions(ctx context.Context, req *connect.Request[v1.ListInterviewSessionsRequest]) (*connect.Response[v1.ListInterviewSessionsResponse], error) {
+	return c.listInterviewSessions.CallUnary(ctx, req)
+}
+
+// GenerateMilestones calls druz9.v1.IntelligenceService.GenerateMilestones.
+func (c *intelligenceServiceClient) GenerateMilestones(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.MilestonesResponse], error) {
+	return c.generateMilestones.CallUnary(ctx, req)
+}
+
+// GetMilestones calls druz9.v1.IntelligenceService.GetMilestones.
+func (c *intelligenceServiceClient) GetMilestones(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.MilestonesResponse], error) {
+	return c.getMilestones.CallUnary(ctx, req)
+}
+
+// MarkMilestoneDone calls druz9.v1.IntelligenceService.MarkMilestoneDone.
+func (c *intelligenceServiceClient) MarkMilestoneDone(ctx context.Context, req *connect.Request[v1.MarkMilestoneDoneRequest]) (*connect.Response[v1.Milestone], error) {
+	return c.markMilestoneDone.CallUnary(ctx, req)
+}
+
+// GetNodeCoverage calls druz9.v1.IntelligenceService.GetNodeCoverage.
+func (c *intelligenceServiceClient) GetNodeCoverage(ctx context.Context, req *connect.Request[v1.GetNodeCoverageRequest]) (*connect.Response[v1.GetNodeCoverageResponse], error) {
+	return c.getNodeCoverage.CallUnary(ctx, req)
+}
+
+// ListMemoryEntries calls druz9.v1.IntelligenceService.ListMemoryEntries.
+func (c *intelligenceServiceClient) ListMemoryEntries(ctx context.Context, req *connect.Request[v1.ListMemoryEntriesRequest]) (*connect.Response[v1.ListMemoryEntriesResponse], error) {
+	return c.listMemoryEntries.CallUnary(ctx, req)
+}
+
+// DeleteMemoryEntry calls druz9.v1.IntelligenceService.DeleteMemoryEntry.
+func (c *intelligenceServiceClient) DeleteMemoryEntry(ctx context.Context, req *connect.Request[v1.DeleteMemoryEntryRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.deleteMemoryEntry.CallUnary(ctx, req)
+}
+
+// EditMemoryEntry calls druz9.v1.IntelligenceService.EditMemoryEntry.
+func (c *intelligenceServiceClient) EditMemoryEntry(ctx context.Context, req *connect.Request[v1.EditMemoryEntryRequest]) (*connect.Response[v1.MemoryEntry], error) {
+	return c.editMemoryEntry.CallUnary(ctx, req)
+}
+
+// SaveFocusReflection calls druz9.v1.IntelligenceService.SaveFocusReflection.
+func (c *intelligenceServiceClient) SaveFocusReflection(ctx context.Context, req *connect.Request[v1.SaveFocusReflectionRequest]) (*connect.Response[v1.SaveFocusReflectionResponse], error) {
+	return c.saveFocusReflection.CallUnary(ctx, req)
+}
+
+// ListFocusReflections calls druz9.v1.IntelligenceService.ListFocusReflections.
+func (c *intelligenceServiceClient) ListFocusReflections(ctx context.Context, req *connect.Request[v1.ListFocusReflectionsRequest]) (*connect.Response[v1.ListFocusReflectionsResponse], error) {
+	return c.listFocusReflections.CallUnary(ctx, req)
+}
+
+// GetUserContext calls druz9.v1.IntelligenceService.GetUserContext.
+func (c *intelligenceServiceClient) GetUserContext(ctx context.Context, req *connect.Request[v1.GetUserContextRequest]) (*connect.Response[v1.GetUserContextResponse], error) {
+	return c.getUserContext.CallUnary(ctx, req)
+}
+
+// MarkAtlasStruggle calls druz9.v1.IntelligenceService.MarkAtlasStruggle.
+func (c *intelligenceServiceClient) MarkAtlasStruggle(ctx context.Context, req *connect.Request[v1.MarkAtlasStruggleRequest]) (*connect.Response[v1.MarkAtlasStruggleResponse], error) {
+	return c.markAtlasStruggle.CallUnary(ctx, req)
+}
+
+// ListAtlasStruggles calls druz9.v1.IntelligenceService.ListAtlasStruggles.
+func (c *intelligenceServiceClient) ListAtlasStruggles(ctx context.Context, req *connect.Request[v1.ListAtlasStrugglesRequest]) (*connect.Response[v1.ListAtlasStrugglesResponse], error) {
+	return c.listAtlasStruggles.CallUnary(ctx, req)
+}
+
+// ClearAtlasStruggle calls druz9.v1.IntelligenceService.ClearAtlasStruggle.
+func (c *intelligenceServiceClient) ClearAtlasStruggle(ctx context.Context, req *connect.Request[v1.ClearAtlasStruggleRequest]) (*connect.Response[v1.ClearAtlasStruggleResponse], error) {
+	return c.clearAtlasStruggle.CallUnary(ctx, req)
+}
+
 // IntelligenceServiceHandler is an implementation of the druz9.v1.IntelligenceService service.
 type IntelligenceServiceHandler interface {
 	GetDailyBrief(context.Context, *connect.Request[v1.GetDailyBriefRequest]) (*connect.Response[v1.DailyBrief], error)
@@ -337,6 +660,43 @@ type IntelligenceServiceHandler interface {
 	GetSkillRadar(context.Context, *connect.Request[v1.GetSkillRadarRequest]) (*connect.Response[v1.SkillRadar], error)
 	// GetCoachStats — Phase 2 snapshot KPIs (streak / focus today / last mock / next mock).
 	GetCoachStats(context.Context, *connect.Request[v1.GetCoachStatsRequest]) (*connect.Response[v1.CoachStats], error)
+	// ── F2 Goal CRUD (2026-05-12) ────────────────────────────────────────
+	CreateGoal(context.Context, *connect.Request[v1.CreateGoalRequest]) (*connect.Response[v1.Goal], error)
+	// GetActiveGoal returns NotFound when the user has no active primary goal.
+	GetActiveGoal(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Goal], error)
+	UpdateGoal(context.Context, *connect.Request[v1.UpdateGoalRequest]) (*connect.Response[v1.Goal], error)
+	DeactivateGoal(context.Context, *connect.Request[v1.DeactivateGoalRequest]) (*connect.Response[emptypb.Empty], error)
+	// ── F10 Interview-session ingestion (2026-05-12) ────────────────────
+	IngestInterviewSession(context.Context, *connect.Request[v1.IngestInterviewSessionRequest]) (*connect.Response[v1.InterviewSession], error)
+	ListInterviewSessions(context.Context, *connect.Request[v1.ListInterviewSessionsRequest]) (*connect.Response[v1.ListInterviewSessionsResponse], error)
+	// ── F2 LLM-driven milestones (2026-05-12) ───────────────────────────
+	GenerateMilestones(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.MilestonesResponse], error)
+	GetMilestones(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.MilestonesResponse], error)
+	MarkMilestoneDone(context.Context, *connect.Request[v1.MarkMilestoneDoneRequest]) (*connect.Response[v1.Milestone], error)
+	// ── R3 Per-node coverage (2026-05-12) ───────────────────────────────
+	GetNodeCoverage(context.Context, *connect.Request[v1.GetNodeCoverageRequest]) (*connect.Response[v1.GetNodeCoverageResponse], error)
+	// ── F1 Memory expansion Phase 2 (2026-05-12) ────────────────────────
+	ListMemoryEntries(context.Context, *connect.Request[v1.ListMemoryEntriesRequest]) (*connect.Response[v1.ListMemoryEntriesResponse], error)
+	DeleteMemoryEntry(context.Context, *connect.Request[v1.DeleteMemoryEntryRequest]) (*connect.Response[emptypb.Empty], error)
+	EditMemoryEntry(context.Context, *connect.Request[v1.EditMemoryEntryRequest]) (*connect.Response[v1.MemoryEntry], error)
+	// ── H2 Focus reflection persistence (Phase J 2026-05-12) ──────────────
+	SaveFocusReflection(context.Context, *connect.Request[v1.SaveFocusReflectionRequest]) (*connect.Response[v1.SaveFocusReflectionResponse], error)
+	ListFocusReflections(context.Context, *connect.Request[v1.ListFocusReflectionsRequest]) (*connect.Response[v1.ListFocusReflectionsResponse], error)
+	// ── C3 Cross-product context (Phase J 2026-05-12) ─────────────────────
+	// GetUserContext returns the compact bundle Cue copilot injects into the
+	// suggestion prompt: active goal + recent Coach memory + activity_log +
+	// skill radar + Atlas refs. user_id derives from auth context.
+	GetUserContext(context.Context, *connect.Request[v1.GetUserContextRequest]) (*connect.Response[v1.GetUserContextResponse], error)
+	// ── X5 Cross-product handoff: Atlas struggle marks (Phase J 2026-05-12) ─
+	//
+	// Bidirectional handoff signal: Cue session analysis OR Hone reflection
+	// submits MarkAtlasStruggle("dist-sharding") → web Atlas highlights that
+	// node next time the user opens it. Per-user override of the curated
+	// atlas graph. Source distinguishes provenance (cue_session / hone_reflection
+	// / mock_stage) for future debug/analytics.
+	MarkAtlasStruggle(context.Context, *connect.Request[v1.MarkAtlasStruggleRequest]) (*connect.Response[v1.MarkAtlasStruggleResponse], error)
+	ListAtlasStruggles(context.Context, *connect.Request[v1.ListAtlasStrugglesRequest]) (*connect.Response[v1.ListAtlasStrugglesResponse], error)
+	ClearAtlasStruggle(context.Context, *connect.Request[v1.ClearAtlasStruggleRequest]) (*connect.Response[v1.ClearAtlasStruggleResponse], error)
 }
 
 // NewIntelligenceServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -430,6 +790,120 @@ func NewIntelligenceServiceHandler(svc IntelligenceServiceHandler, opts ...conne
 		connect.WithSchema(intelligenceServiceMethods.ByName("GetCoachStats")),
 		connect.WithHandlerOptions(opts...),
 	)
+	intelligenceServiceCreateGoalHandler := connect.NewUnaryHandler(
+		IntelligenceServiceCreateGoalProcedure,
+		svc.CreateGoal,
+		connect.WithSchema(intelligenceServiceMethods.ByName("CreateGoal")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceGetActiveGoalHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGetActiveGoalProcedure,
+		svc.GetActiveGoal,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GetActiveGoal")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceUpdateGoalHandler := connect.NewUnaryHandler(
+		IntelligenceServiceUpdateGoalProcedure,
+		svc.UpdateGoal,
+		connect.WithSchema(intelligenceServiceMethods.ByName("UpdateGoal")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceDeactivateGoalHandler := connect.NewUnaryHandler(
+		IntelligenceServiceDeactivateGoalProcedure,
+		svc.DeactivateGoal,
+		connect.WithSchema(intelligenceServiceMethods.ByName("DeactivateGoal")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceIngestInterviewSessionHandler := connect.NewUnaryHandler(
+		IntelligenceServiceIngestInterviewSessionProcedure,
+		svc.IngestInterviewSession,
+		connect.WithSchema(intelligenceServiceMethods.ByName("IngestInterviewSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceListInterviewSessionsHandler := connect.NewUnaryHandler(
+		IntelligenceServiceListInterviewSessionsProcedure,
+		svc.ListInterviewSessions,
+		connect.WithSchema(intelligenceServiceMethods.ByName("ListInterviewSessions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceGenerateMilestonesHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGenerateMilestonesProcedure,
+		svc.GenerateMilestones,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GenerateMilestones")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceGetMilestonesHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGetMilestonesProcedure,
+		svc.GetMilestones,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GetMilestones")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceMarkMilestoneDoneHandler := connect.NewUnaryHandler(
+		IntelligenceServiceMarkMilestoneDoneProcedure,
+		svc.MarkMilestoneDone,
+		connect.WithSchema(intelligenceServiceMethods.ByName("MarkMilestoneDone")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceGetNodeCoverageHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGetNodeCoverageProcedure,
+		svc.GetNodeCoverage,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GetNodeCoverage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceListMemoryEntriesHandler := connect.NewUnaryHandler(
+		IntelligenceServiceListMemoryEntriesProcedure,
+		svc.ListMemoryEntries,
+		connect.WithSchema(intelligenceServiceMethods.ByName("ListMemoryEntries")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceDeleteMemoryEntryHandler := connect.NewUnaryHandler(
+		IntelligenceServiceDeleteMemoryEntryProcedure,
+		svc.DeleteMemoryEntry,
+		connect.WithSchema(intelligenceServiceMethods.ByName("DeleteMemoryEntry")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceEditMemoryEntryHandler := connect.NewUnaryHandler(
+		IntelligenceServiceEditMemoryEntryProcedure,
+		svc.EditMemoryEntry,
+		connect.WithSchema(intelligenceServiceMethods.ByName("EditMemoryEntry")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceSaveFocusReflectionHandler := connect.NewUnaryHandler(
+		IntelligenceServiceSaveFocusReflectionProcedure,
+		svc.SaveFocusReflection,
+		connect.WithSchema(intelligenceServiceMethods.ByName("SaveFocusReflection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceListFocusReflectionsHandler := connect.NewUnaryHandler(
+		IntelligenceServiceListFocusReflectionsProcedure,
+		svc.ListFocusReflections,
+		connect.WithSchema(intelligenceServiceMethods.ByName("ListFocusReflections")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceGetUserContextHandler := connect.NewUnaryHandler(
+		IntelligenceServiceGetUserContextProcedure,
+		svc.GetUserContext,
+		connect.WithSchema(intelligenceServiceMethods.ByName("GetUserContext")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceMarkAtlasStruggleHandler := connect.NewUnaryHandler(
+		IntelligenceServiceMarkAtlasStruggleProcedure,
+		svc.MarkAtlasStruggle,
+		connect.WithSchema(intelligenceServiceMethods.ByName("MarkAtlasStruggle")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceListAtlasStrugglesHandler := connect.NewUnaryHandler(
+		IntelligenceServiceListAtlasStrugglesProcedure,
+		svc.ListAtlasStruggles,
+		connect.WithSchema(intelligenceServiceMethods.ByName("ListAtlasStruggles")),
+		connect.WithHandlerOptions(opts...),
+	)
+	intelligenceServiceClearAtlasStruggleHandler := connect.NewUnaryHandler(
+		IntelligenceServiceClearAtlasStruggleProcedure,
+		svc.ClearAtlasStruggle,
+		connect.WithSchema(intelligenceServiceMethods.ByName("ClearAtlasStruggle")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.IntelligenceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IntelligenceServiceGetDailyBriefProcedure:
@@ -460,6 +934,44 @@ func NewIntelligenceServiceHandler(svc IntelligenceServiceHandler, opts ...conne
 			intelligenceServiceGetSkillRadarHandler.ServeHTTP(w, r)
 		case IntelligenceServiceGetCoachStatsProcedure:
 			intelligenceServiceGetCoachStatsHandler.ServeHTTP(w, r)
+		case IntelligenceServiceCreateGoalProcedure:
+			intelligenceServiceCreateGoalHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGetActiveGoalProcedure:
+			intelligenceServiceGetActiveGoalHandler.ServeHTTP(w, r)
+		case IntelligenceServiceUpdateGoalProcedure:
+			intelligenceServiceUpdateGoalHandler.ServeHTTP(w, r)
+		case IntelligenceServiceDeactivateGoalProcedure:
+			intelligenceServiceDeactivateGoalHandler.ServeHTTP(w, r)
+		case IntelligenceServiceIngestInterviewSessionProcedure:
+			intelligenceServiceIngestInterviewSessionHandler.ServeHTTP(w, r)
+		case IntelligenceServiceListInterviewSessionsProcedure:
+			intelligenceServiceListInterviewSessionsHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGenerateMilestonesProcedure:
+			intelligenceServiceGenerateMilestonesHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGetMilestonesProcedure:
+			intelligenceServiceGetMilestonesHandler.ServeHTTP(w, r)
+		case IntelligenceServiceMarkMilestoneDoneProcedure:
+			intelligenceServiceMarkMilestoneDoneHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGetNodeCoverageProcedure:
+			intelligenceServiceGetNodeCoverageHandler.ServeHTTP(w, r)
+		case IntelligenceServiceListMemoryEntriesProcedure:
+			intelligenceServiceListMemoryEntriesHandler.ServeHTTP(w, r)
+		case IntelligenceServiceDeleteMemoryEntryProcedure:
+			intelligenceServiceDeleteMemoryEntryHandler.ServeHTTP(w, r)
+		case IntelligenceServiceEditMemoryEntryProcedure:
+			intelligenceServiceEditMemoryEntryHandler.ServeHTTP(w, r)
+		case IntelligenceServiceSaveFocusReflectionProcedure:
+			intelligenceServiceSaveFocusReflectionHandler.ServeHTTP(w, r)
+		case IntelligenceServiceListFocusReflectionsProcedure:
+			intelligenceServiceListFocusReflectionsHandler.ServeHTTP(w, r)
+		case IntelligenceServiceGetUserContextProcedure:
+			intelligenceServiceGetUserContextHandler.ServeHTTP(w, r)
+		case IntelligenceServiceMarkAtlasStruggleProcedure:
+			intelligenceServiceMarkAtlasStruggleHandler.ServeHTTP(w, r)
+		case IntelligenceServiceListAtlasStrugglesProcedure:
+			intelligenceServiceListAtlasStrugglesHandler.ServeHTTP(w, r)
+		case IntelligenceServiceClearAtlasStruggleProcedure:
+			intelligenceServiceClearAtlasStruggleHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -523,4 +1035,80 @@ func (UnimplementedIntelligenceServiceHandler) GetSkillRadar(context.Context, *c
 
 func (UnimplementedIntelligenceServiceHandler) GetCoachStats(context.Context, *connect.Request[v1.GetCoachStatsRequest]) (*connect.Response[v1.CoachStats], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetCoachStats is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) CreateGoal(context.Context, *connect.Request[v1.CreateGoalRequest]) (*connect.Response[v1.Goal], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.CreateGoal is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GetActiveGoal(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.Goal], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetActiveGoal is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) UpdateGoal(context.Context, *connect.Request[v1.UpdateGoalRequest]) (*connect.Response[v1.Goal], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.UpdateGoal is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) DeactivateGoal(context.Context, *connect.Request[v1.DeactivateGoalRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.DeactivateGoal is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) IngestInterviewSession(context.Context, *connect.Request[v1.IngestInterviewSessionRequest]) (*connect.Response[v1.InterviewSession], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.IngestInterviewSession is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) ListInterviewSessions(context.Context, *connect.Request[v1.ListInterviewSessionsRequest]) (*connect.Response[v1.ListInterviewSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.ListInterviewSessions is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GenerateMilestones(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.MilestonesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GenerateMilestones is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GetMilestones(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.MilestonesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetMilestones is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) MarkMilestoneDone(context.Context, *connect.Request[v1.MarkMilestoneDoneRequest]) (*connect.Response[v1.Milestone], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.MarkMilestoneDone is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GetNodeCoverage(context.Context, *connect.Request[v1.GetNodeCoverageRequest]) (*connect.Response[v1.GetNodeCoverageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetNodeCoverage is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) ListMemoryEntries(context.Context, *connect.Request[v1.ListMemoryEntriesRequest]) (*connect.Response[v1.ListMemoryEntriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.ListMemoryEntries is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) DeleteMemoryEntry(context.Context, *connect.Request[v1.DeleteMemoryEntryRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.DeleteMemoryEntry is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) EditMemoryEntry(context.Context, *connect.Request[v1.EditMemoryEntryRequest]) (*connect.Response[v1.MemoryEntry], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.EditMemoryEntry is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) SaveFocusReflection(context.Context, *connect.Request[v1.SaveFocusReflectionRequest]) (*connect.Response[v1.SaveFocusReflectionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.SaveFocusReflection is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) ListFocusReflections(context.Context, *connect.Request[v1.ListFocusReflectionsRequest]) (*connect.Response[v1.ListFocusReflectionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.ListFocusReflections is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) GetUserContext(context.Context, *connect.Request[v1.GetUserContextRequest]) (*connect.Response[v1.GetUserContextResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetUserContext is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) MarkAtlasStruggle(context.Context, *connect.Request[v1.MarkAtlasStruggleRequest]) (*connect.Response[v1.MarkAtlasStruggleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.MarkAtlasStruggle is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) ListAtlasStruggles(context.Context, *connect.Request[v1.ListAtlasStrugglesRequest]) (*connect.Response[v1.ListAtlasStrugglesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.ListAtlasStruggles is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) ClearAtlasStruggle(context.Context, *connect.Request[v1.ClearAtlasStruggleRequest]) (*connect.Response[v1.ClearAtlasStruggleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.ClearAtlasStruggle is not implemented"))
 }

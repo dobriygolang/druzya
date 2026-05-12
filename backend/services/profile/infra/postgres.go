@@ -62,6 +62,15 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 		DisplayName: pgText(row.DisplayName),
 		CreatedAt:   row.CreatedAt.Time,
 	}
+	// Stream D (2026-05-12) — enrich the bundle with tutor_mode_enabled.
+	// Separate query so this PR doesn't depend on regenerating the sqlc
+	// GetProfileBundle. Errors are wrapped so a missing column (migration
+	// 00091 unapplied) surfaces clearly rather than silently flipping false.
+	tutorMode, tmErr := p.GetTutorModeEnabled(ctx, userID)
+	if tmErr != nil && !errors.Is(tmErr, domain.ErrNotFound) {
+		return domain.Bundle{}, fmt.Errorf("profile.Postgres.GetByUserID: %w", tmErr)
+	}
+	b.User.TutorModeEnabled = tutorMode
 	b.Profile = domain.Profile{
 		UserID:    userID,
 		CharClass: enums.CharClass(row.CharClass),

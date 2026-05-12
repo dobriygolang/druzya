@@ -114,6 +114,7 @@ export function PersonasPanel() {
                         type="button"
                         onClick={() => toggleMut.mutate(p.id)}
                         disabled={busy}
+                        aria-pressed={p.is_enabled}
                         className={`rounded-md px-2 py-0.5 font-mono text-[10px] ${
                           p.is_enabled
                             ? 'bg-text-primary/20 text-text-primary'

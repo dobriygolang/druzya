@@ -292,6 +292,245 @@ func (s *Server) checkPipelineOwner(ctx context.Context, pipelineID, uid uuid.UU
 	return nil
 }
 
+// RunAlgoAttempt — Algo «Run tests» dry-run. Executes the candidate's code
+// against Judge0 sandboxed test-cases and returns per-case verdict WITHOUT
+// touching pipeline_attempts. Final scoring still flows through SubmitAnswer.
+func (s *Server) RunAlgoAttempt(
+	ctx context.Context,
+	req *connect.Request[pb.RunAlgoAttemptRequest],
+) (*connect.Response[pb.AlgoVerdict], error) {
+	uid, err := s.requireUserConnect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.AlgoGrader == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("algo grader not configured"))
+	}
+	attemptID, perr := uuid.Parse(req.Msg.GetId())
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid id"))
+	}
+	att, err := s.H.Attempts.Get(ctx, attemptID)
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	stage, err := s.H.PipelineStages.Get(ctx, att.PipelineStageID)
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	if oerr := s.checkPipelineOwner(ctx, stage.PipelineID, uid); oerr != nil {
+		return nil, oerr
+	}
+	out, err := s.AlgoGrader.Run(ctx, app.RunAlgoInput{
+		AttemptID: attemptID,
+		Code:      req.Msg.GetCode(),
+		Language:  req.Msg.GetLanguage(),
+	})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(algoVerdictToProto(out)), nil
+}
+
+// RunCodingAttempt — Coding stage rubric grader. Open-ended LLM scoring
+// (1..5) + strengths/weaknesses lists, NO sandbox call. Hidden behind a
+// CodeUnavailable check when the grader isn't wired (e.g. nil LLM chain).
+func (s *Server) RunCodingAttempt(
+	ctx context.Context,
+	req *connect.Request[pb.RunCodingAttemptRequest],
+) (*connect.Response[pb.CodingVerdict], error) {
+	uid, err := s.requireUserConnect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.CodingGrader == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("coding grader not configured"))
+	}
+	attemptID, perr := uuid.Parse(req.Msg.GetId())
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid id"))
+	}
+	att, err := s.H.Attempts.Get(ctx, attemptID)
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	stage, err := s.H.PipelineStages.Get(ctx, att.PipelineStageID)
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	if oerr := s.checkPipelineOwner(ctx, stage.PipelineID, uid); oerr != nil {
+		return nil, oerr
+	}
+	out, err := s.CodingGrader.Run(ctx, app.CodingRubricInput{
+		AttemptID: attemptID,
+		Code:      req.Msg.GetCode(),
+		Language:  req.Msg.GetLanguage(),
+	})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(codingVerdictToProto(out)), nil
+}
+
+// RunSysDesignAttempt — SysDesign 5-axis rubric. Text-only (no vision call);
+// pairs with SubmitCanvas (which IS vision-based) so the candidate can
+// iterate cheaply.
+func (s *Server) RunSysDesignAttempt(
+	ctx context.Context,
+	req *connect.Request[pb.RunSysDesignAttemptRequest],
+) (*connect.Response[pb.SysDesignVerdict], error) {
+	uid, err := s.requireUserConnect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.SysDesignGrader == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("sysdesign grader not configured"))
+	}
+	attemptID, perr := uuid.Parse(req.Msg.GetId())
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid id"))
+	}
+	att, err := s.H.Attempts.Get(ctx, attemptID)
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	stage, err := s.H.PipelineStages.Get(ctx, att.PipelineStageID)
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	if oerr := s.checkPipelineOwner(ctx, stage.PipelineID, uid); oerr != nil {
+		return nil, oerr
+	}
+	out, err := s.SysDesignGrader.Run(ctx, app.SysDesignRubricInput{
+		AttemptID:     attemptID,
+		CanvasJSON:    req.Msg.GetCanvasJson(),
+		NarrationText: req.Msg.GetNarrationText(),
+	})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(sysDesignVerdictToProto(out)), nil
+}
+
+// RunBehavioralAttempt — STAR rubric for behavioral answers. Text-in,
+// 4-axis-out + communication clarity score.
+func (s *Server) RunBehavioralAttempt(
+	ctx context.Context,
+	req *connect.Request[pb.RunBehavioralAttemptRequest],
+) (*connect.Response[pb.BehavioralVerdict], error) {
+	uid, err := s.requireUserConnect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.BehavioralGrader == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("behavioral grader not configured"))
+	}
+	attemptID, perr := uuid.Parse(req.Msg.GetId())
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid id"))
+	}
+	att, err := s.H.Attempts.Get(ctx, attemptID)
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	stage, err := s.H.PipelineStages.Get(ctx, att.PipelineStageID)
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	if oerr := s.checkPipelineOwner(ctx, stage.PipelineID, uid); oerr != nil {
+		return nil, oerr
+	}
+	out, err := s.BehavioralGrader.Run(ctx, app.BehavioralRubricInput{
+		AttemptID:  attemptID,
+		AnswerText: req.Msg.GetAnswerText(),
+	})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(behavioralVerdictToProto(out)), nil
+}
+
+func codingVerdictToProto(out app.CodingRubricOutput) *pb.CodingVerdict {
+	lines := make([]int32, 0, len(out.SuggestedLines))
+	for _, n := range out.SuggestedLines {
+		lines = append(lines, int32(n))
+	}
+	strengths := out.Strengths
+	if strengths == nil {
+		strengths = []string{}
+	}
+	weaknesses := out.Weaknesses
+	if weaknesses == nil {
+		weaknesses = []string{}
+	}
+	return &pb.CodingVerdict{
+		Score:          int32(out.Score),
+		Strengths:      strengths,
+		Weaknesses:     weaknesses,
+		SuggestedLines: lines,
+		RubricMd:       out.RubricMD,
+		Unavailable:    out.Unavailable,
+	}
+}
+
+func sysDesignVerdictToProto(out app.SysDesignRubricOutput) *pb.SysDesignVerdict {
+	missing := out.MissingConcepts
+	if missing == nil {
+		missing = []string{}
+	}
+	return &pb.SysDesignVerdict{
+		Axes: &pb.SysDesignAxes{
+			Availability: int32(out.Axes.Availability),
+			Consistency:  int32(out.Axes.Consistency),
+			Scalability:  int32(out.Axes.Scalability),
+			Cost:         int32(out.Axes.Cost),
+			Simplicity:   int32(out.Axes.Simplicity),
+		},
+		NarrativeCritique: out.NarrativeCritique,
+		MissingConcepts:   missing,
+		Unavailable:       out.Unavailable,
+	}
+}
+
+func behavioralVerdictToProto(out app.BehavioralRubricOutput) *pb.BehavioralVerdict {
+	return &pb.BehavioralVerdict{
+		Axes: &pb.BehavioralAxes{
+			Situation: int32(out.Axes.Situation),
+			Task:      int32(out.Axes.Task),
+			Action:    int32(out.Axes.Action),
+			Result:    int32(out.Axes.Result),
+		},
+		CommunicationScore: int32(out.CommunicationScore),
+		BodyMd:             out.BodyMD,
+		Unavailable:        out.Unavailable,
+	}
+}
+
+func algoVerdictToProto(out app.RunAlgoOutput) *pb.AlgoVerdict {
+	tests := make([]*pb.AlgoTestResult, 0, len(out.Tests))
+	for _, t := range out.Tests {
+		tests = append(tests, &pb.AlgoTestResult{
+			Ordinal:        int32(t.Ordinal),
+			Passed:         t.Passed,
+			Input:          t.Input,
+			ExpectedOutput: t.Expected,
+			ActualOutput:   t.Actual,
+			Stderr:         t.Stderr,
+			IsHidden:       t.IsHidden,
+			RuntimeMs:      int32(t.RuntimeMs),
+		})
+	}
+	return &pb.AlgoVerdict{
+		Passed:             int32(out.Passed),
+		Total:              int32(out.Total),
+		RuntimeMs:          int32(out.RuntimeMs),
+		MemoryKb:           int32(out.MemoryKB),
+		SandboxUnavailable: out.SandboxUnavailable,
+		Status:             string(out.Status),
+		Tests:              tests,
+	}
+}
+
 // ── stage / attempt mappers ─────────────────────────────────────────────
 
 func pipelineStageToProto(s domain.PipelineStage) *pb.PipelineStage {

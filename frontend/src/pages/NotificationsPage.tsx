@@ -16,6 +16,8 @@ import { useNavigate } from 'react-router-dom'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
+import { ErrorBoundary } from '../components/ErrorBoundary'
+import { DataLoader } from '../components/DataLoader'
 import { Tabs } from '../components/Tabs'
 import {
   useNotificationsQuery,
@@ -31,23 +33,31 @@ import {
 function ErrorChip() {
   const { t } = useTranslation('pages')
   return (
-    <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
+    <span
+      className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em]"
+      style={{ background: 'rgba(255, 59, 48, 0.10)', color: 'var(--red)' }}
+    >
       {t('common.load_failed')}
     </span>
   )
 }
 
 // Маппинг channel/type → визуал. Channel — broad bucket, type — конкретное событие.
+// B/W rule: all signal icons live on the ink-ramp; only «loss» (true error) gets
+// `var(--red)`. Bucket differentiation comes from icon + label, not hue.
 function visualFor(n: NotificationItem): { icon: JSX.Element; bg: string } {
   switch (n.type) {
     case 'win':
-      return { icon: <Trophy className="h-4 w-4 text-success" />, bg: 'bg-success/15' }
+      return { icon: <Trophy className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/15' }
     case 'loss':
-      return { icon: <Swords className="h-4 w-4 text-danger" />, bg: 'bg-danger/15' }
+      return {
+        icon: <Swords className="h-4 w-4" style={{ color: 'var(--red)' }} />,
+        bg: 'bg-text-primary/10',
+      }
     case 'challenge':
       return { icon: <Swords className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/15' }
     case 'achievement_unlocked':
-      return { icon: <Award className="h-4 w-4 text-warn" />, bg: 'bg-warn/15' }
+      return { icon: <Award className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/12' }
     case 'streak_at_risk':
       return { icon: <Bell className="h-4 w-4 text-text-secondary" />, bg: 'bg-text-primary/10' }
     case 'cohort_war_started':
@@ -56,10 +66,10 @@ function visualFor(n: NotificationItem): { icon: JSX.Element; bg: string } {
     case 'plan_ready':
       return { icon: <Sparkles className="h-4 w-4 text-text-secondary" />, bg: 'bg-text-primary/10' }
     default:
-      // Channel-fallback.
+      // Channel-fallback. Bucket → opacity stratification.
       switch (n.channel) {
         case 'wins':
-          return { icon: <Trophy className="h-4 w-4 text-warn" />, bg: 'bg-warn/15' }
+          return { icon: <Trophy className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/12' }
         case 'social':
           return { icon: <Users className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/15' }
         case 'cohort':
@@ -236,6 +246,7 @@ function SettingsPanel() {
               key={c.id}
               type="button"
               onClick={() => toggle(c.id)}
+              aria-pressed={on}
               className="flex items-center justify-between rounded-md px-1 py-1.5 hover:bg-surface-2"
             >
               <span className="flex items-center gap-2 text-[13px] text-text-secondary">{c.icon} {c.label}</span>
@@ -334,29 +345,41 @@ export default function NotificationsPage() {
         </Tabs>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-          <Card className="flex-1 flex-col gap-2 p-4">
-            {list.isLoading ? (
-              <div className="flex flex-col gap-3 p-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-16 animate-pulse rounded bg-surface-2" />
-                ))}
-              </div>
-            ) : items.length === 0 ? (
-              <div className="p-8 text-center text-sm text-text-secondary">
-                {t('notifications.empty', 'Пока тихо — никаких уведомлений.')}
-              </div>
-            ) : (
-              <>
-                <Group label={t('notifications.today')} items={grouped.today} render={renderRow} />
-                <Group label={t('notifications.yesterday')} items={grouped.yesterday} render={renderRow} />
-                <Group label={t('notifications.this_week')} items={grouped.this_week} render={renderRow} />
-                <Group label={t('notifications.older', 'РАНЬШЕ')} items={grouped.older} render={renderRow} />
-              </>
-            )}
-          </Card>
+          <ErrorBoundary section="Уведомления">
+            <Card className="flex-1 flex-col gap-2 p-4">
+              <DataLoader
+                state={list}
+                section="Уведомления"
+                skeleton={
+                  <div className="flex flex-col gap-3 p-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="h-16 animate-pulse rounded bg-surface-2" />
+                    ))}
+                  </div>
+                }
+                empty={(d) => (d?.items?.length ?? 0) === 0}
+                emptyContent={
+                  <div className="p-8 text-center text-sm text-text-secondary">
+                    {t('notifications.empty', 'Пока тихо — никаких уведомлений.')}
+                  </div>
+                }
+              >
+                {() => (
+                  <>
+                    <Group label={t('notifications.today')} items={grouped.today} render={renderRow} />
+                    <Group label={t('notifications.yesterday')} items={grouped.yesterday} render={renderRow} />
+                    <Group label={t('notifications.this_week')} items={grouped.this_week} render={renderRow} />
+                    <Group label={t('notifications.older', 'РАНЬШЕ')} items={grouped.older} render={renderRow} />
+                  </>
+                )}
+              </DataLoader>
+            </Card>
+          </ErrorBoundary>
 
           <div className="flex w-full flex-col gap-4 lg:w-[320px]">
-            <SettingsPanel />
+            <ErrorBoundary section="Настройки уведомлений">
+              <SettingsPanel />
+            </ErrorBoundary>
           </div>
         </div>
       </div>

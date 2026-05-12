@@ -4,12 +4,15 @@
 // Atlas. The mutation tolerates backend 404 (endpoint may not be
 // deployed yet); on success, profile cache is invalidated so /sanctum
 // reflects the new focus class.
+//
+// 2026-05-12: v2 visual language — hairline cards, selection = white
+// border + red signal dot in corner, type tokens, motion-press.
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+
 import { OnboardingLayout } from './_shared/Layout'
 import { useOnboarding, type FocusClass } from './_shared/useOnboarding'
-import { cn } from '../../lib/cn'
 
 // Identity 2026-05-04: arena ELO выпилен. Вместо ELO band показываем
 // прикидочный объём подготовки в часах — это полезный сигнал для
@@ -28,6 +31,15 @@ const CLASSES: {
   { id: 'ds', title: 'Data Science', skills: 'sql · ab test · probability · ml basics', hours: '30–60 ч', typical: 'Яндекс, Tinkoff' },
 ]
 
+const captionMono: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--ink-40)',
+}
+
 export default function Step2Class() {
   const nav = useNavigate()
   const { setStep, setFocusClass } = useOnboarding()
@@ -41,13 +53,30 @@ export default function Step2Class() {
 
   return (
     <OnboardingLayout step={2} onBack={() => nav('/onboarding/welcome')}>
-      <div className="text-center mb-7">
-        <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-2">шаг 2 · focus-class</div>
-        <h2 className="font-display text-2xl font-bold mb-1.5">Что ты готовишь к собесам?</h2>
-        <p className="text-[13px] text-text-secondary">Один класс станет центром твоего Atlas. Можно поменять позже.</p>
+      <div className="text-center" style={{ marginBottom: 28 }}>
+        <div style={{ ...captionMono, marginBottom: 10 }}>шаг 2 · focus-class</div>
+        <h2
+          style={{
+            margin: 0,
+            marginBottom: 8,
+            fontSize: 'var(--type-h2-size)',
+            lineHeight: 'var(--type-h2-lh)',
+            letterSpacing: 'var(--type-h2-ls)',
+            fontWeight: 'var(--type-h2-weight)',
+            color: 'rgb(var(--ink))',
+          }}
+        >
+          Что ты готовишь к собесам?
+        </h2>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
+          Один класс станет центром твоего Atlas. Можно поменять позже.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-7">
+      <div
+        className="auto-fit-grid"
+        style={{ ['--auto-fit-min' as string]: '180px', ['--gap' as string]: '10px', marginBottom: 28 }}
+      >
         {CLASSES.map((c) => {
           const selected = picked === c.id
           return (
@@ -56,38 +85,54 @@ export default function Step2Class() {
               type="button"
               onClick={() => setPicked(c.id)}
               aria-pressed={selected}
-              className={cn(
-                'text-left rounded-xl border p-4 transition-colors',
-                selected
-                  ? 'border-text-primary bg-text-primary/5'
-                  : 'border-border hover:border-border-strong',
-              )}
+              className="focus-ring motion-press"
+              style={{
+                position: 'relative',
+                textAlign: 'left',
+                padding: '14px 16px',
+                background: selected ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
+                border: selected ? '1.5px solid rgb(var(--ink))' : '1px solid var(--hair-2)',
+                borderRadius: 'var(--radius-outer)',
+                cursor: 'pointer',
+                color: 'rgb(var(--ink))',
+                transition:
+                  'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+              }}
             >
-              <div className="flex items-center justify-between mb-3">
+              {selected && (
                 <span
-                  className={cn(
-                    'font-mono text-[10px] uppercase tracking-wider',
-                    selected ? 'text-text-primary' : 'text-text-muted',
-                  )}
-                >
-                  {c.id}
-                </span>
-                {selected && (
-                  <span className="grid h-4 w-4 place-items-center rounded-full bg-text-primary text-[10px] font-bold text-bg">
-                    ✓
-                  </span>
-                )}
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    top: 14,
+                    right: 14,
+                    width: 24,
+                    height: 1.5,
+                    background: 'var(--red)',
+                  }}
+                />
+              )}
+              <div style={{ ...captionMono, marginBottom: 10, color: selected ? 'rgb(var(--ink))' : 'var(--ink-40)' }}>{c.id}</div>
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  letterSpacing: '-0.005em',
+                  marginBottom: 8,
+                  color: 'rgb(var(--ink))',
+                }}
+              >
+                {c.title}
               </div>
-              <div className="font-display text-[15px] font-bold mb-2">{c.title}</div>
-              <div className="text-[11px] text-text-muted leading-relaxed mb-3">{c.skills}</div>
-              <div className="space-y-1.5 text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-text-muted">подготовка</span>
-                  <span className="font-mono text-text-secondary">{c.hours}</span>
+              <div style={{ fontSize: 11, color: 'var(--ink-40)', lineHeight: 1.5, marginBottom: 12 }}>{c.skills}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ color: 'var(--ink-40)' }}>подготовка</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: 'var(--ink-60)' }}>{c.hours}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-muted">типичный</span>
-                  <span className="font-mono text-text-secondary">{c.typical}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ color: 'var(--ink-40)' }}>типичный</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: 'var(--ink-60)' }}>{c.typical}</span>
                 </div>
               </div>
             </button>
@@ -95,15 +140,32 @@ export default function Step2Class() {
         })}
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="text-[12px] text-text-secondary">
-          выбрано: <strong className="text-text-primary font-mono">{picked}</strong> · 3 core-скилла в следующем шаге
+      <div className="flex-wrap-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ fontSize: 12, color: 'var(--ink-60)' }}>
+          выбрано:{' '}
+          <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontWeight: 600 }}>
+            {picked}
+          </strong>{' '}
+          · 3 core-скилла в следующем шаге
         </div>
         <button
           type="button"
           onClick={next}
           disabled={setFocusClass.isPending}
-          className="rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-medium text-sm px-5 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="focus-ring motion-press"
+          style={{
+            padding: '10px 22px',
+            background: 'rgb(var(--ink))',
+            color: 'rgb(var(--color-bg))',
+            border: 0,
+            borderRadius: 'var(--radius-inner)',
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: setFocusClass.isPending ? 'progress' : 'pointer',
+            opacity: setFocusClass.isPending ? 0.6 : 1,
+            transition:
+              'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
         >
           Далее →
         </button>

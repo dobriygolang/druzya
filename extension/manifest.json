@@ -1,0 +1,68 @@
+{
+  "manifest_version": 3,
+  "name": "druz9 Activity Capture",
+  "version": "0.1.0",
+  "description": "Auto-logs LeetCode / Coursera / NeetCode / Codewars / HackerRank / deep-learning.ai progress into your druz9 trajectory.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": [
+    "https://leetcode.com/*",
+    "https://www.coursera.org/*",
+    "https://learn.deeplearning.ai/*",
+    "https://*.deeplearning.ai/*",
+    "https://neetcode.io/*",
+    "https://www.codewars.com/*",
+    "https://*.codewars.com/*",
+    "https://*.hackerrank.com/*",
+    "https://druz9.online/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "druz9 — log this",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://leetcode.com/problems/*"],
+      "js": ["content-scripts/leetcode.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.coursera.org/learn/*", "https://www.coursera.org/specializations/*"],
+      "js": ["content-scripts/coursera.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://learn.deeplearning.ai/*", "https://*.deeplearning.ai/courses/*"],
+      "js": ["content-scripts/deeplearning.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://neetcode.io/problems/*"],
+      "js": ["content-scripts/neetcode.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.codewars.com/kata/*"],
+      "js": ["content-scripts/codewars.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.hackerrank.com/challenges/*"],
+      "js": ["content-scripts/hackerrank.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

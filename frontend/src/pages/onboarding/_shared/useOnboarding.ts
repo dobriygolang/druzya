@@ -23,6 +23,7 @@
 import { useCallback } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/apiClient'
+import { markOnboardingCompleted } from '../../../lib/onboardingFlag'
 
 export const ONBOARDING_LS_KEY = 'druz9.onboarding.step'
 export const ONBOARDING_FOCUS_LS_KEY = 'druz9.onboarding.focus'
@@ -95,11 +96,16 @@ export function useOnboarding() {
   })
 
   const completeOnboarding = useMutation({
-    mutationFn: () =>
-      api<unknown>('/profile/me/settings', {
+    mutationFn: async () => {
+      // Mirror в localStorage сразу — instant fast-path для root redirect
+      // не ждёт /profile invalidate + refetch. Backend PUT — для cross-device
+      // truth. Best-effort: если PUT упал, local flag всё равно set.
+      markOnboardingCompleted()
+      return api<unknown>('/profile/me/settings', {
         method: 'PUT',
         body: JSON.stringify({ settings: { onboarding_completed: true } }),
-      }).catch(() => null),
+      }).catch(() => null)
+    },
     onSuccess: () => {
       try {
         localStorage.removeItem(ONBOARDING_LS_KEY)

@@ -134,7 +134,7 @@ export default function MockCanvasFullscreen() {
   if (finalised === true) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg text-text-primary">
-        <CheckCircle2 className="h-16 w-16 text-success" />
+        <CheckCircle2 className="h-16 w-16 text-text-primary" />
         <h1 className="font-display text-2xl font-extrabold">Этап уже отправлен</h1>
         <p className="max-w-sm text-center text-sm text-text-secondary">
           Эта попытка закрыта. Можешь закрыть вкладку — результат смотри
@@ -156,14 +156,28 @@ export default function MockCanvasFullscreen() {
             system design
           </span>
         </div>
-        <div className="flex items-center gap-3 font-mono text-[11px] text-text-muted">
+        <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.08em] text-text-muted">
           {state.serverDraftFailed ? (
-            <span className="rounded-md border border-danger/50 bg-danger/10 px-2 py-0.5 text-danger">
-              ⚠ автосейв выкл — жми Submit
+            <span
+              className="relative rounded-md border border-border-strong bg-surface-1 px-2 py-0.5 pl-3 text-text-primary"
+            >
+              <span
+                aria-hidden
+                className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-md"
+                style={{ background: 'var(--red)' }}
+              />
+              автосейв выкл — жми Submit
             </span>
           ) : state.quotaExceeded ? (
-            <span className="rounded-md border border-warn/50 bg-warn/10 px-2 py-0.5 text-warn">
-              ⚠ локалка переполнена — пишем на сервер
+            <span
+              className="relative rounded-md border border-border-strong bg-surface-1 px-2 py-0.5 pl-3 text-text-primary"
+            >
+              <span
+                aria-hidden
+                className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-md"
+                style={{ background: 'var(--red)' }}
+              />
+              локалка переполнена — пишем на сервер
             </span>
           ) : (
             <span className="text-text-secondary">автосейв · 24ч</span>
@@ -207,10 +221,10 @@ export default function MockCanvasFullscreen() {
 
         {submittedAt !== null && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-3 rounded-lg border border-success bg-success/10 px-6 py-5 text-success">
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-border-strong bg-surface-1 px-6 py-5 text-text-primary">
               <CheckCircle2 className="h-10 w-10" />
               <span className="font-display text-lg font-bold">Отправлено</span>
-              <span className="font-mono text-xs text-text-secondary">
+              <span className="font-mono text-xs tracking-[0.08em] text-text-secondary">
                 {closeBlocked
                   ? 'Можно закрыть вкладку (✕ или Cmd/Ctrl+W)'
                   : 'Закрываю вкладку…'}

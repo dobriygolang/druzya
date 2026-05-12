@@ -7,7 +7,7 @@
 // видит в footer'е amber-цвет за 5+ запросов до cap'а — успеет планомерно
 // апгрейднуться или подождать reset'а.
 
-import { usePaywallStore } from '../../stores/paywall';
+import { requestUpgrade } from '../UpgradeModal';
 
 interface Props {
   used: number;
@@ -16,7 +16,6 @@ interface Props {
 }
 
 export function QuotaMeterMini({ used, cap, width = 44 }: Props) {
-  const showPaywall = usePaywallStore((s) => s.show);
   const pct = cap > 0 ? Math.min(100, (used / cap) * 100) : 0;
   const ratio = cap > 0 ? used / cap : 0;
   const remaining = Math.max(0, cap - used);
@@ -40,12 +39,26 @@ export function QuotaMeterMini({ used, cap, width = 44 }: Props) {
       : 'var(--d9-ink-mute)';
 
   const tooltip = danger
-    ? `Осталось ${remaining} запросов из ${cap}. Кликни чтобы посмотреть upgrade-план.`
+    ? `Осталось ${remaining} запросов из ${cap}. Кликни чтобы посмотреть Pro.`
     : warn
-      ? `Осталось ${remaining} запросов из ${cap}. Скоро лимит — рекомендуем upgrade.`
+      ? `Осталось ${remaining} запросов из ${cap}. Скоро лимит — рекомендуем Pro.`
       : `Использовано ${used} из ${cap} запросов в день.`;
 
-  const onClick = warn || danger ? () => showPaywall({ reason: tooltip }) : undefined;
+  // X2 (P0) — переключили с server-driven PaywallModal на context-aware
+  // UpgradeModal. PaywallModal остаётся для stream rate_limited auto-pop
+  // (см. conversation.ts), а тут click на meter — explicit user intent,
+  // даём structured pre-filled context «вы near LLM cap, Pro removes cap».
+  const onClick =
+    warn || danger
+      ? () => {
+          requestUpgrade({
+            feature: 'llm_unlimited',
+            label: 'your daily LLM cap',
+            benefit:
+              'Pro removes the 20-call daily cap and prioritises you on Cerebras/Groq for sharper, faster responses.',
+          });
+        }
+      : undefined;
 
   return (
     <span

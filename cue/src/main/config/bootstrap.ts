@@ -16,6 +16,24 @@ export interface RuntimeConfig {
   /** true when running via `electron-vite dev`. */
   isDev: boolean;
   /**
+   * Pro-upgrade landing URL (без trailing slash). Renderer'ы клеят
+   * `?source=cue&feature=<slug>`. Backend redirect'ит в Stripe Checkout.
+   * Override через DRUZ9_PRO_URL env. Renderer'ы читают свою копию через
+   * `renderer/lib/upgrade-config.ts` чтобы не таскать full RuntimeConfig
+   * IPC bridge — единственный источник правды URL'а живёт в env'е, а
+   * default'ы дублируются в renderer'е (acceptable для compile-time const).
+   *
+   * Optional, like voiceSource выше: handlers.ts собирает inline test
+   * RuntimeConfig'и в 9+ call-sites; не хотим bloat'ить их каждым
+   * добавленным полем.
+   */
+  proUpgradeURLBase?: string;
+  /**
+   * BYOK (bring-your-own-key) landing. Юзер'ы вводят OpenAI/Anthropic/
+   * Groq/etc key → Pro features unlock без подписки.
+   */
+  byokURL?: string;
+  /**
    * Audio source для voice transcription:
    *   'mic'    → AVAudioEngine + микрофон (default; нужен только
    *              Microphone TCC; ловит ровно голос юзера)
@@ -62,5 +80,14 @@ export function loadRuntimeConfig(): RuntimeConfig {
     // (для разработки) или Settings UI (runtime).
     voiceSource:
       (process.env.DRUZ9_VOICE_SOURCE === 'system' ? 'system' : 'mic') as 'mic' | 'system',
+    // X2 (P0) — Pro upgrade + BYOK URLs. Renderer тянет через DesktopConfig
+    // bootstrap'а если он есть, иначе fallback'ает на эти dev-default'ы в
+    // renderer/lib/upgrade-config. Главная UX-цель: один источник правды
+    // для «куда вести юзера на upgrade», изолированный от Boosty server-
+    // driven paywall flow выше — это разные voronkы.
+    proUpgradeURLBase:
+      process.env.DRUZ9_PRO_URL || 'https://druz9.online/upgrade',
+    byokURL:
+      process.env.DRUZ9_BYOK_URL || 'https://druz9.online/byok',
   };
 }

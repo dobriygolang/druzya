@@ -15,7 +15,7 @@ export function OfflineBanner() {
         padding: '6px 12px',
         textAlign: 'center',
         fontSize: 10.5,
-        letterSpacing: '0.18em',
+        letterSpacing: '0.08em',
         textTransform: 'uppercase',
         color: '#ffffff',
         background: '#FF3B30',

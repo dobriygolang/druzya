@@ -1,0 +1,127 @@
+name: Cue Masquerade Validate
+
+# Lint-style проверка masquerade конфигов на PR — без полной сборки
+# (electron-builder + notarize stack ~25 min/preset × 4 = слишком дорого
+# на каждый push). Достаточно убедиться что:
+#   1. Все четыре electron-builder.<preset>.yml присутствуют и parse'ятся
+#   2. Каждый имеет productName + appId + extendInfo.CFBundleName
+#   3. Все четыре YAML referenced иконки существуют (или есть warning)
+#   4. build-masquerade.mjs --skip-build отрабатывает без exec'а билда
+#
+# Полная сборка живёт в cue-masquerade-release.yml (триггер: tag).
+
+on:
+  pull_request:
+    paths:
+      - 'cue/electron-builder.*.yml'
+      - 'cue/scripts/build-masquerade.*'
+      - 'cue/scripts/afterPack-masquerade.cjs'
+      - '.github/workflows/cue-masquerade-release.yml'
+      - '.github/workflows/cue-masquerade-validate.yml'
+
+jobs:
+  validate:
+    name: Validate masquerade configs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: cue/package-lock.json
+
+      - name: Cache cue node_modules
+        uses: actions/cache@v4
+        with:
+          path: cue/node_modules
+          key: nm-cue-${{ runner.os }}-node20-${{ hashFiles('cue/package-lock.json') }}
+          restore-keys: |
+            nm-cue-${{ runner.os }}-node20-
+
+      - name: Rewrite npm registry URLs
+        working-directory: cue
+        run: |
+          sed -i 's|https://artifactory\.s\.o3\.ru/artifactory/api/npm/npm-all-virtual|https://registry.npmjs.org|g' package-lock.json
+          echo "registry=https://registry.npmjs.org/" > .npmrc
+
+      - name: Install js-yaml only
+        working-directory: cue
+        # Полный npm ci ~2 min; для validate достаточно js-yaml.
+        run: npm ci --no-audit --no-fund --prefer-offline
+
+      - name: Validate per-preset YAML configs
+        working-directory: cue
+        run: |
+          set -e
+          fail=0
+          for preset in notes telegram slack xcode; do
+            cfg="electron-builder.$preset.yml"
+            if [ ! -f "$cfg" ]; then
+              echo "::error::missing $cfg"
+              fail=1
+              continue
+            fi
+            # Verify parses as YAML и содержит обязательные ключи.
+            node -e "
+              const yaml = require('js-yaml');
+              const fs = require('fs');
+              const cfg = yaml.load(fs.readFileSync('$cfg', 'utf-8'));
+              const required = ['productName', 'appId'];
+              for (const k of required) {
+                if (!cfg[k]) {
+                  console.error('::error::$cfg missing ' + k);
+                  process.exit(1);
+                }
+              }
+              if (!cfg.mac?.extendInfo?.CFBundleName) {
+                console.error('::error::$cfg missing mac.extendInfo.CFBundleName');
+                process.exit(1);
+              }
+              if (cfg.mac.extendInfo.CFBundleName !== cfg.productName) {
+                console.error('::error::$cfg CFBundleName mismatch productName');
+                process.exit(1);
+              }
+              if (!cfg.afterPack) {
+                console.error('::error::$cfg missing afterPack hook');
+                process.exit(1);
+              }
+              if (cfg.mac.extendInfo.LSUIElement !== true) {
+                console.error('::error::$cfg LSUIElement must be true for stealth');
+                process.exit(1);
+              }
+              // Каждый masquerade preset должен иметь свой publish channel
+              // (Notes auto-updates только Notes, не Cue). publish — массив
+              // в electron-builder schema.
+              const pubChannel = Array.isArray(cfg.publish)
+                ? cfg.publish[0]?.channel
+                : cfg.publish?.channel;
+              if (pubChannel && pubChannel !== 'masquerade-$preset') {
+                console.error('::error::$cfg publish.channel should be masquerade-$preset (got ' + pubChannel + ')');
+                process.exit(1);
+              }
+              console.log('OK ' + cfg.productName + ' / ' + cfg.appId);
+            " || fail=1
+          done
+          exit $fail
+
+      - name: Dry-run build-masquerade.mjs
+        working-directory: cue
+        # --skip-build пишет per-preset cfg files но не запускает
+        # electron-builder. Проверяем что скрипт parse'ит base + presets.
+        run: |
+          node scripts/build-masquerade.mjs --skip-build
+          ls -la .masquerade-*.yml
+
+      - name: Syntax check workflow YAML
+        # actionlint не установлен на ubuntu-latest by default —
+        # установим из release binary (быстрее чем go install).
+        run: |
+          curl -sSLf -o actionlint.tgz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz
+          tar -xzf actionlint.tgz actionlint
+          ./actionlint \
+            .github/workflows/cue-masquerade-release.yml \
+            .github/workflows/cue-masquerade-validate.yml

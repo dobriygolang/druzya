@@ -21,6 +21,9 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Compass, Loader2, Plus, Sparkles, Check } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
+import { DataLoader } from '../../components/DataLoader'
+import { PersonalContextBanner } from '../../components/PersonalContextBanner'
 import {
   activeEnrolment,
   difficultyLabel,
@@ -47,9 +50,23 @@ export default function AtlasPage() {
       <div className="flex flex-col">
         <Hero />
         <div className="px-4 py-6 sm:px-8 lg:px-20">
-          {active && <ActiveTrackStrip progress={active} />}
+          {/* R3+F4 (2026-05-12): Personal context banner reads F2 goal + F5
+              activity, рендерит state-aware hint. На AtlasPage главное —
+              guide юзера к diagnostic если нет goal, или подсказать активность
+              если goal есть но logging пустой. */}
+          <div className="mb-5">
+            <PersonalContextBanner />
+          </div>
 
-          <AddAtlasTodoCard />
+          {active && (
+            <ErrorBoundary section="Активный трек">
+              <ActiveTrackStrip progress={active} />
+            </ErrorBoundary>
+          )}
+
+          <ErrorBoundary section="Atlas todo">
+            <AddAtlasTodoCard />
+          </ErrorBoundary>
 
           <CatalogueHeader
             count={catalogue.data?.length ?? 0}
@@ -57,18 +74,20 @@ export default function AtlasPage() {
             isError={catalogue.isError}
           />
 
-          {catalogue.isLoading ? (
-            <SkeletonRibbon />
-          ) : catalogue.isError ? (
-            <ErrorBlock onRetry={() => void catalogue.refetch()} />
-          ) : (catalogue.data?.length ?? 0) === 0 ? (
-            <EmptyCatalogue />
-          ) : (
-            <Ribbon
-              tracks={catalogue.data ?? []}
-              enrolments={userTracks.data}
-            />
-          )}
+          <ErrorBoundary section="Каталог треков">
+            <DataLoader
+              state={catalogue}
+              section="Каталог треков"
+              skeleton={<SkeletonRibbon />}
+              empty={(d) => (d?.length ?? 0) === 0}
+              emptyContent={<EmptyCatalogue />}
+              errorContent={(_e, retry) => <ErrorBlock onRetry={retry} />}
+            >
+              {(tracks) => (
+                <Ribbon tracks={tracks ?? []} enrolments={userTracks.data} />
+              )}
+            </DataLoader>
+          </ErrorBoundary>
         </div>
       </div>
     </AppShellV2>
@@ -108,12 +127,21 @@ function ActiveTrackStrip({ progress }: { progress: LearningTrackProgress }) {
   return (
     <Link
       to={`/atlas/track/${encodeURIComponent(progress.track.slug)}`}
-      className="group mb-6 block rounded-xl border border-border bg-surface-1 p-4 transition-colors hover:border-border-strong"
-      style={{
-        borderLeftWidth: 4,
-        borderLeftColor: progress.track.accent_color || '#A78BFA',
-      }}
+      className="card-lift group relative mb-6 block rounded-xl border border-border bg-surface-1 p-4 hover:border-border-strong"
     >
+      {/* Hero-treatment: red signal stripe denotes the live/active track. */}
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '1.5px',
+          height: '24px',
+          background: 'var(--red)',
+        }}
+      />
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">
@@ -141,7 +169,7 @@ function ActiveTrackStrip({ progress }: { progress: LearningTrackProgress }) {
           className="h-full transition-all"
           style={{
             width: `${pct}%`,
-            backgroundColor: progress.track.accent_color || '#A78BFA',
+            background: 'var(--ink)',
           }}
         />
       </div>
@@ -211,7 +239,6 @@ function TrackCard({
   const enrolled = Boolean(progress)
   const paused = Boolean(progress?.enrolment.paused_at)
   const completed = Boolean(progress?.enrolment.completed_at)
-  const accent = track.accent_color || '#A78BFA'
   const pct = progressPct(progress)
   const stepLabel = progress
     ? `${progress.enrolment.current_step ?? 0}/${progress.steps_total ?? 0}`
@@ -220,9 +247,22 @@ function TrackCard({
   return (
     <Link
       to={`/atlas/track/${encodeURIComponent(track.slug)}`}
-      className="group flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-4 transition-colors hover:border-border-strong"
-      style={{ borderLeftWidth: 4, borderLeftColor: accent }}
+      className="card-lift group relative flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-4 hover:border-border-strong"
     >
+      {enrolled && !completed && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: '1.5px',
+            height: '24px',
+            background: 'var(--red)',
+          }}
+        />
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">
@@ -265,7 +305,7 @@ function TrackCard({
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-bg">
             <div
               className="h-full transition-all"
-              style={{ width: `${pct}%`, backgroundColor: accent }}
+              style={{ width: `${pct}%`, background: 'var(--ink)' }}
             />
           </div>
         </div>
@@ -405,7 +445,19 @@ function AddAtlasTodoCard() {
           value={todo}
           onChange={(e) => setTodo(e.target.value)}
           placeholder="Например: транзакции в Postgres"
-          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+          className="atlas-underline-input flex-1 bg-transparent px-1 py-2 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none"
+          style={{
+            border: 'none',
+            borderBottom: '1px solid var(--hair-2)',
+            transition:
+              'border-color var(--motion-dur-small) var(--motion-ease-standard)',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderBottom = '1.5px solid rgb(var(--ink))'
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderBottom = '1px solid var(--hair-2)'
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') submit()
           }}
@@ -447,7 +499,7 @@ function AddAtlasTodoCard() {
               <>
                 Создан новый узел{' '}
                 <b className="text-text-primary">{result.new_node.title}</b>{' '}
-                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                   · {result.new_node.section} / {result.new_node.cluster}
                 </span>
               </>

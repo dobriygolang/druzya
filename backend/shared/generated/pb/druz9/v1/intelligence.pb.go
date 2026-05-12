@@ -26,6 +26,7 @@ import (
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
@@ -154,6 +155,64 @@ func (x InsightSeverity) Number() protoreflect.EnumNumber {
 // Deprecated: Use InsightSeverity.Descriptor instead.
 func (InsightSeverity) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{1}
+}
+
+type GoalKind int32
+
+const (
+	GoalKind_GOAL_KIND_UNSPECIFIED    GoalKind = 0
+	GoalKind_GOAL_KIND_TOP_TIER_CO    GoalKind = 1 // Senior at specific top-tier company
+	GoalKind_GOAL_KIND_ANY_SENIOR     GoalKind = 2 // Senior at any company
+	GoalKind_GOAL_KIND_ML_OFFER       GoalKind = 3 // ML Engineer offer
+	GoalKind_GOAL_KIND_ENGLISH_TARGET GoalKind = 4 // TOEFL 100+ / IELTS 7+ / CEFR-B2+
+	GoalKind_GOAL_KIND_CUSTOM         GoalKind = 5 // free-text, AI parses
+)
+
+// Enum value maps for GoalKind.
+var (
+	GoalKind_name = map[int32]string{
+		0: "GOAL_KIND_UNSPECIFIED",
+		1: "GOAL_KIND_TOP_TIER_CO",
+		2: "GOAL_KIND_ANY_SENIOR",
+		3: "GOAL_KIND_ML_OFFER",
+		4: "GOAL_KIND_ENGLISH_TARGET",
+		5: "GOAL_KIND_CUSTOM",
+	}
+	GoalKind_value = map[string]int32{
+		"GOAL_KIND_UNSPECIFIED":    0,
+		"GOAL_KIND_TOP_TIER_CO":    1,
+		"GOAL_KIND_ANY_SENIOR":     2,
+		"GOAL_KIND_ML_OFFER":       3,
+		"GOAL_KIND_ENGLISH_TARGET": 4,
+		"GOAL_KIND_CUSTOM":         5,
+	}
+)
+
+func (x GoalKind) Enum() *GoalKind {
+	p := new(GoalKind)
+	*p = x
+	return p
+}
+
+func (x GoalKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GoalKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_intelligence_proto_enumTypes[2].Descriptor()
+}
+
+func (GoalKind) Type() protoreflect.EnumType {
+	return &file_druz9_v1_intelligence_proto_enumTypes[2]
+}
+
+func (x GoalKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GoalKind.Descriptor instead.
+func (GoalKind) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{2}
 }
 
 // BriefRecommendation — one actionable suggestion in DailyBrief.
@@ -2211,11 +2270,2510 @@ func (x *LogResourceResponse) GetNoteCreateFailed() bool {
 	return false
 }
 
+type Goal struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Kind          GoalKind               `protobuf:"varint,2,opt,name=kind,proto3,enum=druz9.v1.GoalKind" json:"kind,omitempty"`
+	TargetCompany string                 `protobuf:"bytes,3,opt,name=target_company,json=targetCompany,proto3" json:"target_company,omitempty"`
+	TargetLevel   string                 `protobuf:"bytes,4,opt,name=target_level,json=targetLevel,proto3" json:"target_level,omitempty"`
+	TargetText    string                 `protobuf:"bytes,5,opt,name=target_text,json=targetText,proto3" json:"target_text,omitempty"`
+	// target_date — ISO yyyy-mm-dd; "" если не задано.
+	TargetDate    string                 `protobuf:"bytes,6,opt,name=target_date,json=targetDate,proto3" json:"target_date,omitempty"`
+	Active        bool                   `protobuf:"varint,7,opt,name=active,proto3" json:"active,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Goal) Reset() {
+	*x = Goal{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Goal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Goal) ProtoMessage() {}
+
+func (x *Goal) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Goal.ProtoReflect.Descriptor instead.
+func (*Goal) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *Goal) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Goal) GetKind() GoalKind {
+	if x != nil {
+		return x.Kind
+	}
+	return GoalKind_GOAL_KIND_UNSPECIFIED
+}
+
+func (x *Goal) GetTargetCompany() string {
+	if x != nil {
+		return x.TargetCompany
+	}
+	return ""
+}
+
+func (x *Goal) GetTargetLevel() string {
+	if x != nil {
+		return x.TargetLevel
+	}
+	return ""
+}
+
+func (x *Goal) GetTargetText() string {
+	if x != nil {
+		return x.TargetText
+	}
+	return ""
+}
+
+func (x *Goal) GetTargetDate() string {
+	if x != nil {
+		return x.TargetDate
+	}
+	return ""
+}
+
+func (x *Goal) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *Goal) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Goal) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type CreateGoalRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          GoalKind               `protobuf:"varint,1,opt,name=kind,proto3,enum=druz9.v1.GoalKind" json:"kind,omitempty"`
+	TargetCompany string                 `protobuf:"bytes,2,opt,name=target_company,json=targetCompany,proto3" json:"target_company,omitempty"`
+	TargetLevel   string                 `protobuf:"bytes,3,opt,name=target_level,json=targetLevel,proto3" json:"target_level,omitempty"`
+	TargetText    string                 `protobuf:"bytes,4,opt,name=target_text,json=targetText,proto3" json:"target_text,omitempty"`
+	TargetDate    string                 `protobuf:"bytes,5,opt,name=target_date,json=targetDate,proto3" json:"target_date,omitempty"` // ISO yyyy-mm-dd; "" allowed
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateGoalRequest) Reset() {
+	*x = CreateGoalRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateGoalRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateGoalRequest) ProtoMessage() {}
+
+func (x *CreateGoalRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateGoalRequest.ProtoReflect.Descriptor instead.
+func (*CreateGoalRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *CreateGoalRequest) GetKind() GoalKind {
+	if x != nil {
+		return x.Kind
+	}
+	return GoalKind_GOAL_KIND_UNSPECIFIED
+}
+
+func (x *CreateGoalRequest) GetTargetCompany() string {
+	if x != nil {
+		return x.TargetCompany
+	}
+	return ""
+}
+
+func (x *CreateGoalRequest) GetTargetLevel() string {
+	if x != nil {
+		return x.TargetLevel
+	}
+	return ""
+}
+
+func (x *CreateGoalRequest) GetTargetText() string {
+	if x != nil {
+		return x.TargetText
+	}
+	return ""
+}
+
+func (x *CreateGoalRequest) GetTargetDate() string {
+	if x != nil {
+		return x.TargetDate
+	}
+	return ""
+}
+
+type UpdateGoalRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// id MUST refer to a goal owned by the caller; otherwise NotFound.
+	Id            string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Kind          GoalKind `protobuf:"varint,2,opt,name=kind,proto3,enum=druz9.v1.GoalKind" json:"kind,omitempty"`
+	TargetCompany string   `protobuf:"bytes,3,opt,name=target_company,json=targetCompany,proto3" json:"target_company,omitempty"`
+	TargetLevel   string   `protobuf:"bytes,4,opt,name=target_level,json=targetLevel,proto3" json:"target_level,omitempty"`
+	TargetText    string   `protobuf:"bytes,5,opt,name=target_text,json=targetText,proto3" json:"target_text,omitempty"`
+	TargetDate    string   `protobuf:"bytes,6,opt,name=target_date,json=targetDate,proto3" json:"target_date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateGoalRequest) Reset() {
+	*x = UpdateGoalRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateGoalRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateGoalRequest) ProtoMessage() {}
+
+func (x *UpdateGoalRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateGoalRequest.ProtoReflect.Descriptor instead.
+func (*UpdateGoalRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *UpdateGoalRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateGoalRequest) GetKind() GoalKind {
+	if x != nil {
+		return x.Kind
+	}
+	return GoalKind_GOAL_KIND_UNSPECIFIED
+}
+
+func (x *UpdateGoalRequest) GetTargetCompany() string {
+	if x != nil {
+		return x.TargetCompany
+	}
+	return ""
+}
+
+func (x *UpdateGoalRequest) GetTargetLevel() string {
+	if x != nil {
+		return x.TargetLevel
+	}
+	return ""
+}
+
+func (x *UpdateGoalRequest) GetTargetText() string {
+	if x != nil {
+		return x.TargetText
+	}
+	return ""
+}
+
+func (x *UpdateGoalRequest) GetTargetDate() string {
+	if x != nil {
+		return x.TargetDate
+	}
+	return ""
+}
+
+type DeactivateGoalRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeactivateGoalRequest) Reset() {
+	*x = DeactivateGoalRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeactivateGoalRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeactivateGoalRequest) ProtoMessage() {}
+
+func (x *DeactivateGoalRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeactivateGoalRequest.ProtoReflect.Descriptor instead.
+func (*DeactivateGoalRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *DeactivateGoalRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type InterviewStage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stage         string                 `protobuf:"bytes,1,opt,name=stage,proto3" json:"stage,omitempty"`                              // 'hr' | 'algo' | 'sysdesign' | 'coding' | 'behavioral' | 'other'
+	SelfRating    int32                  `protobuf:"varint,2,opt,name=self_rating,json=selfRating,proto3" json:"self_rating,omitempty"` // 1..5, 0 = unrated
+	Notes         string                 `protobuf:"bytes,3,opt,name=notes,proto3" json:"notes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InterviewStage) Reset() {
+	*x = InterviewStage{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InterviewStage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InterviewStage) ProtoMessage() {}
+
+func (x *InterviewStage) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InterviewStage.ProtoReflect.Descriptor instead.
+func (*InterviewStage) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *InterviewStage) GetStage() string {
+	if x != nil {
+		return x.Stage
+	}
+	return ""
+}
+
+func (x *InterviewStage) GetSelfRating() int32 {
+	if x != nil {
+		return x.SelfRating
+	}
+	return 0
+}
+
+func (x *InterviewStage) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+type InterviewSession struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Company       string                 `protobuf:"bytes,2,opt,name=company,proto3" json:"company,omitempty"`
+	Persona       string                 `protobuf:"bytes,3,opt,name=persona,proto3" json:"persona,omitempty"`
+	Stages        []*InterviewStage      `protobuf:"bytes,4,rep,name=stages,proto3" json:"stages,omitempty"`
+	AiSummary     string                 `protobuf:"bytes,5,opt,name=ai_summary,json=aiSummary,proto3" json:"ai_summary,omitempty"`
+	RawTranscript string                 `protobuf:"bytes,6,opt,name=raw_transcript,json=rawTranscript,proto3" json:"raw_transcript,omitempty"`
+	CompletedAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InterviewSession) Reset() {
+	*x = InterviewSession{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InterviewSession) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InterviewSession) ProtoMessage() {}
+
+func (x *InterviewSession) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InterviewSession.ProtoReflect.Descriptor instead.
+func (*InterviewSession) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *InterviewSession) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *InterviewSession) GetCompany() string {
+	if x != nil {
+		return x.Company
+	}
+	return ""
+}
+
+func (x *InterviewSession) GetPersona() string {
+	if x != nil {
+		return x.Persona
+	}
+	return ""
+}
+
+func (x *InterviewSession) GetStages() []*InterviewStage {
+	if x != nil {
+		return x.Stages
+	}
+	return nil
+}
+
+func (x *InterviewSession) GetAiSummary() string {
+	if x != nil {
+		return x.AiSummary
+	}
+	return ""
+}
+
+func (x *InterviewSession) GetRawTranscript() string {
+	if x != nil {
+		return x.RawTranscript
+	}
+	return ""
+}
+
+func (x *InterviewSession) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+type IngestInterviewSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Company       string                 `protobuf:"bytes,1,opt,name=company,proto3" json:"company,omitempty"`
+	Persona       string                 `protobuf:"bytes,2,opt,name=persona,proto3" json:"persona,omitempty"`
+	Stages        []*InterviewStage      `protobuf:"bytes,3,rep,name=stages,proto3" json:"stages,omitempty"`
+	AiSummary     string                 `protobuf:"bytes,4,opt,name=ai_summary,json=aiSummary,proto3" json:"ai_summary,omitempty"`
+	RawTranscript string                 `protobuf:"bytes,5,opt,name=raw_transcript,json=rawTranscript,proto3" json:"raw_transcript,omitempty"`
+	// completed_at — RFC3339; empty → server time.
+	CompletedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IngestInterviewSessionRequest) Reset() {
+	*x = IngestInterviewSessionRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IngestInterviewSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IngestInterviewSessionRequest) ProtoMessage() {}
+
+func (x *IngestInterviewSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IngestInterviewSessionRequest.ProtoReflect.Descriptor instead.
+func (*IngestInterviewSessionRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *IngestInterviewSessionRequest) GetCompany() string {
+	if x != nil {
+		return x.Company
+	}
+	return ""
+}
+
+func (x *IngestInterviewSessionRequest) GetPersona() string {
+	if x != nil {
+		return x.Persona
+	}
+	return ""
+}
+
+func (x *IngestInterviewSessionRequest) GetStages() []*InterviewStage {
+	if x != nil {
+		return x.Stages
+	}
+	return nil
+}
+
+func (x *IngestInterviewSessionRequest) GetAiSummary() string {
+	if x != nil {
+		return x.AiSummary
+	}
+	return ""
+}
+
+func (x *IngestInterviewSessionRequest) GetRawTranscript() string {
+	if x != nil {
+		return x.RawTranscript
+	}
+	return ""
+}
+
+func (x *IngestInterviewSessionRequest) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+type ListInterviewSessionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (20), max 100
+	Offset        int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListInterviewSessionsRequest) Reset() {
+	*x = ListInterviewSessionsRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInterviewSessionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInterviewSessionsRequest) ProtoMessage() {}
+
+func (x *ListInterviewSessionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInterviewSessionsRequest.ProtoReflect.Descriptor instead.
+func (*ListInterviewSessionsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *ListInterviewSessionsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListInterviewSessionsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+type ListInterviewSessionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*InterviewSession    `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListInterviewSessionsResponse) Reset() {
+	*x = ListInterviewSessionsResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInterviewSessionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInterviewSessionsResponse) ProtoMessage() {}
+
+func (x *ListInterviewSessionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInterviewSessionsResponse.ProtoReflect.Descriptor instead.
+func (*ListInterviewSessionsResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *ListInterviewSessionsResponse) GetItems() []*InterviewSession {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *ListInterviewSessionsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type Milestone struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	WeekIndex int32                  `protobuf:"varint,2,opt,name=week_index,json=weekIndex,proto3" json:"week_index,omitempty"`
+	// week_start — ISO yyyy-mm-dd Monday of the milestone's week.
+	WeekStart string `protobuf:"bytes,3,opt,name=week_start,json=weekStart,proto3" json:"week_start,omitempty"`
+	Title     string `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Detail    string `protobuf:"bytes,5,opt,name=detail,proto3" json:"detail,omitempty"`
+	// category ∈ foundation | practice | mock | reflection | final.
+	Category      string                 `protobuf:"bytes,6,opt,name=category,proto3" json:"category,omitempty"`
+	Done          bool                   `protobuf:"varint,7,opt,name=done,proto3" json:"done,omitempty"`
+	DoneAt        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=done_at,json=doneAt,proto3" json:"done_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Milestone) Reset() {
+	*x = Milestone{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Milestone) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Milestone) ProtoMessage() {}
+
+func (x *Milestone) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Milestone.ProtoReflect.Descriptor instead.
+func (*Milestone) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *Milestone) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Milestone) GetWeekIndex() int32 {
+	if x != nil {
+		return x.WeekIndex
+	}
+	return 0
+}
+
+func (x *Milestone) GetWeekStart() string {
+	if x != nil {
+		return x.WeekStart
+	}
+	return ""
+}
+
+func (x *Milestone) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *Milestone) GetDetail() string {
+	if x != nil {
+		return x.Detail
+	}
+	return ""
+}
+
+func (x *Milestone) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *Milestone) GetDone() bool {
+	if x != nil {
+		return x.Done
+	}
+	return false
+}
+
+func (x *Milestone) GetDoneAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DoneAt
+	}
+	return nil
+}
+
+type MilestonesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Items []*Milestone           `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// generated_at — newest milestone's GeneratedAt timestamp. Zero when empty.
+	GeneratedAt   *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MilestonesResponse) Reset() {
+	*x = MilestonesResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MilestonesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MilestonesResponse) ProtoMessage() {}
+
+func (x *MilestonesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MilestonesResponse.ProtoReflect.Descriptor instead.
+func (*MilestonesResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *MilestonesResponse) GetItems() []*Milestone {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *MilestonesResponse) GetGeneratedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GeneratedAt
+	}
+	return nil
+}
+
+type MarkMilestoneDoneRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Done          bool                   `protobuf:"varint,2,opt,name=done,proto3" json:"done,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkMilestoneDoneRequest) Reset() {
+	*x = MarkMilestoneDoneRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkMilestoneDoneRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkMilestoneDoneRequest) ProtoMessage() {}
+
+func (x *MarkMilestoneDoneRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkMilestoneDoneRequest.ProtoReflect.Descriptor instead.
+func (*MarkMilestoneDoneRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *MarkMilestoneDoneRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MarkMilestoneDoneRequest) GetDone() bool {
+	if x != nil {
+		return x.Done
+	}
+	return false
+}
+
+type NodeCoverage struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	NodeKey string                 `protobuf:"bytes,1,opt,name=node_key,json=nodeKey,proto3" json:"node_key,omitempty"`
+	// state ∈ covered | partial | struggling | not_yet.
+	State          string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	MatchCount_30D int32                  `protobuf:"varint,3,opt,name=match_count_30d,json=matchCount30d,proto3" json:"match_count_30d,omitempty"`
+	MatchCount_7D  int32                  `protobuf:"varint,4,opt,name=match_count_7d,json=matchCount7d,proto3" json:"match_count_7d,omitempty"`
+	LastMatchAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=last_match_at,json=lastMatchAt,proto3" json:"last_match_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *NodeCoverage) Reset() {
+	*x = NodeCoverage{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NodeCoverage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NodeCoverage) ProtoMessage() {}
+
+func (x *NodeCoverage) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NodeCoverage.ProtoReflect.Descriptor instead.
+func (*NodeCoverage) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *NodeCoverage) GetNodeKey() string {
+	if x != nil {
+		return x.NodeKey
+	}
+	return ""
+}
+
+func (x *NodeCoverage) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *NodeCoverage) GetMatchCount_30D() int32 {
+	if x != nil {
+		return x.MatchCount_30D
+	}
+	return 0
+}
+
+func (x *NodeCoverage) GetMatchCount_7D() int32 {
+	if x != nil {
+		return x.MatchCount_7D
+	}
+	return 0
+}
+
+func (x *NodeCoverage) GetLastMatchAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastMatchAt
+	}
+	return nil
+}
+
+type GetNodeCoverageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeKeys      []string               `protobuf:"bytes,1,rep,name=node_keys,json=nodeKeys,proto3" json:"node_keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetNodeCoverageRequest) Reset() {
+	*x = GetNodeCoverageRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetNodeCoverageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetNodeCoverageRequest) ProtoMessage() {}
+
+func (x *GetNodeCoverageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetNodeCoverageRequest.ProtoReflect.Descriptor instead.
+func (*GetNodeCoverageRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *GetNodeCoverageRequest) GetNodeKeys() []string {
+	if x != nil {
+		return x.NodeKeys
+	}
+	return nil
+}
+
+type GetNodeCoverageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*NodeCoverage        `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetNodeCoverageResponse) Reset() {
+	*x = GetNodeCoverageResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetNodeCoverageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetNodeCoverageResponse) ProtoMessage() {}
+
+func (x *GetNodeCoverageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetNodeCoverageResponse.ProtoReflect.Descriptor instead.
+func (*GetNodeCoverageResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *GetNodeCoverageResponse) GetItems() []*NodeCoverage {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type MemoryEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// kind mirrors domain.EpisodeKind (brief_emitted/cue_session/etc.).
+	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	// content — single-line summary stored in coach_episodes.summary.
+	Content string `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	// source — short label ('hone', 'cue', 'mock', 'coach') derived server-side
+	// from kind для UI grouping. May be empty.
+	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
+	// importance — float in [0..1] reserved для будущей weighting; 0 = unscored.
+	Importance float64                `protobuf:"fixed64,5,opt,name=importance,proto3" json:"importance,omitempty"`
+	OccurredAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
+	ExpiresAt  *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	// edited_at — non-nil если юзер уточнял formulation через EditMemoryEntry.
+	// UI рисует subtle «edited» индикатор когда set.
+	EditedAt      *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=edited_at,json=editedAt,proto3" json:"edited_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MemoryEntry) Reset() {
+	*x = MemoryEntry{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MemoryEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MemoryEntry) ProtoMessage() {}
+
+func (x *MemoryEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MemoryEntry.ProtoReflect.Descriptor instead.
+func (*MemoryEntry) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *MemoryEntry) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MemoryEntry) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *MemoryEntry) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *MemoryEntry) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *MemoryEntry) GetImportance() float64 {
+	if x != nil {
+		return x.Importance
+	}
+	return 0
+}
+
+func (x *MemoryEntry) GetOccurredAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.OccurredAt
+	}
+	return nil
+}
+
+func (x *MemoryEntry) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *MemoryEntry) GetEditedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EditedAt
+	}
+	return nil
+}
+
+type ListMemoryEntriesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// kind — optional filter; empty string = all kinds.
+	Kind string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	// since — optional lower bound on occurred_at. Empty → unrestricted.
+	Since         *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=since,proto3" json:"since,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"` // 0 → server default (50), max 200
+	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMemoryEntriesRequest) Reset() {
+	*x = ListMemoryEntriesRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMemoryEntriesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMemoryEntriesRequest) ProtoMessage() {}
+
+func (x *ListMemoryEntriesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMemoryEntriesRequest.ProtoReflect.Descriptor instead.
+func (*ListMemoryEntriesRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *ListMemoryEntriesRequest) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *ListMemoryEntriesRequest) GetSince() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Since
+	}
+	return nil
+}
+
+func (x *ListMemoryEntriesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListMemoryEntriesRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+type ListMemoryEntriesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*MemoryEntry         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMemoryEntriesResponse) Reset() {
+	*x = ListMemoryEntriesResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMemoryEntriesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMemoryEntriesResponse) ProtoMessage() {}
+
+func (x *ListMemoryEntriesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMemoryEntriesResponse.ProtoReflect.Descriptor instead.
+func (*ListMemoryEntriesResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *ListMemoryEntriesResponse) GetItems() []*MemoryEntry {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *ListMemoryEntriesResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type DeleteMemoryEntryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteMemoryEntryRequest) Reset() {
+	*x = DeleteMemoryEntryRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteMemoryEntryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteMemoryEntryRequest) ProtoMessage() {}
+
+func (x *DeleteMemoryEntryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteMemoryEntryRequest.ProtoReflect.Descriptor instead.
+func (*DeleteMemoryEntryRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *DeleteMemoryEntryRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+// EditMemoryEntryRequest — юзер уточняет formulation entry'и. Content
+// валидируется backend'ом: trim + length [1..2000] runes.
+type EditMemoryEntryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditMemoryEntryRequest) Reset() {
+	*x = EditMemoryEntryRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditMemoryEntryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditMemoryEntryRequest) ProtoMessage() {}
+
+func (x *EditMemoryEntryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditMemoryEntryRequest.ProtoReflect.Descriptor instead.
+func (*EditMemoryEntryRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *EditMemoryEntryRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EditMemoryEntryRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+// CoachMemoryEntry — one episode from coach_episodes the suggestion
+// prompt may reference. Minimal projection (id+kind+summary+occurred_at) —
+// payload is intentionally NOT exposed (security: don't leak full
+// reflection bodies into a transcript-tail context).
+type CoachMemoryEntry struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Kind       string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`       // 'brief_emitted' | 'reflection_added' | 'mock_pipeline_finished' | …
+	Summary    string                 `protobuf:"bytes,2,opt,name=summary,proto3" json:"summary,omitempty"` // single-line gist
+	OccurredAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
+	// hours_ago pre-computed server-side ("2 days ago" framing).
+	HoursAgo      int32 `protobuf:"varint,4,opt,name=hours_ago,json=hoursAgo,proto3" json:"hours_ago,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CoachMemoryEntry) Reset() {
+	*x = CoachMemoryEntry{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CoachMemoryEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CoachMemoryEntry) ProtoMessage() {}
+
+func (x *CoachMemoryEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CoachMemoryEntry.ProtoReflect.Descriptor instead.
+func (*CoachMemoryEntry) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *CoachMemoryEntry) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *CoachMemoryEntry) GetSummary() string {
+	if x != nil {
+		return x.Summary
+	}
+	return ""
+}
+
+func (x *CoachMemoryEntry) GetOccurredAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.OccurredAt
+	}
+	return nil
+}
+
+func (x *CoachMemoryEntry) GetHoursAgo() int32 {
+	if x != nil {
+		return x.HoursAgo
+	}
+	return 0
+}
+
+// ActivitySummary — rolled-up user_resource_log counts (last 7d / 30d).
+type ActivitySummary struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Last_7DCount  int32                  `protobuf:"varint,1,opt,name=last_7d_count,json=last7dCount,proto3" json:"last_7d_count,omitempty"`
+	Last_30DCount int32                  `protobuf:"varint,2,opt,name=last_30d_count,json=last30dCount,proto3" json:"last_30d_count,omitempty"`
+	// top_kinds — distinct atlas_node_id prefixes / resource kinds, most-
+	// frequent first. Server caps at 5 entries.
+	TopKinds      []string `protobuf:"bytes,3,rep,name=top_kinds,json=topKinds,proto3" json:"top_kinds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ActivitySummary) Reset() {
+	*x = ActivitySummary{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ActivitySummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActivitySummary) ProtoMessage() {}
+
+func (x *ActivitySummary) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActivitySummary.ProtoReflect.Descriptor instead.
+func (*ActivitySummary) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *ActivitySummary) GetLast_7DCount() int32 {
+	if x != nil {
+		return x.Last_7DCount
+	}
+	return 0
+}
+
+func (x *ActivitySummary) GetLast_30DCount() int32 {
+	if x != nil {
+		return x.Last_30DCount
+	}
+	return 0
+}
+
+func (x *ActivitySummary) GetTopKinds() []string {
+	if x != nil {
+		return x.TopKinds
+	}
+	return nil
+}
+
+// SkillRadarSnapshot — compact 5-axis projection. Same shape as
+// SkillRadar but flattened для context block.
+type SkillRadarSnapshot struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Rubric string                 `protobuf:"bytes,1,opt,name=rubric,proto3" json:"rubric,omitempty"`
+	// axes is paired with axis_scores 1:1 — server emits both in same order.
+	Axes       []string  `protobuf:"bytes,2,rep,name=axes,proto3" json:"axes,omitempty"`
+	AxisScores []float64 `protobuf:"fixed64,3,rep,packed,name=axis_scores,json=axisScores,proto3" json:"axis_scores,omitempty"` // 0..1
+	// weakest / strongest highlight axis_key labels for quick prompt phrasing.
+	WeakestAxis   string `protobuf:"bytes,4,opt,name=weakest_axis,json=weakestAxis,proto3" json:"weakest_axis,omitempty"`
+	StrongestAxis string `protobuf:"bytes,5,opt,name=strongest_axis,json=strongestAxis,proto3" json:"strongest_axis,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SkillRadarSnapshot) Reset() {
+	*x = SkillRadarSnapshot{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SkillRadarSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SkillRadarSnapshot) ProtoMessage() {}
+
+func (x *SkillRadarSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SkillRadarSnapshot.ProtoReflect.Descriptor instead.
+func (*SkillRadarSnapshot) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *SkillRadarSnapshot) GetRubric() string {
+	if x != nil {
+		return x.Rubric
+	}
+	return ""
+}
+
+func (x *SkillRadarSnapshot) GetAxes() []string {
+	if x != nil {
+		return x.Axes
+	}
+	return nil
+}
+
+func (x *SkillRadarSnapshot) GetAxisScores() []float64 {
+	if x != nil {
+		return x.AxisScores
+	}
+	return nil
+}
+
+func (x *SkillRadarSnapshot) GetWeakestAxis() string {
+	if x != nil {
+		return x.WeakestAxis
+	}
+	return ""
+}
+
+func (x *SkillRadarSnapshot) GetStrongestAxis() string {
+	if x != nil {
+		return x.StrongestAxis
+	}
+	return ""
+}
+
+// AtlasResourceRef — top-N relevant resources for the user's active goal +
+// recent activity. Stub: empty until atlas-retrieval API lands. Kept in
+// the schema so clients render the section once data flows.
+type AtlasResourceRef struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Url   string                 `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	// kind ∈ 'book' | 'course' | 'article' | 'paper'.
+	Kind          string `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AtlasResourceRef) Reset() {
+	*x = AtlasResourceRef{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AtlasResourceRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AtlasResourceRef) ProtoMessage() {}
+
+func (x *AtlasResourceRef) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AtlasResourceRef.ProtoReflect.Descriptor instead.
+func (*AtlasResourceRef) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *AtlasResourceRef) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AtlasResourceRef) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *AtlasResourceRef) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *AtlasResourceRef) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+// UserContext — the full bundle Cue uses to personalise a suggestion. All
+// fields are optional — missing data ≠ error. Reader degrades to "no
+// context" silently if every sub-field is empty.
+type UserContext struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// active_goal — null when the user has no active primary goal.
+	// Reuses Goal message (same definition above).
+	ActiveGoal *Goal `protobuf:"bytes,1,opt,name=active_goal,json=activeGoal,proto3" json:"active_goal,omitempty"`
+	// recent_memory — last 10-15 coach episodes (newest first).
+	RecentMemory []*CoachMemoryEntry `protobuf:"bytes,2,rep,name=recent_memory,json=recentMemory,proto3" json:"recent_memory,omitempty"`
+	// activity — last 7d / 30d activity_log summary.
+	Activity *ActivitySummary `protobuf:"bytes,3,opt,name=activity,proto3" json:"activity,omitempty"`
+	// radar — skill-radar snapshot (default 'dev_senior' rubric).
+	Radar *SkillRadarSnapshot `protobuf:"bytes,4,opt,name=radar,proto3" json:"radar,omitempty"`
+	// relevant_resources — top-5 atlas hits. Empty until atlas retrieval
+	// hook wired (see TODO in intelligence.app.GetUserContext).
+	RelevantResources []*AtlasResourceRef `protobuf:"bytes,5,rep,name=relevant_resources,json=relevantResources,proto3" json:"relevant_resources,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *UserContext) Reset() {
+	*x = UserContext{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserContext) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserContext) ProtoMessage() {}
+
+func (x *UserContext) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserContext.ProtoReflect.Descriptor instead.
+func (*UserContext) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *UserContext) GetActiveGoal() *Goal {
+	if x != nil {
+		return x.ActiveGoal
+	}
+	return nil
+}
+
+func (x *UserContext) GetRecentMemory() []*CoachMemoryEntry {
+	if x != nil {
+		return x.RecentMemory
+	}
+	return nil
+}
+
+func (x *UserContext) GetActivity() *ActivitySummary {
+	if x != nil {
+		return x.Activity
+	}
+	return nil
+}
+
+func (x *UserContext) GetRadar() *SkillRadarSnapshot {
+	if x != nil {
+		return x.Radar
+	}
+	return nil
+}
+
+func (x *UserContext) GetRelevantResources() []*AtlasResourceRef {
+	if x != nil {
+		return x.RelevantResources
+	}
+	return nil
+}
+
+type GetUserContextRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserContextRequest) Reset() {
+	*x = GetUserContextRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserContextRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserContextRequest) ProtoMessage() {}
+
+func (x *GetUserContextRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserContextRequest.ProtoReflect.Descriptor instead.
+func (*GetUserContextRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{58}
+}
+
+type GetUserContextResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *UserContext           `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserContextResponse) Reset() {
+	*x = GetUserContextResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserContextResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserContextResponse) ProtoMessage() {}
+
+func (x *GetUserContextResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserContextResponse.ProtoReflect.Descriptor instead.
+func (*GetUserContextResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *GetUserContextResponse) GetContext() *UserContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+type SaveFocusReflectionRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// session_id — client-generated UUID, должно совпадать с hone_focus_sessions.id.
+	// Idempotency: backend UNIQUE(user_id, session_id) → replay safe.
+	SessionId       string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	FocusMode       string `protobuf:"bytes,2,opt,name=focus_mode,json=focusMode,proto3" json:"focus_mode,omitempty"`
+	DurationSeconds int32  `protobuf:"varint,3,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	// grade ∈ [1,5]; 0 = no rating (only notes).
+	Grade         int32                  `protobuf:"varint,4,opt,name=grade,proto3" json:"grade,omitempty"`
+	Notes         string                 `protobuf:"bytes,5,opt,name=notes,proto3" json:"notes,omitempty"`
+	TaskPinned    string                 `protobuf:"bytes,6,opt,name=task_pinned,json=taskPinned,proto3" json:"task_pinned,omitempty"`
+	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	EndedAt       *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SaveFocusReflectionRequest) Reset() {
+	*x = SaveFocusReflectionRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SaveFocusReflectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SaveFocusReflectionRequest) ProtoMessage() {}
+
+func (x *SaveFocusReflectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SaveFocusReflectionRequest.ProtoReflect.Descriptor instead.
+func (*SaveFocusReflectionRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *SaveFocusReflectionRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SaveFocusReflectionRequest) GetFocusMode() string {
+	if x != nil {
+		return x.FocusMode
+	}
+	return ""
+}
+
+func (x *SaveFocusReflectionRequest) GetDurationSeconds() int32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *SaveFocusReflectionRequest) GetGrade() int32 {
+	if x != nil {
+		return x.Grade
+	}
+	return 0
+}
+
+func (x *SaveFocusReflectionRequest) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+func (x *SaveFocusReflectionRequest) GetTaskPinned() string {
+	if x != nil {
+		return x.TaskPinned
+	}
+	return ""
+}
+
+func (x *SaveFocusReflectionRequest) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *SaveFocusReflectionRequest) GetEndedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndedAt
+	}
+	return nil
+}
+
+type SaveFocusReflectionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ReflectionId  string                 `protobuf:"bytes,1,opt,name=reflection_id,json=reflectionId,proto3" json:"reflection_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SaveFocusReflectionResponse) Reset() {
+	*x = SaveFocusReflectionResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SaveFocusReflectionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SaveFocusReflectionResponse) ProtoMessage() {}
+
+func (x *SaveFocusReflectionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SaveFocusReflectionResponse.ProtoReflect.Descriptor instead.
+func (*SaveFocusReflectionResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *SaveFocusReflectionResponse) GetReflectionId() string {
+	if x != nil {
+		return x.ReflectionId
+	}
+	return ""
+}
+
+// FocusReflectionEntry — projection для /stats grade-trend chart.
+type FocusReflectionEntry struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	ReflectionId    string                 `protobuf:"bytes,1,opt,name=reflection_id,json=reflectionId,proto3" json:"reflection_id,omitempty"`
+	EndedAt         *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	Grade           int32                  `protobuf:"varint,3,opt,name=grade,proto3" json:"grade,omitempty"` // 0 если NULL
+	FocusMode       string                 `protobuf:"bytes,4,opt,name=focus_mode,json=focusMode,proto3" json:"focus_mode,omitempty"`
+	DurationSeconds int32                  `protobuf:"varint,5,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *FocusReflectionEntry) Reset() {
+	*x = FocusReflectionEntry{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FocusReflectionEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FocusReflectionEntry) ProtoMessage() {}
+
+func (x *FocusReflectionEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FocusReflectionEntry.ProtoReflect.Descriptor instead.
+func (*FocusReflectionEntry) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *FocusReflectionEntry) GetReflectionId() string {
+	if x != nil {
+		return x.ReflectionId
+	}
+	return ""
+}
+
+func (x *FocusReflectionEntry) GetEndedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndedAt
+	}
+	return nil
+}
+
+func (x *FocusReflectionEntry) GetGrade() int32 {
+	if x != nil {
+		return x.Grade
+	}
+	return 0
+}
+
+func (x *FocusReflectionEntry) GetFocusMode() string {
+	if x != nil {
+		return x.FocusMode
+	}
+	return ""
+}
+
+func (x *FocusReflectionEntry) GetDurationSeconds() int32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+type ListFocusReflectionsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// window_days — окно (default 30, hard cap 365).
+	WindowDays    int32 `protobuf:"varint,1,opt,name=window_days,json=windowDays,proto3" json:"window_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFocusReflectionsRequest) Reset() {
+	*x = ListFocusReflectionsRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFocusReflectionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFocusReflectionsRequest) ProtoMessage() {}
+
+func (x *ListFocusReflectionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFocusReflectionsRequest.ProtoReflect.Descriptor instead.
+func (*ListFocusReflectionsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *ListFocusReflectionsRequest) GetWindowDays() int32 {
+	if x != nil {
+		return x.WindowDays
+	}
+	return 0
+}
+
+type ListFocusReflectionsResponse struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Items         []*FocusReflectionEntry `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFocusReflectionsResponse) Reset() {
+	*x = ListFocusReflectionsResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFocusReflectionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFocusReflectionsResponse) ProtoMessage() {}
+
+func (x *ListFocusReflectionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFocusReflectionsResponse.ProtoReflect.Descriptor instead.
+func (*ListFocusReflectionsResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *ListFocusReflectionsResponse) GetItems() []*FocusReflectionEntry {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type MarkAtlasStruggleRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// atlas_node_id — stable key (`tracks/system-design/dist-sharding` or
+	// user-cluster id). Frontend sends whatever atlas_nodes.id it has.
+	AtlasNodeId string `protobuf:"bytes,1,opt,name=atlas_node_id,json=atlasNodeId,proto3" json:"atlas_node_id,omitempty"`
+	// source ∈ 'cue_session' | 'hone_reflection' | 'mock_stage' | 'manual'.
+	// Server validates closed set; empty → 'manual'.
+	Source string `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
+	// confidence ∈ [0,1]. Caller's strength signal: low Cue rating (1/5) →
+	// 0.9, low reflection grade (2/5) → 0.7, etc. UI may pick highest among
+	// duplicate sources.
+	Confidence float64 `protobuf:"fixed64,3,opt,name=confidence,proto3" json:"confidence,omitempty"`
+	// note — optional one-line context that surfaces in tooltip («grade 2
+	// — stuck on joins»). Max 280 chars; truncated server-side.
+	Note          string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkAtlasStruggleRequest) Reset() {
+	*x = MarkAtlasStruggleRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkAtlasStruggleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkAtlasStruggleRequest) ProtoMessage() {}
+
+func (x *MarkAtlasStruggleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkAtlasStruggleRequest.ProtoReflect.Descriptor instead.
+func (*MarkAtlasStruggleRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *MarkAtlasStruggleRequest) GetAtlasNodeId() string {
+	if x != nil {
+		return x.AtlasNodeId
+	}
+	return ""
+}
+
+func (x *MarkAtlasStruggleRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *MarkAtlasStruggleRequest) GetConfidence() float64 {
+	if x != nil {
+		return x.Confidence
+	}
+	return 0
+}
+
+func (x *MarkAtlasStruggleRequest) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+type MarkAtlasStruggleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkAtlasStruggleResponse) Reset() {
+	*x = MarkAtlasStruggleResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkAtlasStruggleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkAtlasStruggleResponse) ProtoMessage() {}
+
+func (x *MarkAtlasStruggleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkAtlasStruggleResponse.ProtoReflect.Descriptor instead.
+func (*MarkAtlasStruggleResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *MarkAtlasStruggleResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+type ListAtlasStrugglesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// window_days — only return marks newer than now()-N days. Default 30,
+	// hard cap 365. 0 → server default.
+	WindowDays    int32 `protobuf:"varint,1,opt,name=window_days,json=windowDays,proto3" json:"window_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAtlasStrugglesRequest) Reset() {
+	*x = ListAtlasStrugglesRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAtlasStrugglesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAtlasStrugglesRequest) ProtoMessage() {}
+
+func (x *ListAtlasStrugglesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAtlasStrugglesRequest.ProtoReflect.Descriptor instead.
+func (*ListAtlasStrugglesRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *ListAtlasStrugglesRequest) GetWindowDays() int32 {
+	if x != nil {
+		return x.WindowDays
+	}
+	return 0
+}
+
+// AtlasStruggleMark — projection over user_atlas_struggle_marks.
+type AtlasStruggleMark struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AtlasNodeId   string                 `protobuf:"bytes,1,opt,name=atlas_node_id,json=atlasNodeId,proto3" json:"atlas_node_id,omitempty"`
+	Source        string                 `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
+	Confidence    float64                `protobuf:"fixed64,3,opt,name=confidence,proto3" json:"confidence,omitempty"`
+	Note          string                 `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	MarkedAt      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=marked_at,json=markedAt,proto3" json:"marked_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AtlasStruggleMark) Reset() {
+	*x = AtlasStruggleMark{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AtlasStruggleMark) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AtlasStruggleMark) ProtoMessage() {}
+
+func (x *AtlasStruggleMark) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AtlasStruggleMark.ProtoReflect.Descriptor instead.
+func (*AtlasStruggleMark) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *AtlasStruggleMark) GetAtlasNodeId() string {
+	if x != nil {
+		return x.AtlasNodeId
+	}
+	return ""
+}
+
+func (x *AtlasStruggleMark) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *AtlasStruggleMark) GetConfidence() float64 {
+	if x != nil {
+		return x.Confidence
+	}
+	return 0
+}
+
+func (x *AtlasStruggleMark) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+func (x *AtlasStruggleMark) GetMarkedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.MarkedAt
+	}
+	return nil
+}
+
+type ListAtlasStrugglesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*AtlasStruggleMark   `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAtlasStrugglesResponse) Reset() {
+	*x = ListAtlasStrugglesResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAtlasStrugglesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAtlasStrugglesResponse) ProtoMessage() {}
+
+func (x *ListAtlasStrugglesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAtlasStrugglesResponse.ProtoReflect.Descriptor instead.
+func (*ListAtlasStrugglesResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *ListAtlasStrugglesResponse) GetItems() []*AtlasStruggleMark {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// ClearAtlasStruggle — explicit user gesture («I'm not stuck anymore»),
+// removes the row. Idempotent — clearing a non-existent mark returns ok.
+type ClearAtlasStruggleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AtlasNodeId   string                 `protobuf:"bytes,1,opt,name=atlas_node_id,json=atlasNodeId,proto3" json:"atlas_node_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearAtlasStruggleRequest) Reset() {
+	*x = ClearAtlasStruggleRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearAtlasStruggleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearAtlasStruggleRequest) ProtoMessage() {}
+
+func (x *ClearAtlasStruggleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearAtlasStruggleRequest.ProtoReflect.Descriptor instead.
+func (*ClearAtlasStruggleRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *ClearAtlasStruggleRequest) GetAtlasNodeId() string {
+	if x != nil {
+		return x.AtlasNodeId
+	}
+	return ""
+}
+
+type ClearAtlasStruggleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearAtlasStruggleResponse) Reset() {
+	*x = ClearAtlasStruggleResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearAtlasStruggleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearAtlasStruggleResponse) ProtoMessage() {}
+
+func (x *ClearAtlasStruggleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearAtlasStruggleResponse.ProtoReflect.Descriptor instead.
+func (*ClearAtlasStruggleResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *ClearAtlasStruggleResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
 var File_druz9_v1_intelligence_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\n" +
-	"\x1bdruz9/v1/intelligence.proto\x12\bdruz9.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x01\n" +
+	"\x1bdruz9/v1/intelligence.proto\x12\bdruz9.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x01\n" +
 	"\x13BriefRecommendation\x125\n" +
 	"\x04kind\x18\x01 \x01(\x0e2!.druz9.v1.BriefRecommendationKindR\x04kind\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1c\n" +
@@ -2369,7 +4927,206 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x13LogResourceResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12,\n" +
 	"\x12reflection_note_id\x18\x02 \x01(\tR\x10reflectionNoteId\x12,\n" +
-	"\x12note_create_failed\x18\x03 \x01(\bR\x10noteCreateFailed*\xe7\x01\n" +
+	"\x12note_create_failed\x18\x03 \x01(\bR\x10noteCreateFailed\"\xd8\x02\n" +
+	"\x04Goal\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12&\n" +
+	"\x04kind\x18\x02 \x01(\x0e2\x12.druz9.v1.GoalKindR\x04kind\x12%\n" +
+	"\x0etarget_company\x18\x03 \x01(\tR\rtargetCompany\x12!\n" +
+	"\ftarget_level\x18\x04 \x01(\tR\vtargetLevel\x12\x1f\n" +
+	"\vtarget_text\x18\x05 \x01(\tR\n" +
+	"targetText\x12\x1f\n" +
+	"\vtarget_date\x18\x06 \x01(\tR\n" +
+	"targetDate\x12\x16\n" +
+	"\x06active\x18\a \x01(\bR\x06active\x129\n" +
+	"\n" +
+	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xc7\x01\n" +
+	"\x11CreateGoalRequest\x12&\n" +
+	"\x04kind\x18\x01 \x01(\x0e2\x12.druz9.v1.GoalKindR\x04kind\x12%\n" +
+	"\x0etarget_company\x18\x02 \x01(\tR\rtargetCompany\x12!\n" +
+	"\ftarget_level\x18\x03 \x01(\tR\vtargetLevel\x12\x1f\n" +
+	"\vtarget_text\x18\x04 \x01(\tR\n" +
+	"targetText\x12\x1f\n" +
+	"\vtarget_date\x18\x05 \x01(\tR\n" +
+	"targetDate\"\xd7\x01\n" +
+	"\x11UpdateGoalRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12&\n" +
+	"\x04kind\x18\x02 \x01(\x0e2\x12.druz9.v1.GoalKindR\x04kind\x12%\n" +
+	"\x0etarget_company\x18\x03 \x01(\tR\rtargetCompany\x12!\n" +
+	"\ftarget_level\x18\x04 \x01(\tR\vtargetLevel\x12\x1f\n" +
+	"\vtarget_text\x18\x05 \x01(\tR\n" +
+	"targetText\x12\x1f\n" +
+	"\vtarget_date\x18\x06 \x01(\tR\n" +
+	"targetDate\"'\n" +
+	"\x15DeactivateGoalRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"]\n" +
+	"\x0eInterviewStage\x12\x14\n" +
+	"\x05stage\x18\x01 \x01(\tR\x05stage\x12\x1f\n" +
+	"\vself_rating\x18\x02 \x01(\x05R\n" +
+	"selfRating\x12\x14\n" +
+	"\x05notes\x18\x03 \x01(\tR\x05notes\"\x8d\x02\n" +
+	"\x10InterviewSession\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\acompany\x18\x02 \x01(\tR\acompany\x12\x18\n" +
+	"\apersona\x18\x03 \x01(\tR\apersona\x120\n" +
+	"\x06stages\x18\x04 \x03(\v2\x18.druz9.v1.InterviewStageR\x06stages\x12\x1d\n" +
+	"\n" +
+	"ai_summary\x18\x05 \x01(\tR\taiSummary\x12%\n" +
+	"\x0eraw_transcript\x18\x06 \x01(\tR\rrawTranscript\x12=\n" +
+	"\fcompleted_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\"\x8a\x02\n" +
+	"\x1dIngestInterviewSessionRequest\x12\x18\n" +
+	"\acompany\x18\x01 \x01(\tR\acompany\x12\x18\n" +
+	"\apersona\x18\x02 \x01(\tR\apersona\x120\n" +
+	"\x06stages\x18\x03 \x03(\v2\x18.druz9.v1.InterviewStageR\x06stages\x12\x1d\n" +
+	"\n" +
+	"ai_summary\x18\x04 \x01(\tR\taiSummary\x12%\n" +
+	"\x0eraw_transcript\x18\x05 \x01(\tR\rrawTranscript\x12=\n" +
+	"\fcompleted_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\"L\n" +
+	"\x1cListInterviewSessionsRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\x05R\x06offset\"g\n" +
+	"\x1dListInterviewSessionsResponse\x120\n" +
+	"\x05items\x18\x01 \x03(\v2\x1a.druz9.v1.InterviewSessionR\x05items\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\xec\x01\n" +
+	"\tMilestone\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"week_index\x18\x02 \x01(\x05R\tweekIndex\x12\x1d\n" +
+	"\n" +
+	"week_start\x18\x03 \x01(\tR\tweekStart\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x12\x16\n" +
+	"\x06detail\x18\x05 \x01(\tR\x06detail\x12\x1a\n" +
+	"\bcategory\x18\x06 \x01(\tR\bcategory\x12\x12\n" +
+	"\x04done\x18\a \x01(\bR\x04done\x123\n" +
+	"\adone_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x06doneAt\"~\n" +
+	"\x12MilestonesResponse\x12)\n" +
+	"\x05items\x18\x01 \x03(\v2\x13.druz9.v1.MilestoneR\x05items\x12=\n" +
+	"\fgenerated_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\">\n" +
+	"\x18MarkMilestoneDoneRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04done\x18\x02 \x01(\bR\x04done\"\xcd\x01\n" +
+	"\fNodeCoverage\x12\x19\n" +
+	"\bnode_key\x18\x01 \x01(\tR\anodeKey\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\tR\x05state\x12&\n" +
+	"\x0fmatch_count_30d\x18\x03 \x01(\x05R\rmatchCount30d\x12$\n" +
+	"\x0ematch_count_7d\x18\x04 \x01(\x05R\fmatchCount7d\x12>\n" +
+	"\rlast_match_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vlastMatchAt\"5\n" +
+	"\x16GetNodeCoverageRequest\x12\x1b\n" +
+	"\tnode_keys\x18\x01 \x03(\tR\bnodeKeys\"G\n" +
+	"\x17GetNodeCoverageResponse\x12,\n" +
+	"\x05items\x18\x01 \x03(\v2\x16.druz9.v1.NodeCoverageR\x05items\"\xb4\x02\n" +
+	"\vMemoryEntry\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x18\n" +
+	"\acontent\x18\x03 \x01(\tR\acontent\x12\x16\n" +
+	"\x06source\x18\x04 \x01(\tR\x06source\x12\x1e\n" +
+	"\n" +
+	"importance\x18\x05 \x01(\x01R\n" +
+	"importance\x12;\n" +
+	"\voccurred_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"occurredAt\x129\n" +
+	"\n" +
+	"expires_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x127\n" +
+	"\tedited_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\beditedAt\"\x8e\x01\n" +
+	"\x18ListMemoryEntriesRequest\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x120\n" +
+	"\x05since\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\"^\n" +
+	"\x19ListMemoryEntriesResponse\x12+\n" +
+	"\x05items\x18\x01 \x03(\v2\x15.druz9.v1.MemoryEntryR\x05items\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"*\n" +
+	"\x18DeleteMemoryEntryRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"B\n" +
+	"\x16EditMemoryEntryRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\"\x9a\x01\n" +
+	"\x10CoachMemoryEntry\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x18\n" +
+	"\asummary\x18\x02 \x01(\tR\asummary\x12;\n" +
+	"\voccurred_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"occurredAt\x12\x1b\n" +
+	"\thours_ago\x18\x04 \x01(\x05R\bhoursAgo\"x\n" +
+	"\x0fActivitySummary\x12\"\n" +
+	"\rlast_7d_count\x18\x01 \x01(\x05R\vlast7dCount\x12$\n" +
+	"\x0elast_30d_count\x18\x02 \x01(\x05R\flast30dCount\x12\x1b\n" +
+	"\ttop_kinds\x18\x03 \x03(\tR\btopKinds\"\xab\x01\n" +
+	"\x12SkillRadarSnapshot\x12\x16\n" +
+	"\x06rubric\x18\x01 \x01(\tR\x06rubric\x12\x12\n" +
+	"\x04axes\x18\x02 \x03(\tR\x04axes\x12\x1f\n" +
+	"\vaxis_scores\x18\x03 \x03(\x01R\n" +
+	"axisScores\x12!\n" +
+	"\fweakest_axis\x18\x04 \x01(\tR\vweakestAxis\x12%\n" +
+	"\x0estrongest_axis\x18\x05 \x01(\tR\rstrongestAxis\"^\n" +
+	"\x10AtlasResourceRef\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x10\n" +
+	"\x03url\x18\x03 \x01(\tR\x03url\x12\x12\n" +
+	"\x04kind\x18\x04 \x01(\tR\x04kind\"\xb5\x02\n" +
+	"\vUserContext\x12/\n" +
+	"\vactive_goal\x18\x01 \x01(\v2\x0e.druz9.v1.GoalR\n" +
+	"activeGoal\x12?\n" +
+	"\rrecent_memory\x18\x02 \x03(\v2\x1a.druz9.v1.CoachMemoryEntryR\frecentMemory\x125\n" +
+	"\bactivity\x18\x03 \x01(\v2\x19.druz9.v1.ActivitySummaryR\bactivity\x122\n" +
+	"\x05radar\x18\x04 \x01(\v2\x1c.druz9.v1.SkillRadarSnapshotR\x05radar\x12I\n" +
+	"\x12relevant_resources\x18\x05 \x03(\v2\x1a.druz9.v1.AtlasResourceRefR\x11relevantResources\"\x17\n" +
+	"\x15GetUserContextRequest\"I\n" +
+	"\x16GetUserContextResponse\x12/\n" +
+	"\acontext\x18\x01 \x01(\v2\x15.druz9.v1.UserContextR\acontext\"\xc4\x02\n" +
+	"\x1aSaveFocusReflectionRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
+	"\n" +
+	"focus_mode\x18\x02 \x01(\tR\tfocusMode\x12)\n" +
+	"\x10duration_seconds\x18\x03 \x01(\x05R\x0fdurationSeconds\x12\x14\n" +
+	"\x05grade\x18\x04 \x01(\x05R\x05grade\x12\x14\n" +
+	"\x05notes\x18\x05 \x01(\tR\x05notes\x12\x1f\n" +
+	"\vtask_pinned\x18\x06 \x01(\tR\n" +
+	"taskPinned\x129\n" +
+	"\n" +
+	"started_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
+	"\bended_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\"B\n" +
+	"\x1bSaveFocusReflectionResponse\x12#\n" +
+	"\rreflection_id\x18\x01 \x01(\tR\freflectionId\"\xd2\x01\n" +
+	"\x14FocusReflectionEntry\x12#\n" +
+	"\rreflection_id\x18\x01 \x01(\tR\freflectionId\x125\n" +
+	"\bended_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12\x14\n" +
+	"\x05grade\x18\x03 \x01(\x05R\x05grade\x12\x1d\n" +
+	"\n" +
+	"focus_mode\x18\x04 \x01(\tR\tfocusMode\x12)\n" +
+	"\x10duration_seconds\x18\x05 \x01(\x05R\x0fdurationSeconds\">\n" +
+	"\x1bListFocusReflectionsRequest\x12\x1f\n" +
+	"\vwindow_days\x18\x01 \x01(\x05R\n" +
+	"windowDays\"T\n" +
+	"\x1cListFocusReflectionsResponse\x124\n" +
+	"\x05items\x18\x01 \x03(\v2\x1e.druz9.v1.FocusReflectionEntryR\x05items\"\x8a\x01\n" +
+	"\x18MarkAtlasStruggleRequest\x12\"\n" +
+	"\ratlas_node_id\x18\x01 \x01(\tR\vatlasNodeId\x12\x16\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\x03 \x01(\x01R\n" +
+	"confidence\x12\x12\n" +
+	"\x04note\x18\x04 \x01(\tR\x04note\"+\n" +
+	"\x19MarkAtlasStruggleResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"<\n" +
+	"\x19ListAtlasStrugglesRequest\x12\x1f\n" +
+	"\vwindow_days\x18\x01 \x01(\x05R\n" +
+	"windowDays\"\xbc\x01\n" +
+	"\x11AtlasStruggleMark\x12\"\n" +
+	"\ratlas_node_id\x18\x01 \x01(\tR\vatlasNodeId\x12\x16\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\x03 \x01(\x01R\n" +
+	"confidence\x12\x12\n" +
+	"\x04note\x18\x04 \x01(\tR\x04note\x127\n" +
+	"\tmarked_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bmarkedAt\"O\n" +
+	"\x1aListAtlasStrugglesResponse\x121\n" +
+	"\x05items\x18\x01 \x03(\v2\x1b.druz9.v1.AtlasStruggleMarkR\x05items\"?\n" +
+	"\x19ClearAtlasStruggleRequest\x12\"\n" +
+	"\ratlas_node_id\x18\x01 \x01(\tR\vatlasNodeId\",\n" +
+	"\x1aClearAtlasStruggleResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok*\xe7\x01\n" +
 	"\x17BriefRecommendationKind\x12)\n" +
 	"%BRIEF_RECOMMENDATION_KIND_UNSPECIFIED\x10\x00\x12'\n" +
 	"#BRIEF_RECOMMENDATION_KIND_TINY_TASK\x10\x01\x12&\n" +
@@ -2381,7 +5138,14 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x17INSIGHT_SEVERITY_CRUISE\x10\x01\x12\x1a\n" +
 	"\x16INSIGHT_SEVERITY_NUDGE\x10\x02\x12\x19\n" +
 	"\x15INSIGHT_SEVERITY_WARN\x10\x03\x12\x1d\n" +
-	"\x19INSIGHT_SEVERITY_CRITICAL\x10\x042\xa3\r\n" +
+	"\x19INSIGHT_SEVERITY_CRITICAL\x10\x04*\xa6\x01\n" +
+	"\bGoalKind\x12\x19\n" +
+	"\x15GOAL_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15GOAL_KIND_TOP_TIER_CO\x10\x01\x12\x18\n" +
+	"\x14GOAL_KIND_ANY_SENIOR\x10\x02\x12\x16\n" +
+	"\x12GOAL_KIND_ML_OFFER\x10\x03\x12\x1c\n" +
+	"\x18GOAL_KIND_ENGLISH_TARGET\x10\x04\x12\x14\n" +
+	"\x10GOAL_KIND_CUSTOM\x10\x052\xb2!\n" +
 	"\x13IntelligenceService\x12r\n" +
 	"\rGetDailyBrief\x12\x1e.druz9.v1.GetDailyBriefRequest\x1a\x14.druz9.v1.DailyBrief\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/intelligence/daily-brief\x12e\n" +
 	"\bAskNotes\x12\x19.druz9.v1.AskNotesRequest\x1a\x13.druz9.v1.AskAnswer\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/intelligence/ask-notes\x12\x87\x01\n" +
@@ -2397,7 +5161,28 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\rSetForkBranch\x12\x1e.druz9.v1.SetForkBranchRequest\x1a\x1b.druz9.v1.LearningStateView\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/intelligence/fork-branch\x12{\n" +
 	"\x10GetResourceTrail\x12!.druz9.v1.GetResourceTrailRequest\x1a\x17.druz9.v1.ResourceTrail\"+\x82\xd3\xe4\x93\x02%\x12#/api/v1/intelligence/resource-trail\x12o\n" +
 	"\rGetSkillRadar\x12\x1e.druz9.v1.GetSkillRadarRequest\x1a\x14.druz9.v1.SkillRadar\"(\x82\xd3\xe4\x93\x02\"\x12 /api/v1/intelligence/skill-radar\x12o\n" +
-	"\rGetCoachStats\x12\x1e.druz9.v1.GetCoachStatsRequest\x1a\x14.druz9.v1.CoachStats\"(\x82\xd3\xe4\x93\x02\"\x12 /api/v1/intelligence/coach-statsB\x8e\x01\n" +
+	"\rGetCoachStats\x12\x1e.druz9.v1.GetCoachStatsRequest\x1a\x14.druz9.v1.CoachStats\"(\x82\xd3\xe4\x93\x02\"\x12 /api/v1/intelligence/coach-stats\x12h\n" +
+	"\n" +
+	"CreateGoal\x12\x1b.druz9.v1.CreateGoalRequest\x1a\x0e.druz9.v1.Goal\"-\x82\xd3\xe4\x93\x02':\x01*\"\"/api/v1/intelligence/goals/primary\x12j\n" +
+	"\rGetActiveGoal\x12\x16.google.protobuf.Empty\x1a\x0e.druz9.v1.Goal\"1\x82\xd3\xe4\x93\x02+\x12)/api/v1/intelligence/goals/primary/active\x12o\n" +
+	"\n" +
+	"UpdateGoal\x12\x1b.druz9.v1.UpdateGoalRequest\x1a\x0e.druz9.v1.Goal\"4\x82\xd3\xe4\x93\x02.:\x01*\")/api/v1/intelligence/goals/primary/update\x12\x83\x01\n" +
+	"\x0eDeactivateGoal\x12\x1f.druz9.v1.DeactivateGoalRequest\x1a\x16.google.protobuf.Empty\"8\x82\xd3\xe4\x93\x022:\x01*\"-/api/v1/intelligence/goals/primary/deactivate\x12\x98\x01\n" +
+	"\x16IngestInterviewSession\x12'.druz9.v1.IngestInterviewSessionRequest\x1a\x1a.druz9.v1.InterviewSession\"9\x82\xd3\xe4\x93\x023:\x01*\"./api/v1/intelligence/interview-sessions/ingest\x12\x99\x01\n" +
+	"\x15ListInterviewSessions\x12&.druz9.v1.ListInterviewSessionsRequest\x1a'.druz9.v1.ListInterviewSessionsResponse\"/\x82\xd3\xe4\x93\x02)\x12'/api/v1/intelligence/interview-sessions\x12\x7f\n" +
+	"\x12GenerateMilestones\x12\x16.google.protobuf.Empty\x1a\x1c.druz9.v1.MilestonesResponse\"3\x82\xd3\xe4\x93\x02-:\x01*\"(/api/v1/intelligence/milestones/generate\x12n\n" +
+	"\rGetMilestones\x12\x16.google.protobuf.Empty\x1a\x1c.druz9.v1.MilestonesResponse\"'\x82\xd3\xe4\x93\x02!\x12\x1f/api/v1/intelligence/milestones\x12\x82\x01\n" +
+	"\x11MarkMilestoneDone\x12\".druz9.v1.MarkMilestoneDoneRequest\x1a\x13.druz9.v1.Milestone\"4\x82\xd3\xe4\x93\x02.:\x01*\")/api/v1/intelligence/milestones/{id}/done\x12\x86\x01\n" +
+	"\x0fGetNodeCoverage\x12 .druz9.v1.GetNodeCoverageRequest\x1a!.druz9.v1.GetNodeCoverageResponse\".\x82\xd3\xe4\x93\x02(:\x01*\"#/api/v1/intelligence/atlas/coverage\x12\x89\x01\n" +
+	"\x11ListMemoryEntries\x12\".druz9.v1.ListMemoryEntriesRequest\x1a#.druz9.v1.ListMemoryEntriesResponse\"+\x82\xd3\xe4\x93\x02%\x12#/api/v1/intelligence/memory/entries\x12\x8b\x01\n" +
+	"\x11DeleteMemoryEntry\x12\".druz9.v1.DeleteMemoryEntryRequest\x1a\x16.google.protobuf.Empty\":\x82\xd3\xe4\x93\x024:\x01*\"//api/v1/intelligence/memory/entries/{id}/delete\x12\x84\x01\n" +
+	"\x0fEditMemoryEntry\x12 .druz9.v1.EditMemoryEntryRequest\x1a\x15.druz9.v1.MemoryEntry\"8\x82\xd3\xe4\x93\x022:\x01*\"-/api/v1/intelligence/memory/entries/{id}/edit\x12\x95\x01\n" +
+	"\x13SaveFocusReflection\x12$.druz9.v1.SaveFocusReflectionRequest\x1a%.druz9.v1.SaveFocusReflectionResponse\"1\x82\xd3\xe4\x93\x02+:\x01*\"&/api/v1/intelligence/focus-reflections\x12\x95\x01\n" +
+	"\x14ListFocusReflections\x12%.druz9.v1.ListFocusReflectionsRequest\x1a&.druz9.v1.ListFocusReflectionsResponse\".\x82\xd3\xe4\x93\x02(\x12&/api/v1/intelligence/focus-reflections\x12~\n" +
+	"\x0eGetUserContext\x12\x1f.druz9.v1.GetUserContextRequest\x1a .druz9.v1.GetUserContextResponse\")\x82\xd3\xe4\x93\x02#\x12!/api/v1/intelligence/user-context\x12\x91\x01\n" +
+	"\x11MarkAtlasStruggle\x12\".druz9.v1.MarkAtlasStruggleRequest\x1a#.druz9.v1.MarkAtlasStruggleResponse\"3\x82\xd3\xe4\x93\x02-:\x01*\"(/api/v1/intelligence/atlas/struggle/mark\x12\x8c\x01\n" +
+	"\x12ListAtlasStruggles\x12#.druz9.v1.ListAtlasStrugglesRequest\x1a$.druz9.v1.ListAtlasStrugglesResponse\"+\x82\xd3\xe4\x93\x02%\x12#/api/v1/intelligence/atlas/struggle\x12\x95\x01\n" +
+	"\x12ClearAtlasStruggle\x12#.druz9.v1.ClearAtlasStruggleRequest\x1a$.druz9.v1.ClearAtlasStruggleResponse\"4\x82\xd3\xe4\x93\x02.:\x01*\")/api/v1/intelligence/atlas/struggle/clearB\x8e\x01\n" +
 	"\fcom.druz9.v1B\x11IntelligenceProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -2412,97 +5197,209 @@ func file_druz9_v1_intelligence_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_intelligence_proto_rawDescData
 }
 
-var file_druz9_v1_intelligence_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_druz9_v1_intelligence_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 73)
 var file_druz9_v1_intelligence_proto_goTypes = []any{
-	(BriefRecommendationKind)(0),      // 0: druz9.v1.BriefRecommendationKind
-	(InsightSeverity)(0),              // 1: druz9.v1.InsightSeverity
-	(*BriefRecommendation)(nil),       // 2: druz9.v1.BriefRecommendation
-	(*DailyBrief)(nil),                // 3: druz9.v1.DailyBrief
-	(*AckRecommendationRequest)(nil),  // 4: druz9.v1.AckRecommendationRequest
-	(*AckRecommendationResponse)(nil), // 5: druz9.v1.AckRecommendationResponse
-	(*MemoryStats)(nil),               // 6: druz9.v1.MemoryStats
-	(*GetMemoryStatsRequest)(nil),     // 7: druz9.v1.GetMemoryStatsRequest
-	(*GetDailyBriefRequest)(nil),      // 8: druz9.v1.GetDailyBriefRequest
-	(*Citation)(nil),                  // 9: druz9.v1.Citation
-	(*AskAnswer)(nil),                 // 10: druz9.v1.AskAnswer
-	(*AskNotesRequest)(nil),           // 11: druz9.v1.AskNotesRequest
-	(*Insight)(nil),                   // 12: druz9.v1.Insight
-	(*ListInsightsRequest)(nil),       // 13: druz9.v1.ListInsightsRequest
-	(*ListInsightsResponse)(nil),      // 14: druz9.v1.ListInsightsResponse
-	(*AckInsightRequest)(nil),         // 15: druz9.v1.AckInsightRequest
-	(*AckInsightResponse)(nil),        // 16: druz9.v1.AckInsightResponse
-	(*GetNextActionRequest)(nil),      // 17: druz9.v1.GetNextActionRequest
-	(*NextAction)(nil),                // 18: druz9.v1.NextAction
-	(*GetForkSnapshotRequest)(nil),    // 19: druz9.v1.GetForkSnapshotRequest
-	(*ForkBranchView)(nil),            // 20: druz9.v1.ForkBranchView
-	(*ForkSnapshot)(nil),              // 21: druz9.v1.ForkSnapshot
-	(*SetLearningModeRequest)(nil),    // 22: druz9.v1.SetLearningModeRequest
-	(*LearningStateView)(nil),         // 23: druz9.v1.LearningStateView
-	(*SetForkBranchRequest)(nil),      // 24: druz9.v1.SetForkBranchRequest
-	(*GetResourceTrailRequest)(nil),   // 25: druz9.v1.GetResourceTrailRequest
-	(*ResourceTouch)(nil),             // 26: druz9.v1.ResourceTouch
-	(*ResourceTrail)(nil),             // 27: druz9.v1.ResourceTrail
-	(*GetSkillRadarRequest)(nil),      // 28: druz9.v1.GetSkillRadarRequest
-	(*SkillRadarAxis)(nil),            // 29: druz9.v1.SkillRadarAxis
-	(*SkillRadar)(nil),                // 30: druz9.v1.SkillRadar
-	(*GetCoachStatsRequest)(nil),      // 31: druz9.v1.GetCoachStatsRequest
-	(*CoachStats)(nil),                // 32: druz9.v1.CoachStats
-	(*LogResourceRequest)(nil),        // 33: druz9.v1.LogResourceRequest
-	(*LogResourceResponse)(nil),       // 34: druz9.v1.LogResourceResponse
-	nil,                               // 35: druz9.v1.MemoryStats.ByKindEntry
-	(*timestamppb.Timestamp)(nil),     // 36: google.protobuf.Timestamp
+	(BriefRecommendationKind)(0),          // 0: druz9.v1.BriefRecommendationKind
+	(InsightSeverity)(0),                  // 1: druz9.v1.InsightSeverity
+	(GoalKind)(0),                         // 2: druz9.v1.GoalKind
+	(*BriefRecommendation)(nil),           // 3: druz9.v1.BriefRecommendation
+	(*DailyBrief)(nil),                    // 4: druz9.v1.DailyBrief
+	(*AckRecommendationRequest)(nil),      // 5: druz9.v1.AckRecommendationRequest
+	(*AckRecommendationResponse)(nil),     // 6: druz9.v1.AckRecommendationResponse
+	(*MemoryStats)(nil),                   // 7: druz9.v1.MemoryStats
+	(*GetMemoryStatsRequest)(nil),         // 8: druz9.v1.GetMemoryStatsRequest
+	(*GetDailyBriefRequest)(nil),          // 9: druz9.v1.GetDailyBriefRequest
+	(*Citation)(nil),                      // 10: druz9.v1.Citation
+	(*AskAnswer)(nil),                     // 11: druz9.v1.AskAnswer
+	(*AskNotesRequest)(nil),               // 12: druz9.v1.AskNotesRequest
+	(*Insight)(nil),                       // 13: druz9.v1.Insight
+	(*ListInsightsRequest)(nil),           // 14: druz9.v1.ListInsightsRequest
+	(*ListInsightsResponse)(nil),          // 15: druz9.v1.ListInsightsResponse
+	(*AckInsightRequest)(nil),             // 16: druz9.v1.AckInsightRequest
+	(*AckInsightResponse)(nil),            // 17: druz9.v1.AckInsightResponse
+	(*GetNextActionRequest)(nil),          // 18: druz9.v1.GetNextActionRequest
+	(*NextAction)(nil),                    // 19: druz9.v1.NextAction
+	(*GetForkSnapshotRequest)(nil),        // 20: druz9.v1.GetForkSnapshotRequest
+	(*ForkBranchView)(nil),                // 21: druz9.v1.ForkBranchView
+	(*ForkSnapshot)(nil),                  // 22: druz9.v1.ForkSnapshot
+	(*SetLearningModeRequest)(nil),        // 23: druz9.v1.SetLearningModeRequest
+	(*LearningStateView)(nil),             // 24: druz9.v1.LearningStateView
+	(*SetForkBranchRequest)(nil),          // 25: druz9.v1.SetForkBranchRequest
+	(*GetResourceTrailRequest)(nil),       // 26: druz9.v1.GetResourceTrailRequest
+	(*ResourceTouch)(nil),                 // 27: druz9.v1.ResourceTouch
+	(*ResourceTrail)(nil),                 // 28: druz9.v1.ResourceTrail
+	(*GetSkillRadarRequest)(nil),          // 29: druz9.v1.GetSkillRadarRequest
+	(*SkillRadarAxis)(nil),                // 30: druz9.v1.SkillRadarAxis
+	(*SkillRadar)(nil),                    // 31: druz9.v1.SkillRadar
+	(*GetCoachStatsRequest)(nil),          // 32: druz9.v1.GetCoachStatsRequest
+	(*CoachStats)(nil),                    // 33: druz9.v1.CoachStats
+	(*LogResourceRequest)(nil),            // 34: druz9.v1.LogResourceRequest
+	(*LogResourceResponse)(nil),           // 35: druz9.v1.LogResourceResponse
+	(*Goal)(nil),                          // 36: druz9.v1.Goal
+	(*CreateGoalRequest)(nil),             // 37: druz9.v1.CreateGoalRequest
+	(*UpdateGoalRequest)(nil),             // 38: druz9.v1.UpdateGoalRequest
+	(*DeactivateGoalRequest)(nil),         // 39: druz9.v1.DeactivateGoalRequest
+	(*InterviewStage)(nil),                // 40: druz9.v1.InterviewStage
+	(*InterviewSession)(nil),              // 41: druz9.v1.InterviewSession
+	(*IngestInterviewSessionRequest)(nil), // 42: druz9.v1.IngestInterviewSessionRequest
+	(*ListInterviewSessionsRequest)(nil),  // 43: druz9.v1.ListInterviewSessionsRequest
+	(*ListInterviewSessionsResponse)(nil), // 44: druz9.v1.ListInterviewSessionsResponse
+	(*Milestone)(nil),                     // 45: druz9.v1.Milestone
+	(*MilestonesResponse)(nil),            // 46: druz9.v1.MilestonesResponse
+	(*MarkMilestoneDoneRequest)(nil),      // 47: druz9.v1.MarkMilestoneDoneRequest
+	(*NodeCoverage)(nil),                  // 48: druz9.v1.NodeCoverage
+	(*GetNodeCoverageRequest)(nil),        // 49: druz9.v1.GetNodeCoverageRequest
+	(*GetNodeCoverageResponse)(nil),       // 50: druz9.v1.GetNodeCoverageResponse
+	(*MemoryEntry)(nil),                   // 51: druz9.v1.MemoryEntry
+	(*ListMemoryEntriesRequest)(nil),      // 52: druz9.v1.ListMemoryEntriesRequest
+	(*ListMemoryEntriesResponse)(nil),     // 53: druz9.v1.ListMemoryEntriesResponse
+	(*DeleteMemoryEntryRequest)(nil),      // 54: druz9.v1.DeleteMemoryEntryRequest
+	(*EditMemoryEntryRequest)(nil),        // 55: druz9.v1.EditMemoryEntryRequest
+	(*CoachMemoryEntry)(nil),              // 56: druz9.v1.CoachMemoryEntry
+	(*ActivitySummary)(nil),               // 57: druz9.v1.ActivitySummary
+	(*SkillRadarSnapshot)(nil),            // 58: druz9.v1.SkillRadarSnapshot
+	(*AtlasResourceRef)(nil),              // 59: druz9.v1.AtlasResourceRef
+	(*UserContext)(nil),                   // 60: druz9.v1.UserContext
+	(*GetUserContextRequest)(nil),         // 61: druz9.v1.GetUserContextRequest
+	(*GetUserContextResponse)(nil),        // 62: druz9.v1.GetUserContextResponse
+	(*SaveFocusReflectionRequest)(nil),    // 63: druz9.v1.SaveFocusReflectionRequest
+	(*SaveFocusReflectionResponse)(nil),   // 64: druz9.v1.SaveFocusReflectionResponse
+	(*FocusReflectionEntry)(nil),          // 65: druz9.v1.FocusReflectionEntry
+	(*ListFocusReflectionsRequest)(nil),   // 66: druz9.v1.ListFocusReflectionsRequest
+	(*ListFocusReflectionsResponse)(nil),  // 67: druz9.v1.ListFocusReflectionsResponse
+	(*MarkAtlasStruggleRequest)(nil),      // 68: druz9.v1.MarkAtlasStruggleRequest
+	(*MarkAtlasStruggleResponse)(nil),     // 69: druz9.v1.MarkAtlasStruggleResponse
+	(*ListAtlasStrugglesRequest)(nil),     // 70: druz9.v1.ListAtlasStrugglesRequest
+	(*AtlasStruggleMark)(nil),             // 71: druz9.v1.AtlasStruggleMark
+	(*ListAtlasStrugglesResponse)(nil),    // 72: druz9.v1.ListAtlasStrugglesResponse
+	(*ClearAtlasStruggleRequest)(nil),     // 73: druz9.v1.ClearAtlasStruggleRequest
+	(*ClearAtlasStruggleResponse)(nil),    // 74: druz9.v1.ClearAtlasStruggleResponse
+	nil,                                   // 75: druz9.v1.MemoryStats.ByKindEntry
+	(*timestamppb.Timestamp)(nil),         // 76: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                 // 77: google.protobuf.Empty
 }
 var file_druz9_v1_intelligence_proto_depIdxs = []int32{
 	0,  // 0: druz9.v1.BriefRecommendation.kind:type_name -> druz9.v1.BriefRecommendationKind
-	2,  // 1: druz9.v1.DailyBrief.recommendations:type_name -> druz9.v1.BriefRecommendation
-	36, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
+	3,  // 1: druz9.v1.DailyBrief.recommendations:type_name -> druz9.v1.BriefRecommendation
+	76, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
 	1,  // 3: druz9.v1.DailyBrief.severity:type_name -> druz9.v1.InsightSeverity
-	35, // 4: druz9.v1.MemoryStats.by_kind:type_name -> druz9.v1.MemoryStats.ByKindEntry
-	9,  // 5: druz9.v1.AskAnswer.citations:type_name -> druz9.v1.Citation
+	75, // 4: druz9.v1.MemoryStats.by_kind:type_name -> druz9.v1.MemoryStats.ByKindEntry
+	10, // 5: druz9.v1.AskAnswer.citations:type_name -> druz9.v1.Citation
 	1,  // 6: druz9.v1.Insight.severity:type_name -> druz9.v1.InsightSeverity
-	36, // 7: druz9.v1.Insight.generated_at:type_name -> google.protobuf.Timestamp
-	36, // 8: druz9.v1.Insight.expires_at:type_name -> google.protobuf.Timestamp
-	12, // 9: druz9.v1.ListInsightsResponse.items:type_name -> druz9.v1.Insight
-	20, // 10: druz9.v1.ForkSnapshot.branches:type_name -> druz9.v1.ForkBranchView
-	36, // 11: druz9.v1.ResourceTouch.occurred_at:type_name -> google.protobuf.Timestamp
-	26, // 12: druz9.v1.ResourceTrail.finished_recent:type_name -> druz9.v1.ResourceTouch
-	26, // 13: druz9.v1.ResourceTrail.marked_unhelpful:type_name -> druz9.v1.ResourceTouch
-	26, // 14: druz9.v1.ResourceTrail.recent_reflections:type_name -> druz9.v1.ResourceTouch
-	29, // 15: druz9.v1.SkillRadar.axes:type_name -> druz9.v1.SkillRadarAxis
-	8,  // 16: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
-	11, // 17: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
-	4,  // 18: druz9.v1.IntelligenceService.AckRecommendation:input_type -> druz9.v1.AckRecommendationRequest
-	7,  // 19: druz9.v1.IntelligenceService.GetMemoryStats:input_type -> druz9.v1.GetMemoryStatsRequest
-	13, // 20: druz9.v1.IntelligenceService.ListInsights:input_type -> druz9.v1.ListInsightsRequest
-	15, // 21: druz9.v1.IntelligenceService.AckInsight:input_type -> druz9.v1.AckInsightRequest
-	17, // 22: druz9.v1.IntelligenceService.GetNextAction:input_type -> druz9.v1.GetNextActionRequest
-	19, // 23: druz9.v1.IntelligenceService.GetForkSnapshot:input_type -> druz9.v1.GetForkSnapshotRequest
-	33, // 24: druz9.v1.IntelligenceService.LogResource:input_type -> druz9.v1.LogResourceRequest
-	22, // 25: druz9.v1.IntelligenceService.SetLearningMode:input_type -> druz9.v1.SetLearningModeRequest
-	24, // 26: druz9.v1.IntelligenceService.SetForkBranch:input_type -> druz9.v1.SetForkBranchRequest
-	25, // 27: druz9.v1.IntelligenceService.GetResourceTrail:input_type -> druz9.v1.GetResourceTrailRequest
-	28, // 28: druz9.v1.IntelligenceService.GetSkillRadar:input_type -> druz9.v1.GetSkillRadarRequest
-	31, // 29: druz9.v1.IntelligenceService.GetCoachStats:input_type -> druz9.v1.GetCoachStatsRequest
-	3,  // 30: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
-	10, // 31: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
-	5,  // 32: druz9.v1.IntelligenceService.AckRecommendation:output_type -> druz9.v1.AckRecommendationResponse
-	6,  // 33: druz9.v1.IntelligenceService.GetMemoryStats:output_type -> druz9.v1.MemoryStats
-	14, // 34: druz9.v1.IntelligenceService.ListInsights:output_type -> druz9.v1.ListInsightsResponse
-	16, // 35: druz9.v1.IntelligenceService.AckInsight:output_type -> druz9.v1.AckInsightResponse
-	18, // 36: druz9.v1.IntelligenceService.GetNextAction:output_type -> druz9.v1.NextAction
-	21, // 37: druz9.v1.IntelligenceService.GetForkSnapshot:output_type -> druz9.v1.ForkSnapshot
-	34, // 38: druz9.v1.IntelligenceService.LogResource:output_type -> druz9.v1.LogResourceResponse
-	23, // 39: druz9.v1.IntelligenceService.SetLearningMode:output_type -> druz9.v1.LearningStateView
-	23, // 40: druz9.v1.IntelligenceService.SetForkBranch:output_type -> druz9.v1.LearningStateView
-	27, // 41: druz9.v1.IntelligenceService.GetResourceTrail:output_type -> druz9.v1.ResourceTrail
-	30, // 42: druz9.v1.IntelligenceService.GetSkillRadar:output_type -> druz9.v1.SkillRadar
-	32, // 43: druz9.v1.IntelligenceService.GetCoachStats:output_type -> druz9.v1.CoachStats
-	30, // [30:44] is the sub-list for method output_type
-	16, // [16:30] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	76, // 7: druz9.v1.Insight.generated_at:type_name -> google.protobuf.Timestamp
+	76, // 8: druz9.v1.Insight.expires_at:type_name -> google.protobuf.Timestamp
+	13, // 9: druz9.v1.ListInsightsResponse.items:type_name -> druz9.v1.Insight
+	21, // 10: druz9.v1.ForkSnapshot.branches:type_name -> druz9.v1.ForkBranchView
+	76, // 11: druz9.v1.ResourceTouch.occurred_at:type_name -> google.protobuf.Timestamp
+	27, // 12: druz9.v1.ResourceTrail.finished_recent:type_name -> druz9.v1.ResourceTouch
+	27, // 13: druz9.v1.ResourceTrail.marked_unhelpful:type_name -> druz9.v1.ResourceTouch
+	27, // 14: druz9.v1.ResourceTrail.recent_reflections:type_name -> druz9.v1.ResourceTouch
+	30, // 15: druz9.v1.SkillRadar.axes:type_name -> druz9.v1.SkillRadarAxis
+	2,  // 16: druz9.v1.Goal.kind:type_name -> druz9.v1.GoalKind
+	76, // 17: druz9.v1.Goal.created_at:type_name -> google.protobuf.Timestamp
+	76, // 18: druz9.v1.Goal.updated_at:type_name -> google.protobuf.Timestamp
+	2,  // 19: druz9.v1.CreateGoalRequest.kind:type_name -> druz9.v1.GoalKind
+	2,  // 20: druz9.v1.UpdateGoalRequest.kind:type_name -> druz9.v1.GoalKind
+	40, // 21: druz9.v1.InterviewSession.stages:type_name -> druz9.v1.InterviewStage
+	76, // 22: druz9.v1.InterviewSession.completed_at:type_name -> google.protobuf.Timestamp
+	40, // 23: druz9.v1.IngestInterviewSessionRequest.stages:type_name -> druz9.v1.InterviewStage
+	76, // 24: druz9.v1.IngestInterviewSessionRequest.completed_at:type_name -> google.protobuf.Timestamp
+	41, // 25: druz9.v1.ListInterviewSessionsResponse.items:type_name -> druz9.v1.InterviewSession
+	76, // 26: druz9.v1.Milestone.done_at:type_name -> google.protobuf.Timestamp
+	45, // 27: druz9.v1.MilestonesResponse.items:type_name -> druz9.v1.Milestone
+	76, // 28: druz9.v1.MilestonesResponse.generated_at:type_name -> google.protobuf.Timestamp
+	76, // 29: druz9.v1.NodeCoverage.last_match_at:type_name -> google.protobuf.Timestamp
+	48, // 30: druz9.v1.GetNodeCoverageResponse.items:type_name -> druz9.v1.NodeCoverage
+	76, // 31: druz9.v1.MemoryEntry.occurred_at:type_name -> google.protobuf.Timestamp
+	76, // 32: druz9.v1.MemoryEntry.expires_at:type_name -> google.protobuf.Timestamp
+	76, // 33: druz9.v1.MemoryEntry.edited_at:type_name -> google.protobuf.Timestamp
+	76, // 34: druz9.v1.ListMemoryEntriesRequest.since:type_name -> google.protobuf.Timestamp
+	51, // 35: druz9.v1.ListMemoryEntriesResponse.items:type_name -> druz9.v1.MemoryEntry
+	76, // 36: druz9.v1.CoachMemoryEntry.occurred_at:type_name -> google.protobuf.Timestamp
+	36, // 37: druz9.v1.UserContext.active_goal:type_name -> druz9.v1.Goal
+	56, // 38: druz9.v1.UserContext.recent_memory:type_name -> druz9.v1.CoachMemoryEntry
+	57, // 39: druz9.v1.UserContext.activity:type_name -> druz9.v1.ActivitySummary
+	58, // 40: druz9.v1.UserContext.radar:type_name -> druz9.v1.SkillRadarSnapshot
+	59, // 41: druz9.v1.UserContext.relevant_resources:type_name -> druz9.v1.AtlasResourceRef
+	60, // 42: druz9.v1.GetUserContextResponse.context:type_name -> druz9.v1.UserContext
+	76, // 43: druz9.v1.SaveFocusReflectionRequest.started_at:type_name -> google.protobuf.Timestamp
+	76, // 44: druz9.v1.SaveFocusReflectionRequest.ended_at:type_name -> google.protobuf.Timestamp
+	76, // 45: druz9.v1.FocusReflectionEntry.ended_at:type_name -> google.protobuf.Timestamp
+	65, // 46: druz9.v1.ListFocusReflectionsResponse.items:type_name -> druz9.v1.FocusReflectionEntry
+	76, // 47: druz9.v1.AtlasStruggleMark.marked_at:type_name -> google.protobuf.Timestamp
+	71, // 48: druz9.v1.ListAtlasStrugglesResponse.items:type_name -> druz9.v1.AtlasStruggleMark
+	9,  // 49: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
+	12, // 50: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
+	5,  // 51: druz9.v1.IntelligenceService.AckRecommendation:input_type -> druz9.v1.AckRecommendationRequest
+	8,  // 52: druz9.v1.IntelligenceService.GetMemoryStats:input_type -> druz9.v1.GetMemoryStatsRequest
+	14, // 53: druz9.v1.IntelligenceService.ListInsights:input_type -> druz9.v1.ListInsightsRequest
+	16, // 54: druz9.v1.IntelligenceService.AckInsight:input_type -> druz9.v1.AckInsightRequest
+	18, // 55: druz9.v1.IntelligenceService.GetNextAction:input_type -> druz9.v1.GetNextActionRequest
+	20, // 56: druz9.v1.IntelligenceService.GetForkSnapshot:input_type -> druz9.v1.GetForkSnapshotRequest
+	34, // 57: druz9.v1.IntelligenceService.LogResource:input_type -> druz9.v1.LogResourceRequest
+	23, // 58: druz9.v1.IntelligenceService.SetLearningMode:input_type -> druz9.v1.SetLearningModeRequest
+	25, // 59: druz9.v1.IntelligenceService.SetForkBranch:input_type -> druz9.v1.SetForkBranchRequest
+	26, // 60: druz9.v1.IntelligenceService.GetResourceTrail:input_type -> druz9.v1.GetResourceTrailRequest
+	29, // 61: druz9.v1.IntelligenceService.GetSkillRadar:input_type -> druz9.v1.GetSkillRadarRequest
+	32, // 62: druz9.v1.IntelligenceService.GetCoachStats:input_type -> druz9.v1.GetCoachStatsRequest
+	37, // 63: druz9.v1.IntelligenceService.CreateGoal:input_type -> druz9.v1.CreateGoalRequest
+	77, // 64: druz9.v1.IntelligenceService.GetActiveGoal:input_type -> google.protobuf.Empty
+	38, // 65: druz9.v1.IntelligenceService.UpdateGoal:input_type -> druz9.v1.UpdateGoalRequest
+	39, // 66: druz9.v1.IntelligenceService.DeactivateGoal:input_type -> druz9.v1.DeactivateGoalRequest
+	42, // 67: druz9.v1.IntelligenceService.IngestInterviewSession:input_type -> druz9.v1.IngestInterviewSessionRequest
+	43, // 68: druz9.v1.IntelligenceService.ListInterviewSessions:input_type -> druz9.v1.ListInterviewSessionsRequest
+	77, // 69: druz9.v1.IntelligenceService.GenerateMilestones:input_type -> google.protobuf.Empty
+	77, // 70: druz9.v1.IntelligenceService.GetMilestones:input_type -> google.protobuf.Empty
+	47, // 71: druz9.v1.IntelligenceService.MarkMilestoneDone:input_type -> druz9.v1.MarkMilestoneDoneRequest
+	49, // 72: druz9.v1.IntelligenceService.GetNodeCoverage:input_type -> druz9.v1.GetNodeCoverageRequest
+	52, // 73: druz9.v1.IntelligenceService.ListMemoryEntries:input_type -> druz9.v1.ListMemoryEntriesRequest
+	54, // 74: druz9.v1.IntelligenceService.DeleteMemoryEntry:input_type -> druz9.v1.DeleteMemoryEntryRequest
+	55, // 75: druz9.v1.IntelligenceService.EditMemoryEntry:input_type -> druz9.v1.EditMemoryEntryRequest
+	63, // 76: druz9.v1.IntelligenceService.SaveFocusReflection:input_type -> druz9.v1.SaveFocusReflectionRequest
+	66, // 77: druz9.v1.IntelligenceService.ListFocusReflections:input_type -> druz9.v1.ListFocusReflectionsRequest
+	61, // 78: druz9.v1.IntelligenceService.GetUserContext:input_type -> druz9.v1.GetUserContextRequest
+	68, // 79: druz9.v1.IntelligenceService.MarkAtlasStruggle:input_type -> druz9.v1.MarkAtlasStruggleRequest
+	70, // 80: druz9.v1.IntelligenceService.ListAtlasStruggles:input_type -> druz9.v1.ListAtlasStrugglesRequest
+	73, // 81: druz9.v1.IntelligenceService.ClearAtlasStruggle:input_type -> druz9.v1.ClearAtlasStruggleRequest
+	4,  // 82: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
+	11, // 83: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
+	6,  // 84: druz9.v1.IntelligenceService.AckRecommendation:output_type -> druz9.v1.AckRecommendationResponse
+	7,  // 85: druz9.v1.IntelligenceService.GetMemoryStats:output_type -> druz9.v1.MemoryStats
+	15, // 86: druz9.v1.IntelligenceService.ListInsights:output_type -> druz9.v1.ListInsightsResponse
+	17, // 87: druz9.v1.IntelligenceService.AckInsight:output_type -> druz9.v1.AckInsightResponse
+	19, // 88: druz9.v1.IntelligenceService.GetNextAction:output_type -> druz9.v1.NextAction
+	22, // 89: druz9.v1.IntelligenceService.GetForkSnapshot:output_type -> druz9.v1.ForkSnapshot
+	35, // 90: druz9.v1.IntelligenceService.LogResource:output_type -> druz9.v1.LogResourceResponse
+	24, // 91: druz9.v1.IntelligenceService.SetLearningMode:output_type -> druz9.v1.LearningStateView
+	24, // 92: druz9.v1.IntelligenceService.SetForkBranch:output_type -> druz9.v1.LearningStateView
+	28, // 93: druz9.v1.IntelligenceService.GetResourceTrail:output_type -> druz9.v1.ResourceTrail
+	31, // 94: druz9.v1.IntelligenceService.GetSkillRadar:output_type -> druz9.v1.SkillRadar
+	33, // 95: druz9.v1.IntelligenceService.GetCoachStats:output_type -> druz9.v1.CoachStats
+	36, // 96: druz9.v1.IntelligenceService.CreateGoal:output_type -> druz9.v1.Goal
+	36, // 97: druz9.v1.IntelligenceService.GetActiveGoal:output_type -> druz9.v1.Goal
+	36, // 98: druz9.v1.IntelligenceService.UpdateGoal:output_type -> druz9.v1.Goal
+	77, // 99: druz9.v1.IntelligenceService.DeactivateGoal:output_type -> google.protobuf.Empty
+	41, // 100: druz9.v1.IntelligenceService.IngestInterviewSession:output_type -> druz9.v1.InterviewSession
+	44, // 101: druz9.v1.IntelligenceService.ListInterviewSessions:output_type -> druz9.v1.ListInterviewSessionsResponse
+	46, // 102: druz9.v1.IntelligenceService.GenerateMilestones:output_type -> druz9.v1.MilestonesResponse
+	46, // 103: druz9.v1.IntelligenceService.GetMilestones:output_type -> druz9.v1.MilestonesResponse
+	45, // 104: druz9.v1.IntelligenceService.MarkMilestoneDone:output_type -> druz9.v1.Milestone
+	50, // 105: druz9.v1.IntelligenceService.GetNodeCoverage:output_type -> druz9.v1.GetNodeCoverageResponse
+	53, // 106: druz9.v1.IntelligenceService.ListMemoryEntries:output_type -> druz9.v1.ListMemoryEntriesResponse
+	77, // 107: druz9.v1.IntelligenceService.DeleteMemoryEntry:output_type -> google.protobuf.Empty
+	51, // 108: druz9.v1.IntelligenceService.EditMemoryEntry:output_type -> druz9.v1.MemoryEntry
+	64, // 109: druz9.v1.IntelligenceService.SaveFocusReflection:output_type -> druz9.v1.SaveFocusReflectionResponse
+	67, // 110: druz9.v1.IntelligenceService.ListFocusReflections:output_type -> druz9.v1.ListFocusReflectionsResponse
+	62, // 111: druz9.v1.IntelligenceService.GetUserContext:output_type -> druz9.v1.GetUserContextResponse
+	69, // 112: druz9.v1.IntelligenceService.MarkAtlasStruggle:output_type -> druz9.v1.MarkAtlasStruggleResponse
+	72, // 113: druz9.v1.IntelligenceService.ListAtlasStruggles:output_type -> druz9.v1.ListAtlasStrugglesResponse
+	74, // 114: druz9.v1.IntelligenceService.ClearAtlasStruggle:output_type -> druz9.v1.ClearAtlasStruggleResponse
+	82, // [82:115] is the sub-list for method output_type
+	49, // [49:82] is the sub-list for method input_type
+	49, // [49:49] is the sub-list for extension type_name
+	49, // [49:49] is the sub-list for extension extendee
+	0,  // [0:49] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_intelligence_proto_init() }
@@ -2515,8 +5412,8 @@ func file_druz9_v1_intelligence_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_intelligence_proto_rawDesc), len(file_druz9_v1_intelligence_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   34,
+			NumEnums:      3,
+			NumMessages:   73,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

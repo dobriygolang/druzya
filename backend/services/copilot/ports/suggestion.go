@@ -56,6 +56,10 @@ type suggestResponse struct {
 	LatencyMs int    `json:"latency_ms"`
 	TokensIn  int    `json:"tokens_in"`
 	TokensOut int    `json:"tokens_out"`
+	// ContextUsed signals that the backend injected cross-product
+	// context (goal/memory/activity/radar) into the LLM call. UI
+	// surfaces this as a subtle hint — C3 moat vs Cluely.
+	ContextUsed bool `json:"context_used"`
 }
 
 func (h *SuggestionHandler) handleSuggest(w http.ResponseWriter, r *http.Request) {
@@ -119,10 +123,11 @@ func (h *SuggestionHandler) handleSuggest(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(suggestResponse{
-		Text:      res.Text,
-		Model:     res.Model,
-		LatencyMs: res.LatencyMs,
-		TokensIn:  res.TokensIn,
-		TokensOut: res.TokensOut,
+		Text:        res.Text,
+		Model:       res.Model,
+		LatencyMs:   res.LatencyMs,
+		TokensIn:    res.TokensIn,
+		TokensOut:   res.TokensOut,
+		ContextUsed: res.ContextUsed,
 	})
 }

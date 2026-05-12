@@ -124,6 +124,13 @@ const api: Druz9API = {
     openSettings: (kind: PermissionKind) =>
       ipcRenderer.invoke(invokeChannels.permissionsOpenSettings, kind) as Promise<void>,
   },
+  onboarding: {
+    complete: () =>
+      ipcRenderer.invoke(invokeChannels.onboardingComplete) as Promise<void>,
+    isCompleted: () =>
+      ipcRenderer.invoke(invokeChannels.onboardingIsCompleted) as Promise<boolean>,
+    reset: () => ipcRenderer.invoke(invokeChannels.onboardingReset) as Promise<void>,
+  },
   history: {
     list: (cursor: string, limit: number) =>
       ipcRenderer.invoke(invokeChannels.historyList, cursor, limit) as ReturnType<
@@ -261,6 +268,30 @@ const api: Druz9API = {
       ipcRenderer.invoke(invokeChannels.englishPolishGrade, text) as Promise<
         import('@shared/ipc').EnglishPolishResult
       >,
+  },
+  interviewPrep: {
+    open: () => ipcRenderer.invoke(invokeChannels.interviewPrepOpen) as Promise<void>,
+    pickCV: () =>
+      ipcRenderer.invoke(invokeChannels.interviewPrepPickCV) as Promise<
+        import('@shared/ipc').PickCVResultDTO
+      >,
+    parseCV: (input) =>
+      ipcRenderer.invoke(invokeChannels.interviewPrepParseCV, input) as Promise<
+        import('@shared/ipc').ParseCVResultDTO
+      >,
+    parseJD: (input) =>
+      ipcRenderer.invoke(invokeChannels.interviewPrepParseJD, input) as Promise<
+        import('@shared/ipc').ParseJDResultDTO
+      >,
+    start: (input) =>
+      ipcRenderer.invoke(invokeChannels.interviewPrepStart, input) as Promise<
+        import('@shared/ipc').StartPrepResultDTO
+      >,
+    getActive: () =>
+      ipcRenderer.invoke(invokeChannels.interviewPrepGetActive) as Promise<
+        import('@shared/ipc').ActivePrepDTO
+      >,
+    end: () => ipcRenderer.invoke(invokeChannels.interviewPrepEnd) as Promise<void>,
   },
   on: <T>(channel: string, handler: (payload: T) => void) => {
     // Whitelist so renderer can't subscribe to arbitrary channels.

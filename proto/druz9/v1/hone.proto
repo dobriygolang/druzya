@@ -637,6 +637,17 @@ service HoneService {
       body: "*"
     };
   }
+  // Phase J / H3 (P1, 2026-05-12) — manual kind override + bulk re-categorise.
+  rpc UpdateTaskKind(UpdateTaskKindRequest) returns (Task) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/tasks/{id}/kind"
+      body: "*"
+    };
+  }
+  // Server-streams categorise events as each task is processed. Frontend
+  // consumes via Connect stream client (the existing SSE cursor path stays
+  // for cursor.move / card.move; this is a one-shot scoped stream).
+  rpc BulkAutoCategorise(BulkAutoCategoriseRequest) returns (stream BulkAutoCategoriseEvent);
 
   // ─── Publish-to-web ────────────────────────────────────────────────
   // The HTML viewer at /p/{slug} stays chi-direct (renders Markdown into
@@ -842,6 +853,27 @@ service HoneService {
       post: "/api/v1/hone/code-review/grade"
       body: "*"
     };
+  }
+
+  // ─── Speaking modality (H4 / Phase J 2026-05-12) ──────────────────
+  // Shadowing exercise loop: list canned prompts → record mic audio →
+  // STT-grade against reference text → persist session for drift trend.
+  // Без Speaking Hone English ≈ Reader; H4 закрывает 4-modality hub.
+  rpc ListSpeakingExercises(ListSpeakingExercisesRequest) returns (ListSpeakingExercisesResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/speaking/exercises"};
+  }
+  // GradeSpeaking — base64-encoded webm/opus audio + reference text.
+  // STT (Groq Whisper) → LLM compare transcript vs reference → pronunciation
+  // & fluency scores + word-level diff + 1-line coach feedback. Persists
+  // a speaking_sessions row idempotent via client_session_id.
+  rpc GradeSpeaking(GradeSpeakingRequest) returns (GradeSpeakingResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/speaking/grade"
+      body: "*"
+    };
+  }
+  rpc ListSpeakingHistory(ListSpeakingHistoryRequest) returns (ListSpeakingHistoryResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/speaking/history"};
   }
 }
 
@@ -1057,6 +1089,24 @@ message Task {
   google.protobuf.Timestamp created_at = 11;
   google.protobuf.Timestamp updated_at = 12;
   google.protobuf.Timestamp completed_at = 13;
+  // Phase J / H3 (2026-05-12): manual_kind_override marks tasks where
+  // the user explicitly chose a kind via the chip picker. Background
+  // auto-categorisers (BulkAutoCategorise / coach_listener) skip rows
+  // with this flag set. Resets only on explicit user request.
+  bool manual_kind_override = 14;
+}
+
+// TaskAutoCategoryHint — emitted by the categoriser when it auto-assigns
+// a kind. Surfaced by the client as a transient toast «Auto-tagged as
+// <Kind>» with a chevron «Why?» that expands the reasoning. Not persisted
+// — frontend keeps it in-memory for the toast lifetime (5s).
+message TaskAutoCategoryHint {
+  string task_id   = 1;
+  TaskKind kind    = 2;
+  // 1-2 sentence LLM explanation, e.g. «Mentioned 'binary search' + 'O(log n)' → algorithmic question».
+  string reasoning = 3;
+  // 0..1 — LLM self-confidence; client suppresses toast below ~0.4.
+  float confidence = 4;
 }
 
 message TaskComment {
@@ -1078,6 +1128,59 @@ message CreateTaskRequest {
   string brief_md = 3;
   string skill_key = 4;
   string deep_link = 5;
+}
+
+// CreateTaskResponse — Phase J / H3 (2026-05-12) wraps Task + optional
+// auto-categorise hint when the LLM ran inline и chose a kind different
+// from the one in the request. Frontend uses hint.confidence to decide
+// whether to surface the toast.
+//
+// Note: existing client code expects CreateTask to return Task directly.
+// We keep CreateTask → Task wire-compatible by mounting CreateTaskV2 on a
+// distinct path / RPC (CreateTask kept for backward compat: legacy clients
+// still get a Task, no toast). New clients call CreateTask which returns
+// Task — and poll ListTasks или subscribe to cursor-bus for the hint
+// emitted asynchronously after categoriser finishes.
+//
+// Simpler design (chosen): keep CreateTask returning Task; categoriser
+// fires the hint via the cursor-bus SSE stream («card.categorise» event)
+// которое frontend уже subscribe'ит. Это offline-friendly и не блокирует
+// CreateTask на LLM-latency (8s timeout currently).
+
+// UpdateTaskKindRequest — manual override path. When user picks a different
+// kind via the chip picker, frontend calls this. Backend sets kind and
+// flips manual_kind_override = true so background re-categorisers skip
+// the row going forward.
+message UpdateTaskKindRequest {
+  string id = 1;
+  TaskKind kind = 2;
+  // When true (default for user-driven override), backend persists
+  // manual_kind_override=true so auto-categorisers leave the row alone.
+  // When false (used internally by re-categoriser path), preserves
+  // existing flag value.
+  bool manual_override = 3;
+}
+
+// BulkAutoCategoriseRequest — kick off auto-categorise for a set of
+// user-owned tasks. When task_ids is empty, server picks all eligible
+// open tasks (kind=custom OR manual_kind_override=false).
+message BulkAutoCategoriseRequest {
+  repeated string task_ids = 1;
+}
+
+// BulkAutoCategoriseEvent — one streaming progress packet. Frontend
+// shows toasts as events arrive and renders «X / N» progress chip.
+message BulkAutoCategoriseEvent {
+  string task_id  = 1;
+  TaskKind kind   = 2;
+  string reasoning = 3;
+  float confidence = 4;
+  // true when this is the terminal packet (server done iterating).
+  // Frontend can use to close the «categorising…» chip and stop spinner.
+  bool done = 5;
+  // total / processed help client surface a «12 of 27 categorised» pill.
+  int32 processed = 6;
+  int32 total     = 7;
 }
 
 message MoveTaskStatusRequest {
@@ -1436,4 +1539,88 @@ message CodeReviewIssue {
 message GradeCodeReviewResponse {
   int32 overall_score = 1;
   repeated CodeReviewIssue issues = 2;
+}
+
+// ─── Speaking messages (H4 / Phase J 2026-05-12) ──────────────────────
+
+// SpeakingExercise — one canned shadowing prompt. Audio (reference TTS)
+// deliberately optional in MVP: client can `say` через native TTS or read
+// text. `level` ∈ B1/B2/C1; client filters dropdown server-side cheap так
+// что keep all in single list response.
+message SpeakingExercise {
+  string id        = 1; // stable slug, e.g. "algo-1" / "greet-2"
+  string level     = 2; // "B1" | "B2" | "C1"
+  string topic     = 3; // free-form category label (interview / daily / sysdesign)
+  string prompt    = 4; // text the user must shadow (1-2 sentences)
+  // audio_url — reference TTS asset. Empty in MVP (TTS deferred); client
+  // falls back to read-text + native speechSynthesis.
+  string audio_url = 5;
+}
+
+message ListSpeakingExercisesRequest {
+  // level — optional filter; empty = all levels.
+  string level = 1;
+}
+
+message ListSpeakingExercisesResponse {
+  repeated SpeakingExercise items = 1;
+}
+
+// WordDiff — per-token comparison between reference prompt and user
+// transcript. status ∈ "match" | "miss" | "extra" | "substitute".
+// expected/actual carry the corresponding word; "" for miss/extra slots.
+message WordDiff {
+  string status   = 1;
+  string expected = 2;
+  string actual   = 3;
+}
+
+message GradeSpeakingRequest {
+  // exercise_id picks which prompt the user shadowed. Server fetches the
+  // reference text + level from speaking_exercises (LIKE seed_resources
+  // pattern — fixed JSON table, no per-user content).
+  string exercise_id        = 1;
+  // client_session_id — UUIDv4 from Hone; idempotency-key for replay safety.
+  string client_session_id  = 2;
+  // audio_base64 — raw audio bytes, base64-encoded. webm/opus expected
+  // (Hone MediaRecorder default); backend re-uses transcription service.
+  // Max 5MB pre-base64 (~6.7MB encoded) → enforced server-side; longer
+  // shadowing clips don't make sense.
+  string audio_base64       = 3;
+  // mime_type — passed verbatim to Whisper provider for format detection.
+  // Defaults to "audio/webm" when empty.
+  string mime_type          = 4;
+  // duration_ms — measured client-side; used for fluency timing variance
+  // (target = len(prompt_words) * 380ms). 0 = unknown → server estimates.
+  int32  duration_ms        = 5;
+}
+
+message GradeSpeakingResponse {
+  string id                  = 1; // server-assigned speaking_sessions.id (UUID)
+  string user_transcript     = 2;
+  int32  pronunciation_score = 3; // 0..100
+  int32  fluency_score       = 4; // 0..100
+  string coach_feedback      = 5; // ≤140 chars one-liner
+  repeated WordDiff word_diffs = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+// SpeakingSession — one history row.
+message SpeakingSession {
+  string id                  = 1;
+  string exercise_id         = 2;
+  string prompt              = 3;
+  string user_transcript     = 4;
+  int32  pronunciation_score = 5;
+  int32  fluency_score       = 6;
+  string coach_feedback      = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message ListSpeakingHistoryRequest {
+  int32 limit = 1; // 0 → server default (14), max 100
+}
+
+message ListSpeakingHistoryResponse {
+  repeated SpeakingSession items = 1;
 }

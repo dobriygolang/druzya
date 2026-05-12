@@ -79,15 +79,15 @@ export function AICursor({ events }: AICursorProps): JSX.Element | null {
         top: pos.y,
         transform: 'translate(-50%, -50%)',
         pointerEvents: 'none',
-        transition: 'left 380ms ease, top 380ms ease',
+        transition: 'left var(--motion-dur-large) var(--motion-ease-standard), top var(--motion-dur-large) var(--motion-ease-standard)',
         zIndex: 9999,
       }}
     >
       <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden>
         <defs>
           <radialGradient id="ai-cursor-halo" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(124,92,255,0.45)" />
-            <stop offset="100%" stopColor="rgba(124,92,255,0)" />
+            <stop offset="0%" stopColor="var(--ink-40)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
           </radialGradient>
         </defs>
         <circle cx="16" cy="16" r="14" fill="url(#ai-cursor-halo)">
@@ -102,8 +102,8 @@ export function AICursor({ events }: AICursorProps): JSX.Element | null {
         </circle>
         <path
           d="M10 8 L10 22 L14 18 L17 24 L19 23 L16 17 L22 17 Z"
-          fill="#FFFFFF"
-          stroke="rgba(0,0,0,0.4)"
+          fill="var(--ink)"
+          stroke="var(--ink-40)"
           strokeWidth="0.8"
         />
       </svg>

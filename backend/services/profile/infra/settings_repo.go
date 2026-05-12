@@ -37,7 +37,8 @@ func (p *Postgres) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Se
 		       COALESCE(np.skill_decay_warnings_enabled, true),
 		       COALESCE(u.ai_insight_model, ''),
 		       (u.onboarding_completed_at IS NOT NULL) AS onboarding_completed,
-		       COALESCE(u.focus_class, '')
+		       COALESCE(u.focus_class, ''),
+		       COALESCE(u.tutor_mode_enabled, false)
 		  FROM users u
 		  LEFT JOIN notification_prefs np ON np.user_id = u.id
 		 WHERE u.id = $1`, userID)
@@ -50,6 +51,7 @@ func (p *Postgres) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Se
 		&s.AIInsightModel,
 		&s.OnboardingCompleted,
 		&s.FocusClass,
+		&s.TutorModeEnabled,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Settings{}, fmt.Errorf("profile.Postgres.GetSettings: %w", domain.ErrNotFound)
@@ -59,45 +61,6 @@ func (p *Postgres) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Se
 	s.DefaultLanguage = enums.LanguageGo
 	s.Notifications.Channels = parseChannels(channels)
 	return s, nil
-}
-
-// GetVacanciesModel reads users.ai_vacancies_model. Empty string ⇒
-// "no preference set" (SQL NULL was chosen by the column default).
-// Callers (vacancies extractor wirer) treat "" as a signal to fall back
-// to the extractor's built-in DefaultExtractorModel.
-func (p *Postgres) GetVacanciesModel(ctx context.Context, userID uuid.UUID) (string, error) {
-	var v string
-	err := p.pool.QueryRow(ctx,
-		`SELECT COALESCE(ai_vacancies_model, '') FROM users WHERE id = $1`,
-		userID,
-	).Scan(&v)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", fmt.Errorf("profile.Postgres.GetVacanciesModel: %w", domain.ErrNotFound)
-		}
-		return "", fmt.Errorf("profile.Postgres.GetVacanciesModel: %w", err)
-	}
-	return v, nil
-}
-
-// SetVacanciesModel upserts users.ai_vacancies_model. Empty modelID
-// stores SQL NULL (so GET returns "" on the next read — symmetry with
-// the GET→empty path). No tier validation happens here: the extractor
-// workload is cheap enough that premium gating isn't worth the API
-// complexity today. If that changes, add the gate here mirroring
-// UpdateSettings' insight-model path.
-func (p *Postgres) SetVacanciesModel(ctx context.Context, userID uuid.UUID, modelID string) error {
-	tag, err := p.pool.Exec(ctx,
-		`UPDATE users SET ai_vacancies_model = NULLIF($2,''), updated_at = now() WHERE id = $1`,
-		userID, modelID,
-	)
-	if err != nil {
-		return fmt.Errorf("profile.Postgres.SetVacanciesModel: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("profile.Postgres.SetVacanciesModel: %w", domain.ErrNotFound)
-	}
-	return nil
 }
 
 // UpdateSettings upserts users.* and notification_prefs in one tx.
@@ -126,11 +89,13 @@ func (p *Postgres) UpdateSettings(ctx context.Context, userID uuid.UUID, s domai
 		            WHEN $7::bool AND NOT $8::bool THEN NULL
 		            ELSE onboarding_completed_at
 		        END,
+		        tutor_mode_enabled = CASE WHEN $9::bool THEN $10::bool ELSE tutor_mode_enabled END,
 		        updated_at = now()
 		  WHERE id = $1`,
 		userID, s.DisplayName, s.Locale, s.AIInsightModel,
 		s.HasFocusClass, s.FocusClass,
 		s.HasOnboardingCompleted, s.OnboardingCompleted,
+		s.HasTutorModeEnabled, s.TutorModeEnabled,
 	); uerr != nil {
 		return fmt.Errorf("profile.Postgres.UpdateSettings: users: %w", uerr)
 	}

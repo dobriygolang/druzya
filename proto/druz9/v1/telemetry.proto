@@ -1,0 +1,163 @@
+// telemetry.proto — Connect-RPC contract для opt-in product analytics.
+//
+// Зачем: Phase B-I (24-26-week roadmap) шипит фичи под guess'и без events.
+// Этот сервис — minimum viable layer чтобы измерять what users actually do
+// (page views, palette commands, focus sessions, coach forks).
+//
+// Privacy model:
+//   - Server-side enrichment minimal: user_id из auth middleware, server
+//     clock fallback. NO IP, NO user-agent, NO PII в properties — client
+//     валидирует перед отправкой.
+//   - 90-day retention on telemetry_events table; aggregate queries only,
+//     no per-user export to third-party vendors без HMAC(user_id).
+//   - Phase J / X3 (P1): optional PostHog mirror. user_id отдаётся как
+//     HMAC(uuid, TELEMETRY_ANON_SALT) — без соли PostHog не может map'ить
+//     distinct_id обратно к DB. Mirror disabled когда POSTHOG_API_KEY="".
+//   - Free-LLM-only rule (memory feedback_providers.md) ортогонален: events
+//     не идут через LLM cascade, это plain INSERT в Postgres.
+//
+// Free-form properties: client stringify'ит. Server caps на 32 keys + 512
+// chars per value (см. RecordEventUC validation), всё лишнее dropped.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// TelemetryService — единый writer endpoint для всех 3 surfaces (Hone, Cue,
+// web). Reads (admin dashboard, aggregate queries) — отдельный admin endpoint
+// или прямой SQL access по analytics-роли; здесь не моделируем чтобы не
+// мешать write hot path с read concerns.
+service TelemetryService {
+  // RecordEvents — batch write. Клиенты buffer'ят events в memory + flush
+  // каждые 30s ИЛИ при достижении 10 events. Batch уменьшает overhead на
+  // mobile cellular sessions.
+  rpc RecordEvents(RecordEventsRequest) returns (RecordEventsResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/telemetry/events"
+      body: "*"
+    };
+  }
+
+  // GetConsent — текущее согласие пользователя для конкретной surface.
+  // Клиент дёргает при старте чтобы понять, fire ли events или сидеть
+  // тихо. NotFound (нет row) → дефолт зависит от surface: hone/web =
+  // opt-in-with-prompt, cue = opt-out (stealth product).
+  rpc GetConsent(GetConsentRequest) returns (GetConsentResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/telemetry/consent/{surface}"
+    };
+  }
+
+  // SetConsent — пользователь нажал toggle в Settings. Persist в
+  // telemetry_consent (upsert). Когда opted_in=false мы ТАКЖЕ пушим
+  // эту surface в queue background-job'а для delete remote analytics
+  // copy (PostHog DELETE), но это best-effort — фронт получает 200
+  // как только row записан.
+  rpc SetConsent(SetConsentRequest) returns (SetConsentResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/telemetry/consent"
+      body: "*"
+    };
+  }
+
+  // ExportEvents — GDPR-style data export. Возвращает все events
+  // пользователя в JSON. Используется кнопкой «Скачать мои события»
+  // в Settings → Privacy.
+  rpc ExportEvents(ExportEventsRequest) returns (ExportEventsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/telemetry/export"
+    };
+  }
+
+  // DeleteEvents — GDPR-style data delete. Удаляет все events
+  // пользователя из local store + best-effort triggers cleanup в
+  // PostHog (через background job).
+  rpc DeleteEvents(DeleteEventsRequest) returns (DeleteEventsResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/telemetry/events"
+    };
+  }
+}
+
+// TelemetryEvent — single measurement. Конкретный event names — convention,
+// не proto enum (живой словарь — добавление нового event'а не должно требовать
+// proto migration).
+message TelemetryEvent {
+  // Канонический name в snake_case: "page_view", "palette_open", "note_create",
+  // "focus_start", "coach_fork_pick", etc. Server validates non-empty.
+  string name = 1;
+  // Client clock в момент event'а. Server clamps к now()-7d / now()+1m
+  // чтобы не принимать events «из будущего» / years назад (clock skew).
+  google.protobuf.Timestamp occurred_at = 2;
+  // Free-form key-value. Values stringified на клиенте. Server enforces
+  // max 32 keys + max 512 chars per value (drops лишнее).
+  map<string, string> properties = 3;
+  // Surface: "hone" | "cue" | "web". Explicit field (не header) для
+  // routing к разным admin dashboards без header-parsing fragility.
+  string surface = 4;
+}
+
+message RecordEventsRequest {
+  repeated TelemetryEvent events = 1;
+}
+
+message RecordEventsResponse {
+  // Сколько events успешно записано. Может быть < len(request.events) если
+  // batch partially failed (validation drops). Client treats it как best-effort:
+  // не retry'ит rejected events, просто log'ит для discovery.
+  int32 accepted = 1;
+}
+
+message GetConsentRequest {
+  // "web" | "hone" | "cue". Validated server-side.
+  string surface = 1;
+}
+
+message GetConsentResponse {
+  // true → клиент может slать events. false / отсутствие row → клиент
+  // должен сидеть тихо (но всё равно может показать banner если default
+  // для surface=opt-in-with-prompt).
+  bool opted_in = 1;
+  // Latest consent version known to the server. Если client сохранил
+  // ниже — show fresh prompt.
+  int32 consent_version = 2;
+  // true когда пользователь ещё ни разу не отвечал на prompt — frontend
+  // показывает baseline согласие (hone/web = banner; cue = silent).
+  bool default_unset = 3;
+}
+
+message SetConsentRequest {
+  string surface = 1;
+  bool opted_in = 2;
+  int32 consent_version = 3;
+}
+
+message SetConsentResponse {
+  bool ok = 1;
+}
+
+message ExportEventsRequest {
+  // Optional filters; пусто = все events.
+  string surface = 1;
+}
+
+message ExportEventsResponse {
+  // JSON-encoded array of events. JSON а не repeated message потому что
+  // payload может быть очень большой и proto streaming overkill для
+  // одноразового download.
+  string events_json = 1;
+  int32 count = 2;
+}
+
+message DeleteEventsRequest {
+  // Optional surface filter; пусто = все surfaces. ConfirmUsername
+  // mirroring DangerCard — guard from accidental clicks.
+  string surface = 1;
+}
+
+message DeleteEventsResponse {
+  int32 deleted = 1;
+}

@@ -2,6 +2,9 @@
 // (LeetCode / Coursera / YouTube / книги). НЕ чат: явная associarion с
 // GPT-чатом — плохая (Sergey 2026-05-01). Form: source dropdown + topic
 // autocomplete по atlas-узлам + duration + notes.
+//
+// 2026-05-12: migrated to foundation Modal primitive (focus trap + ESC +
+// scroll lock + smooth in/out). Underline-only inputs per v2 spec.
 import { useEffect, useRef, useState } from 'react';
 
 import {
@@ -11,6 +14,8 @@ import {
   type AtlasTopicSuggestion,
   type ExternalSource,
 } from '../api/external';
+import { Modal } from './primitives/Modal';
+import { motion as motionTokens } from '../lib/design-tokens';
 
 interface Props {
   onClose: () => void;
@@ -24,6 +29,7 @@ interface TopicSelection {
 }
 
 export function ExternalActivityModal({ onClose, onSaved }: Props) {
+  const [open, setOpen] = useState(true);
   const [source, setSource] = useState<ExternalSource>('leetcode');
   const [topic, setTopic] = useState<TopicSelection>({ atlasNodeId: '', text: '' });
   const [suggestions, setSuggestions] = useState<AtlasTopicSuggestion[]>([]);
@@ -33,6 +39,12 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
+
+  // Smooth exit: flip open → Modal exit anim → parent unmounts.
+  function close() {
+    setOpen(false);
+    window.setTimeout(onClose, motionTokens.dur.medium);
+  }
 
   // Debounced atlas-topic autocomplete. Only triggers when юзер вводит
   // free-text — если уже выбран узел, suggestions скрыты.
@@ -57,15 +69,6 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
     };
   }, [topic.text, topic.atlasNodeId, showSuggestions]);
 
-  // ESC closes modal.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -86,7 +89,11 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
         durationMin: duration,
         notes: notes.trim() || undefined,
       });
-      onSaved();
+      // Smooth exit + parent callback. onSaved triggers parent UI refresh.
+      setOpen(false);
+      window.setTimeout(() => {
+        onSaved();
+      }, motionTokens.dur.medium);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'failed');
     } finally {
@@ -95,124 +102,140 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
   };
 
   return (
-    <div style={overlayStyle} role="dialog" aria-modal="true">
-      <div style={backdropStyle} onClick={onClose} />
-      <div style={modalStyle}>
-        <header style={headerStyle}>
-          <span className="mono" style={titleStyle}>
-            + ВНЕШНЕЕ ЗАНЯТИЕ
-          </span>
+    <Modal open={open} onClose={close} size="md">
+      <header style={headerStyle}>
+        <span className="mono" style={titleStyle}>
+          + ВНЕШНЕЕ ЗАНЯТИЕ
+        </span>
+      </header>
+      <form onSubmit={onSubmit} style={{ paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Field label="Источник">
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value as ExternalSource)}
+            style={selectStyle}
+            disabled={busy}
+            aria-label="Источник"
+          >
+            {EXTERNAL_SOURCES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Topic">
+          <div style={{ position: 'relative' }}>
+            <input
+              value={topic.text}
+              onChange={(e) => setTopic({ atlasNodeId: '', text: e.target.value })}
+              onFocus={(e) => {
+                setShowSuggestions(true);
+                e.currentTarget.style.borderBottomColor = 'var(--ink)';
+              }}
+              onBlur={(e) => {
+                window.setTimeout(() => setShowSuggestions(false), 120);
+                e.currentTarget.style.borderBottomColor = 'var(--hair-2)';
+              }}
+              placeholder="например, BFS на деревьях"
+              style={inputStyle}
+              disabled={busy}
+              aria-label="Topic"
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <div style={suggestStyle}>
+                {suggestions.map((s) => (
+                  <button
+                    key={s.atlasNodeId}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setTopic({ atlasNodeId: s.atlasNodeId, text: s.title });
+                      setShowSuggestions(false);
+                    }}
+                    style={suggestItemStyle}
+                  >
+                    <span style={{ color: 'var(--ink-90)' }}>{s.title}</span>
+                    <span className="mono" style={{ fontSize: 10, color: 'var(--ink-40)', letterSpacing: '0.08em' }}>
+                      {s.section}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {topic.atlasNodeId && (
+              <div style={{ marginTop: 6, fontSize: 11, color: 'var(--ink-60)' }}>
+                Привязано к atlas-узлу. Очистить — измени текст.
+              </div>
+            )}
+          </div>
+        </Field>
+
+        <Field label="Минут">
+          <input
+            type="number"
+            value={duration}
+            min={1}
+            max={600}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            onFocus={(e) => (e.currentTarget.style.borderBottomColor = 'var(--ink)')}
+            onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
+            style={{ ...inputStyle, maxWidth: 120 }}
+            disabled={busy}
+            aria-label="Минут"
+          />
+        </Field>
+
+        <Field label="Заметка (опционально)">
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            onFocus={(e) => (e.currentTarget.style.borderBottomColor = 'var(--ink)')}
+            onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
+            rows={3}
+            placeholder="что прошло, что застряло…"
+            style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
+            disabled={busy}
+            aria-label="Заметка"
+          />
+        </Field>
+
+        {error && (
+          <div style={errStyle}>
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 6, flex: '0 0 auto' }} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="flex-wrap-row" style={{ justifyContent: 'flex-end', gap: 10 }}>
           <button
             type="button"
-            onClick={onClose}
-            className="mono focus-ring"
-            style={closeBtnStyle}
-            aria-label="Закрыть"
+            onClick={close}
+            disabled={busy}
+            className="mono focus-ring motion-press"
+            style={secondaryBtnStyle}
           >
-            ✕
+            Отмена
           </button>
-        </header>
-        <form onSubmit={onSubmit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Field label="Источник">
-            <select
-              value={source}
-              onChange={(e) => setSource(e.target.value as ExternalSource)}
-              style={selectStyle}
-              disabled={busy}
-            >
-              {EXTERNAL_SOURCES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="Topic">
-            <div style={{ position: 'relative' }}>
-              <input
-                value={topic.text}
-                onChange={(e) =>
-                  setTopic({ atlasNodeId: '', text: e.target.value })
-                }
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => window.setTimeout(() => setShowSuggestions(false), 120)}
-                placeholder="например, BFS на деревьях"
-                style={inputStyle}
-                disabled={busy}
-              />
-              {showSuggestions && suggestions.length > 0 && (
-                <div style={suggestStyle}>
-                  {suggestions.map((s) => (
-                    <button
-                      key={s.atlasNodeId}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setTopic({ atlasNodeId: s.atlasNodeId, text: s.title });
-                        setShowSuggestions(false);
-                      }}
-                      style={suggestItemStyle}
-                    >
-                      <span style={{ color: 'var(--ink-90)' }}>{s.title}</span>
-                      <span className="mono" style={{ fontSize: 9, color: 'var(--ink-40)', letterSpacing: '0.16em' }}>
-                        {s.section}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {topic.atlasNodeId && (
-                <div style={{ marginTop: 4, fontSize: 11, color: 'var(--ink-60)' }}>
-                  Привязано к atlas-узлу. Очистить — измени текст.
-                </div>
-              )}
-            </div>
-          </Field>
-
-          <Field label="Минут">
-            <input
-              type="number"
-              value={duration}
-              min={1}
-              max={600}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              style={{ ...inputStyle, width: 100 }}
-              disabled={busy}
-            />
-          </Field>
-
-          <Field label="Заметка (опционально)">
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="что прошло, что застряло…"
-              style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
-              disabled={busy}
-            />
-          </Field>
-
-          {error && <div style={errStyle}>{error}</div>}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button type="button" onClick={onClose} disabled={busy} style={secondaryBtnStyle}>
-              Отмена
-            </button>
-            <button type="submit" disabled={busy} style={primaryBtnStyle}>
-              {busy ? 'Сохраняю…' : 'Сохранить'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          <button
+            type="submit"
+            disabled={busy}
+            className="focus-ring motion-press"
+            style={primaryBtnStyle}
+          >
+            {busy ? 'Сохраняю…' : 'Сохранить'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span className="mono" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'var(--ink-40)', textTransform: 'uppercase' }}>
+      <span className="mono" style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)', textTransform: 'uppercase' }}>
         {label}
       </span>
       {children}
@@ -220,57 +243,30 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  zIndex: 70,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-};
-const backdropStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  background: 'rgba(0,0,0,0.55)',
-};
-const modalStyle: React.CSSProperties = {
-  position: 'relative',
-  width: 'min(480px, 92vw)',
-  maxHeight: '92vh',
-  overflowY: 'auto',
-  background: 'var(--bg-elevated, #161616)',
-  border: '1px solid rgba(255,255,255,0.12)',
-  borderRadius: 8,
-};
 const headerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: '14px 18px',
-  borderBottom: '1px solid rgba(255,255,255,0.08)',
+  paddingBottom: 14,
+  borderBottom: '1px solid var(--hair)',
 };
 const titleStyle: React.CSSProperties = {
   fontSize: 11,
-  letterSpacing: '0.18em',
-  color: 'var(--ink-90)',
-};
-const closeBtnStyle: React.CSSProperties = {
-  background: 'transparent',
-  border: 'none',
+  fontWeight: 500,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
   color: 'var(--ink-60)',
-  fontSize: 12,
-  cursor: 'pointer',
-  padding: 4,
 };
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '8px 10px',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.12)',
-  borderRadius: 6,
-  color: 'var(--ink-90)',
-  fontSize: 13,
+  padding: '8px 0',
+  background: 'transparent',
+  border: 0,
+  borderBottom: '1px solid var(--hair-2)',
+  color: 'var(--ink)',
+  fontSize: 14,
   outline: 'none',
+  transition: 'border-color var(--motion-dur-small) var(--motion-ease-decelerate)',
 };
 const selectStyle: React.CSSProperties = {
   ...inputStyle,
@@ -282,9 +278,9 @@ const suggestStyle: React.CSSProperties = {
   top: 'calc(100% + 4px)',
   left: 0,
   right: 0,
-  background: 'var(--bg-elevated, #161616)',
-  border: '1px solid rgba(255,255,255,0.12)',
-  borderRadius: 6,
+  background: 'var(--surface)',
+  border: '1px solid var(--hair-2)',
+  borderRadius: 'var(--radius-inner)',
   zIndex: 5,
   display: 'flex',
   flexDirection: 'column',
@@ -295,38 +291,42 @@ const suggestItemStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: '8px 10px',
+  padding: '8px 12px',
   background: 'transparent',
-  border: 'none',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
+  border: 0,
+  borderBottom: '1px solid var(--hair)',
   textAlign: 'left',
   cursor: 'pointer',
   fontSize: 13,
   color: 'var(--ink-90)',
 };
 const errStyle: React.CSSProperties = {
-  color: '#e89090',
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: 10,
+  color: 'var(--red)',
   fontSize: 12,
-  background: 'rgba(255,80,80,0.08)',
-  padding: '6px 10px',
-  borderRadius: 6,
 };
 const primaryBtnStyle: React.CSSProperties = {
-  padding: '8px 16px',
-  background: 'var(--ink-90)',
-  color: '#000',
-  border: 'none',
-  borderRadius: 6,
+  padding: '8px 18px',
+  background: 'var(--ink)',
+  color: 'var(--surface)',
+  border: 0,
+  borderRadius: 'var(--radius-inner)',
   cursor: 'pointer',
   fontSize: 13,
   fontWeight: 600,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
 };
 const secondaryBtnStyle: React.CSSProperties = {
   padding: '8px 16px',
   background: 'transparent',
   color: 'var(--ink-60)',
-  border: '1px solid rgba(255,255,255,0.12)',
-  borderRadius: 6,
+  border: '1px solid var(--hair-2)',
+  borderRadius: 'var(--radius-inner)',
   cursor: 'pointer',
   fontSize: 13,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
 };

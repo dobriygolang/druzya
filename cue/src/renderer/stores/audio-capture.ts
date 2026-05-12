@@ -30,6 +30,12 @@ export interface TranscriptChunk {
   /** ms epoch when committed. Используется для chronological merge'а
    *  двух source-streams в одну ленту. */
   at: number;
+  /** Diarization speaker label (C4):
+   *   - mic source: 0 (the user, "Я"), set unconditionally
+   *   - system source: 1..N, clustered per-utterance backend'ом
+   *   - undefined: legacy/partial frame — fall back to source-based label
+   */
+  speakerId?: number;
 }
 
 interface SourceSlice {
@@ -62,6 +68,19 @@ interface State {
   system: SourceSlice;
   mic: SourceSlice;
 
+  /**
+   * C4 diarization: per-session human-readable labels на speaker IDs.
+   * Key = speakerId (number → string for stable JSON), value = user
+   * relabel ("Interviewer", "PM"). speaker 0 = mic = "Я" (фиксировано,
+   * не override'итcя через UI). Системные speaker 1..N начинают как
+   * "Собеседник N", юзер может переименовать через SpeakerLabel компонент.
+   * Persisted в localStorage по session-key (Date.now() при первом start).
+   */
+  speakerLabels: Record<string, string>;
+  /** Session key для localStorage scope'а. Re-инициализируется на
+   *  каждый clear()/start cycle. Format: `cue.speakers.<epoch>`. */
+  speakerLabelsKey: string;
+
   bootstrap: () => () => void;
   start: (source: AudioCaptureSource) => Promise<void>;
   stop: (source: AudioCaptureSource) => Promise<void>;
@@ -75,23 +94,65 @@ interface State {
   liveText: () => string;
   /** Хоть один source сейчас в active state (running или starting). */
   anyRecording: () => boolean;
+  /** C4 manual relabel. Rename one speaker; "" deletes the override
+   *  (reverts to default "Собеседник N"). Не trackable history — это
+   *  in-session prefs. Speaker 0 (mic) НЕ renamable — always «Я». */
+  renameSpeaker: (speakerId: number, label: string) => void;
+  /** Resolve speaker label для UI / LLM submission. Returns custom label
+   *  если есть, иначе default ("Я" для 0/mic, "Собеседник N" для system N). */
+  labelFor: (speakerId: number | undefined, source: AudioCaptureSource) => string;
 }
 
 const sliceKey = (source: AudioCaptureSource): 'system' | 'mic' => source;
 
-const labelFor = (source: AudioCaptureSource): string =>
-  source === 'mic' ? 'Я' : 'Они';
+/**
+ * Default label resolver — used when юзер ещё не переименовал speaker
+ * через SpeakerLabel UI. Speaker 0 / mic = «Я» (анкор для AI/user),
+ * system без speaker_id (legacy) = «Они», system с speaker_id = «Собеседник N».
+ */
+const defaultSpeakerLabel = (speakerId: number | undefined, source: AudioCaptureSource): string => {
+  if (source === 'mic' || speakerId === 0) return 'Я';
+  if (typeof speakerId === 'number' && speakerId > 0) return `Собеседник ${speakerId}`;
+  return 'Они';
+};
 
-const composeMerged = (system: SourceSlice, mic: SourceSlice, includePartials: boolean): string => {
-  // Если активен один — префиксы лишние.
+const resolveSpeakerLabel = (
+  speakerId: number | undefined,
+  source: AudioCaptureSource,
+  overrides: Record<string, string>,
+): string => {
+  // Mic / speaker 0 never override'итcя — sacred anchor for the user.
+  if (source === 'mic' || speakerId === 0) return 'Я';
+  if (typeof speakerId === 'number') {
+    const key = String(speakerId);
+    if (overrides[key]) return overrides[key];
+  }
+  return defaultSpeakerLabel(speakerId, source);
+};
+
+const composeMerged = (
+  system: SourceSlice,
+  mic: SourceSlice,
+  includePartials: boolean,
+  overrides: Record<string, string>,
+): string => {
+  // Если активен один — префиксы лишние ТОЛЬКО если в system source
+  // не различено несколько speaker'ов. Если diarizer нашёл 2+ speaker'а
+  // в системном звуке — лейблы critical для LLM context'а.
   const systemActive = system.chunks.length > 0 || (includePartials && system.partialText);
   const micActive = mic.chunks.length > 0 || (includePartials && mic.partialText);
+  const sysSpeakerIds = new Set<number>();
+  for (const c of system.chunks) {
+    if (typeof c.speakerId === 'number') sysSpeakerIds.add(c.speakerId);
+  }
+  const sysHasMultipleSpeakers = sysSpeakerIds.size >= 2;
   const both = systemActive && micActive;
+  const needsLabels = both || sysHasMultipleSpeakers;
 
-  type Item = { source: AudioCaptureSource; text: string; at: number };
+  type Item = { source: AudioCaptureSource; text: string; at: number; speakerId?: number };
   const items: Item[] = [];
-  for (const c of system.chunks) items.push({ source: 'system', text: c.text, at: c.at });
-  for (const c of mic.chunks) items.push({ source: 'mic', text: c.text, at: c.at });
+  for (const c of system.chunks) items.push({ source: 'system', text: c.text, at: c.at, speakerId: c.speakerId });
+  for (const c of mic.chunks) items.push({ source: 'mic', text: c.text, at: c.at, speakerId: 0 });
   items.sort((a, b) => a.at - b.at);
 
   // Partials append'ятся в конец «как сейчас идущая фраза» — у них нет
@@ -100,21 +161,60 @@ const composeMerged = (system: SourceSlice, mic: SourceSlice, includePartials: b
   if (includePartials) {
     const now = Date.now();
     if (system.partialText) items.push({ source: 'system', text: system.partialText, at: now });
-    if (mic.partialText) items.push({ source: 'mic', text: mic.partialText, at: now + 1 });
+    if (mic.partialText) items.push({ source: 'mic', text: mic.partialText, at: now + 1, speakerId: 0 });
   }
 
   if (items.length === 0) return '';
-  if (!both) {
-    // Один source — без меток.
+  if (!needsLabels) {
+    // Один source без diarization split'а — без меток (короче для LLM).
     return items.map((i) => i.text).join(' ');
   }
-  return items.map((i) => `${labelFor(i.source)}: ${i.text}`).join('\n');
+  return items
+    .map((i) => `${resolveSpeakerLabel(i.speakerId, i.source, overrides)}: ${i.text}`)
+    .join('\n');
 };
+
+/** localStorage helpers. Speaker label overrides scoped по session-key —
+ *  каждое start cycle получает свой namespace, чтобы старые labels
+ *  не утекали в новый interview. */
+const loadSpeakerLabels = (key: string): Record<string, string> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === 'string') out[k] = v;
+      }
+      return out;
+    }
+  } catch {
+    /* corrupt JSON — ignore */
+  }
+  return {};
+};
+
+const saveSpeakerLabels = (key: string, labels: Record<string, string>): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(labels));
+  } catch {
+    /* quota exceeded / private mode — silent */
+  }
+};
+
+const newSpeakerLabelsKey = (): string => `cue.speakers.${Date.now()}`;
+
+const initialKey = newSpeakerLabelsKey();
 
 export const useAudioCaptureStore = create<State>((set, get) => ({
   available: false,
   system: emptySlice(),
   mic: emptySlice(),
+  speakerLabels: loadSpeakerLabels(initialKey),
+  speakerLabelsKey: initialKey,
 
   bootstrap: () => {
     void window.druz9.audioCapture.isAvailable().then((a) => set({ available: a }));
@@ -149,10 +249,18 @@ export const useAudioCaptureStore = create<State>((set, get) => ({
         if (!ev || (ev.source !== 'system' && ev.source !== 'mic')) return;
         const text = (ev.text ?? '').trim();
         if (!text) return;
+        // Mic source: backend omitempty drops speaker_id=0 → undefined here.
+        // Normalize so chunks consistently carry speakerId (0 для mic).
+        const speakerId =
+          ev.source === 'mic'
+            ? 0
+            : typeof ev.speakerId === 'number'
+              ? ev.speakerId
+              : undefined;
         if (ev.isFinal) {
           apply(ev.source, (slice) => ({
             ...slice,
-            chunks: [...slice.chunks, { source: ev.source, text, at: Date.now() }],
+            chunks: [...slice.chunks, { source: ev.source, text, at: Date.now(), speakerId }],
             partialText: '',
             finalSeq: slice.finalSeq + 1,
           }));
@@ -208,8 +316,17 @@ export const useAudioCaptureStore = create<State>((set, get) => ({
 
   clear: (source) => {
     if (!source) {
-      set({ system: { ...get().system, chunks: [], partialText: '', error: null },
-            mic: { ...get().mic, chunks: [], partialText: '', error: null } });
+      // Full clear → новая «сессия» speaker labels (старые не нужны, могут
+      // путать на следующем интервью). Создаём свежий key, dropping old
+      // overrides. Старый localStorage entry осiraется как archive — Cue
+      // ничего с ним не делает (storage-quota мизер).
+      const nextKey = newSpeakerLabelsKey();
+      set({
+        system: { ...get().system, chunks: [], partialText: '', error: null },
+        mic: { ...get().mic, chunks: [], partialText: '', error: null },
+        speakerLabels: {},
+        speakerLabelsKey: nextKey,
+      });
       return;
     }
     set((prev) => ({
@@ -218,12 +335,34 @@ export const useAudioCaptureStore = create<State>((set, get) => ({
     }));
   },
 
-  fullText: () => composeMerged(get().system, get().mic, true),
-  liveText: () => composeMerged(get().system, get().mic, true),
+  fullText: () => composeMerged(get().system, get().mic, true, get().speakerLabels),
+  liveText: () => composeMerged(get().system, get().mic, true, get().speakerLabels),
 
   anyRecording: () => {
     const s = get();
     const isOn = (st: AudioCaptureState) => st === 'running' || st === 'starting';
     return isOn(s.system.state) || isOn(s.mic.state);
+  },
+
+  renameSpeaker: (speakerId, label) => {
+    // Speaker 0 = mic = «Я» — anchor, не override'итcя через UI. Защита
+    // от случайного renaming через keyboard shortcut.
+    if (speakerId === 0) return;
+    const trimmed = label.trim();
+    const key = String(speakerId);
+    set((prev) => {
+      const next = { ...prev.speakerLabels };
+      if (trimmed === '') {
+        delete next[key];
+      } else {
+        next[key] = trimmed;
+      }
+      saveSpeakerLabels(prev.speakerLabelsKey, next);
+      return { ...prev, speakerLabels: next };
+    });
+  },
+
+  labelFor: (speakerId, source) => {
+    return resolveSpeakerLabel(speakerId, source, get().speakerLabels);
   },
 }));

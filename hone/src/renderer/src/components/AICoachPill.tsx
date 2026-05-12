@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { adoptAITutor, sendAITutorMessage } from '../api/aiTutor';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 type Turn = { role: 'user' | 'assistant'; content: string };
 
@@ -107,12 +108,16 @@ export function AICoachPill({
     }
   };
 
+  const trapRef = useFocusTrap(open);
+
   return (
     <>
       {!isControlled && (
         <button
           type="button"
           onClick={() => setOpen(true)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
           className="mono focus-ring"
           style={pillBtnStyle}
         >
@@ -120,7 +125,7 @@ export function AICoachPill({
         </button>
       )}
       {open && (
-        <div style={overlayStyle} role="dialog" aria-modal="true">
+        <div ref={trapRef} style={overlayStyle} role="dialog" aria-modal="true">
           <div style={backdropStyle} onClick={() => setOpen(false)} />
           <aside style={drawerStyle}>
             <header style={headerStyle}>
@@ -181,6 +186,7 @@ export function AICoachPill({
               />
               <button
                 type="submit"
+                aria-label="Send message"
                 disabled={!draft.trim() || !threadId || sending}
                 className="mono focus-ring"
                 style={sendBtnStyle}
@@ -201,7 +207,7 @@ const pillBtnStyle: React.CSSProperties = {
   gap: 6,
   padding: '5px 10px',
   fontSize: 10,
-  letterSpacing: '0.16em',
+  letterSpacing: '0.08em',
   textTransform: 'uppercase',
   color: 'var(--ink-90)',
   background: 'rgba(255,255,255,0.04)',
@@ -244,7 +250,7 @@ const headerStyle: React.CSSProperties = {
 
 const titleStyle: React.CSSProperties = {
   fontSize: 11,
-  letterSpacing: '0.18em',
+  letterSpacing: '0.08em',
   color: 'var(--ink-90)',
   textTransform: 'uppercase',
 };
@@ -298,9 +304,9 @@ const mutedStyle: React.CSSProperties = {
 };
 
 const errStyle: React.CSSProperties = {
-  color: '#e89090',
+  color: 'var(--red, #FF3B30)',
   fontSize: 12,
-  background: 'rgba(255,80,80,0.08)',
+  background: 'rgba(255,59,48,0.08)',
   padding: '6px 10px',
   borderRadius: 6,
 };

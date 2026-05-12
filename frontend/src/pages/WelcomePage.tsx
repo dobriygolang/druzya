@@ -99,7 +99,8 @@ function Nav() {
       backdropFilter: scrolled ? 'blur(18px)' : 'none',
       WebkitBackdropFilter: scrolled ? 'blur(18px)' : 'none',
       borderBottom: scrolled ? '1px solid var(--hair)' : '1px solid transparent',
-      transition: 'all 200ms ease',
+      transition:
+        'background-color var(--motion-dur-medium) var(--motion-ease-standard), border-color var(--motion-dur-medium) var(--motion-ease-standard), backdrop-filter var(--motion-dur-medium) var(--motion-ease-standard)',
     }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 32 }}>
         <a href="#top" className="mono"
@@ -163,7 +164,15 @@ function Nav() {
 function NavLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <a href={href}
-       style={{ fontSize: 13, color: 'var(--ink-60)', textDecoration: 'none', transition: 'color 120ms ease' }}
+       className="focus-ring"
+       style={{
+         fontSize: 13,
+         color: 'var(--ink-60)',
+         textDecoration: 'none',
+         padding: '4px 8px',
+         borderRadius: 6,
+         transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
+       }}
        onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}>
       {children}
@@ -268,22 +277,70 @@ function Hero() {
         </p>
         <div style={{ marginTop: 36, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link to="/login?next=/mock"
+                className="focus-ring motion-press"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 20px',
                   borderRadius: 999, background: '#fff', color: '#000',
-                  fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+                  fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                  transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.92)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}>
             Запустить mock <Icon name="arrow" size={12} />
           </Link>
           <a href="#tracks"
+             className="focus-ring motion-press"
              style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 20px',
                borderRadius: 999, border: '1px solid var(--hair-2)', color: 'rgb(var(--ink))',
-               fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+               fontSize: 13, fontWeight: 500, textDecoration: 'none', background: 'transparent',
+               transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)' }}
+             onMouseEnter={(e) => {
+               e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+               e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)'
+             }}
+             onMouseLeave={(e) => {
+               e.currentTarget.style.background = 'transparent'
+               e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
+             }}>
             Выбрать трек
           </a>
           <Link to="/login?next=/tutor"
+                className="focus-ring motion-press"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 20px',
                   borderRadius: 999, border: '1px solid var(--hair)', color: 'var(--ink-60)',
-                  fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+                  fontSize: 13, fontWeight: 500, textDecoration: 'none', background: 'transparent',
+                  transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+                  e.currentTarget.style.color = 'rgb(var(--ink))'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--ink-60)'
+                }}>
             Я тутор
+          </Link>
+        </div>
+        {/* F9 entry — unauth diagnostic CTA. 8 минут → 3 actions + suggested
+            goal без логина (localStorage). После diagnostic юзер уже
+            «engaged» — конверсия в signup растёт vs cold mock CTA. */}
+        <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center' }}>
+          <Link
+            to="/diagnostic"
+            className="focus-ring"
+            style={{
+              fontSize: 11,
+              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-40)',
+              textDecoration: 'none',
+              padding: '6px 10px',
+              borderRadius: 4,
+              transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
+          >
+            или пройти 8-минутную диагностику без логина →
           </Link>
         </div>
         <div style={{ marginTop: 56 }}>
@@ -930,8 +987,8 @@ export default function WelcomePage() {
         id="cue" sideLeft
         name="Cue" tag="Продукт · Copilot"
         title="Шёпот."
-        desc="Невидимый AI-overlay. ⌘⇧Space в любом приложении — Cue видит экран и помогает. Невидим для Zoom, Meet и любых screen share."
-        bullets={['Глобальный хоткей', 'Видит экран', 'Скрыт от захвата', 'Работает везде']}
+        desc="Тихий AI-companion для interview prep, open-plan офисов и live-транскрипта встреч. ⌘⇧Space — скриншот, вопрос, persona. Visibility toggle в Settings: показывать или скрывать окно при screen-share."
+        bullets={['Глобальный хоткей', 'Live-транскрипт встреч', 'Visibility toggle', 'English Polish']}
         cta={
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <Link to="/pricing"

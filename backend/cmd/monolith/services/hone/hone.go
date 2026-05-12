@@ -94,6 +94,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		summaryGrader    honeDomain.SummaryGrader
 		writingGrader    honeDomain.WritingGrader
 		reviewGrader     honeDomain.CodeReviewGrader
+		speakingGrader   honeDomain.SpeakingGrader
 	)
 	if d.LLMChain != nil {
 		synthesiser = honeInfra.NewLLMChainPlanSynthesiser(d.LLMChain, d.Log)
@@ -101,14 +102,28 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		summaryGrader = honeInfra.NewLLMChainSummaryGrader(d.LLMChain, d.Log)
 		writingGrader = honeInfra.NewLLMChainWritingGrader(d.LLMChain, d.Log)
 		reviewGrader = honeInfra.NewLLMChainCodeReviewGrader(d.LLMChain, d.Log)
-		d.Log.Info("hone: LLM adapters wired (plan synthesis + whiteboard critique + summary grader + writing grader + code-review grader)")
+		speakingGrader = honeInfra.NewLLMChainSpeakingGrader(d.LLMChain, d.Log)
+		d.Log.Info("hone: LLM adapters wired (plan synthesis + whiteboard critique + summary grader + writing grader + code-review grader + speaking grader)")
 	} else {
 		synthesiser = honeInfra.NewNoLLMPlanSynthesiser()
 		critiqueStreamer = honeInfra.NewNoLLMCritiqueStreamer()
 		summaryGrader = honeInfra.NewNoLLMSummaryGrader()
 		writingGrader = honeInfra.NewNoLLMWritingGrader()
 		reviewGrader = honeInfra.NewNoLLMCodeReviewGrader()
-		d.Log.Warn("hone: llmchain not configured — AI features (plan / critique / summary / writing / code-review graders) will return 503")
+		speakingGrader = honeInfra.NewNoLLMSpeakingGrader()
+		d.Log.Warn("hone: llmchain not configured — AI features (plan / critique / summary / writing / code-review / speaking graders) will return 503")
+	}
+
+	// Speaking STT — wraps existing transcription Provider (Groq Whisper)
+	// when GROQ_API_KEY is set, else floor adapter. STT is cross-context
+	// so the adapter lives in this monolith package, not hone-infra.
+	var speakingSTT honeDomain.SpeakingSTT
+	if real := buildSpeakingSTT(d); real != nil {
+		speakingSTT = real
+		d.Log.Info("hone: speaking STT wired (Groq Whisper)")
+	} else {
+		speakingSTT = honeInfra.NewNoSpeakingSTT()
+		d.Log.Warn("hone: GROQ_API_KEY not set — speaking grading will return 503")
 	}
 
 	// Embedder wired off OLLAMA_HOST independently of the chain — the embed
@@ -434,6 +449,17 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	h.DeleteTask = &honeApp.DeleteTask{Tasks: tasksRepo, Cache: tasksCache}
 	h.AddTaskComment = &honeApp.AddTaskComment{Tasks: tasksRepo}
 	h.ListTaskComments = &honeApp.ListTaskComments{Tasks: tasksRepo}
+	// Phase J / H3 (P1, 2026-05-12) — bulk categorise streaming RPC +
+	// manual kind override. BulkAutoCategorise nil-safe когда categoriser
+	// (LLMChain) не wired — server возвращает Unimplemented.
+	h.BulkAutoCategorise = &honeApp.BulkAutoCategorise{
+		Tasks:       tasksRepo,
+		Categoriser: categoriser,
+		CursorBus:   cursorBus,
+		Cache:       tasksCache,
+		Log:         d.Log,
+	}
+	h.UpdateTaskKind = &honeApp.UpdateTaskKind{Tasks: tasksRepo, Cache: tasksCache}
 
 	// Publish-to-web JSON endpoints. /p/{slug} HTML viewer stays chi
 	// (rendered with strict CSP — proto codec can't shape that response).
@@ -490,6 +516,22 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		Fetcher: honeInfra.NewYouTubeFetcher(),
 		Now:     d.Now,
 	}
+
+	// Phase J / H4 (2026-05-12): Speaking-модуль (fourth English modality).
+	// Exercise catalog seeded в migration 00105; sessions persisted per
+	// user via UNIQUE(user_id, client_session_id) for outbox idempotency.
+	// STT (Groq Whisper) + LLM grader (8B-class) wired above; floor
+	// adapters surface ErrLLMUnavailable when keys are missing.
+	speakingExercises := honeInfra.NewSpeakingExerciseRepo(d.Pool)
+	speakingSessions := honeInfra.NewSpeakingSessionRepo(d.Pool)
+	h.ListSpeakingExercises = &honeApp.ListSpeakingExercises{Repo: speakingExercises}
+	h.GradeSpeaking = &honeApp.GradeSpeaking{
+		Exercises: speakingExercises,
+		Sessions:  speakingSessions,
+		STT:       speakingSTT,
+		Grader:    speakingGrader,
+	}
+	h.ListSpeakingHistory = &honeApp.ListSpeakingHistory{Repo: speakingSessions}
 
 	cursorSSE := &cursorSSEHandler{bus: cursorBus, log: d.Log}
 

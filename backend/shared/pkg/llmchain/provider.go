@@ -12,10 +12,9 @@
 // ../../../../README_LLMCHAIN.md or the PR description):
 //
 //   - Task-based model selection, not provider-based. Callers pass a Task
-//     (VacanciesJSON / InsightProse / CopilotStream / Reasoning); the chain
-//     picks the optimal model for that task on each provider. Example: for
-//     VacanciesJSON, Groq uses llama-3.1-8b-instant (fastest JSON), not the
-//     70B model — one less config error per integration.
+//     (InsightProse / CopilotStream / Reasoning); the chain picks the
+//     optimal model for that task on each provider — one less config
+//     error per integration.
 //
 //   - Per-(provider,model) circuit state. If Groq's 70B is rate-limited but
 //     the 8B is free, we only cool the 70B. Cross-user; the rate limit lives
@@ -87,10 +86,6 @@ const (
 type Task string
 
 const (
-	// TaskVacanciesJSON — short strict-JSON extraction from vacancy
-	// descriptions. Latency-sensitive (blocks the "Разобрать" button);
-	// prefers the 8B-class models on every provider.
-	TaskVacanciesJSON Task = "vacancies_json"
 	// TaskInsightProse — long-form Russian coaching text from aggregated
 	// weekly stats. Quality-sensitive; prefers 70B-class models.
 	TaskInsightProse Task = "insight_prose"
@@ -224,6 +219,13 @@ const (
 	// already ~15KB), so we lean on 70B-class providers for deeper
 	// reasoning rather than the 8B tier used by writing feedback.
 	TaskHoneCodeReviewGrade Task = "hone_code_review_grade"
+	// TaskHoneSpeakingGrade — Phase J / H4 (2026-05-12) shadowing-exercise
+	// pronunciation grading. Compare Whisper STT transcript to reference
+	// prompt, return pronunciation + fluency scores + word-level diff +
+	// 1-line coach feedback. Mostly token alignment + heuristics — 8B-class
+	// is sufficient; same model tier as writing feedback. Latency-sensitive
+	// (UI пользователя ждёт после Stop recording).
+	TaskHoneSpeakingGrade Task = "hone_speaking_grade"
 	// TaskAITutorChat — main chat-call для AI-тутора (см
 	// docs/feature/ai-tutor.md). 4-layer memory собирается на каждый ход,
 	// LLM возвращает свободный текст. 70B-class для качества рассуждений
@@ -412,8 +414,8 @@ type Response struct {
 	TokensIn  int
 	TokensOut int
 	// Provider / Model echo back the actually-used upstream so the
-	// caller can surface it in observability and UI (the "served by:
-	// Groq/llama-3.3-70b · 2.3s" plate on the vacancies page).
+	// caller can surface it in observability and UI ("served by:
+	// Groq/llama-3.3-70b · 2.3s" badge in chat/mock surfaces).
 	Provider Provider
 	Model    string
 	Latency  time.Duration

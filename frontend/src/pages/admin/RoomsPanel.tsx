@@ -82,7 +82,7 @@ export function RoomsPanel() {
     <section className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-semibold">Rooms · moderation</h2>
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           path c · low-key collab rooms
         </span>
       </header>
@@ -101,20 +101,20 @@ export function RoomsPanel() {
             { v: '', l: 'all' },
           ]} />
           <label className="flex flex-col gap-1 text-[12px]">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">User ID</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">User ID</span>
             <input
               type="text"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               placeholder="uuid (optional)"
-              className="rounded border border-border bg-surface-2 px-2 py-1 text-[12px] min-w-[280px] flex-1"
+              className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 text-[12px] min-w-[280px] flex-1 focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
             />
           </label>
           <button
             type="button"
             onClick={() => void bulkArchive()}
             disabled={busy}
-            className="ml-auto rounded border border-border bg-surface-2 px-3 py-1.5 text-[11px] uppercase tracking-wider hover:border-border-strong"
+            className="ml-auto rounded border border-border bg-surface-2 px-3 py-1.5 text-[11px] uppercase tracking-[0.08em] hover:border-border-strong"
           >
             {busy ? 'archiving…' : 'bulk-archive expired'}
           </button>
@@ -126,13 +126,13 @@ export function RoomsPanel() {
 
       {topCreators && topCreators.length > 0 && (
         <Card className="flex-col gap-2 p-4" interactive={false}>
-          <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Top creators · free-tier breach detection</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Top creators · free-tier breach detection</div>
           <ul className="space-y-1">
             {topCreators.map((c) => (
               <li key={c.UserID} className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
                 <span className="truncate text-text-secondary">{c.UserID}</span>
                 <span className="text-text-primary">{c.ActiveCount} active</span>
-                <span className="uppercase tracking-wider text-text-muted">{c.Tier}</span>
+                <span className="uppercase tracking-[0.08em] text-text-muted">{c.Tier}</span>
               </li>
             ))}
           </ul>
@@ -147,7 +147,7 @@ export function RoomsPanel() {
         {rooms !== null && rooms.length > 0 && (
           <table className="w-full table-fixed text-[12px]">
             <thead>
-              <tr className="text-left font-mono text-[10px] uppercase tracking-wider text-text-muted">
+              <tr className="text-left font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                 <th className="py-1.5 w-[80px]">Kind</th>
                 <th className="py-1.5 w-[90px]">Status</th>
                 <th className="py-1.5 w-[60px]">Tier</th>
@@ -159,7 +159,7 @@ export function RoomsPanel() {
             <tbody className="font-mono">
               {rooms.map((r) => (
                 <tr key={r.ID} className="border-t border-border-soft">
-                  <td className="py-1.5 uppercase tracking-wider text-text-muted">{r.Kind}</td>
+                  <td className="py-1.5 uppercase tracking-[0.08em] text-text-muted">{r.Kind}</td>
                   <td className="py-1.5">{r.Status}</td>
                   <td className="py-1.5">{r.FreeTier ? 'free' : 'pro'}</td>
                   <td className="py-1.5 truncate">{r.Title || '(untitled)'}</td>
@@ -188,7 +188,7 @@ function FilterSelect({
 }) {
   return (
     <label className="flex flex-col gap-1 text-[12px]">
-      <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{label}</span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}

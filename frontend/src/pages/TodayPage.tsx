@@ -31,11 +31,24 @@ import {
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { AICoachPill } from '../components/AICoachPill'
+import { GoalReadinessCard } from '../components/GoalReadinessCard'
+import { GoalWizardModal } from '../components/GoalWizardModal'
+import { DailyPlanCard } from '../components/DailyPlanCard'
+import { ActivityFeed } from '../components/ActivityFeed'
+import { ProactiveInsightsBanner } from '../components/ProactiveInsightsBanner'
+import { CueSessionsSection } from '../components/CueSessionsSection'
+import { StreakChip } from '../components/StreakChip'
+import { TrajectoryCard } from '../components/TrajectoryCard'
+import { MilestonesCard } from '../components/MilestonesCard'
+import { WeeklySnapshotCard } from '../components/WeeklySnapshotCard'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { useProfileQuery } from '../lib/queries/profile'
 import { useActiveStudyModeQuery, type ActiveTrack } from '../lib/queries/honeSettings'
 import { useDailyBriefQuery, normalizeSeverity } from '../lib/queries/intelligence'
 import { useInsightsQuery } from '../lib/queries/insights'
 import { useAtlasQuery } from '../lib/queries/profile'
+import { useGoal } from '../lib/useGoal'
+import { useState } from 'react'
 
 // Section в атласе → AI-coach persona slug. Display-name всегда role-only
 // lowercase, без human first names — см memory/feedback_persona_names.md.
@@ -68,6 +81,8 @@ export default function TodayPage() {
   const trackQ = useActiveStudyModeQuery()
   const username = profileQ.data?.username ?? ''
   const activeTrack: ActiveTrack = trackQ.data?.activeTrack ?? 'general'
+  const goal = useGoal()
+  const [goalWizardOpen, setGoalWizardOpen] = useState(false)
 
   const today = useMemo(() => {
     const d = new Date()
@@ -82,12 +97,68 @@ export default function TodayPage() {
     <AppShellV2>
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10 sm:px-8 sm:py-14">
         <Hero username={username} today={today} activeTrack={activeTrack} />
+
+        {/* F4 (Phase C) proactive insights banner — top-1 active insight
+            из detectInsights() (event-driven over F2 goal + F5 activity +
+            F9 diagnostic). Coach «говорит сам»: «3 дня без активности»,
+            «Streak 5 дней», «Дедлайн через 14 дн, readiness 35%». 24h
+            dismiss persistence. Null если ни одного активного insight. */}
+        <ProactiveInsightsBanner />
+
+        {/* F3 (Phase B) readiness card — always at top. Goal-aware: no-goal
+            state CTA → wizard or diagnostic; has-goal state → readiness %
+            + factors + weeks-to-target. Computed deterministically на
+            localStorage data (F2 goal + F9 quiz answers), без backend. */}
+        <GoalReadinessCard goal={goal} onSetGoal={() => setGoalWizardOpen(true)} />
+
+        {/* F7 (Phase C) daily plan card — 3-5 goal-driven actions based на
+            current readiness + weakest area + budget. Cached per-date via
+            localStorage; refresh-button инвалидирует. */}
+        <DailyPlanCard />
+
+        {/* F2 Phase B/C — weekly milestones roadmap. Hidden when no goal.
+            Collapsed by default (current + 2 ahead); expand to show all. */}
+        <MilestonesCard />
+
+        {/* R6 (Phase D 2026-05-12) weekly snapshot — 4-cell mini-summary
+            (count / hours / top-kind / mini-mock). Hidden когда activity
+            пуст. Backend swap-able later. */}
+        <WeeklySnapshotCard />
+
+        {/* R3 (Phase D) progress-twin trajectory card — 30d sparkline +
+            week-vs-week delta + verdict. Активируется когда есть activity;
+            пустой state — placeholder с CTA. */}
+        <TrajectoryCard />
+
+        {/* F5 (Phase C) activity feed — manual log button + breakdown last
+            7d + history. Каждый log повышает F3 readiness через
+            computeActivityBoost(), создавая видимый goal-driven loop. */}
+        <ActivityFeed />
+
+        {/* F10 (Phase C) Cue sessions — manual log button + recent list +
+            weak-stage badges. Без real Cue Electron ingestion juзер может
+            залогировать собес/mock вручную; CoachMemoryCard latestCue +
+            F4 insights автоматически подхватывают. */}
+        <CueSessionsSection />
+
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <NextMockCard />
-          <CoachInsightCard />
-          <DailyBriefCard />
-          <AtlasWeakSpotsCard activeTrack={activeTrack} />
+          <ErrorBoundary section="Mock card">
+            <NextMockCard />
+          </ErrorBoundary>
+          <ErrorBoundary section="Coach insight">
+            <CoachInsightCard />
+          </ErrorBoundary>
+          <ErrorBoundary section="Daily brief">
+            <DailyBriefCard />
+          </ErrorBoundary>
+          <ErrorBoundary section="Atlas weak spots">
+            <AtlasWeakSpotsCard activeTrack={activeTrack} />
+          </ErrorBoundary>
         </div>
+
+        {goalWizardOpen && (
+          <GoalWizardModal initial={goal} onClose={() => setGoalWizardOpen(false)} />
+        )}
       </div>
     </AppShellV2>
   )
@@ -104,9 +175,12 @@ function Hero({
 }) {
   return (
     <header className="flex flex-col gap-2">
-      <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">
-        {today}
-      </span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
+          {today}
+        </span>
+        <StreakChip />
+      </div>
       <h1 className="font-display text-3xl font-bold leading-tight">
         {username ? `Привет, @${username}` : 'Today'}
       </h1>
@@ -197,7 +271,7 @@ function BriefBody({ data }: { data: ReturnType<typeof useDailyBriefQuery>['data
   const top = data.recommendations?.[0]
   return (
     <div className="flex flex-col gap-2">
-      <div className={`font-mono text-[10px] uppercase tracking-[0.18em] ${sevColor}`}>
+      <div className={`font-mono text-[10px] uppercase tracking-[0.08em] ${sevColor}`}>
         severity: {sev}
       </div>
       <div className="text-[14px] font-medium text-text-primary">{data.headline}</div>
@@ -206,7 +280,7 @@ function BriefBody({ data }: { data: ReturnType<typeof useDailyBriefQuery>['data
       )}
       {top && (
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             top recommendation · {top.kind}
           </div>
           <div className="mt-1 text-[13px] font-medium text-text-primary">{top.title}</div>
@@ -238,7 +312,7 @@ function CoachInsightCard() {
               <div className="text-[14px] font-medium text-text-primary">{top.headline}</div>
               <p className="text-[13px] leading-relaxed text-text-secondary">{top.evidence}</p>
               <div className="rounded-md bg-surface-2 p-2 text-[12px] text-text-primary">
-                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                   lever:
                 </span>{' '}
                 {top.lever}
@@ -246,7 +320,7 @@ function CoachInsightCard() {
               {top.deep_link && (
                 <Link
                   to={top.deep_link}
-                  className="inline-flex items-center gap-1 self-start font-mono text-[11px] uppercase tracking-[0.16em] text-text-secondary hover:text-text-primary"
+                  className="inline-flex items-center gap-1 self-start font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary"
                 >
                   открыть <ArrowRight className="h-3 w-3" />
                 </Link>
@@ -316,7 +390,7 @@ function AtlasWeakSpotsCard({ activeTrack }: { activeTrack: ActiveTrack }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     to={`/mock?focus=${encodeURIComponent(n.key)}&section=${encodeURIComponent(n.section)}&title=${encodeURIComponent(n.title)}`}
-                    className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/5 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-accent hover:bg-accent/10"
+                    className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/5 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-accent hover:bg-accent/10"
                   >
                     <Target className="h-3 w-3" /> mock
                   </Link>

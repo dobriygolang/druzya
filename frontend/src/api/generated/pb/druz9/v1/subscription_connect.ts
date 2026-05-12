@@ -10,8 +10,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AdminSetTierRequest, AdminSetTierResponse, GetMyTierRequest, GetMyTierResponse, GetQuotaRequest, GetTierByUserIDRequest, GetTierByUserIDResponse, QuotaSnapshot } from "./subscription_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import { AdminSetTierRequest, AdminSetTierResponse, CheckoutSessionResponse, CreateCheckoutSessionRequest, GetMyTierRequest, GetMyTierResponse, GetQuotaRequest, GetTierByUserIDRequest, GetTierByUserIDResponse, QuotaSnapshot, SetBYOKKeyRequest, TierInfo } from "./subscription_pb.js";
+import { Empty, MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service druz9.v1.SubscriptionService
@@ -66,6 +66,73 @@ export const SubscriptionService = {
       name: "GetQuota",
       I: GetQuotaRequest,
       O: QuotaSnapshot,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetTier — Stream-C MVP: возвращает эффективный tier + источник
+     * (free/pro/byok/tutor) + expiry. Это «правильная» проекция для UI:
+     * отличает paid Pro от BYOK-unlocked Pro, тогда как GetMyTier даёт
+     * только запись из subscriptions table.
+     *
+     * @generated from rpc druz9.v1.SubscriptionService.GetTier
+     */
+    getTier: {
+      name: "GetTier",
+      I: Empty,
+      O: TierInfo,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetBYOKKey — юзер приносит свой LLM API key. Сервер валидирует ключ
+     * против test-endpoint'а провайдера (1 token min request) и сохраняет
+     * в зашифрованном виде (AES-256-GCM, env BYOK_ENCRYPTION_KEY).
+     * Возвращает обновлённый TierInfo (source='byok' on success).
+     *
+     * @generated from rpc druz9.v1.SubscriptionService.SetBYOKKey
+     */
+    setBYOKKey: {
+      name: "SetBYOKKey",
+      I: SetBYOKKeyRequest,
+      O: TierInfo,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RemoveBYOKKey — снять BYOK-ключ. После этого юзер откатывается к
+     * прежнему source (free или paid Pro).
+     *
+     * @generated from rpc druz9.v1.SubscriptionService.RemoveBYOKKey
+     */
+    removeBYOKKey: {
+      name: "RemoveBYOKKey",
+      I: Empty,
+      O: TierInfo,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * CreateCheckoutSession — Stream-C Stripe MVP. Запускает Checkout flow:
+     * backend создаёт Session, фронт редиректит на checkout_url. После оплаты
+     * webhook checkout.session.completed выставляет tier=Pro.
+     *
+     * @generated from rpc druz9.v1.SubscriptionService.CreateCheckoutSession
+     */
+    createCheckoutSession: {
+      name: "CreateCheckoutSession",
+      I: CreateCheckoutSessionRequest,
+      O: CheckoutSessionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * CancelSubscription — отмена автопродления. Stripe выставляет
+     * cancel_at_period_end=true; до period_end юзер сохраняет Pro доступ.
+     * После period_end webhook customer.subscription.deleted откатит tier
+     * в Free.
+     *
+     * @generated from rpc druz9.v1.SubscriptionService.CancelSubscription
+     */
+    cancelSubscription: {
+      name: "CancelSubscription",
+      I: Empty,
+      O: Empty,
       kind: MethodKind.Unary,
     },
   }

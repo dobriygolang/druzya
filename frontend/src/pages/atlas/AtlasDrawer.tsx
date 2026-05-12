@@ -2,18 +2,21 @@
 //
 // Right-side drawer with rich detail for a selected node: state badge,
 // description, progress bar, decay/last-solved row, recommended kata,
-// prereq/unlock graph neighbours. Behaviour identical to the inline
-// version.
+// prereq/unlock graph neighbours. Mounted on top of the foundation Drawer
+// primitive (focus trap / ESC / scrim / portal centralized there).
 
-import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, BookOpen, Clock, Flame, Target, X } from 'lucide-react'
+
 import type { Atlas, AtlasNode, KataRef } from '../../lib/queries/profile'
 import { useSetAtlasNodePrefMutation } from '../../lib/queries/profile'
 import { humanizeDifficulty } from '../../lib/labels'
 import { Button } from '../../components/Button'
 import { AICoachPill } from '../../components/AICoachPill'
+import { Drawer } from '../../components/primitives/Drawer'
 import { useActiveStudyModeQuery, type ActiveTrack } from '../../lib/queries/honeSettings'
+import { openHoneFocusSession, isHoneDeepLinkSupported } from '../../lib/hone-handoff'
+import { useAtlasStrugglesQuery } from '../../lib/queries/intelligence'
 
 // pickPersonaForNode — выбирает AI-coach персону. mode='go' выигрывает над
 // section'ом (юзер явно сказал что в go-режиме). Иначе — по section'у узла.
@@ -60,14 +63,6 @@ export function AtlasDrawer({
   onClose: () => void
   onSelectNeighbour: (k: string) => void
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   const activeTrack = useActiveStudyModeQuery().data?.activeTrack ?? 'general'
   const setPref = useSetAtlasNodePrefMutation()
   const state = nodeState(node)
@@ -89,15 +84,8 @@ export function AtlasDrawer({
     .filter((n): n is AtlasNode => Boolean(n))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-end" role="dialog" aria-modal="true">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        role="button"
-        tabIndex={-1}
-        aria-label="Закрыть"
-      />
-      <aside className="relative h-full w-full max-w-[440px] overflow-y-auto bg-surface-1 shadow-card">
+    <Drawer open onClose={onClose} side="right" size="md" ariaLabel={node.title}>
+      <div className="flex h-full flex-col">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface-1 px-5 py-3">
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold uppercase ${stateBadgeClass(state)}`}>
             {STATE_LABEL[state]}
@@ -195,7 +183,7 @@ export function AtlasDrawer({
                 </div>
                 <Link
                   to={codexHref}
-                  className="inline-flex items-center gap-2 self-start rounded-md px-2 py-1 font-mono text-[11px] uppercase tracking-[0.16em] text-text-secondary hover:text-text-primary"
+                  className="inline-flex items-center gap-2 self-start rounded-md px-2 py-1 font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary"
                 >
                   <BookOpen className="h-3.5 w-3.5" /> Что почитать
                 </Link>
@@ -288,8 +276,73 @@ export function AtlasDrawer({
               )}
             </div>
           )}
+
+          {/* X5 (Phase J P2 2026-05-12): Hone handoff + struggle mark display.
+              "Practice in Hone" pre-fills focus.start with this node as goal.
+              If cross-product signals flagged this node as a struggle, surface
+              a discreet badge so the user understands why it's been highlighted
+              on the graph view too. */}
+          <AtlasDrawerHoneCTA nodeKey={node.key} nodeTitle={node.title ?? node.key} />
         </div>
-      </aside>
+      </div>
+    </Drawer>
+  )
+}
+
+// AtlasDrawerHoneCTA — Hone deep-link + struggle-mark indicator for the
+// currently selected node. Both pieces nil-safe; web-only browsers see
+// just the struggle pill, mobile sees nothing.
+function AtlasDrawerHoneCTA({ nodeKey, nodeTitle }: { nodeKey: string; nodeTitle: string }) {
+  const struggles = useAtlasStrugglesQuery(30).data ?? []
+  // Match by exact key OR by "node:<key>" anchor convention used by reflection
+  // pinned-task heuristic OR by "stage:<lowercased>" from Cue ingestion.
+  const struggleMark = struggles.find(
+    (s) =>
+      s.atlasNodeId === nodeKey ||
+      s.atlasNodeId === `node:${nodeKey.toLowerCase()}` ||
+      s.atlasNodeId === `stage:${nodeKey.toLowerCase()}`,
+  )
+  const onPractice = () => {
+    openHoneFocusSession({
+      goal: `node:${nodeKey.toLowerCase()}`,
+      mode: 'pomodoro',
+      duration: 25,
+      source: 'atlas_drawer',
+    })
+  }
+  if (!isHoneDeepLinkSupported() && !struggleMark) return null
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-4">
+      {struggleMark && (
+        <div className="flex items-start gap-2 rounded-md border border-dashed border-border bg-surface-1 px-3 py-2">
+          {/* Single red dot — strict B/W per CLAUDE.md design rule */}
+          <span
+            aria-hidden
+            className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ background: 'var(--red)' }}
+          />
+          <div className="flex flex-col gap-0.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+              flagged · {struggleMark.source.replace('_', ' ')}
+            </span>
+            {struggleMark.note && (
+              <span className="text-[12px] leading-snug text-text-secondary">
+                {struggleMark.note}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      {isHoneDeepLinkSupported() && (
+        <button
+          type="button"
+          onClick={onPractice}
+          className="self-start font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
+          title={`Открыть Hone и стартануть pomodoro на «${nodeTitle}»`}
+        >
+          Practice 25 min in Hone →
+        </button>
+      )}
     </div>
   )
 }
@@ -305,7 +358,7 @@ function KataItem({ k }: { k: KataRef }) {
     <li>
       <Link
         to={`/arena/kata/${encodeURIComponent(k.id)}`}
-        className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary transition-colors hover:border-border-strong"
+        className="card-lift flex items-center justify-between rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary hover:border-border-strong"
       >
         <div className="flex min-w-0 flex-col">
           <span className="truncate">{k.title}</span>

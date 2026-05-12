@@ -21,8 +21,14 @@
       "@connectrpc/connect": ["./node_modules/@connectrpc/connect"],
       "@connectrpc/connect/*": ["./node_modules/@connectrpc/connect/*"]
     },
-    "types": ["node"]
+    "types": ["node", "vitest/globals"]
   },
-  "include": ["src/main/**/*", "src/shared/**/*", "electron.vite.config.ts"],
+  "include": [
+    "src/main/**/*",
+    "src/shared/**/*",
+    "src/test/**/*",
+    "electron.vite.config.ts",
+    "vitest.config.ts"
+  ],
   "exclude": ["src/renderer/**/*", "out", "dist", "node_modules"]
 }

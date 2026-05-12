@@ -82,10 +82,11 @@ export function CodexPanel() {
             size="sm"
             variant="ghost"
             onClick={() => setShowCategoriesEditor((v) => !v)}
+            aria-expanded={showCategoriesEditor}
           >
             {showCategoriesEditor ? 'Скрыть категории' : 'Категории'}
           </Button>
-          <Button size="sm" onClick={() => setCreating((v) => !v)}>
+          <Button size="sm" onClick={() => setCreating((v) => !v)} aria-expanded={creating}>
             {creating ? 'Cancel' : '+ Новая статья'}
           </Button>
         </div>
@@ -101,7 +102,7 @@ export function CodexPanel() {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([cat, rows]) => (
           <section key={cat} className="rounded-lg border border-border bg-surface-1 p-3">
-            <h3 className="mb-2 font-mono text-[11px] uppercase tracking-wider text-text-secondary">
+            <h3 className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary">
               {cat} · {rows.length}
             </h3>
             <ul className="flex flex-col gap-1.5">
@@ -193,6 +194,7 @@ function ArticleRow({ a, categories }: { a: CodexArticle; categories: string[] }
           <button
             type="button"
             onClick={() => toggle.mutate({ id: a.id, active: !a.active })}
+            aria-pressed={a.active}
             className="rounded border border-border px-2 py-0.5 font-mono text-[10px] text-text-secondary hover:text-text-primary"
           >
             {a.active ? 'hide' : 'show'}
@@ -251,16 +253,16 @@ function Fields({
       <Field label="slug" v={body.slug} onChange={(v) => set('slug', v)} />
       <Field label="title" v={body.title} onChange={(v) => set('title', v)} />
       <label className="col-span-1 sm:col-span-2 flex flex-col gap-1">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">description</span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">description</span>
         <textarea
           value={body.description}
           onChange={(e) => set('description', e.target.value)}
           rows={2}
-          className="rounded-md border border-border bg-bg/40 px-2 py-1.5 text-[12px] text-text-primary"
+          className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] resize-y"
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">category</span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">category</span>
         <select
           value={body.category}
           onChange={(e) => set('category', e.target.value)}
@@ -294,11 +296,11 @@ function Field({
 }) {
   return (
     <label className={['flex flex-col gap-1', className].filter(Boolean).join(' ')}>
-      <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">{label}</span>
+      <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">{label}</span>
       <input
         value={v}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-border bg-bg/40 px-2 py-1.5 text-[12px] text-text-primary"
+        className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
       />
     </label>
   )
@@ -315,12 +317,12 @@ function NumField({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">{label}</span>
+      <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">{label}</span>
       <input
         type="number"
         value={v}
         onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="rounded-md border border-border bg-bg/40 px-2 py-1.5 text-[12px] text-text-primary"
+        className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 text-[12px] text-text-primary focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] focus:outline-none transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
       />
     </label>
   )
@@ -333,7 +335,7 @@ function CategoriesEditor({ categories }: { categories: CodexCategory[] }) {
   return (
     <section className="rounded-lg border border-text-primary/30 bg-text-primary/[0.03] p-3">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="font-mono text-[11px] uppercase tracking-wider text-text-secondary">
+        <h3 className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary">
           Категории · {categories.length}
         </h3>
         <Button size="sm" variant="ghost" onClick={() => setCreating((v) => !v)}>
@@ -463,6 +465,7 @@ function CategoryRow({ c }: { c: CodexCategory }) {
               type="checkbox"
               checked={draft.active}
               onChange={(e) => setDraft({ ...draft, active: e.target.checked })}
+              style={{ accentColor: 'rgb(var(--ink))' }}
             />
             <span className="font-mono text-[11px] text-text-secondary">active</span>
           </label>

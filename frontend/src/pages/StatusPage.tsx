@@ -50,41 +50,75 @@ function Hero({
   const cfg = heroConfigForStatus(status)
   const seconds = secondsAgo(generatedAt)
   return (
-    <div className="flex flex-col items-center justify-center gap-3.5 px-4 py-8 sm:px-8 lg:px-20 lg:py-10">
-      <div className={`grid h-24 w-24 place-items-center rounded-full ${cfg.bg}`} style={{ boxShadow: `inset 0 0 0 3px ${cfg.ring}` }}>
+    <div
+      className="flex flex-col items-center justify-center gap-3.5 px-4 py-10 sm:px-8 lg:px-20 lg:py-12"
+      style={{ borderBottom: '1px solid var(--hair)' }}
+    >
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em]"
+        style={{
+          background: 'rgba(var(--ink), 0.06)',
+          color: 'var(--ink-60)',
+        }}
+      >
+        <span
+          className="inline-block h-1 w-1 rounded-full"
+          style={{ background: 'var(--red)' }}
+          aria-hidden
+        />
+        STATUS · LIVE
+      </span>
+      <div
+        className={`grid h-24 w-24 place-items-center rounded-full ${cfg.bg}`}
+        style={{ boxShadow: `inset 0 0 0 3px ${cfg.ring}` }}
+      >
         {cfg.icon}
       </div>
       <h1 className={`font-display text-2xl lg:text-[32px] font-extrabold ${cfg.text} text-center`}>{cfg.title}</h1>
-      <p className="text-sm text-text-secondary">
-        Аптайм {uptime90d} за последние 90 дней · обновлено {seconds === null ? '—' : `${seconds} ${pluralizeSeconds(seconds)} назад`}
+      <p className="text-sm" style={{ color: 'var(--ink-60)' }}>
+        Аптайм{' '}
+        <span className="font-display tabular-nums" style={{ color: 'rgb(var(--ink))' }}>
+          {uptime90d}
+        </span>{' '}
+        за последние 90 дней · обновлено{' '}
+        {seconds === null ? '—' : `${seconds} ${pluralizeSeconds(seconds)} назад`}
       </p>
     </div>
   )
 }
 
 function heroConfigForStatus(s: string) {
+  // B/W rule: state-encoding via ink-ramp opacity stratification. Only
+  // critical (`down`) carries `var(--red)` — single accent, signal only.
+  // operational stays full ink; degraded drops to ink-60 ramp.
   switch (s) {
     case 'operational':
       return {
-        bg: 'bg-success/20',
-        ring: '#10B981',
-        text: 'text-success',
+        bg: 'bg-white/10',
+        ring: 'rgba(var(--ink), 0.9)',
+        text: 'text-text-primary',
         title: 'Все системы работают',
-        icon: <Check className="h-14 w-14 text-success" strokeWidth={3} />,
+        icon: <Check className="h-14 w-14" style={{ color: 'rgb(var(--ink))' }} strokeWidth={3} />,
       }
     case 'degraded':
       return {
-        bg: 'bg-warn/20',
-        ring: '#F59E0B',
-        text: 'text-warn',
+        bg: 'bg-white/5',
+        ring: 'rgba(var(--ink), 0.5)',
+        text: 'text-text-secondary',
         title: 'Частичная деградация',
-        icon: <AlertTriangle className="h-14 w-14 text-warn" strokeWidth={3} />,
+        icon: (
+          <AlertTriangle
+            className="h-14 w-14"
+            style={{ color: 'rgba(var(--ink), 0.6)' }}
+            strokeWidth={3}
+          />
+        ),
       }
     case 'down':
     default:
       return {
-        bg: 'bg-danger/20',
-        ring: '#FF3B30',
+        bg: 'bg-danger/10',
+        ring: 'var(--red)',
         text: 'text-danger',
         title: 'Перебои в работе',
         icon: <AlertCircle className="h-14 w-14 text-danger" strokeWidth={3} />,
@@ -121,9 +155,15 @@ function ServicesList({ services }: { services: StatusServiceState[] }) {
             className="flex flex-col gap-3 border-b border-border/50 px-4 py-3.5 last:border-0 sm:flex-row sm:items-center sm:gap-4 sm:px-6"
           >
             <span
-              className={`h-2.5 w-2.5 rounded-full ${
-                s.status === 'operational' ? 'bg-success' : s.status === 'degraded' ? 'bg-warn' : 'bg-danger'
-              }`}
+              className="h-2.5 w-2.5 rounded-full"
+              style={{
+                background:
+                  s.status === 'operational'
+                    ? 'rgb(var(--ink))'
+                    : s.status === 'degraded'
+                    ? 'rgba(var(--ink), 0.45)'
+                    : 'var(--red)',
+              }}
             />
             <div className="flex w-44 flex-col">
               <span className="text-sm font-semibold text-text-primary">{s.name}</span>
@@ -136,17 +176,29 @@ function ServicesList({ services }: { services: StatusServiceState[] }) {
               {bars.map((b, i) => (
                 <span
                   key={i}
-                  className={`h-6 w-[3px] rounded-sm ${
-                    b === 'ok' ? 'bg-success' : b === 'degraded' ? 'bg-warn' : 'bg-danger'
-                  }`}
+                  className="h-6 w-[3px] rounded-sm"
+                  style={{
+                    background:
+                      b === 'ok'
+                        ? 'rgba(var(--ink), 0.85)'
+                        : b === 'degraded'
+                        ? 'rgba(var(--ink), 0.4)'
+                        : 'var(--red)',
+                  }}
                 />
               ))}
             </div>
             <div className="flex w-28 flex-col items-end">
               <span
-                className={`font-mono text-sm font-semibold ${
-                  s.status === 'operational' ? 'text-success' : s.status === 'degraded' ? 'text-warn' : 'text-danger'
-                }`}
+                className="font-mono text-sm font-semibold"
+                style={{
+                  color:
+                    s.status === 'operational'
+                      ? 'rgb(var(--ink))'
+                      : s.status === 'degraded'
+                      ? 'rgba(var(--ink), 0.6)'
+                      : 'var(--red)',
+                }}
               >
                 {s.uptime30d}
               </span>
@@ -236,14 +288,18 @@ function IncidentsCard({ incidents }: { incidents: StatusIncident[] }) {
 }
 
 function severityChip(sev: string): string {
+  // Severity encoding via ink-ramp + single red signal:
+  //  critical → red (the only accent in b/w palette)
+  //  major    → ink-secondary
+  //  minor    → ink-muted
   switch (sev) {
     case 'critical':
       return 'bg-danger/15 text-danger'
     case 'major':
-      return 'bg-warn/15 text-warn'
+      return 'bg-white/10 text-text-primary'
     case 'minor':
     default:
-      return 'bg-text-primary/10 text-text-secondary'
+      return 'bg-text-primary/5 text-text-secondary'
   }
 }
 

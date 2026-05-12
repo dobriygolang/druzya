@@ -54,20 +54,10 @@ func (a TranscriptionTokenVerifier) Verify(raw string) (uuid.UUID, error) {
 	return parseSubject(a.Issuer, raw)
 }
 
-// WhiteboardTokenVerifier — implements whiteboard_rooms/ports.Verifier.
-type WhiteboardTokenVerifier struct{ Issuer *authApp.TokenIssuer }
-
-func (a WhiteboardTokenVerifier) Verify(raw string) (uuid.UUID, error) {
-	return parseSubject(a.Issuer, raw)
-}
-
-func (a WhiteboardTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, error) {
-	return parseSubjectScoped(a.Issuer, raw, expectedScope)
-}
-
-func (a WhiteboardTokenVerifier) VerifyScopedFull(raw, expectedScope string) (uuid.UUID, string, string, error) {
-	return parseSubjectScopedFull(a.Issuer, raw, expectedScope)
-}
+// WhiteboardTokenVerifier removed 2026-05-12 (D4/Stream F) — WS handshake
+// gone; whiteboard solo mode uses standard Connect-RPC auth.
+// EditorTokenVerifier также станет unused когда editor WS теплится off;
+// см. cmd/monolith/services/editor/editor.go.
 
 func parseSubject(issuer *authApp.TokenIssuer, raw string) (uuid.UUID, error) {
 	claims, err := issuer.Parse(raw)

@@ -42,11 +42,11 @@ export default function TutorStudentPage() {
         <header className="flex flex-col gap-2">
           <Link
             to="/tutor"
-            className="font-mono text-[12px] tracking-[0.2em] text-text-muted hover:text-text-primary"
+            className="font-mono text-[12px] tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
           >
             ← Tutor dashboard
           </Link>
-          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-text-muted">
+          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
             Student · {studentId ? studentId.slice(0, 8) : '—'}
           </span>
           <h1 className="font-display text-3xl font-bold leading-tight">
@@ -99,12 +99,26 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`-mb-px border-b-2 px-3 py-2 text-sm transition ${
+      aria-pressed={active}
+      className={`relative -mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${
         active
           ? 'border-text-primary text-text-primary'
           : 'border-transparent text-text-muted hover:text-text-secondary'
       }`}
     >
+      {active && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 8,
+            top: 6,
+            width: 1.5,
+            height: 14,
+            background: 'var(--red)',
+          }}
+        />
+      )}
       {children}
     </button>
   )
@@ -157,7 +171,7 @@ function SnapshotBody({ snapshot }: { snapshot: TutorStudentSnapshot }) {
       </div>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           English mocks
         </div>
         {snapshot.english_mocks_count === 0 ? (
@@ -182,7 +196,7 @@ function SnapshotBody({ snapshot }: { snapshot: TutorStudentSnapshot }) {
       </Card>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           English-track activity (Hone)
         </div>
         {hasNoEnglishActivity(snapshot) ? (
@@ -236,7 +250,7 @@ function SnapshotBody({ snapshot }: { snapshot: TutorStudentSnapshot }) {
       </Card>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           Weak spots {snapshot.weak_spots.length > 0 ? `· ${snapshot.weak_spots.length}` : ''}
         </div>
         {snapshot.weak_spots.length === 0 ? (
@@ -276,7 +290,7 @@ function WeakSpotRow({ spot }: { spot: TutorWeakSpot }) {
     <li className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
         <div className="text-sm text-text-primary truncate">{spot.title || spot.node_key}</div>
-        <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           {spot.node_key}
         </div>
       </div>
@@ -332,14 +346,14 @@ function BriefPane({ studentId }: { studentId: string | undefined }) {
       <SnapshotBody snapshot={snapshot} />
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="flex items-center justify-between">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             AI narrative
           </div>
           <button
             type="button"
             onClick={() => q.refetch()}
             disabled={q.isFetching}
-            className="rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary hover:border-text-primary hover:text-text-primary disabled:opacity-50"
+            className="rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-text-primary hover:text-text-primary disabled:opacity-50"
           >
             {q.isFetching ? 'Обновляем…' : 'Обновить'}
           </button>
@@ -385,7 +399,7 @@ function Stat({
           : 'text-text-primary'
   return (
     <div className="rounded-lg border border-border bg-surface-2 px-3 py-2.5">
-      <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{label}</div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">{label}</div>
       <div className={`mt-0.5 text-base tabular-nums ${valueColor}`}>{value}</div>
       {sub && <div className="font-mono text-[9px] text-text-muted">{sub}</div>}
     </div>
@@ -403,9 +417,24 @@ function PendingCard({ label }: { label: string }) {
 
 function ErrorCard({ message }: { message: string }) {
   return (
-    <Card className="flex-col gap-1 border-danger/40 bg-danger/5 p-4" interactive={false}>
-      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-danger">Ошибка</div>
-      <p className="text-[13px] leading-relaxed text-text-secondary">{message}</p>
+    <Card className="flex-row items-start gap-3 p-4" interactive={false}>
+      <span
+        aria-hidden="true"
+        style={{
+          display: 'inline-block',
+          width: 1.5,
+          minHeight: 36,
+          background: 'var(--red)',
+          marginTop: 2,
+          flex: '0 0 auto',
+        }}
+      />
+      <div className="flex flex-1 flex-col gap-1">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--red)' }}>
+          Ошибка
+        </div>
+        <p className="text-[13px] leading-relaxed text-text-secondary">{message}</p>
+      </div>
     </Card>
   )
 }
@@ -471,7 +500,7 @@ function PushAssignmentForm({ studentId }: { studentId: string }) {
 
   return (
     <Card className="flex-col gap-3 p-4" interactive={false}>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+      <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         Push assignment
       </div>
       <form onSubmit={submit} className="flex flex-col gap-3">
@@ -481,7 +510,7 @@ function PushAssignmentForm({ studentId }: { studentId: string }) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Read chapter 4 — The Black Swan"
           maxLength={240}
-          className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+          className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
           required
         />
         <textarea
@@ -490,17 +519,17 @@ function PushAssignmentForm({ studentId }: { studentId: string }) {
           placeholder="Optional: instructions, links, focus questions…"
           rows={4}
           maxLength={8000}
-          className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
+          className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
         />
         <label className="flex items-center gap-3 text-sm text-text-secondary">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted shrink-0">
+          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted shrink-0">
             Due (optional)
           </span>
           <input
             type="datetime-local"
             value={due}
             onChange={(e) => setDue(e.target.value)}
-            className="rounded-md border border-border bg-surface-2 px-2 py-1 text-sm text-text-primary"
+            className="border-b border-[var(--hair-2)] bg-transparent px-1 py-1 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
           />
         </label>
         <div className="flex items-center gap-3">
@@ -585,12 +614,12 @@ function AssignmentRow({
           )}
         </div>
         <span
-          className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider ${statusBadge.cls}`}
+          className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] ${statusBadge.cls}`}
         >
           {statusBadge.label}
         </span>
       </div>
-      <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+      <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         {assignment.due_at && (
           <span>due {new Date(assignment.due_at).toLocaleDateString()}</span>
         )}
@@ -602,7 +631,7 @@ function AssignmentRow({
             type="button"
             onClick={onArchive}
             disabled={archiving}
-            className="ml-auto rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn hover:bg-warn/10 disabled:opacity-50"
+            className="ml-auto rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-warn/10 disabled:opacity-50"
           >
             Архивировать
           </button>
@@ -659,7 +688,7 @@ function EnglishPane({ studentId }: { studentId: string | undefined }) {
   return (
     <section className="flex flex-col gap-4">
       <Card className="flex-col gap-3 p-4" interactive={false}>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           English mocks (HR)
         </div>
         {s.english_mocks_count === 0 ? (
@@ -684,7 +713,7 @@ function EnglishPane({ studentId }: { studentId: string | undefined }) {
       </Card>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           Reading
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -695,7 +724,7 @@ function EnglishPane({ studentId }: { studentId: string | undefined }) {
       </Card>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           Vocabulary (SRS)
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -705,7 +734,7 @@ function EnglishPane({ studentId }: { studentId: string | undefined }) {
       </Card>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           Writing & Listening
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -715,15 +744,28 @@ function EnglishPane({ studentId }: { studentId: string | undefined }) {
       </Card>
 
       {noActivity && (
-        <div className="rounded-xl border border-warn/30 bg-warn/5 p-4">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-warn">
-            Студент пока не пользуется Hone English
+        <div className="flex items-start gap-3 rounded-xl border border-border bg-surface-1 p-4">
+          <span
+            aria-hidden="true"
+            style={{
+              display: 'inline-block',
+              width: 1.5,
+              minHeight: 36,
+              background: 'var(--red)',
+              marginTop: 2,
+              flex: '0 0 auto',
+            }}
+          />
+          <div className="flex flex-1 flex-col gap-1">
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
+              Студент пока не пользуется Hone English
+            </div>
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              На сессии покажи hotkey'и: <b>R</b> (Reading), <b>L</b> (Listening). Загружай
+              paste/PDF/URL — кликом на слово сохраняется vocab. Через <b>Reading library</b>
+              на dashboard'е можешь шарнуть материалы сразу всем студентам.
+            </p>
           </div>
-          <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
-            На сессии покажи hotkey'и: <b>R</b> (Reading), <b>L</b> (Listening). Загружай
-            paste/PDF/URL — кликом на слово сохраняется vocab. Через <b>Reading library</b>
-            на dashboard'е можешь шарнуть материалы сразу всем студентам.
-          </p>
         </div>
       )}
     </section>
@@ -801,7 +843,7 @@ function NotesPane({ studentId }: { studentId: string | undefined }) {
     <section className="flex flex-col gap-3">
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="flex items-center justify-between">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             Личные заметки тутора
           </div>
           <SaveStatus pending={m.isPending} savedAt={savedAt} />
@@ -817,7 +859,7 @@ function NotesPane({ studentId }: { studentId: string | undefined }) {
           placeholder={
             '## 2026-05-04 1:1\n- Прошли present perfect (текущая боль — for/since)\n- Домашка: IELTS task 1, 2 примера\n- Запросил TED talk на B2 уровне\n'
           }
-          className="w-full resize-y rounded-md border border-border bg-surface-2 px-3 py-2 font-mono text-[13px] leading-relaxed text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+          className="w-full resize-y border-b border-[var(--hair-2)] bg-transparent px-1 py-2 font-mono text-[13px] leading-relaxed text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
         />
       </Card>
     </section>
@@ -833,20 +875,20 @@ function SaveStatus({
 }) {
   if (pending) {
     return (
-      <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+      <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         <Loader2 className="h-3 w-3 animate-spin" /> save…
       </span>
     )
   }
   if (!savedAt) {
     return (
-      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         не сохранено
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+    <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
       <Check className="h-3 w-3 text-accent" /> {formatRelative(savedAt)}
     </span>
   )

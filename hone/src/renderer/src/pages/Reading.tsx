@@ -130,7 +130,7 @@ export function ReadingPage() {
       style={{
         position: 'absolute',
         inset: 0,
-        animationDuration: '320ms',
+        animationDuration: 'var(--motion-dur-large)',
         display: 'flex',
         flexDirection: 'row',
       }}
@@ -205,7 +205,7 @@ function LibraryPane({ state, activeId, onAdd, onOpen, onArchive, onRefresh }: L
           className="mono"
           style={{
             fontSize: 10,
-            letterSpacing: '0.24em',
+            letterSpacing: '0.08em',
             color: 'var(--ink-40)',
           }}
         >
@@ -235,12 +235,53 @@ function LibraryPane({ state, activeId, onAdd, onOpen, onArchive, onRefresh }: L
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 16px' }}>
         {state.status === 'loading' && (
-          <p style={{ color: 'var(--ink-40)', fontSize: 12, padding: '8px 12px' }}>Loading…</p>
+          <ul
+            aria-busy="true"
+            aria-label="Loading materials"
+            style={{ listStyle: 'none', padding: 0, margin: 0 }}
+          >
+            {/* CI1: height-stable skeleton matching the .reading-item layout
+             * (одна строка title + одна строка meta) — нет CLS прыжка между
+             * loading→ok состояниями. */}
+            {Array.from({ length: 4 }).map((_, i) => (
+              <li key={i} style={{ padding: '10px 12px', margin: '2px 0' }}>
+                <div
+                  style={{
+                    height: 13,
+                    width: '70%',
+                    background: 'rgba(255,255,255,0.04)',
+                    borderRadius: 4,
+                    marginBottom: 8,
+                  }}
+                />
+                <div
+                  style={{
+                    height: 10,
+                    width: '40%',
+                    background: 'rgba(255,255,255,0.03)',
+                    borderRadius: 4,
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
         )}
         {state.status === 'error' && (
-          <p style={{ color: 'var(--ink-60)', fontSize: 12, padding: '8px 12px' }}>
-            {state.error}
-          </p>
+          // CI1: stripe + retry button (was plain text label — silent dead end).
+          <div className="data-loader-error" style={{ margin: '8px 12px' }}>
+            <div className="data-loader-error-stripe" />
+            <div className="data-loader-error-body">
+              <div className="data-loader-error-label">Library не загрузилась</div>
+              <div className="data-loader-error-detail">{state.error}</div>
+              <button
+                type="button"
+                className="data-loader-error-retry focus-ring motion-press"
+                onClick={onRefresh}
+              >
+                retry
+              </button>
+            </div>
+          </div>
         )}
         {state.status === 'ok' && state.materials.length === 0 && (
           <div style={{ padding: '12px 12px', color: 'var(--ink-40)', fontSize: 12 }}>
@@ -257,6 +298,8 @@ function LibraryPane({ state, activeId, onAdd, onOpen, onArchive, onRefresh }: L
                 <button
                   type="button"
                   onClick={() => onOpen(m)}
+                  aria-current={isActive ? 'page' : undefined}
+                  aria-pressed={isActive}
                   style={{
                     width: '100%',
                     textAlign: 'left',
@@ -286,7 +329,7 @@ function LibraryPane({ state, activeId, onAdd, onOpen, onArchive, onRefresh }: L
                     style={{
                       marginTop: 4,
                       fontSize: 10,
-                      letterSpacing: '0.12em',
+                      letterSpacing: '0.08em',
                       color: 'var(--ink-40)',
                       display: 'flex',
                       gap: 8,
@@ -337,7 +380,7 @@ function WelcomePane({ onAdd }: { onAdd: () => void }) {
         className="mono"
         style={{
           fontSize: 10,
-          letterSpacing: '0.24em',
+          letterSpacing: '0.08em',
           color: 'var(--ink-40)',
           marginBottom: 4,
         }}
@@ -434,7 +477,7 @@ function AddMaterialForm({ onCancel, onAdded }: AddMaterialFormProps) {
         className="mono"
         style={{
           fontSize: 10,
-          letterSpacing: '0.24em',
+          letterSpacing: '0.08em',
           color: 'var(--ink-40)',
           marginBottom: 4,
         }}
@@ -456,7 +499,7 @@ function AddMaterialForm({ onCancel, onAdded }: AddMaterialFormProps) {
       <fieldset style={{ border: 'none', padding: 0, margin: '24px 0 12px' }}>
         <legend
           className="mono"
-          style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--ink-40)', marginBottom: 8 }}
+          style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-40)', marginBottom: 8 }}
         >
           SOURCE
         </legend>
@@ -474,7 +517,7 @@ function AddMaterialForm({ onCancel, onAdded }: AddMaterialFormProps) {
                 padding: '4px 12px',
                 borderRadius: 999,
                 fontSize: 10,
-                letterSpacing: '0.16em',
+                letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
               }}
@@ -576,7 +619,7 @@ const labelStyle: React.CSSProperties = { display: 'block', marginTop: 14 };
 const labelTextStyle: React.CSSProperties = {
   display: 'block',
   fontSize: 10,
-  letterSpacing: '0.16em',
+  letterSpacing: '0.08em',
   color: 'var(--ink-40)',
   marginBottom: 6,
   fontFamily: 'ui-monospace, SFMono-Regular, monospace',
@@ -787,7 +830,7 @@ function Reader({ material, session, onExit }: ReaderProps) {
               className="mono"
               style={{
                 fontSize: 10,
-                letterSpacing: '0.24em',
+                letterSpacing: '0.08em',
                 color: 'var(--ink-40)',
                 marginBottom: 4,
               }}
@@ -835,7 +878,7 @@ function Reader({ material, session, onExit }: ReaderProps) {
               className="mono"
               style={{
                 fontSize: 10,
-                letterSpacing: '0.16em',
+                letterSpacing: '0.08em',
                 color: 'var(--ink-40)',
                 marginBottom: 8,
               }}
@@ -919,7 +962,7 @@ function SavedVocabPanel({ items }: { items: VocabEntry[] }) {
         className="mono"
         style={{
           fontSize: 10,
-          letterSpacing: '0.18em',
+          letterSpacing: '0.08em',
           color: 'var(--ink-40)',
           marginBottom: 10,
           display: 'flex',
@@ -1000,7 +1043,7 @@ function ScoreResultPanel({ score, onClose }: { score: number; onClose: () => vo
     >
       <div
         className="mono"
-        style={{ fontSize: 9, letterSpacing: '0.2em', color: 'var(--ink-40)', marginBottom: 4 }}
+        style={{ fontSize: 9, letterSpacing: '0.08em', color: 'var(--ink-40)', marginBottom: 4 }}
       >
         AI SUMMARY SCORE
       </div>
@@ -1077,7 +1120,7 @@ function Paragraph({ text, onWordClick }: { text: string; onWordClick: ReaderBod
                 cursor: 'pointer',
                 borderRadius: 3,
                 padding: '0 1px',
-                transition: 'background 80ms',
+                transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard)',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -1177,7 +1220,7 @@ function VocabPopoverInput({ popover, onSave, onCancel }: VocabPopoverInputProps
         if (e.key === 'Escape') onCancel();
       }}
     >
-      <div className="mono" style={{ fontSize: 9, letterSpacing: '0.2em', color: 'var(--ink-40)' }}>
+      <div className="mono" style={{ fontSize: 9, letterSpacing: '0.08em', color: 'var(--ink-40)' }}>
         ADD TO SRS
       </div>
       <div
@@ -1284,7 +1327,7 @@ function SrsReviewWidget({ onChanged }: SrsReviewWidgetProps) {
           fontSize: 11,
         }}
       >
-        <div className="mono" style={{ letterSpacing: '0.16em', fontSize: 9, marginBottom: 4 }}>
+        <div className="mono" style={{ letterSpacing: '0.08em', fontSize: 9, marginBottom: 4 }}>
           SRS · DAILY
         </div>
         Очередь пуста. Кликай по словам в reader'е чтобы её наполнить.
@@ -1304,7 +1347,7 @@ function SrsReviewWidget({ onChanged }: SrsReviewWidgetProps) {
       <div
         className="mono"
         style={{
-          letterSpacing: '0.16em',
+          letterSpacing: '0.08em',
           fontSize: 9,
           color: 'var(--ink-40)',
           marginBottom: 8,

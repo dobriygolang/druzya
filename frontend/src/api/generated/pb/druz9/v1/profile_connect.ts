@@ -11,7 +11,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AIVacanciesModel, AllocateAtlasSkillRequest, AllocateAtlasSkillResponse, ApproveInterviewerApplicationRequest, BecomeInterviewerRequest, ClassifyAtlasTodoRequest, ClassifyAtlasTodoResponse, GetAIVacanciesModelRequest, GetMyAtlasRequest, GetMyInterviewerApplicationRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetUserTracksRequest, GetWeeklyShareRequest, InterviewerApplication, InterviewerApplicationList, ListInterviewerApplicationsRequest, ProfileFull, ProfilePublic, ProfileSettings, RejectInterviewerApplicationRequest, SetAIVacanciesModelRequest, SetAtlasNodePrefRequest, SetAtlasNodePrefResponse, SetUserTracksRequest, SkillAtlas, UpdateProfileSettingsRequest, UserTracks, WeeklyReport } from "./profile_pb.js";
+import { AllocateAtlasSkillRequest, AllocateAtlasSkillResponse, ApproveInterviewerApplicationRequest, BecomeInterviewerRequest, ClassifyAtlasTodoRequest, ClassifyAtlasTodoResponse, GetInstalledAppsRequest, GetInstalledAppsResponse, GetMyAtlasRequest, GetMyInterviewerApplicationRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetUserTracksRequest, GetWeeklyShareRequest, InterviewerApplication, InterviewerApplicationList, ListInterviewerApplicationsRequest, ProfileFull, ProfilePublic, ProfileSettings, RecordAppInstallRequest, RecordAppInstallResponse, RejectInterviewerApplicationRequest, SetAtlasNodePrefRequest, SetAtlasNodePrefResponse, SetUserTracksRequest, SkillAtlas, UpdateProfileSettingsRequest, UserTracks, WeeklyReport } from "./profile_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -169,30 +169,6 @@ export const ProfileService = {
       kind: MethodKind.Unary,
     },
     /**
-     * GetAIVacanciesModel returns the user's chosen LLM for the AI vacancy
-     * recommender. Empty string means "server default".
-     *
-     * @generated from rpc druz9.v1.ProfileService.GetAIVacanciesModel
-     */
-    getAIVacanciesModel: {
-      name: "GetAIVacanciesModel",
-      I: GetAIVacanciesModelRequest,
-      O: AIVacanciesModel,
-      kind: MethodKind.Unary,
-    },
-    /**
-     * SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
-     * to clear the override and fall back to the server default.
-     *
-     * @generated from rpc druz9.v1.ProfileService.SetAIVacanciesModel
-     */
-    setAIVacanciesModel: {
-      name: "SetAIVacanciesModel",
-      I: SetAIVacanciesModelRequest,
-      O: AIVacanciesModel,
-      kind: MethodKind.Unary,
-    },
-    /**
      * GetUserTracks returns the caller's active tracks (multi-track Atlas,
      * см docs/feature/tracks.md). New users get an empty list and must
      * pass through onboarding-fork; existing users were backfilled in
@@ -242,6 +218,34 @@ export const ProfileService = {
       name: "SetAtlasNodePref",
       I: SetAtlasNodePrefRequest,
       O: SetAtlasNodePrefResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RecordAppInstall — Phase J / X1 (P0). Fired by web/hone/cue on launch
+     * (idempotent heartbeat). Server uses ON CONFLICT (user_id, app) DO UPDATE
+     * SET last_seen_at = now(). First row across all three apps flips a
+     * free-tier user into a 7d Pro trial via subscription.grant_trial_pro.
+     *
+     * @generated from rpc druz9.v1.ProfileService.RecordAppInstall
+     */
+    recordAppInstall: {
+      name: "RecordAppInstall",
+      I: RecordAppInstallRequest,
+      O: RecordAppInstallResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetInstalledApps — Phase J / X1 (P0). Reads the user's install matrix.
+     * Hone uses this to decide whether to show «install Cue» suggestion after
+     * a completed focus session; web reads it to surface cross-app CTAs in
+     * /all-set and Settings.
+     *
+     * @generated from rpc druz9.v1.ProfileService.GetInstalledApps
+     */
+    getInstalledApps: {
+      name: "GetInstalledApps",
+      I: GetInstalledAppsRequest,
+      O: GetInstalledAppsResponse,
       kind: MethodKind.Unary,
     },
   }

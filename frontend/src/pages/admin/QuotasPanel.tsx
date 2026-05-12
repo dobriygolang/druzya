@@ -63,7 +63,7 @@ function TierCard({ tier, initial }: { tier: Tier; initial: QuotaPolicy }) {
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-4">
       <div className="flex items-center justify-between border-b border-border pb-2">
         <h3 className="font-display text-base font-bold text-text-primary">{TIER_LABEL[tier]}</h3>
-        <span className="font-mono text-[10px] tracking-[0.16em] text-text-muted uppercase">
+        <span className="font-mono text-[10px] tracking-[0.08em] text-text-muted uppercase">
           quota_policy.{tier}
         </span>
       </div>
@@ -140,7 +140,7 @@ function NumberField({
           const n = Number.parseInt(t, 10)
           if (!Number.isNaN(n)) onChange(n)
         }}
-        className="rounded-md border border-border bg-surface-2 px-2 py-1.5 font-mono text-[13px] text-text-primary outline-none focus:border-text-primary"
+        className="border-0 border-b border-[var(--hair-2)] bg-transparent rounded-none px-0 py-2 font-mono text-[13px] text-text-primary outline-none focus:border-[rgb(var(--ink))] focus:border-b-[1.5px] transition-[border-color] duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)]"
       />
       <span className="text-[11px] text-text-muted">{hint}</span>
     </label>
