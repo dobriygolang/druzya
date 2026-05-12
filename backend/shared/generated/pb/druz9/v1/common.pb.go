@@ -85,6 +85,24 @@ const (
 	// middle/senior ML позиций. Classical ML, deep learning, LLM/GenAI,
 	// MLOps, evaluation + production awareness.
 	Section_SECTION_ML_ENG Section = 13
+	// ML System Design — M2 Phase K (vertical analysis 2026-05-12).
+	// Granular ML system design stage отдельно от generic ml_eng для
+	// FAANG/RU ML pipeline'ов: recsys / ranking / training pipeline /
+	// real-time inference architecture. Free-form, non-task-based.
+	// Maps to skill_radar mle.ml_system_design axis.
+	Section_SECTION_ML_SYSTEM_DESIGN Section = 14
+	// ML Coding — M2 Phase K. Hands-on Python+numpy/pandas/scikit OR
+	// PyTorch coding round. Model implementation, vectorization,
+	// gradient flow, batch design — distinct from generic algorithms
+	// (LeetCode-style). Free-form, non-task-based в MVP.
+	// Maps to skill_radar mle.practical_implementation axis.
+	Section_SECTION_ML_CODING Section = 15
+	// ML Theory — M2 Phase K. Quiz-style deep learning fundamentals:
+	// attention math, BatchNorm vs LayerNorm, optimizers, gradient
+	// flow, regularization. Pull'ит theoretical-depth axis в isolation
+	// от system-design / production. Free-form, non-task-based.
+	// Maps to skill_radar mle.theoretical_depth axis.
+	Section_SECTION_ML_THEORY Section = 16
 )
 
 // Enum value maps for Section.
@@ -104,6 +122,9 @@ var (
 		11: "SECTION_QA",
 		12: "SECTION_DEVOPS",
 		13: "SECTION_ML_ENG",
+		14: "SECTION_ML_SYSTEM_DESIGN",
+		15: "SECTION_ML_CODING",
+		16: "SECTION_ML_THEORY",
 	}
 	Section_value = map[string]int32{
 		"SECTION_UNSPECIFIED":          0,
@@ -120,6 +141,9 @@ var (
 		"SECTION_QA":                   11,
 		"SECTION_DEVOPS":               12,
 		"SECTION_ML_ENG":               13,
+		"SECTION_ML_SYSTEM_DESIGN":     14,
+		"SECTION_ML_CODING":            15,
+		"SECTION_ML_THEORY":            16,
 	}
 )
 
@@ -931,7 +955,7 @@ var File_druz9_v1_common_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x15druz9/v1/common.proto\x12\bdruz9.v1*\xcf\x02\n" +
+	"\x15druz9/v1/common.proto\x12\bdruz9.v1*\x9b\x03\n" +
 	"\aSection\x12\x17\n" +
 	"\x13SECTION_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SECTION_ALGORITHMS\x10\x01\x12\x0f\n" +
@@ -949,7 +973,10 @@ const file_druz9_v1_common_proto_rawDesc = "" +
 	"\n" +
 	"SECTION_QA\x10\v\x12\x12\n" +
 	"\x0eSECTION_DEVOPS\x10\f\x12\x12\n" +
-	"\x0eSECTION_ML_ENG\x10\r*i\n" +
+	"\x0eSECTION_ML_ENG\x10\r\x12\x1c\n" +
+	"\x18SECTION_ML_SYSTEM_DESIGN\x10\x0e\x12\x15\n" +
+	"\x11SECTION_ML_CODING\x10\x0f\x12\x15\n" +
+	"\x11SECTION_ML_THEORY\x10\x10*i\n" +
 	"\n" +
 	"Difficulty\x12\x1a\n" +
 	"\x16DIFFICULTY_UNSPECIFIED\x10\x00\x12\x13\n" +

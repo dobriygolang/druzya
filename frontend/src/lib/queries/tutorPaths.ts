@@ -104,3 +104,53 @@ export function useArchiveReadingPathMutation() {
     },
   })
 }
+
+// ── Path assignments (Phase K T2, 2026-05-12) ─────────────────────────
+
+export type TutorPathAssignment = {
+  id: string
+  path_id: string
+  tutor_id: string
+  student_id: string
+  current_step: number
+  total_steps: number
+  assigned_at?: string
+  completed_at?: string
+  archived_at?: string
+  snapshot_atlas_node_keys: string[]
+  snapshot_resource_ids: string[]
+  path_name: string
+  tutor_display_name: string
+}
+
+type AssignVars = {
+  path_id: string
+  student_id: string
+  starting_step?: number
+}
+
+type AssignResponse = {
+  assignment: TutorPathAssignment
+  assignments_created: number
+}
+
+export function useAssignReadingPathMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: AssignVars) =>
+      api<AssignResponse>(`/tutor/paths/${encodeURIComponent(vars.path_id)}/assign`, {
+        method: 'POST',
+        body: JSON.stringify({
+          path_id: vars.path_id,
+          student_id: vars.student_id,
+          starting_step: vars.starting_step ?? 0,
+        }),
+      }),
+    onSuccess: () => {
+      // Bump assigned_count on the source path → invalidate path list.
+      qc.invalidateQueries({ queryKey: ['tutor', 'paths'] })
+      // Student's pending assignments list will refresh on their next
+      // page load — no shared cache key between tutor + student sessions.
+    },
+  })
+}

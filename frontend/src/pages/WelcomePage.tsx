@@ -456,6 +456,13 @@ function Tracks() {
       status: 'live',
     },
     {
+      id: 'ml',
+      title: 'ML Engineering',
+      sub: 'Senior ML/MLE — classical ML, DL, transformers, LLM/GenAI, ML system design, MLOps. 9-step curated path + 5-axis radar + ml-coach с памятью.',
+      tags: ['MLE mock pipeline', 'ML Atlas (11 узлов)', 'ml-coach'],
+      status: 'live',
+    },
+    {
       id: 'english',
       title: 'English',
       sub: 'Не Duolingo. Дисциплина-слой между тобой и твоим тутром.',
@@ -498,7 +505,7 @@ function Tracks() {
         margin: '16px 0 0', fontSize: 'clamp(34px, 5vw, 56px)', fontWeight: 400,
         letterSpacing: '-0.025em', lineHeight: 1.05,
       }}>
-        Один продукт.<br />Семь треков.
+        Один продукт.<br />Восемь треков.
       </h2>
       <p style={{ margin: '18px 0 0', fontSize: 15, color: 'var(--ink-60)', maxWidth: 620, lineHeight: 1.55 }}>
         Multi-track Atlas: можно держать «Senior dev + English» как

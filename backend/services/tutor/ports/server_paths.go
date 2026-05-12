@@ -128,6 +128,122 @@ func (s *TutorServer) ArchiveReadingPath(
 	return connect.NewResponse(&pb.TutorArchiveReadingPathResponse{}), nil
 }
 
+// ── Path assignments (Phase K T2+T3, 2026-05-12) ──────────────────────
+
+func (s *TutorServer) AssignReadingPath(
+	ctx context.Context,
+	req *connect.Request[pb.TutorAssignReadingPathRequest],
+) (*connect.Response[pb.TutorAssignReadingPathResponse], error) {
+	if s.AssignReadingPathUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("AssignReadingPath not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	pathID, err := uuid.Parse(req.Msg.GetPathId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("path_id: %w", err))
+	}
+	studentID, err := uuid.Parse(req.Msg.GetStudentId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("student_id: %w", err))
+	}
+	out, err := s.AssignReadingPathUC.Do(ctx, app.AssignReadingPathInput{
+		TutorID:      uid,
+		StudentID:    studentID,
+		PathID:       pathID,
+		StartingStep: int(req.Msg.GetStartingStep()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("tutor.AssignReadingPath: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorAssignReadingPathResponse{
+		Assignment:         toPathAssignmentProto(out.Assignment),
+		AssignmentsCreated: int32(out.AssignmentsCreated),
+	}), nil
+}
+
+func (s *TutorServer) ListMyActivePathAssignments(
+	ctx context.Context,
+	_ *connect.Request[pb.TutorListMyActivePathAssignmentsRequest],
+) (*connect.Response[pb.TutorListMyActivePathAssignmentsResponse], error) {
+	if s.ListMyActivePathAssignmentsUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListMyActivePathAssignments not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	items, err := s.ListMyActivePathAssignmentsUC.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListMyActivePathAssignments: %w", s.toConnectErr(err))
+	}
+	out := &pb.TutorListMyActivePathAssignmentsResponse{
+		Items: make([]*pb.TutorPathAssignment, 0, len(items)),
+	}
+	for _, it := range items {
+		out.Items = append(out.Items, toPathAssignmentProto(it))
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *TutorServer) AdvancePathStep(
+	ctx context.Context,
+	req *connect.Request[pb.TutorAdvancePathStepRequest],
+) (*connect.Response[pb.TutorAdvancePathStepResponse], error) {
+	if s.AdvancePathStepUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("AdvancePathStep not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	aid, err := uuid.Parse(req.Msg.GetAssignmentId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("assignment_id: %w", err))
+	}
+	out, err := s.AdvancePathStepUC.Do(ctx, app.AdvancePathStepInput{
+		RequesterID:  uid,
+		AssignmentID: aid,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("tutor.AdvancePathStep: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.TutorAdvancePathStepResponse{
+		Assignment: toPathAssignmentProto(out.Assignment),
+		Completed:  out.Completed,
+	}), nil
+}
+
+func toPathAssignmentProto(a domain.PathAssignment) *pb.TutorPathAssignment {
+	out := &pb.TutorPathAssignment{
+		Id:                    a.ID.String(),
+		PathId:                a.PathID.String(),
+		TutorId:               a.TutorID.String(),
+		StudentId:             a.StudentID.String(),
+		CurrentStep:           int32(a.CurrentStep),
+		TotalSteps:            int32(a.TotalSteps),
+		SnapshotAtlasNodeKeys: append([]string{}, a.SnapshotAtlasNodeKeys...),
+		SnapshotResourceIds:   make([]string, 0, len(a.SnapshotResourceIDs)),
+		PathName:              a.PathName,
+		TutorDisplayName:      a.TutorDisplayName,
+	}
+	for _, id := range a.SnapshotResourceIDs {
+		out.SnapshotResourceIds = append(out.SnapshotResourceIds, id.String())
+	}
+	if !a.AssignedAt.IsZero() {
+		out.AssignedAt = timestamppb.New(a.AssignedAt.UTC())
+	}
+	if a.CompletedAt != nil {
+		out.CompletedAt = timestamppb.New(a.CompletedAt.UTC())
+	}
+	if a.ArchivedAt != nil {
+		out.ArchivedAt = timestamppb.New(a.ArchivedAt.UTC())
+	}
+	return out
+}
+
 func toReadingPathProto(p domain.ReadingPath) *pb.TutorReadingPath {
 	out := &pb.TutorReadingPath{
 		Id:            p.ID.String(),

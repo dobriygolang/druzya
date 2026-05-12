@@ -2,7 +2,7 @@
 
 Это монорепо проекта **druz9** — экосистема из трёх продуктов: web `druz9.online` (AI-coach + AI-mock + atlas + tutor toolkit), desktop focus-cockpit Hone, stealth tray-copilot Cue.
 
-**Identity (Sergey 2026-05-04):** AI-coach с памятью + free tutor-toolkit + Hone для подготовки senior IT-разрабов. **3 трека:** Go senior · ML engineering · English (opt-in toggle). НЕ LeetCode / НЕ Skyeng / НЕ paid marketplace. См [docs/feature/identity.md](./docs/feature/identity.md).
+**Identity (Sergey 2026-05-04):** AI-coach с памятью + free tutor-toolkit + Hone для подготовки senior IT-разрабов. **3 equal tracks:** Go senior · ML engineering · English (opt-in toggle). Все три — first-class, нет «главного». НЕ LeetCode / НЕ Skyeng / НЕ paid marketplace. См [docs/feature/identity.md](./docs/feature/identity.md).
 
 ## С чего начинать
 
@@ -153,6 +153,7 @@ druzya/
 - **DB v107** — telemetry_consent (consent state table, не profile col — auditable)
 - **DB v108** — interview_prep_sessions (Cue interview-prep wizard CV+JD upload)
 - **DB v109** — user_atlas_struggle_marks (atlas node struggle handoff signal)
+- **DB v110** — restore_ml_active_track (M1 identity fix: 'ml' восстановлен в hone_user_settings.active_track CHECK; ML — first-class equal track per identity.md)
 
 ## Текущий roadmap (2026-05-12)
 

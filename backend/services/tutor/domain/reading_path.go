@@ -54,4 +54,10 @@ type ReadingPathRepo interface {
 	// ListReadingPathsByTutorPaged — keyset cursor pagination on
 	// created_at DESC, id DESC. Excludes archived_at IS NOT NULL.
 	ListReadingPathsByTutorPaged(ctx context.Context, tutorID uuid.UUID, limit int, cursor string) ([]ReadingPath, string, error)
+
+	// GetReadingPathForTutor reads one path scoped by tutor_id —
+	// per-row auth at the SQL gate, ErrNotFound when no row matches
+	// (covers «doesn't exist» AND «not yours»). Used by AssignReadingPath
+	// to snapshot contents at assign time.
+	GetReadingPathForTutor(ctx context.Context, tutorID, pathID uuid.UUID) (ReadingPath, error)
 }

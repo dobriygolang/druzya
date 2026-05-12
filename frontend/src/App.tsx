@@ -41,6 +41,9 @@ const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage'))
 // backend gates per-row, so an unauthorised viewer just sees an empty list.
 const TutorDashboardPage = lazy(() => import('./pages/TutorDashboardPage'))
 const TutorStudentPage = lazy(() => import('./pages/TutorStudentPage'))
+// Phase K T1 (2026-05-12) — tutor directory MVP. Student-side discovery
+// page. Backend: ListDirectoryTutors RPC. Identity rule: free, no rates.
+const TutorsDiscoverPage = lazy(() => import('./pages/TutorsDiscoverPage'))
 const AITutorChatPage = lazy(() => import('./pages/AITutorChatPage'))
 // Wave-10 onboarding flow (design-review v3 part A) — 5-step gated flow
 // living under /onboarding/{welcome,class,skill,task}. Step 5 is a tour
@@ -177,6 +180,9 @@ export default function App() {
             anonymous viewers see empty lists (no 403 surface). */}
         <Route path="/tutor" element={<Navigate to="/tutor/overview" replace />} />
         <Route path="/tutor/students/:id" element={<TutorStudentPage />} />
+        {/* Phase K T1 (2026-05-12) — tutor directory discovery. Registered
+            BEFORE /tutor/:tab so literal "discover" segment wins ranking. */}
+        <Route path="/tutors/discover" element={<TutorsDiscoverPage />} />
         <Route path="/tutor/:tab" element={<TutorDashboardPage />} />
         {/* AI-tutor chat — gated, dedicated chat page per persona slug.
             Marketplace was dropped 2026-05-01 (см identity.md) — Boosty

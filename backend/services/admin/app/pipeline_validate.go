@@ -125,7 +125,11 @@ func (uc *ValidatePipeline) Do(ctx context.Context, companyID uuid.UUID) (Valida
 
 func isTaskSolveKind(k string) bool {
 	switch k {
-	case "algo", "coding", "sysdesign":
+	case "algo", "coding", "sysdesign", "ml_coding":
+		// ml_coding shares the task_solve wire shape with coding —
+		// admin pipeline validator must count active ML tasks via
+		// TaskPoolSize so curators can verify the pool is non-empty
+		// before saving a company's stage config.
 		return true
 	}
 	return false

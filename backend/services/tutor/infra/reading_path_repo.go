@@ -167,6 +167,26 @@ func (p *Postgres) ListReadingPathsByTutorPaged(
 	return out, nextCursor, nil
 }
 
+// GetReadingPathForTutor reads one row scoped by tutor_id. ErrNotFound
+// covers «doesn't exist» AND «not yours» — same pattern as the rest of
+// the package. Returns archived rows too; callers decide what to do.
+func (p *Postgres) GetReadingPathForTutor(ctx context.Context, tutorID, pathID uuid.UUID) (domain.ReadingPath, error) {
+	const q = `
+		SELECT id, tutor_id, name, description, atlas_node_keys, resource_ids,
+		       assigned_count, archived_at, created_at, updated_at
+		FROM tutor_reading_paths
+		WHERE id = $1 AND tutor_id = $2`
+	row := p.pool.QueryRow(ctx, q, pgUUID(pathID), pgUUID(tutorID))
+	out, err := scanReadingPath(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ReadingPath{}, fmt.Errorf("tutor.GetReadingPathForTutor: %w", domain.ErrNotFound)
+		}
+		return domain.ReadingPath{}, fmt.Errorf("tutor.GetReadingPathForTutor: %w", err)
+	}
+	return out, nil
+}
+
 // ── helpers ───────────────────────────────────────────────────────────
 
 func scanReadingPath(s rowScanner) (domain.ReadingPath, error) {

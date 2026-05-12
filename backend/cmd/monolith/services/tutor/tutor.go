@@ -112,6 +112,25 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 		CreateReadingPathUC:  &tutorApp.CreateReadingPath{Repo: repo, Now: d.Now},
 		UpdateReadingPathUC:  &tutorApp.UpdateReadingPath{Repo: repo, Now: d.Now},
 		ArchiveReadingPathUC: &tutorApp.ArchiveReadingPath{Repo: repo, Now: d.Now},
+		// Phase K T2+T3 (2026-05-12) — path assignment tracking.
+		// *Postgres also satisfies domain.PathAssignmentRepo (6th interface).
+		AssignReadingPathUC: &tutorApp.AssignReadingPath{
+			Paths:           repo,
+			PathAssignments: repo,
+			Assignments:     repo,
+			Now:             d.Now,
+		},
+		ListMyActivePathAssignmentsUC: &tutorApp.ListMyActivePathAssignments{Repo: repo},
+		AdvancePathStepUC:             &tutorApp.AdvancePathStep{Repo: repo, Now: d.Now},
+		// Phase K T1 (2026-05-12) — tutor directory MVP. *Postgres also
+		// satisfies domain.DirectoryRepo (7th interface on the same struct).
+		GetMyDirectoryProfileUC:   &tutorApp.GetMyDirectoryProfile{Repo: repo},
+		UpsertDirectoryProfileUC:  &tutorApp.UpsertDirectoryProfile{Repo: repo, Now: d.Now},
+		ListDirectoryTutorsUC:     &tutorApp.ListDirectoryTutors{Repo: repo},
+		ApplyToTutorUC:            &tutorApp.ApplyToTutor{Repo: repo, Now: d.Now},
+		ListPendingApplicationsUC: &tutorApp.ListPendingApplications{Repo: repo},
+		AcceptApplicationUC:       &tutorApp.AcceptApplication{Repo: repo, Now: d.Now},
+		DeclineApplicationUC:      &tutorApp.DeclineApplication{Repo: repo, Now: d.Now},
 		// Wave 5.2b — calendar events. *Postgres satisfies EventRepo
 		// (one struct now satisfies four interfaces: Repo + SnapshotRepo
 		// + AssignmentRepo + EventRepo).
@@ -176,6 +195,18 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 			r.Post("/tutor/paths", transcoder.ServeHTTP)
 			r.Put("/tutor/paths/{path_id}", transcoder.ServeHTTP)
 			r.Post("/tutor/paths/{path_id}/archive", transcoder.ServeHTTP)
+			// Phase K T2+T3 (2026-05-12) — path assignment REST aliases.
+			r.Post("/tutor/paths/{path_id}/assign", transcoder.ServeHTTP)
+			r.Get("/tutor/paths/active", transcoder.ServeHTTP)
+			r.Post("/tutor/path-assignments/{assignment_id}/advance", transcoder.ServeHTTP)
+			// Phase K T1 (2026-05-12) — tutor directory REST aliases.
+			r.Get("/tutor/directory/me", transcoder.ServeHTTP)
+			r.Put("/tutor/directory/me", transcoder.ServeHTTP)
+			r.Get("/tutor/directory", transcoder.ServeHTTP)
+			r.Post("/tutor/directory/apply", transcoder.ServeHTTP)
+			r.Get("/tutor/directory/applications", transcoder.ServeHTTP)
+			r.Post("/tutor/directory/applications/{application_id}/accept", transcoder.ServeHTTP)
+			r.Post("/tutor/directory/applications/{application_id}/decline", transcoder.ServeHTTP)
 		},
 	}
 

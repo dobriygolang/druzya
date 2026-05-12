@@ -15,13 +15,17 @@
 // ink-ramp + var(--red) only (was red/yellow/blue palette violating b/w
 // rule), caption-mono 0.08em canonical.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
+  advancePathStep,
   completeAssignment,
+  listMyActivePathAssignments,
   listPendingAssignments,
+  type PathAssignment,
   type TutorAssignment,
 } from '../api/tutor';
+import { ActivePathCard } from '../components/tutor/ActivePathCard';
 
 interface State {
   status: 'loading' | 'ok' | 'error';
@@ -29,7 +33,36 @@ interface State {
   error: string | null;
 }
 
+interface PathsState {
+  status: 'loading' | 'ok' | 'error';
+  items: PathAssignment[];
+}
+
 const INITIAL: State = { status: 'loading', items: [], error: null };
+const INITIAL_PATHS: PathsState = { status: 'loading', items: [] };
+
+// Match the per-step assignment title prefix emitted by the backend
+// (`<Path name> — step N/M: <node_key>`). We use it to (a) detect
+// «this assignment belongs to the active path X» so optimistic
+// `advancePathStep` fires, and (b) to highlight the matching row when
+// the user clicks «View next step».
+function findStepAssignment(
+  assignments: TutorAssignment[],
+  path: PathAssignment,
+): TutorAssignment | null {
+  if (!path.pathName) return null;
+  const wantedPrefix = `${path.pathName} — step ${path.currentStep + 1}/${path.totalSteps}`;
+  const a = assignments.find((it) => it.title.startsWith(wantedPrefix));
+  return a ?? null;
+}
+
+function assignmentBelongsToPath(
+  assignment: TutorAssignment,
+  path: PathAssignment,
+): boolean {
+  if (!path.pathName) return false;
+  return assignment.title.startsWith(`${path.pathName} — step `);
+}
 
 type RowStatus = 'open' | 'overdue' | 'due_soon';
 
@@ -67,7 +100,13 @@ const captionMonoTiny: React.CSSProperties = {
 
 export function TutorAssignmentsPage() {
   const [state, setState] = useState<State>(INITIAL);
+  const [paths, setPaths] = useState<PathsState>(INITIAL_PATHS);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Highlights the assignment row matching the active path's «next step»
+  // (set when user clicks View next step on an ActivePathCard).
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  // Per-card scroll-into-view targets. Keyed by assignment id.
+  const rowRefs = useRef<Map<string, HTMLLIElement | null>>(new Map());
 
   const load = useCallback(async () => {
     setState((prev) => ({ ...prev, status: 'loading' }));
@@ -80,27 +119,94 @@ export function TutorAssignmentsPage() {
     }
   }, []);
 
+  const loadPaths = useCallback(async () => {
+    setPaths((prev) => ({ ...prev, status: 'loading' }));
+    try {
+      const items = await listMyActivePathAssignments();
+      setPaths({ status: 'ok', items });
+    } catch {
+      // Paths are an auxiliary surface — silently degrade to empty so a
+      // backend hiccup never blocks the primary pending-feed.
+      setPaths({ status: 'error', items: [] });
+    }
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadPaths();
+  }, [load, loadPaths]);
 
   const onDone = useCallback(
     async (id: string) => {
       setBusyId(id);
+      // If this assignment is part of an active path, optimistically
+      // bump the path's step counter so the «step N/M» chip updates
+      // before the next loadPaths() round-trip.
+      const completedAssignment = state.items.find((a) => a.id === id);
+      let matchingPath: PathAssignment | undefined;
+      if (completedAssignment) {
+        matchingPath = paths.items.find((p) =>
+          assignmentBelongsToPath(completedAssignment, p),
+        );
+      }
+      if (matchingPath) {
+        setPaths((prev) => ({
+          ...prev,
+          items: prev.items.map((p) =>
+            p.id === matchingPath!.id
+              ? { ...p, currentStep: Math.min(p.currentStep + 1, p.totalSteps) }
+              : p,
+          ),
+        }));
+      }
       try {
         await completeAssignment(id);
         // Optimistic — drop the row locally; server already excluded it
         // from the pending list, so the next load() would hide it anyway.
         setState((prev) => ({ ...prev, items: prev.items.filter((a) => a.id !== id) }));
+        // Fire the server-side path step bump. Best-effort: failure
+        // doesn't block the assignment completion.
+        if (matchingPath) {
+          try {
+            const out = await advancePathStep(matchingPath.id);
+            if (out.completed) {
+              // Path finished — drop it from the local Active Paths feed.
+              setPaths((prev) => ({
+                ...prev,
+                items: prev.items.filter((p) => p.id !== matchingPath!.id),
+              }));
+            }
+          } catch {
+            // ErrAlreadyCompleted is benign; resync on next load.
+            void loadPaths();
+          }
+        }
       } catch {
         // Server-side `FailedPrecondition` (already completed) is benign —
         // refresh the list to sync. Other errors: surface a toast-style alert.
         await load();
+        if (matchingPath) void loadPaths();
       } finally {
         setBusyId(null);
       }
     },
-    [load],
+    [load, loadPaths, paths.items, state.items],
+  );
+
+  const focusPathStep = useCallback(
+    (path: PathAssignment) => {
+      const matchingAssignment = findStepAssignment(state.items, path);
+      if (!matchingAssignment) return;
+      setHighlightId(matchingAssignment.id);
+      const node = rowRefs.current.get(matchingAssignment.id);
+      if (node) {
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      // Drop the highlight after a few seconds so the surface settles
+      // back to its calm baseline.
+      window.setTimeout(() => setHighlightId(null), 2500);
+    },
+    [state.items],
   );
 
   return (
@@ -143,6 +249,47 @@ export function TutorAssignmentsPage() {
             когда сделал; он увидит галочку и дельту относительно due-даты.
           </p>
         </header>
+
+        {paths.status === 'ok' && paths.items.length > 0 && (
+          <section
+            style={{
+              marginBottom: 28,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 'var(--type-h3-size)',
+                lineHeight: 'var(--type-h3-lh)',
+                letterSpacing: 'var(--type-h3-ls)',
+                fontWeight: 'var(--type-h3-weight)',
+                color: 'var(--ink)',
+              }}
+            >
+              Active paths
+            </h2>
+            <ul
+              className="motion-stagger"
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              {paths.items.map((p) => (
+                <li key={p.id}>
+                  <ActivePathCard path={p} onFocusStep={focusPathStep} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {state.status === 'loading' && (
           <p style={{ color: 'var(--ink-40)', fontSize: 13 }}>Loading…</p>
@@ -192,7 +339,33 @@ export function TutorAssignmentsPage() {
             }}
           >
             {state.items.map((a) => (
-              <li key={a.id}>
+              <li
+                key={a.id}
+                ref={(node) => {
+                  if (node) rowRefs.current.set(a.id, node);
+                  else rowRefs.current.delete(a.id);
+                }}
+                style={{
+                  // 1.5px red signal stripe — flashes when the user
+                  // clicked «View next step» on the corresponding path.
+                  position: 'relative',
+                  transition: 'transform var(--motion-dur-medium) var(--motion-ease-standard)',
+                  transform: highlightId === a.id ? 'translateX(2px)' : 'none',
+                }}
+              >
+                {highlightId === a.id && (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      left: -12,
+                      top: 8,
+                      bottom: 8,
+                      width: 1.5,
+                      background: 'var(--red)',
+                    }}
+                  />
+                )}
                 <AssignmentCard
                   assignment={a}
                   busy={busyId === a.id}

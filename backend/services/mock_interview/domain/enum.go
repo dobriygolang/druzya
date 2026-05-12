@@ -15,11 +15,23 @@ const (
 	StageCoding     StageKind = "coding"
 	StageSysDesign  StageKind = "sysdesign"
 	StageBehavioral StageKind = "behavioral"
+	// StageMLCoding — ML coding stage (Phase K M3+M4 2026-05-12). Carries
+	// same wire shape as StageCoding (task_solve attempt + optional
+	// follow-up question_answers) and shares the algo/coding sandbox
+	// runner, но routed to a separate judge prompt (ML-aware rubric:
+	// correctness of math/algorithm choice + idiomaticity for numpy/
+	// pandas/sklearn/torch + edge-case handling). Sandbox image MUST be
+	// the custom Judge0 build with ML libs preinstalled — см.
+	// infra/judge0/Dockerfile.ml-python. На стоковом Judge0 ml_coding
+	// задачи будут падать «ModuleNotFoundError: numpy» — degradation
+	// path: orchestrator detects sandbox-error and falls back to LLM-only
+	// rubric grading via the same hybrid path as StageCoding.
+	StageMLCoding StageKind = "ml_coding"
 )
 
 func (s StageKind) Valid() bool {
 	switch s {
-	case StageHR, StageAlgo, StageCoding, StageSysDesign, StageBehavioral:
+	case StageHR, StageAlgo, StageCoding, StageSysDesign, StageBehavioral, StageMLCoding:
 		return true
 	}
 	return false

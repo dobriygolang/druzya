@@ -133,6 +133,39 @@ export enum Section {
    * @generated from enum value: SECTION_ML_ENG = 13;
    */
   ML_ENG = 13,
+
+  /**
+   * ML System Design — M2 Phase K (vertical analysis 2026-05-12).
+   * Granular ML system design stage отдельно от generic ml_eng для
+   * FAANG/RU ML pipeline'ов: recsys / ranking / training pipeline /
+   * real-time inference architecture. Free-form, non-task-based.
+   * Maps to skill_radar mle.ml_system_design axis.
+   *
+   * @generated from enum value: SECTION_ML_SYSTEM_DESIGN = 14;
+   */
+  ML_SYSTEM_DESIGN = 14,
+
+  /**
+   * ML Coding — M2 Phase K. Hands-on Python+numpy/pandas/scikit OR
+   * PyTorch coding round. Model implementation, vectorization,
+   * gradient flow, batch design — distinct from generic algorithms
+   * (LeetCode-style). Free-form, non-task-based в MVP.
+   * Maps to skill_radar mle.practical_implementation axis.
+   *
+   * @generated from enum value: SECTION_ML_CODING = 15;
+   */
+  ML_CODING = 15,
+
+  /**
+   * ML Theory — M2 Phase K. Quiz-style deep learning fundamentals:
+   * attention math, BatchNorm vs LayerNorm, optimizers, gradient
+   * flow, regularization. Pull'ит theoretical-depth axis в isolation
+   * от system-design / production. Free-form, non-task-based.
+   * Maps to skill_radar mle.theoretical_depth axis.
+   *
+   * @generated from enum value: SECTION_ML_THEORY = 16;
+   */
+  ML_THEORY = 16,
 }
 // Retrieve enum metadata with: proto3.getEnumType(Section)
 proto3.util.setEnumType(Section, "druz9.v1.Section", [
@@ -150,6 +183,9 @@ proto3.util.setEnumType(Section, "druz9.v1.Section", [
   { no: 11, name: "SECTION_QA" },
   { no: 12, name: "SECTION_DEVOPS" },
   { no: 13, name: "SECTION_ML_ENG" },
+  { no: 14, name: "SECTION_ML_SYSTEM_DESIGN" },
+  { no: 15, name: "SECTION_ML_CODING" },
+  { no: 16, name: "SECTION_ML_THEORY" },
 ]);
 
 /**

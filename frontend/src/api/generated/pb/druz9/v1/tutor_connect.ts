@@ -15,7 +15,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { TutorAcceptInviteRequest, TutorActivityResponse, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorArchiveReadingPathRequest, TutorArchiveReadingPathResponse, TutorAssignment, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorCancelEventRequest, TutorCancelEventResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCompleteEventRequest, TutorCompleteEventResponse, TutorCreateEventRequest, TutorCreateGroupEventRequest, TutorCreateInviteRequest, TutorCreateReadingPathRequest, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorEvent, TutorGenerateBriefRequest, TutorGetActivityRequest, TutorGetEventRSVPCountRequest, TutorGetEventRSVPCountResponse, TutorGetSessionNotesRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorInviteByUsernameRequest, TutorJoinEventRequest, TutorJoinEventResponse, TutorLeaveEventRequest, TutorLeaveEventResponse, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListEventsRequest, TutorListEventsResponse, TutorListInvitesRequest, TutorListInvitesResponse, TutorListMyTutorsRequest, TutorListPendingAssignmentsRequest, TutorListPendingInvitesForMeRequest, TutorListPendingInvitesForMeResponse, TutorListReadingPathsRequest, TutorListReadingPathsResponse, TutorListSharedReadingRequest, TutorListSharedReadingResponse, TutorListStudentsRequest, TutorListStudentsResponse, TutorListUpcomingEventsRequest, TutorListUpcomingGroupEventsRequest, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPushAssignmentRequest, TutorPushSharedReadingRequest, TutorPushSharedReadingResponse, TutorReadingPath, TutorRelationship, TutorRevokeInviteRequest, TutorSaveSessionNotesRequest, TutorSessionNotes, TutorStudentSnapshot, TutorUpdateReadingPathRequest } from "./tutor_pb.js";
+import { TutorAcceptApplicationRequest, TutorAcceptApplicationResponse, TutorAcceptInviteRequest, TutorActivityResponse, TutorAdvancePathStepRequest, TutorAdvancePathStepResponse, TutorApplyToTutorRequest, TutorApplyToTutorResponse, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorArchiveReadingPathRequest, TutorArchiveReadingPathResponse, TutorAssignment, TutorAssignReadingPathRequest, TutorAssignReadingPathResponse, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorCancelEventRequest, TutorCancelEventResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCompleteEventRequest, TutorCompleteEventResponse, TutorCreateEventRequest, TutorCreateGroupEventRequest, TutorCreateInviteRequest, TutorCreateReadingPathRequest, TutorDeclineApplicationRequest, TutorDeclineApplicationResponse, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorEvent, TutorGenerateBriefRequest, TutorGetActivityRequest, TutorGetEventRSVPCountRequest, TutorGetEventRSVPCountResponse, TutorGetMyDirectoryProfileRequest, TutorGetMyDirectoryProfileResponse, TutorGetSessionNotesRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorInviteByUsernameRequest, TutorJoinEventRequest, TutorJoinEventResponse, TutorLeaveEventRequest, TutorLeaveEventResponse, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListDirectoryTutorsRequest, TutorListDirectoryTutorsResponse, TutorListEventsRequest, TutorListEventsResponse, TutorListInvitesRequest, TutorListInvitesResponse, TutorListMyActivePathAssignmentsRequest, TutorListMyActivePathAssignmentsResponse, TutorListMyTutorsRequest, TutorListPendingApplicationsRequest, TutorListPendingApplicationsResponse, TutorListPendingAssignmentsRequest, TutorListPendingInvitesForMeRequest, TutorListPendingInvitesForMeResponse, TutorListReadingPathsRequest, TutorListReadingPathsResponse, TutorListSharedReadingRequest, TutorListSharedReadingResponse, TutorListStudentsRequest, TutorListStudentsResponse, TutorListUpcomingEventsRequest, TutorListUpcomingGroupEventsRequest, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPushAssignmentRequest, TutorPushSharedReadingRequest, TutorPushSharedReadingResponse, TutorReadingPath, TutorRelationship, TutorRevokeInviteRequest, TutorSaveSessionNotesRequest, TutorSessionNotes, TutorStudentSnapshot, TutorUpdateReadingPathRequest, TutorUpsertDirectoryProfileRequest, TutorUpsertDirectoryProfileResponse } from "./tutor_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -464,6 +464,111 @@ export const TutorService = {
       name: "ArchiveReadingPath",
       I: TutorArchiveReadingPathRequest,
       O: TutorArchiveReadingPathResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * AssignReadingPath — single click: tutor выбирает path + student →
+     * server creates assignment record + emits per-step TutorAssignment
+     * entries through PushAssignment mechanism. Snapshot of path content
+     * is pinned at assign time. Re-assign после archive — OK (unique
+     * constraint relaxes when archived_at IS NOT NULL).
+     *
+     * @generated from rpc druz9.v1.TutorService.AssignReadingPath
+     */
+    assignReadingPath: {
+      name: "AssignReadingPath",
+      I: TutorAssignReadingPathRequest,
+      O: TutorAssignReadingPathResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListMyActivePathAssignments — student-side. Returns paths assigned
+     * to me that aren't completed/archived, with denormalised path_name +
+     * tutor_display_name so Hone «Active Paths» pane не делает N+1.
+     *
+     * @generated from rpc druz9.v1.TutorService.ListMyActivePathAssignments
+     */
+    listMyActivePathAssignments: {
+      name: "ListMyActivePathAssignments",
+      I: TutorListMyActivePathAssignmentsRequest,
+      O: TutorListMyActivePathAssignmentsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * AdvancePathStep — student or server bumps current_step by 1. When
+     * current_step reaches total_steps, completed_at is stamped и
+     * assignment перестаёт показываться в active list. Idempotent on the
+     * boundary: calling once-already-complete returns the row + completed=true.
+     *
+     * @generated from rpc druz9.v1.TutorService.AdvancePathStep
+     */
+    advancePathStep: {
+      name: "AdvancePathStep",
+      I: TutorAdvancePathStepRequest,
+      O: TutorAdvancePathStepResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.GetMyDirectoryProfile
+     */
+    getMyDirectoryProfile: {
+      name: "GetMyDirectoryProfile",
+      I: TutorGetMyDirectoryProfileRequest,
+      O: TutorGetMyDirectoryProfileResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.UpsertDirectoryProfile
+     */
+    upsertDirectoryProfile: {
+      name: "UpsertDirectoryProfile",
+      I: TutorUpsertDirectoryProfileRequest,
+      O: TutorUpsertDirectoryProfileResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.ListDirectoryTutors
+     */
+    listDirectoryTutors: {
+      name: "ListDirectoryTutors",
+      I: TutorListDirectoryTutorsRequest,
+      O: TutorListDirectoryTutorsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.ApplyToTutor
+     */
+    applyToTutor: {
+      name: "ApplyToTutor",
+      I: TutorApplyToTutorRequest,
+      O: TutorApplyToTutorResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.ListPendingApplications
+     */
+    listPendingApplications: {
+      name: "ListPendingApplications",
+      I: TutorListPendingApplicationsRequest,
+      O: TutorListPendingApplicationsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.AcceptApplication
+     */
+    acceptApplication: {
+      name: "AcceptApplication",
+      I: TutorAcceptApplicationRequest,
+      O: TutorAcceptApplicationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.TutorService.DeclineApplication
+     */
+    declineApplication: {
+      name: "DeclineApplication",
+      I: TutorDeclineApplicationRequest,
+      O: TutorDeclineApplicationResponse,
       kind: MethodKind.Unary,
     },
   }

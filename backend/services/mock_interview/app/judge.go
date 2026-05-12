@@ -271,6 +271,52 @@ const pass2CodeReviewSystemPrompt = `Ты — строгий senior-reviewer. О
 - По умолчанию ставь FAIL. PASS только если решение корректно, эффективно и покрывает must_mention.
 - feedback — конструктивный, без снисходительности.`
 
+// pass2MLCodeReviewSystemPrompt — ML-aware reviewer template used when
+// JudgeInput.Kind == AttemptTaskSolve AND JudgeInput.StageKind == StageMLCoding.
+//
+// ML coding interviews mix algorithmic correctness with idiomatic library
+// use (numpy/pandas/scikit-learn/torch). Unlike pure algo where a single
+// O() complexity bound dominates, ML rubric is multi-axis:
+//   1. Math correctness (gradient direction, loss formula, vectorisation)
+//   2. Library idiomaticity (numpy broadcasting vs python loops; sklearn
+//      pipeline vs manual transforms; pytorch autograd vs manual grad)
+//   3. Edge cases (empty data, NaN, class imbalance, dtype mismatches)
+//   4. Reproducibility (seed control where it matters)
+//   5. Production awareness (memory cost, batch boundaries, leakage)
+//
+// Sandbox is best-effort: when the custom Judge0 image with ML libs is
+// wired (см. infra/judge0/Dockerfile.ml-python), exact-match test cases
+// run. When it isn't, this LLM rubric is the sole signal — hence the
+// stricter «default FAIL» bias и явная нагрузка на pitfalls.
+const pass2MLCodeReviewSystemPrompt = `Ты — senior ML-engineer и reviewer. Оцениваешь ML/DS решение кандидата на собеседовании.
+
+ТЫ ВЫВОДИШЬ СТРОГО JSON ОДНИМ ОБЪЕКТОМ, без markdown-обёрток, без комментариев, без поясняющего текста снаружи объекта. Все ключи обязательны.
+
+Схема ответа:
+{
+  "score": <число 0..100>,
+  "matched_must_mention": [<строки из must_mention, отражённые в коде/комментариях>],
+  "matched_nice_to_have": [<строки из nice_to_have, отражённые в коде>],
+  "missing_points": [<до 5 пропущенных пунктов>],
+  "feedback": "<2-4 предложения по-русски: что хорошо, что улучшить>"
+}
+
+Что оцениваешь:
+1. Математическая корректность (правильная формула loss/градиента/нормировки, верная индексация осей).
+2. Векторизация (numpy broadcasting / pytorch tensor ops вместо python-циклов где это уместно).
+3. Идиоматичность для библиотеки (pandas: groupby/merge без apply; sklearn: Pipeline + ColumnTransformer; pytorch: nn.Module + autograd, не ручные градиенты без причины).
+4. Edge cases (пустой dataframe, NaN, single-class y, dtype, memory).
+5. Воспроизводимость где нужна (random_state в split / KFold / model init).
+6. Утечка данных (fit на test, leakage через target encoding до split).
+
+Правила оценки:
+- score < 30: код не запустится / неверная формула / data leakage.
+- score < 50: нет векторизации там где она нужна (python-loop на 100k строк), либо нарушение API (например fit_transform на test).
+- ОДИН пропущенный must_mention = снять минимум 30 баллов.
+- score >= 70 только если код корректен математически И идиоматичен И учитывает edge cases.
+- По умолчанию ставь FAIL. PASS только при production-quality решении.
+- feedback — конструктивный, без снисходительности. Указывай конкретные строки/функции где проблема.`
+
 const pass2SystemPrompt = `Ты — строгий технический интервьюер. Оцениваешь ответ кандидата на собеседовании по заданным критериям.
 
 ТЫ ВЫВОДИШЬ СТРОГО JSON ОДНИМ ОБЪЕКТОМ, без markdown-обёрток, без комментариев, без поясняющего текста снаружи объекта. Все ключи обязательны.
@@ -365,12 +411,15 @@ func (j *LLMJudge) pass1WaterScore(ctx context.Context, in JudgeInput) (float64,
 // JSON output. Returns (correctness, missing_points, feedback, err).
 func (j *LLMJudge) pass2Correctness(ctx context.Context, in JudgeInput) (float64, []string, string, error) {
 	// Template selection cascade (custom profile prompt always wins):
-	//   1. AttemptTaskSolve → code-review template
-	//   2. StageBehavioral  → STAR-rubric template
-	//   3. default          → general HR / question-answer template
+	//   1. AttemptTaskSolve + StageMLCoding → ML code-review template
+	//   2. AttemptTaskSolve                 → generic code-review template
+	//   3. StageBehavioral                  → STAR-rubric template
+	//   4. default                          → general HR / question-answer
 	// Admins override anything via StrictnessProfile.CustomPromptTemplate.
 	systemPrompt := pass2SystemPrompt
 	switch {
+	case in.Kind == domain.AttemptTaskSolve && in.StageKind == domain.StageMLCoding:
+		systemPrompt = pass2MLCodeReviewSystemPrompt
 	case in.Kind == domain.AttemptTaskSolve:
 		systemPrompt = pass2CodeReviewSystemPrompt
 	case in.StageKind == domain.StageBehavioral:

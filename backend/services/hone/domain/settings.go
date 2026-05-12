@@ -11,22 +11,28 @@ import (
 // Reading / AI-tutor thread) рендерится. `general` = legacy all-in-one.
 // `go` — sub-mode dev'а для глубоких Go-сессий.
 //
-// Phase 4.1 (2026-05-04): TrackML удалён. ML — специализация внутри
-// dev_senior, не отдельный hardcoded трек. CHECK constraint в
-// hone_user_settings (mig 00046) больше не принимает 'ml'; SetActiveTrack
-// rejects его как invalid.
+// History:
+//   - mig 00035 ввёл 'ml' (Phase 1 ML track)
+//   - mig 00046 (Phase 4.1, 2026-05-04) drop'нул 'ml' — ML стало
+//     специализацией внутри dev_senior
+//   - mig 00110 (M1 quick win, 2026-05-12) восстановил 'ml' — identity.md
+//     обещает 3 equal tracks (Go senior · ML engineering · English),
+//     и реальность не должна противоречить identity. ML атлас-узлы
+//     по-прежнему tag'нуты под dev_senior (ml-coach persona scoped
+//     to 'dev_senior'); 'ml' active track — UI-фильтр + persona handoff.
 type ActiveTrack string
 
 const (
 	TrackGeneral ActiveTrack = "general"
 	TrackDev     ActiveTrack = "dev"
+	TrackML      ActiveTrack = "ml"
 	TrackEnglish ActiveTrack = "english"
 	TrackGo      ActiveTrack = "go"
 )
 
 func (t ActiveTrack) IsValid() bool {
 	switch t {
-	case TrackGeneral, TrackDev, TrackEnglish, TrackGo:
+	case TrackGeneral, TrackDev, TrackML, TrackEnglish, TrackGo:
 		return true
 	}
 	return false

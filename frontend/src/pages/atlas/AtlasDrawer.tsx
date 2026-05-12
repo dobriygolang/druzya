@@ -18,15 +18,19 @@ import { useActiveStudyModeQuery, type ActiveTrack } from '../../lib/queries/hon
 import { openHoneFocusSession, isHoneDeepLinkSupported } from '../../lib/hone-handoff'
 import { useAtlasStrugglesQuery } from '../../lib/queries/intelligence'
 
-// pickPersonaForNode — выбирает AI-coach персону. mode='go' выигрывает над
-// section'ом (юзер явно сказал что в go-режиме). Иначе — по section'у узла.
-// Display-name: role-only lowercase per memory/feedback_persona_names.md.
+// pickPersonaForNode — выбирает AI-coach персону. mode='go' / 'ml' выигрывает
+// над section'ом (юзер явно сказал что в go-режиме / ml-режиме). Иначе — по
+// section'у узла. Display-name: role-only lowercase per
+// memory/feedback_persona_names.md.
 function pickPersonaForNode(
   node: AtlasNode,
   activeTrack: ActiveTrack,
 ): { slug: string; name: string } {
   if (activeTrack === 'go') {
     return { slug: 'go-coach', name: 'go coach' }
+  }
+  if (activeTrack === 'ml') {
+    return { slug: 'ml-coach', name: 'ml coach' }
   }
   switch (node.section) {
     case 'algorithms':

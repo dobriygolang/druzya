@@ -6,6 +6,8 @@
 - **[Hone](./docs/for_investment/hone.md)** — desktop focus-cockpit. AI-план дня, Pomodoro, заметки с AI-link, TaskBoard с auto-categorise, English hub.
 - **[Cue](./docs/for_investment/cue.md)** — stealth tray-copilot. Невидимый AI поверх ОС, live-транскрипт встреч.
 
+**3 equal tracks** (выбираешь при онбординге, меняешь в Settings): Go senior · ML engineering · English. Все три — first-class, нет «главного». Каждый — свой Atlas-подграф, mock-rubric, AI-coach persona.
+
 Один аккаунт, одна подписка `druz9 Pro`, три поверхности под три состояния разработчика.
 
 ## Документация

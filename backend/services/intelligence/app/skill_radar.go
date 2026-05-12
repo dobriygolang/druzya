@@ -115,7 +115,13 @@ var rubrics = map[string]RadarRubric{
 			{Key: "data_intuition", Label: "data"},
 			{Key: "production_awareness", Label: "ops"},
 		},
-		Sections: []string{"ml_eng"},
+		// M2 Phase K (2026-05-12): granular ml_system_design / ml_coding /
+		// ml_theory sections share the MLE rubric. Skill radar agg'регирует
+		// scores across all 4 ML sections так что granular stage results
+		// прозрачно копятся в общий ML radar (theoretical_depth axis
+		// получает signal как из ml_eng так и из ml_theory; ml_system_design
+		// axis — из ml_eng + ml_system_design, etc).
+		Sections: []string{"ml_eng", "ml_system_design", "ml_coding", "ml_theory"},
 	},
 	"dev_senior": {
 		Key: "dev_senior",

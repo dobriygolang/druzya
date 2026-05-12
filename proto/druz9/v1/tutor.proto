@@ -441,6 +441,66 @@ message TutorUpdateReadingPathRequest {
 message TutorArchiveReadingPathRequest  { string path_id = 1; }
 message TutorArchiveReadingPathResponse {}
 
+// ─── Path assignments (Phase K T2+T3, 2026-05-12) ────────────────────
+//
+// AssignReadingPath = single-click «push this curated path to this
+// student». Server snapshots path contents at the moment of assign
+// (so subsequent tutor edits don't mutate in-flight assignments) and
+// emits one per-step TutorAssignment row so the student's existing
+// pending-feed picks the path up без новых surfaces.
+
+message TutorPathAssignment {
+  string id            = 1;
+  string path_id       = 2;
+  string tutor_id      = 3;
+  string student_id    = 4;
+  int32  current_step  = 5;
+  int32  total_steps   = 6;
+  google.protobuf.Timestamp assigned_at  = 7;
+  google.protobuf.Timestamp completed_at = 8; // zero when not yet completed
+  google.protobuf.Timestamp archived_at  = 9;
+  // Snapshot of path contents at assign time. Edits to the source path
+  // after this point don't affect this assignment.
+  repeated string snapshot_atlas_node_keys = 10;
+  repeated string snapshot_resource_ids    = 11;
+  // Denormalised display fields for student-side UI (path name + tutor
+  // display name). Server-filled on List; empty in raw rows.
+  string path_name           = 12;
+  string tutor_display_name  = 13;
+}
+
+message TutorAssignReadingPathRequest {
+  string path_id       = 1;
+  string student_id    = 2;
+  // Optional. 0 (or absent) → start at step 0. If set must be
+  // 0 <= starting_step < len(atlas_node_keys); else InvalidArgument.
+  int32  starting_step = 3;
+}
+
+message TutorAssignReadingPathResponse {
+  TutorPathAssignment assignment = 1;
+  // Number of per-step TutorAssignment rows the server created. Equals
+  // len(snapshot_atlas_node_keys) - starting_step (or +len(resources)
+  // if the path is resource-only).
+  int32 assignments_created = 2;
+}
+
+message TutorListMyActivePathAssignmentsRequest {}
+
+message TutorListMyActivePathAssignmentsResponse {
+  repeated TutorPathAssignment items = 1;
+}
+
+message TutorAdvancePathStepRequest {
+  string assignment_id = 1;
+}
+
+message TutorAdvancePathStepResponse {
+  TutorPathAssignment assignment = 1;
+  // True when this advance completed the path (current_step == total_steps).
+  bool completed = 2;
+}
+
 service TutorService {
   // CreateInvite — tutor-authenticated. tutor_id taken from bearer.
   rpc CreateInvite(TutorCreateInviteRequest) returns (TutorInvite) {
@@ -726,6 +786,88 @@ service TutorService {
       body: "*"
     };
   }
+
+  // ── Path assignments (Phase K T2+T3, 2026-05-12) ─────────────────────
+
+  // AssignReadingPath — single click: tutor выбирает path + student →
+  // server creates assignment record + emits per-step TutorAssignment
+  // entries through PushAssignment mechanism. Snapshot of path content
+  // is pinned at assign time. Re-assign после archive — OK (unique
+  // constraint relaxes when archived_at IS NOT NULL).
+  rpc AssignReadingPath(TutorAssignReadingPathRequest) returns (TutorAssignReadingPathResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/paths/{path_id}/assign"
+      body: "*"
+    };
+  }
+
+  // ListMyActivePathAssignments — student-side. Returns paths assigned
+  // to me that aren't completed/archived, with denormalised path_name +
+  // tutor_display_name so Hone «Active Paths» pane не делает N+1.
+  rpc ListMyActivePathAssignments(TutorListMyActivePathAssignmentsRequest) returns (TutorListMyActivePathAssignmentsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/paths/active"};
+  }
+
+  // AdvancePathStep — student or server bumps current_step by 1. When
+  // current_step reaches total_steps, completed_at is stamped и
+  // assignment перестаёт показываться в active list. Idempotent on the
+  // boundary: calling once-already-complete returns the row + completed=true.
+  rpc AdvancePathStep(TutorAdvancePathStepRequest) returns (TutorAdvancePathStepResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/path-assignments/{assignment_id}/advance"
+      body: "*"
+    };
+  }
+
+  // ── Directory (Phase K T1, 2026-05-12) ────────────────────────────
+  //
+  // Student-discovery surface. Until now tutors could only acquire
+  // students via invite_code или InviteByUsername — both assume the
+  // tutor knows the student. The directory inverts the flow: tutors
+  // opt-in by publishing a profile, students browse + apply.
+  //
+  // Identity rule: free per identity, не marketplace. Schema has NO
+  // rates / payment fields. Verification badge is admin-only анти-spam.
+
+  rpc GetMyDirectoryProfile(TutorGetMyDirectoryProfileRequest) returns (TutorGetMyDirectoryProfileResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/directory/me"};
+  }
+
+  rpc UpsertDirectoryProfile(TutorUpsertDirectoryProfileRequest) returns (TutorUpsertDirectoryProfileResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/tutor/directory/me"
+      body: "*"
+    };
+  }
+
+  rpc ListDirectoryTutors(TutorListDirectoryTutorsRequest) returns (TutorListDirectoryTutorsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/directory"};
+  }
+
+  rpc ApplyToTutor(TutorApplyToTutorRequest) returns (TutorApplyToTutorResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/directory/apply"
+      body: "*"
+    };
+  }
+
+  rpc ListPendingApplications(TutorListPendingApplicationsRequest) returns (TutorListPendingApplicationsResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/directory/applications"};
+  }
+
+  rpc AcceptApplication(TutorAcceptApplicationRequest) returns (TutorAcceptApplicationResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/directory/applications/{application_id}/accept"
+      body: "*"
+    };
+  }
+
+  rpc DeclineApplication(TutorDeclineApplicationRequest) returns (TutorDeclineApplicationResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/directory/applications/{application_id}/decline"
+      body: "*"
+    };
+  }
 }
 
 // TutorGetSessionNotesRequest — tutor читает свои заметки про студента.
@@ -745,4 +887,109 @@ message TutorSessionNotes {
   string body_md    = 2;
   string updated_at = 3; // RFC3339, empty если row ещё нет
 }
+
+// ── Directory messages (Phase K T1, 2026-05-12) ───────────────────────
+
+// TutorDirectoryProfile — full profile state. UserID = caller's id when
+// returned via GetMyDirectoryProfile; never exposed via list view (use
+// TutorDirectoryEntry for that).
+message TutorDirectoryProfile {
+  string user_id              = 1;
+  bool   visible              = 2;
+  string bio_md               = 3;
+  repeated string expertise_tags = 4;
+  repeated string languages   = 5;
+  string timezone             = 6;
+  string availability_md      = 7;
+  string linkedin_url         = 8;
+  string github_url           = 9;
+  // Empty string when not verified; RFC3339 timestamp when admin
+  // flipped verified_at. Frontend uses presence-check для badge.
+  string verified_at          = 10;
+  string application_message  = 11;
+  string created_at           = 12; // RFC3339
+  string updated_at           = 13; // RFC3339
+}
+
+// TutorDirectoryEntry — public-ish list projection. Excludes private
+// fields (linkedin_url, github_url, availability_md, application_message).
+// Joined с users для display fields.
+message TutorDirectoryEntry {
+  string user_id        = 1;
+  string display_name   = 2;
+  string username       = 3;
+  string avatar_url     = 4;
+  string bio_md         = 5;
+  repeated string expertise_tags = 6;
+  repeated string languages = 7;
+  string timezone       = 8;
+  bool   verified       = 9;
+}
+
+// TutorDirectoryApplication — pending application row для tutor's queue.
+message TutorDirectoryApplication {
+  string id            = 1;
+  string tutor_id      = 2;
+  string student_id    = 3;
+  string message       = 4;
+  string status        = 5; // 'pending' | 'accepted' | 'declined'
+  string created_at    = 6; // RFC3339
+  // Student display info (server-filled from users JOIN). Empty when
+  // student row is unavailable (extremely rare — ON DELETE CASCADE).
+  string student_display_name = 7;
+  string student_username     = 8;
+  string student_avatar_url   = 9;
+}
+
+message TutorGetMyDirectoryProfileRequest {}
+message TutorGetMyDirectoryProfileResponse {
+  TutorDirectoryProfile profile = 1;
+}
+
+message TutorUpsertDirectoryProfileRequest {
+  bool   visible              = 1;
+  string bio_md               = 2;
+  repeated string expertise_tags = 3;
+  repeated string languages   = 4;
+  string timezone             = 5;
+  string availability_md      = 6;
+  string linkedin_url         = 7;
+  string github_url           = 8;
+  string application_message  = 9;
+}
+message TutorUpsertDirectoryProfileResponse {
+  TutorDirectoryProfile profile = 1;
+}
+
+message TutorListDirectoryTutorsRequest {
+  repeated string expertise_tags = 1; // OR semantics across tags
+  repeated string languages      = 2; // OR semantics across languages
+  int32  page_size               = 3; // 0 → server default (25), max 100
+  string page_token              = 4; // opaque cursor
+}
+message TutorListDirectoryTutorsResponse {
+  repeated TutorDirectoryEntry items = 1;
+  string next_page_token             = 2; // empty when no more pages
+}
+
+message TutorApplyToTutorRequest {
+  string tutor_user_id = 1;
+  string message       = 2; // max 500 chars
+}
+message TutorApplyToTutorResponse {
+  TutorDirectoryApplication application = 1;
+}
+
+message TutorListPendingApplicationsRequest {}
+message TutorListPendingApplicationsResponse {
+  repeated TutorDirectoryApplication items = 1;
+}
+
+message TutorAcceptApplicationRequest  { string application_id = 1; }
+message TutorAcceptApplicationResponse {
+  TutorRelationship relationship = 1;
+}
+
+message TutorDeclineApplicationRequest  { string application_id = 1; }
+message TutorDeclineApplicationResponse {}
 

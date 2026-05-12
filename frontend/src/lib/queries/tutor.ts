@@ -721,3 +721,205 @@ export function useSaveSessionNotesMutation(studentId: string | undefined) {
   })
 }
 
+// ── Tutor directory (Phase K T1, 2026-05-12) ──────────────────────────
+//
+// Student-discovery surface. Tutor authors a profile (visible toggle),
+// students browse + apply. Identity rule: free per identity, no rates.
+
+/** Predefined expertise tag set — keep in sync with backend domain. */
+export const TUTOR_EXPERTISE_TAGS = [
+  'go_senior',
+  'ml_engineering',
+  'english_polish',
+  'system_design',
+  'algorithms',
+  'cross_cutting',
+] as const
+export type TutorExpertiseTag = (typeof TUTOR_EXPERTISE_TAGS)[number]
+
+export const TUTOR_EXPERTISE_TAG_LABELS: Record<TutorExpertiseTag, string> = {
+  go_senior: 'Go senior',
+  ml_engineering: 'ML engineering',
+  english_polish: 'English polish',
+  system_design: 'System design',
+  algorithms: 'Algorithms',
+  cross_cutting: 'Cross-cutting',
+}
+
+export const TUTOR_LANGUAGE_CODES = ['ru', 'en'] as const
+export type TutorLanguageCode = (typeof TUTOR_LANGUAGE_CODES)[number]
+export const TUTOR_LANGUAGE_LABELS: Record<TutorLanguageCode, string> = {
+  ru: 'Русский',
+  en: 'English',
+}
+
+export type TutorDirectoryProfile = {
+  user_id: string
+  visible: boolean
+  bio_md: string
+  expertise_tags: string[]
+  languages: string[]
+  timezone?: string
+  availability_md?: string
+  linkedin_url?: string
+  github_url?: string
+  verified_at?: string // RFC3339 or empty
+  application_message?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export type TutorDirectoryEntry = {
+  user_id: string
+  display_name: string
+  username: string
+  avatar_url: string
+  bio_md: string
+  expertise_tags: string[]
+  languages: string[]
+  timezone?: string
+  verified: boolean
+}
+
+export type TutorDirectoryApplication = {
+  id: string
+  tutor_id: string
+  student_id: string
+  message: string
+  status: 'pending' | 'accepted' | 'declined'
+  created_at?: string
+  student_display_name?: string
+  student_username?: string
+  student_avatar_url?: string
+}
+
+/** GetMyDirectoryProfile — tutor reads его собственный directory profile. */
+export function useMyDirectoryProfileQuery() {
+  return useQuery({
+    queryKey: ['tutor', 'directory', 'me'] as const,
+    queryFn: () =>
+      api<{ profile: TutorDirectoryProfile }>('/tutor/directory/me'),
+    staleTime: 30_000,
+  })
+}
+
+export type UpsertDirectoryProfileInput = {
+  visible: boolean
+  bio_md: string
+  expertise_tags: string[]
+  languages: string[]
+  timezone?: string
+  availability_md?: string
+  linkedin_url?: string
+  github_url?: string
+  application_message?: string
+}
+
+/** UpsertDirectoryProfile — tutor saves profile state. */
+export function useUpsertDirectoryProfileMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: UpsertDirectoryProfileInput) =>
+      api<{ profile: TutorDirectoryProfile }>('/tutor/directory/me', {
+        method: 'PUT',
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'directory'] })
+    },
+  })
+}
+
+/** ListDirectoryTutors — student browses visible profiles. */
+export type ListDirectoryTutorsFilter = {
+  expertise_tags?: string[]
+  languages?: string[]
+}
+
+export function useDirectoryTutorsQuery(
+  filter: ListDirectoryTutorsFilter = {},
+  pageSize = 25,
+) {
+  const params = new URLSearchParams()
+  ;(filter.expertise_tags ?? []).forEach((t) =>
+    params.append('expertise_tags', t),
+  )
+  ;(filter.languages ?? []).forEach((l) => params.append('languages', l))
+  if (pageSize) params.set('page_size', String(pageSize))
+  return useQuery({
+    queryKey: ['tutor', 'directory', 'list', filter, pageSize] as const,
+    queryFn: () =>
+      api<{ items: TutorDirectoryEntry[]; next_page_token?: string }>(
+        `/tutor/directory?${params.toString()}`,
+      ),
+    staleTime: 30_000,
+  })
+}
+
+/** ApplyToTutor — student applies, tutor sees pending. */
+export function useApplyToTutorMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { tutor_user_id: string; message?: string }) =>
+      api<{ application: TutorDirectoryApplication }>(
+        '/tutor/directory/apply',
+        {
+          method: 'POST',
+          body: JSON.stringify(vars),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'directory', 'applications'] })
+    },
+  })
+}
+
+/** ListPendingApplications — tutor's queue. */
+export function usePendingApplicationsQuery() {
+  return useQuery({
+    queryKey: ['tutor', 'directory', 'applications'] as const,
+    queryFn: () =>
+      api<{ items: TutorDirectoryApplication[] }>(
+        '/tutor/directory/applications',
+      ),
+    staleTime: 20_000,
+  })
+}
+
+/** AcceptApplication — tutor accepts; relationship is created server-side. */
+export function useAcceptApplicationMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (applicationId: string) =>
+      api<{ relationship: TutorRelationship }>(
+        `/tutor/directory/applications/${encodeURIComponent(applicationId)}/accept`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ application_id: applicationId }),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'directory', 'applications'] })
+      qc.invalidateQueries({ queryKey: ['tutor', 'students'] })
+    },
+  })
+}
+
+/** DeclineApplication — tutor declines (soft mark). */
+export function useDeclineApplicationMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (applicationId: string) =>
+      api<Record<string, never>>(
+        `/tutor/directory/applications/${encodeURIComponent(applicationId)}/decline`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ application_id: applicationId }),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'directory', 'applications'] })
+    },
+  })
+}
+

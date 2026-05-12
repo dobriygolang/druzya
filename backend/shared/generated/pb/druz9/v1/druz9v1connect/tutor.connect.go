@@ -153,6 +153,36 @@ const (
 	// TutorServiceArchiveReadingPathProcedure is the fully-qualified name of the TutorService's
 	// ArchiveReadingPath RPC.
 	TutorServiceArchiveReadingPathProcedure = "/druz9.v1.TutorService/ArchiveReadingPath"
+	// TutorServiceAssignReadingPathProcedure is the fully-qualified name of the TutorService's
+	// AssignReadingPath RPC.
+	TutorServiceAssignReadingPathProcedure = "/druz9.v1.TutorService/AssignReadingPath"
+	// TutorServiceListMyActivePathAssignmentsProcedure is the fully-qualified name of the
+	// TutorService's ListMyActivePathAssignments RPC.
+	TutorServiceListMyActivePathAssignmentsProcedure = "/druz9.v1.TutorService/ListMyActivePathAssignments"
+	// TutorServiceAdvancePathStepProcedure is the fully-qualified name of the TutorService's
+	// AdvancePathStep RPC.
+	TutorServiceAdvancePathStepProcedure = "/druz9.v1.TutorService/AdvancePathStep"
+	// TutorServiceGetMyDirectoryProfileProcedure is the fully-qualified name of the TutorService's
+	// GetMyDirectoryProfile RPC.
+	TutorServiceGetMyDirectoryProfileProcedure = "/druz9.v1.TutorService/GetMyDirectoryProfile"
+	// TutorServiceUpsertDirectoryProfileProcedure is the fully-qualified name of the TutorService's
+	// UpsertDirectoryProfile RPC.
+	TutorServiceUpsertDirectoryProfileProcedure = "/druz9.v1.TutorService/UpsertDirectoryProfile"
+	// TutorServiceListDirectoryTutorsProcedure is the fully-qualified name of the TutorService's
+	// ListDirectoryTutors RPC.
+	TutorServiceListDirectoryTutorsProcedure = "/druz9.v1.TutorService/ListDirectoryTutors"
+	// TutorServiceApplyToTutorProcedure is the fully-qualified name of the TutorService's ApplyToTutor
+	// RPC.
+	TutorServiceApplyToTutorProcedure = "/druz9.v1.TutorService/ApplyToTutor"
+	// TutorServiceListPendingApplicationsProcedure is the fully-qualified name of the TutorService's
+	// ListPendingApplications RPC.
+	TutorServiceListPendingApplicationsProcedure = "/druz9.v1.TutorService/ListPendingApplications"
+	// TutorServiceAcceptApplicationProcedure is the fully-qualified name of the TutorService's
+	// AcceptApplication RPC.
+	TutorServiceAcceptApplicationProcedure = "/druz9.v1.TutorService/AcceptApplication"
+	// TutorServiceDeclineApplicationProcedure is the fully-qualified name of the TutorService's
+	// DeclineApplication RPC.
+	TutorServiceDeclineApplicationProcedure = "/druz9.v1.TutorService/DeclineApplication"
 )
 
 // TutorServiceClient is a client for the druz9.v1.TutorService service.
@@ -271,6 +301,28 @@ type TutorServiceClient interface {
 	CreateReadingPath(context.Context, *connect.Request[v1.TutorCreateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error)
 	UpdateReadingPath(context.Context, *connect.Request[v1.TutorUpdateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error)
 	ArchiveReadingPath(context.Context, *connect.Request[v1.TutorArchiveReadingPathRequest]) (*connect.Response[v1.TutorArchiveReadingPathResponse], error)
+	// AssignReadingPath — single click: tutor выбирает path + student →
+	// server creates assignment record + emits per-step TutorAssignment
+	// entries through PushAssignment mechanism. Snapshot of path content
+	// is pinned at assign time. Re-assign после archive — OK (unique
+	// constraint relaxes when archived_at IS NOT NULL).
+	AssignReadingPath(context.Context, *connect.Request[v1.TutorAssignReadingPathRequest]) (*connect.Response[v1.TutorAssignReadingPathResponse], error)
+	// ListMyActivePathAssignments — student-side. Returns paths assigned
+	// to me that aren't completed/archived, with denormalised path_name +
+	// tutor_display_name so Hone «Active Paths» pane не делает N+1.
+	ListMyActivePathAssignments(context.Context, *connect.Request[v1.TutorListMyActivePathAssignmentsRequest]) (*connect.Response[v1.TutorListMyActivePathAssignmentsResponse], error)
+	// AdvancePathStep — student or server bumps current_step by 1. When
+	// current_step reaches total_steps, completed_at is stamped и
+	// assignment перестаёт показываться в active list. Idempotent on the
+	// boundary: calling once-already-complete returns the row + completed=true.
+	AdvancePathStep(context.Context, *connect.Request[v1.TutorAdvancePathStepRequest]) (*connect.Response[v1.TutorAdvancePathStepResponse], error)
+	GetMyDirectoryProfile(context.Context, *connect.Request[v1.TutorGetMyDirectoryProfileRequest]) (*connect.Response[v1.TutorGetMyDirectoryProfileResponse], error)
+	UpsertDirectoryProfile(context.Context, *connect.Request[v1.TutorUpsertDirectoryProfileRequest]) (*connect.Response[v1.TutorUpsertDirectoryProfileResponse], error)
+	ListDirectoryTutors(context.Context, *connect.Request[v1.TutorListDirectoryTutorsRequest]) (*connect.Response[v1.TutorListDirectoryTutorsResponse], error)
+	ApplyToTutor(context.Context, *connect.Request[v1.TutorApplyToTutorRequest]) (*connect.Response[v1.TutorApplyToTutorResponse], error)
+	ListPendingApplications(context.Context, *connect.Request[v1.TutorListPendingApplicationsRequest]) (*connect.Response[v1.TutorListPendingApplicationsResponse], error)
+	AcceptApplication(context.Context, *connect.Request[v1.TutorAcceptApplicationRequest]) (*connect.Response[v1.TutorAcceptApplicationResponse], error)
+	DeclineApplication(context.Context, *connect.Request[v1.TutorDeclineApplicationRequest]) (*connect.Response[v1.TutorDeclineApplicationResponse], error)
 }
 
 // NewTutorServiceClient constructs a client for the druz9.v1.TutorService service. By default, it
@@ -506,6 +558,66 @@ func NewTutorServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(tutorServiceMethods.ByName("ArchiveReadingPath")),
 			connect.WithClientOptions(opts...),
 		),
+		assignReadingPath: connect.NewClient[v1.TutorAssignReadingPathRequest, v1.TutorAssignReadingPathResponse](
+			httpClient,
+			baseURL+TutorServiceAssignReadingPathProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("AssignReadingPath")),
+			connect.WithClientOptions(opts...),
+		),
+		listMyActivePathAssignments: connect.NewClient[v1.TutorListMyActivePathAssignmentsRequest, v1.TutorListMyActivePathAssignmentsResponse](
+			httpClient,
+			baseURL+TutorServiceListMyActivePathAssignmentsProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ListMyActivePathAssignments")),
+			connect.WithClientOptions(opts...),
+		),
+		advancePathStep: connect.NewClient[v1.TutorAdvancePathStepRequest, v1.TutorAdvancePathStepResponse](
+			httpClient,
+			baseURL+TutorServiceAdvancePathStepProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("AdvancePathStep")),
+			connect.WithClientOptions(opts...),
+		),
+		getMyDirectoryProfile: connect.NewClient[v1.TutorGetMyDirectoryProfileRequest, v1.TutorGetMyDirectoryProfileResponse](
+			httpClient,
+			baseURL+TutorServiceGetMyDirectoryProfileProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("GetMyDirectoryProfile")),
+			connect.WithClientOptions(opts...),
+		),
+		upsertDirectoryProfile: connect.NewClient[v1.TutorUpsertDirectoryProfileRequest, v1.TutorUpsertDirectoryProfileResponse](
+			httpClient,
+			baseURL+TutorServiceUpsertDirectoryProfileProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("UpsertDirectoryProfile")),
+			connect.WithClientOptions(opts...),
+		),
+		listDirectoryTutors: connect.NewClient[v1.TutorListDirectoryTutorsRequest, v1.TutorListDirectoryTutorsResponse](
+			httpClient,
+			baseURL+TutorServiceListDirectoryTutorsProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ListDirectoryTutors")),
+			connect.WithClientOptions(opts...),
+		),
+		applyToTutor: connect.NewClient[v1.TutorApplyToTutorRequest, v1.TutorApplyToTutorResponse](
+			httpClient,
+			baseURL+TutorServiceApplyToTutorProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ApplyToTutor")),
+			connect.WithClientOptions(opts...),
+		),
+		listPendingApplications: connect.NewClient[v1.TutorListPendingApplicationsRequest, v1.TutorListPendingApplicationsResponse](
+			httpClient,
+			baseURL+TutorServiceListPendingApplicationsProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ListPendingApplications")),
+			connect.WithClientOptions(opts...),
+		),
+		acceptApplication: connect.NewClient[v1.TutorAcceptApplicationRequest, v1.TutorAcceptApplicationResponse](
+			httpClient,
+			baseURL+TutorServiceAcceptApplicationProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("AcceptApplication")),
+			connect.WithClientOptions(opts...),
+		),
+		declineApplication: connect.NewClient[v1.TutorDeclineApplicationRequest, v1.TutorDeclineApplicationResponse](
+			httpClient,
+			baseURL+TutorServiceDeclineApplicationProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("DeclineApplication")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -548,6 +660,16 @@ type tutorServiceClient struct {
 	createReadingPath                 *connect.Client[v1.TutorCreateReadingPathRequest, v1.TutorReadingPath]
 	updateReadingPath                 *connect.Client[v1.TutorUpdateReadingPathRequest, v1.TutorReadingPath]
 	archiveReadingPath                *connect.Client[v1.TutorArchiveReadingPathRequest, v1.TutorArchiveReadingPathResponse]
+	assignReadingPath                 *connect.Client[v1.TutorAssignReadingPathRequest, v1.TutorAssignReadingPathResponse]
+	listMyActivePathAssignments       *connect.Client[v1.TutorListMyActivePathAssignmentsRequest, v1.TutorListMyActivePathAssignmentsResponse]
+	advancePathStep                   *connect.Client[v1.TutorAdvancePathStepRequest, v1.TutorAdvancePathStepResponse]
+	getMyDirectoryProfile             *connect.Client[v1.TutorGetMyDirectoryProfileRequest, v1.TutorGetMyDirectoryProfileResponse]
+	upsertDirectoryProfile            *connect.Client[v1.TutorUpsertDirectoryProfileRequest, v1.TutorUpsertDirectoryProfileResponse]
+	listDirectoryTutors               *connect.Client[v1.TutorListDirectoryTutorsRequest, v1.TutorListDirectoryTutorsResponse]
+	applyToTutor                      *connect.Client[v1.TutorApplyToTutorRequest, v1.TutorApplyToTutorResponse]
+	listPendingApplications           *connect.Client[v1.TutorListPendingApplicationsRequest, v1.TutorListPendingApplicationsResponse]
+	acceptApplication                 *connect.Client[v1.TutorAcceptApplicationRequest, v1.TutorAcceptApplicationResponse]
+	declineApplication                *connect.Client[v1.TutorDeclineApplicationRequest, v1.TutorDeclineApplicationResponse]
 }
 
 // CreateInvite calls druz9.v1.TutorService.CreateInvite.
@@ -735,6 +857,56 @@ func (c *tutorServiceClient) ArchiveReadingPath(ctx context.Context, req *connec
 	return c.archiveReadingPath.CallUnary(ctx, req)
 }
 
+// AssignReadingPath calls druz9.v1.TutorService.AssignReadingPath.
+func (c *tutorServiceClient) AssignReadingPath(ctx context.Context, req *connect.Request[v1.TutorAssignReadingPathRequest]) (*connect.Response[v1.TutorAssignReadingPathResponse], error) {
+	return c.assignReadingPath.CallUnary(ctx, req)
+}
+
+// ListMyActivePathAssignments calls druz9.v1.TutorService.ListMyActivePathAssignments.
+func (c *tutorServiceClient) ListMyActivePathAssignments(ctx context.Context, req *connect.Request[v1.TutorListMyActivePathAssignmentsRequest]) (*connect.Response[v1.TutorListMyActivePathAssignmentsResponse], error) {
+	return c.listMyActivePathAssignments.CallUnary(ctx, req)
+}
+
+// AdvancePathStep calls druz9.v1.TutorService.AdvancePathStep.
+func (c *tutorServiceClient) AdvancePathStep(ctx context.Context, req *connect.Request[v1.TutorAdvancePathStepRequest]) (*connect.Response[v1.TutorAdvancePathStepResponse], error) {
+	return c.advancePathStep.CallUnary(ctx, req)
+}
+
+// GetMyDirectoryProfile calls druz9.v1.TutorService.GetMyDirectoryProfile.
+func (c *tutorServiceClient) GetMyDirectoryProfile(ctx context.Context, req *connect.Request[v1.TutorGetMyDirectoryProfileRequest]) (*connect.Response[v1.TutorGetMyDirectoryProfileResponse], error) {
+	return c.getMyDirectoryProfile.CallUnary(ctx, req)
+}
+
+// UpsertDirectoryProfile calls druz9.v1.TutorService.UpsertDirectoryProfile.
+func (c *tutorServiceClient) UpsertDirectoryProfile(ctx context.Context, req *connect.Request[v1.TutorUpsertDirectoryProfileRequest]) (*connect.Response[v1.TutorUpsertDirectoryProfileResponse], error) {
+	return c.upsertDirectoryProfile.CallUnary(ctx, req)
+}
+
+// ListDirectoryTutors calls druz9.v1.TutorService.ListDirectoryTutors.
+func (c *tutorServiceClient) ListDirectoryTutors(ctx context.Context, req *connect.Request[v1.TutorListDirectoryTutorsRequest]) (*connect.Response[v1.TutorListDirectoryTutorsResponse], error) {
+	return c.listDirectoryTutors.CallUnary(ctx, req)
+}
+
+// ApplyToTutor calls druz9.v1.TutorService.ApplyToTutor.
+func (c *tutorServiceClient) ApplyToTutor(ctx context.Context, req *connect.Request[v1.TutorApplyToTutorRequest]) (*connect.Response[v1.TutorApplyToTutorResponse], error) {
+	return c.applyToTutor.CallUnary(ctx, req)
+}
+
+// ListPendingApplications calls druz9.v1.TutorService.ListPendingApplications.
+func (c *tutorServiceClient) ListPendingApplications(ctx context.Context, req *connect.Request[v1.TutorListPendingApplicationsRequest]) (*connect.Response[v1.TutorListPendingApplicationsResponse], error) {
+	return c.listPendingApplications.CallUnary(ctx, req)
+}
+
+// AcceptApplication calls druz9.v1.TutorService.AcceptApplication.
+func (c *tutorServiceClient) AcceptApplication(ctx context.Context, req *connect.Request[v1.TutorAcceptApplicationRequest]) (*connect.Response[v1.TutorAcceptApplicationResponse], error) {
+	return c.acceptApplication.CallUnary(ctx, req)
+}
+
+// DeclineApplication calls druz9.v1.TutorService.DeclineApplication.
+func (c *tutorServiceClient) DeclineApplication(ctx context.Context, req *connect.Request[v1.TutorDeclineApplicationRequest]) (*connect.Response[v1.TutorDeclineApplicationResponse], error) {
+	return c.declineApplication.CallUnary(ctx, req)
+}
+
 // TutorServiceHandler is an implementation of the druz9.v1.TutorService service.
 type TutorServiceHandler interface {
 	// CreateInvite — tutor-authenticated. tutor_id taken from bearer.
@@ -851,6 +1023,28 @@ type TutorServiceHandler interface {
 	CreateReadingPath(context.Context, *connect.Request[v1.TutorCreateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error)
 	UpdateReadingPath(context.Context, *connect.Request[v1.TutorUpdateReadingPathRequest]) (*connect.Response[v1.TutorReadingPath], error)
 	ArchiveReadingPath(context.Context, *connect.Request[v1.TutorArchiveReadingPathRequest]) (*connect.Response[v1.TutorArchiveReadingPathResponse], error)
+	// AssignReadingPath — single click: tutor выбирает path + student →
+	// server creates assignment record + emits per-step TutorAssignment
+	// entries through PushAssignment mechanism. Snapshot of path content
+	// is pinned at assign time. Re-assign после archive — OK (unique
+	// constraint relaxes when archived_at IS NOT NULL).
+	AssignReadingPath(context.Context, *connect.Request[v1.TutorAssignReadingPathRequest]) (*connect.Response[v1.TutorAssignReadingPathResponse], error)
+	// ListMyActivePathAssignments — student-side. Returns paths assigned
+	// to me that aren't completed/archived, with denormalised path_name +
+	// tutor_display_name so Hone «Active Paths» pane не делает N+1.
+	ListMyActivePathAssignments(context.Context, *connect.Request[v1.TutorListMyActivePathAssignmentsRequest]) (*connect.Response[v1.TutorListMyActivePathAssignmentsResponse], error)
+	// AdvancePathStep — student or server bumps current_step by 1. When
+	// current_step reaches total_steps, completed_at is stamped и
+	// assignment перестаёт показываться в active list. Idempotent on the
+	// boundary: calling once-already-complete returns the row + completed=true.
+	AdvancePathStep(context.Context, *connect.Request[v1.TutorAdvancePathStepRequest]) (*connect.Response[v1.TutorAdvancePathStepResponse], error)
+	GetMyDirectoryProfile(context.Context, *connect.Request[v1.TutorGetMyDirectoryProfileRequest]) (*connect.Response[v1.TutorGetMyDirectoryProfileResponse], error)
+	UpsertDirectoryProfile(context.Context, *connect.Request[v1.TutorUpsertDirectoryProfileRequest]) (*connect.Response[v1.TutorUpsertDirectoryProfileResponse], error)
+	ListDirectoryTutors(context.Context, *connect.Request[v1.TutorListDirectoryTutorsRequest]) (*connect.Response[v1.TutorListDirectoryTutorsResponse], error)
+	ApplyToTutor(context.Context, *connect.Request[v1.TutorApplyToTutorRequest]) (*connect.Response[v1.TutorApplyToTutorResponse], error)
+	ListPendingApplications(context.Context, *connect.Request[v1.TutorListPendingApplicationsRequest]) (*connect.Response[v1.TutorListPendingApplicationsResponse], error)
+	AcceptApplication(context.Context, *connect.Request[v1.TutorAcceptApplicationRequest]) (*connect.Response[v1.TutorAcceptApplicationResponse], error)
+	DeclineApplication(context.Context, *connect.Request[v1.TutorDeclineApplicationRequest]) (*connect.Response[v1.TutorDeclineApplicationResponse], error)
 }
 
 // NewTutorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1082,6 +1276,66 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(tutorServiceMethods.ByName("ArchiveReadingPath")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tutorServiceAssignReadingPathHandler := connect.NewUnaryHandler(
+		TutorServiceAssignReadingPathProcedure,
+		svc.AssignReadingPath,
+		connect.WithSchema(tutorServiceMethods.ByName("AssignReadingPath")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceListMyActivePathAssignmentsHandler := connect.NewUnaryHandler(
+		TutorServiceListMyActivePathAssignmentsProcedure,
+		svc.ListMyActivePathAssignments,
+		connect.WithSchema(tutorServiceMethods.ByName("ListMyActivePathAssignments")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceAdvancePathStepHandler := connect.NewUnaryHandler(
+		TutorServiceAdvancePathStepProcedure,
+		svc.AdvancePathStep,
+		connect.WithSchema(tutorServiceMethods.ByName("AdvancePathStep")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceGetMyDirectoryProfileHandler := connect.NewUnaryHandler(
+		TutorServiceGetMyDirectoryProfileProcedure,
+		svc.GetMyDirectoryProfile,
+		connect.WithSchema(tutorServiceMethods.ByName("GetMyDirectoryProfile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceUpsertDirectoryProfileHandler := connect.NewUnaryHandler(
+		TutorServiceUpsertDirectoryProfileProcedure,
+		svc.UpsertDirectoryProfile,
+		connect.WithSchema(tutorServiceMethods.ByName("UpsertDirectoryProfile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceListDirectoryTutorsHandler := connect.NewUnaryHandler(
+		TutorServiceListDirectoryTutorsProcedure,
+		svc.ListDirectoryTutors,
+		connect.WithSchema(tutorServiceMethods.ByName("ListDirectoryTutors")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceApplyToTutorHandler := connect.NewUnaryHandler(
+		TutorServiceApplyToTutorProcedure,
+		svc.ApplyToTutor,
+		connect.WithSchema(tutorServiceMethods.ByName("ApplyToTutor")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceListPendingApplicationsHandler := connect.NewUnaryHandler(
+		TutorServiceListPendingApplicationsProcedure,
+		svc.ListPendingApplications,
+		connect.WithSchema(tutorServiceMethods.ByName("ListPendingApplications")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceAcceptApplicationHandler := connect.NewUnaryHandler(
+		TutorServiceAcceptApplicationProcedure,
+		svc.AcceptApplication,
+		connect.WithSchema(tutorServiceMethods.ByName("AcceptApplication")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceDeclineApplicationHandler := connect.NewUnaryHandler(
+		TutorServiceDeclineApplicationProcedure,
+		svc.DeclineApplication,
+		connect.WithSchema(tutorServiceMethods.ByName("DeclineApplication")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.TutorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TutorServiceCreateInviteProcedure:
@@ -1158,6 +1412,26 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 			tutorServiceUpdateReadingPathHandler.ServeHTTP(w, r)
 		case TutorServiceArchiveReadingPathProcedure:
 			tutorServiceArchiveReadingPathHandler.ServeHTTP(w, r)
+		case TutorServiceAssignReadingPathProcedure:
+			tutorServiceAssignReadingPathHandler.ServeHTTP(w, r)
+		case TutorServiceListMyActivePathAssignmentsProcedure:
+			tutorServiceListMyActivePathAssignmentsHandler.ServeHTTP(w, r)
+		case TutorServiceAdvancePathStepProcedure:
+			tutorServiceAdvancePathStepHandler.ServeHTTP(w, r)
+		case TutorServiceGetMyDirectoryProfileProcedure:
+			tutorServiceGetMyDirectoryProfileHandler.ServeHTTP(w, r)
+		case TutorServiceUpsertDirectoryProfileProcedure:
+			tutorServiceUpsertDirectoryProfileHandler.ServeHTTP(w, r)
+		case TutorServiceListDirectoryTutorsProcedure:
+			tutorServiceListDirectoryTutorsHandler.ServeHTTP(w, r)
+		case TutorServiceApplyToTutorProcedure:
+			tutorServiceApplyToTutorHandler.ServeHTTP(w, r)
+		case TutorServiceListPendingApplicationsProcedure:
+			tutorServiceListPendingApplicationsHandler.ServeHTTP(w, r)
+		case TutorServiceAcceptApplicationProcedure:
+			tutorServiceAcceptApplicationHandler.ServeHTTP(w, r)
+		case TutorServiceDeclineApplicationProcedure:
+			tutorServiceDeclineApplicationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1313,4 +1587,44 @@ func (UnimplementedTutorServiceHandler) UpdateReadingPath(context.Context, *conn
 
 func (UnimplementedTutorServiceHandler) ArchiveReadingPath(context.Context, *connect.Request[v1.TutorArchiveReadingPathRequest]) (*connect.Response[v1.TutorArchiveReadingPathResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ArchiveReadingPath is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) AssignReadingPath(context.Context, *connect.Request[v1.TutorAssignReadingPathRequest]) (*connect.Response[v1.TutorAssignReadingPathResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.AssignReadingPath is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) ListMyActivePathAssignments(context.Context, *connect.Request[v1.TutorListMyActivePathAssignmentsRequest]) (*connect.Response[v1.TutorListMyActivePathAssignmentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ListMyActivePathAssignments is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) AdvancePathStep(context.Context, *connect.Request[v1.TutorAdvancePathStepRequest]) (*connect.Response[v1.TutorAdvancePathStepResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.AdvancePathStep is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) GetMyDirectoryProfile(context.Context, *connect.Request[v1.TutorGetMyDirectoryProfileRequest]) (*connect.Response[v1.TutorGetMyDirectoryProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.GetMyDirectoryProfile is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) UpsertDirectoryProfile(context.Context, *connect.Request[v1.TutorUpsertDirectoryProfileRequest]) (*connect.Response[v1.TutorUpsertDirectoryProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.UpsertDirectoryProfile is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) ListDirectoryTutors(context.Context, *connect.Request[v1.TutorListDirectoryTutorsRequest]) (*connect.Response[v1.TutorListDirectoryTutorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ListDirectoryTutors is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) ApplyToTutor(context.Context, *connect.Request[v1.TutorApplyToTutorRequest]) (*connect.Response[v1.TutorApplyToTutorResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ApplyToTutor is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) ListPendingApplications(context.Context, *connect.Request[v1.TutorListPendingApplicationsRequest]) (*connect.Response[v1.TutorListPendingApplicationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ListPendingApplications is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) AcceptApplication(context.Context, *connect.Request[v1.TutorAcceptApplicationRequest]) (*connect.Response[v1.TutorAcceptApplicationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.AcceptApplication is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) DeclineApplication(context.Context, *connect.Request[v1.TutorDeclineApplicationRequest]) (*connect.Response[v1.TutorDeclineApplicationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.DeclineApplication is not implemented"))
 }

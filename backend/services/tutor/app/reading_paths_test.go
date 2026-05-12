@@ -20,6 +20,7 @@ type fakeReadingPathRepo struct {
 	update   func(ctx context.Context, p domain.ReadingPath) (domain.ReadingPath, error)
 	archive  func(ctx context.Context, t, p uuid.UUID, now time.Time) error
 	listPage func(ctx context.Context, t uuid.UUID, limit int, cursor string) ([]domain.ReadingPath, string, error)
+	get      func(ctx context.Context, t, p uuid.UUID) (domain.ReadingPath, error)
 }
 
 func (f fakeReadingPathRepo) CreateReadingPath(ctx context.Context, p domain.ReadingPath) (domain.ReadingPath, error) {
@@ -45,6 +46,12 @@ func (f fakeReadingPathRepo) ListReadingPathsByTutorPaged(ctx context.Context, t
 		return nil, "", errors.New("listPage not set")
 	}
 	return f.listPage(ctx, t, limit, cursor)
+}
+func (f fakeReadingPathRepo) GetReadingPathForTutor(ctx context.Context, t, p uuid.UUID) (domain.ReadingPath, error) {
+	if f.get == nil {
+		return domain.ReadingPath{}, errors.New("get not set")
+	}
+	return f.get(ctx, t, p)
 }
 
 // ── ListReadingPaths ─────────────────────────────────────────────────

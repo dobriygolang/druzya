@@ -98,6 +98,20 @@ type TutorServer struct {
 	UpdateReadingPathUC  *app.UpdateReadingPath
 	ArchiveReadingPathUC *app.ArchiveReadingPath
 
+	// Phase K T2+T3 (2026-05-12) — path assignments.
+	AssignReadingPathUC            *app.AssignReadingPath
+	ListMyActivePathAssignmentsUC  *app.ListMyActivePathAssignments
+	AdvancePathStepUC              *app.AdvancePathStep
+
+	// Phase K T1 (2026-05-12) — tutor directory MVP.
+	GetMyDirectoryProfileUC   *app.GetMyDirectoryProfile
+	UpsertDirectoryProfileUC  *app.UpsertDirectoryProfile
+	ListDirectoryTutorsUC     *app.ListDirectoryTutors
+	ApplyToTutorUC            *app.ApplyToTutor
+	ListPendingApplicationsUC *app.ListPendingApplications
+	AcceptApplicationUC       *app.AcceptApplication
+	DeclineApplicationUC      *app.DeclineApplication
+
 	// Wave 5.2b — calendar events. Same nil-safe pattern.
 	CreateEventUC                  *app.CreateEvent
 	CancelEventUC                  *app.CancelEvent
@@ -846,7 +860,8 @@ func (s *TutorServer) toConnectErr(err error) error {
 		errors.Is(err, domain.ErrInviteAccepted),
 		errors.Is(err, domain.ErrAlreadyEnrolled),
 		errors.Is(err, domain.ErrAlreadyCompleted),
-		errors.Is(err, domain.ErrCapacityFull):
+		errors.Is(err, domain.ErrCapacityFull),
+		errors.Is(err, domain.ErrAlreadyApplied):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, domain.ErrSelfInvite),
 		errors.Is(err, domain.ErrInvalidInput):

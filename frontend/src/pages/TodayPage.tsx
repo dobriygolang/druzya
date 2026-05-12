@@ -57,6 +57,7 @@ function pickPersonaFor(section: string, activeTrack: ActiveTrack): {
   name: string
 } {
   if (activeTrack === 'go') return { slug: 'go-coach', name: 'go coach' }
+  if (activeTrack === 'ml') return { slug: 'ml-coach', name: 'ml coach' }
   if (activeTrack === 'english') return { slug: 'english-coach', name: 'english coach' }
   switch (section) {
     case 'system_design':
@@ -72,6 +73,7 @@ function pickPersonaFor(section: string, activeTrack: ActiveTrack): {
 const TRACK_LABELS: Record<ActiveTrack, string> = {
   general: 'general',
   dev: 'dev (Go senior)',
+  ml: 'ml engineering',
   english: 'english',
   go: 'go deep',
 }

@@ -6,10 +6,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
-// Phase 4.1 (2026-05-04): 'ml' убран из enum. ML — специализация
-// внутри dev_senior, а не отдельный hardcoded трек. Если на бэке
-// пришло 'ml' (старая БД до миграции 00046) — coerce в 'general'.
-export type ActiveTrack = 'general' | 'dev' | 'english' | 'go'
+// M1 (2026-05-12): 'ml' восстановлен как first-class active track.
+// identity.md обещает «3 equal tracks: Go senior · ML engineering ·
+// English» — реальность теперь матчит. ML атлас-узлы по-прежнему
+// tag'нуты под track_kind='dev_senior' (ml-coach persona scoped to
+// dev_senior); active_track='ml' — UI-фильтр Hone + persona handoff
+// (TodayPage / AtlasDrawer / MockResultPage / Reading → ml-coach).
+// Backend mig 00110 восстановил CHECK constraint.
+export type ActiveTrack = 'general' | 'dev' | 'ml' | 'english' | 'go'
 
 type WireSettings = {
   active_track?: string
@@ -18,6 +22,7 @@ type WireSettings = {
 function coerce(t: string | undefined): ActiveTrack {
   switch (t) {
     case 'dev':
+    case 'ml':
     case 'english':
     case 'go':
       return t

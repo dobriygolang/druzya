@@ -1454,18 +1454,18 @@ function ReaderPillRow({ material }: ReaderPillRowProps) {
 }
 
 // Display-name role-only lowercase per memory/feedback_persona_names.md.
-// 'ml' kept as legacy union value (Phase 4.1 ML-track выпилен, но старые
-// settings могут содержать строку 'ml' до миграции) → fallback на sysdesign.
+// M1 (2026-05-12): 'ml' восстановлен как first-class track → ml-coach
+// persona (см. mig 00054_ml_de_personas + mig 00110).
 function pickPersonaForReading(
   activeTrack: 'general' | 'dev' | 'ml' | 'english' | 'go',
 ): { slug: string; name: string } {
   switch (activeTrack) {
     case 'go':
       return { slug: 'go-coach', name: 'go coach' };
+    case 'ml':
+      return { slug: 'ml-coach', name: 'ml coach' };
     case 'english':
       return { slug: 'english-coach', name: 'english coach' };
-    case 'ml':
-      return { slug: 'sysdesign-guru', name: 'sysdesign coach' };
     default:
       return { slug: 'algo-coach', name: 'algo coach' };
   }

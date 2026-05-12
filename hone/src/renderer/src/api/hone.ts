@@ -785,9 +785,13 @@ export async function sendCueSessionToTelegram(id: string): Promise<SendCueSessi
 
 // ─── User settings (active study mode) ────────────────────────────────────
 
-// Phase 4.1 (2026-05-04): 'ml' removed. ML стало специализацией внутри
-// dev_senior, не отдельный track.
-export type ActiveTrack = 'general' | 'dev' | 'english' | 'go';
+// M1 (2026-05-12): 'ml' restored as first-class active track. identity.md
+// обещает «3 equal tracks: Go senior · ML engineering · English» —
+// реальность теперь матчит. ML атлас-узлы по-прежнему tag'нуты под
+// track_kind='dev_senior' (ml-coach persona scoped to dev_senior);
+// activeTrack='ml' — UI-фильтр + persona handoff в Reading / pill row.
+// Backend mig 00110 восстановил CHECK constraint.
+export type ActiveTrack = 'general' | 'dev' | 'ml' | 'english' | 'go';
 
 export interface UserSettings {
   activeTrack: ActiveTrack;
@@ -797,11 +801,11 @@ export interface UserSettings {
 function coerceTrack(t: string): ActiveTrack {
   switch (t) {
     case 'dev':
+    case 'ml':
     case 'english':
     case 'go':
       return t;
     default:
-      // Legacy 'ml' fallback to 'general' (Phase 4.1 ml→dev_senior re-tag).
       return 'general';
   }
 }

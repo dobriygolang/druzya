@@ -3408,6 +3408,372 @@ export class TutorArchiveReadingPathResponse extends Message<TutorArchiveReading
 }
 
 /**
+ * @generated from message druz9.v1.TutorPathAssignment
+ */
+export class TutorPathAssignment extends Message<TutorPathAssignment> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string path_id = 2;
+   */
+  pathId = "";
+
+  /**
+   * @generated from field: string tutor_id = 3;
+   */
+  tutorId = "";
+
+  /**
+   * @generated from field: string student_id = 4;
+   */
+  studentId = "";
+
+  /**
+   * @generated from field: int32 current_step = 5;
+   */
+  currentStep = 0;
+
+  /**
+   * @generated from field: int32 total_steps = 6;
+   */
+  totalSteps = 0;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp assigned_at = 7;
+   */
+  assignedAt?: Timestamp;
+
+  /**
+   * zero when not yet completed
+   *
+   * @generated from field: google.protobuf.Timestamp completed_at = 8;
+   */
+  completedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp archived_at = 9;
+   */
+  archivedAt?: Timestamp;
+
+  /**
+   * Snapshot of path contents at assign time. Edits to the source path
+   * after this point don't affect this assignment.
+   *
+   * @generated from field: repeated string snapshot_atlas_node_keys = 10;
+   */
+  snapshotAtlasNodeKeys: string[] = [];
+
+  /**
+   * @generated from field: repeated string snapshot_resource_ids = 11;
+   */
+  snapshotResourceIds: string[] = [];
+
+  /**
+   * Denormalised display fields for student-side UI (path name + tutor
+   * display name). Server-filled on List; empty in raw rows.
+   *
+   * @generated from field: string path_name = 12;
+   */
+  pathName = "";
+
+  /**
+   * @generated from field: string tutor_display_name = 13;
+   */
+  tutorDisplayName = "";
+
+  constructor(data?: PartialMessage<TutorPathAssignment>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorPathAssignment";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "path_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "tutor_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "student_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "current_step", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "total_steps", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "assigned_at", kind: "message", T: Timestamp },
+    { no: 8, name: "completed_at", kind: "message", T: Timestamp },
+    { no: 9, name: "archived_at", kind: "message", T: Timestamp },
+    { no: 10, name: "snapshot_atlas_node_keys", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 11, name: "snapshot_resource_ids", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 12, name: "path_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "tutor_display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorPathAssignment {
+    return new TutorPathAssignment().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorPathAssignment {
+    return new TutorPathAssignment().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorPathAssignment {
+    return new TutorPathAssignment().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorPathAssignment | PlainMessage<TutorPathAssignment> | undefined, b: TutorPathAssignment | PlainMessage<TutorPathAssignment> | undefined): boolean {
+    return proto3.util.equals(TutorPathAssignment, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorAssignReadingPathRequest
+ */
+export class TutorAssignReadingPathRequest extends Message<TutorAssignReadingPathRequest> {
+  /**
+   * @generated from field: string path_id = 1;
+   */
+  pathId = "";
+
+  /**
+   * @generated from field: string student_id = 2;
+   */
+  studentId = "";
+
+  /**
+   * Optional. 0 (or absent) → start at step 0. If set must be
+   * 0 <= starting_step < len(atlas_node_keys); else InvalidArgument.
+   *
+   * @generated from field: int32 starting_step = 3;
+   */
+  startingStep = 0;
+
+  constructor(data?: PartialMessage<TutorAssignReadingPathRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorAssignReadingPathRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "path_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "student_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "starting_step", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorAssignReadingPathRequest {
+    return new TutorAssignReadingPathRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorAssignReadingPathRequest {
+    return new TutorAssignReadingPathRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorAssignReadingPathRequest {
+    return new TutorAssignReadingPathRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorAssignReadingPathRequest | PlainMessage<TutorAssignReadingPathRequest> | undefined, b: TutorAssignReadingPathRequest | PlainMessage<TutorAssignReadingPathRequest> | undefined): boolean {
+    return proto3.util.equals(TutorAssignReadingPathRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorAssignReadingPathResponse
+ */
+export class TutorAssignReadingPathResponse extends Message<TutorAssignReadingPathResponse> {
+  /**
+   * @generated from field: druz9.v1.TutorPathAssignment assignment = 1;
+   */
+  assignment?: TutorPathAssignment;
+
+  /**
+   * Number of per-step TutorAssignment rows the server created. Equals
+   * len(snapshot_atlas_node_keys) - starting_step (or +len(resources)
+   * if the path is resource-only).
+   *
+   * @generated from field: int32 assignments_created = 2;
+   */
+  assignmentsCreated = 0;
+
+  constructor(data?: PartialMessage<TutorAssignReadingPathResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorAssignReadingPathResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "assignment", kind: "message", T: TutorPathAssignment },
+    { no: 2, name: "assignments_created", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorAssignReadingPathResponse {
+    return new TutorAssignReadingPathResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorAssignReadingPathResponse {
+    return new TutorAssignReadingPathResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorAssignReadingPathResponse {
+    return new TutorAssignReadingPathResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorAssignReadingPathResponse | PlainMessage<TutorAssignReadingPathResponse> | undefined, b: TutorAssignReadingPathResponse | PlainMessage<TutorAssignReadingPathResponse> | undefined): boolean {
+    return proto3.util.equals(TutorAssignReadingPathResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListMyActivePathAssignmentsRequest
+ */
+export class TutorListMyActivePathAssignmentsRequest extends Message<TutorListMyActivePathAssignmentsRequest> {
+  constructor(data?: PartialMessage<TutorListMyActivePathAssignmentsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListMyActivePathAssignmentsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListMyActivePathAssignmentsRequest {
+    return new TutorListMyActivePathAssignmentsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListMyActivePathAssignmentsRequest {
+    return new TutorListMyActivePathAssignmentsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListMyActivePathAssignmentsRequest {
+    return new TutorListMyActivePathAssignmentsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListMyActivePathAssignmentsRequest | PlainMessage<TutorListMyActivePathAssignmentsRequest> | undefined, b: TutorListMyActivePathAssignmentsRequest | PlainMessage<TutorListMyActivePathAssignmentsRequest> | undefined): boolean {
+    return proto3.util.equals(TutorListMyActivePathAssignmentsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListMyActivePathAssignmentsResponse
+ */
+export class TutorListMyActivePathAssignmentsResponse extends Message<TutorListMyActivePathAssignmentsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TutorPathAssignment items = 1;
+   */
+  items: TutorPathAssignment[] = [];
+
+  constructor(data?: PartialMessage<TutorListMyActivePathAssignmentsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListMyActivePathAssignmentsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: TutorPathAssignment, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListMyActivePathAssignmentsResponse {
+    return new TutorListMyActivePathAssignmentsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListMyActivePathAssignmentsResponse {
+    return new TutorListMyActivePathAssignmentsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListMyActivePathAssignmentsResponse {
+    return new TutorListMyActivePathAssignmentsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListMyActivePathAssignmentsResponse | PlainMessage<TutorListMyActivePathAssignmentsResponse> | undefined, b: TutorListMyActivePathAssignmentsResponse | PlainMessage<TutorListMyActivePathAssignmentsResponse> | undefined): boolean {
+    return proto3.util.equals(TutorListMyActivePathAssignmentsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorAdvancePathStepRequest
+ */
+export class TutorAdvancePathStepRequest extends Message<TutorAdvancePathStepRequest> {
+  /**
+   * @generated from field: string assignment_id = 1;
+   */
+  assignmentId = "";
+
+  constructor(data?: PartialMessage<TutorAdvancePathStepRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorAdvancePathStepRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "assignment_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorAdvancePathStepRequest {
+    return new TutorAdvancePathStepRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorAdvancePathStepRequest {
+    return new TutorAdvancePathStepRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorAdvancePathStepRequest {
+    return new TutorAdvancePathStepRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorAdvancePathStepRequest | PlainMessage<TutorAdvancePathStepRequest> | undefined, b: TutorAdvancePathStepRequest | PlainMessage<TutorAdvancePathStepRequest> | undefined): boolean {
+    return proto3.util.equals(TutorAdvancePathStepRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorAdvancePathStepResponse
+ */
+export class TutorAdvancePathStepResponse extends Message<TutorAdvancePathStepResponse> {
+  /**
+   * @generated from field: druz9.v1.TutorPathAssignment assignment = 1;
+   */
+  assignment?: TutorPathAssignment;
+
+  /**
+   * True when this advance completed the path (current_step == total_steps).
+   *
+   * @generated from field: bool completed = 2;
+   */
+  completed = false;
+
+  constructor(data?: PartialMessage<TutorAdvancePathStepResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorAdvancePathStepResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "assignment", kind: "message", T: TutorPathAssignment },
+    { no: 2, name: "completed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorAdvancePathStepResponse {
+    return new TutorAdvancePathStepResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorAdvancePathStepResponse {
+    return new TutorAdvancePathStepResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorAdvancePathStepResponse {
+    return new TutorAdvancePathStepResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorAdvancePathStepResponse | PlainMessage<TutorAdvancePathStepResponse> | undefined, b: TutorAdvancePathStepResponse | PlainMessage<TutorAdvancePathStepResponse> | undefined): boolean {
+    return proto3.util.equals(TutorAdvancePathStepResponse, a, b);
+  }
+}
+
+/**
  * TutorGetSessionNotesRequest — tutor читает свои заметки про студента.
  *
  * @generated from message druz9.v1.TutorGetSessionNotesRequest
@@ -3541,6 +3907,899 @@ export class TutorSessionNotes extends Message<TutorSessionNotes> {
 
   static equals(a: TutorSessionNotes | PlainMessage<TutorSessionNotes> | undefined, b: TutorSessionNotes | PlainMessage<TutorSessionNotes> | undefined): boolean {
     return proto3.util.equals(TutorSessionNotes, a, b);
+  }
+}
+
+/**
+ * TutorDirectoryProfile — full profile state. UserID = caller's id when
+ * returned via GetMyDirectoryProfile; never exposed via list view (use
+ * TutorDirectoryEntry for that).
+ *
+ * @generated from message druz9.v1.TutorDirectoryProfile
+ */
+export class TutorDirectoryProfile extends Message<TutorDirectoryProfile> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: bool visible = 2;
+   */
+  visible = false;
+
+  /**
+   * @generated from field: string bio_md = 3;
+   */
+  bioMd = "";
+
+  /**
+   * @generated from field: repeated string expertise_tags = 4;
+   */
+  expertiseTags: string[] = [];
+
+  /**
+   * @generated from field: repeated string languages = 5;
+   */
+  languages: string[] = [];
+
+  /**
+   * @generated from field: string timezone = 6;
+   */
+  timezone = "";
+
+  /**
+   * @generated from field: string availability_md = 7;
+   */
+  availabilityMd = "";
+
+  /**
+   * @generated from field: string linkedin_url = 8;
+   */
+  linkedinUrl = "";
+
+  /**
+   * @generated from field: string github_url = 9;
+   */
+  githubUrl = "";
+
+  /**
+   * Empty string when not verified; RFC3339 timestamp when admin
+   * flipped verified_at. Frontend uses presence-check для badge.
+   *
+   * @generated from field: string verified_at = 10;
+   */
+  verifiedAt = "";
+
+  /**
+   * @generated from field: string application_message = 11;
+   */
+  applicationMessage = "";
+
+  /**
+   * RFC3339
+   *
+   * @generated from field: string created_at = 12;
+   */
+  createdAt = "";
+
+  /**
+   * RFC3339
+   *
+   * @generated from field: string updated_at = 13;
+   */
+  updatedAt = "";
+
+  constructor(data?: PartialMessage<TutorDirectoryProfile>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorDirectoryProfile";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "visible", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "bio_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "expertise_tags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 5, name: "languages", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 6, name: "timezone", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "availability_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "linkedin_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "github_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "verified_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "application_message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 12, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "updated_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorDirectoryProfile {
+    return new TutorDirectoryProfile().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorDirectoryProfile {
+    return new TutorDirectoryProfile().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorDirectoryProfile {
+    return new TutorDirectoryProfile().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorDirectoryProfile | PlainMessage<TutorDirectoryProfile> | undefined, b: TutorDirectoryProfile | PlainMessage<TutorDirectoryProfile> | undefined): boolean {
+    return proto3.util.equals(TutorDirectoryProfile, a, b);
+  }
+}
+
+/**
+ * TutorDirectoryEntry — public-ish list projection. Excludes private
+ * fields (linkedin_url, github_url, availability_md, application_message).
+ * Joined с users для display fields.
+ *
+ * @generated from message druz9.v1.TutorDirectoryEntry
+ */
+export class TutorDirectoryEntry extends Message<TutorDirectoryEntry> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string display_name = 2;
+   */
+  displayName = "";
+
+  /**
+   * @generated from field: string username = 3;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string avatar_url = 4;
+   */
+  avatarUrl = "";
+
+  /**
+   * @generated from field: string bio_md = 5;
+   */
+  bioMd = "";
+
+  /**
+   * @generated from field: repeated string expertise_tags = 6;
+   */
+  expertiseTags: string[] = [];
+
+  /**
+   * @generated from field: repeated string languages = 7;
+   */
+  languages: string[] = [];
+
+  /**
+   * @generated from field: string timezone = 8;
+   */
+  timezone = "";
+
+  /**
+   * @generated from field: bool verified = 9;
+   */
+  verified = false;
+
+  constructor(data?: PartialMessage<TutorDirectoryEntry>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorDirectoryEntry";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "bio_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "expertise_tags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 7, name: "languages", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 8, name: "timezone", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "verified", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorDirectoryEntry {
+    return new TutorDirectoryEntry().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorDirectoryEntry {
+    return new TutorDirectoryEntry().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorDirectoryEntry {
+    return new TutorDirectoryEntry().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorDirectoryEntry | PlainMessage<TutorDirectoryEntry> | undefined, b: TutorDirectoryEntry | PlainMessage<TutorDirectoryEntry> | undefined): boolean {
+    return proto3.util.equals(TutorDirectoryEntry, a, b);
+  }
+}
+
+/**
+ * TutorDirectoryApplication — pending application row для tutor's queue.
+ *
+ * @generated from message druz9.v1.TutorDirectoryApplication
+ */
+export class TutorDirectoryApplication extends Message<TutorDirectoryApplication> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string tutor_id = 2;
+   */
+  tutorId = "";
+
+  /**
+   * @generated from field: string student_id = 3;
+   */
+  studentId = "";
+
+  /**
+   * @generated from field: string message = 4;
+   */
+  message = "";
+
+  /**
+   * 'pending' | 'accepted' | 'declined'
+   *
+   * @generated from field: string status = 5;
+   */
+  status = "";
+
+  /**
+   * RFC3339
+   *
+   * @generated from field: string created_at = 6;
+   */
+  createdAt = "";
+
+  /**
+   * Student display info (server-filled from users JOIN). Empty when
+   * student row is unavailable (extremely rare — ON DELETE CASCADE).
+   *
+   * @generated from field: string student_display_name = 7;
+   */
+  studentDisplayName = "";
+
+  /**
+   * @generated from field: string student_username = 8;
+   */
+  studentUsername = "";
+
+  /**
+   * @generated from field: string student_avatar_url = 9;
+   */
+  studentAvatarUrl = "";
+
+  constructor(data?: PartialMessage<TutorDirectoryApplication>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorDirectoryApplication";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "tutor_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "student_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "student_display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "student_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "student_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorDirectoryApplication {
+    return new TutorDirectoryApplication().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorDirectoryApplication {
+    return new TutorDirectoryApplication().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorDirectoryApplication {
+    return new TutorDirectoryApplication().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorDirectoryApplication | PlainMessage<TutorDirectoryApplication> | undefined, b: TutorDirectoryApplication | PlainMessage<TutorDirectoryApplication> | undefined): boolean {
+    return proto3.util.equals(TutorDirectoryApplication, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorGetMyDirectoryProfileRequest
+ */
+export class TutorGetMyDirectoryProfileRequest extends Message<TutorGetMyDirectoryProfileRequest> {
+  constructor(data?: PartialMessage<TutorGetMyDirectoryProfileRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorGetMyDirectoryProfileRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorGetMyDirectoryProfileRequest {
+    return new TutorGetMyDirectoryProfileRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorGetMyDirectoryProfileRequest {
+    return new TutorGetMyDirectoryProfileRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorGetMyDirectoryProfileRequest {
+    return new TutorGetMyDirectoryProfileRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorGetMyDirectoryProfileRequest | PlainMessage<TutorGetMyDirectoryProfileRequest> | undefined, b: TutorGetMyDirectoryProfileRequest | PlainMessage<TutorGetMyDirectoryProfileRequest> | undefined): boolean {
+    return proto3.util.equals(TutorGetMyDirectoryProfileRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorGetMyDirectoryProfileResponse
+ */
+export class TutorGetMyDirectoryProfileResponse extends Message<TutorGetMyDirectoryProfileResponse> {
+  /**
+   * @generated from field: druz9.v1.TutorDirectoryProfile profile = 1;
+   */
+  profile?: TutorDirectoryProfile;
+
+  constructor(data?: PartialMessage<TutorGetMyDirectoryProfileResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorGetMyDirectoryProfileResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "profile", kind: "message", T: TutorDirectoryProfile },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorGetMyDirectoryProfileResponse {
+    return new TutorGetMyDirectoryProfileResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorGetMyDirectoryProfileResponse {
+    return new TutorGetMyDirectoryProfileResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorGetMyDirectoryProfileResponse {
+    return new TutorGetMyDirectoryProfileResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorGetMyDirectoryProfileResponse | PlainMessage<TutorGetMyDirectoryProfileResponse> | undefined, b: TutorGetMyDirectoryProfileResponse | PlainMessage<TutorGetMyDirectoryProfileResponse> | undefined): boolean {
+    return proto3.util.equals(TutorGetMyDirectoryProfileResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorUpsertDirectoryProfileRequest
+ */
+export class TutorUpsertDirectoryProfileRequest extends Message<TutorUpsertDirectoryProfileRequest> {
+  /**
+   * @generated from field: bool visible = 1;
+   */
+  visible = false;
+
+  /**
+   * @generated from field: string bio_md = 2;
+   */
+  bioMd = "";
+
+  /**
+   * @generated from field: repeated string expertise_tags = 3;
+   */
+  expertiseTags: string[] = [];
+
+  /**
+   * @generated from field: repeated string languages = 4;
+   */
+  languages: string[] = [];
+
+  /**
+   * @generated from field: string timezone = 5;
+   */
+  timezone = "";
+
+  /**
+   * @generated from field: string availability_md = 6;
+   */
+  availabilityMd = "";
+
+  /**
+   * @generated from field: string linkedin_url = 7;
+   */
+  linkedinUrl = "";
+
+  /**
+   * @generated from field: string github_url = 8;
+   */
+  githubUrl = "";
+
+  /**
+   * @generated from field: string application_message = 9;
+   */
+  applicationMessage = "";
+
+  constructor(data?: PartialMessage<TutorUpsertDirectoryProfileRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorUpsertDirectoryProfileRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "visible", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "bio_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "expertise_tags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 4, name: "languages", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 5, name: "timezone", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "availability_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "linkedin_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "github_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "application_message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorUpsertDirectoryProfileRequest {
+    return new TutorUpsertDirectoryProfileRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorUpsertDirectoryProfileRequest {
+    return new TutorUpsertDirectoryProfileRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorUpsertDirectoryProfileRequest {
+    return new TutorUpsertDirectoryProfileRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorUpsertDirectoryProfileRequest | PlainMessage<TutorUpsertDirectoryProfileRequest> | undefined, b: TutorUpsertDirectoryProfileRequest | PlainMessage<TutorUpsertDirectoryProfileRequest> | undefined): boolean {
+    return proto3.util.equals(TutorUpsertDirectoryProfileRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorUpsertDirectoryProfileResponse
+ */
+export class TutorUpsertDirectoryProfileResponse extends Message<TutorUpsertDirectoryProfileResponse> {
+  /**
+   * @generated from field: druz9.v1.TutorDirectoryProfile profile = 1;
+   */
+  profile?: TutorDirectoryProfile;
+
+  constructor(data?: PartialMessage<TutorUpsertDirectoryProfileResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorUpsertDirectoryProfileResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "profile", kind: "message", T: TutorDirectoryProfile },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorUpsertDirectoryProfileResponse {
+    return new TutorUpsertDirectoryProfileResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorUpsertDirectoryProfileResponse {
+    return new TutorUpsertDirectoryProfileResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorUpsertDirectoryProfileResponse {
+    return new TutorUpsertDirectoryProfileResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorUpsertDirectoryProfileResponse | PlainMessage<TutorUpsertDirectoryProfileResponse> | undefined, b: TutorUpsertDirectoryProfileResponse | PlainMessage<TutorUpsertDirectoryProfileResponse> | undefined): boolean {
+    return proto3.util.equals(TutorUpsertDirectoryProfileResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListDirectoryTutorsRequest
+ */
+export class TutorListDirectoryTutorsRequest extends Message<TutorListDirectoryTutorsRequest> {
+  /**
+   * OR semantics across tags
+   *
+   * @generated from field: repeated string expertise_tags = 1;
+   */
+  expertiseTags: string[] = [];
+
+  /**
+   * OR semantics across languages
+   *
+   * @generated from field: repeated string languages = 2;
+   */
+  languages: string[] = [];
+
+  /**
+   * 0 → server default (25), max 100
+   *
+   * @generated from field: int32 page_size = 3;
+   */
+  pageSize = 0;
+
+  /**
+   * opaque cursor
+   *
+   * @generated from field: string page_token = 4;
+   */
+  pageToken = "";
+
+  constructor(data?: PartialMessage<TutorListDirectoryTutorsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListDirectoryTutorsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "expertise_tags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 2, name: "languages", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 3, name: "page_size", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "page_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListDirectoryTutorsRequest {
+    return new TutorListDirectoryTutorsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListDirectoryTutorsRequest {
+    return new TutorListDirectoryTutorsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListDirectoryTutorsRequest {
+    return new TutorListDirectoryTutorsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListDirectoryTutorsRequest | PlainMessage<TutorListDirectoryTutorsRequest> | undefined, b: TutorListDirectoryTutorsRequest | PlainMessage<TutorListDirectoryTutorsRequest> | undefined): boolean {
+    return proto3.util.equals(TutorListDirectoryTutorsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListDirectoryTutorsResponse
+ */
+export class TutorListDirectoryTutorsResponse extends Message<TutorListDirectoryTutorsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TutorDirectoryEntry items = 1;
+   */
+  items: TutorDirectoryEntry[] = [];
+
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken = "";
+
+  constructor(data?: PartialMessage<TutorListDirectoryTutorsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListDirectoryTutorsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: TutorDirectoryEntry, repeated: true },
+    { no: 2, name: "next_page_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListDirectoryTutorsResponse {
+    return new TutorListDirectoryTutorsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListDirectoryTutorsResponse {
+    return new TutorListDirectoryTutorsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListDirectoryTutorsResponse {
+    return new TutorListDirectoryTutorsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListDirectoryTutorsResponse | PlainMessage<TutorListDirectoryTutorsResponse> | undefined, b: TutorListDirectoryTutorsResponse | PlainMessage<TutorListDirectoryTutorsResponse> | undefined): boolean {
+    return proto3.util.equals(TutorListDirectoryTutorsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorApplyToTutorRequest
+ */
+export class TutorApplyToTutorRequest extends Message<TutorApplyToTutorRequest> {
+  /**
+   * @generated from field: string tutor_user_id = 1;
+   */
+  tutorUserId = "";
+
+  /**
+   * max 500 chars
+   *
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  constructor(data?: PartialMessage<TutorApplyToTutorRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorApplyToTutorRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "tutor_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorApplyToTutorRequest {
+    return new TutorApplyToTutorRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorApplyToTutorRequest {
+    return new TutorApplyToTutorRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorApplyToTutorRequest {
+    return new TutorApplyToTutorRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorApplyToTutorRequest | PlainMessage<TutorApplyToTutorRequest> | undefined, b: TutorApplyToTutorRequest | PlainMessage<TutorApplyToTutorRequest> | undefined): boolean {
+    return proto3.util.equals(TutorApplyToTutorRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorApplyToTutorResponse
+ */
+export class TutorApplyToTutorResponse extends Message<TutorApplyToTutorResponse> {
+  /**
+   * @generated from field: druz9.v1.TutorDirectoryApplication application = 1;
+   */
+  application?: TutorDirectoryApplication;
+
+  constructor(data?: PartialMessage<TutorApplyToTutorResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorApplyToTutorResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "application", kind: "message", T: TutorDirectoryApplication },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorApplyToTutorResponse {
+    return new TutorApplyToTutorResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorApplyToTutorResponse {
+    return new TutorApplyToTutorResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorApplyToTutorResponse {
+    return new TutorApplyToTutorResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorApplyToTutorResponse | PlainMessage<TutorApplyToTutorResponse> | undefined, b: TutorApplyToTutorResponse | PlainMessage<TutorApplyToTutorResponse> | undefined): boolean {
+    return proto3.util.equals(TutorApplyToTutorResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListPendingApplicationsRequest
+ */
+export class TutorListPendingApplicationsRequest extends Message<TutorListPendingApplicationsRequest> {
+  constructor(data?: PartialMessage<TutorListPendingApplicationsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListPendingApplicationsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListPendingApplicationsRequest {
+    return new TutorListPendingApplicationsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListPendingApplicationsRequest {
+    return new TutorListPendingApplicationsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListPendingApplicationsRequest {
+    return new TutorListPendingApplicationsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListPendingApplicationsRequest | PlainMessage<TutorListPendingApplicationsRequest> | undefined, b: TutorListPendingApplicationsRequest | PlainMessage<TutorListPendingApplicationsRequest> | undefined): boolean {
+    return proto3.util.equals(TutorListPendingApplicationsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListPendingApplicationsResponse
+ */
+export class TutorListPendingApplicationsResponse extends Message<TutorListPendingApplicationsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TutorDirectoryApplication items = 1;
+   */
+  items: TutorDirectoryApplication[] = [];
+
+  constructor(data?: PartialMessage<TutorListPendingApplicationsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListPendingApplicationsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: TutorDirectoryApplication, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListPendingApplicationsResponse {
+    return new TutorListPendingApplicationsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListPendingApplicationsResponse {
+    return new TutorListPendingApplicationsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListPendingApplicationsResponse {
+    return new TutorListPendingApplicationsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListPendingApplicationsResponse | PlainMessage<TutorListPendingApplicationsResponse> | undefined, b: TutorListPendingApplicationsResponse | PlainMessage<TutorListPendingApplicationsResponse> | undefined): boolean {
+    return proto3.util.equals(TutorListPendingApplicationsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorAcceptApplicationRequest
+ */
+export class TutorAcceptApplicationRequest extends Message<TutorAcceptApplicationRequest> {
+  /**
+   * @generated from field: string application_id = 1;
+   */
+  applicationId = "";
+
+  constructor(data?: PartialMessage<TutorAcceptApplicationRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorAcceptApplicationRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "application_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorAcceptApplicationRequest {
+    return new TutorAcceptApplicationRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorAcceptApplicationRequest {
+    return new TutorAcceptApplicationRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorAcceptApplicationRequest {
+    return new TutorAcceptApplicationRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorAcceptApplicationRequest | PlainMessage<TutorAcceptApplicationRequest> | undefined, b: TutorAcceptApplicationRequest | PlainMessage<TutorAcceptApplicationRequest> | undefined): boolean {
+    return proto3.util.equals(TutorAcceptApplicationRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorAcceptApplicationResponse
+ */
+export class TutorAcceptApplicationResponse extends Message<TutorAcceptApplicationResponse> {
+  /**
+   * @generated from field: druz9.v1.TutorRelationship relationship = 1;
+   */
+  relationship?: TutorRelationship;
+
+  constructor(data?: PartialMessage<TutorAcceptApplicationResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorAcceptApplicationResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "relationship", kind: "message", T: TutorRelationship },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorAcceptApplicationResponse {
+    return new TutorAcceptApplicationResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorAcceptApplicationResponse {
+    return new TutorAcceptApplicationResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorAcceptApplicationResponse {
+    return new TutorAcceptApplicationResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorAcceptApplicationResponse | PlainMessage<TutorAcceptApplicationResponse> | undefined, b: TutorAcceptApplicationResponse | PlainMessage<TutorAcceptApplicationResponse> | undefined): boolean {
+    return proto3.util.equals(TutorAcceptApplicationResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorDeclineApplicationRequest
+ */
+export class TutorDeclineApplicationRequest extends Message<TutorDeclineApplicationRequest> {
+  /**
+   * @generated from field: string application_id = 1;
+   */
+  applicationId = "";
+
+  constructor(data?: PartialMessage<TutorDeclineApplicationRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorDeclineApplicationRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "application_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorDeclineApplicationRequest {
+    return new TutorDeclineApplicationRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorDeclineApplicationRequest {
+    return new TutorDeclineApplicationRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorDeclineApplicationRequest {
+    return new TutorDeclineApplicationRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorDeclineApplicationRequest | PlainMessage<TutorDeclineApplicationRequest> | undefined, b: TutorDeclineApplicationRequest | PlainMessage<TutorDeclineApplicationRequest> | undefined): boolean {
+    return proto3.util.equals(TutorDeclineApplicationRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorDeclineApplicationResponse
+ */
+export class TutorDeclineApplicationResponse extends Message<TutorDeclineApplicationResponse> {
+  constructor(data?: PartialMessage<TutorDeclineApplicationResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorDeclineApplicationResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorDeclineApplicationResponse {
+    return new TutorDeclineApplicationResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorDeclineApplicationResponse {
+    return new TutorDeclineApplicationResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorDeclineApplicationResponse {
+    return new TutorDeclineApplicationResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorDeclineApplicationResponse | PlainMessage<TutorDeclineApplicationResponse> | undefined, b: TutorDeclineApplicationResponse | PlainMessage<TutorDeclineApplicationResponse> | undefined): boolean {
+    return proto3.util.equals(TutorDeclineApplicationResponse, a, b);
   }
 }
 

@@ -26,13 +26,28 @@ import { api, ApiError } from '../../lib/apiClient'
 
 // Wire-side enum values mirror druz9.v1.Track (proto3 JSON encoding uses
 // the prefixed UPPER_SNAKE name, not the lowercase DB value).
+//
+// M1 (2026-05-12): 'TRACK_ML_VIRTUAL' — pseudo-wire для ML Engineering
+// карточки. На submit time трансформируется в подлежащий TRACK_DEV_SENIOR
+// (seniority='senior'), плюс side-effects: hone_user_settings.active_track
+// устанавливается в 'ml', primary_goal.kind — в GOAL_KIND_ML_OFFER. Так
+// проще, чем растягивать proto Track enum + track_kind ENUM (которые
+// требовали бы полного rebuild по mig 00046 паттерну) ради UI affordance.
 type WireTrack =
   | 'TRACK_DEV'
   | 'TRACK_DEV_SENIOR'
+  | 'TRACK_ML_VIRTUAL'
   | 'TRACK_SYSANALYST'
   | 'TRACK_PRODUCT_ANALYST'
   | 'TRACK_QA'
   | 'TRACK_ENGLISH'
+
+// Resolves UI pseudo-wire into actual proto Track enum value for
+// /profile/me/tracks RPC. Only TRACK_ML_VIRTUAL needs translation.
+function resolveWireForBackend(w: WireTrack): Exclude<WireTrack, 'TRACK_ML_VIRTUAL'> {
+  if (w === 'TRACK_ML_VIRTUAL') return 'TRACK_DEV_SENIOR'
+  return w
+}
 
 type Seniority = '' | 'junior' | 'middle' | 'senior' | 'lead'
 
@@ -46,6 +61,12 @@ type Card = {
 const CARDS: Card[] = [
   { wire: 'TRACK_DEV', title: 'Разработчик', blurb: 'Алгоритмы, бэкенд, базовый mock. Junior / Middle.', needsSeniority: true },
   { wire: 'TRACK_DEV_SENIOR', title: 'Senior dev', blurb: 'System Design, Tech Lead / EM, code-review.', needsSeniority: true },
+  {
+    wire: 'TRACK_ML_VIRTUAL',
+    title: 'ML Engineering',
+    blurb: 'Senior ML/MLE — interview prep, atlas, mock pipeline. Classical ML, DL, transformers, LLM/GenAI, MLOps.',
+    needsSeniority: false,
+  },
   { wire: 'TRACK_SYSANALYST', title: 'Системный аналитик', blurb: 'BPMN, use-cases, SQL, requirements gathering.', needsSeniority: true },
   { wire: 'TRACK_PRODUCT_ANALYST', title: 'Product analyst', blurb: 'Метрики, A/B, SQL, dashboards.', needsSeniority: true },
   { wire: 'TRACK_QA', title: 'QA / тестировщик', blurb: 'Тест-дизайн, API-тестирование, автотесты.', needsSeniority: true },
@@ -56,6 +77,12 @@ type PickState = {
   picked: Set<WireTrack>
   seniority: Map<WireTrack, Seniority>
   primary: WireTrack | null
+}
+
+// Tracks без явного seniority slot в UI (English — cross-cutting modifier;
+// ML — pseudo-track, seniority зашит как 'senior' на сабмите).
+function trackNeedsSeniority(wire: WireTrack): boolean {
+  return wire !== 'TRACK_ENGLISH' && wire !== 'TRACK_ML_VIRTUAL'
 }
 
 function reduceClick(s: PickState, wire: WireTrack): PickState {
@@ -75,7 +102,7 @@ function reduceClick(s: PickState, wire: WireTrack): PickState {
     }
   } else {
     picked.add(wire)
-    if (wire !== 'TRACK_ENGLISH') {
+    if (trackNeedsSeniority(wire)) {
       seniority.set(wire, 'middle')
     }
     if (primary === null) {
@@ -104,12 +131,39 @@ export default function Step0Tracks() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Items в формате, который ждёт /profile/me/tracks RPC. TRACK_ML_VIRTUAL
+  // здесь уже разрешён в подлежащий TRACK_DEV_SENIOR (proto Track enum не
+  // содержит ML — см. comment выше). Backend duplicate-track invariant
+  // защищён через guard в handleContinue: если юзер выбрал и ML и Senior
+  // dev — Senior dev row пропускается чтобы не дублировать DEV_SENIOR.
   const items = useMemo(() => {
-    return Array.from(state.picked).map((wire) => ({
-      track: wire,
-      seniority: wire === 'TRACK_ENGLISH' ? '' : state.seniority.get(wire) ?? 'middle',
-      primary: state.primary === wire,
-    }))
+    const seen = new Set<string>()
+    const out: { track: string; seniority: string; primary: boolean }[] = []
+    // ML pick'и обрабатываем первыми, чтобы они «заняли» dev_senior слот
+    // (юзер явно показал ML-приоритет; Senior dev card после ML — fallback).
+    const ordered = [...state.picked].sort((a) => (a === 'TRACK_ML_VIRTUAL' ? -1 : 0))
+    for (const wire of ordered) {
+      const resolved = resolveWireForBackend(wire)
+      if (seen.has(resolved)) continue
+      seen.add(resolved)
+      const sen = wire === 'TRACK_ML_VIRTUAL'
+        ? 'senior'
+        : wire === 'TRACK_ENGLISH'
+          ? ''
+          : state.seniority.get(wire) ?? 'middle'
+      out.push({
+        track: resolved,
+        seniority: sen,
+        primary: state.primary === wire,
+      })
+    }
+    // Защита от ситуации, когда primary был ML+Senior_dev одновременно
+    // (после dedupe primary может потеряться). Если ни один не помечен
+    // primary — помечаем первый.
+    if (out.length > 0 && !out.some((i) => i.primary)) {
+      out[0]!.primary = true
+    }
+    return out
   }, [state])
 
   const canContinue = state.picked.size > 0 && state.primary !== null
@@ -118,11 +172,35 @@ export default function Step0Tracks() {
     if (!canContinue || submitting) return
     setError(null)
     setSubmitting(true)
+    const pickedML = state.picked.has('TRACK_ML_VIRTUAL')
     try {
       await api<unknown>('/profile/me/tracks', {
         method: 'PUT',
         body: JSON.stringify({ items }),
       })
+
+      // ML side-effects — устанавливаем active_track='ml' + primary_goal.
+      // Best-effort: ошибки не валят onboarding, юзер может настроить
+      // в Settings/GoalWizard позже.
+      if (pickedML) {
+        try {
+          await api<unknown>('/hone/settings/active-track', {
+            method: 'POST',
+            body: JSON.stringify({ active_track: 'ml' }),
+          })
+        } catch {
+          /* hone settings best-effort */
+        }
+        try {
+          await api<unknown>('/intelligence/goals/primary', {
+            method: 'POST',
+            body: JSON.stringify({ kind: 'GOAL_KIND_ML_OFFER' }),
+          })
+        } catch {
+          /* primary goal best-effort */
+        }
+      }
+
       nav('/onboarding/welcome')
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {

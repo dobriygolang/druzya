@@ -12,7 +12,7 @@
 | **Hone** | `hone/` | Тихий daily focus-cockpit для разрабов: AI-план, focus-timers, заметки с AI-link, taskboard с auto-categorise, English hub. Offline-first («должен работать в самолёте») |
 | **Cue** | `cue/` | Stealth tray-copilot для собесов: невидим при screen-share (NSWindowSharingNone + setContentProtection), live-транскрипт + AI-подсказки |
 
-**Tracks (3):** Go senior (главный) · ML engineering · English (opt-in toggle).
+**Tracks (3 equal):** Go senior · ML engineering · English (opt-in toggle). Все три — first-class, нет «главного». User picks один (primary) или несколько (sticky combo). Каждый трек — свой mock-rubric, свой Atlas-подграф, свой AI-coach persona (go-coach / ml-coach / english-coach).
 
 **Memory + Goal + Predictions = главный moat.** AI-coach **с памятью** что юзер сделал на любой external платформе → ставит правильные цели → разбивает на weekly milestones → предсказывает «65% готов к Google L4 algo, ещё 3 недели до SysDesign ready».
 

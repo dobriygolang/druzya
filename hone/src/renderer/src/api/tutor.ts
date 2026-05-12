@@ -192,3 +192,75 @@ export async function getEventRSVPCount(eventId: string): Promise<number> {
   const resp = await client.getEventRSVPCount({ eventId });
   return resp.count;
 }
+
+// ── Path assignments (Phase K T2+T3, 2026-05-12) ──────────────────────
+
+export interface PathAssignment {
+  id: string;
+  pathId: string;
+  tutorId: string;
+  studentId: string;
+  currentStep: number;
+  totalSteps: number;
+  assignedAt: Date | null;
+  completedAt: Date | null;
+  archivedAt: Date | null;
+  snapshotAtlasNodeKeys: string[];
+  snapshotResourceIds: string[];
+  pathName: string;
+  tutorDisplayName: string;
+}
+
+type ProtoPathAssignment = {
+  id: string;
+  pathId: string;
+  tutorId: string;
+  studentId: string;
+  currentStep: number;
+  totalSteps: number;
+  assignedAt?: { seconds: bigint; nanos: number };
+  completedAt?: { seconds: bigint; nanos: number };
+  archivedAt?: { seconds: bigint; nanos: number };
+  snapshotAtlasNodeKeys: string[];
+  snapshotResourceIds: string[];
+  pathName: string;
+  tutorDisplayName: string;
+};
+
+function unwrapPathAssignment(a: ProtoPathAssignment): PathAssignment {
+  return {
+    id: a.id,
+    pathId: a.pathId,
+    tutorId: a.tutorId,
+    studentId: a.studentId,
+    currentStep: a.currentStep,
+    totalSteps: a.totalSteps,
+    assignedAt: protoTs(a.assignedAt),
+    completedAt: protoTs(a.completedAt),
+    archivedAt: protoTs(a.archivedAt),
+    snapshotAtlasNodeKeys: a.snapshotAtlasNodeKeys ?? [],
+    snapshotResourceIds: a.snapshotResourceIds ?? [],
+    pathName: a.pathName ?? '',
+    tutorDisplayName: a.tutorDisplayName ?? '',
+  };
+}
+
+/** Student-side: which curated paths am I currently working on? */
+export async function listMyActivePathAssignments(): Promise<PathAssignment[]> {
+  const resp = await client.listMyActivePathAssignments({});
+  return resp.items.map((it) => unwrapPathAssignment(it as unknown as ProtoPathAssignment));
+}
+
+/** Bump current_step by 1. Server stamps completed_at when step == total.
+ *  Returns the updated assignment + a flag indicating whether THIS call
+ *  crossed the finish line (so the UI can fire a «completed» toast). */
+export async function advancePathStep(assignmentId: string): Promise<{
+  assignment: PathAssignment;
+  completed: boolean;
+}> {
+  const resp = await client.advancePathStep({ assignmentId });
+  return {
+    assignment: unwrapPathAssignment(resp.assignment as unknown as ProtoPathAssignment),
+    completed: resp.completed,
+  };
+}

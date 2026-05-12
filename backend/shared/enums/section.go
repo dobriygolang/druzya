@@ -64,6 +64,30 @@ const (
 	// data quality, orchestration, governance. Same gating как другие
 	// free-form: non-engineering (no ELO/rating), non-task-based.
 	SectionDE Section = "de"
+	// SectionMLSystemDesign — M2 Phase K (vertical analysis 2026-05-12).
+	// Granular ML system design stage отдельно от generic ml_eng — для
+	// FAANG/RU ML pipeline'ов где hiring loop разделяет ml_system_design
+	// (recsys / ranking / training pipeline / real-time inference
+	// architecture) от ml_coding (numpy/pytorch hands-on) и ml_theory
+	// (DL fundamentals deep-dive). Same gating как ml_eng — free-form,
+	// non-engineering, non-task-based. Maps to skill_radar axis
+	// `ml_system_design`.
+	SectionMLSystemDesign Section = "ml_system_design"
+	// SectionMLCoding — M2 Phase K. Hands-on Python+numpy/pandas/scikit
+	// OR PyTorch coding round. В отличие от SectionAlgorithms (data
+	// structures / LeetCode-style), здесь акцент на model implementation,
+	// vectorization, gradient flow, batch design. Free-form, non-task-based
+	// для MVP (no `tasks`-pool pick); future M3 wire Judge0 ML sandbox.
+	// Maps to skill_radar axis `practical_implementation`.
+	SectionMLCoding Section = "ml_coding"
+	// SectionMLTheory — M2 Phase K. Quiz-style deep learning fundamentals
+	// (attention math, BatchNorm vs LayerNorm, optimizers, gradient flow,
+	// regularization). Distinct from generic ml_eng — этот section
+	// специально pull'ит theoretical-depth axis в isolation, без
+	// system-design / production / data-intuition. Free-form,
+	// non-engineering, non-task-based. Maps to skill_radar axis
+	// `theoretical_depth`.
+	SectionMLTheory Section = "ml_theory"
 )
 
 func (s Section) IsValid() bool {
@@ -71,7 +95,8 @@ func (s Section) IsValid() bool {
 	case SectionAlgorithms, SectionSQL, SectionGo, SectionSystemDesign, SectionBehavioral,
 		SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
 		SectionSysanalyst, SectionProductAnalyst,
-		SectionQA, SectionDevOps, SectionMLEng, SectionDE:
+		SectionQA, SectionDevOps, SectionMLEng, SectionDE,
+		SectionMLSystemDesign, SectionMLCoding, SectionMLTheory:
 		return true
 	}
 	return false
@@ -88,7 +113,8 @@ func (s Section) IsEngineering() bool {
 		return true
 	case SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
 		SectionSysanalyst, SectionProductAnalyst,
-		SectionQA, SectionDevOps, SectionMLEng, SectionDE:
+		SectionQA, SectionDevOps, SectionMLEng, SectionDE,
+		SectionMLSystemDesign, SectionMLCoding, SectionMLTheory:
 		return false
 	}
 	return false
@@ -106,8 +132,21 @@ func (s Section) IsTaskBased() bool {
 		return true
 	case SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
 		SectionSysanalyst, SectionProductAnalyst,
-		SectionQA, SectionDevOps, SectionMLEng, SectionDE:
+		SectionQA, SectionDevOps, SectionMLEng, SectionDE,
+		SectionMLSystemDesign, SectionMLCoding, SectionMLTheory:
 		return false
+	}
+	return false
+}
+
+// IsML reports whether the section belongs to the ML interview cluster
+// (ml_eng generic + 3 granular M2 sub-sections). Used by skill_radar
+// to fold MLE-rubric mocks across granular sections (ml_coding /
+// ml_system_design / ml_theory) into the same radar surface.
+func (s Section) IsML() bool {
+	switch s {
+	case SectionMLEng, SectionMLSystemDesign, SectionMLCoding, SectionMLTheory:
+		return true
 	}
 	return false
 }
@@ -120,5 +159,6 @@ func AllSections() []Section {
 		SectionEnglishHR, SectionSystemDesignSenior, SectionTechLeadEM,
 		SectionSysanalyst, SectionProductAnalyst,
 		SectionQA, SectionDevOps, SectionMLEng, SectionDE,
+		SectionMLSystemDesign, SectionMLCoding, SectionMLTheory,
 	}
 }

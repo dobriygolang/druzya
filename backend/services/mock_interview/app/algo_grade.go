@@ -148,8 +148,12 @@ func (g *AlgoGrader) Run(ctx context.Context, in RunAlgoInput) (RunAlgoOutput, e
 		stage, sErr := g.Stages.Get(ctx, att.PipelineStageID)
 		if sErr == nil {
 			switch stage.StageKind {
-			case domain.StageAlgo, domain.StageCoding:
-				// ok
+			case domain.StageAlgo, domain.StageCoding, domain.StageMLCoding:
+				// ok — ml_coding shares the Judge0 dry-run path; the sandbox
+				// must be wired to the custom Judge0 image with ML libs
+				// (см. infra/judge0/Dockerfile.ml-python). На стоковом
+				// Judge0 «import numpy» падает с ModuleNotFoundError →
+				// `unavailable` verdict, не 5xx.
 			default:
 				return RunAlgoOutput{}, fmt.Errorf("stage_kind=%s not eligible for run-algo: %w", stage.StageKind, domain.ErrConflict)
 			}

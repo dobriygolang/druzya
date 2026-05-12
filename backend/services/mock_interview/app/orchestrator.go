@@ -175,7 +175,7 @@ func (o *Orchestrator) StartNextStage(ctx context.Context, pipelineID uuid.UUID)
 		if err != nil {
 			return StageWithAttempts{}, fmt.Errorf("materialise %s attempts: %w", stage.StageKind, err)
 		}
-	case domain.StageAlgo, domain.StageCoding:
+	case domain.StageAlgo, domain.StageCoding, domain.StageMLCoding:
 		attempts, err = o.materialiseTaskAttempts(ctx, stage, pipe)
 		if err != nil {
 			return StageWithAttempts{}, fmt.Errorf("materialise task attempts: %w", err)
@@ -545,10 +545,19 @@ func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, us
 	}
 
 	// F-2: when this is a task_solve attempt and the sandbox is wired AND
-	// the task has Judge0-runnable test cases, override the score / verdict
-	// with the sandbox result (deterministic exact-match grading). The LLM
-	// feedback is preserved as the markdown commentary because Judge0 only
-	// produces a pass/fail signal — not a code review.
+	// the task has Judge0-runnable test cases, fold the sandbox result into
+	// the verdict. Two paths:
+	//   • Algo / coding stages — deterministic exact-match overrides the
+	//     LLM score (single right answer; tests pass ⇒ pass).
+	//   • ML coding stage — HYBRID blend: 0.6·sandbox + 0.4·LLM-rubric.
+	//     Pipeline/training tasks routinely pass 4/5 unit-tests when the
+	//     accuracy threshold is borderline (sklearn solver variance, torch
+	//     seed drift across builds). Pure sandbox override would FAIL these
+	//     on technicalities even when the code is correct and idiomatic;
+	//     pure LLM override leaks accuracy bugs the rubric can't see. The
+	//     blend keeps the rubric signal alive while letting tests anchor
+	//     the math. Verdict re-derived from the blended score.
+	// LLM feedback always preserved because Judge0 only produces pass/fail.
 	if withQ.Attempt.Kind == domain.AttemptTaskSolve &&
 		o.Sandbox != nil && o.Sandbox.Available() &&
 		withQ.Attempt.TaskID != nil && o.Tasks != nil {
@@ -561,6 +570,17 @@ func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, us
 				}
 				// ErrSandboxUnavailable is the documented degradation path —
 				// no log noise, just keep the LLM-derived verdict/score.
+				// For ml_coding this is the common case on stock Judge0
+				// without the ML lib image — see infra/judge0/README.md.
+			} else if stage.StageKind == domain.StageMLCoding {
+				// Hybrid blend for ML coding.
+				blended := 0.6*float64(res.Score) + 0.4*out.Score
+				out.Score = blended
+				out.Verdict = mapVerdict(blended, in.StrictnessProfile.BiasTowardFail)
+				out.Feedback = fmt.Sprintf(
+					"**Sandbox: %d/%d tests passed. Hybrid score: %.0f (60%% tests + 40%% LLM rubric).**\n\n",
+					res.PassedCount, res.Total, blended,
+				) + out.Feedback
 			} else {
 				out.Score = float64(res.Score)
 				out.Verdict = res.Verdict
@@ -935,6 +955,12 @@ var stageToStruggleAnchor = map[domain.StageKind]string{
 	domain.StageCoding:     "stage:coding",
 	domain.StageSysDesign:  "stage:sysdesign",
 	domain.StageBehavioral: "stage:behavioral",
+	// ML coding shares the coding axis at the atlas level — separate
+	// node would fragment the surface; Atlas already has `ml_basics`
+	// as a peer node for theory tracking. Use `stage:coding` so an
+	// ML-failed mock still surfaces under coding struggle, и atlas
+	// bump'ит ml_basics through stageToAtlasNode ниже.
+	domain.StageMLCoding: "stage:coding",
 }
 
 // emitStruggleMarks walks the final stages and fires the struggle hook

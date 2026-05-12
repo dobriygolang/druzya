@@ -58,9 +58,9 @@ Middle / senior разработчик в РФ. Готовится к собес
 
 Если в одном появляется фича другого — режем.
 
-## 3 трека (Sergey identity 2026-05-04)
+## 3 equal tracks (Sergey identity 2026-05-04, M1 fix 2026-05-12)
 
-druz9 — AI-coach с памятью + free tutor-toolkit + Hone для подготовки senior IT-разрабов. **3 трека:** Go senior · ML engineering · English (opt-in toggle). НЕ LeetCode / НЕ Skyeng / НЕ paid marketplace.
+druz9 — AI-coach с памятью + free tutor-toolkit + Hone для подготовки senior IT-разрабов. **3 equal tracks:** Go senior · ML engineering · English (opt-in toggle). Все три — first-class, нет «главного»: каждый имеет свой Atlas-подграф, mock-rubric, AI-coach persona (`go-coach` / `ml-coach` / `english-coach`). НЕ LeetCode / НЕ Skyeng / НЕ paid marketplace.
 
 ## Двусторонний рынок без денежного шага
 

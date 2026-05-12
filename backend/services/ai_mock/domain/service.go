@@ -40,7 +40,8 @@ func PickModel(user UserContext, taskModel enums.LLMModel, section enums.Section
 		enums.SectionSystemDesign, enums.SectionBehavioral,
 		enums.SectionEnglishHR, enums.SectionSystemDesignSenior, enums.SectionTechLeadEM,
 		enums.SectionSysanalyst, enums.SectionProductAnalyst,
-		enums.SectionQA, enums.SectionDevOps, enums.SectionMLEng, enums.SectionDE:
+		enums.SectionQA, enums.SectionDevOps, enums.SectionMLEng, enums.SectionDE,
+		enums.SectionMLSystemDesign, enums.SectionMLCoding, enums.SectionMLTheory:
 		// No per-section overrides yet. Intentional no-op.
 	}
 	// 4. Company override.

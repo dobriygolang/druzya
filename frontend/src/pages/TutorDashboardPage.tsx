@@ -21,6 +21,7 @@ import { Card } from '../components/Card'
 import { TutorOnboardingModal, isTutorOnboarded } from '../components/TutorOnboardingModal'
 import { SharedReadingPane } from '../components/SharedReadingPane'
 import { ReadingPathsPane } from '../components/ReadingPathsPane'
+import { TutorDirectoryPane } from '../components/TutorDirectoryPane'
 import { Sparkline } from '../components/Sparkline'
 import { ApiError } from '../lib/apiClient'
 import {
@@ -53,7 +54,13 @@ const STATUS_LABEL: Record<TutorInviteStatus, string> = {
   INVITE_STATUS_EXPIRED: 'истёк',
 }
 
-type DashTab = 'overview' | 'students' | 'library' | 'paths' | 'calendar'
+type DashTab =
+  | 'overview'
+  | 'students'
+  | 'library'
+  | 'paths'
+  | 'calendar'
+  | 'directory'
 
 const TABS: { id: DashTab; label: string; hint: string }[] = [
   { id: 'overview', label: 'Обзор', hint: 'Активность за 30 дней + быстрые действия' },
@@ -62,6 +69,8 @@ const TABS: { id: DashTab; label: string; hint: string }[] = [
   // Stream D (2026-05-12) — curated atlas-node sequences.
   { id: 'paths', label: 'Paths', hint: 'Curated reading paths из atlas-узлов' },
   { id: 'calendar', label: 'Календарь', hint: 'Sessions + broadcast assignments' },
+  // Phase K T1 (2026-05-12) — directory profile + pending applications.
+  { id: 'directory', label: 'Directory', hint: 'Публичный профиль + заявки от студентов' },
 ]
 
 function isDashTab(s: string | undefined): s is DashTab {
@@ -70,7 +79,8 @@ function isDashTab(s: string | undefined): s is DashTab {
     s === 'students' ||
     s === 'library' ||
     s === 'paths' ||
-    s === 'calendar'
+    s === 'calendar' ||
+    s === 'directory'
   )
 }
 
@@ -171,6 +181,8 @@ export default function TutorDashboardPage() {
             <EventsPane />
           </>
         )}
+
+        {tab === 'directory' && <TutorDirectoryPane />}
       </div>
     </div>
   )

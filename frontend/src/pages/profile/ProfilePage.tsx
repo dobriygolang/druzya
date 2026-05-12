@@ -63,6 +63,10 @@ const TRACK_LABELS: Record<ActiveTrack, { label: string; hint: string }> = {
     label: 'Dev (Go senior)',
     hint: 'Подготовка к собесу на senior Go-разработчика. Algorithms, system design, distributed.',
   },
+  ml: {
+    label: 'ML Engineering',
+    hint: 'Senior ML/MLE — classical ML, DL, transformers, LLM/GenAI, ML system design, MLOps.',
+  },
   english: {
     label: 'English',
     hint: 'Speaking + writing для tech-собесов. Clarity / accuracy / range / fluency.',

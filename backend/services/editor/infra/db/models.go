@@ -1946,6 +1946,32 @@ type TutorAssignment struct {
 	DueNotifiedAt pgtype.Timestamptz
 }
 
+type TutorDirectoryApplication struct {
+	ID        pgtype.UUID
+	TutorID   pgtype.UUID
+	StudentID pgtype.UUID
+	Message   string
+	Status    string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type TutorDirectoryProfile struct {
+	UserID             pgtype.UUID
+	Visible            bool
+	BioMd              string
+	ExpertiseTags      []string
+	Languages          []string
+	Timezone           pgtype.Text
+	AvailabilityMd     pgtype.Text
+	LinkedinUrl        pgtype.Text
+	GithubUrl          pgtype.Text
+	VerifiedAt         pgtype.Timestamptz
+	ApplicationMessage pgtype.Text
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+}
+
 type TutorEvent struct {
 	ID                 pgtype.UUID
 	TutorID            pgtype.UUID
@@ -1981,6 +2007,20 @@ type TutorInvite struct {
 	AcceptedAt   pgtype.Timestamptz
 	RevokedAt    pgtype.Timestamptz
 	TargetUserID pgtype.UUID
+}
+
+type TutorPathAssignment struct {
+	ID                    pgtype.UUID
+	PathID                pgtype.UUID
+	TutorID               pgtype.UUID
+	StudentID             pgtype.UUID
+	CurrentStep           int32
+	TotalSteps            int32
+	SnapshotAtlasNodeKeys []string
+	SnapshotResourceIds   []pgtype.UUID
+	AssignedAt            pgtype.Timestamptz
+	CompletedAt           pgtype.Timestamptz
+	ArchivedAt            pgtype.Timestamptz
 }
 
 type TutorReadingPath struct {

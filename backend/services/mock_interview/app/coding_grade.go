@@ -112,10 +112,11 @@ func (g *CodingGrader) Run(ctx context.Context, in CodingRubricInput) (CodingRub
 		return CodingRubricOutput{}, fmt.Errorf("attempt kind=%s, want task_solve: %w", att.Kind, domain.ErrConflict)
 	}
 
-	// Stage check — coding only (defence-in-depth; algo has its own UC).
+	// Stage check — coding + ml_coding share this LLM rubric path (both
+	// produce open-ended code reviews; algo uses Judge0-only verdicts).
 	if g.Stages != nil {
 		stage, sErr := g.Stages.Get(ctx, att.PipelineStageID)
-		if sErr == nil && stage.StageKind != domain.StageCoding {
+		if sErr == nil && stage.StageKind != domain.StageCoding && stage.StageKind != domain.StageMLCoding {
 			return CodingRubricOutput{}, fmt.Errorf("stage_kind=%s not eligible for run-coding: %w", stage.StageKind, domain.ErrConflict)
 		}
 	}

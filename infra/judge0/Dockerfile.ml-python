@@ -1,0 +1,111 @@
+# syntax=docker/dockerfile:1.7-labs
+#
+# Custom Judge0 image with Python ML libraries pre-installed.
+# Phase K M3 (2026-05-12) — ML coding stage support for AI-mock.
+#
+# Base: judge0/judge0:1.13.1 (the same image used by the stock docker-
+# compose `judge0-server` / `judge0-workers` services). Judge0 ships
+# multiple Python runtimes under /usr/local — language_id=71 is
+# Python 3.8.1 (см. backend/services/mock_interview/infra/judge0_sandbox.go).
+# We pin pip installs to THAT interpreter so the ML imports succeed when
+# the sandbox invokes Python with language_id=71.
+#
+# Image size: ~2.5GB. Heavy because torch alone is ~800MB and we pull
+# CPU-only wheels (no CUDA). For self-hosted Judge0 on a VM this is
+# fine; for cloud Judge0 (no extension point) see README for the
+# pre-bundled image alternative.
+#
+# Why CPU-only torch: mock interview sandboxes have no GPU and a 15s
+# wall-clock cap (Judge0SandboxTimeout) — anything that needs CUDA
+# wouldn't finish anyway. The CPU wheel saves ~1.5GB and avoids a
+# brittle `nvidia-smi`-style probe at startup.
+#
+# Why these specific libs:
+#   - numpy / scipy           — math primitives, every ML task needs them
+#   - pandas                  — data manipulation tasks (5 in the seed)
+#   - scikit-learn            — pipeline / cross-val / classifier tasks
+#   - xgboost / lightgbm      — tree-based, every interview asks for at
+#                               least one of them
+#   - matplotlib              — task descriptions occasionally ask to
+#                               plot (we don't render but import must work)
+#   - torch (CPU)             — deep learning track (5 tasks)
+#   - torchvision (CPU)       — for fine-tune ResNet task
+#   - transformers + tokenizers — LoRA / attention / sequence tasks
+#   - sentence-transformers   — embedding tasks (small models only)
+#
+# Anti-bloat: we explicitly do NOT install tensorflow / jax / spark /
+# huggingface-datasets — they double the image size and are rarely
+# needed at interview tier. If a future task needs one, add it here.
+
+FROM judge0/judge0:1.13.1
+
+# Judge0 ships Python 3.8.1 at /usr/local/python-3.8.1 (language_id=71)
+# и Python 3.7.7 at /usr/local/python-3.7.7. We install to 3.8.1 only —
+# all ML libs support 3.8+. Pip executable lives in <prefix>/bin/pip.
+ENV PYTHON_PREFIX=/usr/local/python-3.8.1
+ENV PATH="${PYTHON_PREFIX}/bin:${PATH}"
+
+# Build deps for any C extensions that don't ship wheels for 3.8 musl.
+# Strip after install to keep the layer tight (apt-get clean alone
+# doesn't recover much — the apt lists is what eats space).
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        gfortran \
+        libopenblas-dev \
+        liblapack-dev \
+        wget \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pin major versions for reproducibility. We don't pin patch because pip
+# resolver fights between numpy / pandas / sklearn over micro-versions.
+# Versions chosen for Python 3.8 compatibility (latest minor that still
+# supports 3.8 — sklearn 1.4 dropped it, numpy 2.x dropped it).
+#
+# Cache mount: BuildKit reuses pip's HTTP cache across builds на том же
+# runner — repeated builds for tweaks finish в секунды.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    ${PYTHON_PREFIX}/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
+ && ${PYTHON_PREFIX}/bin/pip install --no-cache-dir \
+        "numpy>=1.24,<1.27" \
+        "scipy>=1.10,<1.12" \
+        "pandas>=2.0,<2.2" \
+        "scikit-learn>=1.3,<1.4" \
+        "xgboost>=1.7,<2.1" \
+        "lightgbm>=4.0,<4.4" \
+        "matplotlib>=3.7,<3.9" \
+ && ${PYTHON_PREFIX}/bin/pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cpu \
+        "torch==2.1.2+cpu" \
+        "torchvision==0.16.2+cpu" \
+ && ${PYTHON_PREFIX}/bin/pip install --no-cache-dir \
+        "transformers>=4.36,<4.41" \
+        "tokenizers>=0.15,<0.20" \
+        "sentence-transformers>=2.2,<2.8" \
+        "datasets>=2.14,<2.20"
+
+# Smoke test — fail the build if a critical import broke. This runs at
+# build time, not at runtime, so a botched install is caught before
+# the image is published. We don't run sklearn's full test suite (90s+)
+# — just one symbol from each lib.
+RUN ${PYTHON_PREFIX}/bin/python -c "\
+import numpy as np; \
+import pandas as pd; \
+import sklearn; \
+import scipy; \
+import xgboost; \
+import lightgbm; \
+import torch; \
+import torchvision; \
+import transformers; \
+print('ML stack ok:', np.__version__, pd.__version__, sklearn.__version__, torch.__version__)"
+
+# Strip build deps after wheels are in place — saves ~250MB.
+RUN apt-get purge -y build-essential gfortran && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Judge0 expects to run as its own user (см. base image). We don't
+# override USER/ENTRYPOINT/CMD — inherit everything from the base
+# image so this is a drop-in replacement for judge0/judge0:1.13.1.

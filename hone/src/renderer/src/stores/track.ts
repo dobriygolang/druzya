@@ -18,7 +18,7 @@ const LS_KEY = 'hone:active_track';
 function readCachedTrack(): ActiveTrack {
   try {
     const v = localStorage.getItem(LS_KEY);
-    if (v === 'general' || v === 'dev' || v === 'english' || v === 'go') return v;
+    if (v === 'general' || v === 'dev' || v === 'ml' || v === 'english' || v === 'go') return v;
   } catch {
     /* ignore */
   }
@@ -49,7 +49,9 @@ interface TrackState {
 
 // activeTrack → набор приемлемых track_kind'ов. 'go' — sub-mode dev'а:
 // разрешаем 'dev' и 'dev_senior' (Sergey'у показываем full senior dev pipeline
-// в go-deep mode'е, plus go-coach для chat).
+// в go-deep mode'е, plus go-coach для chat). 'ml' — специализация внутри
+// dev_senior (mig 00046 не вернули track_kind enum, ML atlas-узлы остались
+// под dev_senior); фильтр показывает dev_senior контент + ml-coach handoff.
 function trackToKinds(t: ActiveTrack): Set<string> {
   switch (t) {
     case 'general':
@@ -57,6 +59,8 @@ function trackToKinds(t: ActiveTrack): Set<string> {
     case 'dev':
     case 'go':
       return new Set(['dev', 'dev_senior']);
+    case 'ml':
+      return new Set(['dev_senior']);
     case 'english':
       return new Set(['english']);
     default:
@@ -128,6 +132,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 export const TRACK_LABELS: Record<ActiveTrack, string> = {
   general: 'General',
   dev: 'Dev (Go)',
+  ml: 'ML Engineering',
   english: 'English',
   go: 'Go deep',
 };

@@ -16,10 +16,12 @@ import { Card } from './Card'
 import { ApiError } from '../lib/apiClient'
 import {
   useArchiveReadingPathMutation,
+  useAssignReadingPathMutation,
   useCreateReadingPathMutation,
   useTutorReadingPathsQuery,
   type TutorReadingPath,
 } from '../lib/queries/tutorPaths'
+import { useTutorStudentsQuery } from '../lib/queries/tutor'
 
 export function ReadingPathsPane() {
   const q = useTutorReadingPathsQuery()
@@ -157,6 +159,7 @@ function CreatePathForm() {
 
 function PathRow({ path }: { path: TutorReadingPath }) {
   const archive = useArchiveReadingPathMutation()
+  const [assignOpen, setAssignOpen] = useState(false)
   const created = path.created_at ? new Date(path.created_at).toLocaleDateString() : '—'
 
   return (
@@ -190,17 +193,165 @@ function PathRow({ path }: { path: TutorReadingPath }) {
         <span>создан {created}</span>
         <button
           type="button"
+          onClick={() => setAssignOpen(true)}
+          disabled={path.atlas_node_keys.length === 0 && path.resource_ids.length === 0}
+          className="ml-auto rounded-md border border-border bg-surface-2 px-2 py-0.5 text-text-secondary hover:border-text-primary hover:text-text-primary disabled:opacity-40"
+        >
+          Assign to student
+        </button>
+        <button
+          type="button"
           onClick={() => {
             if (window.confirm(`Архивировать «${path.name}»? Это soft-delete — данные останутся.`)) {
               archive.mutate(path.id)
             }
           }}
           disabled={archive.isPending}
-          className="ml-auto rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn hover:bg-warn/10 disabled:opacity-50"
+          className="rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn hover:bg-warn/10 disabled:opacity-50"
         >
           Архивировать
         </button>
       </div>
+      {assignOpen && (
+        <AssignToStudentModal
+          path={path}
+          onClose={() => setAssignOpen(false)}
+        />
+      )}
     </Card>
+  )
+}
+
+// AssignToStudentModal — picker dialog that resolves «which student?»
+// then fires AssignReadingPath. On success, surface a toast-style banner
+// inside the same modal (rather than navigate away) so the tutor can
+// assign the same path to multiple students back-to-back if needed.
+function AssignToStudentModal({
+  path,
+  onClose,
+}: {
+  path: TutorReadingPath
+  onClose: () => void
+}) {
+  const studentsQ = useTutorStudentsQuery()
+  const assign = useAssignReadingPathMutation()
+  const [studentId, setStudentId] = useState('')
+  const [done, setDone] = useState<{ count: number; studentId: string } | null>(null)
+
+  const students = studentsQ.data?.items ?? []
+  const totalSteps = path.atlas_node_keys.length || path.resource_ids.length
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!studentId) return
+    setDone(null)
+    assign.mutate(
+      { path_id: path.id, student_id: studentId },
+      {
+        onSuccess: (r) => {
+          setDone({ count: r.assignments_created, studentId })
+          setStudentId('')
+        },
+      },
+    )
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Assign path ${path.name}`}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={(e) => {
+        // Click on the backdrop dismisses; clicks on the modal body
+        // bubble up but we stopPropagation on the panel below.
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-xl"
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+              Assign path
+            </div>
+            <h3 className="mt-1 text-base font-semibold">{path.name}</h3>
+            <p className="mt-1 text-[12px] text-text-secondary">
+              {totalSteps} step{totalSteps === 1 ? '' : 's'} — server will create one
+              per-step assignment for the student.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-border bg-surface-2 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted hover:border-text-primary hover:text-text-primary"
+          >
+            Esc
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+              Student
+            </span>
+            <select
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+              required
+              className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
+            >
+              <option value="">— выбери студента —</option>
+              {students.map((rel) => (
+                <option key={rel.id} value={rel.student_id}>
+                  student-{rel.student_id.slice(0, 8)}
+                  {rel.note ? ` · ${rel.note}` : ''}
+                </option>
+              ))}
+            </select>
+            {students.length === 0 && (
+              <span className="text-[11px] text-text-muted">
+                Нет активных студентов. Сначала разошли инвайт.
+              </span>
+            )}
+          </label>
+
+          <div className="flex items-center gap-3">
+            <Button
+              type="submit"
+              disabled={assign.isPending || !studentId || students.length === 0}
+            >
+              {assign.isPending ? 'Assigning…' : 'Assign'}
+            </Button>
+            <Button variant="ghost" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+          </div>
+
+          {assign.isError && (
+            <span className="text-[12px] text-danger">
+              {assign.error instanceof ApiError ? assign.error.body : 'Не получилось'}
+            </span>
+          )}
+          {done && (
+            <Card
+              className="flex-col gap-1 border-success/40 bg-success/5 p-3"
+              interactive={false}
+            >
+              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-success">
+                Назначено
+              </div>
+              <p className="text-[12px] text-text-secondary">
+                Push'нули student-{done.studentId.slice(0, 8)}: создали{' '}
+                {done.count} per-step assignment{done.count === 1 ? '' : 's'}.
+                Студент увидит их у себя в Hone TutorAssignments.
+              </p>
+            </Card>
+          )}
+        </form>
+      </div>
+    </div>
   )
 }
