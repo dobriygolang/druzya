@@ -1,61 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <!--
-    Hone app icon. Mirror Cue's design language:
-      - Чёрный squircle background
-      - Большая белая буква (тут — H), толстый stroke с круглыми
-        терминалами на концах
-      - Синий bullseye dot в центре
-      - Мягкий blue radial glow позади буквы
-    Реализация:
-      - Stems и crossbar — filled <rect> вместо <line stroke> чтобы
-        ImageMagick / любой SVG-renderer не дропнул их при ресайзе.
-      - Терминальные кружки — отдельные <circle> r=28 в углах H.
-      - Все геометрические "пилюли" сходятся в одной точке диаметра
-        56px (= stem width), что даёт ровные скруглённые концы.
+    Hone app icon — B/W only per design rule.
+    Источник: hone-mark.svg (128 viewBox), масштабирован к 512.
+    #FF3B30 ТОЛЬКО как точка-индикатор (signal dot), не bg/fill/gradient.
+
+    Geometry:
+      - Чёрный squircle 512×512 rx=112 (≈ 22% corner radius).
+      - Hairline horizon снизу (subtle).
+      - Sharpening motion stroke — диагональ вверх к красной точке.
+      - 4 точки-stardust в верхней части.
+
+    Implementation note: line/g-stroke могут ломать в некоторых SVG-рендерерах
+    (ImageMagick). Используем path с заполненной геометрией + circle endpoints
+    для round-cap гарантии.
   -->
 
   <!-- Squircle background -->
-  <rect x="20" y="20" width="472" height="472" rx="112" ry="112"
-        fill="#0A0A0A" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+  <rect width="512" height="512" rx="112" fill="#000"/>
 
-  <!-- Soft blue radial halo позади буквы. Concentric rings (а не
-       radialGradient) — детерминированный рендеринг во всех SVG
-       рендерерах. Самый тёмный/широкий снаружи, прозрачнее к центру —
-       обратная схема vs glow-disc'у: даёт «свечение от буквы наружу»,
-       без яркого диска проступающего через crossbar. -->
-  <g>
-    <circle cx="256" cy="256" r="200" fill="#1E3A8A" fill-opacity="0.06"/>
-    <circle cx="256" cy="256" r="180" fill="#1E3A8A" fill-opacity="0.10"/>
-    <circle cx="256" cy="256" r="160" fill="#1E40AF" fill-opacity="0.14"/>
-    <circle cx="256" cy="256" r="140" fill="#2563EB" fill-opacity="0.18"/>
-    <circle cx="256" cy="256" r="120" fill="#2563EB" fill-opacity="0.20"/>
-    <circle cx="256" cy="256" r="100" fill="#3B82F6" fill-opacity="0.22"/>
-    <circle cx="256" cy="256" r="80"  fill="#3B82F6" fill-opacity="0.24"/>
-  </g>
+  <!-- Hairline horizon — subtle baseline. Path с прозрачной обводкой fill'нутая
+       как тонкий rect для надёжного рендеринга -->
+  <rect x="80" y="366" width="352" height="2" fill="#ffffff" fill-opacity="0.25"/>
 
-  <!-- Glow disc убран по запросу — оставляем чистый чёрный squircle
-       без подсветки. Маленький blue bullseye dot ниже остаётся как
-       сигнатурный элемент (отсылка к Cue). -->
+  <!-- The hone (sharpening) stroke — диагональ движения вверх.
+       Path с filled shape + circle terminals для round-cap. -->
+  <path d="M 152 312 L 360 200 L 372 220 L 164 332 Z" fill="#fff"/>
+  <circle cx="152" cy="312" r="12" fill="#fff"/>
+  <circle cx="360" cy="200" r="12" fill="#fff"/>
 
+  <!-- Red signal dot — focus target -->
+  <circle cx="368" cy="192" r="14" fill="#FF3B30"/>
 
-  <!-- The H — three filled rects (stems + crossbar) + 4 corner circles
-       для скруглённых терминалов. -->
-  <g fill="#FFFFFF">
-    <!-- Left stem: x=132..188 (width 56), y=128..384 -->
-    <rect x="132" y="128" width="56" height="256"/>
-    <!-- Right stem: x=324..380 -->
-    <rect x="324" y="128" width="56" height="256"/>
-    <!-- Crossbar: y=228..284 (height 56), x=160..352 -->
-    <rect x="160" y="228" width="192" height="56"/>
-
-    <!-- Round terminals — кружки r=28 (= stem half-width) на углах H. -->
-    <circle cx="160" cy="128" r="28"/>
-    <circle cx="352" cy="128" r="28"/>
-    <circle cx="160" cy="384" r="28"/>
-    <circle cx="352" cy="384" r="28"/>
-  </g>
-
-  <!-- (Bullseye-точку убрали по запросу — оставляем чистую H без
-       синей метки на crossbar'е.) -->
-
+  <!-- Background stardust — context particles -->
+  <circle cx="120" cy="144" r="4.8" fill="#ffffff" fill-opacity="0.7"/>
+  <circle cx="240" cy="112" r="4"   fill="#ffffff" fill-opacity="0.45"/>
+  <circle cx="400" cy="136" r="5.6" fill="#ffffff" fill-opacity="0.8"/>
+  <circle cx="312" cy="88"  r="3.6" fill="#ffffff" fill-opacity="0.4"/>
 </svg>
