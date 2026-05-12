@@ -217,12 +217,11 @@ function createMainWindow(): BrowserWindow {
       sandbox: true,
     },
   });
-  // Traffic lights скрываем по дефолту — renderer-side hover-zone
-  // (см. components/TrafficLightsHover.tsx) шлёт IPC `setTrafficLights(true)`
-  // при наведении на левый верхний угол.
-  if (process.platform === 'darwin') {
-    win.setWindowButtonVisibility(false);
-  }
+  // Traffic lights видимы всегда (macOS standard). Старый hover-trick
+  // (TrafficLightsHover.tsx → IPC trafficLightsShow) создавал «где же
+  // кнопки?» momentum — friction выше benefit'а от cleaner look.
+  // Если в будущем понадобится hide-on-hover, использовать IPC handler
+  // ниже (он всё ещё wired).
 
   win.once('ready-to-show', () => win.show());
 

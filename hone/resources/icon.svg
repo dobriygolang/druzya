@@ -1,39 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <!--
-    Hone app icon — B/W only per design rule.
-    Источник: hone-mark.svg (128 viewBox), масштабирован к 512.
-    #FF3B30 ТОЛЬКО как точка-индикатор (signal dot), не bg/fill/gradient.
-
-    Geometry:
-      - Чёрный squircle 512×512 rx=112 (≈ 22% corner radius).
-      - Hairline horizon снизу (subtle).
-      - Sharpening motion stroke — диагональ вверх к красной точке.
-      - 4 точки-stardust в верхней части.
-
-    Implementation note: line/g-stroke могут ломать в некоторых SVG-рендерерах
-    (ImageMagick). Используем path с заполненной геометрией + circle endpoints
-    для round-cap гарантии.
+    Hone app icon — минимум parity с Cue.
+    Cue = single white circle. Hone = single white blade (vertical bar
+    с round terminals). Semantic: «sharpening edge» в reduced form.
+    Без stardust, без red dot, без horizon, без transform.
   -->
 
   <!-- Squircle background -->
   <rect width="512" height="512" rx="112" fill="#000"/>
 
-  <!-- Hairline horizon — subtle baseline. Path с прозрачной обводкой fill'нутая
-       как тонкий rect для надёжного рендеринга -->
-  <rect x="80" y="366" width="352" height="2" fill="#ffffff" fill-opacity="0.25"/>
-
-  <!-- The hone (sharpening) stroke — диагональ движения вверх.
-       Path с filled shape + circle terminals для round-cap. -->
-  <path d="M 152 312 L 360 200 L 372 220 L 164 332 Z" fill="#fff"/>
-  <circle cx="152" cy="312" r="12" fill="#fff"/>
-  <circle cx="360" cy="200" r="12" fill="#fff"/>
-
-  <!-- Red signal dot — focus target -->
-  <circle cx="368" cy="192" r="14" fill="#FF3B30"/>
-
-  <!-- Background stardust — context particles -->
-  <circle cx="120" cy="144" r="4.8" fill="#ffffff" fill-opacity="0.7"/>
-  <circle cx="240" cy="112" r="4"   fill="#ffffff" fill-opacity="0.45"/>
-  <circle cx="400" cy="136" r="5.6" fill="#ffffff" fill-opacity="0.8"/>
-  <circle cx="312" cy="88"  r="3.6" fill="#ffffff" fill-opacity="0.4"/>
+  <!-- Single white vertical blade, centered. ~35% squircle height. -->
+  <rect x="244" y="166" width="24" height="180" rx="12" fill="#fff"/>
 </svg>
