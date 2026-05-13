@@ -238,6 +238,15 @@ const (
 	// HoneServiceGradeEnglishWritingProcedure is the fully-qualified name of the HoneService's
 	// GradeEnglishWriting RPC.
 	HoneServiceGradeEnglishWritingProcedure = "/druz9.v1.HoneService/GradeEnglishWriting"
+	// HoneServiceListWritingPromptsProcedure is the fully-qualified name of the HoneService's
+	// ListWritingPrompts RPC.
+	HoneServiceListWritingPromptsProcedure = "/druz9.v1.HoneService/ListWritingPrompts"
+	// HoneServiceAddWritingPromptProcedure is the fully-qualified name of the HoneService's
+	// AddWritingPrompt RPC.
+	HoneServiceAddWritingPromptProcedure = "/druz9.v1.HoneService/AddWritingPrompt"
+	// HoneServiceArchiveWritingPromptProcedure is the fully-qualified name of the HoneService's
+	// ArchiveWritingPrompt RPC.
+	HoneServiceArchiveWritingPromptProcedure = "/druz9.v1.HoneService/ArchiveWritingPrompt"
 	// HoneServiceAddExternalActivityProcedure is the fully-qualified name of the HoneService's
 	// AddExternalActivity RPC.
 	HoneServiceAddExternalActivityProcedure = "/druz9.v1.HoneService/AddExternalActivity"
@@ -388,6 +397,13 @@ type HoneServiceClient interface {
 	// 0..100 score. No persistence layer; if the user wants to keep the
 	// text they save it via CreateNote.
 	GradeEnglishWriting(context.Context, *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error)
+	// ─── Writing prompts library (Phase K Wave 11) ───────────────────
+	// Curated prompts library. ListWritingPrompts is public (user-facing
+	// picker filters by level). Add / Archive are admin-only — gated at
+	// REST router by admin role middleware.
+	ListWritingPrompts(context.Context, *connect.Request[v1.ListWritingPromptsRequest]) (*connect.Response[v1.ListWritingPromptsResponse], error)
+	AddWritingPrompt(context.Context, *connect.Request[v1.AddWritingPromptRequest]) (*connect.Response[v1.WritingPrompt], error)
+	ArchiveWritingPrompt(context.Context, *connect.Request[v1.ArchiveWritingPromptRequest]) (*connect.Response[v1.ArchiveWritingPromptResponse], error)
 	// ─── External activity log (structured form, Hone Stats) ────────
 	// Юзер логирует обучение вне druz9 (LeetCode / Coursera / YouTube /
 	// книги). Без чата — structured form, source dropdown + topic
@@ -856,6 +872,24 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("GradeEnglishWriting")),
 			connect.WithClientOptions(opts...),
 		),
+		listWritingPrompts: connect.NewClient[v1.ListWritingPromptsRequest, v1.ListWritingPromptsResponse](
+			httpClient,
+			baseURL+HoneServiceListWritingPromptsProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListWritingPrompts")),
+			connect.WithClientOptions(opts...),
+		),
+		addWritingPrompt: connect.NewClient[v1.AddWritingPromptRequest, v1.WritingPrompt](
+			httpClient,
+			baseURL+HoneServiceAddWritingPromptProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("AddWritingPrompt")),
+			connect.WithClientOptions(opts...),
+		),
+		archiveWritingPrompt: connect.NewClient[v1.ArchiveWritingPromptRequest, v1.ArchiveWritingPromptResponse](
+			httpClient,
+			baseURL+HoneServiceArchiveWritingPromptProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ArchiveWritingPrompt")),
+			connect.WithClientOptions(opts...),
+		),
 		addExternalActivity: connect.NewClient[v1.AddExternalActivityRequest, v1.ExternalActivity](
 			httpClient,
 			baseURL+HoneServiceAddExternalActivityProcedure,
@@ -1007,6 +1041,9 @@ type honeServiceClient struct {
 	getListeningMaterial      *connect.Client[v1.GetListeningMaterialRequest, v1.ListeningMaterial]
 	archiveListeningMaterial  *connect.Client[v1.ArchiveListeningMaterialRequest, v1.ArchiveListeningMaterialResponse]
 	gradeEnglishWriting       *connect.Client[v1.GradeEnglishWritingRequest, v1.GradeEnglishWritingResponse]
+	listWritingPrompts        *connect.Client[v1.ListWritingPromptsRequest, v1.ListWritingPromptsResponse]
+	addWritingPrompt          *connect.Client[v1.AddWritingPromptRequest, v1.WritingPrompt]
+	archiveWritingPrompt      *connect.Client[v1.ArchiveWritingPromptRequest, v1.ArchiveWritingPromptResponse]
 	addExternalActivity       *connect.Client[v1.AddExternalActivityRequest, v1.ExternalActivity]
 	listExternalActivity      *connect.Client[v1.ListExternalActivityRequest, v1.ListExternalActivityResponse]
 	deleteExternalActivity    *connect.Client[v1.DeleteExternalActivityRequest, v1.DeleteExternalActivityResponse]
@@ -1362,6 +1399,21 @@ func (c *honeServiceClient) GradeEnglishWriting(ctx context.Context, req *connec
 	return c.gradeEnglishWriting.CallUnary(ctx, req)
 }
 
+// ListWritingPrompts calls druz9.v1.HoneService.ListWritingPrompts.
+func (c *honeServiceClient) ListWritingPrompts(ctx context.Context, req *connect.Request[v1.ListWritingPromptsRequest]) (*connect.Response[v1.ListWritingPromptsResponse], error) {
+	return c.listWritingPrompts.CallUnary(ctx, req)
+}
+
+// AddWritingPrompt calls druz9.v1.HoneService.AddWritingPrompt.
+func (c *honeServiceClient) AddWritingPrompt(ctx context.Context, req *connect.Request[v1.AddWritingPromptRequest]) (*connect.Response[v1.WritingPrompt], error) {
+	return c.addWritingPrompt.CallUnary(ctx, req)
+}
+
+// ArchiveWritingPrompt calls druz9.v1.HoneService.ArchiveWritingPrompt.
+func (c *honeServiceClient) ArchiveWritingPrompt(ctx context.Context, req *connect.Request[v1.ArchiveWritingPromptRequest]) (*connect.Response[v1.ArchiveWritingPromptResponse], error) {
+	return c.archiveWritingPrompt.CallUnary(ctx, req)
+}
+
 // AddExternalActivity calls druz9.v1.HoneService.AddExternalActivity.
 func (c *honeServiceClient) AddExternalActivity(ctx context.Context, req *connect.Request[v1.AddExternalActivityRequest]) (*connect.Response[v1.ExternalActivity], error) {
 	return c.addExternalActivity.CallUnary(ctx, req)
@@ -1536,6 +1588,13 @@ type HoneServiceHandler interface {
 	// 0..100 score. No persistence layer; if the user wants to keep the
 	// text they save it via CreateNote.
 	GradeEnglishWriting(context.Context, *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error)
+	// ─── Writing prompts library (Phase K Wave 11) ───────────────────
+	// Curated prompts library. ListWritingPrompts is public (user-facing
+	// picker filters by level). Add / Archive are admin-only — gated at
+	// REST router by admin role middleware.
+	ListWritingPrompts(context.Context, *connect.Request[v1.ListWritingPromptsRequest]) (*connect.Response[v1.ListWritingPromptsResponse], error)
+	AddWritingPrompt(context.Context, *connect.Request[v1.AddWritingPromptRequest]) (*connect.Response[v1.WritingPrompt], error)
+	ArchiveWritingPrompt(context.Context, *connect.Request[v1.ArchiveWritingPromptRequest]) (*connect.Response[v1.ArchiveWritingPromptResponse], error)
 	// ─── External activity log (structured form, Hone Stats) ────────
 	// Юзер логирует обучение вне druz9 (LeetCode / Coursera / YouTube /
 	// книги). Без чата — structured form, source dropdown + topic
@@ -2000,6 +2059,24 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("GradeEnglishWriting")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceListWritingPromptsHandler := connect.NewUnaryHandler(
+		HoneServiceListWritingPromptsProcedure,
+		svc.ListWritingPrompts,
+		connect.WithSchema(honeServiceMethods.ByName("ListWritingPrompts")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceAddWritingPromptHandler := connect.NewUnaryHandler(
+		HoneServiceAddWritingPromptProcedure,
+		svc.AddWritingPrompt,
+		connect.WithSchema(honeServiceMethods.ByName("AddWritingPrompt")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceArchiveWritingPromptHandler := connect.NewUnaryHandler(
+		HoneServiceArchiveWritingPromptProcedure,
+		svc.ArchiveWritingPrompt,
+		connect.WithSchema(honeServiceMethods.ByName("ArchiveWritingPrompt")),
+		connect.WithHandlerOptions(opts...),
+	)
 	honeServiceAddExternalActivityHandler := connect.NewUnaryHandler(
 		HoneServiceAddExternalActivityProcedure,
 		svc.AddExternalActivity,
@@ -2216,6 +2293,12 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceArchiveListeningMaterialHandler.ServeHTTP(w, r)
 		case HoneServiceGradeEnglishWritingProcedure:
 			honeServiceGradeEnglishWritingHandler.ServeHTTP(w, r)
+		case HoneServiceListWritingPromptsProcedure:
+			honeServiceListWritingPromptsHandler.ServeHTTP(w, r)
+		case HoneServiceAddWritingPromptProcedure:
+			honeServiceAddWritingPromptHandler.ServeHTTP(w, r)
+		case HoneServiceArchiveWritingPromptProcedure:
+			honeServiceArchiveWritingPromptHandler.ServeHTTP(w, r)
 		case HoneServiceAddExternalActivityProcedure:
 			honeServiceAddExternalActivityHandler.ServeHTTP(w, r)
 		case HoneServiceListExternalActivityProcedure:
@@ -2521,6 +2604,18 @@ func (UnimplementedHoneServiceHandler) ArchiveListeningMaterial(context.Context,
 
 func (UnimplementedHoneServiceHandler) GradeEnglishWriting(context.Context, *connect.Request[v1.GradeEnglishWritingRequest]) (*connect.Response[v1.GradeEnglishWritingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GradeEnglishWriting is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListWritingPrompts(context.Context, *connect.Request[v1.ListWritingPromptsRequest]) (*connect.Response[v1.ListWritingPromptsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListWritingPrompts is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) AddWritingPrompt(context.Context, *connect.Request[v1.AddWritingPromptRequest]) (*connect.Response[v1.WritingPrompt], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddWritingPrompt is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ArchiveWritingPrompt(context.Context, *connect.Request[v1.ArchiveWritingPromptRequest]) (*connect.Response[v1.ArchiveWritingPromptResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ArchiveWritingPrompt is not implemented"))
 }
 
 func (UnimplementedHoneServiceHandler) AddExternalActivity(context.Context, *connect.Request[v1.AddExternalActivityRequest]) (*connect.Response[v1.ExternalActivity], error) {

@@ -1043,6 +1043,8 @@ func (s *HoneServer) toConnectErr(err error) error {
 		return connect.NewError(connect.CodeAborted, err)
 	case errors.Is(err, domain.ErrInvalidInput):
 		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, domain.ErrAlreadyExists):
+		return connect.NewError(connect.CodeAlreadyExists, err)
 	case errors.Is(err, domain.ErrProRequired):
 		return connect.NewError(connect.CodePermissionDenied, err)
 	case errors.Is(err, domain.ErrLLMUnavailable), errors.Is(err, domain.ErrEmbeddingUnavailable):

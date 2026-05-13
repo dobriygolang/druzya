@@ -7029,6 +7029,305 @@ export class GradeEnglishWritingResponse extends Message<GradeEnglishWritingResp
 }
 
 /**
+ * @generated from message druz9.v1.WritingPrompt
+ */
+export class WritingPrompt extends Message<WritingPrompt> {
+  /**
+   * slug — kebab-case
+   *
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * "B1" | "B2" | "C1"
+   *
+   * @generated from field: string level = 2;
+   */
+  level = "";
+
+  /**
+   * @generated from field: string topic = 3;
+   */
+  topic = "";
+
+  /**
+   * @generated from field: string prompt = 4;
+   */
+  prompt = "";
+
+  /**
+   * @generated from field: string rubric_md = 5;
+   */
+  rubricMd = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 6;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 7;
+   */
+  updatedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<WritingPrompt>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.WritingPrompt";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "level", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "topic", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "rubric_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "created_at", kind: "message", T: Timestamp },
+    { no: 7, name: "updated_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): WritingPrompt {
+    return new WritingPrompt().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): WritingPrompt {
+    return new WritingPrompt().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): WritingPrompt {
+    return new WritingPrompt().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: WritingPrompt | PlainMessage<WritingPrompt> | undefined, b: WritingPrompt | PlainMessage<WritingPrompt> | undefined): boolean {
+    return proto3.util.equals(WritingPrompt, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListWritingPromptsRequest
+ */
+export class ListWritingPromptsRequest extends Message<ListWritingPromptsRequest> {
+  /**
+   * Optional filter. Empty → all active levels. Server normalises
+   * case ("b2" → "B2") and rejects unknown values.
+   *
+   * @generated from field: string level = 1;
+   */
+  level = "";
+
+  constructor(data?: PartialMessage<ListWritingPromptsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListWritingPromptsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "level", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListWritingPromptsRequest {
+    return new ListWritingPromptsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListWritingPromptsRequest {
+    return new ListWritingPromptsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListWritingPromptsRequest {
+    return new ListWritingPromptsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListWritingPromptsRequest | PlainMessage<ListWritingPromptsRequest> | undefined, b: ListWritingPromptsRequest | PlainMessage<ListWritingPromptsRequest> | undefined): boolean {
+    return proto3.util.equals(ListWritingPromptsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListWritingPromptsResponse
+ */
+export class ListWritingPromptsResponse extends Message<ListWritingPromptsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.WritingPrompt items = 1;
+   */
+  items: WritingPrompt[] = [];
+
+  constructor(data?: PartialMessage<ListWritingPromptsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListWritingPromptsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: WritingPrompt, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListWritingPromptsResponse {
+    return new ListWritingPromptsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListWritingPromptsResponse {
+    return new ListWritingPromptsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListWritingPromptsResponse {
+    return new ListWritingPromptsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListWritingPromptsResponse | PlainMessage<ListWritingPromptsResponse> | undefined, b: ListWritingPromptsResponse | PlainMessage<ListWritingPromptsResponse> | undefined): boolean {
+    return proto3.util.equals(ListWritingPromptsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AddWritingPromptRequest
+ */
+export class AddWritingPromptRequest extends Message<AddWritingPromptRequest> {
+  /**
+   * required, slug
+   *
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * required, B1 | B2 | C1
+   *
+   * @generated from field: string level = 2;
+   */
+  level = "";
+
+  /**
+   * required
+   *
+   * @generated from field: string topic = 3;
+   */
+  topic = "";
+
+  /**
+   * required
+   *
+   * @generated from field: string prompt = 4;
+   */
+  prompt = "";
+
+  /**
+   * optional
+   *
+   * @generated from field: string rubric_md = 5;
+   */
+  rubricMd = "";
+
+  constructor(data?: PartialMessage<AddWritingPromptRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AddWritingPromptRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "level", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "topic", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "rubric_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AddWritingPromptRequest {
+    return new AddWritingPromptRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AddWritingPromptRequest {
+    return new AddWritingPromptRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AddWritingPromptRequest {
+    return new AddWritingPromptRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AddWritingPromptRequest | PlainMessage<AddWritingPromptRequest> | undefined, b: AddWritingPromptRequest | PlainMessage<AddWritingPromptRequest> | undefined): boolean {
+    return proto3.util.equals(AddWritingPromptRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ArchiveWritingPromptRequest
+ */
+export class ArchiveWritingPromptRequest extends Message<ArchiveWritingPromptRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<ArchiveWritingPromptRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ArchiveWritingPromptRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArchiveWritingPromptRequest {
+    return new ArchiveWritingPromptRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ArchiveWritingPromptRequest {
+    return new ArchiveWritingPromptRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ArchiveWritingPromptRequest {
+    return new ArchiveWritingPromptRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ArchiveWritingPromptRequest | PlainMessage<ArchiveWritingPromptRequest> | undefined, b: ArchiveWritingPromptRequest | PlainMessage<ArchiveWritingPromptRequest> | undefined): boolean {
+    return proto3.util.equals(ArchiveWritingPromptRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ArchiveWritingPromptResponse
+ */
+export class ArchiveWritingPromptResponse extends Message<ArchiveWritingPromptResponse> {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  constructor(data?: PartialMessage<ArchiveWritingPromptResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ArchiveWritingPromptResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArchiveWritingPromptResponse {
+    return new ArchiveWritingPromptResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ArchiveWritingPromptResponse {
+    return new ArchiveWritingPromptResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ArchiveWritingPromptResponse {
+    return new ArchiveWritingPromptResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ArchiveWritingPromptResponse | PlainMessage<ArchiveWritingPromptResponse> | undefined, b: ArchiveWritingPromptResponse | PlainMessage<ArchiveWritingPromptResponse> | undefined): boolean {
+    return proto3.util.equals(ArchiveWritingPromptResponse, a, b);
+  }
+}
+
+/**
  * @generated from message druz9.v1.GradeCodeReviewRequest
  */
 export class GradeCodeReviewRequest extends Message<GradeCodeReviewRequest> {

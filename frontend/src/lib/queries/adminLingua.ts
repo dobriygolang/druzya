@@ -365,3 +365,103 @@ export function useGenerateSpeakingTTSMutation() {
     },
   })
 }
+
+// ── Writing prompts (Phase K Wave 11) ──────────────────────────────────
+
+export interface WritingPrompt {
+  id: string
+  level: string // "B1" | "B2" | "C1"
+  topic: string
+  prompt: string
+  rubric_md: string
+  created_at: string
+  updated_at: string
+}
+
+type WireWritingPrompt = {
+  id?: string
+  level?: string
+  topic?: string
+  prompt?: string
+  rubricMd?: string
+  rubric_md?: string
+  createdAt?: string
+  created_at?: string
+  updatedAt?: string
+  updated_at?: string
+}
+
+function adaptWritingPrompt(w: WireWritingPrompt): WritingPrompt {
+  return {
+    id: w.id ?? '',
+    level: w.level ?? '',
+    topic: w.topic ?? '',
+    prompt: w.prompt ?? '',
+    rubric_md: w.rubricMd ?? w.rubric_md ?? '',
+    created_at: w.createdAt ?? w.created_at ?? '',
+    updated_at: w.updatedAt ?? w.updated_at ?? '',
+  }
+}
+
+export interface AddWritingPromptBody {
+  id: string
+  level: string
+  topic: string
+  prompt: string
+  rubric_md?: string
+}
+
+export const writingPromptKeys = {
+  all: ['admin', 'lingua', 'writing-prompts'] as const,
+  list: (level: string) => ['admin', 'lingua', 'writing-prompts', level] as const,
+}
+
+export function useAdminWritingPromptsQuery(level: string = '') {
+  return useQuery({
+    queryKey: writingPromptKeys.list(level),
+    queryFn: async () => {
+      const qs = level ? `?level=${encodeURIComponent(level)}` : ''
+      const r = await api<{ items?: WireWritingPrompt[] }>(`/hone/writing/prompts${qs}`)
+      return (r.items ?? []).map(adaptWritingPrompt)
+    },
+    staleTime: 30_000,
+  })
+}
+
+export function useAddWritingPromptMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: AddWritingPromptBody) => {
+      const r = await api<WireWritingPrompt>('/admin/hone/writing/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: body.id,
+          level: body.level,
+          topic: body.topic,
+          prompt: body.prompt,
+          rubricMd: body.rubric_md ?? '',
+        }),
+      })
+      return adaptWritingPrompt(r)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: writingPromptKeys.all })
+    },
+  })
+}
+
+export function useArchiveWritingPromptMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<Record<string, never>>(`/admin/hone/writing/prompts/${encodeURIComponent(id)}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: writingPromptKeys.all })
+    },
+  })
+}

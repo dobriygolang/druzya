@@ -594,7 +594,6 @@ function useVoiceRecorder({ onInterim, onFinal }: UseVoiceRecorderProps) {
       }
 
       // SpeechRecognition.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const Ctor =
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).SpeechRecognition ||

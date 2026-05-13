@@ -116,6 +116,13 @@ type Handler struct {
 	// Writing-as-Focus (Wave 4.4). One-shot LLM grader, no persistence.
 	GradeEnglishWriting *GradeEnglishWriting
 
+	// Writing prompts library (Phase K Wave 11 2026-05-13). Curated
+	// admin-authored prompts catalog. List is user-facing; Add/Archive
+	// are admin-gated at REST router.
+	ListWritingPrompts    *ListWritingPrompts
+	AddWritingPrompt      *AddWritingPrompt
+	ArchiveWritingPrompt  *ArchiveWritingPrompt
+
 	// Code-review-coaching (Wave 3.6). One-shot grader for diff + review.
 	GradeCodeReview *GradeCodeReview
 

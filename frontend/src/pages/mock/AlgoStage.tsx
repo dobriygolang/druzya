@@ -87,7 +87,7 @@ export function AlgoStage({
   pipelineId: string
 }) {
   const finishStage = useFinishStageMutation(pipelineId)
-  const attempts = stage.attempts ?? []
+  const attempts = useMemo(() => stage.attempts ?? [], [stage.attempts])
 
   // Главная попытка стадии — task_solve. Остальные attempts (если есть) —
   // follow-up question_answer; рендерим их под основным редактором через

@@ -63,7 +63,8 @@ export function AtlasListMode({
     })
   }, [atlas, highlightKeys])
 
-  const struggles = useAtlasStrugglesQuery(30).data ?? []
+  const strugglesData = useAtlasStrugglesQuery(30).data
+  const struggles = useMemo(() => strugglesData ?? [], [strugglesData])
   const struggleKeys = useMemo(() => {
     const s = new Set<string>()
     for (const m of struggles) {

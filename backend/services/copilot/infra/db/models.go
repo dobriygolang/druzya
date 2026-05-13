@@ -2316,3 +2316,14 @@ type WhiteboardYjsUpdate struct {
 	UpdateData   []byte
 	CreatedAt    pgtype.Timestamptz
 }
+
+type WritingPrompt struct {
+	ID         string
+	Level      string
+	Topic      string
+	Prompt     string
+	RubricMd   string
+	ArchivedAt pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}

@@ -792,6 +792,26 @@ service HoneService {
     };
   }
 
+  // ─── Writing prompts library (Phase K Wave 11) ───────────────────
+  // Curated prompts library. ListWritingPrompts is public (user-facing
+  // picker filters by level). Add / Archive are admin-only — gated at
+  // REST router by admin role middleware.
+  rpc ListWritingPrompts(ListWritingPromptsRequest) returns (ListWritingPromptsResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/writing/prompts"};
+  }
+  rpc AddWritingPrompt(AddWritingPromptRequest) returns (WritingPrompt) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/hone/writing/prompts"
+      body: "*"
+    };
+  }
+  rpc ArchiveWritingPrompt(ArchiveWritingPromptRequest) returns (ArchiveWritingPromptResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/hone/writing/prompts/{id}/archive"
+      body: "*"
+    };
+  }
+
   // ─── External activity log (structured form, Hone Stats) ────────
   // Юзер логирует обучение вне druz9 (LeetCode / Coursera / YouTube /
   // книги). Без чата — structured form, source dropdown + topic
@@ -1531,6 +1551,44 @@ message GradeEnglishWritingResponse {
   // the same strong / mid / weak chip.
   int32 overall_score = 1;
   repeated WritingIssue issues = 2;
+}
+
+// ─── Writing prompts library messages (Phase K Wave 11) ─────────────────
+
+message WritingPrompt {
+  string id          = 1; // slug — kebab-case
+  string level       = 2; // "B1" | "B2" | "C1"
+  string topic       = 3;
+  string prompt      = 4;
+  string rubric_md   = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message ListWritingPromptsRequest {
+  // Optional filter. Empty → all active levels. Server normalises
+  // case ("b2" → "B2") and rejects unknown values.
+  string level = 1;
+}
+
+message ListWritingPromptsResponse {
+  repeated WritingPrompt items = 1;
+}
+
+message AddWritingPromptRequest {
+  string id        = 1; // required, slug
+  string level     = 2; // required, B1 | B2 | C1
+  string topic     = 3; // required
+  string prompt    = 4; // required
+  string rubric_md = 5; // optional
+}
+
+message ArchiveWritingPromptRequest {
+  string id = 1;
+}
+
+message ArchiveWritingPromptResponse {
+  bool ok = 1;
 }
 
 // ─── Code-review-coaching messages (Wave 3.6) ──────────────────────────

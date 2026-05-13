@@ -35,7 +35,8 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo): void {
     // В development — full stack в console; в production — sentry-style hook
     // здесь же после backend ship.
-    if (typeof console !== 'undefined') {
+    if (import.meta.env.DEV && typeof console !== 'undefined') {
+      // eslint-disable-next-line no-console -- dev-only diagnostic; gated by import.meta.env.DEV
       console.error('[ErrorBoundary]', this.props.section, error, info.componentStack)
     }
   }

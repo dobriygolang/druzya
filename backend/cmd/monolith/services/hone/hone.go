@@ -497,6 +497,14 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	// ErrLLMUnavailable, which the handler translates to 503.
 	h.GradeEnglishWriting = &honeApp.GradeEnglishWriting{Grader: writingGrader}
 
+	// Phase K Wave 11 (2026-05-13): Writing prompts library (curated catalog).
+	// Replaces deferred admin placeholder. List is public; Add/Archive
+	// gated at REST router admin role middleware.
+	writingPromptsRepo := honeInfra.NewWritingPromptRepo(d.Pool)
+	h.ListWritingPrompts = &honeApp.ListWritingPrompts{Repo: writingPromptsRepo}
+	h.AddWritingPrompt = &honeApp.AddWritingPrompt{Repo: writingPromptsRepo}
+	h.ArchiveWritingPrompt = &honeApp.ArchiveWritingPrompt{Repo: writingPromptsRepo}
+
 	// Wave 3.6: Code-review-coaching grader. Same nil-safety as above.
 	h.GradeCodeReview = &honeApp.GradeCodeReview{Grader: reviewGrader}
 
@@ -580,6 +588,9 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Get("/hone/reading/materials/{material_id}/vocab", transcoder.ServeHTTP)
 		// Writing-as-Focus REST alias (Wave 4.4).
 		r.Post("/hone/writing/grade", transcoder.ServeHTTP)
+		// Writing prompts library REST aliases (Phase K Wave 11). List
+		// is public; admin-mutating routes go through adminGate below.
+		r.Get("/hone/writing/prompts", transcoder.ServeHTTP)
 		// Code-review-coaching REST alias (Wave 3.6).
 		r.Post("/hone/code-review/grade", transcoder.ServeHTTP)
 		// Listening-модуль REST aliases (Wave 6.1).
@@ -612,6 +623,10 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 			transcoder.ServeHTTP(w, req)
 		}
 		r.Post("/admin/hone/speaking/exercises/{exercise_id}/tts", adminGate)
+		// Phase K Wave 11 (2026-05-13) — admin-only writing prompts CRUD.
+		// Same adminGate as speaking TTS; List is unguarded above.
+		r.Post("/admin/hone/writing/prompts", adminGate)
+		r.Post("/admin/hone/writing/prompts/{id}/archive", adminGate)
 		cursorSSE.Mount(r)
 	}
 

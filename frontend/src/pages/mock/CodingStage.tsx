@@ -75,7 +75,7 @@ export function CodingStage({
   pipelineId: string
 }) {
   const finishStage = useFinishStageMutation(pipelineId)
-  const attempts = stage.attempts ?? []
+  const attempts = useMemo(() => stage.attempts ?? [], [stage.attempts])
   const solveAttempt = useMemo(
     () => attempts.find((a) => a.kind === 'task_solve'),
     [attempts],

@@ -33,7 +33,7 @@ export function SysDesignStage({
   pipelineId: string
 }) {
   const finishStage = useFinishStageMutation(pipelineId)
-  const attempts = stage.attempts ?? []
+  const attempts = useMemo(() => stage.attempts ?? [], [stage.attempts])
   // Sysdesign stage typically has one sysdesign_canvas attempt; fall back to
   // first attempt if backend hasn't materialized the new kind yet.
   const canvasAttempt = useMemo(

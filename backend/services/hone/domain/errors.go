@@ -43,3 +43,9 @@ var ErrInvalidInput = errors.New("hone: invalid input")
 // (HTTP 403) с сообщением «upgrade to Pro» — клиент знает что показать
 // paywall, а не auth-error.
 var ErrProRequired = errors.New("hone: pro subscription required")
+
+// ErrAlreadyExists — admin tried to create a row with a primary-key
+// collision (e.g. writing_prompts.id). Maps to connect.CodeAlreadyExists
+// (HTTP 409). Distinct from ErrInvalidInput so the admin UI can offer a
+// targeted "slug already in use" message instead of generic 400.
+var ErrAlreadyExists = errors.New("hone: already exists")
