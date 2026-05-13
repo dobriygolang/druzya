@@ -844,18 +844,21 @@ export default function App() {
     <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
       <CanvasBg mode={canvasMode} theme={theme} />
 
-      {/* Window-drag strip: невидимая полоса вдоль верха окна (32 px),
-          через которую macOS позволяет таскать окно. TrafficLightsHover и
-          Versionmark лежат поверх и помечены no-drag, чтобы клики туда
-          работали штатно. */}
+      {/* Window-drag strip: невидимая полоса вдоль верха окна (48 px),
+          через которую macOS позволяет таскать окно. Traffic lights
+          (видимые после убирания setWindowButtonVisibility) занимают
+          ~28px высоты + 20px padding — 48px надёжно покрывает их и
+          оставляет place для drag за пустую область справа.
+          z-index 5 ставит strip ВЫШЕ CanvasBg (zIndex:0) но НИЖЕ
+          Wordmark/Versionmark (которые помечены no-drag сами). */}
       <div
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
-          height: 32,
-          zIndex: 1,
+          height: 48,
+          zIndex: 5,
           // @ts-expect-error — нестандартное Electron-CSS-property
           WebkitAppRegion: 'drag',
         }}
