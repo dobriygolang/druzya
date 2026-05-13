@@ -36,6 +36,9 @@ replace druz9/shared => ../../shared
 
 replace druz9/curation => ../curation
 
-require druz9/learning_state v0.0.0
+require (
+	druz9/learning_state v0.0.0
+	go.uber.org/mock v0.6.0
+)
 
 replace druz9/learning_state => ../learning_state

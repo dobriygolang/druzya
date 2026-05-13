@@ -15,17 +15,6 @@ export const SIDEBAR_COLLAPSED_KEY = 'hone:notes:sidebar-collapsed';
 export const SIDEBAR_MIN = 220;
 export const SIDEBAR_MAX = 460;
 export const SIDEBAR_DEFAULT = 280;
-// Right-sidebar ConnectionPanel — fixed width (panel design не resize'ится).
-// `collapsed` персистится в localStorage чтобы юзер не открывал/закрывал
-// каждый запуск; default = expanded (это главная differentiator-фича vs
-// Obsidian/Notion AI — visible by default).
-export const RIGHT_PANEL_COLLAPSED_KEY = 'hone:notes:right-panel-collapsed';
-export const RIGHT_PANEL_W = 280;
-export const RIGHT_PANEL_COLLAPSED_W = 28;
-// Threshold under which the panel auto-collapses on mount — на узких
-// окнах оно бы съело editor. Юзер всё равно может открыть через ⌘⇧J.
-export const RIGHT_PANEL_AUTO_COLLAPSE_PX = 900;
-
 // EXPANDED_FOLDERS_KEY — set of expanded folder IDs, persisted в
 // localStorage. Notion/Obsidian повторно открываются с тем же tree-state'ом.
 export const EXPANDED_FOLDERS_KEY = 'hone:notes:expanded-folders';

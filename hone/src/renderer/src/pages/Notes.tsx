@@ -24,7 +24,6 @@ import { CueMeetingNotes, buildCueMarkdown } from '../components/CueMeetingNotes
 import { ConnectError, Code } from '@connectrpc/connect';
 
 import { AskNotesModal } from '../components/AskNotesModal';
-import { ConnectionPanel } from '../components/notes/ConnectionPanel';
 import {
   listNotes,
   getNote,
@@ -68,10 +67,6 @@ import {
 } from '../api/localNotes';
 import {
   INITIAL_LIST,
-  RIGHT_PANEL_AUTO_COLLAPSE_PX,
-  RIGHT_PANEL_COLLAPSED_KEY,
-  RIGHT_PANEL_COLLAPSED_W,
-  RIGHT_PANEL_W,
   SIDEBAR_COLLAPSED_KEY,
   SIDEBAR_DEFAULT,
   SIDEBAR_KEY,
@@ -81,7 +76,6 @@ import {
 } from './Notes/utils';
 import { NotesExpandSidebarButton, Sidebar } from './Notes/Sidebar';
 import { Editor, ResizeHandle, Toast } from './Notes/Editor';
-import { ConnectionsPanel } from './Notes/ConnectionsPanel';
 
 export interface NotesPageProps {
   initialSelectedId?: string | null;
@@ -135,7 +129,6 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [draftTitle, setDraftTitle] = useState('');
   const [draftBody, setDraftBody] = useState('');
-  const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const saveTimer = useRef<number | null>(null);
 
@@ -144,28 +137,6 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
   });
-  // Right-sidebar ConnectionPanel collapsed state. SSR-safe default = false;
-  // localStorage rules; auto-collapse под порогом ширины (см effect ниже).
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const stored = window.localStorage.getItem(RIGHT_PANEL_COLLAPSED_KEY);
-    if (stored === '1') return true;
-    if (stored === '0') return false;
-    // Default: collapsed on narrow viewports, expanded otherwise.
-    return window.innerWidth < RIGHT_PANEL_AUTO_COLLAPSE_PX;
-  });
-  // Persist + relayout on toggle. Persist даже если автозакрыли — explicit
-  // юзер-выбор уважаем дальше.
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(RIGHT_PANEL_COLLAPSED_KEY, rightPanelCollapsed ? '1' : '0');
-    } catch {
-      /* ignore */
-    }
-  }, [rightPanelCollapsed]);
-  const toggleRightPanel = useCallback(() => {
-    setRightPanelCollapsed((c) => !c);
-  }, []);
   const sidebarMountedRef = useRef(false);
   useEffect(() => {
     try {
@@ -631,20 +602,6 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
       if (mod && e.shiftKey && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         setAskOpen(true);
-        return;
-      }
-      // ⌘⇧J — toggle persistent ConnectionPanel (right sidebar).
-      // Distinct from ⌘J (modal overlay) — the panel is the always-on
-      // surface; modal is the deep-dive variant.
-      if (mod && e.shiftKey && e.key.toLowerCase() === 'j') {
-        e.preventDefault();
-        toggleRightPanel();
-        return;
-      }
-      if (mod && !e.shiftKey && e.key.toLowerCase() === 'j') {
-        e.preventDefault();
-        if (!active) return;
-        setConnectionsOpen((o) => !o);
         return;
       }
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'n') {
@@ -1233,14 +1190,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
-  // Grid template — left sidebar + handle + editor + right ConnectionPanel.
-  // Each column is conditional so the grid stays valid when components are
-  // hidden (otherwise the Editor's auto-placement column collapses to 0).
-  // Right panel: full width when expanded, rail width when collapsed.
-  const rightColW = rightPanelCollapsed ? RIGHT_PANEL_COLLAPSED_W : RIGHT_PANEL_W;
-  const gridCols = sidebarCollapsed
-    ? `1fr ${rightColW}px`
-    : `${sidebarW}px 6px 1fr ${rightColW}px`;
+  const gridCols = sidebarCollapsed ? `1fr` : `${sidebarW}px 6px 1fr`;
 
   return (
     <div
@@ -1323,32 +1273,6 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
         />
       )}
 
-      {/* Right-sidebar ConnectionPanel — always rendered (collapses to rail).
-          When viewing a Cue session noteId is null and the panel shows an
-          empty state ("Pick a note to see related ideas."). */}
-      <ConnectionPanel
-        noteId={active?.id ?? null}
-        noteTitle={draftTitle}
-        noteBody={draftBody}
-        onPickNote={(id) => {
-          setActiveCueNote(null);
-          setActiveCueSessionId(null);
-          setSelectedId(id);
-        }}
-        collapsed={rightPanelCollapsed}
-        onToggleCollapsed={toggleRightPanel}
-      />
-
-      {connectionsOpen && active && (
-        <ConnectionsPanel
-          noteId={active.id}
-          onClose={() => setConnectionsOpen(false)}
-          onPick={(id) => {
-            setSelectedId(id);
-            setConnectionsOpen(false);
-          }}
-        />
-      )}
       {askOpen && (
         <AskNotesModal
           onClose={() => setAskOpen(false)}

@@ -35,6 +35,30 @@ front: ## Run frontend natively (MSW mocks enabled by default)
 dev: ## Run the full stack (backend + frontend) in docker
 	docker compose up --build
 
+.PHONY: setup
+setup: ## Bootstrap local dev: install npm deps for frontend / hone / cue (run once)
+	cd frontend && npm install
+	cd hone && npm install
+	cd cue && npm install
+	@echo ""
+	@echo "  Dev cheat-sheet:"
+	@echo "    1. make start            # backend stack (Docker) on localhost:8080"
+	@echo "    2. make front            # web on localhost:5173 (MSW mocks on by default)"
+	@echo "    3. cd hone && npm run dev"
+	@echo "    4. cd cue && npm run dev"
+	@echo ""
+	@echo "  Hone/Cue defaults already point at http://localhost:8080 in dev."
+	@echo "  Override via VITE_DRUZ9_API_BASE (Hone) or DRUZ9_API_BASE_URL (Cue)."
+
+.PHONY: dev-local
+dev-local: ## Start backend stack + web frontend (Hone/Cue stay manual — they need their own terminal)
+	$(MAKE) start
+	@echo ""
+	@echo "  Backend up. In another terminal run any of:"
+	@echo "    make front                  # web on :5173"
+	@echo "    cd hone && npm run dev      # Hone Electron"
+	@echo "    cd cue && npm run dev       # Cue Electron"
+
 .PHONY: stop
 stop: ## Stop every container
 	docker compose down
