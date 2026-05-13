@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/cue_session_mock.go -source cue_session.go
 // cue_session.go — F10 Cue session ingestion domain types.
 //
 // Coarse-grained sibling EpisodeCueConversationMemory: одна запись на

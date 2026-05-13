@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/memory_mock.go -source memory.go
 // Memory layer types — coach episodes (single store for all coach
 // memory). Phase B: brief generations + user reactions + side-effect
 // events from hone (reflections / standups / plan-skip-or-complete /

@@ -1,9 +1,7 @@
-// assignments.go — Wave 5.1 of docs/feature/plan.md (Tutor Tier 2).
-// Five thin use cases: Push (tutor creates), ListByTutorStudent,
-// ListPendingForStudent, MarkComplete, Archive. Auth gates live here:
-// tutor-side writes go through EnsureRelationship; student-side
-// MarkComplete is gated by the SQL predicate (`student_id = $1`)
-// in the repo, so a malicious student can't probe foreign assignment ids.
+// Package app — tutor assignments use cases. Auth gates: tutor-side writes
+// go through EnsureRelationship; student-side MarkComplete is gated by the
+// SQL predicate (`student_id = $1`) so a malicious student can't probe
+// foreign assignment ids.
 package app
 
 import (

@@ -1,6 +1,4 @@
-// writing_prompts.go — Phase K Wave 11 (2026-05-13)
-//
-// Use cases for the curated writing prompts library. Three orchestrators:
+// Package app — curated writing prompts library use cases. Three orchestrators:
 //   1. ListWritingPrompts — user-facing, level-filtered.
 //   2. AddWritingPrompt — admin-only, slug-keyed create.
 //   3. ArchiveWritingPrompt — admin-only soft-delete.

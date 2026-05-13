@@ -83,11 +83,9 @@ type Handler struct {
 	DeleteTask       *DeleteTask
 	AddTaskComment   *AddTaskComment
 	ListTaskComments *ListTaskComments
-	// Phase 10 — AI auto-place. Optional (nil-safe в Handler.New). Когда
-	// присутствует — handler/CreateTask может зовать UC чтобы инфер'ить
-	// column/tags. Caller-side gate (не каждый task стоит LLM-call'а).
-	CategoriseTask *CategoriseTask
-	// Phase J / H3 (P1, 2026-05-12) — bulk recategorise + manual override.
+	// CategoriseTask — AI auto-place; nil-safe в Handler.New. Caller-side
+	// gates calls (not every task stoит LLM-call'а).
+	CategoriseTask     *CategoriseTask
 	BulkAutoCategorise *BulkAutoCategorise
 	UpdateTaskKind     *UpdateTaskKind
 
@@ -99,53 +97,46 @@ type Handler struct {
 	ShareToWeb      *ShareToWeb
 	MakePrivate     *MakePrivate
 
-	// Reading-модуль (Wave 4 of docs/feature/english.md). Library +
-	// reader sessions + Leitner SRS vocab queue.
-	AddReadingMaterial     *AddReadingMaterial
-	GetReadingMaterial     *GetReadingMaterial
-	ListReadingMaterials   *ListReadingMaterials
-	ArchiveReadingMaterial *ArchiveReadingMaterial
-	StartReadingSession    *StartReadingSession
-	EndReadingSession      *EndReadingSession
-	AddVocab               *AddVocab
-	ReviewVocab            *ReviewVocab
-	ListVocabDue           *ListVocabDue
-	// Wave 4.2 — reverse cross-link reader → vocab.
+	// Reading: library + reader sessions + Leitner SRS vocab queue.
+	AddReadingMaterial        *AddReadingMaterial
+	GetReadingMaterial        *GetReadingMaterial
+	ListReadingMaterials      *ListReadingMaterials
+	ArchiveReadingMaterial    *ArchiveReadingMaterial
+	StartReadingSession       *StartReadingSession
+	EndReadingSession         *EndReadingSession
+	AddVocab                  *AddVocab
+	ReviewVocab               *ReviewVocab
+	ListVocabDue              *ListVocabDue
 	ListVocabBySourceMaterial *ListVocabBySourceMaterial
 
-	// Writing-as-Focus (Wave 4.4). One-shot LLM grader, no persistence.
+	// Writing-as-Focus. One-shot LLM grader, no persistence.
 	GradeEnglishWriting *GradeEnglishWriting
 
-	// Writing prompts library (Phase K Wave 11 2026-05-13). Curated
-	// admin-authored prompts catalog. List is user-facing; Add/Archive
-	// are admin-gated at REST router.
-	ListWritingPrompts    *ListWritingPrompts
-	AddWritingPrompt      *AddWritingPrompt
-	ArchiveWritingPrompt  *ArchiveWritingPrompt
+	// Writing prompts library. List user-facing; Add/Archive admin-gated
+	// at REST router.
+	ListWritingPrompts   *ListWritingPrompts
+	AddWritingPrompt     *AddWritingPrompt
+	ArchiveWritingPrompt *ArchiveWritingPrompt
 
-	// Code-review-coaching (Wave 3.6). One-shot grader for diff + review.
+	// Code-review-coaching. One-shot grader for diff + review.
 	GradeCodeReview *GradeCodeReview
 
-	// Listening-модуль (Wave 6.1). Library of audio + transcript;
-	// click-on-word reuses the AddVocab use case above.
+	// Listening: library of audio + transcript; click-on-word reuses AddVocab.
 	AddListeningMaterial     *AddListeningMaterial
 	GetListeningMaterial     *GetListeningMaterial
 	ListListeningMaterials   *ListListeningMaterials
 	ArchiveListeningMaterial *ArchiveListeningMaterial
 	IngestYouTubeListening   *IngestYouTubeListening
 
-	// Speaking-модуль (Phase J / H4 2026-05-12). Fourth English modality —
-	// shadowing exercises with STT-based pronunciation grading. Без
-	// Speaking Hone English hub ≈ Reader; H4 closes the 4-modality loop.
+	// Speaking: shadowing exercises with STT-based pronunciation grading.
 	ListSpeakingExercises *ListSpeakingExercises
 	GradeSpeaking         *GradeSpeaking
 	ListSpeakingHistory   *ListSpeakingHistory
-	// Phase K Wave 9 (E4 P1) — admin TTS regen для reference audio,
-	// заменяет client-side speechSynthesis fallback. nil-safe: handler
-	// возвращает 503 когда provider/store не wired.
+	// GenerateSpeakingTTS — admin-only regen of reference audio. nil-safe:
+	// handler returns 503 when provider/store not wired.
 	GenerateSpeakingTTS *GenerateSpeakingTTS
 
-	// Reading: Book-source progress (Wave 2026-05-03).
+	// Reading: book-source progress.
 	UpdateBookProgress *UpdateBookProgress
 
 	// User settings (active study mode).

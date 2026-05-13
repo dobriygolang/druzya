@@ -1,5 +1,4 @@
-// yjs_repo.go — Phase C-6 generic Yjs CRDT persistence. SQL дословно
-// перенесён из cmd/monolith/services/hone/yjs_persistence.go.
+// Package infra — generic Yjs CRDT persistence.
 package infra
 
 import (

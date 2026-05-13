@@ -20,14 +20,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// allowedCoachCategories — whitelist для category column. Adding sliver
-// of validation чтобы curator не натворил тайпов; expand при появлении
+// allowedCoachCategories — whitelist для category column. Sliver of
+// validation чтобы curator не натворил тайпов; expand при появлении
 // новых intelligence surface.
-//
-// Phase K, M5 (2026-05-13): добавлен 'ml_drill' для ML-axis-specific drill
-// recommender prompts (см migration 00116). Daily_brief / mock_grade
-// re-used для ML overlay slugs (daily_brief_ml / mock_grade_ml) — отдельной
-// категории для них не нужно, routing идёт по slug в intelligence service.
 var allowedCoachCategories = map[string]struct{}{
 	"daily_brief":      {},
 	"insight":          {},

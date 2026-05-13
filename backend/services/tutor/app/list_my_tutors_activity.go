@@ -1,6 +1,6 @@
-// list_my_tutors_activity.go — Phase K T6 (2026-05-12).
+// Package app — student-side social-proof tutor activity.
 //
-// Student-side social-proof surface. Returns one row per active tutor
+// Returns one row per active tutor
 // with privacy-aware aggregates (no other-student names, no event titles,
 // no per-student breakdowns). Drives the «Тебя сегодня учат: N tutors
 // recently active» card on /today + Hone Home rail.

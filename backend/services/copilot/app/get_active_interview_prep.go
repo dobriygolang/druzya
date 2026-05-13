@@ -1,8 +1,6 @@
-// get_active_interview_prep.go — Phase J / C6 (P1).
-//
-// Reads the user's active interview-prep row. Returns ok=false for the
-// no-active case so the desktop client can render the "upload CV/JD"
-// empty state without an exception path.
+// Package app — read the user's active interview-prep row. Returns
+// ok=false for the no-active case so the desktop client can render the
+// "upload CV/JD" empty state without an exception path.
 package app
 
 import (

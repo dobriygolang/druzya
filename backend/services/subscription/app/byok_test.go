@@ -3,60 +3,91 @@ package app
 import (
 	"context"
 	"errors"
-	"io"
-	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
 	"druz9/subscription/domain"
+	submocks "druz9/subscription/domain/mocks"
+	appmocks "druz9/subscription/app/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-// fakeBYOKRepo — in-memory реализация domain.BYOKRepo.
-type fakeBYOKRepo struct {
+// byokStore — закрытая state-машина для domain.BYOKRepo.
+type byokStore struct {
+	mu  sync.Mutex
 	key *domain.BYOKKey
 	err error // подмена для read-paths
 }
 
-func (r *fakeBYOKRepo) Get(_ context.Context, _ uuid.UUID) (domain.BYOKKey, error) {
-	if r.err != nil {
-		return domain.BYOKKey{}, r.err
-	}
-	if r.key == nil {
-		return domain.BYOKKey{}, domain.ErrNotFound
-	}
-	return *r.key, nil
+func newBYOKStore() *byokStore { return &byokStore{} }
+
+// wireMockBYOKRepo — domain.BYOKRepo с поведением как у in-memory store.
+func wireMockBYOKRepo(ctrl *gomock.Controller, s *byokStore) *submocks.MockBYOKRepo {
+	m := submocks.NewMockBYOKRepo(ctrl)
+	m.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID) (domain.BYOKKey, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if s.err != nil {
+				return domain.BYOKKey{}, s.err
+			}
+			if s.key == nil {
+				return domain.BYOKKey{}, domain.ErrNotFound
+			}
+			return *s.key, nil
+		},
+	).AnyTimes()
+	m.EXPECT().Upsert(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, k domain.BYOKKey) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.key = &k
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().Delete(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.key = nil
+			return nil
+		},
+	).AnyTimes()
+	return m
 }
 
-func (r *fakeBYOKRepo) Upsert(_ context.Context, k domain.BYOKKey) error {
-	r.key = &k
-	return nil
+// wireMockBYOKEncryptor — pass-through (prepend "enc:"), pure.
+func wireMockBYOKEncryptor(ctrl *gomock.Controller) *submocks.MockBYOKEncryptor {
+	m := submocks.NewMockBYOKEncryptor(ctrl)
+	m.EXPECT().Encrypt(gomock.Any()).DoAndReturn(
+		func(plain string) (string, error) { return "enc:" + plain, nil },
+	).AnyTimes()
+	m.EXPECT().Decrypt(gomock.Any()).DoAndReturn(
+		func(cipher string) (string, error) { return cipher, nil },
+	).AnyTimes()
+	return m
 }
 
-func (r *fakeBYOKRepo) Delete(_ context.Context, _ uuid.UUID) error {
-	r.key = nil
-	return nil
+// wireMockBYOKValidator — управляемый: возвращает err когда задан.
+func wireMockBYOKValidator(ctrl *gomock.Controller, valErr error) *submocks.MockBYOKValidator {
+	m := submocks.NewMockBYOKValidator(ctrl)
+	m.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any()).Return(valErr).AnyTimes()
+	return m
 }
-
-// fakeEncryptor — pass-through (хранит plain в "cipher"); только для unit-тестов.
-type fakeEncryptor struct{}
-
-func (fakeEncryptor) Encrypt(plain string) (string, error)  { return "enc:" + plain, nil }
-func (fakeEncryptor) Decrypt(cipher string) (string, error) { return cipher, nil }
-
-// fakeValidator — управляемый validator: возвращает err, если задан.
-type fakeValidator struct{ err error }
-
-func (v fakeValidator) Validate(_ context.Context, _ domain.BYOKProvider, _ string) error {
-	return v.err
-}
-
-func discardLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
 func TestSetBYOKKey_Validates_Encrypts_Saves(t *testing.T) {
-	repo := &fakeBYOKRepo{}
-	uc := NewSetBYOKKey(repo, fakeEncryptor{}, fakeValidator{}, fakeClock{now: time.Now()}, discardLogger())
+	ctrl := gomock.NewController(t)
+	store := newBYOKStore()
+	uc := NewSetBYOKKey(
+		wireMockBYOKRepo(ctrl, store),
+		wireMockBYOKEncryptor(ctrl),
+		wireMockBYOKValidator(ctrl, nil),
+		fakeClock{now: time.Now()},
+		discardLogger(),
+	)
 	err := uc.Do(context.Background(), SetBYOKKeyInput{
 		UserID:   uuid.New(),
 		Provider: domain.BYOKProviderGroq,
@@ -65,19 +96,28 @@ func TestSetBYOKKey_Validates_Encrypts_Saves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	if repo.key == nil {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.key == nil {
 		t.Fatal("expected key persisted")
 	}
-	if repo.key.APIKeyCipher != "enc:sk-test-12345" {
-		t.Fatalf("key not encrypted: %q", repo.key.APIKeyCipher)
+	if store.key.APIKeyCipher != "enc:sk-test-12345" {
+		t.Fatalf("key not encrypted: %q", store.key.APIKeyCipher)
 	}
-	if !repo.key.IsActive() {
+	if !store.key.IsActive() {
 		t.Fatal("expected ValidatedAt set")
 	}
 }
 
 func TestSetBYOKKey_RejectsBadProvider(t *testing.T) {
-	uc := NewSetBYOKKey(&fakeBYOKRepo{}, fakeEncryptor{}, fakeValidator{}, fakeClock{now: time.Now()}, discardLogger())
+	ctrl := gomock.NewController(t)
+	uc := NewSetBYOKKey(
+		wireMockBYOKRepo(ctrl, newBYOKStore()),
+		wireMockBYOKEncryptor(ctrl),
+		wireMockBYOKValidator(ctrl, nil),
+		fakeClock{now: time.Now()},
+		discardLogger(),
+	)
 	err := uc.Do(context.Background(), SetBYOKKeyInput{
 		UserID:   uuid.New(),
 		Provider: domain.BYOKProvider("hotmail"),
@@ -89,8 +129,15 @@ func TestSetBYOKKey_RejectsBadProvider(t *testing.T) {
 }
 
 func TestSetBYOKKey_FailsOnValidator(t *testing.T) {
-	repo := &fakeBYOKRepo{}
-	uc := NewSetBYOKKey(repo, fakeEncryptor{}, fakeValidator{err: errors.New("401")}, fakeClock{now: time.Now()}, discardLogger())
+	ctrl := gomock.NewController(t)
+	store := newBYOKStore()
+	uc := NewSetBYOKKey(
+		wireMockBYOKRepo(ctrl, store),
+		wireMockBYOKEncryptor(ctrl),
+		wireMockBYOKValidator(ctrl, errors.New("401")),
+		fakeClock{now: time.Now()},
+		discardLogger(),
+	)
 	err := uc.Do(context.Background(), SetBYOKKeyInput{
 		UserID:   uuid.New(),
 		Provider: domain.BYOKProviderOpenAI,
@@ -99,39 +146,47 @@ func TestSetBYOKKey_FailsOnValidator(t *testing.T) {
 	if !errors.Is(err, domain.ErrBYOKValidationFailed) {
 		t.Fatalf("want ErrBYOKValidationFailed, got %v", err)
 	}
-	if repo.key != nil {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.key != nil {
 		t.Fatal("key must not be persisted on validation failure")
 	}
 }
 
 func TestRemoveBYOKKey_Idempotent(t *testing.T) {
-	repo := &fakeBYOKRepo{}
-	uc := NewRemoveBYOKKey(repo, discardLogger())
+	ctrl := gomock.NewController(t)
+	store := newBYOKStore()
+	uc := NewRemoveBYOKKey(wireMockBYOKRepo(ctrl, store), discardLogger())
 	// первый вызов — нет записи
 	if err := uc.Do(context.Background(), uuid.New()); err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
 	// записываем + удаляем
-	repo.key = &domain.BYOKKey{Provider: domain.BYOKProviderGroq}
+	store.mu.Lock()
+	store.key = &domain.BYOKKey{Provider: domain.BYOKProviderGroq}
+	store.mu.Unlock()
 	if err := uc.Do(context.Background(), uuid.New()); err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	if repo.key != nil {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.key != nil {
 		t.Fatal("key must be removed")
 	}
 }
 
 func TestCheckTier_PaidProWinsOverBYOK(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	now := time.Now().UTC()
 	future := now.Add(24 * time.Hour)
-	subRepo := &fakeRepo{sub: &domain.Subscription{
+	subStore := &subRepoStore{sub: &domain.Subscription{
 		Tier: domain.TierPro, Status: domain.StatusActive, CurrentPeriodEnd: &future,
 	}}
-	byokRepo := &fakeBYOKRepo{key: &domain.BYOKKey{
+	byokStore := &byokStore{key: &domain.BYOKKey{
 		Provider: domain.BYOKProviderOpenRouter, ValidatedAt: &now,
 	}}
-	getTier := NewGetTier(subRepo, fakeClock{now: now})
-	uc := NewCheckTier(getTier, byokRepo, nil)
+	getTier := NewGetTier(wireMockSubRepo(ctrl, subStore), fakeClock{now: now})
+	uc := NewCheckTier(getTier, wireMockBYOKRepo(ctrl, byokStore), nil)
 	info, err := uc.Do(context.Background(), uuid.New())
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
@@ -145,13 +200,13 @@ func TestCheckTier_PaidProWinsOverBYOK(t *testing.T) {
 }
 
 func TestCheckTier_BYOKActive_NoPaidPro(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	now := time.Now().UTC()
-	subRepo := &fakeRepo{} // нет подписки
-	byokRepo := &fakeBYOKRepo{key: &domain.BYOKKey{
+	byokStore := &byokStore{key: &domain.BYOKKey{
 		Provider: domain.BYOKProviderGroq, ValidatedAt: &now,
 	}}
-	getTier := NewGetTier(subRepo, fakeClock{now: now})
-	uc := NewCheckTier(getTier, byokRepo, nil)
+	getTier := NewGetTier(wireMockSubRepo(ctrl, newSubRepoStore()), fakeClock{now: now})
+	uc := NewCheckTier(getTier, wireMockBYOKRepo(ctrl, byokStore), nil)
 	info, _ := uc.Do(context.Background(), uuid.New())
 	if info.Source != SourceBYOK {
 		t.Fatalf("want byok source, got %s", info.Source)
@@ -165,22 +220,22 @@ func TestCheckTier_BYOKActive_NoPaidPro(t *testing.T) {
 }
 
 func TestCheckTier_NoSubNoBYOK_ReturnsFree(t *testing.T) {
-	getTier := NewGetTier(&fakeRepo{}, fakeClock{now: time.Now()})
-	uc := NewCheckTier(getTier, &fakeBYOKRepo{}, nil)
+	ctrl := gomock.NewController(t)
+	getTier := NewGetTier(wireMockSubRepo(ctrl, newSubRepoStore()), fakeClock{now: time.Now()})
+	uc := NewCheckTier(getTier, wireMockBYOKRepo(ctrl, newBYOKStore()), nil)
 	info, _ := uc.Do(context.Background(), uuid.New())
 	if info.Source != SourceFree {
 		t.Fatalf("want free, got %s", info.Source)
 	}
 }
 
-// stubTutor — управляемая реализация TutorChecker.
-type stubTutor struct{ is bool }
-
-func (s stubTutor) IsTutor(_ context.Context, _ uuid.UUID) (bool, error) { return s.is, nil }
-
 func TestCheckTier_TutorMode_OnlyOverridesFree(t *testing.T) {
-	getTier := NewGetTier(&fakeRepo{}, fakeClock{now: time.Now()})
-	uc := NewCheckTier(getTier, &fakeBYOKRepo{}, stubTutor{is: true})
+	ctrl := gomock.NewController(t)
+	tutor := appmocks.NewMockTutorChecker(ctrl)
+	tutor.EXPECT().IsTutor(gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+
+	getTier := NewGetTier(wireMockSubRepo(ctrl, newSubRepoStore()), fakeClock{now: time.Now()})
+	uc := NewCheckTier(getTier, wireMockBYOKRepo(ctrl, newBYOKStore()), tutor)
 	info, _ := uc.Do(context.Background(), uuid.New())
 	if info.Source != SourceTutor {
 		t.Fatalf("want tutor, got %s", info.Source)

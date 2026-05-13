@@ -18,9 +18,8 @@ type DailyBriefRepo interface {
 	// LastForcedAt returns the generated_at of the most-recent brief for
 	// the user. Used to gate force=true to 1/h. Zero time when none.
 	LastForcedAt(ctx context.Context, userID uuid.UUID) (time.Time, error)
-	// RecentForUser — Phase 5. Returns last N days of briefs (newest first)
-	// для Hone /coach feed. Limit hard-capped at 60 в caller'е чтобы
-	// payload не разросся.
+	// RecentForUser returns last N days of briefs (newest first). Limit
+	// hard-capped at 60 в caller'е чтобы payload не разросся.
 	RecentForUser(ctx context.Context, userID uuid.UUID, sinceDays, limit int) ([]DailyBrief, error)
 }
 
@@ -59,10 +58,9 @@ type Embedder interface {
 
 // ─── Cross-product readers ────────────────────────────────────────────────
 //
-// Coach service объединяет три продукта (Hone focus + druz9 mock-interview +
-// druz9 arena/codex) — эти reader'ы пробрасывают в prompt сигналы из
-// смежных доменов. Все adapter'ы — raw SQL в cmd/monolith/services/intelligence.go,
-// чтобы intelligence-domain не импортировал чужие infra-пакеты.
+// Coach pulls signals from Hone focus + mock-interview + codex. Adapters live
+// in cmd/monolith/services/intelligence.go (raw SQL) so intelligence-domain
+// doesn't import sibling infra packages.
 
 // MockReader — последние finished mock-interview сессии. Coach использует
 // score / weak_topics для personalized recommendations: «last system_design
@@ -70,9 +68,8 @@ type Embedder interface {
 type MockReader interface {
 	LastNFinished(ctx context.Context, userID uuid.UUID, n int) ([]MockSessionSummary, error)
 
-	// RecentAbandonedCount — Phase 4.7. Возвращает кол-во abandoned mock
-	// sessions за последние sinceDays. ≥2 = consistency-break сигнал
-	// (юзер бросает интервью на середине → coach должен этим управлять).
+	// RecentAbandonedCount — кол-во abandoned mock sessions за sinceDays.
+	// ≥2 = consistency-break сигнал.
 	RecentAbandonedCount(ctx context.Context, userID uuid.UUID, sinceDays int) (int, error)
 }
 
@@ -109,22 +106,22 @@ type CodexReader interface {
 	SuggestArticles(ctx context.Context, userID uuid.UUID, topics []string, limit int) ([]CodexArticleSuggestion, error)
 }
 
-// TrackReader — Phase 2d. Surfaces the user's active learning tracks so
-// the coach can spot "track stalled 5 days on step 4" patterns and pin
-// recommendations to the active step's skill_keys.
+// TrackReader surfaces the user's active learning tracks so the coach can
+// spot "track stalled 5 days on step 4" patterns and pin recommendations to
+// the active step's skill_keys.
 type TrackReader interface {
 	ActiveTracks(ctx context.Context, userID uuid.UUID) ([]ActiveTrack, error)
 }
 
-// ClubReader — Phase 3 final. Adapter в intelligence-context'е, вычитывает
-// ghosted club_sessions для severity grader'а («RSVP'нул но не дошёл»).
+// ClubReader вычитывает ghosted club_sessions для severity grader'а
+// («RSVP'нул но не дошёл»).
 type ClubReader interface {
 	GhostedSessions(ctx context.Context, userID uuid.UUID, windowDays int) ([]GhostedClubSession, error)
 }
 
-// GoalsReader — Phase 4.3. Surfaces the user's active goals so the coach
-// can frame narrative around them ("Yandex L4 in 5 days — ваш job_target").
-// Только status='active' — paused / done / abandoned не светятся.
+// GoalsReader surfaces the user's active goals so the coach can frame
+// narrative around them. Только status='active' — paused / done /
+// abandoned не светятся.
 type GoalsReader interface {
 	ActiveGoals(ctx context.Context, userID uuid.UUID) ([]UserGoal, error)
 }
@@ -218,8 +215,8 @@ type BriefPromptInput struct {
 	// дают specific recommendations вместо generic «do system design».
 	Mocks []MockSessionSummary
 
-	// MockAbandonedRecent — Phase 4.7. Кол-во abandoned mock sessions за
-	// последние 14 дней. ≥2 = consistency-break warn в severity grader.
+	// MockAbandonedRecent — abandoned mock sessions за 14 дней. ≥2 =
+	// consistency-break warn в severity grader.
 	MockAbandonedRecent int
 
 	// Queue — снапшот today queue. «You're 1/5 done на сегодня».
@@ -239,29 +236,26 @@ type BriefPromptInput struct {
 	// for current weak topics. The LLM may link only to these exact URLs.
 	CodexArticles []CodexArticleSuggestion
 
-	// ActiveTracks — Phase 2d. The user's enrolled learning tracks with
-	// current-step progress. Coach uses this to: (a) flag stalled tracks
-	// (warn severity), (b) tighten recommendations to the active step's
-	// skill_keys, (c) avoid suggesting drills outside the current track
-	// when the user has clearly committed to one.
+	// ActiveTracks — the user's enrolled learning tracks with current-step
+	// progress. Coach uses this to (a) flag stalled tracks (warn severity),
+	// (b) tighten recommendations to the active step's skill_keys, (c)
+	// avoid drills outside the current track when one is committed.
 	ActiveTracks []ActiveTrack
 
-	// PendingFollowups — Phase 4.8. Recommendations that the user followed
-	// (clicked) within the last 24-48h but coach hasn't yet asked whether
-	// they landed. Prompt section nudges the LLM to write «как с [X]?»
-	// в narrative/recommendation, чтобы цикл закрывался — иначе тоже
-	// самые review_note/tiny_task'и будут предлагаться снова и снова.
+	// PendingFollowups — recommendations the user clicked within the last
+	// 24-48h but coach hasn't yet checked in. Prompt nudges the LLM to ask
+	// «как с [X]?» so cycles close — otherwise the same review_note/
+	// tiny_task'и предлагаются снова и снова.
 	PendingFollowups []PendingFollowup
 
-	// ActiveGoals — Phase 4.3. User's high-level goals (job/skill/track).
-	// Coach использует для (a) framing narrative («Yandex L4 в 5 дней —
-	// ваш job_target»), (b) deadline-aware severity, (c) приоритезации
-	// recommendations в сторону активной цели.
+	// ActiveGoals — high-level goals (job/skill/track). Coach использует
+	// для (a) framing narrative, (b) deadline-aware severity, (c)
+	// приоритезации recommendations в сторону активной цели.
 	ActiveGoals []UserGoal
 
-	// GhostedClubs — Phase 3 final. Сессии за окно 7 дней где user
-	// RSVP'd_yes но статус остался rsvp_yes (никто не проставил
-	// attended). Сигнал disengagement → severity=nudge.
+	// GhostedClubs — сессии за окно 7 дней где user RSVP'd_yes но статус
+	// остался rsvp_yes (никто не проставил attended). Сигнал
+	// disengagement → severity=nudge.
 	GhostedClubs []GhostedClubSession
 
 	// External — обучение вне druz9 (LeetCode / Coursera / книги). Coach
@@ -269,22 +263,20 @@ type BriefPromptInput struct {
 	// today's plan. Empty struct когда юзер ничего не логирует.
 	External ExternalActivitySummary
 
-	// ── Phase 1.7e learning-companion prompt sections (2026-05-04) ──
+	// ── Learning-companion prompt sections ──
 
-	// Fork — snapshot ForkProgressReader (см repo.go ForkProgressSnapshot).
-	// Prompt-block FORK STATUS активен только когда Mode == "explore".
+	// Fork — snapshot ForkProgressReader. Prompt-block FORK STATUS активен
+	// только когда Mode == "explore".
 	Fork ForkProgressSnapshot
 
 	// ResourceTrail — engagement signals из user_resource_log за окно.
 	// Prompt-block RESOURCE TRAIL активен когда total events > 0.
 	ResourceTrail ResourceEngagement
 
-	// ML — Phase K, M5 (2026-05-13) ML-track detection. When IsML=true,
-	// brief synthesiser injects mlBriefOverlay (см infra/ml_prompt.go) as
-	// second system message — coach swaps generic Go-senior tropes for
-	// ML-flavoured guidance (numpy/pytorch coding, recsys/ranking sysdesign,
-	// Lilian Weng / Chip Huyen resource pool). Zero-value (IsML=false) — no
-	// overlay, default coach behaviour.
+	// ML — ML-track detection. When IsML=true, brief synthesiser injects
+	// mlBriefOverlay (см infra/ml_prompt.go) as second system message —
+	// coach swaps generic Go-senior tropes for ML-flavoured guidance.
+	// Zero-value — no overlay, default coach behaviour.
 	ML MLProfile
 }
 
@@ -309,9 +301,9 @@ type ExternalActivityReader interface {
 	SummaryWindow(ctx context.Context, userID uuid.UUID, days int) (ExternalActivitySummary, error)
 }
 
-// ── Phase 1.7c readers (learning-companion 2026-05-04) ──
+// ── Learning-companion readers ──
 
-// ResourceTouch — single event from user_resource_log (00055).
+// ResourceTouch — single event from user_resource_log.
 type ResourceTouch struct {
 	URL         string
 	AtlasNodeID string // optional ("" если ресурс был cross-cluster suggestion)
@@ -333,9 +325,8 @@ type ResourceEngagement struct {
 	RecentReflections []ResourceTouch
 }
 
-// ResourceEngagementReader реализует чтения над user_resource_log (00055):
-// RESOURCE TRAIL prompt-block, resource_engagement producer (Phase 1.7d),
-// admin curation analytics (Phase 12.5).
+// ResourceEngagementReader — reads over user_resource_log: RESOURCE TRAIL
+// prompt-block + resource_engagement producer + admin curation analytics.
 type ResourceEngagementReader interface {
 	// EngagementWindow возвращает агрегацию событий за last N дней.
 	// keepRecent ограничивает FinishedRecent / RecentReflections / MarkedUnhelpful.
@@ -351,7 +342,7 @@ type ForkBranchScore struct {
 }
 
 // ForkProgressSnapshot — input для FORK STATUS prompt-block + fork_progress
-// producer (Phase 1.7d). Только когда learning_state.mode=='explore'.
+// producer. Только когда learning_state.mode=='explore'.
 type ForkProgressSnapshot struct {
 	Mode             string // explore | commit | deep
 	ExploreWeekIndex int    // 1-based; 0 если mode != explore
@@ -360,8 +351,8 @@ type ForkProgressSnapshot struct {
 }
 
 // ForkProgressReader читает learning_state + cross-refs mock_sessions + atlas
-// activity. Используется FORK STATUS prompt block + fork_progress producer
-// (Phase 1.7d) + admin learning-state tab (Phase 12.5).
+// activity. Used by FORK STATUS prompt block + fork_progress producer +
+// admin learning-state tab.
 type ForkProgressReader interface {
 	Snapshot(ctx context.Context, userID uuid.UUID) (ForkProgressSnapshot, error)
 }
@@ -383,8 +374,8 @@ type PendingFollowup struct {
 	HoursAgo   int       // pre-computed для prompt'а
 }
 
-// AskNotesPromptInput — вход для NoteAnswerer (Phase B). Past Q&A
-// эпизоды дают модели контекст «юзер уже спрашивал X».
+// AskNotesPromptInput — вход для NoteAnswerer. Past Q&A эпизоды дают модели
+// контекст «юзер уже спрашивал X».
 type AskNotesPromptInput struct {
 	Question     string
 	ContextNotes []NoteEmbedding

@@ -1,4 +1,4 @@
-// fork_snapshot.go — Phase 2 Coach fork-view (explore mode only).
+// Package app — Coach fork-view (explore mode only).
 //
 // Тонкий wrapper над ForkProgressReader.Snapshot — добавляет deterministic
 // confidence-derive (mirror'ит producers.computeFork) чтобы handler-слой

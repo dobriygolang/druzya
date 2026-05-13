@@ -1,6 +1,6 @@
-// ml_profile_repo.go — Phase K, M5 (P1) 2026-05-13.
+// Package infra — domain.MLProfileReader.
 //
-// Reader для domain.MLProfileReader. Single SQL round-trip joining
+// Single SQL round-trip joining
 // user_primary_goals + hone_user_settings — оба источника ML signal'а:
 //   - user_primary_goals.kind = 'ml_offer' (committed, deliberate)
 //   - hone_user_settings.active_track = 'ml' (UI exploration)

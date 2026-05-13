@@ -497,17 +497,21 @@ func (r *Episodes) CountByKindInRange(ctx context.Context, userID uuid.UUID, fro
 // payload.week_start (RFC3339 timestamp начала недели).
 func (r *Episodes) HasWeeklySummary(ctx context.Context, userID uuid.UUID, weekStart time.Time) (bool, error) {
 	weekStartUTC := weekStart.UTC().Format(time.RFC3339)
-	var n int32
+	// W13: was COUNT(*) for an existence check — replaced with EXISTS so the
+	// planner can short-circuit on the first match against coach_episodes.
+	var exists bool
 	err := r.pool.QueryRow(ctx,
-		`SELECT COUNT(*)::int4
-		   FROM coach_episodes
-		  WHERE user_id = $1
-		    AND kind    = $2
-		    AND payload->>'week_start' = $3`,
+		`SELECT EXISTS (
+		    SELECT 1
+		      FROM coach_episodes
+		     WHERE user_id = $1
+		       AND kind    = $2
+		       AND payload->>'week_start' = $3
+		 )`,
 		sharedpg.UUID(userID), string(domain.EpisodeWeeklyMemorySummary), weekStartUTC,
-	).Scan(&n)
+	).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("intelligence.Episodes.HasWeeklySummary: %w", err)
 	}
-	return n > 0, nil
+	return exists, nil
 }

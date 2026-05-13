@@ -1,4 +1,4 @@
-// speaking_tts.go — Phase K Wave 9 (E4 P1) admin-only TTS regen UC.
+// Package app — admin-only TTS regen UC for Speaking exercises.
 //
 // Replaces client-side `window.speechSynthesis` fallback for Speaking
 // reference audio. Flow:

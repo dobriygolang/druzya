@@ -1,5 +1,4 @@
-// vault_repo.go — Phase C-7 zero-knowledge vault. SQL дословно перенесён
-// из cmd/monolith/services/hone/vault.go.
+// Package infra — zero-knowledge vault persistence.
 package infra
 
 import (

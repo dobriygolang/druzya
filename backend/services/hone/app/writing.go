@@ -1,7 +1,7 @@
-// writing.go — Wave 4.4. Writing-as-Focus AI feedback use case.
-// Single thin orchestrator: validates input, hands off to the grader.
-// No persistence — feedback is request-scoped; the user copies the
-// piece into a Note if they want to keep it.
+// Package app — Writing-as-Focus AI feedback use case. Single thin
+// orchestrator: validates input, hands off to the grader. No persistence —
+// feedback is request-scoped; the user copies the piece into a Note if
+// they want to keep it.
 package app
 
 import (

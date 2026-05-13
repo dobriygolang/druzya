@@ -1,5 +1,7 @@
 package compaction
 
+import "slices"
+
 // Turn — один обмен "user → assistant" в истории диалога. Держим минимум
 // полей: пакет не хочет знать domain-specific атрибуты (stress snapshot,
 // has_screenshot, tokens). Вся семантика сжатия работает с текстом.
@@ -68,17 +70,17 @@ func BuildWindow(turns []Turn, runningSummary string, cfg Config) Window {
 		// Fail-soft: при битом конфиге шлём всё, ничего не компактим.
 		// Политика anti-fallback требует ошибок в конструкторе (см.
 		// Validate) — на hot-path мы уже не можем всё сломать.
-		return Window{Tail: append([]Turn(nil), turns...)}
+		return Window{Tail: slices.Clone(turns)}
 	}
 	n := len(turns)
 	if n <= cfg.WindowSize {
 		return Window{
 			RunningSummary: runningSummary,
-			Tail:           append([]Turn(nil), turns...),
+			Tail:           slices.Clone(turns),
 		}
 	}
 	tailStart := n - cfg.WindowSize
-	tail := append([]Turn(nil), turns[tailStart:]...)
+	tail := slices.Clone(turns[tailStart:])
 
 	if n <= cfg.Threshold || cfg.Threshold < cfg.WindowSize {
 		// Порог ещё не достигнут — срезаем окно, но компакцию не
@@ -88,7 +90,7 @@ func BuildWindow(turns []Turn, runningSummary string, cfg Config) Window {
 			Tail:           tail,
 		}
 	}
-	old := append([]Turn(nil), turns[:tailStart]...)
+	old := slices.Clone(turns[:tailStart])
 	return Window{
 		RunningSummary:  runningSummary,
 		Tail:            tail,

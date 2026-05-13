@@ -1,6 +1,5 @@
-// listening_repo.go — Wave 6.1 of docs/feature/plan.md.
-// Hand-rolled pgx over hone_listening_materials. Sibling of
-// reading_repo.go (Wave 4); same per-feature struct pattern.
+// Package infra — hand-rolled pgx over hone_listening_materials. Sibling
+// of reading_repo.go; same per-feature struct pattern.
 package infra
 
 import (

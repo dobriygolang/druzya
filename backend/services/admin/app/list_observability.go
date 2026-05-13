@@ -1,4 +1,4 @@
-// list_observability.go — Phase 12.5 admin observability dashboard reader.
+// Package app — admin observability dashboard reader.
 //
 // Surfaces per-task LLM volume + cost из `dynamic_config_metrics` (00060)
 // + latest eval_runs results.

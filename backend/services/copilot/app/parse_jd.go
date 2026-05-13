@@ -1,10 +1,8 @@
-// parse_jd.go — Phase J / C6 (P1).
-//
-// ParseJD turns a job description (raw text or a URL pointing at a
-// public posting) into a structured ParsedJD. URL fetching is best-
+// Package app — ParseJD turns a job description (raw text or URL pointing
+// at a public posting) into a structured ParsedJD. URL fetching is best-
 // effort: many job-board hosts block bot traffic, so the use case
-// degrades to a clear "paste text instead" error on fetch failure
-// rather than silently producing a thin parse.
+// degrades to a clear "paste text instead" error on fetch failure rather
+// than silently producing a thin parse.
 package app
 
 import (

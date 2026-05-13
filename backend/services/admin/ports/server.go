@@ -3,9 +3,8 @@
 // ROLE GATE — every method of AdminServer returns PermissionDenied unless
 // the caller has role=admin. The check uses sharedMw.UserRoleFromContext
 // (populated by requireAuth in main.go). main.go still wraps the transcoder
-// in requireAuth; this port adds the admin role check on top. Mirrors the
-// Phase A/B pattern — the handler never dips into app/ before the role is
-// confirmed.
+// in requireAuth; this port adds the admin role check on top. The handler
+// never dips into app/ before the role is confirmed.
 //
 // SOLUTION_HINT EXCEPTION
 // Every other domain in druz9 treats tasks.solution_hint as a secret that
@@ -21,9 +20,8 @@
 //   - status.go     GetStatus
 //   - enums.go      proto<->domain enum adapters
 //
-// Pivot 2026-05-04: tasks.go / companies.go / anticheat.go удалены вместе
-// с RPC'ами из admin.proto. ListCompanies UC сохранён — используется
-// /companies (chi-direct) на фронте picker'а компаний.
+// ListCompanies UC сохранён — используется /companies (chi-direct) на
+// фронте picker'а компаний.
 package ports
 
 import (

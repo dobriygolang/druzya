@@ -1,6 +1,4 @@
-// path_assignments.go — Phase K T2+T3 (2026-05-12).
-//
-// Three use cases:
+// Package app — reading-path assignment use cases.
 //
 //   - AssignReadingPath  → tutor pushes a curated path to one student.
 //     Server snapshots path contents, creates one tutor_path_assignments

@@ -1,5 +1,5 @@
-// coach_config.go — Phase III context-preservation: per-deploy admin pin
-// для coach-LLM. Пишется в `dynamic_config[coach.pinned_model]`. Если
+// Package infra — per-deploy admin pin для coach-LLM. Пишется в
+// `dynamic_config[coach.pinned_model]`. Если
 // задан — DailyBrief synthesizer + AskNotes answerer используют его как
 // ModelOverride (single candidate, no fallback). Это даёт стилистическую
 // стабильность коуча между запросами: один и тот же tone/voice пока

@@ -1,6 +1,6 @@
-// list_focus_reflections.go — H2 (Phase J 2026-05-12).
+// Package app — read-side UC for /stats grade-trend chart.
 //
-// Read-side UC for /stats grade-trend chart. Returns reflections within
+// Returns reflections within
 // window_days newest-first. Default window 30d, hard cap 365.
 package app
 

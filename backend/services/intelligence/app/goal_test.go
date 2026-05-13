@@ -3,70 +3,93 @@ package app
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"druz9/intelligence/domain"
+	mocks "druz9/intelligence/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-// fakePrimaryGoalRepo — in-memory impl for table-driven UC tests.
-type fakePrimaryGoalRepo struct {
+// primaryGoalStore — закрытая state-машина для PrimaryGoalRepo.
+// Mirror DB partial unique index: Insert деактивирует предыдущую активную
+// запись для (user_id, active=true).
+type primaryGoalStore struct {
+	mu   sync.Mutex
 	rows []domain.PrimaryGoal
 }
 
-func (r *fakePrimaryGoalRepo) Insert(_ context.Context, in domain.PrimaryGoal) (domain.PrimaryGoal, error) {
-	// Mirror DB partial unique index — deactivate prior active row for user.
-	for i := range r.rows {
-		if r.rows[i].UserID == in.UserID && r.rows[i].Active {
-			r.rows[i].Active = false
-		}
-	}
-	in.ID = uuid.New()
-	r.rows = append(r.rows, in)
-	return in, nil
-}
-
-func (r *fakePrimaryGoalRepo) GetActive(_ context.Context, userID uuid.UUID) (domain.PrimaryGoal, error) {
-	for _, row := range r.rows {
-		if row.UserID == userID && row.Active {
-			return row, nil
-		}
-	}
-	return domain.PrimaryGoal{}, domain.ErrNotFound
-}
-
-func (r *fakePrimaryGoalRepo) UpdateByID(_ context.Context, in domain.PrimaryGoal) (domain.PrimaryGoal, error) {
-	for i := range r.rows {
-		if r.rows[i].ID == in.ID && r.rows[i].UserID == in.UserID {
-			r.rows[i].Kind = in.Kind
-			r.rows[i].TargetCompany = in.TargetCompany
-			r.rows[i].TargetLevel = in.TargetLevel
-			r.rows[i].TargetText = in.TargetText
-			r.rows[i].TargetDate = in.TargetDate
-			r.rows[i].UpdatedAt = in.UpdatedAt
-			return r.rows[i], nil
-		}
-	}
-	return domain.PrimaryGoal{}, domain.ErrNotFound
-}
-
-func (r *fakePrimaryGoalRepo) DeactivateByID(_ context.Context, userID, goalID uuid.UUID) error {
-	for i := range r.rows {
-		if r.rows[i].ID == goalID && r.rows[i].UserID == userID && r.rows[i].Active {
-			r.rows[i].Active = false
-			return nil
-		}
-	}
-	return domain.ErrNotFound
+func wireMockPrimaryGoalRepo(ctrl *gomock.Controller, s *primaryGoalStore) *mocks.MockPrimaryGoalRepo {
+	m := mocks.NewMockPrimaryGoalRepo(ctrl)
+	m.EXPECT().Insert(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in domain.PrimaryGoal) (domain.PrimaryGoal, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			for i := range s.rows {
+				if s.rows[i].UserID == in.UserID && s.rows[i].Active {
+					s.rows[i].Active = false
+				}
+			}
+			in.ID = uuid.New()
+			s.rows = append(s.rows, in)
+			return in, nil
+		},
+	).AnyTimes()
+	m.EXPECT().GetActive(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID) (domain.PrimaryGoal, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			for _, row := range s.rows {
+				if row.UserID == userID && row.Active {
+					return row, nil
+				}
+			}
+			return domain.PrimaryGoal{}, domain.ErrNotFound
+		},
+	).AnyTimes()
+	m.EXPECT().UpdateByID(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in domain.PrimaryGoal) (domain.PrimaryGoal, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			for i := range s.rows {
+				if s.rows[i].ID == in.ID && s.rows[i].UserID == in.UserID {
+					s.rows[i].Kind = in.Kind
+					s.rows[i].TargetCompany = in.TargetCompany
+					s.rows[i].TargetLevel = in.TargetLevel
+					s.rows[i].TargetText = in.TargetText
+					s.rows[i].TargetDate = in.TargetDate
+					s.rows[i].UpdatedAt = in.UpdatedAt
+					return s.rows[i], nil
+				}
+			}
+			return domain.PrimaryGoal{}, domain.ErrNotFound
+		},
+	).AnyTimes()
+	m.EXPECT().DeactivateByID(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID, goalID uuid.UUID) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			for i := range s.rows {
+				if s.rows[i].ID == goalID && s.rows[i].UserID == userID && s.rows[i].Active {
+					s.rows[i].Active = false
+					return nil
+				}
+			}
+			return domain.ErrNotFound
+		},
+	).AnyTimes()
+	return m
 }
 
 // ─── CreateGoal ───────────────────────────────────────────────────────────
 
 func TestCreateGoal_HappyPath(t *testing.T) {
 	uid := uuid.New()
-	repo := &fakePrimaryGoalRepo{}
+	ctrl := gomock.NewController(t)
+	repo := wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})
 	uc := CreateGoal{Repo: repo, Now: func() time.Time { return time.Date(2026, 5, 12, 0, 0, 0, 0, time.UTC) }}
 
 	cases := []struct {
@@ -115,7 +138,9 @@ func TestCreateGoal_HappyPath(t *testing.T) {
 
 func TestCreateGoal_DeactivatesPriorActive(t *testing.T) {
 	uid := uuid.New()
-	repo := &fakePrimaryGoalRepo{}
+	ctrl := gomock.NewController(t)
+	store := &primaryGoalStore{}
+	repo := wireMockPrimaryGoalRepo(ctrl, store)
 	uc := CreateGoal{Repo: repo}
 
 	_, err := uc.Do(context.Background(), CreateGoalInput{UserID: uid, Kind: domain.PrimaryGoalKindAnySenior})
@@ -126,19 +151,22 @@ func TestCreateGoal_DeactivatesPriorActive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	store.mu.Lock()
 	activeCount := 0
-	for _, r := range repo.rows {
+	for _, r := range store.rows {
 		if r.Active {
 			activeCount++
 		}
 	}
+	store.mu.Unlock()
 	if activeCount != 1 {
 		t.Fatalf("expected exactly one active, got %d", activeCount)
 	}
 }
 
 func TestCreateGoal_ValidationErrors(t *testing.T) {
-	uc := CreateGoal{Repo: &fakePrimaryGoalRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := CreateGoal{Repo: wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})}
 	cases := []struct {
 		name string
 		in   CreateGoalInput
@@ -162,7 +190,8 @@ func TestCreateGoal_ValidationErrors(t *testing.T) {
 // ─── GetActiveGoal ────────────────────────────────────────────────────────
 
 func TestGetActiveGoal_NotFound(t *testing.T) {
-	uc := GetActiveGoal{Repo: &fakePrimaryGoalRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := GetActiveGoal{Repo: wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})}
 	_, err := uc.Do(context.Background(), uuid.New())
 	if err == nil || !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
@@ -171,7 +200,8 @@ func TestGetActiveGoal_NotFound(t *testing.T) {
 
 func TestGetActiveGoal_HappyPath(t *testing.T) {
 	uid := uuid.New()
-	repo := &fakePrimaryGoalRepo{}
+	ctrl := gomock.NewController(t)
+	repo := wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})
 	createUC := CreateGoal{Repo: repo}
 	if _, err := createUC.Do(context.Background(), CreateGoalInput{UserID: uid, Kind: domain.PrimaryGoalKindAnySenior}); err != nil {
 		t.Fatal(err)
@@ -190,7 +220,8 @@ func TestGetActiveGoal_HappyPath(t *testing.T) {
 
 func TestUpdateGoal_HappyPath(t *testing.T) {
 	uid := uuid.New()
-	repo := &fakePrimaryGoalRepo{}
+	ctrl := gomock.NewController(t)
+	repo := wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})
 	create := CreateGoal{Repo: repo}
 	created, err := create.Do(context.Background(), CreateGoalInput{UserID: uid, Kind: domain.PrimaryGoalKindAnySenior})
 	if err != nil {
@@ -210,7 +241,8 @@ func TestUpdateGoal_HappyPath(t *testing.T) {
 }
 
 func TestUpdateGoal_NotFound(t *testing.T) {
-	uc := UpdateGoal{Repo: &fakePrimaryGoalRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := UpdateGoal{Repo: wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})}
 	_, err := uc.Do(context.Background(), UpdateGoalInput{
 		UserID: uuid.New(), GoalID: uuid.New(), Kind: domain.PrimaryGoalKindAnySenior,
 	})
@@ -220,7 +252,8 @@ func TestUpdateGoal_NotFound(t *testing.T) {
 }
 
 func TestUpdateGoal_ValidationErrors(t *testing.T) {
-	uc := UpdateGoal{Repo: &fakePrimaryGoalRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := UpdateGoal{Repo: wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})}
 	cases := []struct {
 		name string
 		in   UpdateGoalInput
@@ -244,7 +277,8 @@ func TestUpdateGoal_ValidationErrors(t *testing.T) {
 
 func TestDeactivateGoal_HappyPath(t *testing.T) {
 	uid := uuid.New()
-	repo := &fakePrimaryGoalRepo{}
+	ctrl := gomock.NewController(t)
+	repo := wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})
 	create := CreateGoal{Repo: repo}
 	g, err := create.Do(context.Background(), CreateGoalInput{UserID: uid, Kind: domain.PrimaryGoalKindAnySenior})
 	if err != nil {
@@ -261,7 +295,8 @@ func TestDeactivateGoal_HappyPath(t *testing.T) {
 }
 
 func TestDeactivateGoal_NotFound(t *testing.T) {
-	uc := DeactivateGoal{Repo: &fakePrimaryGoalRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := DeactivateGoal{Repo: wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})}
 	err := uc.Do(context.Background(), uuid.New(), uuid.New())
 	if err == nil || !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
@@ -269,7 +304,8 @@ func TestDeactivateGoal_NotFound(t *testing.T) {
 }
 
 func TestDeactivateGoal_ValidationErrors(t *testing.T) {
-	uc := DeactivateGoal{Repo: &fakePrimaryGoalRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := DeactivateGoal{Repo: wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{})}
 	if err := uc.Do(context.Background(), uuid.Nil, uuid.New()); !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
 	}

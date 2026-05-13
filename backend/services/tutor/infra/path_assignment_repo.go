@@ -1,6 +1,4 @@
-// path_assignment_repo.go — Phase K T2+T3 (2026-05-12). pgx-backed
-// domain.PathAssignmentRepo over tutor_path_assignments (migration
-// 00110).
+// Package infra — pgx-backed domain.PathAssignmentRepo.
 package infra
 
 import (

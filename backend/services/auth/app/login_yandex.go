@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/yandex_oauth_mock.go -source login_yandex.go YandexOAuthClient
 package app
 
 import (

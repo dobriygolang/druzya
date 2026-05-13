@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"time"
 
 	"druz9/cmd/monolith/services"
@@ -407,8 +408,7 @@ func (a *App) registerInfraClosers() {
 	a.closers = append(a.closers, func(ctx context.Context) error {
 		return a.httpSrv.Shutdown(ctx)
 	})
-	for i := len(a.modules) - 1; i >= 0; i-- {
-		m := a.modules[i]
+	for _, m := range slices.Backward(a.modules) {
 		if m == nil {
 			continue
 		}
@@ -423,7 +423,6 @@ func (a *App) registerInfraClosers() {
 	// Drain bounded worker pools до Postgres/Redis: in-flight задачи
 	// (insight upserts / categoriser SetStatus) пишут в БД и Redis.
 	for _, p := range a.workerPools {
-		p := p
 		a.closers = append(a.closers, func(context.Context) error { return p.Close() })
 	}
 	a.closers = append(a.closers,

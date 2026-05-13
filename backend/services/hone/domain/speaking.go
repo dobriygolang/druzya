@@ -1,9 +1,4 @@
-// speaking.go — Phase J / H4 (P1) Speaking modality.
-//
-// Speaking sub-context — fourth English modality. Hone English hub had
-// Reading/Writing/Listening but no Speaking → hub ≈ Reader. H4 closes:
-// shadowing exercises (text prompt → mic record → STT grade against
-// reference → coach feedback) + persisted sessions for drift tracking.
+// Package domain — Speaking modality (shadowing exercises + STT grading).
 //
 // Architecture:
 //   - Exercises catalog — fixed, seeded в migration. ExerciseRepo.List
@@ -11,15 +6,14 @@
 //   - Per-recording session — speaking_sessions row. Idempotent via
 //     (user_id, client_session_id) UNIQUE.
 //   - Transcription — reuses transcription.Provider (Groq Whisper),
-//     wrapped в STTProvider interface here чтобы hone не импортировал
+//     wrapped в STTProvider interface чтобы hone не импортировал
 //     transcription пакет напрямую (domain → infra adapter inversion).
 //   - Grading — LLM compares user transcript vs reference, returns
 //     pronunciation + fluency + word-diff + coach feedback line. Floor
 //     adapter returns ErrLLMUnavailable when llmchain not wired.
 //
-// 2026-05-12: Audio is NOT persisted server-side — после STT мы
-// держим только transcript + scores. Privacy + storage cost; the
-// recording does its job once, no replay value.
+// Audio is NOT persisted server-side — после STT держим только transcript
+// + scores. Privacy + storage cost; recording does its job once.
 package domain
 
 import (

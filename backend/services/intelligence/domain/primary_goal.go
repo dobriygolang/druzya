@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/primary_goal_mock.go -source primary_goal.go
 // primary_goal.go — F2 single-active "primary goal" type.
 //
 // Distinct from UserGoal (job_target/skill_target/track_target workflow):

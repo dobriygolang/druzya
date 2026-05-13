@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/sandbox_mock.go -source sandbox.go
 package domain
 
 import (

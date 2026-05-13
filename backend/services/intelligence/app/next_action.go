@@ -1,14 +1,9 @@
-// next_action.go — Phase 2 Coach hero «one daily action».
+// Package app — Coach hero «one daily action».
 //
-// UC берёт snapshot user'а (learning_state, recent mocks, resource trail,
-// active track step) и зовёт TaskAssistantNextAction (70B). Output —
+// UC берёт snapshot user'а и зовёт TaskAssistantNextAction. Output —
 // structured JSON {action_kind, target, rationale, estimated_minutes}.
-//
-// Cached 1/day per user (cache key = user_id + UTC date). При dismiss
-// каскад'ится TaskAssistantRereroll для variation, но это отдельный UC.
-//
-// Provider chain через llmchain — fallback'и групповым уровнем (Groq →
-// Cerebras → Mistral → OpenRouter free → Ollama).
+// Cached 1/day per user; на dismiss кас'ится TaskAssistantRereroll вариант
+// (отдельный UC).
 package app
 
 import (
@@ -37,17 +32,12 @@ type NextAction struct {
 // readers и passes сюда — UC не дёргает readers сам, чтобы оставаться
 // тестируемым.
 //
-// Calendar pivot 2026-05-04: UpcomingEvents removed alongside personal_events.
-// Coach next-action no longer factors interview-window pressure; track step
-// + fork mode + recent mocks remain the active inputs.
+// RecentFocusReflections даёт prompt'у конкретный pain («вчера 25 min на
+// prefix-sum, grade 2, stuck on joins») — rationale получает named anchor.
 //
-// Phase J 2026-05-12: RecentFocusReflections added so prompt видит «вчера
-// 25 min on prefix-sum, grade 2, stuck on joins» — directly inflects today's
-// recommendation rationale.
-//
-// Phase K M5 2026-05-13: ML — MLProfile signal so caller-loader can pass
-// (primary_goal=ml_offer OR active_track=ml) detection; UC appends ML
-// overlay system message to swap default Go-senior framing for ML.
+// ML.IsML=true → caller-loader детектит (primary_goal=ml_offer OR
+// active_track=ml); UC appends ML overlay system message чтобы свернуть
+// default Go-senior framing на ML.
 type NextActionInput struct {
 	UserID                 uuid.UUID
 	LearningState          LearningStateView
@@ -56,9 +46,7 @@ type NextActionInput struct {
 	ResourceTrail          domain.ResourceEngagement
 	ActiveTrack            *ActiveTrackStep
 	RecentFocusReflections []domain.FocusReflection
-	// ML — Phase K M5. Zero-value (IsML=false) = no overlay, default coach
-	// next-action behaviour preserved.
-	ML domain.MLProfile
+	ML                     domain.MLProfile
 }
 
 // LearningStateView — slim projection (UC не импортирует learning_state
@@ -98,11 +86,10 @@ func (uc *GetNextAction) Do(ctx context.Context, in NextActionInput) (NextAction
 	defer cancel()
 
 	prompt := buildNextActionPrompt(in)
-	// Phase K M5 — ML overlay (2026-05-13). Append as second system message
-	// when in.ML.IsML=true. Hot-path mirror of canonical prompt body stored
-	// in coach_prompts.slug='weak_axis_ml_drill' (migration 00116) — admin
-	// edits go through DB; this constant is the fallback when DB lookup
-	// would add latency (next-action serves on /today first-load).
+	// ML overlay: append as second system message when in.ML.IsML=true.
+	// Hot-path mirror of coach_prompts.slug='weak_axis_ml_drill'; constant
+	// is fallback when DB lookup would add latency (next-action serves on
+	// /today first-load).
 	messages := []llmchain.Message{
 		{Role: llmchain.RoleSystem, Content: nextActionSystemPrompt},
 	}
@@ -147,11 +134,10 @@ Constraints:
 - If learning_state.mode=='explore' — DO NOT push commit; suggest exploration of underdeveloped fork-branch.
 - estimated_minutes ∈ [15, 120].`
 
-// nextActionMLOverlay — Phase K M5 (2026-05-13). Hot-path mirror of
-// coach_prompts.slug='weak_axis_ml_drill' (migration 00116). Appended as
-// second system message when NextActionInput.ML.IsML=true. Reframes default
-// action recommendations through ML lens without rewriting output contract
-// (JSON envelope identical для default + ML — downstream parser один).
+// nextActionMLOverlay — hot-path mirror of coach_prompts.slug=
+// 'weak_axis_ml_drill'. Appended when NextActionInput.ML.IsML=true to
+// reframe default action recommendations through ML lens; JSON envelope
+// identical between default + ML so downstream parser остаётся одним.
 const nextActionMLOverlay = `ML-COACH OVERLAY (user committed to ML offer track):
 - Reframe action targets to ML (numpy/pytorch coding drill > algo kata; recsys/ranking sysdesign > generic distributed-systems).
 - Rationale must cite ML-specific signal (last ml_coding mock weak topic, ML radar axis with progress<30, named ML resource user has been engaging with).
@@ -194,9 +180,9 @@ func buildNextActionPrompt(in NextActionInput) string {
 			in.ResourceTrail.UnfinishedCount, len(in.ResourceTrail.MarkedUnhelpful))
 	}
 
-	// Recent focus reflections — H2 (Phase J). Each entry carries grade +
-	// notes from a finished pomodoro. Coach использует чтобы rationale цитировал
-	// конкретный pain («previously stuck on X with grade 2 — try Y today»).
+	// Recent focus reflections — grade + notes from a finished pomodoro.
+	// Coach uses these so rationale цитирует конкретный pain
+	// («previously stuck on X with grade 2 — try Y today»).
 	if len(in.RecentFocusReflections) > 0 {
 		b.WriteString("\nRECENT FOCUS REFLECTIONS (newest first):\n")
 		// Cap at 5 entries — prompt budget conservation.

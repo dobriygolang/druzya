@@ -1,4 +1,4 @@
-// skill_radar.go — Phase 2 5-axis radar derived from mock_sessions.ai_report.
+// Package app — 5-axis radar derived from mock_sessions.ai_report.
 //
 // Каждый mock-section (de / ml_eng / system_design_senior / english_hr / etc)
 // у нас grade'ится с 5-axis rubric (см services/ai_mock/domain/<section>.go).

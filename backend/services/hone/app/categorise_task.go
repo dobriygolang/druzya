@@ -1,22 +1,18 @@
-// categorise_task.go — Phase 10 TaskBoard auto-place (2026-05-04).
+// Package app — TaskBoard auto-place.
 //
-// Когда юзер создаёт новую task через CreateTask или AI генерит через
-// SpawnAITask, опционально зовём LLM чтобы placement'нуть в правильную
-// column (todo/doing/done) + add tags по deadline + kind. Latency-bound
+// На CreateTask / SpawnAITask опционально зовём LLM чтобы placement'нуть
+// в правильную column + add tags по deadline + kind. Latency-bound
 // (UI ждёт drag-drop), 8B-class через TaskTaskboardCategorise.
 //
-// Phase J / H3 (2026-05-12) — extended:
-//   - Kind inference: LLM decides one of {algo|sysdesign|quiz|reflection|reading|ml|custom}
-//     based on title/brief. Replaces input.Kind (auto-categoriser overrides).
-//     M7 Phase K (2026-05-13): `ml` added для ML/MLE work items.
-//   - Reasoning: 1-2 sentence explanation surfaced as a toast «Auto-tagged
-//     as Algo · why?». Cheap to regen, не персистится в DB.
-//   - Confidence 0..1: low-confidence (<0.4) → UI skip auto-toast, поскольку
-//     LLM не уверен и юзер всё равно перевыберет вручную.
+// Output fields:
+//   - Kind ∈ {algo|sysdesign|quiz|reflection|reading|ml|custom}; auto-
+//     categoriser overrides input.Kind.
+//   - Reasoning: 1-2 sentence toast «Auto-tagged as Algo · why?». Cheap
+//     to regen, не персистится.
+//   - Confidence 0..1: <0.4 → UI skip auto-toast.
 //
 // UC pure-functional: input → output. Caller (handler / coach_listener)
-// уже сам решает звать ли (например, только для AI-sourced tasks или
-// при explicit user-trigger «coach, organise this»).
+// сам решает звать ли (AI-sourced tasks или explicit user-trigger).
 package app
 
 import (

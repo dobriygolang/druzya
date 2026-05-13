@@ -1,4 +1,4 @@
-// curation_readers.go — Phase 3.5d producer readers.
+// Package infra — curation-signal producer readers.
 //
 // Поставляет cron'у 4 producer'ам сигналы из user_resource_log + atlas_nodes:
 //

@@ -1,7 +1,6 @@
-// directory_handlers.go — Phase K T1 (P0) 2026-05-12. Connect-RPC
-// handlers for the tutor directory MVP. Mirrors the patterns в
-// server.go (sentinel-to-Connect mapping via toConnectErr, proto↔domain
-// converters at the bottom).
+// Package ports — Connect-RPC handlers for the tutor directory. Mirrors
+// patterns in server.go (sentinel-to-Connect mapping via toConnectErr,
+// proto↔domain converters at the bottom).
 package ports
 
 import (

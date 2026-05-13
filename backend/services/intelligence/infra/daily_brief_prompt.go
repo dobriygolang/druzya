@@ -71,8 +71,8 @@ GOOD (codex link inline):
 
 Return ONLY the JSON object. No prose, no code fences.`
 
-// variantPromptOverlay — Phase 5 A/B prompt-variant overlay. Возвращает
-// 1-2 строчки instruction tied к variant'у. Пустая строка = default
+// variantPromptOverlay — A/B prompt-variant overlay. Возвращает 1-2
+// строчки instruction tied к variant'у. Пустая строка = default
 // (briefSystemPrompt без изменений).
 //
 // Variants:
@@ -93,10 +93,10 @@ func variantPromptOverlay(v CoachPromptVariant) string {
 	return ""
 }
 
-// personaToneOverlay — Phase 4.2 system-prompt overlay. Возвращает 1-2
-// строчки с tone hint, которые caller добавляет отдельным system message
-// после `briefSystemPrompt`. Пустая строка = no overlay (default tone
-// briefSystemPrompt уже даёт «honest, not nice»).
+// personaToneOverlay — system-prompt overlay returning 1-2 строчки с tone
+// hint; caller добавляет отдельным system message после briefSystemPrompt.
+// Пустая строка = no overlay (default tone briefSystemPrompt уже даёт
+// «honest, not nice»).
 //
 // Обоснование одной-двух строк: длинные tone hint'ы перетягивают на себя
 // внимание модели и приводят к prompt-leak («Hi! As a strict coach…»).
@@ -113,7 +113,7 @@ func personaToneOverlay(p CoachPersona) string {
 	return ""
 }
 
-// critiqueSystemPrompt — Phase 4.1 second-stage. Coach видит свой
+// critiqueSystemPrompt — second-stage critique. Coach видит свой
 // предыдущий sketch + те же signals и должен либо его подтвердить, либо
 // вернуть улучшенную версию. Триггерится только для severity warn /
 // critical: мы платим латентностью + LLM-токенами там, где stake'и
@@ -148,8 +148,8 @@ Allowed kinds: tiny_task | schedule | review_note | unblock. target_id matches t
 
 // buildBriefCritiqueUserPrompt assembles the second-stage user prompt.
 //
-// Phase R6 — delta-compress: instead of re-emitting the full sketch
-// signal digest (~1000 tokens), critique sees only:
+// Delta-compress: instead of re-emitting the full sketch signal digest
+// (~1000 tokens), critique sees only:
 //   - DRAFT JSON (the sketch under review),
 //   - SIGNAL HIGHLIGHTS (severity grade + top 3-5 facts: severity reason,
 //     latest mock, weakest skill, repeated topic, interview pressure).
@@ -169,10 +169,10 @@ func buildBriefCritiqueUserPrompt(in domain.BriefPromptInput, sketchJSON string)
 	return sb.String()
 }
 
-// writeBriefSignalHighlights — Phase R6 compact evidence digest used by
-// critique stage. Lists only the most load-bearing facts; the critic
-// uses these to verify the draft's claims are grounded without re-paying
-// the cost of the full signal section.
+// writeBriefSignalHighlights — compact evidence digest used by critique
+// stage. Lists only the most load-bearing facts; the critic uses these
+// to verify the draft's claims are grounded without re-paying the cost
+// of the full signal section.
 func writeBriefSignalHighlights(sb *strings.Builder, in domain.BriefPromptInput) {
 	sb.WriteString("SIGNAL HIGHLIGHTS (verify draft claims against these — full signal set is upstream):\n")
 	severity, severityReason := deriveSeverity(in)
@@ -259,7 +259,7 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 	writeActionCandidates(&sb, in)
 	writeActionContract(&sb, in)
 
-	// ── USER GOALS (Phase 4.3) ─────────────────────────────────────────
+	// ── USER GOALS ─────────────────────────────────────────
 	// High-level goals shape narrative framing — coach should mention the
 	// active job_target / skill_target / track_target by name, и привязать
 	// today's lever к движению по нему. Deadline-aware severity already
@@ -283,7 +283,7 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		sb.WriteString("\n")
 	}
 
-	// ── PENDING FOLLOW-UPS (Phase 4.8) ────────────────────────────────
+	// ── PENDING FOLLOW-UPS ────────────────────────────────
 	// Coach должен в narrative или одной recommendation спросить «landed
 	// ли X?» — иначе те же review_note/tiny_task будут предлагаться из
 	// дня в день без feedback loop.
@@ -309,7 +309,7 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		sb.WriteString(". (Don't re-suggest these topics in today's plan; coach should mention progress on them.)\n\n")
 	}
 
-	// ── FORK STATUS (Phase 1.7e learning-companion) ──────────────────
+	// ── FORK STATUS ──────────────────
 	// Активен только при mode='explore'. Coach использует чтобы:
 	// (a) frame'ить «week N of 6 explore window»,
 	// (b) namet'ить commit когда confidence высокая,
@@ -317,7 +317,7 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 	//     scores близки.
 	writeForkStatus(&sb, in)
 
-	// ── RESOURCE TRAIL (Phase 1.7e learning-companion) ───────────────
+	// ── RESOURCE TRAIL ───────────────
 	// Сигналы из user_resource_log: что закрыто, что открыто, что
 	// маркировано unhelpful. Coach не дублирует «прочитай X» если уже
 	// finished, и видит когда юзер скейпает на новые без reflection.
@@ -528,9 +528,9 @@ func writeSignalDigest(sb *strings.Builder, in domain.BriefPromptInput) {
 			in.Queue.Done, in.Queue.Total, in.Queue.InProgress, in.Queue.Todo)
 		wrote = true
 	}
-	// Phase 2d — surface the user's primary track. The first non-paused
-	// track wins the digest slot; coach is steered to anchor today's
-	// recommendations to its current step's skill_keys.
+	// Surface the user's primary track. The first non-paused track wins
+	// the digest slot; coach is steered to anchor today's recommendations
+	// to its current step's skill_keys.
 	for _, t := range in.ActiveTracks {
 		if t.IsPaused {
 			continue
@@ -731,9 +731,8 @@ func cuePromptMeta(raw []byte) (outcome, topics string) {
 	return strings.TrimSpace(p.Outcome), strings.Join(p.Topics, ",")
 }
 
-// writeForkStatus — Phase 1.7e learning-companion. Печатает FORK STATUS
-// блок только когда юзер в explore-режиме. См memory/project_state.md
-// «Track step UX flow» + project_curation_model.
+// writeForkStatus — печатает FORK STATUS блок только когда юзер в
+// explore-режиме.
 func writeForkStatus(sb *strings.Builder, in domain.BriefPromptInput) {
 	if in.Fork.Mode != "explore" {
 		return
@@ -757,10 +756,9 @@ func writeForkStatus(sb *strings.Builder, in domain.BriefPromptInput) {
 	sb.WriteString("\n")
 }
 
-// writeResourceTrail — Phase 1.7e learning-companion. Daily snapshot user_resource_log
-// для last 7 days. Coach использует чтобы (a) не дублировать ссылки на
-// finished, (b) знать про unfinished open tabs, (c) reflect missed
-// reflections.
+// writeResourceTrail — daily snapshot user_resource_log за last 7 days.
+// Coach использует чтобы (a) не дублировать ссылки на finished, (b) знать
+// про unfinished open tabs, (c) reflect missed reflections.
 func writeResourceTrail(sb *strings.Builder, in domain.BriefPromptInput) {
 	t := in.ResourceTrail
 	if len(t.FinishedRecent) == 0 && t.UnfinishedCount == 0 && len(t.MarkedUnhelpful) == 0 && len(t.RecentReflections) == 0 {

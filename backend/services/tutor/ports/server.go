@@ -47,20 +47,20 @@ type UserDisplay struct {
 	AvatarURL   string
 }
 
+// All UC pointers below are nil-safe per-handler: each RPC method rejects
+// with Unimplemented when its UC isn't wired.
 type TutorServer struct {
 	CreateInviteUC *app.CreateInvite
 	RevokeInviteUC *app.RevokeInvite
 	AcceptInviteUC *app.AcceptInvite
 	ListInvitesUC  *app.ListInvites
 	ListStudentsUC *app.ListStudents
-	// Wave 9.4 — student-side multi-tutor list.
-	ListMyTutorsUC *app.ListMyTutors
-	// Wave 9.5 — tutor analytics aggregate.
-	GetTutorActivityUC *app.GetTutorActivity
-	// Phase K T6 (2026-05-12) — student-facing tutor activity.
+
+	ListMyTutorsUC         *app.ListMyTutors
+	GetTutorActivityUC     *app.GetTutorActivity
 	ListMyTutorsActivityUC *app.ListMyTutorsActivity
 
-	// Wave 5.2 — group events on circles.
+	// Group events on circles.
 	CreateGroupEventUC                  *app.CreateGroupEvent
 	JoinEventUC                         *app.JoinEvent
 	LeaveEventUC                        *app.LeaveEvent
@@ -71,41 +71,37 @@ type TutorServer struct {
 	GetSnapshotUC                       *app.GetStudentSnapshot
 	GenerateBriefUC                     *app.GeneratePreSessionBrief
 
-	// Wave 5.1 — assignments. Nil-safe per-handler (each method
-	// rejects with Unimplemented when its UC isn't wired).
+	// Assignments.
 	PushAssignmentUC          *app.PushAssignment
 	ListAssignmentsForTutorUC *app.ListAssignmentsForTutor
 	ListPendingAssignmentsUC  *app.ListPendingForStudent
 	CompleteAssignmentUC      *app.MarkAssignmentComplete
 	ArchiveAssignmentUC       *app.ArchiveAssignment
 
-	// Wave 5.2a — broadcast a single assignment to all of a tutor's
-	// active students. Same nil-safe pattern.
 	BroadcastAssignmentUC *app.BroadcastAssignment
 	PushSharedReadingUC   *app.PushSharedReading
 	ListSharedReadingUC   *app.ListSharedReading
 
-	// Wave «Invite by @username» — pre-bound invite + student-side
-	// pending list.
+	// Invite by @username — pre-bound invite + student-side pending list.
 	InviteByUsernameUC        *app.InviteByUsername
 	ListPendingInvitesForMeUC *app.ListPendingInvitesForMe
 
-	// Phase 3.3 — tutor session notes-pad.
+	// Tutor session notes-pad.
 	GetSessionNotesUC  *app.GetSessionNotes
 	SaveSessionNotesUC *app.SaveSessionNotes
 
-	// Stream D (2026-05-12) — reading paths CRUD.
+	// Reading paths CRUD.
 	ListReadingPathsUC   *app.ListReadingPaths
 	CreateReadingPathUC  *app.CreateReadingPath
 	UpdateReadingPathUC  *app.UpdateReadingPath
 	ArchiveReadingPathUC *app.ArchiveReadingPath
 
-	// Phase K T2+T3 (2026-05-12) — path assignments.
-	AssignReadingPathUC            *app.AssignReadingPath
-	ListMyActivePathAssignmentsUC  *app.ListMyActivePathAssignments
-	AdvancePathStepUC              *app.AdvancePathStep
+	// Path assignments.
+	AssignReadingPathUC           *app.AssignReadingPath
+	ListMyActivePathAssignmentsUC *app.ListMyActivePathAssignments
+	AdvancePathStepUC             *app.AdvancePathStep
 
-	// Phase K T1 (2026-05-12) — tutor directory MVP.
+	// Tutor directory.
 	GetMyDirectoryProfileUC   *app.GetMyDirectoryProfile
 	UpsertDirectoryProfileUC  *app.UpsertDirectoryProfile
 	ListDirectoryTutorsUC     *app.ListDirectoryTutors
@@ -114,15 +110,14 @@ type TutorServer struct {
 	AcceptApplicationUC       *app.AcceptApplication
 	DeclineApplicationUC      *app.DeclineApplication
 
-	// Wave 5.2b — calendar events. Same nil-safe pattern.
+	// Calendar events.
 	CreateEventUC                  *app.CreateEvent
 	CancelEventUC                  *app.CancelEvent
 	ListEventsForTutorUC           *app.ListEventsForTutor
 	ListUpcomingEventsForStudentUC *app.ListUpcomingEventsForStudent
-	// Wave 5.2d — event completion + session notes.
-	CompleteEventUC *app.CompleteEvent
+	CompleteEventUC                *app.CompleteEvent
 
-	// Phase K T4 (2026-05-13) — session-note visibility / sharing.
+	// Session-note visibility / sharing.
 	SetSessionNoteVisibilityUC         *app.SetSessionNoteVisibility
 	ListSharedSessionNotesForStudentUC *app.ListSharedSessionNotesForStudent
 
@@ -270,7 +265,7 @@ func (s *TutorServer) ListStudents(
 	return connect.NewResponse(out), nil
 }
 
-// ListMyTutors — Wave 9.4 student-side endpoint.
+// ListMyTutors — student-side endpoint.
 func (s *TutorServer) ListMyTutors(
 	ctx context.Context,
 	_ *connect.Request[pb.TutorListMyTutorsRequest],
@@ -382,7 +377,7 @@ func (s *TutorServer) EndRelationship(
 	return connect.NewResponse(&pb.TutorEndRelationshipResponse{}), nil
 }
 
-// ── Assignments (Wave 5.1) ───────────────────────────────────────────
+// ── Assignments ───────────────────────────────────────────
 
 func (s *TutorServer) PushAssignment(
 	ctx context.Context,
@@ -517,11 +512,10 @@ func (s *TutorServer) ArchiveAssignment(
 	return connect.NewResponse(&pb.TutorArchiveAssignmentResponse{}), nil
 }
 
-// BroadcastAssignment — Wave 5.2a. Per-student outcomes are surfaced
-// in the response body; we DO NOT translate per-student errors into a
-// Connect code because that would force callers to re-issue the whole
-// batch. Top-level error is reserved for «could not start the batch
-// at all» (auth, list-students RPC failure).
+// BroadcastAssignment surfaces per-student outcomes in the response body —
+// we DO NOT translate per-student errors into a Connect code because that
+// would force callers to re-issue the whole batch. Top-level error is
+// reserved for «could not start the batch at all» (auth, list-students fail).
 func (s *TutorServer) BroadcastAssignment(
 	ctx context.Context,
 	req *connect.Request[pb.TutorBroadcastAssignmentRequest],
@@ -562,7 +556,7 @@ func (s *TutorServer) BroadcastAssignment(
 	return connect.NewResponse(resp), nil
 }
 
-// ── Events (Wave 5.2b) ──────────────────────────────────────────────
+// ── Events ──────────────────────────────────────────────
 
 func (s *TutorServer) CreateEvent(
 	ctx context.Context,
@@ -697,10 +691,9 @@ func (s *TutorServer) ListUpcomingEventsForStudent(
 	return connect.NewResponse(resp), nil
 }
 
-// ListMyTutorsActivity — Phase K T6 (2026-05-12). Student-facing
-// social-proof aggregate. Privacy: NO other-student names / ids, NO
-// event titles / content — only aggregate counts + the tutor's own
-// public display fields (which the caller already sees via ListMyTutors).
+// ListMyTutorsActivity — student-facing social-proof aggregate. Privacy: NO
+// other-student names / ids, NO event titles / content — only aggregate
+// counts + the tutor's own public display fields.
 func (s *TutorServer) ListMyTutorsActivity(
 	ctx context.Context,
 	req *connect.Request[pb.TutorMyTutorsActivityRequest],
@@ -747,7 +740,7 @@ func (s *TutorServer) ListMyTutorsActivity(
 	return connect.NewResponse(out), nil
 }
 
-// GetTutorActivity — Wave 9.5 analytics aggregate.
+// GetTutorActivity — analytics aggregate.
 func (s *TutorServer) GetTutorActivity(
 	ctx context.Context,
 	req *connect.Request[pb.TutorGetActivityRequest],
@@ -784,7 +777,7 @@ func (s *TutorServer) GetTutorActivity(
 	}), nil
 }
 
-// ── Group events (Wave 5.2) ────────────────────────────────────────
+// ── Group events ────────────────────────────────────────
 
 func (s *TutorServer) CreateGroupEvent(
 	ctx context.Context,
@@ -974,9 +967,8 @@ func toRelationshipProto(r domain.Relationship) *pb.TutorRelationship {
 }
 
 func toEventProto(e domain.Event) *pb.TutorEvent {
-	// Phase K T4: visibility defaults to 'private' if backend row predates
-	// migration 00115 (defensive — should never trigger в practice but
-	// avoids empty-string surface на проводе).
+	// Defensive default: visibility 'private' when row predates migration
+	// 00115. Avoids empty-string surface on the wire.
 	vis := string(e.Visibility)
 	if vis == "" {
 		vis = string(domain.EventVisibilityPrivate)

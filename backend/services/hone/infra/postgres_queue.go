@@ -173,16 +173,21 @@ func (q *Queue) Delete(ctx context.Context, id, userID uuid.UUID) error {
 }
 
 func (q *Queue) ExistsByTitleToday(ctx context.Context, userID uuid.UUID, title string) (bool, error) {
-	var n int
+	// W13: was COUNT(*) on hone_queue_items — Postgres scans every matching
+	// row even though we only need a boolean. EXISTS short-circuits on the
+	// first hit and lets the planner pick an index-only walk.
+	var exists bool
 	err := q.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM hone_queue_items
-		  WHERE user_id=$1 AND date=CURRENT_DATE AND title=$2`,
+		`SELECT EXISTS (
+		    SELECT 1 FROM hone_queue_items
+		     WHERE user_id=$1 AND date=CURRENT_DATE AND title=$2
+		 )`,
 		sharedpg.UUID(userID), title,
-	).Scan(&n)
+	).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("hone.Queue.ExistsByTitleToday: %w", err)
 	}
-	return n > 0, nil
+	return exists, nil
 }
 
 func (q *Queue) CountTodayByStatus(ctx context.Context, userID uuid.UUID) (total, done int, err error) {

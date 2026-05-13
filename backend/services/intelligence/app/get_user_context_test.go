@@ -1,4 +1,4 @@
-// get_user_context_test.go — Phase J Wave 1 / D coverage for AtlasReader wiring.
+// Package app — Phase J Wave 1 / D coverage for AtlasReader wiring.
 //
 // Covers:
 //   - Zero user_id rejected with ErrInvalidInput.
@@ -18,60 +18,8 @@ import (
 	"druz9/intelligence/domain"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// ─── Fake atlas reader ────────────────────────────────────────────────────
-
-type fakeAtlasReader struct {
-	refs           []AtlasResourceRef
-	err            error
-	gotGoalText    string
-	gotActivity    []ActivityKind
-	gotLimit       int
-	callCount      int
-}
-
-func (r *fakeAtlasReader) TopRelevantNodes(
-	_ context.Context,
-	_ uuid.UUID,
-	goalText string,
-	recentActivity []ActivityKind,
-	limit int,
-) ([]AtlasResourceRef, error) {
-	r.callCount++
-	r.gotGoalText = goalText
-	r.gotActivity = recentActivity
-	r.gotLimit = limit
-	if r.err != nil {
-		return nil, r.err
-	}
-	return r.refs, nil
-}
-
-// ─── Fake resource engagement reader ──────────────────────────────────────
-
-type fakeResEngReader struct {
-	resp domain.ResourceEngagement
-	err  error
-}
-
-func (f *fakeResEngReader) EngagementWindow(_ context.Context, _ uuid.UUID, _ int, _ int) (domain.ResourceEngagement, error) {
-	if f.err != nil {
-		return domain.ResourceEngagement{}, f.err
-	}
-	return f.resp, nil
-}
-
-// ─── Fake mock reader ─────────────────────────────────────────────────────
-
-type fakeMockReader struct{}
-
-func (fakeMockReader) LastNFinished(_ context.Context, _ uuid.UUID, _ int) ([]domain.MockSessionSummary, error) {
-	return nil, nil
-}
-func (fakeMockReader) RecentAbandonedCount(_ context.Context, _ uuid.UUID, _ int) (int, error) {
-	return 0, nil
-}
 
 // ─── Tests ────────────────────────────────────────────────────────────────
 
@@ -85,9 +33,10 @@ func TestGetUserContext_RejectsZeroUserID(t *testing.T) {
 
 func TestGetUserContext_NoAtlasReader_EmptyRelevantResources(t *testing.T) {
 	uid := uuid.New()
+	ctrl := gomock.NewController(t)
 	uc := &GetUserContext{
-		Goals:    &fakePrimaryGoalRepo{},
-		Episodes: &fakeEpisodeRepo{},
+		Goals:    wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{}),
+		Episodes: wireMockEpisodeRepo(ctrl, &episodeStore{}),
 		Now:      func() time.Time { return time.Date(2026, 5, 12, 12, 0, 0, 0, time.UTC) },
 	}
 	out, err := uc.Do(context.Background(), GetUserContextInput{UserID: uid})
@@ -101,11 +50,13 @@ func TestGetUserContext_NoAtlasReader_EmptyRelevantResources(t *testing.T) {
 
 func TestGetUserContext_AtlasReader_PopulatesRelevantResources(t *testing.T) {
 	uid := uuid.New()
+	ctrl := gomock.NewController(t)
 	now := time.Date(2026, 5, 12, 12, 0, 0, 0, time.UTC)
 
 	// Seed an active goal so goalText is derived.
-	goals := &fakePrimaryGoalRepo{}
-	_, err := goals.Insert(context.Background(), domain.PrimaryGoal{
+	goalStore := &primaryGoalStore{}
+	goalRepo := wireMockPrimaryGoalRepo(ctrl, goalStore)
+	_, err := goalRepo.Insert(context.Background(), domain.PrimaryGoal{
 		UserID:        uid,
 		Kind:          domain.PrimaryGoalKindTopTierCo,
 		TargetCompany: "Yandex",
@@ -118,7 +69,7 @@ func TestGetUserContext_AtlasReader_PopulatesRelevantResources(t *testing.T) {
 	}
 
 	// Seed recent memory + resource trail signals so recentActivity has content.
-	episodes := &fakeEpisodeRepo{
+	episodes := &episodeStore{
 		latestByKinds: []domain.Episode{{
 			ID:         uuid.New(),
 			UserID:     uid,
@@ -127,7 +78,7 @@ func TestGetUserContext_AtlasReader_PopulatesRelevantResources(t *testing.T) {
 			OccurredAt: now.Add(-3 * time.Hour),
 		}},
 	}
-	resEng := &fakeResEngReader{
+	resEng := &resEngStore{
 		resp: domain.ResourceEngagement{
 			FinishedRecent: []domain.ResourceTouch{
 				{AtlasNodeID: "algo.sorting.merge", Kind: "finished"},
@@ -136,18 +87,18 @@ func TestGetUserContext_AtlasReader_PopulatesRelevantResources(t *testing.T) {
 		},
 	}
 
-	reader := &fakeAtlasReader{
+	atlasTap := &atlasReaderTap{
 		refs: []AtlasResourceRef{
 			{ID: "algo_basics", Title: "Алгоритмы: основы", URL: "https://example/algo", Kind: "course"},
 		},
 	}
 
 	uc := &GetUserContext{
-		Goals:       goals,
-		Episodes:    episodes,
-		ResourceEng: resEng,
-		Mocks:       fakeMockReader{},
-		AtlasReader: reader,
+		Goals:       goalRepo,
+		Episodes:    wireMockEpisodeRepo(ctrl, episodes),
+		ResourceEng: wireMockResourceEngagementReader(ctrl, resEng),
+		Mocks:       wireMockMockReader(ctrl),
+		AtlasReader: wireMockAtlasReader(ctrl, atlasTap),
 		Now:         func() time.Time { return now },
 	}
 
@@ -161,29 +112,30 @@ func TestGetUserContext_AtlasReader_PopulatesRelevantResources(t *testing.T) {
 	if out.RelevantResources[0].ID != "algo_basics" {
 		t.Fatalf("unexpected ref: %+v", out.RelevantResources[0])
 	}
-	if reader.callCount != 1 {
-		t.Fatalf("expected exactly one AtlasReader call, got %d", reader.callCount)
+	atlasTap.mu.Lock()
+	defer atlasTap.mu.Unlock()
+	if atlasTap.callCount != 1 {
+		t.Fatalf("expected exactly one AtlasReader call, got %d", atlasTap.callCount)
 	}
-	if reader.gotLimit != 5 {
-		t.Fatalf("expected limit=5, got %d", reader.gotLimit)
+	if atlasTap.gotLimit != 5 {
+		t.Fatalf("expected limit=5, got %d", atlasTap.gotLimit)
 	}
-	// goalText must include the active goal company + level so the adapter
-	// can match against atlas_nodes.title.
-	if reader.gotGoalText == "" {
+	if atlasTap.gotGoalText == "" {
 		t.Fatalf("expected non-empty goalText, got empty")
 	}
-	// recentActivity must include kinds from memory + resource trail (deduped).
-	if len(reader.gotActivity) == 0 {
+	if len(atlasTap.gotActivity) == 0 {
 		t.Fatalf("expected recentActivity to be populated, got empty")
 	}
 }
 
 func TestGetUserContext_AtlasReaderError_StaysUsable(t *testing.T) {
 	uid := uuid.New()
+	ctrl := gomock.NewController(t)
+	atlasTap := &atlasReaderTap{err: errors.New("boom")}
 	uc := &GetUserContext{
-		Goals:       &fakePrimaryGoalRepo{},
-		Episodes:    &fakeEpisodeRepo{},
-		AtlasReader: &fakeAtlasReader{err: errors.New("boom")},
+		Goals:       wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{}),
+		Episodes:    wireMockEpisodeRepo(ctrl, &episodeStore{}),
+		AtlasReader: wireMockAtlasReader(ctrl, atlasTap),
 		Now:         func() time.Time { return time.Date(2026, 5, 12, 12, 0, 0, 0, time.UTC) },
 	}
 	out, err := uc.Do(context.Background(), GetUserContextInput{UserID: uid})

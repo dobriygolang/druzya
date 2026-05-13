@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/byok_mock.go -source byok.go
 package domain
 
 import (

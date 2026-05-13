@@ -1,10 +1,8 @@
-// start_interview_prep.go — Phase J / C6 (P1).
-//
-// StartInterviewPrep commits the already-parsed CV + JD shapes as the
-// user's CURRENT active interview prep. Single-active invariant lives
-// in the repo (transactional end-prior + insert-new). Subsequent
-// Analyze / Chat / Suggest turns the Cue desktop fires consult this
-// row via InterviewPrepProvider and inject a tailored system block.
+// Package app — StartInterviewPrep commits the parsed CV + JD as the
+// user's CURRENT active interview prep. Single-active invariant lives in
+// the repo (transactional end-prior + insert-new). Subsequent Analyze /
+// Chat / Suggest turns consult this row via InterviewPrepProvider and
+// inject a tailored system block.
 package app
 
 import (

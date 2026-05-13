@@ -10,6 +10,8 @@
 //
 // Drafts NEVER drive judging — Submit posts the freshest scene/PNG
 // directly. The store is purely a tab-close safety net.
+//go:generate mockgen -package mocks -destination mocks/canvas_draft_mock.go -source canvas_draft.go
+//go:generate mockgen -package mocks -destination mocks/canvas_draft_mock.go -source canvas_draft.go
 package domain
 
 import (

@@ -3,24 +3,34 @@ package app
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"druz9/subscription/domain"
+	submocks "druz9/subscription/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-// fakeStripeRepo — in-memory реализация domain.StripeRepo.
-type fakeStripeRepo struct {
+// ── stripeRepoStore + wireMockStripeRepo ─────────────────────────────────
+//
+// Закрытая state-машина для domain.StripeRepo. Поддерживает:
+//   • lazy-customer (UpsertCustomer создаёт row на 1-м checkout)
+//   • subscription mirror (UpsertSubscription / Get*)
+//   • idempotent dedup (MarkWebhookSeen возвращает (true, nil) на 1-й вызов).
+
+type stripeRepoStore struct {
+	mu        sync.Mutex
 	customers map[uuid.UUID]domain.StripeCustomer
 	subs      map[uuid.UUID]domain.StripeSubscription // последняя активная per-user
 	hadSub    map[uuid.UUID]bool                      // для HasAnySubscription
 	seenIDs   map[string]bool                         // dedup для MarkWebhookSeen
 }
 
-func newFakeStripeRepo() *fakeStripeRepo {
-	return &fakeStripeRepo{
+func newStripeRepoStore() *stripeRepoStore {
+	return &stripeRepoStore{
 		customers: map[uuid.UUID]domain.StripeCustomer{},
 		subs:      map[uuid.UUID]domain.StripeSubscription{},
 		hadSub:    map[uuid.UUID]bool{},
@@ -28,117 +38,180 @@ func newFakeStripeRepo() *fakeStripeRepo {
 	}
 }
 
-func (r *fakeStripeRepo) GetCustomer(_ context.Context, userID uuid.UUID) (domain.StripeCustomer, error) {
-	if c, ok := r.customers[userID]; ok {
-		return c, nil
-	}
-	return domain.StripeCustomer{}, domain.ErrNotFound
+func wireMockStripeRepo(ctrl *gomock.Controller, s *stripeRepoStore) *submocks.MockStripeRepo {
+	m := submocks.NewMockStripeRepo(ctrl)
+	m.EXPECT().GetCustomer(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID) (domain.StripeCustomer, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c, ok := s.customers[userID]; ok {
+				return c, nil
+			}
+			return domain.StripeCustomer{}, domain.ErrNotFound
+		},
+	).AnyTimes()
+	m.EXPECT().UpsertCustomer(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, c domain.StripeCustomer) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.customers[c.UserID] = c
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().UpsertSubscription(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, sub domain.StripeSubscription) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.subs[sub.UserID] = sub
+			s.hadSub[sub.UserID] = true
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().HasAnySubscription(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID) (bool, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			return s.hadSub[userID], nil
+		},
+	).AnyTimes()
+	m.EXPECT().MarkWebhookSeen(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, eventID, _ string) (bool, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if s.seenIDs[eventID] {
+				return false, nil
+			}
+			s.seenIDs[eventID] = true
+			return true, nil
+		},
+	).AnyTimes()
+	m.EXPECT().GetActiveSubscriptionByUser(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID) (domain.StripeSubscription, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if sub, ok := s.subs[userID]; ok && (sub.Status == "active" || sub.Status == "trialing") {
+				return sub, nil
+			}
+			return domain.StripeSubscription{}, domain.ErrNotFound
+		},
+	).AnyTimes()
+	m.EXPECT().GetSubscriptionByStripeID(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, stripeSubID string) (domain.StripeSubscription, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			for _, sub := range s.subs {
+				if sub.StripeSubscriptionID == stripeSubID {
+					return sub, nil
+				}
+			}
+			return domain.StripeSubscription{}, domain.ErrNotFound
+		},
+	).AnyTimes()
+	return m
 }
 
-func (r *fakeStripeRepo) UpsertCustomer(_ context.Context, c domain.StripeCustomer) error {
-	r.customers[c.UserID] = c
-	return nil
-}
-
-func (r *fakeStripeRepo) UpsertSubscription(_ context.Context, s domain.StripeSubscription) error {
-	r.subs[s.UserID] = s
-	r.hadSub[s.UserID] = true
-	return nil
-}
-
-func (r *fakeStripeRepo) HasAnySubscription(_ context.Context, userID uuid.UUID) (bool, error) {
-	return r.hadSub[userID], nil
-}
-
-func (r *fakeStripeRepo) MarkWebhookSeen(_ context.Context, eventID, _ string) (bool, error) {
-	if r.seenIDs[eventID] {
-		return false, nil
-	}
-	r.seenIDs[eventID] = true
-	return true, nil
-}
-
-func (r *fakeStripeRepo) GetActiveSubscriptionByUser(_ context.Context, userID uuid.UUID) (domain.StripeSubscription, error) {
-	if s, ok := r.subs[userID]; ok && (s.Status == "active" || s.Status == "trialing") {
-		return s, nil
-	}
-	return domain.StripeSubscription{}, domain.ErrNotFound
-}
-
-func (r *fakeStripeRepo) GetSubscriptionByStripeID(_ context.Context, stripeSubID string) (domain.StripeSubscription, error) {
-	for _, s := range r.subs {
-		if s.StripeSubscriptionID == stripeSubID {
-			return s, nil
-		}
-	}
-	return domain.StripeSubscription{}, domain.ErrNotFound
-}
-
-// fakeStripeClient — canned-response StripeClient.
-type fakeStripeClient struct {
-	createSessErr error
-	createCustErr error
-	updateErr     error
-	verifyErr     error
+// stripeClientCalls — фиксирует вызовы Stripe API для assertion'ов.
+type stripeClientCalls struct {
+	mu            sync.Mutex
 	calls         []string
 	lastInput     domain.CreateCheckoutSessionInput
 	lastCustomer  string
 	lastCancelSub string
 }
 
-func (c *fakeStripeClient) CreateCheckoutSession(_ context.Context, in domain.CreateCheckoutSessionInput) (domain.CheckoutSession, error) {
-	c.calls = append(c.calls, "CreateCheckoutSession")
-	c.lastInput = in
-	if c.createSessErr != nil {
-		return domain.CheckoutSession{}, c.createSessErr
-	}
-	return domain.CheckoutSession{
-		SessionID:   "cs_test_123",
-		CheckoutURL: "https://checkout.stripe.com/c/cs_test_123",
-	}, nil
+func (c *stripeClientCalls) record(name string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.calls = append(c.calls, name)
 }
 
-func (c *fakeStripeClient) CreateCustomer(_ context.Context, _ uuid.UUID, _ string) (string, error) {
-	c.calls = append(c.calls, "CreateCustomer")
-	if c.createCustErr != nil {
-		return "", c.createCustErr
-	}
-	c.lastCustomer = "cus_test_abc"
-	return c.lastCustomer, nil
+func (c *stripeClientCalls) snapshotCalls() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]string, len(c.calls))
+	copy(out, c.calls)
+	return out
 }
 
-func (c *fakeStripeClient) UpdateSubscriptionCancelAtPeriodEnd(_ context.Context, subID string, _ bool) error {
-	c.calls = append(c.calls, "UpdateSubscriptionCancelAtPeriodEnd")
-	c.lastCancelSub = subID
-	return c.updateErr
+// wireMockStripeClient — управляемый StripeClient с захватом вызовов.
+// createSessErr / createCustErr / updateErr / verifyErr — инжектируемые
+// фейлы для конкретных endpoint'ов.
+type stripeClientErrs struct {
+	createSessErr error
+	createCustErr error
+	updateErr     error
+	verifyErr     error
 }
 
-func (c *fakeStripeClient) VerifyWebhookSignature(_ []byte, _ string) error {
-	c.calls = append(c.calls, "VerifyWebhookSignature")
-	return c.verifyErr
-}
-
-// RetrieveCheckoutSession — added для verify endpoint. Fake возвращает
-// canned-state'ы по session_id: пусто = ErrNotFound, иначе - paid stub.
-func (c *fakeStripeClient) RetrieveCheckoutSession(_ context.Context, sessionID string) (domain.CheckoutSessionDetails, error) {
-	c.calls = append(c.calls, "RetrieveCheckoutSession")
-	if sessionID == "" {
-		return domain.CheckoutSessionDetails{}, domain.ErrNotFound
-	}
-	return domain.CheckoutSessionDetails{
-		SessionID:     sessionID,
-		PaymentStatus: "paid",
-		Status:        "complete",
-		AmountTotal:   99000,
-		Currency:      "rub",
-		CustomerEmail: "test@druz9.app",
-	}, nil
+func wireMockStripeClient(ctrl *gomock.Controller, errs stripeClientErrs, calls *stripeClientCalls) *submocks.MockStripeClient {
+	m := submocks.NewMockStripeClient(ctrl)
+	m.EXPECT().CreateCheckoutSession(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in domain.CreateCheckoutSessionInput) (domain.CheckoutSession, error) {
+			calls.record("CreateCheckoutSession")
+			calls.mu.Lock()
+			calls.lastInput = in
+			calls.mu.Unlock()
+			if errs.createSessErr != nil {
+				return domain.CheckoutSession{}, errs.createSessErr
+			}
+			return domain.CheckoutSession{
+				SessionID:   "cs_test_123",
+				CheckoutURL: "https://checkout.stripe.com/c/cs_test_123",
+			}, nil
+		},
+	).AnyTimes()
+	m.EXPECT().CreateCustomer(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, _ string) (string, error) {
+			calls.record("CreateCustomer")
+			if errs.createCustErr != nil {
+				return "", errs.createCustErr
+			}
+			calls.mu.Lock()
+			calls.lastCustomer = "cus_test_abc"
+			calls.mu.Unlock()
+			return "cus_test_abc", nil
+		},
+	).AnyTimes()
+	m.EXPECT().UpdateSubscriptionCancelAtPeriodEnd(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, subID string, _ bool) error {
+			calls.record("UpdateSubscriptionCancelAtPeriodEnd")
+			calls.mu.Lock()
+			calls.lastCancelSub = subID
+			calls.mu.Unlock()
+			return errs.updateErr
+		},
+	).AnyTimes()
+	m.EXPECT().VerifyWebhookSignature(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ []byte, _ string) error {
+			calls.record("VerifyWebhookSignature")
+			return errs.verifyErr
+		},
+	).AnyTimes()
+	m.EXPECT().RetrieveCheckoutSession(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, sessionID string) (domain.CheckoutSessionDetails, error) {
+			calls.record("RetrieveCheckoutSession")
+			if sessionID == "" {
+				return domain.CheckoutSessionDetails{}, domain.ErrNotFound
+			}
+			return domain.CheckoutSessionDetails{
+				SessionID:     sessionID,
+				PaymentStatus: "paid",
+				Status:        "complete",
+				AmountTotal:   99000,
+				Currency:      "rub",
+				CustomerEmail: "test@druz9.app",
+			}, nil
+		},
+	).AnyTimes()
+	return m
 }
 
 func TestCreateCheckoutSession_LazyCustomer_AndSession(t *testing.T) {
-	repo := newFakeStripeRepo()
-	client := &fakeStripeClient{}
-	uc := NewCreateCheckoutSession(repo, client, "price_pro_monthly", discardLogger())
+	ctrl := gomock.NewController(t)
+	repo := newStripeRepoStore()
+	calls := &stripeClientCalls{}
+	client := wireMockStripeClient(ctrl, stripeClientErrs{}, calls)
+	uc := NewCreateCheckoutSession(wireMockStripeRepo(ctrl, repo), client, "price_pro_monthly", discardLogger())
 
 	uid := uuid.New()
 	out, err := uc.Do(context.Background(), CreateCheckoutSessionInput{
@@ -154,27 +227,33 @@ func TestCreateCheckoutSession_LazyCustomer_AndSession(t *testing.T) {
 		t.Fatalf("expected non-empty session, got %+v", out)
 	}
 	// Customer создан + сохранён.
-	if _, ok := repo.customers[uid]; !ok {
+	repo.mu.Lock()
+	_, ok := repo.customers[uid]
+	repo.mu.Unlock()
+	if !ok {
 		t.Fatal("expected customer to be persisted")
 	}
 	// Stripe вызван дважды: CreateCustomer + CreateCheckoutSession.
-	if len(client.calls) != 2 || client.calls[0] != "CreateCustomer" || client.calls[1] != "CreateCheckoutSession" {
-		t.Fatalf("unexpected stripe calls: %v", client.calls)
+	got := calls.snapshotCalls()
+	if len(got) != 2 || got[0] != "CreateCustomer" || got[1] != "CreateCheckoutSession" {
+		t.Fatalf("unexpected stripe calls: %v", got)
 	}
-	if client.lastInput.PriceID != "price_pro_monthly" {
-		t.Fatalf("expected price_id from UC config, got %q", client.lastInput.PriceID)
+	if calls.lastInput.PriceID != "price_pro_monthly" {
+		t.Fatalf("expected price_id from UC config, got %q", calls.lastInput.PriceID)
 	}
 }
 
 func TestCreateCheckoutSession_ExistingCustomer_SkipsCreate(t *testing.T) {
-	repo := newFakeStripeRepo()
-	client := &fakeStripeClient{}
+	ctrl := gomock.NewController(t)
+	repo := newStripeRepoStore()
 	uid := uuid.New()
 	repo.customers[uid] = domain.StripeCustomer{
 		UserID:           uid,
 		StripeCustomerID: "cus_existing",
 	}
-	uc := NewCreateCheckoutSession(repo, client, "price_pro_monthly", discardLogger())
+	calls := &stripeClientCalls{}
+	client := wireMockStripeClient(ctrl, stripeClientErrs{}, calls)
+	uc := NewCreateCheckoutSession(wireMockStripeRepo(ctrl, repo), client, "price_pro_monthly", discardLogger())
 	_, err := uc.Do(context.Background(), CreateCheckoutSessionInput{
 		UserID:     uid,
 		SuccessURL: "https://druz9.online/s",
@@ -183,16 +262,23 @@ func TestCreateCheckoutSession_ExistingCustomer_SkipsCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	if len(client.calls) != 1 || client.calls[0] != "CreateCheckoutSession" {
-		t.Fatalf("CreateCustomer должен быть пропущен, got %v", client.calls)
+	got := calls.snapshotCalls()
+	if len(got) != 1 || got[0] != "CreateCheckoutSession" {
+		t.Fatalf("CreateCustomer должен быть пропущен, got %v", got)
 	}
-	if client.lastInput.CustomerID != "cus_existing" {
-		t.Fatalf("expected existing customer, got %q", client.lastInput.CustomerID)
+	if calls.lastInput.CustomerID != "cus_existing" {
+		t.Fatalf("expected existing customer, got %q", calls.lastInput.CustomerID)
 	}
 }
 
 func TestCreateCheckoutSession_PriceIDRequired(t *testing.T) {
-	uc := NewCreateCheckoutSession(newFakeStripeRepo(), &fakeStripeClient{}, "", discardLogger())
+	ctrl := gomock.NewController(t)
+	calls := &stripeClientCalls{}
+	uc := NewCreateCheckoutSession(
+		wireMockStripeRepo(ctrl, newStripeRepoStore()),
+		wireMockStripeClient(ctrl, stripeClientErrs{}, calls),
+		"", discardLogger(),
+	)
 	_, err := uc.Do(context.Background(), CreateCheckoutSessionInput{
 		UserID:     uuid.New(),
 		SuccessURL: "https://x", CancelURL: "https://y",
@@ -203,7 +289,13 @@ func TestCreateCheckoutSession_PriceIDRequired(t *testing.T) {
 }
 
 func TestCreateCheckoutSession_URLsRequired(t *testing.T) {
-	uc := NewCreateCheckoutSession(newFakeStripeRepo(), &fakeStripeClient{}, "price_x", discardLogger())
+	ctrl := gomock.NewController(t)
+	calls := &stripeClientCalls{}
+	uc := NewCreateCheckoutSession(
+		wireMockStripeRepo(ctrl, newStripeRepoStore()),
+		wireMockStripeClient(ctrl, stripeClientErrs{}, calls),
+		"price_x", discardLogger(),
+	)
 	_, err := uc.Do(context.Background(), CreateCheckoutSessionInput{UserID: uuid.New()})
 	if err == nil {
 		t.Fatal("expected error on missing URLs")
@@ -211,41 +303,49 @@ func TestCreateCheckoutSession_URLsRequired(t *testing.T) {
 }
 
 func TestCancelSubscription_NoActiveSub_Noop(t *testing.T) {
-	repo := newFakeStripeRepo()
-	client := &fakeStripeClient{}
-	uc := NewCancelSubscription(repo, client, discardLogger())
+	ctrl := gomock.NewController(t)
+	repo := newStripeRepoStore()
+	calls := &stripeClientCalls{}
+	uc := NewCancelSubscription(wireMockStripeRepo(ctrl, repo), wireMockStripeClient(ctrl, stripeClientErrs{}, calls), discardLogger())
 	if err := uc.Do(context.Background(), uuid.New()); err != nil {
 		t.Fatalf("expected idempotent ok, got %v", err)
 	}
-	if len(client.calls) != 0 {
-		t.Fatalf("Stripe не должен быть вызван без active sub: %v", client.calls)
+	if len(calls.snapshotCalls()) != 0 {
+		t.Fatalf("Stripe не должен быть вызван без active sub: %v", calls.snapshotCalls())
 	}
 }
 
 func TestCancelSubscription_ActiveSub_MarkedCanceled(t *testing.T) {
-	repo := newFakeStripeRepo()
+	ctrl := gomock.NewController(t)
+	repo := newStripeRepoStore()
 	uid := uuid.New()
 	repo.subs[uid] = domain.StripeSubscription{
 		UserID:               uid,
 		StripeSubscriptionID: "sub_test_123",
 		Status:               "active",
 	}
-	client := &fakeStripeClient{}
-	uc := NewCancelSubscription(repo, client, discardLogger())
+	repo.hadSub[uid] = true
+	calls := &stripeClientCalls{}
+	uc := NewCancelSubscription(wireMockStripeRepo(ctrl, repo), wireMockStripeClient(ctrl, stripeClientErrs{}, calls), discardLogger())
 	if err := uc.Do(context.Background(), uid); err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	if client.lastCancelSub != "sub_test_123" {
-		t.Fatalf("Stripe не вызван правильным id: %q", client.lastCancelSub)
+	if calls.lastCancelSub != "sub_test_123" {
+		t.Fatalf("Stripe не вызван правильным id: %q", calls.lastCancelSub)
 	}
-	if !repo.subs[uid].CancelAtPeriodEnd {
+	repo.mu.Lock()
+	cancelFlag := repo.subs[uid].CancelAtPeriodEnd
+	repo.mu.Unlock()
+	if !cancelFlag {
 		t.Fatal("expected local mirror to set cancel_at_period_end=true")
 	}
 }
 
 func TestHandleWebhookEvent_InvalidSignature_Rejected(t *testing.T) {
-	client := &fakeStripeClient{verifyErr: domain.ErrInvalidWebhookSignature}
-	uc := NewHandleWebhookEvent(newFakeStripeRepo(), client, nil, discardLogger())
+	ctrl := gomock.NewController(t)
+	calls := &stripeClientCalls{}
+	client := wireMockStripeClient(ctrl, stripeClientErrs{verifyErr: domain.ErrInvalidWebhookSignature}, calls)
+	uc := NewHandleWebhookEvent(wireMockStripeRepo(ctrl, newStripeRepoStore()), client, nil, discardLogger())
 	err := uc.Do(context.Background(), []byte(`{"id":"evt_x","type":"checkout.session.completed"}`), "bogus")
 	if !errors.Is(err, domain.ErrInvalidWebhookSignature) {
 		t.Fatalf("want ErrInvalidWebhookSignature, got %v", err)
@@ -253,10 +353,16 @@ func TestHandleWebhookEvent_InvalidSignature_Rejected(t *testing.T) {
 }
 
 func TestHandleWebhookEvent_CheckoutCompleted_SetsProTier(t *testing.T) {
-	repo := newFakeStripeRepo()
-	subRepo := &fakeRepo{}
-	setTier := NewSetTier(subRepo, fakeClock{now: time.Now()}, discardLogger())
-	uc := NewHandleWebhookEvent(repo, &fakeStripeClient{}, setTier, discardLogger())
+	ctrl := gomock.NewController(t)
+	repo := newStripeRepoStore()
+	subStore := newSubRepoStore()
+	calls := &stripeClientCalls{}
+	setTier := NewSetTier(wireMockSubRepo(ctrl, subStore), fakeClock{now: time.Now()}, discardLogger())
+	uc := NewHandleWebhookEvent(
+		wireMockStripeRepo(ctrl, repo),
+		wireMockStripeClient(ctrl, stripeClientErrs{}, calls),
+		setTier, discardLogger(),
+	)
 	uid := uuid.New()
 	payload := []byte(`{
 		"id": "evt_1",
@@ -273,19 +379,27 @@ func TestHandleWebhookEvent_CheckoutCompleted_SetsProTier(t *testing.T) {
 	if err := uc.Do(context.Background(), payload, "sig"); err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	if subRepo.sub == nil || subRepo.sub.Tier != domain.TierPro {
-		t.Fatalf("expected paid Pro after checkout, got %+v", subRepo.sub)
+	subStore.mu.Lock()
+	defer subStore.mu.Unlock()
+	if subStore.sub == nil || subStore.sub.Tier != domain.TierPro {
+		t.Fatalf("expected paid Pro after checkout, got %+v", subStore.sub)
 	}
-	if subRepo.sub.Provider != domain.ProviderStripe {
-		t.Fatalf("expected stripe provider, got %q", subRepo.sub.Provider)
+	if subStore.sub.Provider != domain.ProviderStripe {
+		t.Fatalf("expected stripe provider, got %q", subStore.sub.Provider)
 	}
 }
 
 func TestHandleWebhookEvent_SubscriptionDeleted_DropsTier(t *testing.T) {
-	repo := newFakeStripeRepo()
-	subRepo := &fakeRepo{}
-	setTier := NewSetTier(subRepo, fakeClock{now: time.Now()}, discardLogger())
-	uc := NewHandleWebhookEvent(repo, &fakeStripeClient{}, setTier, discardLogger())
+	ctrl := gomock.NewController(t)
+	repo := newStripeRepoStore()
+	subStore := newSubRepoStore()
+	calls := &stripeClientCalls{}
+	setTier := NewSetTier(wireMockSubRepo(ctrl, subStore), fakeClock{now: time.Now()}, discardLogger())
+	uc := NewHandleWebhookEvent(
+		wireMockStripeRepo(ctrl, repo),
+		wireMockStripeClient(ctrl, stripeClientErrs{}, calls),
+		setTier, discardLogger(),
+	)
 	uid := uuid.New()
 	payload := []byte(`{
 		"id": "evt_2",
@@ -302,13 +416,21 @@ func TestHandleWebhookEvent_SubscriptionDeleted_DropsTier(t *testing.T) {
 	if err := uc.Do(context.Background(), payload, "sig"); err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	if subRepo.sub == nil || subRepo.sub.Tier != domain.TierFree {
-		t.Fatalf("expected free after delete event, got %+v", subRepo.sub)
+	subStore.mu.Lock()
+	defer subStore.mu.Unlock()
+	if subStore.sub == nil || subStore.sub.Tier != domain.TierFree {
+		t.Fatalf("expected free after delete event, got %+v", subStore.sub)
 	}
 }
 
 func TestHandleWebhookEvent_UnknownType_NoOp(t *testing.T) {
-	uc := NewHandleWebhookEvent(newFakeStripeRepo(), &fakeStripeClient{}, nil, discardLogger())
+	ctrl := gomock.NewController(t)
+	calls := &stripeClientCalls{}
+	uc := NewHandleWebhookEvent(
+		wireMockStripeRepo(ctrl, newStripeRepoStore()),
+		wireMockStripeClient(ctrl, stripeClientErrs{}, calls),
+		nil, discardLogger(),
+	)
 	payload := []byte(`{"id":"evt_x","type":"invoice.upcoming","data":{"object":{}}}`)
 	if err := uc.Do(context.Background(), payload, "sig"); err != nil {
 		t.Fatalf("unknown types must be silently acked, got %v", err)

@@ -1,7 +1,7 @@
-// code_review.go — Wave 3.6 of docs/feature/plan.md (Code-review-coaching).
-// Single use case: validates input, hands off to the grader, returns
-// structured feedback. No persistence — the diff + review live in the
-// renderer; user keeps a permanent copy via Save-to-Notes if they want.
+// Package app — code-review-coaching use case: validates input, hands off
+// to the grader, returns structured feedback. No persistence — the diff
+// + review live in the renderer; user keeps a permanent copy via
+// Save-to-Notes if they want.
 package app
 
 import (

@@ -1,6 +1,5 @@
-// tier_reader.go — Phase: gate'инг premium-endpoint'ов. Adapter напрямую
-// читает `subscriptions` table, без зависимости от subscription-сервиса.
-// Перенесён дословно из cmd/monolith/services/adapters.go (honeTierAdapter).
+// Package infra — gating premium endpoints. Adapter читает `subscriptions`
+// table напрямую без зависимости от subscription-сервиса.
 package infra
 
 import (

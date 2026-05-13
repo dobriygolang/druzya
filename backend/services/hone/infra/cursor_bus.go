@@ -1,8 +1,8 @@
-// cursor_bus.go — in-process per-user fan-out for AI cursor events.
+// Package infra — in-process per-user fan-out for AI cursor events.
 //
 // Single-process by design: works inside the monolith, falls back to
 // "no streaming" cleanly when scaled (the review-worker would publish
-// via Redis Pub/Sub instead — left as a Phase J upgrade).
+// via Redis Pub/Sub when needed).
 package infra
 
 import (

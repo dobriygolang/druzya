@@ -1,7 +1,6 @@
-// listening.go — Hone Listening-модуль use cases (Wave 6.1 of
-// docs/feature/plan.md). Four thin orchestrators paralleling Reading's
-// material methods. Vocab clicks reuse AddVocab from reading.go (the
-// vocab queue is shared across both surfaces).
+// Package app — Listening-модуль use cases. Four thin orchestrators
+// paralleling Reading's material methods. Vocab clicks reuse AddVocab
+// from reading.go (the vocab queue is shared across both surfaces).
 package app
 
 import (

@@ -1,10 +1,9 @@
-// CueSessions repository — moved out of postgres.go (Wave 10 split).
+// CueSessions repository.
 //
-// Phase B.4 (schema_v2): hone_cue_sessions was merged into hone_notes via the
-// `kind` column. A Cue session is a hone_notes row with kind='cue', a
-// non-NULL file_path / started_at / imported_at, and the raw analysis JSON
-// in raw_analysis_json. The unique index idx_hone_notes_user_file_path
-// (partial WHERE file_path IS NOT NULL) keeps Import idempotent.
+// A Cue session is a hone_notes row with kind='cue', a non-NULL file_path /
+// started_at / imported_at, and the raw analysis JSON in raw_analysis_json.
+// The unique index idx_hone_notes_user_file_path (partial WHERE file_path IS
+// NOT NULL) keeps Import idempotent.
 package infra
 
 import (

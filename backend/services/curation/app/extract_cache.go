@@ -1,4 +1,4 @@
-// extract_cache.go — Phase R6 dedup-cache for ExtractResourceContent.
+// Package app — dedup-cache for ExtractResourceContent.
 //
 // Problem: ExtractResourceContent UC re-runs the full fetch+LLM pipeline
 // every time the same URL is requested (across users, across sessions).

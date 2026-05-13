@@ -273,7 +273,7 @@ func (r *TaskRepo) ListComments(ctx context.Context, taskID uuid.UUID) ([]domain
 	return out, nil
 }
 
-// ── Phase J / H3 (2026-05-12) — kind override + bulk auto-categorise ──
+// ── Kind override + bulk auto-categorise ──
 
 // SetKind changes the task's kind. When manualOverride=true, flips
 // manual_kind_override = true so background re-categorisers skip the

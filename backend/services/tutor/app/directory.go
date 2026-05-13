@@ -1,6 +1,6 @@
-// directory.go — Phase K T1 (P0) 2026-05-12. Use cases for the tutor
-// directory MVP: tutor authors profile, student browses, student applies,
-// tutor accepts/declines. Identity rule: free per identity, не marketplace.
+// Package app — tutor directory use cases: tutor authors profile, student
+// browses, student applies, tutor accepts/declines. Free per identity,
+// не marketplace.
 //
 // Authorisation model:
 //   • GetMyDirectoryProfile / UpsertDirectoryProfile — caller is the

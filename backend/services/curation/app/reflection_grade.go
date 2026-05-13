@@ -1,4 +1,4 @@
-// reflection_grade.go — Phase 5 multi-takeaway reflection grading.
+// Package app — multi-takeaway reflection grading.
 //
 // Input: takeaways[] (3-5 user-written points) + optional confusion_text
 // + Resource.topics_covered (expected concepts из curation.Resource).

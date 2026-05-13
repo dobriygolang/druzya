@@ -3,12 +3,15 @@ package app
 import (
 	"context"
 	"math"
+	"sync"
 	"testing"
 	"time"
 
 	"druz9/hone/domain"
+	honeMocks "druz9/hone/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
 // ─── cosine ────────────────────────────────────────────────────────────────
@@ -96,111 +99,66 @@ func TestSqrt32_RoughAccuracy(t *testing.T) {
 	}
 }
 
-type fakeNoteRepo struct {
-	create func(context.Context, domain.Note) (domain.Note, error)
-	update func(context.Context, domain.Note) (domain.Note, error)
-	get    func(context.Context, uuid.UUID, uuid.UUID) (domain.Note, error)
-	list   func(context.Context, uuid.UUID, int, string, *uuid.UUID) ([]domain.NoteSummary, string, error)
-}
+// ─── memoryHook tap ──────────────────────────────────────────────────────
+//
+// Wave 13: вместо noteMemoryHook struct который ловит OnNoteCreated /
+// OnDailyNoteSaved — мы используем MockMemoryHook + DoAndReturn closures
+// для тех двух методов, а остальные методы — silent AnyTimes.
 
-func (f fakeNoteRepo) Create(ctx context.Context, n domain.Note) (domain.Note, error) {
-	return f.create(ctx, n)
-}
-
-func (f fakeNoteRepo) Update(ctx context.Context, n domain.Note) (domain.Note, error) {
-	return f.update(ctx, n)
-}
-
-func (f fakeNoteRepo) Get(ctx context.Context, userID uuid.UUID, noteID uuid.UUID) (domain.Note, error) {
-	if f.get != nil {
-		return f.get(ctx, userID, noteID)
-	}
-	return domain.Note{}, domain.ErrNotFound
-}
-
-func (f fakeNoteRepo) List(ctx context.Context, userID uuid.UUID, limit int, cursor string, folderID *uuid.UUID) ([]domain.NoteSummary, string, error) {
-	if f.list != nil {
-		return f.list(ctx, userID, limit, cursor, folderID)
-	}
-	return nil, "", nil
-}
-
-func (fakeNoteRepo) Delete(context.Context, uuid.UUID, uuid.UUID) error {
-	return nil
-}
-
-func (fakeNoteRepo) Move(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID) (domain.Note, error) {
-	return domain.Note{}, domain.ErrNotFound
-}
-
-func (fakeNoteRepo) SetEmbedding(context.Context, uuid.UUID, uuid.UUID, []float32, string, time.Time) error {
-	return nil
-}
-
-func (fakeNoteRepo) WithEmbeddingsForUser(context.Context, uuid.UUID, string) ([]domain.NoteEmbedding, error) {
-	return nil, nil
-}
-
-func (fakeNoteRepo) ExistsByTitleForUser(context.Context, uuid.UUID, string) (bool, error) {
-	return false, nil
-}
-
-func (fakeNoteRepo) MarkStaleForReembed(context.Context, string) (int64, error) {
-	return 0, nil
-}
-
-func (fakeNoteRepo) SearchSimilarNotes(context.Context, uuid.UUID, []float32, string, uuid.UUID, float32, int) ([]domain.NoteSimilarityHit, error) {
-	return nil, nil
-}
-
-type noteMemoryHook struct {
+type memoryTap struct {
+	mu         sync.Mutex
 	dailySaved int
 	noteSaved  int
 	body       string
 	title      string
 }
 
-func (h *noteMemoryHook) OnReflectionAdded(context.Context, uuid.UUID, string, string, int, time.Time) {
-}
-
-func (h *noteMemoryHook) OnStandupRecorded(context.Context, uuid.UUID, string, string, string, time.Time) {
-}
-
-func (h *noteMemoryHook) OnPlanSkipped(context.Context, uuid.UUID, string, string, time.Time) {}
-
-func (h *noteMemoryHook) OnPlanCompleted(context.Context, uuid.UUID, string, string, time.Time) {
-}
-
-func (h *noteMemoryHook) OnNoteCreated(_ context.Context, _ uuid.UUID, _ uuid.UUID, title, body200 string, _ time.Time) {
-	h.noteSaved++
-	h.title = title
-	h.body = body200
-}
-
-func (h *noteMemoryHook) OnDailyNoteSaved(_ context.Context, _ uuid.UUID, _ uuid.UUID, title, body600 string, _ time.Time) {
-	h.dailySaved++
-	h.title = title
-	h.body = body600
-}
-
-func (h *noteMemoryHook) OnFocusSessionDone(context.Context, uuid.UUID, string, int, string, int, time.Time) {
+func wireMockMemoryHookTap(ctrl *gomock.Controller, tap *memoryTap) *honeMocks.MockMemoryHook {
+	m := honeMocks.NewMockMemoryHook(ctrl)
+	m.EXPECT().OnReflectionAdded(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	m.EXPECT().OnStandupRecorded(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	m.EXPECT().OnPlanSkipped(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	m.EXPECT().OnPlanCompleted(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	m.EXPECT().OnFocusSessionDone(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	m.EXPECT().OnNoteCreated(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(
+		func(_ context.Context, _, _ uuid.UUID, title, body200 string, _ time.Time) {
+			tap.mu.Lock()
+			defer tap.mu.Unlock()
+			tap.noteSaved++
+			tap.title = title
+			tap.body = body200
+		},
+	).AnyTimes()
+	m.EXPECT().OnDailyNoteSaved(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(
+		func(_ context.Context, _, _ uuid.UUID, title, body600 string, _ time.Time) {
+			tap.mu.Lock()
+			defer tap.mu.Unlock()
+			tap.dailySaved++
+			tap.title = title
+			tap.body = body600
+		},
+	).AnyTimes()
+	return m
 }
 
 func TestUpdateNoteWritesDailySnapshotToCoachMemory(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
 	noteID := uuid.New()
-	mem := &noteMemoryHook{}
+	tap := &memoryTap{}
 	body := "Today I need to focus on Redis cache invalidation and explain the tradeoffs clearly."
+
+	notes := newNoteStore()
+	notes.update = func(_ context.Context, n domain.Note) (domain.Note, error) {
+		n.ID = noteID
+		n.UserID = uid
+		return n, nil
+	}
+
 	uc := &UpdateNote{
-		Notes: fakeNoteRepo{
-			update: func(_ context.Context, n domain.Note) (domain.Note, error) {
-				n.ID = noteID
-				n.UserID = uid
-				return n, nil
-			},
-		},
-		Memory: mem,
+		Notes:  wireMockNoteRepo(ctrl, notes),
+		Memory: wireMockMemoryHookTap(ctrl, tap),
 		Now:    fixedNow,
 	}
 
@@ -213,28 +171,33 @@ func TestUpdateNoteWritesDailySnapshotToCoachMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateNote.Do: %v", err)
 	}
-	if mem.dailySaved != 1 {
-		t.Fatalf("dailySaved=%d, want 1", mem.dailySaved)
+	tap.mu.Lock()
+	defer tap.mu.Unlock()
+	if tap.dailySaved != 1 {
+		t.Fatalf("dailySaved=%d, want 1", tap.dailySaved)
 	}
-	if mem.noteSaved != 0 {
-		t.Fatalf("noteSaved=%d, want 0", mem.noteSaved)
+	if tap.noteSaved != 0 {
+		t.Fatalf("noteSaved=%d, want 0", tap.noteSaved)
 	}
-	if mem.body != body {
-		t.Fatalf("body=%q, want compact body", mem.body)
+	if tap.body != body {
+		t.Fatalf("body=%q, want compact body", tap.body)
 	}
 }
 
 func TestUpdateNoteDoesNotWriteRegularEditsToCoachMemory(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
-	mem := &noteMemoryHook{}
+	tap := &memoryTap{}
+
+	notes := newNoteStore()
+	notes.update = func(_ context.Context, n domain.Note) (domain.Note, error) {
+		return n, nil
+	}
+
 	uc := &UpdateNote{
-		Notes: fakeNoteRepo{
-			update: func(_ context.Context, n domain.Note) (domain.Note, error) {
-				return n, nil
-			},
-		},
-		Memory: mem,
+		Notes:  wireMockNoteRepo(ctrl, notes),
+		Memory: wireMockMemoryHookTap(ctrl, tap),
 		Now:    fixedNow,
 	}
 
@@ -247,7 +210,9 @@ func TestUpdateNoteDoesNotWriteRegularEditsToCoachMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateNote.Do: %v", err)
 	}
-	if mem.dailySaved != 0 || mem.noteSaved != 0 {
-		t.Fatalf("memory writes=%d/%d, want none", mem.dailySaved, mem.noteSaved)
+	tap.mu.Lock()
+	defer tap.mu.Unlock()
+	if tap.dailySaved != 0 || tap.noteSaved != 0 {
+		t.Fatalf("memory writes=%d/%d, want none", tap.dailySaved, tap.noteSaved)
 	}
 }

@@ -180,7 +180,7 @@ type DismissPlanItem struct {
 	Resistance domain.ResistanceRepo // nullable
 	Log        *slog.Logger
 	Now        func() time.Time
-	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	// Memory — optional hook в Coach memory. nil = no-op.
 	Memory domain.MemoryHook
 }
 
@@ -232,7 +232,7 @@ func (uc *DismissPlanItem) Do(ctx context.Context, in DismissPlanItemInput) (dom
 type CompletePlanItem struct {
 	Plans domain.PlanRepo
 	Now   func() time.Time
-	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	// Memory — optional hook в Coach memory. nil = no-op.
 	Memory domain.MemoryHook
 }
 

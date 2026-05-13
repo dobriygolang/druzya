@@ -86,10 +86,20 @@ type Querier interface {
 	// Passing zero-value cursor (cursor_updated_at = 'epoch', cursor_id = all-zeros
 	// UUID) returns the newest page. The $4 epoch flag lets the caller request
 	// "page 1" without synthesizing a bogus timestamp.
+	//
+	// W13: was a join-with-grouped-subquery that aggregated COUNT(*) over the
+	// entire copilot_messages table on every call (no user_id push-down). Now
+	// the COUNT runs as a LATERAL aggregate only for the LIMIT page (≤ N rows),
+	// using idx_copilot_messages_conv_created.
 	ListCopilotConversationsForUser(ctx context.Context, arg ListCopilotConversationsForUserParams) ([]ListCopilotConversationsForUserRow, error)
 	ListCopilotMessagesForConversation(ctx context.Context, conversationID pgtype.UUID) ([]CopilotMessage, error)
 	// Keyset pagination identical in shape to the conversation history query.
 	// Filter by kind is optional: pass empty string to return all kinds.
+	//
+	// W13: like ListCopilotConversationsForUser — replaced the grouped subquery
+	// (which scanned the entire copilot_conversations table on every call) with
+	// a LATERAL COUNT scoped to the page's session ids; uses
+	// idx_copilot_conversations_session partial index.
 	ListCopilotSessionsForUser(ctx context.Context, arg ListCopilotSessionsForUserParams) ([]ListCopilotSessionsForUserRow, error)
 	// Called when any turn inside a session used BYOK. Once true, stays true.
 	MarkCopilotSessionByok(ctx context.Context, id pgtype.UUID) (int64, error)

@@ -1,7 +1,6 @@
-// directory_repo.go — Phase K T1 (P0) 2026-05-12. PostgreSQL implementation
-// of domain.DirectoryRepo. Same *Postgres struct adds another satisfied
-// interface to its set (Repo + AssignmentRepo + EventRepo + ReadingPathRepo
-// + DirectoryRepo) — Nth-interface pattern, single connection pool.
+// Package infra — domain.DirectoryRepo impl. *Postgres struct adds yet
+// another satisfied interface (Repo + AssignmentRepo + EventRepo +
+// ReadingPathRepo + DirectoryRepo) — single connection pool.
 package infra
 
 import (

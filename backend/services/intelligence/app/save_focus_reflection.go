@@ -1,4 +1,4 @@
-// save_focus_reflection.go — H2 (Phase J 2026-05-12).
+// Package app — save end-of-pomodoro reflection.
 //
 // Hone end-of-pomodoro reflection prompt собирает grade (1-5) + notes;
 // раньше эти данные никуда не шли («// future RPC» в App.tsx). Этот UC

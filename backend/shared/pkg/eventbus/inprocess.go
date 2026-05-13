@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -38,7 +39,7 @@ func (b *InProcess) Publish(ctx context.Context, e domain.Event) error {
 	metrics.EventbusPublishedTotal.WithLabelValues(topic).Inc()
 
 	b.mu.RLock()
-	hs := append([]domain.Handler(nil), b.handlers[topic]...)
+	hs := slices.Clone(b.handlers[topic])
 	b.mu.RUnlock()
 
 	for _, h := range hs {

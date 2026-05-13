@@ -1,4 +1,4 @@
-// Package infra — writing feedback grader (Wave 4.4).
+// Package infra — writing feedback grader.
 //
 // JSON-mode call that returns overall_score + per-issue list. See llm.go
 // for shared helpers and the NoLLMWritingGrader floor type.

@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/code_mock.go -source code.go
 package domain
 
 import (

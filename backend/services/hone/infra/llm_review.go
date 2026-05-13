@@ -1,4 +1,4 @@
-// Package infra — code review grader (Wave 3.6).
+// Package infra — code review grader.
 //
 // Grades a user's review of a diff. JSON-mode call with correctness /
 // completeness / clarity / tone rubric. See llm.go for shared helpers

@@ -1,4 +1,4 @@
-// notes_suggest_links.go — Phase 5: AI-rerank поверх pgvector top-K.
+// Package app — AI-rerank поверх pgvector top-K.
 //
 // Pipeline:
 //  1. Re-embed seed note (как и GetNoteConnections — anchor к текущей model).

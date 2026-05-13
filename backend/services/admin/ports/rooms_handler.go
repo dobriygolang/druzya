@@ -1,7 +1,5 @@
-// rooms_handler.go — Phase 12.5 /admin/rooms moderation REST endpoints.
-//
-// Chi-direct (не Connect-RPC) — admin UI читает JSON напрямую. Role-gate
-// должен происходить uppstream router'ом (как для других /admin/* routes).
+// Package ports — /admin/rooms moderation REST endpoints (chi-direct).
+// Role-gate должен происходить upstream router'ом (как для других /admin/*).
 package ports
 
 import (

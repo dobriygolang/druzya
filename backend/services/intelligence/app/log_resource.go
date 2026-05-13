@@ -1,6 +1,7 @@
-// log_resource.go — Phase 2 user_resource_log writes.
+//go:generate mockgen -package app -destination log_resource_mock_test.go -source log_resource.go ResourceLogRepo
+// Package app — user_resource_log writes.
 //
-// Источник events для ResourceEngagementReader (Phase 1.7c). Coach UI
+// Источник events для ResourceEngagementReader. Coach UI
 // шлёт события на каждый click / finish / skip / unhelpful / reflection.
 //
 // Reflection-flow:

@@ -10,15 +10,19 @@ import (
 	"druz9/shared/enums"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
 func TestGetConversation_OwnerEnforced(t *testing.T) {
-	convs := newFakeConversations()
-	msgs := newFakeMessages(convs)
+	ctrl := gomock.NewController(t)
+	convs := newConvStore()
+	msgs := newMsgStore(convs)
+	convRepo := wireMockConvRepo(ctrl, convs)
+	msgRepo := wireMockMsgRepo(ctrl, msgs)
 	owner := uuid.New()
 	intruder := uuid.New()
-	conv, _ := convs.Create(context.Background(), owner, "t", "m")
-	uc := &GetConversation{Conversations: convs, Messages: msgs}
+	conv, _ := convRepo.Create(context.Background(), owner, "t", "m")
+	uc := &GetConversation{Conversations: convRepo, Messages: msgRepo}
 
 	_, err := uc.Do(context.Background(), GetConversationInput{UserID: intruder, ConversationID: conv.ID})
 	if !errors.Is(err, domain.ErrNotFound) {
@@ -34,36 +38,47 @@ func TestGetConversation_OwnerEnforced(t *testing.T) {
 }
 
 func TestDeleteConversation_OwnerOnly(t *testing.T) {
-	convs := newFakeConversations()
+	ctrl := gomock.NewController(t)
+	convs := newConvStore()
+	convRepo := wireMockConvRepo(ctrl, convs)
 	owner := uuid.New()
 	intruder := uuid.New()
-	conv, _ := convs.Create(context.Background(), owner, "t", "m")
-	uc := &DeleteConversation{Conversations: convs}
+	conv, _ := convRepo.Create(context.Background(), owner, "t", "m")
+	uc := &DeleteConversation{Conversations: convRepo}
 
 	if err := uc.Do(context.Background(), DeleteConversationInput{UserID: intruder, ConversationID: conv.ID}); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("intruder: err = %v, want ErrNotFound", err)
 	}
-	if _, ok := convs.rows[conv.ID]; !ok {
+	convs.mu.Lock()
+	_, ok := convs.rows[conv.ID]
+	convs.mu.Unlock()
+	if !ok {
 		t.Fatal("intruder deletion removed the row")
 	}
 	if err := uc.Do(context.Background(), DeleteConversationInput{UserID: owner, ConversationID: conv.ID}); err != nil {
 		t.Fatalf("owner: unexpected err: %v", err)
 	}
-	if _, ok := convs.rows[conv.ID]; ok {
+	convs.mu.Lock()
+	_, ok = convs.rows[conv.ID]
+	convs.mu.Unlock()
+	if ok {
 		t.Fatal("owner deletion failed to remove the row")
 	}
 }
 
 func TestRateMessage_OwnerOnly_ValidRange(t *testing.T) {
-	convs := newFakeConversations()
-	msgs := newFakeMessages(convs)
+	ctrl := gomock.NewController(t)
+	convs := newConvStore()
+	msgs := newMsgStore(convs)
+	convRepo := wireMockConvRepo(ctrl, convs)
+	msgRepo := wireMockMsgRepo(ctrl, msgs)
 	owner := uuid.New()
 	intruder := uuid.New()
-	conv, _ := convs.Create(context.Background(), owner, "t", "m")
-	m, _ := msgs.Insert(context.Background(), domain.Message{
+	conv, _ := convRepo.Create(context.Background(), owner, "t", "m")
+	m, _ := msgRepo.Insert(context.Background(), domain.Message{
 		ConversationID: conv.ID, Role: enums.MessageRoleAssistant,
 	})
-	uc := &RateMessage{Messages: msgs}
+	uc := &RateMessage{Messages: msgRepo}
 
 	// Out-of-range.
 	if err := uc.Do(context.Background(), RateMessageInput{UserID: owner, MessageID: m.ID, Rating: 2}); !errors.Is(err, domain.ErrInvalidInput) {
@@ -77,18 +92,20 @@ func TestRateMessage_OwnerOnly_ValidRange(t *testing.T) {
 	if err := uc.Do(context.Background(), RateMessageInput{UserID: owner, MessageID: m.ID, Rating: 1}); err != nil {
 		t.Fatalf("owner: err = %v", err)
 	}
+	msgs.mu.Lock()
+	defer msgs.mu.Unlock()
 	if got := msgs.rows[m.ID].Rating; got == nil || *got != 1 {
 		t.Fatalf("rating not persisted: %v", got)
 	}
 }
 
 func TestListProviders_AnnotatesAvailability(t *testing.T) {
-	quotas := newFakeQuotas(10)
-	// Default fake quota allows only druz9/turbo. The other models
-	// should come back with AvailableOnCurrentPlan=false.
+	ctrl := gomock.NewController(t)
+	quotas := newQuotaStore(10)
+	cfg := newConfigState("druz9/turbo")
 	uc := &ListProviders{
-		Config: newFakeConfig("druz9/turbo"),
-		Quotas: quotas,
+		Config: wireMockConfigProvider(ctrl, cfg),
+		Quotas: wireMockQuotaRepo(ctrl, quotas),
 	}
 	out, err := uc.Do(context.Background(), ListProvidersInput{UserID: uuid.New()})
 	if err != nil {
@@ -113,15 +130,19 @@ func TestListProviders_AnnotatesAvailability(t *testing.T) {
 }
 
 func TestGetQuota_RotatesDueWindow(t *testing.T) {
-	quotas := newFakeQuotas(10)
+	ctrl := gomock.NewController(t)
+	quotas := newQuotaStore(10)
+	quotaRepo := wireMockQuotaRepo(ctrl, quotas)
 	userID := uuid.New()
 	// Preload a row whose reset time is in the past.
-	q, _ := quotas.GetOrInit(context.Background(), userID)
+	q, _ := quotaRepo.GetOrInit(context.Background(), userID)
 	q.RequestsUsed = 9
 	q.ResetsAt = time.Now().Add(-time.Minute)
+	quotas.mu.Lock()
 	quotas.rows[userID] = q
+	quotas.mu.Unlock()
 
-	uc := &GetQuota{Quotas: quotas, Now: time.Now}
+	uc := &GetQuota{Quotas: quotaRepo, Now: time.Now}
 	out, err := uc.Do(context.Background(), GetQuotaInput{UserID: userID})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -135,8 +156,9 @@ func TestGetQuota_RotatesDueWindow(t *testing.T) {
 }
 
 func TestGetDesktopConfig_RevShortCircuit(t *testing.T) {
-	cfg := newFakeConfig("openai/gpt-4o-mini")
-	uc := &GetDesktopConfig{Config: cfg}
+	ctrl := gomock.NewController(t)
+	cfg := newConfigState("openai/gpt-4o-mini")
+	uc := &GetDesktopConfig{Config: wireMockConfigProvider(ctrl, cfg)}
 	// Rev matches → payload should be empty-except-rev.
 	out, err := uc.Do(context.Background(), GetDesktopConfigInput{KnownRev: cfg.cfg.Rev})
 	if err != nil {

@@ -1,5 +1,5 @@
-// answerer_cache.go — Phase V cost guardrail: 5-минутный Redis cache
-// для AskNotes LLM-ответа. Decorator поверх domain.NoteAnswerer.
+// Package infra — 5-минутный Redis cache декоратор для AskNotes
+// LLM-ответа поверх domain.NoteAnswerer.
 //
 // Зачем: на free-tier юзеры часто спамят одним и тем же вопросом подряд
 // (особенно когда ответ медленно стримится и они переключают вкладки).

@@ -260,9 +260,8 @@ func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor st
 	return out, nextCursor, nil
 }
 
-// Delete removes a note. Phase C-4: атомарно с DELETE пишет
-// sync_tombstone — pull-endpoint потом вернёт это удаление другим
-// устройствам юзера.
+// Delete removes a note. Атомарно с DELETE пишет sync_tombstone —
+// pull-endpoint потом вернёт это удаление другим устройствам юзера.
 func (n *Notes) Delete(ctx context.Context, userID, noteID uuid.UUID) error {
 	tx, err := n.pool.Begin(ctx)
 	if err != nil {
@@ -312,10 +311,9 @@ func (n *Notes) ExistsByTitleForUser(ctx context.Context, userID uuid.UUID, titl
 // against the embedding_models lookup table; an unknown name leaves the
 // FK NULL (and the row will be re-embedded next time the model is seeded).
 //
-// Phase IX: пишет ОБЕ колонки — legacy real[] + pgvector vector(384).
-// Read-side пока на Go-cosine; readers перейдут на pgvector в follow-up.
-// Backfill старых rows один раз вручную (см. doc-комментарий внутри
-// migration baseline.sql около CREATE INDEX idx_hone_notes_embedding_vec).
+// Writes both embedding columns: legacy real[] and pgvector vector(384).
+// Backfill старых rows вручную — см. migration baseline.sql у
+// CREATE INDEX idx_hone_notes_embedding_vec.
 func (n *Notes) SetEmbedding(ctx context.Context, userID, noteID uuid.UUID, vec []float32, model string, at time.Time) error {
 	_, err := n.pool.Exec(ctx,
 		`UPDATE hone_notes
@@ -370,13 +368,12 @@ func (n *Notes) Move(ctx context.Context, userID, noteID uuid.UUID, folderID *uu
 	return n.Get(ctx, userID, noteID)
 }
 
-// MarkStaleForReembed — Phase I admin tool. Clears embedded_at for every
-// note whose vector was produced by a model OTHER than currentModelName.
-// The async embed worker picks them up via the existing partial index and
-// re-embeds with the current model. Returns count of marked rows.
+// MarkStaleForReembed clears embedded_at for every note whose vector was
+// produced by a model OTHER than currentModelName. The async embed worker
+// picks them up via the existing partial index. Returns count of marked rows.
 //
-// Не трогает encrypted notes (там embedding принципиально невозможен) и
-// notes без embedding'а вовсе (worker сам подберёт).
+// Не трогает encrypted notes (там embedding невозможен) и notes без
+// embedding'а вовсе (worker сам подберёт).
 func (n *Notes) MarkStaleForReembed(ctx context.Context, currentModelName string) (int64, error) {
 	if currentModelName == "" {
 		return 0, fmt.Errorf("hone.Notes.MarkStaleForReembed: currentModelName is required")
@@ -397,7 +394,7 @@ func (n *Notes) MarkStaleForReembed(ctx context.Context, currentModelName string
 	return tag.RowsAffected(), nil
 }
 
-// SearchSimilarNotes — Phase IX v2: pgvector top-K с push-down в Postgres.
+// SearchSimilarNotes — pgvector top-K с push-down в Postgres.
 // modelName == "" → фильтр выключен (тестовый back-compat path);
 // excludeNoteID == uuid.Nil → не фильтруем (например для AskNotes где
 // seed-ноты нет). simFloor применяется как `1 - distance >= floor`
@@ -474,19 +471,16 @@ func (n *Notes) SearchSimilarNotes(
 }
 
 // WithEmbeddingsForUser returns the minimal projection for cosine scanning.
-// Snippet is the first 140 chars of body_md — enough context for the UI row
-// without dragging full bodies across the wire.
+// Snippet is the first 140 chars of body_md.
 //
-// Phase I: filters by embedding_model_id matching the requested modelName.
-// Mixed-model cosine is undefined (different vector spaces, often different
-// dimensionality) — silently invalid otherwise. modelName == "" disables
-// the filter (test/back-compat path); production callers always pass it.
+// Filters by embedding_model_id matching modelName — mixed-model cosine is
+// undefined (different vector spaces, often different dimensionality).
+// modelName == "" disables the filter (test path); production always passes it.
 func (n *Notes) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID, modelName string) ([]domain.NoteEmbedding, error) {
-	// NOT encrypted — Phase C-7 E2E. Encrypted body_md = ciphertext;
-	// embedding на нём garbage. Embed worker сам не enqueue'ит для
-	// encrypted notes (см. notes.go EmbedFn skip), но defensive-фильтр
-	// здесь страхует на случай legacy embeddings от ранее plaintext
-	// заметки которая потом была encrypt'нута.
+	// NOT encrypted: ciphertext body_md → embedding garbage. Embed worker
+	// skips encrypted notes too (см. notes.go EmbedFn skip), но defensive-
+	// фильтр здесь страхует на случай legacy embeddings от заметки которая
+	// потом была encrypt'нута.
 	q := `SELECT id, title, LEFT(body_md, 140), embedding
 		   FROM hone_notes
 		  WHERE user_id=$1 AND embedding IS NOT NULL AND NOT encrypted`

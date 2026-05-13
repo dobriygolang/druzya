@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/leaderboard_mock.go -source leaderboard.go
 package domain
 
 import (

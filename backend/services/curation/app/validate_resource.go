@@ -1,4 +1,4 @@
-// validate_resource.go — Phase 3.5 auto-promote validation.
+// Package app — auto-promote validation.
 //
 // Используется auto_promote producer'ом перед записью URL в
 // atlas_nodes.external_resources. Output: {alive, reputable, on_topic,

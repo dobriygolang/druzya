@@ -1,4 +1,4 @@
-// vault.go — use-case'ы Phase C-7 Private Vault E2E.
+// Package app — Private Vault E2E use cases.
 package app
 
 import (

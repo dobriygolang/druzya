@@ -8,299 +8,335 @@ import (
 	"time"
 
 	"druz9/copilot/domain"
+	mocks "druz9/copilot/domain/mocks"
 	"druz9/shared/enums"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-// ─────────────────────────────────────────────────────────────────────────
-// In-memory fakes — exist solely to drive the use-case tests below.
-// Each fake intentionally keeps the minimum surface needed; missing methods
-// panic so a future test that touches new territory fails loudly.
-// ─────────────────────────────────────────────────────────────────────────
+// Wave 13: внутри-тестовые fakes заменены на mockgen-generated mocks
+// с DoAndReturn-closures. Stateful поведение (in-memory CRUD) живёт в
+// store-структурах, которые тесты читают напрямую через mutex.
 
-type fakeConversations struct {
+// ─── conversations store + wire ───────────────────────────────────────────
+
+type convStore struct {
 	mu   sync.Mutex
 	rows map[uuid.UUID]domain.Conversation
 }
 
-func newFakeConversations() *fakeConversations {
-	return &fakeConversations{rows: map[uuid.UUID]domain.Conversation{}}
+func newConvStore() *convStore { return &convStore{rows: map[uuid.UUID]domain.Conversation{}} }
+
+func wireMockConvRepo(ctrl *gomock.Controller, s *convStore) *mocks.MockConversationRepo {
+	m := mocks.NewMockConversationRepo(ctrl)
+	m.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID, title, model string) (domain.Conversation, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			now := time.Now().UTC()
+			c := domain.Conversation{
+				ID:        uuid.New(),
+				UserID:    userID,
+				Title:     title,
+				Model:     model,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}
+			s.rows[c.ID] = c
+			return c, nil
+		},
+	).AnyTimes()
+	m.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID) (domain.Conversation, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			c, ok := s.rows[id]
+			if !ok {
+				return domain.Conversation{}, domain.ErrNotFound
+			}
+			return c, nil
+		},
+	).AnyTimes()
+	m.EXPECT().UpdateTitle(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID, title string) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			c, ok := s.rows[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			c.Title = title
+			c.UpdatedAt = time.Now().UTC()
+			s.rows[id] = c
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().Touch(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			c, ok := s.rows[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			c.UpdatedAt = time.Now().UTC()
+			s.rows[id] = c
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id, userID uuid.UUID) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			c, ok := s.rows[id]
+			if !ok || c.UserID != userID {
+				return domain.ErrNotFound
+			}
+			delete(s.rows, id)
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().ListForUser(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID, _ domain.Cursor, limit int) ([]domain.ConversationSummary, domain.Cursor, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			out := make([]domain.ConversationSummary, 0, len(s.rows))
+			for _, c := range s.rows {
+				if c.UserID != userID {
+					continue
+				}
+				out = append(out, domain.ConversationSummary{Conversation: c})
+			}
+			sort.Slice(out, func(i, j int) bool {
+				return out[i].UpdatedAt.After(out[j].UpdatedAt)
+			})
+			if limit > 0 && len(out) > limit {
+				out = out[:limit]
+			}
+			return out, "", nil
+		},
+	).AnyTimes()
+	m.EXPECT().ResetModelsNotIn(gomock.Any(), gomock.Any(), gomock.Any()).Return(int64(0), nil).AnyTimes()
+	return m
 }
 
-func (f *fakeConversations) Create(_ context.Context, userID uuid.UUID, title, model string) (domain.Conversation, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	now := time.Now().UTC()
-	c := domain.Conversation{
-		ID:        uuid.New(),
-		UserID:    userID,
-		Title:     title,
-		Model:     model,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	f.rows[c.ID] = c
-	return c, nil
+// ─── messages store + wire ────────────────────────────────────────────────
+
+type msgStore struct {
+	mu   sync.Mutex
+	rows map[uuid.UUID]domain.Message
+	conv *convStore // for OwnerOf
 }
 
-func (f *fakeConversations) Get(_ context.Context, id uuid.UUID) (domain.Conversation, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	c, ok := f.rows[id]
-	if !ok {
-		return domain.Conversation{}, domain.ErrNotFound
-	}
-	return c, nil
+func newMsgStore(conv *convStore) *msgStore {
+	return &msgStore{rows: map[uuid.UUID]domain.Message{}, conv: conv}
 }
 
-func (f *fakeConversations) UpdateTitle(_ context.Context, id uuid.UUID, title string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	c, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	c.Title = title
-	c.UpdatedAt = time.Now().UTC()
-	f.rows[id] = c
-	return nil
+func wireMockMsgRepo(ctrl *gomock.Controller, s *msgStore) *mocks.MockMessageRepo {
+	m := mocks.NewMockMessageRepo(ctrl)
+	m.EXPECT().Insert(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, msg domain.Message) (domain.Message, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			msg.ID = uuid.New()
+			msg.CreatedAt = time.Now().UTC()
+			s.rows[msg.ID] = msg
+			return msg, nil
+		},
+	).AnyTimes()
+	m.EXPECT().UpdateAssistant(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID, content string, tokensIn, tokensOut, latencyMs int) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			msg, ok := s.rows[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			msg.Content = content
+			msg.TokensIn = tokensIn
+			msg.TokensOut = tokensOut
+			msg.LatencyMs = latencyMs
+			s.rows[id] = msg
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().List(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, conversationID uuid.UUID) ([]domain.Message, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			out := make([]domain.Message, 0)
+			for _, m := range s.rows {
+				if m.ConversationID == conversationID {
+					out = append(out, m)
+				}
+			}
+			sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
+			return out, nil
+		},
+	).AnyTimes()
+	m.EXPECT().Rate(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID, rating int8) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			msg, ok := s.rows[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			v := rating
+			msg.Rating = &v
+			s.rows[id] = msg
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().OwnerOf(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, messageID uuid.UUID) (uuid.UUID, error) {
+			s.mu.Lock()
+			msg, ok := s.rows[messageID]
+			s.mu.Unlock()
+			if !ok {
+				return uuid.Nil, domain.ErrNotFound
+			}
+			if s.conv == nil {
+				return uuid.Nil, domain.ErrNotFound
+			}
+			s.conv.mu.Lock()
+			defer s.conv.mu.Unlock()
+			c, ok := s.conv.rows[msg.ConversationID]
+			if !ok {
+				return uuid.Nil, domain.ErrNotFound
+			}
+			return c.UserID, nil
+		},
+	).AnyTimes()
+	return m
 }
 
-func (f *fakeConversations) Touch(_ context.Context, id uuid.UUID) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	c, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	c.UpdatedAt = time.Now().UTC()
-	f.rows[id] = c
-	return nil
-}
+// ─── quotas store + wire ──────────────────────────────────────────────────
 
-func (f *fakeConversations) Delete(_ context.Context, id, userID uuid.UUID) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	c, ok := f.rows[id]
-	if !ok || c.UserID != userID {
-		return domain.ErrNotFound
-	}
-	delete(f.rows, id)
-	return nil
-}
-
-func (f *fakeConversations) ListForUser(_ context.Context, userID uuid.UUID, _ domain.Cursor, limit int) ([]domain.ConversationSummary, domain.Cursor, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := make([]domain.ConversationSummary, 0, len(f.rows))
-	for _, c := range f.rows {
-		if c.UserID != userID {
-			continue
-		}
-		out = append(out, domain.ConversationSummary{Conversation: c})
-	}
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].UpdatedAt.After(out[j].UpdatedAt)
-	})
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
-	return out, "", nil
-}
-
-func (f *fakeConversations) ResetModelsNotIn(_ context.Context, _ uuid.UUID, _ []string) (int64, error) {
-	return 0, nil
-}
-
-type fakeMessages struct {
-	mu    sync.Mutex
-	rows  map[uuid.UUID]domain.Message
-	convs *fakeConversations // used by OwnerOf; may be nil for isolated tests
-}
-
-func newFakeMessages(convs *fakeConversations) *fakeMessages {
-	return &fakeMessages{rows: map[uuid.UUID]domain.Message{}, convs: convs}
-}
-
-func (f *fakeMessages) Insert(_ context.Context, m domain.Message) (domain.Message, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	m.ID = uuid.New()
-	m.CreatedAt = time.Now().UTC()
-	f.rows[m.ID] = m
-	return m, nil
-}
-
-func (f *fakeMessages) UpdateAssistant(_ context.Context, id uuid.UUID, content string, tokensIn, tokensOut, latencyMs int) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	m, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	m.Content = content
-	m.TokensIn = tokensIn
-	m.TokensOut = tokensOut
-	m.LatencyMs = latencyMs
-	f.rows[id] = m
-	return nil
-}
-
-func (f *fakeMessages) List(_ context.Context, conversationID uuid.UUID) ([]domain.Message, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := make([]domain.Message, 0)
-	for _, m := range f.rows {
-		if m.ConversationID == conversationID {
-			out = append(out, m)
-		}
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
-	return out, nil
-}
-
-func (f *fakeMessages) Rate(_ context.Context, id uuid.UUID, rating int8) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	m, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	v := rating
-	m.Rating = &v
-	f.rows[id] = m
-	return nil
-}
-
-// OwnerOf resolves ownership through the paired Conversations fake.
-// If no Conversations fake is linked, returns ErrNotFound — tests that
-// don't exercise Rate/OwnerOf can pass nil.
-func (f *fakeMessages) OwnerOf(_ context.Context, messageID uuid.UUID) (uuid.UUID, error) {
-	f.mu.Lock()
-	m, ok := f.rows[messageID]
-	f.mu.Unlock()
-	if !ok {
-		return uuid.Nil, domain.ErrNotFound
-	}
-	if f.convs == nil {
-		return uuid.Nil, domain.ErrNotFound
-	}
-	f.convs.mu.Lock()
-	defer f.convs.mu.Unlock()
-	c, ok := f.convs.rows[m.ConversationID]
-	if !ok {
-		return uuid.Nil, domain.ErrNotFound
-	}
-	return c.UserID, nil
-}
-
-type fakeQuotas struct {
+type quotaStore struct {
 	mu   sync.Mutex
 	rows map[uuid.UUID]domain.Quota
 	cap  int
 }
 
-func newFakeQuotas(cap int) *fakeQuotas {
-	return &fakeQuotas{rows: map[uuid.UUID]domain.Quota{}, cap: cap}
+func newQuotaStore(cap int) *quotaStore {
+	return &quotaStore{rows: map[uuid.UUID]domain.Quota{}, cap: cap}
 }
 
-func (f *fakeQuotas) GetOrInit(_ context.Context, userID uuid.UUID) (domain.Quota, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if q, ok := f.rows[userID]; ok {
-		return q, nil
-	}
-	q := domain.Quota{
-		UserID:        userID,
-		Plan:          enums.SubscriptionPlanFree,
-		RequestsUsed:  0,
-		RequestsCap:   f.cap,
-		ResetsAt:      time.Now().Add(24 * time.Hour),
-		ModelsAllowed: []string{"druz9/turbo"},
-		UpdatedAt:     time.Now().UTC(),
-	}
-	f.rows[userID] = q
-	return q, nil
+func wireMockQuotaRepo(ctrl *gomock.Controller, s *quotaStore) *mocks.MockQuotaRepo {
+	m := mocks.NewMockQuotaRepo(ctrl)
+	m.EXPECT().GetOrInit(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID) (domain.Quota, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if q, ok := s.rows[userID]; ok {
+				return q, nil
+			}
+			q := domain.Quota{
+				UserID:        userID,
+				Plan:          enums.SubscriptionPlanFree,
+				RequestsUsed:  0,
+				RequestsCap:   s.cap,
+				ResetsAt:      time.Now().Add(24 * time.Hour),
+				ModelsAllowed: []string{"druz9/turbo"},
+				UpdatedAt:     time.Now().UTC(),
+			}
+			s.rows[userID] = q
+			return q, nil
+		},
+	).AnyTimes()
+	m.EXPECT().IncrementUsage(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			q, ok := s.rows[userID]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			q.RequestsUsed++
+			s.rows[userID] = q
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().ResetWindow(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			q, ok := s.rows[userID]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			q.RequestsUsed = 0
+			q.ResetsAt = time.Now().Add(24 * time.Hour)
+			s.rows[userID] = q
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().UpdatePlan(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID uuid.UUID, plan enums.SubscriptionPlan, cap int, modelsAllowed []string) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			q, ok := s.rows[userID]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			q.Plan = plan
+			q.RequestsCap = cap
+			q.ModelsAllowed = append([]string(nil), modelsAllowed...)
+			s.rows[userID] = q
+			return nil
+		},
+	).AnyTimes()
+	return m
 }
 
-func (f *fakeQuotas) IncrementUsage(_ context.Context, userID uuid.UUID) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	q, ok := f.rows[userID]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	q.RequestsUsed++
-	f.rows[userID] = q
-	return nil
-}
+// ─── llm provider mock (scripted) ─────────────────────────────────────────
 
-func (f *fakeQuotas) ResetWindow(_ context.Context, userID uuid.UUID) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	q, ok := f.rows[userID]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	q.RequestsUsed = 0
-	q.ResetsAt = time.Now().Add(24 * time.Hour)
-	f.rows[userID] = q
-	return nil
-}
-
-func (f *fakeQuotas) UpdatePlan(_ context.Context, userID uuid.UUID, plan enums.SubscriptionPlan, cap int, modelsAllowed []string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	q, ok := f.rows[userID]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	q.Plan = plan
-	q.RequestsCap = cap
-	q.ModelsAllowed = append([]string(nil), modelsAllowed...)
-	f.rows[userID] = q
-	return nil
-}
-
-// fakeLLM is a scripted provider: it emits a predefined sequence of deltas
-// and a Done event. If ErrOn > 0, the given index's frame is replaced by Err.
-type fakeLLM struct {
+// llmScript описывает scripted-output провайдера: deltas + done.
+type llmScript struct {
 	Deltas      []string
 	TokensIn    int
 	TokensOut   int
 	Model       string
-	SendErrOnIx int // 0 = no error; 1-indexed into Deltas
+	SendErrOnIx int // 0 = no error; 1-indexed
 	ErrValue    error
 }
 
-func (f *fakeLLM) Stream(_ context.Context, _ domain.CompletionRequest) (<-chan domain.StreamEvent, error) {
-	out := make(chan domain.StreamEvent, len(f.Deltas)+2)
-	go func() {
-		defer close(out)
-		for i, d := range f.Deltas {
-			if f.SendErrOnIx == i+1 {
-				out <- domain.StreamEvent{Err: f.ErrValue}
-				return
-			}
-			out <- domain.StreamEvent{Delta: d}
-		}
-		out <- domain.StreamEvent{Done: &domain.CompletionDone{
-			TokensIn:  f.TokensIn,
-			TokensOut: f.TokensOut,
-			Model:     f.Model,
-		}}
-	}()
-	return out, nil
+func wireMockLLMProvider(ctrl *gomock.Controller, scr *llmScript) *mocks.MockLLMProvider {
+	m := mocks.NewMockLLMProvider(ctrl)
+	m.EXPECT().Stream(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ domain.CompletionRequest) (<-chan domain.StreamEvent, error) {
+			out := make(chan domain.StreamEvent, len(scr.Deltas)+2)
+			go func() {
+				defer close(out)
+				for i, d := range scr.Deltas {
+					if scr.SendErrOnIx == i+1 {
+						out <- domain.StreamEvent{Err: scr.ErrValue}
+						return
+					}
+					out <- domain.StreamEvent{Delta: d}
+				}
+				out <- domain.StreamEvent{Done: &domain.CompletionDone{
+					TokensIn:  scr.TokensIn,
+					TokensOut: scr.TokensOut,
+					Model:     scr.Model,
+				}}
+			}()
+			return out, nil
+		},
+	).AnyTimes()
+	return m
 }
 
-// fakeConfig serves a minimal DesktopConfig for tests.
-type fakeConfig struct {
+// ─── config provider mock ─────────────────────────────────────────────────
+
+type configState struct {
 	cfg domain.DesktopConfig
 }
 
-func newFakeConfig(defaultModel string) *fakeConfig {
-	return &fakeConfig{cfg: domain.DesktopConfig{
+func newConfigState(defaultModel string) *configState {
+	return &configState{cfg: domain.DesktopConfig{
 		Rev:            1,
 		DefaultModelID: defaultModel,
 		Models: []domain.ProviderModel{
@@ -311,7 +347,15 @@ func newFakeConfig(defaultModel string) *fakeConfig {
 	}}
 }
 
-func (f *fakeConfig) Load(_ context.Context) (domain.DesktopConfig, error) { return f.cfg, nil }
+func wireMockConfigProvider(ctrl *gomock.Controller, s *configState) *mocks.MockConfigProvider {
+	m := mocks.NewMockConfigProvider(ctrl)
+	m.EXPECT().Load(gomock.Any()).DoAndReturn(
+		func(_ context.Context) (domain.DesktopConfig, error) { return s.cfg, nil },
+	).AnyTimes()
+	return m
+}
+
+// ─── helpers ──────────────────────────────────────────────────────────────
 
 // drainFrames collects every frame from a channel until it closes.
 func drainFrames(ch <-chan StreamFrame) []StreamFrame {

@@ -1,4 +1,4 @@
-// edit_memory_entry.go — F1 Memory expansion (2026-05-12): user-editable entries.
+// Package app — user-editable memory entries.
 //
 // Юзер может уточнить formulation entry'и в /profile transparency панели.
 // Не пересчитываем embedding — это done на следующем embed_worker tick'е

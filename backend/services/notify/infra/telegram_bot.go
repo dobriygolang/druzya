@@ -1,18 +1,11 @@
-// telegram_bot.go — real Telegram Bot integration.
+// Package infra — Telegram Bot integration.
 //
-// LIBRARY: github.com/go-telegram-bot-api/telegram-bot-api/v5 (the canonical
-// maintained fork). Chosen over mymmrac/telego because its surface is smaller,
-// it has no v6-webhook-only lock-in, and it's the most widely documented
-// library for Russian-language Go tutorials (bible §3.1 "Russian-first team").
+// Two seam types:
+//   - telegramAPI — narrow interface over tgbotapi.BotAPI; swapped with a fake
+//     in tests.
+//   - TelegramBot — domain.Sender adapter; HandleUpdate parses inbound webhook.
 //
-// The bot is exposed as two seam types:
-//   - telegramAPI — a narrow interface the bot code uses. In tests we swap it
-//     with a fake so unit tests don't hit the network.
-//   - TelegramBot — the domain-level adapter. Implements domain.Sender for
-//     outbound DMs and exposes HandleUpdate for inbound webhook parsing.
-//
-// Secrets (bot token, webhook secret) are NEVER logged; field functions redact
-// them to "<redacted>".
+// Secrets (bot token, webhook secret) are NEVER logged; redacted to "<redacted>".
 package infra
 
 import (
@@ -130,15 +123,10 @@ func (b *TelegramBot) Send(ctx context.Context, userID uuid.UUID, chatIdentity s
 	return b.sendWithRetry(ctx, userID, chatID, msg)
 }
 
-// SendDocument отправляет файл в TG как attachment. Используется для Cue
-// follow-up'ов: meeting markdown получается длинный (5-50KB), и в TG
-// text-message'е он либо обрезается (4096 char limit), либо превращается
-// в монолитную стену. .md attachment'ом юзер видит filename, открывает в
-// Notes.app / Obsidian, может переслать. parseMode игнорируется (Telegram
-// не рендерит markdown в caption'е документа).
-//
-// fileBytes — содержимое; fileName — например `meeting-2026-04-27.md`.
-// caption — короткая надпись над документом (title заметки).
+// SendDocument отправляет файл в TG как attachment. Длинные тексты (5-50KB)
+// либо обрезаются TG 4096-char text-message limit'ом, либо превращаются в
+// монолитную стену; .md attachment даёт filename + открывается в Notes.app /
+// Obsidian. parseMode игнорируется — Telegram не рендерит markdown в caption.
 func (b *TelegramBot) SendDocument(ctx context.Context, userID uuid.UUID, chatIdentity, fileName, caption string, fileBytes []byte) error {
 	if chatIdentity == "" {
 		return domain.ErrNoTarget
@@ -258,9 +246,7 @@ func (b *TelegramBot) HandleUpdate(ctx context.Context, update tgbotapi.Update) 
 	return nil
 }
 
-// handleCallback responds to inline keyboard presses. Currently a STUB — the
-// real `daily_kata_start` / `snooze` handlers will be wired once the daily
-// domain publishes the buttons.
+// handleCallback responds to inline keyboard presses.
 func (b *TelegramBot) handleCallback(ctx context.Context, cq *tgbotapi.CallbackQuery) error {
 	b.log.InfoContext(ctx, "notify.telegram.callback",
 		slog.String("data", cq.Data),
@@ -335,5 +321,4 @@ func (n noopTelegramAPI) Request(c tgbotapi.Chattable) (*tgbotapi.APIResponse, e
 // Compile-time assertion.
 var _ domain.Sender = (*TelegramBot)(nil)
 
-// marshal/unmarshal helpers for the webhook adapter's JSON decoding.
 var _ = json.Marshal

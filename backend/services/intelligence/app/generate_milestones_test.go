@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"druz9/intelligence/domain"
+	mocks "druz9/intelligence/domain/mocks"
 	"druz9/shared/pkg/llmchain"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
 // ─── parseMilestoneJSON ───────────────────────────────────────────────────
@@ -40,7 +43,7 @@ func TestParseMilestoneJSON_BareArray(t *testing.T) {
 		{"title":"a","detail":"x","category":"practice"},
 		{"title":"b","detail":"x","category":"practice"},
 		{"title":"c","detail":"x","category":"practice"},
-		{"title":"d","detail":"x","category":"final"}
+		{"title":"d","detail":"x","category":"practice"}
 	]`
 	out, err := parseMilestoneJSON(raw)
 	if err != nil {
@@ -93,9 +96,11 @@ func TestValidateMilestones_GracefulCategoryFallback(t *testing.T) {
 	}
 }
 
-// ─── GenerateMilestones UC ─────────────────────────────────────────────────
-
-// stubChain — minimal ChatClient.
+// ─── stubChain: scripted ChatClient ────────────────────────────────────────
+//
+// llmchain.ChatClient — external interface из shared/pkg/llmchain. Mock
+// генерируется отдельно (Agent EEE area), а здесь оставляем тонкий
+// scripted wrapper — это test-only helper, не stateful business fake.
 type stubChain struct {
 	resp llmchain.Response
 	err  error
@@ -109,81 +114,101 @@ func (s *stubChain) ChatStream(_ context.Context, _ llmchain.Request) (<-chan ll
 	return nil, errors.New("stubChain: streaming not used")
 }
 
-// fakeMilestoneRepo — in-memory.
-type fakeMilestoneRepo struct {
+// ─── MilestoneRepo store + wire ───────────────────────────────────────────
+
+type milestoneStore struct {
+	mu             sync.Mutex
 	rows           []domain.Milestone
 	latestGenAt    time.Time
 	replaceErr     error
 	markDoneCalled bool
 }
 
-func (r *fakeMilestoneRepo) LatestSet(_ context.Context, userID, goalID uuid.UUID) ([]domain.Milestone, error) {
-	out := []domain.Milestone{}
-	for _, m := range r.rows {
-		if m.UserID == userID && m.GoalID == goalID {
-			out = append(out, m)
-		}
-	}
-	return out, nil
-}
-
-func (r *fakeMilestoneRepo) Replace(_ context.Context, userID, goalID uuid.UUID, items []domain.Milestone) ([]domain.Milestone, error) {
-	if r.replaceErr != nil {
-		return nil, r.replaceErr
-	}
-	// Drop existing for (user, goal).
-	keep := make([]domain.Milestone, 0, len(r.rows))
-	for _, m := range r.rows {
-		if !(m.UserID == userID && m.GoalID == goalID) {
-			keep = append(keep, m)
-		}
-	}
-	r.rows = keep
-	for i := range items {
-		items[i].ID = uuid.New()
-		items[i].UserID = userID
-		items[i].GoalID = goalID
-		r.rows = append(r.rows, items[i])
-	}
-	return items, nil
-}
-
-func (r *fakeMilestoneRepo) MarkDone(_ context.Context, userID, milestoneID uuid.UUID, done bool) (domain.Milestone, error) {
-	r.markDoneCalled = true
-	for i, m := range r.rows {
-		if m.ID == milestoneID && m.UserID == userID {
-			if done {
-				now := time.Now().UTC()
-				r.rows[i].DoneAt = &now
-			} else {
-				r.rows[i].DoneAt = nil
+func wireMockMilestoneRepo(ctrl *gomock.Controller, s *milestoneStore) *mocks.MockMilestoneRepo {
+	m := mocks.NewMockMilestoneRepo(ctrl)
+	m.EXPECT().LatestSet(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID, goalID uuid.UUID) ([]domain.Milestone, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			out := []domain.Milestone{}
+			for _, ml := range s.rows {
+				if ml.UserID == userID && ml.GoalID == goalID {
+					out = append(out, ml)
+				}
 			}
-			return r.rows[i], nil
-		}
-	}
-	return domain.Milestone{}, domain.ErrNotFound
+			return out, nil
+		},
+	).AnyTimes()
+	m.EXPECT().Replace(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID, goalID uuid.UUID, items []domain.Milestone) ([]domain.Milestone, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if s.replaceErr != nil {
+				return nil, s.replaceErr
+			}
+			keep := make([]domain.Milestone, 0, len(s.rows))
+			for _, ml := range s.rows {
+				if !(ml.UserID == userID && ml.GoalID == goalID) {
+					keep = append(keep, ml)
+				}
+			}
+			s.rows = keep
+			for i := range items {
+				items[i].ID = uuid.New()
+				items[i].UserID = userID
+				items[i].GoalID = goalID
+				s.rows = append(s.rows, items[i])
+			}
+			return items, nil
+		},
+	).AnyTimes()
+	m.EXPECT().MarkDone(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, userID, milestoneID uuid.UUID, done bool) (domain.Milestone, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.markDoneCalled = true
+			for i, ml := range s.rows {
+				if ml.ID == milestoneID && ml.UserID == userID {
+					if done {
+						now := time.Now().UTC()
+						s.rows[i].DoneAt = &now
+					} else {
+						s.rows[i].DoneAt = nil
+					}
+					return s.rows[i], nil
+				}
+			}
+			return domain.Milestone{}, domain.ErrNotFound
+		},
+	).AnyTimes()
+	m.EXPECT().LatestGenerationAt(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _, _ uuid.UUID) (time.Time, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			return s.latestGenAt, nil
+		},
+	).AnyTimes()
+	return m
 }
 
-func (r *fakeMilestoneRepo) LatestGenerationAt(_ context.Context, _, _ uuid.UUID) (time.Time, error) {
-	return r.latestGenAt, nil
-}
-
-func newSeededGoalRepo(uid uuid.UUID) (*fakePrimaryGoalRepo, domain.PrimaryGoal) {
-	repo := &fakePrimaryGoalRepo{}
+// seedActiveGoal — кладёт active PrimaryGoal в store и возвращает запись + store.
+func seedActiveGoal(uid uuid.UUID) (*primaryGoalStore, domain.PrimaryGoal) {
+	store := &primaryGoalStore{}
 	g := domain.PrimaryGoal{
 		ID:     uuid.New(),
 		UserID: uid,
 		Kind:   domain.PrimaryGoalKindAnySenior,
 		Active: true,
 	}
-	repo.rows = append(repo.rows, g)
-	return repo, g
+	store.rows = append(store.rows, g)
+	return store, g
 }
 
 func TestGenerateMilestones_HappyPath(t *testing.T) {
 	uid := uuid.New()
-	goals, _ := newSeededGoalRepo(uid)
-	repo := &fakeMilestoneRepo{}
+	ctrl := gomock.NewController(t)
+	goalStore, _ := seedActiveGoal(uid)
+	repo := &milestoneStore{}
 
 	canned := `{"milestones":[
 		{"title":"Week 1 Foundations","detail":"refresh","category":"foundation"},
@@ -195,8 +220,10 @@ func TestGenerateMilestones_HappyPath(t *testing.T) {
 	chain := &stubChain{resp: llmchain.Response{Content: canned}}
 
 	uc := &GenerateMilestones{
-		Repo: repo, Goals: goals, Chain: chain,
-		Now: func() time.Time { return time.Date(2026, 5, 12, 12, 0, 0, 0, time.UTC) },
+		Repo:  wireMockMilestoneRepo(ctrl, repo),
+		Goals: wireMockPrimaryGoalRepo(ctrl, goalStore),
+		Chain: chain,
+		Now:   func() time.Time { return time.Date(2026, 5, 12, 12, 0, 0, 0, time.UTC) },
 	}
 	out, err := uc.Do(context.Background(), GenerateMilestonesInput{UserID: uid, Force: true})
 	if err != nil {
@@ -211,7 +238,8 @@ func TestGenerateMilestones_HappyPath(t *testing.T) {
 	if out[0].Category != domain.MilestoneCategoryFoundation {
 		t.Fatalf("bad category: %s", out[0].Category)
 	}
-	// Persisted в repo.
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
 	if len(repo.rows) != 5 {
 		t.Fatalf("repo not populated: got %d", len(repo.rows))
 	}
@@ -219,17 +247,22 @@ func TestGenerateMilestones_HappyPath(t *testing.T) {
 
 func TestGenerateMilestones_CacheHitSkipsLLM(t *testing.T) {
 	uid := uuid.New()
-	goals, g := newSeededGoalRepo(uid)
-	// Pre-populate repo + set recent generation timestamp.
+	ctrl := gomock.NewController(t)
+	goalStore, g := seedActiveGoal(uid)
 	now := time.Date(2026, 5, 12, 12, 0, 0, 0, time.UTC)
-	repo := &fakeMilestoneRepo{
+	repo := &milestoneStore{
 		rows: []domain.Milestone{
 			{ID: uuid.New(), UserID: uid, GoalID: g.ID, WeekIndex: 1, Title: "cached", GeneratedAt: now.Add(-24 * time.Hour)},
 		},
 		latestGenAt: now.Add(-24 * time.Hour),
 	}
 	chain := &stubChain{err: errors.New("LLM should NOT be called when cache fresh")}
-	uc := &GenerateMilestones{Repo: repo, Goals: goals, Chain: chain, Now: func() time.Time { return now }}
+	uc := &GenerateMilestones{
+		Repo:  wireMockMilestoneRepo(ctrl, repo),
+		Goals: wireMockPrimaryGoalRepo(ctrl, goalStore),
+		Chain: chain,
+		Now:   func() time.Time { return now },
+	}
 	out, err := uc.Do(context.Background(), GenerateMilestonesInput{UserID: uid, Force: false})
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
@@ -241,9 +274,10 @@ func TestGenerateMilestones_CacheHitSkipsLLM(t *testing.T) {
 
 func TestGenerateMilestones_ForceBypassesCache(t *testing.T) {
 	uid := uuid.New()
-	goals, g := newSeededGoalRepo(uid)
+	ctrl := gomock.NewController(t)
+	goalStore, g := seedActiveGoal(uid)
 	now := time.Date(2026, 5, 12, 12, 0, 0, 0, time.UTC)
-	repo := &fakeMilestoneRepo{
+	repo := &milestoneStore{
 		rows: []domain.Milestone{
 			{ID: uuid.New(), UserID: uid, GoalID: g.ID, WeekIndex: 1, Title: "cached", GeneratedAt: now.Add(-24 * time.Hour)},
 		},
@@ -256,7 +290,12 @@ func TestGenerateMilestones_ForceBypassesCache(t *testing.T) {
 		{"title":"new w4","detail":"x","category":"final"}
 	]}`
 	chain := &stubChain{resp: llmchain.Response{Content: canned}}
-	uc := &GenerateMilestones{Repo: repo, Goals: goals, Chain: chain, Now: func() time.Time { return now }}
+	uc := &GenerateMilestones{
+		Repo:  wireMockMilestoneRepo(ctrl, repo),
+		Goals: wireMockPrimaryGoalRepo(ctrl, goalStore),
+		Chain: chain,
+		Now:   func() time.Time { return now },
+	}
 	out, err := uc.Do(context.Background(), GenerateMilestonesInput{UserID: uid, Force: true})
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
@@ -268,9 +307,14 @@ func TestGenerateMilestones_ForceBypassesCache(t *testing.T) {
 
 func TestGenerateMilestones_NoChainErrors(t *testing.T) {
 	uid := uuid.New()
-	goals, _ := newSeededGoalRepo(uid)
-	repo := &fakeMilestoneRepo{}
-	uc := &GenerateMilestones{Repo: repo, Goals: goals, Chain: nil}
+	ctrl := gomock.NewController(t)
+	goalStore, _ := seedActiveGoal(uid)
+	repo := &milestoneStore{}
+	uc := &GenerateMilestones{
+		Repo:  wireMockMilestoneRepo(ctrl, repo),
+		Goals: wireMockPrimaryGoalRepo(ctrl, goalStore),
+		Chain: nil,
+	}
 	_, err := uc.Do(context.Background(), GenerateMilestonesInput{UserID: uid, Force: true})
 	if err == nil || !errors.Is(err, domain.ErrLLMUnavailable) {
 		t.Fatalf("expected ErrLLMUnavailable, got %v", err)
@@ -278,9 +322,13 @@ func TestGenerateMilestones_NoChainErrors(t *testing.T) {
 }
 
 func TestGenerateMilestones_NoActiveGoal(t *testing.T) {
-	repo := &fakeMilestoneRepo{}
-	goals := &fakePrimaryGoalRepo{}
-	uc := &GenerateMilestones{Repo: repo, Goals: goals, Chain: &stubChain{}}
+	ctrl := gomock.NewController(t)
+	repo := &milestoneStore{}
+	uc := &GenerateMilestones{
+		Repo:  wireMockMilestoneRepo(ctrl, repo),
+		Goals: wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{}),
+		Chain: &stubChain{},
+	}
 	_, err := uc.Do(context.Background(), GenerateMilestonesInput{UserID: uuid.New(), Force: true})
 	if err == nil || !strings.Contains(err.Error(), "load goal") {
 		t.Fatalf("expected load goal error, got %v", err)
@@ -291,13 +339,17 @@ func TestGenerateMilestones_NoActiveGoal(t *testing.T) {
 
 func TestGetMilestones_ReturnsCached(t *testing.T) {
 	uid := uuid.New()
-	goals, g := newSeededGoalRepo(uid)
-	repo := &fakeMilestoneRepo{
+	ctrl := gomock.NewController(t)
+	goalStore, g := seedActiveGoal(uid)
+	repo := &milestoneStore{
 		rows: []domain.Milestone{
 			{ID: uuid.New(), UserID: uid, GoalID: g.ID, WeekIndex: 1, Title: "cached"},
 		},
 	}
-	uc := &GetMilestones{Repo: repo, Goals: goals}
+	uc := &GetMilestones{
+		Repo:  wireMockMilestoneRepo(ctrl, repo),
+		Goals: wireMockPrimaryGoalRepo(ctrl, goalStore),
+	}
 	out, err := uc.Do(context.Background(), uid)
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
@@ -308,9 +360,12 @@ func TestGetMilestones_ReturnsCached(t *testing.T) {
 }
 
 func TestGetMilestones_NoGoalReturnsNotFound(t *testing.T) {
-	repo := &fakeMilestoneRepo{}
-	goals := &fakePrimaryGoalRepo{}
-	uc := &GetMilestones{Repo: repo, Goals: goals}
+	ctrl := gomock.NewController(t)
+	repo := &milestoneStore{}
+	uc := &GetMilestones{
+		Repo:  wireMockMilestoneRepo(ctrl, repo),
+		Goals: wireMockPrimaryGoalRepo(ctrl, &primaryGoalStore{}),
+	}
 	_, err := uc.Do(context.Background(), uuid.New())
 	if err == nil || !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound bubbling, got %v", err)
@@ -323,12 +378,13 @@ func TestMarkMilestoneDone_HappyPath(t *testing.T) {
 	uid := uuid.New()
 	goalID := uuid.New()
 	mid := uuid.New()
-	repo := &fakeMilestoneRepo{
+	ctrl := gomock.NewController(t)
+	repo := &milestoneStore{
 		rows: []domain.Milestone{
 			{ID: mid, UserID: uid, GoalID: goalID, WeekIndex: 1, Title: "x"},
 		},
 	}
-	uc := &MarkMilestoneDone{Repo: repo}
+	uc := &MarkMilestoneDone{Repo: wireMockMilestoneRepo(ctrl, repo)}
 	out, err := uc.Do(context.Background(), MarkMilestoneDoneInput{
 		UserID: uid, MilestoneID: mid, Done: true,
 	})
@@ -341,7 +397,8 @@ func TestMarkMilestoneDone_HappyPath(t *testing.T) {
 }
 
 func TestMarkMilestoneDone_ValidationErrors(t *testing.T) {
-	uc := &MarkMilestoneDone{Repo: &fakeMilestoneRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &MarkMilestoneDone{Repo: wireMockMilestoneRepo(ctrl, &milestoneStore{})}
 	if _, err := uc.Do(context.Background(), MarkMilestoneDoneInput{MilestoneID: uuid.New()}); !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput for zero user, got %v", err)
 	}

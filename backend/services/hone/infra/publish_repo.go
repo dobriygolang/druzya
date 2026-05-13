@@ -1,5 +1,4 @@
-// publish_repo.go — Phase C-4 «Publish to web» персистенция. SQL перенесён
-// дословно из cmd/monolith/services/hone/publishing.go.
+// Package infra — «Publish to web» персистенция.
 package infra
 
 import (

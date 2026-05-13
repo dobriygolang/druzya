@@ -1,7 +1,5 @@
 // Reading, Vocab, Listening + writing/code-review grading RPCs.
-// Moved out of server.go (Wave 10 split, 2026-05-13). Pure relocate — no
-// behavioural changes; all methods stay on *HoneServer with the same
-// signatures, and proto converters live alongside their handlers.
+// All methods stay on *HoneServer with proto converters alongside.
 package ports
 
 import (
@@ -18,7 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// ─── Reading-модуль (Wave 4 of docs/feature/english.md) ──────────────────
+// ─── Reading-модуль ──────────────────
 
 func (s *HoneServer) AddReadingMaterial(
 	ctx context.Context,
@@ -250,7 +248,7 @@ func (s *HoneServer) ListVocabDue(
 	return connect.NewResponse(out), nil
 }
 
-// ListVocabBySourceMaterial — Wave 4.2 reverse cross-link.
+// ListVocabBySourceMaterial — reverse cross-link.
 func (s *HoneServer) ListVocabBySourceMaterial(
 	ctx context.Context,
 	req *connect.Request[pb.ListVocabBySourceMaterialRequest],
@@ -277,7 +275,7 @@ func (s *HoneServer) ListVocabBySourceMaterial(
 	return connect.NewResponse(out), nil
 }
 
-// GradeEnglishWriting — Wave 4.4. One-shot grader; no persistence.
+// GradeEnglishWriting — one-shot grader; no persistence.
 // Returns 503-ish (CodeUnavailable) via toConnectErr when llmchain
 // isn't wired (the floor adapter surfaces ErrLLMUnavailable).
 func (s *HoneServer) GradeEnglishWriting(
@@ -311,7 +309,7 @@ func (s *HoneServer) GradeEnglishWriting(
 	return connect.NewResponse(resp), nil
 }
 
-// ── Code-review-coaching (Wave 3.6) ─────────────────────────────────
+// ── Code-review-coaching ─────────────────────────────────
 
 func (s *HoneServer) GradeCodeReview(
 	ctx context.Context,
@@ -345,7 +343,7 @@ func (s *HoneServer) GradeCodeReview(
 	return connect.NewResponse(resp), nil
 }
 
-// ── Listening-модуль (Wave 6.1) ─────────────────────────────────────
+// ── Listening-модуль ─────────────────────────────────────
 
 func (s *HoneServer) AddListeningMaterial(
 	ctx context.Context,

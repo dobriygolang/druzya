@@ -9,6 +9,8 @@
 // axis-score < 0.4 (i.e. raw score < 40 on the 0-100 scale), the
 // adapter writes a struggle mark with source='mock_stage' so the web
 // AtlasPage highlights the matching node.
+//go:generate mockgen -package mocks -destination mocks/struggle_hook_mock.go -source struggle_hook.go
+//go:generate mockgen -package mocks -destination mocks/struggle_hook_mock.go -source struggle_hook.go
 package domain
 
 import (

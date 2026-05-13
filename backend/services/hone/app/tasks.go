@@ -85,21 +85,16 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 	}
 	InvalidateTasksCacheForUser(ctx, uc.Cache, in.UserID)
 
-	// Phase 10 auto-place. Skip когда Categoriser nil (LLM не wired).
-	// Failure не блокирует Create — task уже сохранён, просто остаётся
-	// в default todo column. UI может observe new column через next
-	// ListTasks fetch.
+	// Auto-place via Categoriser. Skip когда nil (LLM не wired). Failure
+	// не блокирует Create — task уже сохранён в default todo column.
 	//
-	// R4 perf: bounded pool вместо raw `go func()` чтобы при burst'е
-	// CreateTask request'ов мы не спавнили 1000 goroutines. Drop с
-	// warn'ом если pool full: task попадает в default todo, фронт
-	// сделает manual placement.
+	// Bounded pool вместо raw `go func()` — при burst'е CreateTask мы не
+	// спавним 1000 goroutines. Drop с warn'ом если pool full: task попадает
+	// в default todo, фронт сделает manual placement.
 	//
-	// Phase J / H3 (2026-05-12): categoriser now also infers kind +
-	// reasoning. Когда новый kind отличается от пришедшего из input
-	// (юзер выбрал custom и не уточнил, например), мы UPDATE'им kind
-	// и шлём CardCategorise event для toast'а. ManualKindOverride на
-	// этом пути false — юзер не явно выбирал, может всегда переписать.
+	// Categoriser также infers kind + reasoning. Когда новый kind отличается
+	// от пришедшего из input (юзер не уточнил), UPDATE'им kind и шлём
+	// CardCategorise event. ManualKindOverride=false — юзер не явно выбирал.
 	if uc.Categoriser != nil {
 		userID := in.UserID
 		taskID := created.ID
@@ -135,10 +130,9 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 					})
 				}
 			}
-			// Phase J / H3 — kind inference. Update only when LLM
-			// resolved a valid kind and it differs from the one the
-			// user provided (or both are non-custom — we still respect
-			// the user's explicit pick if they didn't choose «custom»).
+			// Kind inference. Update only when LLM resolved a valid kind
+			// that differs from input — and we respect the user's explicit
+			// pick when they didn't choose «custom».
 			detected := domain.TaskKind(out.Kind)
 			shouldOverride := detected.IsValid() && detected != origKind &&
 				(origKind == domain.TaskKindCustom || origKind == "")
@@ -197,10 +191,8 @@ func (uc *CreateTask) Do(ctx context.Context, in CreateTaskInput) (domain.Task, 
 }
 
 // TasksListCache — narrow interface для read-through TTL cache на ListTasks.
-// nil-safe (cache miss = direct DB).
-//
-// Phase D4: backed by Redis (was in-memory ttlcache). Cross-instance
-// consistency: invalidate в одной replica виден всем.
+// nil-safe (cache miss = direct DB). Backed by Redis: cross-instance
+// invalidate виден всем replicas.
 type TasksListCache interface {
 	Get(ctx context.Context, key string) ([]domain.Task, bool)
 	Set(ctx context.Context, key string, v []domain.Task)

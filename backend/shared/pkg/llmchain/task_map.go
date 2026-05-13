@@ -1,5 +1,7 @@
 package llmchain
 
+import "maps"
+
 // TaskModelMap is the per-task → per-provider model catalogue. The chain
 // reads it to pick the right model on whichever provider is healthy at
 // call time. Keeping this in code (not the DB) because:
@@ -498,11 +500,7 @@ var DefaultTaskModelMap = TaskModelMap{
 func (m TaskModelMap) Clone() TaskModelMap {
 	out := make(TaskModelMap, len(m))
 	for t, inner := range m {
-		dup := make(map[Provider]string, len(inner))
-		for p, mid := range inner {
-			dup[p] = mid
-		}
-		out[t] = dup
+		out[t] = maps.Clone(inner)
 	}
 	return out
 }

@@ -1,4 +1,4 @@
-// coach_stats.go — Phase 2 snapshot panel KPIs.
+// Package app — Coach snapshot panel KPIs.
 //
 // 4 cards в Coach UI: streak (kata) / focus today min / last mock score /
 // next mock in days. Все агрегации через existing readers — нет new infra.

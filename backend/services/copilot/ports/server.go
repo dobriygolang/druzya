@@ -54,16 +54,15 @@ type CopilotServer struct {
 	GetDesktopConfigUC *app.GetDesktopConfig
 	RateMessageUC      *app.RateMessage
 
-	// Sessions (Phase 12).
+	// Sessions.
 	StartSessionUC       *app.StartSession
 	EndSessionUC         *app.EndSession
 	GetSessionAnalysisUC *app.GetSessionAnalysis
 	ListSessionsUC       *app.ListSessions
 
-	// CheckBlock (Phase-4 ADR-001 Wave 3).
 	CheckBlockUC *app.CheckBlock
 
-	// Interview prep (Phase J / C6).
+	// Interview prep.
 	ParseCVUC                *app.ParseCV
 	ParseJDUC                *app.ParseJD
 	StartInterviewPrepUC     *app.StartInterviewPrep
@@ -473,11 +472,10 @@ func parseOptionalUUID(s string) (uuid.UUID, error) {
 // and sends them on the Connect stream. Returns on upstream close or on
 // send error (the first send error terminates the stream).
 //
-// Phase R5 backpressure: ctx cancellation (client disconnect / shutdown)
-// breaks both the upstream channel read and the downstream send. This
-// stops the LLM token producer promptly when the client goes away —
-// previously the pump would block on `stream.Send` indefinitely until
-// the OS detected dead TCP, which could waste minutes of compute.
+// Backpressure: ctx cancellation (client disconnect / shutdown) breaks
+// both the upstream channel read and the downstream send. Stops the LLM
+// token producer promptly when the client goes away — otherwise the pump
+// blocks on `stream.Send` until the OS detects dead TCP, wasting compute.
 func pumpAnalyzeFrames(ctx context.Context, stream *connect.ServerStream[pb.AnalyzeEvent], frames <-chan app.StreamFrame) error {
 	for {
 		select {
@@ -668,7 +666,7 @@ func (s *CopilotServer) checkAnalyzeRateLimit(ctx context.Context, uid uuid.UUID
 	return nil
 }
 
-// ── Interview prep (Phase J / C6) ───────────────────────────────────────
+// ── Interview prep ───────────────────────────────────────
 
 // ParseCV — POST /api/v1/copilot/interview-prep/parse-cv. Body carries
 // EITHER cv_text OR cv_bytes. The handler dispatches to the use case
@@ -902,11 +900,9 @@ func (s *CopilotServer) toConnectErr(err error) error {
 	case errors.Is(err, domain.ErrModelNotAllowed):
 		return connect.NewError(connect.CodePermissionDenied, err)
 	case errors.Is(err, llmchain.ErrTierRequired):
-		// Phase III: tier-downgrade pinned conversation. Раньше ошибка
-		// падала в default → "copilot failure" CodeInternal без внятного
-		// сообщения. Теперь FailedPrecondition с полным err.Error()
-		// (включает требуемый tier и текущий) — frontend парсит и
-		// показывает upgrade-prompt либо предлагает создать новую
+		// Tier-downgrade pinned conversation → FailedPrecondition с полным
+		// err.Error() (включает требуемый tier и текущий). Frontend парсит
+		// и показывает upgrade-prompt либо предлагает создать новую
 		// conversation на доступной модели.
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, domain.ErrServiceUnavailable):
@@ -916,8 +912,8 @@ func (s *CopilotServer) toConnectErr(err error) error {
 		// failure» вместо «попробуй позже».
 		return connect.NewError(connect.CodeUnavailable, err)
 	case errors.Is(err, domain.ErrAIAssistBlocked):
-		// Phase-4 ADR-001 (Wave 3) — strict mock-session blocks Cue.
-		// Desktop client should poll CheckBlock to avoid hitting this.
+		// Strict mock-session blocks Cue. Desktop client should poll
+		// CheckBlock to avoid hitting this.
 		return connect.NewError(connect.CodePermissionDenied, err)
 	default:
 		if s.Log != nil {

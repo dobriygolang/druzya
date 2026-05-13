@@ -121,14 +121,18 @@ func (f *Folders) Delete(ctx context.Context, userID, folderID uuid.UUID, moveNo
 			return fmt.Errorf("hone.Folders.Delete: reparent children: %w", err)
 		}
 	} else {
-		var count int
+		// W13: was COUNT(*) — we only need a boolean. EXISTS lets the
+		// planner stop at the first matching row.
+		var hasNotes bool
 		if scanErr := tx.QueryRow(ctx,
-			`SELECT COUNT(*) FROM hone_notes WHERE folder_id=$1 AND user_id=$2`,
+			`SELECT EXISTS (
+			    SELECT 1 FROM hone_notes WHERE folder_id=$1 AND user_id=$2
+			 )`,
 			sharedpg.UUID(folderID), sharedpg.UUID(userID),
-		).Scan(&count); scanErr != nil {
+		).Scan(&hasNotes); scanErr != nil {
 			return fmt.Errorf("hone.Folders.Delete: count notes: %w", scanErr)
 		}
-		if count > 0 {
+		if hasNotes {
 			return domain.ErrFolderNotEmpty
 		}
 	}

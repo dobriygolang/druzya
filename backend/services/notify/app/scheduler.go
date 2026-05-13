@@ -23,15 +23,14 @@ type SchedulerStateStore interface {
 }
 
 // WeeklyReportScheduler fires WeeklyReportDue events for each user with the
-// opt-in enabled, every Sunday at cfg.Hour local time. Implemented as a ticker
-// checking the target moment — simpler than pulling in a cron lib for a single
-// scheduled job.
+// opt-in enabled, every Sunday at cfg.Hour local time. Implemented as a 1-min
+// ticker — simpler than pulling in a cron lib for a single scheduled job.
 //
 // Idempotency: lastFired bucket persisted through Store. Если Store задан и
 // вернул bucket >= текущего часа-бакета — считаем что уже стреляли в этом
 // окне и пропускаем fire, даже если API только что рестартовал. Без этого
-// деплой в окно воскресенья 20:00-20:59 ронял повторный broadcast всем
-// пользователям (регрессия 2026-04).
+// деплой в окно воскресенья 20:00-20:59 запускал повторный broadcast всем
+// пользователям.
 type WeeklyReportScheduler struct {
 	Prefs    domain.PreferencesRepo
 	Bus      sharedDomain.Bus
@@ -137,8 +136,8 @@ type chunkedListReader interface {
 }
 
 func (s *WeeklyReportScheduler) fireOnce(ctx context.Context, at time.Time) {
-	// R4 perf: prefer chunked fetch when available — экономим RAM на
-	// 100K-subscriber base'е. Иначе fallback на full-list reader.
+	// Prefer chunked fetch when available — экономим RAM на 100K-subscriber
+	// base'е. Иначе fallback на full-list reader.
 	if reader, ok := s.Prefs.(chunkedListReader); ok {
 		s.Log.InfoContext(ctx, "notify.scheduler.weekly: firing (chunked)",
 			slog.Int("chunk_size", weeklyFanoutChunkSize))
@@ -178,11 +177,9 @@ func (s *WeeklyReportScheduler) fireOnce(ctx context.Context, at time.Time) {
 		slog.Int("subscribers", len(users)),
 		slog.Int("chunk_size", weeklyFanoutChunkSize))
 
-	// R4 perf: chunked fanout с короткой паузой. Раньше fanout 100K
-	// юзеров был sync'ным loop'ом, scheduler-goroutine блокировался
-	// на 30+ секунд и downstream notify-handlers (TG send,
-	// notification_log INSERT) контеншили БД-пул. Сейчас EventBus
-	// dispatch'ит chunk, scheduler паузит ~100ms, повторяет.
+	// Chunked fanout с короткой паузой: 100K sync-fanout блокирует
+	// scheduler-goroutine на 30+ секунд и downstream notify-handlers
+	// (TG send, notification_log INSERT) контеншат БД-пул.
 	for start := 0; start < len(users); start += weeklyFanoutChunkSize {
 		if err := ctx.Err(); err != nil {
 			s.Log.WarnContext(ctx, "notify.scheduler.weekly: cancelled mid-fanout",

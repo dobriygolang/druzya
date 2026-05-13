@@ -2,6 +2,7 @@ package llmchain
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
 	"druz9/shared/enums"
@@ -144,9 +145,7 @@ var virtualChains = map[string][]VirtualCandidate{
 func DefaultVirtualChains() map[string][]VirtualCandidate {
 	out := make(map[string][]VirtualCandidate, len(virtualChains))
 	for k, v := range virtualChains {
-		dup := make([]VirtualCandidate, len(v))
-		copy(dup, v)
-		out[k] = dup
+		out[k] = slices.Clone(v)
 	}
 	return out
 }

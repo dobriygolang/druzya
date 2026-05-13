@@ -76,6 +76,17 @@ SELECT id, session_id, role, content, code_snapshot, stress_snapshot, tokens_use
 -- Internal: returns the task PLUS solution_hint for LLM-only consumption.
 -- Client-facing call sites MUST go through the domain's TaskRepo.PickForSession
 -- which drops the hint via ToPublic before reaching any DTO.
+--
+-- W13 audit: `ORDER BY random()` is normally an anti-pattern because it sorts
+-- every matching row. Here it's acceptable because:
+--   * idx_tasks_section_diff is a *partial* index (WHERE is_active) on
+--     (section, difficulty), so the planner walks a tiny range (~10-100 rows
+--     per bucket given the curated catalog).
+--   * Called once per mock-session start (not per turn), so even O(N) sort
+--     is cheap at current N.
+-- Revisit if any (section, difficulty) bucket grows past ~thousand active
+-- rows — at that point switch to a `OFFSET floor(random()*N) LIMIT 1` two-step
+-- with bucket-count cached, or add a `pickable_id INT8` random key column.
 SELECT id, slug, title_ru, description_ru, difficulty, section, solution_hint
   FROM tasks
  WHERE is_active = true AND section = $1 AND difficulty = $2

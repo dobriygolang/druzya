@@ -1,4 +1,4 @@
-// publish_note.go — use-case'ы Phase C-4 «Publish to web».
+// Package app — «Publish to web» use cases.
 package app
 
 import (

@@ -30,70 +30,55 @@ import (
 // generated handler.
 var _ druz9v1connect.IntelligenceServiceHandler = (*IntelligenceServer)(nil)
 
-// IntelligenceServer adapts intelligence use cases to Connect.
+// IntelligenceServer adapts intelligence use cases to Connect. Every UC
+// pointer below is nil-safe: when absent, the corresponding RPC returns
+// Unavailable instead of crashing — wiring happens incrementally in
+// bootstrap.
 type IntelligenceServer struct {
 	H      *app.Handler
-	Memory *app.Memory // optional — Phase B
-	// Insights stream — Phase 1.5. nil-safe: when absent, ListInsights
-	// returns an empty list and AckInsight returns Unavailable. The
-	// generator is wired separately by a periodic worker.
+	Memory *app.Memory
+
 	ListInsightsUC *app.ListInsights
 	AckInsightUC   *app.AckInsight
 
-	// Phase 2 learning-companion (2026-05-04). Все nil-safe — handlers
-	// возвращают Unavailable до wiring'а в bootstrap.
 	NextActionUC      *app.GetNextAction
-	NextActionContext NextActionContextLoader // optional pre-load для UC.Input
+	NextActionContext NextActionContextLoader
 	ForkSnapshotUC    *app.GetForkSnapshot
 	LogResourceUC     *app.LogResource
 
-	// LearningStateMutator — DI-injected handler в bootstrap, который
-	// делегирует в learning_state.app.SetMode / SetFork. Вынесен в
-	// interface чтобы intelligence не импортировал learning_state
-	// напрямую (cross-service boundary).
+	// LearningStateMutator delegates to learning_state.app.SetMode / SetFork.
+	// Interface keeps intelligence from importing learning_state directly.
 	LearningState LearningStateMutator
 
-	// Phase 2 finishers (2026-05-04).
 	ResourceTrailReader domain.ResourceEngagementReader
 	SkillRadarUC        *app.GetSkillRadar
 	CoachStatsUC        *app.GetCoachStats
 
-	// F2 primary goal CRUD (2026-05-12). nil-safe — handlers return
-	// Unavailable until bootstrap wires repo.
 	CreateGoalUC     *app.CreateGoal
 	GetActiveGoalUC  *app.GetActiveGoal
 	UpdateGoalUC     *app.UpdateGoal
 	DeactivateGoalUC *app.DeactivateGoal
 
-	// F10 Cue session ingestion (2026-05-12). nil-safe.
 	IngestInterviewSessionUC *app.IngestSessionTranscript
 	ListInterviewSessionsUC  *app.ListInterviewSessions
 
-	// F2 LLM-driven milestones (2026-05-12). nil-safe.
 	GenerateMilestonesUC *app.GenerateMilestones
 	GetMilestonesUC      *app.GetMilestones
 	MarkMilestoneDoneUC  *app.MarkMilestoneDone
 
-	// R3 Per-node coverage (2026-05-12). nil-safe.
 	GetNodeCoverageUC *app.GetNodeCoverage
 
-	// F1 Memory expansion Phase 2 (2026-05-12). nil-safe.
 	ListMemoryEntriesUC *app.ListMemoryEntries
 	DeleteMemoryEntryUC *app.DeleteMemoryEntry
-	// F1 Memory expansion launch-polish (2026-05-12). nil-safe.
-	EditMemoryEntryUC *app.EditMemoryEntry
+	EditMemoryEntryUC   *app.EditMemoryEntry
 
-	// H2 Focus reflection persistence (Phase J 2026-05-12). nil-safe.
 	SaveFocusReflectionUC  *app.SaveFocusReflection
 	ListFocusReflectionsUC *app.ListFocusReflections
 
-	// C3 Cross-product context (Phase J 2026-05-12). nil-safe — when
-	// not wired, GetUserContext returns Unavailable. Cue copilot reads
-	// directly via in-process adapter, not via this RPC — the RPC is
-	// here for parity (web /admin can debug a user's context bundle).
+	// Cue copilot reads context directly via in-process adapter; this RPC
+	// is for /admin parity (debug a user's context bundle).
 	GetUserContextUC *app.GetUserContext
 
-	// X5 Atlas struggle marks (Phase J P2 2026-05-12). nil-safe.
 	MarkAtlasStruggleUC  *app.MarkAtlasStruggle
 	ListAtlasStrugglesUC *app.ListAtlasStruggles
 	ClearAtlasStruggleUC *app.ClearAtlasStruggle
@@ -122,11 +107,8 @@ type NextActionContextLoader interface {
 	LoadNextActionContext(ctx context.Context, userID uuid.UUID) (app.NextActionInput, error)
 }
 
-// NewIntelligenceServer wires a server around the Handler. mem может
-// быть nil — тогда AckRecommendation / GetMemoryStats возвращают
-// Unavailable (memory layer ещё не зарегистрирован). insightList /
-// insightAck — Phase 1.5; могут быть nil до полного rollout'а.
-// Phase 2 UCs (next/fork/log) — также optional до wiring.
+// NewIntelligenceServer wires a server around the Handler. All optional
+// dependencies may be nil — the corresponding RPCs return Unavailable.
 func NewIntelligenceServer(
 	h *app.Handler,
 	mem *app.Memory,
@@ -237,7 +219,7 @@ func (s *IntelligenceServer) GetMemoryStats(
 	return connect.NewResponse(out), nil
 }
 
-// ListInsights — Phase 1.5 surface-scoped feed.
+// ListInsights — surface-scoped feed.
 func (s *IntelligenceServer) ListInsights(
 	ctx context.Context,
 	req *connect.Request[pb.ListInsightsRequest],
@@ -277,7 +259,7 @@ func (s *IntelligenceServer) ListInsights(
 	return connect.NewResponse(out), nil
 }
 
-// AckInsight — Phase 1.5 user-feedback tap.
+// AckInsight — user-feedback tap.
 func (s *IntelligenceServer) AckInsight(
 	ctx context.Context,
 	req *connect.Request[pb.AckInsightRequest],
@@ -370,11 +352,8 @@ func (s *IntelligenceServer) toConnectErr(err error) error {
 	case errors.Is(err, domain.ErrRateLimited):
 		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, llmchain.ErrTierRequired):
-		// Phase III: tier-downgrade pinned model -> typed error с
-		// сообщением "your current plan doesn't allow this model".
-		// Frontend ловит CodeFailedPrecondition + читает details для
-		// upgrade-prompt'а. Раньше падало в CodeInternal "intelligence
-		// failure" — юзер не понимал что произошло.
+		// Tier-downgrade pinned model → frontend ловит CodeFailedPrecondition
+		// + читает details для upgrade-prompt'а.
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, domain.ErrLLMUnavailable), errors.Is(err, domain.ErrEmbeddingUnavailable):
 		s.H.Log.Warn("intelligence: AI subsystem unavailable", slog.Any("err", err))
@@ -436,7 +415,7 @@ func toAskAnswerProto(a domain.AskAnswer) *pb.AskAnswer {
 	return out
 }
 
-// ── Phase 2 learning-companion handlers ─────────────────────────────────
+// ── Learning-companion handlers ─────────────────────────────────
 
 // GetNextAction implements druz9.v1.IntelligenceService/GetNextAction.
 func (s *IntelligenceServer) GetNextAction(

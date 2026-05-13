@@ -1,4 +1,4 @@
-// ml_profile.go — Phase K, M5 (P1) 2026-05-13 ML-track detection.
+// Package domain — ML-track detection.
 //
 // MLProfile carries a thin «is this user on the ML track?» signal which the
 // coach uses to swap default prompts (briefSystemPrompt + nextActionSystemPrompt)

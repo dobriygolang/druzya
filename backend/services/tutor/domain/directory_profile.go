@@ -1,5 +1,4 @@
-// directory_profile.go — Phase K T1 (P0) 2026-05-12. Tutor directory MVP
-// entity types + repo port.
+// Package domain — Tutor directory entity types + repo port.
 //
 // Tutor directory = opt-in surface where students discover tutors. Until
 // now tutor acquisition только через invite_code или InviteByUsername —

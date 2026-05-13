@@ -1,4 +1,4 @@
-// Package infra — speaking pronunciation grader (Phase J / H4 2026-05-12).
+// Package infra — speaking pronunciation grader.
 //
 // Compares Whisper transcript against the reference prompt and returns
 // pronunciation + fluency scores plus per-token diff. See llm.go for

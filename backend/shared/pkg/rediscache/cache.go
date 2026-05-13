@@ -122,7 +122,6 @@ func (c *Cache[T]) DeletePattern(ctx context.Context, pattern string) error {
 	var (
 		cursor uint64
 		batch  []string
-		total  int
 	)
 	for {
 		keys, next, err := c.rdb.Scan(ctx, cursor, pattern, 256).Result()
@@ -134,7 +133,6 @@ func (c *Cache[T]) DeletePattern(ctx context.Context, pattern string) error {
 			if err := c.rdb.Del(ctx, batch...).Err(); err != nil {
 				return fmt.Errorf("rediscache.DeletePattern: del: %w", err)
 			}
-			total += len(batch)
 		}
 		cursor = next
 		if cursor == 0 {

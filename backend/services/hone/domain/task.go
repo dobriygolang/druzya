@@ -43,7 +43,7 @@ const (
 	TaskKindQuiz       TaskKind = "quiz"
 	TaskKindReflection TaskKind = "reflection"
 	TaskKindReading    TaskKind = "reading"
-	// TaskKindML — Phase K M7 (2026-05-13). ML/MLE work item: model design,
+	// TaskKindML — ML/MLE work item: model design,
 	// training pipeline drafting, MLOps experiments, paper reading с
 	// implementation, fine-tuning runs (LoRA / QLoRA), RAG pipelines.
 	// Auto-categoriser (см. categorise_task.go) routes tasks с keywords

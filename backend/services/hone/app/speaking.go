@@ -1,4 +1,4 @@
-// speaking.go — Phase J / H4 (P1) Speaking modality use cases.
+// Package app — Speaking modality use cases.
 //
 // Three orchestrators:
 //  1. ListSpeakingExercises — catalog browser (level filter).

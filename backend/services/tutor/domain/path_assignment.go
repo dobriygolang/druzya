@@ -1,7 +1,6 @@
 //go:generate mockgen -package mocks -destination mocks/path_assignment_mock.go -source path_assignment.go
 
-// path_assignment.go — Phase K T2+T3 (2026-05-12). Tracks the
-// many-to-many relationship «path X assigned to student Y» so the
+// Package domain — many-to-many «path X assigned to student Y» so the
 // student-side UI can render «Active Paths · step N / M» and the
 // tutor can re-assign after archive without unique-constraint pain.
 //

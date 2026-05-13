@@ -638,13 +638,13 @@ func (q *Queries) ListConversationsInSession(ctx context.Context, sessionID pgty
 
 const listCopilotConversationsForUser = `-- name: ListCopilotConversationsForUser :many
 SELECT c.id, c.user_id, c.title, c.model, c.created_at, c.updated_at,
-       COALESCE(m.msg_count, 0)::INT AS message_count
+       COALESCE(mc.msg_count, 0)::INT AS message_count
   FROM copilot_conversations c
-  LEFT JOIN (
-    SELECT conversation_id, COUNT(*) AS msg_count
-      FROM copilot_messages
-     GROUP BY conversation_id
-  ) m ON m.conversation_id = c.id
+  LEFT JOIN LATERAL (
+    SELECT COUNT(*) AS msg_count
+      FROM copilot_messages m
+     WHERE m.conversation_id = c.id
+  ) mc ON TRUE
  WHERE c.user_id = $1
    AND (
      $2::BOOLEAN
@@ -676,6 +676,11 @@ type ListCopilotConversationsForUserRow struct {
 // Passing zero-value cursor (cursor_updated_at = 'epoch', cursor_id = all-zeros
 // UUID) returns the newest page. The $4 epoch flag lets the caller request
 // "page 1" without synthesizing a bogus timestamp.
+//
+// W13: was a join-with-grouped-subquery that aggregated COUNT(*) over the
+// entire copilot_messages table on every call (no user_id push-down). Now
+// the COUNT runs as a LATERAL aggregate only for the LIMIT page (≤ N rows),
+// using idx_copilot_messages_conv_created.
 func (q *Queries) ListCopilotConversationsForUser(ctx context.Context, arg ListCopilotConversationsForUserParams) ([]ListCopilotConversationsForUserRow, error) {
 	rows, err := q.db.Query(ctx, listCopilotConversationsForUser,
 		arg.UserID,
@@ -751,14 +756,13 @@ func (q *Queries) ListCopilotMessagesForConversation(ctx context.Context, conver
 
 const listCopilotSessionsForUser = `-- name: ListCopilotSessionsForUser :many
 SELECT s.id, s.user_id, s.kind, s.started_at, s.finished_at, s.byok_only, s.document_ids,
-       COALESCE(c.conv_count, 0)::INT AS conversation_count
+       COALESCE(cc.conv_count, 0)::INT AS conversation_count
   FROM copilot_sessions s
-  LEFT JOIN (
-    SELECT session_id, COUNT(*) AS conv_count
-      FROM copilot_conversations
-     WHERE session_id IS NOT NULL
-     GROUP BY session_id
-  ) c ON c.session_id = s.id
+  LEFT JOIN LATERAL (
+    SELECT COUNT(*) AS conv_count
+      FROM copilot_conversations cv
+     WHERE cv.session_id = s.id
+  ) cc ON TRUE
  WHERE s.user_id = $1
    AND ($2::TEXT = '' OR s.kind = $2::TEXT)
    AND (
@@ -791,6 +795,11 @@ type ListCopilotSessionsForUserRow struct {
 
 // Keyset pagination identical in shape to the conversation history query.
 // Filter by kind is optional: pass empty string to return all kinds.
+//
+// W13: like ListCopilotConversationsForUser — replaced the grouped subquery
+// (which scanned the entire copilot_conversations table on every call) with
+// a LATERAL COUNT scoped to the page's session ids; uses
+// idx_copilot_conversations_session partial index.
 func (q *Queries) ListCopilotSessionsForUser(ctx context.Context, arg ListCopilotSessionsForUserParams) ([]ListCopilotSessionsForUserRow, error) {
 	rows, err := q.db.Query(ctx, listCopilotSessionsForUser,
 		arg.UserID,

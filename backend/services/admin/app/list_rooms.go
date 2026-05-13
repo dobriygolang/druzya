@@ -1,4 +1,4 @@
-// list_rooms.go — Phase 12.5 /admin/rooms moderation reader.
+// Package app — /admin/rooms moderation reader.
 //
 // Surfaces standalone collab rooms (Path C low-key) for admin moderation:
 // list by user/kind/status, abuse signals (если есть в payload),

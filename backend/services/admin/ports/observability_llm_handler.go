@@ -1,7 +1,5 @@
-// observability_llm_handler.go — Phase 12.5 /admin/observability/llm endpoint.
-//
-// Surfaces ObservabilityReader (Phase 12.5 service.go) — task rollups +
-// latest eval runs. Chi-direct (не Connect-RPC).
+// Package ports — /admin/observability/llm endpoint. Surfaces
+// ObservabilityReader (task rollups + latest eval runs). Chi-direct.
 package ports
 
 import (

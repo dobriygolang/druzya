@@ -13,6 +13,7 @@ import (
 	"druz9/intelligence/domain"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
 func TestSelectCueMemoriesKeepsOnlyUsefulCompactEvidence(t *testing.T) {
@@ -66,7 +67,7 @@ func TestCodexTopicsForBriefCollectsSignals(t *testing.T) {
 		[]domain.Episode{cueEpisode(t, now, "weak", "weak cache answer", []string{"backend"})},
 	)
 	for _, want := range []string{"system_design", "cache-design", "sharding", "redis", "redis caching", "consistent-hashing", "backend"} {
-		if !containsString(got, want) {
+		if !containsStringHelper(got, want) {
 			t.Fatalf("topics=%v missing %q", got, want)
 		}
 	}
@@ -100,9 +101,10 @@ func TestBriefMemoryRecallQueryUsesCurrentSignals(t *testing.T) {
 func TestGetDailyBriefKeepsBriefIDOnlyWhenMemoryAppendSucceeds(t *testing.T) {
 	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
 	userID := uuid.New()
-	briefs := &fakeDailyBriefRepo{}
-	episodes := &fakeEpisodeRepo{}
-	uc := testDailyBriefUseCase(now, briefs, episodes)
+	ctrl := gomock.NewController(t)
+	briefs := &dailyBriefStore{}
+	episodes := &episodeStore{}
+	uc := testDailyBriefUseCase(t, ctrl, now, briefs, episodes)
 
 	got, err := uc.Do(context.Background(), GetDailyBriefInput{UserID: userID})
 	if err != nil {
@@ -111,17 +113,23 @@ func TestGetDailyBriefKeepsBriefIDOnlyWhenMemoryAppendSucceeds(t *testing.T) {
 	if got.BriefID == uuid.Nil {
 		t.Fatal("BriefID is nil, want generated id")
 	}
-	if briefs.saved.BriefID != got.BriefID {
-		t.Fatalf("saved brief id=%s, want %s", briefs.saved.BriefID, got.BriefID)
+	briefs.mu.Lock()
+	saved := briefs.saved
+	briefs.mu.Unlock()
+	if saved.BriefID != got.BriefID {
+		t.Fatalf("saved brief id=%s, want %s", saved.BriefID, got.BriefID)
 	}
-	if len(episodes.appended) != 1 {
-		t.Fatalf("appended=%d, want 1", len(episodes.appended))
+	episodes.mu.Lock()
+	appended := append([]domain.Episode(nil), episodes.appended...)
+	episodes.mu.Unlock()
+	if len(appended) != 1 {
+		t.Fatalf("appended=%d, want 1", len(appended))
 	}
-	if !strings.Contains(episodes.appended[0].Summary, "Write 3 cache tradeoffs.") {
-		t.Fatalf("memory summary=%q, want recommendation title included", episodes.appended[0].Summary)
+	if !strings.Contains(appended[0].Summary, "Write 3 cache tradeoffs.") {
+		t.Fatalf("memory summary=%q, want recommendation title included", appended[0].Summary)
 	}
 	var payload emittedBriefPayload
-	if err := json.Unmarshal(episodes.appended[0].Payload, &payload); err != nil {
+	if err := json.Unmarshal(appended[0].Payload, &payload); err != nil {
 		t.Fatalf("payload unmarshal: %v", err)
 	}
 	if payload.BriefID != got.BriefID.String() {
@@ -135,9 +143,10 @@ func TestGetDailyBriefKeepsBriefIDOnlyWhenMemoryAppendSucceeds(t *testing.T) {
 func TestGetDailyBriefClearsBriefIDWhenMemoryAppendFails(t *testing.T) {
 	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
 	userID := uuid.New()
-	briefs := &fakeDailyBriefRepo{}
-	episodes := &fakeEpisodeRepo{appendErr: errors.New("append failed")}
-	uc := testDailyBriefUseCase(now, briefs, episodes)
+	ctrl := gomock.NewController(t)
+	briefs := &dailyBriefStore{}
+	episodes := &episodeStore{appendErr: errors.New("append failed")}
+	uc := testDailyBriefUseCase(t, ctrl, now, briefs, episodes)
 
 	got, err := uc.Do(context.Background(), GetDailyBriefInput{UserID: userID})
 	if err != nil {
@@ -146,21 +155,25 @@ func TestGetDailyBriefClearsBriefIDWhenMemoryAppendFails(t *testing.T) {
 	if got.BriefID != uuid.Nil {
 		t.Fatalf("BriefID=%s, want nil when memory append fails", got.BriefID)
 	}
-	if briefs.saved.BriefID != uuid.Nil {
-		t.Fatalf("saved BriefID=%s, want nil", briefs.saved.BriefID)
+	briefs.mu.Lock()
+	saved := briefs.saved
+	briefs.mu.Unlock()
+	if saved.BriefID != uuid.Nil {
+		t.Fatalf("saved BriefID=%s, want nil", saved.BriefID)
 	}
 }
 
 func TestCacheFreshEnoughInvalidatesAfterNewUserSignal(t *testing.T) {
 	now := time.Date(2026, 4, 28, 9, 0, 0, 0, time.UTC)
 	generatedAt := now.Add(-time.Hour)
-	episodes := &fakeEpisodeRepo{
+	ctrl := gomock.NewController(t)
+	episodes := &episodeStore{
 		latestByKinds: []domain.Episode{{
 			Kind:       domain.EpisodeNoteCreated,
 			OccurredAt: generatedAt.Add(time.Minute),
 		}},
 	}
-	uc := testDailyBriefUseCase(now, &fakeDailyBriefRepo{}, episodes)
+	uc := testDailyBriefUseCase(t, ctrl, now, &dailyBriefStore{}, episodes)
 
 	got, err := uc.cacheFreshEnough(context.Background(), uuid.New(), generatedAt, now)
 	if err != nil {
@@ -191,7 +204,8 @@ func TestAckRecommendationScopesBriefLookupToUser(t *testing.T) {
 	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
 	userID := uuid.New()
 	briefID := uuid.New()
-	episodes := &fakeEpisodeRepo{
+	ctrl := gomock.NewController(t)
+	episodes := &episodeStore{
 		getRecs: []domain.Recommendation{{
 			Kind:      domain.RecommendationTinyTask,
 			Title:     "Write 3 cache tradeoffs.",
@@ -199,7 +213,7 @@ func TestAckRecommendationScopesBriefLookupToUser(t *testing.T) {
 		}},
 	}
 	memory := &Memory{
-		Episodes: episodes,
+		Episodes: wireMockEpisodeRepo(ctrl, episodes),
 		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:      func() time.Time { return now },
 	}
@@ -207,6 +221,8 @@ func TestAckRecommendationScopesBriefLookupToUser(t *testing.T) {
 	if err := memory.AckRecommendation(context.Background(), userID, briefID, 0, true); err != nil {
 		t.Fatalf("AckRecommendation: %v", err)
 	}
+	episodes.mu.Lock()
+	defer episodes.mu.Unlock()
 	if episodes.getUserID != userID {
 		t.Fatalf("lookup user=%s, want %s", episodes.getUserID, userID)
 	}
@@ -223,14 +239,15 @@ func TestAckRecommendationScopesBriefLookupToUser(t *testing.T) {
 
 func TestAckRecommendationInvalidIndexIsInvalidInput(t *testing.T) {
 	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
-	episodes := &fakeEpisodeRepo{
+	ctrl := gomock.NewController(t)
+	episodes := &episodeStore{
 		getRecs: []domain.Recommendation{{
 			Kind:  domain.RecommendationTinyTask,
 			Title: "Write 3 cache tradeoffs.",
 		}},
 	}
 	memory := &Memory{
-		Episodes: episodes,
+		Episodes: wireMockEpisodeRepo(ctrl, episodes),
 		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:      func() time.Time { return now },
 	}
@@ -241,7 +258,9 @@ func TestAckRecommendationInvalidIndexIsInvalidInput(t *testing.T) {
 	}
 }
 
-func containsString(xs []string, want string) bool {
+// containsStringHelper — local stringsContains avoiding collision со shared
+// containsString из других пакетов (hone использует то же имя).
+func containsStringHelper(xs []string, want string) bool {
 	for _, x := range xs {
 		if x == want {
 			return true
@@ -250,153 +269,22 @@ func containsString(xs []string, want string) bool {
 	return false
 }
 
-func testDailyBriefUseCase(now time.Time, briefs *fakeDailyBriefRepo, episodes *fakeEpisodeRepo) *GetDailyBrief {
+func testDailyBriefUseCase(t *testing.T, ctrl *gomock.Controller, now time.Time, briefs *dailyBriefStore, episodes *episodeStore) *GetDailyBrief {
+	t.Helper()
 	return &GetDailyBrief{
-		Briefs:      briefs,
-		Focus:       fakeFocusReader{},
-		Plans:       fakePlanReader{},
-		Notes:       fakeNotesReader{},
-		Synthesiser: fakeBriefSynthesizer{},
+		Briefs:      wireMockDailyBriefRepo(ctrl, briefs),
+		Focus:       wireMockFocusReader(ctrl),
+		Plans:       wireMockPlanReader(ctrl),
+		Notes:       wireMockNotesReader(ctrl),
+		Synthesiser: stubBriefSynthesizer{},
 		Log:         slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:         func() time.Time { return now },
 		Memory: &Memory{
-			Episodes: episodes,
+			Episodes: wireMockEpisodeRepo(ctrl, episodes),
 			Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 			Now:      func() time.Time { return now },
 		},
 	}
-}
-
-type fakeDailyBriefRepo struct {
-	saved domain.DailyBrief
-}
-
-func (r *fakeDailyBriefRepo) GetForDate(context.Context, uuid.UUID, time.Time) (domain.DailyBrief, error) {
-	return domain.DailyBrief{}, domain.ErrNotFound
-}
-
-func (r *fakeDailyBriefRepo) Upsert(_ context.Context, _ uuid.UUID, _ time.Time, b domain.DailyBrief) error {
-	r.saved = b
-	return nil
-}
-
-func (r *fakeDailyBriefRepo) LastForcedAt(context.Context, uuid.UUID) (time.Time, error) {
-	return time.Time{}, nil
-}
-
-func (r *fakeDailyBriefRepo) RecentForUser(context.Context, uuid.UUID, int, int) ([]domain.DailyBrief, error) {
-	return nil, nil
-}
-
-type fakeFocusReader struct{}
-
-func (fakeFocusReader) LastNDays(context.Context, uuid.UUID, int) ([]domain.FocusDay, error) {
-	return nil, nil
-}
-
-type fakePlanReader struct{}
-
-func (fakePlanReader) SkippedItems(context.Context, uuid.UUID, time.Time) ([]domain.SkippedPlanItem, error) {
-	return nil, nil
-}
-
-func (fakePlanReader) CompletedItems(context.Context, uuid.UUID, time.Time) ([]domain.CompletedPlanItem, error) {
-	return nil, nil
-}
-
-type fakeNotesReader struct{}
-
-func (fakeNotesReader) RecentReflections(context.Context, uuid.UUID, int) ([]domain.Reflection, error) {
-	return nil, nil
-}
-
-func (fakeNotesReader) RecentNotes(context.Context, uuid.UUID, int) ([]domain.NoteHead, error) {
-	return nil, nil
-}
-
-func (fakeNotesReader) EmbeddedCorpus(context.Context, uuid.UUID) ([]domain.NoteEmbedding, error) {
-	return nil, nil
-}
-
-type fakeBriefSynthesizer struct{}
-
-func (fakeBriefSynthesizer) Synthesise(context.Context, domain.BriefPromptInput) (domain.DailyBrief, error) {
-	return domain.DailyBrief{
-		Headline:  "Cache gap is actionable.",
-		Narrative: "The repeated signal is cache-design.",
-		Recommendations: []domain.Recommendation{{
-			Kind:      domain.RecommendationTinyTask,
-			Title:     "Write 3 cache tradeoffs.",
-			Rationale: "cache-design is repeated.",
-		}},
-	}, nil
-}
-
-type fakeEpisodeRepo struct {
-	appendErr     error
-	appended      []domain.Episode
-	getUserID     uuid.UUID
-	getBriefID    uuid.UUID
-	getRecs       []domain.Recommendation
-	latestByKinds []domain.Episode
-}
-
-func (r *fakeEpisodeRepo) Append(_ context.Context, e domain.Episode) error {
-	r.appended = append(r.appended, e)
-	return r.appendErr
-}
-
-func (r *fakeEpisodeRepo) LatestByKind(context.Context, uuid.UUID, domain.EpisodeKind, int) ([]domain.Episode, error) {
-	return nil, nil
-}
-
-func (r *fakeEpisodeRepo) LatestByKinds(context.Context, uuid.UUID, []domain.EpisodeKind, int) ([]domain.Episode, error) {
-	return r.latestByKinds, nil
-}
-
-func (r *fakeEpisodeRepo) LatestPerKind(context.Context, uuid.UUID, []domain.EpisodeKind, int) ([]domain.Episode, error) {
-	return nil, nil
-}
-
-func (r *fakeEpisodeRepo) SearchSimilar(context.Context, uuid.UUID, []float32, string, []domain.EpisodeKind, int) ([]domain.EpisodeWithScore, error) {
-	return nil, nil
-}
-
-func (r *fakeEpisodeRepo) PendingEmbeddings(context.Context, int) ([]domain.Episode, error) {
-	return nil, nil
-}
-
-func (r *fakeEpisodeRepo) SetEmbedding(context.Context, uuid.UUID, []float32, string) error {
-	return nil
-}
-
-func (r *fakeEpisodeRepo) Stats30d(context.Context, uuid.UUID) (domain.MemoryStats, error) {
-	return domain.MemoryStats{}, nil
-}
-
-func (r *fakeEpisodeRepo) GetBriefRecommendations(_ context.Context, userID, briefID uuid.UUID) ([]domain.Recommendation, error) {
-	r.getUserID = userID
-	r.getBriefID = briefID
-	if r.getRecs != nil {
-		return r.getRecs, nil
-	}
-	return nil, domain.ErrEpisodeNotFound
-}
-
-func (r *fakeEpisodeRepo) DeleteOlderThan(context.Context, time.Time) (int64, error) {
-	return 0, nil
-}
-
-func (r *fakeEpisodeRepo) MarkStaleForReembed(context.Context, string) (int64, error) {
-	return 0, nil
-}
-
-func (r *fakeEpisodeRepo) CountByKindInRange(context.Context, uuid.UUID, time.Time, time.Time) (map[domain.EpisodeKind]int, error) {
-	return nil, nil
-}
-
-func (r *fakeEpisodeRepo) HasWeeklySummary(context.Context, uuid.UUID, time.Time) (bool, error) {
-	return false, nil
 }
 
 func cueEpisode(t *testing.T, occurredAt time.Time, outcome, summary string, topics []string) domain.Episode {

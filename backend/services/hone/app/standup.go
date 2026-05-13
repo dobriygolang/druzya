@@ -37,7 +37,7 @@ type RecordStandup struct {
 	EmbedFn func(ctx context.Context, userID, noteID uuid.UUID, text string)
 	Log     *slog.Logger
 	Now     func() time.Time
-	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	// Memory — optional hook в Coach memory. nil = no-op.
 	Memory domain.MemoryHook
 }
 

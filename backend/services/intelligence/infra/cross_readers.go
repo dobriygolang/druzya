@@ -382,12 +382,17 @@ func NewTrackReader(pool *pgxpool.Pool) *TrackReader {
 
 // ActiveTracks returns the user's non-completed tracks with current-step
 // info + days-since-last-touch.
+//
+// W13: the steps_total column used to be a correlated `(SELECT COUNT(*)
+// FROM track_steps ts WHERE ts.track_id = t.id)` — re-executed per row.
+// Now expressed as a LATERAL aggregate which fires at most LIMIT (5) times
+// and rides the (track_id) index on track_steps.
 func (r *TrackReader) ActiveTracks(ctx context.Context, userID uuid.UUID) ([]domain.ActiveTrack, error) {
 	rows, err := r.pool.Query(ctx, `
         SELECT
             t.id, t.slug, t.name,
             ut.current_step,
-            COALESCE((SELECT COUNT(*) FROM track_steps ts WHERE ts.track_id = t.id), 0) AS steps_total,
+            COALESCE(stc.cnt, 0) AS steps_total,
             COALESCE(s.title, '')                  AS step_title,
             COALESCE(s.skill_keys, '{}'::text[])   AS step_skill_keys,
             COALESCE(s.estimated_minutes, 0)       AS step_minutes,
@@ -404,6 +409,11 @@ func (r *TrackReader) ActiveTracks(ctx context.Context, userID uuid.UUID) ([]dom
           LEFT JOIN track_steps s
                  ON s.track_id   = ut.track_id
                 AND s.step_index = ut.current_step
+          LEFT JOIN LATERAL (
+              SELECT COUNT(*) AS cnt
+                FROM track_steps ts
+               WHERE ts.track_id = t.id
+          ) stc ON TRUE
          WHERE ut.user_id = $1
            AND ut.completed_at IS NULL
          ORDER BY ut.paused_at IS NOT NULL ASC, ut.joined_at DESC

@@ -1,8 +1,7 @@
-// events.go — Wave 5.2b of docs/feature/plan.md (Tutor Tier 3 events).
-// Four use cases — Create / Cancel / ListByTutor / ListUpcomingForStudent.
-// Auth gates live here: tutor-side writes go through EnsureRelationship,
-// student-side reads are scoped by the SQL predicate (`student_id = $1`)
-// in the repo so a malicious student can't probe foreign event ids.
+// Package app — tutor calendar events use cases. Auth gates: tutor-side
+// writes go through EnsureRelationship; student-side reads scoped by SQL
+// predicate (`student_id = $1`) so a malicious student can't probe foreign
+// event ids.
 package app
 
 import (

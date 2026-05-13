@@ -3,24 +3,37 @@ package app
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-type fakeResourceLogRepo struct {
+// resourceLogStore — closure-state для MockResourceLogRepo (in-package).
+type resourceLogStore struct {
+	mu    sync.Mutex
 	saved []ResourceLogEntry
 }
 
-func (r *fakeResourceLogRepo) Insert(_ context.Context, in ResourceLogEntry) (ResourceLogEntry, error) {
-	in.ID = uuid.New()
-	r.saved = append(r.saved, in)
-	return in, nil
+func wireMockResourceLogRepo(ctrl *gomock.Controller, s *resourceLogStore) *MockResourceLogRepo {
+	m := NewMockResourceLogRepo(ctrl)
+	m.EXPECT().Insert(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in ResourceLogEntry) (ResourceLogEntry, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			in.ID = uuid.New()
+			s.saved = append(s.saved, in)
+			return in, nil
+		},
+	).AnyTimes()
+	return m
 }
 
 func TestLogResource_RejectsBadKind(t *testing.T) {
-	uc := LogResource{Repo: &fakeResourceLogRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := LogResource{Repo: wireMockResourceLogRepo(ctrl, &resourceLogStore{})}
 	_, err := uc.Do(context.Background(), LogResourceInput{
 		UserID: uuid.New(), ResourceURL: "https://x.com", Kind: "downloaded",
 	})
@@ -30,7 +43,8 @@ func TestLogResource_RejectsBadKind(t *testing.T) {
 }
 
 func TestLogResource_RequiresReflectionText(t *testing.T) {
-	uc := LogResource{Repo: &fakeResourceLogRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := LogResource{Repo: wireMockResourceLogRepo(ctrl, &resourceLogStore{})}
 	_, err := uc.Do(context.Background(), LogResourceInput{
 		UserID: uuid.New(), ResourceURL: "https://x.com", Kind: "reflection_submitted",
 	})
@@ -40,10 +54,11 @@ func TestLogResource_RequiresReflectionText(t *testing.T) {
 }
 
 func TestLogResource_AutoCreatesNote(t *testing.T) {
-	repo := &fakeResourceLogRepo{}
+	ctrl := gomock.NewController(t)
+	store := &resourceLogStore{}
 	noteID := uuid.New()
 	uc := LogResource{
-		Repo: repo,
+		Repo: wireMockResourceLogRepo(ctrl, store),
 		NoteCreator: func(_ context.Context, _ uuid.UUID, _ string, _ string) (uuid.UUID, error) {
 			return noteID, nil
 		},
@@ -59,15 +74,18 @@ func TestLogResource_AutoCreatesNote(t *testing.T) {
 	if out.ReflectionNoteID == nil || *out.ReflectionNoteID != noteID {
 		t.Fatalf("expected reflection_note_id, got %+v", out)
 	}
-	if len(repo.saved) != 1 || repo.saved[0].ReflectionNoteID == nil {
-		t.Fatalf("repo entry missing note_id: %+v", repo.saved)
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if len(store.saved) != 1 || store.saved[0].ReflectionNoteID == nil {
+		t.Fatalf("repo entry missing note_id: %+v", store.saved)
 	}
 }
 
 func TestLogResource_NoteFailureDoesNotBlockEntry(t *testing.T) {
-	repo := &fakeResourceLogRepo{}
+	ctrl := gomock.NewController(t)
+	store := &resourceLogStore{}
 	uc := LogResource{
-		Repo: repo,
+		Repo: wireMockResourceLogRepo(ctrl, store),
 		NoteCreator: func(_ context.Context, _ uuid.UUID, _ string, _ string) (uuid.UUID, error) {
 			return uuid.Nil, errors.New("boom")
 		},
@@ -82,7 +100,9 @@ func TestLogResource_NoteFailureDoesNotBlockEntry(t *testing.T) {
 	if !out.NoteCreateFailed {
 		t.Fatal("NoteCreateFailed should be set")
 	}
-	if len(repo.saved) != 1 || repo.saved[0].ReflectionNoteID != nil {
-		t.Fatalf("entry should be saved without note_id, got %+v", repo.saved)
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if len(store.saved) != 1 || store.saved[0].ReflectionNoteID != nil {
+		t.Fatalf("entry should be saved without note_id, got %+v", store.saved)
 	}
 }

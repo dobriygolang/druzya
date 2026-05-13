@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -289,11 +290,7 @@ func signV4TTS(req *http.Request, accessKey, secretKey, region, service, bodyHas
 }
 
 func canonicalQueryTTS(values url.Values) string {
-	keys := make([]string, 0, len(values))
-	for k := range values {
-		keys = append(keys, k)
-	}
-	slices.Sort(keys)
+	keys := slices.Sorted(maps.Keys(values))
 	parts := make([]string, 0, len(keys))
 	for _, k := range keys {
 		for _, v := range values[k] {

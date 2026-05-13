@@ -1,6 +1,4 @@
-// parse_cv.go — Phase J / C6 (P1).
-//
-// ParseCV runs the user-uploaded résumé through the free LLM chain and
+// Package app — ParseCV runs the user-uploaded résumé through the free LLM chain and
 // returns a structured ParsedCV. No persistence here — purely the
 // parsing step of the interview-prep wizard. Caller (port handler)
 // invokes this from the Cue wizard's UploadCVStep after the user picks

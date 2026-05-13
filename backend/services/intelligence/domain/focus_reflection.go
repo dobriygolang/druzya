@@ -1,7 +1,7 @@
-// focus_reflection.go — H2 Focus reflection persistence (Phase J 2026-05-12).
+// Package domain — Focus reflection persistence.
 //
-// FocusReflection mirrors focus_reflections row (migration 00103). One write
-// per pomodoro/countdown finish + paginated read for /stats grade-trend chart.
+// FocusReflection mirrors focus_reflections row. One write per
+// pomodoro/countdown finish + paginated read for /stats grade-trend chart.
 // Idempotent through (UserID, SessionID) UNIQUE constraint — Hone outbox
 // can replay safely after offline gap.
 //

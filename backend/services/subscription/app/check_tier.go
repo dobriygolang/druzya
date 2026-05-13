@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/check_tier_mock.go -source check_tier.go
 package app
 
 import (

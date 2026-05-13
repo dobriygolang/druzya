@@ -1,3 +1,4 @@
+//go:generate mockgen -package app -destination embed_worker_mock_test.go -source embed_worker.go EmbedQueue
 package app
 
 import (

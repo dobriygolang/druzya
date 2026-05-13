@@ -1,6 +1,6 @@
-// ml_prompt.go — Phase K, M5 (P1) 2026-05-13.
+// Package infra — ML-aware system-prompt overlay.
 //
-// ML-aware system-prompt overlay. Applied поверх стандартного briefSystemPrompt
+// Applied поверх стандартного briefSystemPrompt
 // когда MLProfile.IsML=true (primary_goal=ml_offer ИЛИ active_track=ml). Тот
 // же pattern что и personaToneOverlay / variantPromptOverlay: коротенький
 // hint, добавляемый отдельным system message — НЕ переписываем base prompt.

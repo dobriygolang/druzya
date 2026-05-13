@@ -118,16 +118,25 @@ func (r *Circles) ListByMember(ctx context.Context, userID uuid.UUID) ([]domain.
 }
 
 // ListDiscover returns circles the caller is NOT in, newest first, with
-// member counts pre-aggregated. Single query, LEFT JOIN aggregate so adding
-// thousands of circles stays cheap.
+// member counts pre-aggregated.
+//
+// W13: was a correlated subquery COUNT(*) per row — Postgres re-executed
+// it for every circle scanned. Replaced with a LATERAL aggregate so the
+// COUNT only fires for the LIMIT-bounded result set (≤ 30 rows by default),
+// using the (circle_id) index on circle_members.
 func (r *Circles) ListDiscover(ctx context.Context, userID uuid.UUID, limit int) ([]domain.CircleWithCount, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 30
 	}
 	rows, err := r.pool.Query(ctx, `
 		SELECT c.id, c.name, c.description, c.owner_id, c.created_at, c.updated_at,
-		       COALESCE((SELECT COUNT(*) FROM circle_members cm WHERE cm.circle_id = c.id), 0)::int AS member_count
+		       COALESCE(mc.cnt, 0)::int AS member_count
 		  FROM circles c
+		  LEFT JOIN LATERAL (
+		      SELECT COUNT(*) AS cnt
+		        FROM circle_members cm
+		       WHERE cm.circle_id = c.id
+		  ) mc ON TRUE
 		 WHERE NOT EXISTS (
 		     SELECT 1 FROM circle_members m
 		      WHERE m.circle_id = c.id AND m.user_id = $1

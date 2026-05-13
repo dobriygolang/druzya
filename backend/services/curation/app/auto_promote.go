@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/auto_promote_mock.go -source auto_promote.go PromotionReader,PromotionWriter
 // auto_promote.go — F6 auto-promote daemon (Phase 3.5d pure-Go heuristic).
 //
 // Pipeline (one tick, every 6h):

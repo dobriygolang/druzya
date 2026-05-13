@@ -1,25 +1,24 @@
-// extract_resource_content.go — Phase 3.5 LLM extraction поверх fetcher'а.
+// Package app — LLM extraction поверх fetcher'а.
 //
 // Pipeline: fetch URL → extract text → LLM (TaskExtractResourceContent) →
 // curation.Resource shape с topics_covered/summary/depth/level/minutes.
 //
 // Каскад fail-modes:
-//   - fetcher fail → возвращаем preview с {URL, эмпти fields, manual=true},
-//     UI попросит юзера заполнить руками с autocomplete по atlas-nodes
+//   - fetcher fail → preview с {URL, эмпти fields, manual=true}, UI
+//     попросит юзера заполнить руками с autocomplete по atlas-nodes
 //   - LLM fail → fetcher.Title + plain summary без topics, manual=true
 //   - LLM ok → full Resource shape, manual=false
 //
-// Phase R6 — process-local dedup cache (sha256(URL) → Resource, TTL 7d).
-// Cache hit returns Manual=false preview without touching the network or
-// LLM. Successful LLM-parsed extractions populate the cache; failures
-// skip caching so retries can recover. See extract_cache.go for details.
+// Process-local dedup cache (sha256(URL) → Resource, TTL 7d). Cache hit
+// returns Manual=false preview without touching the network or LLM.
+// Successful LLM-parsed extractions populate the cache; failures skip
+// caching so retries can recover. См. extract_cache.go.
 //
-// Phase D3 — true multi-doc batched LLM extraction. ExtractMany now
-// (a) consults the dedup cache up-front, (b) parallel-fetches surviving
-// URLs (max 3 concurrent goroutines), (c) chunks them into groups of
-// extractBatchChunkSize and (d) sends one LLM prompt per chunk that
-// returns a JSON array of resources. Per-URL fallback to single-shot
-// Do() on parse failure or chunked partial result. Net effect: 12-URL
+// ExtractMany (a) consults the dedup cache up-front, (b) parallel-fetches
+// surviving URLs (max 3 concurrent), (c) chunks them в группы по
+// extractBatchChunkSize и (d) sends one LLM prompt per chunk that returns
+// a JSON array of resources. Per-URL fallback to single-shot Do() on
+// parse failure or chunked partial result. Net effect: 12-URL
 // seed batches drop from 12 LLM calls to ~3 (4× cost reduction).
 package app
 

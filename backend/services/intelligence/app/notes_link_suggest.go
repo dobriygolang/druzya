@@ -1,4 +1,4 @@
-// notes_link_suggest.go — Phase 5 AI-link suggestions для Notes UI.
+// Package app — AI-link suggestions для Notes UI.
 //
 // Pipeline:
 //  1. Embed-based candidate retrieval — top-K notes по cosine similarity

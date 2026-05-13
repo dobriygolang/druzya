@@ -24,7 +24,7 @@ type CreateNote struct {
 	EmbedFn func(ctx context.Context, userID, noteID uuid.UUID, text string) // async
 	Log     *slog.Logger
 	Now     func() time.Time
-	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	// Memory — optional hook в Coach memory. nil = no-op.
 	Memory domain.MemoryHook
 }
 
@@ -79,8 +79,8 @@ type UpdateNote struct {
 	EmbedFn func(ctx context.Context, userID, noteID uuid.UUID, text string)
 	Log     *slog.Logger
 	Now     func() time.Time
-	// Memory — optional Phase B-2 hook в Coach memory. Only Today daily
-	// notes emit update snapshots; regular note edits stay in notes/search.
+	// Memory — optional hook в Coach memory. Only Today daily notes emit
+	// update snapshots; regular note edits stay in notes/search.
 	Memory domain.MemoryHook
 }
 
@@ -213,8 +213,8 @@ func (uc *GetNoteConnections) Do(ctx context.Context, in GetNoteConnectionsInput
 		return fmt.Errorf("hone.GetNoteConnections.Do: seed: %w", err)
 	}
 
-	// Phase I: always re-embed seed with the current model so the corpus
-	// filter (by embedding_model_id) is anchored to the same vector space.
+	// Always re-embed seed with the current model so the corpus filter
+	// (by embedding_model_id) is anchored to the same vector space.
 	// Stored seed.Embedding may have been written by an older model — using
 	// it across a model swap silently produces meaningless cosine scores.
 	// The extra embed call is cheap (~50ms, batched-tier model).
@@ -223,9 +223,9 @@ func (uc *GetNoteConnections) Do(ctx context.Context, in GetNoteConnectionsInput
 		return fmt.Errorf("hone.GetNoteConnections.Do: embed seed: %w", embedErr)
 	}
 
-	// Phase IX v2: top-K push-down в Postgres через pgvector. Filter
-	// (model + exclude seed + simFloor) + ranking + LIMIT — всё в одном
-	// SQL'е c IVFFlat-index'ом. Никакого Go-cosine, никакого pre-fetch'а.
+	// Top-K push-down в Postgres через pgvector: filter (model + exclude
+	// seed + simFloor) + ranking + LIMIT — всё в одном SQL'е с IVFFlat-
+	// index'ом. Никакого Go-cosine, никакого pre-fetch'а.
 	hits, err := uc.Notes.SearchSimilarNotes(ctx, in.UserID, seedVec, modelName, seed.ID, 0.6, 10)
 	if err != nil {
 		return fmt.Errorf("hone.GetNoteConnections.Do: similar: %w", err)

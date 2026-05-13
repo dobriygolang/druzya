@@ -1,4 +1,4 @@
-// Package infra — reading summary grader (Wave 4.3).
+// Package infra — reading summary grader.
 //
 // Single JSON-mode call that scores a user's reading summary 0..100.
 // See llm.go for shared helpers and the NoLLMSummaryGrader floor type.

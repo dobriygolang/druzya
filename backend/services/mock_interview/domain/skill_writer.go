@@ -8,6 +8,8 @@
 // Зачем: после FinishPipeline orchestrator должен подвинуть прогресс на
 // атласе (stage_kind → atlas node_key, score → progress%). Иначе
 // пользователь жалуется «прошёл мок, а атлас не изменился».
+//go:generate mockgen -package mocks -destination mocks/skill_writer_mock.go -source skill_writer.go
+//go:generate mockgen -package mocks -destination mocks/skill_writer_mock.go -source skill_writer.go
 package domain
 
 import (

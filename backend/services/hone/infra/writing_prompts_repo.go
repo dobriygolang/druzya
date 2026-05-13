@@ -1,7 +1,5 @@
-// writing_prompts_repo.go — Phase K Wave 11 (2026-05-13)
-//
-// Postgres impl of domain.WritingPromptRepo. Sibling of speaking_repo.go;
-// same hand-rolled pgx pattern.
+// Package infra — Postgres impl of domain.WritingPromptRepo. Sibling of
+// speaking_repo.go; same hand-rolled pgx pattern.
 package infra
 
 import (

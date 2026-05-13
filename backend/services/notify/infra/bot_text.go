@@ -1,10 +1,8 @@
 package infra
 
-// BotReplies holds the canned bilingual replies used by the bot's command
-// dispatcher. Russian is primary per bible §3.1. These are NOT domain.Template
-// because they are replies to user input, not outbound notifications.
-//
-// Keep them short — inline keyboards carry the rest of the UX.
+// BotReplies — canned bot replies. NOT domain.Template because they answer
+// user input, not outbound notifications. Keep them short — inline keyboards
+// carry the rest of the UX.
 type BotReplies struct {
 	Welcome             string
 	WelcomeDeepLink     string // shown on /start <auth_token> when no CodeFiller wired
@@ -16,7 +14,7 @@ type BotReplies struct {
 	LinkNoUser          string
 	LinkUsernameMiss    string // telegram username not set in profile
 	LinkOK              string
-	LinkDisabled        string // /link отключён security-хотфиксом 2026-04
+	LinkDisabled        string // /link disabled (security hotfix)
 	Unlinked            string
 	StreakStub          string
 	StreakNotLinked     string // chat not linked to any druz9 account

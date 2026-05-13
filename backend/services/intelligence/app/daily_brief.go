@@ -65,35 +65,18 @@ type GetDailyBrief struct {
 	DailyNotes   domain.DailyNoteReader
 	MockMessages domain.MockMessagesReader
 	Codex        domain.CodexReader
-	// Tracks — Phase 2d. Reads the user's active learning tracks so
-	// the coach can flag stalled tracks and pin recommendations to the
-	// current step's skill_keys. nil-safe.
-	Tracks domain.TrackReader
-
-	// Goals — Phase 4.3. User's active high-level goals (job/skill/track).
-	// nil-safe: пустой goals reader → coach просто не видит секцию,
-	// поведение существующих briefs не меняется.
-	Goals domain.GoalsReader
-
-	// Clubs — Phase 3 final. Reads "ghosted club sessions" сигнал
-	// (юзер RSVP'нул, не дошёл). nil-safe.
-	Clubs domain.ClubReader
-
-	// External — обучение вне druz9 (LeetCode / Coursera / книги).
-	// nil-safe: пустой reader → секция просто отсутствует в prompt'е.
-	External domain.ExternalActivityReader
-
-	// MLProfile — Phase K, M5 (2026-05-13). nil-safe. When wired AND the
-	// user is on ML track (primary_goal=ml_offer OR active_track=ml), the
-	// brief synthesiser swaps in the ML overlay. Without this reader,
-	// coach behaviour остаётся default (no regression).
+	// All readers below are nil-safe — пустой reader → секция просто
+	// отсутствует в prompt'е, поведение existing briefs не меняется.
+	Tracks    domain.TrackReader
+	Goals     domain.GoalsReader
+	Clubs     domain.ClubReader
+	External  domain.ExternalActivityReader
 	MLProfile domain.MLProfileReader
 
-	// Insights — Phase 1.5b. nil-safe. When set, the brief use-case
-	// passes the same prompt-input snapshot to the insight generator
-	// after synthesise — so both surfaces (full DailyBrief + atomic
-	// insight cards) reflect the same world-state without re-fetching
-	// any of the readers above.
+	// Insights — when set, the brief use-case passes the same prompt-input
+	// snapshot to the insight generator after synthesise — so both surfaces
+	// (full DailyBrief + atomic insight cards) reflect the same world-state
+	// without re-fetching any of the readers above.
 	Insights *GenerateInsights
 }
 
@@ -224,8 +207,8 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 			} else {
 				warnReader(uc.Log, "mocks", err)
 			}
-			// Phase 4.7 — abandoned-mock counter (consistency-break сигнал).
-			// 14d window matches «recent» horizon other readers используют.
+			// Abandoned-mock counter (consistency-break сигнал). 14d window
+			// matches «recent» horizon other readers используют.
 			if v, err := uc.Mocks.RecentAbandonedCount(ctx, in.UserID, 14); err == nil {
 				abandonedRecent = v
 			} else {
@@ -359,9 +342,9 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 					domain.EpisodeBriefDismissed,
 					domain.EpisodeQAQuery,
 					domain.EpisodeQAAnswered,
-					// H2 (Phase J) — focus reflections (with grade) surface
-					// в "past coach interactions" prompt section. Coach видит
-					// «3 days ago user reflected "stuck on joins" grade 2».
+					// Focus reflections (with grade) surface в "past coach
+					// interactions" prompt section. Coach видит «3 days ago
+					// user reflected "stuck on joins" grade 2».
 					domain.EpisodeFocusReflectionAdded,
 				},
 				// Tighter than the historical 60-day window: older brief
@@ -405,9 +388,9 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		}
 	}
 
-	// Phase 4.8 — pending follow-ups derived from recently-followed
-	// brief_emitted episodes. Coach sees «вчера юзер кликнул X» и
-	// должен спросить «landed ли X?» в next brief.
+	// Pending follow-ups derived from recently-followed brief_emitted
+	// episodes. Coach sees «вчера юзер кликнул X» и должен спросить
+	// «landed ли X?» в next brief.
 	pendingFollowups := computePendingFollowups(pastEpisodes, now, 36)
 
 	snapshot := domain.BriefPromptInput{
@@ -458,15 +441,13 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		uc.Log.Warn("intelligence.GetDailyBrief.Do: cache upsert failed",
 			slog.Any("err", err), slog.String("user_id", in.UserID.String()))
 	}
-	// Phase 1.5b — share the same snapshot with the insight generator.
-	// Runs in a detached goroutine so the brief's RPC latency stays
-	// untouched: insight production is a side-effect (writes to its own
-	// table via Upsert) and never blocks the user.
+	// Share the same snapshot with the insight generator. Runs in a
+	// detached goroutine so the brief's RPC latency stays untouched —
+	// insight production is a side-effect (writes its own table via Upsert).
 	//
-	// R4 perf: prefer InsightsPool when wired — bounds concurrency на
-	// burst (1000 параллельных briefs больше не = 1000 LLM goroutines).
-	// Drop с warn'ом если pool full: insight cards отстают на цикл,
-	// brief сам по себе валиден.
+	// InsightsPool, when wired, bounds concurrency на burst (1000 briefs
+	// не должно становиться 1000 LLM goroutines). Drop с warn'ом если
+	// pool full: insight cards отстают на цикл, brief сам валиден.
 	if uc.Insights != nil {
 		userID := in.UserID
 		work := func(bgCtx context.Context) {
@@ -537,7 +518,6 @@ func briefFreshnessEpisodeKinds() []domain.EpisodeKind {
 		domain.EpisodeMockPipelineFinished,
 		domain.EpisodeCodexArticleOpened,
 		domain.EpisodeCueConversationMemory,
-		// H2 (Phase J): new reflection invalidates cached brief.
 		domain.EpisodeFocusReflectionAdded,
 	}
 }
@@ -809,17 +789,14 @@ func cueOutcomeUseful(outcome string) bool {
 	}
 }
 
-// computePendingFollowups — Phase 4.8 closing-the-loop. Возвращает
-// follow-ups: brief_followed эпизоды за последние windowHours, чьи
-// titles/kinds должны попасть в next brief как «landed ли X?».
+// computePendingFollowups returns brief_followed эпизоды за windowHours,
+// чьи titles/kinds должны попасть в next brief как «landed ли X?».
 //
 // Только actionable closables — review_note (read article) и tiny_task
-// (solve drill). schedule = чистый timing, нечего спрашивать;
-// unblock — обычно multi-day, не закрывается в одну ночь.
+// (solve drill). schedule = чистый timing, нечего спрашивать; unblock —
+// обычно multi-day, не закрывается в одну ночь.
 //
-// Title берём из Episode.Summary; payload — formatting из
-// app/memory.go AckRecommendation. Жёсткий cap на 3 чтобы prompt не
-// разросся — coach-prompt and so already busy enough.
+// Cap на 3 — coach-prompt and so already busy enough.
 func computePendingFollowups(past []domain.Episode, now time.Time, windowHours int) []domain.PendingFollowup {
 	if windowHours <= 0 {
 		windowHours = 36

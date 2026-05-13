@@ -1,7 +1,5 @@
-// event_repo.go — Wave 5.2b of docs/feature/plan.md.
-// Hand-rolled pgx over tutor_events. Same per-feature struct pattern
-// as assignment_repo.go: methods on the existing *Postgres so the
-// monolith wiring keeps a single dependency.
+// Package infra — hand-rolled pgx over tutor_events. Methods on the
+// existing *Postgres so the monolith wiring keeps a single dependency.
 //
 // Auth: every read filters by requester=tutor OR requester=student;
 // writes are tutor-only and gated by tutor_id match. The XOR between

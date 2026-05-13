@@ -1,9 +1,6 @@
-// session_notes_visibility.go — Phase K T4 (P1) 2026-05-13.
+// Package app — share per-event session note WITH the student.
 //
-// Tutor option to share a per-event session note WITH the student. Until
-// now `tutor_events.session_note` (Wave 5.2d) was tutor-only — student
-// never saw what was recorded post-session. T4 closes the gap: tutor
-// can opt in to share the note, optionally crafting a curated copy via
+// Tutor can opt in to share the note, optionally crafting a curated copy via
 // shared_content_md instead of exposing the raw private write-up.
 //
 // Privacy rule: default is PRIVATE. SetSessionNoteVisibility is the

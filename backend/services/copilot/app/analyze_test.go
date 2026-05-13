@@ -8,35 +8,51 @@ import (
 	"druz9/copilot/domain"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-// newAnalyzeUC assembles an Analyze use case with default knobs and a
-// scripted LLM that emits the given delta sequence.
-func newAnalyzeUC(t *testing.T, convs *fakeConversations, msgs *fakeMessages, quotas *fakeQuotas, llm domain.LLMProvider) *Analyze {
+// analyzeHarness — собирает Analyze UC из mock-wired components +
+// expose store-структуры для assertion'ов после прогона.
+type analyzeHarness struct {
+	uc     *Analyze
+	chat   *Chat
+	convs  *convStore
+	msgs   *msgStore
+	quotas *quotaStore
+}
+
+func newAnalyzeUC(t *testing.T, cap int, script *llmScript) *analyzeHarness {
 	t.Helper()
-	return &Analyze{
-		Conversations: convs,
-		Messages:      msgs,
-		Quotas:        quotas,
-		LLM:           llm,
-		Config:        newFakeConfig("druz9/turbo"),
+	ctrl := gomock.NewController(t)
+	convs := newConvStore()
+	msgs := newMsgStore(convs)
+	quotas := newQuotaStore(cap)
+	uc := &Analyze{
+		Conversations: wireMockConvRepo(ctrl, convs),
+		Messages:      wireMockMsgRepo(ctrl, msgs),
+		Quotas:        wireMockQuotaRepo(ctrl, quotas),
+		LLM:           wireMockLLMProvider(ctrl, script),
+		Config:        wireMockConfigProvider(ctrl, newConfigState("druz9/turbo")),
+	}
+	return &analyzeHarness{
+		uc:     uc,
+		chat:   &Chat{Inner: uc},
+		convs:  convs,
+		msgs:   msgs,
+		quotas: quotas,
 	}
 }
 
 func TestAnalyze_NewConversation_StreamsAndPersists(t *testing.T) {
-	convs := newFakeConversations()
-	msgs := newFakeMessages(convs)
-	quotas := newFakeQuotas(10)
-	llm := &fakeLLM{
+	h := newAnalyzeUC(t, 10, &llmScript{
 		Deltas:    []string{"Hello", ", ", "world!"},
 		TokensIn:  15,
 		TokensOut: 3,
 		Model:     "druz9/turbo",
-	}
-	uc := newAnalyzeUC(t, convs, msgs, quotas, llm)
+	})
 	userID := uuid.New()
 
-	ch, err := uc.Do(context.Background(), AnalyzeInput{
+	ch, err := h.uc.Do(context.Background(), AnalyzeInput{
 		UserID:     userID,
 		PromptText: "Hi there",
 		Attachments: []domain.AttachmentInput{{
@@ -64,17 +80,20 @@ func TestAnalyze_NewConversation_StreamsAndPersists(t *testing.T) {
 		t.Fatalf("quota.RequestsUsed = %d, want 1", done.Quota.RequestsUsed)
 	}
 
-	// Verify persistence: one conversation, two messages (user + assistant),
-	// assistant content matches, user message flagged has_screenshot.
-	if len(convs.rows) != 1 {
-		t.Fatalf("conversations persisted = %d, want 1", len(convs.rows))
+	h.convs.mu.Lock()
+	convCount := len(h.convs.rows)
+	h.convs.mu.Unlock()
+	if convCount != 1 {
+		t.Fatalf("conversations persisted = %d, want 1", convCount)
 	}
-	if len(msgs.rows) != 2 {
-		t.Fatalf("messages persisted = %d, want 2", len(msgs.rows))
+	h.msgs.mu.Lock()
+	defer h.msgs.mu.Unlock()
+	if len(h.msgs.rows) != 2 {
+		t.Fatalf("messages persisted = %d, want 2", len(h.msgs.rows))
 	}
 	sawHasScreenshot := false
 	sawAssistantFinal := false
-	for _, m := range msgs.rows {
+	for _, m := range h.msgs.rows {
 		if m.HasScreenshot {
 			sawHasScreenshot = true
 		}
@@ -91,13 +110,9 @@ func TestAnalyze_NewConversation_StreamsAndPersists(t *testing.T) {
 }
 
 func TestAnalyze_QuotaExceeded(t *testing.T) {
-	convs := newFakeConversations()
-	msgs := newFakeMessages(convs)
-	quotas := newFakeQuotas(0) // cap=0 → immediately out of budget
-	llm := &fakeLLM{}
-	uc := newAnalyzeUC(t, convs, msgs, quotas, llm)
+	h := newAnalyzeUC(t, 0, &llmScript{}) // cap=0 → immediately out of budget
 
-	_, err := uc.Do(context.Background(), AnalyzeInput{
+	_, err := h.uc.Do(context.Background(), AnalyzeInput{
 		UserID:     uuid.New(),
 		PromptText: "anything",
 	})
@@ -107,13 +122,9 @@ func TestAnalyze_QuotaExceeded(t *testing.T) {
 }
 
 func TestAnalyze_ModelNotAllowed(t *testing.T) {
-	convs := newFakeConversations()
-	msgs := newFakeMessages(convs)
-	quotas := newFakeQuotas(10) // default allows only druz9/turbo
-	llm := &fakeLLM{}
-	uc := newAnalyzeUC(t, convs, msgs, quotas, llm)
+	h := newAnalyzeUC(t, 10, &llmScript{}) // default allows only druz9/turbo
 
-	_, err := uc.Do(context.Background(), AnalyzeInput{
+	_, err := h.uc.Do(context.Background(), AnalyzeInput{
 		UserID:     uuid.New(),
 		PromptText: "anything",
 		Model:      "anthropic/claude-opus-4",
@@ -124,32 +135,25 @@ func TestAnalyze_ModelNotAllowed(t *testing.T) {
 }
 
 func TestAnalyze_EmptyInput(t *testing.T) {
-	convs := newFakeConversations()
-	msgs := newFakeMessages(convs)
-	quotas := newFakeQuotas(10)
-	uc := newAnalyzeUC(t, convs, msgs, quotas, &fakeLLM{})
+	h := newAnalyzeUC(t, 10, &llmScript{})
 
-	_, err := uc.Do(context.Background(), AnalyzeInput{UserID: uuid.New()})
+	_, err := h.uc.Do(context.Background(), AnalyzeInput{UserID: uuid.New()})
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
 }
 
 func TestAnalyze_ProviderErrorMidStream_StillCommits(t *testing.T) {
-	convs := newFakeConversations()
-	msgs := newFakeMessages(convs)
-	quotas := newFakeQuotas(10)
-	llm := &fakeLLM{
+	h := newAnalyzeUC(t, 10, &llmScript{
 		Deltas: []string{"partial ", "rest"},
 		// SendErrOnIx is 1-indexed and fires BEFORE emitting that delta.
 		// With Deltas[0]="partial " sent, SendErrOnIx=2 aborts before "rest",
 		// so assembled = "partial " when the error arrives.
 		SendErrOnIx: 2,
 		ErrValue:    errors.New("upstream EOF"),
-	}
-	uc := newAnalyzeUC(t, convs, msgs, quotas, llm)
+	})
 
-	ch, err := uc.Do(context.Background(), AnalyzeInput{
+	ch, err := h.uc.Do(context.Background(), AnalyzeInput{
 		UserID:     uuid.New(),
 		PromptText: "Hi",
 	})
@@ -162,8 +166,10 @@ func TestAnalyze_ProviderErrorMidStream_StillCommits(t *testing.T) {
 	}
 	// Assistant message should still have been committed with whatever text
 	// was assembled before the error so history does not show an empty turn.
+	h.msgs.mu.Lock()
+	defer h.msgs.mu.Unlock()
 	sawAssembled := false
-	for _, m := range msgs.rows {
+	for _, m := range h.msgs.rows {
 		if m.Content == "partial " {
 			sawAssembled = true
 		}
@@ -174,12 +180,9 @@ func TestAnalyze_ProviderErrorMidStream_StillCommits(t *testing.T) {
 }
 
 func TestChat_RequiresConversationID(t *testing.T) {
-	convs := newFakeConversations()
-	msgs := newFakeMessages(convs)
-	quotas := newFakeQuotas(10)
-	uc := &Chat{Inner: newAnalyzeUC(t, convs, msgs, quotas, &fakeLLM{})}
+	h := newAnalyzeUC(t, 10, &llmScript{})
 
-	_, err := uc.Do(context.Background(), ChatInput{
+	_, err := h.chat.Do(context.Background(), ChatInput{
 		UserID:     uuid.New(),
 		PromptText: "follow up",
 	})

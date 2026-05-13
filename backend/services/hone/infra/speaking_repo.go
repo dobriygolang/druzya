@@ -1,6 +1,6 @@
-// speaking_repo.go — Phase J / H4 (P1) Speaking modality persistence.
-// Hand-rolled pgx over speaking_exercises + speaking_sessions. Sibling
-// of reading_repo.go / listening_repo.go.
+// Package infra — Speaking modality persistence. Hand-rolled pgx over
+// speaking_exercises + speaking_sessions; sibling of reading_repo.go /
+// listening_repo.go.
 package infra
 
 import (

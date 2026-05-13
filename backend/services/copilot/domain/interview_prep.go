@@ -1,4 +1,4 @@
-// interview_prep.go — Phase J / C6 (P1) domain shapes.
+// Package domain — interview-prep wizard shapes.
 //
 // The interview-prep wizard runs INSIDE Cue before a real interview:
 //  1. user uploads CV (text or PDF — main process extracts via pdf.js);

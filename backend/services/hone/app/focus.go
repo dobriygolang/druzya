@@ -70,7 +70,7 @@ type EndFocus struct {
 	Log               *slog.Logger
 	Now               func() time.Time
 	QualifyingSeconds int // defaults to MinQualifyingFocusSeconds
-	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	// Memory — optional hook в Coach memory. nil = no-op.
 	Memory domain.MemoryHook
 }
 

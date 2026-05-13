@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/stripe_mock.go -source stripe.go
 package domain
 
 import (

@@ -406,8 +406,8 @@ func (p *ReadingRepoPG) ListVocabDue(ctx context.Context, userID uuid.UUID, now 
 	return out, nil
 }
 
-// ListVocabBySourceMaterial — Wave 4.2 reverse cross-link. Returns every
-// vocab entry whose source_material points to materialID, scoped by user.
+// ListVocabBySourceMaterial — reverse cross-link. Returns every vocab
+// entry whose source_material points to materialID, scoped by user.
 // Used by the Hone reader sidebar to surface «words I saved from this
 // material» without forcing the renderer to fetch + filter the whole
 // vocab queue. Indexed lookup by source_material would be preferable for

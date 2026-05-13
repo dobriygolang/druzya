@@ -1,6 +1,6 @@
-// list_memory_entries.go — F1 Memory expansion Phase 2 (2026-05-12).
+// Package app — memory entries listing for /profile transparency panel.
 //
-// /profile transparency панель показывает юзеру что AI «помнит» о нём.
+// Панель показывает юзеру что AI «помнит» о нём.
 // Это две RPC:
 //
 //   ListMemoryEntries — paginated read над coach_episodes (alive only).

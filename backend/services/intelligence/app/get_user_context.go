@@ -1,7 +1,8 @@
-// get_user_context.go — C3 cross-product context bundle for Cue copilot.
+//go:generate mockgen -package app -destination get_user_context_mock_test.go -source get_user_context.go AtlasReader
+// Package app — cross-product context bundle for Cue copilot.
 //
-// Phase J (2026-05-12). The unique moat vs Cluely / Final Round AI: when
-// the user fires a suggestion, the Cue backend already knows their
+// The unique moat vs Cluely / Final Round AI: when the user fires a
+// suggestion, the Cue backend already knows their
 // learning identity — primary goal, recent Coach memory, what they
 // touched this week, where their skill radar is weak, which atlas
 // resources match. Suggestion comes back personalised, not generic.

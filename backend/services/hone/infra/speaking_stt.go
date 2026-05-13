@@ -1,9 +1,9 @@
-// speaking_stt.go — Phase J / H4 (P1) Speaking STT floor adapter.
+// Package infra — Speaking STT floor adapter.
 //
 // Real STT lives в transcription bounded context (Groq Whisper). Hone
-// services don't import other services — the real adapter is wired
-// in monolith bootstrap (cmd/monolith/services/hone/speaking.go) which
-// has access to both contexts.
+// services don't import other services — the real adapter is wired in
+// monolith bootstrap (cmd/monolith/services/hone/speaking.go) which has
+// access to both contexts.
 //
 // Here we only ship the no-op floor: returns ErrLLMUnavailable so the
 // handler maps to 503 when STT is unwired.

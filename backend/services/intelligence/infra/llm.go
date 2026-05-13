@@ -39,10 +39,10 @@ func (*NoLLMNoteAnswerer) Answer(_ context.Context, _ domain.AskNotesPromptInput
 // LLMChainBriefSynthesiser runs TaskDailyBrief in JSON-mode and parses
 // the strict envelope into a DailyBrief.
 //
-// Phase III: если configReader выдаёт coach.pinned_model — Brief идёт
-// через ModelOverride (single candidate, no fallback). Это сохраняет
-// единый стиль коуча между запросами; admin меняет модель явно через
-// dynamic_config. Пустая строка → fall back to TaskDailyBrief routing.
+// Если configReader выдаёт coach.pinned_model — Brief идёт через
+// ModelOverride (single candidate, no fallback). Это сохраняет единый
+// стиль коуча между запросами; admin меняет модель через dynamic_config.
+// Пустая строка → fall back to TaskDailyBrief routing.
 type LLMChainBriefSynthesiser struct {
 	chain   llmchain.ChatClient
 	cfg     CoachConfigReader
@@ -65,21 +65,20 @@ func NewLLMChainBriefSynthesiser(chain llmchain.ChatClient, cfg CoachConfigReade
 // Synthesise builds the prompt, calls the chain, parses JSON envelope.
 // One retry on parse failure; second failure surfaces ErrLLMUnavailable.
 //
-// Phase 4.1 — two-stage reflective brief: when severity ∈ {warn, critical}
-// AND coach.reflective_enabled = true в dynamic_config, the parsed sketch
-// goes through a critique LLM call that either confirms or refines it.
-// Critique failures fall back to the sketch silently — мы платим за
-// reflection качеством, а не за возможность сломать happy path.
+// Two-stage reflective brief: when severity ∈ {warn, critical} AND
+// coach.reflective_enabled = true в dynamic_config, the parsed sketch
+// goes through a critique LLM call that confirms or refines it. Critique
+// failures fall back to the sketch silently — мы платим за reflection
+// качеством, а не за возможность сломать happy path.
 func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.BriefPromptInput) (domain.DailyBrief, error) {
 	userMsg := buildBriefUserPrompt(in)
 
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
-	// Phase III pin: если admin задал coach.pinned_model в dynamic_config,
+	// Pinned-model path: admin задаёт coach.pinned_model в dynamic_config —
 	// идём через ModelOverride (single candidate, no fallback). Иначе —
-	// task-routing. Кэширования здесь нет: одна row на DailyBrief, БД
-	// hit копеечный.
+	// task-routing. Кэширования нет: одна row на DailyBrief, БД hit копеечный.
 	pinnedModel := ""
 	personaOverlay := ""
 	variantOverlay := ""
@@ -89,17 +88,16 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 		variantOverlay = variantPromptOverlay(s.cfg.PromptVariant(ctx))
 	}
 
-	// Phase K M5 — ML overlay (2026-05-13). Detection in BriefPromptInput.ML
-	// (primary_goal=ml_offer OR active_track=ml). When set, append ML-flavoured
-	// overlay so coach swaps generic Go-senior tropes for numpy/pytorch coding,
-	// recsys sysdesign, Lilian Weng / Chip Huyen resource pool. Persona/variant
-	// overlays remain applicable on top.
+	// ML overlay: detection in BriefPromptInput.ML (primary_goal=ml_offer
+	// OR active_track=ml). Appends an ML-flavoured system message so coach
+	// swaps generic Go-senior tropes for numpy/pytorch coding, recsys
+	// sysdesign, Lilian Weng / Chip Huyen resource pool.
 	mlOverlay := MLBriefOverlay(in.ML)
 
-	// Phase 4.2 + Phase 5 — overlays = optional system messages added в обе
-	// stages (sketch + critique). Order: persona (tone), variant (format),
-	// ML (domain framing). ML goes last so its forbidden-list / resource
-	// pool overrides any persona/variant generic phrasing.
+	// Overlays = optional system messages added в обе stages (sketch +
+	// critique). Order: persona (tone), variant (format), ML (domain
+	// framing). ML goes last so its forbidden-list / resource pool
+	// overrides any persona/variant generic phrasing.
 	sketchMessages := func() []llmchain.Message {
 		out := []llmchain.Message{
 			{Role: llmchain.RoleSystem, Content: briefSystemPrompt},
@@ -160,7 +158,7 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 		return domain.DailyBrief{}, fmt.Errorf("intelligence.LLMChainBriefSynthesiser.Synthesise: both attempts failed: %w (%w)", lastErr, domain.ErrLLMUnavailable)
 	}
 
-	// Phase 4.1 — reflective critique gate (Phase R6 — selective by signal confidence).
+	// Reflective critique gate — selective by signal confidence.
 	if s.shouldReflect(ctx, sketch, in) {
 		refined, err := s.reflect(ctx, in, sketch, sketchRaw, pinnedModel, personaOverlay, variantOverlay, mlOverlay)
 		if err != nil {
@@ -174,7 +172,7 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 	return sketch, nil
 }
 
-// shouldReflect — Phase R6 gated critique gate. Critique runs только когда:
+// shouldReflect gates critique. Runs только когда:
 //  1. coach.reflective_enabled == true в dynamic_config,
 //  2. severity grade carries enough confidence to pay the second pass:
 //     - critical → always (high stake, paying critique is justified)
@@ -203,9 +201,9 @@ func (s *LLMChainBriefSynthesiser) shouldReflect(ctx context.Context, sketch dom
 	return false
 }
 
-// warnGradeReflectsBenefit — Phase R6. Sub-gate for warn severity. Only
-// warn signals where the second LLM pass is likely to materially improve
-// the brief get critique. Heuristics:
+// warnGradeReflectsBenefit — sub-gate for warn severity. Only warn signals
+// where the second LLM pass is likely to materially improve the brief get
+// critique. Heuristics:
 //   - Repeated mock weak topic ≥3: pattern is real; critique can ground
 //     the rationale in the count.
 //   - Abandoned mocks ≥2: consistency-break warrants careful framing.
@@ -223,16 +221,12 @@ func warnGradeReflectsBenefit(in domain.BriefPromptInput) bool {
 }
 
 // reflect — single-shot critique pass. Reuses the same chain config
-// (pinned model / TaskDailyBrief routing) so we don't drift in what
-// "coach voice" sounds like. Single attempt: если critic упал, caller
-// fall-back'ом возьмёт sketch.
+// (pinned model / TaskDailyBrief routing) so coach voice doesn't drift.
+// Single attempt: если critic упал, caller fall-back'ом возьмёт sketch.
 //
-// personaOverlay (Phase 4.2) применяется и здесь — иначе critique-stage
-// мог бы «выправить» tone обратно к default'у, что особенно заметно для
-// strict/sparring персон.
-//
-// mlOverlay (Phase K M5) — same reasoning: critique stage без него
-// генерил бы «improved» draft с generic Go-senior фразами, теряя ML lens.
+// personaOverlay и mlOverlay применяются и здесь — иначе critique-stage
+// мог бы «выправить» tone обратно к default'у или сгенерил бы «improved»
+// draft с generic Go-senior фразами, теряя personality / ML lens.
 func (s *LLMChainBriefSynthesiser) reflect(
 	ctx context.Context,
 	in domain.BriefPromptInput,

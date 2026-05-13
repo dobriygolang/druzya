@@ -1,9 +1,7 @@
-// writing_prompts.go — Phase K Wave 11 (2026-05-13)
+// Package domain — curated writing-prompt library.
 //
-// Curated writing-prompt library. Replaces the deferred placeholder in
-// the admin lingua page. Separate from writing.go because that file
-// owns the stateless grader; this one owns persistence for the prompts
-// catalog.
+// Separate from writing.go: that file owns the stateless grader; this one
+// owns persistence for the prompts catalog.
 //
 // Architecture:
 //   - WritingPrompt — slug-keyed admin-authored row (id is the slug).

@@ -1,6 +1,4 @@
-// server_speaking.go — Phase J / H4 (P1) Speaking modality RPCs.
-// Lives in a separate file because the server.go file is already 1700+
-// lines; H4 adds three more methods cleanly.
+// Package ports — Speaking modality RPCs.
 package ports
 
 import (

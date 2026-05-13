@@ -1,3 +1,4 @@
+//go:generate mockgen -package app -destination ingest_session_transcript_mock_test.go -source ingest_session_transcript.go MemoryWriter
 // ingest_session_transcript.go — F10 Cue session ingestion UC.
 //
 // Cue (stealth tray-copilot) end-of-session flush'ит transcript + per-stage

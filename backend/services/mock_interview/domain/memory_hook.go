@@ -8,6 +8,8 @@
 // Methods MUST be cheap on the caller side — implementations push the
 // write into a goroutine bound to a background ctx, so failures here
 // never block a candidate's submit.
+//go:generate mockgen -package mocks -destination mocks/memory_hook_mock.go -source memory_hook.go
+//go:generate mockgen -package mocks -destination mocks/memory_hook_mock.go -source memory_hook.go
 package domain
 
 import (

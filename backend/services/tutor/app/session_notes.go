@@ -1,4 +1,4 @@
-// session_notes.go — Phase 3.3 tutor session notes-pad.
+// Package app — tutor session notes-pad.
 //
 // Тутор пишет личные заметки про студента: «на сессии 2026-05-04
 // проходили present perfect, дома — IELTS task 1». Студент не видит.

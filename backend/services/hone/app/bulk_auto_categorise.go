@@ -1,8 +1,6 @@
-// bulk_auto_categorise.go — Phase J / H3 (P1, 2026-05-12).
-//
-// Bulk-categorise action в TaskBoard header «Auto-recategorise all
-// uncategorised». Server-streaming RPC: для каждой eligible task UC
-// зовёт categoriser, апдейтит kind, и пушит event обратно.
+// Package app — bulk-categorise action в TaskBoard header
+// «Auto-recategorise all uncategorised». Server-streaming RPC: для каждой
+// eligible task UC зовёт categoriser, апдейтит kind, пушит event обратно.
 //
 // Eligibility:
 //   • status ∈ {todo, in_progress, in_review} (active board surface).

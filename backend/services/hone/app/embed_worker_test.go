@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 	"io"
 	"log/slog"
 	"sync"
@@ -10,121 +9,123 @@ import (
 	"testing"
 	"time"
 
-	"druz9/hone/domain"
+	honeDomain "druz9/hone/domain"
+	honeMocks "druz9/hone/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-// ─── fakes ─────────────────────────────────────────────────────────────────
+// ─── queueState + wireMockEmbedQueue ──────────────────────────────────────
+//
+// queueState — закрытая state-машина для EmbedQueue: items живут в slice,
+// Dequeue возвращает FIFO. Idle behavior (когда items пуст) emulates
+// blocking-read с таймаутом 10ms — это нужно тестам, проверяющим, что
+// воркер не зависает.
 
-type fakeQueue struct {
+type queueState struct {
 	mu    sync.Mutex
 	items []EmbedJobItem
 	calls int32
 }
 
-func (q *fakeQueue) push(item EmbedJobItem) {
+func (q *queueState) push(item EmbedJobItem) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.items = append(q.items, item)
 }
 
-func (q *fakeQueue) Dequeue(ctx context.Context) (EmbedJobItem, error) {
-	atomic.AddInt32(&q.calls, 1)
-	q.mu.Lock()
-	if len(q.items) > 0 {
-		it := q.items[0]
-		q.items = q.items[1:]
-		q.mu.Unlock()
-		return it, nil
-	}
-	q.mu.Unlock()
-	// idle tick
-	select {
-	case <-ctx.Done():
-		return EmbedJobItem{}, ctx.Err()
-	case <-time.After(10 * time.Millisecond):
-		return EmbedJobItem{}, context.DeadlineExceeded
-	}
+func wireMockEmbedQueue(ctrl *gomock.Controller, q *queueState) *MockEmbedQueue {
+	m := NewMockEmbedQueue(ctrl)
+	m.EXPECT().Dequeue(gomock.Any()).DoAndReturn(
+		func(ctx context.Context) (EmbedJobItem, error) {
+			atomic.AddInt32(&q.calls, 1)
+			q.mu.Lock()
+			if len(q.items) > 0 {
+				it := q.items[0]
+				q.items = q.items[1:]
+				q.mu.Unlock()
+				return it, nil
+			}
+			q.mu.Unlock()
+			// idle tick
+			select {
+			case <-ctx.Done():
+				return EmbedJobItem{}, ctx.Err()
+			case <-time.After(10 * time.Millisecond):
+				return EmbedJobItem{}, context.DeadlineExceeded
+			}
+		},
+	).AnyTimes()
+	return m
 }
 
-type fakeEmbedder struct {
+// embedderState — фиксированный вектор + счётчик вызовов.
+type embedderState struct {
 	vec   []float32
 	model string
-	err   error
 	calls int32
 }
 
-func (f *fakeEmbedder) Embed(_ context.Context, _ string) ([]float32, string, error) {
-	atomic.AddInt32(&f.calls, 1)
-	return f.vec, f.model, f.err
+func wireMockEmbedder(ctrl *gomock.Controller, s *embedderState) *honeMocks.MockEmbedder {
+	m := honeMocks.NewMockEmbedder(ctrl)
+	m.EXPECT().Embed(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string) ([]float32, string, error) {
+			atomic.AddInt32(&s.calls, 1)
+			return s.vec, s.model, nil
+		},
+	).AnyTimes()
+	return m
 }
 
-type fakeNotesRepo struct {
+// notesEmbedState — для NotesRepo subset, который использует worker:
+// только SetEmbedding (остальные методы — заглушки через AnyTimes).
+type notesEmbedState struct {
 	mu      sync.Mutex
 	setCall int32
 	gotVec  []float32
-	setErr  error
 }
 
-func (r *fakeNotesRepo) SetEmbedding(_ context.Context, _, _ uuid.UUID, vec []float32, _ string, _ time.Time) error {
-	atomic.AddInt32(&r.setCall, 1)
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.gotVec = vec
-	return r.setErr
-}
-
-// Только SetEmbedding задействован воркером — остальные методы можно
-// оставить unimplemented.
-func (r *fakeNotesRepo) Create(context.Context, domain.Note) (domain.Note, error) {
-	return domain.Note{}, errors.New("unused")
-}
-func (r *fakeNotesRepo) Update(context.Context, domain.Note) (domain.Note, error) {
-	return domain.Note{}, errors.New("unused")
-}
-func (r *fakeNotesRepo) Get(context.Context, uuid.UUID, uuid.UUID) (domain.Note, error) {
-	return domain.Note{}, errors.New("unused")
-}
-func (r *fakeNotesRepo) List(context.Context, uuid.UUID, int, string, *uuid.UUID) ([]domain.NoteSummary, string, error) {
-	return nil, "", errors.New("unused")
-}
-func (r *fakeNotesRepo) Move(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID) (domain.Note, error) {
-	return domain.Note{}, errors.New("unused")
-}
-func (r *fakeNotesRepo) Delete(context.Context, uuid.UUID, uuid.UUID) error {
-	return errors.New("unused")
-}
-func (r *fakeNotesRepo) WithEmbeddingsForUser(context.Context, uuid.UUID, string) ([]domain.NoteEmbedding, error) {
-	return nil, errors.New("unused")
-}
-
-func (r *fakeNotesRepo) ExistsByTitleForUser(context.Context, uuid.UUID, string) (bool, error) {
-	return false, nil
-}
-
-func (r *fakeNotesRepo) MarkStaleForReembed(context.Context, string) (int64, error) {
-	return 0, nil
-}
-
-func (r *fakeNotesRepo) SearchSimilarNotes(context.Context, uuid.UUID, []float32, string, uuid.UUID, float32, int) ([]domain.NoteSimilarityHit, error) {
-	return nil, nil
+func wireMockNoteRepoForEmbed(ctrl *gomock.Controller, s *notesEmbedState) *honeMocks.MockNoteRepo {
+	m := honeMocks.NewMockNoteRepo(ctrl)
+	m.EXPECT().SetEmbedding(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _, _ uuid.UUID, vec []float32, _ string, _ time.Time) error {
+			atomic.AddInt32(&s.setCall, 1)
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.gotVec = vec
+			return nil
+		},
+	).AnyTimes()
+	// Остальные методы NoteRepo воркером не используются — отвечаем дефолтами AnyTimes.
+	m.EXPECT().Create(gomock.Any(), gomock.Any()).Return(honeDomain.Note{}, nil).AnyTimes()
+	m.EXPECT().Update(gomock.Any(), gomock.Any()).Return(honeDomain.Note{}, nil).AnyTimes()
+	m.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(honeDomain.Note{}, nil).AnyTimes()
+	m.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).AnyTimes()
+	m.EXPECT().Move(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(honeDomain.Note{}, nil).AnyTimes()
+	m.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	m.EXPECT().WithEmbeddingsForUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	m.EXPECT().ExistsByTitleForUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
+	m.EXPECT().MarkStaleForReembed(gomock.Any(), gomock.Any()).Return(int64(0), nil).AnyTimes()
+	m.EXPECT().SearchSimilarNotes(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	return m
 }
 
 // ─── tests ─────────────────────────────────────────────────────────────────
 
 func TestEmbedWorker_ProcessesJob(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 
-	q := &fakeQueue{}
-	emb := &fakeEmbedder{vec: []float32{0.1, 0.2, 0.3}, model: "bge-small-test"}
-	repo := &fakeNotesRepo{}
+	q := &queueState{}
+	emb := &embedderState{vec: []float32{0.1, 0.2, 0.3}, model: "bge-small-test"}
+	repo := &notesEmbedState{}
 	q.push(EmbedJobItem{UserID: uuid.New(), NoteID: uuid.New(), Text: "hello"})
 
 	w := &EmbedWorker{
-		Queue:    q,
-		Embedder: emb,
-		Notes:    repo,
+		Queue:    wireMockEmbedQueue(ctrl, q),
+		Embedder: wireMockEmbedder(ctrl, emb),
+		Notes:    wireMockNoteRepoForEmbed(ctrl, repo),
 		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 		PoolSize: 1,
 	}
@@ -166,10 +167,11 @@ func TestEmbedWorker_ProcessesJob(t *testing.T) {
 
 func TestEmbedWorker_ExitsOnCancel(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	w := &EmbedWorker{
-		Queue:    &fakeQueue{},
-		Embedder: &fakeEmbedder{},
-		Notes:    &fakeNotesRepo{},
+		Queue:    wireMockEmbedQueue(ctrl, &queueState{}),
+		Embedder: wireMockEmbedder(ctrl, &embedderState{}),
+		Notes:    wireMockNoteRepoForEmbed(ctrl, &notesEmbedState{}),
 		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 		PoolSize: 2,
 	}

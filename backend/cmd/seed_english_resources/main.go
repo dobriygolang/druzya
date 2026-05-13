@@ -24,6 +24,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -103,7 +104,7 @@ func upsertNode(ctx context.Context, pool *pgxpool.Pool, nodeID string, incoming
 
 	added := 0
 	skipped := 0
-	merged := append(domain.ResourceList{}, existing...)
+	merged := slices.Clone(existing)
 	for _, r := range incoming {
 		key := strings.ToLower(r.URL)
 		if _, dup := seen[key]; dup {

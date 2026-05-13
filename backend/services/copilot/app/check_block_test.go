@@ -74,25 +74,17 @@ func TestCheckBlock_NilGate(t *testing.T) {
 // path: when the gate reports a live strict mock-session, Analyze.Do must
 // reject with ErrAIAssistBlocked WITHOUT touching the LLM provider.
 //
-// NOTE: uses shared fakes_test.go fixtures (newFakeConversations / newFakeMessages
-// / newFakeQuotas / newAnalyzeUC / fakeLLM) — those are deferred in R8 as a
-// separate refactor; only the gate is mockgen-backed here.
+// Wave 13: fakes_test.go теперь mockgen-backed (newAnalyzeUC возвращает
+// harness обёрнутый над wire-helpers). Этот тест дополнительно injects
+// MockMockSessionGate в analyzer.MockGate чтобы проверить short-circuit.
 func TestAnalyze_AIAssistBlocked_RefusesBeforeLLM(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	convs := newFakeConversations()
-	msgs := newFakeMessages(convs)
-	quotas := newFakeQuotas(10)
-	// Scripted LLM with NO deltas — if Analyze reaches Stream(), the
-	// downstream code asserts on token counts and would surface a
-	// different failure. Easier to just ensure we never get there:
-	// the gate must short-circuit.
-	llm := &fakeLLM{Model: "openai/gpt-4o-mini"}
-	uc := newAnalyzeUC(t, convs, msgs, quotas, llm)
+	h := newAnalyzeUC(t, 10, &llmScript{Model: "openai/gpt-4o-mini"})
 	gate := mocks.NewMockMockSessionGate(ctrl)
 	gate.EXPECT().HasActiveBlockingSession(gomock.Any(), gomock.Any()).Return(true, time.Time{}, nil)
-	uc.MockGate = gate
+	h.uc.MockGate = gate
 
-	_, err := uc.Do(context.Background(), AnalyzeInput{
+	_, err := h.uc.Do(context.Background(), AnalyzeInput{
 		UserID:     uuid.New(),
 		PromptText: "should be refused",
 	})

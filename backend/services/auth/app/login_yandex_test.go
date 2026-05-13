@@ -12,188 +12,234 @@ import (
 	"time"
 
 	"druz9/auth/domain"
+	authmocks "druz9/auth/domain/mocks"
+	appmocks "druz9/auth/app/mocks"
 	"druz9/shared/enums"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-// ── фейки специфичные для Yandex-flow ─────────────────────────────────────
+// ── stateStore ────────────────────────────────────────────────────────────
+//
+// In-test state-machine для domain.OAuthStateStore, аналог codeStore — ровно
+// один цикл Save → Consume. Повторный ConsumeState возвращает
+// ErrStateNotFound (one-shot anti-replay). Подключается к
+// mocks.MockOAuthStateStore через DoAndReturn.
 
-// fakeStates — in-memory реализация domain.OAuthStateStore. Повторный
-// ConsumeState на один и тот же ключ возвращает ErrStateNotFound (одноразовость).
-type fakeStates struct {
-	mu      sync.Mutex
-	data    map[string]string
-	saveErr error
-	getErr  error
+type stateStore struct {
+	mu   sync.Mutex
+	data map[string]string
 }
 
-func newFakeStates() *fakeStates { return &fakeStates{data: map[string]string{}} }
+func newStateStore() *stateStore { return &stateStore{data: map[string]string{}} }
 
-func (f *fakeStates) SaveState(_ context.Context, state, codeVerifier string, _ time.Duration) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.saveErr != nil {
-		return f.saveErr
-	}
-	f.data[state] = codeVerifier
-	return nil
+func wireMockOAuthStateStore(ctrl *gomock.Controller, store *stateStore) *authmocks.MockOAuthStateStore {
+	m := authmocks.NewMockOAuthStateStore(ctrl)
+	m.EXPECT().SaveState(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, state, codeVerifier string, _ time.Duration) error {
+			store.mu.Lock()
+			defer store.mu.Unlock()
+			store.data[state] = codeVerifier
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().ConsumeState(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, state string) (string, error) {
+			store.mu.Lock()
+			defer store.mu.Unlock()
+			v, ok := store.data[state]
+			if !ok {
+				return "", domain.ErrStateNotFound
+			}
+			delete(store.data, state)
+			return v, nil
+		},
+	).AnyTimes()
+	return m
 }
 
-func (f *fakeStates) ConsumeState(_ context.Context, state string) (string, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.getErr != nil {
-		return "", f.getErr
-	}
-	v, ok := f.data[state]
-	if !ok {
-		return "", domain.ErrStateNotFound
-	}
-	delete(f.data, state)
-	return v, nil
-}
-
-type fakeYandexOAuth struct {
-	tokenResp    YandexTokenResponse
-	exchangeErr  error
-	info         domain.YandexUserInfo
-	infoErr      error
+// wireMockYandexOAuth — поведенческий mock с захватом аргументов Exchange.
+type yandexCalls struct {
+	exchangeHits int
 	gotCode      string
 	gotVerifier  string
-	exchangeHits int
 }
 
-func (f *fakeYandexOAuth) Exchange(_ context.Context, code, verifier string) (YandexTokenResponse, error) {
-	f.exchangeHits++
-	f.gotCode = code
-	f.gotVerifier = verifier
-	if f.exchangeErr != nil {
-		return YandexTokenResponse{}, f.exchangeErr
-	}
-	return f.tokenResp, nil
+func wireMockYandexOAuth(ctrl *gomock.Controller, tokenResp domain.YandexTokenResponse, exchangeErr error, info domain.YandexUserInfo, infoErr error, calls *yandexCalls) *appmocks.MockYandexOAuthClient {
+	m := appmocks.NewMockYandexOAuthClient(ctrl)
+	m.EXPECT().Exchange(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, code, verifier string) (domain.YandexTokenResponse, error) {
+			calls.exchangeHits++
+			calls.gotCode = code
+			calls.gotVerifier = verifier
+			if exchangeErr != nil {
+				return domain.YandexTokenResponse{}, exchangeErr
+			}
+			return tokenResp, nil
+		},
+	).AnyTimes()
+	m.EXPECT().FetchUserInfo(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string) (domain.YandexUserInfo, error) {
+			if infoErr != nil {
+				return domain.YandexUserInfo{}, infoErr
+			}
+			return info, nil
+		},
+	).AnyTimes()
+	return m
 }
 
-func (f *fakeYandexOAuth) FetchUserInfo(_ context.Context, _ string) (domain.YandexUserInfo, error) {
-	if f.infoErr != nil {
-		return domain.YandexUserInfo{}, f.infoErr
-	}
-	return f.info, nil
+// wireMockEnc — encrypt = prepend "enc:".
+func wireMockEnc(ctrl *gomock.Controller) *appmocks.MockTokenEncryptor {
+	m := appmocks.NewMockTokenEncryptor(ctrl)
+	m.EXPECT().Encrypt(gomock.Any()).DoAndReturn(
+		func(b []byte) ([]byte, error) {
+			return append([]byte("enc:"), b...), nil
+		},
+	).AnyTimes()
+	return m
 }
-
-type fakeEnc struct{}
-
-func (fakeEnc) Encrypt(b []byte) ([]byte, error) { return append([]byte("enc:"), b...), nil }
 
 // ── helpers ───────────────────────────────────────────────────────────────
 
-func newLoginYandexUC(states domain.OAuthStateStore, oauth YandexOAuthClient, users *fakeUsers) *LoginYandex {
-	return &LoginYandex{
-		OAuth:      oauth,
-		Users:      users,
-		Sessions:   &fakeSessions{},
-		Limiter:    &fakeLimiter{},
-		Bus:        &fakeBus{},
-		Issuer:     NewTokenIssuer("test-secret-32-bytes-aaaaaaaaaaaaaaaa", time.Minute),
-		Enc:        fakeEnc{},
-		States:     states,
-		RefreshTTL: time.Hour,
-		Log:        quietLog(),
+// loginYandexHarness — wraps everything для readable yandex-tests.
+type loginYandexHarness struct {
+	uc      *LoginYandex
+	states  *stateStore
+	calls   *yandexCalls
+	gotIn   *domain.UpsertOAuthInput
+	bus     *fakeBus
+}
+
+func newLoginYandexUC(t *testing.T, user domain.User, created bool, tokenResp domain.YandexTokenResponse, info domain.YandexUserInfo) *loginYandexHarness {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	store := newStateStore()
+	calls := &yandexCalls{}
+	gotIn := &domain.UpsertOAuthInput{}
+	sessions := &[]domain.Session{}
+	bus := &fakeBus{}
+	return &loginYandexHarness{
+		uc: &LoginYandex{
+			OAuth:      wireMockYandexOAuth(ctrl, tokenResp, nil, info, nil, calls),
+			Users:      wireMockUsersUpsert(ctrl, user, created, gotIn, nil),
+			Sessions:   wireMockSessionsCreateOnly(ctrl, sessions),
+			Limiter:    wireMockRateLimiter(ctrl, "", 0),
+			Bus:        bus,
+			Issuer:     NewTokenIssuer("test-secret-32-bytes-aaaaaaaaaaaaaaaa", time.Minute),
+			Enc:        wireMockEnc(ctrl),
+			States:     wireMockOAuthStateStore(ctrl, store),
+			RefreshTTL: time.Hour,
+			Log:        quietLog(),
+		},
+		states: store,
+		calls:  calls,
+		gotIn:  gotIn,
+		bus:    bus,
 	}
 }
 
 // ── LoginYandex ───────────────────────────────────────────────────────────
 
 func TestLoginYandex_Happy(t *testing.T) {
-	states := newFakeStates()
 	const state = "state-aaa"
 	const verifier = "verifier-xxx"
-	_ = states.SaveState(context.Background(), state, verifier, time.Minute)
 
-	oauth := &fakeYandexOAuth{
-		tokenResp: YandexTokenResponse{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600},
-		info:      domain.YandexUserInfo{ID: "42", Login: "ivan", DisplayName: "Ivan"},
-	}
-	users := &fakeUsers{created: true, user: domain.User{ID: uuid.New(), Username: "ivan", Role: enums.UserRoleUser}}
-	uc := newLoginYandexUC(states, oauth, users)
+	h := newLoginYandexUC(t,
+		domain.User{ID: uuid.New(), Username: "ivan", Role: enums.UserRoleUser},
+		true,
+		domain.YandexTokenResponse{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600},
+		domain.YandexUserInfo{ID: "42", Login: "ivan", DisplayName: "Ivan"},
+	)
+	_ = h.uc.States.SaveState(context.Background(), state, verifier, time.Minute)
 
-	res, err := uc.Do(context.Background(), LoginYandexInput{Code: "code-123", State: state, IP: "1.1.1.1"})
+	res, err := h.uc.Do(context.Background(), LoginYandexInput{Code: "code-123", State: state, IP: "1.1.1.1"})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
 	if res.Tokens.AccessToken == "" {
 		t.Fatal("empty access token")
 	}
-	if oauth.gotVerifier != verifier {
-		t.Fatalf("verifier %q want %q", oauth.gotVerifier, verifier)
+	if h.calls.gotVerifier != verifier {
+		t.Fatalf("verifier %q want %q", h.calls.gotVerifier, verifier)
 	}
-	if oauth.gotCode != "code-123" {
-		t.Fatalf("code %q want code-123", oauth.gotCode)
+	if h.calls.gotCode != "code-123" {
+		t.Fatalf("code %q want code-123", h.calls.gotCode)
 	}
 	// State должен быть потреблён (one-shot).
-	if _, ok := states.data[state]; ok {
+	h.states.mu.Lock()
+	_, ok := h.states.data[state]
+	h.states.mu.Unlock()
+	if ok {
 		t.Fatal("state not consumed after success")
 	}
 }
 
 func TestLoginYandex_InvalidState(t *testing.T) {
-	states := newFakeStates() // пусто → state неизвестен
-	oauth := &fakeYandexOAuth{}
-	users := &fakeUsers{}
-	uc := newLoginYandexUC(states, oauth, users)
+	h := newLoginYandexUC(t, domain.User{}, false, domain.YandexTokenResponse{}, domain.YandexUserInfo{})
+	// states пустой — state «bogus» неизвестен.
 
-	_, err := uc.Do(context.Background(), LoginYandexInput{Code: "c", State: "bogus", IP: "1.1.1.1"})
+	_, err := h.uc.Do(context.Background(), LoginYandexInput{Code: "c", State: "bogus", IP: "1.1.1.1"})
 	if !errors.Is(err, ErrInvalidState) {
 		t.Fatalf("expected ErrInvalidState, got %v", err)
 	}
-	if oauth.exchangeHits != 0 {
+	if h.calls.exchangeHits != 0 {
 		t.Fatal("Exchange must NOT be called when state is invalid (anti-fallback)")
 	}
 }
 
 func TestLoginYandex_EmptyState(t *testing.T) {
-	states := newFakeStates()
-	oauth := &fakeYandexOAuth{}
-	users := &fakeUsers{}
-	uc := newLoginYandexUC(states, oauth, users)
+	h := newLoginYandexUC(t, domain.User{}, false, domain.YandexTokenResponse{}, domain.YandexUserInfo{})
 
-	_, err := uc.Do(context.Background(), LoginYandexInput{Code: "c", State: "", IP: "1.1.1.1"})
+	_, err := h.uc.Do(context.Background(), LoginYandexInput{Code: "c", State: "", IP: "1.1.1.1"})
 	if !errors.Is(err, ErrInvalidState) {
 		t.Fatalf("expected ErrInvalidState for empty state, got %v", err)
 	}
-	if oauth.exchangeHits != 0 {
+	if h.calls.exchangeHits != 0 {
 		t.Fatal("Exchange called on empty state — anti-fallback violated")
 	}
 }
 
 func TestLoginYandex_StateReplay(t *testing.T) {
-	states := newFakeStates()
 	const state = "state-once"
-	_ = states.SaveState(context.Background(), state, "v", time.Minute)
-
-	oauth := &fakeYandexOAuth{
-		tokenResp: YandexTokenResponse{AccessToken: "at", RefreshToken: "rt"},
-		info:      domain.YandexUserInfo{ID: "1"},
-	}
-	users := &fakeUsers{user: domain.User{ID: uuid.New(), Username: "x", Role: enums.UserRoleUser}}
-	uc := newLoginYandexUC(states, oauth, users)
+	h := newLoginYandexUC(t,
+		domain.User{ID: uuid.New(), Username: "x", Role: enums.UserRoleUser},
+		false,
+		domain.YandexTokenResponse{AccessToken: "at", RefreshToken: "rt"},
+		domain.YandexUserInfo{ID: "1"},
+	)
+	_ = h.uc.States.SaveState(context.Background(), state, "v", time.Minute)
 
 	// Первый callback — успех.
-	if _, err := uc.Do(context.Background(), LoginYandexInput{Code: "c", State: state, IP: "1.1.1.1"}); err != nil {
+	if _, err := h.uc.Do(context.Background(), LoginYandexInput{Code: "c", State: state, IP: "1.1.1.1"}); err != nil {
 		t.Fatalf("first call: %v", err)
 	}
 	// Второй с тем же state — отказ (replay защищён GETDEL'ом).
-	_, err := uc.Do(context.Background(), LoginYandexInput{Code: "c", State: state, IP: "1.1.1.1"})
+	_, err := h.uc.Do(context.Background(), LoginYandexInput{Code: "c", State: state, IP: "1.1.1.1"})
 	if !errors.Is(err, ErrInvalidState) {
 		t.Fatalf("expected ErrInvalidState on replay, got %v", err)
 	}
 }
 
 func TestLoginYandex_RateLimited(t *testing.T) {
-	states := newFakeStates()
-	uc := newLoginYandexUC(states, &fakeYandexOAuth{}, &fakeUsers{})
-	uc.Limiter = &fakeLimiter{rejectKeyPrefix: "rl:auth:yandex:", retry: 5}
-
+	ctrl := gomock.NewController(t)
+	store := newStateStore()
+	calls := &yandexCalls{}
+	gotIn := &domain.UpsertOAuthInput{}
+	sessions := &[]domain.Session{}
+	uc := &LoginYandex{
+		OAuth:      wireMockYandexOAuth(ctrl, domain.YandexTokenResponse{}, nil, domain.YandexUserInfo{}, nil, calls),
+		Users:      wireMockUsersUpsert(ctrl, domain.User{}, false, gotIn, nil),
+		Sessions:   wireMockSessionsCreateOnly(ctrl, sessions),
+		Limiter:    wireMockRateLimiter(ctrl, "rl:auth:yandex:", 5),
+		Bus:        &fakeBus{},
+		Issuer:     NewTokenIssuer("test-secret-32-bytes-aaaaaaaaaaaaaaaa", time.Minute),
+		Enc:        wireMockEnc(ctrl),
+		States:     wireMockOAuthStateStore(ctrl, store),
+		RefreshTTL: time.Hour,
+		Log:        quietLog(),
+	}
 	_, err := uc.Do(context.Background(), LoginYandexInput{Code: "c", State: "s", IP: "1.1.1.1"})
 	var rl *RateLimitedError
 	if !errors.As(err, &rl) {
@@ -204,12 +250,13 @@ func TestLoginYandex_RateLimited(t *testing.T) {
 // ── StartLoginYandex ──────────────────────────────────────────────────────
 
 func TestStartLoginYandex_Happy(t *testing.T) {
-	states := newFakeStates()
+	ctrl := gomock.NewController(t)
+	store := newStateStore()
 	uc := &StartLoginYandex{
 		ClientID:     "client-id-42",
 		AuthorizeURL: "https://oauth.yandex.ru/authorize",
-		States:       states,
-		Limiter:      &fakeLimiter{},
+		States:       wireMockOAuthStateStore(ctrl, store),
+		Limiter:      wireMockRateLimiter(ctrl, "", 0),
 		TTL:          time.Minute,
 		Log:          quietLog(),
 	}
@@ -223,7 +270,9 @@ func TestStartLoginYandex_Happy(t *testing.T) {
 	if res.State == "" {
 		t.Fatal("empty state")
 	}
-	verifier, ok := states.data[res.State]
+	store.mu.Lock()
+	verifier, ok := store.data[res.State]
+	store.mu.Unlock()
 	if !ok {
 		t.Fatal("state not persisted in store")
 	}
@@ -260,7 +309,13 @@ func TestStartLoginYandex_Happy(t *testing.T) {
 }
 
 func TestStartLoginYandex_NoClientID(t *testing.T) {
-	uc := &StartLoginYandex{States: newFakeStates(), Limiter: &fakeLimiter{}, Log: quietLog()}
+	ctrl := gomock.NewController(t)
+	store := newStateStore()
+	uc := &StartLoginYandex{
+		States:  wireMockOAuthStateStore(ctrl, store),
+		Limiter: wireMockRateLimiter(ctrl, "", 0),
+		Log:     quietLog(),
+	}
 	_, err := uc.Do(context.Background(), StartLoginYandexInput{IP: "1.1.1.1"})
 	if err == nil {
 		t.Fatal("expected error for missing client_id")
@@ -268,10 +323,12 @@ func TestStartLoginYandex_NoClientID(t *testing.T) {
 }
 
 func TestStartLoginYandex_RateLimited(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	store := newStateStore()
 	uc := &StartLoginYandex{
 		ClientID: "cid",
-		States:   newFakeStates(),
-		Limiter:  &fakeLimiter{rejectKeyPrefix: "rl:auth:yandex:start:", retry: 11},
+		States:   wireMockOAuthStateStore(ctrl, store),
+		Limiter:  wireMockRateLimiter(ctrl, "rl:auth:yandex:start:", 11),
 		TTL:      time.Minute,
 		Log:      quietLog(),
 	}

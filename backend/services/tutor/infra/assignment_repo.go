@@ -1,7 +1,5 @@
-// assignment_repo.go — Wave 5.1 of docs/feature/plan.md.
-// Hand-rolled pgx over tutor_assignments. Mirrors snapshot_repo's
-// EnsureRelationship gate convention; cross-user reads are gated at
-// SQL via «requester is tutor OR student on the row».
+// Package infra — hand-rolled pgx over tutor_assignments. Cross-user
+// reads are gated в SQL: «requester is tutor OR student on the row».
 package infra
 
 import (
