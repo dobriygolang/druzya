@@ -24,6 +24,7 @@ const InsightsPage = lazy(() => import('./pages/InsightsPage'))
 // infra/cross_readers.go), CRUD endpoints в backend остаются для будущего
 // surface'а или CLI-доступа.
 const CodexPage = lazy(() => import('./pages/CodexPage'))
+const LinguaShell = lazy(() => import('./pages/LinguaShell'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const WelcomePage = lazy(() => import('./pages/WelcomePage'))
@@ -137,6 +138,10 @@ export default function App() {
             CalendarReader keepalive, но web UI оказался вторичным. /calendar
             редиректит на /arena вторым роутом ниже. */}
         <Route path="/codex" element={<CodexPage />} />
+        {/* Phase K Wave 8 (2026-05-13) — Lingua: English vertical migrated
+            из Hone (desktop). LinguaShell хостит nested overview/reading/
+            writing/listening/speaking routes под /lingua/*. */}
+        <Route path="/lingua/*" element={<LinguaShell />} />
         <Route path="/profile" element={<ProfilePage />} />
         {/* WAVE-13 — /profile/weekly absorbs the standalone /weekly route as
             a profile sub-section. ProfilePage's tab strip also surfaces this

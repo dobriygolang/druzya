@@ -81,7 +81,6 @@ function pluralDays(n: number): string {
   return 'дней'
 }
 
-function pluralDaysShort(n: number): string {
-  // For chip — короче. «дн.» common
+function pluralDaysShort(_n: number): string {
   return 'дн.'
 }

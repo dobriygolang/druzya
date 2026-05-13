@@ -1,18 +1,18 @@
-# druz9 — identity (clarified 2026-05-11, MVP implementation 2026-05-12)
+# druz9 — identity (clarified 2026-05-11, MVP implementation 2026-05-12, refined 2026-05-13)
 
 ## Что мы
 
 **AI-guide** который наблюдает за external learning (LeetCode, deep-ml.com, NeetCode, Coursera, любая платформа) и **ставит цели + строит планы + предсказывает готовность**. Не строим content — ранжируем чужой.
 
-**Three surfaces, one identity:**
+**Three surfaces, one identity (Wave 8 refinement: doing / learning / performing):**
 
-| Surface | Где | Что делает |
-|---|---|---|
-| **Web** (druz9.online) | `frontend/` | Entry + AI-mock interview (5-axis radar) + Atlas + Codex + tutor toolkit + Whiteboard/Editor solo + Podcasts |
-| **Hone** | `hone/` | Тихий daily focus-cockpit для разрабов: AI-план, focus-timers, заметки с AI-link, taskboard с auto-categorise, English hub. Offline-first («должен работать в самолёте») |
-| **Cue** | `cue/` | Stealth tray-copilot для собесов: невидим при screen-share (NSWindowSharingNone + setContentProtection), live-транскрипт + AI-подсказки |
+| Surface | Verb | Где | Что делает |
+|---|---|---|---|
+| **Web** (druz9.online) | **learning** | `frontend/` | Entry + AI-coach + AI-mock interview (5-axis radar) + Atlas + Codex + tutor toolkit + Whiteboard/Editor solo + Podcasts + **Lingua** (English hub: reading / writing / listening / speaking + vocab SRS, PWA-offline для vocab review) |
+| **Hone** | **doing** | `hone/` | Тихий daily focus-cockpit для разрабов: AI-план, focus-timers (6 modes), заметки с AI-link, taskboard с auto-categorise. **Не содержит learning UI** — English / Atlas / Codex живут в web. Offline-first («должен работать в самолёте») |
+| **Cue** | **performing** | `cue/` | Stealth tray-copilot для собесов: невидим при screen-share (NSWindowSharingNone + setContentProtection), live-транскрипт + AI-подсказки |
 
-**Tracks (3 equal):** Go senior · ML engineering · English (opt-in toggle). Все три — first-class, нет «главного». User picks один (primary) или несколько (sticky combo). Каждый трек — свой mock-rubric, свой Atlas-подграф, свой AI-coach persona (go-coach / ml-coach / english-coach).
+**Tracks (3 equal):** Go senior · ML engineering · English (opt-in toggle). Все три — first-class, нет «главного». User picks один (primary) или несколько (sticky combo). Каждый трек — свой mock-rubric, свой Atlas-подграф, свой AI-coach persona (go-coach / ml-coach / english-coach). **English surface = web Lingua** (read / write / listen / speak + vocab SRS). Hone больше не содержит English UI — Wave 8 (2026-05-13) перевёл learning в web; existing Hone-юзеры получают one-time LinguaMigrationModal с deep-link на `druz9.online/lingua`.
 
 **Memory + Goal + Predictions = главный moat.** AI-coach **с памятью** что юзер сделал на любой external платформе → ставит правильные цели → разбивает на weekly milestones → предсказывает «65% готов к Google L4 algo, ещё 3 недели до SysDesign ready».
 

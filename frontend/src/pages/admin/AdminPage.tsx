@@ -37,6 +37,7 @@ import { GoalPresetsPanel } from './goals/GoalPresetsPanel'
 import { CoachPromptsPanel } from './coach/CoachPromptsPanel'
 import { NotificationTemplatesPanel } from './notifications/NotificationTemplatesPanel'
 import { ABExperimentsPanel } from './ab/ABExperimentsPanel'
+import { LinguaAdminPage } from './lingua'
 
 export default function AdminPage() {
   const profile = useProfileQuery()
@@ -115,7 +116,9 @@ export default function AdminPage() {
                                                   ? 'Notifications'
                                                   : tab === 'ab_experiments'
                                                     ? 'A/B experiments'
-                                                    : 'AI Modельки'}
+                                                    : tab === 'lingua'
+                                                      ? 'Lingua · English'
+                                                      : 'AI Modельки'}
             </h1>
             <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
           </div>
@@ -142,6 +145,7 @@ export default function AdminPage() {
         {tab === 'coach_prompts' && <CoachPromptsPanel />}
         {tab === 'notification_templates' && <NotificationTemplatesPanel />}
         {tab === 'ab_experiments' && <ABExperimentsPanel />}
+        {tab === 'lingua' && <LinguaAdminPage />}
       </main>
     </div>
   )

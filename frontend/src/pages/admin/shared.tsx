@@ -33,6 +33,7 @@ export type Tab =
   | 'coach_prompts'
   | 'notification_templates'
   | 'ab_experiments'
+  | 'lingua'
 
 type Item = { id: Tab; label: string; chip?: string; chipColor?: string }
 type Group = { id: string; label: string; defaultOpen: boolean; items: Item[] }
@@ -96,6 +97,7 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
         { id: 'podcasts', label: 'Подкасты' },
         { id: 'atlas', label: 'Atlas CMS' },
         { id: 'goal_presets', label: 'Goal presets' },
+        { id: 'lingua', label: 'Lingua · English' },
       ],
     },
     {

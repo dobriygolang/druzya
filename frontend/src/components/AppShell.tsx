@@ -15,6 +15,7 @@ import { changeLanguage, currentLanguage, LANG_LIST, type Lang } from '../lib/i1
 import { useAdminDashboardQuery } from '../lib/queries/admin'
 import { useUnreadCountQuery } from '../lib/queries/notifications'
 import { useProfileQuery } from '../lib/queries/profile'
+import { useActiveStudyModeQuery } from '../lib/queries/honeSettings'
 import { logoutCurrentSession } from '../lib/queries/auth'
 import { SkipToContent } from './a11y/SkipToContent'
 import { useFocusTrap } from '../hooks/useFocusTrap'
@@ -30,7 +31,12 @@ import { useMotion } from '../lib/motion-presets'
 // приложение, не paywall.
 function useNavItems() {
   const profile = useProfileQuery()
+  const settings = useActiveStudyModeQuery()
   const isTutor = Boolean(profile.data?.tutor_mode_enabled)
+  // Phase K Wave 8 (2026-05-13) — Lingua nav-item conditional on user
+  // english_active flag (mirrored tutor-mode pattern). False по дефолту,
+  // toggle'ится в Settings. Mirrors Hone's English-loop opt-in.
+  const isEnglishActive = Boolean(settings.data?.englishActive)
   const base = [
     // Pivot 2026-05-03: /today первым — action-driven landing для авторизованного
     // юзера. Atlas остаётся как «карта тем». Insights / Codex — secondary surfaces.
@@ -40,6 +46,7 @@ function useNavItems() {
     { to: '/insights', label: 'Insights' },
     ...(isTutor ? [{ to: '/tutor', label: 'Tutor' }] : []),
     { to: '/codex', label: 'Codex' },
+    ...(isEnglishActive ? [{ to: '/lingua', label: 'Lingua' }] : []),
   ]
   return base
 }

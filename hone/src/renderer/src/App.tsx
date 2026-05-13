@@ -12,7 +12,7 @@
 // task + post-finish reflection). Backend StartFocusSession /
 // EndFocusSession теперь оркестрируется отсюда, не из удалённой страницы,
 // чтобы streak-механика продолжала наполняться (bible §6 sync).
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import type { CueSessionAnalysis } from '@shared/ipc';
 
 import { CanvasBg, type CanvasMode, type ThemeId } from './components/CanvasBg';
@@ -23,6 +23,7 @@ import { Dock } from './components/Dock';
 import { LoginScreen } from './components/LoginScreen';
 import { OnboardingModal } from './components/OnboardingModal';
 import { CueInstallSuggestion } from './components/CueInstallSuggestion';
+import { LinguaMigrationModal } from './components/LinguaMigrationModal';
 import {
   IdentityIntroModal,
   shouldShowIdentityIntro,
@@ -44,7 +45,8 @@ import { UpgradeModal } from './components/UpgradeModal';
 import { useQuotaStore } from './stores/quota';
 // BoardsTabsChrome removed 2026-05-12 (D4/Stream F) — Whiteboard / Editor
 // migrated to web solo. Hone hotkeys (B / E) теперь открывают browser tab.
-import { EnglishTabsChrome, type EnglishTab } from './components/EnglishTabsChrome';
+// EnglishTabsChrome removed 2026-05-13 (Phase K Wave 8) — English vertical
+// migrated to web /lingua.
 import { TutorTabsChrome, type TutorTab } from './components/TutorTabsChrome';
 import { useTrackStore } from './stores/track';
 import { UpcomingEventChip } from './components/UpcomingEventChip';
@@ -60,7 +62,6 @@ import { useSessionStore } from './stores/session';
 import { startFocusSession, endFocusSession } from './api/hone';
 import { notify } from './api/notifications';
 import { AnimatedStatsOverlay } from './components/AnimatedStatsOverlay';
-import { EnglishOffPlaceholder } from './components/EnglishOffPlaceholder';
 import { PageSkeleton } from './components/Skeleton';
 import { useGlobalHotkeys } from './hooks/useGlobalHotkeys';
 import { useTrackpadSwipe } from './hooks/useTrackpadSwipe';
@@ -83,15 +84,10 @@ const NotesPage = lazy(() => import('./pages/Notes').then((m) => ({ default: m.N
 // solo (/whiteboard/:id + /editor/:id). Peer-collab WS dropped; Hone больше
 // не загружает Excalidraw + CodeMirror bundle. B / E hotkeys теперь
 // открывают browser tab (см. onKey handler ниже).
-const ReadingPage = lazy(() => import('./pages/Reading').then((m) => ({ default: m.ReadingPage })));
-const WritingPage = lazy(() => import('./pages/Writing').then((m) => ({ default: m.WritingPage })));
+// Reading / Writing / Listening / Speaking / EnglishOverview pages removed
+// 2026-05-13 (Phase K Wave 8) — English vertical migrated to web /lingua.
 const TutorAssignmentsPage = lazy(() =>
   import('./pages/TutorAssignments').then((m) => ({ default: m.TutorAssignmentsPage })),
-);
-const ListeningPage = lazy(() => import('./pages/Listening').then((m) => ({ default: m.ListeningPage })));
-const SpeakingPage = lazy(() => import('./pages/Speaking').then((m) => ({ default: m.SpeakingPage })));
-const EnglishOverviewPage = lazy(() =>
-  import('./pages/EnglishOverview').then((m) => ({ default: m.EnglishOverviewPage })),
 );
 const CalendarPage = lazy(() => import('./pages/Calendar').then((m) => ({ default: m.CalendarPage })));
 const MemoryTimelinePage = lazy(() => import('./pages/MemoryTimeline').then((m) => ({ default: m.MemoryTimelinePage })));
@@ -138,28 +134,12 @@ export default function App() {
   const bootstrap = useSessionStore((s) => s.bootstrap);
   const hydrate = useSessionStore((s) => s.hydrate);
   const clear = useSessionStore((s) => s.clear);
-  // English как orthogonal modifier (Sergey 2026-05-03). Если false —
-  // English-страницы рендерятся как «English отключён» CTA вместо реального
-  // surface'а. Toggle в Settings.
-  const englishActive = useTrackStore((s) => s.englishActive);
+  // Phase K Wave 8 (Sergey 2026-05-13) — English vertical migrated to web
+  // /lingua. Hone больше не рендерит Reading/Writing/Listening/Speaking
+  // pages; `englishActive` toggle убран из Settings + Palette + hotkeys.
+  // Track store hydrate всё ещё нужен для active_track filter в Coach /
+  // ResourceLibrary (dev / ml / go).
   const hydrateTrack = useTrackStore((s) => s.hydrate);
-  // englishVisible = settings.englishActive || onboarding stack === 'english'.
-  // Если юзер выбрал English-track в onboarding'е, мы показываем module даже
-  // если backend ещё не получил setEnglishActive(true) (network/offline).
-  // Sergey 2026-05-04: English — opt-in, не должен светиться в палитре по
-  // умолчанию.
-  const profileStackIsEnglish = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const raw = window.localStorage.getItem('hone:profile:v2');
-      if (!raw) return false;
-      const parsed = JSON.parse(raw) as { stack?: string };
-      return parsed?.stack === 'english';
-    } catch {
-      return false;
-    }
-  }, [status]);
-  const englishVisible = englishActive || profileStackIsEnglish;
   useEffect(() => {
     void hydrateTrack();
   }, [hydrateTrack]);
@@ -179,8 +159,9 @@ export default function App() {
     'home', 'today', 'coach', 'notes', 'stats',
     // 'editor' / 'shared_boards' removed 2026-05-12 (D4/Stream F) —
     // migrated to web solo (/whiteboard/:id + /editor/:id).
-    'english_overview',
-    'reading', 'writing', 'assignments', 'listening', 'speaking',
+    // 'english_overview' / 'reading' / 'writing' / 'listening' / 'speaking'
+    // removed 2026-05-13 (Phase K Wave 8) — English migrated to web /lingua.
+    'assignments',
     'calendar', 'memory', 'settings',
   ]);
   const readStoredPage = (): PageId => {
@@ -797,7 +778,6 @@ export default function App() {
     copilotOpen,
     onboardingOpen,
     statsOpen,
-    englishVisible,
     setPaletteOpen,
     setCopilotOpen,
     setStatsOpen,
@@ -867,9 +847,10 @@ export default function App() {
       <Wordmark />
       {/* TrackSwitcher (general/dev/go) скрыт — Sergey 2026-05-05.
        * Identity 3-track (Go senior · ML · English) определяется в onboarding
-       * stack + Settings.englishActive, а legacy «general/dev/go» triple
-       * confusing для юзера и duplicate'ит state. Если track-aware filtering
-       * нужно — добавим как Settings dropdown, не header chip. */}
+       * stack. English вынесен в web /lingua (Phase K Wave 8, 2026-05-13);
+       * Hone теперь pure dev/ML focus cockpit. Legacy «general/dev/go»
+       * triple остаётся для filtering в Coach / Resource Library — если
+       * нужен UI, добавим как Settings dropdown, не header chip. */}
       {/* Versionmark — глобальная подсказка возврата. Раньше скрывался на
           editor page (CodeMirror использует Escape) — D4 2026-05-12 editor
           мигрирован в web, гард больше не нужен. */}
@@ -1001,15 +982,8 @@ export default function App() {
             web solo (/whiteboard/:id + /editor/:id). Hone B / E hotkeys
             теперь открывают browser tab; BoardsTabsChrome удалён. */}
       </PageSuspense>
-      {/* English-loop hub chrome — surfaces R/W/L страницы как один
-          логический hub. Palette сейчас один entry «English · Read ·
-          Write · Listen», конкретный child выбирается через табы. */}
-      {englishVisible && (page === 'reading' || page === 'writing' || page === 'listening' || page === 'speaking' || page === 'english_overview') && (
-        <EnglishTabsChrome
-          current={page as EnglishTab}
-          onChange={(t) => openImpl(t)}
-        />
-      )}
+      {/* English-loop hub chrome removed 2026-05-13 (Phase K Wave 8) —
+          English vertical migrated to web /lingua. */}
       {/* Tutor hub chrome — same pattern, tasks + calendar. */}
       {(page === 'assignments' || page === 'calendar') && (
         <TutorTabsChrome
@@ -1034,18 +1008,9 @@ export default function App() {
           />
         )}
 
-        {(page === 'english_overview' || page === 'reading' || page === 'writing' || page === 'listening' || page === 'speaking') &&
-          (englishVisible ? (
-            <>
-              {page === 'english_overview' && <EnglishOverviewPage onOpen={openImpl} />}
-              {page === 'reading' && <ReadingPage />}
-              {page === 'writing' && <WritingPage />}
-              {page === 'listening' && <ListeningPage />}
-              {page === 'speaking' && <SpeakingPage />}
-            </>
-          ) : (
-            <EnglishOffPlaceholder onActivate={() => setPage('settings')} />
-          ))}
+        {/* English pages removed 2026-05-13 (Phase K Wave 8) — migrated to
+            web /lingua. LinguaMigrationModal (mounted globally below) cues
+            existing English users to the new home. */}
         {page === 'assignments' && <TutorAssignmentsPage />}
         {page === 'calendar' && <CalendarPage />}
         {page === 'memory' && <MemoryTimelinePage />}
@@ -1072,7 +1037,7 @@ export default function App() {
       />
 
       {paletteOpen && (
-        <Palette onClose={() => setPaletteOpen(false)} onOpen={(id) => open(id)} englishVisible={englishVisible} />
+        <Palette onClose={() => setPaletteOpen(false)} onOpen={(id) => open(id)} />
       )}
       {copilotOpen && (
         <Suspense fallback={null}>
@@ -1087,6 +1052,12 @@ export default function App() {
         open={cueSuggestionOpen}
         onClose={() => setCueSuggestionOpen(false)}
       />
+      {/* Phase K Wave 8 (2026-05-13) — one-time cue для существующих
+          English users: vertical переехал в web druz9.online/lingua.
+          Self-gated через shouldShowLinguaMigrationModal() (см
+          lib/linguaMigration.ts). После dismissal flag в localStorage
+          гарантирует что больше не появится на этом устройстве. */}
+      <LinguaMigrationModal />
       <UpdateToast />
       <OfflineBanner />
       <UpgradePrompt />

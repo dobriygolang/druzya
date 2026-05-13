@@ -9,6 +9,7 @@ import { initI18n } from './lib/i18n'
 import { initObservability, ErrorBoundary } from './lib/observability'
 import { bootstrapSilentRefresh } from './lib/apiClient'
 import { startCWV } from './lib/perfMetrics'
+import { installOnlineSync } from './lib/offline'
 
 async function bootstrap() {
   initObservability()
@@ -20,6 +21,13 @@ async function bootstrap() {
   // this, a page reload would only see access expiry on the next failing
   // request, causing a brief flash of 401 → /login during the rotation.
   bootstrapSilentRefresh()
+  // Offline vocab outbox: drain on app boot + register online listener.
+  // Безопасно вызывать даже если IDB недоступен — internally degrade'ит.
+  installOnlineSync()
+  // PWA service worker — autoUpdate registration через vite-plugin-pwa
+  // virtual module. Динамический import чтобы dev build (где плагин даёт
+  // no-op stub) не падал при отсутствии virtual:pwa-register.
+  void registerServiceWorker()
 
   if (import.meta.env.VITE_USE_MSW === 'true') {
     const { worker } = await import('./mocks/browser')
@@ -43,6 +51,35 @@ async function bootstrap() {
       </ErrorBoundary>
     </React.StrictMode>,
   )
+}
+
+// Регистрируем SW через `virtual:pwa-register` (генерирует vite-plugin-pwa).
+// autoUpdate: новые версии устанавливаются молча, без модального prompt.
+// onNeedRefresh / onOfflineReady — оставлены как hooks для последующего
+// subtle toast, сейчас просто debug-логи (no UI noise).
+async function registerServiceWorker() {
+  // Skip в MSW dev-моде: mockServiceWorker.js конфликтует с workbox SW —
+  // оба пытаются claim /‌. PWA-режим тестируется через `npm run build && preview`.
+  if (import.meta.env.VITE_USE_MSW === 'true') return
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+  try {
+    // @ts-expect-error — virtual module, генерится vite-plugin-pwa в build/preview.
+    // В dev (`vite` без build) модуль резолвится в noop, всё равно safe.
+    const mod = await import('virtual:pwa-register')
+    mod.registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        // eslint-disable-next-line no-console
+        console.debug('[pwa] new version available — will activate on next load')
+      },
+      onOfflineReady() {
+        // eslint-disable-next-line no-console
+        console.debug('[pwa] offline-ready')
+      },
+    })
+  } catch {
+    // dev mode без plugin'а или browser без SW — silently skip.
+  }
 }
 
 void bootstrap()

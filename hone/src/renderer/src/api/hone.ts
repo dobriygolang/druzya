@@ -785,13 +785,15 @@ export async function sendCueSessionToTelegram(id: string): Promise<SendCueSessi
 
 // ─── User settings (active study mode) ────────────────────────────────────
 
-// M1 (2026-05-12): 'ml' restored as first-class active track. identity.md
-// обещает «3 equal tracks: Go senior · ML engineering · English» —
-// реальность теперь матчит. ML атлас-узлы по-прежнему tag'нуты под
-// track_kind='dev_senior' (ml-coach persona scoped to dev_senior);
-// activeTrack='ml' — UI-фильтр + persona handoff в Reading / pill row.
-// Backend mig 00110 восстановил CHECK constraint.
-export type ActiveTrack = 'general' | 'dev' | 'ml' | 'english' | 'go';
+// Phase K Wave 8 (Sergey 2026-05-13): English vertical вынесен из Hone в
+// web `frontend/src/pages/lingua/*`. ActiveTrack теперь — pure dev/ML/go
+// surface; 'english' track больше не валиден на клиенте (backend схема
+// допускает его для web Lingua, но Hone не выставляет).
+//
+// `englishActive` поле в UserSettings оставлено для miграционного probe'а
+// (см. lib/linguaMigration.ts) — backend всё ещё возвращает флаг, мы
+// просто его читаем для решения «показать ли LinguaMigrationModal».
+export type ActiveTrack = 'general' | 'dev' | 'ml' | 'go';
 
 export interface UserSettings {
   activeTrack: ActiveTrack;
@@ -802,7 +804,6 @@ function coerceTrack(t: string): ActiveTrack {
   switch (t) {
     case 'dev':
     case 'ml':
-    case 'english':
     case 'go':
       return t;
     default:
@@ -817,10 +818,5 @@ export async function getUserSettings(): Promise<UserSettings> {
 
 export async function setActiveTrack(track: ActiveTrack): Promise<UserSettings> {
   const resp = await client.setActiveTrack({ activeTrack: track });
-  return { activeTrack: coerceTrack(resp.activeTrack), englishActive: resp.englishActive };
-}
-
-export async function setEnglishActive(active: boolean): Promise<UserSettings> {
-  const resp = await client.setEnglishActive({ active });
   return { activeTrack: coerceTrack(resp.activeTrack), englishActive: resp.englishActive };
 }

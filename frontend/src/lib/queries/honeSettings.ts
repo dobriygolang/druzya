@@ -17,6 +17,8 @@ export type ActiveTrack = 'general' | 'dev' | 'ml' | 'english' | 'go'
 
 type WireSettings = {
   active_track?: string
+  english_active?: boolean
+  englishActive?: boolean
 }
 
 function coerce(t: string | undefined): ActiveTrack {
@@ -31,13 +33,21 @@ function coerce(t: string | undefined): ActiveTrack {
   }
 }
 
-/** Активный study-mode пользователя. На неавторизованном — 'general'. */
+/** Активный study-mode пользователя. На неавторизованном — 'general'.
+ *
+ *  english_active (proto: hone_user_settings.english_active, P-K Wave 8) —
+ *  opt-in toggle для English vertical (web /lingua route gate). True когда
+ *  юзер активировал English track в Settings, иначе false (default off).
+ *  Также true когда active_track === 'english' — UX simplification так что
+ *  «main track = English» не требует отдельной activation. */
 export function useActiveStudyModeQuery() {
   return useQuery({
     queryKey: ['hone', 'settings'] as const,
     queryFn: async () => {
       const r = await api<WireSettings>('/hone/settings')
-      return { activeTrack: coerce(r.active_track) }
+      const activeTrack = coerce(r.active_track)
+      const englishActive = Boolean(r.english_active ?? r.englishActive) || activeTrack === 'english'
+      return { activeTrack, englishActive }
     },
     staleTime: 60_000,
   })

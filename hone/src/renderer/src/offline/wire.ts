@@ -12,7 +12,8 @@ import { setEditorRoomVisibility } from '../api/editor';
 import { setRoomVisibility as setWhiteboardRoomVisibility } from '../api/whiteboard';
 import { endFocusSession } from '../api/hone';
 import { saveFocusReflection } from '../api/intelligence';
-import { gradeSpeaking } from '../api/speaking';
+// gradeSpeaking import removed 2026-05-13 (Phase K Wave 8) — English vertical
+// migrated to web /lingua; speaking.submission executor больше не нужен.
 import { API_BASE_URL, DEV_BEARER_TOKEN } from '../api/config';
 import { useSessionStore } from '../stores/session';
 import { emitConflict } from '../components/ConflictModal';
@@ -329,33 +330,7 @@ export function wireOutboxExecutors(): void {
     });
   });
 
-  // ── H4 speaking.submission (Phase J 2026-05-12) ───────────────────────
-  // Backend GradeSpeaking is idempotent через UNIQUE(user_id,
-  // client_session_id) ON CONFLICT DO NOTHING — replay safe. Payload
-  // carries the audio as base64 (cannot store Blob directly в IDB через
-  // structured-clone когда некоторые browsers выкидывают unsupported
-  // mime). Mime + duration kept alongside so the drain reconstructs
-  // the exact request.
-  registerExecutor('speaking.submission', async (payload) => {
-    const p = payload as {
-      exerciseId: string;
-      clientSessionId: string;
-      audioBase64: string;
-      mimeType: string;
-      durationMs: number;
-    };
-    // Decode base64 → Blob → reuse the same gradeSpeaking wrapper as the
-    // online path. atob → Uint8Array conversion is the same across all
-    // Chromium versions Hone ships against.
-    const bin = atob(p.audioBase64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const blob = new Blob([bytes], { type: p.mimeType || 'audio/webm' });
-    await gradeSpeaking({
-      exerciseId: p.exerciseId,
-      clientSessionId: p.clientSessionId,
-      audioBlob: blob,
-      durationMs: p.durationMs,
-    });
-  });
+  // H4 speaking.submission executor removed 2026-05-13 (Phase K Wave 8) —
+  // English vertical migrated to web /lingua. Pending op'ы у существующих
+  // юзеров — drain просто skip'ает (unknown kind branch).
 }

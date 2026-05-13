@@ -49,10 +49,8 @@ export const ANALYTICS_EVENTS = {
   task_auto_categorised: 'task.auto_categorised',
   task_kind_manually_overridden: 'task.kind.manually_overridden',
 
-  // English hub
-  english_exercise_started: 'english.exercise.started',
-  english_exercise_completed: 'english.exercise.completed',
-  speaking_session_graded: 'english.speaking.graded',
+  // English hub events removed 2026-05-13 (Phase K Wave 8) — vertical
+  // migrated to web /lingua; analytics events live in frontend/.
 
   // Cross-app handoff
   cross_app_opened: 'cross_app.opened',

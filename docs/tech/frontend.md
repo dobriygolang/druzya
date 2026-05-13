@@ -29,6 +29,13 @@ frontend/
 - Mock pipeline stages: AlgoStage / CodingStage / SysDesignStage / BehavioralStage (voice MediaRecorder)
 - Admin: ObservabilityDashboard (D9), CompanyManagerPage (R7), GoalPresetsPanel (Phase 2)
 
+**Phase K Wave 8 (2026-05-13) — Lingua surface:**
+- `/lingua` (overview) + `/lingua/reading` + `/lingua/writing` + `/lingua/listening` + `/lingua/speaking` + `/lingua/vocab` — English vertical мигрирован из Hone. Pages под `frontend/src/pages/lingua/*` (Agent GG).
+- **API:** переиспользует HoneService Connect-RPC (никаких новых RPCs) — same backend endpoints что обслуживали Hone English-страницы.
+- **Offline strategy:** PWA service worker + IndexedDB vocab review queue (`frontend/src/lib/offline/*`, Agent HH). Vocab SRS работает оффлайн на мобильном и tablet'е; reading / writing / listening — online-only (требуют LLM cascade).
+- **Admin:** `frontend/src/pages/admin/lingua/*` (Agent KK) — content management для vocab decks, reading sources, writing prompts.
+- **Migration cue:** existing Hone-юзеры получают one-time `LinguaMigrationModal` на boot после auth (Wave 8 Agent JJ). Modal-state guarded через `localStorage['lingua_migration_seen']`.
+
 **CI1 pattern:** Все backend-driven сurfaces wrapped в `<ErrorBoundary section="X"><DataLoader state={query} skeleton={...} empty={...} emptyContent={...}>{(data) => <Real />}</DataLoader></ErrorBoundary>`. 9 surfaces migrated 2026-05-12 (AITutorChatPage / ProfilePage / InsightsPage / CodexPage / AtlasPage / AtlasExplorePage / MockSessionPage / WeeklyReportPage / NotificationsPage). Mock pipeline stages кастомно handle inline state.
 
 **Транспорт:** `@connectrpc/connect-web` через `fetch`. Без envoy / API gateway. Все клиенты типизированы через `frontend/src/api/generated/pb/druz9/v1/*_connect.ts`.

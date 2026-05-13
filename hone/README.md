@@ -1,8 +1,12 @@
 # hone — Desktop Focus Cockpit
 
-Hone is a minimal dark desktop app for programmers in the druz9 ecosystem.
+Hone — focus cockpit для разраба. AI-плана, фокус-режимы (Pomodoro /
+Stopwatch / Free / Plan / Pinned / Countdown), заметки с AI-link,
+TaskBoard с auto-categorise. **NO learning content** — учебный layer
+(English / Atlas / Codex) живёт в web `druz9.online`.
+
 See [../docs/for_investment/hone.md](../docs/for_investment/hone.md) for the product spec and
-[../docs/for_investment/ecosystem.md](../docs/for_investment/ecosystem.md) for how Hone fits with druz9.online (web AI-coach + AI-mock + atlas)
+[../docs/for_investment/ecosystem.md](../docs/for_investment/ecosystem.md) for how Hone fits with druz9.online (web AI-coach + AI-mock + atlas + Lingua)
 and the stealth copilot Cue (`../cue/`).
 
 Electron + Vite + React. macOS-first, Windows/Linux parked for v2.
@@ -10,20 +14,23 @@ Electron + Vite + React. macOS-first, Windows/Linux parked for v2.
 ## Status
 
 Production beta on macOS (arm64 + x64) with notarized DMG, electron-updater,
-Sentry. 15 pages под `src/renderer/src/pages/`: Home (subtle persistent timer),
+Sentry. Pages под `src/renderer/src/pages/`: Home (subtle persistent timer),
 Today (AI-план + reflection), Notes (Vault 🔒 + AI backlinks), Coach (read-only
 past briefs feed + Goal chip), TaskBoard (archive drawer + drag-ghost + inline
 edit + auto-categorise), Stats, Settings, Calendar, TutorAssignments,
-MemoryTimeline, плюс English hub: EnglishOverview / Reading / Writing /
-Listening / Speaking. Все wired via Connect-RPC поверх `@generated/*` aliased
+MemoryTimeline. Все wired via Connect-RPC поверх `@generated/*` aliased
 TS stubs.
 
 Editor, SharedBoards, Podcasts мигрированы в web (Stream F W/E + D5 podcasts
-delete, 2026-05-12) — peer-collab WS strip'нут, Hone теперь чисто solo
-focus-cockpit. Wave J дополнил: ConnectionPanel в Today (Cue session
-notifications), Speaking page (MicRecorder + AudioPlayer для English voice
-practice), F2 GoalEditModal mirror, OfflineBanner 5-state, ConflictModal
-для outbox 409 conflicts.
+delete, 2026-05-12). Phase K Wave 8 (2026-05-13) — English hub
+(EnglishOverview / Reading / Writing / Listening / Speaking) переехал в
+web `druz9.online/lingua` с PWA-offline vocab review; existing users
+получают one-time LinguaMigrationModal с deep-link через `shell.openExternal`.
+Hone теперь pure focus-cockpit — никакого learning UI.
+
+Wave J дополнил: ConnectionPanel в Today (Cue session notifications),
+F2 GoalEditModal mirror, OfflineBanner 5-state, ConflictModal для outbox 409
+conflicts.
 
 ## Run
 
@@ -75,12 +82,13 @@ hone/
             │   └── stats/           Card, Label, Heatmap, Sparkline, Bars
             ├── pages/               per-page modules (Home, Today, Notes,
             │                         Coach, TaskBoard, Stats, Settings,
-            │                         Calendar, TutorAssignments, MemoryTimeline,
-            │                         EnglishOverview, Reading, Writing,
-            │                         Listening, Speaking).
+            │                         Calendar, TutorAssignments, MemoryTimeline).
             │                         DELETED 2026-05-12: Editor.tsx,
             │                         SharedBoards.tsx, Podcasts.tsx — peer-
             │                         collab + podcasts мигрированы в web.
+            │                         DELETED 2026-05-13 (Wave 8): EnglishOverview /
+            │                         Reading / Writing / Listening / Speaking —
+            │                         English vertical переехал в web /lingua.
             ├── stores/session.ts    zustand auth store (Phase 5b hydrates)
             ├── styles/globals.css   tokens + primitive classes
             └── vite-env.d.ts        typed window.hone

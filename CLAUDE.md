@@ -2,7 +2,7 @@
 
 Это монорепо проекта **druz9** — экосистема из трёх продуктов: web `druz9.online` (AI-coach + AI-mock + atlas + tutor toolkit), desktop focus-cockpit Hone, stealth tray-copilot Cue.
 
-**Identity (Sergey 2026-05-04):** AI-coach с памятью + free tutor-toolkit + Hone для подготовки senior IT-разрабов. **3 equal tracks:** Go senior · ML engineering · English (opt-in toggle). Все три — first-class, нет «главного». НЕ LeetCode / НЕ Skyeng / НЕ paid marketplace. См [docs/feature/identity.md](./docs/feature/identity.md).
+**Identity (Sergey 2026-05-04, refined 2026-05-13):** AI-coach с памятью + free tutor-toolkit + Hone для подготовки senior IT-разрабов. **3 equal tracks:** Go senior · ML engineering · English (opt-in toggle). Все три — first-class, нет «главного». НЕ LeetCode / НЕ Skyeng / НЕ paid marketplace. **Surfaces:** doing (Hone) / learning (web — Atlas, Codex, Lingua, AI-coach) / performing (Cue). English vertical surfaced через web Lingua (read / write / listen / speak + vocab SRS, PWA offline для vocab review). См [docs/feature/identity.md](./docs/feature/identity.md).
 
 ## С чего начинать
 
@@ -26,8 +26,8 @@
 
 | Продукт | Каталог | Что |
 |---|---|---|
-| **Web (druz9.online)** | `frontend/` | AI-coach + AI-mock (5-axis radar) + AI-tutor (4-layer memory) + Skill Atlas + Codex + tutor toolkit |
-| **Hone** | `hone/` | Тихий desktop-кокпит: AI-план, фокус, заметки с AI-link, taskboard с auto-categorise, English hub. **Не делает stealth** |
+| **Web (druz9.online)** | `frontend/` | AI-coach + AI-mock (5-axis radar) + AI-tutor (4-layer memory) + Skill Atlas + Codex + tutor toolkit + **Lingua** (English hub: reading / writing / listening / speaking + vocab SRS, PWA offline) |
+| **Hone** | `hone/` | Тихий desktop-кокпит: AI-план, фокус, заметки с AI-link, taskboard с auto-categorise. **Не делает learning** — учебный layer (English / Atlas / Codex) живёт в web. **Не делает stealth** |
 | **Cue** | `cue/` | Stealth tray-copilot. Невидим при screen-share, live-транскрипт встреч |
 
 Backend — общий Go-монолит в `backend/cmd/monolith/`, ~25 сервисов в `backend/services/`. Контракт API в `proto/druz9/v1/`. Подробнее — [docs/tech/architecture.md](./docs/tech/architecture.md).
@@ -164,3 +164,5 @@ Comprehensive roadmap утверждённый 2026-05-11 — identity-driven re
 **Implementation snapshot:** F1-F10 + R1-R10 + D1-D9 + Streams A-G + Phase J shipped. Что осталось:
 - Admin Phase 3 (~6 weeks): A/B framework / Audit log / Fine-grained roles
 - Polish post-launch: Firefox extension port, Stripe trial/refunds/multi-currency, Hone Dock 6 focus modes, voice audio upload
+
+**Phase K Wave 8 shipped 2026-05-13** — English → web Lingua migration. Hone English-страницы (EnglishOverview / Reading / Writing / Listening / Speaking) удалены; learning переехал в web `druz9.online/lingua` (read / write / listen / speak + vocab SRS). PWA + IndexedDB vocab queue для оффлайн review (мобильный + tablet). Existing Hone users получают one-time LinguaMigrationModal с deep-link через `shell.openExternal`. Admin surface `frontend/src/pages/admin/lingua/*` для content management. Identity refined: «Hone = doing, web = learning, Cue = performing».

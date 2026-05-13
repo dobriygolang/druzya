@@ -43,7 +43,6 @@ import {
   subscribe as subscribeVault,
   fetchSalt,
 } from '../api/vault';
-import { useTrackStore } from '../stores/track';
 import { DeveloperToolsSection } from '../components/DeveloperToolsSection';
 import { ResourceLibrarySection } from '../components/ResourceLibrarySection';
 import { analytics } from '../lib/analytics';
@@ -232,12 +231,9 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
           </Section>
         </SectionGroup>
 
-        {/* ════════════════════════════════════════════════════════
-            LEARNING MODULES — что юзер хочет видеть в Hone. English —
-            opt-in: если off, Reading/Writing/Listening pages скрыты. */}
-        <SectionGroup title="Learning modules">
-          <EnglishToggleSection />
-        </SectionGroup>
+        {/* LEARNING MODULES section removed 2026-05-13 (Phase K Wave 8) —
+            English vertical (Reading/Writing/Listening/Speaking + vocab SRS)
+            migrated to web /lingua. Hone теперь pure focus cockpit. */}
 
         {/* ════════════════════════════════════════════════════════
             ACCOUNT — tier-quota, storage, devices. Всё что про лимиты
@@ -1466,32 +1462,8 @@ function VaultButton({
   );
 }
 
-// EnglishToggleSection — opt-in switch для English-loop'а.
-//
-// Sergey 2026-05-03: «English — не альтернатива dev/ml, а дополнение».
-// Если off → Reading / Writing / Listening pages в Hone скрыты, palette-
-// entries прячутся. По default false (новый юзер не видит English шумa).
-//
-// Состояние читается из useTrackStore (синхронизированный с backend
-// hone_user_settings.english_active) — не из локального settings JSON.
-function EnglishToggleSection() {
-  const englishActive = useTrackStore((s) => s.englishActive);
-  const setEnglishActive = useTrackStore((s) => s.setEnglishActive);
-  return (
-    <Section
-      title="ENGLISH"
-      hint="Reading / Writing / Listening + vocab SRS. Включи если готовишься к English-собесу или подтягиваешь уровень с тутором."
-    >
-      <Toggle
-        value={englishActive}
-        onChange={(b) => {
-          void setEnglishActive(b);
-        }}
-        label={englishActive ? 'on' : 'off'}
-      />
-    </Section>
-  );
-}
+// EnglishToggleSection removed 2026-05-13 (Phase K Wave 8) — English
+// vertical migrated to web /lingua. Hone теперь pure focus cockpit.
 
 // EcosystemSection — Phase J / X4 (P1) identity-discovery surface в Settings.
 // Renders the same 3-card trio как IdentityIntroModal, плюс «Show intro

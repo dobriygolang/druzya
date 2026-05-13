@@ -3,13 +3,16 @@
 // Source of truth — backend hone_user_settings. Store: optimistic UI на
 // switch + reload from backend on mount. localStorage используется только
 // как hint до hydrate, чтобы dropdown не флипал на 'general' и обратно.
+//
+// Phase K Wave 8 (Sergey 2026-05-13): English vertical вынесен из Hone в
+// web. `englishActive` + 'english' track удалены из store; Hone теперь —
+// pure focus cockpit (dev/ML/go).
 import { create } from 'zustand';
 
 import {
   ActiveTrack,
   getUserSettings,
   setActiveTrack as apiSetActiveTrack,
-  setEnglishActive as apiSetEnglishActive,
 } from '../api/hone';
 import { listAtlasNodeTracks } from '../api/external';
 
@@ -18,7 +21,7 @@ const LS_KEY = 'hone:active_track';
 function readCachedTrack(): ActiveTrack {
   try {
     const v = localStorage.getItem(LS_KEY);
-    if (v === 'general' || v === 'dev' || v === 'ml' || v === 'english' || v === 'go') return v;
+    if (v === 'general' || v === 'dev' || v === 'ml' || v === 'go') return v;
   } catch {
     /* ignore */
   }
@@ -35,13 +38,11 @@ function writeCachedTrack(t: ActiveTrack) {
 
 interface TrackState {
   activeTrack: ActiveTrack;
-  englishActive: boolean;
   hydrated: boolean;
   /** {atlas_node_id → track_kind}. Lazy-loaded; пустой = filter не активен. */
   atlasNodeTracks: Record<string, string>;
   hydrate: () => Promise<void>;
   set: (t: ActiveTrack) => Promise<void>;
-  setEnglishActive: (active: boolean) => Promise<void>;
   /** Loads atlas-node track-mapping. No-op если уже загружено. */
   loadAtlasTracks: () => Promise<void>;
   itemMatchesActive: (skillKey: string) => boolean;
@@ -61,8 +62,6 @@ function trackToKinds(t: ActiveTrack): Set<string> {
       return new Set(['dev', 'dev_senior']);
     case 'ml':
       return new Set(['dev_senior']);
-    case 'english':
-      return new Set(['english']);
     default:
       return new Set();
   }
@@ -70,7 +69,6 @@ function trackToKinds(t: ActiveTrack): Set<string> {
 
 export const useTrackStore = create<TrackState>((set, get) => ({
   activeTrack: readCachedTrack(),
-  englishActive: false,
   hydrated: false,
   atlasNodeTracks: {},
 
@@ -78,20 +76,9 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     try {
       const s = await getUserSettings();
       writeCachedTrack(s.activeTrack);
-      set({ activeTrack: s.activeTrack, englishActive: s.englishActive, hydrated: true });
+      set({ activeTrack: s.activeTrack, hydrated: true });
     } catch {
       set({ hydrated: true });
-    }
-  },
-
-  setEnglishActive: async (active: boolean) => {
-    const prev = get().englishActive;
-    set({ englishActive: active });
-    try {
-      await apiSetEnglishActive(active);
-    } catch (err) {
-      set({ englishActive: prev });
-      throw err;
     }
   },
 
@@ -133,6 +120,5 @@ export const TRACK_LABELS: Record<ActiveTrack, string> = {
   general: 'General',
   dev: 'Dev (Go)',
   ml: 'ML Engineering',
-  english: 'English',
   go: 'Go deep',
 };

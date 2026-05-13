@@ -22,7 +22,6 @@ export interface GlobalHotkeysDeps {
   copilotOpen: boolean;
   onboardingOpen: boolean;
   statsOpen: boolean;
-  englishVisible: boolean;
 
   setPaletteOpen: (next: (p: boolean) => boolean) => void;
   setCopilotOpen: (open: boolean) => void;
@@ -40,7 +39,6 @@ export function useGlobalHotkeys(deps: GlobalHotkeysDeps): void {
     copilotOpen,
     onboardingOpen,
     statsOpen,
-    englishVisible,
     setPaletteOpen,
     setCopilotOpen,
     setStatsOpen,
@@ -161,16 +159,15 @@ export function useGlobalHotkeys(deps: GlobalHotkeysDeps): void {
       }
       else if (code === 'KeyS') toggleTo('stats');
       // KeyP — released (was podcasts; D5 migrated to web /podcasts).
-      else if (code === 'KeyR' && englishVisible) toggleTo('reading');
-      else if (code === 'KeyW' && englishVisible) toggleTo('writing');
+      // KeyR / KeyW / KeyL / KeyK — released 2026-05-13 (Phase K Wave 8)
+      // — English vertical (reading/writing/listening/speaking) migrated
+      // to web /lingua.
       else if (code === 'KeyA') toggleTo('assignments');
-      else if (code === 'KeyL' && englishVisible) toggleTo('listening');
-      else if (code === 'KeyK' && englishVisible) toggleTo('speaking');
       else if (code === 'KeyM') toggleTo('calendar');
       else if (code === 'Comma') toggleTo('settings');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paletteOpen, copilotOpen, onboardingOpen, page, statsOpen, englishVisible]);
+  }, [paletteOpen, copilotOpen, onboardingOpen, page, statsOpen]);
 }

@@ -71,15 +71,12 @@ export type OutboxOpKind =
   // notes). RPC SaveFocusReflection идемпотентна через UNIQUE(user_id,
   // session_id) ON CONFLICT DO UPDATE — repeat drain безопасен; latest
   // grade/notes wins (юзер мог дополнить позже).
-  | 'focus.reflection'
-  // H4 (Phase J 2026-05-12) — Speaking submission. User recorded a
-  // shadowing exercise offline → audio blob serialised to base64 в
-  // payload, drained when online. Backend GradeSpeaking идемпотентна
-  // через UNIQUE(user_id, client_session_id) ON CONFLICT DO NOTHING —
-  // replay безопасен; первая успешная попытка фиксирует scores. Audio
-  // payload — 1-5MB — large for outbox but durable storage matters more
-  // than payload size for a feature that's only used periodically.
-  | 'speaking.submission';
+  | 'focus.reflection';
+// Phase K Wave 8 (2026-05-13) — 'speaking.submission' op-kind removed.
+// English vertical (Reading/Writing/Listening/Speaking) migrated to web
+// /lingua; Hone больше не enqueue'ит submission'ы. Pending op'ы на диске
+// у существующих юзеров — executor не зарегистрирован, drain их игнорит
+// (см. drainAll's "Unknown kind" branch).
 
 export interface OutboxOp {
   id: string; // client-generated uuid v4

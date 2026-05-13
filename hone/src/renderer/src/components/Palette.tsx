@@ -25,12 +25,10 @@ export type PageId =
   | 'stats'
   // 'podcasts' removed 2026-05-12 (D5) — migrated to web /podcasts.
   // 'editor' / 'shared_boards' removed 2026-05-12 (D4/Stream F) — migrated to web solo.
-  | 'english_overview' // Hub overview: stats + recent + due vocab
-  | 'reading' // Wave 4 — English Reading-модуль (library + reader + SRS)
-  | 'writing' // Wave 4.4 — English Writing-as-Focus draft + AI feedback
-  | 'speaking' // Phase J / H4 — English Speaking shadowing exercises
+  // 'english_overview' / 'reading' / 'writing' / 'speaking' / 'listening'
+  // removed 2026-05-13 (Phase K Wave 8) — English vertical migrated to
+  // web /lingua. Hone теперь pure focus cockpit.
   | 'assignments' // Wave 5.1d — pending tutor-pushed assignments
-  | 'listening' // Wave 6.1 — English Listening with transcript + click-on-word
   | 'calendar' // Wave 5.2b — upcoming tutor-scheduled events
   | 'memory' // Phase B preview (2026-05-12) — what Coach remembers, by source
   | 'settings';
@@ -43,10 +41,6 @@ export type PaletteAction = PageId | 'copilot';
 interface PaletteProps {
   onClose: () => void;
   onOpen: (id: PaletteAction) => void;
-  /** Whether the English-track entry should appear in the palette.
-   * True when settings.englishActive OR onboarding stack === 'english'.
-   * Drilled from App.tsx so the palette stays a pure surface. */
-  englishVisible?: boolean;
 }
 
 interface PaletteItem {
@@ -86,7 +80,7 @@ function bumpRecent(id: string): void {
   }
 }
 
-export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProps) {
+export function Palette({ onClose, onOpen }: PaletteProps) {
   const [idx, setIdx] = useState(0);
   const [q, setQ] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -100,8 +94,8 @@ export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProp
   // chip). См memory/project_hone — «Hone consumes, Web produces».
   //
   // Removed: Tutor (assignments + sessions, A·M), Boards · Code rooms (D·B·E),
-  // Group events (V), «Stats dashboard» duplicate (G·S).
-  // English-hub переименован в «English» (палитра ведёт на overview tab).
+  // Group events (V), «Stats dashboard» duplicate (G·S), English entry
+  // (Phase K Wave 8 — moved to web /lingua).
   const items: PaletteItem[] = useMemo(
     () => [
       { id: 'today', label: 'Today', icon: 'sun', shortcut: ['T'], section: 'Daily', run: () => onOpen('today') },
@@ -114,28 +108,15 @@ export function Palette({ onClose, onOpen, englishVisible = false }: PaletteProp
       // migrated to web solo. Hone Palette B-shortcut освобождён (см. App.tsx
       // onKey handler — KeyB теперь openExternal('/whiteboard/new')).
 
-      ...(englishVisible
-        ? [
-            {
-              id: 'english_overview',
-              label: 'English',
-              icon: 'note' as IconName,
-              shortcut: ['E'],
-              section: 'Learning',
-              run: () => onOpen('english_overview'),
-            },
-          ]
-        : []),
-
       { id: 'settings', label: 'Settings', icon: 'settings', shortcut: [','], section: 'System', run: () => onOpen('settings') },
     ],
-    [onOpen, englishVisible],
+    [onOpen],
   );
 
-  // Recents — реcонструируем как PaletteItem'ы из айдишек. Не показываем
-  // что юзера нет в текущем items (например English-entry скрыт через
-  // englishVisible=false): filter mismatch — drop'нем чтобы клик не
-  // привёл к dead-action'у.
+  // Recents — реcонструируем как PaletteItem'ы из айдишек. Если recent
+  // id больше не присутствует в текущем items (например legacy 'reading' /
+  // 'english_overview' после Phase K Wave 8 cleanup) — filter mismatch
+  // drop'нет его, чтобы клик не привёл к dead-action'у.
   const recentItems = useMemo<PaletteItem[]>(() => {
     if (!recentIds.length) return [];
     const byId = new Map(items.map((i) => [i.id, i] as const));

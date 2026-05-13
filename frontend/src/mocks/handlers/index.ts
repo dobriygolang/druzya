@@ -8,6 +8,7 @@ import { settingsHandlers } from './settings'
 import { notificationsHandlers } from './notifications'
 import { weeklyHandlers } from './weekly'
 import { voiceHandlers } from './voice'
+import { linguaHandlers } from './lingua'
 
 export const handlers = [
   ...authHandlers,
@@ -17,4 +18,5 @@ export const handlers = [
   ...notificationsHandlers,
   ...weeklyHandlers,
   ...voiceHandlers,
+  ...linguaHandlers,
 ]
