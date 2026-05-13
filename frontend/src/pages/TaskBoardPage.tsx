@@ -34,6 +34,7 @@ import {
 import { AppShellV2 } from '../components/AppShell'
 import { Modal } from '../components/primitives/Modal'
 import { cn } from '../lib/cn'
+import { useTranslation } from 'react-i18next'
 import {
   useTaskListQuery,
   useMoveTaskStatusMutation,
@@ -114,6 +115,7 @@ function matchesFilter(t: Task, f: FilterMode): boolean {
 // ── Page ───────────────────────────────────────────────────────────────
 
 export default function TaskBoardPage() {
+  const { t } = useTranslation('pages')
   const tasksQ = useTaskListQuery()
   const [filter, setFilter] = useState<FilterMode>('all')
   const [showDismissed, setShowDismissed] = useState(false)
@@ -243,13 +245,13 @@ export default function TaskBoardPage() {
         {tasksQ.isError && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20 text-text-muted">
             <p className="text-sm" style={{ color: 'var(--red)' }}>
-              Не удалось загрузить задачи
+              {t('task_board.load_failed')}
             </p>
             <button
               onClick={() => tasksQ.refetch()}
               className="rounded-md border border-border bg-surface-2 px-3 py-1 text-xs tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-border-strong hover:text-text-secondary"
             >
-              Повторить
+              {t('task_board.retry')}
             </button>
           </div>
         )}
@@ -258,15 +260,15 @@ export default function TaskBoardPage() {
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-2">
               <Sparkles className="h-5 w-5" />
             </div>
-            <h2 className="text-base font-semibold text-text-secondary">No tasks yet</h2>
+            <h2 className="text-base font-semibold text-text-secondary">{t('task_board.no_tasks_h')}</h2>
             <p className="max-w-[320px] text-center text-[13px] leading-relaxed">
-              AI-coach анализирует твою активность и скоро предложит персональные задачи
+              {t('task_board.no_tasks_b')}
             </p>
             <button
               onClick={() => setCreateOpen(true)}
               className="text-xs text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
             >
-              Создать первую задачу
+              {t('task_board.create_first')}
             </button>
           </div>
         )}
@@ -547,6 +549,7 @@ function ContextMenu({
   onMove: (s: TaskStatusCanonical) => void
   toast: (msg: string) => void
 }) {
+  const { t: tCtx } = useTranslation('pages')
   const del = useDeleteTaskMutation()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ x, y })
@@ -586,7 +589,7 @@ function ContextMenu({
       <div className="my-1 mx-2 h-px bg-border" />
       <button
         onClick={() => {
-          if (confirm('Удалить задачу?')) {
+          if (confirm(tCtx('task_board.delete_confirm'))) {
             del.mutate(task.id)
             toast('Task deleted')
             onClose()
@@ -645,6 +648,7 @@ function TaskDrawer({
   task: Task | undefined
   onClose: () => void
 }) {
+  const { t: tDrw } = useTranslation('pages')
   const commentsQ = useTaskCommentsQuery(taskID)
   const add = useAddTaskCommentMutation()
   const [body, setBody] = useState('')
@@ -671,7 +675,7 @@ function TaskDrawer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Закрыть карточку"
+            aria-label={tDrw('task_board.close_drawer_aria')}
             className="flex h-9 w-9 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             <X className="h-3.5 w-3.5" />
@@ -764,7 +768,7 @@ function TaskDrawer({
           ))}
 
           {!commentsQ.isLoading && (commentsQ.data ?? []).length === 0 && (
-            <p className="py-3 text-center text-xs text-text-muted">Комментариев пока нет</p>
+            <p className="py-3 text-center text-xs text-text-muted">{tDrw('task_board.no_comments')}</p>
           )}
 
           <form onSubmit={onSubmit} className="mt-2 flex items-end gap-2">
@@ -810,6 +814,7 @@ function CreateTaskModal({
   onClose: () => void
   onCreated: () => void
 }) {
+  const { t: tM } = useTranslation('pages')
   const create = useCreateTaskMutation()
   const [title, setTitle] = useState('')
   const [kind, setKind] = useState<TaskKindCanonical>('custom')
@@ -842,7 +847,7 @@ function CreateTaskModal({
             ref={titleRef}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Что нужно сделать?"
+            placeholder={tM('task_board.title_placeholder')}
             required
             className="w-full border-0 border-b border-border bg-transparent pb-2 text-base font-semibold text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
           />
@@ -853,7 +858,7 @@ function CreateTaskModal({
           <textarea
             value={briefMd}
             onChange={(e) => setBriefMd(e.target.value)}
-            placeholder="Описание (опционально)"
+            placeholder={tM('task_board.body_placeholder')}
             rows={2}
             className="w-full resize-none border-0 border-b border-border bg-transparent pb-2 text-sm leading-relaxed text-text-secondary placeholder:text-text-muted focus:border-text-primary focus:outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
           />
@@ -915,7 +920,7 @@ function CreateTaskModal({
             aria-expanded={showMore}
             className="ml-auto rounded text-[11px] tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-secondary"
           >
-            {showMore ? 'Скрыть' : 'Дополнительно'}
+            {showMore ? tM('task_board.hide') : tM('task_board.more')}
           </button>
         </div>
 
@@ -923,20 +928,20 @@ function CreateTaskModal({
           <input
             value={skillKey}
             onChange={(e) => setSkillKey(e.target.value)}
-            placeholder="Skill tag (например, Binary Search)"
+            placeholder={tM('task_board.skill_placeholder')}
             className="w-full border-0 border-b border-border bg-transparent pb-2 text-xs text-text-primary outline-none placeholder:text-text-muted focus:border-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
           />
         )}
 
         {create.isError && (
           <p className="text-[11px]" style={{ color: 'var(--red)' }}>
-            Не удалось создать. Попробуй ещё раз.
+            {tM('task_board.create_failed')}
           </p>
         )}
 
         <div className="mt-1 flex items-center justify-between border-t border-border pt-3">
           <span className="text-[10px] tracking-[0.08em] text-text-muted">
-            ⌘↵ — отправить · Esc — закрыть
+            {tM('task_board.kbd_hint')}
           </span>
           <div className="flex gap-1.5">
             <button
@@ -944,14 +949,14 @@ function CreateTaskModal({
               onClick={onClose}
               className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium tracking-[0.08em] text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-border-strong hover:text-text-primary"
             >
-              Отмена
+              {tM('task_board.cancel')}
             </button>
             <button
               type="submit"
               disabled={!title.trim() || create.isPending}
               className="rounded-md bg-text-primary px-4 py-1.5 text-xs font-semibold tracking-[0.08em] text-bg transition-opacity duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:opacity-90 disabled:opacity-50"
             >
-              {create.isPending ? 'Создаём…' : 'Создать'}
+              {create.isPending ? tM('task_board.creating') : tM('task_board.create')}
             </button>
           </div>
         </div>

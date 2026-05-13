@@ -1,14 +1,16 @@
 // AI Providers tab — read-only catalog of models exposed via Cue Cloud.
 
 import type { ProviderModel } from '@shared/types';
+import { useT } from '@d9-i18n';
 import { SectionTitle } from '../lib/shared';
 
 export function ProvidersTab({ models }: { models: ProviderModel[] }) {
+  const t = useT();
   return (
     <>
       <SectionTitle
-        title="AI провайдеры"
-        subtitle="Каталог моделей, доступных через Cue Cloud."
+        title={t('cue.settings.providers.section.title')}
+        subtitle={t('cue.settings.providers.section.subtitle')}
       />
 
       <div
@@ -21,7 +23,7 @@ export function ProvidersTab({ models }: { models: ProviderModel[] }) {
           fontFamily: 'var(--d9-font-mono)',
         }}
       >
-        Каталог моделей
+        {t('cue.settings.providers.catalog_label')}
       </div>
       {models.length === 0 && (
         <div
@@ -37,8 +39,7 @@ export function ProvidersTab({ models }: { models: ProviderModel[] }) {
             lineHeight: 1.5,
           }}
         >
-          Каталог пуст. Войди через онбординг — после авторизации здесь
-          появятся модели, доступные на твоём плане.
+          {t('cue.settings.providers.empty')}
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -87,7 +88,7 @@ export function ProvidersTab({ models }: { models: ProviderModel[] }) {
               >
                 <span>{m.providerName}</span>
                 <span>·</span>
-                <span>{m.typicalLatencyMs} мс</span>
+                <span>{t('cue.settings.providers.latency_ms', { ms: m.typicalLatencyMs })}</span>
                 {m.supportsVision && (
                   <>
                     <span>·</span>
@@ -115,7 +116,7 @@ export function ProvidersTab({ models }: { models: ProviderModel[] }) {
                 }`,
               }}
             >
-              {m.availableOnCurrentPlan ? 'доступна' : 'pro'}
+              {m.availableOnCurrentPlan ? t('cue.settings.providers.available') : t('cue.settings.providers.pro')}
             </div>
           </div>
         ))}

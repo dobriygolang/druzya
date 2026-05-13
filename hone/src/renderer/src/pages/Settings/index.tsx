@@ -271,7 +271,7 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
     {
       tab: 'focus',
       title: 'ENERGY CHECK',
-      hint: 'Soft nudge every 3 hours: "как энергия сейчас?" Тихие часы 00–08.',
+      hint: t('hone.energy_nudge.settings_hint'),
       keywords: 'energy энергия nudge напоминание fatigue усталость 3 часа',
       render: () => <EnergyNudgeSection />,
     },

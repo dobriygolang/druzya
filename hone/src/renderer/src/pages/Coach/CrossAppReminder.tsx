@@ -1,4 +1,7 @@
 import React from 'react';
+
+import { useT } from '@d9-i18n';
+
 import type { NextAction } from '../../api/intelligence';
 import { trackEvent } from '../../api/events';
 import {
@@ -118,6 +121,7 @@ export const CrossAppReminder: React.FC<{ action: NextAction | null }> = ({ acti
 // Parses action target and decides which web surface to surface as one-line
 // link. Stays subtle: text-only, no visual weight beyond CrossAppReminder.
 const CoachActionDeepCTAs: React.FC<{ action: NextAction | null }> = ({ action }) => {
+  const t = useT();
   if (!action) return null;
   const target = (action.target ?? '').trim();
   const kind = (action.actionKind ?? '').toLowerCase();
@@ -159,7 +163,7 @@ const CoachActionDeepCTAs: React.FC<{ action: NextAction | null }> = ({ action }
             textUnderlineOffset: 2,
             cursor: 'pointer',
           }}
-          title="Открыть Atlas с focus на этот узел"
+          title={t('hone.coach.cross.open_atlas_title')}
         >
           view on web atlas →
         </button>
@@ -181,7 +185,7 @@ const CoachActionDeepCTAs: React.FC<{ action: NextAction | null }> = ({ action }
             textUnderlineOffset: 2,
             cursor: 'pointer',
           }}
-          title="Открыть Insights timeline на web"
+          title={t('hone.coach.cross.open_insights_title')}
         >
           insights timeline →
         </button>

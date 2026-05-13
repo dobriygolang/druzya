@@ -22,6 +22,7 @@ import {
   Upload,
   Video,
 } from 'lucide-react'
+import { useT } from '@d9-i18n'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -37,6 +38,7 @@ import {
 } from '../lib/queries/mock'
 
 function ErrorChip() {
+  const t = useT()
   return (
     <span
       className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.08em]"
@@ -45,7 +47,7 @@ function ErrorChip() {
         color: 'var(--red)',
       }}
     >
-      Не удалось загрузить
+      {t('mock.common.error.load_failed')}
     </span>
   )
 }
@@ -74,6 +76,7 @@ function MatchHeader({
   onFinish: () => void
   finishing: boolean
 }) {
+  const t = useT()
   return (
     <div className="flex h-[80px] items-center justify-between gap-2 border-b border-border bg-surface-1 px-4 sm:px-8">
       <div className="hidden items-center gap-3 sm:flex">
@@ -83,7 +86,7 @@ function MatchHeader({
             className="h-1.5 w-1.5 rounded-full"
             style={{ background: 'var(--red)' }}
           />
-          AI INTERVIEW · LIVE
+          {t('mock.session.live.label')}
         </span>
       </div>
       <div className="flex flex-col items-center gap-1">
@@ -94,10 +97,10 @@ function MatchHeader({
       </div>
       <div className="flex items-center gap-2">
         <Button variant="ghost" icon={<Lightbulb className="h-4 w-4" />} size="sm" className="hidden sm:inline-flex">
-          Подсказка
+          {t('mock.session.hint')}
         </Button>
         <Button variant="danger" size="sm" onClick={onFinish} disabled={finishing}>
-          {finishing ? 'Завершаем…' : 'Завершить'}
+          {finishing ? t('mock.session.finishing') : t('mock.session.finish')}
         </Button>
       </div>
     </div>
@@ -105,6 +108,7 @@ function MatchHeader({
 }
 
 function InterviewerPanel() {
+  const t = useT()
   return (
     <Card className="h-[240px] sm:h-[320px] flex-col gap-3 p-4" interactive={false}>
       <div className="flex items-center justify-between">
@@ -118,7 +122,7 @@ function InterviewerPanel() {
                 className="h-1.5 w-1.5 rounded-full"
                 style={{ background: 'var(--red)' }}
               />
-              Слушает
+              {t('mock.session.listening')}
             </span>
           </div>
         </div>
@@ -135,10 +139,11 @@ function InterviewerPanel() {
 }
 
 function QuestionPanel({ title, description }: { title: string; description: string }) {
+  const t = useT()
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
-        ВОПРОС
+        {t('mock.session.question_label')}
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">{title}</h3>
       <p className="text-[13px] leading-relaxed text-text-secondary break-words">{description}</p>
@@ -149,32 +154,32 @@ function QuestionPanel({ title, description }: { title: string; description: str
 // Tech Lead / EM pre-brief panel — STAR-style behavioral round.
 // Content aligns with services/ai_mock/domain/tech_lead.go.
 function TechLeadEMPanel() {
+  const t = useT()
+  const rubric: [string, string][] = [
+    ['structure', t('mock.session.techlead.rubric.structure')],
+    ['ownership', t('mock.session.techlead.rubric.ownership')],
+    ['impact', t('mock.session.techlead.rubric.impact')],
+    ['learning', t('mock.session.techlead.rubric.learning')],
+  ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
-        TECH LEAD · EM
+        {t('mock.session.techlead.label')}
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
-        STAR-style behavioral round
+        {t('mock.session.techlead.title')}
       </h3>
       <p className="text-[13px] leading-relaxed text-text-secondary break-words">
-        AI-панель проводит 4-5 STAR-сценариев: 1:1 с underperformer'ом,
-        конфликт между разработчиками, hiring decisions, защита
-        tech-debt'а. Структурируй ответ как Situation → Task → Action → Result.
+        {t('mock.session.techlead.body')}
       </p>
       <div className="grid grid-cols-2 gap-2 pt-1">
-        {[
-          ['structure', 'STAR-формат'],
-          ['ownership', 'YOU vs WE'],
-          ['impact', 'числа, не вода'],
-          ['learning', 'transferable lesson'],
-        ].map(([key, ru]) => (
+        {rubric.map(([key, label]) => (
           <div
             key={key}
             className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
-            <div className="text-text-muted">{ru}</div>
+            <div className="text-text-muted">{label}</div>
           </div>
         ))}
       </div>
@@ -186,32 +191,32 @@ function TechLeadEMPanel() {
 // architectural pushback rounds. Content aligns with the prompt in
 // services/ai_mock/domain/system_design_senior.go.
 function SystemDesignSeniorPanel() {
+  const t = useT()
+  const rubric: [string, string][] = [
+    ['depth', t('mock.session.senior_sd.rubric.depth')],
+    ['tradeoffs', t('mock.session.senior_sd.rubric.tradeoffs')],
+    ['failure_modes', t('mock.session.senior_sd.rubric.failure_modes')],
+    ['pragmatism', t('mock.session.senior_sd.rubric.pragmatism')],
+  ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
-        SENIOR · SYSTEM DESIGN
+        {t('mock.session.senior_sd.label')}
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
-        Free-form architectural pushback
+        {t('mock.session.senior_sd.title')}
       </h3>
       <p className="text-[13px] leading-relaxed text-text-secondary break-words">
-        Без конкретной задачи. AI-собеседующий ведёт разговор по одной-двум темам
-        (distributed / real-time / ML / security / observability) и давит
-        на failure modes и tradeoff'ы. Никаких «we'd just add a cache».
+        {t('mock.session.senior_sd.body')}
       </p>
       <div className="grid grid-cols-2 gap-2 pt-1">
-        {[
-          ['depth', 'глубина reasoning'],
-          ['tradeoffs', 'cost / benefit'],
-          ['failure_modes', 'отказы и edge'],
-          ['pragmatism', 'числа vs hand-wave'],
-        ].map(([key, ru]) => (
+        {rubric.map(([key, label]) => (
           <div
             key={key}
             className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
-            <div className="text-text-muted">{ru}</div>
+            <div className="text-text-muted">{label}</div>
           </div>
         ))}
       </div>
@@ -222,33 +227,33 @@ function SystemDesignSeniorPanel() {
 // SystemDesignSeniorPanel; rubric mirrors BuildSysanalystReportPrompt
 // (requirements / modeling / integration / data / process).
 function SysanalystPanel() {
+  const t = useT()
+  const rubric: [string, string][] = [
+    ['requirements', t('mock.session.sysanalyst.rubric.requirements')],
+    ['modeling', t('mock.session.sysanalyst.rubric.modeling')],
+    ['integration', t('mock.session.sysanalyst.rubric.integration')],
+    ['data', t('mock.session.sysanalyst.rubric.data')],
+    ['process', t('mock.session.sysanalyst.rubric.process')],
+  ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
-        SYSTEMS ANALYST
+        {t('mock.session.sysanalyst.label')}
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
-        Free-form working session
+        {t('mock.session.sysanalyst.title')}
       </h3>
       <p className="text-[13px] leading-relaxed text-text-secondary break-words">
-        Без алгоритмической задачи. AI ведёт 4-6 сценариев по requirements →
-        UML/BPMN → integration patterns → data design → process. Push for
-        SQL on the whiteboard, isolation levels by name, broker semantics.
+        {t('mock.session.sysanalyst.body')}
       </p>
       <div className="grid grid-cols-2 gap-2 pt-1">
-        {[
-          ['requirements', 'NFR + Gherkin'],
-          ['modeling', 'UML / BPMN / C4'],
-          ['integration', 'sagas + idempotency'],
-          ['data', 'SQL + isolation'],
-          ['process', 'DoR/DoD + RACI'],
-        ].map(([key, ru]) => (
+        {rubric.map(([key, label]) => (
           <div
             key={key}
             className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
-            <div className="text-text-muted">{ru}</div>
+            <div className="text-text-muted">{label}</div>
           </div>
         ))}
       </div>
@@ -259,33 +264,33 @@ function SysanalystPanel() {
 // BuildProductAnalystReportPrompt (metrics / sql / experimentation /
 // frameworks / communication).
 function ProductAnalystPanel() {
+  const t = useT()
+  const rubric: [string, string][] = [
+    ['metrics', t('mock.session.product_analyst.rubric.metrics')],
+    ['sql', t('mock.session.product_analyst.rubric.sql')],
+    ['experimentation', t('mock.session.product_analyst.rubric.experimentation')],
+    ['frameworks', t('mock.session.product_analyst.rubric.frameworks')],
+    ['communication', t('mock.session.product_analyst.rubric.communication')],
+  ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
-        PRODUCT ANALYST
+        {t('mock.session.product_analyst.label')}
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
-        Free-form analytics interview
+        {t('mock.session.product_analyst.title')}
       </h3>
       <p className="text-[13px] leading-relaxed text-text-secondary break-words">
-        Без задачи в редакторе. AI ведёт разговор по metrics → SQL → A/B
-        testing → frameworks → insight comm. Готовься писать SQL, обосновывать
-        sample size и защищать выбор North Star метрики.
+        {t('mock.session.product_analyst.body')}
       </p>
       <div className="grid grid-cols-2 gap-2 pt-1">
-        {[
-          ['metrics', 'DAU/retention/NSM'],
-          ['sql', 'window + cohort'],
-          ['experimentation', 'CUPED + MDE'],
-          ['frameworks', 'RICE / JTBD'],
-          ['communication', 'insight memo'],
-        ].map(([key, ru]) => (
+        {rubric.map(([key, label]) => (
           <div
             key={key}
             className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
-            <div className="text-text-muted">{ru}</div>
+            <div className="text-text-muted">{label}</div>
           </div>
         ))}
       </div>
@@ -294,33 +299,33 @@ function ProductAnalystPanel() {
 }
 
 function QAPanel() {
+  const t = useT()
+  const rubric: [string, string][] = [
+    ['test_design', t('mock.session.qa.rubric.test_design')],
+    ['api', t('mock.session.qa.rubric.api')],
+    ['automation', t('mock.session.qa.rubric.automation')],
+    ['bug_analysis', t('mock.session.qa.rubric.bug_analysis')],
+    ['process', t('mock.session.qa.rubric.process')],
+  ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
-        QA / SDET
+        {t('mock.session.qa.label')}
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
-        Free-form QA working session
+        {t('mock.session.qa.title')}
       </h3>
       <p className="text-[13px] leading-relaxed text-text-secondary break-words">
-        Без алгоритмической задачи. AI ведёт 4-6 сценариев: test design →
-        API testing → automation → bug analysis → process. Готовься защищать
-        конкретные assertions и flake-диагностику.
+        {t('mock.session.qa.body')}
       </p>
       <div className="grid grid-cols-2 gap-2 pt-1">
-        {[
-          ['test_design', 'boundary + decision'],
-          ['api', 'contracts + idempotency'],
-          ['automation', 'flake hunting'],
-          ['bug_analysis', 'RCA + severity'],
-          ['process', 'risk-based'],
-        ].map(([key, ru]) => (
+        {rubric.map(([key, label]) => (
           <div
             key={key}
             className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
-            <div className="text-text-muted">{ru}</div>
+            <div className="text-text-muted">{label}</div>
           </div>
         ))}
       </div>
@@ -329,33 +334,33 @@ function QAPanel() {
 }
 
 function DevOpsPanel() {
+  const t = useT()
+  const rubric: [string, string][] = [
+    ['infra', t('mock.session.devops.rubric.infra')],
+    ['observability', t('mock.session.devops.rubric.observability')],
+    ['cicd', t('mock.session.devops.rubric.cicd')],
+    ['incident', t('mock.session.devops.rubric.incident')],
+    ['security', t('mock.session.devops.rubric.security')],
+  ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
-        DEVOPS / SRE
+        {t('mock.session.devops.label')}
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
-        Free-form platform interview
+        {t('mock.session.devops.title')}
       </h3>
       <p className="text-[13px] leading-relaxed text-text-secondary break-words">
-        Без задачи в редакторе. AI ведёт диалог по infra → observability →
-        CI/CD → incident response → security. Защищай PromQL, alarm
-        thresholds, IAM action strings, runbook timelines.
+        {t('mock.session.devops.body')}
       </p>
       <div className="grid grid-cols-2 gap-2 pt-1">
-        {[
-          ['infra', 'k8s + IaC'],
-          ['observability', 'SLO + cardinality'],
-          ['cicd', 'blue-green + rollback'],
-          ['incident', 'runbooks + budgets'],
-          ['security', 'secrets + netpol'],
-        ].map(([key, ru]) => (
+        {rubric.map(([key, label]) => (
           <div
             key={key}
             className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
-            <div className="text-text-muted">{ru}</div>
+            <div className="text-text-muted">{label}</div>
           </div>
         ))}
       </div>
@@ -368,31 +373,32 @@ function DevOpsPanel() {
 // content is static (rubric + ground rules) and aligned to the prompt
 // in services/ai_mock/domain/english_hr.go::BuildEnglishHRSystemPrompt.
 function EnglishHRPanel() {
+  const t = useT()
+  const rubric: [string, string][] = [
+    ['clarity', t('mock.session.english_hr.rubric.clarity')],
+    ['accuracy', t('mock.session.english_hr.rubric.accuracy')],
+    ['range', t('mock.session.english_hr.rubric.range')],
+    ['fluency', t('mock.session.english_hr.rubric.fluency')],
+  ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
-        ENGLISH HR ROUND
+        {t('mock.session.english_hr.label')}
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">
-        Conversational HR-screen, in English
+        {t('mock.session.english_hr.title')}
       </h3>
       <p className="text-[13px] leading-relaxed text-text-secondary break-words">
-        AI-собеседующий проведёт HR-этап на английском. Отвечай свободно — грамматика
-        и vocab оцениваются в финале, мидсессии корректировок не будет.
+        {t('mock.session.english_hr.body')}
       </p>
       <div className="grid grid-cols-2 gap-2 pt-1">
-        {[
-          ['clarity', 'структура мысли'],
-          ['accuracy', 'грамматика'],
-          ['range', 'словарный запас'],
-          ['fluency', 'темп речи'],
-        ].map(([key, ru]) => (
+        {rubric.map(([key, label]) => (
           <div
             key={key}
             className="rounded-md border border-border px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary"
           >
             <div className="text-text-primary">{key}</div>
-            <div className="text-text-muted">{ru}</div>
+            <div className="text-text-muted">{label}</div>
           </div>
         ))}
       </div>
@@ -436,19 +442,20 @@ function ControlsCard({
 }
 
 function StressCard({ stress }: { stress: Stress }) {
+  const t = useT()
   // Opacity stratification on the ink ramp — keeps the four signals visually
   // distinct without resorting to multi-hue chips. The most acute signal
   // (paste-attempts = exfil temptation) gets the red stripe overlay.
   const items: { label: string; value: number; opacity: number; flag: boolean }[] = [
-    { label: 'Паузы', value: stress.pauses_score, opacity: 0.55, flag: false },
-    { label: 'Backspaces', value: stress.backspace_score, opacity: 0.7, flag: false },
-    { label: 'Хаос', value: stress.chaos_score, opacity: 0.9, flag: false },
-    { label: 'Paste-попытки', value: stress.paste_attempts, opacity: 1, flag: true },
+    { label: t('mock.session.stress.pauses'), value: stress.pauses_score, opacity: 0.55, flag: false },
+    { label: t('mock.session.stress.backspaces'), value: stress.backspace_score, opacity: 0.7, flag: false },
+    { label: t('mock.session.stress.chaos'), value: stress.chaos_score, opacity: 0.9, flag: false },
+    { label: t('mock.session.stress.paste_attempts'), value: stress.paste_attempts, opacity: 1, flag: true },
   ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-text-primary">Стресс-метрики</h3>
+        <h3 className="text-sm font-bold text-text-primary">{t('mock.session.stress.title')}</h3>
         <Sparkles className="h-4 w-4 text-text-secondary" />
       </div>
       {items.map((m) => (
@@ -479,31 +486,32 @@ function StressCard({ stress }: { stress: Stress }) {
 }
 
 function TranscriptCard({ messages, pending }: { messages: AIMessage[]; pending: boolean }) {
+  const t = useT()
   if (messages.length === 0 && !pending) {
     return (
       <Card className="flex-col gap-2 p-4" interactive={false}>
-        <h3 className="text-sm font-bold text-text-primary">Диалог</h3>
+        <h3 className="text-sm font-bold text-text-primary">{t('mock.common.section.transcript')}</h3>
         <p className="text-[12px] text-text-muted">
-          Начните с первого ответа AI-интервьюеру в поле ниже.
+          {t('mock.session.transcript.empty_hint')}
         </p>
       </Card>
     )
   }
   return (
     <Card className="flex-col gap-2 p-4" interactive={false}>
-      <h3 className="text-sm font-bold text-text-primary">Диалог</h3>
+      <h3 className="text-sm font-bold text-text-primary">{t('mock.common.section.transcript')}</h3>
       <div className="flex max-h-[240px] flex-col gap-1.5 overflow-y-auto">
         {messages.slice(-30).map((m, i) => (
           <div key={i} className="text-[12px] break-words">
             <span className={m.from === 'ai' ? 'text-text-secondary' : 'text-text-primary'}>
-              {m.from === 'ai' ? 'AI:' : 'Я:'}{' '}
+              {m.from === 'ai' ? 'AI:' : t('mock.session.transcript.you_prefix')}{' '}
             </span>
             <span className="text-text-secondary">{m.text}</span>
           </div>
         ))}
         {pending && (
           <div className="flex items-center gap-1.5 text-[12px] text-text-muted">
-            <Loader2 className="h-3 w-3 animate-spin" /> AI печатает…
+            <Loader2 className="h-3 w-3 animate-spin" /> {t('mock.session.transcript.typing')}
           </div>
         )}
       </div>
@@ -526,6 +534,7 @@ function MessageBox({
   micOn: boolean
   toggleMic: () => void
 }) {
+  const t = useT()
   return (
     <Card className="flex-row items-center gap-2 p-3" interactive={false}>
       <button
@@ -550,7 +559,7 @@ function MessageBox({
         onBlur={(e) => {
           e.currentTarget.style.borderBottomColor = 'var(--hair-2)'
         }}
-        placeholder="Ответьте интервьюеру…"
+        placeholder={t('mock.session.message.placeholder')}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -567,25 +576,26 @@ function MessageBox({
         disabled={sending || !value.trim()}
         icon={sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
       >
-        {sending ? '…' : 'Отправить'}
+        {sending ? t('mock.session.message.sending') : t('mock.session.message.send')}
       </Button>
     </Card>
   )
 }
 
 function EditorPlaceholder() {
+  const t = useT()
   return (
     <Card className="flex-1 flex-col p-0 overflow-hidden" interactive={false}>
       <div className="flex h-11 items-center justify-between border-b border-border px-4">
         <div className="flex items-center gap-2.5">
           <FileCode className="h-4 w-4 text-text-secondary" />
-          <span className="font-mono text-[13px] text-text-primary">workspace</span>
+          <span className="font-mono text-[13px] text-text-primary">{t('mock.session.editor.title')}</span>
         </div>
         <span className="font-mono text-[11px] text-text-muted">UTF-8 · LF</span>
       </div>
       <div className="flex flex-1 items-center justify-center bg-surface-1 p-6 text-center">
         <p className="font-mono text-[12px] text-text-muted">
-          Code editor для этой секции откроется в отдельной странице · MVP уровня v1
+          {t('mock.session.editor.placeholder')}
         </p>
       </div>
     </Card>
@@ -593,6 +603,7 @@ function EditorPlaceholder() {
 }
 
 export default function MockSessionPage() {
+  const t = useT()
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const channel = sessionId ? `mock/${sessionId}` : ''
@@ -679,8 +690,8 @@ export default function MockSessionPage() {
   const isDevOps = session?.section === 'devops'
   const isFreeform =
     isEnglishHR || isSeniorSD || isTechLead || isSysanalyst || isProductAnalyst || isQA || isDevOps
-  const qTitle = session?.task?.title ?? (isLoading ? 'Загрузка задачи…' : 'Задача')
-  const qDesc = session?.task?.description ?? (isLoading ? 'Подождите немного, загружаем условие интервью.' : 'Подождите AI-собеседника.')
+  const qTitle = session?.task?.title ?? (isLoading ? t('mock.session.task.loading.title') : t('mock.session.task.default_title'))
+  const qDesc = session?.task?.description ?? (isLoading ? t('mock.session.task.loading.description') : t('mock.session.task.wait_ai'))
 
   const sendCurrentDraft = () => {
     const content = draft.trim()
@@ -725,7 +736,7 @@ export default function MockSessionPage() {
       </div>
       <div className="flex flex-col gap-4 px-4 py-4 sm:px-8 lg:flex-row">
         <div className="flex w-full flex-col gap-4 lg:w-[360px]">
-          <ErrorBoundary section="Брифинг секции">
+          <ErrorBoundary section={t('mock.common.section.brief')}>
             {isEnglishHR ? (
               <EnglishHRPanel />
             ) : isSeniorSD ? (
@@ -745,14 +756,14 @@ export default function MockSessionPage() {
             )}
           </ErrorBoundary>
           <div className="hidden lg:block">
-            <ErrorBoundary section="AI интервьюер">
+            <ErrorBoundary section={t('mock.common.section.interviewer')}>
               <InterviewerPanel />
             </ErrorBoundary>
           </div>
         </div>
         <div className="flex min-h-[300px] min-w-0 flex-1 flex-col gap-4 sm:min-h-[400px]">
           {!isFreeform && <EditorPlaceholder />}
-          <ErrorBoundary section="Диалог">
+          <ErrorBoundary section={t('mock.common.section.dialog')}>
             <TranscriptCard messages={liveLines} pending={sendMutation.isPending && !streamingDelta} />
           </ErrorBoundary>
           <MessageBox
@@ -769,7 +780,7 @@ export default function MockSessionPage() {
           {/* StressCard is hidden for free-form rounds — there's no stress
               profile for a conversational round (no editor → no keystroke signals). */}
           {!isFreeform && (
-            <ErrorBoundary section="Стресс-метрики">
+            <ErrorBoundary section={t('mock.common.section.stress')}>
               <StressCard stress={stress} />
             </ErrorBoundary>
           )}

@@ -44,5 +44,80 @@
   "leaderboard_empty": "Пока нет данных",
   "error_title": "Не удалось загрузить профиль",
   "not_found_title": "Профиль не найден",
-  "back_to_sanctum": "На главную"
+  "back_to_sanctum": "На главную",
+
+  "error_load": "Не удалось загрузить профиль.",
+  "not_found_name": "@{{username}} не найден",
+  "not_found_hint": "Возможно, юзернейм изменился.",
+  "not_found_cta": "К Atlas",
+  "section": "Профиль",
+  "member_since": "в druz9 с {{when}}",
+  "settings": "Настройки",
+  "boundary": {
+    "pending_invites": "Pending invites",
+    "ai_coaches": "AI-coach'и",
+    "human_tutors": "Human-туторы"
+  },
+  "public_body": "Это публичная страница профиля @{{username}}. Полная статистика и подготовка доступны только владельцу.",
+  "track": {
+    "card_title": "Активный режим подготовки",
+    "mode_label": "mode",
+    "switch_hint": "Сменить можно в Hone или прямо в settings — это влияет на подсветку узлов в Atlas, фильтр TaskBoard и какой AI-coach по умолчанию подсажен к pill'ам на /atlas.",
+    "general": {
+      "label": "General",
+      "hint": "Без фильтра по треку — видишь весь контент Hone и атласа."
+    },
+    "dev": {
+      "label": "Dev (Go senior)",
+      "hint": "Подготовка к собесу на senior Go-разработчика. Algorithms, system design, distributed."
+    },
+    "ml": {
+      "label": "ML Engineering",
+      "hint": "Senior ML/MLE — classical ML, DL, transformers, LLM/GenAI, ML system design, MLOps."
+    },
+    "english": {
+      "label": "English",
+      "hint": "Speaking + writing для tech-собесов. Clarity / accuracy / range / fluency."
+    },
+    "go": {
+      "label": "Go deep",
+      "hint": "Sub-mode для senior Go-разрабов: runtime, scheduler, GC, profiling, distributed."
+    }
+  },
+  "ai_card": {
+    "title": "AI-coach'и",
+    "loading": "загружаю…",
+    "empty_lead": "Ты ещё не подключил ни одного AI-coach'а. Они умеют отвечать с памятью твоих прошлых разговоров — не «ещё один чат», а персональный coach по треку.",
+    "empty_hint": "Подключаются автоматически при первом клике на coach-pill в Atlas или MockResult.",
+    "open_arrow": "открыть →"
+  },
+  "invites_card": {
+    "title": "Тебя пригласили",
+    "lead": "Туторы хотят с тобой работать. После accept'а assignments будут попадать в Hone TaskBoard, а сессии — в Calendar.",
+    "accept": "Принять",
+    "ellipsis": "…",
+    "err_default": "Не удалось принять"
+  },
+  "human_card": {
+    "title": "Human-туторы",
+    "loading": "загружаю…",
+    "empty_lead": "У тебя пока нет связки с human-тутором. Получил invite-ссылку — открой её, чтобы accept'нуть relationship.",
+    "empty_hint": "После accept'а ассайнменты от тутора будут автоматически попадать в твой Hone TaskBoard, а сессии — в Calendar."
+  },
+  "quick_links": {
+    "title": "Куда дальше",
+    "mock_label": "Mock-собес",
+    "mock_hint": "Взять mock с AI-интервьюером по выбранной компании.",
+    "tasks_label": "TaskBoard",
+    "tasks_hint": "Assignments от тутора + AI-coach + ручные.",
+    "atlas_label": "Atlas",
+    "atlas_hint": "Карта тем для подготовки + прогресс.",
+    "codex_label": "Codex",
+    "codex_hint": "Curated reading library."
+  },
+  "weekly_card": {
+    "title": "Weekly report",
+    "body": "Сводка за неделю — focus минуты, mock'и, weak spots, прогресс по треку. Для долгосрочной траектории.",
+    "open": "Открыть Weekly"
+  }
 }

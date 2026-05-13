@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { useT, useLocaleStore } from '@d9-i18n';
 import { Button, StatusDot } from '../../../components/primitives';
 import type { PermissionKind, PermissionState } from '@shared/ipc';
 import { Row, SectionTitle } from '../lib/shared';
@@ -14,6 +15,7 @@ import { Row, SectionTitle } from '../lib/shared';
  * global hotkeys / voice input.
  */
 export function PermissionsTab() {
+  const t = useT();
   const [perms, setPerms] = useState<PermissionState | null>(null);
 
   const refresh = async () => {
@@ -41,8 +43,8 @@ export function PermissionsTab() {
   return (
     <>
       <SectionTitle
-        title="Доступы macOS"
-        subtitle="Выдать сейчас или позже — без них Cue всё равно работает, но часть функций недоступна."
+        title={t('cue.settings.permissions.section.title')}
+        subtitle={t('cue.settings.permissions.section.subtitle')}
       />
 
       {needsRestart && (
@@ -59,30 +61,29 @@ export function PermissionsTab() {
             marginBottom: 14,
           }}
         >
-          <b>Если переключатель уже включён, а доступа «нет»</b> — macOS кэширует
-          статус до рестарта процесса. Включи тоггл в Системных настройках → нажми
-          «Рестарт».
+          <b>{t('cue.settings.permissions.restart_banner_title')}</b>{' '}
+          — {t('cue.settings.permissions.restart_banner_body')}
         </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <PermRow
-          title="Запись экрана"
-          hint="Чтобы делать скриншоты для AI."
+          title={t('cue.settings.permissions.screen_recording.title')}
+          hint={t('cue.settings.permissions.screen_recording.hint')}
           kind="screen-recording"
           state={perms?.screenRecording}
           refresh={refresh}
         />
         <PermRow
-          title="Универсальный доступ"
-          hint="Чтобы глобальные хоткеи работали в любом приложении."
+          title={t('cue.settings.permissions.accessibility.title')}
+          hint={t('cue.settings.permissions.accessibility.hint')}
           kind="accessibility"
           state={perms?.accessibility}
           refresh={refresh}
         />
         <PermRow
-          title="Микрофон"
-          hint="Опционально — для голосового ввода."
+          title={t('cue.settings.permissions.microphone.title')}
+          hint={t('cue.settings.permissions.microphone.hint')}
           kind="microphone"
           state={perms?.microphone}
           refresh={refresh}
@@ -113,6 +114,8 @@ export function PermissionsTab() {
  *                                Privacy & Security pane.
  */
 function OnboardingReentry() {
+  const t = useT();
+  const locale = useLocaleStore((s) => s.locale);
   const [busy, setBusy] = useState(false);
   const [lastProbeAt, setLastProbeAt] = useState<string>('');
 
@@ -132,7 +135,7 @@ function OnboardingReentry() {
     setBusy(true);
     try {
       const p = await window.druz9.permissions.check();
-      const ts = new Date().toLocaleTimeString('ru-RU', {
+      const ts = new Date().toLocaleTimeString(locale === 'ru' ? 'ru-RU' : 'en-US', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -163,36 +166,36 @@ function OnboardingReentry() {
           fontFamily: 'var(--d9-font-mono)',
         }}
       >
-        Онбординг
+        {t('cue.settings.permissions.onboarding.eyebrow')}
       </div>
       <Row
-        title="Пройти онбординг снова"
-        hint="Откроет приветственный wizard со скриншот-демо и пояснениями по доступам. Полезно когда хочется пересмотреть, что Cue невидим при демонстрации."
+        title={t('cue.settings.permissions.onboarding.rerun_title')}
+        hint={t('cue.settings.permissions.onboarding.rerun_hint')}
         control={
           <Button variant="secondary" size="sm" onClick={() => void onRerun()} disabled={busy}>
-            Открыть wizard
+            {t('cue.settings.permissions.onboarding.rerun_cta')}
           </Button>
         }
       />
       <Row
-        title="Re-check доступов"
+        title={t('cue.settings.permissions.recheck.title')}
         hint={
           lastProbeAt
-            ? `Последняя проверка: ${lastProbeAt}`
-            : 'Сделать живой запрос к macOS TCC без рестарта приложения.'
+            ? t('cue.settings.permissions.recheck.hint_with_time', { info: lastProbeAt })
+            : t('cue.settings.permissions.recheck.hint_default')
         }
         control={
           <Button variant="ghost" size="sm" onClick={() => void onRecheck()} disabled={busy}>
-            Проверить
+            {t('cue.settings.permissions.recheck.cta')}
           </Button>
         }
       />
       <Row
-        title="Системные настройки"
-        hint="Прямая ссылка на Privacy & Security в System Settings."
+        title={t('cue.settings.permissions.system_settings.title')}
+        hint={t('cue.settings.permissions.system_settings.hint')}
         control={
           <Button variant="ghost" size="sm" onClick={onOpenPrivacy}>
-            Открыть
+            {t('cue.settings.permissions.system_settings.cta')}
           </Button>
         }
       />
@@ -213,6 +216,7 @@ function PermRow({
   state: PermissionState[keyof PermissionState] | undefined;
   refresh: () => Promise<void>;
 }) {
+  const t = useT();
   const granted = state === 'granted';
   return (
     <Row
@@ -228,9 +232,9 @@ function PermRow({
                 size="sm"
                 variant="ghost"
                 onClick={() => void window.druz9.app.quit()}
-                title="macOS кэширует статус до рестарта процесса"
+                title={t('cue.settings.permissions.restart_title')}
               >
-                Рестарт
+                {t('cue.settings.permissions.restart_cta')}
               </Button>
             )}
             <Button
@@ -242,7 +246,7 @@ function PermRow({
                 void refresh();
               }}
             >
-              Разрешить
+              {t('cue.settings.permissions.allow_cta')}
             </Button>
           </div>
         )

@@ -6,8 +6,9 @@
 // All values come from DesktopConfig / server state. Writing to hotkeys
 // calls hotkeys.update; other tabs are read-only for now.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import {
   IconDocument,
   IconInfo,
@@ -31,18 +32,21 @@ import { ProvidersTab } from './tabs/ProvidersTab';
 
 type Tab = 'general' | 'hotkeys' | 'providers' | 'documents' | 'appearance' | 'permissions' | 'about';
 
-const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
-  { id: 'general', label: 'Общее', icon: <IconSettings size={14} /> },
-  { id: 'hotkeys', label: 'Горячие клавиши', icon: <IconKey size={14} /> },
-  { id: 'providers', label: 'AI провайдеры', icon: <IconSparkles size={14} /> },
-  { id: 'documents', label: 'Документы', icon: <IconDocument size={14} /> },
-  { id: 'appearance', label: 'Внешний вид', icon: <IconPalette size={14} /> },
-  { id: 'permissions', label: 'Доступы macOS', icon: <IconShield size={14} /> },
-  { id: 'about', label: 'О программе', icon: <IconInfo size={14} /> },
-];
-
 export function SettingsScreen() {
+  const t = useT();
   const [tab, setTab] = useState<Tab>('general');
+  const tabs = useMemo<Array<{ id: Tab; label: string; icon: React.ReactNode }>>(
+    () => [
+      { id: 'general', label: t('cue.settings.tab.general'), icon: <IconSettings size={14} /> },
+      { id: 'hotkeys', label: t('cue.settings.tab.hotkeys'), icon: <IconKey size={14} /> },
+      { id: 'providers', label: t('cue.settings.tab.providers'), icon: <IconSparkles size={14} /> },
+      { id: 'documents', label: t('cue.settings.tab.documents'), icon: <IconDocument size={14} /> },
+      { id: 'appearance', label: t('cue.settings.tab.appearance'), icon: <IconPalette size={14} /> },
+      { id: 'permissions', label: t('cue.settings.tab.permissions'), icon: <IconShield size={14} /> },
+      { id: 'about', label: t('cue.settings.tab.about'), icon: <IconInfo size={14} /> },
+    ],
+    [t],
+  );
   const { config } = useConfig();
   const session = useAuthStore((s) => s.session);
   const bootstrap = useAuthStore((s) => s.bootstrap);

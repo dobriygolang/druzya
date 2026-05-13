@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Brain, CheckCircle, Sparkles, Target } from 'lucide-react'
+import { useT } from '@d9-i18n'
 
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
@@ -31,11 +32,9 @@ import {
 
 type Step = 'intro' | 'algo' | 'sysdesign' | 'result'
 
-const TRACK_LABELS: Record<MiniMockTrack, string> = {
-  go: 'Go senior',
-  ml: 'ML engineering',
-  english: 'English fluency',
-}
+// Module-scope IDs only; labels resolve through useT inside the component
+// (no hardcoded Russian here per b/w + i18n contract).
+const TRACK_IDS: readonly MiniMockTrack[] = ['go', 'ml', 'english']
 
 export default function DiagnosticPage() {
   const navigate = useNavigate()
@@ -133,12 +132,13 @@ export default function DiagnosticPage() {
 // ────────────────────────────────────────────────────────────────────────
 
 function Stepper({ step }: { step: Step }) {
+  const t = useT()
   const stages: Step[] = ['intro', 'algo', 'sysdesign', 'result']
   const labels: Record<Step, string> = {
     intro: 'Intro',
     algo: 'Algo',
     sysdesign: 'SysDesign',
-    result: 'Результат',
+    result: t('mock.diagnostic.stepper.result'),
   }
   const currentIdx = stages.indexOf(step)
   return (
@@ -173,42 +173,43 @@ function Stepper({ step }: { step: Step }) {
   )
 }
 
-function IntroPanel({ onStart }: { onStart: (t: MiniMockTrack) => void }) {
+function IntroPanel({ onStart }: { onStart: (track: MiniMockTrack) => void }) {
+  const t = useT()
+  const trackLabel = (id: MiniMockTrack): string => {
+    if (id === 'go') return t('mock.diagnostic.track.go')
+    if (id === 'ml') return t('mock.diagnostic.track.ml')
+    return t('mock.diagnostic.track.english')
+  }
   return (
     <section className="flex flex-col gap-5 rounded-xl border border-border bg-surface-1 p-6">
       <header className="flex items-center gap-2">
         <Brain className="h-4 w-4 text-text-primary" />
         <h1 className="font-display text-xl font-bold leading-tight">
-          Mini-mock · self-check
+          {t('mock.diagnostic.intro.title')}
         </h1>
       </header>
       <p className="text-[13.5px] leading-relaxed text-text-secondary">
-        Один algo вопрос + один sysdesign в формате честной самооценки.
-        Бюджет — 20 минут. Никакого таймера, никакого «провалил/прошёл».
-        Цель — дать AI правдивый сигнал о текущем уровне, чтобы
-        readiness и daily план учитывали реальность, не угадайки.
+        {t('mock.diagnostic.intro.body')}
       </p>
       <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-4">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          Выбери трек
+          {t('mock.diagnostic.intro.pick_track')}
         </span>
         <div className="flex flex-wrap gap-2">
-          {(Object.keys(TRACK_LABELS) as MiniMockTrack[]).map((t) => (
+          {TRACK_IDS.map((id) => (
             <button
-              key={t}
+              key={id}
               type="button"
-              onClick={() => onStart(t)}
+              onClick={() => onStart(id)}
               className="rounded-md border border-border bg-bg px-4 py-2 text-[13px] font-semibold text-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] hover:border-border-strong"
             >
-              {TRACK_LABELS[t]}
+              {trackLabel(id)}
             </button>
           ))}
         </div>
       </div>
       <p className="text-[11.5px] italic text-text-muted">
-        Результат повлияет на твою F3 readiness (±10–15%) и daily plan
-        на 14 дней. Дальше можно перепройти когда захочешь — новый
-        результат заменит старый.
+        {t('mock.diagnostic.intro.disclaimer')}
       </p>
     </section>
   )
@@ -229,13 +230,14 @@ function AlgoPanel({
   onSubmit: () => void
   onNext: () => void
 }) {
+  const t = useT()
   const isCorrect = chosen === q.correctIndex
   return (
     <section className="flex flex-col gap-5 rounded-xl border border-border bg-surface-1 p-6">
       <header className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Algo · 1 из 2 · {q.difficulty}
+            {t('mock.diagnostic.algo.eyebrow_format', { difficulty: q.difficulty })}
           </span>
           <h2 className="font-display text-base font-bold leading-snug">{q.prompt}</h2>
         </div>
@@ -291,7 +293,7 @@ function AlgoPanel({
             />
           )}
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            {isCorrect ? '✓ верно' : 'правильный — ' + String.fromCharCode(65 + q.correctIndex)}
+            {isCorrect ? t('mock.diagnostic.algo.correct') : t('mock.diagnostic.algo.expected_prefix') + String.fromCharCode(65 + q.correctIndex)}
           </div>
           <p className="mt-1 text-[13px] leading-relaxed text-text-primary">{q.explanation}</p>
         </div>
@@ -301,15 +303,15 @@ function AlgoPanel({
           to="/today"
           className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted hover:text-text-primary"
         >
-          ← отменить
+          {t('mock.diagnostic.cancel')}
         </Link>
         {!reveal ? (
           <Button variant="primary" size="sm" onClick={onSubmit} disabled={chosen === null}>
-            Ответить
+            {t('mock.diagnostic.answer')}
           </Button>
         ) : (
           <Button variant="primary" size="sm" iconRight={<ArrowRight className="h-3.5 w-3.5" />} onClick={onNext}>
-            Дальше · SysDesign
+            {t('mock.diagnostic.next_sysdesign')}
           </Button>
         )}
       </div>
@@ -328,13 +330,14 @@ function SysDesignPanel({
   onChange: (v: string) => void
   onFinish: () => void
 }) {
+  const t = useT()
   const wordCount = useMemo(() => value.trim().split(/\s+/).filter(Boolean).length, [value])
   const isShort = wordCount < 20
   return (
     <section className="flex flex-col gap-5 rounded-xl border border-border bg-surface-1 p-6">
       <header className="flex flex-col gap-1">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          SysDesign · 2 из 2 · open-text
+          {t('mock.diagnostic.sysdesign.eyebrow')}
         </span>
         <h2 className="font-display text-base font-bold leading-snug">{q.prompt}</h2>
       </header>
@@ -344,7 +347,7 @@ function SysDesignPanel({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Распиши подход. Можешь по пунктам — bullet'ы / связный текст. Грейдинг идёт по ключевым концептам, не по красоте."
+        placeholder={t('mock.diagnostic.sysdesign.placeholder')}
         rows={10}
         className="w-full resize-none border-0 border-b border-solid bg-transparent px-1 py-2.5 text-[13px] leading-relaxed text-text-primary placeholder:text-text-muted outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] focus:outline-none"
         style={{ borderBottomColor: 'var(--hair-2)' }}
@@ -357,8 +360,8 @@ function SysDesignPanel({
       />
       <div className="flex items-center justify-between gap-3">
         <span className="font-mono text-[11px] text-text-muted">
-          {wordCount} {pluralWords(wordCount)}
-          {isShort && ' · короткий ответ → low coverage'}
+          {wordCount} {pluralWords(wordCount, t)}
+          {isShort && t('mock.diagnostic.sysdesign.short_warn')}
         </span>
         <Button
           variant="primary"
@@ -367,7 +370,7 @@ function SysDesignPanel({
           onClick={onFinish}
           disabled={value.trim().length === 0}
         >
-          Завершить mini-mock
+          {t('mock.diagnostic.finish')}
         </Button>
       </div>
     </section>
@@ -375,6 +378,7 @@ function SysDesignPanel({
 }
 
 function ResultPanel({ result, onDone }: { result: MiniMockResult; onDone: () => void }) {
+  const t = useT()
   const total = result.overallScore
   const tier =
     total >= 4
@@ -389,7 +393,7 @@ function ResultPanel({ result, onDone }: { result: MiniMockResult; onDone: () =>
     <section className="flex flex-col gap-5 rounded-xl border border-border bg-surface-1 p-6">
       <header className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-text-primary" />
-        <h1 className="font-display text-xl font-bold leading-tight">Mini-mock завершён</h1>
+        <h1 className="font-display text-xl font-bold leading-tight">{t('mock.diagnostic.result.title')}</h1>
       </header>
       <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-4">
         <div className="flex items-baseline justify-between gap-3">
@@ -402,18 +406,18 @@ function ResultPanel({ result, onDone }: { result: MiniMockResult; onDone: () =>
           </span>
         </div>
         <div className="text-[12.5px] text-text-secondary">
-          Algo {result.algo.score.toFixed(1)}/5
-          {result.algo.correct ? ' · верно' : ' · мимо'}
+          {t('mock.diagnostic.result.algo')} {result.algo.score.toFixed(1)}/5
+          {result.algo.correct ? t('mock.diagnostic.result.algo_correct') : t('mock.diagnostic.result.algo_wrong')}
           {' · '}
-          SysDesign {result.sysdesign.score.toFixed(1)}/5
-          {result.sysdesign.total > 0 && ` · ${result.sysdesign.hits.length}/${result.sysdesign.total} ключевых пунктов`}
+          {t('mock.diagnostic.result.sysdesign')} {result.sysdesign.score.toFixed(1)}/5
+          {result.sysdesign.total > 0 && t('mock.diagnostic.result.coverage', { hits: String(result.sysdesign.hits.length), total: String(result.sysdesign.total) })}
         </div>
       </div>
 
       {result.sysdesign.hits.length > 0 && (
         <div className="flex flex-col gap-1">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Покрыл
+            {t('mock.diagnostic.result.covered')}
           </span>
           <div className="flex flex-wrap gap-1.5">
             {result.sysdesign.hits.map((h) => (
@@ -430,32 +434,32 @@ function ResultPanel({ result, onDone }: { result: MiniMockResult; onDone: () =>
 
       <div className="rounded-md border border-border bg-surface-2 p-4">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          F3 readiness
+          {t('mock.diagnostic.result.readiness')}
         </span>
         <p className="mt-1 text-[13px] leading-relaxed text-text-primary">
-          {factorExplanation(total)} Сигнал держится 14 дней, потом устаревает —
-          перепрой mini-mock когда захочешь обновить.
+          {factorExplanation(total, t)}
         </p>
       </div>
 
       <div className="flex items-center justify-end gap-3">
         <Button variant="primary" size="sm" iconRight={<Target className="h-3.5 w-3.5" />} onClick={onDone}>
-          Вернуться на Today
+          {t('mock.diagnostic.result.cta_today')}
         </Button>
       </div>
     </section>
   )
 }
 
-function factorExplanation(score: number): string {
-  if (score >= 4) return `Strong baseline +15% к readiness — fundamentals на месте.`
-  if (score >= 3) return `OK baseline +5% — есть с чем работать, но не критично.`
-  if (score >= 2) return `Gaps выявлены −5% — daily план поставит акценты на слабые места.`
-  return `Критический gap −10% — рекомендуем плотно зайти в фокусную тему до следующего mini-mock.`
+// `t` is passed in so the helper stays pure (no hook call from a non-component).
+function factorExplanation(score: number, t: ReturnType<typeof useT>): string {
+  if (score >= 4) return t('mock.diagnostic.factor.strong')
+  if (score >= 3) return t('mock.diagnostic.factor.ok')
+  if (score >= 2) return t('mock.diagnostic.factor.gaps')
+  return t('mock.diagnostic.factor.critical')
 }
 
-function pluralWords(n: number): string {
-  if (n === 1) return 'слово'
-  if (n >= 2 && n <= 4) return 'слова'
-  return 'слов'
+function pluralWords(n: number, t: ReturnType<typeof useT>): string {
+  if (n === 1) return t('mock.diagnostic.plural.word.one')
+  if (n >= 2 && n <= 4) return t('mock.diagnostic.plural.word.few')
+  return t('mock.diagnostic.plural.word.many')
 }

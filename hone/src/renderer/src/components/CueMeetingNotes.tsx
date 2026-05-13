@@ -16,6 +16,9 @@
 //     умеет heading/list/code-fence/inline-bold/etc).
 import { useEffect, useRef, useState } from 'react';
 import type { CueSessionAnalysis } from '@shared/ipc';
+
+import { useT, translate } from '@d9-i18n';
+
 import { MarkdownView } from './MarkdownView';
 import { useSessionStore } from '../stores/session';
 
@@ -30,6 +33,7 @@ interface Props {
 type Tab = 'transcript' | 'summary';
 
 export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
+  const t = useT();
   const [tab, setTab] = useState<Tab>('transcript');
   const [shareOpen, setShareOpen] = useState(false);
   const [tgBusy, setTgBusy] = useState(false);
@@ -65,7 +69,7 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
 
   const handleFollowupTG = async () => {
     if (!sessionId) {
-      showToast('Сессия ещё не синхронизирована');
+      showToast(translate('hone.cue_meet.not_synced'));
       return;
     }
     if (tgBusy) return;
@@ -73,9 +77,11 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
     try {
       const { sendCueSessionToTelegram } = await import('../api/hone');
       const r = await sendCueSessionToTelegram(sessionId);
-      showToast(r.ok ? 'Отправлено в Telegram' : (r.message || 'Telegram не подключён'));
+      showToast(r.ok
+        ? translate('hone.cue_meet.sent_to_tg')
+        : (r.message || translate('hone.cue_meet.tg_not_connected')));
     } catch (e) {
-      showToast(`Ошибка: ${(e as Error).message}`);
+      showToast(translate('hone.cue_meet.err_prefix', { msg: (e as Error).message }));
     } finally {
       setTgBusy(false);
     }
@@ -86,17 +92,17 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
     try {
       const md = analysis.reportMarkdown || buildCueMarkdown(analysis);
       await navigator.clipboard.writeText(md);
-      showToast('Markdown скопирован в буфер');
+      showToast('Markdown copied to clipboard');
     } catch {
-      showToast('Не удалось скопировать');
+      showToast(translate('hone.cue_meet.copy_failed'));
     }
   };
 
   const handleCopyPublicLink = async () => {
     setShareOpen(false);
-    // Cue-сессии приватны (sentry / personal meeting notes). Показываем
-    // user-facing объяснение вместо silent failure'а.
-    showToast('Cue-сессии приватны — публичные ссылки появятся когда добавим encryption');
+    // Cue sessions are private (sentry / personal meeting notes). Show
+    // user-facing explanation rather than silent failure.
+    showToast('Cue sessions are private — public links will arrive after encryption ships');
   };
 
   const dateStr = formatDate(analysis.startedAt);
@@ -158,15 +164,15 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
           <ActionButton
             onClick={() => void handleFollowupTG()}
             disabled={tgBusy}
-            title={sessionId ? 'Отправить в Telegram' : 'Сессия ещё не синхронизирована'}
+            title={sessionId ? t('hone.cue_meet.send_tg_title') : t('hone.cue_meet.not_synced')}
             icon={<TelegramIcon />}
-            label={tgBusy ? 'Отправляю…' : 'Follow-up TG'}
+            label={tgBusy ? t('hone.cue_meet.sending_tg') : 'Follow-up TG'}
             badge={sessionId ? true : false}
           />
           <div ref={shareRef} style={{ position: 'relative' }}>
             <ActionButton
               onClick={() => setShareOpen((v) => !v)}
-              title="Поделиться"
+              title={t('hone.cue_meet.share_title')}
               icon={<LinkIcon />}
               label="Share"
               chevron
@@ -193,7 +199,7 @@ export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
           </div>
           <ActionButton
             onClick={handleOpenInCue}
-            title="Открыть сессию в Cue desktop"
+            title={t('hone.cue_meet.open_in_cue_title')}
             icon={<ExternalIcon />}
             label="Open in Cue"
           />
@@ -352,13 +358,10 @@ function SummaryTab({ analysis: _analysis }: { analysis: CueSessionAnalysis }) {
         <SparkleIcon />
       </div>
       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-90)' }}>
-        Summary в разработке
+        {translate('hone.cue_meet.summary.coming_soon_title')}
       </div>
       <div style={{ fontSize: 12.5, color: 'var(--ink-60)', maxWidth: 380, lineHeight: 1.5 }}>
-        Когда подключим LLM-extraction, здесь автоматически появятся
-        action items, decisions, terminology и краткий overview.
-        Пока пользуйся вкладкой <strong style={{ color: 'var(--ink-90)' }}>Transcript</strong> —
-        там полное тело заметки.
+        {translate('hone.cue_meet.summary.coming_soon_body')}
       </div>
     </div>
   );
@@ -368,7 +371,7 @@ function TranscriptTab({ analysis }: { analysis: CueSessionAnalysis }) {
   if (!analysis.reportMarkdown) {
     return (
       <div style={{ color: 'var(--ink-40)', fontSize: 13 }}>
-        Transcript не записан для этой сессии.
+        {translate('hone.cue_meet.transcript.empty')}
       </div>
     );
   }

@@ -11,6 +11,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import {
   advancePathStep,
   completeAssignment,
@@ -125,6 +127,7 @@ const captionMonoTiny: React.CSSProperties = {
 };
 
 export function TutorAssignmentsPage() {
+  const t = useT();
   const [state, setState] = useState<State>(INITIAL);
   const [paths, setPaths] = useState<PathsState>(INITIAL_PATHS);
   const [notes, setNotes] = useState<SharedNotesState>(INITIAL_NOTES);
@@ -290,9 +293,9 @@ export function TutorAssignmentsPage() {
               maxWidth: 540,
             }}
           >
-            Здесь — то, что прислал тутор. Жми{' '}
-            <span style={{ fontFamily: monoFont, fontSize: 13, color: 'var(--ink)' }}>Done</span>{' '}
-            когда сделал; он увидит галочку и дельту относительно due-даты.
+            {t('hone.tutor.intro_pre')}
+            <span style={{ fontFamily: monoFont, fontSize: 13, color: 'var(--ink)' }}>Done</span>
+            {t('hone.tutor.intro_post')}
           </p>
         </header>
 
@@ -399,7 +402,7 @@ export function TutorAssignmentsPage() {
             }}
           >
             <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 8, flex: '0 0 auto' }} />
-            <span>Не удалось загрузить: {state.error}</span>
+            <span>{t('hone.tutor.err.load', { msg: state.error ?? 'unknown' })}</span>
           </p>
         )}
         {state.status === 'ok' && state.items.length === 0 && (
@@ -412,9 +415,9 @@ export function TutorAssignmentsPage() {
               background: 'transparent',
             }}
           >
-            <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-60)' }}>Заданий нет.</p>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-60)' }}>{t('hone.tutor.empty')}</p>
             <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--ink-40)' }}>
-              Если ждёшь чего-то от тутора — спроси на ближайшей сессии.
+              {t('hone.tutor.empty_followup')}
             </p>
           </div>
         )}

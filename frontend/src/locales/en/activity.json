@@ -1,0 +1,41 @@
+{
+  "feed": {
+    "eyebrow": "Activity",
+    "summary_count": "{{n}} {{label}} in 7 days",
+    "empty_title": "Log is empty",
+    "minutes_short": "min",
+    "minutes_with_emoji": "⌚ {{n}} min",
+    "add": "Activity",
+    "empty_body": "Nothing logged yet. Each activity is a signal for the coach: readiness climbs, the daily plan adapts. Hit «+ Activity» when you solve LeetCode, read a chapter, or take a mock.",
+    "delete_aria": "Delete entry",
+    "delete_title": "Delete",
+    "collapse": "Collapse · showing {{n}}",
+    "show_all": "Show all {{n}} →",
+    "kind": {
+      "mock": "Mock",
+      "leetcode": "Problem",
+      "reading": "Reading",
+      "coach": "Coach",
+      "focus_block": "Focus",
+      "reflection": "Reflection",
+      "external": "Other"
+    },
+    "plural": {
+      "actions_one": "activity",
+      "actions_few": "activities",
+      "actions_many": "activities",
+      "hours_one": "hour",
+      "hours_few": "hours",
+      "hours_many": "hours",
+      "days_one": "day",
+      "days_few": "days",
+      "days_many": "days"
+    },
+    "ago": {
+      "just_now": "just now",
+      "minutes": "{{n}} min ago",
+      "hours": "{{n}} {{label}} ago",
+      "days": "{{n}} {{label}} ago"
+    }
+  }
+}

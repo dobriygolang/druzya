@@ -1,5 +1,5 @@
 {
-  "_note": "Wave-10 namespace. RU is canonical. Top-priority strings (emptyState titles/CTAs, mobileNav, onboarding step titles/CTAs) are translated to KZ/UA by hand. Deeper secondary copy (sample-problem text, AI insight templates, share share-CTA text) falls back to RU via the kz→ru→en chain configured in lib/i18n.ts and is marked with _note: 'needs human translation' inside the relevant subtree of the KZ/UA files.",
+  "_note": "Wave-10 namespace. RU + EN parallel; legacy KZ/UA chain removed per Phase K Wave 16 (ru/en only).",
   "emptyState": {
     "noData": {
       "kicker": "no data",

@@ -44,5 +44,80 @@
   "leaderboard_empty": "No entries yet",
   "error_title": "Could not load profile",
   "not_found_title": "Profile not found",
-  "back_to_sanctum": "Home"
+  "back_to_sanctum": "Home",
+
+  "error_load": "Could not load profile.",
+  "not_found_name": "@{{username}} not found",
+  "not_found_hint": "Maybe the username changed.",
+  "not_found_cta": "Open Atlas",
+  "section": "Profile",
+  "member_since": "joined druz9 in {{when}}",
+  "settings": "Settings",
+  "boundary": {
+    "pending_invites": "Pending invites",
+    "ai_coaches": "AI coaches",
+    "human_tutors": "Human tutors"
+  },
+  "public_body": "This is the public profile page for @{{username}}. Full stats and prep tools are visible only to the owner.",
+  "track": {
+    "card_title": "Active prep mode",
+    "mode_label": "mode",
+    "switch_hint": "Switch from Hone or directly in settings — this drives Atlas node highlighting, TaskBoard filtering, and which AI-coach is suggested by default for /atlas pills.",
+    "general": {
+      "label": "General",
+      "hint": "No track filter — you see all Hone and atlas content."
+    },
+    "dev": {
+      "label": "Dev (Go senior)",
+      "hint": "Senior Go interview prep. Algorithms, system design, distributed."
+    },
+    "ml": {
+      "label": "ML Engineering",
+      "hint": "Senior ML/MLE — classical ML, DL, transformers, LLM/GenAI, ML system design, MLOps."
+    },
+    "english": {
+      "label": "English",
+      "hint": "Speaking + writing for tech interviews. Clarity / accuracy / range / fluency."
+    },
+    "go": {
+      "label": "Go deep",
+      "hint": "Sub-mode for senior Go devs: runtime, scheduler, GC, profiling, distributed."
+    }
+  },
+  "ai_card": {
+    "title": "AI coaches",
+    "loading": "loading…",
+    "empty_lead": "You haven't activated any AI coach yet. They answer with memory of past conversations — not «yet another chat», but a personal coach for your track.",
+    "empty_hint": "They activate automatically on first click of a coach pill in Atlas or MockResult.",
+    "open_arrow": "open →"
+  },
+  "invites_card": {
+    "title": "You've been invited",
+    "lead": "Tutors want to work with you. After accept, assignments land in Hone TaskBoard and sessions in Calendar.",
+    "accept": "Accept",
+    "ellipsis": "…",
+    "err_default": "Could not accept"
+  },
+  "human_card": {
+    "title": "Human tutors",
+    "loading": "loading…",
+    "empty_lead": "You don't have a human tutor connection yet. Got an invite link? Open it to accept the relationship.",
+    "empty_hint": "After accept, tutor assignments will land in your Hone TaskBoard automatically, and sessions in Calendar."
+  },
+  "quick_links": {
+    "title": "Where next",
+    "mock_label": "Mock interview",
+    "mock_hint": "Take a mock with the AI interviewer for a chosen company.",
+    "tasks_label": "TaskBoard",
+    "tasks_hint": "Tutor assignments + AI-coach + manual tasks.",
+    "atlas_label": "Atlas",
+    "atlas_hint": "Map of prep topics + progress.",
+    "codex_label": "Codex",
+    "codex_hint": "Curated reading library."
+  },
+  "weekly_card": {
+    "title": "Weekly report",
+    "body": "Recap for the week — focus minutes, mocks, weak spots, track progress. For the long arc.",
+    "open": "Open Weekly"
+  }
 }

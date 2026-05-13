@@ -13,6 +13,8 @@
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
+import { translate } from '@d9-i18n';
+
 interface Props {
   /** Human-readable section name (shown в fallback). */
   section?: string;
@@ -59,10 +61,10 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="data-loader-error-stripe" />
           <div className="data-loader-error-body">
             <div className="data-loader-error-label">
-              {this.props.section ?? 'Секция'} упала
+              {translate('hone.error.fell', { section: this.props.section ?? translate('hone.error.unknown_section') })}
             </div>
             <div className="data-loader-error-detail">
-              {this.state.error.message || 'Неизвестная ошибка'}
+              {this.state.error.message || translate('hone.error.unknown')}
             </div>
             <button
               type="button"

@@ -17,6 +17,7 @@ import {
   Volume2,
   X,
 } from 'lucide-react'
+import { useT } from '@d9-i18n'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -28,6 +29,7 @@ import { API_BASE } from '../lib/apiClient'
 import { openHoneCoach, openHoneFocusSession, isHoneDeepLinkSupported } from '../lib/hone-handoff'
 
 function ErrorChip() {
+  const t = useT()
   return (
     <span
       className="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.08em]"
@@ -36,7 +38,7 @@ function ErrorChip() {
         color: 'var(--red)',
       }}
     >
-      Не удалось загрузить
+      {t('mock.common.error.load_failed')}
     </span>
   )
 }
@@ -52,6 +54,7 @@ function Header({
   listening: boolean
   premiumGated: boolean
 }) {
+  const t = useT()
   return (
     <div className="flex h-16 items-center justify-between gap-2 border-b border-border bg-surface-1 px-4 sm:px-8">
       <button
@@ -62,19 +65,19 @@ function Header({
       >
         <ArrowLeft className="h-5 w-5" />
       </button>
-      <span className="font-display text-base font-bold text-text-primary">AI Mock Review</span>
+      <span className="font-display text-base font-bold text-text-primary">{t('mock.result.header.title')}</span>
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" icon={<Download className="h-4 w-4" />} disabled>
-          Export PDF
+          {t('mock.result.export_pdf')}
         </Button>
         <Button
           variant="ghost"
           size="sm"
           icon={listening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
           onClick={onListen}
-          title={premiumGated ? 'Премиум-голос — для подписчиков' : 'Озвучить разбор'}
+          title={premiumGated ? t('mock.result.listen.premium_title') : t('mock.result.listen.normal_title')}
         >
-          Слушать разбор
+          {t('mock.result.listen')}
         </Button>
       </div>
     </div>
@@ -82,6 +85,7 @@ function Header({
 }
 
 function Hero({ overall }: { overall: number }) {
+  const t = useT()
   return (
     <div className="relative flex flex-col items-start justify-between gap-4 overflow-hidden border-b border-border-strong bg-surface-2 px-4 py-6 sm:px-6 lg:h-[200px] lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:py-0">
       <span
@@ -91,12 +95,12 @@ function Hero({ overall }: { overall: number }) {
       />
       <div className="flex flex-col gap-2">
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">
-          <Sparkles className="h-3 w-3" /> AI MOCK · ЗАВЕРШЁН
+          <Sparkles className="h-3 w-3" /> {t('mock.result.hero.eyebrow')}
         </span>
         <h1 className="font-display text-2xl sm:text-3xl lg:text-[36px] font-extrabold leading-[1.1] text-text-primary">
-          Overall: {overall} / 100
+          {t('mock.result.hero.overall_format', { score: String(overall) })}
         </h1>
-        <p className="text-[13px] text-text-secondary">Готовность к Senior Yandex Backend: {overall}%</p>
+        <p className="text-[13px] text-text-secondary">{t('mock.result.hero.readiness_format', { pct: String(overall) })}</p>
       </div>
       <div className="flex flex-col items-end gap-2">
         <span
@@ -105,7 +109,7 @@ function Hero({ overall }: { overall: number }) {
         >
           STRONG MIDDLE
         </span>
-        <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">verdict</span>
+        <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">{t('mock.result.hero.verdict_label')}</span>
       </div>
     </div>
   )
@@ -152,13 +156,14 @@ function SectionCard({
 }
 
 function StrengthsCard({ items }: { items: string[] }) {
+  const t = useT()
   return (
     <Card className="flex-col gap-3 border-border-strong p-[22px]" interactive={false}>
-      <h3 className="font-display text-base font-bold text-text-primary">Сильные стороны</h3>
-      {items.map((t, i) => (
+      <h3 className="font-display text-base font-bold text-text-primary">{t('mock.result.strengths.title')}</h3>
+      {items.map((item, i) => (
         <div key={i} className="flex items-start gap-2">
           <Check className="mt-0.5 h-4 w-4 shrink-0 text-text-primary" />
-          <span className="text-[13px] text-text-secondary">{t}</span>
+          <span className="text-[13px] text-text-secondary">{item}</span>
         </div>
       ))}
     </Card>
@@ -166,6 +171,7 @@ function StrengthsCard({ items }: { items: string[] }) {
 }
 
 function WeaknessesCard({ items }: { items: string[] }) {
+  const t = useT()
   return (
     <Card className="relative flex-col gap-3 border-border-strong p-[22px]" interactive={false}>
       <span
@@ -173,11 +179,11 @@ function WeaknessesCard({ items }: { items: string[] }) {
         className="absolute left-0 top-0 h-full w-[1.5px]"
         style={{ background: 'var(--red)' }}
       />
-      <h3 className="font-display text-base font-bold text-text-primary">Слабые места</h3>
-      {items.map((t, i) => (
+      <h3 className="font-display text-base font-bold text-text-primary">{t('mock.result.weaknesses.title')}</h3>
+      {items.map((item, i) => (
         <div key={i} className="flex items-start gap-2">
           <X className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--red)' }} />
-          <span className="text-[13px] text-text-secondary">{t}</span>
+          <span className="text-[13px] text-text-secondary">{item}</span>
         </div>
       ))}
     </Card>
@@ -185,9 +191,10 @@ function WeaknessesCard({ items }: { items: string[] }) {
 }
 
 function RecsCard({ items }: { items: { p: string; text: string }[] }) {
+  const t = useT()
   return (
     <Card className="flex-col gap-3 border-border-strong bg-surface-2 p-[22px]" interactive={false}>
-      <h3 className="font-display text-base font-bold text-text-primary">Рекомендации</h3>
+      <h3 className="font-display text-base font-bold text-text-primary">{t('mock.result.recs.title')}</h3>
       {items.map((it, i) => (
         <div key={i} className="flex items-start gap-2">
           <span
@@ -204,16 +211,17 @@ function RecsCard({ items }: { items: { p: string; text: string }[] }) {
 }
 
 function StressTimelineCard() {
+  const t = useT()
   const bars = [30, 35, 28, 40, 45, 50, 55, 70, 60, 92, 75, 50]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-text-primary">Стресс по времени</h3>
+        <h3 className="text-sm font-bold text-text-primary">{t('mock.result.stress.title')}</h3>
         <span
           className="font-mono text-[11px] tracking-[0.08em]"
           style={{ color: 'var(--red)' }}
         >
-          peak 32:00
+          {t('mock.result.stress.peak_format', { time: '32:00' })}
         </span>
       </div>
       <div className="flex h-24 items-end gap-1.5">
@@ -249,16 +257,20 @@ function StressTimelineCard() {
 }
 
 function CompanyScoreCard() {
+  const t = useT()
+  // Company brand names — transliterated to Latin so the panel is locale-agnostic
+  // (the MVP panel is static data; once the report ships real per-company scores
+  // the names come from the backend and respect the user's locale).
   const rows = [
     { c: 'Yandex', v: 72 },
     { c: 'Tinkoff', v: 78 },
     { c: 'VK', v: 80 },
     { c: 'Avito', v: 85 },
-    { c: 'Сбер', v: 76 },
+    { c: 'Sber', v: 76 },
   ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <h3 className="text-sm font-bold text-text-primary">По компаниям</h3>
+      <h3 className="text-sm font-bold text-text-primary">{t('mock.result.companies.title')}</h3>
       {rows.map((r) => (
         <div key={r.c} className="flex items-center gap-3">
           <span className="w-16 text-[13px] text-text-secondary">{r.c}</span>
@@ -278,36 +290,37 @@ function CompanyScoreCard() {
 }
 
 function ApplyCard() {
+  const t = useT()
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <h3 className="font-display text-base font-bold text-text-primary">Применить к плану</h3>
+      <h3 className="font-display text-base font-bold text-text-primary">{t('mock.result.apply.title')}</h3>
       <p className="text-[12px] text-text-secondary">
-        Добавим 4 рекомендации в твой 30-дневный план подготовки.
+        {t('mock.result.apply.body')}
       </p>
       <Button variant="primary" size="sm" icon={<Plus className="h-4 w-4" />}>
-        Добавить в план
+        {t('mock.result.apply.cta')}
       </Button>
     </Card>
   )
 }
 
 function PremiumModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT()
   return (
     <Modal
       open={open}
       onClose={onClose}
       size="sm"
-      title="Премиум-голос только для подписчиков"
-      description="Озвучка разбора с премиум-голосом доступна на тарифах Pro и Max. Базовый разбор (текст + браузерный TTS) уже включён в бесплатный тариф."
+      title={t('mock.result.modal.title')}
+      description={t('mock.result.modal.description')}
     >
       <div className="flex flex-col gap-4">
         <p className="text-[13px] text-text-secondary">
-          Озвучка разбора с премиум-голосом доступна на тарифах Pro и Max.
-          Базовый разбор (текст + браузерный TTS) уже включён в бесплатный тариф.
+          {t('mock.result.modal.body')}
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onClose}>
-            Не сейчас
+            {t('mock.result.modal.dismiss')}
           </Button>
           <Button
             variant="primary"
@@ -316,7 +329,7 @@ function PremiumModal({ open, onClose }: { open: boolean; onClose: () => void })
               window.location.href = '/settings#billing'
             }}
           >
-            Оформить подписку
+            {t('mock.result.modal.subscribe')}
           </Button>
         </div>
       </div>
@@ -325,6 +338,7 @@ function PremiumModal({ open, onClose }: { open: boolean; onClose: () => void })
 }
 
 export default function MockResultPage() {
+  const t = useT()
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const { data: report, isError, isLoading } = useMockReportQuery(sessionId)
@@ -404,7 +418,7 @@ export default function MockResultPage() {
 
   const buildSummary = () => {
     if (!report) return ''
-    const head = `Общий балл ${report.overall_score} из 100. `
+    const head = t('mock.result.tts.summary_prefix', { score: String(report.overall_score) })
     const body = (report.strengths ?? []).slice(0, 3).join('. ')
     const tail = (report.recommendations ?? []).slice(0, 2).map((r) => r.title).join('. ')
     return [head, body, tail].filter(Boolean).join(' ')
@@ -467,7 +481,7 @@ export default function MockResultPage() {
         {isProcessing && (
           <div className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface-2 px-4 py-3 text-[13px] text-text-secondary">
             <Loader2 className="h-4 w-4 animate-spin" />
-            AI ещё обрабатывает интервью — отчёт появится через 30–60 секунд.
+            {t('mock.result.processing')}
           </div>
         )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -540,23 +554,27 @@ export default function MockResultPage() {
             {(() => {
               const sec = session?.section ?? 'algorithms'
               const persona = activeTrack === 'go'
-                ? { slug: 'go-coach', name: 'go coach' }
+                ? { slug: 'go-coach', name: t('mock.result.coach.name.go') }
                 : activeTrack === 'ml'
-                  ? { slug: 'ml-coach', name: 'ml coach' }
+                  ? { slug: 'ml-coach', name: t('mock.result.coach.name.ml') }
                   : sec === 'english_hr'
-                    ? { slug: 'english-coach', name: 'english coach' }
+                    ? { slug: 'english-coach', name: t('mock.result.coach.name.english') }
                     : sec === 'system_design_senior' || sec === 'tech_lead_em'
-                      ? { slug: 'sysdesign-guru', name: 'sysdesign coach' }
-                      : { slug: 'algo-coach', name: 'algo coach' }
+                      ? { slug: 'sysdesign-guru', name: t('mock.result.coach.name.sysdesign') }
+                      : { slug: 'algo-coach', name: t('mock.result.coach.name.algo') }
               const weakList = (weaknesses ?? []).slice(0, 5).join('; ')
-              const ctx = `Студент только что прошёл mock (${sec}). Overall score: ${overall}. Слабые места: ${weakList || '—'}. Помоги разобрать что именно пошло не так и составить план улучшения.`
+              const ctx = t('mock.result.coach.context_format', {
+                section: sec,
+                overall: String(overall),
+                weak: weakList || '—',
+              })
               return (
                 <div className="flex">
                   <AICoachPill
                     personaSlug={persona.slug}
                     coachName={persona.name}
                     contextNote={ctx}
-                    label="Разобрать с coach’ем"
+                    label={t('mock.result.coach.label')}
                   />
                 </div>
               )
@@ -576,7 +594,7 @@ export default function MockResultPage() {
             )}
             {!isFreeform && report?.stress_analysis && (
               <Card className="flex-col gap-2 p-5" interactive={false}>
-                <h3 className="font-display text-base font-bold text-text-primary">Стресс-анализ</h3>
+                <h3 className="font-display text-base font-bold text-text-primary">{t('mock.result.stress_analysis.title')}</h3>
                 <p className="text-[13px] leading-relaxed text-text-secondary">{report.stress_analysis}</p>
               </Card>
             )}
@@ -606,6 +624,7 @@ export default function MockResultPage() {
 // «practice top weakness» (opens Hone focus with goal=stage:<section>).
 // B/W only, hairline, no marketing tone — Sergey solo-quality bar.
 function MockHoneHandoff({ topWeakness, section }: { topWeakness: string; section: string }) {
+  const t = useT()
   const onReflect = () => openHoneCoach('mock-reflection', 'web_mock_reflect')
   const onPractice = () => {
     openHoneFocusSession({
@@ -618,7 +637,7 @@ function MockHoneHandoff({ topWeakness, section }: { topWeakness: string; sectio
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-border bg-surface-1 px-4 py-3">
       <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-        next ·
+        {t('mock.result.handoff.eyebrow')}
       </span>
       <button
         type="button"

@@ -14,6 +14,8 @@
 //   - центр экрана через position:fixed + grid place-items:center.
 import React, { useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import { logResistance } from '../api/hone';
 
 export const MAX_RESISTANCE_TEXT_LEN = 200;
@@ -35,6 +37,7 @@ export const ResistanceModal: React.FC<ResistanceModalProps> = ({
   taskId,
   onClose,
 }) => {
+  const t = useT();
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -130,7 +133,7 @@ export const ResistanceModal: React.FC<ResistanceModalProps> = ({
           pre-focus pulse
         </div>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Что трудно прямо сейчас?
+          {t('hone.resistance.headline')}
         </h2>
         {pinnedTitle ? (
           <div
@@ -151,7 +154,7 @@ export const ResistanceModal: React.FC<ResistanceModalProps> = ({
           maxLength={MAX_RESISTANCE_TEXT_LEN}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKey}
-          placeholder="Одна-две фразы — можно пропустить."
+          placeholder={t('hone.resistance.placeholder')}
           spellCheck
           style={{
             marginTop: 14,
@@ -194,7 +197,7 @@ export const ResistanceModal: React.FC<ResistanceModalProps> = ({
               disabled={busy}
               style={btnSecondary}
             >
-              Пропустить
+              {t('hone.onboarding.btn.skip')}
             </button>
             <button
               type="button"
@@ -202,7 +205,7 @@ export const ResistanceModal: React.FC<ResistanceModalProps> = ({
               disabled={busy}
               style={btnPrimary}
             >
-              {busy ? '…' : 'Сохранить и начать'}
+              {busy ? '…' : t('hone.resistance.cta.save_and_start')}
             </button>
           </div>
         </div>

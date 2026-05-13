@@ -82,18 +82,21 @@ function visualFor(n: NotificationItem): { icon: JSX.Element; bg: string } {
   }
 }
 
-function relativeTime(iso: string, now: Date = new Date()): string {
-  const d = new Date(iso)
-  const diffMs = now.getTime() - d.getTime()
-  const min = Math.floor(diffMs / 60_000)
-  if (min < 1) return 'только что'
-  if (min < 60) return `${min} мин`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr} ч`
-  const days = Math.floor(hr / 24)
-  if (days === 1) return 'вчера'
-  if (days < 7) return `${days} дн`
-  return d.toLocaleDateString()
+function useRelativeTime(): (iso: string) => string {
+  const { t } = useTranslation('pages')
+  return (iso: string) => {
+    const d = new Date(iso)
+    const diffMs = Date.now() - d.getTime()
+    const min = Math.floor(diffMs / 60_000)
+    if (min < 1) return t('notifications_extra.just_now')
+    if (min < 60) return t('notifications_extra.minutes', { n: min })
+    const hr = Math.floor(min / 60)
+    if (hr < 24) return t('notifications_extra.hours', { n: hr })
+    const days = Math.floor(hr / 24)
+    if (days === 1) return t('notifications_extra.yesterday')
+    if (days < 7) return t('notifications_extra.days', { n: days })
+    return d.toLocaleDateString()
+  }
 }
 
 type Tab = 'all' | 'unread_tab' | 'social' | 'match' | 'cohort' | 'system'
@@ -118,6 +121,8 @@ function Row({
   onOpenReplay?: (matchID: string) => void
   onOpenPlan?: (planID: string) => void
 }) {
+  const { t } = useTranslation('pages')
+  const relativeTime = useRelativeTime()
   const v = visualFor(n)
   const unread = n.read_at == null
   const matchID = (n.payload?.match_id as string | undefined) ?? undefined
@@ -142,7 +147,7 @@ function Row({
             className="pt-1 text-left text-xs font-semibold text-text-primary hover:text-text-primary"
             onClick={() => onOpenReplay?.(matchID)}
           >
-            Посмотреть replay →
+            {t('notifications_extra.view_replay')}
           </button>
         )}
         {n.type === 'plan_ready' && planID && (
@@ -151,13 +156,13 @@ function Row({
             className="pt-1 text-left text-xs font-semibold text-text-primary hover:text-text-primary"
             onClick={() => onOpenPlan?.(planID)}
           >
-            Открыть план →
+            {t('notifications_extra.open_plan')}
           </button>
         )}
         {n.type === 'challenge' && (
           <div className="flex gap-2 pt-1">
-            <Button size="sm" variant="primary" disabled title="WIP">Принять</Button>
-            <Button size="sm" variant="ghost" disabled title="WIP">Отклонить</Button>
+            <Button size="sm" variant="primary" disabled title={t('notifications_extra.wip_title')}>{t('notifications_extra.accept_btn')}</Button>
+            <Button size="sm" variant="ghost" disabled title={t('notifications_extra.wip_title')}>{t('notifications_extra.decline_btn')}</Button>
           </div>
         )}
       </div>
@@ -185,11 +190,11 @@ function SettingsPanel() {
   const silenceUntil = prefs.data?.silence_until ?? null
 
   const channels: { id: string; label: string; icon: JSX.Element }[] = [
-    { id: 'wins', label: 'Победы', icon: <Trophy className="h-3.5 w-3.5" /> },
-    { id: 'match', label: 'Матчи', icon: <Swords className="h-3.5 w-3.5" /> },
-    { id: 'social', label: 'Соц', icon: <Users className="h-3.5 w-3.5" /> },
-    { id: 'cohort', label: 'Когорта', icon: <Shield className="h-3.5 w-3.5" /> },
-    { id: 'system', label: 'Система', icon: <Server className="h-3.5 w-3.5" /> },
+    { id: 'wins', label: t('notifications_extra.channel_wins'), icon: <Trophy className="h-3.5 w-3.5" /> },
+    { id: 'match', label: t('notifications_extra.channel_match'), icon: <Swords className="h-3.5 w-3.5" /> },
+    { id: 'social', label: t('notifications_extra.channel_social'), icon: <Users className="h-3.5 w-3.5" /> },
+    { id: 'cohort', label: t('notifications_extra.channel_cohort'), icon: <Shield className="h-3.5 w-3.5" /> },
+    { id: 'system', label: t('notifications_extra.channel_system'), icon: <Server className="h-3.5 w-3.5" /> },
   ]
 
   const toggle = (id: string) => {
@@ -212,9 +217,9 @@ function SettingsPanel() {
         <h3 className="font-display text-sm font-bold text-text-primary">{t('notifications.silence')}</h3>
         <div className="flex flex-wrap gap-2">
           {[
-            { l: '1ч', h: 1 },
-            { l: '8ч', h: 8 },
-            { l: '24ч', h: 24 },
+            { l: t('notifications_extra.silence_1h'), h: 1 },
+            { l: t('notifications_extra.silence_8h'), h: 8 },
+            { l: t('notifications_extra.silence_24h'), h: 24 },
           ].map((opt) => (
             <button
               key={opt.l}
@@ -233,7 +238,7 @@ function SettingsPanel() {
         </div>
         {silenceUntil && (
           <span className="text-[11px] text-text-muted">
-            До {new Date(silenceUntil).toLocaleString()}
+            {t('notifications_extra.silence_until', { date: new Date(silenceUntil).toLocaleString() })}
           </span>
         )}
       </Card>
@@ -343,11 +348,11 @@ export default function NotificationsPage() {
         </Tabs>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-          <ErrorBoundary section="Уведомления">
+          <ErrorBoundary section={t('notifications_extra.section_label')}>
             <Card className="flex-1 flex-col gap-2 p-4">
               <DataLoader
                 state={list}
-                section="Уведомления"
+                section={t('notifications_extra.section_label')}
                 skeleton={
                   <div className="flex flex-col gap-3 p-4">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -375,7 +380,7 @@ export default function NotificationsPage() {
           </ErrorBoundary>
 
           <div className="flex w-full flex-col gap-4 lg:w-[320px]">
-            <ErrorBoundary section="Настройки уведомлений">
+            <ErrorBoundary section={t('notifications_extra.section_settings')}>
               <SettingsPanel />
             </ErrorBoundary>
           </div>

@@ -22,6 +22,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Bot, Check, Target } from 'lucide-react'
+import { useT } from '@d9-i18n'
 import { AppShellV2 } from '../../components/AppShell'
 import { EmptyState } from '../../components/EmptyState'
 import { CompanyCard } from '../../components/mock/CompanyCard'
@@ -48,13 +49,17 @@ function loadInitialAiAssist(): boolean {
 // 5-stage pipeline; subset = pipeline trimmed to those stages only.
 // Persisted in localStorage so the user's preferred subset survives
 // reloads inside one device.
-const SECTION_OPTIONS: { id: string; label: string; hint: string }[] = [
-  { id: 'hr', label: 'HR', hint: 'Скрининг с голосовой нейрокой' },
-  { id: 'algo', label: 'Algo', hint: 'Алгоритмическая задача в редакторе' },
-  { id: 'coding', label: 'Coding', hint: 'Go + SQL практический раунд' },
-  { id: 'sysdesign', label: 'System Design', hint: 'Проектирование на whiteboard' },
-  { id: 'behavioral', label: 'Behavioral', hint: 'Поведенческие вопросы' },
-]
+//
+// `id` остаётся в module-scope (используется в loadInitialSections для валидации
+// сохранённых значений). Labels / hints локализуются внутри компонента через useT.
+const SECTION_IDS = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral'] as const
+const SECTION_LABELS: Record<(typeof SECTION_IDS)[number], string> = {
+  hr: 'HR',
+  algo: 'Algo',
+  coding: 'Coding',
+  sysdesign: 'System Design',
+  behavioral: 'Behavioral',
+}
 
 const MOCK_SECTIONS_STORAGE_KEY = 'druz9.mock.sections'
 
@@ -90,19 +95,31 @@ function loadInitialSections(): string[] {
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []
-    return parsed.filter((x): x is string => typeof x === 'string' && SECTION_OPTIONS.some((o) => o.id === x))
+    return parsed.filter((x): x is string => typeof x === 'string' && (SECTION_IDS as readonly string[]).includes(x))
   } catch {
     return []
   }
 }
 
 export default function MockCompanyPicker() {
+  const t = useT()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const companies = useMockCompaniesQuery()
   const create = useCreateMockPipelineMutation()
   const [aiAssist, setAiAssist] = useState<boolean>(loadInitialAiAssist)
   const [selectedSections, setSelectedSections] = useState<string[]>(loadInitialSections)
+
+  const SECTION_OPTIONS = useMemo(
+    () => [
+      { id: 'hr', label: SECTION_LABELS.hr, hint: t('mock.picker.section.hr.hint') },
+      { id: 'algo', label: SECTION_LABELS.algo, hint: t('mock.picker.section.algo.hint') },
+      { id: 'coding', label: SECTION_LABELS.coding, hint: t('mock.picker.section.coding.hint') },
+      { id: 'sysdesign', label: SECTION_LABELS.sysdesign, hint: t('mock.picker.section.sysdesign.hint') },
+      { id: 'behavioral', label: SECTION_LABELS.behavioral, hint: t('mock.picker.section.behavioral.hint') },
+    ],
+    [t],
+  )
 
   const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({
     persistKey: 'mock:track-filter:v1',
@@ -184,11 +201,10 @@ export default function MockCompanyPicker() {
         <header className="flex flex-col gap-1">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">Mock Interview</div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
-            Выбери компанию для собеса
+            {t('mock.picker.title')}
           </h1>
           <p className="text-sm text-text-secondary max-w-2xl">
-            5 секций подряд: скрининг с голосовой нейрокой → Go + SQL → алгоритмы → System Design (с Excalidraw
-            доской) → behavioral. На каждой секции ставится оценка, в конце — отчёт.
+            {t('mock.picker.body')}
           </p>
         </header>
 
@@ -202,14 +218,13 @@ export default function MockCompanyPicker() {
             <Target className="mt-0.5 h-4 w-4 shrink-0 text-text-primary" />
             <div className="flex-1">
               <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                Mock с фокусом из Atlas
+                {t('mock.picker.atlas_focus.label')}
               </div>
               <div className="mt-0.5 text-[14px] font-medium text-text-primary">
-                Тема: «{focusTitle}»
+                {t('mock.picker.atlas_focus.topic', { title: focusTitle })}
               </div>
               <p className="mt-1 text-[12px] text-text-secondary">
-                Секции pre-select'нуты под эту тему. Можешь оставить как есть или
-                изменить вручную ниже.
+                {t('mock.picker.atlas_focus.body')}
               </p>
             </div>
           </div>
@@ -220,14 +235,13 @@ export default function MockCompanyPicker() {
 
         <fieldset
           className="flex flex-col gap-2 rounded-xl border border-border bg-surface-1 p-4"
-          aria-label="Какие секции тренировать"
+          aria-label={t('mock.picker.sections.aria')}
         >
           <legend className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted px-1">
-            Секции пайплайна
+            {t('mock.picker.sections.legend')}
           </legend>
           <p className="text-xs text-text-secondary">
-            Пусто или все включены = полный 5-секционный собес. Выбери подмножество, чтобы потренировать только
-            нужное.
+            {t('mock.picker.sections.help')}
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             {SECTION_OPTIONS.map((opt) => {
@@ -257,22 +271,22 @@ export default function MockCompanyPicker() {
 
         <fieldset
           className="flex flex-col gap-2 rounded-xl border border-border bg-surface-1 p-4"
-          aria-label="Режим AI-помощника"
+          aria-label={t('mock.picker.ai_assist.aria')}
         >
           <legend className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted px-1">
-            AI-помощник во время собеса
+            {t('mock.picker.ai_assist.legend')}
           </legend>
           <AiAssistOption
             checked={!aiAssist}
             onSelect={() => persistAiAssist(false)}
-            title="AI-помощник запрещён"
-            body="Классический mock: только ты, задачи и таймер. Так проходит реальный собес."
+            title={t('mock.picker.ai_assist.off.title')}
+            body={t('mock.picker.ai_assist.off.body')}
           />
           <AiAssistOption
             checked={aiAssist}
             onSelect={() => persistAiAssist(true)}
-            title="AI-помощник разрешён"
-            body="Справа во время алго / sys-design / behavioral будет чат с нейрокой — можно спрашивать подсказки."
+            title={t('mock.picker.ai_assist.on.title')}
+            body={t('mock.picker.ai_assist.on.body')}
             icon={<Bot className="h-4 w-4 text-text-secondary" />}
           />
         </fieldset>
@@ -283,13 +297,13 @@ export default function MockCompanyPicker() {
         {companies.isSuccess && companies.data.length > 0 && (
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface-1 p-4">
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-              трек
+              {t('mock.picker.track_filter.label')}
             </span>
             <TrackFilterChips
               selected={selectedTracks}
               onChange={setSelectedTracks}
               persistKey="mock:track-filter:v1"
-              ariaLabel="Фильтр компаний по трекам"
+              ariaLabel={t('mock.picker.track_filter.aria')}
             />
             {selectedTracks.size > 0 && (
               <span className="font-mono text-[10px] text-text-muted">
@@ -304,35 +318,34 @@ export default function MockCompanyPicker() {
         {companies.isError && isComingSoonError(companies.error) && (
           <EmptyState
             variant="coming-soon"
-            title="Multi-stage Mock Interview"
-            body="Запускается в Wave-12. Загляни чуть позже — мульти-стейдж pipeline скоро будет доступен."
-            cta={{ label: 'Назад в Atlas', onClick: () => navigate('/atlas') }}
+            title={t('mock.picker.coming_soon.title')}
+            body={t('mock.picker.coming_soon.body')}
+            cta={{ label: t('mock.picker.coming_soon.cta'), onClick: () => navigate('/atlas') }}
           />
         )}
 
         {companies.isError && !isComingSoonError(companies.error) && (
           <EmptyState
             variant="error"
-            title="Не удалось загрузить компании"
-            body="Сервис собеседований временно недоступен."
-            cta={{ label: 'Повторить', onClick: () => companies.refetch() }}
+            title={t('mock.picker.err.load_title')}
+            body={t('mock.picker.err.load_body')}
+            cta={{ label: t('mock.pipeline.err.retry'), onClick: () => companies.refetch() }}
           />
         )}
 
         {companies.isSuccess && companies.data.length === 0 && (
           <EmptyState
             variant="error"
-            title="Список компаний пуст"
-            body="Каталог ещё не наполнен. Зайди позже или сообщи в /help."
-            cta={{ label: 'Повторить', onClick: () => companies.refetch() }}
+            title={t('mock.picker.err.empty_title')}
+            body={t('mock.picker.err.empty_body')}
+            cta={{ label: t('mock.pipeline.err.retry'), onClick: () => companies.refetch() }}
           />
         )}
 
         {companies.isSuccess && companies.data.length > 0 && filteredCompanies.length === 0 && (
           <div className="rounded-xl border border-dashed border-border bg-surface-1 p-6 text-center">
             <p className="text-sm text-text-secondary">
-              Ни одна компания не покрывает выбранный трек. Сбрось фильтр или
-              выбери другой трек.
+              {t('mock.picker.err.no_track')}
             </p>
           </div>
         )}
@@ -360,7 +373,7 @@ export default function MockCompanyPicker() {
               className="absolute left-0 top-0 h-full w-[1.5px]"
               style={{ background: 'var(--red)' }}
             />
-            Не удалось запустить пайплайн: {(create.error as Error).message}
+            {t('mock.picker.err.create_pipeline_prefix')} {(create.error as Error).message}
           </div>
         )}
       </div>
@@ -429,28 +442,29 @@ function AiAssistOption({
 // re-reading them costs nothing, while removing them stranded
 // returning users without context.
 function FirstRunSteps() {
+  const t = useT()
   const steps: Array<{ n: string; title: string; body: string }> = [
     {
       n: '1',
       title: 'Pick a company',
-      body: 'Каждая компания — свой набор этапов и стиль вопросов. На рандоме — общий пул.',
+      body: t('mock.picker.first_run.step1.body'),
     },
     {
       n: '2',
       title: '5 stages back-to-back',
-      body: 'HR → algo → coding → system design → behavioral. На каждом — таймер и AI-судья.',
+      body: t('mock.picker.first_run.step2.body'),
     },
     {
       n: '3',
       title: 'AI report at the end',
-      body: 'Pass/fail по каждому этапу + что упустил. Появится в /insights через секунду.',
+      body: t('mock.picker.first_run.step3.body'),
     },
   ]
   return (
     <div className="rounded-xl border border-border bg-surface-1 p-4">
       <div className="mb-3">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          Как это работает
+          {t('mock.picker.first_run.header')}
         </span>
       </div>
       <ol className="grid grid-cols-1 gap-3 sm:grid-cols-3">

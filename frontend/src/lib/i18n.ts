@@ -14,6 +14,10 @@ import ruAuth from '../locales/ru/auth.json'
 import ruToasts from '../locales/ru/toasts.json'
 import ruLingua from '../locales/ru/lingua.json'
 import ruAdmin from '../locales/ru/admin.json'
+import ruTutor from '../locales/ru/tutor.json'
+import ruInvite from '../locales/ru/invite.json'
+import ruAtlas from '../locales/ru/atlas.json'
+import ruActivity from '../locales/ru/activity.json'
 
 import enCommon from '../locales/en/common.json'
 import enProfile from '../locales/en/profile.json'
@@ -28,6 +32,10 @@ import enAuth from '../locales/en/auth.json'
 import enToasts from '../locales/en/toasts.json'
 import enLingua from '../locales/en/lingua.json'
 import enAdmin from '../locales/en/admin.json'
+import enTutor from '../locales/en/tutor.json'
+import enInvite from '../locales/en/invite.json'
+import enAtlas from '../locales/en/atlas.json'
+import enActivity from '../locales/en/activity.json'
 
 // Unified storage key across web / Hone / Cue. The legacy 'druz9_lang' value
 // is read once below and migrated forward so existing users don't lose their
@@ -51,6 +59,10 @@ export const NAMESPACES = [
   'toasts',
   'lingua',
   'admin',
+  'tutor',
+  'invite',
+  'atlas',
+  'activity',
 ] as const
 
 export const resources = {
@@ -68,6 +80,10 @@ export const resources = {
     toasts: ruToasts,
     lingua: ruLingua,
     admin: ruAdmin,
+    tutor: ruTutor,
+    invite: ruInvite,
+    atlas: ruAtlas,
+    activity: ruActivity,
   },
   en: {
     common: enCommon,
@@ -83,6 +99,10 @@ export const resources = {
     toasts: enToasts,
     lingua: enLingua,
     admin: enAdmin,
+    tutor: enTutor,
+    invite: enInvite,
+    atlas: enAtlas,
+    activity: enActivity,
   },
 }
 

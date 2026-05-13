@@ -1,9 +1,11 @@
 // api/external.ts — External activity logging (Hone Stats / Today).
 //
 // Wraps HoneService's AddExternalActivity / List / Delete / SearchAtlasTopics
-// RPCs into POJO-shaped helpers consumed by the «+ занятие» modal.
+// RPCs into POJO-shaped helpers consumed by the «+ activity» modal.
 import { createPromiseClient } from '@connectrpc/connect';
 import { HoneService } from '@generated/pb/druz9/v1/hone_connect';
+
+import { translate } from '@d9-i18n';
 
 import { transport } from './transport';
 
@@ -19,16 +21,23 @@ export type ExternalSource =
   | 'course'
   | 'other';
 
-export const EXTERNAL_SOURCES: { value: ExternalSource; label: string }[] = [
-  { value: 'leetcode', label: 'LeetCode' },
-  { value: 'coursera', label: 'Coursera' },
-  { value: 'hackerrank', label: 'HackerRank' },
-  { value: 'youtube', label: 'YouTube' },
-  { value: 'book', label: 'Книга' },
-  { value: 'article', label: 'Статья' },
-  { value: 'course', label: 'Другой курс' },
-  { value: 'other', label: 'Другое' },
-];
+/**
+ * Source labels are resolved at call time so they pick up the active locale.
+ * Brand names (LeetCode / Coursera / HackerRank / YouTube) stay as-is.
+ */
+export function getExternalSources(): { value: ExternalSource; label: string }[] {
+  return [
+    { value: 'leetcode', label: 'LeetCode' },
+    { value: 'coursera', label: 'Coursera' },
+    { value: 'hackerrank', label: 'HackerRank' },
+    { value: 'youtube', label: 'YouTube' },
+    { value: 'book', label: translate('hone.external.source.book') },
+    { value: 'article', label: translate('hone.external.source.article') },
+    { value: 'course', label: translate('hone.external.source.course') },
+    { value: 'other', label: translate('hone.external.source.other') },
+  ];
+}
+
 
 export interface ExternalActivity {
   id: string;

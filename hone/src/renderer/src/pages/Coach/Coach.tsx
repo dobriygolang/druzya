@@ -12,6 +12,8 @@
 //   feed    — placeholder activity stream (coming Phase 2 follow-up)
 import React, { useEffect, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import {
   getNextAction,
   getForkSnapshot,
@@ -47,6 +49,7 @@ interface CoachProps {
 }
 
 export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
+  const t = useT();
   const [mode, setMode] = useState<Mode>('explore');
   const [modeError, setModeError] = useState<string | null>(null);
   const [next, setNext] = useState<NextAction | null>(null);
@@ -335,7 +338,7 @@ export const Coach: React.FC<CoachProps> = ({ onStartFocus }) => {
             <div className="data-loader-error" style={{ margin: '12px 0' }}>
               <div className="data-loader-error-stripe" />
               <div className="data-loader-error-body">
-                <div className="data-loader-error-label">Часть данных не загрузилась</div>
+                <div className="data-loader-error-label">{t('hone.coach.err.partial_load')}</div>
                 <div className="data-loader-error-detail">{auxError}</div>
                 <button
                   type="button"

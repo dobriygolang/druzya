@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Loader2, Send, ArrowLeft } from 'lucide-react'
+import { useT } from '@d9-i18n'
 
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -45,6 +46,7 @@ import type { Readiness } from '../lib/readiness'
 import type { StreakInfo } from '../lib/activity'
 
 export default function AITutorChatPage() {
+  const t = useT()
   const { slug = '' } = useParams<{ slug: string }>()
   const navigate = useNavigate()
 
@@ -102,10 +104,10 @@ export default function AITutorChatPage() {
                 flex: '0 0 auto',
               }}
             />
-            <p className="text-[14px]" style={{ color: 'var(--red)' }}>Персона не найдена.</p>
+            <p className="text-[14px]" style={{ color: 'var(--red)' }}>{t('aitutor.err.persona_not_found')}</p>
           </div>
           <Button variant="ghost" onClick={() => navigate('/atlas')}>
-            ← Atlas
+            ← {t('aitutor.atlas_link')}
           </Button>
         </div>
       </AppShellV2>
@@ -128,7 +130,7 @@ export default function AITutorChatPage() {
               }}
             />
             <p className="text-[14px]" style={{ color: 'var(--red)' }}>
-              {adopt.error instanceof ApiError ? adopt.error.body : 'Не удалось открыть чат.'}
+              {adopt.error instanceof ApiError ? adopt.error.body : t('aitutor.err.cant_open_chat')}
             </p>
           </div>
         </div>
@@ -146,6 +148,7 @@ function ChatBody({
   persona: AITutorPersona
   thread: AITutorThread
 }) {
+  const t = useT()
   const navigate = useNavigate()
   const historyQ = useAITutorHistoryQuery(thread.id, 60)
   const send = useSendAITutorMessageMutation(thread.id)
@@ -197,7 +200,7 @@ function ChatBody({
               onClick={() => navigate('/atlas')}
               className="flex items-center gap-1 self-start font-mono text-[11px] tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
             >
-              <ArrowLeft className="h-3 w-3" /> Atlas
+              <ArrowLeft className="h-3 w-3" /> {t('aitutor.atlas_link')}
             </button>
             <h1 className="font-display text-xl font-semibold">{persona.display_name}</h1>
             <div className="flex items-center gap-2 font-mono text-[11px] text-text-muted">
@@ -206,11 +209,11 @@ function ChatBody({
             </div>
           </div>
           <div className="text-right font-mono text-[11px] text-text-muted">
-            {thread.daily_msg_count}/30 · сегодня
+            {t('aitutor.daily_msg_today', { count: String(thread.daily_msg_count) })}
           </div>
         </header>
 
-        <ErrorBoundary section="Coach memory">
+        <ErrorBoundary section={t('aitutor.section.coach_memory')}>
           <CoachMemoryCard
             summary={summary}
             stats={memoryStatsQ.data}
@@ -234,7 +237,7 @@ function ChatBody({
           >
             <DataLoader
               state={historyQ}
-              section="История"
+              section={t('aitutor.section.history')}
               skeleton={
                 <div className="flex flex-col gap-2">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -260,7 +263,7 @@ function ChatBody({
               )}
             </DataLoader>
             {send.isPending && (
-              <p className="self-start font-mono text-[11px] text-text-muted">…coach думает</p>
+              <p className="self-start font-mono text-[11px] text-text-muted">{t('aitutor.compose.thinking')}</p>
             )}
           </div>
         </ErrorBoundary>
@@ -275,7 +278,7 @@ function ChatBody({
                 void onSend(e as unknown as React.FormEvent)
               }
             }}
-            placeholder="Напиши сообщение… (⌘/Ctrl+Enter — отправить)"
+            placeholder={t('aitutor.compose.placeholder')}
             rows={3}
             maxLength={4000}
             className="flex-1 resize-none border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
@@ -298,7 +301,7 @@ function ChatBody({
               }}
             />
             <p className="text-[12px]" style={{ color: 'var(--red)' }}>
-              {send.error instanceof ApiError ? send.error.body : 'Не получилось отправить.'}
+              {send.error instanceof ApiError ? send.error.body : t('aitutor.err.send_failed')}
             </p>
           </div>
         )}
@@ -319,18 +322,18 @@ function CoachKnowsBadge({
   memoryStats: MemoryStats | undefined
   loading: boolean
 }) {
+  const t = useT()
   if (loading || !memoryStats) {
-    return <span className="text-text-muted">· coach</span>
+    return <span className="text-text-muted">{t('aitutor.coach.label')}</span>
   }
   if (memoryStats.total30d === 0) {
-    return <span className="text-text-muted">· coach · learning…</span>
+    return <span className="text-text-muted">{t('aitutor.coach.learning')}</span>
   }
-  const detail = memoryStats.total30d >= 10 ? ' за 30 дн' : ''
-  return (
-    <span className="text-text-secondary">
-      · coach помнит {memoryStats.total30d} событий{detail}
-    </span>
-  )
+  const tpl =
+    memoryStats.total30d >= 10
+      ? t('aitutor.coach.knows_count_long', { count: String(memoryStats.total30d) })
+      : t('aitutor.coach.knows_count_short', { count: String(memoryStats.total30d) })
+  return <span className="text-text-secondary">{tpl}</span>
 }
 
 // Sticky card с пятью уровнями памяти:
@@ -362,6 +365,7 @@ function CoachMemoryCard({
   streak: StreakInfo
   onEditGoal: () => void
 }) {
+  const t = useT()
   const hasSummary = summary.length > 0
   const hasMemory = (stats?.total30d ?? 0) > 0
   const hasGoal = goal !== null
@@ -374,11 +378,11 @@ function CoachMemoryCard({
     <Card className="flex-col gap-2 p-3" interactive={false}>
       <div className="flex items-center justify-between">
         <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          Что AI помнит
+          {t('aitutor.memory.title')}
         </p>
         {stats && hasMemory && (
           <p className="font-mono text-[10px] text-text-muted">
-            {stats.total30d} событий · 30 дн
+            {t('aitutor.memory.events_count', { count: String(stats.total30d) })}
           </p>
         )}
       </div>
@@ -387,12 +391,12 @@ function CoachMemoryCard({
       <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
         <div className="flex flex-col gap-0.5 min-w-0">
           <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-text-muted">
-            Цель
+            {t('aitutor.memory.goal_label')}
           </span>
           {hasGoal ? (
             <span className="truncate text-[13px] text-text-primary">{formatGoal(goal)}</span>
           ) : (
-            <span className="text-[12px] italic text-text-muted">Не выбрана — AI плывёт без курса</span>
+            <span className="text-[12px] italic text-text-muted">{t('aitutor.memory.goal_empty')}</span>
           )}
         </div>
         <button
@@ -400,7 +404,7 @@ function CoachMemoryCard({
           onClick={onEditGoal}
           className="shrink-0 rounded-md border border-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-border-strong hover:text-text-primary"
         >
-          {hasGoal ? 'Изменить' : 'Поставить'}
+          {hasGoal ? t('aitutor.memory.goal.change') : t('aitutor.memory.goal.set')}
         </button>
       </div>
 
@@ -412,7 +416,7 @@ function CoachMemoryCard({
         <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-text-muted">
-              Готовность · F3
+              {t('aitutor.memory.readiness_label')}
             </span>
             <span className="text-[13px] text-text-primary">
               <b className="font-mono tabular-nums">{readiness.readinessPct}%</b>
@@ -420,15 +424,18 @@ function CoachMemoryCard({
                 <span className="text-text-secondary">
                   {' · '}
                   {readiness.daysToTarget === 0
-                    ? 'дедлайн сегодня'
-                    : `${readiness.daysToTarget} ${pluralDaysToTarget(readiness.daysToTarget)} до цели`}
+                    ? t('aitutor.memory.deadline_today')
+                    : t('aitutor.memory.days_to_target', {
+                        n: String(readiness.daysToTarget),
+                        label: pluralDaysToTarget(readiness.daysToTarget, t),
+                      })}
                 </span>
               )}
             </span>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-0.5">
             <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-text-muted">
-              Streak
+              {t('aitutor.memory.streak_label')}
             </span>
             <span className="font-mono text-[12px] tabular-nums text-text-primary">
               {streak.days === 0
@@ -436,7 +443,7 @@ function CoachMemoryCard({
                 : `${streak.days}${streak.includesToday ? '' : '*'}`}
               {streak.longestDays > streak.days && (
                 <span className="ml-1 text-text-muted">
-                  · max {streak.longestDays}
+                  {t('aitutor.memory.streak_max_format', { n: String(streak.longestDays) })}
                 </span>
               )}
             </span>
@@ -450,12 +457,12 @@ function CoachMemoryCard({
       {hasCue && latestCue && (
         <div className="flex flex-col gap-0.5 border-b border-border pb-2">
           <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-text-muted">
-            Cue · {formatCueAgo(latestCue.completedAt)}
+            {t('aitutor.memory.cue_label', { ago: formatCueAgo(latestCue.completedAt, t) })}
           </span>
           <span className="truncate text-[12.5px] text-text-secondary">
             {latestCue.company}
             {latestCue.persona && ` · ${latestCue.persona}`}
-            {latestCue.stages.length > 0 && ` · ${latestCue.stages.length} ${pluralStages(latestCue.stages.length)}`}
+            {latestCue.stages.length > 0 && ` · ${latestCue.stages.length} ${pluralStages(latestCue.stages.length, t)}`}
           </span>
           {latestCue.aiSummary && (
             <span className="text-[11px] italic text-text-muted line-clamp-2">{latestCue.aiSummary}</span>
@@ -468,10 +475,10 @@ function CoachMemoryCard({
       ) : (
         <p className="text-[12px] italic text-text-muted">
           {loading
-            ? 'Загружаем что AI помнит…'
+            ? t('aitutor.memory.summary.loading')
             : hasMemory
-              ? 'События зарегистрированы; разговор ещё не вынес ключевых фактов наружу. Спроси / расскажи о своих целях — AI начнёт строить контекст.'
-              : 'Coach только знакомится с тобой. Поделись целью / уровнем / больной точкой — AI будет помнить от сессии к сессии.'}
+              ? t('aitutor.memory.summary.has_memory_no_summary')
+              : t('aitutor.memory.summary.empty')}
         </p>
       )}
     </Card>
@@ -480,27 +487,29 @@ function CoachMemoryCard({
 
 // Helpers для CoachMemoryCard Cue slice. Local utilities keep formatting
 // concise (formatAgo similar to ActivityFeed но с less granularity).
-function formatCueAgo(ms: number): string {
+// `t` is passed explicitly so these stay pure (callable from rendering code
+// but not hooks themselves).
+function formatCueAgo(ms: number, t: ReturnType<typeof useT>): string {
   const diff = Date.now() - ms
   const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins} мин назад`
+  if (mins < 60) return t('aitutor.time.minutes_ago', { n: String(mins) })
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}ч назад`
+  if (hrs < 24) return t('aitutor.time.hours_ago', { n: String(hrs) })
   const days = Math.floor(hrs / 24)
-  if (days <= 6) return `${days}д назад`
+  if (days <= 6) return t('aitutor.time.days_ago', { n: String(days) })
   return new Date(ms).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
-function pluralStages(n: number): string {
-  if (n === 1) return 'стадия'
-  if (n >= 2 && n <= 4) return 'стадии'
-  return 'стадий'
+function pluralStages(n: number, t: ReturnType<typeof useT>): string {
+  if (n === 1) return t('aitutor.plural.stage.one')
+  if (n >= 2 && n <= 4) return t('aitutor.plural.stage.few')
+  return t('aitutor.plural.stage.many')
 }
 
-function pluralDaysToTarget(n: number): string {
-  if (n === 1) return 'день'
-  if (n >= 2 && n <= 4) return 'дня'
-  return 'дней'
+function pluralDaysToTarget(n: number, t: ReturnType<typeof useT>): string {
+  if (n === 1) return t('aitutor.plural.day.one')
+  if (n >= 2 && n <= 4) return t('aitutor.plural.day.few')
+  return t('aitutor.plural.day.many')
 }
 
 function ChatBubble({ ep }: { ep: AITutorEpisode }) {

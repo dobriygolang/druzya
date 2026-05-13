@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import { eventChannels } from '@shared/ipc';
 import { CommandPalette } from '../../components/CommandPalette';
 import {
@@ -57,6 +58,7 @@ import { captureAndSend } from './lib/captureAndSend';
 import { buildPaletteActions } from './lib/paletteActions';
 
 export function ExpandedScreen() {
+  const t = useT();
   const { config } = useConfig();
   const bootstrap = useConversationStore((s) => s.bootstrap);
   const messages = useConversationStore((s) => s.messages);
@@ -463,9 +465,9 @@ export function ExpandedScreen() {
           <button
             type="button"
             onClick={() => void window.druz9.windows.showPicker('persona')}
-            title="Сменить persona"
+            title={t('cue.expanded.persona_switch_title')}
             aria-haspopup="dialog"
-            aria-label={`Сменить persona — текущая: ${activePersona.label}`}
+            aria-label={t('cue.expanded.persona_switch_aria', { label: activePersona.label })}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -491,10 +493,10 @@ export function ExpandedScreen() {
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            title="Сменить модель"
+            title={t('cue.expanded.model_switch_title')}
             aria-haspopup="dialog"
             aria-expanded={pickerOpen}
-            aria-label={`Сменить модель — текущая: ${modelLabelText}`}
+            aria-label={t('cue.expanded.model_switch_aria', { label: modelLabelText })}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -537,14 +539,14 @@ export function ExpandedScreen() {
             hasSummary={Boolean(lastAnalysis && lastAnalysis.status === 'ready')}
             onOpenSummary={() => setSummaryOpen(true)}
           />
-          <IconButton title="История" onClick={() => void window.druz9.windows.show('history')}>
+          <IconButton title={t('cue.expanded.btn.history_title')} onClick={() => void window.druz9.windows.show('history')}>
             <IconHistory size={14} />
           </IconButton>
-          <IconButton title="Настройки" onClick={() => void window.druz9.windows.show('settings')}>
+          <IconButton title={t('cue.expanded.btn.settings_title')} onClick={() => void window.druz9.windows.show('settings')}>
             <D9IconSettings size={14} />
           </IconButton>
           <IconButton
-            title="Свернуть / закрыть (⌘W)"
+            title={t('cue.expanded.btn.close_title')}
             onClick={() => void window.druz9.windows.hide('expanded')}
           >
             <D9IconClose size={12} />
@@ -643,7 +645,7 @@ export function ExpandedScreen() {
                 void send();
               }
             }}
-            placeholder={recording ? 'Слушаю…' : 'Продолжить диалог…'}
+            placeholder={recording ? t('cue.expanded.input.placeholder_listening') : t('cue.expanded.input.placeholder_continue')}
             style={{
               flex: 1,
               background: 'transparent',
@@ -661,7 +663,7 @@ export function ExpandedScreen() {
               (binary доступен и юзер хоть раз начинал запись). По
               умолчанию ON — auto-send после 3s тишины. */}
           <label
-            title="Авто-отправка после 3 сек тишины"
+            title={t('cue.expanded.autosend.title')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -682,10 +684,10 @@ export function ExpandedScreen() {
               onChange={(e) => setAutoSendEnabled(e.target.checked)}
               style={{ accentColor: 'var(--d9-accent)', margin: 0 }}
             />
-            Auto-send
+            {t('cue.expanded.autosend.label')}
           </label>
           <IconButton
-            title="Скриншот (⌘⇧S)"
+            title={t('cue.expanded.btn.screenshot_title')}
             onClick={() => void captureAndSend(conversationId, draft, setDraft, selectedModel || config?.defaultModelId || '')}
           >
             <D9IconCamera size={14} />
@@ -693,8 +695,8 @@ export function ExpandedScreen() {
           {/* Send button — red signal circle (B/W rule). */}
           <button
             type="button"
-            title="Отправить (Enter)"
-            aria-label="Send message"
+            title={t('cue.expanded.btn.send_title')}
+            aria-label={t('cue.expanded.btn.send_aria')}
             onClick={() => void send()}
             disabled={streaming || (!draft.trim() && !haveVoiceText)}
             style={{
@@ -755,7 +757,7 @@ export function ExpandedScreen() {
               : quota.plan && quota.plan !== 'free'
                 ? (
                   <span
-                    title={`План: ${quota.plan}`}
+                    title={t('cue.expanded.plan_title', { plan: quota.plan })}
                     style={{
                       fontSize: 9,
                       letterSpacing: '0.06em',

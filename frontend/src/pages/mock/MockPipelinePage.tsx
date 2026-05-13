@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import { useTranslation } from 'react-i18next'
+import { useT } from '@d9-i18n'
 import {
   AlertCircle,
   ArrowRight,
@@ -65,6 +66,7 @@ const STAGE_ORDER_DISPLAY: StageKind[] = [
 ]
 
 export default function MockPipelinePage() {
+  const t = useT()
   const { t: tToasts } = useTranslation('toasts')
   const { pipelineId } = useParams<{ pipelineId: string }>()
   const navigate = useNavigate()
@@ -174,9 +176,9 @@ export default function MockPipelinePage() {
         <div className="px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
           <EmptyState
             variant="coming-soon"
-            title="Mock Interview"
-            body="Сервис пайплайна ещё не активен."
-            cta={{ label: 'К выбору компании', onClick: () => navigate('/mock') }}
+            title={t('mock.pipeline.coming_soon.title')}
+            body={t('mock.pipeline.coming_soon.body')}
+            cta={{ label: t('mock.pipeline.coming_soon.cta'), onClick: () => navigate('/mock') }}
           />
         </div>
       </AppShellV2>
@@ -189,9 +191,9 @@ export default function MockPipelinePage() {
         <div className="px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
           <EmptyState
             variant="error"
-            title="Не удалось загрузить пайплайн"
-            cta={{ label: 'Повторить', onClick: () => pipelineQ.refetch() }}
-            secondaryCta={{ label: 'Новый собес', onClick: () => navigate('/mock') }}
+            title={t('mock.pipeline.err.load_title')}
+            cta={{ label: t('mock.pipeline.err.retry'), onClick: () => pipelineQ.refetch() }}
+            secondaryCta={{ label: t('mock.pipeline.err.new'), onClick: () => navigate('/mock') }}
           />
         </div>
       </AppShellV2>
@@ -202,7 +204,7 @@ export default function MockPipelinePage() {
     return (
       <AppShellV2>
         <div className="px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
-          <EmptyState variant="404-not-found" title="Пайплайн не найден" />
+          <EmptyState variant="404-not-found" title={t('mock.pipeline.err.not_found')} />
         </div>
       </AppShellV2>
     )
@@ -219,9 +221,9 @@ export default function MockPipelinePage() {
         <div className="px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
           <EmptyState
             variant="error"
-            title="Стадия не найдена"
-            body="Пайплайн в неконсистентном состоянии."
-            cta={{ label: 'Новый собес', onClick: () => navigate('/mock') }}
+            title={t('mock.pipeline.err.stage_not_found')}
+            body={t('mock.pipeline.err.stage_inconsistent')}
+            cta={{ label: t('mock.pipeline.err.new'), onClick: () => navigate('/mock') }}
           />
         </div>
       </AppShellV2>
@@ -229,7 +231,7 @@ export default function MockPipelinePage() {
   }
 
   const company = companiesQ.data?.find((c) => c.id === pipeline.company_id) ?? null
-  const companyLabel = company?.name ?? (pipeline.company_id ? '…' : 'Random')
+  const companyLabel = company?.name ?? (pipeline.company_id ? '…' : t('mock.pipeline.company.random'))
 
   const handleCancel = () => {
     if (typeof window !== 'undefined') {
@@ -248,7 +250,7 @@ export default function MockPipelinePage() {
         <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-0.5">
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-              druz9 mock
+              {t('mock.pipeline.label')}
             </div>
             <h1 className="font-display text-xl sm:text-2xl font-bold text-text-primary">
               {companyLabel}
@@ -325,12 +327,13 @@ export default function MockPipelinePage() {
 // ── StageProgressDots — 5 dots, current highlighted ─────────────────────
 
 function StageProgressDots({ pipeline }: { pipeline: Pipeline }) {
+  const t = useT()
   // Render in canonical kind-order so the row stays stable regardless of
   // server-side ordinal numbering oddities.
   const byKind = new Map<StageKind, PipelineStage>()
   for (const s of pipeline.stages ?? []) byKind.set(s.stage_kind, s)
   return (
-    <div className="flex items-center gap-1.5" aria-label="Прогресс этапов">
+    <div className="flex items-center gap-1.5" aria-label={t('mock.pipeline.stages.progress_aria')}>
       {STAGE_ORDER_DISPLAY.map((kind) => {
         const s = byKind.get(kind)
         const isCurrent = s && s.ordinal === pipeline.current_stage_idx
@@ -385,11 +388,12 @@ function StagesSidebar({
   onCancel: () => void
   cancelling: boolean
 }) {
+  const t = useT()
   const sorted = [...(pipeline.stages ?? [])].sort((a, b) => a.ordinal - b.ordinal)
   return (
     <aside className="flex flex-col gap-2">
       <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary px-1">
-        Этапы
+        {t('mock.pipeline.stages.label')}
       </div>
       <ul className="flex flex-col gap-1.5">
         {sorted.map((s) => {
@@ -421,7 +425,7 @@ function StagesSidebar({
           loading={cancelling}
           className="w-full"
         >
-          Прервать собес
+          {t('mock.pipeline.cancel_btn')}
         </Button>
       </div>
     </aside>
@@ -451,11 +455,12 @@ function StageStatusDot({
 // ── StageLoadingSkeleton ────────────────────────────────────────────────
 
 function StageLoadingSkeleton({ kind }: { kind: StageKind }) {
+  const t = useT()
   return (
     <Card variant="default" padding="lg" className="flex items-center gap-3">
       <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
       <span className="text-sm text-text-secondary">
-        Поднимаю этап «{STAGE_LABEL[kind]}»…
+        {t('mock.pipeline.stage.loading', { label: STAGE_LABEL[kind] })}
       </span>
     </Card>
   )
@@ -464,6 +469,7 @@ function StageLoadingSkeleton({ kind }: { kind: StageKind }) {
 // ── StageChat — kind-agnostic; iterates attempts and dispatches per kind ──
 
 function StageChat({ stage, pipelineId }: { stage: PipelineStage; pipelineId: string }) {
+  const t = useT()
   const finishStage = useFinishStageMutation(pipelineId)
 
   // Defensive: backend always returns an array, but a wire-shape skew
@@ -482,8 +488,8 @@ function StageChat({ stage, pipelineId }: { stage: PipelineStage; pipelineId: st
           <AlertCircle className="h-4 w-4" style={{ color: 'var(--red)' }} />
           <span>
             {isCodeLike
-              ? 'Для этого этапа ещё не настроены задачи в пуле компании. Попроси админа добавить mock_task через /admin → Mock Tasks.'
-              : 'Для этого этапа ещё не настроены вопросы. Попроси админа залить default_questions.'}
+              ? t('mock.pipeline.chat.no_attempts_code')
+              : t('mock.pipeline.chat.no_attempts_text')}
           </span>
         </div>
       </Card>
@@ -508,7 +514,7 @@ function StageChat({ stage, pipelineId }: { stage: PipelineStage; pipelineId: st
       <div className="flex items-center justify-end gap-3 pt-2">
         {!allJudged && (
           <span className="text-xs text-text-secondary">
-            Дождись AI-оценки всех ответов
+            {t('mock.pipeline.chat.wait_judging')}
           </span>
         )}
         <Button
@@ -519,7 +525,7 @@ function StageChat({ stage, pipelineId }: { stage: PipelineStage; pipelineId: st
           disabled={!allJudged || finishStage.isPending}
           loading={finishStage.isPending}
         >
-          Завершить этап
+          {t('mock.pipeline.chat.finish_stage')}
         </Button>
       </div>
     </div>
@@ -562,6 +568,7 @@ function QuestionCard({
   ordinal: number
   attempts: PipelineAttempt[]
 }) {
+  const t = useT()
   const cardRef = useRef<HTMLDivElement | null>(null)
   const previousVerdict = useRef<PipelineAttempt['ai_verdict']>(attempt.ai_verdict)
 
@@ -649,7 +656,7 @@ function QuestionCard({
         <div className="flex flex-col gap-3">
           <div className="rounded-lg border border-border bg-surface-1 p-3">
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
-              Твой ответ
+              {t('mock.common.label.your_answer')}
             </div>
             <div className="text-sm text-text-primary whitespace-pre-wrap font-mono">
               {attempt.user_answer_md}
@@ -659,7 +666,7 @@ function QuestionCard({
           {isJudging && (
             <div className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface-2 p-3">
               <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
-              <span className="text-sm text-text-secondary">AI оценивает…</span>
+              <span className="text-sm text-text-secondary">{t('mock.pipeline.ai.judging')}</span>
             </div>
           )}
 
@@ -673,18 +680,19 @@ function QuestionCard({
 // ── TaskBrief ───────────────────────────────────────────────────────────
 
 function TaskBrief({ content, criteria }: { content: string; criteria: PipelineAttempt['reference_criteria'] }) {
+  const t = useT()
   const mustMention = criteria?.must_mention ?? []
   const mentionsComplexity = mustMention.some((m) => m.includes('O('))
   return (
     <div className="flex flex-col gap-3">
       {mentionsComplexity && (
         <div className="self-start rounded-full border border-border-strong bg-surface-2 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          Алгоритм · O(n) target
+          {t('mock.pipeline.task.complexity_target')}
         </div>
       )}
       <div className="rounded-lg border border-border-strong bg-surface-2 p-5">
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-2">
-          Задача
+          {t('mock.pipeline.task.label')}
         </div>
         <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-text-primary">
           {content || '—'}
@@ -697,6 +705,7 @@ function TaskBrief({ content, criteria }: { content: string; criteria: PipelineA
 // ── TextAnswerForm — original HR textarea path, extracted ────────────────
 
 function TextAnswerForm({ attemptId, pipelineId }: { attemptId: string; pipelineId: string }) {
+  const t = useT()
   const submit = useSubmitAnswerMutation(pipelineId)
   const [draft, setDraft] = useState<string>('')
 
@@ -721,7 +730,7 @@ function TextAnswerForm({ attemptId, pipelineId }: { attemptId: string; pipeline
         onKeyDown={handleKeyDown}
         disabled={submit.isPending}
         rows={6}
-        placeholder="Твой ответ…"
+        placeholder={t('mock.pipeline.answer.placeholder')}
         className="w-full resize-y border-0 border-b border-solid bg-transparent p-3 text-sm text-text-primary placeholder:text-text-secondary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] focus:outline-none"
         style={{ borderBottomColor: 'var(--hair-2)' }}
         onFocus={(e) => {
@@ -733,7 +742,7 @@ function TextAnswerForm({ attemptId, pipelineId }: { attemptId: string; pipeline
       />
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] tracking-[0.08em] text-text-secondary">
-          {draft.length} символов · ⌘+Enter — отправить
+          {t('mock.pipeline.answer.chars', { n: String(draft.length) })}
         </span>
         <Button
           variant="primary"
@@ -742,7 +751,7 @@ function TextAnswerForm({ attemptId, pipelineId }: { attemptId: string; pipeline
           disabled={submit.isPending || draft.trim().length === 0}
           loading={submit.isPending}
         >
-          Отправить
+          {t('mock.pipeline.answer.send')}
         </Button>
       </div>
     </div>
@@ -762,6 +771,7 @@ function CodeAnswerEditor({
   briefForDetection: string
   taskLanguage: string | null
 }) {
+  const t = useT()
   const submit = useSubmitAnswerMutation(pipelineId)
   const [code, setCode] = useState<string>('')
   const [language, setLanguage] = useState<CodeLanguage>(() => {
@@ -818,7 +828,7 @@ function CodeAnswerEditor({
         <div className="flex items-center gap-3">
           <LanguageSelect value={language} onChange={setLanguage} disabled={submit.isPending} />
           <span className="font-mono text-[10px] text-text-secondary">
-            {lineCount} строк · {charCount} символов · ⌘+Enter — отправить
+            {t('mock.pipeline.code.stats', { lines: String(lineCount), chars: String(charCount) })}
           </span>
         </div>
         <Button
@@ -828,7 +838,7 @@ function CodeAnswerEditor({
           disabled={submit.isPending || code.trim().length === 0}
           loading={submit.isPending}
         >
-          Отправить решение
+          {t('mock.pipeline.code.submit')}
         </Button>
       </div>
     </div>
@@ -865,6 +875,7 @@ function LanguageSelect({
 // ── ComingSoonAttempt — placeholder for sysdesign_canvas / voice_answer ──
 
 function ComingSoonAttempt({ attempt, ordinal }: { attempt: PipelineAttempt; ordinal: number }) {
+  const t = useT()
   const phaseLabel: Record<string, string> = {
     sysdesign_canvas: 'Phase D',
     voice_answer: 'Phase E',
@@ -876,11 +887,13 @@ function ComingSoonAttempt({ attempt, ordinal }: { attempt: PipelineAttempt; ord
           A{ordinal}
         </span>
         <h3 className="font-display text-base font-bold text-text-primary">
-          {attempt.kind === 'sysdesign_canvas' ? 'System Design canvas' : 'Voice answer'}
+          {attempt.kind === 'sysdesign_canvas'
+            ? t('mock.pipeline.coming_soon.attempt_canvas')
+            : t('mock.pipeline.coming_soon.attempt_voice')}
         </h3>
       </div>
       <p className="text-sm text-text-secondary">
-        {phaseLabel[attempt.kind] ?? 'Soon'} — этот формат ответа ещё не подключён в UI.
+        {t('mock.pipeline.coming_soon.attempt_phase', { phase: phaseLabel[attempt.kind] ?? t('mock.pipeline.coming_soon.attempt_soon') })}
       </p>
     </div>
   )
@@ -889,13 +902,18 @@ function ComingSoonAttempt({ attempt, ordinal }: { attempt: PipelineAttempt; ord
 // ── VerdictPanel ────────────────────────────────────────────────────────
 
 function VerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
+  const t = useT()
   const v = attempt.ai_verdict
   const score = attempt.ai_score ?? 0
   // Red signal stripe replaces danger/warn hue chips; ink ramp carries the
   // remaining signal (pass = full opacity, borderline = 0.7, neutral = 0.5).
   const fail = v === 'fail'
   const borderline = v === 'borderline'
-  const label = v === 'pass' ? 'PASS' : v === 'fail' ? 'FAIL' : v === 'borderline' ? 'BORDERLINE' : v
+  const label =
+    v === 'pass' ? t('mock.common.verdict.pass')
+    : v === 'fail' ? t('mock.common.verdict.fail')
+    : v === 'borderline' ? t('mock.common.verdict.borderline')
+    : v
   const Icon = v === 'pass' ? CheckCircle2 : v === 'fail' ? XCircle : AlertCircle
 
   return (
@@ -921,7 +939,7 @@ function VerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
         <span className="font-mono text-sm tracking-[0.08em]">· {score}/100</span>
         {attempt.ai_water_score !== null && attempt.ai_water_score > 30 && (
           <span className="font-mono text-[10px] tracking-[0.08em] ml-auto opacity-70">
-            water {attempt.ai_water_score}%
+            {t('mock.pipeline.verdict.water', { n: String(attempt.ai_water_score) })}
           </span>
         )}
       </div>
@@ -929,7 +947,7 @@ function VerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
       {attempt.ai_feedback_md && (
         <Card variant="default" padding="md" className="font-sans">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
-            Feedback
+            {t('mock.common.label.feedback')}
           </div>
           <div className="text-sm text-text-primary whitespace-pre-wrap">
             {attempt.ai_feedback_md}
@@ -940,7 +958,7 @@ function VerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
       {attempt.ai_missing_points.length > 0 && (
         <div className="rounded-lg border border-border bg-surface-1 p-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
-            Что упустил
+            {t('mock.common.label.missing_points')}
           </div>
           <ul className="list-disc list-inside text-sm text-text-secondary space-y-0.5">
             {attempt.ai_missing_points.map((m, i) => (
@@ -956,6 +974,7 @@ function VerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
 // ── StageStartError — surface start-next-stage failure (e.g. no task) ───
 
 function StageStartError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  const t = useT()
   const msg = error instanceof Error ? error.message : String(error)
   const isNoTask = /no\s*task/i.test(msg)
   return (
@@ -968,17 +987,17 @@ function StageStartError({ error, onRetry }: { error: unknown; onRetry: () => vo
       <div className="flex items-center gap-2">
         <AlertCircle className="h-4 w-4" style={{ color: 'var(--red)' }} />
         <span className="font-display text-sm font-bold text-text-primary">
-          {isNoTask ? 'Нет задач для этого этапа' : 'Не удалось поднять этап'}
+          {isNoTask ? t('mock.pipeline.stage.no_task_title') : t('mock.pipeline.stage.start_error_title')}
         </span>
       </div>
       <p className="text-sm text-text-secondary whitespace-pre-wrap">
         {isNoTask
-          ? 'Для этого этапа ещё не настроены задачи в пуле компании. Попроси админа добавить mock_task с stage_kind=\'algo\' через /admin → Mock Tasks.'
+          ? t('mock.pipeline.stage.no_task_body')
           : msg}
       </p>
       <div className="flex justify-end">
         <Button variant="ghost" size="sm" onClick={onRetry}>
-          Повторить
+          {t('mock.pipeline.err.retry')}
         </Button>
       </div>
     </Card>
@@ -996,6 +1015,7 @@ function ComingSoonStage({
   stageId: string
   pipelineId: string
 }) {
+  const t = useT()
   const finishStage = useFinishStageMutation(pipelineId)
   const phaseLabel: Record<StageKind, string> = {
     hr: 'Phase B',
@@ -1013,10 +1033,10 @@ function ComingSoonStage({
         {STAGE_LABEL[kind]} · stub
       </div>
       <h2 className="font-display text-lg font-bold text-text-primary">
-        Этот этап скоро будет
+        {t('mock.pipeline.stage.soon_title')}
       </h2>
       <p className="text-sm text-text-secondary">
-        {phaseLabel[kind]} ships this stage. Сейчас этап-заглушка — можно пропустить и идти дальше.
+        {t('mock.pipeline.stage.soon_body', { phase: phaseLabel[kind] })}
       </p>
       <div className="flex justify-end">
         <Button
@@ -1027,7 +1047,7 @@ function ComingSoonStage({
           loading={finishStage.isPending}
           disabled={finishStage.isPending}
         >
-          Пропустить
+          {t('mock.pipeline.stage.skip')}
         </Button>
       </div>
     </Card>

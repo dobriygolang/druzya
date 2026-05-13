@@ -21,6 +21,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import {
   CompactLogo,
   D9IconCamera,
@@ -53,6 +54,7 @@ const COMPACT_WITH_PREVIEW_WIDTH = 520;
 const COMPACT_WITH_PREVIEW_HEIGHT = 180;
 
 export function CompactScreen() {
+  const t = useT();
   const { config } = useConfig();
   const session = useAuthStore((s) => s.session);
   const authBootstrap = useAuthStore((s) => s.bootstrap);
@@ -215,7 +217,7 @@ export function CompactScreen() {
       // keep a short marker in the status row so the user sees
       // something happened even if they missed the toast.
       const full = (err as Error).message;
-      setStatusError('Ошибка — см. уведомление');
+      setStatusError(t('cue.compact.error.notify'));
       void window.druz9.toast.show(full, 'error');
       // eslint-disable-next-line no-console
       console.error('screenshot failed', err);
@@ -294,10 +296,10 @@ export function CompactScreen() {
   const dotState: 'idle' | 'ready' | 'thinking' | 'streaming' | 'recording' =
     liveSession ? 'recording' : streaming ? 'streaming' : session ? 'ready' : 'idle';
   const statusLabel =
-    statusError ? `Ошибка: ${statusError}` :
-    liveSession ? `SESSION ${formatElapsed(liveSession.startedAt)}` :
-    streaming ? 'Streaming…' :
-    session ? 'Ready' : 'Нужен вход';
+    statusError ? t('cue.compact.status.error_prefix', { message: statusError }) :
+    liveSession ? t('cue.compact.session_label', { elapsed: formatElapsed(liveSession.startedAt) }) :
+    streaming ? t('cue.compact.status.streaming') :
+    session ? t('cue.compact.status.ready') : t('cue.compact.status.need_sign_in');
 
   return (
     // Outer — positioned; hosts the glass surface + dropdown + streaming hairline.
@@ -347,7 +349,7 @@ export function CompactScreen() {
           <span
             aria-hidden="true"
             className="red-pulse"
-            title="Recording"
+            title={t('cue.compact.preview.recording_title')}
             style={{
               position: 'absolute',
               top: 10,
@@ -411,10 +413,10 @@ export function CompactScreen() {
               }}
               placeholder={
                 streaming
-                  ? 'Думаю…'
+                  ? t('cue.compact.input.placeholder_thinking')
                   : pending
-                  ? 'Добавь вопрос к скриншоту…'
-                  : 'ask anything…'
+                  ? t('cue.compact.input.placeholder_with_screenshot')
+                  : t('cue.compact.input.placeholder_default')
               }
               style={{
                 flex: 1,
@@ -439,7 +441,7 @@ export function CompactScreen() {
             <div style={{ width: 1, height: 18, background: 'var(--d9-hairline-b)', flexShrink: 0, WebkitAppRegion: 'no-drag' } as React.CSSProperties} />
 
             <IconButton
-              title="Скриншот области (⌘⇧S)"
+              title={t('cue.compact.btn.screenshot_area_title')}
               onClick={() => void capture('screenshot_area')}
               baseColor="var(--d9-ink-mute)"
               hoverColor="var(--d9-ink)"
@@ -447,7 +449,7 @@ export function CompactScreen() {
               <D9IconCamera size={16} />
             </IconButton>
             <IconButton
-              title="История чатов"
+              title={t('cue.compact.btn.history_title')}
               onClick={() => void window.druz9.windows.show('history')}
               baseColor="var(--d9-ink-mute)"
               hoverColor="var(--d9-ink)"
@@ -455,7 +457,7 @@ export function CompactScreen() {
               <IconHistory size={14} />
             </IconButton>
             <IconButton
-              title="Настройки"
+              title={t('cue.compact.btn.settings_title')}
               onClick={() => void window.druz9.windows.show('settings')}
               baseColor="var(--d9-ink-mute)"
               hoverColor="var(--d9-ink)"
@@ -483,7 +485,7 @@ export function CompactScreen() {
           >
             <StatusPillBtn
               onClick={() => void window.druz9.windows.showPicker('model')}
-              title={config ? 'Выбрать модель' : 'Нужен вход'}
+              title={config ? t('cue.compact.pill.model_title') : t('cue.compact.pill.model_signed_out_title')}
               ariaExpanded={openPicker === 'model'}
             >
               <StatusDot state={dotState} size={6} />
@@ -515,7 +517,7 @@ export function CompactScreen() {
 
             {cursorState === 'frozen' && (
               <span
-                title="Курсор заморожен. ⌘⇧Y — разморозить"
+                title={t('cue.compact.cursor_lock_title')}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -539,7 +541,7 @@ export function CompactScreen() {
             {!liveSession && lastAnalysis && (
               <button
                 onClick={() => void openReport(lastAnalysis)}
-                title="Отчёт по сессии готов — открыть"
+                title={t('cue.compact.report_ready_title')}
                 className="focus-ring motion-press"
                 style={{
                   display: 'inline-flex',
@@ -577,7 +579,7 @@ export function CompactScreen() {
                 // Paid unlimited plan — show a small badge instead of the
                 // meter so the right edge of row 2 isn't empty.
                 <span
-                  title={`План: ${quota.plan}`}
+                  title={t('cue.compact.plan_badge_title', { plan: quota.plan })}
                   style={{
                     fontSize: 9,
                     fontFamily: "'JetBrains Mono', ui-monospace, monospace",
@@ -688,6 +690,7 @@ function PreviewRow({
   onRetake: () => void | Promise<void>;
   onDiscard: () => void;
 }) {
+  const t = useT();
   const src = `data:${pending.mimeType};base64,${pending.dataBase64}`;
   return (
     <div
@@ -736,7 +739,7 @@ function PreviewRow({
           }}
         >
           <D9IconCamera size={12} />
-          Скриншот готов
+          {t('cue.compact.preview.ready')}
         </div>
         <div
           style={{
@@ -745,7 +748,7 @@ function PreviewRow({
             fontFamily: 'var(--d9-font-mono)',
           }}
         >
-          {pending.width}×{pending.height} · добавь вопрос и жми Enter
+          {t('cue.compact.preview.add_question', { width: pending.width, height: pending.height })}
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           <button
@@ -754,11 +757,11 @@ function PreviewRow({
             onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
-            Переделать
+            {t('cue.compact.preview.retake')}
           </button>
         </div>
       </div>
-      <IconButton title="Отменить (Esc)" onClick={onDiscard}>
+      <IconButton title={t('cue.compact.preview.cancel_title')} onClick={onDiscard}>
         <D9IconClose size={12} />
       </IconButton>
     </div>

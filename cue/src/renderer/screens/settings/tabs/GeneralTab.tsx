@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '../../../components/primitives';
 import { Seg } from '../../../components/d9';
-import { useLocaleStore } from '@d9-i18n';
+import { useLocaleStore, useT } from '@d9-i18n';
 import { useConfig } from '../../../hooks/use-config';
 import {
   getHistoryRetentionDays,
@@ -32,18 +32,28 @@ export function GeneralTab({
   session: ReturnType<typeof useAuthStore.getState>['session'];
   quota: ReturnType<typeof useQuotaStore.getState>['quota'];
 }) {
+  const t = useT();
   const logout = useAuthStore((s) => s.logout);
   return (
     <>
-      <SectionTitle title="Общее" subtitle="Аккаунт и план" />
+      <SectionTitle
+        title={t('cue.settings.general.section.title')}
+        subtitle={t('cue.settings.general.section.subtitle')}
+      />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <Row
-          title={session ? 'Аккаунт Cue' : 'Не выполнен вход'}
-          hint={session ? session.userId : 'Войди через онбординг'}
+          title={
+            session
+              ? t('cue.settings.general.account.title')
+              : t('cue.settings.general.account.signed_out_title')
+          }
+          hint={
+            session ? session.userId : t('cue.settings.general.account.signed_out_hint')
+          }
           control={
             session ? (
               <Button variant="secondary" size="sm" onClick={() => void logout()}>
-                Выйти
+                {t('cue.settings.general.account.cta.sign_out')}
               </Button>
             ) : (
               <Button
@@ -51,7 +61,7 @@ export function GeneralTab({
                 size="sm"
                 onClick={() => void window.druz9.windows.show('onboarding')}
               >
-                Войти
+                {t('cue.settings.general.account.cta.sign_in')}
               </Button>
             )
           }
@@ -75,6 +85,8 @@ export function GeneralTab({
 // "Открыть мастер" / "Завершить" actions. Polls active state on mount
 // so the panel reflects truth when the wizard runs in another window.
 function InterviewPrepRow() {
+  const t = useT();
+  const locale = useLocaleStore((s) => s.locale);
   const active = useInterviewPrepStore((s) => s.active);
   const bootstrap = useInterviewPrepStore((s) => s.bootstrap);
   const endPrep = useInterviewPrepStore((s) => s.end);
@@ -83,7 +95,7 @@ function InterviewPrepRow() {
   }, [bootstrap]);
 
   const sinceLabel = active.active && active.startedAt
-    ? new Date(active.startedAt).toLocaleString('ru-RU', {
+    ? new Date(active.startedAt).toLocaleString(locale === 'ru' ? 'ru-RU' : 'en-US', {
         day: 'numeric',
         month: 'short',
         hour: '2-digit',
@@ -91,14 +103,16 @@ function InterviewPrepRow() {
       })
     : '';
   const hint = active.active
-    ? `Активна${sinceLabel ? ` · с ${sinceLabel}` : ''}${
+    ? `${t('cue.settings.general.prep.hint_active_prefix')}${
+        sinceLabel ? ` · ${t('cue.settings.general.prep.hint_active_since', { since: sinceLabel })}` : ''
+      }${
         active.company ? ` · ${active.company}` : ''
       }${active.role ? ` · ${active.role}` : ''}`
-    : 'Загрузи CV и описание вакансии — Cue подгонит подсказки под конкретное интервью.';
+    : t('cue.settings.general.prep.hint_default');
 
   return (
     <Row
-      title="Подготовка к интервью"
+      title={t('cue.settings.general.prep.title')}
       hint={hint}
       control={
         <div style={{ display: 'flex', gap: 8 }}>
@@ -107,11 +121,13 @@ function InterviewPrepRow() {
             size="sm"
             onClick={() => void window.druz9.interviewPrep.open()}
           >
-            {active.active ? 'Открыть мастер' : 'Начать'}
+            {active.active
+              ? t('cue.settings.general.prep.cta.open')
+              : t('cue.settings.general.prep.cta.start')}
           </Button>
           {active.active && (
             <Button variant="ghost" size="sm" onClick={() => void endPrep()}>
-              Завершить
+              {t('cue.settings.general.prep.cta.end')}
             </Button>
           )}
         </div>
@@ -128,13 +144,28 @@ function InterviewPrepRow() {
 // сессии (binary читает preference через IPC payload в audio-capture:start).
 // 'auto' — binary сам детектит по первой фразе.
 function TranscriptionLangRow() {
+  const t = useT();
   const lang = useTranscriptionLangStore((s) => s.lang);
   const setLang = useTranscriptionLangStore((s) => s.setLang);
   const OPTIONS: TranscriptionLang[] = ['auto', 'ru-RU', 'en-US', 'en-GB'];
+  const labelForOption = (opt: TranscriptionLang): string => {
+    switch (opt) {
+      case 'ru-RU':
+        return t('cue.settings.general.transcription.label.ru');
+      case 'en-US':
+        return t('cue.settings.general.transcription.label.en_us');
+      case 'en-GB':
+        return t('cue.settings.general.transcription.label.en_gb');
+      case 'auto':
+        return t('cue.settings.general.transcription.label.auto');
+      default:
+        return TRANSCRIPTION_LANG_LABELS[opt];
+    }
+  };
   return (
     <Row
-      title="Язык распознавания"
-      hint="Применяется к транскрипции голоса при следующем запуске сессии. Auto — детект по первой фразе."
+      title={t('cue.settings.general.transcription.title')}
+      hint={t('cue.settings.general.transcription.hint')}
       control={
         <select
           value={lang}
@@ -143,7 +174,7 @@ function TranscriptionLangRow() {
         >
           {OPTIONS.map((opt) => (
             <option key={opt} value={opt}>
-              {TRANSCRIPTION_LANG_LABELS[opt]}
+              {labelForOption(opt)}
             </option>
           ))}
         </select>
@@ -166,6 +197,8 @@ function SubscriptionCard({
 }: {
   quota: ReturnType<typeof useQuotaStore.getState>['quota'];
 }) {
+  const t = useT();
+  const locale = useLocaleStore((s) => s.locale);
   const { config } = useConfig();
   // X2 (P0) — старый showPaywall (Boosty server-driven copy) больше не
   // wire'аем в Settings → Subscription CTA. CTA теперь ведёт в context-aware
@@ -190,7 +223,7 @@ function SubscriptionCard({
   const nearLimit = pct >= 85;
 
   const resetDate = quota?.resetsAt
-    ? new Date(quota.resetsAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+    ? new Date(quota.resetsAt).toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long' })
     : null;
 
   const planLabel = planCopy?.displayName ?? (plan ? plan : 'Free');
@@ -230,7 +263,7 @@ function SubscriptionCard({
           {isPaid && (
             <span
               style={{ fontSize: 12, color: 'var(--d9-accent)', lineHeight: 1 }}
-              title="Активная подписка"
+              title={t('cue.settings.general.subscription.plan_active_title')}
             >
               ✦
             </span>
@@ -242,7 +275,7 @@ function SubscriptionCard({
             size="sm"
             onClick={() => void window.druz9.shell.openExternal(manageUrl)}
           >
-            Управлять на Boosty →
+            {t('cue.settings.general.subscription.manage_boosty')}
           </Button>
         ) : (
           <Button
@@ -263,7 +296,7 @@ function SubscriptionCard({
               });
             }}
           >
-            Обновить план
+            {t('cue.settings.general.subscription.upgrade')}
           </Button>
         )}
       </div>
@@ -299,16 +332,12 @@ function SubscriptionCard({
             <span
               style={{ fontSize: 11.5, color: 'var(--d9-ink-mute)', letterSpacing: '-0.005em' }}
             >
-              {unlimited ? (
-                '∞ запросов'
-              ) : (
-                <>
-                  {used}&thinsp;/&thinsp;{cap} запросов
-                </>
-              )}
+              {unlimited
+                ? t('cue.settings.general.subscription.requests_unlimited')
+                : t('cue.settings.general.subscription.requests_used', { used, cap })}
               {resetDate && (
                 <span style={{ color: 'var(--d9-ink-ghost)', marginLeft: 8 }}>
-                  · сброс {resetDate}
+                  {t('cue.settings.general.subscription.reset_prefix', { date: resetDate })}
                 </span>
               )}
             </span>
@@ -334,25 +363,28 @@ function SubscriptionCard({
                 transition:
                   'color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard)',
               }}
-              title="Обновить статус подписки"
+              title={t('cue.settings.general.subscription.refresh_title')}
             >
-              {refreshing ? '…' : '↻ Я уже оплатил'}
+              {refreshing ? '…' : t('cue.settings.general.subscription.paid_already')}
             </button>
           </div>
         </div>
       ) : (
-        <span style={{ fontSize: 11.5, color: 'var(--d9-ink-ghost)' }}>загрузка…</span>
+        <span style={{ fontSize: 11.5, color: 'var(--d9-ink-ghost)' }}>
+          {t('cue.settings.general.subscription.loading')}
+        </span>
       )}
     </div>
   );
 }
 
 function HistoryRetentionRow() {
+  const t = useT();
   const [days, setDays] = useState(() => getHistoryRetentionDays());
   return (
     <Row
-      title="Локальная история"
-      hint="Диалоги в панели истории хранятся на этом устройстве и автоматически удаляются по расписанию."
+      title={t('cue.settings.general.history.title')}
+      hint={t('cue.settings.general.history.hint')}
       control={
         <select
           value={days}
@@ -363,11 +395,11 @@ function HistoryRetentionRow() {
           }}
           style={selectStyle}
         >
-          <option value={1}>1 день</option>
-          <option value={7}>7 дней</option>
-          <option value={30}>30 дней</option>
-          <option value={90}>90 дней</option>
-          <option value={365}>1 год</option>
+          <option value={1}>{t('cue.settings.general.history.option_day_one')}</option>
+          <option value={7}>{t('cue.settings.general.history.option_day_seven')}</option>
+          <option value={30}>{t('cue.settings.general.history.option_day_thirty')}</option>
+          <option value={90}>{t('cue.settings.general.history.option_day_ninety')}</option>
+          <option value={365}>{t('cue.settings.general.history.option_year_one')}</option>
         </select>
       }
     />
@@ -380,6 +412,7 @@ function HistoryRetentionRow() {
  * Stealth off: можно заскринить для отладки / чтобы прислать разработчику.
  */
 function StealthRow() {
+  const t = useT();
   // Прежде useState(true) показывал «ON» при каждом открытии Settings,
   // даже если юзер до этого выключил stealth. После toggle OFF + reopen
   // settings UI снова рисовал ON, и юзер видел рассинхрон. Тянем
@@ -392,11 +425,11 @@ function StealthRow() {
   }, []);
   return (
     <Row
-      title="Stealth при демонстрации экрана"
+      title={t('cue.settings.general.stealth.title')}
       hint={
         on
-          ? 'Скрывает окно от Zoom, Meet, Chrome и системных скриншотов. Выключи временно, чтобы заскринить UI для отладки.'
-          : 'ВНИМАНИЕ: окно видно при демонстрации и на скриншотах. Включи обратно после отладки.'
+          ? t('cue.settings.general.stealth.hint_on')
+          : t('cue.settings.general.stealth.hint_off')
       }
       control={
         <Toggle
@@ -421,6 +454,7 @@ function StealthRow() {
 // SDK (localStorage + best-effort backend SetConsent). Hint copy makes
 // the trust-on-user posture explicit — Cue keeps quiet by default.
 function AnalyticsConsentRow() {
+  const t = useT();
   const [on, setOn] = useState(false);
   // Lazy-load the SDK to keep this row a pure presentational helper —
   // and avoid forcing the analytics module into the settings bundle
@@ -436,8 +470,8 @@ function AnalyticsConsentRow() {
   }, []);
   return (
     <Row
-      title="Анонимная аналитика использования"
-      hint="Cue остаётся тихим по умолчанию. Включи, если хочешь помочь нам приоритизировать фичи — без PII, только агрегированные сигналы (sessions started, suggestions received). Off anytime."
+      title={t('cue.settings.general.analytics.title')}
+      hint={t('cue.settings.general.analytics.hint')}
       control={
         <Toggle
           on={on}
@@ -454,17 +488,20 @@ function AnalyticsConsentRow() {
 }
 
 function LocaleRow() {
+  const t = useT();
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
+  const labelRu = t('cue.settings.general.locale.ru');
+  const labelEn = t('cue.settings.general.locale.en');
   return (
     <Row
-      title="Язык"
-      hint="Интерфейс. Ответы модели остаются на языке твоего запроса."
+      title={t('cue.settings.general.locale.title')}
+      hint={t('cue.settings.general.locale.hint')}
       control={
         <Seg
-          options={['Русский', 'English'] as const}
-          value={locale === 'ru' ? 'Русский' : 'English'}
-          onChange={(v) => setLocale(v === 'Русский' ? 'ru' : 'en')}
+          options={[labelRu, labelEn] as const}
+          value={locale === 'ru' ? labelRu : labelEn}
+          onChange={(v) => setLocale(v === labelRu ? 'ru' : 'en')}
         />
       }
     />
@@ -477,6 +514,7 @@ function LocaleRow() {
  * surface that caveat inline so users aren't surprised.
  */
 function MasqueradeRow() {
+  const t = useT();
   const [presets, setPresets] = useState<MasqueradePresetInfo[]>([]);
   const [current, setCurrent] = useState<MasqueradePreset>('druz9');
 
@@ -504,8 +542,8 @@ function MasqueradeRow() {
 
   return (
     <Row
-      title="Маскировка"
-      hint="Меняет иконку в Dock и заголовки окон. Имя в Activity Monitor фиксируется при сборке — выбери другой билд (Notes.app, Xcode.app), если нужно полное переименование."
+      title={t('cue.settings.general.masquerade.title')}
+      hint={t('cue.settings.general.masquerade.hint')}
       control={
         <select
           value={current}

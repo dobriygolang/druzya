@@ -99,5 +99,35 @@
         "hint": "Describe the goal in free text — AI will parse later"
       }
     }
+  },
+
+  "quiz": {
+    "no_result_msg": "Answer the 8 questions first.",
+    "no_result_cta": "Start the diagnostic",
+    "title_base": "Diagnostic",
+    "title_with_track": "Diagnostic · {{label}}",
+    "change_track_tooltip": "Change track — current answers will be reset",
+    "change_track_cta": "change track",
+    "subhead": "8 questions · ~2 minutes. You'll get 3 first actions + a suggested goal.",
+    "btn_back": "Back",
+    "btn_get_plan": "Get the plan",
+    "btn_next": "Next ({{current}}/{{total}})",
+    "all_answered_pre": "All 8 are already answered — you can jump straight to",
+    "all_answered_link": "the plan",
+    "picker_eyebrow": "DIAGNOSTIC · TRACK",
+    "picker_title": "Which track?",
+    "picker_subtitle": "8 questions tailored to your track. You can change track later (answers will reset).",
+    "progress_question": "Question {{current}}/{{total}}",
+    "progress_answered": "{{answered}} / {{total}} answered",
+    "done_eyebrow": "Diagnostic ready",
+    "done_title": "Your first-week plan",
+    "done_subtitle": "3 actions + a suggested goal. Pick any — the coach will remember.",
+    "proposed_goal_eyebrow": "Suggested goal",
+    "proposed_goal_accepted": "Accepted",
+    "proposed_goal_hint": "The coach will remember this goal in every chat and tailor its recommendations. You can edit it via GoalWizard (the «Goal» card in Coach memory).",
+    "accept_goal": "Accept goal",
+    "open_plan": "Open the plan",
+    "retake": "retake",
+    "actions_heading": "First 3 actions"
   }
 }

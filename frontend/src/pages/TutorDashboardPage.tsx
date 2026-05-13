@@ -47,12 +47,15 @@ import {
 } from '../lib/queries/tutor'
 import { useMyCirclesQuery } from '../lib/queries/circles'
 
-const STATUS_LABEL: Record<TutorInviteStatus, string> = {
-  INVITE_STATUS_UNSPECIFIED: '—',
-  INVITE_STATUS_ACTIVE: 'активен',
-  INVITE_STATUS_ACCEPTED: 'принят',
-  INVITE_STATUS_REVOKED: 'отозван',
-  INVITE_STATUS_EXPIRED: 'истёк',
+// STATUS_LABEL keys are looked up dynamically via the i18n `t` function
+// (see makeStatusLabel below); we expose the i18n key path here so the
+// runtime mapping stays a thin function over the dictionary.
+const STATUS_LABEL_KEY: Record<TutorInviteStatus, string> = {
+  INVITE_STATUS_UNSPECIFIED: '',
+  INVITE_STATUS_ACTIVE: 'dashboard.status_active',
+  INVITE_STATUS_ACCEPTED: 'dashboard.status_accepted',
+  INVITE_STATUS_REVOKED: 'dashboard.status_revoked',
+  INVITE_STATUS_EXPIRED: 'dashboard.status_expired',
 }
 
 type DashTab =
@@ -63,13 +66,13 @@ type DashTab =
   | 'calendar'
   | 'directory'
 
-const TABS: { id: DashTab; label: string; hint: string }[] = [
-  { id: 'overview', label: 'Обзор', hint: 'Активность за 30 дней + быстрые действия' },
-  { id: 'students', label: 'Студенты', hint: 'Invites + active relationships' },
-  { id: 'library', label: 'Reading library', hint: 'Shared reading material для всех студентов' },
-  { id: 'paths', label: 'Paths', hint: 'Curated reading paths из atlas-узлов' },
-  { id: 'calendar', label: 'Календарь', hint: 'Sessions + broadcast assignments' },
-  { id: 'directory', label: 'Directory', hint: 'Публичный профиль + заявки от студентов' },
+const TAB_DEFS: { id: DashTab; labelKey: string; hintKey: string }[] = [
+  { id: 'overview', labelKey: 'dashboard.tab_overview', hintKey: 'dashboard.tab_overview_hint' },
+  { id: 'students', labelKey: 'dashboard.tab_students', hintKey: 'dashboard.tab_students_hint' },
+  { id: 'library', labelKey: 'dashboard.tab_library', hintKey: 'dashboard.tab_library_hint' },
+  { id: 'paths', labelKey: 'dashboard.tab_paths', hintKey: 'dashboard.tab_paths_hint' },
+  { id: 'calendar', labelKey: 'dashboard.tab_calendar', hintKey: 'dashboard.tab_calendar_hint' },
+  { id: 'directory', labelKey: 'dashboard.tab_directory', hintKey: 'dashboard.tab_directory_hint' },
 ]
 
 function isDashTab(s: string | undefined): s is DashTab {
@@ -88,10 +91,13 @@ export default function TutorDashboardPage() {
   const params = useParams<{ tab?: string }>()
   const navigate = useNavigate()
   const tab: DashTab = isDashTab(params.tab) ? params.tab : 'overview'
+  const { t } = useTranslation('tutor')
 
   const switchTab = (next: DashTab) => {
     navigate(`/tutor/${next}`)
   }
+
+  const currentHintKey = TAB_DEFS.find((td) => td.id === tab)?.hintKey
 
   return (
     <div className="min-h-screen bg-bg text-text-primary">
@@ -102,28 +108,28 @@ export default function TutorDashboardPage() {
             to="/welcome"
             className="font-mono text-[12px] tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
           >
-            ← druz9
+            {`← ${t('dashboard.back_link')}`}
           </Link>
           <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-            Tutor · dashboard
+            {t('dashboard.eyebrow')}
           </span>
           <h1 className="font-display text-3xl font-bold leading-tight">
-            Дашборд тутора
+            {t('dashboard.title')}
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">
-            {TABS.find((t) => t.id === tab)?.hint}
+            {currentHintKey ? t(currentHintKey) : ''}
           </p>
         </header>
 
         {/* Tab switcher */}
         <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Dashboard sections">
-          {TABS.map((t) => {
-            const isActive = t.id === tab
+          {TAB_DEFS.map((td) => {
+            const isActive = td.id === tab
             return (
               <button
-                key={t.id}
+                key={td.id}
                 type="button"
-                onClick={() => switchTab(t.id)}
+                onClick={() => switchTab(td.id)}
                 aria-pressed={isActive}
                 className={`relative -mb-px px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${
                   isActive
@@ -144,7 +150,7 @@ export default function TutorDashboardPage() {
                     }}
                   />
                 )}
-                {t.label}
+                {t(td.labelKey)}
                 {isActive && (
                   <span className="absolute inset-x-0 bottom-0 h-[2px] bg-text-primary" />
                 )}
@@ -191,6 +197,7 @@ export default function TutorDashboardPage() {
 function ActivityPane() {
   const q = useTutorActivityQuery(30)
   const a = q.data
+  const { t } = useTranslation('tutor')
   // Phase 8 — daily series, fall back to empty array if backend pre-rollup.
   const daily = (a as { daily_completed?: number[]; daily_minutes?: number[] } | undefined)
   const dailyCompleted = daily?.daily_completed ?? []
@@ -198,32 +205,32 @@ function ActivityPane() {
   return (
     <section className="flex flex-col gap-3">
       <header className="flex items-center justify-between">
-        <h2 className="font-display text-xl font-semibold">Активность · 30d</h2>
+        <h2 className="font-display text-xl font-semibold">{t('dashboard.activity_title')}</h2>
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          {q.isPending ? 'loading…' : 'tutor analytics'}
+          {q.isPending ? t('dashboard.activity_loading') : t('dashboard.activity_eyebrow')}
         </span>
       </header>
       <Card className="flex-col gap-3 p-4" interactive={false}>
         {a ? (
           <div className="grid grid-cols-1 gap-3 xs:grid-cols-2 sm:grid-cols-5">
-            <Stat label="Active students" value={String(a.active_student_count)} />
-            <Stat label="Completed" value={String(a.events_completed)} accent="success" sparkline={dailyCompleted} />
-            <Stat label="Scheduled" value={String(a.events_scheduled)} />
+            <Stat label={t('dashboard.stat_active_students')} value={String(a.active_student_count)} />
+            <Stat label={t('dashboard.stat_completed')} value={String(a.events_completed)} accent="success" sparkline={dailyCompleted} />
+            <Stat label={t('dashboard.stat_scheduled')} value={String(a.events_scheduled)} />
             <Stat
-              label="Cancelled"
+              label={t('dashboard.stat_cancelled')}
               value={String(a.events_cancelled)}
               accent={a.events_cancelled > 0 ? 'warn' : undefined}
             />
-            <Stat label="Min taught" value={String(a.minutes_taught)} sparkline={dailyMinutes} />
+            <Stat label={t('dashboard.stat_min_taught')} value={String(a.minutes_taught)} sparkline={dailyMinutes} />
           </div>
         ) : (
           <p className="text-[13px] text-text-secondary">
-            Недостаточно данных для аналитики. Создай первое событие.
+            {t('dashboard.activity_no_data')}
           </p>
         )}
         {a && (a.events_completed ?? 0) + (a.events_cancelled ?? 0) > 0 && (
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Cancellation rate · {((a.cancellation_rate ?? 0) * 100).toFixed(0)}%
+            {t('dashboard.cancellation_rate', { pct: ((a.cancellation_rate ?? 0) * 100).toFixed(0) })}
           </div>
         )}
       </Card>
@@ -278,6 +285,7 @@ function EventsPane() {
   const createGroup = useCreateGroupEventMutation()
   const cancel = useCancelEventMutation()
   const complete = useCompleteEventMutation()
+  const { t } = useTranslation('tutor')
 
   const [mode, setMode] = useState<'1on1' | 'group'>('1on1')
   const [studentId, setStudentId] = useState('')
@@ -346,9 +354,9 @@ function EventsPane() {
     <section className="flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="font-display text-xl font-semibold">Events</h2>
+          <h2 className="font-display text-xl font-semibold">{t('dashboard.events_title')}</h2>
           <p className="text-[13px] text-text-secondary">
-            Назначай уроки 1-на-1 — студент увидит их у себя в Hone Calendar.
+            {t('dashboard.events_subtitle')}
           </p>
         </div>
       </header>
@@ -373,7 +381,7 @@ function EventsPane() {
                 }}
               />
             )}
-            1-on-1
+            {t('dashboard.mode_1on1')}
           </button>
           <button
             type="button"
@@ -393,14 +401,14 @@ function EventsPane() {
                 }}
               />
             )}
-            Group (circle)
+            {t('dashboard.mode_group')}
           </button>
         </div>
         <form onSubmit={submit} className="flex flex-col gap-3">
           {mode === '1on1' ? (
             <label className="flex flex-col gap-1.5">
               <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                Student
+                {t('dashboard.field_student')}
               </span>
               <select
                 value={studentId}
@@ -408,7 +416,7 @@ function EventsPane() {
                 required
                 className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
               >
-                <option value="">— выбери студента —</option>
+                <option value="">{t('dashboard.field_student_placeholder')}</option>
                 {students.map((rel) => (
                   <option key={rel.id} value={rel.student_id}>
                     student-{rel.student_id.slice(0, 8)}
@@ -418,7 +426,7 @@ function EventsPane() {
               </select>
               {students.length === 0 && (
                 <span className="text-[11px] text-text-muted">
-                  Нет активных студентов. Сначала разошли инвайт.
+                  {t('dashboard.no_active_students')}
                 </span>
               )}
             </label>
@@ -426,7 +434,7 @@ function EventsPane() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                  Circle
+                  {t('dashboard.field_circle')}
                 </span>
                 <select
                   value={circleId}
@@ -434,22 +442,22 @@ function EventsPane() {
                   required
                   className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
                 >
-                  <option value="">— выбери circle —</option>
+                  <option value="">{t('dashboard.field_circle_placeholder')}</option>
                   {ownedCircles.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} · {c.member_count} member{c.member_count === 1 ? '' : 's'}
+                      {c.name} · {c.member_count} {c.member_count === 1 ? t('dashboard.circle_member') : t('dashboard.circle_members')}
                     </option>
                   ))}
                 </select>
                 {ownedCircles.length === 0 && (
                   <span className="text-[11px] text-text-muted">
-                    Нет circles, которыми ты владеешь. Сначала создай circle.
+                    {t('dashboard.no_owned_circles')}
                   </span>
                 )}
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                  Capacity
+                  {t('dashboard.field_capacity')}
                 </span>
                 <input
                   type="number"
@@ -471,7 +479,7 @@ function EventsPane() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Weekly 1-on-1 — review chapter 4"
+            placeholder={t('dashboard.field_event_title_placeholder')}
             maxLength={240}
             className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
             required
@@ -479,7 +487,7 @@ function EventsPane() {
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Optional agenda, prep notes, links to materials…"
+            placeholder={t('dashboard.field_event_body_placeholder')}
             rows={3}
             maxLength={4000}
             className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
@@ -488,7 +496,7 @@ function EventsPane() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
               <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                Scheduled at
+                {t('dashboard.field_scheduled_at')}
               </span>
               <input
                 type="datetime-local"
@@ -500,7 +508,7 @@ function EventsPane() {
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                Duration (min)
+                {t('dashboard.field_duration_min')}
               </span>
               <input
                 type="number"
@@ -522,7 +530,7 @@ function EventsPane() {
             type="url"
             value={meetURL}
             onChange={(e) => setMeetURL(e.target.value)}
-            placeholder="Optional meet link (Zoom / Meet / Telegram voice)"
+            placeholder={t('dashboard.field_meet_url_placeholder')}
             maxLength={2000}
             className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
           />
@@ -537,11 +545,11 @@ function EventsPane() {
                 (mode === '1on1' ? studentId === '' : circleId === '')
               }
             >
-              {submitting ? 'Создаём…' : mode === 'group' ? 'Schedule group event' : 'Schedule event'}
+              {submitting ? t('dashboard.btn_creating') : mode === 'group' ? t('dashboard.btn_schedule_group') : t('dashboard.btn_schedule_event')}
             </Button>
             {submitIsErr && (
               <span className="text-[12px] text-danger">
-                {submitErr instanceof ApiError ? submitErr.body : 'Не получилось'}
+                {submitErr instanceof ApiError ? submitErr.body : t('common.not_received')}
               </span>
             )}
           </div>
@@ -552,12 +560,12 @@ function EventsPane() {
         {eventsQ.isPending ? (
           <Card className="flex-row items-center gap-2 p-4 text-text-secondary" interactive={false}>
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Загружаем…</span>
+            <span className="text-sm">{t('dashboard.events_loading')}</span>
           </Card>
         ) : events.length === 0 ? (
           <Card className="flex-col gap-1 p-4" interactive={false}>
             <p className="text-[13px] leading-relaxed text-text-secondary">
-              Пока ни одного события. Создай первое — оно сразу появится у студента в Hone Calendar.
+              {t('dashboard.events_empty')}
             </p>
           </Card>
         ) : (
@@ -594,18 +602,19 @@ function EventRow({
 }) {
   const [completeModalOpen, setCompleteModalOpen] = useState(false)
   const setVisibility = useSetSessionNoteVisibilityMutation()
+  const { t } = useTranslation('tutor')
 
   const status = eventDisplayStatus(event)
   const badge =
     status === 'cancelled'
-      ? { label: 'cancelled', cls: 'border-danger/40 bg-danger/10 text-danger' }
+      ? { label: t('dashboard.event_badge_cancelled'), cls: 'border-danger/40 bg-danger/10 text-danger' }
       : status === 'completed'
-        ? { label: 'completed', cls: 'border-success/40 bg-success/10 text-success' }
+        ? { label: t('dashboard.event_badge_completed'), cls: 'border-success/40 bg-success/10 text-success' }
         : status === 'past'
-          ? { label: 'past · awaiting close', cls: 'border-warn/40 bg-warn/5 text-warn' }
+          ? { label: t('dashboard.event_badge_past'), cls: 'border-warn/40 bg-warn/5 text-warn' }
           : status === 'live'
-            ? { label: 'live now', cls: 'border-success/40 bg-success/10 text-success' }
-            : { label: 'scheduled', cls: 'border-warn/40 bg-warn/10 text-warn' }
+            ? { label: t('dashboard.event_badge_live'), cls: 'border-success/40 bg-success/10 text-success' }
+            : { label: t('dashboard.event_badge_scheduled'), cls: 'border-warn/40 bg-warn/10 text-warn' }
 
   const sched = event.scheduled_at ? new Date(event.scheduled_at) : null
   // Completable in any state where the session has happened or is happening,
@@ -631,14 +640,14 @@ function EventRow({
           )}
           {event.cancellation_reason && (
             <div className="mt-1 text-[12px] italic text-danger">
-              cancelled: {event.cancellation_reason}
+              {t('dashboard.event_cancelled_prefix', { reason: event.cancellation_reason })}
             </div>
           )}
           {event.session_note && (
             <div className="mt-2 rounded-md border border-success/30 bg-success/5 px-2.5 py-1.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="font-mono text-[9px] uppercase tracking-[0.08em] text-success/80">
-                  Session note · {isShared ? 'shared with student' : 'private'}
+                  {isShared ? t('dashboard.session_note_shared') : t('dashboard.session_note_private')}
                 </div>
                 {/* Phase K T4 — quick re-toggle from row view (no modal) */}
                 {status === 'completed' && (
@@ -654,7 +663,7 @@ function EventRow({
                     }
                     className="rounded-md border border-hairline px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary disabled:opacity-50"
                   >
-                    {isShared ? 'Hide from student' : 'Share with student'}
+                    {isShared ? t('dashboard.btn_hide_from_student') : t('dashboard.btn_share_with_student')}
                   </button>
                 )}
               </div>
@@ -664,7 +673,7 @@ function EventRow({
               {isShared && event.shared_content_md && (
                 <div className="mt-2 border-t border-hairline pt-2">
                   <div className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
-                    Curated copy для ученика
+                    {t('dashboard.shared_copy_label')}
                   </div>
                   <pre className="mt-0.5 whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-text-secondary">
                     {event.shared_content_md}
@@ -689,8 +698,8 @@ function EventRow({
             })}
           </span>
         )}
-        <span>· {event.duration_min} min</span>
-        <span>· student-{event.student_id.slice(0, 8)}</span>
+        <span>{t('dashboard.event_minutes', { n: event.duration_min })}</span>
+        <span>{t('dashboard.event_student', { id: event.student_id.slice(0, 8) })}</span>
         {event.meet_url && (
           <a
             href={event.meet_url}
@@ -698,7 +707,7 @@ function EventRow({
             rel="noreferrer"
             className="text-text-secondary hover:text-text-primary"
           >
-            join →
+            {t('dashboard.event_join')}
           </a>
         )}
         <div className="ml-auto flex items-center gap-2">
@@ -709,14 +718,14 @@ function EventRow({
               disabled={completing}
               className="rounded-md border border-success/40 bg-success/5 px-2 py-0.5 text-success transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-success/10 disabled:opacity-50"
             >
-              ✓ Mark complete
+              {t('dashboard.btn_mark_complete')}
             </button>
           )}
           {isCancellable && (
             <button
               type="button"
               onClick={() => {
-                const reason = window.prompt('Reason for cancelling:')
+                const reason = window.prompt(t('dashboard.cancel_prompt'))
                 if (reason && reason.trim()) {
                   onCancel(reason.trim())
                 }
@@ -724,7 +733,7 @@ function EventRow({
               disabled={cancelling}
               className="rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-warn/10 disabled:opacity-50"
             >
-              Cancel
+              {t('dashboard.btn_cancel')}
             </button>
           )}
         </div>
@@ -763,6 +772,7 @@ function BroadcastPane() {
   const [due, setDue] = useState('')
   const [result, setResult] = useState<TutorBroadcastResult | null>(null)
   const broadcast = useBroadcastAssignmentMutation()
+  const { t } = useTranslation('tutor')
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -786,9 +796,9 @@ function BroadcastPane() {
     <section className="flex flex-col gap-4">
       <header className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="font-display text-xl font-semibold">Broadcast</h2>
+          <h2 className="font-display text-xl font-semibold">{t('dashboard.broadcast_title')}</h2>
           <p className="text-[13px] text-text-secondary">
-            Отправь одно задание ВСЕМ активным студентам сразу — для group-классов и общих чтений.
+            {t('dashboard.broadcast_subtitle')}
           </p>
         </div>
       </header>
@@ -799,7 +809,7 @@ function BroadcastPane() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Read chapter 4 — The Black Swan"
+            placeholder={t('dashboard.broadcast_title_placeholder')}
             maxLength={240}
             className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
             required
@@ -807,14 +817,14 @@ function BroadcastPane() {
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Optional shared instructions, links, focus questions…"
+            placeholder={t('dashboard.broadcast_body_placeholder')}
             rows={4}
             maxLength={8000}
             className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
           />
           <label className="flex items-center gap-3 text-sm text-text-secondary">
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted shrink-0">
-              Due (optional)
+              {t('dashboard.broadcast_due_label')}
             </span>
             <input
               type="datetime-local"
@@ -825,11 +835,11 @@ function BroadcastPane() {
           </label>
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={broadcast.isPending || title.trim() === ''}>
-              {broadcast.isPending ? 'Отправляем…' : 'Push to all students'}
+              {broadcast.isPending ? t('dashboard.btn_sending') : t('dashboard.btn_push_all')}
             </Button>
             {broadcast.isError && (
               <span className="text-[12px] text-danger">
-                {broadcast.error instanceof ApiError ? broadcast.error.body : 'Не получилось'}
+                {broadcast.error instanceof ApiError ? broadcast.error.body : t('common.not_received')}
               </span>
             )}
           </div>
@@ -842,6 +852,7 @@ function BroadcastPane() {
 }
 
 function BroadcastResultCard({ result }: { result: TutorBroadcastResult }) {
+  const { t } = useTranslation('tutor')
   const total = result.pushed.length + result.failed.length
   // The use case returns empty arrays if no students — tutor sees a
   // distinct empty-state instead of «pushed to 0 / 0».
@@ -849,7 +860,7 @@ function BroadcastResultCard({ result }: { result: TutorBroadcastResult }) {
     return (
       <Card className="flex-col gap-1 p-4" interactive={false}>
         <p className="text-[13px] leading-relaxed text-text-secondary">
-          У тебя пока нет активных студентов. Создай и разошли инвайт-код в секции выше.
+          {t('dashboard.broadcast_no_students')}
         </p>
       </Card>
     )
@@ -863,17 +874,16 @@ function BroadcastResultCard({ result }: { result: TutorBroadcastResult }) {
       interactive={false}
     >
       <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-        Результат
+        {t('dashboard.broadcast_result_label')}
       </div>
       <p className="text-sm">
-        Pushed to <span className={allOk ? 'text-success' : 'text-warn'}>{result.pushed.length}</span>{' '}
-        / {total} students.
+        {t('dashboard.broadcast_pushed', { ok: result.pushed.length, total })}
       </p>
       {result.failed.length > 0 && (
         <ul className="flex flex-col gap-1 mt-1">
           {result.failed.map((f) => (
             <li key={f.student_id} className="text-[12px] text-warn">
-              · student-{f.student_id.slice(0, 8)} — {f.error}
+              {t('dashboard.broadcast_failed_row', { id: f.student_id.slice(0, 8), error: f.error })}
             </li>
           ))}
         </ul>
@@ -889,6 +899,7 @@ function InvitesPane() {
   const create = useCreateInviteMutation()
   const inviteByUsername = useInviteByUsernameMutation()
   const revoke = useRevokeInviteMutation()
+  const { t } = useTranslation('tutor')
 
   const [note, setNote] = useState('')
   const [username, setUsername] = useState('')
@@ -899,7 +910,7 @@ function InvitesPane() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-xl font-semibold">Приглашения</h2>
+        <h2 className="font-display text-xl font-semibold">{t('dashboard.invites_title')}</h2>
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           {items.length}
         </span>
@@ -908,18 +919,17 @@ function InvitesPane() {
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <label className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Пригласить @username (рекомендуется)
+            {t('dashboard.invite_by_username_label')}
           </span>
           <p className="text-[11px] text-text-muted">
-            Если ученик уже зарегистрирован — он увидит приглашение прямо у себя
-            на /profile, без копи-вставки кода.
+            {t('dashboard.invite_by_username_hint')}
           </p>
           <div className="flex gap-2">
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value.replace(/^@/, '').trim())}
-              placeholder="anya123"
+              placeholder={t('dashboard.invite_username_placeholder')}
               className="flex-1 border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
             />
             <Button
@@ -929,7 +939,7 @@ function InvitesPane() {
                   { username, note: note.trim() || undefined },
                   {
                     onSuccess: () => {
-                      setInviteByUsernameMsg(`Готово — @${username} увидит приглашение на /profile`)
+                      setInviteByUsernameMsg(t('dashboard.invite_by_username_success', { username }))
                       setUsername('')
                       setNote('')
                     },
@@ -938,7 +948,7 @@ function InvitesPane() {
               }}
               disabled={!username || inviteByUsername.isPending}
             >
-              {inviteByUsername.isPending ? 'Шлю…' : 'Пригласить'}
+              {inviteByUsername.isPending ? t('dashboard.btn_invite_sending') : t('dashboard.btn_invite')}
             </Button>
           </div>
           {inviteByUsernameMsg && (
@@ -948,20 +958,20 @@ function InvitesPane() {
             <span className="text-[12px] text-danger">
               {inviteByUsername.error instanceof ApiError
                 ? inviteByUsername.error.body
-                : 'Не получилось — проверь username'}
+                : t('dashboard.invite_by_username_error')}
             </span>
           )}
         </label>
         <hr className="border-border" />
         <label className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Открытый код (для отправки out-of-band)
+            {t('dashboard.invite_open_code_label')}
           </span>
           <input
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Anya · с Habr · English-track"
+            placeholder={t('dashboard.invite_note_placeholder')}
             className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
           />
         </label>
@@ -975,21 +985,21 @@ function InvitesPane() {
           disabled={create.isPending}
           className="self-start"
         >
-          {create.isPending ? 'Создаём…' : '+ Новый код'}
+          {create.isPending ? t('dashboard.btn_create_invite_creating') : t('dashboard.btn_create_invite')}
         </Button>
         {create.isError && (
           <span className="text-[12px] text-danger">
-            {create.error instanceof ApiError ? create.error.body : 'Не получилось создать'}
+            {create.error instanceof ApiError ? create.error.body : t('dashboard.invite_create_failed')}
           </span>
         )}
       </Card>
 
       {invitesQ.isPending ? (
-        <PendingRow label="Загружаем коды…" />
+        <PendingRow label={t('dashboard.invites_loading')} />
       ) : invitesQ.isError ? (
-        <ErrorRow message="Не удалось загрузить инвайты" />
+        <ErrorRow message={t('dashboard.invites_load_failed')} />
       ) : items.length === 0 ? (
-        <EmptyRow message="Пока нет ни одного инвайта. Создай первый — отправь ссылку студенту." />
+        <EmptyRow message={t('dashboard.invites_empty')} />
       ) : (
         <ul className="flex flex-col gap-2">
           {items.map((invite) => (
@@ -1015,8 +1025,11 @@ function InviteRow({
   onRevoke: () => void
   revoking: boolean
 }) {
+  const { t } = useTranslation('tutor')
   const isActive = invite.status === 'INVITE_STATUS_ACTIVE'
   const url = `${window.location.origin}/invite/${invite.code}`
+  const statusKey = STATUS_LABEL_KEY[invite.status]
+  const statusLabel = statusKey ? t(statusKey) : '—'
 
   return (
     <Card className="flex-col gap-2 p-4" interactive={false}>
@@ -1036,7 +1049,7 @@ function InviteRow({
               : 'border-border bg-surface-2 text-text-muted'
           }`}
         >
-          {STATUS_LABEL[invite.status] ?? '—'}
+          {statusLabel}
         </span>
       </div>
       <div className="flex items-center gap-2">
@@ -1050,7 +1063,7 @@ function InviteRow({
           }}
           className="rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-text-primary hover:text-text-primary"
         >
-          Скопировать ссылку
+          {t('dashboard.btn_copy_link')}
         </button>
         {isActive && (
           <button
@@ -1059,7 +1072,7 @@ function InviteRow({
             disabled={revoking}
             className="rounded-md border border-warn/40 bg-warn/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-warn transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-warn/10 disabled:opacity-50"
           >
-            Отозвать
+            {t('dashboard.btn_revoke')}
           </button>
         )}
       </div>
@@ -1072,24 +1085,25 @@ function InviteRow({
 function StudentsPane() {
   const studentsQ = useTutorStudentsQuery()
   const endRel = useEndRelationshipMutation()
+  const { t } = useTranslation('tutor')
 
   const items = studentsQ.data?.items ?? []
 
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-xl font-semibold">Студенты</h2>
+        <h2 className="font-display text-xl font-semibold">{t('dashboard.students_title')}</h2>
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           {items.length}
         </span>
       </div>
 
       {studentsQ.isPending ? (
-        <PendingRow label="Загружаем студентов…" />
+        <PendingRow label={t('dashboard.students_loading')} />
       ) : studentsQ.isError ? (
-        <ErrorRow message="Не удалось загрузить студентов" />
+        <ErrorRow message={t('dashboard.students_load_failed')} />
       ) : items.length === 0 ? (
-        <EmptyRow message="Студентов пока нет. Создай инвайт и отправь его — после Accept'а студент появится здесь." />
+        <EmptyRow message={t('dashboard.students_empty')} />
       ) : (
         <ul className="flex flex-col gap-2">
           {items.map((rel) => (
@@ -1116,6 +1130,7 @@ function StudentRow({
   ending: boolean
 }) {
   const { t: tToasts } = useTranslation('toasts')
+  const { t } = useTranslation('tutor')
   const since = relationship.started_at
     ? new Date(relationship.started_at).toLocaleDateString()
     : '—'
@@ -1136,14 +1151,14 @@ function StudentRow({
             student-{shortId}
           </Link>
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            с {since}
+            {t('common.rel_since', { date: since })}
           </div>
         </div>
         <Link
           to={`/tutor/students/${relationship.student_id}`}
           className="shrink-0 rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary hover:border-text-primary hover:text-text-primary"
         >
-          Открыть
+          {t('common.open_btn')}
         </Link>
       </div>
       <div>
@@ -1157,7 +1172,7 @@ function StudentRow({
           disabled={ending}
           className="rounded-md border border-warn/40 bg-warn/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-warn transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-warn/10 disabled:opacity-50"
         >
-          Завершить отношения
+          {t('dashboard.btn_end_relationship')}
         </button>
       </div>
     </Card>
@@ -1176,6 +1191,7 @@ function PendingRow({ label }: { label: string }) {
 }
 
 function ErrorRow({ message }: { message: string }) {
+  const { t } = useTranslation('tutor')
   return (
     <Card className="flex-row items-start gap-3 p-4" interactive={false}>
       <span
@@ -1191,7 +1207,7 @@ function ErrorRow({ message }: { message: string }) {
       />
       <div className="flex flex-1 flex-col gap-1">
         <div className="font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--red)' }}>
-          Ошибка
+          {t('common.error_title')}
         </div>
         <p className="text-[13px] leading-relaxed text-text-secondary">{message}</p>
       </div>

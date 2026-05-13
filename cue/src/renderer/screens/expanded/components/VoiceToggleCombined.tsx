@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import { useAudioCaptureStore } from '../../../stores/audio-capture';
 import { useCoachStore } from '../../../stores/coach';
 import { hasVoiceConsent, requestVoiceConsent } from '../lib/voiceConsent';
@@ -17,6 +18,7 @@ import { hasVoiceConsent, requestVoiceConsent } from '../lib/voiceConsent';
  * кнопки confused «какую нажать».
  */
 export function VoiceToggleCombined() {
+  const t = useT();
   const sysState = useAudioCaptureStore((s) => s.system.state);
   const micState = useAudioCaptureStore((s) => s.mic.state);
   const sysStartedAt = useAudioCaptureStore((s) => s.system.startedAt);
@@ -60,14 +62,14 @@ export function VoiceToggleCombined() {
   const mm = Math.floor(elapsed / 60);
   const ss = elapsed % 60;
   const elapsedLabel = `${mm}:${ss.toString().padStart(2, '0')}`;
-  const label = anyActive ? `● ${elapsedLabel}` : 'Слушать';
+  const label = anyActive ? `● ${elapsedLabel}` : t('cue.expanded.voice.listen');
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <button
         type="button"
         onClick={() => setOpen((s) => !s)}
-        title={anyActive ? 'Управление voice capture' : 'Включить транскрипцию'}
+        title={anyActive ? t('cue.expanded.voice.menu_title_active') : t('cue.expanded.voice.menu_title_idle')}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-pressed={anyActive}
@@ -112,8 +114,8 @@ export function VoiceToggleCombined() {
             zIndex: 1000,
           }}
         >
-          <SourceMenuItem source="system" label="Системный звук" hint="Звонки, видео в браузере" onAction={() => setOpen(false)} />
-          <SourceMenuItem source="mic" label="Микрофон" hint="Твой голос" onAction={() => setOpen(false)} />
+          <SourceMenuItem source="system" label={t('cue.expanded.voice.system_label')} hint={t('cue.expanded.voice.system_hint')} onAction={() => setOpen(false)} />
+          <SourceMenuItem source="mic" label={t('cue.expanded.voice.mic_label')} hint={t('cue.expanded.voice.mic_hint')} onAction={() => setOpen(false)} />
         </div>
       )}
     </div>

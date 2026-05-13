@@ -42,8 +42,10 @@ export function relativeAge(iso: string): string {
   return `${Math.floor(h / 24)}d`;
 }
 
+import { translate } from '@d9-i18n';
+
 export function pluralArchive(n: number): string {
-  if (n === 1) return 'задача';
-  if (n >= 2 && n <= 4) return 'задачи';
-  return 'задач';
+  if (n === 1) return translate('hone.taskboard.plural.task.one');
+  if (n >= 2 && n <= 4) return translate('hone.taskboard.plural.task.few');
+  return translate('hone.taskboard.plural.task.many');
 }

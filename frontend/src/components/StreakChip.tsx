@@ -11,6 +11,7 @@
 // сегодня — streak в опасности»). Otherwise neutral surface.
 
 import { Flame } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { useStreak } from '../lib/useActivity'
 
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function StreakChip({ compact }: Props) {
+  const { t } = useTranslation('common')
   const streak = useStreak()
 
   if (streak.days < 3) return null
@@ -39,8 +41,8 @@ export function StreakChip({ compact }: Props) {
       className="relative inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-2.5 py-1 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)]"
       title={
         atRisk
-          ? `${streak.days}-day streak · сегодня ещё не log'ал — successive day может прервать`
-          : `${streak.days} ${pluralDays(streak.days)} подряд · longest за всё время ${streak.longestDays}`
+          ? t('streak.at_risk_title', { days: streak.days })
+          : t('streak.ok_title', { days: streak.days, plural: pluralDays(streak.days), longest: streak.longestDays })
       }
     >
       {/* Red ring если streak at-risk (сегодня не log'ал). B/W rule preserved
@@ -76,6 +78,8 @@ export function StreakChip({ compact }: Props) {
 }
 
 function pluralDays(n: number): string {
+  // Russian plural rules — used by StreakChip title. English fallback is
+  // wired via lookup in common.streak.day_one|few|many keys.
   if (n === 1) return 'день'
   if (n >= 2 && n <= 4) return 'дня'
   return 'дней'

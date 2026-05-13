@@ -9,6 +9,7 @@
 // bar когда readiness <30% (signals «много work ahead»).
 import { Link } from 'react-router-dom'
 import { Brain, Calendar, ChevronRight, Target } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { computeReadiness } from '../lib/readiness'
 import { formatGoal, type UserGoal } from '../lib/goal'
@@ -20,16 +21,16 @@ interface Props {
 }
 
 export function GoalReadinessCard({ goal, onSetGoal }: Props) {
+  const { t } = useTranslation('pages')
   if (!goal) {
     return (
       <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-5">
         <header className="flex items-center gap-2">
           <Brain className="h-4 w-4 text-text-secondary" />
-          <h2 className="font-display text-base font-bold leading-tight">Цель</h2>
+          <h2 className="font-display text-base font-bold leading-tight">{t('goal_readiness.title_goal')}</h2>
         </header>
         <p className="text-[13px] leading-relaxed text-text-secondary">
-          Без цели coach плывёт без курса. Поставь цель — получишь
-          deterministic readiness % + еженедельные milestones + предиктивный план.
+          {t('goal_readiness.no_goal_body')}
         </p>
         <div className="flex flex-wrap items-center gap-3">
           {onSetGoal && (
@@ -38,14 +39,14 @@ export function GoalReadinessCard({ goal, onSetGoal }: Props) {
               onClick={onSetGoal}
               className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[13px] font-semibold text-text-primary transition-colors hover:border-border-strong"
             >
-              Поставить цель
+              {t('goal_readiness.set_goal')}
             </button>
           )}
           <Link
             to="/diagnostic"
             className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
           >
-            или пройти 8-минутную диагностику →
+            {t('goal_readiness.diag_link')}
           </Link>
         </div>
       </section>
@@ -61,7 +62,7 @@ export function GoalReadinessCard({ goal, onSetGoal }: Props) {
       <header className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Готовность к цели
+            {t('goal_readiness.header_readiness')}
           </span>
           <h2 className="font-display text-base font-bold leading-tight">
             {formatGoal(goal)}
@@ -91,10 +92,10 @@ export function GoalReadinessCard({ goal, onSetGoal }: Props) {
         <div className="flex items-center gap-2 font-mono text-[11px] text-text-muted">
           <Calendar className="h-3 w-3" />
           {readiness.weeksToTarget === 0
-            ? 'Срок наступил — focus на review'
+            ? t('goal_readiness.weeks_zero')
             : readiness.weeksToTarget === 1
-              ? 'Осталась 1 неделя'
-              : `Осталось ${readiness.weeksToTarget} недель`}
+              ? t('goal_readiness.weeks_one')
+              : t('goal_readiness.weeks_many', { n: readiness.weeksToTarget })}
         </div>
       )}
 
@@ -102,7 +103,7 @@ export function GoalReadinessCard({ goal, onSetGoal }: Props) {
       {readiness.factors.length > 0 && (
         <details className="group">
           <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted hover:text-text-primary">
-            Что влияет на цифру <ChevronRight className="inline h-3 w-3 transition-transform group-open:rotate-90" />
+            {t('goal_readiness.factors_summary')} <ChevronRight className="inline h-3 w-3 transition-transform group-open:rotate-90" />
           </summary>
           <ul className="mt-2 flex flex-col gap-1.5">
             {readiness.factors.map((f, i) => (
@@ -138,7 +139,7 @@ export function GoalReadinessCard({ goal, onSetGoal }: Props) {
           to="/diagnostic"
           className="self-start font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
         >
-          Пройди диагностику чтобы уточнить % →
+          {t('goal_readiness.diag_more')}
         </Link>
       ) : (
         <Link
@@ -146,10 +147,10 @@ export function GoalReadinessCard({ goal, onSetGoal }: Props) {
           className="self-start font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
         >
           {low
-            ? 'Открыть Coach — обсудить план →'
+            ? t('goal_readiness.coach_low')
             : med
-              ? 'Открыть Coach — что закрыть в первую очередь →'
-              : 'Открыть Coach — проверь себя на mock →'}
+              ? t('goal_readiness.coach_med')
+              : t('goal_readiness.coach_high')}
         </Link>
       )}
     </section>
@@ -157,6 +158,7 @@ export function GoalReadinessCard({ goal, onSetGoal }: Props) {
 }
 
 function MiniMockPill() {
+  const { t } = useTranslation('pages')
   const result = loadResult()
   const age = resultAgeDays()
   // Recent (≤14d) — badge с score + relink.
@@ -168,10 +170,7 @@ function MiniMockPill() {
         className="inline-flex items-center gap-2 self-start rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[11px] font-semibold text-text-primary transition-colors hover:border-border-strong"
       >
         <Target className="h-3 w-3" />
-        Mini-mock · {result.overallScore.toFixed(1)}/5 ·{' '}
-        <span className="font-mono text-text-muted">
-          {fresh ? `${age} дн` : `${age} дн — перепройти?`}
-        </span>
+        {t('goal_readiness.mini_mock_recent', { score: result.overallScore.toFixed(1), ago: fresh ? t('goal_readiness.mini_mock_fresh', { days: age }) : t('goal_readiness.mini_mock_stale', { days: age }) })}
       </Link>
     )
   }
@@ -182,7 +181,7 @@ function MiniMockPill() {
       className="inline-flex items-center gap-2 self-start rounded-md border border-border-strong bg-text-primary/5 px-3 py-1.5 text-[11px] font-semibold text-text-primary transition-colors hover:bg-text-primary/10"
     >
       <Target className="h-3 w-3" />
-      Пройди mini-mock · 20 мин · влияет ±15% на readiness
+      {t('goal_readiness.mini_mock_cta')}
     </Link>
   )
 }

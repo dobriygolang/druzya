@@ -5,6 +5,7 @@
 // На finished playback — log activity (kind='reading' с source='podcast').
 import { useMemo, useState } from 'react'
 import { Headphones, Play, CheckCircle2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
@@ -22,19 +23,18 @@ import {
 const ALL = 'all' as const
 
 function Hero({ total }: { total: number }) {
+  const { t } = useTranslation('pages')
   return (
     <section className="flex flex-col items-start justify-center gap-3 bg-surface-1 px-4 py-8 sm:px-8 lg:px-20">
       <span className="inline-flex items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         <Headphones className="h-3 w-3" />
-        ПОДКАСТЫ
+        {t('podcasts_full.eyebrow')}
       </span>
       <h1 className="font-display text-3xl font-bold leading-[1.1] text-text-primary lg:text-[36px]">
-        Что слушать в фоне
+        {t('podcasts_full.title')}
       </h1>
       <p className="max-w-[640px] text-[15px] text-text-secondary">
-        {total > 0 ? `${total} эпизодов` : 'Каталог'} про подготовку к собеседованиям,
-        senior IT, ML, English. Слушай в дороге — каждый завершённый эпизод
-        логируется в твою trajectory.
+        {total > 0 ? t('podcasts_full.episodes_count', { n: total }) : t('podcasts_full.catalog')} {t('podcasts_full.body_suffix')}
       </p>
     </section>
   )
@@ -49,6 +49,7 @@ function CategoryFilters({
   onChange: (slug: string) => void
   categories: PodcastCategory[]
 }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 py-5 sm:px-8 lg:px-20">
       <button
@@ -60,7 +61,7 @@ function CategoryFilters({
             : 'inline-flex items-center gap-1.5 rounded-full border border-border bg-bg px-3.5 py-1.5 text-[13px] text-text-secondary hover:border-border-strong hover:text-text-primary'
         }
       >
-        Все
+        {t('podcasts_full.all')}
       </button>
       {categories.map((c) => (
         <button
@@ -81,6 +82,7 @@ function CategoryFilters({
 }
 
 function PodcastRow({ p }: { p: Podcast }) {
+  const { t } = useTranslation('pages')
   const [playing, setPlaying] = useState(false)
   const onEnded = () => {
     logActivity({
@@ -93,21 +95,21 @@ function PodcastRow({ p }: { p: Podcast }) {
   }
   const duration = useMemo(() => {
     const min = Math.round(p.duration_sec / 60)
-    if (min < 60) return `${min} мин`
+    if (min < 60) return t('podcasts_full.minutes', { n: min })
     const h = Math.floor(min / 60)
     const r = min - h * 60
-    return r === 0 ? `${h}ч` : `${h}ч ${r}м`
-  }, [p.duration_sec])
+    return r === 0 ? t('podcasts_full.hours', { h }) : t('podcasts_full.hours_minutes', { h, m: r })
+  }, [p.duration_sec, t])
   return (
     <Card className="flex-col gap-3 p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            {p.category?.name ?? 'Без категории'}
+            {p.category?.name ?? t('podcasts_full.without_category')}
             {p.episode_num !== undefined && p.episode_num > 0 && (
               <>
                 <span>·</span>
-                <span>эпизод {p.episode_num}</span>
+                <span>{t('podcasts_full.episode', { n: p.episode_num })}</span>
               </>
             )}
             <span>·</span>
@@ -126,10 +128,10 @@ function PodcastRow({ p }: { p: Podcast }) {
         {p.completed && (
           <span
             className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-text-secondary"
-            title="Прослушан полностью"
+            title={t('podcasts_full.completed_title')}
           >
             <CheckCircle2 className="h-3 w-3" />
-            прослушан
+            {t('podcasts_full.completed_label')}
           </span>
         )}
       </div>
@@ -150,17 +152,18 @@ function PodcastRow({ p }: { p: Podcast }) {
             className="inline-flex items-center gap-2 self-start rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[12px] font-semibold text-text-primary transition-colors hover:border-border-strong"
           >
             <Play className="h-3.5 w-3.5" />
-            Воспроизвести
+            {t('podcasts_full.play')}
           </button>
         )
       ) : (
-        <span className="font-mono text-[11px] text-text-muted">audio_url пуст — episode pending</span>
+        <span className="font-mono text-[11px] text-text-muted">{t('podcasts_full.audio_pending')}</span>
       )}
     </Card>
   )
 }
 
 export default function PodcastsPage() {
+  const { t } = useTranslation('pages')
   const [category, setCategory] = useState<string>(ALL)
   const podcastsQ = usePodcastsQuery({ categoryId: category === ALL ? undefined : category })
   const categoriesQ = usePodcastCategoriesQuery()
@@ -176,7 +179,7 @@ export default function PodcastsPage() {
 
       <DataLoader
         state={categoriesQ}
-        section="Категории"
+        section={t('podcasts_full.loading_section')}
         skeleton={<div className="px-4 py-5 sm:px-8 lg:px-20" />}
       >
         {(cats) => (
@@ -191,11 +194,11 @@ export default function PodcastsPage() {
       <div className="px-4 pb-12 sm:px-8 lg:px-20">
         <DataLoader
           state={podcastsQ}
-          section="Подкасты"
+          section={t('podcasts_full.loading_podcasts')}
           skeleton={
             <Card className="flex-col gap-1 p-8 text-center">
               <span className="font-display text-base font-bold text-text-primary">
-                Загружаем подкасты
+                {t('podcasts_full.loading_skeleton')}
               </span>
             </Card>
           }
@@ -203,10 +206,10 @@ export default function PodcastsPage() {
           emptyContent={
             <Card className="flex-col gap-1 p-8 text-center">
               <span className="font-display text-base font-bold text-text-primary">
-                Эпизодов нет
+                {t('podcasts_full.empty_title')}
               </span>
               <span className="text-sm text-text-secondary">
-                Каталог пуст или нет совпадений по фильтру.
+                {t('podcasts_full.empty_body')}
               </span>
             </Card>
           }

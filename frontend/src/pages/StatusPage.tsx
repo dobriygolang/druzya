@@ -5,8 +5,8 @@
 //
 // Refetches every 30s — same TTL as the server-side Redis cache, so the
 // browser sees the freshest snapshot the moment it expires upstream.
-// TODO i18n
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Check, ArrowLeft, AlertTriangle, AlertCircle } from 'lucide-react'
 import { Button } from '../components/Button'
 import {
@@ -18,20 +18,21 @@ import {
 } from '../lib/queries/status'
 
 function TopBar() {
+  const { t } = useTranslation('pages')
   return (
     <div className="flex h-auto items-center justify-between gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-7 lg:h-14 lg:py-0">
       <div className="flex items-center gap-2.5">
         <span className="grid h-7 w-7 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-sm font-extrabold text-text-primary">
           9
         </span>
-        <span className="font-display text-base font-bold text-text-primary">druz9 status</span>
+        <span className="font-display text-base font-bold text-text-primary">{t('status_full.title')}</span>
         <span className="rounded-full bg-surface-3 px-1.5 py-0.5 font-mono text-[9px] text-text-muted">
           v3.2
         </span>
       </div>
       <Link to="/atlas">
         <Button variant="ghost" size="sm" icon={<ArrowLeft className="h-3.5 w-3.5" />}>
-          На главную
+          {t('status_full.home_btn')}
         </Button>
       </Link>
     </div>
@@ -47,7 +48,8 @@ function Hero({
   uptime90d: string
   generatedAt: string
 }) {
-  const cfg = heroConfigForStatus(status)
+  const { t } = useTranslation('pages')
+  const cfg = heroConfigForStatus(status, t)
   const seconds = secondsAgo(generatedAt)
   return (
     <div
@@ -66,7 +68,7 @@ function Hero({
           style={{ background: 'var(--red)' }}
           aria-hidden
         />
-        STATUS · LIVE
+        {t('status_full.eyebrow_live')}
       </span>
       <div
         className={`grid h-24 w-24 place-items-center rounded-full ${cfg.bg}`}
@@ -76,18 +78,18 @@ function Hero({
       </div>
       <h1 className={`font-display text-2xl lg:text-[32px] font-extrabold ${cfg.text} text-center`}>{cfg.title}</h1>
       <p className="text-sm" style={{ color: 'var(--ink-60)' }}>
-        Аптайм{' '}
+        {t('status_full.uptime_prefix')}{' '}
         <span className="font-display tabular-nums" style={{ color: 'rgb(var(--ink))' }}>
           {uptime90d}
         </span>{' '}
-        за последние 90 дней · обновлено{' '}
-        {seconds === null ? '—' : `${seconds} ${pluralizeSeconds(seconds)} назад`}
+        {t('status_full.uptime_suffix')}{' '}
+        {seconds === null ? t('status_full.updated_dash') : t('status_full.uptime_ago', { n: seconds, label: pluralizeSeconds(seconds, t) })}
       </p>
     </div>
   )
 }
 
-function heroConfigForStatus(s: string) {
+function heroConfigForStatus(s: string, t: (k: string) => string) {
   // B/W rule: state-encoding via ink-ramp opacity stratification. Only
   // critical (`down`) carries `var(--red)` — single accent, signal only.
   // operational stays full ink; degraded drops to ink-60 ramp.
@@ -97,7 +99,7 @@ function heroConfigForStatus(s: string) {
         bg: 'bg-white/10',
         ring: 'rgba(var(--ink), 0.9)',
         text: 'text-text-primary',
-        title: 'Все системы работают',
+        title: t('status_full.operational_title'),
         icon: <Check className="h-14 w-14" style={{ color: 'rgb(var(--ink))' }} strokeWidth={3} />,
       }
     case 'degraded':
@@ -105,7 +107,7 @@ function heroConfigForStatus(s: string) {
         bg: 'bg-white/5',
         ring: 'rgba(var(--ink), 0.5)',
         text: 'text-text-secondary',
-        title: 'Частичная деградация',
+        title: t('status_full.degraded_title'),
         icon: (
           <AlertTriangle
             className="h-14 w-14"
@@ -120,13 +122,14 @@ function heroConfigForStatus(s: string) {
         bg: 'bg-danger/10',
         ring: 'var(--red)',
         text: 'text-danger',
-        title: 'Перебои в работе',
+        title: t('status_full.down_title'),
         icon: <AlertCircle className="h-14 w-14 text-danger" strokeWidth={3} />,
       }
   }
 }
 
 function ServicesList({ services }: { services: StatusServiceState[] }) {
+  const { t } = useTranslation('pages')
   // Real per-day spark bars: GET /status/history?service=<slug>&days=30
   // returns one bucket per UTC day, derived from the incidents log.
   // Today's bucket is appended live from the current probe state so a
@@ -136,14 +139,14 @@ function ServicesList({ services }: { services: StatusServiceState[] }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-surface-2">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <h3 className="font-display text-base font-bold text-text-primary">Сервисы</h3>
+        <h3 className="font-display text-base font-bold text-text-primary">{t('status_full.services_h')}</h3>
         <span className="rounded-full bg-surface-3 px-2.5 py-0.5 font-mono text-[10px] text-text-muted">
-          Refresh in 30s
+          {t('status_full.refresh_label')}
         </span>
       </div>
       {services.length === 0 && (
         <div className="px-6 py-10 text-center font-mono text-sm text-text-muted">
-          Нет данных о сервисах
+          {t('status_full.no_services')}
         </div>
       )}
       {services.map((s, idx) => {
@@ -202,7 +205,7 @@ function ServicesList({ services }: { services: StatusServiceState[] }) {
               >
                 {s.uptime30d}
               </span>
-              <span className="font-mono text-[10px] text-text-muted">uptime 30d</span>
+              <span className="font-mono text-[10px] text-text-muted">{t('status_full.uptime_30d')}</span>
             </div>
           </div>
         )
@@ -243,12 +246,13 @@ function buildSparkBars(
 }
 
 function IncidentsCard({ incidents }: { incidents: StatusIncident[] }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="rounded-2xl bg-surface-2 p-6">
-      <h3 className="font-display text-base font-bold text-text-primary">Недавние инциденты</h3>
+      <h3 className="font-display text-base font-bold text-text-primary">{t('status_full.incidents_h')}</h3>
       {incidents.length === 0 && (
         <div className="mt-4 rounded-[10px] bg-surface-1 p-4 text-center font-mono text-sm text-text-muted">
-          Инцидентов не зарегистрировано.
+          {t('status_full.no_incidents')}
         </div>
       )}
       <div className="mt-4 flex flex-col gap-3">
@@ -310,23 +314,24 @@ function secondsAgo(iso: string): number | null {
   return Math.max(0, Math.round((Date.now() - ts) / 1000))
 }
 
-function pluralizeSeconds(n: number): string {
+function pluralizeSeconds(n: number, t: (k: string) => string): string {
   // Лёгкая ru-pluralization: 1 секунду, 2-4 секунды, 5+ секунд.
   const m10 = n % 10
   const m100 = n % 100
-  if (m10 === 1 && m100 !== 11) return 'секунду'
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'секунды'
-  return 'секунд'
+  if (m10 === 1 && m100 !== 11) return t('status_full.seconds.one')
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return t('status_full.seconds.few')
+  return t('status_full.seconds.many')
 }
 
 function MetricsCard({ uptime90d, incidentCount }: { uptime90d: string; incidentCount: number }) {
+  const { t } = useTranslation('pages')
   const rows: Array<[string, string]> = [
-    ['Аптайм 90d', uptime90d],
-    ['Инцидентов', String(incidentCount)],
+    [t('status_full.uptime_90d_label'), uptime90d],
+    [t('status_full.incidents_label'), String(incidentCount)],
   ]
   return (
     <div className="flex-1 rounded-2xl bg-surface-2 p-6">
-      <h3 className="font-display text-base font-bold text-text-primary">Метрики 90 дней</h3>
+      <h3 className="font-display text-base font-bold text-text-primary">{t('status_full.metrics_h')}</h3>
       <div className="mt-4 flex flex-col gap-3">
         {rows.map(([k, v]) => (
           <div key={k} className="flex items-center justify-between border-b border-border pb-2 last:border-0">

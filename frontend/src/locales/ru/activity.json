@@ -1,0 +1,41 @@
+{
+  "feed": {
+    "eyebrow": "Активность",
+    "summary_count": "{{n}} {{label}} за 7 дней",
+    "empty_title": "Журнал пуст",
+    "minutes_short": "мин",
+    "minutes_with_emoji": "⌚ {{n}} мин",
+    "add": "Занятие",
+    "empty_body": "Пока ничего не залогировано. Каждое занятие — сигнал coach'у: readiness подрастёт, daily plan адаптируется. Жми «+ Занятие» когда решишь LeetCode / прочтёшь главу / сделаешь mock.",
+    "delete_aria": "Удалить запись",
+    "delete_title": "Удалить",
+    "collapse": "Свернуть · показано {{n}}",
+    "show_all": "Показать все {{n}} →",
+    "kind": {
+      "mock": "Mock",
+      "leetcode": "Задача",
+      "reading": "Чтение",
+      "coach": "Coach",
+      "focus_block": "Focus",
+      "reflection": "Reflection",
+      "external": "Другое"
+    },
+    "plural": {
+      "actions_one": "занятие",
+      "actions_few": "занятия",
+      "actions_many": "занятий",
+      "hours_one": "час",
+      "hours_few": "часа",
+      "hours_many": "часов",
+      "days_one": "день",
+      "days_few": "дня",
+      "days_many": "дней"
+    },
+    "ago": {
+      "just_now": "только что",
+      "minutes": "{{n}} мин назад",
+      "hours": "{{n}} {{label}} назад",
+      "days": "{{n}} {{label}} назад"
+    }
+  }
+}

@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Check, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -33,6 +34,7 @@ type Tab = 'snapshot' | 'brief' | 'assignments' | 'english' | 'notes'
 export default function TutorStudentPage() {
   const { id: studentId } = useParams<{ id: string }>()
   const [tab, setTab] = useState<Tab>('snapshot')
+  const { t } = useTranslation('tutor')
 
   return (
     <div className="min-h-screen bg-bg text-text-primary">
@@ -42,35 +44,34 @@ export default function TutorStudentPage() {
             to="/tutor"
             className="font-mono text-[12px] tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
           >
-            ← Tutor dashboard
+            {`← ${t('student.back_link')}`}
           </Link>
           <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-            Student · {studentId ? studentId.slice(0, 8) : '—'}
+            {t('student.header_eyebrow', { id: studentId ? studentId.slice(0, 8) : '—' })}
           </span>
           <h1 className="font-display text-3xl font-bold leading-tight">
-            Pre-session brief
+            {t('student.title')}
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">
-            Снимок активности студента за последние 7 дней. AI-бриф —
-            сжатый Russian narrative для подготовки к 1:1.
+            {t('student.subtitle')}
           </p>
         </header>
 
         <div className="flex gap-2 border-b border-border">
           <TabButton active={tab === 'snapshot'} onClick={() => setTab('snapshot')}>
-            Snapshot
+            {t('student.tab_snapshot')}
           </TabButton>
           <TabButton active={tab === 'brief'} onClick={() => setTab('brief')}>
-            AI brief
+            {t('student.tab_brief')}
           </TabButton>
           <TabButton active={tab === 'assignments'} onClick={() => setTab('assignments')}>
-            Assignments
+            {t('student.tab_assignments')}
           </TabButton>
           <TabButton active={tab === 'english'} onClick={() => setTab('english')}>
-            English
+            {t('student.tab_english')}
           </TabButton>
           <TabButton active={tab === 'notes'} onClick={() => setTab('notes')}>
-            Notes
+            {t('student.tab_notes')}
           </TabButton>
         </div>
 
@@ -126,17 +127,18 @@ function TabButton({
 
 function SnapshotPane({ studentId }: { studentId: string | undefined }) {
   const q = useStudentSnapshotQuery(studentId)
+  const { t } = useTranslation('tutor')
 
-  if (!studentId) return <ErrorCard message="Student id не указан в URL." />
-  if (q.isPending) return <PendingCard label="Загружаем snapshot…" />
+  if (!studentId) return <ErrorCard message={t('common.student_id_missing')} />
+  if (q.isPending) return <PendingCard label={t('student.snapshot_loading')} />
   if (q.isError) {
     const status = q.error instanceof ApiError ? q.error.status : 0
     return (
       <ErrorCard
         message={
           status === 403 || status === 404
-            ? 'Этот студент не привязан к тебе. Проверь, что он принял инвайт.'
-            : 'Не удалось загрузить snapshot.'
+            ? t('common.student_not_attached')
+            : t('student.snapshot_load_fail')
         }
       />
     )
@@ -147,45 +149,49 @@ function SnapshotPane({ studentId }: { studentId: string | undefined }) {
 }
 
 function SnapshotBody({ snapshot }: { snapshot: TutorStudentSnapshot }) {
+  const { t } = useTranslation('tutor')
   const lastActive = snapshot.last_active_at
-    ? formatRelative(snapshot.last_active_at)
+    ? formatRelative(snapshot.last_active_at, t)
     : '—'
   const avgScore =
     snapshot.english_mocks_count > 0 ? snapshot.english_mocks_avg_score : null
   const lastScore =
     snapshot.english_mocks_count > 0 ? snapshot.english_mocks_last_score : null
+  const windowSub = snapshot.window_days
+    ? t('student.stat_window_days', { n: snapshot.window_days })
+    : ''
 
   return (
     <section className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Last active" value={lastActive} />
-        <Stat label="Focus min" value={String(snapshot.focus_minutes_window)} />
+        <Stat label={t('student.stat_last_active')} value={lastActive} />
+        <Stat label={t('student.stat_focus_min')} value={String(snapshot.focus_minutes_window)} />
         <Stat
-          label="Sessions"
+          label={t('student.stat_sessions')}
           value={String(snapshot.focus_sessions_count)}
-          sub={snapshot.window_days ? `за ${snapshot.window_days}d` : ''}
+          sub={windowSub}
         />
-        <Stat label="Notes" value={String(snapshot.notes_count)} />
+        <Stat label={t('student.stat_notes')} value={String(snapshot.notes_count)} />
       </div>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          English mocks
+          {t('student.english_mocks_header')}
         </div>
         {snapshot.english_mocks_count === 0 ? (
           <p className="text-sm text-text-secondary">
-            За окно нет ни одного HR-мока. Предложи на сессии запустить первый.
+            {t('student.english_mocks_empty')}
           </p>
         ) : (
           <div className="grid grid-cols-3 gap-3">
-            <Stat label="Count" value={String(snapshot.english_mocks_count)} />
+            <Stat label={t('student.stat_count')} value={String(snapshot.english_mocks_count)} />
             <Stat
-              label="Avg"
+              label={t('student.stat_avg')}
               value={avgScore !== null ? `${avgScore}/100` : '—'}
               tier={avgScore !== null ? scoreTier(avgScore) : undefined}
             />
             <Stat
-              label="Last"
+              label={t('student.stat_last')}
               value={lastScore !== null ? `${lastScore}/100` : '—'}
               tier={lastScore !== null ? scoreTier(lastScore) : undefined}
             />
@@ -195,52 +201,51 @@ function SnapshotBody({ snapshot }: { snapshot: TutorStudentSnapshot }) {
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          English-track activity (Hone)
+          {t('student.english_activity_header')}
         </div>
         {hasNoEnglishActivity(snapshot) ? (
           <p className="text-sm text-text-secondary">
-            Студент пока не пользовался Hone-английским (Reading / Listening / vocab).
-            На сессии можно показать как загружать материалы — hotkey R / L.
+            {t('student.english_activity_empty')}
           </p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat
-                label="Reading min"
+                label={t('student.stat_reading_min')}
                 value={String(snapshot.reading_minutes_window)}
-                sub={snapshot.window_days ? `за ${snapshot.window_days}d` : ''}
+                sub={windowSub}
               />
               <Stat
-                label="Reading sess"
+                label={t('student.stat_reading_sess')}
                 value={String(snapshot.reading_sessions_count)}
-                sub={snapshot.window_days ? `за ${snapshot.window_days}d` : ''}
+                sub={windowSub}
               />
               <Stat
-                label="Library"
+                label={t('student.stat_library')}
                 value={String(snapshot.reading_materials_total)}
-                sub="всего"
+                sub={t('student.stat_library_total')}
               />
               <Stat
-                label="Listening"
+                label={t('student.stat_listening')}
                 value={String(snapshot.listening_materials_total)}
-                sub="всего"
+                sub={t('student.stat_library_total')}
               />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <Stat
-                label="Vocab queue"
+                label={t('student.stat_vocab_queue')}
                 value={String(snapshot.vocab_queue_total)}
-                sub="active"
+                sub={t('student.stat_vocab_queue_sub')}
               />
               <Stat
-                label="Due today"
+                label={t('student.stat_due_today')}
                 value={String(snapshot.vocab_due_today)}
                 tier={snapshot.vocab_due_today > 0 ? 'mid' : undefined}
               />
               <Stat
-                label="Graded summaries"
+                label={t('student.stat_graded_summaries')}
                 value={String(snapshot.writing_grades_count)}
-                sub={snapshot.window_days ? `за ${snapshot.window_days}d` : ''}
+                sub={windowSub}
               />
             </div>
           </>
@@ -249,12 +254,11 @@ function SnapshotBody({ snapshot }: { snapshot: TutorStudentSnapshot }) {
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          Weak spots {snapshot.weak_spots.length > 0 ? `· ${snapshot.weak_spots.length}` : ''}
+          {t('student.weak_spots_header')} {snapshot.weak_spots.length > 0 ? `· ${snapshot.weak_spots.length}` : ''}
         </div>
         {snapshot.weak_spots.length === 0 ? (
           <p className="text-sm text-text-secondary">
-            Atlas-узлов с низким прогрессом нет. Хороший знак — либо студент
-            держит средний-выше-50, либо недостаточно данных.
+            {t('student.weak_spots_empty')}
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -320,17 +324,18 @@ function ProgressBar({ progress }: { progress: number }) {
 
 function BriefPane({ studentId }: { studentId: string | undefined }) {
   const q = useStudentBriefQuery(studentId)
+  const { t } = useTranslation('tutor')
 
-  if (!studentId) return <ErrorCard message="Student id не указан в URL." />
-  if (q.isPending) return <PendingCard label="Готовим бриф (это может занять до 30 сек)…" />
+  if (!studentId) return <ErrorCard message={t('common.student_id_missing')} />
+  if (q.isPending) return <PendingCard label={t('student.brief_loading')} />
   if (q.isError) {
     const status = q.error instanceof ApiError ? q.error.status : 0
     return (
       <ErrorCard
         message={
           status === 403 || status === 404
-            ? 'Этот студент не привязан к тебе.'
-            : 'Не удалось сгенерировать бриф.'
+            ? t('common.student_not_attached_short')
+            : t('student.brief_load_fail')
         }
       />
     )
@@ -345,7 +350,7 @@ function BriefPane({ studentId }: { studentId: string | undefined }) {
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="flex items-center justify-between">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            AI narrative
+            {t('student.ai_narrative_header')}
           </div>
           <button
             type="button"
@@ -353,13 +358,12 @@ function BriefPane({ studentId }: { studentId: string | undefined }) {
             disabled={q.isFetching}
             className="rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:border-text-primary hover:text-text-primary disabled:opacity-50"
           >
-            {q.isFetching ? 'Обновляем…' : 'Обновить'}
+            {q.isFetching ? t('student.ai_refreshing') : t('student.ai_refresh_btn')}
           </button>
         </div>
         {brief.trim() === '' ? (
           <p className="text-sm text-text-secondary">
-            LLM-чейн временно недоступен (или отключён в этом окружении). Snapshot
-            выше — основа для подготовки.
+            {t('student.ai_empty')}
           </p>
         ) : (
           // Brief is markdown; we render whitespace-preserving plain-text
@@ -414,6 +418,7 @@ function PendingCard({ label }: { label: string }) {
 }
 
 function ErrorCard({ message }: { message: string }) {
+  const { t } = useTranslation('tutor')
   return (
     <Card className="flex-row items-start gap-3 p-4" interactive={false}>
       <span
@@ -429,7 +434,7 @@ function ErrorCard({ message }: { message: string }) {
       />
       <div className="flex flex-1 flex-col gap-1">
         <div className="font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--red)' }}>
-          Ошибка
+          {t('common.error_title')}
         </div>
         <p className="text-[13px] leading-relaxed text-text-secondary">{message}</p>
       </div>
@@ -445,23 +450,26 @@ function scoreTier(score: number): 'strong' | 'mid' | 'weak' {
   return 'weak'
 }
 
-function formatRelative(iso: string): string {
+type TutorT = ReturnType<typeof useTranslation<'tutor'>>['t']
+
+function formatRelative(iso: string, t: TutorT): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
   const ms = Date.now() - d.getTime()
-  if (ms < 60_000) return 'только что'
+  if (ms < 60_000) return t('student.rel_just_now')
   const m = Math.floor(ms / 60_000)
-  if (m < 60) return `${m} мин назад`
+  if (m < 60) return t('student.rel_min_ago', { n: m })
   const h = Math.floor(m / 60)
-  if (h < 24) return `${h} ч назад`
+  if (h < 24) return t('student.rel_h_ago', { n: h })
   const days = Math.floor(h / 24)
-  if (days < 7) return `${days} d назад`
+  if (days < 7) return t('student.rel_d_ago', { n: days })
   return d.toLocaleDateString()
 }
 
 
 function AssignmentsPane({ studentId }: { studentId: string | undefined }) {
-  if (!studentId) return <ErrorCard message="Student id не указан в URL." />
+  const { t } = useTranslation('tutor')
+  if (!studentId) return <ErrorCard message={t('common.student_id_missing')} />
   return (
     <section className="flex flex-col gap-4">
       <PushAssignmentForm studentId={studentId} />
@@ -475,6 +483,7 @@ function PushAssignmentForm({ studentId }: { studentId: string }) {
   const [body, setBody] = useState('')
   const [due, setDue] = useState('')
   const push = usePushAssignmentMutation(studentId)
+  const { t } = useTranslation('tutor')
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -498,14 +507,14 @@ function PushAssignmentForm({ studentId }: { studentId: string }) {
   return (
     <Card className="flex-col gap-3 p-4" interactive={false}>
       <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-        Push assignment
+        {t('student.assignments_push_header')}
       </div>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Read chapter 4 — The Black Swan"
+          placeholder={t('student.field_title_placeholder')}
           maxLength={240}
           className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
           required
@@ -513,14 +522,14 @@ function PushAssignmentForm({ studentId }: { studentId: string }) {
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="Optional: instructions, links, focus questions…"
+          placeholder={t('student.field_body_placeholder')}
           rows={4}
           maxLength={8000}
           className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
         />
         <label className="flex items-center gap-3 text-sm text-text-secondary">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted shrink-0">
-            Due (optional)
+            {t('student.field_due_label')}
           </span>
           <input
             type="datetime-local"
@@ -531,11 +540,11 @@ function PushAssignmentForm({ studentId }: { studentId: string }) {
         </label>
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={push.isPending || title.trim() === ''}>
-            {push.isPending ? 'Отправляем…' : 'Push to student'}
+            {push.isPending ? t('student.btn_submit_sending') : t('student.btn_submit_push')}
           </Button>
           {push.isError && (
             <span className="text-[12px] text-danger">
-              {push.error instanceof ApiError ? push.error.body : 'Не получилось'}
+              {push.error instanceof ApiError ? push.error.body : t('common.not_received')}
             </span>
           )}
         </div>
@@ -547,16 +556,17 @@ function PushAssignmentForm({ studentId }: { studentId: string }) {
 function AssignmentsList({ studentId }: { studentId: string }) {
   const q = useTutorAssignmentsQuery(studentId)
   const archive = useArchiveAssignmentMutation(studentId)
+  const { t } = useTranslation('tutor')
 
-  if (q.isPending) return <PendingCard label="Загружаем…" />
-  if (q.isError) return <ErrorCard message="Не удалось загрузить assignments." />
+  if (q.isPending) return <PendingCard label={t('common.loading')} />
+  if (q.isError) return <ErrorCard message={t('student.assignments_load_fail')} />
 
   const items = q.data?.items ?? []
   if (items.length === 0) {
     return (
       <Card className="flex-col gap-1 p-4" interactive={false}>
         <p className="text-[13px] leading-relaxed text-text-secondary">
-          Ни одного assignment ещё не отправлено. Заполни форму выше и нажми Push.
+          {t('student.assignments_empty')}
         </p>
       </Card>
     )
@@ -586,15 +596,16 @@ function AssignmentRow({
   onArchive: () => void
   archiving: boolean
 }) {
+  const { t } = useTranslation('tutor')
   const status = assignmentStatus(assignment)
   const statusBadge =
     status === 'completed'
-      ? { label: '✓ done', cls: 'border-success/40 bg-success/10 text-success' }
+      ? { label: t('student.badge_done'), cls: 'border-success/40 bg-success/10 text-success' }
       : status === 'archived'
-        ? { label: 'archived', cls: 'border-border bg-surface-2 text-text-muted' }
+        ? { label: t('student.badge_archived'), cls: 'border-border bg-surface-2 text-text-muted' }
         : status === 'overdue'
-          ? { label: 'overdue', cls: 'border-danger/40 bg-danger/10 text-danger' }
-          : { label: 'open', cls: 'border-warn/40 bg-warn/10 text-warn' }
+          ? { label: t('student.badge_overdue'), cls: 'border-danger/40 bg-danger/10 text-danger' }
+          : { label: t('student.badge_open'), cls: 'border-warn/40 bg-warn/10 text-warn' }
 
   return (
     <Card
@@ -618,10 +629,10 @@ function AssignmentRow({
       </div>
       <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
         {assignment.due_at && (
-          <span>due {new Date(assignment.due_at).toLocaleDateString()}</span>
+          <span>{t('student.assignment_due', { date: new Date(assignment.due_at).toLocaleDateString() })}</span>
         )}
         {assignment.created_at && (
-          <span>· created {formatRelative(assignment.created_at)}</span>
+          <span>{t('student.assignment_created', { rel: formatRelative(assignment.created_at, t) })}</span>
         )}
         {status === 'open' || status === 'overdue' ? (
           <button
@@ -630,7 +641,7 @@ function AssignmentRow({
             disabled={archiving}
             className="ml-auto rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-warn/10 disabled:opacity-50"
           >
-            Архивировать
+            {t('student.btn_archive')}
           </button>
         ) : null}
       </div>
@@ -655,23 +666,24 @@ function assignmentStatus(a: TutorAssignment): 'open' | 'overdue' | 'completed' 
 
 function EnglishPane({ studentId }: { studentId: string | undefined }) {
   const q = useStudentSnapshotQuery(studentId)
-  if (!studentId) return <ErrorCard message="Student id не указан в URL." />
-  if (q.isPending) return <PendingCard label="Загружаем English-снапшот…" />
+  const { t } = useTranslation('tutor')
+  if (!studentId) return <ErrorCard message={t('common.student_id_missing')} />
+  if (q.isPending) return <PendingCard label={t('student.english_pane_loading')} />
   if (q.isError) {
     const status = q.error instanceof ApiError ? q.error.status : 0
     return (
       <ErrorCard
         message={
           status === 403 || status === 404
-            ? 'Этот студент не привязан к тебе.'
-            : 'Не удалось загрузить snapshot.'
+            ? t('common.student_not_attached_short')
+            : t('student.snapshot_load_fail')
         }
       />
     )
   }
   if (!q.data) return null
   const s = q.data
-  const window = s.window_days ? `за ${s.window_days}d` : ''
+  const windowLabel = s.window_days ? t('student.stat_window_days', { n: s.window_days }) : ''
   const noActivity =
     s.reading_minutes_window === 0 &&
     s.reading_materials_total === 0 &&
@@ -684,22 +696,22 @@ function EnglishPane({ studentId }: { studentId: string | undefined }) {
     <section className="flex flex-col gap-4">
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          English mocks (HR)
+          {t('student.english_pane_mocks_header')}
         </div>
         {s.english_mocks_count === 0 ? (
           <p className="text-sm text-text-secondary">
-            Нет HR-моков за окно. На сессии — предложи запустить первый.
+            {t('student.english_pane_mocks_empty')}
           </p>
         ) : (
           <div className="grid grid-cols-3 gap-3">
-            <Stat label="Count" value={String(s.english_mocks_count)} />
+            <Stat label={t('student.stat_count')} value={String(s.english_mocks_count)} />
             <Stat
-              label="Avg"
+              label={t('student.stat_avg')}
               value={`${s.english_mocks_avg_score}/100`}
               tier={scoreTier(s.english_mocks_avg_score)}
             />
             <Stat
-              label="Last"
+              label={t('student.stat_last')}
               value={`${s.english_mocks_last_score}/100`}
               tier={scoreTier(s.english_mocks_last_score)}
             />
@@ -709,32 +721,32 @@ function EnglishPane({ studentId }: { studentId: string | undefined }) {
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          Reading
+          {t('student.english_pane_reading_header')}
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <Stat label="Минут" value={String(s.reading_minutes_window)} sub={window} />
-          <Stat label="Sessions" value={String(s.reading_sessions_count)} sub={window} />
-          <Stat label="Library" value={String(s.reading_materials_total)} sub="всего материалов" />
+          <Stat label={t('student.stat_minutes')} value={String(s.reading_minutes_window)} sub={windowLabel} />
+          <Stat label={t('student.stat_sessions')} value={String(s.reading_sessions_count)} sub={windowLabel} />
+          <Stat label={t('student.stat_library')} value={String(s.reading_materials_total)} sub={t('student.stat_library_label_total')} />
         </div>
       </Card>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          Vocabulary (SRS)
+          {t('student.vocab_header')}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="В очереди" value={String(s.vocab_queue_total)} />
-          <Stat label="Due сегодня" value={String(s.vocab_due_today)} />
+          <Stat label={t('student.stat_in_queue')} value={String(s.vocab_queue_total)} />
+          <Stat label={t('student.stat_due_today_ru')} value={String(s.vocab_due_today)} />
         </div>
       </Card>
 
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          Writing & Listening
+          {t('student.writing_listening_header')}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Writing grades" value={String(s.writing_grades_count)} sub={window} />
-          <Stat label="Listening lib" value={String(s.listening_materials_total)} sub="всего" />
+          <Stat label={t('student.stat_writing_grades')} value={String(s.writing_grades_count)} sub={windowLabel} />
+          <Stat label={t('student.stat_listening_lib')} value={String(s.listening_materials_total)} sub={t('student.stat_library_total')} />
         </div>
       </Card>
 
@@ -753,12 +765,10 @@ function EnglishPane({ studentId }: { studentId: string | undefined }) {
           />
           <div className="flex flex-1 flex-col gap-1">
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-              Студент пока не пользуется Hone English
+              {t('student.no_english_eyebrow')}
             </div>
             <p className="text-[13px] leading-relaxed text-text-secondary">
-              На сессии покажи hotkey'и: <b>R</b> (Reading), <b>L</b> (Listening). Загружай
-              paste/PDF/URL — кликом на слово сохраняется vocab. Через <b>Reading library</b>
-              на dashboard'е можешь шарнуть материалы сразу всем студентам.
+              {t('student.no_english_body')}
             </p>
           </div>
         </div>
@@ -777,6 +787,7 @@ function NotesPane({ studentId }: { studentId: string | undefined }) {
   const m = useSaveSessionNotesMutation(studentId)
   const [draft, setDraft] = useState<string>('')
   const [savedAt, setSavedAt] = useState<string | null>(null)
+  const { t } = useTranslation('tutor')
   // Initialise draft из server state — только один раз когда query
   // зарезолвилась. Дальнейшие сетевые ответы не перетирают локальное
   // состояние (избегаем «прыжка» каретки во время typing'а).
@@ -819,16 +830,16 @@ function NotesPane({ studentId }: { studentId: string | undefined }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft])
 
-  if (!studentId) return <ErrorCard message="Student id не указан в URL." />
-  if (q.isPending) return <PendingCard label="Загружаем notes…" />
+  if (!studentId) return <ErrorCard message={t('common.student_id_missing')} />
+  if (q.isPending) return <PendingCard label={t('student.notes_loading')} />
   if (q.isError) {
     const status = q.error instanceof ApiError ? q.error.status : 0
     return (
       <ErrorCard
         message={
           status === 403
-            ? 'Этот студент не привязан к тебе.'
-            : 'Не удалось загрузить notes.'
+            ? t('student.notes_not_attached')
+            : t('student.notes_load_fail')
         }
       />
     )
@@ -839,21 +850,18 @@ function NotesPane({ studentId }: { studentId: string | undefined }) {
       <Card className="flex-col gap-3 p-4" interactive={false}>
         <div className="flex items-center justify-between">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Личные заметки тутора
+            {t('student.notes_header')}
           </div>
           <SaveStatus pending={m.isPending} savedAt={savedAt} />
         </div>
         <p className="text-[12px] leading-relaxed text-text-secondary">
-          Только для тебя. Студент эти заметки не видит. Markdown поддерживается
-          (заголовки, списки, **bold**). Auto-save раз в 1.5 секунды.
+          {t('student.notes_body')}
         </p>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={16}
-          placeholder={
-            '## 2026-05-04 1:1\n- Прошли present perfect (текущая боль — for/since)\n- Домашка: IELTS task 1, 2 примера\n- Запросил TED talk на B2 уровне\n'
-          }
+          placeholder={t('student.notes_placeholder')}
           className="w-full resize-y border-b border-[var(--hair-2)] bg-transparent px-1 py-2 font-mono text-[13px] leading-relaxed text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
         />
       </Card>
@@ -868,23 +876,24 @@ function SaveStatus({
   pending: boolean
   savedAt: string | null
 }) {
+  const { t } = useTranslation('tutor')
   if (pending) {
     return (
       <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-        <Loader2 className="h-3 w-3 animate-spin" /> save…
+        <Loader2 className="h-3 w-3 animate-spin" /> {t('student.save_state_saving')}
       </span>
     )
   }
   if (!savedAt) {
     return (
       <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-        не сохранено
+        {t('student.save_state_not_saved')}
       </span>
     )
   }
   return (
     <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-      <Check className="h-3 w-3 text-accent" /> {formatRelative(savedAt)}
+      <Check className="h-3 w-3 text-accent" /> {formatRelative(savedAt, t)}
     </span>
   )
 }

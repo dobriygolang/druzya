@@ -1,0 +1,37 @@
+{
+  "status": {
+    "unspecified": "unknown",
+    "active": "active",
+    "accepted": "already accepted",
+    "revoked": "revoked by the tutor",
+    "expired": "expired"
+  },
+  "err": {
+    "no_code": "Invite code is missing in the link.",
+    "loading": "Loading the invite…",
+    "not_found": "This invite does not exist. Ask your tutor for an up-to-date link.",
+    "load_failed": "Could not load the invite. Try refreshing.",
+    "default_accept": "Something went wrong. Try again.",
+    "title": "Error"
+  },
+  "default_tutor": "Your tutor",
+  "eyebrow": "Tutor invite",
+  "headline": "{{tutor}} invites you to druz9.",
+  "body": "Your tutor will connect you to their dashboard and see your focus sessions, English-Atlas progress, and HR-mock results. Notes and whiteboard stay private.",
+  "stat": {
+    "code": "Code",
+    "status": "Status",
+    "until": "Valid until",
+    "note": "Note"
+  },
+  "accepted_title": "Already accepted",
+  "accepted_body": "This invite has already been used. If that was you, keep working in Hone and on druz9.online.",
+  "inactive_title": "Not active",
+  "inactive_body": "Invite {{status}}. Ask your tutor for a fresh link.",
+  "cta": {
+    "accept_pending": "Accepting…",
+    "accept": "Accept and continue",
+    "login": "Sign in to accept",
+    "login_hint": "You'll come straight back here after signing in."
+  }
+}

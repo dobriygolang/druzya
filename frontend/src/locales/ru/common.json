@@ -92,5 +92,24 @@
     "last_week": "На прошлой неделе",
     "this_month": "В этом месяце",
     "this_year": "В этом году"
+  },
+  "ai_coach_pill": {
+    "ask_default": "Спросить coach’а",
+    "default_name": "AI-coach",
+    "close": "Закрыть",
+    "connect_failed": "Не получилось подключить coach'а. Попробуй ещё раз.",
+    "connecting": "Подключаюсь…",
+    "context_hint": "Coach уже видит контекст этого экрана. Задай вопрос — отвечу с учётом твоей истории.",
+    "thinking": "Думаю…",
+    "send_failed": "Не получилось отправить.",
+    "input_placeholder": "Спроси coach'а…"
+  },
+  "streak": {
+    "day_one": "{{count}} день",
+    "day_few": "{{count}} дня",
+    "day_many": "{{count}} дней",
+    "day_short": "дн.",
+    "at_risk_title": "{{days}}-day streak · сегодня ещё не log'ал — successive day может прервать",
+    "ok_title": "{{days}} {{plural}} подряд · longest за всё время {{longest}}"
   }
 }

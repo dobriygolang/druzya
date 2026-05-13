@@ -3,11 +3,13 @@
 
 import { useEffect } from 'react';
 
+import { useT } from '@d9-i18n';
 import { RangeSlider } from '../../../components/d9';
 import { useAppearanceStore } from '../../../stores/appearance';
 import { Row, SectionTitle } from '../lib/shared';
 
 export function AppearanceTab() {
+  const t = useT();
   const opacity = useAppearanceStore((s) => s.expandedOpacity);
   const bootstrap = useAppearanceStore((s) => s.bootstrap);
   const setOpacity = useAppearanceStore((s) => s.setExpandedOpacity);
@@ -33,12 +35,12 @@ export function AppearanceTab() {
   return (
     <>
       <SectionTitle
-        title="Внешний вид"
-        subtitle="Прозрачность окон Cue и размер окна чата"
+        title={t('cue.settings.appearance.section.title')}
+        subtitle={t('cue.settings.appearance.section.subtitle')}
       />
       <Row
-        title="Прозрачность окон"
-        hint="0% — виден blur рабочего стола (macOS vibrancy). 100% — плотный фон. Пресеты ниже задают типичные значения; слайдер — для тонкой подстройки."
+        title={t('cue.settings.appearance.opacity.title')}
+        hint={t('cue.settings.appearance.opacity.hint')}
         control={
           <RangeSlider
             value={opacity}
@@ -50,8 +52,8 @@ export function AppearanceTab() {
         }
       />
       <Row
-        title="Пресеты прозрачности"
-        hint="Быстрые точки калибровки. Subtle — еле прозрачное окно. Balanced — баланс между читаемостью и фоном. Bold — максимальная видимость desktop'а."
+        title={t('cue.settings.appearance.presets.title')}
+        hint={t('cue.settings.appearance.presets.hint')}
         control={
           <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
             {PRESETS.map((p) => {
@@ -83,8 +85,8 @@ export function AppearanceTab() {
         }
       />
       <Row
-        title="Размер окна"
-        hint="Окно чата (expanded) свободно ресайзится — тяни за любой край. Последний размер запоминается и восстанавливается при следующем открытии."
+        title={t('cue.settings.appearance.window_size.title')}
+        hint={t('cue.settings.appearance.window_size.hint')}
         control={
           <span
             style={{
@@ -95,7 +97,7 @@ export function AppearanceTab() {
               textTransform: 'uppercase',
             }}
           >
-            авто
+            {t('cue.settings.appearance.window_size.auto')}
           </span>
         }
       />

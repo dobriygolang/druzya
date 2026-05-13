@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Sparkles,
   BookOpen,
@@ -34,10 +35,13 @@ const KIND_ICON: Record<ActionKind, typeof Sparkles> = {
   diagnostic: Brain,
 }
 
-const PRIORITY_LABEL: Record<0 | 1 | 2, string> = {
-  0: 'Сейчас',
-  1: 'Сегодня',
-  2: 'Если есть время',
+function usePriorityLabels(): Record<0 | 1 | 2, string> {
+  const { t } = useTranslation('pages')
+  return {
+    0: t('daily_plan_card.priority_now'),
+    1: t('daily_plan_card.priority_today'),
+    2: t('daily_plan_card.priority_optional'),
+  }
 }
 
 // Map F7 plan ActionKind → F5 activity ActionKind. Some F7 kinds (log /
@@ -86,6 +90,7 @@ function writeDone(ids: Set<string>): void {
 }
 
 export function DailyPlanCard() {
+  const { t } = useTranslation('pages')
   const goal = useGoal()
   // Tick для force-recompute when user clicks refresh. Cache invalidates →
   // getOrComputeDailyPlan заново посчитает.
@@ -115,16 +120,16 @@ export function DailyPlanCard() {
       <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-5">
         <header className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-text-secondary" />
-          <h2 className="font-display text-base font-bold leading-tight">План на сегодня</h2>
+          <h2 className="font-display text-base font-bold leading-tight">{t('daily_plan_card.header_no_goal')}</h2>
         </header>
         <p className="text-[13px] leading-relaxed text-text-muted">
-          Поставь цель — получишь 3-5 actions adapted под твою readiness и weak area.
+          {t('daily_plan_card.no_goal_body')}
         </p>
         <Link
           to="/diagnostic"
           className="self-start font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary hover:underline"
         >
-          Начать с 8-минутной диагностики →
+          {t('daily_plan_card.diag_link')}
         </Link>
       </section>
     )
@@ -165,18 +170,18 @@ export function DailyPlanCard() {
       <header className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            План на сегодня · {plan.budgetMin} мин
-            {doneCount > 0 && ` · ✓ ${doneCount}/${plan.actions.length}`}
+            {t('daily_plan_card.header_eyebrow', { min: plan.budgetMin })}
+            {doneCount > 0 && t('daily_plan_card.done_count', { done: doneCount, total: plan.actions.length })}
           </span>
           <h2 className="font-display text-base font-bold leading-tight">
-            {plan.actions.length} {pluralActions(plan.actions.length)}
+            {plan.actions.length} {pluralActions(plan.actions.length, t)}
           </h2>
         </div>
         <button
           type="button"
           onClick={onRefresh}
-          aria-label="Пересчитать план"
-          title="Пересчитать"
+          aria-label={t('daily_plan_card.refresh_aria')}
+          title={t('daily_plan_card.refresh_title')}
           className="grid h-8 w-8 place-items-center rounded-md text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-2 hover:text-text-primary"
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -213,6 +218,7 @@ export function DailyPlanCard() {
 // HoneFocusCTA — discrete «open in Hone» action. Hairline border, B/W per
 // CLAUDE.md design rule. No red unless we want to signal urgency.
 function HoneFocusCTA({ firstUndone }: { firstUndone: string }) {
+  const { t } = useTranslation('pages')
   const onClick = () => {
     openHoneFocusSession({
       goal: firstUndone,
@@ -226,18 +232,17 @@ function HoneFocusCTA({ firstUndone }: { firstUndone: string }) {
       type="button"
       onClick={onClick}
       className="self-start font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary hover:underline"
-      title="Открыть Hone и стартануть pomodoro на этот action"
+      title={t('daily_plan_card.hone_title')}
     >
-      Поставить 25 мин в Hone →
+      {t('daily_plan_card.hone_cta')}
     </button>
   )
 }
 
-function pluralActions(n: number): string {
-  // ru plural: 1 действие / 2-4 действия / 5+ действий
-  if (n === 1) return 'действие'
-  if (n >= 2 && n <= 4) return 'действия'
-  return 'действий'
+function pluralActions(n: number, t: (k: string) => string): string {
+  if (n === 1) return t('daily_plan_card.plural.one')
+  if (n >= 2 && n <= 4) return t('daily_plan_card.plural.few')
+  return t('daily_plan_card.plural.many')
 }
 
 function ActionRow({
@@ -251,6 +256,8 @@ function ActionRow({
   done: boolean
   onMarkDone: () => void
 }) {
+  const { t } = useTranslation('pages')
+  const PRIORITY_LABEL = usePriorityLabels()
   const Icon = KIND_ICON[action.kind]
   const isP0 = action.priority === 0
   const canMarkDone = ACTION_TO_ACTIVITY_KIND[action.kind] !== undefined
@@ -311,8 +318,8 @@ function ActionRow({
             e.stopPropagation()
             onMarkDone()
           }}
-          aria-label={done ? 'Уже залогировано сегодня' : 'Залогировать как занятие'}
-          title={done ? 'Залогировано · F5 store' : 'Залогировать как занятие (✓)'}
+          aria-label={done ? t('daily_plan_card.row_done_aria') : t('daily_plan_card.row_log_aria')}
+          title={done ? t('daily_plan_card.row_done_title') : t('daily_plan_card.row_log_title')}
           disabled={done}
           className={`grid h-9 w-9 place-items-center rounded-md transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${
             done

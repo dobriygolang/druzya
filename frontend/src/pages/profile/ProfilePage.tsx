@@ -49,28 +49,7 @@ import {
 } from '../../lib/queries/tutor'
 import { ApiError } from '../../lib/apiClient'
 
-const TRACK_LABELS: Record<ActiveTrack, { label: string; hint: string }> = {
-  general: {
-    label: 'General',
-    hint: 'Без фильтра по треку — видишь весь контент Hone и атласа.',
-  },
-  dev: {
-    label: 'Dev (Go senior)',
-    hint: 'Подготовка к собесу на senior Go-разработчика. Algorithms, system design, distributed.',
-  },
-  ml: {
-    label: 'ML Engineering',
-    hint: 'Senior ML/MLE — classical ML, DL, transformers, LLM/GenAI, ML system design, MLOps.',
-  },
-  english: {
-    label: 'English',
-    hint: 'Speaking + writing для tech-собесов. Clarity / accuracy / range / fluency.',
-  },
-  go: {
-    label: 'Go deep',
-    hint: 'Sub-mode для senior Go-разрабов: runtime, scheduler, GC, profiling, distributed.',
-  },
-}
+// Track-label / hint лейблы тянутся через t(`track.${track}.label`) из profile namespace.
 
 // ── states ─────────────────────────────────────────────────────────────────
 
@@ -96,9 +75,9 @@ function ProfileError({ onRetry }: { onRetry: () => void }) {
   return (
     <AppShellV2>
       <div className="mx-auto max-w-md px-6 py-16 text-center">
-        <p className="text-text-secondary">{t('error_load') ?? 'Не удалось загрузить профиль.'}</p>
+        <p className="text-text-secondary">{t('error_load')}</p>
         <Button variant="primary" onClick={onRetry} className="mt-4">
-          {t('retry') ?? 'Повторить'}
+          {t('retry')}
         </Button>
       </div>
     </AppShellV2>
@@ -106,13 +85,14 @@ function ProfileError({ onRetry }: { onRetry: () => void }) {
 }
 
 function ProfileNotFound({ username }: { username: string }) {
+  const { t } = useTranslation('profile')
   return (
     <AppShellV2>
       <div className="mx-auto max-w-md px-6 py-16 text-center">
-        <h1 className="font-display text-2xl font-bold">@{username} не найден</h1>
-        <p className="mt-2 text-sm text-text-secondary">Возможно, юзернейм изменился.</p>
+        <h1 className="font-display text-2xl font-bold">{t('not_found_name', { username })}</h1>
+        <p className="mt-2 text-sm text-text-secondary">{t('not_found_hint')}</p>
         <Link to="/atlas" className="mt-6 inline-block">
-          <Button variant="primary">К Atlas</Button>
+          <Button variant="primary">{t('not_found_cta')}</Button>
         </Link>
       </div>
     </AppShellV2>
@@ -122,6 +102,7 @@ function ProfileNotFound({ username }: { username: string }) {
 // ── page ───────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const { t } = useTranslation('profile')
   const params = useParams<{ username?: string }>()
   const isOwn = !params.username
   const ownQuery = useProfileQuery()
@@ -151,10 +132,10 @@ export default function ProfilePage() {
   }
 
   return (
-    <ErrorBoundary section="Профиль">
+    <ErrorBoundary section={t('section')}>
       <DataLoader<Profile | PublicProfile>
         state={loaderState}
-        section="Профиль"
+        section={t('section')}
         skeleton={<ProfileSkeleton />}
         errorContent={(_e, retry) => <ProfileError onRetry={retry} />}
       >
@@ -198,8 +179,9 @@ function Header({
   createdAt?: string
   isOwn: boolean
 }) {
+  const { t, i18n } = useTranslation('profile')
   const initial = (displayName || username).slice(0, 1).toUpperCase()
-  const memberSince = createdAt ? formatMonthYear(createdAt) : null
+  const memberSince = createdAt ? formatMonthYear(createdAt, i18n.language) : null
   return (
     <header className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-5">
@@ -215,14 +197,14 @@ function Header({
           <div className="mt-1 text-[14px] text-text-secondary">
             {displayName !== username && <>{displayName}</>}
             {displayName !== username && memberSince && <> · </>}
-            {memberSince && <>в druz9 с {memberSince}</>}
+            {memberSince && <>{t('member_since', { when: memberSince })}</>}
           </div>
         </div>
       </div>
       {isOwn && (
         <Link to="/settings">
           <Button variant="ghost" size="sm" icon={<SettingsIcon className="h-4 w-4" />}>
-            Настройки
+            {t('settings')}
           </Button>
         </Link>
       )}
@@ -233,20 +215,21 @@ function Header({
 // ── own profile body ───────────────────────────────────────────────────────
 
 function OwnProfileBody() {
+  const { t } = useTranslation('profile')
   const trackQ = useActiveStudyModeQuery()
   const activeTrack = trackQ.data?.activeTrack ?? 'general'
 
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <ErrorBoundary section="Pending invites">
+        <ErrorBoundary section={t('boundary.pending_invites')}>
           <PendingInvitesCard />
         </ErrorBoundary>
         <ActiveTrackCard track={activeTrack} />
-        <ErrorBoundary section="AI-coach'и">
+        <ErrorBoundary section={t('boundary.ai_coaches')}>
           <AITutorsCard />
         </ErrorBoundary>
-        <ErrorBoundary section="Human-туторы">
+        <ErrorBoundary section={t('boundary.human_tutors')}>
           <HumanTutorsCard />
         </ErrorBoundary>
         <QuickLinksCard />
@@ -263,10 +246,10 @@ function OwnProfileBody() {
 }
 
 function PublicProfileBody({ username }: { username: string }) {
+  const { t } = useTranslation('profile')
   return (
     <div className="rounded-xl border border-border bg-surface-1 p-6 text-[14px] text-text-secondary">
-      Это публичная страница профиля @{username}. Полная статистика и подготовка
-      доступны только владельцу.
+      {t('public_body', { username })}
     </div>
   )
 }
@@ -298,51 +281,41 @@ function Card({
 }
 
 function ActiveTrackCard({ track }: { track: ActiveTrack }) {
-  const meta = TRACK_LABELS[track]
+  const { t } = useTranslation('profile')
   return (
-    <Card icon={<Target className="h-4 w-4" />} title="Активный режим подготовки">
+    <Card icon={<Target className="h-4 w-4" />} title={t('track.card_title')}>
       <div className="flex flex-col gap-2">
         <div>
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            mode
+            {t('track.mode_label')}
           </span>
-          <div className="font-display text-2xl font-bold leading-tight">{meta.label}</div>
+          <div className="font-display text-2xl font-bold leading-tight">{t(`track.${track}.label`)}</div>
         </div>
-        <p className="text-[13px] leading-relaxed text-text-secondary">{meta.hint}</p>
-        <p className="text-[12px] text-text-muted">
-          Сменить можно в Hone или прямо в settings — это влияет на подсветку
-          узлов в Atlas, фильтр TaskBoard и какой AI-coach по умолчанию подсажен
-          к pill'ам на /atlas.
-        </p>
+        <p className="text-[13px] leading-relaxed text-text-secondary">{t(`track.${track}.hint`)}</p>
+        <p className="text-[12px] text-text-muted">{t('track.switch_hint')}</p>
       </div>
     </Card>
   )
 }
 
 function AITutorsCard() {
+  const { t } = useTranslation('profile')
   const threadsQ = useMyAITutorThreadsQuery()
   const personasQ = useAITutorPersonasQuery()
   const personas: AITutorPersona[] = personasQ.data?.items ?? []
   const threads = threadsQ.data?.items ?? []
   const adopted = threads
-    .map((t) => personas.find((p) => p.id === t.persona_id))
+    .map((th) => personas.find((p) => p.id === th.persona_id))
     .filter((p): p is AITutorPersona => Boolean(p))
 
   return (
-    <Card icon={<Brain className="h-4 w-4" />} title="AI-coach'и">
+    <Card icon={<Brain className="h-4 w-4" />} title={t('ai_card.title')}>
       {threadsQ.isPending || personasQ.isPending ? (
-        <div className="text-[12px] text-text-muted">загружаю…</div>
+        <div className="text-[12px] text-text-muted">{t('ai_card.loading')}</div>
       ) : adopted.length === 0 ? (
         <div className="space-y-2">
-          <p className="text-[13px] text-text-secondary">
-            Ты ещё не подключил ни одного AI-coach'а. Они умеют отвечать с памятью
-            твоих прошлых разговоров — не «ещё один чат», а персональный coach
-            по треку.
-          </p>
-          <p className="text-[12px] text-text-muted">
-            Подключаются автоматически при первом клике на coach-pill в Atlas
-            или MockResult.
-          </p>
+          <p className="text-[13px] text-text-secondary">{t('ai_card.empty_lead')}</p>
+          <p className="text-[12px] text-text-muted">{t('ai_card.empty_hint')}</p>
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -363,7 +336,7 @@ function AITutorsCard() {
                 to={`/tutor/ai/${encodeURIComponent(p.slug)}`}
                 className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary"
               >
-                открыть →
+                {t('ai_card.open_arrow')}
               </Link>
             </li>
           ))}
@@ -374,16 +347,14 @@ function AITutorsCard() {
 }
 
 function PendingInvitesCard() {
+  const { t } = useTranslation('profile')
   const q = usePendingInvitesForMeQuery()
   const accept = useAcceptInviteMutation()
   const items = q.data?.items ?? []
   if (q.isPending || items.length === 0) return null
   return (
-    <Card icon={<Sparkles className="h-4 w-4" />} title="Тебя пригласили" className="sm:col-span-2">
-      <p className="text-[13px] text-text-secondary">
-        Туторы хотят с тобой работать. После accept'а assignments будут попадать
-        в Hone TaskBoard, а сессии — в Calendar.
-      </p>
+    <Card icon={<Sparkles className="h-4 w-4" />} title={t('invites_card.title')} className="sm:col-span-2">
+      <p className="text-[13px] text-text-secondary">{t('invites_card.lead')}</p>
       <ul className="flex flex-col gap-2">
         {items.map((inv) => {
           const name = inv.tutor_display_name?.trim() || inv.tutor_username || inv.tutor_id.slice(0, 8)
@@ -428,7 +399,7 @@ function PendingInvitesCard() {
                   accept.mutate(inv.code)
                 }}
               >
-                {accept.isPending ? '…' : 'Принять'}
+                {accept.isPending ? t('invites_card.ellipsis') : t('invites_card.accept')}
               </Button>
             </li>
           )
@@ -436,7 +407,7 @@ function PendingInvitesCard() {
       </ul>
       {accept.isError && (
         <span className="text-[12px]" style={{ color: 'var(--red)' }}>
-          {accept.error instanceof ApiError ? accept.error.body : 'Не удалось принять'}
+          {accept.error instanceof ApiError ? accept.error.body : t('invites_card.err_default')}
         </span>
       )}
     </Card>
@@ -444,6 +415,7 @@ function PendingInvitesCard() {
 }
 
 function HumanTutorsCard() {
+  const { t } = useTranslation('profile')
   const tutorsQ = useMyTutorsQuery()
   const items = tutorsQ.data?.items ?? []
   // ListMyTutors включает AI-тутор-relationships (для adopted персон). Они
@@ -451,19 +423,13 @@ function HumanTutorsCard() {
   // префикс 'ai-tutor::'. Display-info прилетает с backend (proto.display_*).
   const humans = items.filter((r) => !(r.display_username ?? '').startsWith('ai-tutor::'))
   return (
-    <Card title="Human-туторы">
+    <Card title={t('human_card.title')}>
       {tutorsQ.isPending ? (
-        <div className="text-[12px] text-text-muted">загружаю…</div>
+        <div className="text-[12px] text-text-muted">{t('human_card.loading')}</div>
       ) : humans.length === 0 ? (
         <div className="space-y-2">
-          <p className="text-[13px] text-text-secondary">
-            У тебя пока нет связки с human-тутором. Получил invite-ссылку — открой
-            её, чтобы accept'нуть relationship.
-          </p>
-          <p className="text-[12px] text-text-muted">
-            После accept'а ассайнменты от тутора будут автоматически попадать в
-            твой Hone TaskBoard, а сессии — в Calendar.
-          </p>
+          <p className="text-[13px] text-text-secondary">{t('human_card.empty_lead')}</p>
+          <p className="text-[12px] text-text-muted">{t('human_card.empty_hint')}</p>
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -507,34 +473,35 @@ function HumanTutorsCard() {
 }
 
 function QuickLinksCard() {
+  const { t } = useTranslation('profile')
   const links: { to: string; label: string; hint: string; icon: React.ReactNode }[] = [
     {
       to: '/mock',
-      label: 'Mock-собес',
-      hint: 'Взять mock с AI-интервьюером по выбранной компании.',
+      label: t('quick_links.mock_label'),
+      hint: t('quick_links.mock_hint'),
       icon: <Sparkles className="h-4 w-4" />,
     },
     {
       to: '/tasks',
-      label: 'TaskBoard',
-      hint: 'Assignments от тутора + AI-coach + ручные.',
+      label: t('quick_links.tasks_label'),
+      hint: t('quick_links.tasks_hint'),
       icon: <ListChecks className="h-4 w-4" />,
     },
     {
       to: '/atlas',
-      label: 'Atlas',
-      hint: 'Карта тем для подготовки + прогресс.',
+      label: t('quick_links.atlas_label'),
+      hint: t('quick_links.atlas_hint'),
       icon: <MapIcon className="h-4 w-4" />,
     },
     {
       to: '/codex',
-      label: 'Codex',
-      hint: 'Curated reading library.',
+      label: t('quick_links.codex_label'),
+      hint: t('quick_links.codex_hint'),
       icon: <BookOpen className="h-4 w-4" />,
     },
   ]
   return (
-    <Card title="Куда дальше" className="sm:col-span-2">
+    <Card title={t('quick_links.title')} className="sm:col-span-2">
       <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {links.map((l) => (
           <li key={l.to}>
@@ -561,15 +528,13 @@ function QuickLinksCard() {
 }
 
 function WeeklyReportCard() {
+  const { t } = useTranslation('profile')
   return (
-    <Card title="Weekly report" className="sm:col-span-2">
-      <p className="text-[13px] leading-relaxed text-text-secondary">
-        Сводка за неделю — focus минуты, mock'и, weak spots, прогресс по треку.
-        Для долгосрочной траектории.
-      </p>
+    <Card title={t('weekly_card.title')} className="sm:col-span-2">
+      <p className="text-[13px] leading-relaxed text-text-secondary">{t('weekly_card.body')}</p>
       <Link to="/profile/weekly">
         <Button variant="ghost" size="sm" iconRight={<ArrowRight className="h-3.5 w-3.5" />}>
-          Открыть Weekly
+          {t('weekly_card.open')}
         </Button>
       </Link>
     </Card>
@@ -578,8 +543,9 @@ function WeeklyReportCard() {
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function formatMonthYear(iso: string): string | null {
+function formatMonthYear(iso: string, lang: string): string | null {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return null
-  return d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  const tag = lang === 'ru' ? 'ru-RU' : 'en-US'
+  return d.toLocaleDateString(tag, { month: 'long', year: 'numeric' })
 }

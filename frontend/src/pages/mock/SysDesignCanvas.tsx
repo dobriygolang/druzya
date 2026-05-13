@@ -11,6 +11,7 @@
 
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { AlertCircle, CheckCircle2, ExternalLink, Loader2, XCircle } from 'lucide-react'
+import { useT } from '@d9-i18n'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import {
@@ -27,14 +28,6 @@ const MAX_CHARS = 4000
 // guard avoids the round-trip for obviously-too-big diagrams.
 const MAX_DATA_URL_BYTES = 7_000_000
 
-const NON_FUNCT_PLACEHOLDER =
-  '100 RPS на запись, p99 < 200ms на чтение, write-heavy,\n' +
-  'eventually consistent reads OK, 3 региона, 99.9% uptime…'
-const CONTEXT_PLACEHOLDER =
-  'Cassandra потому что write-heavy + eventual consistency OK;\n' +
-  'Redis cache для горячих ключей; ws для realtime feed;\n' +
-  'CDN перед статикой…'
-
 export function SysDesignCanvas({
   attempt,
   pipelineId,
@@ -42,6 +35,9 @@ export function SysDesignCanvas({
   attempt: PipelineAttempt
   pipelineId: string
 }) {
+  const t = useT()
+  const NON_FUNCT_PLACEHOLDER = t('mock.sysdesign.field.non_functional_ph')
+  const CONTEXT_PLACEHOLDER = t('mock.sysdesign.field.context_ph')
   const submit = useSubmitCanvasMutation(pipelineId)
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const [nonFunctionalMD, setNonFunctionalMD] = useState('')
@@ -118,14 +114,14 @@ export function SysDesignCanvas({
   const isJudging = isSubmitted && attempt.ai_verdict === 'pending'
   const isJudged = isSubmitted && attempt.ai_verdict !== 'pending'
 
-  const briefTitle = (attempt.question_body ?? '').split('\n\n')[0] || 'Задача'
+  const briefTitle = (attempt.question_body ?? '').split('\n\n')[0] || t('mock.sysdesign.brief.default_title')
   const briefBody = (attempt.question_body ?? '').split('\n\n').slice(1).join('\n\n')
 
   const handleSubmit = async () => {
     setClientErr(null)
     const api = apiRef.current
     if (!api) {
-      setClientErr('Канвас ещё не загрузился, попробуй ещё раз.')
+      setClientErr(t('mock.sysdesign.err.canvas_not_ready'))
       return
     }
     try {
@@ -134,15 +130,13 @@ export function SysDesignCanvas({
       // Guard: a click in Excalidraw without a drag produces an element
       // with width=0/height=0 — invisible to the user but present in the
       // scene. Exporting such a scene yields a blank PNG that the vision
-      // judge can't read, and the user sees an opaque "Не удалось
-      // получить оценку" failure. Refuse the submit early with a hint.
+      // judge can't read, and the user sees an opaque failure message.
+      // Refuse the submit early with a hint.
       const visible = elements.filter(
         (e) => !e.isDeleted && (e.width ?? 0) > 1 && (e.height ?? 0) > 1,
       )
       if (visible.length === 0) {
-        setClientErr(
-          'Нечего оценивать — нарисуй хотя бы одну фигуру с размером (тяни мышью, не просто клик).',
-        )
+        setClientErr(t('mock.sysdesign.err.empty_canvas'))
         return
       }
       const { exportToBlob } = await import('@excalidraw/excalidraw')
@@ -154,7 +148,7 @@ export function SysDesignCanvas({
       })
       const dataURL = await blobToDataURL(blob)
       if (dataURL.length > MAX_DATA_URL_BYTES) {
-        setClientErr('Диаграмма слишком большая, упрости (≤5 МБ).')
+        setClientErr(t('mock.sysdesign.err.too_big'))
         return
       }
       // Scene JSON is the persistent record — backend stores it, frontend
@@ -184,7 +178,7 @@ export function SysDesignCanvas({
       {/* ── Brief column ────────────────────────────────────── */}
       <Card variant="default" padding="md" className="lg:sticky lg:top-4 lg:self-start flex flex-col gap-3">
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          Задача
+          {t('mock.sysdesign.brief_label')}
         </div>
         <h3 className="font-display text-base font-bold text-text-primary whitespace-pre-wrap">
           {briefTitle}
@@ -197,7 +191,7 @@ export function SysDesignCanvas({
         {attempt.task_functional_requirements_md ? (
           <div className="mt-1 rounded-md border border-border bg-surface-1 p-3">
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
-              Функциональные требования
+              {t('mock.sysdesign.functional_reqs')}
             </div>
             <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
               {attempt.task_functional_requirements_md}
@@ -218,7 +212,7 @@ export function SysDesignCanvas({
                     className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-md"
                     style={{ background: 'var(--red)' }}
                   />
-                  автосейв полностью выкл — жми Submit
+                  {t('mock.sysdesign.autosave.disabled')}
                 </span>
               ) : draft.quotaExceeded ? (
                 <span className="relative rounded-md border border-border-strong bg-surface-1 px-2 py-0.5 pl-3 text-text-primary">
@@ -227,14 +221,14 @@ export function SysDesignCanvas({
                     className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-md"
                     style={{ background: 'var(--red)' }}
                   />
-                  локалка переполнена → пишем на сервер
+                  {t('mock.sysdesign.autosave.local_full')}
                 </span>
               ) : (
-                <span>автосейв · 24ч</span>
+                <span>{t('mock.sysdesign.autosave.normal')}</span>
               )}
               {draft.fullscreenAlive && (
                 <span className="rounded-md border border-border-strong bg-surface-2 px-2 py-0.5 text-text-primary">
-                  доска открыта в новой вкладке
+                  {t('mock.sysdesign.fullscreen_open')}
                 </span>
               )}
             </div>
@@ -244,34 +238,34 @@ export function SysDesignCanvas({
               className="flex items-center gap-1.5 rounded-md border border-border-strong bg-surface-1 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary hover:bg-surface-2"
             >
               <ExternalLink className="h-3 w-3" />
-              На весь экран
+              {t('mock.sysdesign.open_fullscreen')}
             </button>
           </div>
         )}
         {restoreBanner && !isSubmitted && (
           <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-1 px-3 py-2 text-xs">
             <span className="text-text-secondary">
-              Восстановлено{' '}
+              {t('mock.sysdesign.restored.prefix')}{' '}
               {restoreBanner.ageMin <= 0
-                ? 'только что'
+                ? t('mock.sysdesign.restored.just_now')
                 : restoreBanner.ageMin < 60
-                  ? `${restoreBanner.ageMin} мин назад`
-                  : `${Math.round(restoreBanner.ageMin / 60)} ч назад`}
+                  ? t('mock.sysdesign.restored.min_ago', { n: String(restoreBanner.ageMin) })
+                  : t('mock.sysdesign.restored.h_ago', { n: String(Math.round(restoreBanner.ageMin / 60)) })}
             </span>
             <button
               type="button"
               onClick={() => setRestoreBanner(null)}
               className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted hover:text-text-primary"
             >
-              скрыть
+              {t('mock.sysdesign.restored.hide')}
             </button>
           </div>
         )}
         {!isSubmitted && draft.fullscreenAlive && (
           <div className="rounded-md border border-border-strong bg-surface-2 px-3 py-2 text-xs text-text-secondary">
-            Закончил рисовать в новой вкладке? Жми{' '}
-            <span className="font-mono text-text-primary">Submit</span> здесь —
-            диаграмма подтянется автоматически.
+            {t('mock.sysdesign.fullscreen.hint_pre')}{' '}
+            <span className="font-mono text-text-primary">{t('mock.sysdesign.fullscreen.hint_action')}</span>{' '}
+            {t('mock.sysdesign.fullscreen.hint_post')}
           </div>
         )}
         {!isSubmitted ? (
@@ -280,7 +274,7 @@ export function SysDesignCanvas({
               fallback={
                 <div className="absolute inset-0 flex items-center justify-center text-text-secondary">
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  <span className="text-sm">Загрузка канваса…</span>
+                  <span className="text-sm">{t('mock.sysdesign.loading_canvas')}</span>
                 </div>
               }
             >
@@ -310,14 +304,14 @@ export function SysDesignCanvas({
         ) : attempt.user_excalidraw_scene_json ? (
           <div className="flex flex-col gap-2">
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-              Что сдал
+              {t('mock.sysdesign.submitted_label')}
             </div>
             <div className="relative h-[400px] lg:h-[600px] overflow-hidden rounded-lg border border-border bg-black">
               <Suspense
                 fallback={
                   <div className="absolute inset-0 flex items-center justify-center text-text-secondary">
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span className="text-sm">Загрузка диаграммы…</span>
+                    <span className="text-sm">{t('mock.sysdesign.loading_diagram')}</span>
                   </div>
                 }
               >
@@ -342,7 +336,7 @@ export function SysDesignCanvas({
           // no scene blob — fall back to <img>. New rows always have scene.
           <Card variant="default" padding="sm" className="overflow-hidden">
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-2">
-              Что сдал
+              {t('mock.sysdesign.submitted_label')}
             </div>
             <img
               src={attempt.user_excalidraw_image_url}
@@ -352,11 +346,11 @@ export function SysDesignCanvas({
           </Card>
         ) : (
           <Card variant="default" padding="md" className="text-sm text-text-secondary">
-            Диаграмма не сохранена.
+            {t('mock.sysdesign.diagram_missing')}
           </Card>
         )}
         <div className="font-mono text-[10px] text-text-secondary px-1">
-          PNG, dark theme · экспорт автоматически при отправке
+          {t('mock.sysdesign.export_hint')}
         </div>
       </div>
 
@@ -365,7 +359,7 @@ export function SysDesignCanvas({
         {!isSubmitted ? (
           <>
             <CharField
-              label="Нефункциональные требования"
+              label={t('mock.sysdesign.field.non_functional')}
               value={nonFunctionalMD}
               onChange={(v) => {
                 setNonFunctionalMD(v)
@@ -375,7 +369,7 @@ export function SysDesignCanvas({
               disabled={submit.isPending}
             />
             <CharField
-              label="Пояснения / контекст"
+              label={t('mock.sysdesign.field.context')}
               value={contextMD}
               onChange={(v) => {
                 setContextMD(v)
@@ -403,7 +397,7 @@ export function SysDesignCanvas({
                 disabled={submit.isPending}
                 loading={submit.isPending}
               >
-                Отправить решение
+                {t('mock.sysdesign.submit_button')}
               </Button>
             </div>
           </>
@@ -412,7 +406,7 @@ export function SysDesignCanvas({
             {nonFunctionalMD || attempt.user_answer_md ? (
               <Card variant="default" padding="md" className="flex flex-col gap-1">
                 <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-                  Нефункциональные (что сдал)
+                  {t('mock.sysdesign.field.non_functional_submitted')}
                 </div>
                 <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
                   {attempt.user_answer_md ?? '—'}
@@ -422,7 +416,7 @@ export function SysDesignCanvas({
             {attempt.user_context_md ? (
               <Card variant="default" padding="md" className="flex flex-col gap-1">
                 <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-                  Контекст (что сдал)
+                  {t('mock.sysdesign.field.context_submitted')}
                 </div>
                 <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
                   {attempt.user_context_md}
@@ -433,7 +427,7 @@ export function SysDesignCanvas({
             {isJudging && (
               <div className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface-2 p-3">
                 <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
-                <span className="text-sm text-text-secondary">AI оценивает диаграмму…</span>
+                <span className="text-sm text-text-secondary">{t('mock.sysdesign.ai_judging')}</span>
               </div>
             )}
 
@@ -507,12 +501,16 @@ function CharField({
 // ── verdict panel — kept local so SysDesignCanvas is self-contained.
 // Mirrors VerdictPanel in MockPipelinePage but tightened to a column.
 function CanvasVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
+  const t = useT()
   const v = attempt.ai_verdict
   const score = attempt.ai_score ?? 0
   const fail = v === 'fail'
   const borderline = v === 'borderline'
   const label =
-    v === 'pass' ? 'PASS' : v === 'fail' ? 'FAIL' : v === 'borderline' ? 'BORDERLINE' : v
+    v === 'pass' ? t('mock.common.verdict.pass')
+    : v === 'fail' ? t('mock.common.verdict.fail')
+    : v === 'borderline' ? t('mock.common.verdict.borderline')
+    : v
   const Icon = v === 'pass' ? CheckCircle2 : v === 'fail' ? XCircle : AlertCircle
 
   return (
@@ -540,7 +538,7 @@ function CanvasVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
       {attempt.ai_feedback_md && (
         <Card variant="default" padding="md" className="font-sans">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
-            Feedback
+            {t('mock.common.label.feedback')}
           </div>
           <div className="text-sm text-text-primary whitespace-pre-wrap">
             {attempt.ai_feedback_md}
@@ -550,7 +548,7 @@ function CanvasVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
       {attempt.ai_missing_points.length > 0 && (
         <div className="rounded-lg border border-border bg-surface-1 p-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
-            Что упустил
+            {t('mock.common.label.missing_points')}
           </div>
           <ul className="list-disc list-inside text-sm text-text-secondary space-y-0.5">
             {attempt.ai_missing_points.map((m, i) => (

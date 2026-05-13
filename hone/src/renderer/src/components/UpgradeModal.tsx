@@ -37,7 +37,7 @@ const CURRENCY_DISPLAY: Record<SupportedCurrency, { symbol: string; price: strin
 function detectCurrency(): SupportedCurrency {
   if (typeof navigator === 'undefined') return 'RUB';
   const lang = (navigator.language || 'en').toLowerCase();
-  if (lang.startsWith('ru') || lang.startsWith('be') || lang.startsWith('kk')) return 'RUB';
+  if (lang.startsWith('ru')) return 'RUB';
   if (
     lang.startsWith('de') ||
     lang.startsWith('fr') ||

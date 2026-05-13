@@ -24,8 +24,12 @@
     // (resolve относительно tsconfig). Если когда-то нужен будет fallback —
     // верни baseUrl + добавь "ignoreDeprecations": "6.0".
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@d9-i18n": ["../shared/i18n"],
+      "@d9-i18n/*": ["../shared/i18n/*"],
+      "zustand": ["./node_modules/zustand"],
+      "zustand/*": ["./node_modules/zustand/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "../shared/i18n"]
 }

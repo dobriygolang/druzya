@@ -8,6 +8,8 @@
 // Privacy: юзер может soft-delete entry (server hides from coach reads but
 import React, { useMemo, useState } from 'react';
 
+import { useT, translate } from '@d9-i18n';
+
 import { listMemoryEntries, deleteMemoryEntry, type MemoryEntry } from '../api/intelligence';
 import { useDataState } from '../hooks/useDataState';
 import { trackEvent } from '../api/events';
@@ -26,6 +28,7 @@ const SOURCE_LABEL: Record<SourceFilter, string> = {
 };
 
 export const MemoryTimelinePage: React.FC = () => {
+  const t = useT();
   const [filter, setFilter] = useState<SourceFilter>('all');
   const [reload, setReload] = useState(0);
 
@@ -57,7 +60,7 @@ export const MemoryTimelinePage: React.FC = () => {
   const grouped = useMemo(() => groupByDay(filteredItems), [filteredItems]);
 
   async function handleDelete(id: string) {
-    const ok = window.confirm('Удалить из памяти Coach? AI больше не будет ссылаться на этот entry.');
+    const ok = window.confirm(translate('hone.memory.delete_confirm'));
     if (!ok) return;
     try {
       await deleteMemoryEntry(id);
@@ -89,7 +92,7 @@ export const MemoryTimelinePage: React.FC = () => {
         </h1>
         <p style={{ fontSize: 13, color: 'var(--ink-60)', margin: 0, maxWidth: 580 }}>
           {total === 0
-            ? 'Память пуста. Открой Cue meeting, напиши заметку или пройди mock — Coach начнёт собирать контекст.'
+            ? t('hone.memory.empty')
             : `${total} entries · показано ${filteredItems.length}. AI ссылается на это в daily brief / next-action / fork analysis.`}
         </p>
       </header>
@@ -130,12 +133,12 @@ export const MemoryTimelinePage: React.FC = () => {
       </div>
 
       {memoryState.status === 'loading' && (
-        <div style={dim}>загружается…</div>
+        <div style={dim}>{t('hone.memory.loading')}</div>
       )}
 
       {memoryState.status === 'error' && (
         <div style={errorPanel}>
-          <span>Не удалось загрузить память: {memoryState.error?.message ?? 'unknown'}</span>
+          <span>{t('hone.memory.err.load', { msg: memoryState.error?.message ?? 'unknown' })}</span>
           <button type="button" onClick={memoryState.refetch} style={retryBtn}>retry</button>
         </div>
       )}
@@ -236,7 +239,7 @@ const MemoryRow: React.FC<{ entry: MemoryEntry; onDelete: () => void }> = ({ ent
       <button
         type="button"
         onClick={onDelete}
-        title="Удалить из памяти"
+        title={translate('hone.memory.delete_title')}
         aria-label="Delete memory entry"
         style={{
           background: 'transparent',
@@ -273,14 +276,14 @@ const EmptyHint: React.FC = () => (
     <div style={{ fontSize: 12, color: 'var(--ink-40)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
       memory empty
     </div>
-    Память Coach наполняется side-effect'ом твоих действий:
+    {translate('hone.memory.footer_note')}
     <ul style={{ paddingLeft: 18, margin: '8px 0' }}>
       <li>Cue session → ingest → episode kind=cue_session</li>
       <li>Reflection после focus → kind=reflection</li>
       <li>Mock complete → kind=mock_pipeline_finished</li>
       <li>Note create / external activity log → kind=external_activity</li>
     </ul>
-    Открой одну из этих surface — entries появятся через минуту.
+    {translate('hone.memory.footer_outro')}
   </div>
 );
 

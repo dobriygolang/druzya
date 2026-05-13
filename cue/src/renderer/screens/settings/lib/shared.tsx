@@ -2,6 +2,8 @@
 // selectStyle and small format/util helpers. Extracted from SettingsScreen
 // so individual tabs can import what they need without re-declaring.
 
+import { translate } from '@d9-i18n';
+
 export function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div style={{ marginBottom: 22 }}>
@@ -181,6 +183,6 @@ export function humanizeError(e: unknown): string {
   // Surface the server's message verbatim if it's present after the
   // status code, otherwise a generic fallback.
   const parts = msg.split(':');
-  return parts[parts.length - 1]?.trim() || 'Ошибка запроса';
+  return parts[parts.length - 1]?.trim() || translate('cue.settings.documents.err.generic');
 }
 

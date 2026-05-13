@@ -12,6 +12,8 @@
 // "peek" версия. Эта page — full dashboard для tab navigation.
 import React, { useMemo, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import { getStats, type HoneStats, type FocusDay } from '../api/hone';
 import {
   getCoachStats,
@@ -449,6 +451,7 @@ const GradeTrendCard: React.FC<{
 
 
 const StatsWebHandoff: React.FC = () => {
+  const t = useT();
   return (
     <div
       style={{
@@ -469,7 +472,7 @@ const StatsWebHandoff: React.FC = () => {
         type="button"
         onClick={() => openWebInsights()}
         style={linkBtn}
-        title="Открыть Insights stream в браузере (druz9.online)"
+        title={t('hone.stats.title_insights')}
       >
         view insight timeline →
       </button>
@@ -477,7 +480,7 @@ const StatsWebHandoff: React.FC = () => {
         type="button"
         onClick={() => openWebProfileMemory()}
         style={linkBtn}
-        title="Открыть Memory timeline в браузере (druz9.online)"
+        title={t('hone.stats.title_memory')}
       >
         full memory timeline →
       </button>

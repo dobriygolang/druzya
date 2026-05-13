@@ -24,18 +24,23 @@ import {
   type CoachMemoryEntry,
 } from '../lib/queries/coachMemory'
 
-const KIND_FILTERS: { value: string | null; label: string }[] = [
-  { value: null, label: 'Все' },
-  { value: 'goal_set', label: 'Goals' },
-  { value: 'mock_complete', label: 'Mocks' },
-  { value: 'cue_session', label: 'Cue sessions' },
-  { value: 'reflection_grade', label: 'Reflections' },
-  { value: 'weak_topic', label: 'Weak topics' },
-  { value: 'streak_milestone', label: 'Streaks' },
-]
+function useKindFilters(): { value: string | null; label: string }[] {
+  const { t } = useTranslation('pages')
+  return [
+    { value: null, label: t('memory_full.filter_all') },
+    { value: 'goal_set', label: t('memory_full.filter_goals') },
+    { value: 'mock_complete', label: t('memory_full.filter_mocks') },
+    { value: 'cue_session', label: t('memory_full.filter_cue') },
+    { value: 'reflection_grade', label: t('memory_full.filter_reflections') },
+    { value: 'weak_topic', label: t('memory_full.filter_weak') },
+    { value: 'streak_milestone', label: t('memory_full.filter_streaks') },
+  ]
+}
 
 export default function MemoryPage() {
-  const { t } = useTranslation('toasts')
+  const { t: tToasts } = useTranslation('toasts')
+  const { t } = useTranslation('pages')
+  const KIND_FILTERS = useKindFilters()
   const [activeKind, setActiveKind] = useState<string | null>(null)
   const memoryQ = useMemoryEntriesQuery({ kind: activeKind, limit: 50 })
   const deleteMut = useDeleteMemoryEntryMutation()
@@ -48,13 +53,11 @@ export default function MemoryPage() {
           <div className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-text-secondary" />
             <h1 className="font-display text-3xl font-bold leading-tight">
-              Что AI помнит
+              {t('memory_full.title')}
             </h1>
           </div>
           <p className="text-[14px] text-text-secondary">
-            Полный список memory entries, на которые опирается coach. Удали
-            запись — AI больше не использует её в next session. Это твоя
-            память; ты решаешь что AI хранит.
+            {t('memory_full.subtitle')}
           </p>
         </header>
 
@@ -75,14 +78,14 @@ export default function MemoryPage() {
           ))}
         </div>
 
-        <ErrorBoundary section="Memory entries">
+        <ErrorBoundary section={t('memory_full.section_memory_entries')}>
           <DataLoader
             state={memoryQ}
-            section="Memory"
+            section={t('memory_full.section_memory')}
             skeleton={
               <Card className="flex-col gap-1 p-8 text-center">
                 <span className="font-display text-base font-bold text-text-primary">
-                  Загружаем memory
+                  {t('memory_full.loading')}
                 </span>
               </Card>
             }
@@ -90,11 +93,10 @@ export default function MemoryPage() {
             emptyContent={
               <Card className="flex-col gap-1 p-8 text-center">
                 <span className="font-display text-base font-bold text-text-primary">
-                  Memory ещё пуста
+                  {t('memory_full.empty_title')}
                 </span>
                 <span className="text-sm text-text-secondary">
-                  Coach пока ничего не зафиксировал. После первой сессии / mock /
-                  diagnostic появятся entries.
+                  {t('memory_full.empty_body')}
                 </span>
               </Card>
             }
@@ -102,7 +104,7 @@ export default function MemoryPage() {
             {(data) => (
               <div className="flex flex-col gap-2">
                 <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                  {data.total} {pluralEntries(data.total)} · {data.items.length} показано
+                  {t('memory_full.total_format', { total: data.total, label: pluralEntries(data.total, t), shown: data.items.length })}
                 </p>
                 <ul className="flex flex-col gap-2">
                   {data.items.map((e) => (
@@ -110,7 +112,7 @@ export default function MemoryPage() {
                       key={e.id}
                       entry={e}
                       onDelete={() => {
-                        if (window.confirm(t('memory.delete_confirm'))) {
+                        if (window.confirm(tToasts('memory.delete_confirm'))) {
                           deleteMut.mutate(e.id)
                         }
                       }}
@@ -136,6 +138,7 @@ interface MemoryRowProps {
 }
 
 function MemoryRow({ entry, onDelete, onSaveEdit, isSaving }: MemoryRowProps) {
+  const { t } = useTranslation('pages')
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(entry.content)
   const remaining = 2000 - [...draft.trim()].length
@@ -169,7 +172,7 @@ function MemoryRow({ entry, onDelete, onSaveEdit, isSaving }: MemoryRowProps) {
           </span>
           {entry.importance !== undefined && entry.importance >= 7 && (
             <span className="rounded-sm border border-border bg-surface-2 px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.1em] text-text-secondary">
-              high · {entry.importance}/10
+              {t('memory_full.high_label', { score: entry.importance })}
             </span>
           )}
           {entry.source && (
@@ -178,9 +181,9 @@ function MemoryRow({ entry, onDelete, onSaveEdit, isSaving }: MemoryRowProps) {
           {entry.edited_at && (
             <span
               className="font-mono text-[10px] text-text-muted"
-              title={`edited ${entry.edited_at.slice(0, 10)}`}
+              title={t('memory_full.edited_title', { date: entry.edited_at.slice(0, 10) })}
             >
-              · edited
+              {t('memory_full.edited_label')}
             </span>
           )}
           <span className="ml-auto font-mono text-[10px] text-text-muted">
@@ -201,8 +204,8 @@ function MemoryRow({ entry, onDelete, onSaveEdit, isSaving }: MemoryRowProps) {
                 type="button"
                 onClick={save}
                 disabled={empty || tooLong || isSaving}
-                aria-label="Сохранить"
-                title="Save (⌘+Enter)"
+                aria-label={t('memory_full.save_aria')}
+                title={t('memory_full.save_title')}
                 className="inline-flex items-center gap-1.5 rounded-md border border-border-strong bg-surface-2 px-2.5 py-1 text-[12px] text-text-primary hover:bg-surface-3 disabled:opacity-50"
               >
                 <Check className="h-3 w-3" />
@@ -212,7 +215,7 @@ function MemoryRow({ entry, onDelete, onSaveEdit, isSaving }: MemoryRowProps) {
                 type="button"
                 onClick={cancel}
                 disabled={isSaving}
-                aria-label="Отмена"
+                aria-label={t('memory_full.cancel_aria')}
                 className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg px-2.5 py-1 text-[12px] text-text-secondary hover:text-text-primary disabled:opacity-50"
               >
                 <X className="h-3 w-3" />
@@ -231,7 +234,7 @@ function MemoryRow({ entry, onDelete, onSaveEdit, isSaving }: MemoryRowProps) {
             <p className="text-[13px] leading-relaxed text-text-primary">{entry.content}</p>
             {entry.expires_at && (
               <span className="font-mono text-[10px] text-text-muted">
-                истекает {entry.expires_at.slice(0, 10)}
+                {t('memory_full.expires_format', { date: entry.expires_at.slice(0, 10) })}
               </span>
             )}
           </>
@@ -245,8 +248,8 @@ function MemoryRow({ entry, onDelete, onSaveEdit, isSaving }: MemoryRowProps) {
               setDraft(entry.content)
               setEditing(true)
             }}
-            aria-label="Редактировать"
-            title="Уточнить formulation"
+            aria-label={t('memory_full.edit_aria')}
+            title={t('memory_full.edit_title')}
             className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -254,8 +257,8 @@ function MemoryRow({ entry, onDelete, onSaveEdit, isSaving }: MemoryRowProps) {
           <button
             type="button"
             onClick={onDelete}
-            aria-label="Удалить запись"
-            title="AI больше не будет использовать"
+            aria-label={t('memory_full.delete_aria')}
+            title={t('memory_full.delete_title')}
             className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -272,15 +275,15 @@ function formatAgo(iso: string): string {
   if (!Number.isFinite(ts)) return '—'
   const diff = Date.now() - ts
   const d = Math.floor(diff / (24 * 60 * 60 * 1000))
-  if (d <= 0) return 'сегодня'
-  if (d === 1) return 'вчера'
-  if (d < 7) return `${d}д назад`
-  if (d < 30) return `${Math.floor(d / 7)}нд назад`
+  if (d <= 0) return 'today'
+  if (d === 1) return 'yesterday'
+  if (d < 7) return `${d}d ago`
+  if (d < 30) return `${Math.floor(d / 7)}w ago`
   return iso.slice(0, 10)
 }
 
-function pluralEntries(n: number): string {
-  if (n === 1) return 'запись'
-  if (n >= 2 && n <= 4) return 'записи'
-  return 'записей'
+function pluralEntries(n: number, t: (k: string) => string): string {
+  if (n === 1) return t('memory_full.plural.one')
+  if (n >= 2 && n <= 4) return t('memory_full.plural.few')
+  return t('memory_full.plural.many')
 }

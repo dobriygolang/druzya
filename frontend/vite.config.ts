@@ -156,6 +156,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Typed Dict locale (shared with Hone / Cue). Used alongside the
+      // legacy react-i18next JSON namespaces during the wave-by-wave
+      // migration to the flat compile-checked Dict.
+      '@d9-i18n': path.resolve(__dirname, '../shared/i18n'),
     },
   },
   // Vitest exclude e2e dir — playwright runs туда через `npm run test:e2e`

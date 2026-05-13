@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useT, translate } from '@d9-i18n';
 import { IconDocument, IconTrash } from '../../../components/icons';
 import { Button } from '../../../components/primitives';
 import { useAuthStore } from '../../../stores/auth';
@@ -34,6 +35,7 @@ import {
  * see the "войди" hint and no list.
  */
 export function DocumentsTab() {
+  const t = useT();
   const session = useAuthStore((s) => s.session);
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
@@ -118,7 +120,7 @@ export function DocumentsTab() {
     // Enforce the 10MB server-side cap at the UI to give a clear error
     // before we waste a round-trip.
     if (file.size > 10 * 1024 * 1024) {
-      setError(`${file.name}: файл больше 10 МБ`);
+      setError(t('cue.settings.documents.size_limit_error', { name: file.name }));
       return;
     }
     setUploading(true);
@@ -183,8 +185,8 @@ export function DocumentsTab() {
   if (!session) {
     return (
       <>
-        <SectionTitle title="Документы" subtitle="RAG-контекст для copilot" />
-        <div style={emptyStyle}>Войди через онбординг — после авторизации здесь появится твоя библиотека документов.</div>
+        <SectionTitle title={t('cue.settings.documents.section.title')} subtitle={t('cue.settings.documents.empty_session_subtitle')} />
+        <div style={emptyStyle}>{t('cue.settings.documents.empty_session_body')}</div>
       </>
     );
   }
@@ -192,8 +194,8 @@ export function DocumentsTab() {
   return (
     <>
       <SectionTitle
-        title="Документы"
-        subtitle="Загрузи CV, описание вакансии или заметки — copilot будет подтягивать релевантные куски в ответы внутри активной сессии."
+        title={t('cue.settings.documents.section.title')}
+        subtitle={t('cue.settings.documents.section.subtitle')}
       />
 
       <div
@@ -247,15 +249,14 @@ export function DocumentsTab() {
           }}
         />
         {uploading ? (
-          'Загрузка…'
+          t('cue.settings.documents.uploading')
         ) : (
           <>
             <div style={{ color: 'var(--d9-ink)', fontWeight: 500, marginBottom: 4 }}>
-              Перетащи файл сюда или нажми для выбора
+              {t('cue.settings.documents.upload_body')}
             </div>
             <div style={{ fontSize: 11, color: 'var(--d9-ink-ghost)' }}>
-              .txt, .md, .html, .pdf, .docx — до 10 МБ. Сканы без OCR не
-              распознаются.
+              {t('cue.settings.documents.upload_hint')}
             </div>
           </>
         )}
@@ -274,7 +275,7 @@ export function DocumentsTab() {
       >
         <input
           type="url"
-          placeholder="Или вставь ссылку на вакансию / статью …"
+          placeholder={t('cue.settings.documents.url_placeholder')}
           value={urlDraft}
           onChange={(e) => setUrlDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -304,7 +305,7 @@ export function DocumentsTab() {
           onClick={() => void onImportURL()}
           disabled={uploading || !urlDraft.trim()}
         >
-          Загрузить ссылку
+          {t('cue.settings.documents.url_cta')}
         </Button>
       </div>
 
@@ -328,10 +329,10 @@ export function DocumentsTab() {
       )}
 
       {loading && docs.length === 0 ? (
-        <div style={emptyStyle}>Загружаем…</div>
+        <div style={emptyStyle}>{t('cue.settings.documents.loading')}</div>
       ) : docs.length === 0 ? (
         <div style={emptyStyle}>
-          Пока нет документов. Загрузи файл выше — появится здесь с статусом индексации.
+          {t('cue.settings.documents.empty_list')}
         </div>
       ) : (
         <>
@@ -344,7 +345,7 @@ export function DocumentsTab() {
                 letterSpacing: '-0.005em',
               }}
             >
-              Есть активная сессия — отметь документы, которые copilot должен учитывать в ответах.
+              {t('cue.settings.documents.has_session_hint')}
             </div>
           ) : (
             <div
@@ -355,7 +356,7 @@ export function DocumentsTab() {
                 letterSpacing: '-0.005em',
               }}
             >
-              Чтобы прикрепить документ к сессии, сначала открой чат и нажми «Начать сессию».
+              {t('cue.settings.documents.no_session_hint')}
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -389,6 +390,7 @@ function DocumentRow({
   canAttach: boolean;
   onToggleAttach: (next: boolean) => void;
 }) {
+  const t = useT();
   return (
     <div
       style={{
@@ -431,7 +433,7 @@ function DocumentRow({
             <>
               <span>·</span>
               <span>
-                {doc.chunkCount} чанк{doc.chunkCount === 1 ? '' : 'ов'}
+                {pluralChunks(doc.chunkCount)}
               </span>
             </>
           )}
@@ -439,7 +441,7 @@ function DocumentRow({
             <>
               <span>·</span>
               <span title={doc.errorMessage} style={{ color: 'var(--d9-accent)' }}>
-                ошибка
+                {t('cue.settings.documents.status.error_inline')}
               </span>
             </>
           )}
@@ -453,13 +455,13 @@ function DocumentRow({
           onClick={() => onToggleAttach(!attached)}
           aria-pressed={attached}
         >
-          {attached ? 'В сессии' : 'Прикрепить'}
+          {attached ? t('cue.settings.documents.attached') : t('cue.settings.documents.attach')}
         </Button>
       )}
       <button
         type="button"
         onClick={() => onDelete(doc.id)}
-        title="Удалить документ"
+        title={t('cue.settings.documents.delete_title')}
         className="d9-icon-hover"
         style={{
           background: 'transparent',
@@ -481,16 +483,17 @@ function DocumentRow({
 }
 
 function StatusPill({ status }: { status: Document['status'] }) {
+  const t = useT();
   // Map status → (label, tone). Pending/extracting/embedding all render
-  // as "индексируем" to keep the surface simple; users don't benefit
+  // as "indexing" to keep the surface simple; users don't benefit
   // from distinguishing the sub-stages at this stage of the product.
   const label: Record<Document['status'], string> = {
-    pending: 'индексируем',
-    extracting: 'индексируем',
-    embedding: 'индексируем',
-    ready: 'готов',
-    failed: 'ошибка',
-    deleting: 'удаляется',
+    pending: t('cue.settings.documents.status.indexing'),
+    extracting: t('cue.settings.documents.status.indexing'),
+    embedding: t('cue.settings.documents.status.indexing'),
+    ready: t('cue.settings.documents.status.ready'),
+    failed: t('cue.settings.documents.status.failed'),
+    deleting: t('cue.settings.documents.status.deleting'),
   };
   const isReady = status === 'ready';
   const isFailed = status === 'failed';
@@ -526,4 +529,23 @@ function StatusPill({ status }: { status: Document['status'] }) {
       {label[status]}
     </span>
   );
+}
+
+// pluralChunks — Russian-style plural for "чанк / чанка / чанков" via
+// the dictionary. English locale collapses to the same form for all
+// counts (handled in en.ts), so this still routes through t().
+function pluralChunks(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  // useT must be called inside React — pluralChunks is called from
+  // DocumentRow where t already exists. Re-derive via translate() so
+  // we don't require passing t through.
+  const key = (() => {
+    if (mod10 === 1 && mod100 !== 11) return 'cue.settings.documents.chunks.one';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
+      return 'cue.settings.documents.chunks.few';
+    return 'cue.settings.documents.chunks.many';
+  })();
+  // Lazy import to avoid circular load on SSR / tests.
+  return translate(key as Parameters<typeof translate>[0], { n });
 }

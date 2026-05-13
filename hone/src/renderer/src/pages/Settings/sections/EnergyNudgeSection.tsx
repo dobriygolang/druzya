@@ -11,6 +11,8 @@
 // Quiet hours (00-08) — hardcoded в main, не настраиваются (MVP).
 import { useEffect, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 // IPC channel names — main-side mirror в energy_nudge.ts → ENERGY_NUDGE_IPC.
 const IPC_GET = 'energy-nudge:get-settings';
 const IPC_SET = 'energy-nudge:set-settings';
@@ -40,6 +42,7 @@ const DEFAULT_INTERVAL = 3;
 const INTERVAL_OPTIONS = [1, 2, 3, 4, 6] as const;
 
 export function EnergyNudgeSection() {
+  const t = useT();
   const bridge = getBridge();
   const [enabled, setEnabled] = useState<boolean>(true);
   const [intervalHours, setIntervalHours] = useState<number>(DEFAULT_INTERVAL);
@@ -84,8 +87,7 @@ export function EnergyNudgeSection() {
           maxWidth: 580,
         }}
       >
-        Hone тихо предложит логнуть энергию (1–5), если последний log
-        старше выбранного интервала. Тишина в окне 00:00–08:00.
+        {t('hone.energy_nudge.lead')}
       </p>
       {!bridge && (
         <div
@@ -99,7 +101,7 @@ export function EnergyNudgeSection() {
             borderRadius: 6,
           }}
         >
-          ⓘ Доступно только в desktop-сборке Hone (требуется обновление preload).
+          {t('hone.energy_nudge.note_desktop_only')}
         </div>
       )}
       <label
@@ -119,7 +121,7 @@ export function EnergyNudgeSection() {
           disabled={!bridge}
           style={{ width: 16, height: 16, accentColor: '#ffffff' }}
         />
-        Спрашивать про энергию
+        {t('hone.energy_nudge.toggle_label')}
       </label>
       <label
         style={{
@@ -131,7 +133,7 @@ export function EnergyNudgeSection() {
           opacity: enabled && bridge ? 1 : 0.5,
         }}
       >
-        Каждые:
+        {t('hone.energy_nudge.interval_label')}
         <select
           value={intervalHours}
           onChange={(e) => setIntervalHours(Number(e.target.value))}
@@ -149,7 +151,7 @@ export function EnergyNudgeSection() {
         >
           {INTERVAL_OPTIONS.map((h) => (
             <option key={h} value={h}>
-              {h} {h === 1 ? 'час' : h < 5 ? 'часа' : 'часов'}
+              {h} {h === 1 ? t('hone.energy_nudge.hour.one') : h < 5 ? t('hone.energy_nudge.hour.few') : t('hone.energy_nudge.hour.many')}
             </option>
           ))}
         </select>

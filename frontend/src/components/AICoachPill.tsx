@@ -22,6 +22,7 @@ import {
   useAdoptAITutorMutation,
   useSendAITutorMessageMutation,
 } from '../lib/queries/aiTutor'
+import { useTranslation } from 'react-i18next'
 import { ApiError } from '../lib/apiClient'
 
 type Turn = { role: 'user' | 'assistant'; content: string }
@@ -43,9 +44,11 @@ export interface AICoachPillProps {
 export function AICoachPill({
   personaSlug,
   contextNote,
-  label = 'Спросить coach’а',
+  label,
   coachName,
 }: AICoachPillProps) {
+  const { t } = useTranslation('common')
+  const effectiveLabel = label ?? t('ai_coach_pill.ask_default')
   const [open, setOpen] = useState(false)
   const [threadId, setThreadId] = useState<string | undefined>(undefined)
   const [turns, setTurns] = useState<Turn[]>([])
@@ -110,7 +113,7 @@ export function AICoachPill({
         className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-[12px] font-medium text-text-primary transition-colors hover:bg-surface-3"
       >
         <Sparkles className="h-3.5 w-3.5 text-accent" />
-        {label}
+        {effectiveLabel}
       </button>
 
       {open && (
@@ -120,21 +123,21 @@ export function AICoachPill({
             onClick={() => setOpen(false)}
             role="button"
             tabIndex={-1}
-            aria-label="Закрыть"
+            aria-label={t('ai_coach_pill.close')}
           />
           <aside className="relative flex h-full w-full flex-col bg-surface-1 shadow-card sm:max-w-[420px]">
             <div className="flex items-center justify-between border-b border-border px-5 py-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-accent" />
                 <span className="font-display text-sm font-bold text-text-primary">
-                  {coachName ?? 'AI-coach'}
+                  {coachName ?? t('ai_coach_pill.default_name')}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="rounded-md p-1.5 text-text-secondary hover:bg-surface-2"
-                aria-label="Закрыть"
+                aria-label={t('ai_coach_pill.close')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -143,18 +146,18 @@ export function AICoachPill({
             <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
               {adopt.isError && (
                 <div className="rounded-md border border-warn/30 bg-warn/10 p-3 text-[12px] text-warn">
-                  Не получилось подключить coach'а. Попробуй ещё раз.
+                  {t('ai_coach_pill.connect_failed')}
                 </div>
               )}
               {adopt.isPending && !threadId && (
                 <div className="flex items-center gap-2 text-[12px] text-text-muted">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Подключаюсь…
+                  {t('ai_coach_pill.connecting')}
                 </div>
               )}
               {turns.length === 0 && threadId && !send.isPending && (
                 <div className="text-[12px] text-text-muted">
-                  Coach уже видит контекст этого экрана. Задай вопрос — отвечу с учётом твоей истории.
+                  {t('ai_coach_pill.context_hint')}
                 </div>
               )}
               {turns.map((t, i) => (
@@ -172,12 +175,12 @@ export function AICoachPill({
               {send.isPending && (
                 <div className="flex items-center gap-2 self-start text-[12px] text-text-muted">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Думаю…
+                  {t('ai_coach_pill.thinking')}
                 </div>
               )}
               {send.isError && (
                 <div className="text-[12px] text-warn">
-                  {send.error instanceof ApiError ? send.error.body : 'Не получилось отправить.'}
+                  {send.error instanceof ApiError ? send.error.body : t('ai_coach_pill.send_failed')}
                 </div>
               )}
             </div>
@@ -195,7 +198,7 @@ export function AICoachPill({
                     }
                   }}
                   rows={2}
-                  placeholder="Спроси coach'а…"
+                  placeholder={t('ai_coach_pill.input_placeholder')}
                   className="min-h-[44px] flex-1 resize-none rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
                   disabled={!threadId || send.isPending}
                 />

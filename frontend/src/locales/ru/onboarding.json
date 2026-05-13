@@ -99,5 +99,35 @@
         "hint": "Опиши цель свободным текстом — AI распарсит позже"
       }
     }
+  },
+
+  "quiz": {
+    "no_result_msg": "Сначала ответь на 8 вопросов.",
+    "no_result_cta": "Начать диагностику",
+    "title_base": "Диагностика",
+    "title_with_track": "Диагностика · {{label}}",
+    "change_track_tooltip": "Поменять track — текущие ответы будут сброшены",
+    "change_track_cta": "сменить track",
+    "subhead": "8 вопросов · ~2 минуты. Получишь 3 первые действия + предлагаемую цель.",
+    "btn_back": "Назад",
+    "btn_get_plan": "Получить план",
+    "btn_next": "Дальше ({{current}}/{{total}})",
+    "all_answered_pre": "Все 8 уже отвечены — можешь сразу",
+    "all_answered_link": "перейти к плану",
+    "picker_eyebrow": "ДИАГНОСТИКА · TRACK",
+    "picker_title": "Какой трек?",
+    "picker_subtitle": "8 вопросов под выбранный трек. Можно сменить track позже (ответы сбросятся).",
+    "progress_question": "Вопрос {{current}}/{{total}}",
+    "progress_answered": "{{answered}} / {{total}} отвечено",
+    "done_eyebrow": "Диагностика готова",
+    "done_title": "Твой план первой недели",
+    "done_subtitle": "3 действия + предлагаемая цель. Можешь начать с любого — coach запомнит.",
+    "proposed_goal_eyebrow": "Предлагаемая цель",
+    "proposed_goal_accepted": "Принято",
+    "proposed_goal_hint": "Coach будет помнить эту цель в каждом chat'е и подгонять рекомендации. Можешь подредактировать через GoalWizard (карточка «Цель» в Coach memory).",
+    "accept_goal": "Принять цель",
+    "open_plan": "Перейти к плану",
+    "retake": "пройти заново",
+    "actions_heading": "3 первых действия"
   }
 }

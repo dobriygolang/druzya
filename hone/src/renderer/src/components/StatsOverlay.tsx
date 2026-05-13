@@ -12,6 +12,8 @@
 import { useEffect, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 
+import { useT } from '@d9-i18n';
+
 import { getStats, type HoneStats, type FocusDay } from '../api/hone';
 import { readDailyGoalMin } from '../stores/prefs';
 
@@ -730,6 +732,7 @@ function SimpleStatCell({ value, unit, label, sub }: { value: string; unit?: str
 // на Today (но не link'аем — overlay сам себя не закрывает).
 
 function ExternalActivityCard() {
+  const t = useT();
   const [items, setItems] = useState<ExternalEntry[] | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -756,13 +759,12 @@ function ExternalActivityCard() {
     };
   }, []);
   if (items === null) {
-    return <div style={{ padding: 12, color: 'var(--ink-40)', fontSize: 11 }}>загрузка…</div>;
+    return <div style={{ padding: 12, color: 'var(--ink-40)', fontSize: 11 }}>{t('hone.stats.loading')}</div>;
   }
   if (items.length === 0) {
     return (
       <div style={{ padding: 12, color: 'var(--ink-40)', fontSize: 11, lineHeight: 1.5 }}>
-        Пока ничего не записано. Нажми «+ занятие» на Today чтобы зачекинить
-        обучение вне druz9 (LeetCode, Coursera, книги).
+        {t('hone.stats.external.empty')}
       </div>
     );
   }

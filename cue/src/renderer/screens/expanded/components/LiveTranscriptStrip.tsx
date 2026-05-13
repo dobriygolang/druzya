@@ -1,6 +1,7 @@
 // Live transcript status pills + speaker label bar shown above the
 // composer when audio capture is running.
 
+import { useT } from '@d9-i18n';
 import { SpeakerLabel } from '../../../components/SpeakerLabel';
 import { useAudioCaptureStore } from '../../../stores/audio-capture';
 
@@ -14,6 +15,7 @@ import { useAudioCaptureStore } from '../../../stores/audio-capture';
  * точка где live-transcript видим.
  */
 export function LiveTranscriptStrip(_props: { draft: string; setDraft: (s: string) => void }) {
+  const t = useT();
   const sys = useAudioCaptureStore((s) => s.system);
   const mic = useAudioCaptureStore((s) => s.mic);
 
@@ -32,10 +34,10 @@ export function LiveTranscriptStrip(_props: { draft: string; setDraft: (s: strin
         WebkitAppRegion: 'no-drag',
       } as React.CSSProperties}
     >
-      {sysActive && <ActivePill label="Слушаем (звук)" />}
-      {micActive && <ActivePill label="Микрофон" />}
-      {sys.error && <ErrorPill label="Слушать" message={sys.error} />}
-      {mic.error && <ErrorPill label="Микрофон" message={mic.error} />}
+      {sysActive && <ActivePill label={t('cue.expanded.live.system')} />}
+      {micActive && <ActivePill label={t('cue.expanded.live.mic')} />}
+      {sys.error && <ErrorPill label={t('cue.expanded.live.error_system_label')} message={sys.error} />}
+      {mic.error && <ErrorPill label={t('cue.expanded.live.error_mic_label')} message={mic.error} />}
     </div>
   );
 }
@@ -48,6 +50,7 @@ export function LiveTranscriptStrip(_props: { draft: string; setDraft: (s: strin
  * скрыта — иначе noise. Mic / speaker_0 — read-only «Я» chip (см. SpeakerLabel).
  */
 export function SpeakerLabelsBar() {
+  const t = useT();
   const systemChunks = useAudioCaptureStore((s) => s.system.chunks);
   const micChunks = useAudioCaptureStore((s) => s.mic.chunks);
 

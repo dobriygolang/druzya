@@ -10,6 +10,8 @@
 
 import React, { useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import { useGoalStore, daysUntil, formatGoalLong } from '../stores/goal';
 import { GoalEditModal } from '../components/GoalEditModal';
 
@@ -23,6 +25,7 @@ const monoFont = '"JetBrains Mono", ui-monospace, monospace';
 // TodayGoalSection — drop-in card. Sticks at top of any Today-like surface.
 // Hidden state когда no goal: показывает CTA «Поставь цель в web /profile».
 export const TodayGoalSection: React.FC = () => {
+  const t = useT();
   const goal = useGoalStore((s) => s.active);
   const loaded = useGoalStore((s) => s.loaded);
   const [editOpen, setEditOpen] = useState(false);
@@ -40,9 +43,9 @@ export const TodayGoalSection: React.FC = () => {
           <span style={labelMono}>goal</span>
         </div>
         <p style={emptyText}>
-          Поставь цель в <span style={accentText}>web /profile</span> — она
-          будет видна здесь и в Coach. Hone не делает full wizard, чтобы не
-          дублировать UI; цель one-source-of-truth.
+          {t('hone.today.goal_stub_pre')}
+          <span style={accentText}>{t('hone.today.goal_stub_link')}</span>
+          {t('hone.today.goal_stub_post')}
         </p>
       </section>
     );

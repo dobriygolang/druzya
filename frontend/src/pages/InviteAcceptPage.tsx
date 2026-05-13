@@ -6,6 +6,7 @@
 //      pre-selected so the student is dropped straight into the
 //      tutor-driven flow).
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { Button } from '../components/Button'
@@ -17,15 +18,17 @@ import {
   type TutorInviteStatus,
 } from '../lib/queries/tutor'
 
-const STATUS_LABEL: Record<TutorInviteStatus, string> = {
-  INVITE_STATUS_UNSPECIFIED: 'неизвестно',
-  INVITE_STATUS_ACTIVE: 'активен',
-  INVITE_STATUS_ACCEPTED: 'уже принят',
-  INVITE_STATUS_REVOKED: 'отозван тутром',
-  INVITE_STATUS_EXPIRED: 'истёк',
+// Mapping TutorInviteStatus → i18n key suffix; resolved at render via t().
+const STATUS_KEY: Record<TutorInviteStatus, string> = {
+  INVITE_STATUS_UNSPECIFIED: 'unspecified',
+  INVITE_STATUS_ACTIVE: 'active',
+  INVITE_STATUS_ACCEPTED: 'accepted',
+  INVITE_STATUS_REVOKED: 'revoked',
+  INVITE_STATUS_EXPIRED: 'expired',
 }
 
 export default function InviteAcceptPage() {
+  const { t } = useTranslation('invite')
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
   const peekQ = usePeekInviteQuery(code)
@@ -44,7 +47,7 @@ export default function InviteAcceptPage() {
   if (!code) {
     return (
       <Shell>
-        <ErrorState message="Код приглашения не указан в ссылке." />
+        <ErrorState message={t('err.no_code')} />
       </Shell>
     )
   }
@@ -54,7 +57,7 @@ export default function InviteAcceptPage() {
       <Shell>
         <div className="flex items-center gap-2 text-text-secondary">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Загружаем приглашение…
+          {t('err.loading')}
         </div>
       </Shell>
     )
@@ -62,10 +65,7 @@ export default function InviteAcceptPage() {
 
   if (peekQ.isError || !peekQ.data) {
     const status = peekQ.error instanceof ApiError ? peekQ.error.status : 0
-    const msg =
-      status === 404
-        ? 'Этого приглашения не существует. Попроси у тутора актуальную ссылку.'
-        : 'Не удалось загрузить приглашение. Попробуй обновить страницу.'
+    const msg = status === 404 ? t('err.not_found') : t('err.load_failed')
     return (
       <Shell>
         <ErrorState message={msg} />
@@ -74,8 +74,8 @@ export default function InviteAcceptPage() {
   }
 
   const { invite, tutor_display } = peekQ.data
-  const tutorName = tutor_display || 'Твой тутор'
-  const statusLabel = STATUS_LABEL[invite.status] ?? '—'
+  const tutorName = tutor_display || t('default_tutor')
+  const statusLabel = t(`status.${STATUS_KEY[invite.status] ?? 'unspecified'}`)
   const isActive = invite.status === 'INVITE_STATUS_ACTIVE'
   const isAccepted = invite.status === 'INVITE_STATUS_ACCEPTED'
   const expiresAt = invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : '—'
@@ -84,34 +84,27 @@ export default function InviteAcceptPage() {
     <Shell>
       <div className="flex flex-col gap-3">
         <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-          Приглашение от тутра
+          {t('eyebrow')}
         </span>
         <h1 className="font-display text-3xl font-bold leading-tight">
-          {tutorName} приглашает тебя в&nbsp;druz9.
+          {t('headline', { tutor: tutorName })}
         </h1>
-        <p className="text-sm leading-relaxed text-text-secondary">
-          Тутор подключит тебя к своему dashboard'у и сможет видеть твои focus-сессии,
-          прогресс по English-Atlas и результаты HR-моков. Заметки и whiteboard остаются
-          приватными.
-        </p>
+        <p className="text-sm leading-relaxed text-text-secondary">{t('body')}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="Код" value={invite.code} mono />
-        <Stat label="Статус" value={statusLabel} accent={!isActive} />
-        <Stat label="Действует до" value={expiresAt} />
-        {invite.note && <Stat label="Заметка" value={invite.note} />}
+        <Stat label={t('stat.code')} value={invite.code} mono />
+        <Stat label={t('stat.status')} value={statusLabel} accent={!isActive} />
+        <Stat label={t('stat.until')} value={expiresAt} />
+        {invite.note && <Stat label={t('stat.note')} value={invite.note} />}
       </div>
 
       {isAccepted && (
         <Card className="flex-col gap-1 border-border bg-surface-2 p-4" interactive={false}>
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Уже принято
+            {t('accepted_title')}
           </div>
-          <p className="text-[13px] leading-relaxed text-text-secondary">
-            Это приглашение уже использовано. Если ты — тот, кто его принял, продолжай
-            работать в Hone и на druz9.online.
-          </p>
+          <p className="text-[13px] leading-relaxed text-text-secondary">{t('accepted_body')}</p>
         </Card>
       )}
 
@@ -129,10 +122,10 @@ export default function InviteAcceptPage() {
             className="font-mono text-[10px] uppercase tracking-[0.08em]"
             style={{ color: 'var(--red)' }}
           >
-            Не активно
+            {t('inactive_title')}
           </div>
           <p className="text-[13px] leading-relaxed text-text-secondary">
-            Приглашение {statusLabel}. Попроси у тутра новую ссылку.
+            {t('inactive_body', { status: statusLabel })}
           </p>
         </Card>
       )}
@@ -145,11 +138,11 @@ export default function InviteAcceptPage() {
                 onClick={() => accept.mutate(code)}
                 disabled={accept.isPending}
               >
-                {accept.isPending ? 'Принимаем…' : 'Принять и продолжить'}
+                {accept.isPending ? t('cta.accept_pending') : t('cta.accept')}
               </Button>
               {accept.isError && (
                 <span className="text-[12px]" style={{ color: 'var(--red)' }}>
-                  {accept.error instanceof ApiError ? accept.error.body : 'Ошибка. Попробуй ещё раз.'}
+                  {accept.error instanceof ApiError ? accept.error.body : t('err.default_accept')}
                 </span>
               )}
             </>
@@ -159,11 +152,9 @@ export default function InviteAcceptPage() {
                 to={`/login?next=${encodeURIComponent(`/invite/${code}`)}`}
                 className="inline-flex items-center justify-center rounded-md bg-text-primary px-5 py-2.5 text-sm font-medium tracking-[0.08em] text-bg transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-text-primary/90"
               >
-                Войти, чтобы принять
+                {t('cta.login')}
               </Link>
-              <span className="text-[12px] text-text-muted">
-                После входа сразу вернёшься сюда.
-              </span>
+              <span className="text-[12px] text-text-muted">{t('cta.login_hint')}</span>
             </>
           )}
         </div>
@@ -212,6 +203,7 @@ function Stat({ label, value, mono = false, accent = false }: { label: string; v
 }
 
 function ErrorState({ message }: { message: string }) {
+  const { t } = useTranslation('invite')
   return (
     <Card className="relative flex-col gap-2 p-5" interactive={false}>
       <span
@@ -223,7 +215,7 @@ function ErrorState({ message }: { message: string }) {
         className="font-mono text-[10px] uppercase tracking-[0.08em]"
         style={{ color: 'var(--red)' }}
       >
-        Ошибка
+        {t('err.title')}
       </div>
       <p className="text-[13px] leading-relaxed text-text-secondary">{message}</p>
     </Card>

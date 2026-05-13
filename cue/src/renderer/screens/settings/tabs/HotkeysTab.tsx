@@ -3,6 +3,7 @@
 
 import { useEffect } from 'react';
 
+import { useT } from '@d9-i18n';
 import { HotkeyRecorder } from '../../../components/HotkeyRecorder';
 import { useConfig } from '../../../hooks/use-config';
 import { useHotkeyOverridesStore } from '../../../stores/hotkey-overrides';
@@ -10,6 +11,7 @@ import type { HotkeyBinding } from '@shared/types';
 import { Row, SectionTitle } from '../lib/shared';
 
 export function HotkeysTab() {
+  const t = useT();
   const { config } = useConfig();
   const overrides = useHotkeyOverridesStore((s) => s.overrides);
   const setOverride = useHotkeyOverridesStore((s) => s.set);
@@ -66,26 +68,26 @@ export function HotkeysTab() {
   }, [defaults, overrides, merge]);
 
   const labels: Record<string, string> = {
-    screenshot_area: 'Скриншот области',
-    screenshot_full: 'Скриншот экрана',
-    voice_input: 'Голосовой ввод',
-    toggle_window: 'Показать / скрыть окно',
-    quick_prompt: 'Быстрый вопрос',
-    instant_assist: 'Помочь сейчас',
-    clear_conversation: 'Очистить диалог',
-    cursor_freeze_toggle: 'Заморозить курсор',
-    move_window_left: 'Окно к левому краю',
-    move_window_right: 'Окно к правому краю',
-    move_window_up: 'Окно к верхнему краю',
-    move_window_down: 'Окно к нижнему краю',
-    english_polish: 'Polish English (буфер обмена)',
+    screenshot_area: t('cue.settings.hotkeys.action.screenshot_area'),
+    screenshot_full: t('cue.settings.hotkeys.action.screenshot_full'),
+    voice_input: t('cue.settings.hotkeys.action.voice_input'),
+    toggle_window: t('cue.settings.hotkeys.action.toggle_window'),
+    quick_prompt: t('cue.settings.hotkeys.action.quick_prompt'),
+    instant_assist: t('cue.settings.hotkeys.action.instant_assist'),
+    clear_conversation: t('cue.settings.hotkeys.action.clear_conversation'),
+    cursor_freeze_toggle: t('cue.settings.hotkeys.action.cursor_freeze_toggle'),
+    move_window_left: t('cue.settings.hotkeys.action.move_window_left'),
+    move_window_right: t('cue.settings.hotkeys.action.move_window_right'),
+    move_window_up: t('cue.settings.hotkeys.action.move_window_up'),
+    move_window_down: t('cue.settings.hotkeys.action.move_window_down'),
+    english_polish: t('cue.settings.hotkeys.action.english_polish'),
   };
 
   return (
     <>
       <SectionTitle
-        title="Горячие клавиши"
-        subtitle="Клавиши работают в любом приложении. Клик по сочетанию — перезапись."
+        title={t('cue.settings.hotkeys.section.title')}
+        subtitle={t('cue.settings.hotkeys.section.subtitle')}
       />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {defaults.map((b) => {

@@ -20,6 +20,7 @@
 
 import type { ReactNode } from 'react'
 import { AlertCircle, RefreshCw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface QueryState<T> {
   data?: T
@@ -56,6 +57,8 @@ export function DataLoader<T>({
   errorContent,
   children,
 }: Props<T>) {
+  const { t: tErrors } = useTranslation('errors')
+  const { t: tCommon } = useTranslation('common')
   const loading = state.isLoading ?? state.isPending ?? false
   const error = state.isError ?? false
 
@@ -78,10 +81,10 @@ export function DataLoader<T>({
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-text-primary" />
         <div className="flex flex-1 flex-col gap-1">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary">
-            {section ?? 'Секция'} · ошибка
+            {section ?? tErrors('boundary.default_section')} · {tCommon('labels.error').toLowerCase()}
           </span>
           <p className="text-[12.5px] text-text-secondary">
-            {state.error instanceof Error ? state.error.message : 'Не удалось загрузить'}
+            {state.error instanceof Error ? state.error.message : tErrors('load_failed')}
           </p>
           {state.refetch && (
             <button
@@ -90,7 +93,7 @@ export function DataLoader<T>({
               className="mt-1 inline-flex items-center gap-1.5 self-start rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[12px] font-semibold text-text-primary transition-colors hover:border-border-strong"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              Попробовать снова
+              {tErrors('retry')}
             </button>
           )}
         </div>
@@ -108,10 +111,12 @@ export function DataLoader<T>({
 }
 
 function DefaultSkeleton() {
+  // i18n keys are static — no useTranslation hook needed for an aria-label
+  // that we read out of the common namespace via raw i18n.
   return (
     <div
       role="status"
-      aria-label="Загрузка"
+      aria-label="Loading"
       className="flex flex-col gap-2 rounded-xl border border-border bg-surface-1 p-4"
     >
       <div className="h-3 w-1/3 animate-pulse rounded bg-surface-2" />

@@ -110,7 +110,7 @@ export function GoalEditModal({ goal, onClose }: Props) {
         <div style={chipRow}>
           <span style={tagChip}>{KIND_LABEL[goal.kind]}</span>
           <span style={{ ...dim, fontSize: 11 }}>
-            Полный wizard в web /profile — здесь только детали и срок.
+            {t('hone.goal.full_wizard_hint')}
           </span>
         </div>
 

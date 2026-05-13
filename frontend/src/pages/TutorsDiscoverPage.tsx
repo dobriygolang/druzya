@@ -8,6 +8,7 @@
 // Backend: ListDirectoryTutors RPC at /api/v1/tutor/directory.
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from '../components/Button'
@@ -26,6 +27,7 @@ import {
 } from '../lib/queries/tutor'
 
 export default function TutorsDiscoverPage() {
+  const { t } = useTranslation('pages')
   const [tags, setTags] = useState<TutorExpertiseTag[]>([])
   const [langs, setLangs] = useState<TutorLanguageCode[]>([])
   const [activeTutor, setActiveTutor] = useState<TutorDirectoryEntry | null>(
@@ -58,17 +60,16 @@ export default function TutorsDiscoverPage() {
             to="/today"
             className="font-mono text-[12px] tracking-[0.08em] text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:text-text-primary"
           >
-            ← druz9
+            {t('tutors_discover.back_home')}
           </Link>
           <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-            Tutors · discover
+            {t('tutors_discover.eyebrow')}
           </span>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Найди свободного тутора
+            {t('tutors_discover.title')}
           </h1>
           <p className="max-w-2xl text-sm text-text-secondary">
-            Бесплатно, без оплат и часовых ставок. Отправь заявку — тутор
-            ответит, и вы начнёте работать над выбранным треком.
+            {t('tutors_discover.subtitle')}
           </p>
         </header>
 
@@ -76,7 +77,7 @@ export default function TutorsDiscoverPage() {
         <section className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-              Экспертиза
+              {t('tutors_discover.filter_expertise')}
             </span>
             {TUTOR_EXPERTISE_TAGS.map((t) => {
               const active = tags.includes(t)
@@ -99,7 +100,7 @@ export default function TutorsDiscoverPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-              Язык
+              {t('tutors_discover.filter_language')}
             </span>
             {TUTOR_LANGUAGE_CODES.map((l) => {
               const active = langs.includes(l)
@@ -127,7 +128,7 @@ export default function TutorsDiscoverPage() {
                 }}
                 className="ml-2 font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted hover:text-text-primary"
               >
-                сбросить
+                {t('tutors_discover.filter_reset')}
               </button>
             )}
           </div>
@@ -143,7 +144,7 @@ export default function TutorsDiscoverPage() {
           {error && (
             <Card className="flex flex-col gap-2 p-6">
               <p className="text-sm text-text-primary">
-                Не получилось загрузить туторов.
+                {t('tutors_discover.load_failed')}
               </p>
               <p className="font-mono text-[12px] text-text-muted">
                 {error instanceof ApiError ? error.message : String(error)}
@@ -153,11 +154,10 @@ export default function TutorsDiscoverPage() {
           {!isLoading && !error && items.length === 0 && (
             <Card className="flex flex-col gap-2 p-6">
               <p className="text-sm text-text-primary">
-                Пока нет публичных туторов с такими фильтрами.
+                {t('tutors_discover.empty_filters')}
               </p>
               <p className="text-sm text-text-secondary">
-                Попробуй сбросить фильтры или загляни позже — туторы
-                появляются по мере того, как они открывают свои профили.
+                {t('tutors_discover.empty_hint')}
               </p>
             </Card>
           )}
@@ -191,7 +191,8 @@ function TutorCard({
   entry: TutorDirectoryEntry
   onApply: () => void
 }) {
-  const display = entry.display_name || entry.username || 'без имени'
+  const { t } = useTranslation('pages')
+  const display = entry.display_name || entry.username || t('tutors_discover.no_name')
   const initial = display.trim().slice(0, 1).toUpperCase() || '?'
   const bioFirstLine = (entry.bio_md || '').split('\n')[0].trim()
   return (
@@ -215,7 +216,7 @@ function TutorCard({
             </span>
             {entry.verified && (
               <span
-                title="Verified by druz9"
+                title={t('tutors_discover.verified_title')}
                 className="inline-flex h-4 items-center rounded-full bg-text-primary/10 px-1.5 font-mono text-[9px] uppercase tracking-[0.08em] text-text-primary"
               >
                 verified
@@ -255,7 +256,7 @@ function TutorCard({
           {entry.timezone ? ` · ${entry.timezone}` : ''}
         </span>
         <Button variant="primary" size="sm" onClick={onApply}>
-          Apply
+          {t('tutors_discover.apply_btn')}
         </Button>
       </div>
     </Card>
@@ -269,11 +270,12 @@ function ApplyModal({
   tutor: TutorDirectoryEntry
   onClose: () => void
 }) {
+  const { t } = useTranslation('pages')
   const [message, setMessage] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const mutation = useApplyToTutorMutation()
 
-  const display = tutor.display_name || tutor.username || 'без имени'
+  const display = tutor.display_name || tutor.username || t('tutors_discover.no_name')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -301,37 +303,35 @@ function ApplyModal({
         {submitted ? (
           <div className="flex flex-col gap-4">
             <h2 id="apply-modal-title" className="text-lg font-semibold">
-              Заявка отправлена
+              {t('tutors_discover.application_sent_title')}
             </h2>
             <p className="text-sm text-text-secondary">
-              Тутор увидит её на своём дашборде. Если примет — ты появишься
-              в списке его студентов и сможешь начать заниматься.
+              {t('tutors_discover.application_sent_body')}
             </p>
             <Button variant="primary" onClick={onClose}>
-              Закрыть
+              {t('tutors_discover.close_btn')}
             </Button>
           </div>
         ) : (
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <div>
               <h2 id="apply-modal-title" className="text-lg font-semibold">
-                Apply to {display}
+                {t('tutors_discover.apply_to', { name: display })}
               </h2>
               <p className="mt-1 text-sm text-text-secondary">
-                Бесплатно. Расскажи тутору, что ты учишь и какая помощь
-                нужна — это поможет ему решить, подходите ли вы друг другу.
+                {t('tutors_discover.apply_subtitle')}
               </p>
             </div>
             <label className="flex flex-col gap-1.5">
               <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-                Сообщение тутору
+                {t('tutors_discover.message_label')}
               </span>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 maxLength={500}
                 rows={5}
-                placeholder="Что хочешь подтянуть? Какой опыт у тебя сейчас?"
+                placeholder={t('tutors_discover.message_placeholder')}
                 className="resize-none rounded-md border border-border-strong bg-transparent p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
               />
               <span className="self-end font-mono text-[10px] text-text-muted">
@@ -342,7 +342,7 @@ function ApplyModal({
             {mutation.isError && (
               <p className="font-mono text-[12px] text-danger">
                 {(mutation.error as ApiError | null)?.message ??
-                  'Не удалось отправить заявку.'}
+                  t('tutors_discover.submit_failed')}
               </p>
             )}
 
@@ -353,14 +353,14 @@ function ApplyModal({
                 onClick={onClose}
                 disabled={mutation.isPending}
               >
-                Отмена
+                {t('tutors_discover.cancel_btn')}
               </Button>
               <Button
                 type="submit"
                 variant="primary"
                 loading={mutation.isPending}
               >
-                Отправить заявку
+                {t('tutors_discover.submit_btn')}
               </Button>
             </div>
           </form>

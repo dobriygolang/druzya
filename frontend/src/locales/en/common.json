@@ -92,5 +92,24 @@
     "last_week": "Last week",
     "this_month": "This month",
     "this_year": "This year"
+  },
+  "ai_coach_pill": {
+    "ask_default": "Ask the coach",
+    "default_name": "AI-coach",
+    "close": "Close",
+    "connect_failed": "Couldn't connect the coach. Try again.",
+    "connecting": "Connecting…",
+    "context_hint": "The coach already sees this screen's context. Ask anything — I'll answer with your history in mind.",
+    "thinking": "Thinking…",
+    "send_failed": "Couldn't send the message.",
+    "input_placeholder": "Ask the coach…"
+  },
+  "streak": {
+    "day_one": "{{count}} day",
+    "day_few": "{{count}} days",
+    "day_many": "{{count}} days",
+    "day_short": "d",
+    "at_risk_title": "{{days}}-day streak · today not logged — next day may break it",
+    "ok_title": "{{days}} {{plural}} in a row · longest all-time {{longest}}"
   }
 }

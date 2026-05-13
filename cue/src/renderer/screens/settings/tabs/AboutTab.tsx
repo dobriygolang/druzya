@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import { Button, StatusDot } from '../../../components/primitives';
 import { eventChannels, type UpdateStatus } from '@shared/ipc';
 import { Row, SectionTitle } from '../lib/shared';
 
 export function AboutTab() {
+  const t = useT();
   const [version, setVersion] = useState('…');
   useEffect(() => {
     void window.druz9.app.version().then(setVersion).catch(() => setVersion('—'));
@@ -14,38 +16,38 @@ export function AboutTab() {
 
   return (
     <>
-      <SectionTitle title="О программе" subtitle="Cue" />
+      <SectionTitle title={t('cue.settings.about.section.title')} subtitle={t('cue.settings.about.section.subtitle')} />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <Row
-          title="Версия"
+          title={t('cue.settings.about.version.title')}
           control={
             <span style={{ fontFamily: 'var(--d9-font-mono)', fontSize: 12 }}>{version}</span>
           }
         />
         <UpdateRow />
         <Row
-          title="Обратная связь"
-          hint="Telegram-канал проекта"
+          title={t('cue.settings.about.feedback.title')}
+          hint={t('cue.settings.about.feedback.hint')}
           control={
             <Button
               variant="secondary"
               size="sm"
               onClick={() => void window.druz9.shell.openExternal('https://t.me/druz9_community')}
             >
-              Написать
+              {t('cue.settings.about.feedback.cta')}
             </Button>
           }
         />
         <Row
-          title="Сайт"
-          hint="druz9.online"
+          title={t('cue.settings.about.site.title')}
+          hint={t('cue.settings.about.site.hint')}
           control={
             <Button
               variant="ghost"
               size="sm"
               onClick={() => void window.druz9.shell.openExternal('https://druz9.online')}
             >
-              Открыть
+              {t('cue.settings.about.site.cta')}
             </Button>
           }
         />
@@ -60,6 +62,7 @@ export function AboutTab() {
  * disabled (dev build or no feed URL).
  */
 function UpdateRow() {
+  const t = useT();
   const [status, setStatus] = useState<UpdateStatus>({ kind: 'idle' });
 
   useEffect(() => {
@@ -90,12 +93,12 @@ function UpdateRow() {
 
   return (
     <Row
-      title="Обновления"
-      hint={describe(status)}
+      title={t('cue.settings.about.updates.title')}
+      hint={describe(t, status)}
       control={
         status.kind === 'ready' ? (
           <Button size="sm" variant="primary" onClick={() => void window.druz9.updater.install()}>
-            Установить и перезапустить
+            {t('cue.settings.about.updates.install_cta')}
           </Button>
         ) : status.kind === 'checking' || status.kind === 'downloading' || checking ? (
           <span
@@ -109,11 +112,11 @@ function UpdateRow() {
             }}
           >
             <StatusDot state="thinking" size={8} />
-            {status.kind === 'downloading' ? `${status.percent}%` : 'проверка…'}
+            {status.kind === 'downloading' ? `${status.percent}%` : t('cue.settings.about.updates.checking')}
           </span>
         ) : (
           <Button size="sm" variant="secondary" onClick={() => void onCheck()}>
-            Проверить
+            {t('cue.settings.about.updates.check_cta')}
           </Button>
         )
       }
@@ -121,21 +124,21 @@ function UpdateRow() {
   );
 }
 
-function describe(s: UpdateStatus): string {
+function describe(t: ReturnType<typeof useT>, s: UpdateStatus): string {
   switch (s.kind) {
     case 'idle':
-      return 'Обновления не проверялись';
+      return t('cue.settings.about.updates.status.idle');
     case 'checking':
-      return 'Проверяю…';
+      return t('cue.settings.about.updates.status.checking');
     case 'available':
-      return `Доступна версия ${s.version} — скачивается`;
+      return t('cue.settings.about.updates.status.available', { version: s.version });
     case 'downloading':
-      return `Скачивание ${s.percent}%`;
+      return t('cue.settings.about.updates.status.downloading', { percent: s.percent });
     case 'ready':
-      return `Версия ${s.version} готова к установке`;
+      return t('cue.settings.about.updates.status.ready', { version: s.version });
     case 'not-available':
-      return 'У тебя последняя версия';
+      return t('cue.settings.about.updates.status.not_available');
     case 'error':
-      return `Ошибка: ${s.message.slice(0, 80)}`;
+      return t('cue.settings.about.updates.status.error', { message: s.message.slice(0, 80) });
   }
 }

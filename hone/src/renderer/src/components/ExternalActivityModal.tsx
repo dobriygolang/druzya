@@ -6,7 +6,7 @@ import { useT } from '@d9-i18n';
 
 import {
   addExternalActivity,
-  EXTERNAL_SOURCES,
+  getExternalSources,
   searchAtlasTopics,
   type AtlasTopicSuggestion,
   type ExternalSource,
@@ -115,7 +115,7 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
             disabled={busy}
             aria-label={t('hone.external.field.source')}
           >
-            {EXTERNAL_SOURCES.map((s) => (
+            {getExternalSources().map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
               </option>
@@ -164,7 +164,7 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
             )}
             {topic.atlasNodeId && (
               <div style={{ marginTop: 6, fontSize: 11, color: 'var(--ink-60)' }}>
-                Привязано к atlas-узлу. Очистить — измени текст.
+                {t('hone.external.atlas_pinned_hint')}
               </div>
             )}
           </div>

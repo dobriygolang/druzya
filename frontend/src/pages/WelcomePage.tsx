@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { HoneDemo, CueDemo, MockWatermarkDemo, DemoModal } from './welcome/demos'
 
 /**
@@ -83,6 +84,7 @@ function CanvasBg({ strong = true }: { strong?: boolean }) {
 
 /* ────────────────────────── Nav ───────────────────────────── */
 function Nav() {
+  const { t } = useTranslation('welcome')
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
@@ -91,6 +93,15 @@ function Nav() {
     on()
     return () => window.removeEventListener('scroll', on)
   }, [])
+  const navItems: [string, string][] = [
+    ['tracks', t('landing.nav.tracks')],
+    ['atlas', t('landing.nav.mock')],
+    ['hone', t('landing.nav.hone')],
+    ['cue', t('landing.nav.cue')],
+    ['insights', t('landing.nav.insights')],
+    ['pricing', t('landing.nav.pricing')],
+    ['faq', t('landing.nav.faq')],
+  ]
   return (
     <header className="no-select" style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
@@ -108,30 +119,26 @@ function Nav() {
           DRUZ9
         </a>
         <nav className="hidden md:flex" style={{ gap: 24 }}>
-          <NavLink href="#tracks">Треки</NavLink>
-          <NavLink href="#atlas">Mock</NavLink>
-          <NavLink href="#hone">Hone</NavLink>
-          <NavLink href="#cue">Cue</NavLink>
-          <NavLink href="#insights">Insights</NavLink>
-          <NavLink href="#pricing">Тарифы</NavLink>
-          <NavLink href="#faq">FAQ</NavLink>
+          {navItems.map(([id, label]) => (
+            <NavLink key={id} href={`#${id}`}>{label}</NavLink>
+          ))}
         </nav>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           <Link to="/login" className="hidden md:inline-flex"
                 style={{ fontSize: 13, color: 'var(--ink-60)', textDecoration: 'none' }}>
-            Войти
+            {t('landing.nav.login')}
           </Link>
           <Link to="/login" className="hidden md:inline-flex"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 13px',
                   borderRadius: 999, background: '#fff', color: '#000',
                   fontSize: 12.5, fontWeight: 500, textDecoration: 'none' }}>
-            Начать бесплатно <Icon name="arrow" size={11} />
+            {t('landing.nav.start_free')} <Icon name="arrow" size={11} />
           </Link>
           <Link to="/login" className="md:hidden"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px',
                   borderRadius: 999, background: '#fff', color: '#000',
                   fontSize: 12.5, fontWeight: 500, textDecoration: 'none' }}>
-            Старт <Icon name="arrow" size={11} />
+            {t('landing.nav.start_short')} <Icon name="arrow" size={11} />
           </Link>
           <button onClick={() => setOpen((o) => !o)} className="md:hidden"
                   style={{ color: 'rgb(var(--ink))', marginLeft: 4 }}>
@@ -141,10 +148,7 @@ function Nav() {
       </div>
       {open && (
         <div className="md:hidden" style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 4, paddingBottom: 10 }}>
-          {[
-            ['tracks', 'Треки'], ['atlas', 'Mock'], ['hone', 'Hone'], ['cue', 'Cue'],
-            ['insights', 'Insights'], ['pricing', 'Тарифы'], ['faq', 'FAQ'],
-          ].map(([h, label]) => (
+          {navItems.map(([h, label]) => (
             <a key={h} href={`#${h}`} onClick={() => setOpen(false)}
                style={{ padding: '8px 0', fontSize: 14, color: 'var(--ink-60)', textDecoration: 'none' }}>
               {label}
@@ -154,7 +158,7 @@ function Nav() {
                 style={{ marginTop: 6, padding: '8px 0', fontSize: 14,
                   color: 'rgb(var(--ink))', textDecoration: 'none',
                   borderTop: '1px solid var(--hair)' }}>
-            Войти
+            {t('landing.nav.login')}
           </Link>
         </div>
       )}
@@ -203,6 +207,7 @@ function Eyebrow({ children }: { children: ReactNode }) {
    валюты готовности. Live-данных не врём — это illustrative preview, а
    не фейковая статистика. */
 function MockWatermarkPreview() {
+  const { t } = useTranslation('welcome')
   return (
     <div style={{ maxWidth: 520, margin: '0 auto',
                   border: '1px solid var(--hair)', borderRadius: 14,
@@ -212,38 +217,37 @@ function MockWatermarkPreview() {
            style={{ fontSize: 9.5, letterSpacing: '.22em', color: 'var(--ink-40)',
                     textTransform: 'uppercase', display: 'flex',
                     justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>SAMPLE · MOCK RESULT</span>
+        <span>{t('landing.mock_preview.title')}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <span className="red-pulse"
                 style={{ width: 5, height: 5, borderRadius: 99, background: 'var(--red)' }} />
-          WATERMARK
+          {t('landing.mock_preview.watermark')}
         </span>
       </div>
       <div style={{ marginTop: 16, display: 'grid',
                     gridTemplateColumns: '1fr 1px 1fr', gap: 18, alignItems: 'center' }}>
         <div style={{ textAlign: 'left' }}>
           <div className="mono" style={{ fontSize: 10, letterSpacing: '.18em',
-                                          color: 'var(--ink-40)' }}>STRICT · NO AI</div>
+                                          color: 'var(--ink-40)' }}>{t('landing.mock_preview.strict_label')}</div>
           <div className="mono" style={{ marginTop: 6, fontSize: 38, fontWeight: 300,
                                           letterSpacing: '-0.03em', lineHeight: 1 }}>78</div>
           <div className="mono" style={{ marginTop: 6, fontSize: 11,
-                                          color: 'var(--ink-60)' }}>честная валюта</div>
+                                          color: 'var(--ink-60)' }}>{t('landing.mock_preview.strict_caption')}</div>
         </div>
         <div style={{ width: 1, height: 60, background: 'var(--hair-2)' }} />
         <div style={{ textAlign: 'left' }}>
           <div className="mono" style={{ fontSize: 10, letterSpacing: '.18em',
-                                          color: 'var(--ink-40)' }}>AI-MODE</div>
+                                          color: 'var(--ink-40)' }}>{t('landing.mock_preview.ai_label')}</div>
           <div className="mono" style={{ marginTop: 6, fontSize: 38, fontWeight: 300,
                                           letterSpacing: '-0.03em', lineHeight: 1,
                                           color: 'var(--ink-60)' }}>92</div>
           <div className="mono" style={{ marginTop: 6, fontSize: 11,
-                                          color: 'var(--ink-60)' }}>тренировка</div>
+                                          color: 'var(--ink-60)' }}>{t('landing.mock_preview.ai_caption')}</div>
         </div>
       </div>
       <div style={{ marginTop: 14, fontSize: 12, color: 'var(--ink-60)',
                     lineHeight: 1.5, textAlign: 'left' }}>
-        Две колонки — две валюты. Strict-режим запускает Cue в block-mode на сервере,
-        обойти модификацией клиента нельзя.
+        {t('landing.mock_preview.summary')}
       </div>
     </div>
   )
@@ -251,6 +255,7 @@ function MockWatermarkPreview() {
 
 /* ────────────────────────── Hero ──────────────────────────── */
 function Hero() {
+  const { t } = useTranslation('welcome')
   return (
     <section id="top"
              style={{ position: 'relative', minHeight: '100vh', display: 'flex',
@@ -262,18 +267,17 @@ function Hero() {
           <span className="red-pulse"
                 style={{ width: 5, height: 5, borderRadius: 99, background: 'var(--red)',
                   display: 'inline-block', marginRight: 8, verticalAlign: 'middle' }} />
-          PUBLIC BETA · v.0.9
+          {t('landing.hero.badge')}
         </div>
         <h1 style={{ margin: 0, fontSize: 'clamp(44px, 7vw, 84px)', fontWeight: 400,
                      letterSpacing: '-0.035em', lineHeight: 1.02 }}>
-          Готов к собесу?
+          {t('landing.hero.title_line1')}
           <br />
-          <span style={{ color: 'var(--ink-60)' }}>Узнай честно.</span>
+          <span style={{ color: 'var(--ink-60)' }}>{t('landing.hero.title_line2')}</span>
         </h1>
         <p style={{ margin: '26px auto 0', maxWidth: 580, fontSize: 16,
                     color: 'var(--ink-60)', lineHeight: 1.55 }}>
-          Strict mock с watermark, AI-coach с памятью, Skill Atlas.
-          Для senior IT — у кого есть база, нужна объективная оценка готовности.
+          {t('landing.hero.subhead')}
         </p>
         <div style={{ marginTop: 36, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link to="/login?next=/mock"
@@ -284,7 +288,7 @@ function Hero() {
                   transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)' }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.92)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}>
-            Запустить mock <Icon name="arrow" size={12} />
+            {t('landing.hero.cta_run_mock')} <Icon name="arrow" size={12} />
           </Link>
           <a href="#tracks"
              className="focus-ring motion-press"
@@ -300,7 +304,7 @@ function Hero() {
                e.currentTarget.style.background = 'transparent'
                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
              }}>
-            Выбрать трек
+            {t('landing.hero.cta_pick_track')}
           </a>
           <Link to="/login?next=/tutor"
                 className="focus-ring motion-press"
@@ -316,7 +320,7 @@ function Hero() {
                   e.currentTarget.style.background = 'transparent'
                   e.currentTarget.style.color = 'var(--ink-60)'
                 }}>
-            Я тутор
+            {t('landing.hero.cta_tutor')}
           </Link>
         </div>
         {/* F9 entry — unauth diagnostic CTA. 8 минут → 3 actions + suggested
@@ -340,7 +344,7 @@ function Hero() {
             onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
           >
-            или пройти 8-минутную диагностику без логина →
+            {t('landing.hero.diagnostic_link')}
           </Link>
         </div>
         <div style={{ marginTop: 56 }}>
@@ -364,7 +368,7 @@ function Hero() {
          style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
            fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)',
            textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        SCROLL <Icon name="arrow-dn" size={11} />
+        {t('landing.hero.scroll')} <Icon name="arrow-dn" size={11} />
       </a>
     </section>
   )
@@ -384,21 +388,22 @@ function ProductPill({ name, tag }: { name: string; tag: string }) {
 
 /* ────────────────────────── Ritual ────────────────────────── */
 function Ritual() {
+  const { t } = useTranslation('welcome')
   const beats: { t: string; icon: IconName; title: string; sub: string }[] = [
-    { t: '07:00', icon: 'moon-sun', title: 'Открой Hone.',           sub: 'AI собирает план по твоим трекам.' },
-    { t: '13:00', icon: 'shh',      title: 'Завис на работе.',        sub: '⌘⇧Space. Cue шепнёт.' },
-    { t: '18:00', icon: 'arena',    title: 'Mock-собес.',             sub: 'Strict или с AI — на druz9.online.' },
-    { t: '22:00', icon: 'pomo',     title: 'Insights показал неделю.', sub: 'Куда расти, без догадок.' },
+    { t: '07:00', icon: 'moon-sun', title: t('landing.ritual.beat1_title'), sub: t('landing.ritual.beat1_sub') },
+    { t: '13:00', icon: 'shh',      title: t('landing.ritual.beat2_title'), sub: t('landing.ritual.beat2_sub') },
+    { t: '18:00', icon: 'arena',    title: t('landing.ritual.beat3_title'), sub: t('landing.ritual.beat3_sub') },
+    { t: '22:00', icon: 'pomo',     title: t('landing.ritual.beat4_title'), sub: t('landing.ritual.beat4_sub') },
   ]
   return (
     <Section id="ritual">
-      <Eyebrow>Ритуал</Eyebrow>
+      <Eyebrow>{t('landing.ritual.eyebrow')}</Eyebrow>
       <h2 style={{ margin: '16px 0 0', fontSize: 'clamp(34px, 5vw, 56px)', fontWeight: 400,
                    letterSpacing: '-0.025em', lineHeight: 1.05 }}>
-        Один день из жизни.
+        {t('landing.ritual.title')}
       </h2>
       <p style={{ margin: '18px 0 0', fontSize: 15, color: 'var(--ink-60)', maxWidth: 560, lineHeight: 1.55 }}>
-        Три поверхности — один ритм. У каждого продукта свой момент. Они не пересекаются.
+        {t('landing.ritual.subtitle')}
       </p>
       <div style={{ marginTop: 72, position: 'relative' }}>
         <div style={{ position: 'absolute', left: 0, right: 0, top: 36, height: 1, background: 'var(--hair-2)' }} />
@@ -421,7 +426,7 @@ function Ritual() {
       <div className="mono"
            style={{ marginTop: 80, fontSize: 12, color: 'var(--ink-40)',
              letterSpacing: '.12em', textAlign: 'center' }}>
-        ОДИН АККАУНТ · ОДНА ПОДПИСКА · ТРИ ПОВЕРХНОСТИ
+        {t('landing.ritual.footer_motto')}
       </div>
     </Section>
   )
@@ -438,78 +443,77 @@ function Ritual() {
 // requires part-time content expert (sysanalyst, product_analyst — see
 // docs/feature/tracks.md §«НЕ запускай сам»).
 function Tracks() {
+  const { t } = useTranslation('welcome')
   type Status = 'live' | 'soon'
   const tracks: { id: string; title: string; sub: string; tags: string[]; status: Status }[] = [
     {
       id: 'dev',
-      title: 'Разработчик',
-      sub: 'Алгоритмы · SQL · Go · System Design · Behavioral. Стартовая точка для middle. С отвилкой ML Platform (K8s deep, Airflow, model serving, at-least-once).',
-      tags: ['Mock-сессии', 'Skill Atlas', 'ML Platform cluster'],
+      title: t('landing.tracks.dev_title'),
+      sub: t('landing.tracks.dev_sub'),
+      tags: [t('landing.tracks.tag_mock_sessions'), t('landing.tracks.tag_skill_atlas'), t('landing.tracks.tag_ml_platform')],
       status: 'live',
     },
     {
       id: 'dev_senior',
-      title: 'Senior dev',
-      sub: 'System Design на staff/principal-уровне + Tech Lead / EM behavioral.',
-      tags: ['Senior SD mock', 'Tech Lead STAR', 'Code review (скоро)'],
+      title: t('landing.tracks.dev_senior_title'),
+      sub: t('landing.tracks.dev_senior_sub'),
+      tags: [t('landing.tracks.tag_senior_sd_mock'), t('landing.tracks.tag_tech_lead_star'), t('landing.tracks.tag_code_review_soon')],
       status: 'live',
     },
     {
       id: 'ml',
-      title: 'ML Engineering',
-      sub: 'Senior ML/MLE — classical ML, DL, transformers, LLM/GenAI, ML system design, MLOps. 9-step curated path + 5-axis radar + ml-coach с памятью.',
-      tags: ['MLE mock pipeline', 'ML Atlas (11 узлов)', 'ml-coach'],
+      title: t('landing.tracks.ml_title'),
+      sub: t('landing.tracks.ml_sub'),
+      tags: [t('landing.tracks.tag_mle_mock'), t('landing.tracks.tag_ml_atlas'), t('landing.tracks.tag_ml_coach')],
       status: 'live',
     },
     {
       id: 'english',
-      title: 'English',
-      sub: 'Не Duolingo. Дисциплина-слой между тобой и твоим тутром.',
-      tags: ['HR-mock', 'Reading + Writing (Hone)', 'SRS'],
+      title: t('landing.tracks.english_title'),
+      sub: t('landing.tracks.english_sub'),
+      tags: [t('landing.tracks.tag_hr_mock'), t('landing.tracks.tag_reading_writing_hone'), t('landing.tracks.tag_srs')],
       status: 'live',
     },
     {
       id: 'sysanalyst',
-      title: 'Системный аналитик',
-      sub: 'Requirements · UML/BPMN · integration · SQL · process. Свитчерам из dev.',
-      tags: ['Free-form mock', '6-узловой Atlas', 'Live'],
+      title: t('landing.tracks.sysanalyst_title'),
+      sub: t('landing.tracks.sysanalyst_sub'),
+      tags: [t('landing.tracks.tag_free_form_mock'), t('landing.tracks.tag_atlas_6'), t('landing.tracks.tag_live')],
       status: 'live',
     },
     {
       id: 'product_analyst',
-      title: 'Product analyst',
-      sub: 'Метрики · A/B + CUPED · SQL · RICE/JTBD · insight comm. Дешевле GoPractice.',
-      tags: ['Free-form mock', '6-узловой Atlas', 'Live'],
+      title: t('landing.tracks.product_analyst_title'),
+      sub: t('landing.tracks.product_analyst_sub'),
+      tags: [t('landing.tracks.tag_free_form_mock'), t('landing.tracks.tag_atlas_6'), t('landing.tracks.tag_live')],
       status: 'live',
     },
     {
       id: 'qa',
-      title: 'QA / тестировщик',
-      sub: 'Test design · API testing · automation · bug RCA · process. Без эксперт-content.',
-      tags: ['Free-form mock', '7-узловой Atlas', 'Live'],
+      title: t('landing.tracks.qa_title'),
+      sub: t('landing.tracks.qa_sub'),
+      tags: [t('landing.tracks.tag_free_form_mock'), t('landing.tracks.tag_atlas_7'), t('landing.tracks.tag_live')],
       status: 'live',
     },
     {
       id: 'devops',
-      title: 'DevOps / SRE',
-      sub: 'Infra · observability · CI/CD · incident · security. Whiteboard-precision интервью.',
-      tags: ['Free-form mock', '7-узловой Atlas', 'Live'],
+      title: t('landing.tracks.devops_title'),
+      sub: t('landing.tracks.devops_sub'),
+      tags: [t('landing.tracks.tag_free_form_mock'), t('landing.tracks.tag_atlas_7'), t('landing.tracks.tag_live')],
       status: 'live',
     },
   ]
   return (
     <Section id="tracks">
-      <Eyebrow>Треки</Eyebrow>
+      <Eyebrow>{t('landing.tracks.eyebrow')}</Eyebrow>
       <h2 style={{
         margin: '16px 0 0', fontSize: 'clamp(34px, 5vw, 56px)', fontWeight: 400,
         letterSpacing: '-0.025em', lineHeight: 1.05,
       }}>
-        Один продукт.<br />Восемь треков.
+        {t('landing.tracks.title_line1')}<br />{t('landing.tracks.title_line2')}
       </h2>
       <p style={{ margin: '18px 0 0', fontSize: 15, color: 'var(--ink-60)', maxWidth: 620, lineHeight: 1.55 }}>
-        Multi-track Atlas: можно держать «Senior dev + English» как
-        sticky combo. Каждый трек — свой mock-rubric, свои Insights, свой
-        Atlas-подграф. Primary-трек определяет дефолт; остальные живут рядом.
+        {t('landing.tracks.subtitle')}
       </p>
       <div className="md-grid stagger"
            style={{ marginTop: 60, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
@@ -550,7 +554,7 @@ function Tracks() {
       </div>
       <div className="mono"
            style={{ marginTop: 60, fontSize: 12, color: 'var(--ink-40)', letterSpacing: '.12em', textAlign: 'center' }}>
-        ВЫБИРАЕШЬ ПРИ РЕГИСТРАЦИИ · МЕНЯЕШЬ В SETTINGS · INSIGHTS ВЕЗДЕ
+        {t('landing.tracks.footer_motto')}
       </div>
     </Section>
   )
@@ -628,43 +632,42 @@ function ProductRow({ id, sideLeft = true, name, tag, title, desc, bullets, cta,
 // Sits between product rows and Pricing so the reader sees «зачем три»
 // before paying.
 function Insights() {
+  const { t } = useTranslation('welcome')
   return (
     <Section id="insights">
-      <Eyebrow>Insights · ecosystem</Eyebrow>
+      <Eyebrow>{t('landing.insights.eyebrow')}</Eyebrow>
       <h2 style={{ margin: '16px 0 0', fontSize: 'clamp(34px, 5vw, 56px)', fontWeight: 400,
                    letterSpacing: '-0.025em', lineHeight: 1.05 }}>
-        Один слой<br />над тремя продуктами.
+        {t('landing.insights.title_line1')}<br />{t('landing.insights.title_line2')}
       </h2>
       <p style={{ margin: '18px 0 0', fontSize: 15, color: 'var(--ink-60)', maxWidth: 560, lineHeight: 1.55 }}>
-        Focus-часы из Hone, mock-результаты с druz9.online, паттерны застреваний из Cue —
-        в одной аналитике. Watermark «честно vs с AI» делает прогресс
-        объективным, а не самооценочным.
+        {t('landing.insights.subtitle')}
       </p>
       <div className="md-grid stagger"
            style={{ marginTop: 56, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
         <InsightCard
           eyebrow="WEEKLY DIGEST"
           metric="14h"
-          delta="+2h к прошлой неделе"
-          note="Focus-часы из Hone + mock-сессии с druz9.online. Без догадок."
+          delta={t('landing.insights.card1_delta')}
+          note={t('landing.insights.card1_note')}
         />
         <InsightCard
           eyebrow="MOCK · STRICT 2 / 3"
           metric="78"
-          delta="watermark · честно"
-          note="Strict-mock без AI. Cue выключается на сервере — обойти модификацией клиента нельзя."
+          delta={t('landing.insights.card2_delta')}
+          note={t('landing.insights.card2_note')}
         />
         <InsightCard
           eyebrow="READINESS · SD"
           metric="62"
-          delta="weak · нужно +3 mock"
-          note="Skill Atlas обновляется от solves и mock-rubric. Видишь, куда копать."
+          delta={t('landing.insights.card3_delta')}
+          note={t('landing.insights.card3_note')}
         />
       </div>
       <div className="mono"
            style={{ marginTop: 56, fontSize: 12, color: 'var(--ink-40)',
              letterSpacing: '.12em', textAlign: 'center' }}>
-        АГРЕГИРУЕТ ТРИ КЛИЕНТА · ОБНОВЛЯЕТСЯ ЕЖЕЧАСНО · ОТКРЫТО В БРАУЗЕРЕ
+        {t('landing.insights.footer_motto')}
       </div>
     </Section>
   )
@@ -703,41 +706,42 @@ function InsightCard({ eyebrow, metric, delta, note }: {
 
 /* ────────────────────────── Pricing ───────────────────────── */
 function Pricing() {
+  const { t } = useTranslation('welcome')
   return (
     <Section id="pricing">
-      <Eyebrow>Тарифы</Eyebrow>
+      <Eyebrow>{t('landing.pricing.eyebrow')}</Eyebrow>
       <h2 style={{ margin: '16px 0 0', fontSize: 'clamp(34px, 5vw, 56px)', fontWeight: 400,
                    letterSpacing: '-0.025em', lineHeight: 1.05 }}>
-        Одна подписка.<br />Три инструмента.
+        {t('landing.pricing.title_line1')}<br />{t('landing.pricing.title_line2')}
       </h2>
       <div className="md-grid"
            style={{ marginTop: 60, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <PlanCard
-          name="Free" price="0 ₽" tag="навсегда · без карты"
+          name="Free" price="0 ₽" tag={t('landing.pricing.free_tag')}
           features={[
-            '1 mock-сессия в неделю',
-            'Skill Atlas + Codex',
-            'Hone без AI-планирования',
-            'Tutor toolkit для преподавателей',
+            t('landing.pricing.free_feat1'),
+            t('landing.pricing.free_feat2'),
+            t('landing.pricing.free_feat3'),
+            t('landing.pricing.free_feat4'),
           ]}
-          cta="Создать аккаунт"
+          cta={t('landing.pricing.free_cta')}
         />
         <PlanCard
           featured
-          name="druz9 Pro" price="990 ₽" priceSuffix="/ месяц" tag="всё внутри"
+          name="druz9 Pro" price="990 ₽" priceSuffix={t('landing.pricing.pro_period')} tag={t('landing.pricing.pro_tag')}
           features={[
-            'Безлимит mock-сессий (AI / strict)',
-            'AI-tutor с памятью (4 layers)',
-            'Hone с AI-планом и связями',
-            'Cue copilot · без лимита',
-            'Multi-track Atlas + Insights',
-            'Всё, что появится в будущем',
+            t('landing.pricing.pro_feat1'),
+            t('landing.pricing.pro_feat2'),
+            t('landing.pricing.pro_feat3'),
+            t('landing.pricing.pro_feat4'),
+            t('landing.pricing.pro_feat5'),
+            t('landing.pricing.pro_feat6'),
           ]}
-          cta="14 дней бесплатно"
+          cta={t('landing.pricing.pro_cta')}
         />
       </div>
       <p style={{ marginTop: 28, fontSize: 12.5, color: 'var(--ink-40)', textAlign: 'center' }}>
-        Отмена в любой момент · Рубли · Счёт для команд · Данные хранятся в РФ (152-ФЗ)
+        {t('landing.pricing.footnote')}
       </p>
     </Section>
   )
@@ -746,6 +750,7 @@ function PlanCard({ name, price, priceSuffix, tag, features, cta, featured }: {
   name: string; price: string; priceSuffix?: string; tag: string;
   features: string[]; cta: string; featured?: boolean
 }) {
+  const { t } = useTranslation('welcome')
   return (
     <div style={{ position: 'relative', padding: '32px 32px 28px', borderRadius: 16,
       border: `1px solid ${featured ? 'rgba(255,255,255,0.2)' : 'var(--hair)'}`,
@@ -760,7 +765,7 @@ function PlanCard({ name, price, priceSuffix, tag, features, cta, featured }: {
                color: 'rgb(var(--ink))' }}>
           <span className="red-pulse"
                 style={{ width: 5, height: 5, borderRadius: 99, background: 'var(--red)' }} />
-          РЕКОМЕНДУЕМ
+          {t('landing.pricing.recommended')}
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -803,33 +808,25 @@ function PlanCard({ name, price, priceSuffix, tag, features, cta, featured }: {
 
 /* ────────────────────────── FAQ ───────────────────────────── */
 function FAQ() {
+  const { t } = useTranslation('welcome')
   const [open, setOpen] = useState(0)
   const items = [
-    { q: 'Почему три приложения, а не одно?',
-      a: 'У каждого режима работы — своё ментальное пространство. Web шумный: mock, atlas, аналитика, Codex. Cockpit тихий: твой план, твои заметки, фокус. Шёпот невидимый: помощь, не ломая флоу. Если их слить, каждый размоется.' },
-    { q: 'Нужны ли все три?',
-      a: 'Нет. Начни с druz9.online — пройди первый strict mock. Hone подключай, когда дневной ритуал станет важным. Cue — когда первый раз застрянешь на реальном собеседовании.' },
-    { q: 'Что входит в free и где начинается Pro?',
-      a: 'Free навсегда: 1 mock-сессия в неделю, базовый Atlas, Codex, tutor toolkit для преподавателей. Pro (990 ₽/мес) включает безлимит mock-сессий, AI-tutor с памятью, AI-план в Hone, Cue без лимита и Insights. Cue требует Pro on launch — это главный платящий хук.' },
-    { q: 'Чем отличается AI-mock от strict-mock?',
-      a: 'AI-режим — справа чат-помощник, кнопка «подсказать», как тренировка. Strict-режим — только ты, задачи, таймер; Cue в это время блокируется на уровне сервера. Watermark на результате делит «честно» и «с AI» — это превращает результат в объективную метрику готовности.' },
-    { q: 'Как работает 14-дневный trial?',
-      a: 'Карту привязывать не нужно. Открывает все Pro-фичи: безлимит mock, AI-планер, Cue. По истечении — автоматический откат на Free. Никаких dark-patterns с «забыл отменить — списали».' },
-    { q: 'Windows / Linux?',
-      a: 'Сейчас macOS (arm64 + x64), notarized DMG. Windows-порт — Q3 2026. Linux community-порт отслеживается на GitHub. На сайте druz9.online всё работает в браузере без установки.' },
-    { q: 'Cue легален на работе?',
-      a: 'Зависит от твоего договора и от встречи. Stealth-фича есть для законных сценариев: open-plan офис, помощь себе на сложном этапе, запись своих встреч для review. На strict-mock-сессиях Cue блокируется на уровне сервера — это часть честности экосистемы. ToS прямо описывает ответственность пользователя.' },
-    { q: 'Где хранятся данные?',
-      a: 'Первичное хранение в Москве, 152-ФЗ. EU-реплика для скорости, если команда за рубежом. Notes и Whiteboard в Hone живут локально по умолчанию — на сервер уходит только если ты сам нажмёшь sync.' },
-    { q: 'Можно отменить подписку?',
-      a: 'В любой момент из Settings. Доступ остаётся до конца оплаченного периода. Refund в течение первых 14 дней — пиши в t.me/druz9.' },
+    { q: t('landing.faq.q1_q'), a: t('landing.faq.q1_a') },
+    { q: t('landing.faq.q2_q'), a: t('landing.faq.q2_a') },
+    { q: t('landing.faq.q3_q'), a: t('landing.faq.q3_a') },
+    { q: t('landing.faq.q4_q'), a: t('landing.faq.q4_a') },
+    { q: t('landing.faq.q5_q'), a: t('landing.faq.q5_a') },
+    { q: t('landing.faq.q6_q'), a: t('landing.faq.q6_a') },
+    { q: t('landing.faq.q7_q'), a: t('landing.faq.q7_a') },
+    { q: t('landing.faq.q8_q'), a: t('landing.faq.q8_a') },
+    { q: t('landing.faq.q9_q'), a: t('landing.faq.q9_a') },
   ]
   return (
     <Section id="faq">
-      <Eyebrow>FAQ</Eyebrow>
+      <Eyebrow>{t('landing.faq.eyebrow')}</Eyebrow>
       <h2 style={{ margin: '16px 0 44px', fontSize: 'clamp(30px, 4.2vw, 48px)', fontWeight: 400,
                    letterSpacing: '-0.02em', lineHeight: 1.05 }}>
-        Вопросы по делу.
+        {t('landing.faq.title')}
       </h2>
       <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--hair)' }}>
         {items.map((it, i) => {
@@ -861,6 +858,7 @@ function FAQ() {
 
 /* ────────────────────────── Footer ────────────────────────── */
 function Footer() {
+  const { t } = useTranslation('welcome')
   return (
     <footer style={{ borderTop: '1px solid var(--hair)', padding: '48px 28px 60px' }}>
       <div className="md-grid"
@@ -872,11 +870,11 @@ function Footer() {
             <FooterLink href="#arena">druz9.online</FooterLink>
             <FooterLink href="#hone">Hone</FooterLink>
             <FooterLink href="#cue">Cue</FooterLink>
-            <FooterLink href="#pricing">Тарифы</FooterLink>
+            <FooterLink href="#pricing">{t('landing.footer.links_pricing')}</FooterLink>
             <FooterLink href="/insights" router>Insights</FooterLink>
-            <FooterLink href="/help" router>Помощь</FooterLink>
-            <FooterLink href="/legal/terms" router>Условия</FooterLink>
-            <FooterLink href="/legal/privacy" router>Приватность</FooterLink>
+            <FooterLink href="/help" router>{t('landing.footer.links_help')}</FooterLink>
+            <FooterLink href="/legal/terms" router>{t('landing.footer.links_terms')}</FooterLink>
+            <FooterLink href="/legal/privacy" router>{t('landing.footer.links_privacy')}</FooterLink>
             <FooterLink href="https://github.com/dobriygolang/druzya">GitHub</FooterLink>
           </div>
         </div>
@@ -887,7 +885,7 @@ function Footer() {
           </a>
           <div className="mono"
                style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-40)', letterSpacing: '.14em' }}>
-            СДЕЛАНО В РОССИИ · {new Date().getFullYear()}
+            {t('landing.footer.made_in')} {new Date().getFullYear()}
           </div>
         </div>
       </div>
@@ -906,6 +904,7 @@ function FooterLink({ href, children, router }: {
 type ExpandedDemo = 'hone' | 'cue' | 'watermark' | null
 
 export default function WelcomePage() {
+  const { t } = useTranslation('welcome')
   const [expanded, setExpanded] = useState<ExpandedDemo>(null)
 
   // body must lose .v2 here — landing wants pure black, not the v2 token bg.
@@ -949,23 +948,28 @@ export default function WelcomePage() {
 
       <ProductRow
         id="atlas" sideLeft
-        name="druz9.online" tag="Продукт · Web · mock + аналитика"
-        title="Mock с watermark."
-        desc="Решаешь задачу дважды: strict (без AI, Cue выключен на сервере) и AI-mode (с подсказками). Watermark зашивает delta в результат — это объективная валюта готовности, а не самооценка. Multi-track Atlas, AI tutor 24/7, Codex как голос команды."
-        bullets={['Strict mock с watermark', 'AI-mode для тренировки', 'Skill Atlas — карта прогресса', 'AI tutor (Senior dev, English, …)']}
+        name="druz9.online" tag={t('landing.products.atlas_tag')}
+        title={t('landing.products.atlas_title')}
+        desc={t('landing.products.atlas_desc')}
+        bullets={[
+          t('landing.products.atlas_bullet1'),
+          t('landing.products.atlas_bullet2'),
+          t('landing.products.atlas_bullet3'),
+          t('landing.products.atlas_bullet4'),
+        ]}
         cta={
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <Link to="/login?next=/mock"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
                     borderRadius: 999, background: '#fff', color: '#000',
                     fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-              Запустить mock <Icon name="arrow" size={12} />
+              {t('landing.products.atlas_cta_mock')} <Icon name="arrow" size={12} />
             </Link>
             <Link to="/atlas"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
                     borderRadius: 999, border: '1px solid var(--hair-2)', color: 'rgb(var(--ink))',
                     fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-              Открыть Atlas
+              {t('landing.products.atlas_cta_atlas')}
             </Link>
           </div>
         }
@@ -974,16 +978,21 @@ export default function WelcomePage() {
 
       <ProductRow
         id="hone" sideLeft={false}
-        name="Hone" tag="Продукт · Focus"
-        title="Cockpit."
-        desc="Минималистичное desktop-приложение для тихой работы. AI планирует день, считает серии, не лезет под руку. Чистый чёрный. Клавиатура. Без шума."
-        bullets={['AI-план на сегодня', 'Pomodoro-фокус', 'Приватные заметки + AI-связи', 'Доска + AI-критика']}
+        name="Hone" tag={t('landing.products.hone_tag')}
+        title={t('landing.products.hone_title')}
+        desc={t('landing.products.hone_desc')}
+        bullets={[
+          t('landing.products.hone_bullet1'),
+          t('landing.products.hone_bullet2'),
+          t('landing.products.hone_bullet3'),
+          t('landing.products.hone_bullet4'),
+        ]}
         cta={
           <Link to="/login?next=/profile"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
                   borderRadius: 999, background: '#fff', color: '#000',
                   fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-            <Icon name="apple" size={14} /> Скачать для macOS
+            <Icon name="apple" size={14} /> {t('landing.products.hone_cta_download')}
           </Link>
         }
         mock={<HoneDemo onExpand={() => setExpanded('hone')} />}
@@ -991,17 +1000,22 @@ export default function WelcomePage() {
 
       <ProductRow
         id="cue" sideLeft
-        name="Cue" tag="Продукт · Copilot"
-        title="Шёпот."
-        desc="Тихий AI-companion для interview prep, open-plan офисов и live-транскрипта встреч. ⌘⇧Space — скриншот, вопрос, persona. Visibility toggle в Settings: показывать или скрывать окно при screen-share."
-        bullets={['Глобальный хоткей', 'Live-транскрипт встреч', 'Visibility toggle', 'English Polish']}
+        name="Cue" tag={t('landing.products.cue_tag')}
+        title={t('landing.products.cue_title')}
+        desc={t('landing.products.cue_desc')}
+        bullets={[
+          t('landing.products.cue_bullet1'),
+          t('landing.products.cue_bullet2'),
+          t('landing.products.cue_bullet3'),
+          t('landing.products.cue_bullet4'),
+        ]}
         cta={
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <Link to="/pricing"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '11px 18px',
                     borderRadius: 999, background: '#fff', color: '#000',
                     fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-              <Icon name="apple" size={14} /> Скачать Cue
+              <Icon name="apple" size={14} /> {t('landing.products.cue_cta_download')}
             </Link>
             <span className="mono"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -1010,7 +1024,7 @@ export default function WelcomePage() {
                     background: 'transparent',
                     fontSize: 11, color: 'var(--ink-60)' }}>
               <span style={{ width: 5, height: 5, borderRadius: 99, background: '#fff' }} />
-              Тестировано в Zoom · Meet · Chrome
+              {t('landing.products.cue_tested')}
             </span>
           </div>
         }

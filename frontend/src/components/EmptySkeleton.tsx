@@ -14,6 +14,7 @@
 // fallback gradient still reads as "loading" if shimmer is disabled
 // (prefers-reduced-motion friendly — animation is purely cosmetic).
 
+import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 
 export type SkeletonLayout = 'card-grid' | 'table' | 'split-view' | 'single-card'
@@ -30,9 +31,11 @@ function Bar({ className }: { className?: string }) {
 }
 
 export function EmptySkeleton({ layout }: { layout: SkeletonLayout }) {
+  const { t } = useTranslation('common')
+  const loadingLabel = t('status.loading')
   if (layout === 'card-grid') {
     return (
-      <div className="p-5" role="status" aria-busy="true" aria-label="Загрузка">
+      <div className="p-5" role="status" aria-busy="true" aria-label={loadingLabel}>
         <Bar className="h-7 w-48 mb-4" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -48,7 +51,7 @@ export function EmptySkeleton({ layout }: { layout: SkeletonLayout }) {
   }
   if (layout === 'table') {
     return (
-      <div className="p-5" role="status" aria-busy="true" aria-label="Загрузка">
+      <div className="p-5" role="status" aria-busy="true" aria-label={loadingLabel}>
         <Bar className="h-5 w-40 mb-4" />
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -64,7 +67,7 @@ export function EmptySkeleton({ layout }: { layout: SkeletonLayout }) {
   }
   if (layout === 'split-view') {
     return (
-      <div className="p-5 grid grid-cols-5 gap-3" role="status" aria-busy="true" aria-label="Загрузка">
+      <div className="p-5 grid grid-cols-5 gap-3" role="status" aria-busy="true" aria-label={loadingLabel}>
         <div className="col-span-5 md:col-span-2">
           <Bar className="h-5 w-24 mb-2" />
           <Bar className="h-64" />
@@ -78,7 +81,7 @@ export function EmptySkeleton({ layout }: { layout: SkeletonLayout }) {
   }
   // single-card
   return (
-    <div className="p-5 max-w-[520px] mx-auto" role="status" aria-busy="true" aria-label="Загрузка">
+    <div className="p-5 max-w-[520px] mx-auto" role="status" aria-busy="true" aria-label={loadingLabel}>
       <Bar className="h-7 w-36 mb-4" />
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (

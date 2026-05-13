@@ -94,7 +94,7 @@ export function AICoachPill({
     setDraft('');
     setSending(true);
     setSendError(null);
-    setTurns((t) => [...t, { role: 'user', content }]);
+    setTurns((arr) => [...arr, { role: 'user', content }]);
     try {
       const r = await sendAITutorMessage({
         threadId,
@@ -102,10 +102,10 @@ export function AICoachPill({
         contextNote: contextSent ? undefined : contextNote,
       });
       setContextSent(true);
-      setTurns((t) => [...t, { role: 'assistant', content: r.assistantContent }]);
+      setTurns((arr) => [...arr, { role: 'assistant', content: r.assistantContent }]);
     } catch (err) {
       setDraft(content);
-      setTurns((t) => t.slice(0, -1));
+      setTurns((arr) => arr.slice(0, -1));
       setSendError(err instanceof Error ? err.message : 'send failed');
     } finally {
       setSending(false);
@@ -125,7 +125,7 @@ export function AICoachPill({
           className="mono focus-ring"
           style={pillBtnStyle}
         >
-          ✦ {label}
+          ✦ {effectiveLabel}
         </button>
       )}
       {open && (
@@ -141,7 +141,7 @@ export function AICoachPill({
                 onClick={() => setOpen(false)}
                 className="mono focus-ring"
                 style={closeBtnStyle}
-                aria-label="Закрыть"
+                aria-label={t('hone.coach.pill.close')}
               >
                 ✕
               </button>
@@ -149,27 +149,26 @@ export function AICoachPill({
             <div ref={scrollRef} style={messagesStyle}>
               {adoptError && (
                 <div style={errStyle}>
-                  Не получилось подключить coach'а. Закрой и попробуй снова.
+                  {t('hone.coach.pill.err_connect')}
                 </div>
               )}
               {adopting && !threadId && (
-                <div style={mutedStyle}>подключаюсь…</div>
+                <div style={mutedStyle}>{t('hone.coach.pill.connecting')}</div>
               )}
               {threadId && turns.length === 0 && !sending && (
                 <div style={mutedStyle}>
-                  Coach видит контекст этого экрана. Задай вопрос — отвечу
-                  с учётом твоей истории.
+                  {t('hone.coach.pill.empty_hint')}
                 </div>
               )}
-              {turns.map((t, i) => (
+              {turns.map((turn, i) => (
                 <div
                   key={i}
-                  style={t.role === 'user' ? bubbleUserStyle : bubbleAsstStyle}
+                  style={turn.role === 'user' ? bubbleUserStyle : bubbleAsstStyle}
                 >
-                  {t.content}
+                  {turn.content}
                 </div>
               ))}
-              {sending && <div style={mutedStyle}>думаю…</div>}
+              {sending && <div style={mutedStyle}>{t('hone.coach.pill.thinking')}</div>}
               {sendError && <div style={errStyle}>{sendError}</div>}
             </div>
             <form onSubmit={onSend} style={formStyle}>
@@ -184,7 +183,7 @@ export function AICoachPill({
                   }
                 }}
                 rows={2}
-                placeholder="спроси coach'а…"
+                placeholder={t('hone.coach.pill.placeholder')}
                 disabled={!threadId || sending}
                 style={textareaStyle}
               />

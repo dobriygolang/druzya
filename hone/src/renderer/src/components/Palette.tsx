@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { translate } from '@d9-i18n';
+
 import { Icon, type IconName } from './primitives/Icon';
 import { trackEvent } from '../api/events';
 
@@ -49,7 +51,7 @@ const ITEMS_BY_SECTION: { section: string; items: Omit<PaletteItem, 'run' | 'sec
       { id: 'notes', label: 'Notes', icon: 'note', shortcut: ['N'] },
       { id: 'memory', label: 'Memory', icon: 'sparkle' },
       // Phase K Wave 15 — end-of-day shutdown ritual (manual trigger).
-      { id: 'day-shutdown', label: 'Закрыть день', icon: 'sun' },
+      { id: 'day-shutdown', label: translate('hone.palette.day_shutdown'), icon: 'sun' },
     ],
   },
   {

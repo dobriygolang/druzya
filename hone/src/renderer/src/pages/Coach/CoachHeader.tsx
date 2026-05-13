@@ -1,4 +1,7 @@
 import React from 'react';
+
+import { useT } from '@d9-i18n';
+
 import { daysUntil, formatGoalChip } from '../../stores/goal';
 import type { MemoryStats, PrimaryGoal } from '../../api/intelligence';
 import { type Mode, MODES, dimColor } from './lib/types';
@@ -31,6 +34,7 @@ export const CoachHeader: React.FC<CoachHeaderProps> = ({
   goal,
   onGoalClick,
 }) => {
+  const t = useT();
   // F2: red stripe только когда deadline < 14 дней AND ещё не прошёл —
   // urgent visual hint. B/W rule: 1.5px red stripe only.
   const dN = daysUntil(goal?.target_date);
@@ -72,7 +76,7 @@ export const CoachHeader: React.FC<CoachHeaderProps> = ({
               }}
             />
           )}
-          {`Цель: ${formatGoalChip(goal)}`}
+          {t('hone.coach.header.goal_prefix', { goal: formatGoalChip(goal) })}
         </button>
       )}
       {/* F1 trust badge: показывается только когда есть события. До этого
@@ -80,7 +84,12 @@ export const CoachHeader: React.FC<CoachHeaderProps> = ({
         fallback rule: не симулируем несуществующую память). */}
       {memoryStats && memoryStats.total30d > 0 && (
         <span style={chipStyle}>
-          {`помнит ${memoryStats.total30d} ${memoryStats.total30d >= 10 ? 'событий · 30 дн' : 'событий'}`}
+          {t('hone.coach.header.memory_format', {
+            n: memoryStats.total30d,
+            label: memoryStats.total30d >= 10
+              ? t('hone.coach.header.memory_label.long')
+              : t('hone.coach.header.memory_label.short'),
+          })}
         </span>
       )}
       {mode === 'explore' && exploreWeek !== undefined && exploreWeek > 0 && (

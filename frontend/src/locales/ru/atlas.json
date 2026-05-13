@@ -1,0 +1,33 @@
+{
+  "drawer": {
+    "close": "Закрыть",
+    "your_todo_title": "узел добавлен тобой через classify-flow",
+    "pin_title": "закрепить узел в /atlas ribbon",
+    "hide_title": "скрыть узел из канваса (можно вернуть)",
+    "ctx": {
+      "studying_prefix": "Студент изучает узел «",
+      "after_section": "). Прогресс: {{pct}}",
+      "of_separator": " из ",
+      "problems_solved": " задач решено",
+      "state_separator": ". Состояние: {{state}}."
+    },
+    "mock_cta": "Mock с фокусом на эту тему",
+    "ask_coach": "Спросить coach'а",
+    "what_to_read": "Что почитать",
+    "progress": "Прогресс",
+    "progress_count": "{{solved}} из {{total}} задач",
+    "decay": {
+      "stale_prefix": "Ты не решал эту тему {{days}}",
+      "stale_suffix": " дней — знание тает",
+      "today": "Решал сегодня",
+      "last_prefix": "Последняя задача:",
+      "last_suffix": " дн. назад",
+      "stop_decay": "Реши хотя бы одну задачу, чтобы остановить decay."
+    },
+    "recommended": "Рекомендованные ката",
+    "prereqs_title": "Открывает доступ к этому",
+    "unlocks_title": "Этот узел открывает",
+    "hone_practice_title": "Открыть Hone и стартануть pomodoro на «{{title}}»",
+    "minutes_suffix": "мин"
+  }
+}

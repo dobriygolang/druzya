@@ -20,6 +20,8 @@
 // ⌘J connections panel и ⌘⇧L AskNotes — оставлены без изменений.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CueSessionAnalysis } from '@shared/ipc';
+
+import { translate } from '@d9-i18n';
 import { CueMeetingNotes, buildCueMarkdown } from '../components/CueMeetingNotes';
 import { ConnectError, Code } from '@connectrpc/connect';
 
@@ -1171,7 +1173,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
           void useQuotaStore.getState().refresh();
         } catch (err) {
           console.error('promoteToCloud failed', err);
-          setToast('Не удалось перенести заметку в облако');
+          setToast(translate('hone.notes.toast.promote_failed'));
           window.setTimeout(() => setToast(null), 2400);
           return;
         }
@@ -1183,7 +1185,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
       }));
     } catch (err) {
       console.error('moveNote failed', err);
-      setToast('Не удалось переместить заметку');
+      setToast(translate('hone.notes.toast.move_failed'));
       window.setTimeout(() => setToast(null), 2400);
     }
   }, [selectedId]);

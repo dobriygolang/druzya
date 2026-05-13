@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, BookOpen, Sparkles, Map as MapIcon, ExternalLink } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import {
   getQuestionsForTrack,
@@ -129,6 +130,7 @@ function MinimalShell({ children }: { children: React.ReactNode }) {
 }
 
 export default function DiagnosticQuiz() {
+  const { t } = useTranslation('onboarding')
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const step = params.get('step') // 'done' OR 'pick-track' OR null (quiz mode)
@@ -215,7 +217,7 @@ export default function DiagnosticQuiz() {
       return (
         <MinimalShell>
           <div className="mx-auto px-4 py-10" style={{ maxWidth: 640 }}>
-            <p style={{ fontSize: 14, color: 'var(--ink-60)' }}>Сначала ответь на 8 вопросов.</p>
+            <p style={{ fontSize: 14, color: 'var(--ink-60)' }}>{t('quiz.no_result_msg')}</p>
             <div style={{ marginTop: 16 }}>
               <button
                 type="button"
@@ -223,7 +225,7 @@ export default function DiagnosticQuiz() {
                 className="focus-ring motion-press"
                 style={primaryPill}
               >
-                Начать диагностику
+                {t('quiz.no_result_cta')}
               </button>
             </div>
           </div>
@@ -274,7 +276,7 @@ export default function DiagnosticQuiz() {
                 color: 'rgb(var(--ink))',
               }}
             >
-              {track ? `Диагностика · ${TRACK_LABELS[track].label}` : 'Диагностика'}
+              {track ? t('quiz.title_with_track', { label: TRACK_LABELS[track].label }) : t('quiz.title_base')}
             </h1>
             {track && (
               <button
@@ -299,14 +301,14 @@ export default function DiagnosticQuiz() {
                   color: 'var(--ink-60)',
                   cursor: 'pointer',
                 }}
-                title="Поменять track — текущие ответы будут сброшены"
+                title={t('quiz.change_track_tooltip')}
               >
-                сменить track
+                {t('quiz.change_track_cta')}
               </button>
             )}
           </div>
           <p style={{ margin: 0, fontSize: 'var(--type-body-size)', lineHeight: 'var(--type-body-lh)', color: 'var(--ink-60)' }}>
-            8 вопросов · ~2 минуты. Получишь 3 первые действия + предлагаемую цель.
+            {t('quiz.subhead')}
           </p>
           <ProgressBar current={idx + 1} total={total} answered={Object.keys(answers).length} />
         </header>
@@ -327,7 +329,7 @@ export default function DiagnosticQuiz() {
             className="focus-ring motion-press"
             style={{ ...ghostPill, opacity: idx === 0 ? 0.5 : 1, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}
           >
-            <ArrowLeft style={{ width: 16, height: 16 }} /> Назад
+            <ArrowLeft style={{ width: 16, height: 16 }} /> {t('quiz.btn_back')}
           </button>
           <button
             type="button"
@@ -336,13 +338,13 @@ export default function DiagnosticQuiz() {
             className="focus-ring motion-press"
             style={{ ...primaryPill, opacity: !picked ? 0.5 : 1, cursor: !picked ? 'not-allowed' : 'pointer' }}
           >
-            {isLast ? 'Получить план' : `Дальше (${idx + 1}/${total})`} <ArrowRight style={{ width: 16, height: 16 }} />
+            {isLast ? t('quiz.btn_get_plan') : t('quiz.btn_next', { current: idx + 1, total })} <ArrowRight style={{ width: 16, height: 16 }} />
           </button>
         </footer>
 
         {allAnswered && !isLast && (
           <p style={{ margin: 0, textAlign: 'center', fontSize: 12, color: 'var(--ink-40)' }}>
-            Все 8 уже отвечены — можешь сразу{' '}
+            {t('quiz.all_answered_pre')}{' '}
             <button
               type="button"
               onClick={() => setIdx(total - 1)}
@@ -359,7 +361,7 @@ export default function DiagnosticQuiz() {
               onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
               onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
             >
-              перейти к плану
+              {t('quiz.all_answered_link')}
             </button>
             .
           </p>
@@ -373,11 +375,12 @@ export default function DiagnosticQuiz() {
 // with hairline visual treatment matching new quiz design. Active card
 // gets red 1.5px top stripe per B/W rule.
 function TrackPickerStep({ onPick }: { onPick: (track: DiagnosticTrack) => void }) {
+  const { t } = useTranslation('onboarding')
   return (
     <MinimalShell>
       <div className="mx-auto flex w-full flex-col px-4 py-10 sm:py-14" style={{ maxWidth: 640, gap: 24 }}>
         <header className="flex flex-col" style={{ gap: 10 }}>
-          <span style={captionMono}>ДИАГНОСТИКА · TRACK</span>
+          <span style={captionMono}>{t('quiz.picker_eyebrow')}</span>
           <h1
             style={{
               margin: 0,
@@ -388,7 +391,7 @@ function TrackPickerStep({ onPick }: { onPick: (track: DiagnosticTrack) => void 
               color: 'rgb(var(--ink))',
             }}
           >
-            Какой трек?
+            {t('quiz.picker_title')}
           </h1>
           <p
             style={{
@@ -398,7 +401,7 @@ function TrackPickerStep({ onPick }: { onPick: (track: DiagnosticTrack) => void 
               color: 'var(--ink-60)',
             }}
           >
-            8 вопросов под выбранный трек. Можно сменить track позже (ответы сбросятся).
+            {t('quiz.picker_subtitle')}
           </p>
         </header>
 
@@ -451,14 +454,13 @@ function TrackPickerStep({ onPick }: { onPick: (track: DiagnosticTrack) => void 
 }
 
 function ProgressBar({ current, total, answered }: { current: number; total: number; answered: number }) {
+  const { t } = useTranslation('onboarding')
   const pct = Math.round((answered / total) * 100)
   return (
     <div className="flex flex-col" style={{ gap: 6 }}>
       <div className="flex items-center justify-between" style={{ ...captionMono, fontSize: 10 }}>
-        <span>
-          Вопрос {current}/{total}
-        </span>
-        <span>{answered} / {total} отвечено</span>
+        <span>{t('quiz.progress_question', { current, total })}</span>
+        <span>{t('quiz.progress_answered', { answered, total })}</span>
       </div>
       <div style={{ height: 2, width: '100%', overflow: 'hidden', borderRadius: 999, background: 'var(--hair-2)' }}>
         <div
@@ -555,6 +557,7 @@ function QuestionCard({
 }
 
 function DoneStep({ result, onRetake }: { result: DiagnosticResult; onRetake: () => void }) {
+  const { t } = useTranslation('onboarding')
   const navigate = useNavigate()
   const [goalAccepted, setGoalAccepted] = useState(false)
 
@@ -579,7 +582,7 @@ function DoneStep({ result, onRetake }: { result: DiagnosticResult; onRetake: ()
           <div style={{ ...captionMono, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
             {/* Red signal dot — quiz complete, live state. */}
             <span aria-hidden="true" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--red)' }} />
-            <span>Диагностика готова</span>
+            <span>{t('quiz.done_eyebrow')}</span>
           </div>
           <h1
             style={{
@@ -591,10 +594,10 @@ function DoneStep({ result, onRetake }: { result: DiagnosticResult; onRetake: ()
               color: 'rgb(var(--ink))',
             }}
           >
-            Твой план первой недели
+            {t('quiz.done_title')}
           </h1>
           <p style={{ margin: 0, fontSize: 'var(--type-body-size)', lineHeight: 'var(--type-body-lh)', color: 'var(--ink-60)' }}>
-            3 действия + предлагаемая цель. Можешь начать с любого — coach запомнит.
+            {t('quiz.done_subtitle')}
           </p>
         </header>
 
@@ -611,11 +614,11 @@ function DoneStep({ result, onRetake }: { result: DiagnosticResult; onRetake: ()
           }}
         >
           <div className="flex-wrap-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ ...captionMono, fontSize: 10 }}>Предлагаемая цель</span>
+            <span style={{ ...captionMono, fontSize: 10 }}>{t('quiz.proposed_goal_eyebrow')}</span>
             {goalAccepted && (
               <span style={{ ...captionMono, fontSize: 10, color: 'var(--ink-60)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <span aria-hidden="true" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--red)' }} />
-                Принято
+                {t('quiz.proposed_goal_accepted')}
               </span>
             )}
           </div>
@@ -631,8 +634,7 @@ function DoneStep({ result, onRetake }: { result: DiagnosticResult; onRetake: ()
             {formatGoal(proposedGoal)}
           </p>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-60)', lineHeight: 1.55 }}>
-            Coach будет помнить эту цель в каждом chat'е и подгонять рекомендации. Можешь подредактировать через
-            GoalWizard (карточка «Цель» в Coach memory).
+            {t('quiz.proposed_goal_hint')}
           </p>
           <div className="flex-wrap-row" style={{ alignItems: 'center', gap: 10 }}>
             {!goalAccepted ? (
@@ -642,7 +644,7 @@ function DoneStep({ result, onRetake }: { result: DiagnosticResult; onRetake: ()
                 className="focus-ring motion-press"
                 style={primaryPill}
               >
-                Принять цель
+                {t('quiz.accept_goal')}
               </button>
             ) : (
               <button
@@ -651,7 +653,7 @@ function DoneStep({ result, onRetake }: { result: DiagnosticResult; onRetake: ()
                 className="focus-ring motion-press"
                 style={ghostPill}
               >
-                Перейти к плану
+                {t('quiz.open_plan')}
               </button>
             )}
             <button
@@ -669,14 +671,14 @@ function DoneStep({ result, onRetake }: { result: DiagnosticResult; onRetake: ()
               onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
               onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
             >
-              пройти заново
+              {t('quiz.retake')}
             </button>
           </div>
         </div>
 
         {/* 3 action cards */}
         <div className="flex flex-col" style={{ gap: 12 }}>
-          <span style={{ ...captionMono, fontSize: 10 }}>3 первых действия</span>
+          <span style={{ ...captionMono, fontSize: 10 }}>{t('quiz.actions_heading')}</span>
           {result.actions.map((action, i) => (
             <ActionCard key={action.id} index={i + 1} action={action} />
           ))}

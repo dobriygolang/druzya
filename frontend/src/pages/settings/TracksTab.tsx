@@ -11,6 +11,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { api, ApiError } from '../../lib/apiClient'
@@ -43,14 +44,17 @@ type TrackCard = {
   needsSeniority: boolean
 }
 
-const CARDS: TrackCard[] = [
-  { wire: 'TRACK_DEV', title: 'Разработчик', blurb: 'Алгоритмы, бэкенд, базовый mock', needsSeniority: true },
-  { wire: 'TRACK_DEV_SENIOR', title: 'Senior dev', blurb: 'System Design, Tech Lead, code-review', needsSeniority: true },
-  { wire: 'TRACK_SYSANALYST', title: 'Системный аналитик', blurb: 'BPMN, use-cases, SQL, requirements', needsSeniority: true },
-  { wire: 'TRACK_PRODUCT_ANALYST', title: 'Product analyst', blurb: 'Метрики, A/B, SQL, dashboards', needsSeniority: true },
-  { wire: 'TRACK_QA', title: 'QA / тестировщик', blurb: 'Тест-дизайн, API, автотесты', needsSeniority: true },
-  { wire: 'TRACK_ENGLISH', title: 'English', blurb: 'Дисциплина-слой между тобой и тутром', needsSeniority: false },
-]
+function useCards(): TrackCard[] {
+  const { t } = useTranslation('pages')
+  return [
+    { wire: 'TRACK_DEV', title: t('tracks_tab.card.dev.title'), blurb: t('tracks_tab.card.dev.blurb'), needsSeniority: true },
+    { wire: 'TRACK_DEV_SENIOR', title: t('tracks_tab.card.dev_senior.title'), blurb: t('tracks_tab.card.dev_senior.blurb'), needsSeniority: true },
+    { wire: 'TRACK_SYSANALYST', title: t('tracks_tab.card.sysanalyst.title'), blurb: t('tracks_tab.card.sysanalyst.blurb'), needsSeniority: true },
+    { wire: 'TRACK_PRODUCT_ANALYST', title: t('tracks_tab.card.product_analyst.title'), blurb: t('tracks_tab.card.product_analyst.blurb'), needsSeniority: true },
+    { wire: 'TRACK_QA', title: t('tracks_tab.card.qa.title'), blurb: t('tracks_tab.card.qa.blurb'), needsSeniority: true },
+    { wire: 'TRACK_ENGLISH', title: t('tracks_tab.card.english.title'), blurb: t('tracks_tab.card.english.blurb'), needsSeniority: false },
+  ]
+}
 
 type LocalState = {
   picked: Set<WireTrack>
@@ -108,6 +112,8 @@ function reduceClick(s: LocalState, wire: WireTrack): LocalState {
 }
 
 export function TracksTab() {
+  const { t } = useTranslation('pages')
+  const CARDS = useCards()
   const qc = useQueryClient()
   const query = useQuery({
     queryKey: ['profile', 'me', 'tracks'],
@@ -144,7 +150,7 @@ export function TracksTab() {
   if (query.isLoading) {
     return (
       <Card>
-        <div className="p-6 text-text-secondary text-sm">Загружаем треки…</div>
+        <div className="p-6 text-text-secondary text-sm">{t('tracks_tab.loading')}</div>
       </Card>
     )
   }
@@ -152,7 +158,7 @@ export function TracksTab() {
     return (
       <Card>
         <div className="p-6 text-sm" style={{ color: 'var(--red)' }}>
-          Не удалось загрузить треки. Обнови страницу.
+          {t('tracks_tab.load_failed')}
         </div>
       </Card>
     )
@@ -161,10 +167,9 @@ export function TracksTab() {
   return (
     <Card>
       <div className="flex flex-col gap-1.5 p-6 pb-4">
-        <h2 className="font-display text-xl font-bold">Треки</h2>
+        <h2 className="font-display text-xl font-bold">{t('tracks_tab.heading')}</h2>
         <p className="text-sm text-text-secondary">
-          Над чем растёшь сейчас. Можно держать несколько — например «Senior dev + English».
-          Primary-трек определяет порядок вкладок и дефолт Atlas.
+          {t('tracks_tab.subtitle')}
         </p>
       </div>
 
@@ -262,7 +267,7 @@ export function TracksTab() {
                   )}
                   aria-pressed={isPrimary}
                 >
-                  {isPrimary ? '★ primary' : 'сделать primary'}
+                  {isPrimary ? t('tracks_tab.is_primary') : t('tracks_tab.make_primary')}
                 </button>
               )}
             </div>
@@ -273,23 +278,23 @@ export function TracksTab() {
       <div className="flex items-center justify-between gap-4 border-t border-border px-6 py-4">
         <div className="text-[12px] text-text-secondary">
           {local.picked.size === 0
-            ? 'выбери хотя бы один трек'
-            : `выбрано: ${local.picked.size} · primary: ${local.primary ?? '—'}`}
+            ? t('tracks_tab.footer_none')
+            : t('tracks_tab.footer_summary', { n: local.picked.size, primary: local.primary ?? t('tracks_tab.primary_none') })}
         </div>
         <div className="flex items-center gap-3">
           {save.isError && (
             <span className="text-[12px]" style={{ color: 'var(--red)' }}>
-              {save.error instanceof ApiError ? save.error.body : 'Ошибка сохранения'}
+              {save.error instanceof ApiError ? save.error.body : t('tracks_tab.save_error_generic')}
             </span>
           )}
           {save.isSuccess && !dirty && (
-            <span className="text-[12px] text-text-muted">сохранено</span>
+            <span className="text-[12px] text-text-muted">{t('tracks_tab.saved_indicator')}</span>
           )}
           <Button
             onClick={() => save.mutate()}
             disabled={!canSave || save.isPending}
           >
-            {save.isPending ? 'сохраняем…' : 'Сохранить'}
+            {save.isPending ? t('tracks_tab.save_saving') : t('tracks_tab.save_btn')}
           </Button>
         </div>
       </div>

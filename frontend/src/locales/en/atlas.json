@@ -1,0 +1,33 @@
+{
+  "drawer": {
+    "close": "Close",
+    "your_todo_title": "node added by you via classify flow",
+    "pin_title": "pin this node to /atlas ribbon",
+    "hide_title": "hide this node from the canvas (reversible)",
+    "ctx": {
+      "studying_prefix": "Student is studying node «",
+      "after_section": "). Progress: {{pct}}",
+      "of_separator": " of ",
+      "problems_solved": " problems solved",
+      "state_separator": ". State: {{state}}."
+    },
+    "mock_cta": "Mock focused on this topic",
+    "ask_coach": "Ask the coach",
+    "what_to_read": "What to read",
+    "progress": "Progress",
+    "progress_count": "{{solved}} of {{total}} problems",
+    "decay": {
+      "stale_prefix": "You haven't practised this for {{days}}",
+      "stale_suffix": " days — knowledge is fading",
+      "today": "Solved today",
+      "last_prefix": "Last problem:",
+      "last_suffix": " days ago",
+      "stop_decay": "Solve at least one problem to halt the decay."
+    },
+    "recommended": "Recommended kata",
+    "prereqs_title": "Opens the path to this",
+    "unlocks_title": "This node unlocks",
+    "hone_practice_title": "Open Hone and start a pomodoro on «{{title}}»",
+    "minutes_suffix": "min"
+  }
+}

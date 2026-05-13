@@ -6,6 +6,7 @@
 // primitive (focus trap / ESC / scrim / portal centralized there).
 
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowRight, BookOpen, Clock, Flame, Target, X } from 'lucide-react'
 
 import type { Atlas, AtlasNode, KataRef } from '../../lib/queries/profile'
@@ -66,6 +67,7 @@ export function AtlasDrawer({
   onClose: () => void
   onSelectNeighbour: (k: string) => void
 }) {
+  const { t } = useTranslation('atlas')
   const activeTrack = useActiveStudyModeQuery().data?.activeTrack ?? 'general'
   const setPref = useSetAtlasNodePrefMutation()
   const state = nodeState(node)
@@ -97,7 +99,7 @@ export function AtlasDrawer({
             type="button"
             onClick={onClose}
             className="rounded-md p-1.5 text-text-secondary hover:bg-surface-2"
-            aria-label="Закрыть"
+            aria-label={t('drawer.close')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -114,7 +116,7 @@ export function AtlasDrawer({
                 {node.is_user_owned && (
                   <span
                     className="ml-2 inline-block rounded-sm border border-border bg-surface-3 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-text-muted"
-                    title="узел добавлен тобой через classify-flow"
+                    title={t('drawer.your_todo_title')}
                   >
                     your todo
                   </span>
@@ -128,7 +130,7 @@ export function AtlasDrawer({
                   setPref.mutate({ nodeKey: node.key, pinned: true, hidden: false })
                 }
                 disabled={setPref.isPending}
-                title="закрепить узел в /atlas ribbon"
+                title={t('drawer.pin_title')}
                 className="rounded-sm border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-text-primary disabled:opacity-50"
               >
                 pin
@@ -139,7 +141,7 @@ export function AtlasDrawer({
                   setPref.mutate({ nodeKey: node.key, pinned: false, hidden: true })
                 }
                 disabled={setPref.isPending}
-                title="скрыть узел из канваса (можно вернуть)"
+                title={t('drawer.hide_title')}
                 className="rounded-sm border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-text-primary disabled:opacity-50"
               >
                 hide
@@ -160,7 +162,11 @@ export function AtlasDrawer({
               3rd — Codex с фильтром по теме. */}
           {(() => {
             const persona = pickPersonaForNode(node, activeTrack)
-            const ctx = `Студент изучает узел «${node.title}» (${sectionLabel(node.section)}). Прогресс: ${pctLabel}${total > 0 ? `, ${solved} из ${total} задач решено` : ''}. Состояние: ${STATE_LABEL[state]}.`
+            const problemsClause =
+              total > 0
+                ? `, ${solved}${t('drawer.ctx.of_separator')}${total}${t('drawer.ctx.problems_solved')}`
+                : ''
+            const ctx = `${t('drawer.ctx.studying_prefix')}${node.title}» (${sectionLabel(node.section)}${t('drawer.ctx.after_section', { pct: pctLabel })}${problemsClause}${t('drawer.ctx.state_separator', { state: STATE_LABEL[state] })}`
             const mockHref = `/mock?focus=${encodeURIComponent(node.key)}&section=${encodeURIComponent(node.section)}&title=${encodeURIComponent(node.title)}`
             const codexHref = `/codex?topic=${encodeURIComponent(node.section)}`
             return (
@@ -173,7 +179,7 @@ export function AtlasDrawer({
                     iconRight={<ArrowRight className="h-4 w-4" />}
                     className="w-full justify-between"
                   >
-                    Mock с фокусом на эту тему
+                    {t('drawer.mock_cta')}
                   </Button>
                 </Link>
                 <div className="flex">
@@ -181,14 +187,14 @@ export function AtlasDrawer({
                     personaSlug={persona.slug}
                     coachName={persona.name}
                     contextNote={ctx}
-                    label="Спросить coach’а"
+                    label={t('drawer.ask_coach')}
                   />
                 </div>
                 <Link
                   to={codexHref}
                   className="inline-flex items-center gap-2 self-start rounded-md px-2 py-1 font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary"
                 >
-                  <BookOpen className="h-3.5 w-3.5" /> Что почитать
+                  <BookOpen className="h-3.5 w-3.5" /> {t('drawer.what_to_read')}
                 </Link>
               </div>
             )
@@ -197,10 +203,10 @@ export function AtlasDrawer({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                Прогресс
+                {t('drawer.progress')}
               </span>
               <span className="font-mono text-xs text-text-secondary">
-                {total > 0 ? `${solved} из ${total} задач` : pctLabel}
+                {total > 0 ? t('drawer.progress_count', { solved, total }) : pctLabel}
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-surface-2">
@@ -234,15 +240,13 @@ export function AtlasDrawer({
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm text-text-primary">
                   {node.decaying
-                    ? `Ты не решал эту тему ${days ?? '?'} дней — знание тает`
+                    ? `${t('drawer.decay.stale_prefix', { days: days ?? '?' })}${t('drawer.decay.stale_suffix')}`
                     : days === 0
-                      ? 'Решал сегодня'
-                      : `Последняя задача: ${days ?? '?'} дн. назад`}
+                      ? t('drawer.decay.today')
+                      : `${t('drawer.decay.last_prefix')} ${days ?? '?'}${t('drawer.decay.last_suffix')}`}
                 </span>
                 {node.decaying && (
-                  <span className="text-xs text-text-muted">
-                    Реши хотя бы одну задачу, чтобы остановить decay.
-                  </span>
+                  <span className="text-xs text-text-muted">{t('drawer.decay.stop_decay')}</span>
                 )}
               </div>
             </div>
@@ -251,7 +255,7 @@ export function AtlasDrawer({
           {recommended.length > 0 && (
             <div className="flex flex-col gap-2">
               <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                Рекомендованные ката
+                {t('drawer.recommended')}
               </span>
               <ul className="flex flex-col gap-1.5">
                 {recommended.slice(0, 5).map((k) => (
@@ -265,14 +269,14 @@ export function AtlasDrawer({
             <div className="flex flex-col gap-3 border-t border-border pt-4">
               {prereqs.length > 0 && (
                 <RelatedGroup
-                  title="Открывает доступ к этому"
+                  title={t('drawer.prereqs_title')}
                   nodes={prereqs}
                   onClick={onSelectNeighbour}
                 />
               )}
               {unlocks.length > 0 && (
                 <RelatedGroup
-                  title="Этот узел открывает"
+                  title={t('drawer.unlocks_title')}
                   nodes={unlocks}
                   onClick={onSelectNeighbour}
                 />
@@ -296,6 +300,7 @@ export function AtlasDrawer({
 // currently selected node. Both pieces nil-safe; web-only browsers see
 // just the struggle pill, mobile sees nothing.
 function AtlasDrawerHoneCTA({ nodeKey, nodeTitle }: { nodeKey: string; nodeTitle: string }) {
+  const { t } = useTranslation('atlas')
   const struggles = useAtlasStrugglesQuery(30).data ?? []
   const struggleMark = struggles.find(
     (s) =>
@@ -339,7 +344,7 @@ function AtlasDrawerHoneCTA({ nodeKey, nodeTitle }: { nodeKey: string; nodeTitle
           type="button"
           onClick={onPractice}
           className="self-start font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
-          title={`Открыть Hone и стартануть pomodoro на «${nodeTitle}»`}
+          title={t('drawer.hone_practice_title', { title: nodeTitle })}
         >
           Practice 25 min in Hone →
         </button>
@@ -349,6 +354,7 @@ function AtlasDrawerHoneCTA({ nodeKey, nodeTitle }: { nodeKey: string; nodeTitle
 }
 
 function KataItem({ k }: { k: KataRef }) {
+  const { t } = useTranslation('atlas')
   const diffColor =
     k.difficulty === 'easy'
       ? 'text-success'
@@ -365,7 +371,7 @@ function KataItem({ k }: { k: KataRef }) {
           <span className="truncate">{k.title}</span>
           <span className={`font-mono text-[10px] uppercase ${diffColor}`}>
             {humanizeDifficulty(k.difficulty)}
-            {k.estimated_minutes ? ` · ~${k.estimated_minutes} мин` : ''}
+            {k.estimated_minutes ? ` · ~${k.estimated_minutes} ${t('drawer.minutes_suffix')}` : ''}
           </span>
         </div>
         <ArrowRight className="h-4 w-4 shrink-0 text-text-muted" />

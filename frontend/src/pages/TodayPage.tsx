@@ -17,6 +17,7 @@
 
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   ArrowRight,
   Brain,
@@ -68,12 +69,15 @@ function pickPersonaFor(section: string, activeTrack: ActiveTrack): {
   }
 }
 
-const TRACK_LABELS: Record<ActiveTrack, string> = {
-  general: 'general',
-  dev: 'dev (Go senior)',
-  ml: 'ml engineering',
-  english: 'english',
-  go: 'go deep',
+function useTrackLabels(): Record<ActiveTrack, string> {
+  const { t } = useTranslation('pages')
+  return {
+    general: t('today.track.general'),
+    dev: t('today.track.dev'),
+    ml: t('today.track.ml'),
+    english: t('today.track.english'),
+    go: t('today.track.go'),
+  }
 }
 
 export default function TodayPage() {
@@ -178,6 +182,8 @@ function Hero({
   today: string
   activeTrack: ActiveTrack
 }) {
+  const { t } = useTranslation('pages')
+  const trackLabels = useTrackLabels()
   return (
     <header className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
@@ -187,11 +193,12 @@ function Hero({
         <StreakChip />
       </div>
       <h1 className="font-display text-3xl font-bold leading-tight">
-        {username ? `Привет, @${username}` : 'Today'}
+        {username ? t('today.greeting_user', { username }) : t('today.greeting_default')}
       </h1>
       <p className="text-[14px] text-text-secondary">
-        Активный режим: <b>{TRACK_LABELS[activeTrack]}</b>. Сменить можно в Hone
-        или на <Link to="/profile" className="underline">профиле</Link>.
+        {t('today.active_mode_prefix')}<b>{trackLabels[activeTrack]}</b>{t('today.active_mode_suffix_pre')}
+        <Link to="/profile" className="underline">{t('today.active_mode_suffix_link')}</Link>
+        {t('today.active_mode_suffix_post')}
       </p>
     </header>
   )
@@ -224,11 +231,11 @@ function Card({
 }
 
 function NextMockCard() {
+  const { t } = useTranslation('pages')
   return (
-    <Card icon={<Sparkles className="h-4 w-4" />} title="Mock-собес">
+    <Card icon={<Sparkles className="h-4 w-4" />} title={t('today.mock_card.title')}>
       <p className="text-[13px] leading-relaxed text-text-secondary">
-        Самый прямой путь проверить себя — пройти AI-mock с интервьюером по
-        конкретной компании. На каждой секции — оценка, в конце сводный отчёт.
+        {t('today.mock_card.body')}
       </p>
       <Link to="/mock">
         <Button
@@ -238,7 +245,7 @@ function NextMockCard() {
           iconRight={<ArrowRight className="h-4 w-4" />}
           className="self-start"
         >
-          Начать mock
+          {t('today.mock_card.cta')}
         </Button>
       </Link>
     </Card>
@@ -246,17 +253,17 @@ function NextMockCard() {
 }
 
 function DailyBriefCard() {
+  const { t } = useTranslation('pages')
   const q = useDailyBriefQuery()
   return (
-    <Card icon={<Brain className="h-4 w-4" />} title="Daily brief">
+    <Card icon={<Brain className="h-4 w-4" />} title={t('today.daily_brief.title')}>
       {q.isPending ? (
         <div className="flex items-center gap-2 text-[12px] text-text-muted">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Генерирую…
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('today.daily_brief.generating')}
         </div>
       ) : q.isError || !q.data ? (
         <p className="text-[13px] text-text-muted">
-          Coach сейчас offline — daily brief недоступен. Это нормально без
-          OpenRouter ключа в dev'е.
+          {t('today.daily_brief.offline')}
         </p>
       ) : (
         <BriefBody data={q.data} />
@@ -297,17 +304,17 @@ function BriefBody({ data }: { data: ReturnType<typeof useDailyBriefQuery>['data
 }
 
 function CoachInsightCard() {
+  const { t } = useTranslation('pages')
   const q = useInsightsQuery('today', 1)
   return (
-    <Card icon={<Sparkles className="h-4 w-4" />} title="AI-coach insight">
+    <Card icon={<Sparkles className="h-4 w-4" />} title={t('today.coach_insight.title')}>
       {q.isPending ? (
         <div className="flex items-center gap-2 text-[12px] text-text-muted">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Загружаю…
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('today.coach_insight.loading')}
         </div>
       ) : q.isError || !q.data || q.data.items.length === 0 ? (
         <p className="text-[13px] text-text-muted">
-          Свежих insight'ов нет. Они появляются после mock'ов и focus-сессий —
-          реализуй пару подряд и coach подгонит наблюдения.
+          {t('today.coach_insight.empty')}
         </p>
       ) : (
         (() => {
@@ -327,7 +334,7 @@ function CoachInsightCard() {
                   to={top.deep_link}
                   className="inline-flex items-center gap-1 self-start font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary"
                 >
-                  открыть <ArrowRight className="h-3 w-3" />
+                  {t('today.coach_insight.open')} <ArrowRight className="h-3 w-3" />
                 </Link>
               )}
             </div>
@@ -339,6 +346,7 @@ function CoachInsightCard() {
 }
 
 function AtlasWeakSpotsCard({ activeTrack }: { activeTrack: ActiveTrack }) {
+  const { t } = useTranslation('pages')
   const q = useAtlasQuery()
   const navigate = useNavigate()
 
@@ -356,15 +364,15 @@ function AtlasWeakSpotsCard({ activeTrack }: { activeTrack: ActiveTrack }) {
   }, [q.data])
 
   return (
-    <Card icon={<MapIcon className="h-4 w-4" />} title="Слабые узлы">
+    <Card icon={<MapIcon className="h-4 w-4" />} title={t('today.atlas_weak.title')}>
       {q.isPending ? (
         <div className="flex items-center gap-2 text-[12px] text-text-muted">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Загружаю атлас…
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('today.atlas_weak.loading')}
         </div>
       ) : weak.length === 0 ? (
         <div className="space-y-2">
           <p className="text-[13px] text-text-secondary">
-            Атлас пуст или ты только начал. Открой полный граф чтобы увидеть карту тем.
+            {t('today.atlas_weak.empty')}
           </p>
           <Button
             size="sm"
@@ -372,7 +380,7 @@ function AtlasWeakSpotsCard({ activeTrack }: { activeTrack: ActiveTrack }) {
             iconRight={<ArrowRight className="h-3.5 w-3.5" />}
             onClick={() => navigate('/atlas/explore')}
           >
-            Открыть Atlas
+            {t('today.atlas_weak.open_atlas')}
           </Button>
         </div>
       ) : (
@@ -380,7 +388,7 @@ function AtlasWeakSpotsCard({ activeTrack }: { activeTrack: ActiveTrack }) {
           {weak.map((n) => {
             const persona = pickPersonaFor(n.section, activeTrack)
             const pct = n.progress ?? 0
-            const ctx = `Студент работает над узлом «${n.title}» (${n.section}). Прогресс ${pct}%. Объясни что важно знать чтобы closed gap.`
+            const ctx = t('today.atlas_weak.ctx_template', { title: n.title, section: n.section, pct })
             return (
               <li
                 key={n.key}

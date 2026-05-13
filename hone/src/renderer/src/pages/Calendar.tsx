@@ -9,6 +9,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import {
   joinEvent,
   leaveEvent,
@@ -81,6 +83,7 @@ const captionMonoTiny: React.CSSProperties = {
 };
 
 export function CalendarPage() {
+  const t = useT();
   const [state, setState] = useState<State>(INITIAL);
   const tier = useQuotaStore((s) => s.tier);
 
@@ -217,7 +220,7 @@ export function CalendarPage() {
             }}
           >
             <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)', marginTop: 8, flex: '0 0 auto' }} />
-            <span>Не удалось загрузить: {state.error}</span>
+            <span>{t('hone.calendar.err.load', { msg: state.error ?? 'unknown' })}</span>
           </p>
         )}
         {state.status === 'ok' && state.items.length === 0 && (
@@ -231,10 +234,10 @@ export function CalendarPage() {
             }}
           >
             <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-60)' }}>
-              Запланированных событий нет.
+              {t('hone.calendar.empty.title')}
             </p>
             <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--ink-40)' }}>
-              Тутор поставит сессию — она появится здесь и в HomePage-чипе.
+              {t('hone.calendar.empty.body')}
             </p>
           </div>
         )}
