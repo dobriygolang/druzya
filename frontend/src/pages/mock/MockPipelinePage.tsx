@@ -19,6 +19,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import Editor, { type OnMount } from '@monaco-editor/react'
+import { useTranslation } from 'react-i18next'
 import {
   AlertCircle,
   ArrowRight,
@@ -64,6 +65,7 @@ const STAGE_ORDER_DISPLAY: StageKind[] = [
 ]
 
 export default function MockPipelinePage() {
+  const { t: tToasts } = useTranslation('toasts')
   const { pipelineId } = useParams<{ pipelineId: string }>()
   const navigate = useNavigate()
   const pipelineQ = useMockPipelineQuery(pipelineId)
@@ -231,7 +233,7 @@ export default function MockPipelinePage() {
 
   const handleCancel = () => {
     if (typeof window !== 'undefined') {
-      const ok = window.confirm('Прервать собес? Прогресс будет потерян.')
+      const ok = window.confirm(tToasts('session.abort_confirm'))
       if (!ok) return
     }
     cancelPipeline.mutate(undefined, {

@@ -19,5 +19,11 @@
   "offline": "Нет сети. Изменения встанут в очередь.",
   "retry": "Повторить",
   "retry_in": "Повторить через {{seconds}}с",
-  "details": "Детали ошибки"
+  "details": "Детали ошибки",
+  "boundary": {
+    "default_section": "Секция",
+    "section_failed": "{{section}} упала",
+    "unknown_error": "Неизвестная ошибка",
+    "retry": "Перезагрузить секцию"
+  }
 }

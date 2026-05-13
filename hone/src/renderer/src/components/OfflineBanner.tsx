@@ -19,6 +19,9 @@
 // network error / abort = unreachable. Каждые 15s when online, 30s when
 // network_offline (быстрее придёт в себя).
 import { useEffect, useRef, useState } from 'react';
+
+import { useT } from '@d9-i18n';
+
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { drainAll, listAll, listPending, subscribe } from '../offline/outbox';
 import { API_BASE_URL } from '../api/config';
@@ -51,6 +54,7 @@ async function probeServer(): Promise<{ state: ServerState; latency: number }> {
 }
 
 export function OfflineBanner() {
+  const t = useT();
   const online = useOnlineStatus();
   const [pendingCount, setPendingCount] = useState(0);
   const [deadCount, setDeadCount] = useState(0);
@@ -138,28 +142,31 @@ export function OfflineBanner() {
   if (!online) {
     return (
       <BannerStrip tone="danger">
-        ● Нет сети · {pendingCount > 0 ? `${pendingCount} change(s) в outbox` : 'изменения в outbox'}
+        {t('hone.offline.banner_no_network')} ·{' '}
+        {pendingCount > 0
+          ? t('hone.offline.banner_changes_count', { n: pendingCount })
+          : t('hone.offline.banner_changes_pending')}
       </BannerStrip>
     );
   }
   if (serverState === 'unreachable') {
     return (
       <BannerStrip tone="warn">
-        ● Сервер недоступен · retry через 30s
+        {t('hone.offline.banner_server_unreachable')}
       </BannerStrip>
     );
   }
   if (serverState === 'degraded') {
     return (
       <BannerStrip tone="ink-dim">
-        ⚠ Бэкенд медленный · sync продолжается
+        {t('hone.offline.banner_backend_slow')}
       </BannerStrip>
     );
   }
   if (recovered !== null && Date.now() - recovered < 3000) {
     return (
       <BannerStrip tone="ink" pulse>
-        ● Восстанавливаем…
+        {t('hone.offline.banner_recovering')}
       </BannerStrip>
     );
   }

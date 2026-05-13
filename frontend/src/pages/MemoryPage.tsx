@@ -11,6 +11,7 @@
 
 import { useState } from 'react'
 import { Brain, Check, Pencil, Trash2, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
@@ -34,6 +35,7 @@ const KIND_FILTERS: { value: string | null; label: string }[] = [
 ]
 
 export default function MemoryPage() {
+  const { t } = useTranslation('toasts')
   const [activeKind, setActiveKind] = useState<string | null>(null)
   const memoryQ = useMemoryEntriesQuery({ kind: activeKind, limit: 50 })
   const deleteMut = useDeleteMemoryEntryMutation()
@@ -108,7 +110,7 @@ export default function MemoryPage() {
                       key={e.id}
                       entry={e}
                       onDelete={() => {
-                        if (window.confirm('Удалить эту memory entry? AI больше не будет её использовать.')) {
+                        if (window.confirm(t('memory.delete_confirm'))) {
                           deleteMut.mutate(e.id)
                         }
                       }}

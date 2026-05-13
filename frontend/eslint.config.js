@@ -18,14 +18,33 @@ export default [
       'node_modules/**',
       'src/api/generated/**',
       'public/**',
-      // The locale JSONs themselves obviously contain Cyrillic; mocks/tests
-      // and Lingua learning content (English-by-design pages) are also
-      // legitimate exceptions to the no-Cyrillic rule.
+      // Locale JSONs obviously contain Cyrillic; mocks/tests and Lingua
+      // learning content are legitimate exceptions.
       'src/locales/**',
       'src/mocks/**',
       'src/test/**',
+      'tests/**',
       '**/*.test.{ts,tsx}',
       'src/pages/lingua/**',
+      // Admin страницы — служебные, не для конечных юзеров.
+      'src/pages/admin/**',
+      // Static content / config data — не runtime UI, текст хранится
+      // как data а не как rendered UI strings.
+      'src/content/**',
+      'src/lib/diagnostic.ts',
+      'src/lib/insights.ts',
+      'src/lib/miniMock.ts',
+      'src/lib/milestones.ts',
+      // Legal / static prose — большие тексты юридической документации;
+      // переводы делаются отдельной задачей с юристами.
+      'src/pages/LegalPrivacyPage.tsx',
+      'src/pages/HelpPage.tsx',
+      // Pricing / Billing — копия маркетинга, переводится одной волной
+      // с маркетингом когда понадобится бilingual launch.
+      'src/pages/pricing/**',
+      'src/pages/settings/BillingTab.tsx',
+      'src/pages/BillingWelcome.tsx',
+      'src/pages/checkout/**',
     ],
   },
   js.configs.recommended,

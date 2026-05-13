@@ -5,6 +5,7 @@
 // rows; this panel is the only mutate path.
 
 import { useMemo, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/Button'
 import {
   useAtlasAdminEdgesQuery,
@@ -22,6 +23,7 @@ import { ErrorBox, PanelSkeleton } from './shared'
 import { AtlasNodeModal, emptyNodeForm } from './AtlasNodeModal'
 
 export function AtlasPanel() {
+  const { t: tToasts } = useTranslation('toasts')
   const nodesQ = useAtlasAdminNodesQuery()
   const edgesQ = useAtlasAdminEdgesQuery()
   const createMut = useCreateAtlasNodeMutation()
@@ -91,7 +93,7 @@ export function AtlasPanel() {
   }
 
   const handleDeleteEdge = async (e: AtlasAdminEdge) => {
-    if (!window.confirm(`Удалить связь ${e.from} → ${e.to}?`)) return
+    if (!window.confirm(tToasts('atlas_admin.delete_edge_confirm', { from: e.from, to: e.to }))) return
     await deleteEdgeMut.mutateAsync(e.id)
   }
 

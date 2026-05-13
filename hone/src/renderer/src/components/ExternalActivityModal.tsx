@@ -2,6 +2,8 @@
 // (LeetCode / Coursera / YouTube / книги). НЕ чат: явная associarion с
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import {
   addExternalActivity,
   EXTERNAL_SOURCES,
@@ -24,6 +26,7 @@ interface TopicSelection {
 }
 
 export function ExternalActivityModal({ onClose, onSaved }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(true);
   const [source, setSource] = useState<ExternalSource>('leetcode');
   const [topic, setTopic] = useState<TopicSelection>({ atlasNodeId: '', text: '' });
@@ -68,7 +71,7 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
     e.preventDefault();
     setError(null);
     if (!topic.text.trim()) {
-      setError('Укажи topic.');
+      setError(t('hone.external.err.topic_required'));
       return;
     }
     if (duration < 1 || duration > 600) {
@@ -104,13 +107,13 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
         </span>
       </header>
       <form onSubmit={onSubmit} style={{ paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Field label="Источник">
+        <Field label={t('hone.external.field.source')}>
           <select
             value={source}
             onChange={(e) => setSource(e.target.value as ExternalSource)}
             style={selectStyle}
             disabled={busy}
-            aria-label="Источник"
+            aria-label={t('hone.external.field.source')}
           >
             {EXTERNAL_SOURCES.map((s) => (
               <option key={s.value} value={s.value}>
@@ -120,7 +123,7 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
           </select>
         </Field>
 
-        <Field label="Topic">
+        <Field label={t('hone.external.field.topic')}>
           <div style={{ position: 'relative' }}>
             <input
               value={topic.text}
@@ -133,10 +136,10 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
                 window.setTimeout(() => setShowSuggestions(false), 120);
                 e.currentTarget.style.borderBottomColor = 'var(--hair-2)';
               }}
-              placeholder="например, BFS на деревьях"
+              placeholder={t('hone.external.field.topic_placeholder')}
               style={inputStyle}
               disabled={busy}
-              aria-label="Topic"
+              aria-label={t('hone.external.field.topic')}
             />
             {showSuggestions && suggestions.length > 0 && (
               <div style={suggestStyle}>
@@ -167,7 +170,7 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
           </div>
         </Field>
 
-        <Field label="Минут">
+        <Field label={t('hone.external.field.minutes')}>
           <input
             type="number"
             value={duration}
@@ -178,21 +181,21 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
             onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
             style={{ ...inputStyle, maxWidth: 120 }}
             disabled={busy}
-            aria-label="Минут"
+            aria-label={t('hone.external.field.minutes')}
           />
         </Field>
 
-        <Field label="Заметка (опционально)">
+        <Field label={t('hone.external.field.note')}>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             onFocus={(e) => (e.currentTarget.style.borderBottomColor = 'var(--ink)')}
             onBlur={(e) => (e.currentTarget.style.borderBottomColor = 'var(--hair-2)')}
             rows={3}
-            placeholder="что прошло, что застряло…"
+            placeholder={t('hone.external.field.note_placeholder')}
             style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
             disabled={busy}
-            aria-label="Заметка"
+            aria-label={t('hone.external.field.note')}
           />
         </Field>
 
@@ -219,7 +222,7 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
             className="focus-ring motion-press"
             style={primaryBtnStyle}
           >
-            {busy ? 'Сохраняю…' : 'Сохранить'}
+            {busy ? t('hone.external.cta.saving') : t('hone.external.cta.save')}
           </button>
         </div>
       </form>

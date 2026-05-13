@@ -6,6 +6,8 @@
 // Hidden когда no active goal — caller (Coach / Today) проверяет.
 import { useEffect, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import { Modal } from './primitives/Modal';
 import { motion as motionTokens } from '../lib/design-tokens';
 import {
@@ -41,6 +43,7 @@ interface Props {
 }
 
 export function GoalEditModal({ goal, onClose }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(true);
   const [company, setCompany] = useState(goal.target_company ?? '');
   const [englishTarget, setEnglishTarget] = useState(goal.target_text ?? '');
@@ -112,7 +115,7 @@ export function GoalEditModal({ goal, onClose }: Props) {
         </div>
 
         {goal.kind === 'GOAL_KIND_TOP_TIER_CO' && (
-          <Field label="Компания">
+          <Field label={t('hone.goal.field.company')}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {TOP_TIER_COMPANIES.map((c) => {
                 const active = company === c;
@@ -136,22 +139,22 @@ export function GoalEditModal({ goal, onClose }: Props) {
         )}
 
         {goal.kind === 'GOAL_KIND_ENGLISH_TARGET' && (
-          <Field label="Цель">
+          <Field label={t('hone.goal.field.goal')}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {ENGLISH_TARGETS.map((t) => {
-                const active = englishTarget === t;
+              {ENGLISH_TARGETS.map((tgt) => {
+                const active = englishTarget === tgt;
                 return (
                   <button
-                    key={t}
+                    key={tgt}
                     type="button"
-                    onClick={() => setEnglishTarget(t)}
+                    onClick={() => setEnglishTarget(tgt)}
                     aria-pressed={active}
                     style={{
                       ...pillBtn,
                       ...(active ? pillActive : {}),
                     }}
                   >
-                    {t}
+                    {tgt}
                   </button>
                 );
               })}
@@ -160,7 +163,7 @@ export function GoalEditModal({ goal, onClose }: Props) {
         )}
 
         {goal.kind === 'GOAL_KIND_CUSTOM' && (
-          <Field label="Описание">
+          <Field label={t('hone.goal.field.description')}>
             <textarea
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
@@ -174,7 +177,7 @@ export function GoalEditModal({ goal, onClose }: Props) {
           </Field>
         )}
 
-        <Field label="Срок (опционально)">
+        <Field label={t('hone.goal.field.deadline')}>
           <input
             type="date"
             value={date}
@@ -191,7 +194,7 @@ export function GoalEditModal({ goal, onClose }: Props) {
 
         <footer style={footerStyle}>
           <button type="button" onClick={close} style={ghostBtn}>
-            Отмена
+            {t('common.action.cancel')}
           </button>
           <button
             type="button"

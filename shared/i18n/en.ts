@@ -222,9 +222,14 @@ export const en: Dict = {
   'hone.offline.banner_no_network': '● Offline',
   'hone.offline.banner_changes_pending': 'changes in outbox',
   'hone.offline.banner_changes_count': '{{n}} change(s) in outbox',
+  'hone.offline.banner_server_unreachable': '● Server unreachable · retry in 30s',
+  'hone.offline.banner_backend_slow': '⚠ Backend slow · sync continues',
+  'hone.offline.banner_recovering': '● Recovering…',
 
   // ── Hone: DayShutdownModal ───────────────────────────────────────────
   'hone.day_shutdown.modal.label': 'End of day',
+  'hone.day_shutdown.modal.title': 'Close out your day',
+  'hone.day_shutdown.modal.later': 'Later',
   'hone.day_shutdown.prompt.done': 'What shipped today?',
   'hone.day_shutdown.prompt.pending': 'What hangs / unfinished?',
   'hone.day_shutdown.prompt.tomorrow': 'What matters tomorrow?',
@@ -238,4 +243,37 @@ export const en: Dict = {
 
   // ── Hone: DataLoader fallback ────────────────────────────────────────
   'hone.data.err.load_failed': 'Could not load',
+
+  // ── Hone: AI Coach pill / Coach pages ────────────────────────────────
+  'hone.coach.pill.label': 'Ask the coach',
+  'hone.coach.pill.close': 'Close',
+  'hone.coach.pill.err_connect': 'Could not connect the coach. Close and try again.',
+  'hone.coach.pill.connecting': 'connecting…',
+  'hone.coach.pill.thinking': 'thinking…',
+  'hone.coach.pill.placeholder': 'ask the coach…',
+  'hone.coach.header.goal_prefix': 'Goal: {{goal}}',
+  'hone.coach.header.memory_format': 'remembers {{n}} {{label}}',
+  'hone.coach.err.partial_load': 'Some data failed to load',
+
+  // ── Hone: MemoryTimeline ─────────────────────────────────────────────
+  'hone.memory.delete_confirm': "Delete from Coach memory? AI will no longer reference this entry.",
+  'hone.memory.empty': 'Memory is empty. Open a Cue meeting, write a note, or take a mock — Coach will start gathering context.',
+  'hone.memory.loading': 'loading…',
+  'hone.memory.err.load': 'Could not load memory: {{msg}}',
+  'hone.memory.delete_title': 'Remove from memory',
+  'hone.memory.footer_note': 'Coach memory fills up as a side-effect of your activity:',
+
+  // ── Hone: TutorAssignments / pages ───────────────────────────────────
+  'hone.tutor.err.load': 'Failed to load: {{msg}}',
+  'hone.tutor.empty': 'No assignments.',
+  'hone.calendar.err.load': 'Failed to load: {{msg}}',
+
+  // ── Hone: Stats overlay / loading ────────────────────────────────────
+  'hone.stats.loading': 'loading…',
+  'hone.stats.title_insights': 'Open Insights stream in the browser (druz9.online)',
+  'hone.stats.title_memory': 'Open Memory timeline in the browser (druz9.online)',
+
+  // ── Hone: CrossAppReminder ───────────────────────────────────────────
+  'hone.coach.cross.open_atlas_title': 'Open Atlas focused on this node',
+  'hone.coach.cross.open_insights_title': 'Open Insights timeline on web',
 };

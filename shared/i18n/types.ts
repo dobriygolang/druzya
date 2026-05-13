@@ -226,9 +226,14 @@ export interface Dict {
   'hone.offline.banner_no_network': string;
   'hone.offline.banner_changes_pending': string;
   'hone.offline.banner_changes_count': string;
+  'hone.offline.banner_server_unreachable': string;
+  'hone.offline.banner_backend_slow': string;
+  'hone.offline.banner_recovering': string;
 
   // ── Hone: DayShutdownModal ───────────────────────────────────────────
   'hone.day_shutdown.modal.label': string;
+  'hone.day_shutdown.modal.title': string;
+  'hone.day_shutdown.modal.later': string;
   'hone.day_shutdown.prompt.done': string;
   'hone.day_shutdown.prompt.pending': string;
   'hone.day_shutdown.prompt.tomorrow': string;
@@ -242,4 +247,37 @@ export interface Dict {
 
   // ── Hone: DataLoader fallback ────────────────────────────────────────
   'hone.data.err.load_failed': string;
+
+  // ── Hone: AI Coach pill / Coach pages ────────────────────────────────
+  'hone.coach.pill.label': string;
+  'hone.coach.pill.close': string;
+  'hone.coach.pill.err_connect': string;
+  'hone.coach.pill.connecting': string;
+  'hone.coach.pill.thinking': string;
+  'hone.coach.pill.placeholder': string;
+  'hone.coach.header.goal_prefix': string;
+  'hone.coach.header.memory_format': string;
+  'hone.coach.err.partial_load': string;
+
+  // ── Hone: MemoryTimeline ─────────────────────────────────────────────
+  'hone.memory.delete_confirm': string;
+  'hone.memory.empty': string;
+  'hone.memory.loading': string;
+  'hone.memory.err.load': string;
+  'hone.memory.delete_title': string;
+  'hone.memory.footer_note': string;
+
+  // ── Hone: TutorAssignments / pages ───────────────────────────────────
+  'hone.tutor.err.load': string;
+  'hone.tutor.empty': string;
+  'hone.calendar.err.load': string;
+
+  // ── Hone: Stats overlay / loading ────────────────────────────────────
+  'hone.stats.loading': string;
+  'hone.stats.title_insights': string;
+  'hone.stats.title_memory': string;
+
+  // ── Hone: CrossAppReminder ───────────────────────────────────────────
+  'hone.coach.cross.open_atlas_title': string;
+  'hone.coach.cross.open_insights_title': string;
 }

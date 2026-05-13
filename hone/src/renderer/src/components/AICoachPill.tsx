@@ -8,6 +8,8 @@
 // стиль «coach», не «GPT-чат».
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import { adoptAITutor, sendAITutorMessage } from '../api/aiTutor';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
@@ -26,11 +28,13 @@ export interface AICoachPillProps {
 export function AICoachPill({
   personaSlug,
   contextNote,
-  label = 'Спросить coach’а',
+  label,
   coachName,
   controlledOpen,
   onOpenChange,
 }: AICoachPillProps) {
+  const t = useT();
+  const effectiveLabel = label ?? t('hone.coach.pill.label');
   const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? !!controlledOpen : internalOpen;

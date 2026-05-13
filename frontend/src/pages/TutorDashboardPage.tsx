@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -1114,6 +1115,7 @@ function StudentRow({
   onEnd: () => void
   ending: boolean
 }) {
+  const { t: tToasts } = useTranslation('toasts')
   const since = relationship.started_at
     ? new Date(relationship.started_at).toLocaleDateString()
     : '—'
@@ -1148,7 +1150,7 @@ function StudentRow({
         <button
           type="button"
           onClick={() => {
-            if (window.confirm('Завершить отношения с этим студентом? Он сохранит свои данные.')) {
+            if (window.confirm(tToasts('tutor.drop_confirm'))) {
               onEnd()
             }
           }}

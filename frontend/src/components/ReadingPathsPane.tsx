@@ -6,6 +6,7 @@
 // via assignments instead, so this gap doesn't block the surface).
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from './Button'
 import { Card } from './Card'
@@ -154,6 +155,7 @@ function CreatePathForm() {
 }
 
 function PathRow({ path }: { path: TutorReadingPath }) {
+  const { t } = useTranslation('toasts')
   const archive = useArchiveReadingPathMutation()
   const [assignOpen, setAssignOpen] = useState(false)
   const created = path.created_at ? new Date(path.created_at).toLocaleDateString() : '—'
@@ -198,7 +200,7 @@ function PathRow({ path }: { path: TutorReadingPath }) {
         <button
           type="button"
           onClick={() => {
-            if (window.confirm(`Архивировать «${path.name}»? Это soft-delete — данные останутся.`)) {
+            if (window.confirm(t('reading_paths.archive_confirm', { name: path.name }))) {
               archive.mutate(path.id)
             }
           }}

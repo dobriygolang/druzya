@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { Headphones, Trash2, Upload } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/Button'
 import {
   formatDuration,
@@ -15,6 +16,7 @@ import { ErrorBox, PanelSkeleton } from './shared'
 import { CategoryModal } from './PodcastCategoryModal'
 
 export function PodcastsPanel() {
+  const { t: tToasts } = useTranslation('toasts')
   const podcasts = usePodcastsQuery()
   const categories = usePodcastCategoriesQuery()
   const createMut = useCreatePodcastMutation()
@@ -334,7 +336,7 @@ export function PodcastsPanel() {
                         size="sm"
                         disabled={deleteMut.isPending}
                         onClick={() => {
-                          if (window.confirm(`Удалить «${p.title}»? Файл из MinIO тоже удалится.`)) {
+                          if (window.confirm(tToasts('podcasts_admin.delete_confirm', { title: p.title }))) {
                             deleteMut.mutate(p.id)
                           }
                         }}

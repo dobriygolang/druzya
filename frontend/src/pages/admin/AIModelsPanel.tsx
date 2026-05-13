@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/Button'
 import {
   useAIAdminModelsQuery,
@@ -19,6 +20,7 @@ import { ErrorBox, PanelSkeleton } from './shared'
 import { LLMModelModal } from './LLMModelModal'
 
 export function AIModelsPanel() {
+  const { t: tToasts } = useTranslation('toasts')
   const list = useAIAdminModelsQuery()
   const createMut = useCreateLLMModelMutation()
   const updateMut = useUpdateLLMModelMutation()
@@ -129,7 +131,7 @@ export function AIModelsPanel() {
                           size="sm"
                           disabled={deleteMut.isPending}
                           onClick={() => {
-                            if (window.confirm(`Удалить ${m.model_id}?`)) {
+                            if (window.confirm(tToasts('ai_admin.delete_model_confirm', { id: m.model_id }))) {
                               deleteMut.mutate(m.model_id)
                             }
                           }}

@@ -15,6 +15,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { useT, translate } from '@d9-i18n';
+
 import { submitDayShutdown, getTodayShutdown, type DayShutdown } from '../api/hone';
 
 interface DayShutdownModalProps {
@@ -22,11 +24,11 @@ interface DayShutdownModalProps {
   onClose: () => void;
 }
 
-const PROMPT_DONE = 'Что сделал сегодня?';
-const PROMPT_PENDING = 'Что не успел / висит?';
-const PROMPT_TOMORROW = 'Что важно на завтра?';
-
 export function DayShutdownModal({ open, onClose }: DayShutdownModalProps) {
+  const t = useT();
+  const PROMPT_DONE = t('hone.day_shutdown.prompt.done');
+  const PROMPT_PENDING = t('hone.day_shutdown.prompt.pending');
+  const PROMPT_TOMORROW = t('hone.day_shutdown.prompt.tomorrow');
   const [done, setDone] = useState('');
   const [pending, setPending] = useState('');
   const [tomorrow, setTomorrow] = useState('');
@@ -78,9 +80,9 @@ export function DayShutdownModal({ open, onClose }: DayShutdownModalProps) {
   const handleSubmit = async () => {
     const d = done.trim();
     const p = pending.trim();
-    const t = tomorrow.trim();
-    if (!d && !p && !t) {
-      setError('Заполни хотя бы одно поле.');
+    const tw = tomorrow.trim();
+    if (!d && !p && !tw) {
+      setError(translate('hone.day_shutdown.modal.err.empty'));
       return;
     }
     setError(null);
@@ -95,7 +97,7 @@ export function DayShutdownModal({ open, onClose }: DayShutdownModalProps) {
         shutdownDate: `${yyyy}-${mm}-${dd}`,
         done: d,
         pending: p,
-        tomorrow: t,
+        tomorrow: tw,
       });
       // Reset + close.
       setDone('');
@@ -104,7 +106,7 @@ export function DayShutdownModal({ open, onClose }: DayShutdownModalProps) {
       setPrefilled(null);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить');
+      setError(err instanceof Error ? err.message : translate('hone.day_shutdown.modal.err.save_failed'));
     } finally {
       setSubmitting(false);
     }
@@ -116,7 +118,7 @@ export function DayShutdownModal({ open, onClose }: DayShutdownModalProps) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Завершение дня"
+      aria-label={t('hone.day_shutdown.modal.label')}
       onClick={(e) => {
         if (e.target === e.currentTarget && !submitting) onClose();
       }}
@@ -150,7 +152,7 @@ export function DayShutdownModal({ open, onClose }: DayShutdownModalProps) {
       >
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em' }}>
-            Заверши день
+            {t('hone.day_shutdown.modal.title')}
           </h2>
           <span
             className="mono"
@@ -160,7 +162,7 @@ export function DayShutdownModal({ open, onClose }: DayShutdownModalProps) {
               letterSpacing: '0.04em',
             }}
           >
-            {prefilled ? 'обновляем запись' : '60 секунд'}
+            {prefilled ? t('hone.day_shutdown.modal.eyebrow_updating') : t('hone.day_shutdown.modal.eyebrow_60s')}
           </span>
         </div>
 
@@ -230,7 +232,7 @@ export function DayShutdownModal({ open, onClose }: DayShutdownModalProps) {
               letterSpacing: '0.04em',
             }}
           >
-            Позже
+            {t('hone.day_shutdown.modal.later')}
           </button>
           <button
             type="button"
@@ -250,7 +252,11 @@ export function DayShutdownModal({ open, onClose }: DayShutdownModalProps) {
               fontWeight: 500,
             }}
           >
-            {submitting ? 'Сохраняю…' : prefilled ? 'Обновить' : 'Сохранить'}
+            {submitting
+              ? t('hone.day_shutdown.modal.cta.saving')
+              : prefilled
+                ? t('hone.day_shutdown.modal.cta.update')
+                : t('hone.day_shutdown.modal.cta.save')}
             <span style={{ opacity: 0.6, marginLeft: 8 }}>⌘↵</span>
           </button>
         </div>

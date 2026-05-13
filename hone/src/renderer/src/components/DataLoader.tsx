@@ -9,6 +9,8 @@
 
 import type { ReactNode } from 'react';
 
+import { translate } from '@d9-i18n';
+
 import type { DataState } from '../hooks/useDataState';
 
 export interface DataLoaderProps<T> {
@@ -55,7 +57,7 @@ function ErrorPanel({ error, label, onRetry }: ErrorPanelProps): JSX.Element {
     <div className="data-loader-error">
       <div className="data-loader-error-stripe" />
       <div className="data-loader-error-body">
-        <div className="data-loader-error-label">{label ?? 'Не удалось загрузить'}</div>
+        <div className="data-loader-error-label">{label ?? translate('hone.data.err.load_failed')}</div>
         {error?.message && (
           <div className="data-loader-error-detail">{error.message}</div>
         )}

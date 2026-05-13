@@ -222,9 +222,14 @@ export const ru: Dict = {
   'hone.offline.banner_no_network': '● Нет сети',
   'hone.offline.banner_changes_pending': 'изменения в outbox',
   'hone.offline.banner_changes_count': '{{n}} change(s) в outbox',
+  'hone.offline.banner_server_unreachable': '● Сервер недоступен · retry через 30s',
+  'hone.offline.banner_backend_slow': '⚠ Бэкенд медленный · sync продолжается',
+  'hone.offline.banner_recovering': '● Восстанавливаем…',
 
   // ── Hone: DayShutdownModal ───────────────────────────────────────────
   'hone.day_shutdown.modal.label': 'Завершение дня',
+  'hone.day_shutdown.modal.title': 'Заверши день',
+  'hone.day_shutdown.modal.later': 'Позже',
   'hone.day_shutdown.prompt.done': 'Что сделал сегодня?',
   'hone.day_shutdown.prompt.pending': 'Что не успел / висит?',
   'hone.day_shutdown.prompt.tomorrow': 'Что важно на завтра?',
@@ -238,4 +243,37 @@ export const ru: Dict = {
 
   // ── Hone: DataLoader fallback ────────────────────────────────────────
   'hone.data.err.load_failed': 'Не удалось загрузить',
+
+  // ── Hone: AI Coach pill / Coach pages ────────────────────────────────
+  'hone.coach.pill.label': 'Спросить coach’а',
+  'hone.coach.pill.close': 'Закрыть',
+  'hone.coach.pill.err_connect': "Не получилось подключить coach'а. Закройте и попробуйте снова.",
+  'hone.coach.pill.connecting': 'подключаюсь…',
+  'hone.coach.pill.thinking': 'думаю…',
+  'hone.coach.pill.placeholder': "спроси coach'а…",
+  'hone.coach.header.goal_prefix': 'Цель: {{goal}}',
+  'hone.coach.header.memory_format': 'помнит {{n}} {{label}}',
+  'hone.coach.err.partial_load': 'Часть данных не загрузилась',
+
+  // ── Hone: MemoryTimeline ─────────────────────────────────────────────
+  'hone.memory.delete_confirm': 'Удалить из памяти Coach? AI больше не будет ссылаться на этот entry.',
+  'hone.memory.empty': 'Память пуста. Откройте Cue meeting, напишите заметку или пройдите mock — Coach начнёт собирать контекст.',
+  'hone.memory.loading': 'загружается…',
+  'hone.memory.err.load': 'Не удалось загрузить память: {{msg}}',
+  'hone.memory.delete_title': 'Удалить из памяти',
+  'hone.memory.footer_note': "Память Coach наполняется side-effect'ом ваших действий:",
+
+  // ── Hone: TutorAssignments / pages ───────────────────────────────────
+  'hone.tutor.err.load': 'Не удалось загрузить: {{msg}}',
+  'hone.tutor.empty': 'Заданий нет.',
+  'hone.calendar.err.load': 'Не удалось загрузить: {{msg}}',
+
+  // ── Hone: Stats overlay / loading ────────────────────────────────────
+  'hone.stats.loading': 'загрузка…',
+  'hone.stats.title_insights': 'Открыть Insights stream в браузере (druz9.online)',
+  'hone.stats.title_memory': 'Открыть Memory timeline в браузере (druz9.online)',
+
+  // ── Hone: CrossAppReminder ───────────────────────────────────────────
+  'hone.coach.cross.open_atlas_title': 'Открыть Atlas с focus на этом узле',
+  'hone.coach.cross.open_insights_title': 'Открыть Insights timeline на web',
 };

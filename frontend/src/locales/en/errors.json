@@ -19,5 +19,11 @@
   "offline": "Offline. Changes will be queued.",
   "retry": "Retry",
   "retry_in": "Retry in {{seconds}}s",
-  "details": "Error details"
+  "details": "Error details",
+  "boundary": {
+    "default_section": "Section",
+    "section_failed": "{{section}} crashed",
+    "unknown_error": "Unknown error",
+    "retry": "Reload section"
+  }
 }
