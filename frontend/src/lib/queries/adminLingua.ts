@@ -280,7 +280,7 @@ export function useArchiveListeningMaterialMutation() {
   })
 }
 
-// ── Speaking (read-only — нет admin add RPC) ─────────────────────────
+// ── Speaking — list + admin TTS regen (Phase K Wave 9, E4 P1) ────────
 
 export interface SpeakingExercise {
   id: string
@@ -323,5 +323,46 @@ export function useAdminSpeakingExercisesQuery(level: string = '') {
       return (r.items ?? []).map(adaptSpeaking)
     },
     staleTime: 60_000,
+  })
+}
+
+// useGenerateSpeakingTTSMutation — admin-only. Calls
+// POST /api/v1/admin/hone/speaking/exercises/{id}/tts → backend
+// synthesises via Cloudflare MeloTTS, uploads to MinIO, persists URL.
+// 503 → provider/storage not configured; 5xx → upstream error.
+//
+// Wire shape: backend accepts proto3 emit camelCase + snake_case. We
+// send canonical proto field names (`exerciseId`, `force`); transcoder
+// also accepts snake_case for ops calling curl manually.
+export interface GenerateSpeakingTTSBody {
+  exercise_id: string
+  force?: boolean
+}
+
+interface WireGenerateSpeakingTTSResp {
+  audioUrl?: string
+  audio_url?: string
+}
+
+export function useGenerateSpeakingTTSMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: GenerateSpeakingTTSBody) => {
+      const r = await api<WireGenerateSpeakingTTSResp>(
+        `/admin/hone/speaking/exercises/${encodeURIComponent(body.exercise_id)}/tts`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            exerciseId: body.exercise_id,
+            force: body.force ?? false,
+          }),
+        },
+      )
+      return { audio_url: r.audioUrl ?? r.audio_url ?? '' }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: speakingKeys.all })
+    },
   })
 }

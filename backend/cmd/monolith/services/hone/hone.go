@@ -8,6 +8,7 @@ import (
 	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
+	authServices "druz9/cmd/monolith/services/auth"
 	subscriptionServices "druz9/cmd/monolith/services/subscription"
 	honeApp "druz9/hone/app"
 	honeDomain "druz9/hone/domain"
@@ -532,6 +533,14 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		Grader:    speakingGrader,
 	}
 	h.ListSpeakingHistory = &honeApp.ListSpeakingHistory{Repo: speakingSessions}
+	// Phase K Wave 9 (E4 P1) — admin-only TTS regen UC. nil-safe inside the
+	// UC: provider/store check happens на Do() call; handler returns 503
+	// если что-либо unwired. Cloudflare MeloTTS + MinIO bucket `tts-audio`.
+	h.GenerateSpeakingTTS = &honeApp.GenerateSpeakingTTS{
+		Exercises: speakingExercises,
+		Provider:  buildTTSProvider(d),
+		Store:     buildTTSStore(d),
+	}
 
 	cursorSSE := &cursorSSEHandler{bus: cursorBus, log: d.Log}
 
@@ -589,6 +598,20 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Post("/hone/external-activity/delete", transcoder.ServeHTTP)
 		r.Get("/hone/external-activity/atlas-topics", transcoder.ServeHTTP)
 		r.Get("/hone/atlas-node-tracks", transcoder.ServeHTTP)
+		// Phase K Wave 9 (E4 P1) — admin-only TTS regen for speaking
+		// exercise reference audio. RequireAdminInline before transcoder
+		// (mirrors podcast admin pattern). Path declared в hone.proto
+		// google.api.http annotation.
+		adminGate := func(w http.ResponseWriter, req *http.Request) {
+			if _, err := authServices.RequireAdminInline(req); err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(authServices.StatusForAuthErr(err))
+				_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+				return
+			}
+			transcoder.ServeHTTP(w, req)
+		}
+		r.Post("/admin/hone/speaking/exercises/{exercise_id}/tts", adminGate)
 		cursorSSE.Mount(r)
 	}
 

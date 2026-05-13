@@ -479,7 +479,7 @@ function HumanTutorsCard() {
             const tutorIdShort = (r.tutor_id ?? '').slice(0, 8) || '?'
             const name = r.display_name?.trim() || r.display_username || tutorIdShort
             const username = r.display_username ?? ''
-            const initial = ((r.display_name || r.display_username || '?') || '?').slice(0, 1).toUpperCase()
+            const initial = (r.display_name || r.display_username || '?').slice(0, 1).toUpperCase()
             return (
               <li
                 key={r.id}

@@ -7712,3 +7712,90 @@ export class ListSpeakingHistoryResponse extends Message<ListSpeakingHistoryResp
   }
 }
 
+/**
+ * GenerateSpeakingTTS messages — admin-only batch helper. Reads the
+ * reference prompt from speaking_exercises, calls a free-tier TTS
+ * provider (cascade в hone-bootstrap; default Cloudflare MeloTTS),
+ * uploads MP3 to MinIO bucket `tts-audio`, and writes the public URL
+ * back into speaking_exercises.audio_url. `force=false` skips rows
+ * that already have audio_url.
+ *
+ * @generated from message druz9.v1.GenerateSpeakingTTSRequest
+ */
+export class GenerateSpeakingTTSRequest extends Message<GenerateSpeakingTTSRequest> {
+  /**
+   * @generated from field: string exercise_id = 1;
+   */
+  exerciseId = "";
+
+  /**
+   * @generated from field: bool force = 2;
+   */
+  force = false;
+
+  constructor(data?: PartialMessage<GenerateSpeakingTTSRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GenerateSpeakingTTSRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "exercise_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "force", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GenerateSpeakingTTSRequest {
+    return new GenerateSpeakingTTSRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GenerateSpeakingTTSRequest {
+    return new GenerateSpeakingTTSRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GenerateSpeakingTTSRequest {
+    return new GenerateSpeakingTTSRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GenerateSpeakingTTSRequest | PlainMessage<GenerateSpeakingTTSRequest> | undefined, b: GenerateSpeakingTTSRequest | PlainMessage<GenerateSpeakingTTSRequest> | undefined): boolean {
+    return proto3.util.equals(GenerateSpeakingTTSRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GenerateSpeakingTTSResponse
+ */
+export class GenerateSpeakingTTSResponse extends Message<GenerateSpeakingTTSResponse> {
+  /**
+   * @generated from field: string audio_url = 1;
+   */
+  audioUrl = "";
+
+  constructor(data?: PartialMessage<GenerateSpeakingTTSResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GenerateSpeakingTTSResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "audio_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GenerateSpeakingTTSResponse {
+    return new GenerateSpeakingTTSResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GenerateSpeakingTTSResponse {
+    return new GenerateSpeakingTTSResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GenerateSpeakingTTSResponse {
+    return new GenerateSpeakingTTSResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GenerateSpeakingTTSResponse | PlainMessage<GenerateSpeakingTTSResponse> | undefined, b: GenerateSpeakingTTSResponse | PlainMessage<GenerateSpeakingTTSResponse> | undefined): boolean {
+    return proto3.util.equals(GenerateSpeakingTTSResponse, a, b);
+  }
+}
+

@@ -9147,6 +9147,108 @@ func (x *ListSpeakingHistoryResponse) GetItems() []*SpeakingSession {
 	return nil
 }
 
+// GenerateSpeakingTTS messages — admin-only batch helper. Reads the
+// reference prompt from speaking_exercises, calls a free-tier TTS
+// provider (cascade в hone-bootstrap; default Cloudflare MeloTTS),
+// uploads MP3 to MinIO bucket `tts-audio`, and writes the public URL
+// back into speaking_exercises.audio_url. `force=false` skips rows
+// that already have audio_url.
+type GenerateSpeakingTTSRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExerciseId    string                 `protobuf:"bytes,1,opt,name=exercise_id,json=exerciseId,proto3" json:"exercise_id,omitempty"`
+	Force         bool                   `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateSpeakingTTSRequest) Reset() {
+	*x = GenerateSpeakingTTSRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[152]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateSpeakingTTSRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateSpeakingTTSRequest) ProtoMessage() {}
+
+func (x *GenerateSpeakingTTSRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[152]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateSpeakingTTSRequest.ProtoReflect.Descriptor instead.
+func (*GenerateSpeakingTTSRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{152}
+}
+
+func (x *GenerateSpeakingTTSRequest) GetExerciseId() string {
+	if x != nil {
+		return x.ExerciseId
+	}
+	return ""
+}
+
+func (x *GenerateSpeakingTTSRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
+type GenerateSpeakingTTSResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AudioUrl      string                 `protobuf:"bytes,1,opt,name=audio_url,json=audioUrl,proto3" json:"audio_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateSpeakingTTSResponse) Reset() {
+	*x = GenerateSpeakingTTSResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[153]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateSpeakingTTSResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateSpeakingTTSResponse) ProtoMessage() {}
+
+func (x *GenerateSpeakingTTSResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[153]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateSpeakingTTSResponse.ProtoReflect.Descriptor instead.
+func (*GenerateSpeakingTTSResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{153}
+}
+
+func (x *GenerateSpeakingTTSResponse) GetAudioUrl() string {
+	if x != nil {
+		return x.AudioUrl
+	}
+	return ""
+}
+
 var File_druz9_v1_hone_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_hone_proto_rawDesc = "" +
@@ -9812,7 +9914,13 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x1aListSpeakingHistoryRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\"N\n" +
 	"\x1bListSpeakingHistoryResponse\x12/\n" +
-	"\x05items\x18\x01 \x03(\v2\x19.druz9.v1.SpeakingSessionR\x05items*\xa8\x01\n" +
+	"\x05items\x18\x01 \x03(\v2\x19.druz9.v1.SpeakingSessionR\x05items\"S\n" +
+	"\x1aGenerateSpeakingTTSRequest\x12\x1f\n" +
+	"\vexercise_id\x18\x01 \x01(\tR\n" +
+	"exerciseId\x12\x14\n" +
+	"\x05force\x18\x02 \x01(\bR\x05force\":\n" +
+	"\x1bGenerateSpeakingTTSResponse\x12\x1b\n" +
+	"\taudio_url\x18\x01 \x01(\tR\baudioUrl*\xa8\x01\n" +
 	"\n" +
 	"TaskStatus\x12\x1b\n" +
 	"\x17TASK_STATUS_UNSPECIFIED\x10\x00\x12\x14\n" +
@@ -9838,7 +9946,7 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x11TaskCommentAuthor\x12#\n" +
 	"\x1fTASK_COMMENT_AUTHOR_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16TASK_COMMENT_AUTHOR_AI\x10\x01\x12\x1c\n" +
-	"\x18TASK_COMMENT_AUTHOR_USER\x10\x022\xceK\n" +
+	"\x18TASK_COMMENT_AUTHOR_USER\x10\x022\xf7L\n" +
 	"\vHoneService\x12n\n" +
 	"\x11GenerateDailyPlan\x12\".druz9.v1.GenerateDailyPlanRequest\x1a\x0e.druz9.v1.Plan\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/v1/hone/plan/generate\x12X\n" +
 	"\fGetDailyPlan\x12\x1d.druz9.v1.GetDailyPlanRequest\x1a\x0e.druz9.v1.Plan\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/api/v1/hone/plan\x12i\n" +
@@ -9925,7 +10033,8 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x0fGradeCodeReview\x12 .druz9.v1.GradeCodeReviewRequest\x1a!.druz9.v1.GradeCodeReviewResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/hone/code-review/grade\x12\x91\x01\n" +
 	"\x15ListSpeakingExercises\x12&.druz9.v1.ListSpeakingExercisesRequest\x1a'.druz9.v1.ListSpeakingExercisesResponse\"'\x82\xd3\xe4\x93\x02!\x12\x1f/api/v1/hone/speaking/exercises\x12x\n" +
 	"\rGradeSpeaking\x12\x1e.druz9.v1.GradeSpeakingRequest\x1a\x1f.druz9.v1.GradeSpeakingResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/v1/hone/speaking/grade\x12\x89\x01\n" +
-	"\x13ListSpeakingHistory\x12$.druz9.v1.ListSpeakingHistoryRequest\x1a%.druz9.v1.ListSpeakingHistoryResponse\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/v1/hone/speaking/historyB\x86\x01\n" +
+	"\x13ListSpeakingHistory\x12$.druz9.v1.ListSpeakingHistoryRequest\x1a%.druz9.v1.ListSpeakingHistoryResponse\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/v1/hone/speaking/history\x12\xa6\x01\n" +
+	"\x13GenerateSpeakingTTS\x12$.druz9.v1.GenerateSpeakingTTSRequest\x1a%.druz9.v1.GenerateSpeakingTTSResponse\"B\x82\xd3\xe4\x93\x02<:\x01*\"7/api/v1/admin/hone/speaking/exercises/{exercise_id}/ttsB\x86\x01\n" +
 	"\fcom.druz9.v1B\tHoneProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -9941,7 +10050,7 @@ func file_druz9_v1_hone_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_hone_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_druz9_v1_hone_proto_msgTypes = make([]protoimpl.MessageInfo, 152)
+var file_druz9_v1_hone_proto_msgTypes = make([]protoimpl.MessageInfo, 154)
 var file_druz9_v1_hone_proto_goTypes = []any{
 	(TaskStatus)(0),                          // 0: druz9.v1.TaskStatus
 	(TaskKind)(0),                            // 1: druz9.v1.TaskKind
@@ -10099,79 +10208,81 @@ var file_druz9_v1_hone_proto_goTypes = []any{
 	(*SpeakingSession)(nil),                  // 153: druz9.v1.SpeakingSession
 	(*ListSpeakingHistoryRequest)(nil),       // 154: druz9.v1.ListSpeakingHistoryRequest
 	(*ListSpeakingHistoryResponse)(nil),      // 155: druz9.v1.ListSpeakingHistoryResponse
-	(*timestamppb.Timestamp)(nil),            // 156: google.protobuf.Timestamp
+	(*GenerateSpeakingTTSRequest)(nil),       // 156: druz9.v1.GenerateSpeakingTTSRequest
+	(*GenerateSpeakingTTSResponse)(nil),      // 157: druz9.v1.GenerateSpeakingTTSResponse
+	(*timestamppb.Timestamp)(nil),            // 158: google.protobuf.Timestamp
 }
 var file_druz9_v1_hone_proto_depIdxs = []int32{
-	156, // 0: druz9.v1.Plan.regenerated_at:type_name -> google.protobuf.Timestamp
+	158, // 0: druz9.v1.Plan.regenerated_at:type_name -> google.protobuf.Timestamp
 	4,   // 1: druz9.v1.Plan.items:type_name -> druz9.v1.PlanItem
-	156, // 2: druz9.v1.FocusSession.started_at:type_name -> google.protobuf.Timestamp
-	156, // 3: druz9.v1.FocusSession.ended_at:type_name -> google.protobuf.Timestamp
+	158, // 2: druz9.v1.FocusSession.started_at:type_name -> google.protobuf.Timestamp
+	158, // 3: druz9.v1.FocusSession.ended_at:type_name -> google.protobuf.Timestamp
 	14,  // 4: druz9.v1.Stats.heatmap:type_name -> druz9.v1.FocusHeatmapDay
 	14,  // 5: druz9.v1.Stats.last_seven_days:type_name -> druz9.v1.FocusHeatmapDay
 	17,  // 6: druz9.v1.Stats.queue:type_name -> druz9.v1.QueueStats
 	16,  // 7: druz9.v1.ListQueueResponse.items:type_name -> druz9.v1.QueueItem
-	156, // 8: druz9.v1.Folder.created_at:type_name -> google.protobuf.Timestamp
-	156, // 9: druz9.v1.Folder.updated_at:type_name -> google.protobuf.Timestamp
-	156, // 10: druz9.v1.Note.created_at:type_name -> google.protobuf.Timestamp
-	156, // 11: druz9.v1.Note.updated_at:type_name -> google.protobuf.Timestamp
-	156, // 12: druz9.v1.NoteSummary.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 8: druz9.v1.Folder.created_at:type_name -> google.protobuf.Timestamp
+	158, // 9: druz9.v1.Folder.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 10: druz9.v1.Note.created_at:type_name -> google.protobuf.Timestamp
+	158, // 11: druz9.v1.Note.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 12: druz9.v1.NoteSummary.updated_at:type_name -> google.protobuf.Timestamp
 	26,  // 13: druz9.v1.ListNotesResponse.notes:type_name -> druz9.v1.NoteSummary
 	24,  // 14: druz9.v1.ListFoldersResponse.folders:type_name -> druz9.v1.Folder
 	42,  // 15: druz9.v1.SuggestNoteLinksResponse.suggestions:type_name -> druz9.v1.NoteLinkSuggestion
-	156, // 16: druz9.v1.Whiteboard.created_at:type_name -> google.protobuf.Timestamp
-	156, // 17: druz9.v1.Whiteboard.updated_at:type_name -> google.protobuf.Timestamp
-	156, // 18: druz9.v1.WhiteboardSummary.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 16: druz9.v1.Whiteboard.created_at:type_name -> google.protobuf.Timestamp
+	158, // 17: druz9.v1.Whiteboard.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 18: druz9.v1.WhiteboardSummary.updated_at:type_name -> google.protobuf.Timestamp
 	46,  // 19: druz9.v1.ListWhiteboardsResponse.whiteboards:type_name -> druz9.v1.WhiteboardSummary
 	67,  // 20: druz9.v1.BulkNotesMetaResponse.notes:type_name -> druz9.v1.NoteMeta
-	156, // 21: druz9.v1.ExternalActivity.occurred_at:type_name -> google.protobuf.Timestamp
-	156, // 22: druz9.v1.ExternalActivity.created_at:type_name -> google.protobuf.Timestamp
+	158, // 21: druz9.v1.ExternalActivity.occurred_at:type_name -> google.protobuf.Timestamp
+	158, // 22: druz9.v1.ExternalActivity.created_at:type_name -> google.protobuf.Timestamp
 	70,  // 23: druz9.v1.ListExternalActivityResponse.items:type_name -> druz9.v1.ExternalActivity
 	76,  // 24: druz9.v1.SearchAtlasTopicsResponse.items:type_name -> druz9.v1.AtlasTopicSuggestion
 	79,  // 25: druz9.v1.ListAtlasNodeTracksResponse.items:type_name -> druz9.v1.AtlasNodeTrack
-	156, // 26: druz9.v1.UserSettings.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 26: druz9.v1.UserSettings.updated_at:type_name -> google.protobuf.Timestamp
 	0,   // 27: druz9.v1.Task.status:type_name -> druz9.v1.TaskStatus
 	1,   // 28: druz9.v1.Task.kind:type_name -> druz9.v1.TaskKind
 	2,   // 29: druz9.v1.Task.source:type_name -> druz9.v1.TaskSource
-	156, // 30: druz9.v1.Task.created_at:type_name -> google.protobuf.Timestamp
-	156, // 31: druz9.v1.Task.updated_at:type_name -> google.protobuf.Timestamp
-	156, // 32: druz9.v1.Task.completed_at:type_name -> google.protobuf.Timestamp
+	158, // 30: druz9.v1.Task.created_at:type_name -> google.protobuf.Timestamp
+	158, // 31: druz9.v1.Task.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 32: druz9.v1.Task.completed_at:type_name -> google.protobuf.Timestamp
 	1,   // 33: druz9.v1.TaskAutoCategoryHint.kind:type_name -> druz9.v1.TaskKind
 	3,   // 34: druz9.v1.TaskComment.author_kind:type_name -> druz9.v1.TaskCommentAuthor
-	156, // 35: druz9.v1.TaskComment.created_at:type_name -> google.protobuf.Timestamp
+	158, // 35: druz9.v1.TaskComment.created_at:type_name -> google.protobuf.Timestamp
 	86,  // 36: druz9.v1.ListTasksResponse.tasks:type_name -> druz9.v1.Task
 	1,   // 37: druz9.v1.CreateTaskRequest.kind:type_name -> druz9.v1.TaskKind
 	1,   // 38: druz9.v1.UpdateTaskKindRequest.kind:type_name -> druz9.v1.TaskKind
 	1,   // 39: druz9.v1.BulkAutoCategoriseEvent.kind:type_name -> druz9.v1.TaskKind
 	0,   // 40: druz9.v1.MoveTaskStatusRequest.status:type_name -> druz9.v1.TaskStatus
 	88,  // 41: druz9.v1.ListTaskCommentsResponse.comments:type_name -> druz9.v1.TaskComment
-	156, // 42: druz9.v1.CueSession.started_at:type_name -> google.protobuf.Timestamp
-	156, // 43: druz9.v1.CueSession.imported_at:type_name -> google.protobuf.Timestamp
-	156, // 44: druz9.v1.CueSession.updated_at:type_name -> google.protobuf.Timestamp
-	156, // 45: druz9.v1.ImportCueSessionRequest.started_at:type_name -> google.protobuf.Timestamp
+	158, // 42: druz9.v1.CueSession.started_at:type_name -> google.protobuf.Timestamp
+	158, // 43: druz9.v1.CueSession.imported_at:type_name -> google.protobuf.Timestamp
+	158, // 44: druz9.v1.CueSession.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 45: druz9.v1.ImportCueSessionRequest.started_at:type_name -> google.protobuf.Timestamp
 	101, // 46: druz9.v1.ListCueSessionsResponse.sessions:type_name -> druz9.v1.CueSession
 	25,  // 47: druz9.v1.RecordStandupResponse.note:type_name -> druz9.v1.Note
 	5,   // 48: druz9.v1.RecordStandupResponse.plan:type_name -> druz9.v1.Plan
-	156, // 49: druz9.v1.ReadingMaterial.archived_at:type_name -> google.protobuf.Timestamp
-	156, // 50: druz9.v1.ReadingMaterial.created_at:type_name -> google.protobuf.Timestamp
-	156, // 51: druz9.v1.ReadingMaterial.updated_at:type_name -> google.protobuf.Timestamp
-	156, // 52: druz9.v1.ReadingSession.started_at:type_name -> google.protobuf.Timestamp
-	156, // 53: druz9.v1.ReadingSession.ended_at:type_name -> google.protobuf.Timestamp
-	156, // 54: druz9.v1.VocabEntry.next_review_at:type_name -> google.protobuf.Timestamp
-	156, // 55: druz9.v1.VocabEntry.learned_at:type_name -> google.protobuf.Timestamp
-	156, // 56: druz9.v1.VocabEntry.created_at:type_name -> google.protobuf.Timestamp
+	158, // 49: druz9.v1.ReadingMaterial.archived_at:type_name -> google.protobuf.Timestamp
+	158, // 50: druz9.v1.ReadingMaterial.created_at:type_name -> google.protobuf.Timestamp
+	158, // 51: druz9.v1.ReadingMaterial.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 52: druz9.v1.ReadingSession.started_at:type_name -> google.protobuf.Timestamp
+	158, // 53: druz9.v1.ReadingSession.ended_at:type_name -> google.protobuf.Timestamp
+	158, // 54: druz9.v1.VocabEntry.next_review_at:type_name -> google.protobuf.Timestamp
+	158, // 55: druz9.v1.VocabEntry.learned_at:type_name -> google.protobuf.Timestamp
+	158, // 56: druz9.v1.VocabEntry.created_at:type_name -> google.protobuf.Timestamp
 	115, // 57: druz9.v1.ListReadingMaterialsResponse.items:type_name -> druz9.v1.ReadingMaterial
 	116, // 58: druz9.v1.EndReadingSessionResponse.session:type_name -> druz9.v1.ReadingSession
 	117, // 59: druz9.v1.ListVocabDueResponse.items:type_name -> druz9.v1.VocabEntry
-	156, // 60: druz9.v1.ListeningMaterial.archived_at:type_name -> google.protobuf.Timestamp
-	156, // 61: druz9.v1.ListeningMaterial.created_at:type_name -> google.protobuf.Timestamp
-	156, // 62: druz9.v1.ListeningMaterial.updated_at:type_name -> google.protobuf.Timestamp
+	158, // 60: druz9.v1.ListeningMaterial.archived_at:type_name -> google.protobuf.Timestamp
+	158, // 61: druz9.v1.ListeningMaterial.created_at:type_name -> google.protobuf.Timestamp
+	158, // 62: druz9.v1.ListeningMaterial.updated_at:type_name -> google.protobuf.Timestamp
 	133, // 63: druz9.v1.ListListeningMaterialsResponse.items:type_name -> druz9.v1.ListeningMaterial
 	142, // 64: druz9.v1.GradeEnglishWritingResponse.issues:type_name -> druz9.v1.WritingIssue
 	145, // 65: druz9.v1.GradeCodeReviewResponse.issues:type_name -> druz9.v1.CodeReviewIssue
 	147, // 66: druz9.v1.ListSpeakingExercisesResponse.items:type_name -> druz9.v1.SpeakingExercise
 	150, // 67: druz9.v1.GradeSpeakingResponse.word_diffs:type_name -> druz9.v1.WordDiff
-	156, // 68: druz9.v1.GradeSpeakingResponse.created_at:type_name -> google.protobuf.Timestamp
-	156, // 69: druz9.v1.SpeakingSession.created_at:type_name -> google.protobuf.Timestamp
+	158, // 68: druz9.v1.GradeSpeakingResponse.created_at:type_name -> google.protobuf.Timestamp
+	158, // 69: druz9.v1.SpeakingSession.created_at:type_name -> google.protobuf.Timestamp
 	153, // 70: druz9.v1.ListSpeakingHistoryResponse.items:type_name -> druz9.v1.SpeakingSession
 	6,   // 71: druz9.v1.HoneService.GenerateDailyPlan:input_type -> druz9.v1.GenerateDailyPlanRequest
 	7,   // 72: druz9.v1.HoneService.GetDailyPlan:input_type -> druz9.v1.GetDailyPlanRequest
@@ -10253,88 +10364,90 @@ var file_druz9_v1_hone_proto_depIdxs = []int32{
 	148, // 148: druz9.v1.HoneService.ListSpeakingExercises:input_type -> druz9.v1.ListSpeakingExercisesRequest
 	151, // 149: druz9.v1.HoneService.GradeSpeaking:input_type -> druz9.v1.GradeSpeakingRequest
 	154, // 150: druz9.v1.HoneService.ListSpeakingHistory:input_type -> druz9.v1.ListSpeakingHistoryRequest
-	5,   // 151: druz9.v1.HoneService.GenerateDailyPlan:output_type -> druz9.v1.Plan
-	5,   // 152: druz9.v1.HoneService.GetDailyPlan:output_type -> druz9.v1.Plan
-	5,   // 153: druz9.v1.HoneService.DismissPlanItem:output_type -> druz9.v1.Plan
-	5,   // 154: druz9.v1.HoneService.CompletePlanItem:output_type -> druz9.v1.Plan
-	10,  // 155: druz9.v1.HoneService.StartFocusSession:output_type -> druz9.v1.FocusSession
-	10,  // 156: druz9.v1.HoneService.EndFocusSession:output_type -> druz9.v1.FocusSession
-	15,  // 157: druz9.v1.HoneService.GetStats:output_type -> druz9.v1.Stats
-	19,  // 158: druz9.v1.HoneService.ListQueue:output_type -> druz9.v1.ListQueueResponse
-	16,  // 159: druz9.v1.HoneService.AddQueueItem:output_type -> druz9.v1.QueueItem
-	16,  // 160: druz9.v1.HoneService.UpdateQueueItemStatus:output_type -> druz9.v1.QueueItem
-	23,  // 161: druz9.v1.HoneService.DeleteQueueItem:output_type -> druz9.v1.DeleteQueueItemResponse
-	25,  // 162: druz9.v1.HoneService.CreateNote:output_type -> druz9.v1.Note
-	25,  // 163: druz9.v1.HoneService.UpdateNote:output_type -> druz9.v1.Note
-	25,  // 164: druz9.v1.HoneService.GetNote:output_type -> druz9.v1.Note
-	31,  // 165: druz9.v1.HoneService.ListNotes:output_type -> druz9.v1.ListNotesResponse
-	33,  // 166: druz9.v1.HoneService.DeleteNote:output_type -> druz9.v1.DeleteNoteResponse
-	25,  // 167: druz9.v1.HoneService.MoveNote:output_type -> druz9.v1.Note
-	40,  // 168: druz9.v1.HoneService.GetNoteConnections:output_type -> druz9.v1.Connection
-	44,  // 169: druz9.v1.HoneService.SuggestNoteLinks:output_type -> druz9.v1.SuggestNoteLinksResponse
-	24,  // 170: druz9.v1.HoneService.CreateFolder:output_type -> druz9.v1.Folder
-	37,  // 171: druz9.v1.HoneService.ListFolders:output_type -> druz9.v1.ListFoldersResponse
-	39,  // 172: druz9.v1.HoneService.DeleteFolder:output_type -> druz9.v1.DeleteFolderResponse
-	45,  // 173: druz9.v1.HoneService.CreateWhiteboard:output_type -> druz9.v1.Whiteboard
-	45,  // 174: druz9.v1.HoneService.UpdateWhiteboard:output_type -> druz9.v1.Whiteboard
-	45,  // 175: druz9.v1.HoneService.GetWhiteboard:output_type -> druz9.v1.Whiteboard
-	51,  // 176: druz9.v1.HoneService.ListWhiteboards:output_type -> druz9.v1.ListWhiteboardsResponse
-	53,  // 177: druz9.v1.HoneService.DeleteWhiteboard:output_type -> druz9.v1.DeleteWhiteboardResponse
-	56,  // 178: druz9.v1.HoneService.CritiqueWhiteboard:output_type -> druz9.v1.CritiquePacket
-	25,  // 179: druz9.v1.HoneService.SaveCritiqueAsNote:output_type -> druz9.v1.Note
-	112, // 180: druz9.v1.HoneService.RecordStandup:output_type -> druz9.v1.RecordStandupResponse
-	114, // 181: druz9.v1.HoneService.GetTodayStandup:output_type -> druz9.v1.GetTodayStandupResponse
-	101, // 182: druz9.v1.HoneService.ImportCueSession:output_type -> druz9.v1.CueSession
-	104, // 183: druz9.v1.HoneService.ListCueSessions:output_type -> druz9.v1.ListCueSessionsResponse
-	101, // 184: druz9.v1.HoneService.GetCueSession:output_type -> druz9.v1.CueSession
-	101, // 185: druz9.v1.HoneService.UpdateCueSession:output_type -> druz9.v1.CueSession
-	108, // 186: druz9.v1.HoneService.DeleteCueSession:output_type -> druz9.v1.DeleteCueSessionResponse
-	110, // 187: druz9.v1.HoneService.SendCueSessionToTelegram:output_type -> druz9.v1.SendCueSessionToTelegramResponse
-	90,  // 188: druz9.v1.HoneService.ListTasks:output_type -> druz9.v1.ListTasksResponse
-	86,  // 189: druz9.v1.HoneService.CreateTask:output_type -> druz9.v1.Task
-	86,  // 190: druz9.v1.HoneService.MoveTaskStatus:output_type -> druz9.v1.Task
-	97,  // 191: druz9.v1.HoneService.DeleteTask:output_type -> druz9.v1.DeleteTaskResponse
-	99,  // 192: druz9.v1.HoneService.ListTaskComments:output_type -> druz9.v1.ListTaskCommentsResponse
-	88,  // 193: druz9.v1.HoneService.AddTaskComment:output_type -> druz9.v1.TaskComment
-	86,  // 194: druz9.v1.HoneService.UpdateTaskKind:output_type -> druz9.v1.Task
-	94,  // 195: druz9.v1.HoneService.BulkAutoCategorise:output_type -> druz9.v1.BulkAutoCategoriseEvent
-	58,  // 196: druz9.v1.HoneService.PublishNote:output_type -> druz9.v1.PublishNoteResponse
-	60,  // 197: druz9.v1.HoneService.UnpublishNote:output_type -> druz9.v1.UnpublishNoteResponse
-	62,  // 198: druz9.v1.HoneService.PublishStatus:output_type -> druz9.v1.PublishStatusResponse
-	64,  // 199: druz9.v1.HoneService.ShareToWeb:output_type -> druz9.v1.ShareToWebResponse
-	66,  // 200: druz9.v1.HoneService.MakePrivate:output_type -> druz9.v1.MakePrivateResponse
-	69,  // 201: druz9.v1.HoneService.BulkNotesMeta:output_type -> druz9.v1.BulkNotesMetaResponse
-	115, // 202: druz9.v1.HoneService.AddReadingMaterial:output_type -> druz9.v1.ReadingMaterial
-	115, // 203: druz9.v1.HoneService.UpdateBookProgress:output_type -> druz9.v1.ReadingMaterial
-	121, // 204: druz9.v1.HoneService.ListReadingMaterials:output_type -> druz9.v1.ListReadingMaterialsResponse
-	115, // 205: druz9.v1.HoneService.GetReadingMaterial:output_type -> druz9.v1.ReadingMaterial
-	124, // 206: druz9.v1.HoneService.ArchiveReadingMaterial:output_type -> druz9.v1.ArchiveReadingMaterialResponse
-	116, // 207: druz9.v1.HoneService.StartReadingSession:output_type -> druz9.v1.ReadingSession
-	127, // 208: druz9.v1.HoneService.EndReadingSession:output_type -> druz9.v1.EndReadingSessionResponse
-	117, // 209: druz9.v1.HoneService.AddVocab:output_type -> druz9.v1.VocabEntry
-	117, // 210: druz9.v1.HoneService.ReviewVocab:output_type -> druz9.v1.VocabEntry
-	131, // 211: druz9.v1.HoneService.ListVocabDue:output_type -> druz9.v1.ListVocabDueResponse
-	131, // 212: druz9.v1.HoneService.ListVocabBySourceMaterial:output_type -> druz9.v1.ListVocabDueResponse
-	133, // 213: druz9.v1.HoneService.AddListeningMaterial:output_type -> druz9.v1.ListeningMaterial
-	133, // 214: druz9.v1.HoneService.IngestYouTubeListening:output_type -> druz9.v1.ListeningMaterial
-	137, // 215: druz9.v1.HoneService.ListListeningMaterials:output_type -> druz9.v1.ListListeningMaterialsResponse
-	133, // 216: druz9.v1.HoneService.GetListeningMaterial:output_type -> druz9.v1.ListeningMaterial
-	140, // 217: druz9.v1.HoneService.ArchiveListeningMaterial:output_type -> druz9.v1.ArchiveListeningMaterialResponse
-	143, // 218: druz9.v1.HoneService.GradeEnglishWriting:output_type -> druz9.v1.GradeEnglishWritingResponse
-	70,  // 219: druz9.v1.HoneService.AddExternalActivity:output_type -> druz9.v1.ExternalActivity
-	73,  // 220: druz9.v1.HoneService.ListExternalActivity:output_type -> druz9.v1.ListExternalActivityResponse
-	75,  // 221: druz9.v1.HoneService.DeleteExternalActivity:output_type -> druz9.v1.DeleteExternalActivityResponse
-	78,  // 222: druz9.v1.HoneService.SearchAtlasTopics:output_type -> druz9.v1.SearchAtlasTopicsResponse
-	81,  // 223: druz9.v1.HoneService.ListAtlasNodeTracks:output_type -> druz9.v1.ListAtlasNodeTracksResponse
-	82,  // 224: druz9.v1.HoneService.GetUserSettings:output_type -> druz9.v1.UserSettings
-	82,  // 225: druz9.v1.HoneService.SetActiveTrack:output_type -> druz9.v1.UserSettings
-	82,  // 226: druz9.v1.HoneService.SetEnglishActive:output_type -> druz9.v1.UserSettings
-	146, // 227: druz9.v1.HoneService.GradeCodeReview:output_type -> druz9.v1.GradeCodeReviewResponse
-	149, // 228: druz9.v1.HoneService.ListSpeakingExercises:output_type -> druz9.v1.ListSpeakingExercisesResponse
-	152, // 229: druz9.v1.HoneService.GradeSpeaking:output_type -> druz9.v1.GradeSpeakingResponse
-	155, // 230: druz9.v1.HoneService.ListSpeakingHistory:output_type -> druz9.v1.ListSpeakingHistoryResponse
-	151, // [151:231] is the sub-list for method output_type
-	71,  // [71:151] is the sub-list for method input_type
+	156, // 151: druz9.v1.HoneService.GenerateSpeakingTTS:input_type -> druz9.v1.GenerateSpeakingTTSRequest
+	5,   // 152: druz9.v1.HoneService.GenerateDailyPlan:output_type -> druz9.v1.Plan
+	5,   // 153: druz9.v1.HoneService.GetDailyPlan:output_type -> druz9.v1.Plan
+	5,   // 154: druz9.v1.HoneService.DismissPlanItem:output_type -> druz9.v1.Plan
+	5,   // 155: druz9.v1.HoneService.CompletePlanItem:output_type -> druz9.v1.Plan
+	10,  // 156: druz9.v1.HoneService.StartFocusSession:output_type -> druz9.v1.FocusSession
+	10,  // 157: druz9.v1.HoneService.EndFocusSession:output_type -> druz9.v1.FocusSession
+	15,  // 158: druz9.v1.HoneService.GetStats:output_type -> druz9.v1.Stats
+	19,  // 159: druz9.v1.HoneService.ListQueue:output_type -> druz9.v1.ListQueueResponse
+	16,  // 160: druz9.v1.HoneService.AddQueueItem:output_type -> druz9.v1.QueueItem
+	16,  // 161: druz9.v1.HoneService.UpdateQueueItemStatus:output_type -> druz9.v1.QueueItem
+	23,  // 162: druz9.v1.HoneService.DeleteQueueItem:output_type -> druz9.v1.DeleteQueueItemResponse
+	25,  // 163: druz9.v1.HoneService.CreateNote:output_type -> druz9.v1.Note
+	25,  // 164: druz9.v1.HoneService.UpdateNote:output_type -> druz9.v1.Note
+	25,  // 165: druz9.v1.HoneService.GetNote:output_type -> druz9.v1.Note
+	31,  // 166: druz9.v1.HoneService.ListNotes:output_type -> druz9.v1.ListNotesResponse
+	33,  // 167: druz9.v1.HoneService.DeleteNote:output_type -> druz9.v1.DeleteNoteResponse
+	25,  // 168: druz9.v1.HoneService.MoveNote:output_type -> druz9.v1.Note
+	40,  // 169: druz9.v1.HoneService.GetNoteConnections:output_type -> druz9.v1.Connection
+	44,  // 170: druz9.v1.HoneService.SuggestNoteLinks:output_type -> druz9.v1.SuggestNoteLinksResponse
+	24,  // 171: druz9.v1.HoneService.CreateFolder:output_type -> druz9.v1.Folder
+	37,  // 172: druz9.v1.HoneService.ListFolders:output_type -> druz9.v1.ListFoldersResponse
+	39,  // 173: druz9.v1.HoneService.DeleteFolder:output_type -> druz9.v1.DeleteFolderResponse
+	45,  // 174: druz9.v1.HoneService.CreateWhiteboard:output_type -> druz9.v1.Whiteboard
+	45,  // 175: druz9.v1.HoneService.UpdateWhiteboard:output_type -> druz9.v1.Whiteboard
+	45,  // 176: druz9.v1.HoneService.GetWhiteboard:output_type -> druz9.v1.Whiteboard
+	51,  // 177: druz9.v1.HoneService.ListWhiteboards:output_type -> druz9.v1.ListWhiteboardsResponse
+	53,  // 178: druz9.v1.HoneService.DeleteWhiteboard:output_type -> druz9.v1.DeleteWhiteboardResponse
+	56,  // 179: druz9.v1.HoneService.CritiqueWhiteboard:output_type -> druz9.v1.CritiquePacket
+	25,  // 180: druz9.v1.HoneService.SaveCritiqueAsNote:output_type -> druz9.v1.Note
+	112, // 181: druz9.v1.HoneService.RecordStandup:output_type -> druz9.v1.RecordStandupResponse
+	114, // 182: druz9.v1.HoneService.GetTodayStandup:output_type -> druz9.v1.GetTodayStandupResponse
+	101, // 183: druz9.v1.HoneService.ImportCueSession:output_type -> druz9.v1.CueSession
+	104, // 184: druz9.v1.HoneService.ListCueSessions:output_type -> druz9.v1.ListCueSessionsResponse
+	101, // 185: druz9.v1.HoneService.GetCueSession:output_type -> druz9.v1.CueSession
+	101, // 186: druz9.v1.HoneService.UpdateCueSession:output_type -> druz9.v1.CueSession
+	108, // 187: druz9.v1.HoneService.DeleteCueSession:output_type -> druz9.v1.DeleteCueSessionResponse
+	110, // 188: druz9.v1.HoneService.SendCueSessionToTelegram:output_type -> druz9.v1.SendCueSessionToTelegramResponse
+	90,  // 189: druz9.v1.HoneService.ListTasks:output_type -> druz9.v1.ListTasksResponse
+	86,  // 190: druz9.v1.HoneService.CreateTask:output_type -> druz9.v1.Task
+	86,  // 191: druz9.v1.HoneService.MoveTaskStatus:output_type -> druz9.v1.Task
+	97,  // 192: druz9.v1.HoneService.DeleteTask:output_type -> druz9.v1.DeleteTaskResponse
+	99,  // 193: druz9.v1.HoneService.ListTaskComments:output_type -> druz9.v1.ListTaskCommentsResponse
+	88,  // 194: druz9.v1.HoneService.AddTaskComment:output_type -> druz9.v1.TaskComment
+	86,  // 195: druz9.v1.HoneService.UpdateTaskKind:output_type -> druz9.v1.Task
+	94,  // 196: druz9.v1.HoneService.BulkAutoCategorise:output_type -> druz9.v1.BulkAutoCategoriseEvent
+	58,  // 197: druz9.v1.HoneService.PublishNote:output_type -> druz9.v1.PublishNoteResponse
+	60,  // 198: druz9.v1.HoneService.UnpublishNote:output_type -> druz9.v1.UnpublishNoteResponse
+	62,  // 199: druz9.v1.HoneService.PublishStatus:output_type -> druz9.v1.PublishStatusResponse
+	64,  // 200: druz9.v1.HoneService.ShareToWeb:output_type -> druz9.v1.ShareToWebResponse
+	66,  // 201: druz9.v1.HoneService.MakePrivate:output_type -> druz9.v1.MakePrivateResponse
+	69,  // 202: druz9.v1.HoneService.BulkNotesMeta:output_type -> druz9.v1.BulkNotesMetaResponse
+	115, // 203: druz9.v1.HoneService.AddReadingMaterial:output_type -> druz9.v1.ReadingMaterial
+	115, // 204: druz9.v1.HoneService.UpdateBookProgress:output_type -> druz9.v1.ReadingMaterial
+	121, // 205: druz9.v1.HoneService.ListReadingMaterials:output_type -> druz9.v1.ListReadingMaterialsResponse
+	115, // 206: druz9.v1.HoneService.GetReadingMaterial:output_type -> druz9.v1.ReadingMaterial
+	124, // 207: druz9.v1.HoneService.ArchiveReadingMaterial:output_type -> druz9.v1.ArchiveReadingMaterialResponse
+	116, // 208: druz9.v1.HoneService.StartReadingSession:output_type -> druz9.v1.ReadingSession
+	127, // 209: druz9.v1.HoneService.EndReadingSession:output_type -> druz9.v1.EndReadingSessionResponse
+	117, // 210: druz9.v1.HoneService.AddVocab:output_type -> druz9.v1.VocabEntry
+	117, // 211: druz9.v1.HoneService.ReviewVocab:output_type -> druz9.v1.VocabEntry
+	131, // 212: druz9.v1.HoneService.ListVocabDue:output_type -> druz9.v1.ListVocabDueResponse
+	131, // 213: druz9.v1.HoneService.ListVocabBySourceMaterial:output_type -> druz9.v1.ListVocabDueResponse
+	133, // 214: druz9.v1.HoneService.AddListeningMaterial:output_type -> druz9.v1.ListeningMaterial
+	133, // 215: druz9.v1.HoneService.IngestYouTubeListening:output_type -> druz9.v1.ListeningMaterial
+	137, // 216: druz9.v1.HoneService.ListListeningMaterials:output_type -> druz9.v1.ListListeningMaterialsResponse
+	133, // 217: druz9.v1.HoneService.GetListeningMaterial:output_type -> druz9.v1.ListeningMaterial
+	140, // 218: druz9.v1.HoneService.ArchiveListeningMaterial:output_type -> druz9.v1.ArchiveListeningMaterialResponse
+	143, // 219: druz9.v1.HoneService.GradeEnglishWriting:output_type -> druz9.v1.GradeEnglishWritingResponse
+	70,  // 220: druz9.v1.HoneService.AddExternalActivity:output_type -> druz9.v1.ExternalActivity
+	73,  // 221: druz9.v1.HoneService.ListExternalActivity:output_type -> druz9.v1.ListExternalActivityResponse
+	75,  // 222: druz9.v1.HoneService.DeleteExternalActivity:output_type -> druz9.v1.DeleteExternalActivityResponse
+	78,  // 223: druz9.v1.HoneService.SearchAtlasTopics:output_type -> druz9.v1.SearchAtlasTopicsResponse
+	81,  // 224: druz9.v1.HoneService.ListAtlasNodeTracks:output_type -> druz9.v1.ListAtlasNodeTracksResponse
+	82,  // 225: druz9.v1.HoneService.GetUserSettings:output_type -> druz9.v1.UserSettings
+	82,  // 226: druz9.v1.HoneService.SetActiveTrack:output_type -> druz9.v1.UserSettings
+	82,  // 227: druz9.v1.HoneService.SetEnglishActive:output_type -> druz9.v1.UserSettings
+	146, // 228: druz9.v1.HoneService.GradeCodeReview:output_type -> druz9.v1.GradeCodeReviewResponse
+	149, // 229: druz9.v1.HoneService.ListSpeakingExercises:output_type -> druz9.v1.ListSpeakingExercisesResponse
+	152, // 230: druz9.v1.HoneService.GradeSpeaking:output_type -> druz9.v1.GradeSpeakingResponse
+	155, // 231: druz9.v1.HoneService.ListSpeakingHistory:output_type -> druz9.v1.ListSpeakingHistoryResponse
+	157, // 232: druz9.v1.HoneService.GenerateSpeakingTTS:output_type -> druz9.v1.GenerateSpeakingTTSResponse
+	152, // [152:233] is the sub-list for method output_type
+	71,  // [71:152] is the sub-list for method input_type
 	71,  // [71:71] is the sub-list for extension type_name
 	71,  // [71:71] is the sub-list for extension extendee
 	0,   // [0:71] is the sub-list for field type_name
@@ -10358,7 +10471,7 @@ func file_druz9_v1_hone_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_hone_proto_rawDesc), len(file_druz9_v1_hone_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   152,
+			NumMessages:   154,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

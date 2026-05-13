@@ -105,10 +105,13 @@ type SpeakingSession struct {
 // ─── Ports (interfaces — infra adapters live elsewhere) ──────────────
 
 // SpeakingExerciseRepo reads the seeded catalog. `level` filter is
-// empty-string = all.
+// empty-string = all. UpdateAudioURL — admin-only write path used by
+// the TTS-regen flow (Phase K Wave 9 / E4 P1); сами row'ы create'ятся
+// миграцией, не RPC'ом.
 type SpeakingExerciseRepo interface {
 	List(ctx context.Context, level SpeakingLevel) ([]SpeakingExercise, error)
 	Get(ctx context.Context, id string) (SpeakingExercise, error)
+	UpdateAudioURL(ctx context.Context, id, audioURL string) error
 }
 
 // SpeakingSessionRepo persists graded sessions + reads history.

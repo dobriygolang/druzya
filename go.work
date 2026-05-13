@@ -2,6 +2,8 @@ go 1.25.6
 
 use (
 	./backend/cmd/monolith
+	./backend/cmd/regen_speaking_tts
+	./backend/cmd/seed_english_resources
 	./backend/cmd/seed_resources
 	./backend/services/admin
 	./backend/services/ai_mock

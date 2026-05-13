@@ -274,6 +274,9 @@ const (
 	// HoneServiceListSpeakingHistoryProcedure is the fully-qualified name of the HoneService's
 	// ListSpeakingHistory RPC.
 	HoneServiceListSpeakingHistoryProcedure = "/druz9.v1.HoneService/ListSpeakingHistory"
+	// HoneServiceGenerateSpeakingTTSProcedure is the fully-qualified name of the HoneService's
+	// GenerateSpeakingTTS RPC.
+	HoneServiceGenerateSpeakingTTSProcedure = "/druz9.v1.HoneService/GenerateSpeakingTTS"
 )
 
 // HoneServiceClient is a client for the druz9.v1.HoneService service.
@@ -423,6 +426,15 @@ type HoneServiceClient interface {
 	// a speaking_sessions row idempotent via client_session_id.
 	GradeSpeaking(context.Context, *connect.Request[v1.GradeSpeakingRequest]) (*connect.Response[v1.GradeSpeakingResponse], error)
 	ListSpeakingHistory(context.Context, *connect.Request[v1.ListSpeakingHistoryRequest]) (*connect.Response[v1.ListSpeakingHistoryResponse], error)
+	// GenerateSpeakingTTS — admin-only. Synthesises reference audio for one
+	// speaking_exercises row via the configured free-tier TTS provider
+	// (Cloudflare MeloTTS / Groq PlayAI / Google), uploads to MinIO bucket
+	// `tts-audio`, and persists the public URL into speaking_exercises.audio_url.
+	// Idempotent: skips when audio_url already populated unless `force=true`.
+	// Admin gate happens via REST router (see monolith hone wiring) — the RPC
+	// body itself only requires authenticated user (admin role enforced
+	// before the transcoder fires).
+	GenerateSpeakingTTS(context.Context, *connect.Request[v1.GenerateSpeakingTTSRequest]) (*connect.Response[v1.GenerateSpeakingTTSResponse], error)
 }
 
 // NewHoneServiceClient constructs a client for the druz9.v1.HoneService service. By default, it
@@ -916,6 +928,12 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("ListSpeakingHistory")),
 			connect.WithClientOptions(opts...),
 		),
+		generateSpeakingTTS: connect.NewClient[v1.GenerateSpeakingTTSRequest, v1.GenerateSpeakingTTSResponse](
+			httpClient,
+			baseURL+HoneServiceGenerateSpeakingTTSProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GenerateSpeakingTTS")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1001,6 +1019,7 @@ type honeServiceClient struct {
 	listSpeakingExercises     *connect.Client[v1.ListSpeakingExercisesRequest, v1.ListSpeakingExercisesResponse]
 	gradeSpeaking             *connect.Client[v1.GradeSpeakingRequest, v1.GradeSpeakingResponse]
 	listSpeakingHistory       *connect.Client[v1.ListSpeakingHistoryRequest, v1.ListSpeakingHistoryResponse]
+	generateSpeakingTTS       *connect.Client[v1.GenerateSpeakingTTSRequest, v1.GenerateSpeakingTTSResponse]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -1403,6 +1422,11 @@ func (c *honeServiceClient) ListSpeakingHistory(ctx context.Context, req *connec
 	return c.listSpeakingHistory.CallUnary(ctx, req)
 }
 
+// GenerateSpeakingTTS calls druz9.v1.HoneService.GenerateSpeakingTTS.
+func (c *honeServiceClient) GenerateSpeakingTTS(ctx context.Context, req *connect.Request[v1.GenerateSpeakingTTSRequest]) (*connect.Response[v1.GenerateSpeakingTTSResponse], error) {
+	return c.generateSpeakingTTS.CallUnary(ctx, req)
+}
+
 // HoneServiceHandler is an implementation of the druz9.v1.HoneService service.
 type HoneServiceHandler interface {
 	// ─── Plan ───────────────────────────────────────────────────────────
@@ -1550,6 +1574,15 @@ type HoneServiceHandler interface {
 	// a speaking_sessions row idempotent via client_session_id.
 	GradeSpeaking(context.Context, *connect.Request[v1.GradeSpeakingRequest]) (*connect.Response[v1.GradeSpeakingResponse], error)
 	ListSpeakingHistory(context.Context, *connect.Request[v1.ListSpeakingHistoryRequest]) (*connect.Response[v1.ListSpeakingHistoryResponse], error)
+	// GenerateSpeakingTTS — admin-only. Synthesises reference audio for one
+	// speaking_exercises row via the configured free-tier TTS provider
+	// (Cloudflare MeloTTS / Groq PlayAI / Google), uploads to MinIO bucket
+	// `tts-audio`, and persists the public URL into speaking_exercises.audio_url.
+	// Idempotent: skips when audio_url already populated unless `force=true`.
+	// Admin gate happens via REST router (see monolith hone wiring) — the RPC
+	// body itself only requires authenticated user (admin role enforced
+	// before the transcoder fires).
+	GenerateSpeakingTTS(context.Context, *connect.Request[v1.GenerateSpeakingTTSRequest]) (*connect.Response[v1.GenerateSpeakingTTSResponse], error)
 }
 
 // NewHoneServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -2039,6 +2072,12 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("ListSpeakingHistory")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceGenerateSpeakingTTSHandler := connect.NewUnaryHandler(
+		HoneServiceGenerateSpeakingTTSProcedure,
+		svc.GenerateSpeakingTTS,
+		connect.WithSchema(honeServiceMethods.ByName("GenerateSpeakingTTS")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.HoneService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HoneServiceGenerateDailyPlanProcedure:
@@ -2201,6 +2240,8 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceGradeSpeakingHandler.ServeHTTP(w, r)
 		case HoneServiceListSpeakingHistoryProcedure:
 			honeServiceListSpeakingHistoryHandler.ServeHTTP(w, r)
+		case HoneServiceGenerateSpeakingTTSProcedure:
+			honeServiceGenerateSpeakingTTSHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2528,4 +2569,8 @@ func (UnimplementedHoneServiceHandler) GradeSpeaking(context.Context, *connect.R
 
 func (UnimplementedHoneServiceHandler) ListSpeakingHistory(context.Context, *connect.Request[v1.ListSpeakingHistoryRequest]) (*connect.Response[v1.ListSpeakingHistoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListSpeakingHistory is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GenerateSpeakingTTS(context.Context, *connect.Request[v1.GenerateSpeakingTTSRequest]) (*connect.Response[v1.GenerateSpeakingTTSResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GenerateSpeakingTTS is not implemented"))
 }

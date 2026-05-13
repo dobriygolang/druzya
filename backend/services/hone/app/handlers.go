@@ -133,6 +133,10 @@ type Handler struct {
 	ListSpeakingExercises *ListSpeakingExercises
 	GradeSpeaking         *GradeSpeaking
 	ListSpeakingHistory   *ListSpeakingHistory
+	// Phase K Wave 9 (E4 P1) — admin TTS regen для reference audio,
+	// заменяет client-side speechSynthesis fallback. nil-safe: handler
+	// возвращает 503 когда provider/store не wired.
+	GenerateSpeakingTTS *GenerateSpeakingTTS
 
 	// Reading: Book-source progress (Wave 2026-05-03).
 	UpdateBookProgress *UpdateBookProgress

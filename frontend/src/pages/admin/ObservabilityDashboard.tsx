@@ -38,16 +38,7 @@ import { PanelSkeleton } from './shared'
 
 const COLLAPSE_KEY = 'druz9.admin.obs_dashboard.collapsed'
 
-const SECTIONS = [
-  { id: 'llm_usage', label: 'LLM · per-task rollups' },
-  { id: 'coach', label: 'Coach intelligence' },
-  { id: 'tracks', label: 'Tracks · adoption' },
-  { id: 'english_hr', label: 'English HR · health' },
-  { id: 'mock_block', label: 'Mock-block · strictness' },
-  { id: 'eval', label: 'Eval suite' },
-] as const
-
-type SectionId = (typeof SECTIONS)[number]['id']
+type SectionId = 'llm_usage' | 'coach' | 'tracks' | 'english_hr' | 'mock_block' | 'eval'
 
 interface TaskRollup {
   Task: string

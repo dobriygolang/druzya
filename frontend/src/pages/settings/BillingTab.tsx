@@ -124,6 +124,7 @@ function StripeCard() {
   const checkout = useCreateCheckoutSessionMutation()
   const cancel = useCancelSubscriptionMutation()
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [currency, setCurrency] = useState<SupportedCurrency>(detectCurrency())
 
   // Когда юзер уже paid Pro — показываем «active subscription» панель
   // с period_end + cancel button.
@@ -206,7 +207,6 @@ function StripeCard() {
 
   // Currency picker — auto-detect by locale at mount, user can override.
   // Default не sticky'ится между сессиями — каждый раз решается из navigator.
-  const [currency, setCurrency] = useState<SupportedCurrency>(detectCurrency())
   const priceDisplay = CURRENCY_DISPLAY[currency].price
 
   return (

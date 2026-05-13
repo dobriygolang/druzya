@@ -5,11 +5,13 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"druz9/hone/app"
 	"druz9/hone/domain"
 	pb "druz9/shared/generated/pb/druz9/v1"
+	"druz9/shared/pkg/tts"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -106,6 +108,40 @@ func (s *HoneServer) ListSpeakingHistory(
 		resp.Items = append(resp.Items, toSpeakingSessionProto(ss))
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// GenerateSpeakingTTS — admin-only. Synthesises reference audio + uploads
+// to MinIO + persists URL. Admin role gate enforced at REST router level
+// in monolith/services/hone — RPC body only requires authenticated user
+// и nil-safe UC pointer.
+//
+// 503 when provider/store unwired (tts.ErrUnavailable) — admin UI prompts
+// to set CLOUDFLARE_API_KEY/ACCOUNT_ID + MINIO_* envs.
+func (s *HoneServer) GenerateSpeakingTTS(
+	ctx context.Context,
+	req *connect.Request[pb.GenerateSpeakingTTSRequest],
+) (*connect.Response[pb.GenerateSpeakingTTSResponse], error) {
+	if _, err := requireUser(ctx); err != nil {
+		return nil, err
+	}
+	if s.H.GenerateSpeakingTTS == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			errors.New("hone.GenerateSpeakingTTS: TTS not configured"))
+	}
+	res, err := s.H.GenerateSpeakingTTS.Do(ctx, app.GenerateSpeakingTTSInput{
+		ExerciseID: req.Msg.ExerciseId,
+		Force:      req.Msg.Force,
+	})
+	if err != nil {
+		// tts.ErrUnavailable → 503 explicit; rest go through toConnectErr.
+		if errors.Is(err, tts.ErrUnavailable) {
+			return nil, connect.NewError(connect.CodeUnavailable, err)
+		}
+		return nil, fmt.Errorf("hone.GenerateSpeakingTTS: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.GenerateSpeakingTTSResponse{
+		AudioUrl: res.AudioURL,
+	}), nil
 }
 
 // ── converters ────────────────────────────────────────────────────────────

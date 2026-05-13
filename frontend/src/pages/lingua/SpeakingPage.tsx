@@ -2,8 +2,11 @@
 //
 // Catalog (B1/B2/C1 filter) + MicRecorder + AI grading (pronunciation +
 // fluency) + word-diff visualisation. 14-session sparkline history.
-import { useCallback, useState } from 'react'
+// Phase K W9: AICoachPill в graded panel — coach explains weakest dim +
+// drills.
+import { useCallback, useMemo, useState } from 'react'
 
+import { AICoachPill } from '../../components/AICoachPill'
 import { AudioPlayer, BlobPlayer } from '../../components/lingua/AudioPlayer'
 import { MicRecorder } from '../../components/lingua/MicRecorder'
 import { SpeakingSparkline } from '../../components/lingua/SpeakingSparkline'
@@ -268,35 +271,77 @@ function ActiveExercise({
       </section>
 
       {gradedResult && (
-        <section className="flex flex-col gap-3.5 rounded-md border border-border-strong p-4">
-          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Feedback</div>
-          <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-            <ScoreTile label="Pronunciation" value={gradedResult.pronunciationScore} />
-            <ScoreTile label="Fluency" value={gradedResult.fluencyScore} />
-          </div>
-          <div className="text-sm leading-relaxed text-text-primary">{gradedResult.coachFeedback}</div>
-          {gradedResult.userTranscript && (
-            <div className="flex flex-col gap-1.5">
-              <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Heard</div>
-              <div className="rounded-md border border-border bg-transparent px-3 py-2 font-mono text-xs leading-relaxed text-text-secondary">
-                {gradedResult.userTranscript}
-              </div>
-            </div>
-          )}
-          <div className="flex flex-col gap-1.5">
-            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Word-level</div>
-            <WordDiffView diffs={gradedResult.wordDiffs} />
-          </div>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="self-start rounded-full border border-border bg-transparent px-3.5 py-1.5 text-xs text-text-primary hover:bg-surface-2"
-          >
-            Try again
-          </button>
-        </section>
+        <GradedPanel exercise={exercise} result={gradedResult} onRetry={onRetry} />
       )}
     </div>
+  )
+}
+
+function GradedPanel({
+  exercise,
+  result,
+  onRetry,
+}: {
+  exercise: SpeakingExercise
+  result: SpeakingGradeResult
+  onRetry: () => void
+}) {
+  const coachContext = useMemo(() => {
+    const diffs = result.wordDiffs ?? []
+    const matches = diffs.filter((d) => d.status === 'match').length
+    const misses = diffs.filter((d) => d.status === 'miss').length
+    const extras = diffs.filter((d) => d.status === 'extra').length
+    const subs = diffs.filter((d) => d.status === 'substitute').length
+    return [
+      `Student just attempted a Speaking exercise.`,
+      `Exercise prompt: «${exercise.prompt}»`,
+      `Level: ${exercise.level}${exercise.topic ? ` · topic: ${exercise.topic}` : ''}`,
+      `Heard transcript: «${result.userTranscript || '(silent / unintelligible)'}»`,
+      `Scores: pronunciation ${result.pronunciationScore}/100, fluency ${result.fluencyScore}/100.`,
+      `Word diffs: ${matches} matches · ${misses} misses · ${extras} extras · ${subs} substitutes.`,
+      `Coach feedback (auto-grader): ${result.coachFeedback}`,
+      'Explain the weakest dimension (pronunciation vs fluency) and give 2-3 concrete drills tailored to the specific gaps (e.g. minimal-pair drills, shadowing tempo, syllable stress).',
+    ].join('\n\n')
+  }, [exercise, result])
+
+  return (
+    <section className="flex flex-col gap-3.5 rounded-md border border-border-strong p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Feedback</div>
+        <div className="ml-auto">
+          <AICoachPill
+            personaSlug="english-coach"
+            coachName="english coach"
+            contextNote={coachContext}
+            label="Why this score?"
+          />
+        </div>
+      </div>
+      <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
+        <ScoreTile label="Pronunciation" value={result.pronunciationScore} />
+        <ScoreTile label="Fluency" value={result.fluencyScore} />
+      </div>
+      <div className="text-sm leading-relaxed text-text-primary">{result.coachFeedback}</div>
+      {result.userTranscript && (
+        <div className="flex flex-col gap-1.5">
+          <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Heard</div>
+          <div className="rounded-md border border-border bg-transparent px-3 py-2 font-mono text-xs leading-relaxed text-text-secondary">
+            {result.userTranscript}
+          </div>
+        </div>
+      )}
+      <div className="flex flex-col gap-1.5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Word-level</div>
+        <WordDiffView diffs={result.wordDiffs} />
+      </div>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="self-start rounded-full border border-border bg-transparent px-3.5 py-1.5 text-xs text-text-primary hover:bg-surface-2"
+      >
+        Try again
+      </button>
+    </section>
   )
 }
 

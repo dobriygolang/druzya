@@ -253,6 +253,13 @@ gen-check: generate ## Fail if codegen output drifted from committed files (CI)
 tokens: ## Regenerate cross-app design tokens (motion + focus + density + typography) from design/tokens/source.mjs
 	@node design/tokens/emit.mjs
 
+.PHONY: regen-speaking-tts
+regen-speaking-tts: ## Bulk-regenerate reference TTS audio for speaking_exercises (admin one-shot)
+	# Phase K Wave 9 — requires POSTGRES_DSN + CLOUDFLARE_API_KEY +
+	# CLOUDFLARE_ACCOUNT_ID + MINIO_* envs. By default skips rows that
+	# already have audio_url; pass FORCE=1 to overwrite.
+	@cd backend/cmd/regen_speaking_tts && go run . $(if $(FORCE),--force) $(if $(ID),--id $(ID))
+
 .PHONY: check-fixed-widths
 check-fixed-widths: ## Lint advisory — flag NEW inline `width: NNNpx` without min/max (responsive-rule guard)
 	@tools/check-fixed-widths.sh
@@ -296,6 +303,10 @@ migrate-new: ## Create a new migration with auto-incremented unique number. Usag
 .PHONY: seed
 seed: ## Load seed data (tasks, companies)
 	cd backend && go run ./scripts/seed
+
+.PHONY: seed-english
+seed-english: ## Phase K Wave 9 — seed Sergey-curated English content на eng_* atlas nodes (idempotent merge by URL)
+	cd backend/cmd/seed_english_resources && PG_DSN="postgres://druz9:druz9@localhost:5432/druz9?sslmode=disable" go run .
 
 .PHONY: check-stubs
 check-stubs: ## Warn about STUB comments (CI advisory)

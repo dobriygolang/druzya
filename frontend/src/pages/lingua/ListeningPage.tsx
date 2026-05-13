@@ -2,8 +2,11 @@
 //
 // Two-pane: library + player. Audio player + transcript click-on-word.
 // Vocab queue shared с Reading (single SRS table).
-import { useCallback, useEffect, useState } from 'react'
+// Phase K W9: AICoachPill в Player'е — coach видит transcript excerpt
+// (selection если есть, иначе head 600 chars).
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { AICoachPill } from '../../components/AICoachPill'
 import { AudioPlayer } from '../../components/lingua/AudioPlayer'
 import { VocabPopover, WordTokenizedText, type VocabPopoverAnchor } from '../../components/lingua/WordToken'
 import {
@@ -411,6 +414,7 @@ function isPlayableAudioUrl(s: string): boolean {
 function Player({ materialId, onExit }: { materialId: string; onExit: () => void }) {
   const materialQuery = useListeningMaterialQuery(materialId)
   const [popover, setPopover] = useState<VocabPopoverAnchor | null>(null)
+  const [selectedText, setSelectedText] = useState<string>('')
   const addVocabMut = useAddVocabMutation()
 
   // Esc → exit.
@@ -424,6 +428,27 @@ function Player({ materialId, onExit }: { materialId: string; onExit: () => void
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onExit])
+
+  // Track selection inside the transcript for the AICoachPill context.
+  // If user selected something — pill будет передавать the selection;
+  // иначе — fallback'нёт на head excerpt (см. coachContext ниже).
+  useEffect(() => {
+    const onSelect = () => {
+      const sel = window.getSelection?.()
+      if (!sel || sel.isCollapsed) {
+        setSelectedText('')
+        return
+      }
+      const txt = sel.toString().trim()
+      if (txt.length < 4) {
+        setSelectedText('')
+        return
+      }
+      setSelectedText(txt.length > 800 ? txt.slice(0, 800) + '…' : txt)
+    }
+    document.addEventListener('selectionchange', onSelect)
+    return () => document.removeEventListener('selectionchange', onSelect)
+  }, [])
 
   const handleWordClick = useCallback(
     (word: string, context: string, e: React.MouseEvent<HTMLSpanElement>) => {
@@ -454,17 +479,35 @@ function Player({ materialId, onExit }: { materialId: string; onExit: () => void
     [popover, addVocabMut],
   )
 
+  const material = materialQuery.data
+
+  const coachContext = useMemo(() => {
+    if (!material) return ''
+    if (selectedText) {
+      return [
+        `Student is listening to «${material.title}» and asks about a selected segment.`,
+        `Selected transcript: «${selectedText}»`,
+      ].join('\n\n')
+    }
+    const head = material.transcriptMd?.replace(/\s+/g, ' ').trim().slice(0, 600) ?? ''
+    const tail = (material.transcriptMd?.length ?? 0) > 600 ? '…' : ''
+    return [
+      `Student is listening to «${material.title}».`,
+      head ? `Transcript excerpt: ${head}${tail}` : 'No transcript available.',
+      'Tip: ask coach to explain a word, phrase, idiom, or the speaker’s point — or select a span in the transcript before asking.',
+    ].join('\n\n')
+  }, [material, selectedText])
+
   if (materialQuery.isLoading) {
     return <div className="mx-auto w-full max-w-3xl px-4 py-8 text-xs text-text-muted">Loading…</div>
   }
-  if (materialQuery.error || !materialQuery.data) {
+  if (materialQuery.error || !material) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-8 text-xs text-text-muted">
         Не удалось открыть материал: {materialQuery.error?.message ?? 'not found'}
       </div>
     )
   }
-  const material = materialQuery.data
 
   return (
     <>
@@ -480,6 +523,20 @@ function Player({ materialId, onExit }: { materialId: string; onExit: () => void
           <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface-1 px-3.5 py-3">
             <AudioPlayer src={material.audioUrl} compact={false} />
             <audio src={material.audioUrl} controls preload="auto" className="min-w-0 flex-1" />
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <AICoachPill
+              personaSlug="english-coach"
+              coachName="english coach"
+              contextNote={coachContext}
+              label={selectedText ? 'Ask coach about the selected segment' : 'Ask coach about this audio'}
+            />
+            {selectedText && (
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+                · selection of {selectedText.length} chars
+              </span>
+            )}
           </div>
 
           {material.transcriptMd ? (

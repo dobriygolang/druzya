@@ -68,6 +68,23 @@ func (r *SpeakingExerciseRepoPG) List(ctx context.Context, level domain.Speaking
 	return out, nil
 }
 
+// UpdateAudioURL writes the synthesized reference audio URL onto the
+// catalog row. ErrNotFound when id absent — caller must Get() first
+// (use-case does, before calling TTS provider). audio_url пустое
+// допустимо (явный wipe — admin может "снять" generated audio чтобы
+// клиент fallback'нулся на speechSynthesis).
+func (r *SpeakingExerciseRepoPG) UpdateAudioURL(ctx context.Context, id, audioURL string) error {
+	const q = `UPDATE speaking_exercises SET audio_url = $2 WHERE id = $1`
+	tag, err := r.pool.Exec(ctx, q, id, audioURL)
+	if err != nil {
+		return fmt.Errorf("hone.UpdateSpeakingAudioURL: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("hone.UpdateSpeakingAudioURL: %w", domain.ErrNotFound)
+	}
+	return nil
+}
+
 // Get one exercise by id. Returns ErrNotFound when absent so the
 // use-case can map to 404.
 func (r *SpeakingExerciseRepoPG) Get(ctx context.Context, id string) (domain.SpeakingExercise, error) {

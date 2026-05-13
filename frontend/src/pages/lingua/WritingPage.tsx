@@ -1,9 +1,11 @@
 // WritingPage — Phase K W8 port of Hone Writing.
 //
 // Title + textarea + «Get feedback» → LLM grading с per-issue Apply Fix.
-// No persistence (web-only state). E2 deferred: no AI coach pill here.
+// No persistence (web-only state). Phase K W9: AICoachPill (per-issue +
+// overall) — coach explains rubric criterion + how to fix in general.
 import { useCallback, useMemo, useState } from 'react'
 
+import { AICoachPill } from '../../components/AICoachPill'
 import {
   useGradeWritingMutation,
 } from '../../lib/queries/lingua'
@@ -129,6 +131,7 @@ export default function WritingPage() {
         <FeedbackPanel
           feedback={grading.feedback}
           text={text}
+          title={title}
           onApply={(issue) => {
             const next = applyIssueOnce(text, issue)
             if (next !== null) setText(next)
@@ -143,11 +146,13 @@ export default function WritingPage() {
 function FeedbackPanel({
   feedback,
   text,
+  title,
   onApply,
   onReset,
 }: {
   feedback: WritingFeedback
   text: string
+  title: string
   onApply: (issue: WritingIssue) => void
   onReset: () => void
 }) {
@@ -156,6 +161,21 @@ function FeedbackPanel({
   const stripe =
     tier === 'strong' ? 'rgba(255, 255, 255, 0.85)' : tier === 'mid' ? 'rgba(255, 255, 255, 0.55)' : '#FF3B30'
   const label = tier === 'strong' ? 'Strong' : tier === 'mid' ? 'OK — some gaps' : 'Needs work'
+
+  const overallContext = useMemo(() => {
+    const excerpt = text.replace(/\s+/g, ' ').trim().slice(0, 800)
+    const tail = text.length > 800 ? '…' : ''
+    const issueLines = feedback.issues
+      .slice(0, 6)
+      .map((iss) => `- [${CATEGORY_LABEL[iss.category]}] «${iss.excerpt}» → ${iss.suggestion}`)
+      .join('\n')
+    return [
+      `Student wrote a draft${title ? ` titled «${title}»` : ''}.`,
+      `Overall AI score: ${score}/100 (${label}).`,
+      `Draft excerpt: ${excerpt}${tail}`,
+      feedback.issues.length > 0 ? `Top issues:\n${issueLines}` : 'No issues flagged.',
+    ].join('\n\n')
+  }, [text, title, score, label, feedback.issues])
 
   return (
     <section className="mt-8 border-t border-border pt-6">
@@ -171,13 +191,21 @@ function FeedbackPanel({
             <span className="ml-2 text-sm text-text-secondary">{label}</span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onReset}
-          className="ml-auto rounded-md border border-border bg-transparent px-3.5 py-1.5 text-xs text-text-secondary hover:bg-surface-2"
-        >
-          Edit more
-        </button>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <AICoachPill
+            personaSlug="english-coach"
+            coachName="english coach"
+            contextNote={overallContext}
+            label="Спросить coach'а про это эссе"
+          />
+          <button
+            type="button"
+            onClick={onReset}
+            className="rounded-md border border-border bg-transparent px-3.5 py-1.5 text-xs text-text-secondary hover:bg-surface-2"
+          >
+            Edit more
+          </button>
+        </div>
       </div>
 
       {feedback.issues.length === 0 ? (
@@ -186,7 +214,12 @@ function FeedbackPanel({
         <ul className="flex flex-col gap-2.5">
           {feedback.issues.map((issue, i) => (
             <li key={i}>
-              <IssueRow issue={issue} present={containsExcerpt(text, issue.excerpt)} onApply={() => onApply(issue)} />
+              <IssueRow
+                issue={issue}
+                present={containsExcerpt(text, issue.excerpt)}
+                onApply={() => onApply(issue)}
+                title={title}
+              />
             </li>
           ))}
         </ul>
@@ -199,11 +232,26 @@ function IssueRow({
   issue,
   present,
   onApply,
+  title,
 }: {
   issue: WritingIssue
   present: boolean
   onApply: () => void
+  title: string
 }) {
+  const issueContext = useMemo(() => {
+    return [
+      `Student is reviewing a writing issue${title ? ` from draft «${title}»` : ''}.`,
+      `Rubric category: ${CATEGORY_LABEL[issue.category]}.`,
+      `Excerpt: «${issue.excerpt}»`,
+      `Suggested fix: ${issue.suggestion}`,
+      issue.explanation ? `AI explanation: ${issue.explanation}` : '',
+      'Explain why this category matters (rubric criterion) and 1-2 general rules the student can apply next time. Avoid just rephrasing — teach the principle.',
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+  }, [issue, title])
+
   return (
     <article
       className="rounded-md border border-border bg-transparent px-3.5 py-3"
@@ -216,15 +264,23 @@ function IssueRow({
         >
           {CATEGORY_LABEL[issue.category]}
         </span>
-        <button
-          type="button"
-          onClick={onApply}
-          disabled={!present}
-          className="ml-auto rounded-md border border-border bg-transparent px-2.5 py-1 text-[10px] text-text-secondary transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
-          title={present ? 'Replace excerpt with suggestion' : 'Excerpt no longer in draft'}
-        >
-          Apply fix
-        </button>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <AICoachPill
+            personaSlug="english-coach"
+            coachName="english coach"
+            contextNote={issueContext}
+            label="Ask coach"
+          />
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={!present}
+            className="rounded-md border border-border bg-transparent px-2.5 py-1 text-[10px] text-text-secondary transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
+            title={present ? 'Replace excerpt with suggestion' : 'Excerpt no longer in draft'}
+          >
+            Apply fix
+          </button>
+        </div>
       </div>
       <div className="mb-1.5 font-serif text-sm italic text-text-secondary">«{issue.excerpt}»</div>
       <div className="mb-1 text-sm leading-snug text-text-primary">{issue.suggestion}</div>

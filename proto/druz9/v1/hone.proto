@@ -875,6 +875,21 @@ service HoneService {
   rpc ListSpeakingHistory(ListSpeakingHistoryRequest) returns (ListSpeakingHistoryResponse) {
     option (google.api.http) = {get: "/api/v1/hone/speaking/history"};
   }
+
+  // GenerateSpeakingTTS — admin-only. Synthesises reference audio for one
+  // speaking_exercises row via the configured free-tier TTS provider
+  // (Cloudflare MeloTTS / Groq PlayAI / Google), uploads to MinIO bucket
+  // `tts-audio`, and persists the public URL into speaking_exercises.audio_url.
+  // Idempotent: skips when audio_url already populated unless `force=true`.
+  // Admin gate happens via REST router (see monolith hone wiring) — the RPC
+  // body itself only requires authenticated user (admin role enforced
+  // before the transcoder fires).
+  rpc GenerateSpeakingTTS(GenerateSpeakingTTSRequest) returns (GenerateSpeakingTTSResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/hone/speaking/exercises/{exercise_id}/tts"
+      body: "*"
+    };
+  }
 }
 
 // ─── Publish-to-web messages ────────────────────────────────────────────────
@@ -1630,4 +1645,19 @@ message ListSpeakingHistoryRequest {
 
 message ListSpeakingHistoryResponse {
   repeated SpeakingSession items = 1;
+}
+
+// GenerateSpeakingTTS messages — admin-only batch helper. Reads the
+// reference prompt from speaking_exercises, calls a free-tier TTS
+// provider (cascade в hone-bootstrap; default Cloudflare MeloTTS),
+// uploads MP3 to MinIO bucket `tts-audio`, and writes the public URL
+// back into speaking_exercises.audio_url. `force=false` skips rows
+// that already have audio_url.
+message GenerateSpeakingTTSRequest {
+  string exercise_id = 1;
+  bool   force       = 2;
+}
+
+message GenerateSpeakingTTSResponse {
+  string audio_url = 1;
 }
