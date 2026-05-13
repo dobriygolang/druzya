@@ -32,6 +32,8 @@ type nextActionLoader struct {
 	tracks           *intelInfra.TrackReader
 	focusReflections *intelInfra.FocusReflectionsPostgres
 	mlProfile        *intelInfra.MLProfileReader
+	// Wave 15: 24h activity counters (counts only).
+	recentActivity *intelInfra.RecentActivityReader
 }
 
 // LoadNextActionContext implements intelPorts.NextActionContextLoader.
@@ -99,6 +101,13 @@ func (l *nextActionLoader) LoadNextActionContext(
 	if l.mlProfile != nil {
 		if profile, err := l.mlProfile.GetMLProfile(ctx, userID); err == nil {
 			out.ML = profile
+		}
+	}
+
+	// Wave 15: 24h activity snapshot — coach sees what user did recently.
+	if l.recentActivity != nil {
+		if snap, err := l.recentActivity.Last24h(ctx, userID); err == nil {
+			out.RecentActivity24h = snap
 		}
 	}
 

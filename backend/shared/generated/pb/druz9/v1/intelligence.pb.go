@@ -590,7 +590,11 @@ func (*GetMemoryStatsRequest) Descriptor() ([]byte, []int) {
 type GetDailyBriefRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// force=true bypasses the 6h cache. Rate-limited 1/h per user.
-	Force         bool `protobuf:"varint,1,opt,name=force,proto3" json:"force,omitempty"`
+	Force bool `protobuf:"varint,1,opt,name=force,proto3" json:"force,omitempty"`
+	// Wave 15: surface — 'web' | 'hone' | 'cue'. Brief synth uses this
+	// to bias recommendations (web → atlas / codex / lingua read; hone →
+	// focus session on task; cue → interview prep). Empty defaults to web.
+	Source        string `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -630,6 +634,13 @@ func (x *GetDailyBriefRequest) GetForce() bool {
 		return x.Force
 	}
 	return false
+}
+
+func (x *GetDailyBriefRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
 }
 
 // Citation — one note referenced by [N] in AskAnswer.answer_md.
@@ -1210,6 +1221,10 @@ func (x *GetNextActionRequest) GetForce() bool {
 }
 
 // NextAction — single concrete next action, formatted из LLM JSON.
+//
+// Wave 15: optional secondary_action surfaces a cross-vertical insight
+// when its severity is high enough (≥ warn). UI рендерит как second
+// pinned card under the main action. Empty fields → no secondary.
 type NextAction struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// action_kind ∈ focus_block | start_mock | review_resource | reflection |
@@ -1221,8 +1236,17 @@ type NextAction struct {
 	Target           string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
 	Rationale        string `protobuf:"bytes,3,opt,name=rationale,proto3" json:"rationale,omitempty"`
 	EstimatedMinutes int32  `protobuf:"varint,4,opt,name=estimated_minutes,json=estimatedMinutes,proto3" json:"estimated_minutes,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Wave 15: cross-vertical "second priority" — populated when a
+	// CrossVerticalInsights producer fires with severity ≥ warn.
+	// secondary_kind is the producer's stable kind ("mock:fails" /
+	// "english:speaking-low" / "vocab:lag"). Empty when no high-severity
+	// signal.
+	SecondaryKind        string `protobuf:"bytes,5,opt,name=secondary_kind,json=secondaryKind,proto3" json:"secondary_kind,omitempty"`
+	SecondaryMessageMd   string `protobuf:"bytes,6,opt,name=secondary_message_md,json=secondaryMessageMd,proto3" json:"secondary_message_md,omitempty"`
+	SecondaryActionUrl   string `protobuf:"bytes,7,opt,name=secondary_action_url,json=secondaryActionUrl,proto3" json:"secondary_action_url,omitempty"`
+	SecondaryActionLabel string `protobuf:"bytes,8,opt,name=secondary_action_label,json=secondaryActionLabel,proto3" json:"secondary_action_label,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *NextAction) Reset() {
@@ -1281,6 +1305,34 @@ func (x *NextAction) GetEstimatedMinutes() int32 {
 		return x.EstimatedMinutes
 	}
 	return 0
+}
+
+func (x *NextAction) GetSecondaryKind() string {
+	if x != nil {
+		return x.SecondaryKind
+	}
+	return ""
+}
+
+func (x *NextAction) GetSecondaryMessageMd() string {
+	if x != nil {
+		return x.SecondaryMessageMd
+	}
+	return ""
+}
+
+func (x *NextAction) GetSecondaryActionUrl() string {
+	if x != nil {
+		return x.SecondaryActionUrl
+	}
+	return ""
+}
+
+func (x *NextAction) GetSecondaryActionLabel() string {
+	if x != nil {
+		return x.SecondaryActionLabel
+	}
+	return ""
 }
 
 // GetForkSnapshotRequest — empty.
@@ -3840,6 +3892,126 @@ func (x *SkillRadarSnapshot) GetStrongestAxis() string {
 	return ""
 }
 
+// RecentActivity24h — Wave 15 cross-surface memory. Counts only (no
+// content) so the bundle stays small + privacy-safe. Both Hone and web
+// see «вчера ты сделал 3 focus session, 2 mock attempts, 5 vocab cards»
+// when first loading a coach screen.
+type RecentActivity24H struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	FocusSessionsCount int32                  `protobuf:"varint,1,opt,name=focus_sessions_count,json=focusSessionsCount,proto3" json:"focus_sessions_count,omitempty"`
+	FocusMinutesTotal  int32                  `protobuf:"varint,2,opt,name=focus_minutes_total,json=focusMinutesTotal,proto3" json:"focus_minutes_total,omitempty"`
+	TasksDone          int32                  `protobuf:"varint,3,opt,name=tasks_done,json=tasksDone,proto3" json:"tasks_done,omitempty"`
+	MockAttempts       int32                  `protobuf:"varint,4,opt,name=mock_attempts,json=mockAttempts,proto3" json:"mock_attempts,omitempty"`
+	LastMockResult     int32                  `protobuf:"varint,5,opt,name=last_mock_result,json=lastMockResult,proto3" json:"last_mock_result,omitempty"` // 0..100, 0 if none
+	NotesCreated       int32                  `protobuf:"varint,6,opt,name=notes_created,json=notesCreated,proto3" json:"notes_created,omitempty"`
+	ReadingMinutes     int32                  `protobuf:"varint,7,opt,name=reading_minutes,json=readingMinutes,proto3" json:"reading_minutes,omitempty"`
+	SpeakingAttempts   int32                  `protobuf:"varint,8,opt,name=speaking_attempts,json=speakingAttempts,proto3" json:"speaking_attempts,omitempty"`
+	SpeakingAvgScore   float64                `protobuf:"fixed64,9,opt,name=speaking_avg_score,json=speakingAvgScore,proto3" json:"speaking_avg_score,omitempty"` // 0..100
+	VocabReviewed      int32                  `protobuf:"varint,10,opt,name=vocab_reviewed,json=vocabReviewed,proto3" json:"vocab_reviewed,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *RecentActivity24H) Reset() {
+	*x = RecentActivity24H{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecentActivity24H) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecentActivity24H) ProtoMessage() {}
+
+func (x *RecentActivity24H) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecentActivity24H.ProtoReflect.Descriptor instead.
+func (*RecentActivity24H) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *RecentActivity24H) GetFocusSessionsCount() int32 {
+	if x != nil {
+		return x.FocusSessionsCount
+	}
+	return 0
+}
+
+func (x *RecentActivity24H) GetFocusMinutesTotal() int32 {
+	if x != nil {
+		return x.FocusMinutesTotal
+	}
+	return 0
+}
+
+func (x *RecentActivity24H) GetTasksDone() int32 {
+	if x != nil {
+		return x.TasksDone
+	}
+	return 0
+}
+
+func (x *RecentActivity24H) GetMockAttempts() int32 {
+	if x != nil {
+		return x.MockAttempts
+	}
+	return 0
+}
+
+func (x *RecentActivity24H) GetLastMockResult() int32 {
+	if x != nil {
+		return x.LastMockResult
+	}
+	return 0
+}
+
+func (x *RecentActivity24H) GetNotesCreated() int32 {
+	if x != nil {
+		return x.NotesCreated
+	}
+	return 0
+}
+
+func (x *RecentActivity24H) GetReadingMinutes() int32 {
+	if x != nil {
+		return x.ReadingMinutes
+	}
+	return 0
+}
+
+func (x *RecentActivity24H) GetSpeakingAttempts() int32 {
+	if x != nil {
+		return x.SpeakingAttempts
+	}
+	return 0
+}
+
+func (x *RecentActivity24H) GetSpeakingAvgScore() float64 {
+	if x != nil {
+		return x.SpeakingAvgScore
+	}
+	return 0
+}
+
+func (x *RecentActivity24H) GetVocabReviewed() int32 {
+	if x != nil {
+		return x.VocabReviewed
+	}
+	return 0
+}
+
 // AtlasResourceRef — top-N relevant resources for the user's active goal +
 // recent activity. Stub: empty until atlas-retrieval API lands. Kept in
 // the schema so clients render the section once data flows.
@@ -3856,7 +4028,7 @@ type AtlasResourceRef struct {
 
 func (x *AtlasResourceRef) Reset() {
 	*x = AtlasResourceRef{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[56]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3868,7 +4040,7 @@ func (x *AtlasResourceRef) String() string {
 func (*AtlasResourceRef) ProtoMessage() {}
 
 func (x *AtlasResourceRef) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[56]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3881,7 +4053,7 @@ func (x *AtlasResourceRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AtlasResourceRef.ProtoReflect.Descriptor instead.
 func (*AtlasResourceRef) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{56}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *AtlasResourceRef) GetId() string {
@@ -3929,13 +4101,15 @@ type UserContext struct {
 	// relevant_resources — top-5 atlas hits. Empty until atlas retrieval
 	// hook wired (see TODO in intelligence.app.GetUserContext).
 	RelevantResources []*AtlasResourceRef `protobuf:"bytes,5,rep,name=relevant_resources,json=relevantResources,proto3" json:"relevant_resources,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Wave 15: 24h activity snapshot — counts only (privacy).
+	RecentActivity *RecentActivity24H `protobuf:"bytes,6,opt,name=recent_activity,json=recentActivity,proto3" json:"recent_activity,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *UserContext) Reset() {
 	*x = UserContext{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[57]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3947,7 +4121,7 @@ func (x *UserContext) String() string {
 func (*UserContext) ProtoMessage() {}
 
 func (x *UserContext) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[57]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3960,7 +4134,7 @@ func (x *UserContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserContext.ProtoReflect.Descriptor instead.
 func (*UserContext) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{57}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *UserContext) GetActiveGoal() *Goal {
@@ -3998,6 +4172,13 @@ func (x *UserContext) GetRelevantResources() []*AtlasResourceRef {
 	return nil
 }
 
+func (x *UserContext) GetRecentActivity() *RecentActivity24H {
+	if x != nil {
+		return x.RecentActivity
+	}
+	return nil
+}
+
 type GetUserContextRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -4006,7 +4187,7 @@ type GetUserContextRequest struct {
 
 func (x *GetUserContextRequest) Reset() {
 	*x = GetUserContextRequest{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[58]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4018,7 +4199,7 @@ func (x *GetUserContextRequest) String() string {
 func (*GetUserContextRequest) ProtoMessage() {}
 
 func (x *GetUserContextRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[58]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4031,7 +4212,7 @@ func (x *GetUserContextRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserContextRequest.ProtoReflect.Descriptor instead.
 func (*GetUserContextRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{58}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{59}
 }
 
 type GetUserContextResponse struct {
@@ -4043,7 +4224,7 @@ type GetUserContextResponse struct {
 
 func (x *GetUserContextResponse) Reset() {
 	*x = GetUserContextResponse{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[59]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4055,7 +4236,7 @@ func (x *GetUserContextResponse) String() string {
 func (*GetUserContextResponse) ProtoMessage() {}
 
 func (x *GetUserContextResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[59]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4068,7 +4249,7 @@ func (x *GetUserContextResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserContextResponse.ProtoReflect.Descriptor instead.
 func (*GetUserContextResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{59}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *GetUserContextResponse) GetContext() *UserContext {
@@ -4097,7 +4278,7 @@ type SaveFocusReflectionRequest struct {
 
 func (x *SaveFocusReflectionRequest) Reset() {
 	*x = SaveFocusReflectionRequest{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[60]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4109,7 +4290,7 @@ func (x *SaveFocusReflectionRequest) String() string {
 func (*SaveFocusReflectionRequest) ProtoMessage() {}
 
 func (x *SaveFocusReflectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[60]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4122,7 +4303,7 @@ func (x *SaveFocusReflectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveFocusReflectionRequest.ProtoReflect.Descriptor instead.
 func (*SaveFocusReflectionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{60}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *SaveFocusReflectionRequest) GetSessionId() string {
@@ -4190,7 +4371,7 @@ type SaveFocusReflectionResponse struct {
 
 func (x *SaveFocusReflectionResponse) Reset() {
 	*x = SaveFocusReflectionResponse{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[61]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4202,7 +4383,7 @@ func (x *SaveFocusReflectionResponse) String() string {
 func (*SaveFocusReflectionResponse) ProtoMessage() {}
 
 func (x *SaveFocusReflectionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[61]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4215,7 +4396,7 @@ func (x *SaveFocusReflectionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveFocusReflectionResponse.ProtoReflect.Descriptor instead.
 func (*SaveFocusReflectionResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{61}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *SaveFocusReflectionResponse) GetReflectionId() string {
@@ -4239,7 +4420,7 @@ type FocusReflectionEntry struct {
 
 func (x *FocusReflectionEntry) Reset() {
 	*x = FocusReflectionEntry{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[62]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4251,7 +4432,7 @@ func (x *FocusReflectionEntry) String() string {
 func (*FocusReflectionEntry) ProtoMessage() {}
 
 func (x *FocusReflectionEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[62]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4264,7 +4445,7 @@ func (x *FocusReflectionEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FocusReflectionEntry.ProtoReflect.Descriptor instead.
 func (*FocusReflectionEntry) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{62}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *FocusReflectionEntry) GetReflectionId() string {
@@ -4312,7 +4493,7 @@ type ListFocusReflectionsRequest struct {
 
 func (x *ListFocusReflectionsRequest) Reset() {
 	*x = ListFocusReflectionsRequest{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[63]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4324,7 +4505,7 @@ func (x *ListFocusReflectionsRequest) String() string {
 func (*ListFocusReflectionsRequest) ProtoMessage() {}
 
 func (x *ListFocusReflectionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[63]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4337,7 +4518,7 @@ func (x *ListFocusReflectionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFocusReflectionsRequest.ProtoReflect.Descriptor instead.
 func (*ListFocusReflectionsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{63}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ListFocusReflectionsRequest) GetWindowDays() int32 {
@@ -4356,7 +4537,7 @@ type ListFocusReflectionsResponse struct {
 
 func (x *ListFocusReflectionsResponse) Reset() {
 	*x = ListFocusReflectionsResponse{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[64]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4368,7 +4549,7 @@ func (x *ListFocusReflectionsResponse) String() string {
 func (*ListFocusReflectionsResponse) ProtoMessage() {}
 
 func (x *ListFocusReflectionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[64]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4381,10 +4562,175 @@ func (x *ListFocusReflectionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFocusReflectionsResponse.ProtoReflect.Descriptor instead.
 func (*ListFocusReflectionsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{64}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ListFocusReflectionsResponse) GetItems() []*FocusReflectionEntry {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// ── Wave 15 Cross-vertical insights v2 messages (2026-05-13) ───────────
+//
+// CrossVerticalInsight — flatter shape than Insight (no event_id /
+// anchor / acted_at / dismissed_at). UI renders message_md как markdown,
+// suggested_action_* как CTA chip. severity uses the same enum so colour
+// mapping is shared with Insight.
+type CrossVerticalInsight struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// kind — stable identifier (e.g. "english:speaking-low", "mock:fails",
+	// "vocab:lag"). Used by clients for analytics / dedupe.
+	Kind                 string          `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Severity             InsightSeverity `protobuf:"varint,2,opt,name=severity,proto3,enum=druz9.v1.InsightSeverity" json:"severity,omitempty"` // 1..4 (cruise..critical)
+	MessageMd            string          `protobuf:"bytes,3,opt,name=message_md,json=messageMd,proto3" json:"message_md,omitempty"`
+	SuggestedActionUrl   string          `protobuf:"bytes,4,opt,name=suggested_action_url,json=suggestedActionUrl,proto3" json:"suggested_action_url,omitempty"`
+	SuggestedActionLabel string          `protobuf:"bytes,5,opt,name=suggested_action_label,json=suggestedActionLabel,proto3" json:"suggested_action_label,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *CrossVerticalInsight) Reset() {
+	*x = CrossVerticalInsight{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CrossVerticalInsight) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CrossVerticalInsight) ProtoMessage() {}
+
+func (x *CrossVerticalInsight) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CrossVerticalInsight.ProtoReflect.Descriptor instead.
+func (*CrossVerticalInsight) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *CrossVerticalInsight) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *CrossVerticalInsight) GetSeverity() InsightSeverity {
+	if x != nil {
+		return x.Severity
+	}
+	return InsightSeverity_INSIGHT_SEVERITY_UNSPECIFIED
+}
+
+func (x *CrossVerticalInsight) GetMessageMd() string {
+	if x != nil {
+		return x.MessageMd
+	}
+	return ""
+}
+
+func (x *CrossVerticalInsight) GetSuggestedActionUrl() string {
+	if x != nil {
+		return x.SuggestedActionUrl
+	}
+	return ""
+}
+
+func (x *CrossVerticalInsight) GetSuggestedActionLabel() string {
+	if x != nil {
+		return x.SuggestedActionLabel
+	}
+	return ""
+}
+
+type ListCrossVerticalInsightsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCrossVerticalInsightsRequest) Reset() {
+	*x = ListCrossVerticalInsightsRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCrossVerticalInsightsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCrossVerticalInsightsRequest) ProtoMessage() {}
+
+func (x *ListCrossVerticalInsightsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCrossVerticalInsightsRequest.ProtoReflect.Descriptor instead.
+func (*ListCrossVerticalInsightsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{67}
+}
+
+type ListCrossVerticalInsightsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// items — top 5, severity DESC.
+	Items         []*CrossVerticalInsight `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCrossVerticalInsightsResponse) Reset() {
+	*x = ListCrossVerticalInsightsResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCrossVerticalInsightsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCrossVerticalInsightsResponse) ProtoMessage() {}
+
+func (x *ListCrossVerticalInsightsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCrossVerticalInsightsResponse.ProtoReflect.Descriptor instead.
+func (*ListCrossVerticalInsightsResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *ListCrossVerticalInsightsResponse) GetItems() []*CrossVerticalInsight {
 	if x != nil {
 		return x.Items
 	}
@@ -4412,7 +4758,7 @@ type MarkAtlasStruggleRequest struct {
 
 func (x *MarkAtlasStruggleRequest) Reset() {
 	*x = MarkAtlasStruggleRequest{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[65]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4424,7 +4770,7 @@ func (x *MarkAtlasStruggleRequest) String() string {
 func (*MarkAtlasStruggleRequest) ProtoMessage() {}
 
 func (x *MarkAtlasStruggleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[65]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4437,7 +4783,7 @@ func (x *MarkAtlasStruggleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkAtlasStruggleRequest.ProtoReflect.Descriptor instead.
 func (*MarkAtlasStruggleRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{65}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *MarkAtlasStruggleRequest) GetAtlasNodeId() string {
@@ -4477,7 +4823,7 @@ type MarkAtlasStruggleResponse struct {
 
 func (x *MarkAtlasStruggleResponse) Reset() {
 	*x = MarkAtlasStruggleResponse{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[66]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4489,7 +4835,7 @@ func (x *MarkAtlasStruggleResponse) String() string {
 func (*MarkAtlasStruggleResponse) ProtoMessage() {}
 
 func (x *MarkAtlasStruggleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[66]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4502,7 +4848,7 @@ func (x *MarkAtlasStruggleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkAtlasStruggleResponse.ProtoReflect.Descriptor instead.
 func (*MarkAtlasStruggleResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{66}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *MarkAtlasStruggleResponse) GetOk() bool {
@@ -4523,7 +4869,7 @@ type ListAtlasStrugglesRequest struct {
 
 func (x *ListAtlasStrugglesRequest) Reset() {
 	*x = ListAtlasStrugglesRequest{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[67]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4535,7 +4881,7 @@ func (x *ListAtlasStrugglesRequest) String() string {
 func (*ListAtlasStrugglesRequest) ProtoMessage() {}
 
 func (x *ListAtlasStrugglesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[67]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4548,7 +4894,7 @@ func (x *ListAtlasStrugglesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAtlasStrugglesRequest.ProtoReflect.Descriptor instead.
 func (*ListAtlasStrugglesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{67}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *ListAtlasStrugglesRequest) GetWindowDays() int32 {
@@ -4572,7 +4918,7 @@ type AtlasStruggleMark struct {
 
 func (x *AtlasStruggleMark) Reset() {
 	*x = AtlasStruggleMark{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[68]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4584,7 +4930,7 @@ func (x *AtlasStruggleMark) String() string {
 func (*AtlasStruggleMark) ProtoMessage() {}
 
 func (x *AtlasStruggleMark) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[68]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4597,7 +4943,7 @@ func (x *AtlasStruggleMark) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AtlasStruggleMark.ProtoReflect.Descriptor instead.
 func (*AtlasStruggleMark) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{68}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *AtlasStruggleMark) GetAtlasNodeId() string {
@@ -4644,7 +4990,7 @@ type ListAtlasStrugglesResponse struct {
 
 func (x *ListAtlasStrugglesResponse) Reset() {
 	*x = ListAtlasStrugglesResponse{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[69]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4656,7 +5002,7 @@ func (x *ListAtlasStrugglesResponse) String() string {
 func (*ListAtlasStrugglesResponse) ProtoMessage() {}
 
 func (x *ListAtlasStrugglesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[69]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4669,7 +5015,7 @@ func (x *ListAtlasStrugglesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAtlasStrugglesResponse.ProtoReflect.Descriptor instead.
 func (*ListAtlasStrugglesResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{69}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *ListAtlasStrugglesResponse) GetItems() []*AtlasStruggleMark {
@@ -4690,7 +5036,7 @@ type ClearAtlasStruggleRequest struct {
 
 func (x *ClearAtlasStruggleRequest) Reset() {
 	*x = ClearAtlasStruggleRequest{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[70]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4702,7 +5048,7 @@ func (x *ClearAtlasStruggleRequest) String() string {
 func (*ClearAtlasStruggleRequest) ProtoMessage() {}
 
 func (x *ClearAtlasStruggleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[70]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4715,7 +5061,7 @@ func (x *ClearAtlasStruggleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearAtlasStruggleRequest.ProtoReflect.Descriptor instead.
 func (*ClearAtlasStruggleRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{70}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ClearAtlasStruggleRequest) GetAtlasNodeId() string {
@@ -4734,7 +5080,7 @@ type ClearAtlasStruggleResponse struct {
 
 func (x *ClearAtlasStruggleResponse) Reset() {
 	*x = ClearAtlasStruggleResponse{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[71]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4746,7 +5092,7 @@ func (x *ClearAtlasStruggleResponse) String() string {
 func (*ClearAtlasStruggleResponse) ProtoMessage() {}
 
 func (x *ClearAtlasStruggleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[71]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4759,7 +5105,7 @@ func (x *ClearAtlasStruggleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearAtlasStruggleResponse.ProtoReflect.Descriptor instead.
 func (*ClearAtlasStruggleResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{71}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *ClearAtlasStruggleResponse) GetOk() bool {
@@ -4800,9 +5146,10 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\vByKindEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\x17\n" +
-	"\x15GetMemoryStatsRequest\",\n" +
+	"\x15GetMemoryStatsRequest\"D\n" +
 	"\x14GetDailyBriefRequest\x12\x14\n" +
-	"\x05force\x18\x01 \x01(\bR\x05force\"S\n" +
+	"\x05force\x18\x01 \x01(\bR\x05force\x12\x16\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\"S\n" +
 	"\bCitation\x12\x17\n" +
 	"\anote_id\x18\x01 \x01(\tR\x06noteId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
@@ -4844,14 +5191,18 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x12AckInsightResponse\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\",\n" +
 	"\x14GetNextActionRequest\x12\x14\n" +
-	"\x05force\x18\x01 \x01(\bR\x05force\"\x90\x01\n" +
+	"\x05force\x18\x01 \x01(\bR\x05force\"\xd1\x02\n" +
 	"\n" +
 	"NextAction\x12\x1f\n" +
 	"\vaction_kind\x18\x01 \x01(\tR\n" +
 	"actionKind\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x1c\n" +
 	"\trationale\x18\x03 \x01(\tR\trationale\x12+\n" +
-	"\x11estimated_minutes\x18\x04 \x01(\x05R\x10estimatedMinutes\"\x18\n" +
+	"\x11estimated_minutes\x18\x04 \x01(\x05R\x10estimatedMinutes\x12%\n" +
+	"\x0esecondary_kind\x18\x05 \x01(\tR\rsecondaryKind\x120\n" +
+	"\x14secondary_message_md\x18\x06 \x01(\tR\x12secondaryMessageMd\x120\n" +
+	"\x14secondary_action_url\x18\a \x01(\tR\x12secondaryActionUrl\x124\n" +
+	"\x16secondary_action_label\x18\b \x01(\tR\x14secondaryActionLabel\"\x18\n" +
 	"\x16GetForkSnapshotRequest\"\xbf\x01\n" +
 	"\x0eForkBranchView\x12\x16\n" +
 	"\x06branch\x18\x01 \x01(\tR\x06branch\x12\x1d\n" +
@@ -5058,19 +5409,33 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\vaxis_scores\x18\x03 \x03(\x01R\n" +
 	"axisScores\x12!\n" +
 	"\fweakest_axis\x18\x04 \x01(\tR\vweakestAxis\x12%\n" +
-	"\x0estrongest_axis\x18\x05 \x01(\tR\rstrongestAxis\"^\n" +
+	"\x0estrongest_axis\x18\x05 \x01(\tR\rstrongestAxis\"\xb3\x03\n" +
+	"\x11RecentActivity24h\x120\n" +
+	"\x14focus_sessions_count\x18\x01 \x01(\x05R\x12focusSessionsCount\x12.\n" +
+	"\x13focus_minutes_total\x18\x02 \x01(\x05R\x11focusMinutesTotal\x12\x1d\n" +
+	"\n" +
+	"tasks_done\x18\x03 \x01(\x05R\ttasksDone\x12#\n" +
+	"\rmock_attempts\x18\x04 \x01(\x05R\fmockAttempts\x12(\n" +
+	"\x10last_mock_result\x18\x05 \x01(\x05R\x0elastMockResult\x12#\n" +
+	"\rnotes_created\x18\x06 \x01(\x05R\fnotesCreated\x12'\n" +
+	"\x0freading_minutes\x18\a \x01(\x05R\x0ereadingMinutes\x12+\n" +
+	"\x11speaking_attempts\x18\b \x01(\x05R\x10speakingAttempts\x12,\n" +
+	"\x12speaking_avg_score\x18\t \x01(\x01R\x10speakingAvgScore\x12%\n" +
+	"\x0evocab_reviewed\x18\n" +
+	" \x01(\x05R\rvocabReviewed\"^\n" +
 	"\x10AtlasResourceRef\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x10\n" +
 	"\x03url\x18\x03 \x01(\tR\x03url\x12\x12\n" +
-	"\x04kind\x18\x04 \x01(\tR\x04kind\"\xb5\x02\n" +
+	"\x04kind\x18\x04 \x01(\tR\x04kind\"\xfb\x02\n" +
 	"\vUserContext\x12/\n" +
 	"\vactive_goal\x18\x01 \x01(\v2\x0e.druz9.v1.GoalR\n" +
 	"activeGoal\x12?\n" +
 	"\rrecent_memory\x18\x02 \x03(\v2\x1a.druz9.v1.CoachMemoryEntryR\frecentMemory\x125\n" +
 	"\bactivity\x18\x03 \x01(\v2\x19.druz9.v1.ActivitySummaryR\bactivity\x122\n" +
 	"\x05radar\x18\x04 \x01(\v2\x1c.druz9.v1.SkillRadarSnapshotR\x05radar\x12I\n" +
-	"\x12relevant_resources\x18\x05 \x03(\v2\x1a.druz9.v1.AtlasResourceRefR\x11relevantResources\"\x17\n" +
+	"\x12relevant_resources\x18\x05 \x03(\v2\x1a.druz9.v1.AtlasResourceRefR\x11relevantResources\x12D\n" +
+	"\x0frecent_activity\x18\x06 \x01(\v2\x1b.druz9.v1.RecentActivity24hR\x0erecentActivity\"\x17\n" +
 	"\x15GetUserContextRequest\"I\n" +
 	"\x16GetUserContextResponse\x12/\n" +
 	"\acontext\x18\x01 \x01(\v2\x15.druz9.v1.UserContextR\acontext\"\xc4\x02\n" +
@@ -5100,7 +5465,17 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\vwindow_days\x18\x01 \x01(\x05R\n" +
 	"windowDays\"T\n" +
 	"\x1cListFocusReflectionsResponse\x124\n" +
-	"\x05items\x18\x01 \x03(\v2\x1e.druz9.v1.FocusReflectionEntryR\x05items\"\x8a\x01\n" +
+	"\x05items\x18\x01 \x03(\v2\x1e.druz9.v1.FocusReflectionEntryR\x05items\"\xe8\x01\n" +
+	"\x14CrossVerticalInsight\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x125\n" +
+	"\bseverity\x18\x02 \x01(\x0e2\x19.druz9.v1.InsightSeverityR\bseverity\x12\x1d\n" +
+	"\n" +
+	"message_md\x18\x03 \x01(\tR\tmessageMd\x120\n" +
+	"\x14suggested_action_url\x18\x04 \x01(\tR\x12suggestedActionUrl\x124\n" +
+	"\x16suggested_action_label\x18\x05 \x01(\tR\x14suggestedActionLabel\"\"\n" +
+	" ListCrossVerticalInsightsRequest\"Y\n" +
+	"!ListCrossVerticalInsightsResponse\x124\n" +
+	"\x05items\x18\x01 \x03(\v2\x1e.druz9.v1.CrossVerticalInsightR\x05items\"\x8a\x01\n" +
 	"\x18MarkAtlasStruggleRequest\x12\"\n" +
 	"\ratlas_node_id\x18\x01 \x01(\tR\vatlasNodeId\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x12\x1e\n" +
@@ -5145,7 +5520,7 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x14GOAL_KIND_ANY_SENIOR\x10\x02\x12\x16\n" +
 	"\x12GOAL_KIND_ML_OFFER\x10\x03\x12\x1c\n" +
 	"\x18GOAL_KIND_ENGLISH_TARGET\x10\x04\x12\x14\n" +
-	"\x10GOAL_KIND_CUSTOM\x10\x052\xb2!\n" +
+	"\x10GOAL_KIND_CUSTOM\x10\x052\xdf\"\n" +
 	"\x13IntelligenceService\x12r\n" +
 	"\rGetDailyBrief\x12\x1e.druz9.v1.GetDailyBriefRequest\x1a\x14.druz9.v1.DailyBrief\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/intelligence/daily-brief\x12e\n" +
 	"\bAskNotes\x12\x19.druz9.v1.AskNotesRequest\x1a\x13.druz9.v1.AskAnswer\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/intelligence/ask-notes\x12\x87\x01\n" +
@@ -5179,7 +5554,8 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x0fEditMemoryEntry\x12 .druz9.v1.EditMemoryEntryRequest\x1a\x15.druz9.v1.MemoryEntry\"8\x82\xd3\xe4\x93\x022:\x01*\"-/api/v1/intelligence/memory/entries/{id}/edit\x12\x95\x01\n" +
 	"\x13SaveFocusReflection\x12$.druz9.v1.SaveFocusReflectionRequest\x1a%.druz9.v1.SaveFocusReflectionResponse\"1\x82\xd3\xe4\x93\x02+:\x01*\"&/api/v1/intelligence/focus-reflections\x12\x95\x01\n" +
 	"\x14ListFocusReflections\x12%.druz9.v1.ListFocusReflectionsRequest\x1a&.druz9.v1.ListFocusReflectionsResponse\".\x82\xd3\xe4\x93\x02(\x12&/api/v1/intelligence/focus-reflections\x12~\n" +
-	"\x0eGetUserContext\x12\x1f.druz9.v1.GetUserContextRequest\x1a .druz9.v1.GetUserContextResponse\")\x82\xd3\xe4\x93\x02#\x12!/api/v1/intelligence/user-context\x12\x91\x01\n" +
+	"\x0eGetUserContext\x12\x1f.druz9.v1.GetUserContextRequest\x1a .druz9.v1.GetUserContextResponse\")\x82\xd3\xe4\x93\x02#\x12!/api/v1/intelligence/user-context\x12\xaa\x01\n" +
+	"\x19ListCrossVerticalInsights\x12*.druz9.v1.ListCrossVerticalInsightsRequest\x1a+.druz9.v1.ListCrossVerticalInsightsResponse\"4\x82\xd3\xe4\x93\x02.\x12,/api/v1/intelligence/cross-vertical-insights\x12\x91\x01\n" +
 	"\x11MarkAtlasStruggle\x12\".druz9.v1.MarkAtlasStruggleRequest\x1a#.druz9.v1.MarkAtlasStruggleResponse\"3\x82\xd3\xe4\x93\x02-:\x01*\"(/api/v1/intelligence/atlas/struggle/mark\x12\x8c\x01\n" +
 	"\x12ListAtlasStruggles\x12#.druz9.v1.ListAtlasStrugglesRequest\x1a$.druz9.v1.ListAtlasStrugglesResponse\"+\x82\xd3\xe4\x93\x02%\x12#/api/v1/intelligence/atlas/struggle\x12\x95\x01\n" +
 	"\x12ClearAtlasStruggle\x12#.druz9.v1.ClearAtlasStruggleRequest\x1a$.druz9.v1.ClearAtlasStruggleResponse\"4\x82\xd3\xe4\x93\x02.:\x01*\")/api/v1/intelligence/atlas/struggle/clearB\x8e\x01\n" +
@@ -5198,208 +5574,217 @@ func file_druz9_v1_intelligence_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_intelligence_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 73)
+var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 77)
 var file_druz9_v1_intelligence_proto_goTypes = []any{
-	(BriefRecommendationKind)(0),          // 0: druz9.v1.BriefRecommendationKind
-	(InsightSeverity)(0),                  // 1: druz9.v1.InsightSeverity
-	(GoalKind)(0),                         // 2: druz9.v1.GoalKind
-	(*BriefRecommendation)(nil),           // 3: druz9.v1.BriefRecommendation
-	(*DailyBrief)(nil),                    // 4: druz9.v1.DailyBrief
-	(*AckRecommendationRequest)(nil),      // 5: druz9.v1.AckRecommendationRequest
-	(*AckRecommendationResponse)(nil),     // 6: druz9.v1.AckRecommendationResponse
-	(*MemoryStats)(nil),                   // 7: druz9.v1.MemoryStats
-	(*GetMemoryStatsRequest)(nil),         // 8: druz9.v1.GetMemoryStatsRequest
-	(*GetDailyBriefRequest)(nil),          // 9: druz9.v1.GetDailyBriefRequest
-	(*Citation)(nil),                      // 10: druz9.v1.Citation
-	(*AskAnswer)(nil),                     // 11: druz9.v1.AskAnswer
-	(*AskNotesRequest)(nil),               // 12: druz9.v1.AskNotesRequest
-	(*Insight)(nil),                       // 13: druz9.v1.Insight
-	(*ListInsightsRequest)(nil),           // 14: druz9.v1.ListInsightsRequest
-	(*ListInsightsResponse)(nil),          // 15: druz9.v1.ListInsightsResponse
-	(*AckInsightRequest)(nil),             // 16: druz9.v1.AckInsightRequest
-	(*AckInsightResponse)(nil),            // 17: druz9.v1.AckInsightResponse
-	(*GetNextActionRequest)(nil),          // 18: druz9.v1.GetNextActionRequest
-	(*NextAction)(nil),                    // 19: druz9.v1.NextAction
-	(*GetForkSnapshotRequest)(nil),        // 20: druz9.v1.GetForkSnapshotRequest
-	(*ForkBranchView)(nil),                // 21: druz9.v1.ForkBranchView
-	(*ForkSnapshot)(nil),                  // 22: druz9.v1.ForkSnapshot
-	(*SetLearningModeRequest)(nil),        // 23: druz9.v1.SetLearningModeRequest
-	(*LearningStateView)(nil),             // 24: druz9.v1.LearningStateView
-	(*SetForkBranchRequest)(nil),          // 25: druz9.v1.SetForkBranchRequest
-	(*GetResourceTrailRequest)(nil),       // 26: druz9.v1.GetResourceTrailRequest
-	(*ResourceTouch)(nil),                 // 27: druz9.v1.ResourceTouch
-	(*ResourceTrail)(nil),                 // 28: druz9.v1.ResourceTrail
-	(*GetSkillRadarRequest)(nil),          // 29: druz9.v1.GetSkillRadarRequest
-	(*SkillRadarAxis)(nil),                // 30: druz9.v1.SkillRadarAxis
-	(*SkillRadar)(nil),                    // 31: druz9.v1.SkillRadar
-	(*GetCoachStatsRequest)(nil),          // 32: druz9.v1.GetCoachStatsRequest
-	(*CoachStats)(nil),                    // 33: druz9.v1.CoachStats
-	(*LogResourceRequest)(nil),            // 34: druz9.v1.LogResourceRequest
-	(*LogResourceResponse)(nil),           // 35: druz9.v1.LogResourceResponse
-	(*Goal)(nil),                          // 36: druz9.v1.Goal
-	(*CreateGoalRequest)(nil),             // 37: druz9.v1.CreateGoalRequest
-	(*UpdateGoalRequest)(nil),             // 38: druz9.v1.UpdateGoalRequest
-	(*DeactivateGoalRequest)(nil),         // 39: druz9.v1.DeactivateGoalRequest
-	(*InterviewStage)(nil),                // 40: druz9.v1.InterviewStage
-	(*InterviewSession)(nil),              // 41: druz9.v1.InterviewSession
-	(*IngestInterviewSessionRequest)(nil), // 42: druz9.v1.IngestInterviewSessionRequest
-	(*ListInterviewSessionsRequest)(nil),  // 43: druz9.v1.ListInterviewSessionsRequest
-	(*ListInterviewSessionsResponse)(nil), // 44: druz9.v1.ListInterviewSessionsResponse
-	(*Milestone)(nil),                     // 45: druz9.v1.Milestone
-	(*MilestonesResponse)(nil),            // 46: druz9.v1.MilestonesResponse
-	(*MarkMilestoneDoneRequest)(nil),      // 47: druz9.v1.MarkMilestoneDoneRequest
-	(*NodeCoverage)(nil),                  // 48: druz9.v1.NodeCoverage
-	(*GetNodeCoverageRequest)(nil),        // 49: druz9.v1.GetNodeCoverageRequest
-	(*GetNodeCoverageResponse)(nil),       // 50: druz9.v1.GetNodeCoverageResponse
-	(*MemoryEntry)(nil),                   // 51: druz9.v1.MemoryEntry
-	(*ListMemoryEntriesRequest)(nil),      // 52: druz9.v1.ListMemoryEntriesRequest
-	(*ListMemoryEntriesResponse)(nil),     // 53: druz9.v1.ListMemoryEntriesResponse
-	(*DeleteMemoryEntryRequest)(nil),      // 54: druz9.v1.DeleteMemoryEntryRequest
-	(*EditMemoryEntryRequest)(nil),        // 55: druz9.v1.EditMemoryEntryRequest
-	(*CoachMemoryEntry)(nil),              // 56: druz9.v1.CoachMemoryEntry
-	(*ActivitySummary)(nil),               // 57: druz9.v1.ActivitySummary
-	(*SkillRadarSnapshot)(nil),            // 58: druz9.v1.SkillRadarSnapshot
-	(*AtlasResourceRef)(nil),              // 59: druz9.v1.AtlasResourceRef
-	(*UserContext)(nil),                   // 60: druz9.v1.UserContext
-	(*GetUserContextRequest)(nil),         // 61: druz9.v1.GetUserContextRequest
-	(*GetUserContextResponse)(nil),        // 62: druz9.v1.GetUserContextResponse
-	(*SaveFocusReflectionRequest)(nil),    // 63: druz9.v1.SaveFocusReflectionRequest
-	(*SaveFocusReflectionResponse)(nil),   // 64: druz9.v1.SaveFocusReflectionResponse
-	(*FocusReflectionEntry)(nil),          // 65: druz9.v1.FocusReflectionEntry
-	(*ListFocusReflectionsRequest)(nil),   // 66: druz9.v1.ListFocusReflectionsRequest
-	(*ListFocusReflectionsResponse)(nil),  // 67: druz9.v1.ListFocusReflectionsResponse
-	(*MarkAtlasStruggleRequest)(nil),      // 68: druz9.v1.MarkAtlasStruggleRequest
-	(*MarkAtlasStruggleResponse)(nil),     // 69: druz9.v1.MarkAtlasStruggleResponse
-	(*ListAtlasStrugglesRequest)(nil),     // 70: druz9.v1.ListAtlasStrugglesRequest
-	(*AtlasStruggleMark)(nil),             // 71: druz9.v1.AtlasStruggleMark
-	(*ListAtlasStrugglesResponse)(nil),    // 72: druz9.v1.ListAtlasStrugglesResponse
-	(*ClearAtlasStruggleRequest)(nil),     // 73: druz9.v1.ClearAtlasStruggleRequest
-	(*ClearAtlasStruggleResponse)(nil),    // 74: druz9.v1.ClearAtlasStruggleResponse
-	nil,                                   // 75: druz9.v1.MemoryStats.ByKindEntry
-	(*timestamppb.Timestamp)(nil),         // 76: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                 // 77: google.protobuf.Empty
+	(BriefRecommendationKind)(0),              // 0: druz9.v1.BriefRecommendationKind
+	(InsightSeverity)(0),                      // 1: druz9.v1.InsightSeverity
+	(GoalKind)(0),                             // 2: druz9.v1.GoalKind
+	(*BriefRecommendation)(nil),               // 3: druz9.v1.BriefRecommendation
+	(*DailyBrief)(nil),                        // 4: druz9.v1.DailyBrief
+	(*AckRecommendationRequest)(nil),          // 5: druz9.v1.AckRecommendationRequest
+	(*AckRecommendationResponse)(nil),         // 6: druz9.v1.AckRecommendationResponse
+	(*MemoryStats)(nil),                       // 7: druz9.v1.MemoryStats
+	(*GetMemoryStatsRequest)(nil),             // 8: druz9.v1.GetMemoryStatsRequest
+	(*GetDailyBriefRequest)(nil),              // 9: druz9.v1.GetDailyBriefRequest
+	(*Citation)(nil),                          // 10: druz9.v1.Citation
+	(*AskAnswer)(nil),                         // 11: druz9.v1.AskAnswer
+	(*AskNotesRequest)(nil),                   // 12: druz9.v1.AskNotesRequest
+	(*Insight)(nil),                           // 13: druz9.v1.Insight
+	(*ListInsightsRequest)(nil),               // 14: druz9.v1.ListInsightsRequest
+	(*ListInsightsResponse)(nil),              // 15: druz9.v1.ListInsightsResponse
+	(*AckInsightRequest)(nil),                 // 16: druz9.v1.AckInsightRequest
+	(*AckInsightResponse)(nil),                // 17: druz9.v1.AckInsightResponse
+	(*GetNextActionRequest)(nil),              // 18: druz9.v1.GetNextActionRequest
+	(*NextAction)(nil),                        // 19: druz9.v1.NextAction
+	(*GetForkSnapshotRequest)(nil),            // 20: druz9.v1.GetForkSnapshotRequest
+	(*ForkBranchView)(nil),                    // 21: druz9.v1.ForkBranchView
+	(*ForkSnapshot)(nil),                      // 22: druz9.v1.ForkSnapshot
+	(*SetLearningModeRequest)(nil),            // 23: druz9.v1.SetLearningModeRequest
+	(*LearningStateView)(nil),                 // 24: druz9.v1.LearningStateView
+	(*SetForkBranchRequest)(nil),              // 25: druz9.v1.SetForkBranchRequest
+	(*GetResourceTrailRequest)(nil),           // 26: druz9.v1.GetResourceTrailRequest
+	(*ResourceTouch)(nil),                     // 27: druz9.v1.ResourceTouch
+	(*ResourceTrail)(nil),                     // 28: druz9.v1.ResourceTrail
+	(*GetSkillRadarRequest)(nil),              // 29: druz9.v1.GetSkillRadarRequest
+	(*SkillRadarAxis)(nil),                    // 30: druz9.v1.SkillRadarAxis
+	(*SkillRadar)(nil),                        // 31: druz9.v1.SkillRadar
+	(*GetCoachStatsRequest)(nil),              // 32: druz9.v1.GetCoachStatsRequest
+	(*CoachStats)(nil),                        // 33: druz9.v1.CoachStats
+	(*LogResourceRequest)(nil),                // 34: druz9.v1.LogResourceRequest
+	(*LogResourceResponse)(nil),               // 35: druz9.v1.LogResourceResponse
+	(*Goal)(nil),                              // 36: druz9.v1.Goal
+	(*CreateGoalRequest)(nil),                 // 37: druz9.v1.CreateGoalRequest
+	(*UpdateGoalRequest)(nil),                 // 38: druz9.v1.UpdateGoalRequest
+	(*DeactivateGoalRequest)(nil),             // 39: druz9.v1.DeactivateGoalRequest
+	(*InterviewStage)(nil),                    // 40: druz9.v1.InterviewStage
+	(*InterviewSession)(nil),                  // 41: druz9.v1.InterviewSession
+	(*IngestInterviewSessionRequest)(nil),     // 42: druz9.v1.IngestInterviewSessionRequest
+	(*ListInterviewSessionsRequest)(nil),      // 43: druz9.v1.ListInterviewSessionsRequest
+	(*ListInterviewSessionsResponse)(nil),     // 44: druz9.v1.ListInterviewSessionsResponse
+	(*Milestone)(nil),                         // 45: druz9.v1.Milestone
+	(*MilestonesResponse)(nil),                // 46: druz9.v1.MilestonesResponse
+	(*MarkMilestoneDoneRequest)(nil),          // 47: druz9.v1.MarkMilestoneDoneRequest
+	(*NodeCoverage)(nil),                      // 48: druz9.v1.NodeCoverage
+	(*GetNodeCoverageRequest)(nil),            // 49: druz9.v1.GetNodeCoverageRequest
+	(*GetNodeCoverageResponse)(nil),           // 50: druz9.v1.GetNodeCoverageResponse
+	(*MemoryEntry)(nil),                       // 51: druz9.v1.MemoryEntry
+	(*ListMemoryEntriesRequest)(nil),          // 52: druz9.v1.ListMemoryEntriesRequest
+	(*ListMemoryEntriesResponse)(nil),         // 53: druz9.v1.ListMemoryEntriesResponse
+	(*DeleteMemoryEntryRequest)(nil),          // 54: druz9.v1.DeleteMemoryEntryRequest
+	(*EditMemoryEntryRequest)(nil),            // 55: druz9.v1.EditMemoryEntryRequest
+	(*CoachMemoryEntry)(nil),                  // 56: druz9.v1.CoachMemoryEntry
+	(*ActivitySummary)(nil),                   // 57: druz9.v1.ActivitySummary
+	(*SkillRadarSnapshot)(nil),                // 58: druz9.v1.SkillRadarSnapshot
+	(*RecentActivity24H)(nil),                 // 59: druz9.v1.RecentActivity24h
+	(*AtlasResourceRef)(nil),                  // 60: druz9.v1.AtlasResourceRef
+	(*UserContext)(nil),                       // 61: druz9.v1.UserContext
+	(*GetUserContextRequest)(nil),             // 62: druz9.v1.GetUserContextRequest
+	(*GetUserContextResponse)(nil),            // 63: druz9.v1.GetUserContextResponse
+	(*SaveFocusReflectionRequest)(nil),        // 64: druz9.v1.SaveFocusReflectionRequest
+	(*SaveFocusReflectionResponse)(nil),       // 65: druz9.v1.SaveFocusReflectionResponse
+	(*FocusReflectionEntry)(nil),              // 66: druz9.v1.FocusReflectionEntry
+	(*ListFocusReflectionsRequest)(nil),       // 67: druz9.v1.ListFocusReflectionsRequest
+	(*ListFocusReflectionsResponse)(nil),      // 68: druz9.v1.ListFocusReflectionsResponse
+	(*CrossVerticalInsight)(nil),              // 69: druz9.v1.CrossVerticalInsight
+	(*ListCrossVerticalInsightsRequest)(nil),  // 70: druz9.v1.ListCrossVerticalInsightsRequest
+	(*ListCrossVerticalInsightsResponse)(nil), // 71: druz9.v1.ListCrossVerticalInsightsResponse
+	(*MarkAtlasStruggleRequest)(nil),          // 72: druz9.v1.MarkAtlasStruggleRequest
+	(*MarkAtlasStruggleResponse)(nil),         // 73: druz9.v1.MarkAtlasStruggleResponse
+	(*ListAtlasStrugglesRequest)(nil),         // 74: druz9.v1.ListAtlasStrugglesRequest
+	(*AtlasStruggleMark)(nil),                 // 75: druz9.v1.AtlasStruggleMark
+	(*ListAtlasStrugglesResponse)(nil),        // 76: druz9.v1.ListAtlasStrugglesResponse
+	(*ClearAtlasStruggleRequest)(nil),         // 77: druz9.v1.ClearAtlasStruggleRequest
+	(*ClearAtlasStruggleResponse)(nil),        // 78: druz9.v1.ClearAtlasStruggleResponse
+	nil,                                       // 79: druz9.v1.MemoryStats.ByKindEntry
+	(*timestamppb.Timestamp)(nil),             // 80: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                     // 81: google.protobuf.Empty
 }
 var file_druz9_v1_intelligence_proto_depIdxs = []int32{
 	0,  // 0: druz9.v1.BriefRecommendation.kind:type_name -> druz9.v1.BriefRecommendationKind
 	3,  // 1: druz9.v1.DailyBrief.recommendations:type_name -> druz9.v1.BriefRecommendation
-	76, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
+	80, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
 	1,  // 3: druz9.v1.DailyBrief.severity:type_name -> druz9.v1.InsightSeverity
-	75, // 4: druz9.v1.MemoryStats.by_kind:type_name -> druz9.v1.MemoryStats.ByKindEntry
+	79, // 4: druz9.v1.MemoryStats.by_kind:type_name -> druz9.v1.MemoryStats.ByKindEntry
 	10, // 5: druz9.v1.AskAnswer.citations:type_name -> druz9.v1.Citation
 	1,  // 6: druz9.v1.Insight.severity:type_name -> druz9.v1.InsightSeverity
-	76, // 7: druz9.v1.Insight.generated_at:type_name -> google.protobuf.Timestamp
-	76, // 8: druz9.v1.Insight.expires_at:type_name -> google.protobuf.Timestamp
+	80, // 7: druz9.v1.Insight.generated_at:type_name -> google.protobuf.Timestamp
+	80, // 8: druz9.v1.Insight.expires_at:type_name -> google.protobuf.Timestamp
 	13, // 9: druz9.v1.ListInsightsResponse.items:type_name -> druz9.v1.Insight
 	21, // 10: druz9.v1.ForkSnapshot.branches:type_name -> druz9.v1.ForkBranchView
-	76, // 11: druz9.v1.ResourceTouch.occurred_at:type_name -> google.protobuf.Timestamp
+	80, // 11: druz9.v1.ResourceTouch.occurred_at:type_name -> google.protobuf.Timestamp
 	27, // 12: druz9.v1.ResourceTrail.finished_recent:type_name -> druz9.v1.ResourceTouch
 	27, // 13: druz9.v1.ResourceTrail.marked_unhelpful:type_name -> druz9.v1.ResourceTouch
 	27, // 14: druz9.v1.ResourceTrail.recent_reflections:type_name -> druz9.v1.ResourceTouch
 	30, // 15: druz9.v1.SkillRadar.axes:type_name -> druz9.v1.SkillRadarAxis
 	2,  // 16: druz9.v1.Goal.kind:type_name -> druz9.v1.GoalKind
-	76, // 17: druz9.v1.Goal.created_at:type_name -> google.protobuf.Timestamp
-	76, // 18: druz9.v1.Goal.updated_at:type_name -> google.protobuf.Timestamp
+	80, // 17: druz9.v1.Goal.created_at:type_name -> google.protobuf.Timestamp
+	80, // 18: druz9.v1.Goal.updated_at:type_name -> google.protobuf.Timestamp
 	2,  // 19: druz9.v1.CreateGoalRequest.kind:type_name -> druz9.v1.GoalKind
 	2,  // 20: druz9.v1.UpdateGoalRequest.kind:type_name -> druz9.v1.GoalKind
 	40, // 21: druz9.v1.InterviewSession.stages:type_name -> druz9.v1.InterviewStage
-	76, // 22: druz9.v1.InterviewSession.completed_at:type_name -> google.protobuf.Timestamp
+	80, // 22: druz9.v1.InterviewSession.completed_at:type_name -> google.protobuf.Timestamp
 	40, // 23: druz9.v1.IngestInterviewSessionRequest.stages:type_name -> druz9.v1.InterviewStage
-	76, // 24: druz9.v1.IngestInterviewSessionRequest.completed_at:type_name -> google.protobuf.Timestamp
+	80, // 24: druz9.v1.IngestInterviewSessionRequest.completed_at:type_name -> google.protobuf.Timestamp
 	41, // 25: druz9.v1.ListInterviewSessionsResponse.items:type_name -> druz9.v1.InterviewSession
-	76, // 26: druz9.v1.Milestone.done_at:type_name -> google.protobuf.Timestamp
+	80, // 26: druz9.v1.Milestone.done_at:type_name -> google.protobuf.Timestamp
 	45, // 27: druz9.v1.MilestonesResponse.items:type_name -> druz9.v1.Milestone
-	76, // 28: druz9.v1.MilestonesResponse.generated_at:type_name -> google.protobuf.Timestamp
-	76, // 29: druz9.v1.NodeCoverage.last_match_at:type_name -> google.protobuf.Timestamp
+	80, // 28: druz9.v1.MilestonesResponse.generated_at:type_name -> google.protobuf.Timestamp
+	80, // 29: druz9.v1.NodeCoverage.last_match_at:type_name -> google.protobuf.Timestamp
 	48, // 30: druz9.v1.GetNodeCoverageResponse.items:type_name -> druz9.v1.NodeCoverage
-	76, // 31: druz9.v1.MemoryEntry.occurred_at:type_name -> google.protobuf.Timestamp
-	76, // 32: druz9.v1.MemoryEntry.expires_at:type_name -> google.protobuf.Timestamp
-	76, // 33: druz9.v1.MemoryEntry.edited_at:type_name -> google.protobuf.Timestamp
-	76, // 34: druz9.v1.ListMemoryEntriesRequest.since:type_name -> google.protobuf.Timestamp
+	80, // 31: druz9.v1.MemoryEntry.occurred_at:type_name -> google.protobuf.Timestamp
+	80, // 32: druz9.v1.MemoryEntry.expires_at:type_name -> google.protobuf.Timestamp
+	80, // 33: druz9.v1.MemoryEntry.edited_at:type_name -> google.protobuf.Timestamp
+	80, // 34: druz9.v1.ListMemoryEntriesRequest.since:type_name -> google.protobuf.Timestamp
 	51, // 35: druz9.v1.ListMemoryEntriesResponse.items:type_name -> druz9.v1.MemoryEntry
-	76, // 36: druz9.v1.CoachMemoryEntry.occurred_at:type_name -> google.protobuf.Timestamp
+	80, // 36: druz9.v1.CoachMemoryEntry.occurred_at:type_name -> google.protobuf.Timestamp
 	36, // 37: druz9.v1.UserContext.active_goal:type_name -> druz9.v1.Goal
 	56, // 38: druz9.v1.UserContext.recent_memory:type_name -> druz9.v1.CoachMemoryEntry
 	57, // 39: druz9.v1.UserContext.activity:type_name -> druz9.v1.ActivitySummary
 	58, // 40: druz9.v1.UserContext.radar:type_name -> druz9.v1.SkillRadarSnapshot
-	59, // 41: druz9.v1.UserContext.relevant_resources:type_name -> druz9.v1.AtlasResourceRef
-	60, // 42: druz9.v1.GetUserContextResponse.context:type_name -> druz9.v1.UserContext
-	76, // 43: druz9.v1.SaveFocusReflectionRequest.started_at:type_name -> google.protobuf.Timestamp
-	76, // 44: druz9.v1.SaveFocusReflectionRequest.ended_at:type_name -> google.protobuf.Timestamp
-	76, // 45: druz9.v1.FocusReflectionEntry.ended_at:type_name -> google.protobuf.Timestamp
-	65, // 46: druz9.v1.ListFocusReflectionsResponse.items:type_name -> druz9.v1.FocusReflectionEntry
-	76, // 47: druz9.v1.AtlasStruggleMark.marked_at:type_name -> google.protobuf.Timestamp
-	71, // 48: druz9.v1.ListAtlasStrugglesResponse.items:type_name -> druz9.v1.AtlasStruggleMark
-	9,  // 49: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
-	12, // 50: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
-	5,  // 51: druz9.v1.IntelligenceService.AckRecommendation:input_type -> druz9.v1.AckRecommendationRequest
-	8,  // 52: druz9.v1.IntelligenceService.GetMemoryStats:input_type -> druz9.v1.GetMemoryStatsRequest
-	14, // 53: druz9.v1.IntelligenceService.ListInsights:input_type -> druz9.v1.ListInsightsRequest
-	16, // 54: druz9.v1.IntelligenceService.AckInsight:input_type -> druz9.v1.AckInsightRequest
-	18, // 55: druz9.v1.IntelligenceService.GetNextAction:input_type -> druz9.v1.GetNextActionRequest
-	20, // 56: druz9.v1.IntelligenceService.GetForkSnapshot:input_type -> druz9.v1.GetForkSnapshotRequest
-	34, // 57: druz9.v1.IntelligenceService.LogResource:input_type -> druz9.v1.LogResourceRequest
-	23, // 58: druz9.v1.IntelligenceService.SetLearningMode:input_type -> druz9.v1.SetLearningModeRequest
-	25, // 59: druz9.v1.IntelligenceService.SetForkBranch:input_type -> druz9.v1.SetForkBranchRequest
-	26, // 60: druz9.v1.IntelligenceService.GetResourceTrail:input_type -> druz9.v1.GetResourceTrailRequest
-	29, // 61: druz9.v1.IntelligenceService.GetSkillRadar:input_type -> druz9.v1.GetSkillRadarRequest
-	32, // 62: druz9.v1.IntelligenceService.GetCoachStats:input_type -> druz9.v1.GetCoachStatsRequest
-	37, // 63: druz9.v1.IntelligenceService.CreateGoal:input_type -> druz9.v1.CreateGoalRequest
-	77, // 64: druz9.v1.IntelligenceService.GetActiveGoal:input_type -> google.protobuf.Empty
-	38, // 65: druz9.v1.IntelligenceService.UpdateGoal:input_type -> druz9.v1.UpdateGoalRequest
-	39, // 66: druz9.v1.IntelligenceService.DeactivateGoal:input_type -> druz9.v1.DeactivateGoalRequest
-	42, // 67: druz9.v1.IntelligenceService.IngestInterviewSession:input_type -> druz9.v1.IngestInterviewSessionRequest
-	43, // 68: druz9.v1.IntelligenceService.ListInterviewSessions:input_type -> druz9.v1.ListInterviewSessionsRequest
-	77, // 69: druz9.v1.IntelligenceService.GenerateMilestones:input_type -> google.protobuf.Empty
-	77, // 70: druz9.v1.IntelligenceService.GetMilestones:input_type -> google.protobuf.Empty
-	47, // 71: druz9.v1.IntelligenceService.MarkMilestoneDone:input_type -> druz9.v1.MarkMilestoneDoneRequest
-	49, // 72: druz9.v1.IntelligenceService.GetNodeCoverage:input_type -> druz9.v1.GetNodeCoverageRequest
-	52, // 73: druz9.v1.IntelligenceService.ListMemoryEntries:input_type -> druz9.v1.ListMemoryEntriesRequest
-	54, // 74: druz9.v1.IntelligenceService.DeleteMemoryEntry:input_type -> druz9.v1.DeleteMemoryEntryRequest
-	55, // 75: druz9.v1.IntelligenceService.EditMemoryEntry:input_type -> druz9.v1.EditMemoryEntryRequest
-	63, // 76: druz9.v1.IntelligenceService.SaveFocusReflection:input_type -> druz9.v1.SaveFocusReflectionRequest
-	66, // 77: druz9.v1.IntelligenceService.ListFocusReflections:input_type -> druz9.v1.ListFocusReflectionsRequest
-	61, // 78: druz9.v1.IntelligenceService.GetUserContext:input_type -> druz9.v1.GetUserContextRequest
-	68, // 79: druz9.v1.IntelligenceService.MarkAtlasStruggle:input_type -> druz9.v1.MarkAtlasStruggleRequest
-	70, // 80: druz9.v1.IntelligenceService.ListAtlasStruggles:input_type -> druz9.v1.ListAtlasStrugglesRequest
-	73, // 81: druz9.v1.IntelligenceService.ClearAtlasStruggle:input_type -> druz9.v1.ClearAtlasStruggleRequest
-	4,  // 82: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
-	11, // 83: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
-	6,  // 84: druz9.v1.IntelligenceService.AckRecommendation:output_type -> druz9.v1.AckRecommendationResponse
-	7,  // 85: druz9.v1.IntelligenceService.GetMemoryStats:output_type -> druz9.v1.MemoryStats
-	15, // 86: druz9.v1.IntelligenceService.ListInsights:output_type -> druz9.v1.ListInsightsResponse
-	17, // 87: druz9.v1.IntelligenceService.AckInsight:output_type -> druz9.v1.AckInsightResponse
-	19, // 88: druz9.v1.IntelligenceService.GetNextAction:output_type -> druz9.v1.NextAction
-	22, // 89: druz9.v1.IntelligenceService.GetForkSnapshot:output_type -> druz9.v1.ForkSnapshot
-	35, // 90: druz9.v1.IntelligenceService.LogResource:output_type -> druz9.v1.LogResourceResponse
-	24, // 91: druz9.v1.IntelligenceService.SetLearningMode:output_type -> druz9.v1.LearningStateView
-	24, // 92: druz9.v1.IntelligenceService.SetForkBranch:output_type -> druz9.v1.LearningStateView
-	28, // 93: druz9.v1.IntelligenceService.GetResourceTrail:output_type -> druz9.v1.ResourceTrail
-	31, // 94: druz9.v1.IntelligenceService.GetSkillRadar:output_type -> druz9.v1.SkillRadar
-	33, // 95: druz9.v1.IntelligenceService.GetCoachStats:output_type -> druz9.v1.CoachStats
-	36, // 96: druz9.v1.IntelligenceService.CreateGoal:output_type -> druz9.v1.Goal
-	36, // 97: druz9.v1.IntelligenceService.GetActiveGoal:output_type -> druz9.v1.Goal
-	36, // 98: druz9.v1.IntelligenceService.UpdateGoal:output_type -> druz9.v1.Goal
-	77, // 99: druz9.v1.IntelligenceService.DeactivateGoal:output_type -> google.protobuf.Empty
-	41, // 100: druz9.v1.IntelligenceService.IngestInterviewSession:output_type -> druz9.v1.InterviewSession
-	44, // 101: druz9.v1.IntelligenceService.ListInterviewSessions:output_type -> druz9.v1.ListInterviewSessionsResponse
-	46, // 102: druz9.v1.IntelligenceService.GenerateMilestones:output_type -> druz9.v1.MilestonesResponse
-	46, // 103: druz9.v1.IntelligenceService.GetMilestones:output_type -> druz9.v1.MilestonesResponse
-	45, // 104: druz9.v1.IntelligenceService.MarkMilestoneDone:output_type -> druz9.v1.Milestone
-	50, // 105: druz9.v1.IntelligenceService.GetNodeCoverage:output_type -> druz9.v1.GetNodeCoverageResponse
-	53, // 106: druz9.v1.IntelligenceService.ListMemoryEntries:output_type -> druz9.v1.ListMemoryEntriesResponse
-	77, // 107: druz9.v1.IntelligenceService.DeleteMemoryEntry:output_type -> google.protobuf.Empty
-	51, // 108: druz9.v1.IntelligenceService.EditMemoryEntry:output_type -> druz9.v1.MemoryEntry
-	64, // 109: druz9.v1.IntelligenceService.SaveFocusReflection:output_type -> druz9.v1.SaveFocusReflectionResponse
-	67, // 110: druz9.v1.IntelligenceService.ListFocusReflections:output_type -> druz9.v1.ListFocusReflectionsResponse
-	62, // 111: druz9.v1.IntelligenceService.GetUserContext:output_type -> druz9.v1.GetUserContextResponse
-	69, // 112: druz9.v1.IntelligenceService.MarkAtlasStruggle:output_type -> druz9.v1.MarkAtlasStruggleResponse
-	72, // 113: druz9.v1.IntelligenceService.ListAtlasStruggles:output_type -> druz9.v1.ListAtlasStrugglesResponse
-	74, // 114: druz9.v1.IntelligenceService.ClearAtlasStruggle:output_type -> druz9.v1.ClearAtlasStruggleResponse
-	82, // [82:115] is the sub-list for method output_type
-	49, // [49:82] is the sub-list for method input_type
-	49, // [49:49] is the sub-list for extension type_name
-	49, // [49:49] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	60, // 41: druz9.v1.UserContext.relevant_resources:type_name -> druz9.v1.AtlasResourceRef
+	59, // 42: druz9.v1.UserContext.recent_activity:type_name -> druz9.v1.RecentActivity24h
+	61, // 43: druz9.v1.GetUserContextResponse.context:type_name -> druz9.v1.UserContext
+	80, // 44: druz9.v1.SaveFocusReflectionRequest.started_at:type_name -> google.protobuf.Timestamp
+	80, // 45: druz9.v1.SaveFocusReflectionRequest.ended_at:type_name -> google.protobuf.Timestamp
+	80, // 46: druz9.v1.FocusReflectionEntry.ended_at:type_name -> google.protobuf.Timestamp
+	66, // 47: druz9.v1.ListFocusReflectionsResponse.items:type_name -> druz9.v1.FocusReflectionEntry
+	1,  // 48: druz9.v1.CrossVerticalInsight.severity:type_name -> druz9.v1.InsightSeverity
+	69, // 49: druz9.v1.ListCrossVerticalInsightsResponse.items:type_name -> druz9.v1.CrossVerticalInsight
+	80, // 50: druz9.v1.AtlasStruggleMark.marked_at:type_name -> google.protobuf.Timestamp
+	75, // 51: druz9.v1.ListAtlasStrugglesResponse.items:type_name -> druz9.v1.AtlasStruggleMark
+	9,  // 52: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
+	12, // 53: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
+	5,  // 54: druz9.v1.IntelligenceService.AckRecommendation:input_type -> druz9.v1.AckRecommendationRequest
+	8,  // 55: druz9.v1.IntelligenceService.GetMemoryStats:input_type -> druz9.v1.GetMemoryStatsRequest
+	14, // 56: druz9.v1.IntelligenceService.ListInsights:input_type -> druz9.v1.ListInsightsRequest
+	16, // 57: druz9.v1.IntelligenceService.AckInsight:input_type -> druz9.v1.AckInsightRequest
+	18, // 58: druz9.v1.IntelligenceService.GetNextAction:input_type -> druz9.v1.GetNextActionRequest
+	20, // 59: druz9.v1.IntelligenceService.GetForkSnapshot:input_type -> druz9.v1.GetForkSnapshotRequest
+	34, // 60: druz9.v1.IntelligenceService.LogResource:input_type -> druz9.v1.LogResourceRequest
+	23, // 61: druz9.v1.IntelligenceService.SetLearningMode:input_type -> druz9.v1.SetLearningModeRequest
+	25, // 62: druz9.v1.IntelligenceService.SetForkBranch:input_type -> druz9.v1.SetForkBranchRequest
+	26, // 63: druz9.v1.IntelligenceService.GetResourceTrail:input_type -> druz9.v1.GetResourceTrailRequest
+	29, // 64: druz9.v1.IntelligenceService.GetSkillRadar:input_type -> druz9.v1.GetSkillRadarRequest
+	32, // 65: druz9.v1.IntelligenceService.GetCoachStats:input_type -> druz9.v1.GetCoachStatsRequest
+	37, // 66: druz9.v1.IntelligenceService.CreateGoal:input_type -> druz9.v1.CreateGoalRequest
+	81, // 67: druz9.v1.IntelligenceService.GetActiveGoal:input_type -> google.protobuf.Empty
+	38, // 68: druz9.v1.IntelligenceService.UpdateGoal:input_type -> druz9.v1.UpdateGoalRequest
+	39, // 69: druz9.v1.IntelligenceService.DeactivateGoal:input_type -> druz9.v1.DeactivateGoalRequest
+	42, // 70: druz9.v1.IntelligenceService.IngestInterviewSession:input_type -> druz9.v1.IngestInterviewSessionRequest
+	43, // 71: druz9.v1.IntelligenceService.ListInterviewSessions:input_type -> druz9.v1.ListInterviewSessionsRequest
+	81, // 72: druz9.v1.IntelligenceService.GenerateMilestones:input_type -> google.protobuf.Empty
+	81, // 73: druz9.v1.IntelligenceService.GetMilestones:input_type -> google.protobuf.Empty
+	47, // 74: druz9.v1.IntelligenceService.MarkMilestoneDone:input_type -> druz9.v1.MarkMilestoneDoneRequest
+	49, // 75: druz9.v1.IntelligenceService.GetNodeCoverage:input_type -> druz9.v1.GetNodeCoverageRequest
+	52, // 76: druz9.v1.IntelligenceService.ListMemoryEntries:input_type -> druz9.v1.ListMemoryEntriesRequest
+	54, // 77: druz9.v1.IntelligenceService.DeleteMemoryEntry:input_type -> druz9.v1.DeleteMemoryEntryRequest
+	55, // 78: druz9.v1.IntelligenceService.EditMemoryEntry:input_type -> druz9.v1.EditMemoryEntryRequest
+	64, // 79: druz9.v1.IntelligenceService.SaveFocusReflection:input_type -> druz9.v1.SaveFocusReflectionRequest
+	67, // 80: druz9.v1.IntelligenceService.ListFocusReflections:input_type -> druz9.v1.ListFocusReflectionsRequest
+	62, // 81: druz9.v1.IntelligenceService.GetUserContext:input_type -> druz9.v1.GetUserContextRequest
+	70, // 82: druz9.v1.IntelligenceService.ListCrossVerticalInsights:input_type -> druz9.v1.ListCrossVerticalInsightsRequest
+	72, // 83: druz9.v1.IntelligenceService.MarkAtlasStruggle:input_type -> druz9.v1.MarkAtlasStruggleRequest
+	74, // 84: druz9.v1.IntelligenceService.ListAtlasStruggles:input_type -> druz9.v1.ListAtlasStrugglesRequest
+	77, // 85: druz9.v1.IntelligenceService.ClearAtlasStruggle:input_type -> druz9.v1.ClearAtlasStruggleRequest
+	4,  // 86: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
+	11, // 87: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
+	6,  // 88: druz9.v1.IntelligenceService.AckRecommendation:output_type -> druz9.v1.AckRecommendationResponse
+	7,  // 89: druz9.v1.IntelligenceService.GetMemoryStats:output_type -> druz9.v1.MemoryStats
+	15, // 90: druz9.v1.IntelligenceService.ListInsights:output_type -> druz9.v1.ListInsightsResponse
+	17, // 91: druz9.v1.IntelligenceService.AckInsight:output_type -> druz9.v1.AckInsightResponse
+	19, // 92: druz9.v1.IntelligenceService.GetNextAction:output_type -> druz9.v1.NextAction
+	22, // 93: druz9.v1.IntelligenceService.GetForkSnapshot:output_type -> druz9.v1.ForkSnapshot
+	35, // 94: druz9.v1.IntelligenceService.LogResource:output_type -> druz9.v1.LogResourceResponse
+	24, // 95: druz9.v1.IntelligenceService.SetLearningMode:output_type -> druz9.v1.LearningStateView
+	24, // 96: druz9.v1.IntelligenceService.SetForkBranch:output_type -> druz9.v1.LearningStateView
+	28, // 97: druz9.v1.IntelligenceService.GetResourceTrail:output_type -> druz9.v1.ResourceTrail
+	31, // 98: druz9.v1.IntelligenceService.GetSkillRadar:output_type -> druz9.v1.SkillRadar
+	33, // 99: druz9.v1.IntelligenceService.GetCoachStats:output_type -> druz9.v1.CoachStats
+	36, // 100: druz9.v1.IntelligenceService.CreateGoal:output_type -> druz9.v1.Goal
+	36, // 101: druz9.v1.IntelligenceService.GetActiveGoal:output_type -> druz9.v1.Goal
+	36, // 102: druz9.v1.IntelligenceService.UpdateGoal:output_type -> druz9.v1.Goal
+	81, // 103: druz9.v1.IntelligenceService.DeactivateGoal:output_type -> google.protobuf.Empty
+	41, // 104: druz9.v1.IntelligenceService.IngestInterviewSession:output_type -> druz9.v1.InterviewSession
+	44, // 105: druz9.v1.IntelligenceService.ListInterviewSessions:output_type -> druz9.v1.ListInterviewSessionsResponse
+	46, // 106: druz9.v1.IntelligenceService.GenerateMilestones:output_type -> druz9.v1.MilestonesResponse
+	46, // 107: druz9.v1.IntelligenceService.GetMilestones:output_type -> druz9.v1.MilestonesResponse
+	45, // 108: druz9.v1.IntelligenceService.MarkMilestoneDone:output_type -> druz9.v1.Milestone
+	50, // 109: druz9.v1.IntelligenceService.GetNodeCoverage:output_type -> druz9.v1.GetNodeCoverageResponse
+	53, // 110: druz9.v1.IntelligenceService.ListMemoryEntries:output_type -> druz9.v1.ListMemoryEntriesResponse
+	81, // 111: druz9.v1.IntelligenceService.DeleteMemoryEntry:output_type -> google.protobuf.Empty
+	51, // 112: druz9.v1.IntelligenceService.EditMemoryEntry:output_type -> druz9.v1.MemoryEntry
+	65, // 113: druz9.v1.IntelligenceService.SaveFocusReflection:output_type -> druz9.v1.SaveFocusReflectionResponse
+	68, // 114: druz9.v1.IntelligenceService.ListFocusReflections:output_type -> druz9.v1.ListFocusReflectionsResponse
+	63, // 115: druz9.v1.IntelligenceService.GetUserContext:output_type -> druz9.v1.GetUserContextResponse
+	71, // 116: druz9.v1.IntelligenceService.ListCrossVerticalInsights:output_type -> druz9.v1.ListCrossVerticalInsightsResponse
+	73, // 117: druz9.v1.IntelligenceService.MarkAtlasStruggle:output_type -> druz9.v1.MarkAtlasStruggleResponse
+	76, // 118: druz9.v1.IntelligenceService.ListAtlasStruggles:output_type -> druz9.v1.ListAtlasStrugglesResponse
+	78, // 119: druz9.v1.IntelligenceService.ClearAtlasStruggle:output_type -> druz9.v1.ClearAtlasStruggleResponse
+	86, // [86:120] is the sub-list for method output_type
+	52, // [52:86] is the sub-list for method input_type
+	52, // [52:52] is the sub-list for extension type_name
+	52, // [52:52] is the sub-list for extension extendee
+	0,  // [0:52] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_intelligence_proto_init() }
@@ -5413,7 +5798,7 @@ func file_druz9_v1_intelligence_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_intelligence_proto_rawDesc), len(file_druz9_v1_intelligence_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   73,
+			NumMessages:   77,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

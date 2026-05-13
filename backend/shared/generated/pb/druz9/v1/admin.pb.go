@@ -151,6 +151,113 @@ func (AdminReportStatus) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{1}
 }
 
+type LLMUsagePeriod int32
+
+const (
+	LLMUsagePeriod_LLM_USAGE_PERIOD_UNSPECIFIED LLMUsagePeriod = 0
+	LLMUsagePeriod_LLM_USAGE_PERIOD_1D          LLMUsagePeriod = 1
+	LLMUsagePeriod_LLM_USAGE_PERIOD_7D          LLMUsagePeriod = 2
+	LLMUsagePeriod_LLM_USAGE_PERIOD_30D         LLMUsagePeriod = 3
+)
+
+// Enum value maps for LLMUsagePeriod.
+var (
+	LLMUsagePeriod_name = map[int32]string{
+		0: "LLM_USAGE_PERIOD_UNSPECIFIED",
+		1: "LLM_USAGE_PERIOD_1D",
+		2: "LLM_USAGE_PERIOD_7D",
+		3: "LLM_USAGE_PERIOD_30D",
+	}
+	LLMUsagePeriod_value = map[string]int32{
+		"LLM_USAGE_PERIOD_UNSPECIFIED": 0,
+		"LLM_USAGE_PERIOD_1D":          1,
+		"LLM_USAGE_PERIOD_7D":          2,
+		"LLM_USAGE_PERIOD_30D":         3,
+	}
+)
+
+func (x LLMUsagePeriod) Enum() *LLMUsagePeriod {
+	p := new(LLMUsagePeriod)
+	*p = x
+	return p
+}
+
+func (x LLMUsagePeriod) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (LLMUsagePeriod) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_admin_proto_enumTypes[2].Descriptor()
+}
+
+func (LLMUsagePeriod) Type() protoreflect.EnumType {
+	return &file_druz9_v1_admin_proto_enumTypes[2]
+}
+
+func (x LLMUsagePeriod) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use LLMUsagePeriod.Descriptor instead.
+func (LLMUsagePeriod) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{2}
+}
+
+type LLMUsageGroup int32
+
+const (
+	LLMUsageGroup_LLM_USAGE_GROUP_UNSPECIFIED LLMUsageGroup = 0
+	LLMUsageGroup_LLM_USAGE_GROUP_TASK        LLMUsageGroup = 1
+	LLMUsageGroup_LLM_USAGE_GROUP_USER        LLMUsageGroup = 2
+	LLMUsageGroup_LLM_USAGE_GROUP_DAY         LLMUsageGroup = 3
+	LLMUsageGroup_LLM_USAGE_GROUP_PROVIDER    LLMUsageGroup = 4
+)
+
+// Enum value maps for LLMUsageGroup.
+var (
+	LLMUsageGroup_name = map[int32]string{
+		0: "LLM_USAGE_GROUP_UNSPECIFIED",
+		1: "LLM_USAGE_GROUP_TASK",
+		2: "LLM_USAGE_GROUP_USER",
+		3: "LLM_USAGE_GROUP_DAY",
+		4: "LLM_USAGE_GROUP_PROVIDER",
+	}
+	LLMUsageGroup_value = map[string]int32{
+		"LLM_USAGE_GROUP_UNSPECIFIED": 0,
+		"LLM_USAGE_GROUP_TASK":        1,
+		"LLM_USAGE_GROUP_USER":        2,
+		"LLM_USAGE_GROUP_DAY":         3,
+		"LLM_USAGE_GROUP_PROVIDER":    4,
+	}
+)
+
+func (x LLMUsageGroup) Enum() *LLMUsageGroup {
+	p := new(LLMUsageGroup)
+	*p = x
+	return p
+}
+
+func (x LLMUsageGroup) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (LLMUsageGroup) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_admin_proto_enumTypes[3].Descriptor()
+}
+
+func (LLMUsageGroup) Type() protoreflect.EnumType {
+	return &file_druz9_v1_admin_proto_enumTypes[3]
+}
+
+func (x LLMUsageGroup) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use LLMUsageGroup.Descriptor instead.
+func (LLMUsageGroup) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{3}
+}
+
 // ConfigEntry mirrors OpenAPI ConfigEntry. The OpenAPI `value` field is a
 // oneOf<number|string|bool|object>; we use google.protobuf.Value to keep the
 // JSON shape opaque on the wire. The app layer still round-trips the raw
@@ -1416,6 +1523,204 @@ func (*GetStatusPageRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{18}
 }
 
+type LLMUsageRow struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	DimensionKey      string                 `protobuf:"bytes,1,opt,name=dimension_key,json=dimensionKey,proto3" json:"dimension_key,omitempty"` // task name / user_id / YYYY-MM-DD / provider
+	TotalCalls        int64                  `protobuf:"varint,2,opt,name=total_calls,json=totalCalls,proto3" json:"total_calls,omitempty"`
+	TotalInputTokens  int64                  `protobuf:"varint,3,opt,name=total_input_tokens,json=totalInputTokens,proto3" json:"total_input_tokens,omitempty"`
+	TotalOutputTokens int64                  `protobuf:"varint,4,opt,name=total_output_tokens,json=totalOutputTokens,proto3" json:"total_output_tokens,omitempty"`
+	TotalCostCents    int64                  `protobuf:"varint,5,opt,name=total_cost_cents,json=totalCostCents,proto3" json:"total_cost_cents,omitempty"` // USD cents, sum from cost_estimate_cents
+	AvgLatencyMs      int64                  `protobuf:"varint,6,opt,name=avg_latency_ms,json=avgLatencyMs,proto3" json:"avg_latency_ms,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *LLMUsageRow) Reset() {
+	*x = LLMUsageRow{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LLMUsageRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LLMUsageRow) ProtoMessage() {}
+
+func (x *LLMUsageRow) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LLMUsageRow.ProtoReflect.Descriptor instead.
+func (*LLMUsageRow) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *LLMUsageRow) GetDimensionKey() string {
+	if x != nil {
+		return x.DimensionKey
+	}
+	return ""
+}
+
+func (x *LLMUsageRow) GetTotalCalls() int64 {
+	if x != nil {
+		return x.TotalCalls
+	}
+	return 0
+}
+
+func (x *LLMUsageRow) GetTotalInputTokens() int64 {
+	if x != nil {
+		return x.TotalInputTokens
+	}
+	return 0
+}
+
+func (x *LLMUsageRow) GetTotalOutputTokens() int64 {
+	if x != nil {
+		return x.TotalOutputTokens
+	}
+	return 0
+}
+
+func (x *LLMUsageRow) GetTotalCostCents() int64 {
+	if x != nil {
+		return x.TotalCostCents
+	}
+	return 0
+}
+
+func (x *LLMUsageRow) GetAvgLatencyMs() int64 {
+	if x != nil {
+		return x.AvgLatencyMs
+	}
+	return 0
+}
+
+type GetLLMUsageStatsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Period        LLMUsagePeriod         `protobuf:"varint,1,opt,name=period,proto3,enum=druz9.v1.LLMUsagePeriod" json:"period,omitempty"`
+	GroupBy       LLMUsageGroup          `protobuf:"varint,2,opt,name=group_by,json=groupBy,proto3,enum=druz9.v1.LLMUsageGroup" json:"group_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLLMUsageStatsRequest) Reset() {
+	*x = GetLLMUsageStatsRequest{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLLMUsageStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLLMUsageStatsRequest) ProtoMessage() {}
+
+func (x *GetLLMUsageStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLLMUsageStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetLLMUsageStatsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GetLLMUsageStatsRequest) GetPeriod() LLMUsagePeriod {
+	if x != nil {
+		return x.Period
+	}
+	return LLMUsagePeriod_LLM_USAGE_PERIOD_UNSPECIFIED
+}
+
+func (x *GetLLMUsageStatsRequest) GetGroupBy() LLMUsageGroup {
+	if x != nil {
+		return x.GroupBy
+	}
+	return LLMUsageGroup_LLM_USAGE_GROUP_UNSPECIFIED
+}
+
+type GetLLMUsageStatsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Rows  []*LLMUsageRow         `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	// total_cost_cents — sum over all rows (UI footer).
+	TotalCostCents int64 `protobuf:"varint,2,opt,name=total_cost_cents,json=totalCostCents,proto3" json:"total_cost_cents,omitempty"`
+	// total_calls — sum over all rows.
+	TotalCalls    int64 `protobuf:"varint,3,opt,name=total_calls,json=totalCalls,proto3" json:"total_calls,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLLMUsageStatsResponse) Reset() {
+	*x = GetLLMUsageStatsResponse{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLLMUsageStatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLLMUsageStatsResponse) ProtoMessage() {}
+
+func (x *GetLLMUsageStatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLLMUsageStatsResponse.ProtoReflect.Descriptor instead.
+func (*GetLLMUsageStatsResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GetLLMUsageStatsResponse) GetRows() []*LLMUsageRow {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+func (x *GetLLMUsageStatsResponse) GetTotalCostCents() int64 {
+	if x != nil {
+		return x.TotalCostCents
+	}
+	return 0
+}
+
+func (x *GetLLMUsageStatsResponse) GetTotalCalls() int64 {
+	if x != nil {
+		return x.TotalCalls
+	}
+	return 0
+}
+
 var File_druz9_v1_admin_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_admin_proto_rawDesc = "" +
@@ -1527,7 +1832,23 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\bservices\x18\x03 \x03(\v2\x1c.druz9.v1.StatusServiceStateR\bservices\x126\n" +
 	"\tincidents\x18\x04 \x03(\v2\x18.druz9.v1.StatusIncidentR\tincidents\x12=\n" +
 	"\fgenerated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\"\x16\n" +
-	"\x14GetStatusPageRequest*\xc2\x01\n" +
+	"\x14GetStatusPageRequest\"\x81\x02\n" +
+	"\vLLMUsageRow\x12#\n" +
+	"\rdimension_key\x18\x01 \x01(\tR\fdimensionKey\x12\x1f\n" +
+	"\vtotal_calls\x18\x02 \x01(\x03R\n" +
+	"totalCalls\x12,\n" +
+	"\x12total_input_tokens\x18\x03 \x01(\x03R\x10totalInputTokens\x12.\n" +
+	"\x13total_output_tokens\x18\x04 \x01(\x03R\x11totalOutputTokens\x12(\n" +
+	"\x10total_cost_cents\x18\x05 \x01(\x03R\x0etotalCostCents\x12$\n" +
+	"\x0eavg_latency_ms\x18\x06 \x01(\x03R\favgLatencyMs\"\x7f\n" +
+	"\x17GetLLMUsageStatsRequest\x120\n" +
+	"\x06period\x18\x01 \x01(\x0e2\x18.druz9.v1.LLMUsagePeriodR\x06period\x122\n" +
+	"\bgroup_by\x18\x02 \x01(\x0e2\x17.druz9.v1.LLMUsageGroupR\agroupBy\"\x90\x01\n" +
+	"\x18GetLLMUsageStatsResponse\x12)\n" +
+	"\x04rows\x18\x01 \x03(\v2\x15.druz9.v1.LLMUsageRowR\x04rows\x12(\n" +
+	"\x10total_cost_cents\x18\x02 \x01(\x03R\x0etotalCostCents\x12\x1f\n" +
+	"\vtotal_calls\x18\x03 \x01(\x03R\n" +
+	"totalCalls*\xc2\x01\n" +
 	"\x0fConfigEntryType\x12!\n" +
 	"\x1dCONFIG_ENTRY_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CONFIG_ENTRY_TYPE_INT\x10\x01\x12\x1b\n" +
@@ -1539,7 +1860,18 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\x1fADMIN_REPORT_STATUS_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bADMIN_REPORT_STATUS_PENDING\x10\x01\x12 \n" +
 	"\x1cADMIN_REPORT_STATUS_RESOLVED\x10\x02\x12!\n" +
-	"\x1dADMIN_REPORT_STATUS_DISMISSED\x10\x032\xe4\x06\n" +
+	"\x1dADMIN_REPORT_STATUS_DISMISSED\x10\x03*~\n" +
+	"\x0eLLMUsagePeriod\x12 \n" +
+	"\x1cLLM_USAGE_PERIOD_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13LLM_USAGE_PERIOD_1D\x10\x01\x12\x17\n" +
+	"\x13LLM_USAGE_PERIOD_7D\x10\x02\x12\x18\n" +
+	"\x14LLM_USAGE_PERIOD_30D\x10\x03*\x9b\x01\n" +
+	"\rLLMUsageGroup\x12\x1f\n" +
+	"\x1bLLM_USAGE_GROUP_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14LLM_USAGE_GROUP_TASK\x10\x01\x12\x18\n" +
+	"\x14LLM_USAGE_GROUP_USER\x10\x02\x12\x17\n" +
+	"\x13LLM_USAGE_GROUP_DAY\x10\x03\x12\x1c\n" +
+	"\x18LLM_USAGE_GROUP_PROVIDER\x10\x042\xe3\a\n" +
 	"\fAdminService\x12b\n" +
 	"\n" +
 	"ListConfig\x12\x1b.druz9.v1.ListConfigRequest\x1a\x19.druz9.v1.ConfigEntryList\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/api/v1/admin/config\x12k\n" +
@@ -1549,7 +1881,8 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\aBanUser\x12\x18.druz9.v1.BanUserRequest\x1a\x19.druz9.v1.BanUserResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/admin/users/{user_id}/ban\x12r\n" +
 	"\tUnbanUser\x12\x1a.druz9.v1.UnbanUserRequest\x1a\x19.druz9.v1.BanUserResponse\".\x82\xd3\xe4\x93\x02(:\x01*\"#/api/v1/admin/users/{user_id}/unban\x12j\n" +
 	"\vListReports\x12!.druz9.v1.ListAdminReportsRequest\x1a\x19.druz9.v1.AdminReportList\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/api/v1/admin/reports\x12]\n" +
-	"\rGetStatusPage\x12\x1e.druz9.v1.GetStatusPageRequest\x1a\x14.druz9.v1.StatusPage\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/api/v1/statusB\x87\x01\n" +
+	"\rGetStatusPage\x12\x1e.druz9.v1.GetStatusPageRequest\x1a\x14.druz9.v1.StatusPage\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/api/v1/status\x12}\n" +
+	"\x10GetLLMUsageStats\x12!.druz9.v1.GetLLMUsageStatsRequest\x1a\".druz9.v1.GetLLMUsageStatsResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/v1/admin/llm-usageB\x87\x01\n" +
 	"\fcom.druz9.v1B\n" +
 	"AdminProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
@@ -1565,76 +1898,86 @@ func file_druz9_v1_admin_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_admin_proto_rawDescData
 }
 
-var file_druz9_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_druz9_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_druz9_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_druz9_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_druz9_v1_admin_proto_goTypes = []any{
 	(ConfigEntryType)(0),             // 0: druz9.v1.ConfigEntryType
 	(AdminReportStatus)(0),           // 1: druz9.v1.AdminReportStatus
-	(*ConfigEntry)(nil),              // 2: druz9.v1.ConfigEntry
-	(*ConfigEntryList)(nil),          // 3: druz9.v1.ConfigEntryList
-	(*UpdateConfigRequest)(nil),      // 4: druz9.v1.UpdateConfigRequest
-	(*ListConfigRequest)(nil),        // 5: druz9.v1.ListConfigRequest
-	(*AdminDashboard)(nil),           // 6: druz9.v1.AdminDashboard
-	(*GetAdminDashboardRequest)(nil), // 7: druz9.v1.GetAdminDashboardRequest
-	(*AdminUserRow)(nil),             // 8: druz9.v1.AdminUserRow
-	(*AdminUserList)(nil),            // 9: druz9.v1.AdminUserList
-	(*ListAdminUsersRequest)(nil),    // 10: druz9.v1.ListAdminUsersRequest
-	(*BanUserRequest)(nil),           // 11: druz9.v1.BanUserRequest
-	(*UnbanUserRequest)(nil),         // 12: druz9.v1.UnbanUserRequest
-	(*BanUserResponse)(nil),          // 13: druz9.v1.BanUserResponse
-	(*AdminReport)(nil),              // 14: druz9.v1.AdminReport
-	(*AdminReportList)(nil),          // 15: druz9.v1.AdminReportList
-	(*ListAdminReportsRequest)(nil),  // 16: druz9.v1.ListAdminReportsRequest
-	(*StatusServiceState)(nil),       // 17: druz9.v1.StatusServiceState
-	(*StatusIncident)(nil),           // 18: druz9.v1.StatusIncident
-	(*StatusPage)(nil),               // 19: druz9.v1.StatusPage
-	(*GetStatusPageRequest)(nil),     // 20: druz9.v1.GetStatusPageRequest
-	(*structpb.Value)(nil),           // 21: google.protobuf.Value
-	(*timestamppb.Timestamp)(nil),    // 22: google.protobuf.Timestamp
+	(LLMUsagePeriod)(0),              // 2: druz9.v1.LLMUsagePeriod
+	(LLMUsageGroup)(0),               // 3: druz9.v1.LLMUsageGroup
+	(*ConfigEntry)(nil),              // 4: druz9.v1.ConfigEntry
+	(*ConfigEntryList)(nil),          // 5: druz9.v1.ConfigEntryList
+	(*UpdateConfigRequest)(nil),      // 6: druz9.v1.UpdateConfigRequest
+	(*ListConfigRequest)(nil),        // 7: druz9.v1.ListConfigRequest
+	(*AdminDashboard)(nil),           // 8: druz9.v1.AdminDashboard
+	(*GetAdminDashboardRequest)(nil), // 9: druz9.v1.GetAdminDashboardRequest
+	(*AdminUserRow)(nil),             // 10: druz9.v1.AdminUserRow
+	(*AdminUserList)(nil),            // 11: druz9.v1.AdminUserList
+	(*ListAdminUsersRequest)(nil),    // 12: druz9.v1.ListAdminUsersRequest
+	(*BanUserRequest)(nil),           // 13: druz9.v1.BanUserRequest
+	(*UnbanUserRequest)(nil),         // 14: druz9.v1.UnbanUserRequest
+	(*BanUserResponse)(nil),          // 15: druz9.v1.BanUserResponse
+	(*AdminReport)(nil),              // 16: druz9.v1.AdminReport
+	(*AdminReportList)(nil),          // 17: druz9.v1.AdminReportList
+	(*ListAdminReportsRequest)(nil),  // 18: druz9.v1.ListAdminReportsRequest
+	(*StatusServiceState)(nil),       // 19: druz9.v1.StatusServiceState
+	(*StatusIncident)(nil),           // 20: druz9.v1.StatusIncident
+	(*StatusPage)(nil),               // 21: druz9.v1.StatusPage
+	(*GetStatusPageRequest)(nil),     // 22: druz9.v1.GetStatusPageRequest
+	(*LLMUsageRow)(nil),              // 23: druz9.v1.LLMUsageRow
+	(*GetLLMUsageStatsRequest)(nil),  // 24: druz9.v1.GetLLMUsageStatsRequest
+	(*GetLLMUsageStatsResponse)(nil), // 25: druz9.v1.GetLLMUsageStatsResponse
+	(*structpb.Value)(nil),           // 26: google.protobuf.Value
+	(*timestamppb.Timestamp)(nil),    // 27: google.protobuf.Timestamp
 }
 var file_druz9_v1_admin_proto_depIdxs = []int32{
-	21, // 0: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
+	26, // 0: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
 	0,  // 1: druz9.v1.ConfigEntry.type:type_name -> druz9.v1.ConfigEntryType
-	22, // 2: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
-	2,  // 3: druz9.v1.ConfigEntryList.items:type_name -> druz9.v1.ConfigEntry
-	21, // 4: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
-	22, // 5: druz9.v1.AdminDashboard.generated_at:type_name -> google.protobuf.Timestamp
-	22, // 6: druz9.v1.AdminUserRow.created_at:type_name -> google.protobuf.Timestamp
-	22, // 7: druz9.v1.AdminUserRow.updated_at:type_name -> google.protobuf.Timestamp
-	22, // 8: druz9.v1.AdminUserRow.ban_expires_at:type_name -> google.protobuf.Timestamp
-	8,  // 9: druz9.v1.AdminUserList.items:type_name -> druz9.v1.AdminUserRow
-	22, // 10: druz9.v1.BanUserRequest.expires_at:type_name -> google.protobuf.Timestamp
-	8,  // 11: druz9.v1.BanUserResponse.user:type_name -> druz9.v1.AdminUserRow
+	27, // 2: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
+	4,  // 3: druz9.v1.ConfigEntryList.items:type_name -> druz9.v1.ConfigEntry
+	26, // 4: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
+	27, // 5: druz9.v1.AdminDashboard.generated_at:type_name -> google.protobuf.Timestamp
+	27, // 6: druz9.v1.AdminUserRow.created_at:type_name -> google.protobuf.Timestamp
+	27, // 7: druz9.v1.AdminUserRow.updated_at:type_name -> google.protobuf.Timestamp
+	27, // 8: druz9.v1.AdminUserRow.ban_expires_at:type_name -> google.protobuf.Timestamp
+	10, // 9: druz9.v1.AdminUserList.items:type_name -> druz9.v1.AdminUserRow
+	27, // 10: druz9.v1.BanUserRequest.expires_at:type_name -> google.protobuf.Timestamp
+	10, // 11: druz9.v1.BanUserResponse.user:type_name -> druz9.v1.AdminUserRow
 	1,  // 12: druz9.v1.AdminReport.status:type_name -> druz9.v1.AdminReportStatus
-	22, // 13: druz9.v1.AdminReport.created_at:type_name -> google.protobuf.Timestamp
-	14, // 14: druz9.v1.AdminReportList.items:type_name -> druz9.v1.AdminReport
+	27, // 13: druz9.v1.AdminReport.created_at:type_name -> google.protobuf.Timestamp
+	16, // 14: druz9.v1.AdminReportList.items:type_name -> druz9.v1.AdminReport
 	1,  // 15: druz9.v1.ListAdminReportsRequest.status:type_name -> druz9.v1.AdminReportStatus
-	22, // 16: druz9.v1.StatusIncident.started_at:type_name -> google.protobuf.Timestamp
-	22, // 17: druz9.v1.StatusIncident.ended_at:type_name -> google.protobuf.Timestamp
-	17, // 18: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
-	18, // 19: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
-	22, // 20: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
-	5,  // 21: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
-	4,  // 22: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
-	7,  // 23: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
-	10, // 24: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
-	11, // 25: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
-	12, // 26: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
-	16, // 27: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
-	20, // 28: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
-	3,  // 29: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
-	2,  // 30: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
-	6,  // 31: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
-	9,  // 32: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
-	13, // 33: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
-	13, // 34: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
-	15, // 35: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
-	19, // 36: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
-	29, // [29:37] is the sub-list for method output_type
-	21, // [21:29] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	27, // 16: druz9.v1.StatusIncident.started_at:type_name -> google.protobuf.Timestamp
+	27, // 17: druz9.v1.StatusIncident.ended_at:type_name -> google.protobuf.Timestamp
+	19, // 18: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
+	20, // 19: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
+	27, // 20: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
+	2,  // 21: druz9.v1.GetLLMUsageStatsRequest.period:type_name -> druz9.v1.LLMUsagePeriod
+	3,  // 22: druz9.v1.GetLLMUsageStatsRequest.group_by:type_name -> druz9.v1.LLMUsageGroup
+	23, // 23: druz9.v1.GetLLMUsageStatsResponse.rows:type_name -> druz9.v1.LLMUsageRow
+	7,  // 24: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
+	6,  // 25: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
+	9,  // 26: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
+	12, // 27: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
+	13, // 28: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
+	14, // 29: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
+	18, // 30: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
+	22, // 31: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
+	24, // 32: druz9.v1.AdminService.GetLLMUsageStats:input_type -> druz9.v1.GetLLMUsageStatsRequest
+	5,  // 33: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
+	4,  // 34: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
+	8,  // 35: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
+	11, // 36: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
+	15, // 37: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
+	15, // 38: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
+	17, // 39: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
+	21, // 40: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
+	25, // 41: druz9.v1.AdminService.GetLLMUsageStats:output_type -> druz9.v1.GetLLMUsageStatsResponse
+	33, // [33:42] is the sub-list for method output_type
+	24, // [24:33] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_admin_proto_init() }
@@ -1648,8 +1991,8 @@ func file_druz9_v1_admin_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_admin_proto_rawDesc), len(file_druz9_v1_admin_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   19,
+			NumEnums:      4,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

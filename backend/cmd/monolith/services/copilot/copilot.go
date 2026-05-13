@@ -14,6 +14,7 @@ import (
 	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/ratelimit"
+	"druz9/shared/pkg/userlocale"
 	subDomain "druz9/subscription/domain"
 
 	"github.com/go-chi/chi/v5"
@@ -124,6 +125,8 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		userContextProvider = adapter
 	}
 
+	localeReader := userlocale.NewPostgresReader(d.Pool)
+
 	analyze := &copilotApp.Analyze{
 		Conversations: conversations,
 		Messages:      messages,
@@ -143,6 +146,7 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		// LoadActivePrep returns an empty struct and the prep-block
 		// emission collapses to nothing.
 		InterviewPrep: interviewPreps,
+		LocaleReader:  localeReader,
 		Log:           d.Log,
 		Now:           d.Now,
 	}
@@ -259,6 +263,7 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		TokenQuota:    d.TokenQuota,
 		UserContext:   userContextProvider,
 		InterviewPrep: interviewPreps,
+		LocaleReader:  localeReader,
 		Log:           d.Log,
 	}
 	var suggestLimiter *ratelimit.RedisFixedWindow

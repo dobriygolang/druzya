@@ -254,6 +254,51 @@ func writeBriefSignalHighlights(sb *strings.Builder, in domain.BriefPromptInput)
 func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Today: %s\n\n", in.Today.Format("2006-01-02 (Monday)"))
+
+	// Wave 15: surface bias. If the user opened a web Today, prefer
+	// «open atlas / codex / lingua reading» recommendation kinds. If
+	// they opened Hone, prefer focus-session-on-task. If Cue,
+	// prefer interview prep if upcoming.
+	if src := strings.ToLower(strings.TrimSpace(in.Source)); src != "" {
+		switch src {
+		case "hone":
+			sb.WriteString("SURFACE BIAS: user opened Hone — at least one recommendation should be a Focus session on a concrete pinned task or atlas node (kind=tiny_task).\n\n")
+		case "cue":
+			sb.WriteString("SURFACE BIAS: user opened Cue copilot — at least one recommendation should be interview prep flavoured (review interview pattern, mock attempt, or speaking shadowing).\n\n")
+		case "web", "":
+			sb.WriteString("SURFACE BIAS: user opened web Today — at least one recommendation should open Atlas / Codex / Lingua (kind=review_note).\n\n")
+		}
+	}
+
+	// Wave 15: 24h activity counts — coach mentions «вчера ты сделал X»
+	// as continuity signal. Counts only — no body content.
+	if hasRecentActivity(in.RecentActivity24h) {
+		sb.WriteString("RECENT ACTIVITY (last 24h — coach SHOULD mention these counts in narrative as continuity):\n")
+		ra := in.RecentActivity24h
+		if ra.FocusSessionsCount > 0 {
+			fmt.Fprintf(&sb, "  - %d focus session(s), %d min total\n", ra.FocusSessionsCount, ra.FocusMinutesTotal)
+		}
+		if ra.TasksDone > 0 {
+			fmt.Fprintf(&sb, "  - %d task(s) marked done\n", ra.TasksDone)
+		}
+		if ra.MockAttempts > 0 {
+			fmt.Fprintf(&sb, "  - %d mock attempt(s); last result %d/100\n", ra.MockAttempts, ra.LastMockResult)
+		}
+		if ra.NotesCreated > 0 {
+			fmt.Fprintf(&sb, "  - %d note(s) created\n", ra.NotesCreated)
+		}
+		if ra.ReadingMinutes > 0 {
+			fmt.Fprintf(&sb, "  - %d min Lingua reading\n", ra.ReadingMinutes)
+		}
+		if ra.SpeakingAttempts > 0 {
+			fmt.Fprintf(&sb, "  - %d speaking attempt(s); avg %.0f/100\n", ra.SpeakingAttempts, ra.SpeakingAvgScore)
+		}
+		if ra.VocabReviewed > 0 {
+			fmt.Fprintf(&sb, "  - %d vocab cards reviewed\n", ra.VocabReviewed)
+		}
+		sb.WriteString("\n")
+	}
+
 	writeSignalDigest(&sb, in)
 	writeCoachDiagnosis(&sb, in)
 	writeActionCandidates(&sb, in)
@@ -307,6 +352,27 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 			fmt.Fprintf(&sb, "; top topics: %s", strings.Join(in.External.TopTopics, ", "))
 		}
 		sb.WriteString(". (Don't re-suggest these topics in today's plan; coach should mention progress on them.)\n\n")
+	}
+
+	// ── DAY SHUTDOWN (Phase K Wave 15) ─────────────────────────────────
+	// Вчерашняя запись end-of-day ритуала из Hone (day_shutdowns). Coach
+	// видит, что юзер сам зафиксировал как сделанное / висящее / важное
+	// на сегодня — и должен строить narrative + recommendations на этой
+	// основе, а не игнорировать. «Pending» — особенно сильный сигнал для
+	// kind=unblock рекомендации.
+	if in.DayShutdown.HasRecord {
+		fmt.Fprintf(&sb, "DAY SHUTDOWN (юзер сам записал вечером %s — НЕ игнорируй, используй для narrative + ≥1 recommendation):\n",
+			in.DayShutdown.ShutdownDate.Format("2006-01-02"))
+		if d := strings.TrimSpace(in.DayShutdown.Done); d != "" {
+			fmt.Fprintf(&sb, "  done: %s\n", truncForPrompt(d, 240))
+		}
+		if p := strings.TrimSpace(in.DayShutdown.Pending); p != "" {
+			fmt.Fprintf(&sb, "  pending: %s\n", truncForPrompt(p, 240))
+		}
+		if t := strings.TrimSpace(in.DayShutdown.Tomorrow); t != "" {
+			fmt.Fprintf(&sb, "  tomorrow: %s\n", truncForPrompt(t, 240))
+		}
+		sb.WriteString("\n")
 	}
 
 	// ── FORK STATUS ──────────────────
@@ -803,4 +869,30 @@ func writeResourceTrail(sb *strings.Builder, in domain.BriefPromptInput) {
 		sb.WriteString("\n")
 	}
 	sb.WriteString("\n")
+}
+
+// hasRecentActivity — Wave 15. True if any of the 24h counters is > 0,
+// so the brief synth knows whether to emit the RECENT ACTIVITY prompt block.
+func hasRecentActivity(r domain.RecentActivitySummary) bool {
+	return r.FocusSessionsCount > 0 ||
+		r.TasksDone > 0 ||
+		r.MockAttempts > 0 ||
+		r.NotesCreated > 0 ||
+		r.ReadingMinutes > 0 ||
+		r.SpeakingAttempts > 0 ||
+		r.VocabReviewed > 0
+}
+
+// truncForPrompt — clip long user input для prompt блока. Сохраняет
+// читаемость (multi-line collapses в single line, hard cap по символам).
+// Используется DAY SHUTDOWN секцией (Wave 15).
+func truncForPrompt(raw string, maxLen int) string {
+	// Replace newlines с " · " чтобы три-line shutdown не сломал prompt
+	// сетку. Coach видит «pending: foo · bar · baz» в одну строку.
+	s := strings.ReplaceAll(raw, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\n", " · ")
+	if len(s) > maxLen {
+		s = s[:maxLen] + "…"
+	}
+	return s
 }

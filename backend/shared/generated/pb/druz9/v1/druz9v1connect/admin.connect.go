@@ -68,6 +68,9 @@ const (
 	// AdminServiceGetStatusPageProcedure is the fully-qualified name of the AdminService's
 	// GetStatusPage RPC.
 	AdminServiceGetStatusPageProcedure = "/druz9.v1.AdminService/GetStatusPage"
+	// AdminServiceGetLLMUsageStatsProcedure is the fully-qualified name of the AdminService's
+	// GetLLMUsageStats RPC.
+	AdminServiceGetLLMUsageStatsProcedure = "/druz9.v1.AdminService/GetLLMUsageStats"
 )
 
 // AdminServiceClient is a client for the druz9.v1.AdminService service.
@@ -89,6 +92,8 @@ type AdminServiceClient interface {
 	// for transparency. The handler implementation MUST NOT leak any private
 	// data.
 	GetStatusPage(context.Context, *connect.Request[v1.GetStatusPageRequest]) (*connect.Response[v1.StatusPage], error)
+	// ── Wave 15: LLM usage panel ───────────────────────────────────────
+	GetLLMUsageStats(context.Context, *connect.Request[v1.GetLLMUsageStatsRequest]) (*connect.Response[v1.GetLLMUsageStatsResponse], error)
 }
 
 // NewAdminServiceClient constructs a client for the druz9.v1.AdminService service. By default, it
@@ -150,6 +155,12 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(adminServiceMethods.ByName("GetStatusPage")),
 			connect.WithClientOptions(opts...),
 		),
+		getLLMUsageStats: connect.NewClient[v1.GetLLMUsageStatsRequest, v1.GetLLMUsageStatsResponse](
+			httpClient,
+			baseURL+AdminServiceGetLLMUsageStatsProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("GetLLMUsageStats")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -163,6 +174,7 @@ type adminServiceClient struct {
 	unbanUser         *connect.Client[v1.UnbanUserRequest, v1.BanUserResponse]
 	listReports       *connect.Client[v1.ListAdminReportsRequest, v1.AdminReportList]
 	getStatusPage     *connect.Client[v1.GetStatusPageRequest, v1.StatusPage]
+	getLLMUsageStats  *connect.Client[v1.GetLLMUsageStatsRequest, v1.GetLLMUsageStatsResponse]
 }
 
 // ListConfig calls druz9.v1.AdminService.ListConfig.
@@ -205,6 +217,11 @@ func (c *adminServiceClient) GetStatusPage(ctx context.Context, req *connect.Req
 	return c.getStatusPage.CallUnary(ctx, req)
 }
 
+// GetLLMUsageStats calls druz9.v1.AdminService.GetLLMUsageStats.
+func (c *adminServiceClient) GetLLMUsageStats(ctx context.Context, req *connect.Request[v1.GetLLMUsageStatsRequest]) (*connect.Response[v1.GetLLMUsageStatsResponse], error) {
+	return c.getLLMUsageStats.CallUnary(ctx, req)
+}
+
 // AdminServiceHandler is an implementation of the druz9.v1.AdminService service.
 type AdminServiceHandler interface {
 	// ── Dynamic config ──────────────────────────────────────────────────
@@ -224,6 +241,8 @@ type AdminServiceHandler interface {
 	// for transparency. The handler implementation MUST NOT leak any private
 	// data.
 	GetStatusPage(context.Context, *connect.Request[v1.GetStatusPageRequest]) (*connect.Response[v1.StatusPage], error)
+	// ── Wave 15: LLM usage panel ───────────────────────────────────────
+	GetLLMUsageStats(context.Context, *connect.Request[v1.GetLLMUsageStatsRequest]) (*connect.Response[v1.GetLLMUsageStatsResponse], error)
 }
 
 // NewAdminServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -281,6 +300,12 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(adminServiceMethods.ByName("GetStatusPage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceGetLLMUsageStatsHandler := connect.NewUnaryHandler(
+		AdminServiceGetLLMUsageStatsProcedure,
+		svc.GetLLMUsageStats,
+		connect.WithSchema(adminServiceMethods.ByName("GetLLMUsageStats")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.AdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminServiceListConfigProcedure:
@@ -299,6 +324,8 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceListReportsHandler.ServeHTTP(w, r)
 		case AdminServiceGetStatusPageProcedure:
 			adminServiceGetStatusPageHandler.ServeHTTP(w, r)
+		case AdminServiceGetLLMUsageStatsProcedure:
+			adminServiceGetLLMUsageStatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -338,4 +365,8 @@ func (UnimplementedAdminServiceHandler) ListReports(context.Context, *connect.Re
 
 func (UnimplementedAdminServiceHandler) GetStatusPage(context.Context, *connect.Request[v1.GetStatusPageRequest]) (*connect.Response[v1.StatusPage], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.GetStatusPage is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) GetLLMUsageStats(context.Context, *connect.Request[v1.GetLLMUsageStatsRequest]) (*connect.Response[v1.GetLLMUsageStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.GetLLMUsageStats is not implemented"))
 }

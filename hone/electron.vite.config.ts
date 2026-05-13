@@ -29,8 +29,15 @@ const PEER_ALIASES = {
   '@bufbuild/protobuf': resolve(__dirname, 'node_modules/@bufbuild/protobuf'),
   '@connectrpc/connect': resolve(__dirname, 'node_modules/@connectrpc/connect'),
   '@connectrpc/connect-web': resolve(__dirname, 'node_modules/@connectrpc/connect-web'),
+  zustand: resolve(__dirname, 'node_modules/zustand'),
 };
 const PEER_DEDUPE = Object.keys(PEER_ALIASES);
+
+// Shared i18n dictionary used by both Hone and Cue. Same alias pattern as
+// @generated — a sibling source directory, not an npm package.
+const SHARED_ALIASES = {
+  '@d9-i18n': resolve(__dirname, '../shared/i18n'),
+};
 
 export default defineConfig({
   main: {
@@ -44,6 +51,7 @@ export default defineConfig({
         '@shared': resolve(__dirname, 'src/shared'),
         '@main': resolve(__dirname, 'src/main'),
         ...GEN_ALIAS,
+        ...SHARED_ALIASES,
         ...PEER_ALIASES,
       },
       dedupe: PEER_DEDUPE,
@@ -59,6 +67,7 @@ export default defineConfig({
       alias: {
         '@shared': resolve(__dirname, 'src/shared'),
         ...GEN_ALIAS,
+        ...SHARED_ALIASES,
         ...PEER_ALIASES,
       },
       dedupe: PEER_DEDUPE,
@@ -78,7 +87,16 @@ export default defineConfig({
       // whichever page first imports them. Order matters — Excalidraw
       // and CodeMirror own most of the renderer payload.
       rollupOptions: {
-        input: resolve(__dirname, 'src/renderer/index.html'),
+        // Multi-entry renderer:
+        //   main             — full app (App.tsx, all pages).
+        //   quick-capture    — Phase K Wave 15 standalone overlay window
+        //                      (~480×80, spotlight-style). Lives in its own
+        //                      HTML so the global-shortcut window doesn't
+        //                      pay the cost of loading the heavy main bundle.
+        input: {
+          main: resolve(__dirname, 'src/renderer/index.html'),
+          'quick-capture': resolve(__dirname, 'src/renderer/quick-capture.html'),
+        },
         output: {
           manualChunks: (id) => {
             if (!id.includes('node_modules')) return undefined;
@@ -106,6 +124,7 @@ export default defineConfig({
         // aliased here, Vite's dev server can't resolve the proto stubs
         // and every `⌘K → Stats` path dies on page load.
         ...GEN_ALIAS,
+        ...SHARED_ALIASES,
         ...PEER_ALIASES,
       },
       dedupe: PEER_DEDUPE,

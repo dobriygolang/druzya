@@ -105,7 +105,7 @@ func TestSynthesise_CruiseSkipsReflectionEvenWhenEnabled(t *testing.T) {
 		errAfter: errors.New("no extra calls expected on cruise"),
 	}
 	cfg := StaticCoachConfigReader{Reflective: true}
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 
 	got, err := s.Synthesise(context.Background(), cruiseInput())
 	if err != nil {
@@ -128,7 +128,7 @@ func TestSynthesise_CriticalReflectsWhenEnabled(t *testing.T) {
 		},
 	}
 	cfg := StaticCoachConfigReader{Reflective: true}
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 
 	got, err := s.Synthesise(context.Background(), criticalInput())
 	if err != nil {
@@ -140,17 +140,17 @@ func TestSynthesise_CriticalReflectsWhenEnabled(t *testing.T) {
 	if !strings.Contains(got.Headline, "refined push") {
 		t.Fatalf("expected refined headline, got %q", got.Headline)
 	}
-	// Second call must include the draft envelope as evidence.
+	// Second call: lang-directive(slot 0) + critique-system(slot 1) + user-draft.
 	last := chat.calls[1]
-	if len(last.Messages) < 2 {
+	if len(last.Messages) < 3 {
 		t.Fatalf("critique call missing user message")
 	}
-	if !strings.Contains(last.Messages[0].Content, "critique") &&
-		!strings.Contains(last.Messages[0].Content, "DRAFT") {
+	if !strings.Contains(last.Messages[1].Content, "critique") &&
+		!strings.Contains(last.Messages[1].Content, "DRAFT") {
 		// system prompt should advertise critique role
-		t.Logf("system prompt preview: %s", firstN(last.Messages[0].Content, 80))
+		t.Logf("system prompt preview: %s", firstN(last.Messages[1].Content, 80))
 	}
-	if !strings.Contains(last.Messages[1].Content, "DRAFT BRIEF") {
+	if !strings.Contains(last.Messages[len(last.Messages)-1].Content, "DRAFT BRIEF") {
 		t.Fatalf("critique user prompt missing draft block")
 	}
 }
@@ -162,7 +162,7 @@ func TestSynthesise_CriticalSkipsReflectionWhenDisabled(t *testing.T) {
 		errAfter: errors.New("no extra calls expected when reflective disabled"),
 	}
 	cfg := StaticCoachConfigReader{Reflective: false}
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 
 	got, err := s.Synthesise(context.Background(), criticalInput())
 	if err != nil {
@@ -186,7 +186,7 @@ func TestSynthesise_CritiqueChainErrorFallsBackToSketch(t *testing.T) {
 		errAfter: errors.New("provider down"),
 	}
 	cfg := StaticCoachConfigReader{Reflective: true}
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 
 	got, err := s.Synthesise(context.Background(), criticalInput())
 	if err != nil {
@@ -210,7 +210,7 @@ func TestSynthesise_CritiqueParseFailFallsBackToSketch(t *testing.T) {
 		},
 	}
 	cfg := StaticCoachConfigReader{Reflective: true}
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 
 	got, err := s.Synthesise(context.Background(), criticalInput())
 	if err != nil {
@@ -236,7 +236,7 @@ func TestSynthesise_NoPersonaOverlayWhenUnset(t *testing.T) {
 		errAfter: errors.New("no extra calls"),
 	}
 	cfg := StaticCoachConfigReader{} // PersonaValue empty
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 
 	if _, err := s.Synthesise(context.Background(), cruiseInput()); err != nil {
 		t.Fatalf("Synthesise: %v", err)
@@ -244,10 +244,10 @@ func TestSynthesise_NoPersonaOverlayWhenUnset(t *testing.T) {
 	if len(chat.calls) != 1 {
 		t.Fatalf("expected 1 call, got %d", len(chat.calls))
 	}
-	// Default sketch path: 2 messages (system + user). Persona overlay
-	// would добавил бы third message.
-	if len(chat.calls[0].Messages) != 2 {
-		t.Fatalf("expected 2 messages without persona, got %d", len(chat.calls[0].Messages))
+	// Default sketch path: 3 messages (lang-directive + system + user).
+	// Persona overlay would add a fourth message.
+	if len(chat.calls[0].Messages) != 3 {
+		t.Fatalf("expected 3 messages without persona, got %d", len(chat.calls[0].Messages))
 	}
 }
 
@@ -258,17 +258,18 @@ func TestSynthesise_PersonaOverlayInjectsSystemMessage(t *testing.T) {
 		errAfter: errors.New("no extra calls"),
 	}
 	cfg := StaticCoachConfigReader{PersonaValue: CoachPersonaStrict}
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 
 	if _, err := s.Synthesise(context.Background(), cruiseInput()); err != nil {
 		t.Fatalf("Synthesise: %v", err)
 	}
 	msgs := chat.calls[0].Messages
-	if len(msgs) != 3 {
-		t.Fatalf("expected 3 messages with persona overlay, got %d", len(msgs))
+	// 4 messages: lang-directive + system + persona + user
+	if len(msgs) != 4 {
+		t.Fatalf("expected 4 messages with persona overlay, got %d", len(msgs))
 	}
-	if !strings.Contains(msgs[1].Content, "TONE OVERLAY: strict") {
-		t.Fatalf("overlay message 1 missing strict tag: %q", msgs[1].Content)
+	if !strings.Contains(msgs[2].Content, "TONE OVERLAY: strict") {
+		t.Fatalf("overlay message 2 missing strict tag: %q", msgs[2].Content)
 	}
 }
 
@@ -281,13 +282,13 @@ func TestSynthesise_NoVariantOverlayWhenDefault(t *testing.T) {
 		errAfter: errors.New("no extra calls"),
 	}
 	cfg := StaticCoachConfigReader{} // PromptVariantValue empty → default
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 	if _, err := s.Synthesise(context.Background(), cruiseInput()); err != nil {
 		t.Fatalf("Synthesise: %v", err)
 	}
-	// 2 messages = system + user, без variant overlay.
-	if len(chat.calls[0].Messages) != 2 {
-		t.Fatalf("expected 2 messages without variant overlay, got %d", len(chat.calls[0].Messages))
+	// 3 messages = lang-directive(slot 0) + system + user, без variant overlay.
+	if len(chat.calls[0].Messages) != 3 {
+		t.Fatalf("expected 3 messages without variant overlay, got %d", len(chat.calls[0].Messages))
 	}
 }
 
@@ -298,16 +299,17 @@ func TestSynthesise_TerseVariantInjectsMessage(t *testing.T) {
 		errAfter: errors.New("no extra calls"),
 	}
 	cfg := StaticCoachConfigReader{PromptVariantValue: CoachPromptVariantTerse}
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 	if _, err := s.Synthesise(context.Background(), cruiseInput()); err != nil {
 		t.Fatalf("Synthesise: %v", err)
 	}
 	msgs := chat.calls[0].Messages
-	if len(msgs) != 3 {
-		t.Fatalf("expected 3 messages with terse variant, got %d", len(msgs))
+	// 4 messages now: lang-directive(slot 0) + system + variant + user
+	if len(msgs) != 4 {
+		t.Fatalf("expected 4 messages with terse variant, got %d", len(msgs))
 	}
-	if !strings.Contains(msgs[1].Content, "VARIANT: terse") {
-		t.Fatalf("variant message missing terse tag: %q", msgs[1].Content)
+	if !strings.Contains(msgs[2].Content, "VARIANT: terse") {
+		t.Fatalf("variant message missing terse tag: %q", msgs[2].Content)
 	}
 }
 
@@ -322,19 +324,20 @@ func TestSynthesise_PersonaAndVariantStackInOrder(t *testing.T) {
 		PersonaValue:       CoachPersonaStrict,
 		PromptVariantValue: CoachPromptVariantSharp,
 	}
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 	if _, err := s.Synthesise(context.Background(), cruiseInput()); err != nil {
 		t.Fatalf("Synthesise: %v", err)
 	}
 	msgs := chat.calls[0].Messages
-	if len(msgs) != 4 {
-		t.Fatalf("expected 4 messages (system+persona+variant+user), got %d", len(msgs))
+	// 5 messages now: lang-directive(slot 0) + system + persona + variant + user
+	if len(msgs) != 5 {
+		t.Fatalf("expected 5 messages (lang+system+persona+variant+user), got %d", len(msgs))
 	}
-	if !strings.Contains(msgs[1].Content, "TONE OVERLAY: strict") {
-		t.Fatalf("msgs[1] should be persona, got: %q", msgs[1].Content)
+	if !strings.Contains(msgs[2].Content, "TONE OVERLAY: strict") {
+		t.Fatalf("msgs[2] should be persona, got: %q", msgs[2].Content)
 	}
-	if !strings.Contains(msgs[2].Content, "VARIANT: sharp") {
-		t.Fatalf("msgs[2] should be variant, got: %q", msgs[2].Content)
+	if !strings.Contains(msgs[3].Content, "VARIANT: sharp") {
+		t.Fatalf("msgs[3] should be variant, got: %q", msgs[3].Content)
 	}
 }
 
@@ -352,7 +355,7 @@ func TestSynthesise_PersonaOverlayAlsoInCritique(t *testing.T) {
 		Reflective:   true,
 		PersonaValue: CoachPersonaWarm,
 	}
-	s := NewLLMChainBriefSynthesiser(chat, cfg, quietLogger())
+	s := NewLLMChainBriefSynthesiser(chat, cfg, nil, quietLogger())
 
 	if _, err := s.Synthesise(context.Background(), criticalInput()); err != nil {
 		t.Fatalf("Synthesise: %v", err)
@@ -361,11 +364,12 @@ func TestSynthesise_PersonaOverlayAlsoInCritique(t *testing.T) {
 		t.Fatalf("expected 2 calls (sketch + critique), got %d", len(chat.calls))
 	}
 	for i, c := range chat.calls {
-		if len(c.Messages) != 3 {
-			t.Fatalf("call %d: expected 3 messages, got %d", i, len(c.Messages))
+		// 4 messages: lang-directive(slot 0) + system + persona + user
+		if len(c.Messages) != 4 {
+			t.Fatalf("call %d: expected 4 messages, got %d", i, len(c.Messages))
 		}
-		if !strings.Contains(c.Messages[1].Content, "TONE OVERLAY: warm") {
-			t.Fatalf("call %d: overlay missing warm tag: %q", i, c.Messages[1].Content)
+		if !strings.Contains(c.Messages[2].Content, "TONE OVERLAY: warm") {
+			t.Fatalf("call %d: overlay missing warm tag: %q", i, c.Messages[2].Content)
 		}
 	}
 }

@@ -157,6 +157,8 @@ export function useGlobalHotkeys(deps: GlobalHotkeysDeps): void {
       else if (code === 'KeyS') toggleTo('stats');
       else if (code === 'KeyA') toggleTo('assignments');
       else if (code === 'KeyM') toggleTo('calendar');
+      // Y — Schedule (time-blocking day view, Phase K Wave 15).
+      else if (code === 'KeyY') toggleTo('schedule');
       else if (code === 'Comma') toggleTo('settings');
     };
     window.addEventListener('keydown', onKey);

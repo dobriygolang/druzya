@@ -1270,6 +1270,18 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
           onTitleChange={setDraftTitle}
           onBodyChange={setDraftBody}
           onCreate={handleCreate}
+          onToggleAIExcluded={async (noteId, next) => {
+            // Optimistic flip: state в active обновляется сразу, RPC в фоне.
+            // На fail откатываем + показываем toast.
+            setActive((cur) => (cur && cur.id === noteId ? { ...cur, aiExcluded: next } : cur));
+            try {
+              const { updateNoteAIExcluded } = await import('../api/hone');
+              const updated = await updateNoteAIExcluded(noteId, next);
+              setActive((cur) => (cur && cur.id === updated.id ? updated : cur));
+            } catch {
+              setActive((cur) => (cur && cur.id === noteId ? { ...cur, aiExcluded: !next } : cur));
+            }
+          }}
         />
       )}
 

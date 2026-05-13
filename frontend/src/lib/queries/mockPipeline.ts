@@ -489,3 +489,81 @@ export const STAGE_LABEL: Record<StageKind, string> = {
 export function isComingSoonError(err: unknown): boolean {
   return err instanceof Error && err.message === 'mock_pipeline.coming_soon'
 }
+
+// ── Mock Replay (Wave 15) ────────────────────────────────────────────────
+
+export type MockReplayAnnotationType = 'missing' | 'incorrect' | 'good'
+
+export interface MockReplayAnnotation {
+  your_excerpt: string
+  ideal_excerpt: string
+  type: MockReplayAnnotationType
+  comment: string
+}
+
+export interface MockReplay {
+  attempt_id: string
+  ideal_answer_md: string
+  annotations: MockReplayAnnotation[]
+  generated_at: string
+  question_body: string
+  your_answer_md: string
+}
+
+/** Sentinel used by the page to distinguish "ready" from "ask to generate". */
+export interface MockReplayNotReady {
+  status: 'not_ready'
+}
+
+const REPLAY_NOT_READY: MockReplayNotReady = { status: 'not_ready' }
+
+function isMockReplay(x: MockReplay | MockReplayNotReady): x is MockReplay {
+  return 'attempt_id' in x
+}
+
+// apiClient surfaces 202 as a successful response with the typed body —
+// so when the backend returns `{status:"not_ready"}` we route that to a
+// sentinel instead of swallowing it. Transport-level errors still throw.
+async function fetchReplayOrNotReady(
+  attemptId: string,
+): Promise<MockReplay | MockReplayNotReady> {
+  const raw = await api<unknown>(`/mock/attempts/${encodeURIComponent(attemptId)}/replay`)
+  if (raw && typeof raw === 'object' && 'status' in raw && (raw as { status: string }).status === 'not_ready') {
+    return REPLAY_NOT_READY
+  }
+  return raw as MockReplay
+}
+
+export function useMockReplayQuery(attemptId: string | undefined) {
+  return useQuery<MockReplay | MockReplayNotReady, Error>({
+    queryKey: ['mock', 'replay', attemptId ?? 'none'],
+    queryFn: () => {
+      if (!attemptId) throw new Error('attempt_id_required')
+      return fetchReplayOrNotReady(attemptId)
+    },
+    enabled: typeof attemptId === 'string' && attemptId.length > 0,
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useGenerateMockReplayMutation(attemptId: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation<MockReplay, Error>({
+    mutationFn: async () => {
+      if (!attemptId) throw new Error('attempt_id_required')
+      return await api<MockReplay>(`/mock/attempts/${encodeURIComponent(attemptId)}/replay/generate`, {
+        method: 'POST',
+        body: '{}',
+      })
+    },
+    onSuccess: (data) => {
+      if (attemptId) {
+        qc.setQueryData(['mock', 'replay', attemptId], data)
+      }
+    },
+  })
+}
+
+export { isMockReplay }
+// Pure marker re-export so the page can `import { isMockReplay }` for
+// the discriminated-union check without re-declaring the type guard.

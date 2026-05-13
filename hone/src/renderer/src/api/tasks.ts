@@ -37,6 +37,12 @@ export interface TaskCard {
   updatedAt: string;
   completedAt?: string;
   manualKindOverride?: boolean;
+  // Phase K Wave 15 — time-blocking. Когда юзер перетаскивает карточку
+  // в часовой слот day-view, бэк пишет scheduledStart (RFC3339) +
+  // scheduledDurationMin. Если undefined / null — карточка живёт в
+  // обычной колонке (бэклог).
+  scheduledStart?: string;
+  scheduledDurationMin?: number;
 }
 
 export interface TaskComment {
@@ -107,6 +113,33 @@ export async function deleteTask(taskId: string): Promise<void> {
     headers: authHeaders(),
   });
   if (!resp.ok) throw new Error(`deleteTask: ${resp.status}`);
+}
+
+// scheduleTask — pin a task into a calendar slot (Phase K Wave 15).
+// startIso — RFC3339, durationMin — 15..480.
+export async function scheduleTask(
+  taskId: string,
+  startIso: string,
+  durationMin: number,
+): Promise<TaskCard> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/hone/tasks/${taskId}/schedule`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'content-type': 'application/json' },
+    body: JSON.stringify({ scheduledStartIso: startIso, durationMin }),
+  });
+  if (!resp.ok) throw new Error(`scheduleTask: ${resp.status}`);
+  return normalizeTask((await resp.json()) as TaskCard);
+}
+
+// unscheduleTask — return a task to backlog (clears scheduled fields).
+export async function unscheduleTask(taskId: string): Promise<TaskCard> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/hone/tasks/${taskId}/unschedule`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!resp.ok) throw new Error(`unscheduleTask: ${resp.status}`);
+  return normalizeTask((await resp.json()) as TaskCard);
 }
 
 export async function listTaskComments(taskId: string): Promise<TaskComment[]> {

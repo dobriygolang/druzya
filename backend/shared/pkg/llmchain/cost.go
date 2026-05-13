@@ -87,6 +87,62 @@ func EstimateCostUSD(model string, tokensIn, tokensOut int) float64 {
 		rate.outputUSDPerMillion*float64(tokensOut)/1e6
 }
 
+// EstimateCostCents — convenience wrapper для callers, которые пишут
+// integer cost cents в DB (admin LLM usage panel). Rounds half-away from
+// zero так чтобы $0.005 → 1 cent (audit-friendly upper bound).
+func EstimateCostCents(model string, tokensIn, tokensOut int) int {
+	usd := EstimateCostUSD(model, tokensIn, tokensOut)
+	cents := usd * 100
+	// Round to nearest integer (math.Round semantics).
+	if cents >= 0 {
+		return int(cents + 0.5)
+	}
+	return int(cents - 0.5)
+}
+
+// InvocationEvent — single LLM call audit record. Emitted via the
+// optional InvocationHook so admin / wiring code can persist to DB
+// (table llm_invocations) without llmchain depending on pg.
+type InvocationEvent struct {
+	Provider     string
+	Model        string
+	TaskKind     string
+	UserID       string // empty = system / no user context
+	InputTokens  int
+	OutputTokens int
+	CostCents    int
+	LatencyMs    int
+}
+
+// InvocationHook — caller-supplied write sink. Set in main.go's bootstrap
+// after the chain is constructed; nil-safe (no-op when unset). Concurrency:
+// caller's implementation MUST be safe for concurrent invocation — Chain
+// calls fire goroutines.
+//
+// Stored as a package-level var (not a chain field) so all chain instances
+// share the same audit pipeline. Tests can reset via SetInvocationHook(nil).
+var invocationHook func(InvocationEvent)
+
+// SetInvocationHook installs the audit-log writer. Passing nil disables.
+func SetInvocationHook(h func(InvocationEvent)) {
+	invocationHook = h
+}
+
+// emitInvocation — internal helper called from observeCost (Chat path)
+// и observeStream (ChatStream path) so the admin audit log captures
+// both modalities.
+func emitInvocation(ev InvocationEvent) {
+	if invocationHook == nil {
+		return
+	}
+	// Hook fires inline (caller may async-queue from inside the hook).
+	defer func() {
+		// Don't let a broken hook destabilise the LLM hot path.
+		_ = recover()
+	}()
+	invocationHook(ev)
+}
+
 // unknownModelCostOnce — keep "saw unknown model" log to once-per-model
 // so ops alerting ловит появление новой модели без spam'а в Loki.
 var (

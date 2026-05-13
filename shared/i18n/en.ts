@@ -1,0 +1,40 @@
+import type { Dict } from './types';
+
+export const en: Dict = {
+  'common.action.save': 'Save',
+  'common.action.cancel': 'Cancel',
+  'common.action.delete': 'Delete',
+  'common.action.confirm': 'Confirm',
+  'common.action.dismiss': 'Dismiss',
+  'common.action.retry': 'Retry',
+  'common.action.close': 'Close',
+  'common.action.back': 'Back',
+  'common.action.next': 'Next',
+  'common.action.edit': 'Edit',
+  'common.action.copy': 'Copy',
+  'common.action.create': 'Create',
+  'common.action.send': 'Send',
+  'common.action.open': 'Open',
+  'common.action.apply': 'Apply',
+
+  'common.status.loading': 'Loading…',
+  'common.status.saving': 'Saving…',
+  'common.status.saved': 'Saved',
+  'common.status.deleting': 'Deleting…',
+  'common.status.deleted': 'Deleted',
+  'common.status.syncing': 'Syncing…',
+  'common.status.offline': 'Offline',
+  'common.status.ready': 'Ready',
+  'common.status.thinking': 'Thinking…',
+  'common.status.empty': 'Empty',
+
+  'common.error.generic': 'Something went wrong',
+  'common.error.network': 'No connection to the server',
+  'common.error.unauthorized': 'Sign in needed',
+  'common.error.not_found': 'Not found',
+
+  'common.lang.title': 'Interface language',
+  'common.lang.hint': 'Applies immediately. Syncs with web and Cue via your account.',
+  'common.lang.ru': 'Русский',
+  'common.lang.en': 'English',
+};

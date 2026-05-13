@@ -67,7 +67,7 @@ const behavioralRubricSystemPrompt = `Ты — strict senior behavioral-intervie
   "action":        <целое 1..5>,
   "result":        <целое 1..5>,
   "communication": <целое 1..5>,
-  "body_md": "<3-5 предложений по-русски: конкретный feedback по каждой оси STAR + что улучшить>"
+  "body_md": "<3-5 sentences in the user's preferred language: specific feedback for each STAR axis + what to improve>"
 }
 
 Что оцениваешь:

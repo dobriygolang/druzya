@@ -6,6 +6,9 @@ export interface HoneSettings {
   defaultVolume: number;
   notifications: boolean;
   ambientMusic: boolean;
+  // askResistanceBeforeFocus (Phase K Wave 15) — показывать ли pre-focus
+  // прорезонансу journal modal перед стартом сессии. Default: true.
+  askResistanceBeforeFocus: boolean;
 }
 
 export const SETTINGS_KEY = PREFS_KEYS.SETTINGS_KEY;
@@ -17,6 +20,7 @@ export const DEFAULTS: HoneSettings = {
   defaultVolume: 40,
   notifications: true,
   ambientMusic: true,
+  askResistanceBeforeFocus: true,
 };
 
 export function readSettings(): HoneSettings {
@@ -31,6 +35,10 @@ export function readSettings(): HoneSettings {
       defaultVolume: clampInt(parsed?.defaultVolume, 0, 100, DEFAULTS.defaultVolume),
       notifications: typeof parsed?.notifications === 'boolean' ? parsed.notifications : DEFAULTS.notifications,
       ambientMusic: typeof parsed?.ambientMusic === 'boolean' ? parsed.ambientMusic : DEFAULTS.ambientMusic,
+      askResistanceBeforeFocus:
+        typeof parsed?.askResistanceBeforeFocus === 'boolean'
+          ? parsed.askResistanceBeforeFocus
+          : DEFAULTS.askResistanceBeforeFocus,
     };
   } catch {
     return DEFAULTS;

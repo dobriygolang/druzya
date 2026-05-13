@@ -9,6 +9,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { OnboardingModal } from './components/OnboardingModal';
 import { CueInstallSuggestion } from './components/CueInstallSuggestion';
 import { LinguaMigrationModal } from './components/LinguaMigrationModal';
+import { DayShutdownModal } from './components/DayShutdownModal';
 import {
   IdentityIntroModal,
   shouldShowIdentityIntro,
@@ -58,6 +59,13 @@ const TutorAssignmentsPage = lazy(() =>
 const CalendarPage = lazy(() => import('./pages/Calendar').then((m) => ({ default: m.CalendarPage })));
 const MemoryTimelinePage = lazy(() => import('./pages/MemoryTimeline').then((m) => ({ default: m.MemoryTimelinePage })));
 const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
+const SchedulePage = lazy(() => import('./pages/Schedule').then((m) => ({ default: m.SchedulePage })));
+const EnergyPage = lazy(() => import('./pages/Energy').then((m) => ({ default: m.EnergyPage })));
+// Phase K Wave 15 — pre-focus pulse modal (lazy: загружается только когда юзер
+// инициирует focus с включённым toggle'ом).
+const ResistanceModal = lazy(() =>
+  import('./components/ResistanceModal').then((m) => ({ default: m.ResistanceModal })),
+);
 
 const Copilot = lazy(() => import('./components/Copilot').then((m) => ({ default: m.Copilot })));
 
@@ -93,7 +101,7 @@ export default function App() {
   const VALID_PAGES = new Set<PageId>([
     'home', 'today', 'coach', 'notes', 'stats',
     'assignments',
-    'calendar', 'memory', 'settings',
+    'calendar', 'schedule', 'energy', 'memory', 'settings',
   ]);
   const readStoredPage = (): PageId => {
     if (typeof window === 'undefined') return 'home';
@@ -134,6 +142,17 @@ export default function App() {
     }
   }, []);
   const [paletteOpen, setPaletteOpenRaw] = useState(false);
+  // Phase K Wave 15 — end-of-day shutdown modal. Opens via main-process
+  // notification click (IPC event `day-shutdown:open-modal`) or via
+  // Palette → «Закрыть день».
+  const [dayShutdownOpen, setDayShutdownOpen] = useState(false);
+  useEffect(() => {
+    const ipc = (window as unknown as {
+      __honeIPC?: { on: (channel: string, listener: () => void) => () => void };
+    }).__honeIPC;
+    if (!ipc) return;
+    return ipc.on('day-shutdown:open-modal', () => setDayShutdownOpen(true));
+  }, []);
   const setPaletteOpen = useCallback((next: boolean | ((p: boolean) => boolean)) => {
     setPaletteOpenRaw((prev) => {
       const resolved = typeof next === 'function' ? next(prev) : next;
@@ -395,6 +414,18 @@ export default function App() {
       .catch(() => {
         /* silent — Dock timer must not show error */
       });
+    // Phase K Wave 15 — fire macOS Focus shortcut если юзер вписал имя
+    // в Settings → Focus → «Блокировка отвлечений». No-op для пустой
+    // строки / non-darwin / отсутствующего shortcut'а (main лог'нет).
+    void import('./pages/Settings/sections/FocusModeSection').then(({ readFocusModeName }) => {
+      const name = readFocusModeName();
+      if (!name) return;
+      const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+      if (!bridge?.focusMode?.start) return;
+      void bridge.focusMode.start(name).catch(() => {
+        /* блокировка отвлечений — best-effort */
+      });
+    });
   }, [running, pinnedPlanItemId, pinnedTitle]);
 
   const finishSession = useCallback(
@@ -404,6 +435,19 @@ export default function App() {
       const secondsFocused = Math.max(0, pomodoroSecsRef.current - remain);
       const pomodorosCompleted = remain === 0 ? 1 : 0;
       sessionRef.current = null;
+      // Phase K Wave 15 — turn off macOS Focus, если активирован.
+      // Тот же shortcut name запускается повторно — обычно сам macOS
+      // Focus toggle'ит state, либо у юзера может быть пара shortcut'ов
+      // (On / Off) — он впишет тот, что toggle'ит state.
+      void import('./pages/Settings/sections/FocusModeSection').then(({ readFocusModeName }) => {
+        const name = readFocusModeName();
+        if (!name) return;
+        const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+        if (!bridge?.focusMode?.stop) return;
+        void bridge.focusMode.stop(name).catch(() => {
+          /* best-effort — пользователь сам разрулит если Focus застрял */
+        });
+      });
       const trimmed = reflection.trim();
       const payload = {
         sessionId: id,
@@ -521,7 +565,13 @@ export default function App() {
     });
   }, [finishSession, initialFor]);
 
-  const startFocus = useCallback((args?: StartFocusArgs) => {
+  // Phase K Wave 15 — pre-focus pulse. Когда юзер не отключил toggle
+  // в Settings → Focus → «Pre-focus pulse», показываем ResistanceModal
+  // на 10 секунд перед фактическим стартом. Submit/skip оба ведут к
+  // launchFocus — журнал — best-effort.
+  const [resistancePending, setResistancePending] = useState<StartFocusArgs | null>(null);
+
+  const launchFocus = useCallback((args?: StartFocusArgs) => {
     setPinnedPlanItemId(args?.planItemId ?? null);
     setPinnedTitle(args?.pinnedTitle ?? null);
     setReflectionPrompt(null);
@@ -537,6 +587,24 @@ export default function App() {
       has_pinned_title: args?.pinnedTitle ? true : false,
     });
   }, []);
+
+  const startFocus = useCallback(
+    (args?: StartFocusArgs) => {
+      try {
+        const raw = window.localStorage.getItem('hone:settings');
+        const parsed = raw ? JSON.parse(raw) : null;
+        const ask = parsed?.askResistanceBeforeFocus;
+        if (ask === false) {
+          launchFocus(args);
+          return;
+        }
+      } catch {
+        /* settings unreadable → default: show pulse */
+      }
+      setResistancePending(args ?? {});
+    },
+    [launchFocus],
+  );
 
   const stopFocus = useCallback(() => {
     if (!running && !sessionRef.current) return;
@@ -555,12 +623,17 @@ export default function App() {
         setStatsOpen(true);
         return;
       }
+      if (id === 'day-shutdown') {
+        setDayShutdownOpen(true);
+        return;
+      }
       if (args) {
         startFocus(args);
         return;
       }
       setStatsOpen(false);
-      setPage(id);
+      // After the early returns above, only PageId values can flow here.
+      setPage(id as PageId);
     },
     [startFocus],
   );
@@ -736,6 +809,8 @@ export default function App() {
         {page === 'today' && <TaskBoardPage />}
         {page === 'coach' && <Coach onStartFocus={({ pinnedTitle }) => startFocus({ pinnedTitle })} />}
         {page === 'stats' && <Stats />}
+        {page === 'schedule' && <SchedulePage />}
+        {page === 'energy' && <EnergyPage />}
         {page === 'notes' && (
           <VaultUnlockGate>
             <NotesPage
@@ -808,6 +883,22 @@ export default function App() {
         onClose={() => setCueSuggestionOpen(false)}
       />
       <LinguaMigrationModal />
+      <DayShutdownModal
+        open={dayShutdownOpen}
+        onClose={() => setDayShutdownOpen(false)}
+      />
+      {resistancePending && (
+        <Suspense fallback={null}>
+          <ResistanceModal
+            pinnedTitle={resistancePending.pinnedTitle ?? null}
+            onClose={() => {
+              const pending = resistancePending;
+              setResistancePending(null);
+              launchFocus(pending ?? undefined);
+            }}
+          />
+        </Suspense>
+      )}
       <UpdateToast />
       <OfflineBanner />
       <UpgradePrompt />

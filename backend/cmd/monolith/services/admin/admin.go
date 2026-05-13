@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -46,6 +47,8 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 	server.GetStatusUC = &adminApp.GetStatus{
 		Prober: prober, Incidents: incidents, Cache: d.Redis, Log: d.Log,
 	}
+	// Wave 15: LLM usage / cost panel — reads llm_invocations.
+	server.GetLLMUsageStatsUC = &adminApp.GetLLMUsageStats{Pool: d.Pool}
 
 	connectPath, connectHandler := druz9v1connect.NewAdminServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("admin", connectPath, connectHandler)
@@ -128,6 +131,13 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
+		Background: []func(context.Context){
+			// Wave 15: LLM invocation audit worker — writes per-call rows
+			// into llm_invocations for the admin cost panel. Hook is wired
+			// to llmchain.SetInvocationHook so every successful Chat() /
+			// ChatStream Done frame emits an event.
+			func(ctx context.Context) { startLLMInvocationWorker(ctx, d.Pool, d.Log) },
+		},
 		MountREST: func(r chi.Router) {
 			// Pivot 2026-05-04: orphan admin REST aliases (no frontend
 			// caller) удалены — /admin/tasks*, /admin/companies*,
@@ -164,6 +174,8 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/admin/rooms/bulk-archive", roomsHandler.HandleBulkArchive)
 			r.Get("/admin/observability/llm", llmObservHandler.HandleRollups)
 			r.Get("/admin/observability/eval-runs", llmObservHandler.HandleEvalRuns)
+			// Wave 15: per-call LLM usage / cost panel.
+			r.Post("/admin/llm-usage", transcoder.ServeHTTP)
 
 			// R7 Phase 1 — pipeline editor (validate + templates).
 			r.Get("/admin/mock/companies/{id}/validate", pipelineHandler.HandleValidate)

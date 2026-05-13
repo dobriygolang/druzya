@@ -406,6 +406,11 @@ type Request struct {
 	// ModelOverride требует pro+, а UserTier=free → ErrTierRequired.
 	// Caller обычно заполняет через shared middleware UserTierFromContext.
 	UserTier enums.SubscriptionPlan
+
+	// UserID — Wave 15 admin audit context. Optional; empty means «system /
+	// no user attribution» (probe, scheduled job). Used by the invocation
+	// audit log to attribute cost to a user.
+	UserID string
 }
 
 // Response is the non-streaming result.

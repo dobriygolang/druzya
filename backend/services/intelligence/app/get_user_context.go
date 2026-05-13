@@ -53,6 +53,9 @@ type UserContextBundle struct {
 	Radar SkillRadarView
 	// RelevantResources — top-K atlas hits (empty until atlas hook wired).
 	RelevantResources []AtlasResourceRef
+	// RecentActivity24h — Wave 15 cross-surface 24h snapshot (counts only).
+	// Empty struct когда RecentActivity reader не wired or query failed.
+	RecentActivity24h domain.RecentActivitySummary
 }
 
 // CoachMemoryEntry — single projection for suggestion context.
@@ -130,6 +133,8 @@ type GetUserContext struct {
 	// nil, RelevantResources is always empty in the bundle. Wired in
 	// cmd/monolith/services/intelligence/atlas_reader_adapter.go.
 	AtlasReader AtlasReader
+	// Wave 15: RecentActivity — 24h cross-surface counters. nil-safe.
+	RecentActivity domain.RecentActivityReader
 
 	// MemoryLimit defaults to 12 when zero.
 	MemoryLimit int
@@ -249,6 +254,13 @@ func (uc *GetUserContext) Do(ctx context.Context, in GetUserContextInput) (UserC
 		recentAct := recentActivityFromBundle(out)
 		if refs, err := uc.AtlasReader.TopRelevantNodes(ctx, in.UserID, goalText, recentAct, 5); err == nil {
 			out.RelevantResources = refs
+		}
+	}
+
+	// ── 6. Wave 15: 24h activity snapshot. Fail-soft.
+	if uc.RecentActivity != nil {
+		if snap, err := uc.RecentActivity.Last24h(ctx, in.UserID); err == nil {
+			out.RecentActivity24h = snap
 		}
 	}
 

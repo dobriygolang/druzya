@@ -80,8 +80,8 @@ const sysDesignRubricSystemPrompt = `Ты — strict senior-architect interviewe
   "scalability":   <целое 1..5>,
   "cost":          <целое 1..5>,
   "simplicity":    <целое 1..5>,
-  "narrative_critique": "<2-4 предложения по-русски: общий вердикт + 1-2 приоритетных next step>",
-  "missing_concepts":   [<до 6 коротких bullet'ов по-русски: концепции которых нет в решении>]
+  "narrative_critique": "<2-4 предложения in the user's preferred language: overall verdict + 1-2 priority next steps>",
+  "missing_concepts":   [<до 6 short bullets in the user's preferred language: concepts missing from the solution>]
 }
 
 Что оцениваешь по каждой оси (5 = excellent, 1 = serious gap):

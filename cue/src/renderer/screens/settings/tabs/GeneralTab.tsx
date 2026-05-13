@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '../../../components/primitives';
 import { Seg } from '../../../components/d9';
-import { useLocaleStore } from '../../../i18n';
+import { useLocaleStore } from '@d9-i18n';
 import { useConfig } from '../../../hooks/use-config';
 import {
   getHistoryRetentionDays,

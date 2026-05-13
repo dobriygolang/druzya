@@ -27,6 +27,29 @@ export const invokeChannels = {
   // process renders it into the macOS menubar tray title/tooltip.
   // Empty string clears the title (tray becomes icon-only).
   trayUpdate: 'tray:update',
+  // Phase K Wave 15 — macOS Focus mode trigger.
+  //
+  // Hone не блокирует приложения напрямую (это требует системных
+  // прав / kernel hooks); вместо этого мы триггерим встроенный
+  // Focus режим macOS через Shortcuts. Юзер сам создаёт Focus в
+  // System Settings → Focus (например, фильтрует Twitter/Reddit/YT)
+  // и вписывает его имя в Settings → Focus → «Блокировка отвлечений».
+  //
+  // Реализация на main процессе: `shortcuts run "<name>"` через
+  // child_process.exec. На не-darwin платформах — no-op + console log.
+  // Возвращает { ok: boolean, error?: string } чтобы Settings
+  // мог показать «Проверить» feedback.
+  focusModeStart: 'focus-mode:start',
+  focusModeStop: 'focus-mode:stop',
+  // Phase K Wave 15 — Quick Capture overlay window. Renderer posts a
+  // captured thought; main process writes it into the user's Inbox folder
+  // via authenticated backend RPC and hides the window on success.
+  quickCaptureSave: 'quick-capture:save',
+  quickCaptureDismiss: 'quick-capture:dismiss',
+  // Read + write the global-hotkey enabled flag. Main owns disk-backed
+  // state (userData/quick_capture.json) so the toggle survives logout.
+  quickCaptureGetEnabled: 'quick-capture:get-enabled',
+  quickCaptureSetEnabled: 'quick-capture:set-enabled',
 } as const;
 
 export const eventChannels = {
@@ -117,6 +140,23 @@ export interface HoneAPI {
      */
     update: (title: string, tooltip: string) => Promise<void>;
   };
+  /**
+   * Phase K Wave 15 — macOS Focus mode integration.
+   *
+   * Hone triggers the user's pre-configured macOS Focus (Do Not
+   * Disturb с custom app/website blocking rules) at the start of a
+   * pomodoro и turns it off when the session ends. The user creates
+   * the Focus in System Settings and types its display name into
+   * Settings → Focus → «Блокировка отвлечений».
+   *
+   * On non-darwin platforms both calls are no-ops returning `{ ok: false }`.
+   */
+  focusMode: {
+    /** Run the named macOS Focus shortcut. */
+    start: (name: string) => Promise<FocusModeResult>;
+    /** Turn off whichever Focus is currently active. */
+    stop: (name: string) => Promise<FocusModeResult>;
+  };
   vault: {
     /** Read OS-encrypted vault passphrase (returns null if not saved). */
     passLoad: () => Promise<string | null>;
@@ -136,6 +176,19 @@ export interface TelegramStart {
   code: string;
   deepLink: string;
   expiresAt: string;
+}
+
+/**
+ * FocusModeResult — narrow result для `focusMode.start` / `.stop`.
+ *
+ *  - `ok: true`  → команда выполнилась без ошибок
+ *  - `ok: false` → платформа не поддерживается, имя пустое, или
+ *    `shortcuts` ругнулся (нет шортката с таким именем и т.д.).
+ *    `error` — короткий human-readable message для UI feedback'а.
+ */
+export interface FocusModeResult {
+  ok: boolean;
+  error?: string;
 }
 
 export type TelegramPollResult =

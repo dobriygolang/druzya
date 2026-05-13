@@ -231,17 +231,28 @@ func (q *Queries) GetTaskWithHint(ctx context.Context, id pgtype.UUID) (GetTaskW
 	return i, err
 }
 
-const getUserSubscription = `-- name: GetUserSubscription :one
-SELECT plan
-  FROM subscriptions
- WHERE user_id = $1
+const getUserSubscriptionAndLocale = `-- name: GetUserSubscriptionAndLocale :one
+SELECT COALESCE(s.plan, 'free')::text AS plan, u.locale
+  FROM users u
+  LEFT JOIN subscriptions s ON s.user_id = u.id
+ WHERE u.id = $1
 `
 
-func (q *Queries) GetUserSubscription(ctx context.Context, userID pgtype.UUID) (string, error) {
-	row := q.db.QueryRow(ctx, getUserSubscription, userID)
-	var plan string
-	err := row.Scan(&plan)
-	return plan, err
+type GetUserSubscriptionAndLocaleRow struct {
+	Plan   string
+	Locale string
+}
+
+// Returns plan + the user's preferred response language in one round-trip.
+// LEFT JOIN: not every user has a subscription row (new / free-tier);
+// COALESCE in the caller defaults to 'free'. users.locale is NOT NULL with
+// DEFAULT 'ru' since 00001_baseline, so a non-null locale is always present
+// for any extant user row.
+func (q *Queries) GetUserSubscriptionAndLocale(ctx context.Context, id pgtype.UUID) (GetUserSubscriptionAndLocaleRow, error) {
+	row := q.db.QueryRow(ctx, getUserSubscriptionAndLocale, id)
+	var i GetUserSubscriptionAndLocaleRow
+	err := row.Scan(&i.Plan, &i.Locale)
+	return i, err
 }
 
 const listAllMockMessages = `-- name: ListAllMockMessages :many

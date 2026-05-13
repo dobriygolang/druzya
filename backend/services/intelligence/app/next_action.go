@@ -47,6 +47,10 @@ type NextActionInput struct {
 	ActiveTrack            *ActiveTrackStep
 	RecentFocusReflections []domain.FocusReflection
 	ML                     domain.MLProfile
+	// Wave 15: RecentActivity24h — counts of last 24h actions. Coach
+	// uses these to either avoid duplicating recent action ("you did
+	// 3 focus sessions already") or build on momentum.
+	RecentActivity24h domain.RecentActivitySummary
 }
 
 // LearningStateView — slim projection (UC не импортирует learning_state
@@ -209,8 +213,44 @@ func buildNextActionPrompt(in NextActionInput) string {
 		}
 	}
 
+	// Wave 15: RecentActivity24h — surface continuity context.
+	if hasRecentActivityNA(in.RecentActivity24h) {
+		ra := in.RecentActivity24h
+		b.WriteString("\nRECENT ACTIVITY (last 24h — DO NOT recommend a duplicate of what user just did):\n")
+		if ra.FocusSessionsCount > 0 {
+			fmt.Fprintf(&b, "  - %d focus session(s), %d min\n", ra.FocusSessionsCount, ra.FocusMinutesTotal)
+		}
+		if ra.TasksDone > 0 {
+			fmt.Fprintf(&b, "  - %d task(s) marked done\n", ra.TasksDone)
+		}
+		if ra.MockAttempts > 0 {
+			fmt.Fprintf(&b, "  - %d mock(s); last %d/100\n", ra.MockAttempts, ra.LastMockResult)
+		}
+		if ra.ReadingMinutes > 0 {
+			fmt.Fprintf(&b, "  - %d min Lingua reading\n", ra.ReadingMinutes)
+		}
+		if ra.SpeakingAttempts > 0 {
+			fmt.Fprintf(&b, "  - %d speaking attempt(s); avg %.0f/100\n", ra.SpeakingAttempts, ra.SpeakingAvgScore)
+		}
+		if ra.VocabReviewed > 0 {
+			fmt.Fprintf(&b, "  - %d vocab card(s) reviewed\n", ra.VocabReviewed)
+		}
+	}
+
 	b.WriteString("\nReturn the single most-important next action.")
 	return b.String()
+}
+
+// hasRecentActivityNA — local mirror of infra/hasRecentActivity to keep
+// the UC free of infra imports. Returns true when any 24h counter > 0.
+func hasRecentActivityNA(r domain.RecentActivitySummary) bool {
+	return r.FocusSessionsCount > 0 ||
+		r.TasksDone > 0 ||
+		r.MockAttempts > 0 ||
+		r.NotesCreated > 0 ||
+		r.ReadingMinutes > 0 ||
+		r.SpeakingAttempts > 0 ||
+		r.VocabReviewed > 0
 }
 
 func parseNextAction(raw string) (NextAction, error) {

@@ -1,0 +1,40 @@
+import type { Dict } from './types';
+
+export const ru: Dict = {
+  'common.action.save': 'Сохранить',
+  'common.action.cancel': 'Отмена',
+  'common.action.delete': 'Удалить',
+  'common.action.confirm': 'Подтвердить',
+  'common.action.dismiss': 'Закрыть',
+  'common.action.retry': 'Повторить',
+  'common.action.close': 'Закрыть',
+  'common.action.back': 'Назад',
+  'common.action.next': 'Далее',
+  'common.action.edit': 'Изменить',
+  'common.action.copy': 'Скопировать',
+  'common.action.create': 'Создать',
+  'common.action.send': 'Отправить',
+  'common.action.open': 'Открыть',
+  'common.action.apply': 'Применить',
+
+  'common.status.loading': 'Загружаем…',
+  'common.status.saving': 'Сохраняем…',
+  'common.status.saved': 'Сохранено',
+  'common.status.deleting': 'Удаляем…',
+  'common.status.deleted': 'Удалено',
+  'common.status.syncing': 'Синхронизация…',
+  'common.status.offline': 'Нет связи',
+  'common.status.ready': 'Готово',
+  'common.status.thinking': 'Думает…',
+  'common.status.empty': 'Пусто',
+
+  'common.error.generic': 'Что-то пошло не так',
+  'common.error.network': 'Нет соединения с сервером',
+  'common.error.unauthorized': 'Нужен вход',
+  'common.error.not_found': 'Не найдено',
+
+  'common.lang.title': 'Язык интерфейса',
+  'common.lang.hint': 'Применяется сразу. Синхронизируется с web и Cue через ваш аккаунт.',
+  'common.lang.ru': 'Русский',
+  'common.lang.en': 'English',
+};

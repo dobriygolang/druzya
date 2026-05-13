@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddExternalActivityRequest, AddListeningMaterialRequest, AddQueueItemRequest, AddReadingMaterialRequest, AddTaskCommentRequest, AddVocabRequest, AddWritingPromptRequest, ArchiveListeningMaterialRequest, ArchiveListeningMaterialResponse, ArchiveReadingMaterialRequest, ArchiveReadingMaterialResponse, ArchiveWritingPromptRequest, ArchiveWritingPromptResponse, BulkAutoCategoriseEvent, BulkAutoCategoriseRequest, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteExternalActivityRequest, DeleteExternalActivityResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, EndReadingSessionRequest, EndReadingSessionResponse, ExternalActivity, FocusSession, Folder, GenerateDailyPlanRequest, GenerateSpeakingTTSRequest, GenerateSpeakingTTSResponse, GetCueSessionRequest, GetDailyPlanRequest, GetListeningMaterialRequest, GetNoteConnectionsRequest, GetNoteRequest, GetReadingMaterialRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetUserSettingsRequest, GetWhiteboardRequest, GradeCodeReviewRequest, GradeCodeReviewResponse, GradeEnglishWritingRequest, GradeEnglishWritingResponse, GradeSpeakingRequest, GradeSpeakingResponse, ImportCueSessionRequest, IngestYouTubeListeningRequest, ListAtlasNodeTracksRequest, ListAtlasNodeTracksResponse, ListCueSessionsRequest, ListCueSessionsResponse, ListeningMaterial, ListExternalActivityRequest, ListExternalActivityResponse, ListFoldersRequest, ListFoldersResponse, ListListeningMaterialsRequest, ListListeningMaterialsResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListReadingMaterialsRequest, ListReadingMaterialsResponse, ListSpeakingExercisesRequest, ListSpeakingExercisesResponse, ListSpeakingHistoryRequest, ListSpeakingHistoryResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListVocabBySourceMaterialRequest, ListVocabDueRequest, ListVocabDueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, ListWritingPromptsRequest, ListWritingPromptsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, ReadingMaterial, ReadingSession, RecordStandupRequest, RecordStandupResponse, ReviewVocabRequest, SaveCritiqueAsNoteRequest, SearchAtlasTopicsRequest, SearchAtlasTopicsResponse, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, SetActiveTrackRequest, SetEnglishActiveRequest, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, StartReadingSessionRequest, Stats, SuggestNoteLinksRequest, SuggestNoteLinksResponse, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateBookProgressRequest, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateTaskKindRequest, UpdateWhiteboardRequest, UserSettings, VocabEntry, Whiteboard, WritingPrompt } from "./hone_pb.js";
+import { AcceptTaskSuggestionRequest, AddExternalActivityRequest, AddListeningMaterialRequest, AddQueueItemRequest, AddReadingMaterialRequest, AddTaskCommentRequest, AddVocabRequest, AddWritingPromptRequest, ArchiveListeningMaterialRequest, ArchiveListeningMaterialResponse, ArchiveReadingMaterialRequest, ArchiveReadingMaterialResponse, ArchiveWritingPromptRequest, ArchiveWritingPromptResponse, BulkAutoCategoriseEvent, BulkAutoCategoriseRequest, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteExternalActivityRequest, DeleteExternalActivityResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, EndReadingSessionRequest, EndReadingSessionResponse, EnergyLog, ExternalActivity, FocusSession, Folder, GenerateDailyPlanRequest, GenerateSpeakingTTSRequest, GenerateSpeakingTTSResponse, GetCueSessionRequest, GetDailyPlanRequest, GetListeningMaterialRequest, GetNoteConnectionsRequest, GetNoteRequest, GetReadingMaterialRequest, GetStatsRequest, GetTodayShutdownRequest, GetTodayShutdownResponse, GetTodayStandupRequest, GetTodayStandupResponse, GetUserSettingsRequest, GetWhiteboardRequest, GradeCodeReviewRequest, GradeCodeReviewResponse, GradeEnglishWritingRequest, GradeEnglishWritingResponse, GradeSpeakingRequest, GradeSpeakingResponse, ImportCueSessionRequest, IngestYouTubeListeningRequest, ListAtlasNodeTracksRequest, ListAtlasNodeTracksResponse, ListCueSessionsRequest, ListCueSessionsResponse, ListEnergyLogsRequest, ListEnergyLogsResponse, ListeningMaterial, ListExternalActivityRequest, ListExternalActivityResponse, ListFoldersRequest, ListFoldersResponse, ListListeningMaterialsRequest, ListListeningMaterialsResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListReadingMaterialsRequest, ListReadingMaterialsResponse, ListResistanceLogsRequest, ListResistanceLogsResponse, ListSpeakingExercisesRequest, ListSpeakingExercisesResponse, ListSpeakingHistoryRequest, ListSpeakingHistoryResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListVocabBySourceMaterialRequest, ListVocabDueRequest, ListVocabDueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, ListWritingPromptsRequest, ListWritingPromptsResponse, LogEnergyRequest, LogResistanceRequest, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, ReadingMaterial, ReadingSession, RecordStandupRequest, RecordStandupResponse, ResistanceEntry, ReviewVocabRequest, SaveCritiqueAsNoteRequest, ScheduleTaskRequest, SearchAtlasTopicsRequest, SearchAtlasTopicsResponse, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, SetActiveTrackRequest, SetEnglishActiveRequest, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, StartReadingSessionRequest, Stats, SubmitDayShutdownRequest, SubmitDayShutdownResponse, SuggestNoteLinksRequest, SuggestNoteLinksResponse, SuggestTasksFromNotesRequest, SuggestTasksFromNotesResponse, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UnscheduleTaskRequest, UpdateBookProgressRequest, UpdateCueSessionRequest, UpdateNoteAIExcludedRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateTaskKindRequest, UpdateWhiteboardRequest, UserSettings, VocabEntry, Whiteboard, WritingPrompt } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -451,6 +451,28 @@ export const HoneService = {
     updateTaskKind: {
       name: "UpdateTaskKind",
       I: UpdateTaskKindRequest,
+      O: Task,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Phase K Wave 15 (2026-05-14) — time-blocking surface.
+     * ScheduleTask пишет scheduled_start + scheduled_duration_min;
+     * UnscheduleTask возвращает карточку в бэклог (NULL'ит оба поля).
+     *
+     * @generated from rpc druz9.v1.HoneService.ScheduleTask
+     */
+    scheduleTask: {
+      name: "ScheduleTask",
+      I: ScheduleTaskRequest,
+      O: Task,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.UnscheduleTask
+     */
+    unscheduleTask: {
+      name: "UnscheduleTask",
+      I: UnscheduleTaskRequest,
       O: Task,
       kind: MethodKind.Unary,
     },
@@ -888,6 +910,126 @@ export const HoneService = {
       name: "GenerateSpeakingTTS",
       I: GenerateSpeakingTTSRequest,
       O: GenerateSpeakingTTSResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Energy tracker (Phase K Wave 15, 2026-05-14) ───────────────────
+     * Юзер тэгает уровень энергии 1-5 раз в N часов. Через неделю видны
+     * паттерны (утро — пик, обед — провал). Помогает планировать сложные
+     * задачи на peak hours в time-blocking UI.
+     *
+     * @generated from rpc druz9.v1.HoneService.LogEnergy
+     */
+    logEnergy: {
+      name: "LogEnergy",
+      I: LogEnergyRequest,
+      O: EnergyLog,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ListEnergyLogs
+     */
+    listEnergyLogs: {
+      name: "ListEnergyLogs",
+      I: ListEnergyLogsRequest,
+      O: ListEnergyLogsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── End-of-day shutdown ritual (Phase K Wave 15, 2026-05-14) ──────
+     * Вечером (21:00 default, настраивается) Hone показывает тихий nudge:
+     * юзер заполняет 3 короткие textarea — что сделал, что не успел, что
+     * важно на завтра. SubmitDayShutdown — UPSERT по (user_id, shutdown_date),
+     * чтобы повторное нажатие просто обновляло, а не плодило дубль. Утром
+     * daily_brief use case (intelligence) читает вчерашнюю запись и кладёт
+     * в coach prompt секцией DAY SHUTDOWN.
+     *
+     * @generated from rpc druz9.v1.HoneService.SubmitDayShutdown
+     */
+    submitDayShutdown: {
+      name: "SubmitDayShutdown",
+      I: SubmitDayShutdownRequest,
+      O: SubmitDayShutdownResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.GetTodayShutdown
+     */
+    getTodayShutdown: {
+      name: "GetTodayShutdown",
+      I: GetTodayShutdownRequest,
+      O: GetTodayShutdownResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Resistance journal (Phase K Wave 15, 2026-05-14) ───────────────
+     *
+     * Optional pre-focus prompt «что трудно прямо сейчас?». Юзер либо
+     * пропускает (no-op), либо отправляет одну фразу — она падает в
+     * resistance_log. Раз в неделю Coach next-action use case читает
+     * последние записи для контекстного совета. Текст до 200 chars enforced
+     * на app-уровне; пустые строки не принимаются (frontend не шлёт,
+     * server возвращает InvalidArgument).
+     *
+     * @generated from rpc druz9.v1.HoneService.LogResistance
+     */
+    logResistance: {
+      name: "LogResistance",
+      I: LogResistanceRequest,
+      O: ResistanceEntry,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListResistanceLogs — coach + analytics surfaces. `days` = окно (default
+     * 7, max 90). Возвращает записи в обратном хроно порядке.
+     *
+     * @generated from rpc druz9.v1.HoneService.ListResistanceLogs
+     */
+    listResistanceLogs: {
+      name: "ListResistanceLogs",
+      I: ListResistanceLogsRequest,
+      O: ListResistanceLogsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Notes AI flag (Phase K Wave 15, 2026-05-14) ────────────────────
+     *
+     * Soft-privacy toggle: юзер хочет, чтобы конкретная заметка не попадала
+     * в SuggestTasksFromNotes / coach reading pipeline. Не путать с vault
+     * (encrypted) — там ноту вообще не видно серверу.
+     *
+     * @generated from rpc druz9.v1.HoneService.UpdateNoteAIExcluded
+     */
+    updateNoteAIExcluded: {
+      name: "UpdateNoteAIExcluded",
+      I: UpdateNoteAIExcludedRequest,
+      O: Note,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Tasks from notes (Phase K Wave 15, 2026-05-14) ─────────────────
+     *
+     * Coach читает свежие заметки (last 7 days, AI-readable only) и
+     * предлагает добавить in-line action-items как таски в TaskBoard.
+     * Pre-filter regex'ом снимает heavy lift с LLM — мы шлём только
+     * matched фрагменты, не всю заметку. Response cached в Redis на 1 час
+     * per user.
+     *
+     * @generated from rpc druz9.v1.HoneService.SuggestTasksFromNotes
+     */
+    suggestTasksFromNotes: {
+      name: "SuggestTasksFromNotes",
+      I: SuggestTasksFromNotesRequest,
+      O: SuggestTasksFromNotesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.AcceptTaskSuggestion
+     */
+    acceptTaskSuggestion: {
+      name: "AcceptTaskSuggestion",
+      I: AcceptTaskSuggestionRequest,
+      O: Task,
       kind: MethodKind.Unary,
     },
   }

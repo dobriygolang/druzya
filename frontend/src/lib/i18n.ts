@@ -21,7 +21,11 @@ import enErrors from '../locales/en/errors.json'
 import enPages from '../locales/en/pages.json'
 import enWave10 from '../locales/en/wave10.json'
 
-const STORAGE_KEY = 'druz9_lang'
+// Unified storage key across web / Hone / Cue. The legacy 'druz9_lang' value
+// is read once below and migrated forward so existing users don't lose their
+// choice on first load after this change.
+const STORAGE_KEY = 'druz9.locale'
+const LEGACY_STORAGE_KEY = 'druz9_lang'
 
 export type Lang = 'ru' | 'en'
 
@@ -65,9 +69,19 @@ export const resources = {
 function detectLang(): Lang {
   if (typeof window === 'undefined') return 'en'
   const stored = window.localStorage.getItem(STORAGE_KEY)
-  // Persisted legacy 'kz' / 'ua' falls through to browser detection и в
-  // итоге упадёт на 'en'. Никого не сломает.
   if (stored === 'ru' || stored === 'en') return stored
+  // One-shot migration: legacy 'druz9_lang' key from before the unification.
+  // If it has a valid value, copy it forward and drop the old key.
+  const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY)
+  if (legacy === 'ru' || legacy === 'en') {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, legacy)
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY)
+    } catch {
+      /* private mode */
+    }
+    return legacy
+  }
   const browser = (navigator.language || 'en').toLowerCase()
   if (browser.startsWith('ru')) return 'ru'
   return 'en'

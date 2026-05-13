@@ -256,6 +256,7 @@ function DebriefHero({
 // ── StageRow ────────────────────────────────────────────────────────────
 
 function StageRow({ stage }: { stage: PipelineStage }) {
+  const navigate = useNavigate()
   const [open, setOpen] = useState<boolean>(false)
   const hasFeedback = !!stage.ai_feedback_md
   // Red signal stripe + ink ramp opacity instead of multi-hue verdict text:
@@ -278,6 +279,13 @@ function StageRow({ stage }: { stage: PipelineStage }) {
       : stage.verdict === 'fail'
         ? XCircle
         : null
+
+  // Wave 15 — gather attempts that have a user answer (worth replaying).
+  // Skipped / blank attempts get filtered out so the "Разобрать" CTA only
+  // appears where there's actually something to compare.
+  const replayableAttempts = stage.attempts.filter(
+    (a) => (a.user_answer_md ?? '').trim().length > 0,
+  )
 
   return (
     <Card variant="default" padding="md" className="relative flex flex-col gap-2">
@@ -321,6 +329,23 @@ function StageRow({ stage }: { stage: PipelineStage }) {
       {open && stage.ai_feedback_md && (
         <div className="rounded-lg border border-border bg-surface-1 p-3 text-sm text-text-secondary whitespace-pre-wrap">
           {stage.ai_feedback_md}
+        </div>
+      )}
+      {replayableAttempts.length > 0 && (
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          {replayableAttempts.map((a, i) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                navigate(`/mock/replay/${a.id}`)
+              }}
+              className="rounded-md border border-border bg-transparent px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            >
+              Разобрать{replayableAttempts.length > 1 ? ` · попытка ${i + 1}` : ''}
+            </button>
+          ))}
         </div>
       )}
     </Card>

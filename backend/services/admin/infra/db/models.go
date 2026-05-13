@@ -1018,6 +1018,17 @@ type CueSession struct {
 	CompletedAt   pgtype.Timestamptz
 }
 
+type DayShutdown struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	ShutdownDate pgtype.Date
+	Done         string
+	Pending      string
+	Tomorrow     string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
 type Device struct {
 	ID         pgtype.UUID
 	UserID     pgtype.UUID
@@ -1115,6 +1126,14 @@ type EmbeddingModel struct {
 	ID   int32
 	Name string
 	Dim  int32
+}
+
+type EnergyLog struct {
+	ID       pgtype.UUID
+	UserID   pgtype.UUID
+	LoggedAt pgtype.Timestamptz
+	Level    int16
+	Note     pgtype.Text
 }
 
 // Snapshot results from make eval-ai / eval-coach runs. Admin views latest scores per dataset; CI compares against threshold для regression alerting.
@@ -1260,6 +1279,7 @@ type HoneNote struct {
 	ImportedAt       pgtype.Timestamptz
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+	AiExcluded       bool
 }
 
 type HoneNoteFolder struct {
@@ -1334,23 +1354,25 @@ type HoneStreakState struct {
 }
 
 type HoneTask struct {
-	ID                 pgtype.UUID
-	UserID             pgtype.UUID
-	Status             string
-	Kind               string
-	Source             string
-	Title              string
-	BriefMd            string
-	SkillKey           pgtype.Text
-	DeepLink           string
-	RecommendedReading []string
-	Priority           int16
-	DueAt              pgtype.Timestamptz
-	CreatedAt          pgtype.Timestamptz
-	UpdatedAt          pgtype.Timestamptz
-	CompletedAt        pgtype.Timestamptz
-	DismissedAt        pgtype.Timestamptz
-	ManualKindOverride bool
+	ID                   pgtype.UUID
+	UserID               pgtype.UUID
+	Status               string
+	Kind                 string
+	Source               string
+	Title                string
+	BriefMd              string
+	SkillKey             pgtype.Text
+	DeepLink             string
+	RecommendedReading   []string
+	Priority             int16
+	DueAt                pgtype.Timestamptz
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	CompletedAt          pgtype.Timestamptz
+	DismissedAt          pgtype.Timestamptz
+	ManualKindOverride   bool
+	ScheduledStart       pgtype.Timestamptz
+	ScheduledDurationMin pgtype.Int4
 }
 
 type HoneTaskComment struct {
@@ -1460,6 +1482,20 @@ type LearningState struct {
 	CommittedAt      pgtype.Timestamptz
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+}
+
+// Per-call LLM audit log. Source for admin LLM usage panel (Wave 15). Retention 30 days via prune job; long-term aggregates live in dynamic_config_metrics + Prometheus.
+type LlmInvocation struct {
+	ID                pgtype.UUID
+	Provider          string
+	Model             string
+	TaskKind          string
+	UserID            pgtype.UUID
+	InputTokens       int32
+	OutputTokens      int32
+	CostEstimateCents int32
+	LatencyMs         int32
+	CreatedAt         pgtype.Timestamptz
 }
 
 type LlmModel struct {
@@ -1624,13 +1660,16 @@ type Persona struct {
 }
 
 type PipelineAttempt struct {
-	ID         pgtype.UUID
-	StageID    pgtype.UUID
-	UserAnswer pgtype.Text
-	AiFeedback []byte
-	Score      pgtype.Int4
-	CreatedAt  pgtype.Timestamptz
-	FinishedAt pgtype.Timestamptz
+	ID                pgtype.UUID
+	StageID           pgtype.UUID
+	UserAnswer        pgtype.Text
+	AiFeedback        []byte
+	Score             pgtype.Int4
+	CreatedAt         pgtype.Timestamptz
+	FinishedAt        pgtype.Timestamptz
+	IdealAnswerMd     pgtype.Text
+	DiffAnnotations   []byte
+	ReplayGeneratedAt pgtype.Timestamptz
 }
 
 type PipelineStage struct {
@@ -1691,6 +1730,15 @@ type ProviderLink struct {
 	VerifiedAt   pgtype.Timestamptz
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+}
+
+type ResistanceLog struct {
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	LoggedAt       pgtype.Timestamptz
+	Text           string
+	FocusSessionID pgtype.UUID
+	TaskID         pgtype.UUID
 }
 
 type ResourcePromotionSignal struct {

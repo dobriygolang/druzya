@@ -1160,6 +1160,59 @@ func (r *ForkProgressReader) Snapshot(
 	return out, nil
 }
 
+// ── DayShutdownReader: services/hone day_shutdowns (миграция 00120) ──
+//
+// Phase K Wave 15. End-of-day shutdown ритуал: Hone сохраняет 3 поля
+// (done / pending / tomorrow) UPSERT'ом по (user_id, shutdown_date).
+// Утром daily_brief use case вытаскивает последнюю запись (если она
+// не старше 2 дней) и кладёт coach prompt секцией DAY SHUTDOWN.
+
+type DayShutdownReader struct{ pool *pgxpool.Pool }
+
+// NewDayShutdownReader wraps a pool.
+func NewDayShutdownReader(pool *pgxpool.Pool) *DayShutdownReader {
+	return &DayShutdownReader{pool: pool}
+}
+
+// LatestRecent — возвращает последнюю запись юзера, если она не старше
+// maxAgeDays. Empty snapshot (HasRecord=false) когда:
+//   - юзер никогда не ритуалил → 0 строк.
+//   - последняя запись старше maxAgeDays → coach игнорирует stale данные.
+//     Coach не должен «помнить» вечернюю заметку недельной давности.
+func (r *DayShutdownReader) LatestRecent(
+	ctx context.Context,
+	userID uuid.UUID,
+	maxAgeDays int,
+) (domain.DayShutdownSnapshot, error) {
+	if maxAgeDays <= 0 {
+		maxAgeDays = 2
+	}
+	// Сравниваем по shutdown_date (DATE), не created_at: юзер может
+	// записать «закрытие 13-го» утром 14-го — что corrected backfill, и
+	// мы хотим этот day-record увидеть.
+	since := time.Now().UTC().Truncate(24 * time.Hour).AddDate(0, 0, -maxAgeDays+1)
+
+	const q = `
+		SELECT shutdown_date, done, pending, tomorrow
+		  FROM day_shutdowns
+		 WHERE user_id = $1 AND shutdown_date >= $2
+		 ORDER BY shutdown_date DESC
+		 LIMIT 1`
+	var out domain.DayShutdownSnapshot
+	row := r.pool.QueryRow(ctx, q, sharedpg.UUID(userID), since)
+	err := row.Scan(&out.ShutdownDate, &out.Done, &out.Pending, &out.Tomorrow)
+	if err != nil {
+		// pgx returns no_rows for empty result; treat as «no record».
+		// Любая другая ошибка — bubble up (caller fail-soft логирует).
+		if strings.Contains(err.Error(), "no rows") {
+			return domain.DayShutdownSnapshot{}, nil
+		}
+		return domain.DayShutdownSnapshot{}, fmt.Errorf("DayShutdownReader.LatestRecent: %w", err)
+	}
+	out.HasRecord = true
+	return out, nil
+}
+
 // keep unused import _ = json в reach (на случай если в reader'ах далее
 // добавим jsonb-decode); не дёргает компилятор.
 var _ = json.RawMessage(nil)

@@ -14,7 +14,7 @@ import { cn } from '../lib/cn'
 import { changeLanguage, currentLanguage, LANG_LIST, type Lang } from '../lib/i18n'
 import { useAdminDashboardQuery } from '../lib/queries/admin'
 import { useUnreadCountQuery } from '../lib/queries/notifications'
-import { useProfileQuery } from '../lib/queries/profile'
+import { useProfileQuery, useUpdateSettingsMutation } from '../lib/queries/profile'
 import { useActiveStudyModeQuery } from '../lib/queries/honeSettings'
 import { logoutCurrentSession } from '../lib/queries/auth'
 import { SkipToContent } from './a11y/SkipToContent'
@@ -90,6 +90,7 @@ function LanguageToggleButton() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const lang = currentLanguage()
+  const updateSettings = useUpdateSettingsMutation()
   useEffect(() => {
     if (!open) return
     const onClick = (e: MouseEvent) => {
@@ -110,10 +111,13 @@ function LanguageToggleButton() {
       setOpen(false)
       return
     }
+    // Switch i18next immediately, then write users.locale so LLM (coach /
+    // mock / copilot) answers in the same language on the next call.
     void changeLanguage(next).then(() => {
       setTick((x) => x + 1)
       setOpen(false)
     })
+    updateSettings.mutate({ locale: next })
   }
   const current = LANG_LIST.find((l) => l.code === lang) ?? LANG_LIST[0]
   return (

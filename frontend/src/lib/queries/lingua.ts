@@ -26,8 +26,11 @@ import {
   archiveListeningMaterial,
   getListeningMaterial,
   ingestYouTubeListening,
+  listCuratedListeningTracks,
   listListeningMaterials,
   type AddListeningMaterialArgs,
+  type CuratedListeningLevel,
+  type CuratedListeningTrack,
   type ListeningMaterial,
 } from '../../api/lingua/listening'
 import {
@@ -50,6 +53,8 @@ export const linguaKeys = {
   vocabBySource: (materialId: string) => ['lingua', 'vocab', 'source', materialId] as const,
   listeningMaterials: ['lingua', 'listening', 'materials'] as const,
   listeningMaterial: (id: string) => ['lingua', 'listening', 'material', id] as const,
+  curatedListening: (level: CuratedListeningLevel | 'all' = 'all') =>
+    ['lingua', 'listening', 'curated', level] as const,
   speakingExercises: (level?: SpeakingLevel) => ['lingua', 'speaking', 'exercises', level ?? 'all'] as const,
   speakingHistory: ['lingua', 'speaking', 'history'] as const,
 }
@@ -207,6 +212,19 @@ export function useArchiveListeningMaterialMutation() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: linguaKeys.listeningMaterials })
     },
+  })
+}
+
+/**
+ * Sergey-curated «ready library» of 50+ podcast / conference talks. Static
+ * Go-backed catalog — staleTime aggressive (10 minutes); changes ship with
+ * backend redeploy, not at runtime.
+ */
+export function useCuratedListeningTracksQuery(level: CuratedListeningLevel | 'all' = 'all') {
+  return useQuery<CuratedListeningTrack[]>({
+    queryKey: linguaKeys.curatedListening(level),
+    queryFn: () => listCuratedListeningTracks(level),
+    staleTime: 10 * 60_000,
   })
 }
 

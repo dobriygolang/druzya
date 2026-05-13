@@ -103,12 +103,13 @@ func (h *SuggestionHandler) handleSuggest(w http.ResponseWriter, r *http.Request
 		Question: req.Question,
 		Context:  req.Context,
 		Persona:  req.Persona,
-		Language: req.Language,
 		// Tier резолвится tier-enrichment middleware'ом (см. shared/pkg/
 		// middleware/middleware.go WithUserTier). Пока нет middleware на
 		// роуте — будет пустая строка → llmchain трактует как free, все
 		// текущий free model-id ("druz9/turbo") проходит
 		// tier-gate нормально. paid-модели ждут M2 wiring.
+		// Language hint больше не передаётся через RPC — UC берёт locale
+		// из users.locale через userlocale.Reader.
 		UserTier: sharedMw.UserTierFromContext(r.Context()),
 	})
 	if err != nil {

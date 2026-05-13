@@ -9,14 +9,18 @@
 //   pinned    — focus tied к pinned task; ends когда task → done
 //   countdown — fixed minutes (configured pomodoroMinutes)
 //
-// Hover на time-area:
-//   default → mode-marker + mm:ss
-//   hover   → две круглые кнопки (cycle-mode + reset) ВМЕСТО time-area
+// Visual — rounded-2xl панель (winter-style), кнопки 40×40 rounded-xl.
+// Анимации:
+//   • Mount  — fade + slide-up на 720ms (motion-dur-xxlarge).
+//   • Menu   — hover rotates icon 180°.
+//   • Action — hover scale 1.05 / active scale 0.95.
+//   • Timer  — hover swap: time-layer уезжает вниз с blur+fade,
+//              controls-layer въезжает сверху (520ms motion-dur-xlarge).
 //
 // Mode pill (после dock'а) — отдельный mini-pill с 6 кружочками; click
 // switches mode + resets timer. Сама секция collapse'ится в иконку
 // текущего режима после 1.2s idle.
-import { memo, useRef, useState, type ReactNode } from 'react';
+import { memo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { Icon, type IconName } from './primitives/Icon';
 import type { FocusMode } from '../stores/prefs';
@@ -25,6 +29,72 @@ import type { FocusMode } from '../stores/prefs';
 // 'countdown'|'stopwatch'. Оставляем shorthand чтобы не переписывать App
 // полностью; внутренне Dock работает с FocusMode (6 значений).
 export type TimerMode = FocusMode;
+
+// Локальный CSS — keyframes для mount-анимации + hover-варианты для
+// DockBtn. Inline event handlers на transform конфликтуют с CSS-hover
+// rotate/scale; CSS-driven подход даёт чистый combination.
+const DOCK_CSS = `
+@keyframes hone-dock-enter {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.hone-dock {
+  animation: hone-dock-enter var(--motion-dur-xxlarge) var(--motion-ease-standard) both;
+}
+
+.hone-dock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color var(--motion-dur-large) var(--motion-ease-standard),
+    color var(--motion-dur-large) var(--motion-ease-standard),
+    transform var(--motion-dur-large) var(--motion-ease-standard);
+}
+.hone-dock-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink);
+}
+.hone-dock-btn[data-variant="menu"]:hover {
+  transform: rotate(180deg);
+}
+.hone-dock-btn[data-variant="action"]:hover {
+  transform: scale(1.05);
+}
+.hone-dock-btn[data-variant="action"]:active {
+  transform: scale(0.95);
+}
+
+.hone-dock-timer {
+  position: relative;
+  height: 36px;
+  min-width: 92px;
+  padding: 0 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hone-dock,
+  .hone-dock-btn,
+  .hone-dock-timer {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .hone-dock-btn[data-variant="menu"]:hover,
+  .hone-dock-btn[data-variant="action"]:hover,
+  .hone-dock-btn[data-variant="action"]:active {
+    transform: none;
+  }
+}
+`;
 
 interface DockProps {
   onMenu: () => void;
@@ -57,51 +127,57 @@ export function Dock({
   const mm = String(Math.floor(remain / 60)).padStart(2, '0');
   const ss = String(remain % 60).padStart(2, '0');
   return (
-    <div
-      style={{
-        position: 'absolute',
-        bottom: 36,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '6px 14px',
-        borderRadius: 999,
-        background: 'rgba(10,10,10,0.78)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        zIndex: 10,
-        // @ts-expect-error — Electron CSS extension
-        WebkitAppRegion: 'no-drag',
-      }}
-      className="no-select"
-    >
-      <DockBtn onClick={onMenu} title="Menu (⌘K)" ariaLabel="Open menu">
-        <Icon name="menu" size={14} />
-      </DockBtn>
-      <Divider />
-      <TimerArea
-        running={running}
-        mode={mode}
-        mm={mm}
-        ss={ss}
-        onToggleMode={onToggleMode}
-        onReset={onReset}
-      />
-      <Divider />
-      <DockBtn
-        onClick={onToggle}
-        title={running ? 'Pause' : 'Play'}
-        ariaLabel={running ? 'Pause timer' : 'Play timer'}
-        ariaPressed={running}
+    <>
+      <style>{DOCK_CSS}</style>
+      <div
+        className="no-select hone-dock"
+        style={
+          {
+            position: 'absolute',
+            bottom: 36,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: 6,
+            borderRadius: 14,
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.06)',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+            zIndex: 10,
+            // Electron CSS extension (no-drag для DOM-региона)
+            WebkitAppRegion: 'no-drag',
+          } as CSSProperties
+        }
       >
-        <Icon name={running ? 'pause' : 'play'} size={12} />
-      </DockBtn>
-      <Divider />
-      <VolumeBtn vol={vol} onVol={onVol} />
-    </div>
+        <DockBtn onClick={onMenu} title="Menu (⌘K)" ariaLabel="Open menu" variant="menu">
+          <Icon name="menu" size={14} />
+        </DockBtn>
+        <Divider />
+        <TimerArea
+          running={running}
+          mode={mode}
+          mm={mm}
+          ss={ss}
+          onToggleMode={onToggleMode}
+          onReset={onReset}
+        />
+        <Divider />
+        <DockBtn
+          onClick={onToggle}
+          title={running ? 'Pause' : 'Play'}
+          ariaLabel={running ? 'Pause timer' : 'Play timer'}
+          ariaPressed={running}
+          variant="action"
+        >
+          <Icon name={running ? 'pause' : 'play'} size={13} />
+        </DockBtn>
+        <Divider />
+        <VolumeBtn vol={vol} onVol={onVol} />
+      </div>
+    </>
   );
 }
 
@@ -146,142 +222,149 @@ function modeIcon(mode: FocusMode): { name: IconName; size: number } {
   }
 }
 
-// TimerArea — узкий swap-контейнер с фиксированной шириной чтобы при
-// hover-смене контента dock не «дёргался» (layout shift). Время и
-// hover-кнопки cross-fade'ятся через position: absolute.
-// Барабан-эффект: viewport фиксирован 30 px высотой, внутренний reel
-// (60 px) держит две «полоски» — time и controls. Hover скроллит reel
-// вниз на 30 px, time уезжает за нижний край viewport, controls
-// приезжают сверху. Транзишн на transform = плавный «оборот барабана».
+// TimerArea — winter-style swap: две независимые layer'а с transform +
+// opacity + filter. Front (time) уезжает вниз с blur'ом и fade'ом, back
+// (controls) приезжает сверху с fade'ом. min-width: 100px удерживает
+// layout от «дёргания».
 function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaProps) {
   const [hover, setHover] = useState(false);
-  const ROW = 30;
   // Free / pinned не показывают mm:ss — для этих режимов рисуем mode-name.
   const showTime = mode === 'pomodoro' || mode === 'countdown' || mode === 'stopwatch';
   // Next mode in cycle — для tooltip'а «куда переключит».
   const idx = MODE_ORDER.indexOf(mode);
   const nextMode = MODE_ORDER[(idx + 1) % MODE_ORDER.length];
   const { name: modeIconName, size: modeIconSize } = modeIcon(mode);
+
+  // Быстрый swap (240ms) вместо 520ms — длинный таймер создавал «окно»,
+  // в которое юзер мог кликнуть пока back-кнопка ещё анимировалась к
+  // своей позиции, и клик попадал мимо. Короткая анимация = надёжнее
+  // hit-testing на кнопках после hover'а.
+  const swapTransition =
+    'opacity var(--motion-dur-medium) var(--motion-ease-standard),' +
+    'transform var(--motion-dur-medium) var(--motion-ease-standard),' +
+    'filter var(--motion-dur-medium) var(--motion-ease-standard)';
+
   return (
     <div
+      className="hone-dock-timer"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{
-        position: 'relative',
-        // Width ужал с 128 → 96. Контент (∞/dot + mm:ss + gap=7) занимает
-        // ~80px; больше места дёргало dock в шире чем нужно.
-        width: 96,
-        height: ROW,
-        overflow: 'hidden',
-      }}
     >
+      {/* Front layer: mode-marker + mm:ss / mode-name (visible by default).
+          Absolute inset:0 — чтобы padding-box центрирование совпадало 1-в-1
+          с back-слоем; иначе normal-flow flex имеет другой content-box и
+          контент «едет» при swap'е. */}
       <div
         style={{
+          position: 'absolute',
+          inset: 0,
           display: 'flex',
-          flexDirection: 'column',
-          // Reel начинается сдвинутым вверх на ROW (controls скрыты сверху,
-          // time видна). На hover сдвигаем вниз на ROW — controls
-          // въезжают, time уезжает.
-          transform: `translateY(${hover ? 0 : -ROW}px)`,
-          transition: 'transform var(--motion-dur-large) var(--motion-ease-standard)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
+          opacity: hover ? 0 : 1,
+          transform: `translateY(${hover ? 32 : 0}px)`,
+          filter: hover ? 'blur(4px)' : 'blur(0)',
+          transition: swapTransition,
         }}
       >
-        {/* Row 0: hover controls (изначально скрыты сверху). Иконки чуть
-            крупнее (15→17) и compact gap (раньше distributed space-around
-            растягивал их по краям, теперь center+gap=10 кучкует ближе друг
-            к другу — как одно visual unit). */}
-        <div
-          style={{
-            height: ROW,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            background: 'rgba(255,255,255,0.06)',
-            borderRadius: 999,
-            margin: '0 9%',
-            padding: '0 4px',
-            pointerEvents: hover ? 'auto' : 'none',
-          }}
-        >
-          <DockBtn
-            onClick={onToggleMode}
-            // Tooltip показывает current + следующий режим в cycle.
-            title={`${MODE_LABEL[mode]} · → ${MODE_LABEL[nextMode]}`}
-            ariaLabel={`Current: ${mode}. Switch to ${nextMode} mode`}
-            ariaPressed={mode !== 'pomodoro'}
-            small
+        {/* Mode indicator: иконка зависит от режима.
+            Для pomodoro/countdown — нейтральный dot (filled когда running).
+            Для остальных — соответствующий glyph из Icon set'а. */}
+        {mode === 'pomodoro' || mode === 'countdown' ? (
+          <span
+            title={MODE_LABEL[mode]}
+            style={{
+              width: 9,
+              height: 9,
+              borderRadius: 99,
+              background: running ? 'var(--ink)' : 'transparent',
+              border: `1px solid ${running ? 'var(--ink)' : 'var(--ink-60)'}`,
+              transition: 'background-color var(--t-fast), border-color var(--t-fast)',
+            }}
+          />
+        ) : (
+          <span
+            title={MODE_LABEL[mode]}
+            style={{
+              color: running ? 'var(--ink)' : 'var(--ink-90)',
+              display: 'flex',
+              transition: 'color var(--t-fast)',
+            }}
           >
-            <Icon name={modeIconName} size={Math.max(13, modeIconSize)} />
-          </DockBtn>
-          <DockBtn onClick={onReset} title="Reset · сбросить таймер" ariaLabel="Reset timer" small>
-            <Icon name="rewind" size={15} />
-          </DockBtn>
-        </div>
+            <Icon name={modeIconName} size={modeIconSize} />
+          </span>
+        )}
+        {showTime ? (
+          <span
+            className="mono"
+            style={{
+              fontSize: 14,
+              letterSpacing: '0.04em',
+              color: 'var(--ink)',
+            }}
+          >
+            {mm}:{ss}
+          </span>
+        ) : (
+          <span
+            className="mono"
+            style={{
+              fontSize: 11,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-90)',
+            }}
+          >
+            {mode}
+          </span>
+        )}
+      </div>
 
-        {/* Row 1: mode-marker + mm:ss (default visible) */}
-        <div
-          style={{
-            height: ROW,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 7,
-          }}
+      {/* Back layer: cycle-mode + reset (visible on hover).
+          pointerEvents НЕ переключается по hover — overflow:hidden +
+          transform: translateY(-32) держат back-слой за пределами
+          clip-региона родителя когда hover=false, и hit-testing там
+          автоматически невозможен. Раньше pointerEvents-toggle создавал
+          race: React коммитит hover=true ПОСЛЕ event-handler'а, и быстрый
+          клик после hover'а попадал во front-слой → пропадал.
+          Сейчас как только cursor над back-кнопкой → клик надёжно
+          срабатывает. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          opacity: hover ? 1 : 0,
+          transform: `translateY(${hover ? 0 : -32}px)`,
+          transition:
+            'opacity var(--motion-dur-medium) var(--motion-ease-standard),' +
+            'transform var(--motion-dur-medium) var(--motion-ease-standard)',
+        }}
+      >
+        <DockBtn
+          onClick={onToggleMode}
+          // Tooltip показывает current + следующий режим в cycle.
+          title={`${MODE_LABEL[mode]} · → ${MODE_LABEL[nextMode]}`}
+          ariaLabel={`Current: ${mode}. Switch to ${nextMode} mode`}
+          ariaPressed={mode !== 'pomodoro'}
+          small
+          variant="action"
         >
-          {/* Mode indicator: иконка зависит от режима.
-              Для pomodoro/countdown — нейтральный dot (filled когда running).
-              Для остальных — соответствующий glyph из Icon set'а. */}
-          {mode === 'pomodoro' || mode === 'countdown' ? (
-            <span
-              title={MODE_LABEL[mode]}
-              style={{
-                width: 9,
-                height: 9,
-                borderRadius: 99,
-                background: running ? 'rgba(255,255,255,0.55)' : 'transparent',
-                border: `1px solid ${running ? 'rgba(255,255,255,0.55)' : 'var(--ink-40)'}`,
-                transition:
-                  'background-color var(--t-fast), border-color var(--t-fast)',
-              }}
-            />
-          ) : (
-            <span
-              title={MODE_LABEL[mode]}
-              style={{
-                color: running ? 'var(--ink-90)' : 'var(--ink-40)',
-                display: 'flex',
-                transition: 'color var(--t-fast)',
-              }}
-            >
-              <Icon name={modeIconName} size={modeIconSize} />
-            </span>
-          )}
-          {showTime ? (
-            <span
-              className="mono"
-              style={{
-                fontSize: 14,
-                letterSpacing: '0.04em',
-                color: 'var(--ink)',
-              }}
-            >
-              {mm}:{ss}
-            </span>
-          ) : (
-            <span
-              className="mono"
-              style={{
-                fontSize: 11,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: 'var(--ink-60)',
-              }}
-            >
-              {mode}
-            </span>
-          )}
-        </div>
+          <Icon name={modeIconName} size={Math.max(13, modeIconSize)} />
+        </DockBtn>
+        <DockBtn
+          onClick={onReset}
+          title="Reset · сбросить таймер"
+          ariaLabel="Reset timer"
+          small
+          variant="action"
+        >
+          <Icon name="rewind" size={15} />
+        </DockBtn>
       </div>
     </div>
   );
@@ -294,39 +377,33 @@ interface DockBtnProps {
   small?: boolean;
   ariaLabel?: string;
   ariaPressed?: boolean;
+  variant?: 'menu' | 'action';
 }
 
-function DockBtn({ children, onClick, title, small = false, ariaLabel, ariaPressed }: DockBtnProps) {
-  const size = small ? 24 : 28;
+function DockBtn({
+  children,
+  onClick,
+  title,
+  small = false,
+  ariaLabel,
+  ariaPressed,
+  variant = 'action',
+}: DockBtnProps) {
+  const size = small ? 28 : 36;
+  const radius = small ? 8 : 10;
   return (
     <button
       onClick={onClick}
       title={title}
       aria-label={ariaLabel ?? title}
       aria-pressed={ariaPressed}
-      className="focus-ring surface"
+      data-variant={variant}
+      className="focus-ring hone-dock-btn"
       style={{
         width: size,
         height: size,
-        borderRadius: 999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--ink-60)',
-        background: 'transparent',
-        border: 'none',
-        cursor: 'pointer',
+        borderRadius: radius,
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-        e.currentTarget.style.color = 'var(--ink)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = 'var(--ink-60)';
-      }}
-      onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.94)')}
-      onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
     >
       {children}
     </button>
@@ -338,9 +415,9 @@ function Divider() {
     <span
       style={{
         width: 1,
-        height: 14,
-        background: 'rgba(255,255,255,0.08)',
-        margin: '0 2px',
+        height: 16,
+        background: 'rgba(255,255,255,0.18)',
+        margin: '0 4px',
       }}
     />
   );
@@ -450,6 +527,7 @@ function VolumeBtnImpl({ vol, onVol }: VolumeBtnProps) {
           title={vol === 0 ? 'Click to unmute' : `Volume ${vol}% · click to mute`}
           ariaLabel={vol === 0 ? 'Unmute volume' : `Mute volume (currently ${vol} percent)`}
           ariaPressed={vol === 0}
+          variant="action"
         >
           {/* Mute indicator: когда vol=0, иконка меняет цвет на dimmed +
               рисуется diagonal strike-through через absolute-positioned
@@ -465,7 +543,7 @@ function VolumeBtnImpl({ vol, onVol }: VolumeBtnProps) {
               transition: 'opacity var(--motion-dur-medium) var(--motion-ease-standard)',
             }}
           >
-            <Icon name="volume" size={12} />
+            <Icon name="volume" size={13} />
             {vol === 0 && (
               <span
                 aria-hidden

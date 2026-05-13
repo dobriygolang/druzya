@@ -1,5 +1,12 @@
 // Two-pane: library + player. Audio player + transcript click-on-word.
 // Vocab queue shared с Reading (single SRS table).
+//
+// Wave 15 (2026-05-14): WelcomePane now leads with a Sergey-curated
+// "ready library" of 50+ podcast / conference talks fetched from
+// GET /hone/listening/curated. Filter chips (All / B1 / B2 / C1) gate
+// what's visible; clicking a track opens the source URL in a new tab
+// (YouTube / podcast page). Adding your own URL is still available as
+// the secondary CTA at the bottom.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { AICoachPill } from '../../components/AICoachPill'
@@ -9,11 +16,12 @@ import {
   useAddListeningMaterialMutation,
   useAddVocabMutation,
   useArchiveListeningMaterialMutation,
+  useCuratedListeningTracksQuery,
   useIngestYouTubeListeningMutation,
   useListeningMaterialQuery,
   useListeningMaterialsQuery,
 } from '../../lib/queries/lingua'
-import type { ListeningMaterial } from '../../api/lingua/listening'
+import type { CuratedListeningLevel, CuratedListeningTrack, ListeningMaterial } from '../../api/lingua/listening'
 import { cn } from '../../lib/cn'
 
 type Mode =
@@ -188,24 +196,172 @@ function LibraryPane({
   )
 }
 
+// ─── Curated ready library (Wave 15) ──────────────────────────────────────
+
+type CuratedFilter = 'all' | CuratedListeningLevel
+
+const LEVEL_FILTERS: { value: CuratedFilter; label: string }[] = [
+  { value: 'all', label: 'Все' },
+  { value: 'B1', label: 'B1' },
+  { value: 'B2', label: 'B2' },
+  { value: 'C1', label: 'C1' },
+]
+
+const LEVEL_BLURB: Record<CuratedFilter, string> = {
+  all: 'Готовая библиотека: подкасты с инженерами, доклады с конференций, TED-выступления. Открывается в новой вкладке.',
+  B1: 'Медленная чёткая речь — Hanselminutes, TED-минуты. Хорошо для старта listening practice.',
+  B2: 'Стандартная инженерная речь — SE Daily, Changelog, GOTO. Идиоматичный темп.',
+  C1: 'Плотные / быстрые разговоры — Latent Space, Strange Loop, Lex Fridman. Готовься напрягаться.',
+}
+
 function WelcomePane({ onAdd }: { onAdd: () => void }) {
+  const [filter, setFilter] = useState<CuratedFilter>('all')
+  const tracksQ = useCuratedListeningTracksQuery(filter)
+
+  const tracks = tracksQ.data ?? []
+  // Group by source so library reads as a coherent shelf.
+  const grouped = useMemo(() => {
+    const map = new Map<string, CuratedListeningTrack[]>()
+    for (const t of tracks) {
+      const arr = map.get(t.source) ?? []
+      arr.push(t)
+      map.set(t.source, arr)
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [tracks])
+
   return (
-    <div className="mx-auto mt-8 w-full max-w-2xl px-4 sm:px-6 lg:px-8">
-      <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Listening</div>
-      <h1 className="font-display text-[40px] font-medium leading-tight tracking-tight text-text-primary">
-        Listen with a transcript
+    <div className="mx-auto mt-8 w-full max-w-4xl px-4 pb-16 sm:px-6 lg:px-8">
+      <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+        Listening · Готовая библиотека
+      </div>
+      <h1 className="font-display text-[36px] font-medium leading-tight tracking-tight text-text-primary sm:text-[40px]">
+        Слушай инженеров, не ищи их
       </h1>
-      <p className="mt-3 max-w-xl text-sm text-text-secondary">
-        Положи аудио + transcript в библиотеку. Кликай по словам в transcript'е — они уйдут в общую SRS-очередь (та же что у Reading).
+      <p className="mt-3 max-w-2xl text-sm text-text-secondary">
+        {LEVEL_BLURB[filter]}
       </p>
-      <button
-        type="button"
-        onClick={onAdd}
-        className="mt-6 rounded-md border border-border-strong bg-surface-1 px-4 py-2.5 text-[13px] text-text-primary hover:bg-surface-2"
-      >
-        + Add material
-      </button>
+
+      <div role="tablist" aria-label="Filter by level" className="mt-5 flex flex-wrap gap-1.5">
+        {LEVEL_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            role="tab"
+            aria-selected={filter === f.value}
+            onClick={() => setFilter(f.value)}
+            className={cn(
+              'rounded-full border px-3.5 py-1 text-xs transition-colors',
+              filter === f.value
+                ? 'border-border-strong bg-surface-2 text-text-primary'
+                : 'border-border bg-transparent text-text-secondary hover:bg-surface-2',
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {tracksQ.isLoading && (
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-[88px] rounded-md border border-border bg-surface-1" />
+          ))}
+        </div>
+      )}
+
+      {tracksQ.error && (
+        <div role="alert" className="mt-6 rounded-md border border-border-strong bg-surface-1 px-3 py-2 text-xs text-text-secondary">
+          Каталог не загрузился: {tracksQ.error.message}
+        </div>
+      )}
+
+      {!tracksQ.isLoading && !tracksQ.error && tracks.length === 0 && (
+        <div className="mt-6 rounded-md border border-border bg-surface-1 px-3.5 py-3 text-sm text-text-secondary">
+          Для этого уровня пока пусто. Попробуй другой фильтр.
+        </div>
+      )}
+
+      {!tracksQ.isLoading && grouped.length > 0 && (
+        <div className="mt-7 flex flex-col gap-7">
+          {grouped.map(([source, list]) => (
+            <section key={source}>
+              <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+                {source} · {list.length}
+              </h2>
+              <ul className="grid list-none grid-cols-1 gap-3 sm:grid-cols-2">
+                {list.map((t) => (
+                  <CuratedTrackCard key={t.id} track={t} />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {/* Add-your-own secondary CTA. Sits below the curated catalogue so
+          the ready library is the primary surface. */}
+      <div className="mt-12 rounded-md border border-border bg-surface-1 px-4 py-4">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+          Добавить свою запись
+        </div>
+        <p className="mt-1.5 max-w-xl text-sm text-text-secondary">
+          Не нашёл в библиотеке — вставь YouTube URL или mp3 + transcript. Кликабельные
+          слова улетят в общую SRS-очередь.
+        </p>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="mt-3 rounded-md border border-border-strong bg-surface-1 px-3.5 py-1.5 text-[13px] text-text-primary hover:bg-surface-2"
+        >
+          + Add material
+        </button>
+      </div>
     </div>
+  )
+}
+
+function CuratedTrackCard({ track }: { track: CuratedListeningTrack }) {
+  return (
+    <li>
+      <a
+        href={track.url}
+        target="_blank"
+        rel="noreferrer"
+        className="flex h-full flex-col rounded-md border border-border bg-surface-1 px-3.5 py-3 transition-colors hover:bg-surface-2 focus:outline-none focus:ring-2 focus:ring-border-strong"
+      >
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+          <span>{track.level}</span>
+          <span aria-hidden="true">·</span>
+          <span>
+            {track.estimatedMinutes > 0 ? `${track.estimatedMinutes}m` : '—'}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span className="truncate">{track.topic}</span>
+        </div>
+        <div className="mt-1.5 text-[14px] font-medium leading-snug text-text-primary line-clamp-2">
+          {track.title}
+        </div>
+        <div className="mt-1 text-xs text-text-secondary truncate">{track.speaker}</div>
+        {track.why && (
+          <div className="mt-2 text-xs leading-relaxed text-text-secondary line-clamp-2">
+            {track.why}
+          </div>
+        )}
+        {track.tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {track.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-border px-2 py-[1px] font-mono text-[9px] uppercase tracking-[0.06em] text-text-muted"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </a>
+    </li>
   )
 }
 

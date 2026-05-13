@@ -489,6 +489,15 @@ export class GetDailyBriefRequest extends Message<GetDailyBriefRequest> {
    */
   force = false;
 
+  /**
+   * Wave 15: surface — 'web' | 'hone' | 'cue'. Brief synth uses this
+   * to bias recommendations (web → atlas / codex / lingua read; hone →
+   * focus session on task; cue → interview prep). Empty defaults to web.
+   *
+   * @generated from field: string source = 2;
+   */
+  source = "";
+
   constructor(data?: PartialMessage<GetDailyBriefRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -498,6 +507,7 @@ export class GetDailyBriefRequest extends Message<GetDailyBriefRequest> {
   static readonly typeName = "druz9.v1.GetDailyBriefRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "force", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "source", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetDailyBriefRequest {
@@ -1022,6 +1032,10 @@ export class GetNextActionRequest extends Message<GetNextActionRequest> {
 /**
  * NextAction — single concrete next action, formatted из LLM JSON.
  *
+ * Wave 15: optional secondary_action surfaces a cross-vertical insight
+ * when its severity is high enough (≥ warn). UI рендерит как second
+ * pinned card under the main action. Empty fields → no secondary.
+ *
  * @generated from message druz9.v1.NextAction
  */
 export class NextAction extends Message<NextAction> {
@@ -1051,6 +1065,32 @@ export class NextAction extends Message<NextAction> {
    */
   estimatedMinutes = 0;
 
+  /**
+   * Wave 15: cross-vertical "second priority" — populated when a
+   * CrossVerticalInsights producer fires with severity ≥ warn.
+   * secondary_kind is the producer's stable kind ("mock:fails" /
+   * "english:speaking-low" / "vocab:lag"). Empty when no high-severity
+   * signal.
+   *
+   * @generated from field: string secondary_kind = 5;
+   */
+  secondaryKind = "";
+
+  /**
+   * @generated from field: string secondary_message_md = 6;
+   */
+  secondaryMessageMd = "";
+
+  /**
+   * @generated from field: string secondary_action_url = 7;
+   */
+  secondaryActionUrl = "";
+
+  /**
+   * @generated from field: string secondary_action_label = 8;
+   */
+  secondaryActionLabel = "";
+
   constructor(data?: PartialMessage<NextAction>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1063,6 +1103,10 @@ export class NextAction extends Message<NextAction> {
     { no: 2, name: "target", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "rationale", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "estimated_minutes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "secondary_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "secondary_message_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "secondary_action_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "secondary_action_label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): NextAction {
@@ -3269,6 +3313,106 @@ export class SkillRadarSnapshot extends Message<SkillRadarSnapshot> {
 }
 
 /**
+ * RecentActivity24h — Wave 15 cross-surface memory. Counts only (no
+ * content) so the bundle stays small + privacy-safe. Both Hone and web
+ * see «вчера ты сделал 3 focus session, 2 mock attempts, 5 vocab cards»
+ * when first loading a coach screen.
+ *
+ * @generated from message druz9.v1.RecentActivity24h
+ */
+export class RecentActivity24h extends Message<RecentActivity24h> {
+  /**
+   * @generated from field: int32 focus_sessions_count = 1;
+   */
+  focusSessionsCount = 0;
+
+  /**
+   * @generated from field: int32 focus_minutes_total = 2;
+   */
+  focusMinutesTotal = 0;
+
+  /**
+   * @generated from field: int32 tasks_done = 3;
+   */
+  tasksDone = 0;
+
+  /**
+   * @generated from field: int32 mock_attempts = 4;
+   */
+  mockAttempts = 0;
+
+  /**
+   * 0..100, 0 if none
+   *
+   * @generated from field: int32 last_mock_result = 5;
+   */
+  lastMockResult = 0;
+
+  /**
+   * @generated from field: int32 notes_created = 6;
+   */
+  notesCreated = 0;
+
+  /**
+   * @generated from field: int32 reading_minutes = 7;
+   */
+  readingMinutes = 0;
+
+  /**
+   * @generated from field: int32 speaking_attempts = 8;
+   */
+  speakingAttempts = 0;
+
+  /**
+   * 0..100
+   *
+   * @generated from field: double speaking_avg_score = 9;
+   */
+  speakingAvgScore = 0;
+
+  /**
+   * @generated from field: int32 vocab_reviewed = 10;
+   */
+  vocabReviewed = 0;
+
+  constructor(data?: PartialMessage<RecentActivity24h>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RecentActivity24h";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "focus_sessions_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "focus_minutes_total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "tasks_done", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "mock_attempts", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "last_mock_result", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "notes_created", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "reading_minutes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 8, name: "speaking_attempts", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 9, name: "speaking_avg_score", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+    { no: 10, name: "vocab_reviewed", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RecentActivity24h {
+    return new RecentActivity24h().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RecentActivity24h {
+    return new RecentActivity24h().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RecentActivity24h {
+    return new RecentActivity24h().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RecentActivity24h | PlainMessage<RecentActivity24h> | undefined, b: RecentActivity24h | PlainMessage<RecentActivity24h> | undefined): boolean {
+    return proto3.util.equals(RecentActivity24h, a, b);
+  }
+}
+
+/**
  * AtlasResourceRef — top-N relevant resources for the user's active goal +
  * recent activity. Stub: empty until atlas-retrieval API lands. Kept in
  * the schema so clients render the section once data flows.
@@ -3374,6 +3518,13 @@ export class UserContext extends Message<UserContext> {
    */
   relevantResources: AtlasResourceRef[] = [];
 
+  /**
+   * Wave 15: 24h activity snapshot — counts only (privacy).
+   *
+   * @generated from field: druz9.v1.RecentActivity24h recent_activity = 6;
+   */
+  recentActivity?: RecentActivity24h;
+
   constructor(data?: PartialMessage<UserContext>) {
     super();
     proto3.util.initPartial(data, this);
@@ -3387,6 +3538,7 @@ export class UserContext extends Message<UserContext> {
     { no: 3, name: "activity", kind: "message", T: ActivitySummary },
     { no: 4, name: "radar", kind: "message", T: SkillRadarSnapshot },
     { no: 5, name: "relevant_resources", kind: "message", T: AtlasResourceRef, repeated: true },
+    { no: 6, name: "recent_activity", kind: "message", T: RecentActivity24h },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UserContext {
@@ -3736,6 +3888,149 @@ export class ListFocusReflectionsResponse extends Message<ListFocusReflectionsRe
 
   static equals(a: ListFocusReflectionsResponse | PlainMessage<ListFocusReflectionsResponse> | undefined, b: ListFocusReflectionsResponse | PlainMessage<ListFocusReflectionsResponse> | undefined): boolean {
     return proto3.util.equals(ListFocusReflectionsResponse, a, b);
+  }
+}
+
+/**
+ * ── Wave 15 Cross-vertical insights v2 messages (2026-05-13) ───────────
+ *
+ * CrossVerticalInsight — flatter shape than Insight (no event_id /
+ * anchor / acted_at / dismissed_at). UI renders message_md как markdown,
+ * suggested_action_* как CTA chip. severity uses the same enum so colour
+ * mapping is shared with Insight.
+ *
+ * @generated from message druz9.v1.CrossVerticalInsight
+ */
+export class CrossVerticalInsight extends Message<CrossVerticalInsight> {
+  /**
+   * kind — stable identifier (e.g. "english:speaking-low", "mock:fails",
+   * "vocab:lag"). Used by clients for analytics / dedupe.
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind = "";
+
+  /**
+   * 1..4 (cruise..critical)
+   *
+   * @generated from field: druz9.v1.InsightSeverity severity = 2;
+   */
+  severity = InsightSeverity.UNSPECIFIED;
+
+  /**
+   * @generated from field: string message_md = 3;
+   */
+  messageMd = "";
+
+  /**
+   * @generated from field: string suggested_action_url = 4;
+   */
+  suggestedActionUrl = "";
+
+  /**
+   * @generated from field: string suggested_action_label = 5;
+   */
+  suggestedActionLabel = "";
+
+  constructor(data?: PartialMessage<CrossVerticalInsight>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CrossVerticalInsight";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "severity", kind: "enum", T: proto3.getEnumType(InsightSeverity) },
+    { no: 3, name: "message_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "suggested_action_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "suggested_action_label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CrossVerticalInsight {
+    return new CrossVerticalInsight().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CrossVerticalInsight {
+    return new CrossVerticalInsight().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CrossVerticalInsight {
+    return new CrossVerticalInsight().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CrossVerticalInsight | PlainMessage<CrossVerticalInsight> | undefined, b: CrossVerticalInsight | PlainMessage<CrossVerticalInsight> | undefined): boolean {
+    return proto3.util.equals(CrossVerticalInsight, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListCrossVerticalInsightsRequest
+ */
+export class ListCrossVerticalInsightsRequest extends Message<ListCrossVerticalInsightsRequest> {
+  constructor(data?: PartialMessage<ListCrossVerticalInsightsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListCrossVerticalInsightsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListCrossVerticalInsightsRequest {
+    return new ListCrossVerticalInsightsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListCrossVerticalInsightsRequest {
+    return new ListCrossVerticalInsightsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListCrossVerticalInsightsRequest {
+    return new ListCrossVerticalInsightsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListCrossVerticalInsightsRequest | PlainMessage<ListCrossVerticalInsightsRequest> | undefined, b: ListCrossVerticalInsightsRequest | PlainMessage<ListCrossVerticalInsightsRequest> | undefined): boolean {
+    return proto3.util.equals(ListCrossVerticalInsightsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListCrossVerticalInsightsResponse
+ */
+export class ListCrossVerticalInsightsResponse extends Message<ListCrossVerticalInsightsResponse> {
+  /**
+   * items — top 5, severity DESC.
+   *
+   * @generated from field: repeated druz9.v1.CrossVerticalInsight items = 1;
+   */
+  items: CrossVerticalInsight[] = [];
+
+  constructor(data?: PartialMessage<ListCrossVerticalInsightsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListCrossVerticalInsightsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: CrossVerticalInsight, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListCrossVerticalInsightsResponse {
+    return new ListCrossVerticalInsightsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListCrossVerticalInsightsResponse {
+    return new ListCrossVerticalInsightsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListCrossVerticalInsightsResponse {
+    return new ListCrossVerticalInsightsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListCrossVerticalInsightsResponse | PlainMessage<ListCrossVerticalInsightsResponse> | undefined, b: ListCrossVerticalInsightsResponse | PlainMessage<ListCrossVerticalInsightsResponse> | undefined): boolean {
+    return proto3.util.equals(ListCrossVerticalInsightsResponse, a, b);
   }
 }
 

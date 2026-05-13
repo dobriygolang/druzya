@@ -37,13 +37,17 @@ func TestBuildSuggestMessages_Wrapping(t *testing.T) {
 		Question: "What's your experience with Go?",
 		Context:  "Earlier you mentioned you worked at Google.",
 		Persona:  "interview",
-	}, "", "")
-	if len(msgs) < 2 {
-		t.Fatalf("want ≥2 messages, got %d", len(msgs))
+	}, "ru", "", "")
+	if len(msgs) < 3 {
+		t.Fatalf("want ≥3 messages (lang directive + system + ...), got %d", len(msgs))
 	}
-	// system prompt first.
-	if !strings.Contains(msgs[0].Content, "БЕЗОПАСНОСТЬ") {
-		t.Errorf("system prompt missing security section: %q", msgs[0].Content[:80])
+	// slot 0 — language directive
+	if !strings.Contains(msgs[0].Content, "по-русски") {
+		t.Errorf("slot 0 should be ru language directive: %q", msgs[0].Content[:80])
+	}
+	// slot 1 — persona system prompt
+	if !strings.Contains(msgs[1].Content, "БЕЗОПАСНОСТЬ") {
+		t.Errorf("system prompt missing security section: %q", msgs[1].Content[:80])
 	}
 	// Find the user message with question.
 	var userContent string

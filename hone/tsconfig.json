@@ -18,9 +18,13 @@
     "paths": {
       "@shared/*": ["./src/shared/*"],
       "@renderer/*": ["./src/renderer/src/*"],
-      "@generated/*": ["../frontend/src/api/generated/*"]
+      "@generated/*": ["../frontend/src/api/generated/*"],
+      "@d9-i18n": ["../shared/i18n"],
+      "@d9-i18n/*": ["../shared/i18n/*"],
+      "zustand": ["./node_modules/zustand"],
+      "zustand/*": ["./node_modules/zustand/*"]
     }
   },
-  "include": ["src/renderer/**/*", "src/preload/**/*", "src/shared/**/*", "src/test/**/*"],
+  "include": ["src/renderer/**/*", "src/preload/**/*", "src/shared/**/*", "src/test/**/*", "../shared/i18n/**/*"],
   "exclude": ["src/main/**/*", "out", "dist", "node_modules"]
 }

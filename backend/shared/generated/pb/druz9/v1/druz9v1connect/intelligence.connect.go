@@ -140,6 +140,9 @@ const (
 	// IntelligenceServiceGetUserContextProcedure is the fully-qualified name of the
 	// IntelligenceService's GetUserContext RPC.
 	IntelligenceServiceGetUserContextProcedure = "/druz9.v1.IntelligenceService/GetUserContext"
+	// IntelligenceServiceListCrossVerticalInsightsProcedure is the fully-qualified name of the
+	// IntelligenceService's ListCrossVerticalInsights RPC.
+	IntelligenceServiceListCrossVerticalInsightsProcedure = "/druz9.v1.IntelligenceService/ListCrossVerticalInsights"
 	// IntelligenceServiceMarkAtlasStruggleProcedure is the fully-qualified name of the
 	// IntelligenceService's MarkAtlasStruggle RPC.
 	IntelligenceServiceMarkAtlasStruggleProcedure = "/druz9.v1.IntelligenceService/MarkAtlasStruggle"
@@ -206,6 +209,14 @@ type IntelligenceServiceClient interface {
 	// suggestion prompt: active goal + recent Coach memory + activity_log +
 	// skill radar + Atlas refs. user_id derives from auth context.
 	GetUserContext(context.Context, *connect.Request[v1.GetUserContextRequest]) (*connect.Response[v1.GetUserContextResponse], error)
+	// ── Wave 15 Cross-vertical insights v2 (2026-05-13) ─────────────────
+	//
+	// Same conceptual stream as ListInsights but multi-axis: producers
+	// correlate signals across English (reading vs speaking) / Mock fails /
+	// Vocab review lag. Ephemeral (no upsert / no ack), severity-ranked,
+	// capped at 5. Today UI + Hone Today render these as «Что заметил»
+	// mini-section under the main feed.
+	ListCrossVerticalInsights(context.Context, *connect.Request[v1.ListCrossVerticalInsightsRequest]) (*connect.Response[v1.ListCrossVerticalInsightsResponse], error)
 	// ── X5 Cross-product handoff: Atlas struggle marks (Phase J 2026-05-12) ─
 	//
 	// Bidirectional handoff signal: Cue session analysis OR Hone reflection
@@ -409,6 +420,12 @@ func NewIntelligenceServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(intelligenceServiceMethods.ByName("GetUserContext")),
 			connect.WithClientOptions(opts...),
 		),
+		listCrossVerticalInsights: connect.NewClient[v1.ListCrossVerticalInsightsRequest, v1.ListCrossVerticalInsightsResponse](
+			httpClient,
+			baseURL+IntelligenceServiceListCrossVerticalInsightsProcedure,
+			connect.WithSchema(intelligenceServiceMethods.ByName("ListCrossVerticalInsights")),
+			connect.WithClientOptions(opts...),
+		),
 		markAtlasStruggle: connect.NewClient[v1.MarkAtlasStruggleRequest, v1.MarkAtlasStruggleResponse](
 			httpClient,
 			baseURL+IntelligenceServiceMarkAtlasStruggleProcedure,
@@ -432,39 +449,40 @@ func NewIntelligenceServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // intelligenceServiceClient implements IntelligenceServiceClient.
 type intelligenceServiceClient struct {
-	getDailyBrief          *connect.Client[v1.GetDailyBriefRequest, v1.DailyBrief]
-	askNotes               *connect.Client[v1.AskNotesRequest, v1.AskAnswer]
-	ackRecommendation      *connect.Client[v1.AckRecommendationRequest, v1.AckRecommendationResponse]
-	getMemoryStats         *connect.Client[v1.GetMemoryStatsRequest, v1.MemoryStats]
-	listInsights           *connect.Client[v1.ListInsightsRequest, v1.ListInsightsResponse]
-	ackInsight             *connect.Client[v1.AckInsightRequest, v1.AckInsightResponse]
-	getNextAction          *connect.Client[v1.GetNextActionRequest, v1.NextAction]
-	getForkSnapshot        *connect.Client[v1.GetForkSnapshotRequest, v1.ForkSnapshot]
-	logResource            *connect.Client[v1.LogResourceRequest, v1.LogResourceResponse]
-	setLearningMode        *connect.Client[v1.SetLearningModeRequest, v1.LearningStateView]
-	setForkBranch          *connect.Client[v1.SetForkBranchRequest, v1.LearningStateView]
-	getResourceTrail       *connect.Client[v1.GetResourceTrailRequest, v1.ResourceTrail]
-	getSkillRadar          *connect.Client[v1.GetSkillRadarRequest, v1.SkillRadar]
-	getCoachStats          *connect.Client[v1.GetCoachStatsRequest, v1.CoachStats]
-	createGoal             *connect.Client[v1.CreateGoalRequest, v1.Goal]
-	getActiveGoal          *connect.Client[emptypb.Empty, v1.Goal]
-	updateGoal             *connect.Client[v1.UpdateGoalRequest, v1.Goal]
-	deactivateGoal         *connect.Client[v1.DeactivateGoalRequest, emptypb.Empty]
-	ingestInterviewSession *connect.Client[v1.IngestInterviewSessionRequest, v1.InterviewSession]
-	listInterviewSessions  *connect.Client[v1.ListInterviewSessionsRequest, v1.ListInterviewSessionsResponse]
-	generateMilestones     *connect.Client[emptypb.Empty, v1.MilestonesResponse]
-	getMilestones          *connect.Client[emptypb.Empty, v1.MilestonesResponse]
-	markMilestoneDone      *connect.Client[v1.MarkMilestoneDoneRequest, v1.Milestone]
-	getNodeCoverage        *connect.Client[v1.GetNodeCoverageRequest, v1.GetNodeCoverageResponse]
-	listMemoryEntries      *connect.Client[v1.ListMemoryEntriesRequest, v1.ListMemoryEntriesResponse]
-	deleteMemoryEntry      *connect.Client[v1.DeleteMemoryEntryRequest, emptypb.Empty]
-	editMemoryEntry        *connect.Client[v1.EditMemoryEntryRequest, v1.MemoryEntry]
-	saveFocusReflection    *connect.Client[v1.SaveFocusReflectionRequest, v1.SaveFocusReflectionResponse]
-	listFocusReflections   *connect.Client[v1.ListFocusReflectionsRequest, v1.ListFocusReflectionsResponse]
-	getUserContext         *connect.Client[v1.GetUserContextRequest, v1.GetUserContextResponse]
-	markAtlasStruggle      *connect.Client[v1.MarkAtlasStruggleRequest, v1.MarkAtlasStruggleResponse]
-	listAtlasStruggles     *connect.Client[v1.ListAtlasStrugglesRequest, v1.ListAtlasStrugglesResponse]
-	clearAtlasStruggle     *connect.Client[v1.ClearAtlasStruggleRequest, v1.ClearAtlasStruggleResponse]
+	getDailyBrief             *connect.Client[v1.GetDailyBriefRequest, v1.DailyBrief]
+	askNotes                  *connect.Client[v1.AskNotesRequest, v1.AskAnswer]
+	ackRecommendation         *connect.Client[v1.AckRecommendationRequest, v1.AckRecommendationResponse]
+	getMemoryStats            *connect.Client[v1.GetMemoryStatsRequest, v1.MemoryStats]
+	listInsights              *connect.Client[v1.ListInsightsRequest, v1.ListInsightsResponse]
+	ackInsight                *connect.Client[v1.AckInsightRequest, v1.AckInsightResponse]
+	getNextAction             *connect.Client[v1.GetNextActionRequest, v1.NextAction]
+	getForkSnapshot           *connect.Client[v1.GetForkSnapshotRequest, v1.ForkSnapshot]
+	logResource               *connect.Client[v1.LogResourceRequest, v1.LogResourceResponse]
+	setLearningMode           *connect.Client[v1.SetLearningModeRequest, v1.LearningStateView]
+	setForkBranch             *connect.Client[v1.SetForkBranchRequest, v1.LearningStateView]
+	getResourceTrail          *connect.Client[v1.GetResourceTrailRequest, v1.ResourceTrail]
+	getSkillRadar             *connect.Client[v1.GetSkillRadarRequest, v1.SkillRadar]
+	getCoachStats             *connect.Client[v1.GetCoachStatsRequest, v1.CoachStats]
+	createGoal                *connect.Client[v1.CreateGoalRequest, v1.Goal]
+	getActiveGoal             *connect.Client[emptypb.Empty, v1.Goal]
+	updateGoal                *connect.Client[v1.UpdateGoalRequest, v1.Goal]
+	deactivateGoal            *connect.Client[v1.DeactivateGoalRequest, emptypb.Empty]
+	ingestInterviewSession    *connect.Client[v1.IngestInterviewSessionRequest, v1.InterviewSession]
+	listInterviewSessions     *connect.Client[v1.ListInterviewSessionsRequest, v1.ListInterviewSessionsResponse]
+	generateMilestones        *connect.Client[emptypb.Empty, v1.MilestonesResponse]
+	getMilestones             *connect.Client[emptypb.Empty, v1.MilestonesResponse]
+	markMilestoneDone         *connect.Client[v1.MarkMilestoneDoneRequest, v1.Milestone]
+	getNodeCoverage           *connect.Client[v1.GetNodeCoverageRequest, v1.GetNodeCoverageResponse]
+	listMemoryEntries         *connect.Client[v1.ListMemoryEntriesRequest, v1.ListMemoryEntriesResponse]
+	deleteMemoryEntry         *connect.Client[v1.DeleteMemoryEntryRequest, emptypb.Empty]
+	editMemoryEntry           *connect.Client[v1.EditMemoryEntryRequest, v1.MemoryEntry]
+	saveFocusReflection       *connect.Client[v1.SaveFocusReflectionRequest, v1.SaveFocusReflectionResponse]
+	listFocusReflections      *connect.Client[v1.ListFocusReflectionsRequest, v1.ListFocusReflectionsResponse]
+	getUserContext            *connect.Client[v1.GetUserContextRequest, v1.GetUserContextResponse]
+	listCrossVerticalInsights *connect.Client[v1.ListCrossVerticalInsightsRequest, v1.ListCrossVerticalInsightsResponse]
+	markAtlasStruggle         *connect.Client[v1.MarkAtlasStruggleRequest, v1.MarkAtlasStruggleResponse]
+	listAtlasStruggles        *connect.Client[v1.ListAtlasStrugglesRequest, v1.ListAtlasStrugglesResponse]
+	clearAtlasStruggle        *connect.Client[v1.ClearAtlasStruggleRequest, v1.ClearAtlasStruggleResponse]
 }
 
 // GetDailyBrief calls druz9.v1.IntelligenceService.GetDailyBrief.
@@ -617,6 +635,11 @@ func (c *intelligenceServiceClient) GetUserContext(ctx context.Context, req *con
 	return c.getUserContext.CallUnary(ctx, req)
 }
 
+// ListCrossVerticalInsights calls druz9.v1.IntelligenceService.ListCrossVerticalInsights.
+func (c *intelligenceServiceClient) ListCrossVerticalInsights(ctx context.Context, req *connect.Request[v1.ListCrossVerticalInsightsRequest]) (*connect.Response[v1.ListCrossVerticalInsightsResponse], error) {
+	return c.listCrossVerticalInsights.CallUnary(ctx, req)
+}
+
 // MarkAtlasStruggle calls druz9.v1.IntelligenceService.MarkAtlasStruggle.
 func (c *intelligenceServiceClient) MarkAtlasStruggle(ctx context.Context, req *connect.Request[v1.MarkAtlasStruggleRequest]) (*connect.Response[v1.MarkAtlasStruggleResponse], error) {
 	return c.markAtlasStruggle.CallUnary(ctx, req)
@@ -687,6 +710,14 @@ type IntelligenceServiceHandler interface {
 	// suggestion prompt: active goal + recent Coach memory + activity_log +
 	// skill radar + Atlas refs. user_id derives from auth context.
 	GetUserContext(context.Context, *connect.Request[v1.GetUserContextRequest]) (*connect.Response[v1.GetUserContextResponse], error)
+	// ── Wave 15 Cross-vertical insights v2 (2026-05-13) ─────────────────
+	//
+	// Same conceptual stream as ListInsights but multi-axis: producers
+	// correlate signals across English (reading vs speaking) / Mock fails /
+	// Vocab review lag. Ephemeral (no upsert / no ack), severity-ranked,
+	// capped at 5. Today UI + Hone Today render these as «Что заметил»
+	// mini-section under the main feed.
+	ListCrossVerticalInsights(context.Context, *connect.Request[v1.ListCrossVerticalInsightsRequest]) (*connect.Response[v1.ListCrossVerticalInsightsResponse], error)
 	// ── X5 Cross-product handoff: Atlas struggle marks (Phase J 2026-05-12) ─
 	//
 	// Bidirectional handoff signal: Cue session analysis OR Hone reflection
@@ -886,6 +917,12 @@ func NewIntelligenceServiceHandler(svc IntelligenceServiceHandler, opts ...conne
 		connect.WithSchema(intelligenceServiceMethods.ByName("GetUserContext")),
 		connect.WithHandlerOptions(opts...),
 	)
+	intelligenceServiceListCrossVerticalInsightsHandler := connect.NewUnaryHandler(
+		IntelligenceServiceListCrossVerticalInsightsProcedure,
+		svc.ListCrossVerticalInsights,
+		connect.WithSchema(intelligenceServiceMethods.ByName("ListCrossVerticalInsights")),
+		connect.WithHandlerOptions(opts...),
+	)
 	intelligenceServiceMarkAtlasStruggleHandler := connect.NewUnaryHandler(
 		IntelligenceServiceMarkAtlasStruggleProcedure,
 		svc.MarkAtlasStruggle,
@@ -966,6 +1003,8 @@ func NewIntelligenceServiceHandler(svc IntelligenceServiceHandler, opts ...conne
 			intelligenceServiceListFocusReflectionsHandler.ServeHTTP(w, r)
 		case IntelligenceServiceGetUserContextProcedure:
 			intelligenceServiceGetUserContextHandler.ServeHTTP(w, r)
+		case IntelligenceServiceListCrossVerticalInsightsProcedure:
+			intelligenceServiceListCrossVerticalInsightsHandler.ServeHTTP(w, r)
 		case IntelligenceServiceMarkAtlasStruggleProcedure:
 			intelligenceServiceMarkAtlasStruggleHandler.ServeHTTP(w, r)
 		case IntelligenceServiceListAtlasStrugglesProcedure:
@@ -1099,6 +1138,10 @@ func (UnimplementedIntelligenceServiceHandler) ListFocusReflections(context.Cont
 
 func (UnimplementedIntelligenceServiceHandler) GetUserContext(context.Context, *connect.Request[v1.GetUserContextRequest]) (*connect.Response[v1.GetUserContextResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.GetUserContext is not implemented"))
+}
+
+func (UnimplementedIntelligenceServiceHandler) ListCrossVerticalInsights(context.Context, *connect.Request[v1.ListCrossVerticalInsightsRequest]) (*connect.Response[v1.ListCrossVerticalInsightsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.IntelligenceService.ListCrossVerticalInsights is not implemented"))
 }
 
 func (UnimplementedIntelligenceServiceHandler) MarkAtlasStruggle(context.Context, *connect.Request[v1.MarkAtlasStruggleRequest]) (*connect.Response[v1.MarkAtlasStruggleResponse], error) {

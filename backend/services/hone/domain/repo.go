@@ -182,6 +182,14 @@ type NoteRepo interface {
 	// TodayStandup чтобы понять «уже записал standup сегодня?» — note
 	// title = "Standup YYYY-MM-DD".
 	ExistsByTitleForUser(ctx context.Context, userID uuid.UUID, title string) (bool, error)
+	// SetAIExcluded toggles `hone_notes.ai_excluded`. Returns the hydrated
+	// note. Used by Phase K Wave 15 «AI can read» editor toggle.
+	SetAIExcluded(ctx context.Context, userID, noteID uuid.UUID, excluded bool) (Note, error)
+	// ListAIAvailable returns recent unencrypted, non-ai_excluded notes for
+	// the user (updated within `lookback`). Used by SuggestTasksFromNotes
+	// — single SQL pass с idx_hone_notes_ai_available; не тянет body для
+	// excluded / encrypted rows. limit bounds the LLM input size.
+	ListAIAvailable(ctx context.Context, userID uuid.UUID, lookback time.Duration, limit int) ([]Note, error)
 }
 
 // NoteEmbedding is the minimal projection used by the cosine scanner.

@@ -1339,6 +1339,16 @@ export class Note extends Message<Note> {
    */
   folderId?: string;
 
+  /**
+   * ai_excluded (Phase K Wave 15) — soft-privacy. When true the note is
+   * skipped by SuggestTasksFromNotes and the coach reading pipeline.
+   * Distinct from vault encryption: server still sees plaintext, only
+   * LLM-features avoid the body. Default false.
+   *
+   * @generated from field: bool ai_excluded = 8;
+   */
+  aiExcluded = false;
+
   constructor(data?: PartialMessage<Note>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1354,6 +1364,7 @@ export class Note extends Message<Note> {
     { no: 5, name: "updated_at", kind: "message", T: Timestamp },
     { no: 6, name: "size_bytes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 7, name: "folder_id", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
+    { no: 8, name: "ai_excluded", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Note {
@@ -4147,6 +4158,21 @@ export class Task extends Message<Task> {
    */
   manualKindOverride = false;
 
+  /**
+   * Phase K Wave 15 (2026-05-14) — time-blocking. Когда юзер перетаскивает
+   * карточку из бэклога в часовой слот day-view, бэкенд пишет ISO-timestamp +
+   * длительность в минутах. Empty / 0 = не запланировано (живёт в обычных
+   * kanban-колонках).
+   *
+   * @generated from field: google.protobuf.Timestamp scheduled_start = 15;
+   */
+  scheduledStart?: Timestamp;
+
+  /**
+   * @generated from field: int32 scheduled_duration_min = 16;
+   */
+  scheduledDurationMin = 0;
+
   constructor(data?: PartialMessage<Task>) {
     super();
     proto3.util.initPartial(data, this);
@@ -4169,6 +4195,8 @@ export class Task extends Message<Task> {
     { no: 12, name: "updated_at", kind: "message", T: Timestamp },
     { no: 13, name: "completed_at", kind: "message", T: Timestamp },
     { no: 14, name: "manual_kind_override", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 15, name: "scheduled_start", kind: "message", T: Timestamp },
+    { no: 16, name: "scheduled_duration_min", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Task {
@@ -4848,6 +4876,974 @@ export class AddTaskCommentRequest extends Message<AddTaskCommentRequest> {
 
   static equals(a: AddTaskCommentRequest | PlainMessage<AddTaskCommentRequest> | undefined, b: AddTaskCommentRequest | PlainMessage<AddTaskCommentRequest> | undefined): boolean {
     return proto3.util.equals(AddTaskCommentRequest, a, b);
+  }
+}
+
+/**
+ * ScheduleTaskRequest — pin a task into a calendar slot.
+ * scheduled_start_iso is RFC3339 (e.g. "2026-05-14T09:00:00Z"). The backend
+ * parses + stores as UTC; clients render in local TZ. duration_min must be
+ * between 15 and 480 (8h cap — beyond that the user is doing something
+ * other than time-blocking).
+ *
+ * @generated from message druz9.v1.ScheduleTaskRequest
+ */
+export class ScheduleTaskRequest extends Message<ScheduleTaskRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string scheduled_start_iso = 2;
+   */
+  scheduledStartIso = "";
+
+  /**
+   * @generated from field: int32 duration_min = 3;
+   */
+  durationMin = 0;
+
+  constructor(data?: PartialMessage<ScheduleTaskRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ScheduleTaskRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "scheduled_start_iso", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "duration_min", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ScheduleTaskRequest {
+    return new ScheduleTaskRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ScheduleTaskRequest {
+    return new ScheduleTaskRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ScheduleTaskRequest {
+    return new ScheduleTaskRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ScheduleTaskRequest | PlainMessage<ScheduleTaskRequest> | undefined, b: ScheduleTaskRequest | PlainMessage<ScheduleTaskRequest> | undefined): boolean {
+    return proto3.util.equals(ScheduleTaskRequest, a, b);
+  }
+}
+
+/**
+ * UnscheduleTaskRequest — return a task to the backlog (NULL scheduled cols).
+ *
+ * @generated from message druz9.v1.UnscheduleTaskRequest
+ */
+export class UnscheduleTaskRequest extends Message<UnscheduleTaskRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<UnscheduleTaskRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UnscheduleTaskRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnscheduleTaskRequest {
+    return new UnscheduleTaskRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnscheduleTaskRequest {
+    return new UnscheduleTaskRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnscheduleTaskRequest {
+    return new UnscheduleTaskRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnscheduleTaskRequest | PlainMessage<UnscheduleTaskRequest> | undefined, b: UnscheduleTaskRequest | PlainMessage<UnscheduleTaskRequest> | undefined): boolean {
+    return proto3.util.equals(UnscheduleTaskRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.EnergyLog
+ */
+export class EnergyLog extends Message<EnergyLog> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * 1..5 — subjective scale, 1=drained / 3=ok / 5=peak.
+   *
+   * @generated from field: int32 level = 2;
+   */
+  level = 0;
+
+  /**
+   * Optional free-text note ("after lunch", "slept well", "headache").
+   *
+   * @generated from field: string note = 3;
+   */
+  note = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp logged_at = 4;
+   */
+  loggedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<EnergyLog>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.EnergyLog";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "level", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "logged_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EnergyLog {
+    return new EnergyLog().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EnergyLog {
+    return new EnergyLog().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EnergyLog {
+    return new EnergyLog().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EnergyLog | PlainMessage<EnergyLog> | undefined, b: EnergyLog | PlainMessage<EnergyLog> | undefined): boolean {
+    return proto3.util.equals(EnergyLog, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.LogEnergyRequest
+ */
+export class LogEnergyRequest extends Message<LogEnergyRequest> {
+  /**
+   * required 1..5
+   *
+   * @generated from field: int32 level = 1;
+   */
+  level = 0;
+
+  /**
+   * optional
+   *
+   * @generated from field: string note = 2;
+   */
+  note = "";
+
+  constructor(data?: PartialMessage<LogEnergyRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.LogEnergyRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "level", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogEnergyRequest {
+    return new LogEnergyRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogEnergyRequest {
+    return new LogEnergyRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogEnergyRequest {
+    return new LogEnergyRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LogEnergyRequest | PlainMessage<LogEnergyRequest> | undefined, b: LogEnergyRequest | PlainMessage<LogEnergyRequest> | undefined): boolean {
+    return proto3.util.equals(LogEnergyRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListEnergyLogsRequest
+ */
+export class ListEnergyLogsRequest extends Message<ListEnergyLogsRequest> {
+  /**
+   * Lookback window in days. 0 → server default (7), max 90.
+   *
+   * @generated from field: int32 days = 1;
+   */
+  days = 0;
+
+  constructor(data?: PartialMessage<ListEnergyLogsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListEnergyLogsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListEnergyLogsRequest {
+    return new ListEnergyLogsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListEnergyLogsRequest {
+    return new ListEnergyLogsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListEnergyLogsRequest {
+    return new ListEnergyLogsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListEnergyLogsRequest | PlainMessage<ListEnergyLogsRequest> | undefined, b: ListEnergyLogsRequest | PlainMessage<ListEnergyLogsRequest> | undefined): boolean {
+    return proto3.util.equals(ListEnergyLogsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListEnergyLogsResponse
+ */
+export class ListEnergyLogsResponse extends Message<ListEnergyLogsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.EnergyLog logs = 1;
+   */
+  logs: EnergyLog[] = [];
+
+  constructor(data?: PartialMessage<ListEnergyLogsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListEnergyLogsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "logs", kind: "message", T: EnergyLog, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListEnergyLogsResponse {
+    return new ListEnergyLogsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListEnergyLogsResponse {
+    return new ListEnergyLogsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListEnergyLogsResponse {
+    return new ListEnergyLogsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListEnergyLogsResponse | PlainMessage<ListEnergyLogsResponse> | undefined, b: ListEnergyLogsResponse | PlainMessage<ListEnergyLogsResponse> | undefined): boolean {
+    return proto3.util.equals(ListEnergyLogsResponse, a, b);
+  }
+}
+
+/**
+ * DayShutdown — one calendar-day shutdown row.
+ *
+ * @generated from message druz9.v1.DayShutdown
+ */
+export class DayShutdown extends Message<DayShutdown> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId = "";
+
+  /**
+   * Calendar day this shutdown belongs to (ISO date "YYYY-MM-DD").
+   *
+   * @generated from field: string shutdown_date = 3;
+   */
+  shutdownDate = "";
+
+  /**
+   * @generated from field: string done = 4;
+   */
+  done = "";
+
+  /**
+   * @generated from field: string pending = 5;
+   */
+  pending = "";
+
+  /**
+   * @generated from field: string tomorrow = 6;
+   */
+  tomorrow = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 8;
+   */
+  updatedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<DayShutdown>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DayShutdown";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "shutdown_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "done", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "pending", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "tomorrow", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "created_at", kind: "message", T: Timestamp },
+    { no: 8, name: "updated_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DayShutdown {
+    return new DayShutdown().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DayShutdown {
+    return new DayShutdown().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DayShutdown {
+    return new DayShutdown().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DayShutdown | PlainMessage<DayShutdown> | undefined, b: DayShutdown | PlainMessage<DayShutdown> | undefined): boolean {
+    return proto3.util.equals(DayShutdown, a, b);
+  }
+}
+
+/**
+ * SubmitDayShutdownRequest — все три поля optional (юзер мог заполнить
+ * только одно). Сервер сам решит, какому дню принадлежит запись
+ * (используя clock UTC + локальный TZ offset на клиенте — отправляем
+ * shutdown_date явно как ISO date).
+ *
+ * @generated from message druz9.v1.SubmitDayShutdownRequest
+ */
+export class SubmitDayShutdownRequest extends Message<SubmitDayShutdownRequest> {
+  /**
+   * ISO date "YYYY-MM-DD". Пусто → server использует today (UTC).
+   *
+   * @generated from field: string shutdown_date = 1;
+   */
+  shutdownDate = "";
+
+  /**
+   * @generated from field: string done = 2;
+   */
+  done = "";
+
+  /**
+   * @generated from field: string pending = 3;
+   */
+  pending = "";
+
+  /**
+   * @generated from field: string tomorrow = 4;
+   */
+  tomorrow = "";
+
+  constructor(data?: PartialMessage<SubmitDayShutdownRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SubmitDayShutdownRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "shutdown_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "done", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "pending", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "tomorrow", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SubmitDayShutdownRequest {
+    return new SubmitDayShutdownRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SubmitDayShutdownRequest {
+    return new SubmitDayShutdownRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SubmitDayShutdownRequest {
+    return new SubmitDayShutdownRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SubmitDayShutdownRequest | PlainMessage<SubmitDayShutdownRequest> | undefined, b: SubmitDayShutdownRequest | PlainMessage<SubmitDayShutdownRequest> | undefined): boolean {
+    return proto3.util.equals(SubmitDayShutdownRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SubmitDayShutdownResponse
+ */
+export class SubmitDayShutdownResponse extends Message<SubmitDayShutdownResponse> {
+  /**
+   * @generated from field: druz9.v1.DayShutdown shutdown = 1;
+   */
+  shutdown?: DayShutdown;
+
+  constructor(data?: PartialMessage<SubmitDayShutdownResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SubmitDayShutdownResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "shutdown", kind: "message", T: DayShutdown },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SubmitDayShutdownResponse {
+    return new SubmitDayShutdownResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SubmitDayShutdownResponse {
+    return new SubmitDayShutdownResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SubmitDayShutdownResponse {
+    return new SubmitDayShutdownResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SubmitDayShutdownResponse | PlainMessage<SubmitDayShutdownResponse> | undefined, b: SubmitDayShutdownResponse | PlainMessage<SubmitDayShutdownResponse> | undefined): boolean {
+    return proto3.util.equals(SubmitDayShutdownResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetTodayShutdownRequest
+ */
+export class GetTodayShutdownRequest extends Message<GetTodayShutdownRequest> {
+  constructor(data?: PartialMessage<GetTodayShutdownRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetTodayShutdownRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetTodayShutdownRequest {
+    return new GetTodayShutdownRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetTodayShutdownRequest {
+    return new GetTodayShutdownRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetTodayShutdownRequest {
+    return new GetTodayShutdownRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetTodayShutdownRequest | PlainMessage<GetTodayShutdownRequest> | undefined, b: GetTodayShutdownRequest | PlainMessage<GetTodayShutdownRequest> | undefined): boolean {
+    return proto3.util.equals(GetTodayShutdownRequest, a, b);
+  }
+}
+
+/**
+ * GetTodayShutdownResponse — recorded=false когда на сегодня ничего ещё
+ * не сохранено (frontend показывает пустую модалку). Если recorded=true,
+ * клиент prefill'ит поля из shutdown.
+ *
+ * @generated from message druz9.v1.GetTodayShutdownResponse
+ */
+export class GetTodayShutdownResponse extends Message<GetTodayShutdownResponse> {
+  /**
+   * @generated from field: bool recorded = 1;
+   */
+  recorded = false;
+
+  /**
+   * @generated from field: druz9.v1.DayShutdown shutdown = 2;
+   */
+  shutdown?: DayShutdown;
+
+  constructor(data?: PartialMessage<GetTodayShutdownResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetTodayShutdownResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "recorded", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "shutdown", kind: "message", T: DayShutdown },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetTodayShutdownResponse {
+    return new GetTodayShutdownResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetTodayShutdownResponse {
+    return new GetTodayShutdownResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetTodayShutdownResponse {
+    return new GetTodayShutdownResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetTodayShutdownResponse | PlainMessage<GetTodayShutdownResponse> | undefined, b: GetTodayShutdownResponse | PlainMessage<GetTodayShutdownResponse> | undefined): boolean {
+    return proto3.util.equals(GetTodayShutdownResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ResistanceEntry
+ */
+export class ResistanceEntry extends Message<ResistanceEntry> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string text = 2;
+   */
+  text = "";
+
+  /**
+   * focus_session_id — UUID hone_focus_sessions.id когда журнал записан
+   * перед стартом конкретной фокус-сессии. Пусто, если журнал stand-alone.
+   *
+   * @generated from field: string focus_session_id = 3;
+   */
+  focusSessionId = "";
+
+  /**
+   * task_id — UUID hone_tasks.id когда фокус был на pinned task.
+   *
+   * @generated from field: string task_id = 4;
+   */
+  taskId = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp logged_at = 5;
+   */
+  loggedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<ResistanceEntry>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ResistanceEntry";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "focus_session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "task_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "logged_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResistanceEntry {
+    return new ResistanceEntry().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResistanceEntry {
+    return new ResistanceEntry().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResistanceEntry {
+    return new ResistanceEntry().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResistanceEntry | PlainMessage<ResistanceEntry> | undefined, b: ResistanceEntry | PlainMessage<ResistanceEntry> | undefined): boolean {
+    return proto3.util.equals(ResistanceEntry, a, b);
+  }
+}
+
+/**
+ * LogResistanceRequest — text required, ≤200 chars (enforced server-side).
+ * focus_session_id / task_id опциональны — frontend заполняет если
+ * модалка открыта в составе focus-start flow.
+ *
+ * @generated from message druz9.v1.LogResistanceRequest
+ */
+export class LogResistanceRequest extends Message<LogResistanceRequest> {
+  /**
+   * @generated from field: string text = 1;
+   */
+  text = "";
+
+  /**
+   * @generated from field: string focus_session_id = 2;
+   */
+  focusSessionId = "";
+
+  /**
+   * @generated from field: string task_id = 3;
+   */
+  taskId = "";
+
+  constructor(data?: PartialMessage<LogResistanceRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.LogResistanceRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "focus_session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "task_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogResistanceRequest {
+    return new LogResistanceRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogResistanceRequest {
+    return new LogResistanceRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogResistanceRequest {
+    return new LogResistanceRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LogResistanceRequest | PlainMessage<LogResistanceRequest> | undefined, b: LogResistanceRequest | PlainMessage<LogResistanceRequest> | undefined): boolean {
+    return proto3.util.equals(LogResistanceRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListResistanceLogsRequest
+ */
+export class ListResistanceLogsRequest extends Message<ListResistanceLogsRequest> {
+  /**
+   * Lookback window in days. 0 → server default (7), max 90.
+   *
+   * @generated from field: int32 days = 1;
+   */
+  days = 0;
+
+  constructor(data?: PartialMessage<ListResistanceLogsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListResistanceLogsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListResistanceLogsRequest {
+    return new ListResistanceLogsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListResistanceLogsRequest {
+    return new ListResistanceLogsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListResistanceLogsRequest {
+    return new ListResistanceLogsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListResistanceLogsRequest | PlainMessage<ListResistanceLogsRequest> | undefined, b: ListResistanceLogsRequest | PlainMessage<ListResistanceLogsRequest> | undefined): boolean {
+    return proto3.util.equals(ListResistanceLogsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListResistanceLogsResponse
+ */
+export class ListResistanceLogsResponse extends Message<ListResistanceLogsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.ResistanceEntry logs = 1;
+   */
+  logs: ResistanceEntry[] = [];
+
+  constructor(data?: PartialMessage<ListResistanceLogsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListResistanceLogsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "logs", kind: "message", T: ResistanceEntry, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListResistanceLogsResponse {
+    return new ListResistanceLogsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListResistanceLogsResponse {
+    return new ListResistanceLogsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListResistanceLogsResponse {
+    return new ListResistanceLogsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListResistanceLogsResponse | PlainMessage<ListResistanceLogsResponse> | undefined, b: ListResistanceLogsResponse | PlainMessage<ListResistanceLogsResponse> | undefined): boolean {
+    return proto3.util.equals(ListResistanceLogsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.UpdateNoteAIExcludedRequest
+ */
+export class UpdateNoteAIExcludedRequest extends Message<UpdateNoteAIExcludedRequest> {
+  /**
+   * @generated from field: string note_id = 1;
+   */
+  noteId = "";
+
+  /**
+   * @generated from field: bool ai_excluded = 2;
+   */
+  aiExcluded = false;
+
+  constructor(data?: PartialMessage<UpdateNoteAIExcludedRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UpdateNoteAIExcludedRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "note_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "ai_excluded", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateNoteAIExcludedRequest {
+    return new UpdateNoteAIExcludedRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateNoteAIExcludedRequest {
+    return new UpdateNoteAIExcludedRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateNoteAIExcludedRequest {
+    return new UpdateNoteAIExcludedRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateNoteAIExcludedRequest | PlainMessage<UpdateNoteAIExcludedRequest> | undefined, b: UpdateNoteAIExcludedRequest | PlainMessage<UpdateNoteAIExcludedRequest> | undefined): boolean {
+    return proto3.util.equals(UpdateNoteAIExcludedRequest, a, b);
+  }
+}
+
+/**
+ * TaskSuggestion — одна предложенная задача с trace на исходник.
+ *
+ * @generated from message druz9.v1.TaskSuggestion
+ */
+export class TaskSuggestion extends Message<TaskSuggestion> {
+  /**
+   * Stable hash (sha1 первых 40 символов) `(note_id + title)` — клиенту
+   * нужен deterministic key для React-list, серверу не персистится.
+   *
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string source_note_id = 3;
+   */
+  sourceNoteId = "";
+
+  /**
+   * source_excerpt — несколько строк контекста из заметки (≤200 chars),
+   * показывается под title как «откуда взято». NOT the full note body.
+   *
+   * @generated from field: string source_excerpt = 4;
+   */
+  sourceExcerpt = "";
+
+  constructor(data?: PartialMessage<TaskSuggestion>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TaskSuggestion";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "source_note_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "source_excerpt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TaskSuggestion {
+    return new TaskSuggestion().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TaskSuggestion {
+    return new TaskSuggestion().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TaskSuggestion {
+    return new TaskSuggestion().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TaskSuggestion | PlainMessage<TaskSuggestion> | undefined, b: TaskSuggestion | PlainMessage<TaskSuggestion> | undefined): boolean {
+    return proto3.util.equals(TaskSuggestion, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SuggestTasksFromNotesRequest
+ */
+export class SuggestTasksFromNotesRequest extends Message<SuggestTasksFromNotesRequest> {
+  /**
+   * Lookback в днях. 0 → 7 (server default), max 30.
+   *
+   * @generated from field: int32 days = 1;
+   */
+  days = 0;
+
+  constructor(data?: PartialMessage<SuggestTasksFromNotesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SuggestTasksFromNotesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SuggestTasksFromNotesRequest {
+    return new SuggestTasksFromNotesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SuggestTasksFromNotesRequest {
+    return new SuggestTasksFromNotesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SuggestTasksFromNotesRequest {
+    return new SuggestTasksFromNotesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SuggestTasksFromNotesRequest | PlainMessage<SuggestTasksFromNotesRequest> | undefined, b: SuggestTasksFromNotesRequest | PlainMessage<SuggestTasksFromNotesRequest> | undefined): boolean {
+    return proto3.util.equals(SuggestTasksFromNotesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SuggestTasksFromNotesResponse
+ */
+export class SuggestTasksFromNotesResponse extends Message<SuggestTasksFromNotesResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TaskSuggestion suggestions = 1;
+   */
+  suggestions: TaskSuggestion[] = [];
+
+  /**
+   * cached_at — RFC3339, пусто если ответ свежий (cache miss). Клиент
+   * показывает «обновлено N минут назад» когда cached.
+   *
+   * @generated from field: string cached_at = 2;
+   */
+  cachedAt = "";
+
+  constructor(data?: PartialMessage<SuggestTasksFromNotesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SuggestTasksFromNotesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "suggestions", kind: "message", T: TaskSuggestion, repeated: true },
+    { no: 2, name: "cached_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SuggestTasksFromNotesResponse {
+    return new SuggestTasksFromNotesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SuggestTasksFromNotesResponse {
+    return new SuggestTasksFromNotesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SuggestTasksFromNotesResponse {
+    return new SuggestTasksFromNotesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SuggestTasksFromNotesResponse | PlainMessage<SuggestTasksFromNotesResponse> | undefined, b: SuggestTasksFromNotesResponse | PlainMessage<SuggestTasksFromNotesResponse> | undefined): boolean {
+    return proto3.util.equals(SuggestTasksFromNotesResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AcceptTaskSuggestionRequest
+ */
+export class AcceptTaskSuggestionRequest extends Message<AcceptTaskSuggestionRequest> {
+  /**
+   * @generated from field: string title = 1;
+   */
+  title = "";
+
+  /**
+   * source_note_id — отслеживаем источник, чтобы при втором проходе
+   * не пред-лагать ту же задачу дважды (acceptance bookkeeping).
+   *
+   * @generated from field: string source_note_id = 2;
+   */
+  sourceNoteId = "";
+
+  constructor(data?: PartialMessage<AcceptTaskSuggestionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AcceptTaskSuggestionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "source_note_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AcceptTaskSuggestionRequest {
+    return new AcceptTaskSuggestionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AcceptTaskSuggestionRequest {
+    return new AcceptTaskSuggestionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AcceptTaskSuggestionRequest {
+    return new AcceptTaskSuggestionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AcceptTaskSuggestionRequest | PlainMessage<AcceptTaskSuggestionRequest> | undefined, b: AcceptTaskSuggestionRequest | PlainMessage<AcceptTaskSuggestionRequest> | undefined): boolean {
+    return proto3.util.equals(AcceptTaskSuggestionRequest, a, b);
   }
 }
 

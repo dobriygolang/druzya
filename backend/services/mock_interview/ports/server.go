@@ -39,7 +39,10 @@ type Server struct {
 	SysDesignGrader *app.SysDesignGrader
 	// BehavioralGrader powers RunBehavioralAttempt — STAR rubric.
 	BehavioralGrader *app.BehavioralGrader
-	Log              *slog.Logger
+	// Replay powers post-debrief "разбор" endpoints (GET + POST). Nil-safe
+	// — handlers return 503 when not wired (no LLM cascade / no DB).
+	Replay *app.MockReplay
+	Log    *slog.Logger
 }
 
 // NewServer takes the use-case bundle plus the orchestrator. The

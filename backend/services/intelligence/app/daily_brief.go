@@ -72,6 +72,12 @@ type GetDailyBrief struct {
 	Clubs     domain.ClubReader
 	External  domain.ExternalActivityReader
 	MLProfile domain.MLProfileReader
+	// Wave 15: 24h activity (counts only) — surface context для
+	// «вчера ты сделал X» framing. nil-safe.
+	RecentActivity domain.RecentActivityReader
+	// DayShutdown — Phase K Wave 15. Вчерашняя запись end-of-day ритуала
+	// из Hone (day_shutdowns). nil = section в prompt'е отсутствует.
+	DayShutdown domain.DayShutdownReader
 
 	// Insights — when set, the brief use-case passes the same prompt-input
 	// snapshot to the insight generator after synthesise — so both surfaces
@@ -84,6 +90,10 @@ type GetDailyBrief struct {
 type GetDailyBriefInput struct {
 	UserID uuid.UUID
 	Force  bool
+	// Source — Wave 15 surface awareness. Empty / "web" → default web-bias.
+	// "hone" → bias toward focus session on a Hone task. "cue" → bias toward
+	// interview prep if upcoming.
+	Source string
 }
 
 // Do возвращает кешированный (или свежесинтезированный) бриф.
@@ -304,6 +314,18 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 			}
 		}()
 	}
+	var recentActivity domain.RecentActivitySummary
+	if uc.RecentActivity != nil {
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.RecentActivity.Last24h(ctx, in.UserID); err == nil {
+				recentActivity = v
+			} else {
+				warnReader(uc.Log, "recent_activity", err)
+			}
+		}()
+	}
 	var mlProfile domain.MLProfile
 	if uc.MLProfile != nil {
 		optionalWG.Add(1)
@@ -314,6 +336,20 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 				mlProfile = v
 			} else {
 				warnReader(uc.Log, "ml_profile", err)
+			}
+		}()
+	}
+	// Phase K Wave 15 — DAY SHUTDOWN. Snapshot (HasRecord=false) если
+	// юзер не ритуалит / запись старше 2 дней.
+	var dayShutdown domain.DayShutdownSnapshot
+	if uc.DayShutdown != nil {
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.DayShutdown.LatestRecent(ctx, in.UserID, 2); err == nil {
+				dayShutdown = v
+			} else {
+				warnReader(uc.Log, "day_shutdown", err)
 			}
 		}()
 	}
@@ -416,6 +452,9 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		GhostedClubs:        ghostedClubs,
 		External:            external,
 		ML:                  mlProfile,
+		DayShutdown:         dayShutdown,
+		Source:              in.Source,
+		RecentActivity24h:   recentActivity,
 	}
 	brief, err := uc.Synthesiser.Synthesise(ctx, snapshot)
 	if err != nil {

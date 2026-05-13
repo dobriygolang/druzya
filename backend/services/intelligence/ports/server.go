@@ -82,6 +82,10 @@ type IntelligenceServer struct {
 	MarkAtlasStruggleUC  *app.MarkAtlasStruggle
 	ListAtlasStrugglesUC *app.ListAtlasStruggles
 	ClearAtlasStruggleUC *app.ClearAtlasStruggle
+
+	// Wave 15: Cross-vertical insights v2. Lives alongside primary
+	// ListInsights but reads multi-axis producers (English / Mock / Vocab).
+	CrossVerticalInsightsUC *app.CrossVerticalInsights
 }
 
 // LearningStateMutator — handler-injected port для SetLearningMode +
@@ -135,11 +139,25 @@ func (s *IntelligenceServer) GetDailyBrief(
 	brief, err := s.H.GetDailyBrief.Do(ctx, app.GetDailyBriefInput{
 		UserID: uid,
 		Force:  req.Msg.GetForce(),
+		// Wave 15: surface bias — normalise to web|hone|cue, default web.
+		Source: normaliseBriefSource(req.Msg.GetSource()),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("intelligence.GetDailyBrief: %w", s.toConnectErr(err))
 	}
 	return connect.NewResponse(toDailyBriefProto(brief)), nil
+}
+
+// normaliseBriefSource — clamps user-supplied source to closed set.
+// Unknown / empty values fall back to "web".
+func normaliseBriefSource(s string) string {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "hone":
+		return "hone"
+	case "cue":
+		return "cue"
+	}
+	return "web"
 }
 
 // AskNotes implements druz9.v1.IntelligenceService/AskNotes.
@@ -439,12 +457,60 @@ func (s *IntelligenceServer) GetNextAction(
 	if err != nil {
 		return nil, fmt.Errorf("intelligence.GetNextAction: %w", s.toConnectErr(err))
 	}
-	return connect.NewResponse(&pb.NextAction{
+	resp := &pb.NextAction{
 		ActionKind:       out.ActionKind,
 		Target:           out.Target,
 		Rationale:        out.Rationale,
 		EstimatedMinutes: int32(out.EstimatedMinutes),
-	}), nil
+	}
+	// Wave 15: secondary action from cross-vertical insights (severity ≥ warn).
+	// Fail-soft — broken cross UC doesn't block the primary action.
+	if s.CrossVerticalInsightsUC != nil {
+		if cv, cvErr := s.CrossVerticalInsightsUC.Do(ctx, app.ListCrossVerticalInsightsInput{UserID: uid}); cvErr == nil {
+			for _, ins := range cv.Items {
+				if ins.SeverityAtLeast(domain.InsightSeverityWarn) {
+					resp.SecondaryKind = ins.Kind
+					resp.SecondaryMessageMd = ins.MessageMD
+					resp.SecondaryActionUrl = ins.SuggestedActionURL
+					resp.SecondaryActionLabel = ins.SuggestedActionLabel
+					break
+				}
+			}
+		}
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ListCrossVerticalInsights implements druz9.v1.IntelligenceService/ListCrossVerticalInsights.
+// nil-safe: returns empty list when UC isn't wired.
+func (s *IntelligenceServer) ListCrossVerticalInsights(
+	ctx context.Context,
+	_ *connect.Request[pb.ListCrossVerticalInsightsRequest],
+) (*connect.Response[pb.ListCrossVerticalInsightsResponse], error) {
+	if s.CrossVerticalInsightsUC == nil {
+		return connect.NewResponse(&pb.ListCrossVerticalInsightsResponse{}), nil
+	}
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.CrossVerticalInsightsUC.Do(ctx, app.ListCrossVerticalInsightsInput{UserID: uid})
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.ListCrossVerticalInsights: %w", s.toConnectErr(err))
+	}
+	resp := &pb.ListCrossVerticalInsightsResponse{
+		Items: make([]*pb.CrossVerticalInsight, 0, len(out.Items)),
+	}
+	for _, ins := range out.Items {
+		resp.Items = append(resp.Items, &pb.CrossVerticalInsight{
+			Kind:                 ins.Kind,
+			Severity:             insightSeverityToProto(ins.Severity),
+			MessageMd:            ins.MessageMD,
+			SuggestedActionUrl:   ins.SuggestedActionURL,
+			SuggestedActionLabel: ins.SuggestedActionLabel,
+		})
+	}
+	return connect.NewResponse(resp), nil
 }
 
 // GetForkSnapshot implements druz9.v1.IntelligenceService/GetForkSnapshot.

@@ -100,3 +100,69 @@ export async function ingestYouTubeListening(
   })
   return unwrap(resp)
 }
+
+// ─── Curated ready library (Phase K Wave 15) ──────────────────────────────
+//
+// Sergey-curated 50+ listening tracks (SE Daily, Changelog, Lex Fridman,
+// Hanselminutes, Latent Space, TED, Strange Loop, GOTO). Static Go-backed
+// catalog; this client just calls GET /hone/listening/curated?level=…
+// The endpoint returns a flat list — UI groups by level / source as needed.
+
+export type CuratedListeningLevel = 'B1' | 'B2' | 'C1'
+
+export interface CuratedListeningTrack {
+  id: string
+  title: string
+  speaker: string
+  url: string
+  level: CuratedListeningLevel
+  estimatedMinutes: number
+  topic: string
+  tags: string[]
+  source: string
+  why: string
+}
+
+type WireCuratedTrack = {
+  id: string
+  title: string
+  speaker: string
+  url: string
+  level: string
+  estimated_minutes?: number
+  estimatedMinutes?: number
+  topic: string
+  tags?: string[] | null
+  source: string
+  why: string
+}
+
+function unwrapCurated(w: WireCuratedTrack): CuratedListeningTrack {
+  const level: CuratedListeningLevel =
+    w.level === 'B1' || w.level === 'B2' || w.level === 'C1' ? w.level : 'B2'
+  return {
+    id: w.id,
+    title: w.title,
+    speaker: w.speaker,
+    url: w.url,
+    level,
+    estimatedMinutes: w.estimated_minutes ?? w.estimatedMinutes ?? 0,
+    topic: w.topic,
+    tags: Array.isArray(w.tags) ? w.tags : [],
+    source: w.source,
+    why: w.why,
+  }
+}
+
+/**
+ * Список Sergey-curated готовых аудиозаписей. Параметр `level` фильтрует на
+ * сервере; передай 'all' (или пропусти) чтобы получить полный каталог —
+ * хендлер вернёт всё, мы делаем фильтр-проверку на клиенте перед отправкой.
+ */
+export async function listCuratedListeningTracks(
+  level?: CuratedListeningLevel | 'all',
+): Promise<CuratedListeningTrack[]> {
+  const qs = level && level !== 'all' ? `?level=${encodeURIComponent(level)}` : ''
+  const resp = await api<{ items?: WireCuratedTrack[] }>(`/hone/listening/curated${qs}`)
+  return (resp.items ?? []).map(unwrapCurated)
+}

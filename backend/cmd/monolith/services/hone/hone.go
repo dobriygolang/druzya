@@ -83,6 +83,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	queue := honeInfra.NewQueue(d.Pool)
 	cueSessions := honeInfra.NewCueSessions(d.Pool)
 	settings := honeInfra.NewSettingsRepo(d.Pool)
+	dayShutdowns := honeInfra.NewDayShutdownRepo(d.Pool)
 	external := honeInfra.NewExternalRepo(d.Pool)
 	atlasTopics := honeInfra.NewAtlasTopicSearcher(d.Pool)
 	atlasTracks := honeInfra.NewAtlasNodeTracksReader(d.Pool)
@@ -238,6 +239,10 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		// Standup
 		RecordStandup:   &honeApp.RecordStandup{Notes: notes, Plans: plans, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
 		GetTodayStandup: &honeApp.GetTodayStandup{Notes: notes, Queue: queue, Now: d.Now},
+
+		// End-of-day shutdown ritual (Phase K Wave 15).
+		SubmitDayShutdown: &honeApp.SubmitDayShutdown{Repo: dayShutdowns, Log: d.Log, Now: d.Now},
+		GetTodayShutdown:  &honeApp.GetTodayShutdown{Repo: dayShutdowns, Now: d.Now},
 
 		// Cue Sessions
 		ImportCueSession:         &honeApp.ImportCueSession{Repo: cueSessions, Log: d.Log, Now: d.Now},
@@ -460,6 +465,45 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	}
 	h.UpdateTaskKind = &honeApp.UpdateTaskKind{Tasks: tasksRepo, Cache: tasksCache}
 
+	// Time-blocking (Phase K Wave 15) — день-view с часовыми слотами.
+	h.ScheduleTask = &honeApp.ScheduleTask{Tasks: tasksRepo, Cache: tasksCache}
+	h.UnscheduleTask = &honeApp.UnscheduleTask{Tasks: tasksRepo, Cache: tasksCache}
+
+	// Energy tracker (Phase K Wave 15) — 1..5 ratings.
+	energyRepo := honeInfra.NewEnergyRepo(d.Pool)
+	h.LogEnergy = &honeApp.LogEnergy{Energy: energyRepo}
+	h.ListEnergyLogs = &honeApp.ListEnergyLogs{Energy: energyRepo}
+
+	// Resistance journal (Phase K Wave 15) — pre-focus prompt + list.
+	journalRepo := honeInfra.NewJournal(d.Pool)
+	h.LogResistance = &honeApp.LogResistance{Repo: journalRepo, Log: d.Log, Now: d.Now}
+	h.ListResistanceLogs = &honeApp.ListResistanceLogs{Repo: journalRepo}
+
+	// Notes AI-flag (Phase K Wave 15) — soft-privacy toggle. Cache shared с
+	// SuggestTasksFromNotes (drop suggestions когда юзер пометил note
+	// excluded → следующий открытый view re-fetch).
+	notesSuggestionCache := newNotesSuggestionCache(d.Redis)
+	h.UpdateNoteAIExcluded = &honeApp.UpdateNoteAIExcluded{
+		Notes: notes,
+		Cache: notesSuggestionCache,
+	}
+
+	// Suggest-tasks-from-notes (Phase K Wave 15). LLM extractor wired
+	// через intelligence-adapter (nil-safe — без LLM возвращается 503).
+	h.SuggestTasksFromNotes = &honeApp.SuggestTasksFromNotes{
+		Notes:     notes,
+		Extractor: buildNoteActionExtractor(d),
+		Cache:     notesSuggestionCache,
+		Log:       d.Log,
+		Now:       d.Now,
+	}
+	// Accept wraps CreateTask (already wired above) и invalidate'ит cache.
+	h.AcceptTaskSuggestion = &honeApp.AcceptTaskSuggestion{
+		CreateTask: h.CreateTask,
+		Cache:      notesSuggestionCache,
+		Log:        d.Log,
+	}
+
 	// Publish-to-web JSON endpoints. /p/{slug} HTML viewer stays chi
 	// (rendered with strict CSP — proto codec can't shape that response).
 	publishRepo := honeInfra.NewPublishRepo(d.Pool, d.Log)
@@ -561,6 +605,12 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Delete("/hone/tasks/{id}", transcoder.ServeHTTP)
 		r.Get("/hone/tasks/{id}/comments", transcoder.ServeHTTP)
 		r.Post("/hone/tasks/{id}/comments", transcoder.ServeHTTP)
+		// Time-blocking (Phase K Wave 15) — schedule / unschedule.
+		r.Post("/hone/tasks/{id}/schedule", transcoder.ServeHTTP)
+		r.Post("/hone/tasks/{id}/unschedule", transcoder.ServeHTTP)
+		// Energy tracker (Phase K Wave 15) — log + list.
+		r.Post("/hone/energy", transcoder.ServeHTTP)
+		r.Get("/hone/energy", transcoder.ServeHTTP)
 		// Publish-to-web JSON endpoints — /p/{slug} HTML viewer is mounted
 		// separately on MountRoot by the publishing module.
 		r.Post("/notes/{id}/publish", transcoder.ServeHTTP)
@@ -595,6 +645,12 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Get("/hone/listening/materials/{id}", transcoder.ServeHTTP)
 		r.Post("/hone/listening/materials/{id}/archive", transcoder.ServeHTTP)
 		r.Post("/hone/listening/youtube", transcoder.ServeHTTP)
+		// Phase K Wave 15 — Sergey-curated "ready library" of listening
+		// tracks (~50 entries: podcast episodes / TED / Strange Loop /
+		// GOTO). Static Go-defined catalog, no DB / no LLM. Plain JSON
+		// handler — bypasses transcoder so this stays free of proto
+		// changes. See hone/app/listening_catalog.go.
+		r.Get("/hone/listening/curated", (&curatedListeningHandler{log: d.Log}).ServeHTTP)
 		// User settings (active study mode).
 		r.Get("/hone/settings", transcoder.ServeHTTP)
 		r.Post("/hone/settings/active-track", transcoder.ServeHTTP)
@@ -605,6 +661,19 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Post("/hone/external-activity/delete", transcoder.ServeHTTP)
 		r.Get("/hone/external-activity/atlas-topics", transcoder.ServeHTTP)
 		r.Get("/hone/atlas-node-tracks", transcoder.ServeHTTP)
+		// End-of-day shutdown ritual (Phase K Wave 15).
+		r.Post("/hone/day-shutdown", transcoder.ServeHTTP)
+		r.Get("/hone/day-shutdown/today", transcoder.ServeHTTP)
+		// Resistance journal (Phase K Wave 15) — pre-focus pulse.
+		r.Post("/hone/resistance", transcoder.ServeHTTP)
+		r.Get("/hone/resistance", transcoder.ServeHTTP)
+		// Notes AI-flag toggle. Single boolean column UPDATE — не пишет
+		// в body, поэтому без quotaWrap. Storage gate всё равно лимитит
+		// CreateNote/UpdateNote выше, флаг — не путь набивать storage.
+		r.Post("/hone/notes/ai-excluded", transcoder.ServeHTTP)
+		// Suggest tasks from notes + accept.
+		r.Get("/hone/tasks/suggest-from-notes", transcoder.ServeHTTP)
+		r.Post("/hone/tasks/accept-suggestion", transcoder.ServeHTTP)
 		// Admin-only TTS regen for speaking exercise reference audio.
 		// RequireAdminInline before transcoder (mirrors podcast admin
 		// pattern). Path declared in hone.proto google.api.http

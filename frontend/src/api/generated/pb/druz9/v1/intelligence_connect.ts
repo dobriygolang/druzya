@@ -19,7 +19,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AckInsightRequest, AckInsightResponse, AckRecommendationRequest, AckRecommendationResponse, AskAnswer, AskNotesRequest, ClearAtlasStruggleRequest, ClearAtlasStruggleResponse, CoachStats, CreateGoalRequest, DailyBrief, DeactivateGoalRequest, DeleteMemoryEntryRequest, EditMemoryEntryRequest, ForkSnapshot, GetCoachStatsRequest, GetDailyBriefRequest, GetForkSnapshotRequest, GetMemoryStatsRequest, GetNextActionRequest, GetNodeCoverageRequest, GetNodeCoverageResponse, GetResourceTrailRequest, GetSkillRadarRequest, GetUserContextRequest, GetUserContextResponse, Goal, IngestInterviewSessionRequest, InterviewSession, LearningStateView, ListAtlasStrugglesRequest, ListAtlasStrugglesResponse, ListFocusReflectionsRequest, ListFocusReflectionsResponse, ListInsightsRequest, ListInsightsResponse, ListInterviewSessionsRequest, ListInterviewSessionsResponse, ListMemoryEntriesRequest, ListMemoryEntriesResponse, LogResourceRequest, LogResourceResponse, MarkAtlasStruggleRequest, MarkAtlasStruggleResponse, MarkMilestoneDoneRequest, MemoryEntry, MemoryStats, Milestone, MilestonesResponse, NextAction, ResourceTrail, SaveFocusReflectionRequest, SaveFocusReflectionResponse, SetForkBranchRequest, SetLearningModeRequest, SkillRadar, UpdateGoalRequest } from "./intelligence_pb.js";
+import { AckInsightRequest, AckInsightResponse, AckRecommendationRequest, AckRecommendationResponse, AskAnswer, AskNotesRequest, ClearAtlasStruggleRequest, ClearAtlasStruggleResponse, CoachStats, CreateGoalRequest, DailyBrief, DeactivateGoalRequest, DeleteMemoryEntryRequest, EditMemoryEntryRequest, ForkSnapshot, GetCoachStatsRequest, GetDailyBriefRequest, GetForkSnapshotRequest, GetMemoryStatsRequest, GetNextActionRequest, GetNodeCoverageRequest, GetNodeCoverageResponse, GetResourceTrailRequest, GetSkillRadarRequest, GetUserContextRequest, GetUserContextResponse, Goal, IngestInterviewSessionRequest, InterviewSession, LearningStateView, ListAtlasStrugglesRequest, ListAtlasStrugglesResponse, ListCrossVerticalInsightsRequest, ListCrossVerticalInsightsResponse, ListFocusReflectionsRequest, ListFocusReflectionsResponse, ListInsightsRequest, ListInsightsResponse, ListInterviewSessionsRequest, ListInterviewSessionsResponse, ListMemoryEntriesRequest, ListMemoryEntriesResponse, LogResourceRequest, LogResourceResponse, MarkAtlasStruggleRequest, MarkAtlasStruggleResponse, MarkMilestoneDoneRequest, MemoryEntry, MemoryStats, Milestone, MilestonesResponse, NextAction, ResourceTrail, SaveFocusReflectionRequest, SaveFocusReflectionResponse, SetForkBranchRequest, SetLearningModeRequest, SkillRadar, UpdateGoalRequest } from "./intelligence_pb.js";
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -337,6 +337,23 @@ export const IntelligenceService = {
       name: "GetUserContext",
       I: GetUserContextRequest,
       O: GetUserContextResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── Wave 15 Cross-vertical insights v2 (2026-05-13) ─────────────────
+     *
+     * Same conceptual stream as ListInsights but multi-axis: producers
+     * correlate signals across English (reading vs speaking) / Mock fails /
+     * Vocab review lag. Ephemeral (no upsert / no ack), severity-ranked,
+     * capped at 5. Today UI + Hone Today render these as «Что заметил»
+     * mini-section under the main feed.
+     *
+     * @generated from rpc druz9.v1.IntelligenceService.ListCrossVerticalInsights
+     */
+    listCrossVerticalInsights: {
+      name: "ListCrossVerticalInsights",
+      I: ListCrossVerticalInsightsRequest,
+      O: ListCrossVerticalInsightsResponse,
       kind: MethodKind.Unary,
     },
     /**

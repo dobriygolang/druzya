@@ -407,7 +407,9 @@ func (c *Chain) Chat(ctx context.Context, req Request) (Response, error) {
 			if echoModel == "" {
 				echoModel = cand.model
 			}
-			observeCost(cand.provider, string(req.Task), echoModel, resp.TokensIn, resp.TokensOut)
+			// Wave 15: pass user_id + latency for admin audit log.
+			observeCostWithUser(cand.provider, string(req.Task), echoModel, req.UserID,
+				resp.TokensIn, resp.TokensOut, int(dur.Milliseconds()))
 			return resp, nil
 		}
 		dur := c.clock().Sub(start)
@@ -477,7 +479,7 @@ func (c *Chain) ChatStream(ctx context.Context, req Request) (<-chan StreamEvent
 				slog.String("model", cand.model),
 				slog.Bool("has_images", hasImages(req.Messages)),
 				slog.Duration("ttfb", dur))
-			return c.observeStream(ctx, cand, req.Task, ch), nil
+			return c.observeStreamWithUser(ctx, cand, req.Task, req.UserID, ch), nil
 		}
 		dur := c.clock().Sub(start)
 		attempts = append(attempts, AttemptError{
@@ -529,6 +531,11 @@ func errString(err error) string {
 }
 
 func (c *Chain) observeStream(ctx context.Context, cand candidate, task Task, src <-chan StreamEvent) <-chan StreamEvent {
+	return c.observeStreamWithUser(ctx, cand, task, "", src)
+}
+
+// observeStreamWithUser — Wave 15 internal: pass userID для audit log.
+func (c *Chain) observeStreamWithUser(ctx context.Context, cand candidate, task Task, userID string, src <-chan StreamEvent) <-chan StreamEvent {
 	out := make(chan StreamEvent, 16)
 	go func() {
 		defer close(out)
@@ -550,7 +557,8 @@ func (c *Chain) observeStream(ctx context.Context, cand candidate, task Task, sr
 				if echoModel == "" {
 					echoModel = cand.model
 				}
-				observeCost(cand.provider, string(task), echoModel, ev.Done.TokensIn, ev.Done.TokensOut)
+				observeCostWithUser(cand.provider, string(task), echoModel, userID,
+					ev.Done.TokensIn, ev.Done.TokensOut, 0)
 			}
 			out <- ev
 		}

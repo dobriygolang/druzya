@@ -862,6 +862,256 @@ func (s *HoneServer) GetTodayStandup(
 	}), nil
 }
 
+// ── End-of-day shutdown ritual (Phase K Wave 15) ──────────────────────────
+
+// SubmitDayShutdown implements druz9.v1.HoneService/SubmitDayShutdown.
+func (s *HoneServer) SubmitDayShutdown(
+	ctx context.Context,
+	req *connect.Request[pb.SubmitDayShutdownRequest],
+) (*connect.Response[pb.SubmitDayShutdownResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.SubmitDayShutdown == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SubmitDayShutdown not wired"))
+	}
+	var date time.Time
+	if raw := req.Msg.GetShutdownDate(); raw != "" {
+		// Дата приходит ISO "YYYY-MM-DD" — server parses в UTC. Использование
+		// time.Parse даёт zero-time с UTC location, ровно как нужно.
+		parsed, perr := time.Parse("2006-01-02", raw)
+		if perr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument,
+				fmt.Errorf("hone.SubmitDayShutdown: invalid shutdown_date %q: %w", raw, perr))
+		}
+		date = parsed
+	}
+	out, err := s.H.SubmitDayShutdown.Do(ctx, app.SubmitDayShutdownInput{
+		UserID:       uid,
+		ShutdownDate: date,
+		Done:         req.Msg.GetDone(),
+		Pending:      req.Msg.GetPending(),
+		Tomorrow:     req.Msg.GetTomorrow(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.SubmitDayShutdown: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.SubmitDayShutdownResponse{
+		Shutdown: toDayShutdownProto(out.Shutdown),
+	}), nil
+}
+
+// GetTodayShutdown implements druz9.v1.HoneService/GetTodayShutdown.
+func (s *HoneServer) GetTodayShutdown(
+	ctx context.Context,
+	_ *connect.Request[pb.GetTodayShutdownRequest],
+) (*connect.Response[pb.GetTodayShutdownResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.GetTodayShutdown == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetTodayShutdown not wired"))
+	}
+	out, err := s.H.GetTodayShutdown.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("hone.GetTodayShutdown: %w", s.toConnectErr(err))
+	}
+	resp := &pb.GetTodayShutdownResponse{Recorded: out.Recorded}
+	if out.Recorded {
+		resp.Shutdown = toDayShutdownProto(out.Shutdown)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// toDayShutdownProto — domain → proto mapping. Изолирован, чтобы тесты
+// при необходимости пользовались тем же конвертером.
+func toDayShutdownProto(s domain.DayShutdown) *pb.DayShutdown {
+	return &pb.DayShutdown{
+		Id:           s.ID.String(),
+		UserId:       s.UserID.String(),
+		ShutdownDate: s.ShutdownDate.UTC().Format("2006-01-02"),
+		Done:         s.Done,
+		Pending:      s.Pending,
+		Tomorrow:     s.Tomorrow,
+		CreatedAt:    timestamppb.New(s.CreatedAt),
+		UpdatedAt:    timestamppb.New(s.UpdatedAt),
+	}
+}
+
+// ─── Resistance journal (Phase K Wave 15) ─────────────────────────────────
+
+// LogResistance implements druz9.v1.HoneService/LogResistance.
+func (s *HoneServer) LogResistance(
+	ctx context.Context,
+	req *connect.Request[pb.LogResistanceRequest],
+) (*connect.Response[pb.ResistanceEntry], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.LogResistance == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("resistance journal not wired"))
+	}
+	m := req.Msg
+	in := app.LogResistanceInput{UserID: uid, Text: m.GetText()}
+	if v := m.GetFocusSessionId(); v != "" {
+		fid, perr := uuid.Parse(v)
+		if perr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("focus_session_id: %w", perr))
+		}
+		in.FocusSessionID = &fid
+	}
+	if v := m.GetTaskId(); v != "" {
+		tid, perr := uuid.Parse(v)
+		if perr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("task_id: %w", perr))
+		}
+		in.TaskID = &tid
+	}
+	entry, err := s.H.LogResistance.Do(ctx, in)
+	if err != nil {
+		return nil, fmt.Errorf("hone.LogResistance: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toResistanceEntryProto(entry)), nil
+}
+
+// ListResistanceLogs implements druz9.v1.HoneService/ListResistanceLogs.
+func (s *HoneServer) ListResistanceLogs(
+	ctx context.Context,
+	req *connect.Request[pb.ListResistanceLogsRequest],
+) (*connect.Response[pb.ListResistanceLogsResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.ListResistanceLogs == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("resistance journal not wired"))
+	}
+	entries, err := s.H.ListResistanceLogs.Do(ctx, app.ListResistanceLogsInput{
+		UserID: uid,
+		Days:   int(req.Msg.GetDays()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.ListResistanceLogs: %w", s.toConnectErr(err))
+	}
+	out := &pb.ListResistanceLogsResponse{Logs: make([]*pb.ResistanceEntry, 0, len(entries))}
+	for _, e := range entries {
+		out.Logs = append(out.Logs, toResistanceEntryProto(e))
+	}
+	return connect.NewResponse(out), nil
+}
+
+func toResistanceEntryProto(e domain.JournalEntry) *pb.ResistanceEntry {
+	out := &pb.ResistanceEntry{
+		Id:       e.ID.String(),
+		Text:     e.Text,
+		LoggedAt: timestamppb.New(e.LoggedAt.UTC()),
+	}
+	if e.FocusSessionID != nil {
+		out.FocusSessionId = e.FocusSessionID.String()
+	}
+	if e.TaskID != nil {
+		out.TaskId = e.TaskID.String()
+	}
+	return out
+}
+
+// ─── Notes AI flag (Phase K Wave 15) ──────────────────────────────────────
+
+// UpdateNoteAIExcluded implements druz9.v1.HoneService/UpdateNoteAIExcluded.
+func (s *HoneServer) UpdateNoteAIExcluded(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateNoteAIExcludedRequest],
+) (*connect.Response[pb.Note], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.UpdateNoteAIExcluded == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("notes ai-excluded not wired"))
+	}
+	nid, perr := uuid.Parse(req.Msg.GetNoteId())
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("note_id: %w", perr))
+	}
+	note, err := s.H.UpdateNoteAIExcluded.Do(ctx, app.UpdateNoteAIExcludedInput{
+		UserID:     uid,
+		NoteID:     nid,
+		AIExcluded: req.Msg.GetAiExcluded(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.UpdateNoteAIExcluded: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toNoteProto(note)), nil
+}
+
+// ─── Tasks from notes (Phase K Wave 15) ───────────────────────────────────
+
+// SuggestTasksFromNotes implements druz9.v1.HoneService/SuggestTasksFromNotes.
+func (s *HoneServer) SuggestTasksFromNotes(
+	ctx context.Context,
+	req *connect.Request[pb.SuggestTasksFromNotesRequest],
+) (*connect.Response[pb.SuggestTasksFromNotesResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.SuggestTasksFromNotes == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("notes→tasks not wired"))
+	}
+	out, err := s.H.SuggestTasksFromNotes.Do(ctx, app.SuggestTasksFromNotesInput{
+		UserID: uid,
+		Days:   int(req.Msg.GetDays()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.SuggestTasksFromNotes: %w", s.toConnectErr(err))
+	}
+	resp := &pb.SuggestTasksFromNotesResponse{
+		Suggestions: make([]*pb.TaskSuggestion, 0, len(out.Suggestions)),
+	}
+	for _, sg := range out.Suggestions {
+		resp.Suggestions = append(resp.Suggestions, &pb.TaskSuggestion{
+			Id:            sg.ID,
+			Title:         sg.Title,
+			SourceNoteId:  sg.SourceNoteID.String(),
+			SourceExcerpt: sg.SourceExcerpt,
+		})
+	}
+	if !out.CachedAt.IsZero() {
+		resp.CachedAt = out.CachedAt.UTC().Format(time.RFC3339)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// AcceptTaskSuggestion implements druz9.v1.HoneService/AcceptTaskSuggestion.
+func (s *HoneServer) AcceptTaskSuggestion(
+	ctx context.Context,
+	req *connect.Request[pb.AcceptTaskSuggestionRequest],
+) (*connect.Response[pb.Task], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.AcceptTaskSuggestion == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("notes→tasks accept not wired"))
+	}
+	in := app.AcceptTaskSuggestionInput{UserID: uid, Title: req.Msg.GetTitle()}
+	if v := req.Msg.GetSourceNoteId(); v != "" {
+		nid, perr := uuid.Parse(v)
+		if perr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("source_note_id: %w", perr))
+		}
+		in.SourceNoteID = nid
+	}
+	task, err := s.H.AcceptTaskSuggestion.Do(ctx, in)
+	if err != nil {
+		return nil, fmt.Errorf("hone.AcceptTaskSuggestion: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(taskToProto(task)), nil
+}
+
 // ── Cue Sessions ──────────────────────────────────────────────────────────
 
 func (s *HoneServer) ImportCueSession(
@@ -1134,12 +1384,13 @@ func toQueueItemProto(q domain.QueueItem) *pb.QueueItem {
 
 func toNoteProto(n domain.Note) *pb.Note {
 	out := &pb.Note{
-		Id:        n.ID.String(),
-		Title:     n.Title,
-		BodyMd:    n.BodyMD,
-		CreatedAt: timestamppb.New(n.CreatedAt.UTC()),
-		UpdatedAt: timestamppb.New(n.UpdatedAt.UTC()),
-		SizeBytes: int32(n.SizeBytes),
+		Id:         n.ID.String(),
+		Title:      n.Title,
+		BodyMd:     n.BodyMD,
+		CreatedAt:  timestamppb.New(n.CreatedAt.UTC()),
+		UpdatedAt:  timestamppb.New(n.UpdatedAt.UTC()),
+		SizeBytes:  int32(n.SizeBytes),
+		AiExcluded: n.AIExcluded,
 	}
 	if n.FolderID != nil {
 		s := n.FolderID.String()

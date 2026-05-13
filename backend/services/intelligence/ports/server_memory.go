@@ -295,6 +295,19 @@ func userContextToProto(b app.UserContextBundle) *pb.UserContext {
 			Kind:  r.Kind,
 		})
 	}
+	// Wave 15: 24h recent activity counters.
+	out.RecentActivity = &pb.RecentActivity24H{
+		FocusSessionsCount: int32(b.RecentActivity24h.FocusSessionsCount),
+		FocusMinutesTotal:  int32(b.RecentActivity24h.FocusMinutesTotal),
+		TasksDone:          int32(b.RecentActivity24h.TasksDone),
+		MockAttempts:       int32(b.RecentActivity24h.MockAttempts),
+		LastMockResult:     int32(b.RecentActivity24h.LastMockResult),
+		NotesCreated:       int32(b.RecentActivity24h.NotesCreated),
+		ReadingMinutes:     int32(b.RecentActivity24h.ReadingMinutes),
+		SpeakingAttempts:   int32(b.RecentActivity24h.SpeakingAttempts),
+		SpeakingAvgScore:   b.RecentActivity24h.SpeakingAvgScore,
+		VocabReviewed:      int32(b.RecentActivity24h.VocabReviewed),
+	}
 	return out
 }
 

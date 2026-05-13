@@ -17,12 +17,16 @@
     "paths": {
       "@shared/*": ["./src/shared/*"],
       "@renderer/*": ["./src/renderer/*"],
+      "@d9-i18n": ["../shared/i18n"],
+      "@d9-i18n/*": ["../shared/i18n/*"],
+      "zustand": ["./node_modules/zustand"],
+      "zustand/*": ["./node_modules/zustand/*"],
       "@bufbuild/protobuf": ["./node_modules/@bufbuild/protobuf"],
       "@bufbuild/protobuf/*": ["./node_modules/@bufbuild/protobuf/*"],
       "@connectrpc/connect": ["./node_modules/@connectrpc/connect"],
       "@connectrpc/connect/*": ["./node_modules/@connectrpc/connect/*"]
     }
   },
-  "include": ["src/renderer/**/*", "src/preload/**/*", "src/shared/**/*"],
+  "include": ["src/renderer/**/*", "src/preload/**/*", "src/shared/**/*", "../shared/i18n/**/*"],
   "exclude": ["src/main/**/*", "out", "dist", "node_modules"]
 }

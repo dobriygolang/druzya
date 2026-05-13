@@ -91,6 +91,9 @@ export interface Note {
   sizeBytes: number;
   folderId: string | null;
   encrypted: boolean;
+  // aiExcluded — Phase K Wave 15 «AI можно читать» toggle. Когда true
+  // SuggestTasksFromNotes / coach reading pipeline пропускают эту ноту.
+  aiExcluded: boolean;
 }
 
 export interface NoteSummary {
@@ -266,6 +269,7 @@ function unwrapNote(n: ProtoNote): Note {
     // here — UI flows (share/private) resolve the real flag through
     // getNotesMeta() before deciding whether to encrypt or decrypt.
     encrypted: false,
+    aiExcluded: Boolean((n as unknown as { aiExcluded?: boolean }).aiExcluded ?? false),
   };
 }
 
@@ -693,6 +697,78 @@ export async function getTodayStandup(): Promise<TodayStandupSnapshot> {
   };
 }
 
+// ─── End-of-day shutdown ritual (Phase K Wave 15) ──────────────────────────
+
+export interface DayShutdown {
+  id: string;
+  userId: string;
+  shutdownDate: string; // ISO YYYY-MM-DD
+  done: string;
+  pending: string;
+  tomorrow: string;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export interface TodayShutdownSnapshot {
+  recorded: boolean;
+  shutdown: DayShutdown | null;
+}
+
+function unwrapDayShutdown(p: {
+  id?: string;
+  userId?: string;
+  shutdownDate?: string;
+  done?: string;
+  pending?: string;
+  tomorrow?: string;
+  createdAt?: { seconds: bigint; nanos: number };
+  updatedAt?: { seconds: bigint; nanos: number };
+}): DayShutdown {
+  return {
+    id: p.id ?? '',
+    userId: p.userId ?? '',
+    shutdownDate: p.shutdownDate ?? '',
+    done: p.done ?? '',
+    pending: p.pending ?? '',
+    tomorrow: p.tomorrow ?? '',
+    createdAt: protoTs(p.createdAt),
+    updatedAt: protoTs(p.updatedAt),
+  };
+}
+
+/**
+ * Submit the end-of-day shutdown ritual entry. UPSERT on (user, date):
+ * resubmitting on the same day overwrites the previous row, не плодит дубль.
+ * `shutdownDate` is ISO "YYYY-MM-DD". Empty string → server uses today UTC.
+ */
+export async function submitDayShutdown(args: {
+  shutdownDate?: string;
+  done: string;
+  pending: string;
+  tomorrow: string;
+}): Promise<DayShutdown> {
+  const resp = await client.submitDayShutdown({
+    shutdownDate: args.shutdownDate ?? '',
+    done: args.done,
+    pending: args.pending,
+    tomorrow: args.tomorrow,
+  });
+  return unwrapDayShutdown((resp.shutdown ?? {}) as never);
+}
+
+/**
+ * Read today's shutdown record (if any). recorded=false → empty modal,
+ * recorded=true → prefill from `shutdown`.
+ */
+export async function getTodayShutdown(): Promise<TodayShutdownSnapshot> {
+  const resp = await client.getTodayShutdown({});
+  return {
+    recorded: resp.recorded,
+    shutdown: resp.shutdown ? unwrapDayShutdown(resp.shutdown as never) : null,
+  };
+}
+
 // ─── Cue Sessions ───────────────────────────────────────────────────────────
 //
 // Cue sessions — это импорты из desktop-приложения Cue (отдельный pseudo-
@@ -814,4 +890,91 @@ export async function getUserSettings(): Promise<UserSettings> {
 export async function setActiveTrack(track: ActiveTrack): Promise<UserSettings> {
   const resp = await client.setActiveTrack({ activeTrack: track });
   return { activeTrack: coerceTrack(resp.activeTrack), englishActive: resp.englishActive };
+}
+
+// ─── Resistance journal (Phase K Wave 15) ──────────────────────────────────
+
+export interface ResistanceEntry {
+  id: string;
+  text: string;
+  focusSessionId: string | null;
+  taskId: string | null;
+  loggedAt: Date | null;
+}
+
+function unwrapResistanceEntry(e: {
+  id: string;
+  text: string;
+  focusSessionId?: string;
+  taskId?: string;
+  loggedAt?: { seconds: bigint; nanos: number };
+}): ResistanceEntry {
+  return {
+    id: e.id,
+    text: e.text,
+    focusSessionId: nonEmpty(e.focusSessionId),
+    taskId: nonEmpty(e.taskId),
+    loggedAt: protoTs(e.loggedAt),
+  };
+}
+
+export async function logResistance(args: {
+  text: string;
+  focusSessionId?: string;
+  taskId?: string;
+}): Promise<ResistanceEntry> {
+  const resp = await client.logResistance({
+    text: args.text,
+    focusSessionId: args.focusSessionId ?? '',
+    taskId: args.taskId ?? '',
+  });
+  return unwrapResistanceEntry(resp as unknown as Parameters<typeof unwrapResistanceEntry>[0]);
+}
+
+export async function listResistanceLogs(days = 7): Promise<ResistanceEntry[]> {
+  const resp = await client.listResistanceLogs({ days });
+  return resp.logs.map((l) => unwrapResistanceEntry(l as unknown as Parameters<typeof unwrapResistanceEntry>[0]));
+}
+
+// ─── Notes AI flag (Phase K Wave 15) ──────────────────────────────────────
+
+export async function updateNoteAIExcluded(noteId: string, aiExcluded: boolean): Promise<Note> {
+  const resp = await client.updateNoteAIExcluded({ noteId, aiExcluded });
+  return unwrapNote(resp as unknown as ProtoNote);
+}
+
+// ─── Tasks from notes (Phase K Wave 15) ───────────────────────────────────
+
+export interface TaskSuggestion {
+  id: string;
+  title: string;
+  sourceNoteId: string;
+  sourceExcerpt: string;
+}
+
+export interface TaskSuggestionsBundle {
+  suggestions: TaskSuggestion[];
+  // cachedAt ISO RFC3339, пусто когда ответ свежий (cache miss).
+  cachedAt: string;
+}
+
+export async function suggestTasksFromNotes(days = 7): Promise<TaskSuggestionsBundle> {
+  const resp = await client.suggestTasksFromNotes({ days });
+  return {
+    suggestions: resp.suggestions.map((s) => ({
+      id: s.id,
+      title: s.title,
+      sourceNoteId: s.sourceNoteId,
+      sourceExcerpt: s.sourceExcerpt,
+    })),
+    cachedAt: resp.cachedAt ?? '',
+  };
+}
+
+export async function acceptTaskSuggestion(title: string, sourceNoteId?: string): Promise<{ id: string }> {
+  const resp = await client.acceptTaskSuggestion({
+    title,
+    sourceNoteId: sourceNoteId ?? '',
+  });
+  return { id: resp.id };
 }

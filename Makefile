@@ -59,6 +59,26 @@ dev-local: ## Start backend stack + web frontend (Hone/Cue stay manual — they 
 	@echo "    cd hone && npm run dev      # Hone Electron"
 	@echo "    cd cue && npm run dev       # Cue Electron"
 
+.PHONY: stack
+stack: ## Поднять backend (Docker) + web/Hone/Cue (background) одной командой. Логи в /tmp/druz9-*.log. Ctrl-C останавливает всё.
+	@$(MAKE) start
+	@echo ""
+	@echo "  Backend up на http://localhost:8080"
+	@echo "  Стартую web / Hone / Cue в фоне. Логи:"
+	@echo "    /tmp/druz9-frontend.log"
+	@echo "    /tmp/druz9-hone.log"
+	@echo "    /tmp/druz9-cue.log"
+	@echo ""
+	@echo "  Web будет на http://localhost:5173 (MSW моки)"
+	@echo "  Hone / Cue откроют свои Electron окна"
+	@echo ""
+	@echo "  Ctrl-C → останавливает фронт и Electron'ы. Backend оставляет, делай 'make stop'."
+	@trap 'kill 0 2>/dev/null' INT TERM EXIT; \
+	  ( cd frontend && VITE_USE_MSW=true npm run dev -- --host > /tmp/druz9-frontend.log 2>&1 ) & \
+	  ( cd hone && npm run dev > /tmp/druz9-hone.log 2>&1 ) & \
+	  ( cd cue && npm run dev > /tmp/druz9-cue.log 2>&1 ) & \
+	  wait
+
 .PHONY: stop
 stop: ## Stop every container
 	docker compose down

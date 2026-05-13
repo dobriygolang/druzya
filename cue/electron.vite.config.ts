@@ -22,6 +22,12 @@ const PEER_ALIASES = {
 };
 const PEER_DEDUPE = Object.keys(PEER_ALIASES);
 
+// Shared i18n dictionary used by both Hone and Cue. Same alias pattern as
+// @generated — a sibling source directory, not an npm package.
+const SHARED_ALIASES = {
+  '@d9-i18n': resolve(__dirname, '../shared/i18n'),
+};
+
 export default defineConfig({
   main: {
     build: {
@@ -37,6 +43,7 @@ export default defineConfig({
         // frontend tree and we alias them from here, so `make gen-proto`
         // updates both frontend and cue in one shot.
         '@generated': resolve(__dirname, '../frontend/src/api/generated'),
+        ...SHARED_ALIASES,
         ...PEER_ALIASES,
       },
       dedupe: PEER_DEDUPE,
@@ -51,6 +58,7 @@ export default defineConfig({
     resolve: {
       alias: {
         '@shared': resolve(__dirname, 'src/shared'),
+        ...SHARED_ALIASES,
         ...PEER_ALIASES,
       },
       dedupe: PEER_DEDUPE,
@@ -67,6 +75,7 @@ export default defineConfig({
       alias: {
         '@shared': resolve(__dirname, 'src/shared'),
         '@renderer': resolve(__dirname, 'src/renderer'),
+        ...SHARED_ALIASES,
         ...PEER_ALIASES,
       },
       dedupe: PEER_DEDUPE,

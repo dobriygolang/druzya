@@ -515,6 +515,21 @@ func (mr *MockNoteRepoMockRecorder) List(ctx, userID, limit, cursor, folderID an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockNoteRepo)(nil).List), ctx, userID, limit, cursor, folderID)
 }
 
+// ListAIAvailable mocks base method.
+func (m *MockNoteRepo) ListAIAvailable(ctx context.Context, userID uuid.UUID, lookback time.Duration, limit int) ([]domain.Note, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAIAvailable", ctx, userID, lookback, limit)
+	ret0, _ := ret[0].([]domain.Note)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAIAvailable indicates an expected call of ListAIAvailable.
+func (mr *MockNoteRepoMockRecorder) ListAIAvailable(ctx, userID, lookback, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAIAvailable", reflect.TypeOf((*MockNoteRepo)(nil).ListAIAvailable), ctx, userID, lookback, limit)
+}
+
 // MarkStaleForReembed mocks base method.
 func (m *MockNoteRepo) MarkStaleForReembed(ctx context.Context, currentModelName string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -558,6 +573,21 @@ func (m *MockNoteRepo) SearchSimilarNotes(ctx context.Context, userID uuid.UUID,
 func (mr *MockNoteRepoMockRecorder) SearchSimilarNotes(ctx, userID, queryVec, modelName, excludeNoteID, simFloor, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchSimilarNotes", reflect.TypeOf((*MockNoteRepo)(nil).SearchSimilarNotes), ctx, userID, queryVec, modelName, excludeNoteID, simFloor, limit)
+}
+
+// SetAIExcluded mocks base method.
+func (m *MockNoteRepo) SetAIExcluded(ctx context.Context, userID, noteID uuid.UUID, excluded bool) (domain.Note, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetAIExcluded", ctx, userID, noteID, excluded)
+	ret0, _ := ret[0].(domain.Note)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SetAIExcluded indicates an expected call of SetAIExcluded.
+func (mr *MockNoteRepoMockRecorder) SetAIExcluded(ctx, userID, noteID, excluded any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAIExcluded", reflect.TypeOf((*MockNoteRepo)(nil).SetAIExcluded), ctx, userID, noteID, excluded)
 }
 
 // SetEmbedding mocks base method.

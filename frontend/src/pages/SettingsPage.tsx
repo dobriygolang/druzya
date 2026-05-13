@@ -25,7 +25,7 @@ import { AIModelRow, PremiumUpgradeHint } from '../components/AIModelRow'
 import { GoogleCalendarSection } from '../components/GoogleCalendarSection'
 import { cn } from '../lib/cn'
 import { analytics } from '../lib/analytics'
-import { useProfileQuery } from '../lib/queries/profile'
+import { useProfileQuery, useUpdateSettingsMutation } from '../lib/queries/profile'
 import { useAIModelsQuery } from '../lib/queries/ai'
 import { useNotificationPrefsQuery, useUpdatePrefs } from '../lib/queries/notifications'
 import { api } from '../lib/apiClient'
@@ -298,9 +298,17 @@ function AppearanceCard() {
   // NOTE: keep coordinated with analytics toggle (parallel Agent Q context).
   const [, force] = useState(0)
   const [lang, setLang] = useState<Lang>(currentLanguage())
+  const updateSettings = useUpdateSettingsMutation()
   const onLang = (l: Lang) => {
     setLang(l)
+    // 1) Switch i18next immediately so the UI re-renders without waiting
+    //    for the round-trip to backend.
+    // 2) Persist to users.locale so the LLM (coach / mock / copilot) answers
+    //    in the same language next call. Without (2) the UI flips but coach
+    //    keeps speaking the previous language — the root cause of the
+    //    "AI бывает пишет то на русском, то на английском" complaint.
     void changeLanguage(l).then(() => force((x) => x + 1))
+    updateSettings.mutate({ locale: l })
   }
   return (
     <Card className="flex-col gap-6 p-6">

@@ -25,6 +25,7 @@ import (
 	"druz9/mock_interview/domain"
 	sharedDomain "druz9/shared/domain"
 	"druz9/shared/enums"
+	"druz9/shared/pkg/userlocale"
 
 	"github.com/google/uuid"
 )
@@ -81,6 +82,10 @@ type Orchestrator struct {
 	// whose normalised score < struggleAxisThreshold so the web AtlasPage
 	// can highlight nodes the user is stuck on.
 	Struggle domain.StruggleHook
+	// Locale resolves the user's preferred response language; passed to
+	// the judge so feedback is rendered in the user's language. nil-safe
+	// (defaults to "ru").
+	Locale   userlocale.Reader
 	Now      func() time.Time
 	Log      *slog.Logger
 }
@@ -527,6 +532,13 @@ func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, us
 	// — interviewer follow-ups about the task the user just solved — load the
 	// task body so the judge sees "the question is in the context of THIS
 	// task" via RelatedTaskMD.
+	locale := "ru"
+	if o.Locale != nil {
+		if pipe, perr := o.Pipelines.Get(ctx, stage.PipelineID); perr == nil {
+			locale = o.Locale.Get(ctx, pipe.UserID)
+		}
+	}
+
 	in := JudgeInput{
 		QuestionBody:      withQ.QuestionBody,
 		ExpectedAnswerMD:  withQ.ExpectedAnswerMD,
@@ -535,6 +547,7 @@ func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, us
 		StrictnessProfile: profile,
 		StageKind:         stage.StageKind,
 		Kind:              withQ.Attempt.Kind,
+		Locale:            locale,
 	}
 	if withQ.Attempt.Kind == domain.AttemptTaskSolve {
 		in.ReferenceSolutionMD = withQ.ExpectedAnswerMD
@@ -689,6 +702,10 @@ func (o *Orchestrator) SubmitCanvas(ctx context.Context, in SubmitCanvasInput) (
 		}
 		jOut = errorFallback()
 	} else {
+		locale := "ru"
+		if o.Locale != nil {
+			locale = o.Locale.Get(ctx, pipe.UserID)
+		}
 		jOut, err = canvasJudge.JudgeCanvas(ctx, JudgeCanvasInput{
 			TaskBody:                 task.Title + "\n\n" + task.BodyMD,
 			FunctionalRequirementsMD: task.FunctionalRequirementsMD,
@@ -698,6 +715,7 @@ func (o *Orchestrator) SubmitCanvas(ctx context.Context, in SubmitCanvasInput) (
 			ReferenceSolutionMD:      task.ReferenceSolutionMD,
 			ReferenceCriteria:        task.ReferenceCriteria,
 			StrictnessProfile:        profile,
+			Locale:                   locale,
 		})
 		if err != nil {
 			return domain.PipelineAttempt{}, fmt.Errorf("judge.JudgeCanvas: %w", err)

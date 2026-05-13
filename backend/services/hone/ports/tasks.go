@@ -9,6 +9,7 @@ package ports
 import (
 	"context"
 	"errors"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -252,6 +253,132 @@ func (s *HoneServer) BulkAutoCategorise(
 	return nil
 }
 
+// ── Time-blocking (Phase K Wave 15) ─────────────────────────────────────
+
+// ScheduleTask pins a task to a calendar slot.
+func (s *HoneServer) ScheduleTask(
+	ctx context.Context,
+	req *connect.Request[pb.ScheduleTaskRequest],
+) (*connect.Response[pb.Task], error) {
+	uid, err := s.requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, perr := uuid.Parse(req.Msg.Id)
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("bad_id"))
+	}
+	start, perr := time.Parse(time.RFC3339, req.Msg.ScheduledStartIso)
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("bad_scheduled_start_iso"))
+	}
+	if s.H.ScheduleTask == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("schedule_task_unwired"))
+	}
+	t, err := s.H.ScheduleTask.Do(ctx, app.ScheduleTaskInput{
+		UserID:         uid,
+		TaskID:         id,
+		ScheduledStart: start,
+		DurationMin:    int(req.Msg.DurationMin),
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("not_found"))
+		}
+		if errors.Is(err, domain.ErrInvalidInput) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal"))
+	}
+	return connect.NewResponse(taskToProto(t)), nil
+}
+
+// UnscheduleTask returns a task to the backlog.
+func (s *HoneServer) UnscheduleTask(
+	ctx context.Context,
+	req *connect.Request[pb.UnscheduleTaskRequest],
+) (*connect.Response[pb.Task], error) {
+	uid, err := s.requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, perr := uuid.Parse(req.Msg.Id)
+	if perr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("bad_id"))
+	}
+	if s.H.UnscheduleTask == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("unschedule_task_unwired"))
+	}
+	t, err := s.H.UnscheduleTask.Do(ctx, uid, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("not_found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal"))
+	}
+	return connect.NewResponse(taskToProto(t)), nil
+}
+
+// ── Energy tracker (Phase K Wave 15) ────────────────────────────────────
+
+// LogEnergy creates a single energy_logs row.
+func (s *HoneServer) LogEnergy(
+	ctx context.Context,
+	req *connect.Request[pb.LogEnergyRequest],
+) (*connect.Response[pb.EnergyLog], error) {
+	uid, err := s.requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.LogEnergy == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("log_energy_unwired"))
+	}
+	l, err := s.H.LogEnergy.Do(ctx, app.LogEnergyInput{
+		UserID: uid,
+		Level:  int(req.Msg.Level),
+		Note:   req.Msg.Note,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidInput) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal"))
+	}
+	return connect.NewResponse(energyLogToProto(l)), nil
+}
+
+// ListEnergyLogs returns recent points.
+func (s *HoneServer) ListEnergyLogs(
+	ctx context.Context,
+	req *connect.Request[pb.ListEnergyLogsRequest],
+) (*connect.Response[pb.ListEnergyLogsResponse], error) {
+	uid, err := s.requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.H.ListEnergyLogs == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("list_energy_logs_unwired"))
+	}
+	rows, err := s.H.ListEnergyLogs.Do(ctx, uid, int(req.Msg.Days))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal"))
+	}
+	out := &pb.ListEnergyLogsResponse{Logs: make([]*pb.EnergyLog, 0, len(rows))}
+	for _, l := range rows {
+		out.Logs = append(out.Logs, energyLogToProto(l))
+	}
+	return connect.NewResponse(out), nil
+}
+
+func energyLogToProto(l domain.EnergyLog) *pb.EnergyLog {
+	return &pb.EnergyLog{
+		Id:       l.ID.String(),
+		Level:    int32(l.Level),
+		Note:     l.Note,
+		LoggedAt: timestamppb.New(l.LoggedAt.UTC()),
+	}
+}
+
 // ── helpers ─────────────────────────────────────────────────────────────
 
 func (s *HoneServer) requireUser(ctx context.Context) (uuid.UUID, error) {
@@ -368,22 +495,26 @@ func taskCommentAuthorToProto(a domain.TaskCommentAuthor) pb.TaskCommentAuthor {
 
 func taskToProto(t domain.Task) *pb.Task {
 	out := &pb.Task{
-		Id:                 t.ID.String(),
-		Status:             taskStatusToProto(t.Status),
-		Kind:               taskKindToProto(t.Kind),
-		Source:             taskSourceToProto(t.Source),
-		Title:              t.Title,
-		BriefMd:            t.BriefMD,
-		SkillKey:           t.SkillKey,
-		DeepLink:           t.DeepLink,
-		RecommendedReading: t.RecommendedReading,
-		Priority:           int32(t.Priority),
-		CreatedAt:          timestamppb.New(t.CreatedAt.UTC()),
-		UpdatedAt:          timestamppb.New(t.UpdatedAt.UTC()),
-		ManualKindOverride: t.ManualKindOverride,
+		Id:                   t.ID.String(),
+		Status:               taskStatusToProto(t.Status),
+		Kind:                 taskKindToProto(t.Kind),
+		Source:               taskSourceToProto(t.Source),
+		Title:                t.Title,
+		BriefMd:              t.BriefMD,
+		SkillKey:             t.SkillKey,
+		DeepLink:             t.DeepLink,
+		RecommendedReading:   t.RecommendedReading,
+		Priority:             int32(t.Priority),
+		CreatedAt:            timestamppb.New(t.CreatedAt.UTC()),
+		UpdatedAt:            timestamppb.New(t.UpdatedAt.UTC()),
+		ManualKindOverride:   t.ManualKindOverride,
+		ScheduledDurationMin: int32(t.ScheduledDurationMin),
 	}
 	if t.CompletedAt != nil {
 		out.CompletedAt = timestamppb.New(t.CompletedAt.UTC())
+	}
+	if t.ScheduledStart != nil {
+		out.ScheduledStart = timestamppb.New(t.ScheduledStart.UTC())
 	}
 	return out
 }

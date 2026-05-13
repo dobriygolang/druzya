@@ -278,6 +278,21 @@ type BriefPromptInput struct {
 	// coach swaps generic Go-senior tropes for ML-flavoured guidance.
 	// Zero-value — no overlay, default coach behaviour.
 	ML MLProfile
+
+	// Wave 15: Source — surface bias for the brief synthesiser.
+	// 'web' | 'hone' | 'cue'. Empty defaults to 'web'.
+	Source string
+
+	// Wave 15: RecentActivity24h — counts only, used by the synthesiser
+	// to mention "вчера ты сделал 3 focus session, 5 vocab cards" as
+	// context. Counts-only stays privacy-safe (no body content).
+	RecentActivity24h RecentActivitySummary
+
+	// DayShutdown — вчерашняя запись end-of-day ритуала из Hone (если есть).
+	// Coach видит «вчера юзер закончил X, висит Y, на сегодня Z» и
+	// рекомендации опираются на этот контекст. HasRecord=false ⇒ секция
+	// в prompt'е отсутствует.
+	DayShutdown DayShutdownSnapshot
 }
 
 // ExternalActivitySummary — 7-дневная агрегация external_activity записей.
@@ -299,6 +314,31 @@ type ExternalActivityReader interface {
 	// если ничего не записано (это ОК — большинство юзеров поначалу
 	// ничего не логируют).
 	SummaryWindow(ctx context.Context, userID uuid.UUID, days int) (ExternalActivitySummary, error)
+}
+
+// ── End-of-day shutdown reader (Phase K Wave 15) ──
+
+// DayShutdownSnapshot — что Hone сохранил вчера вечером (или утром перед
+// первым daily_brief). Все три поля одновременно могут быть пустыми
+// (HasRecord = false), тогда секция в prompt'е просто не появляется.
+type DayShutdownSnapshot struct {
+	HasRecord bool
+	// ShutdownDate — какой день закрыт. Полезно для prompt'а («вчера»
+	// vs «два дня назад»).
+	ShutdownDate time.Time
+	Done         string
+	Pending      string
+	Tomorrow     string
+}
+
+// DayShutdownReader — pgx adapter поверх day_shutdowns (миграция 00120).
+// Hone хранит запись, intelligence читает её утром и кладёт coach prompt
+// секцией DAY SHUTDOWN. Анти-fallback: чтение из cross-context'а — read-only.
+type DayShutdownReader interface {
+	// LatestRecent возвращает последнюю запись за окно maxAgeDays. Если
+	// ничего нет (или старше maxAgeDays) — HasRecord=false. maxAgeDays<=0
+	// ⇒ server default (2 — «вчера + сегодня» если юзер ритуалит).
+	LatestRecent(ctx context.Context, userID uuid.UUID, maxAgeDays int) (DayShutdownSnapshot, error)
 }
 
 // ── Learning-companion readers ──

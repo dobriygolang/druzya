@@ -66,6 +66,9 @@ type AdminServer struct {
 	ListReportsUC  *app.ListReports
 	GetStatusUC    *app.GetStatus
 
+	// Wave 15: LLM usage / cost panel.
+	GetLLMUsageStatsUC *app.GetLLMUsageStats
+
 	Log *slog.Logger
 }
 

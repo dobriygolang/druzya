@@ -203,6 +203,11 @@ message Note {
   google.protobuf.Timestamp updated_at = 5;
   int32 size_bytes = 6;
   optional string folder_id = 7;     // nil = unfiled (root)
+  // ai_excluded (Phase K Wave 15) — soft-privacy. When true the note is
+  // skipped by SuggestTasksFromNotes and the coach reading pipeline.
+  // Distinct from vault encryption: server still sees plaintext, only
+  // LLM-features avoid the body. Default false.
+  bool ai_excluded = 8;
 }
 
 message NoteSummary {
@@ -644,6 +649,21 @@ service HoneService {
       body: "*"
     };
   }
+  // Phase K Wave 15 (2026-05-14) — time-blocking surface.
+  // ScheduleTask пишет scheduled_start + scheduled_duration_min;
+  // UnscheduleTask возвращает карточку в бэклог (NULL'ит оба поля).
+  rpc ScheduleTask(ScheduleTaskRequest) returns (Task) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/tasks/{id}/schedule"
+      body: "*"
+    };
+  }
+  rpc UnscheduleTask(UnscheduleTaskRequest) returns (Task) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/tasks/{id}/unschedule"
+      body: "*"
+    };
+  }
   // Server-streams categorise events as each task is processed. Frontend
   // consumes via Connect stream client (the existing SSE cursor path stays
   // for cursor.move / card.move; this is a one-shot scoped stream).
@@ -910,6 +930,86 @@ service HoneService {
       body: "*"
     };
   }
+
+  // ─── Energy tracker (Phase K Wave 15, 2026-05-14) ───────────────────
+  // Юзер тэгает уровень энергии 1-5 раз в N часов. Через неделю видны
+  // паттерны (утро — пик, обед — провал). Помогает планировать сложные
+  // задачи на peak hours в time-blocking UI.
+  rpc LogEnergy(LogEnergyRequest) returns (EnergyLog) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/energy"
+      body: "*"
+    };
+  }
+  rpc ListEnergyLogs(ListEnergyLogsRequest) returns (ListEnergyLogsResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/energy"};
+  }
+
+  // ─── End-of-day shutdown ritual (Phase K Wave 15, 2026-05-14) ──────
+  // Вечером (21:00 default, настраивается) Hone показывает тихий nudge:
+  // юзер заполняет 3 короткие textarea — что сделал, что не успел, что
+  // важно на завтра. SubmitDayShutdown — UPSERT по (user_id, shutdown_date),
+  // чтобы повторное нажатие просто обновляло, а не плодило дубль. Утром
+  // daily_brief use case (intelligence) читает вчерашнюю запись и кладёт
+  // в coach prompt секцией DAY SHUTDOWN.
+  rpc SubmitDayShutdown(SubmitDayShutdownRequest) returns (SubmitDayShutdownResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/day-shutdown"
+      body: "*"
+    };
+  }
+  rpc GetTodayShutdown(GetTodayShutdownRequest) returns (GetTodayShutdownResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/day-shutdown/today"};
+  }
+
+  // ─── Resistance journal (Phase K Wave 15, 2026-05-14) ───────────────
+  //
+  // Optional pre-focus prompt «что трудно прямо сейчас?». Юзер либо
+  // пропускает (no-op), либо отправляет одну фразу — она падает в
+  // resistance_log. Раз в неделю Coach next-action use case читает
+  // последние записи для контекстного совета. Текст до 200 chars enforced
+  // на app-уровне; пустые строки не принимаются (frontend не шлёт,
+  // server возвращает InvalidArgument).
+  rpc LogResistance(LogResistanceRequest) returns (ResistanceEntry) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/resistance"
+      body: "*"
+    };
+  }
+  // ListResistanceLogs — coach + analytics surfaces. `days` = окно (default
+  // 7, max 90). Возвращает записи в обратном хроно порядке.
+  rpc ListResistanceLogs(ListResistanceLogsRequest) returns (ListResistanceLogsResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/resistance"};
+  }
+
+  // ─── Notes AI flag (Phase K Wave 15, 2026-05-14) ────────────────────
+  //
+  // Soft-privacy toggle: юзер хочет, чтобы конкретная заметка не попадала
+  // в SuggestTasksFromNotes / coach reading pipeline. Не путать с vault
+  // (encrypted) — там ноту вообще не видно серверу.
+  rpc UpdateNoteAIExcluded(UpdateNoteAIExcludedRequest) returns (Note) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/notes/ai-excluded"
+      body: "*"
+    };
+  }
+
+  // ─── Tasks from notes (Phase K Wave 15, 2026-05-14) ─────────────────
+  //
+  // Coach читает свежие заметки (last 7 days, AI-readable only) и
+  // предлагает добавить in-line action-items как таски в TaskBoard.
+  // Pre-filter regex'ом снимает heavy lift с LLM — мы шлём только
+  // matched фрагменты, не всю заметку. Response cached в Redis на 1 час
+  // per user.
+  rpc SuggestTasksFromNotes(SuggestTasksFromNotesRequest) returns (SuggestTasksFromNotesResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/tasks/suggest-from-notes"};
+  }
+  rpc AcceptTaskSuggestion(AcceptTaskSuggestionRequest) returns (Task) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/tasks/accept-suggestion"
+      body: "*"
+    };
+  }
 }
 
 // ─── Publish-to-web messages ────────────────────────────────────────────────
@@ -1136,6 +1236,12 @@ message Task {
   // auto-categorisers (BulkAutoCategorise / coach_listener) skip rows
   // with this flag set. Resets only on explicit user request.
   bool manual_kind_override = 14;
+  // Phase K Wave 15 (2026-05-14) — time-blocking. Когда юзер перетаскивает
+  // карточку из бэклога в часовой слот day-view, бэкенд пишет ISO-timestamp +
+  // длительность в минутах. Empty / 0 = не запланировано (живёт в обычных
+  // kanban-колонках).
+  google.protobuf.Timestamp scheduled_start = 15;
+  int32 scheduled_duration_min = 16;
 }
 
 // TaskAutoCategoryHint — emitted by the categoriser when it auto-assigns
@@ -1249,6 +1355,161 @@ message ListTaskCommentsResponse {
 message AddTaskCommentRequest {
   string id = 1;
   string body_md = 2;
+}
+
+// ─── Time-blocking messages (Phase K Wave 15) ──────────────────────────
+
+// ScheduleTaskRequest — pin a task into a calendar slot.
+// scheduled_start_iso is RFC3339 (e.g. "2026-05-14T09:00:00Z"). The backend
+// parses + stores as UTC; clients render in local TZ. duration_min must be
+// between 15 and 480 (8h cap — beyond that the user is doing something
+// other than time-blocking).
+message ScheduleTaskRequest {
+  string id                  = 1;
+  string scheduled_start_iso = 2;
+  int32  duration_min        = 3;
+}
+
+// UnscheduleTaskRequest — return a task to the backlog (NULL scheduled cols).
+message UnscheduleTaskRequest {
+  string id = 1;
+}
+
+// ─── Energy tracker messages (Phase K Wave 15) ─────────────────────────
+
+message EnergyLog {
+  string id        = 1;
+  // 1..5 — subjective scale, 1=drained / 3=ok / 5=peak.
+  int32  level     = 2;
+  // Optional free-text note ("after lunch", "slept well", "headache").
+  string note      = 3;
+  google.protobuf.Timestamp logged_at = 4;
+}
+
+message LogEnergyRequest {
+  int32  level = 1; // required 1..5
+  string note  = 2; // optional
+}
+
+message ListEnergyLogsRequest {
+  // Lookback window in days. 0 → server default (7), max 90.
+  int32 days = 1;
+}
+
+message ListEnergyLogsResponse {
+  repeated EnergyLog logs = 1;
+}
+
+// ─── End-of-day shutdown messages (Phase K Wave 15) ─────────────────────
+
+// DayShutdown — one calendar-day shutdown row.
+message DayShutdown {
+  string id            = 1;
+  string user_id       = 2;
+  // Calendar day this shutdown belongs to (ISO date "YYYY-MM-DD").
+  string shutdown_date = 3;
+  string done          = 4;
+  string pending       = 5;
+  string tomorrow      = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// SubmitDayShutdownRequest — все три поля optional (юзер мог заполнить
+// только одно). Сервер сам решит, какому дню принадлежит запись
+// (используя clock UTC + локальный TZ offset на клиенте — отправляем
+// shutdown_date явно как ISO date).
+message SubmitDayShutdownRequest {
+  // ISO date "YYYY-MM-DD". Пусто → server использует today (UTC).
+  string shutdown_date = 1;
+  string done          = 2;
+  string pending       = 3;
+  string tomorrow      = 4;
+}
+
+message SubmitDayShutdownResponse {
+  DayShutdown shutdown = 1;
+}
+
+message GetTodayShutdownRequest {}
+
+// GetTodayShutdownResponse — recorded=false когда на сегодня ничего ещё
+// не сохранено (frontend показывает пустую модалку). Если recorded=true,
+// клиент prefill'ит поля из shutdown.
+message GetTodayShutdownResponse {
+  bool        recorded = 1;
+  DayShutdown shutdown = 2;
+}
+
+// ─── Resistance journal messages (Phase K Wave 15) ──────────────────────
+
+message ResistanceEntry {
+  string id        = 1;
+  string text      = 2;
+  // focus_session_id — UUID hone_focus_sessions.id когда журнал записан
+  // перед стартом конкретной фокус-сессии. Пусто, если журнал stand-alone.
+  string focus_session_id = 3;
+  // task_id — UUID hone_tasks.id когда фокус был на pinned task.
+  string task_id   = 4;
+  google.protobuf.Timestamp logged_at = 5;
+}
+
+// LogResistanceRequest — text required, ≤200 chars (enforced server-side).
+// focus_session_id / task_id опциональны — frontend заполняет если
+// модалка открыта в составе focus-start flow.
+message LogResistanceRequest {
+  string text             = 1;
+  string focus_session_id = 2;
+  string task_id          = 3;
+}
+
+message ListResistanceLogsRequest {
+  // Lookback window in days. 0 → server default (7), max 90.
+  int32 days = 1;
+}
+
+message ListResistanceLogsResponse {
+  repeated ResistanceEntry logs = 1;
+}
+
+// ─── Notes AI flag messages (Phase K Wave 15) ───────────────────────────
+
+message UpdateNoteAIExcludedRequest {
+  string note_id     = 1;
+  bool   ai_excluded = 2;
+}
+
+// ─── Suggest-tasks-from-notes messages (Phase K Wave 15) ────────────────
+
+// TaskSuggestion — одна предложенная задача с trace на исходник.
+message TaskSuggestion {
+  // Stable hash (sha1 первых 40 символов) `(note_id + title)` — клиенту
+  // нужен deterministic key для React-list, серверу не персистится.
+  string id              = 1;
+  string title           = 2;
+  string source_note_id  = 3;
+  // source_excerpt — несколько строк контекста из заметки (≤200 chars),
+  // показывается под title как «откуда взято». NOT the full note body.
+  string source_excerpt  = 4;
+}
+
+message SuggestTasksFromNotesRequest {
+  // Lookback в днях. 0 → 7 (server default), max 30.
+  int32 days = 1;
+}
+
+message SuggestTasksFromNotesResponse {
+  repeated TaskSuggestion suggestions = 1;
+  // cached_at — RFC3339, пусто если ответ свежий (cache miss). Клиент
+  // показывает «обновлено N минут назад» когда cached.
+  string cached_at = 2;
+}
+
+message AcceptTaskSuggestionRequest {
+  string title          = 1;
+  // source_note_id — отслеживаем источник, чтобы при втором проходе
+  // не пред-лагать ту же задачу дважды (acceptance bookkeeping).
+  string source_note_id = 2;
 }
 
 // ─── Cue Sessions ──────────────────────────────────────────────────────────

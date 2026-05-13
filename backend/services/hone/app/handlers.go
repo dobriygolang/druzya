@@ -89,6 +89,20 @@ type Handler struct {
 	BulkAutoCategorise *BulkAutoCategorise
 	UpdateTaskKind     *UpdateTaskKind
 
+	// Time-blocking (Phase K Wave 15) — pin tasks to calendar slots.
+	ScheduleTask   *ScheduleTask
+	UnscheduleTask *UnscheduleTask
+
+	// Energy tracker (Phase K Wave 15) — 1..5 ratings + recent list.
+	LogEnergy      *LogEnergy
+	ListEnergyLogs *ListEnergyLogs
+
+	// End-of-day shutdown ritual (Phase K Wave 15) — three textareas
+	// (done / pending / tomorrow) UPSERTed once per calendar day. Daily
+	// brief reads вчерашнюю запись и кладёт в coach prompt.
+	SubmitDayShutdown *SubmitDayShutdown
+	GetTodayShutdown  *GetTodayShutdown
+
 	// Publish-to-web (everything except the HTML viewer at /p/{slug}).
 	PublishNote     *PublishNote
 	UnpublishNote   *UnpublishNote
@@ -150,6 +164,17 @@ type Handler struct {
 	DeleteExternalActivity *DeleteExternalActivity
 	SearchAtlasTopics      *SearchAtlasTopics
 	ListAtlasNodeTracks    *ListAtlasNodeTracks
+
+	// Resistance journal (Phase K Wave 15) — pre-focus mini-prompt + list.
+	LogResistance      *LogResistance
+	ListResistanceLogs *ListResistanceLogs
+
+	// Notes AI-flag (Phase K Wave 15) — soft-privacy toggle.
+	UpdateNoteAIExcluded *UpdateNoteAIExcluded
+
+	// Tasks from notes (Phase K Wave 15) — coach reading pipeline.
+	SuggestTasksFromNotes *SuggestTasksFromNotes
+	AcceptTaskSuggestion  *AcceptTaskSuggestion
 
 	Log *slog.Logger
 	Now func() time.Time

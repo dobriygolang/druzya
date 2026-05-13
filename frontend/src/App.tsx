@@ -57,6 +57,8 @@ const MockResultPage = lazy(() => import('./pages/MockResultPage'))
 const MockCompanyPicker = lazy(() => import('./pages/mock/MockCompanyPicker'))
 const MockPipelinePage = lazy(() => import('./pages/mock/MockPipelinePage'))
 const MockPipelineDebrief = lazy(() => import('./pages/mock/MockPipelineDebrief'))
+// Wave 15 — per-attempt "разбор" page.
+const MockReplayPage = lazy(() => import('./pages/mock/MockReplayPage'))
 const MockCanvasFullscreen = lazy(() => import('./pages/mock/MockCanvasFullscreen'))
 const MockDiagnosticPage = lazy(() => import('./pages/mock/DiagnosticPage'))
 const PodcastsPage = lazy(() => import('./pages/PodcastsPage'))
@@ -187,6 +189,7 @@ export default function App() {
         <Route path="/mock/diagnostic" element={<MockDiagnosticPage />} />
         <Route path="/mock/pipeline/:pipelineId" element={<MockPipelinePage />} />
         <Route path="/mock/pipeline/:pipelineId/debrief" element={<MockPipelineDebrief />} />
+        <Route path="/mock/replay/:attemptId" element={<MockReplayPage />} />
         {/* Standalone "большая доска" tab — opened via window.open from
             SysDesignCanvas. Pure Excalidraw + autosave; submit lives on
             the main /mock/pipeline tab. */}

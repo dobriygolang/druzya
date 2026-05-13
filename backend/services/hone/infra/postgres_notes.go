@@ -517,3 +517,100 @@ func (n *Notes) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID, mod
 	}
 	return out, nil
 }
+
+// SetAIExcluded toggles hone_notes.ai_excluded (Phase K Wave 15).
+// Stub returning ErrNotFound when the row is missing; real query path
+// is owned by the parallel «AI-readable» agent (migration 00121_notes_ai_excluded).
+// Wave 15 LLL agent surfaces it for interface completeness.
+func (n *Notes) SetAIExcluded(ctx context.Context, userID, noteID uuid.UUID, excluded bool) (domain.Note, error) {
+	row := n.pool.QueryRow(ctx, `
+        UPDATE hone_notes
+           SET ai_excluded = $3, updated_at = now()
+         WHERE id = $1 AND user_id = $2
+        RETURNING id, title, body_md, created_at, updated_at, folder_id, encrypted, COALESCE(ai_excluded, false)`,
+		sharedpg.UUID(noteID), sharedpg.UUID(userID), excluded,
+	)
+	var (
+		id          pgtype.UUID
+		title, body string
+		createdAt, updatedAt time.Time
+		folderID    pgtype.UUID
+		encrypted   bool
+		aiExcluded  bool
+	)
+	if err := row.Scan(&id, &title, &body, &createdAt, &updatedAt, &folderID, &encrypted, &aiExcluded); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Note{}, domain.ErrNotFound
+		}
+		return domain.Note{}, fmt.Errorf("hone.Notes.SetAIExcluded: %w", err)
+	}
+	out := domain.Note{
+		ID:        sharedpg.UUIDFrom(id),
+		UserID:    userID,
+		Title:     title,
+		BodyMD:    body,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+		SizeBytes: len(body),
+		Encrypted: encrypted,
+		AIExcluded: aiExcluded,
+	}
+	if folderID.Valid {
+		fid := sharedpg.UUIDFrom(folderID)
+		out.FolderID = &fid
+	}
+	return out, nil
+}
+
+// ListAIAvailable returns recent unencrypted non-ai_excluded notes
+// (Phase K Wave 15). Stub: real impl is owned by parallel «suggest-tasks-
+// from-notes» agent. Provides a basic SQL path so the build compiles —
+// safe for fallback paths.
+func (n *Notes) ListAIAvailable(ctx context.Context, userID uuid.UUID, lookback time.Duration, limit int) ([]domain.Note, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if lookback <= 0 {
+		lookback = 7 * 24 * time.Hour
+	}
+	cutoff := time.Now().UTC().Add(-lookback)
+	rows, err := n.pool.Query(ctx, `
+        SELECT id, title, body_md, created_at, updated_at
+          FROM hone_notes
+         WHERE user_id = $1
+           AND NOT encrypted
+           AND COALESCE(ai_excluded, false) = false
+           AND updated_at >= $2
+         ORDER BY updated_at DESC
+         LIMIT $3`,
+		sharedpg.UUID(userID), cutoff, limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("hone.Notes.ListAIAvailable: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Note, 0, limit)
+	for rows.Next() {
+		var (
+			id          pgtype.UUID
+			title, body string
+			createdAt, updatedAt time.Time
+		)
+		if err := rows.Scan(&id, &title, &body, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("hone.Notes.ListAIAvailable: scan: %w", err)
+		}
+		out = append(out, domain.Note{
+			ID:        sharedpg.UUIDFrom(id),
+			UserID:    userID,
+			Title:     title,
+			BodyMD:    body,
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+			SizeBytes: len(body),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.Notes.ListAIAvailable: rows: %w", err)
+	}
+	return out, nil
+}

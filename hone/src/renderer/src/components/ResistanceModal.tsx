@@ -1,0 +1,237 @@
+// ResistanceModal — pre-focus pulse (Phase K Wave 15).
+//
+// Прижимается над таймером перед стартом сессии. Юзер за 10 секунд:
+//   - либо пишет одну фразу «что трудно прямо сейчас?» (≤200 chars);
+//   - либо пропускает Enter / Esc / клик «Пропустить».
+//
+// На submit отправляем в backend через logResistance. Никогда не блокируем
+// старт фокуса: даже если RPC падает (offline / 503), модалка закрывается
+// и фокус стартует. Журнал — опциональный сигнал коучу, не business-data.
+//
+// Design:
+//   - black B/W (component honest to memory/feedback_color_rule.md);
+//   - mono каркас, серый ink, single hairline border;
+//   - центр экрана через position:fixed + grid place-items:center.
+import React, { useEffect, useRef, useState } from 'react';
+
+import { logResistance } from '../api/hone';
+
+export const MAX_RESISTANCE_TEXT_LEN = 200;
+
+export interface ResistanceModalProps {
+  /** Optional pinned task title — показывается subscript'ом «фокус на …». */
+  pinnedTitle?: string | null;
+  /** Optional focus session id (если уже есть — для late-bound use). */
+  focusSessionId?: string;
+  /** Optional task id (если фокус на конкретной задаче). */
+  taskId?: string;
+  /** Закрытие. Вызывается всегда — и на submit и на skip. */
+  onClose: () => void;
+}
+
+export const ResistanceModal: React.FC<ResistanceModalProps> = ({
+  pinnedTitle,
+  focusSessionId,
+  taskId,
+  onClose,
+}) => {
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    // Autofocus textarea — юзер сразу пишет, без лишних кликов.
+    inputRef.current?.focus();
+  }, []);
+
+  const skip = () => {
+    if (busy) return;
+    onClose();
+  };
+
+  const submit = async () => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      skip();
+      return;
+    }
+    setBusy(true);
+    try {
+      await logResistance({
+        text: trimmed.slice(0, MAX_RESISTANCE_TEXT_LEN),
+        focusSessionId,
+        taskId,
+      });
+    } catch {
+      // Журнал — best-effort. Если RPC упал — старт фокуса важнее.
+      // Тихий failure: ошибку покажет outbox/telemetry, не блокируем UX.
+    } finally {
+      setBusy(false);
+      onClose();
+    }
+  };
+
+  const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      skip();
+      return;
+    }
+    // Enter без Shift — submit / skip. Shift+Enter — newline.
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void submit();
+    }
+  };
+
+  const remaining = MAX_RESISTANCE_TEXT_LEN - value.length;
+
+  return (
+    <div
+      role="dialog"
+      aria-label="Pre-focus pulse"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        display: 'grid',
+        placeItems: 'center',
+        zIndex: 200,
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) skip();
+      }}
+    >
+      <section
+        style={{
+          minWidth: 360,
+          maxWidth: 480,
+          width: '92vw',
+          padding: '24px 24px 18px',
+          background: '#0a0a0a',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 12,
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+          color: 'rgba(255,255,255,0.92)',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 10,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.45)',
+            marginBottom: 10,
+          }}
+        >
+          pre-focus pulse
+        </div>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em' }}>
+          Что трудно прямо сейчас?
+        </h2>
+        {pinnedTitle ? (
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 12,
+              fontFamily: '"JetBrains Mono", monospace',
+              color: 'rgba(255,255,255,0.45)',
+            }}
+          >
+            фокус на «{pinnedTitle}»
+          </div>
+        ) : null}
+        <textarea
+          ref={inputRef}
+          rows={3}
+          value={value}
+          maxLength={MAX_RESISTANCE_TEXT_LEN}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={onKey}
+          placeholder="Одна-две фразы — можно пропустить."
+          spellCheck
+          style={{
+            marginTop: 14,
+            width: '100%',
+            minHeight: 64,
+            padding: '10px 12px',
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            color: 'rgba(255,255,255,0.95)',
+            outline: 'none',
+            fontFamily: 'inherit',
+            fontSize: 13,
+            lineHeight: 1.5,
+            resize: 'none',
+          }}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 10,
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: '"JetBrains Mono", monospace',
+              fontSize: 10,
+              color: remaining < 20 ? '#FF3B30' : 'rgba(255,255,255,0.35)',
+            }}
+          >
+            {remaining} chars · Enter to save, Esc to skip
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={skip}
+              disabled={busy}
+              style={btnSecondary}
+            >
+              Пропустить
+            </button>
+            <button
+              type="button"
+              onClick={() => void submit()}
+              disabled={busy}
+              style={btnPrimary}
+            >
+              {busy ? '…' : 'Сохранить и начать'}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const btnSecondary: React.CSSProperties = {
+  padding: '7px 14px',
+  fontSize: 12,
+  background: 'transparent',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: 6,
+  color: 'rgba(255,255,255,0.75)',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  letterSpacing: '0.02em',
+};
+
+const btnPrimary: React.CSSProperties = {
+  padding: '7px 14px',
+  fontSize: 12,
+  background: 'rgba(255,255,255,0.92)',
+  border: '1px solid rgba(255,255,255,0.92)',
+  borderRadius: 6,
+  color: '#0a0a0a',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  fontWeight: 600,
+  letterSpacing: '0.02em',
+};

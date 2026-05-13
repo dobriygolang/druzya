@@ -18,7 +18,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AdminDashboard, AdminReportList, AdminUserList, BanUserRequest, BanUserResponse, ConfigEntry, ConfigEntryList, GetAdminDashboardRequest, GetStatusPageRequest, ListAdminReportsRequest, ListAdminUsersRequest, ListConfigRequest, StatusPage, UnbanUserRequest, UpdateConfigRequest } from "./admin_pb.js";
+import { AdminDashboard, AdminReportList, AdminUserList, BanUserRequest, BanUserResponse, ConfigEntry, ConfigEntryList, GetAdminDashboardRequest, GetLLMUsageStatsRequest, GetLLMUsageStatsResponse, GetStatusPageRequest, ListAdminReportsRequest, ListAdminUsersRequest, ListConfigRequest, StatusPage, UnbanUserRequest, UpdateConfigRequest } from "./admin_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -117,6 +117,17 @@ export const AdminService = {
       name: "GetStatusPage",
       I: GetStatusPageRequest,
       O: StatusPage,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── Wave 15: LLM usage panel ───────────────────────────────────────
+     *
+     * @generated from rpc druz9.v1.AdminService.GetLLMUsageStats
+     */
+    getLLMUsageStats: {
+      name: "GetLLMUsageStats",
+      I: GetLLMUsageStatsRequest,
+      O: GetLLMUsageStatsResponse,
       kind: MethodKind.Unary,
     },
   }

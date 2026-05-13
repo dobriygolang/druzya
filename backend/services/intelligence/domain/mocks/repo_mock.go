@@ -846,6 +846,45 @@ func (mr *MockExternalActivityReaderMockRecorder) SummaryWindow(ctx, userID, day
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SummaryWindow", reflect.TypeOf((*MockExternalActivityReader)(nil).SummaryWindow), ctx, userID, days)
 }
 
+// MockDayShutdownReader is a mock of DayShutdownReader interface.
+type MockDayShutdownReader struct {
+	ctrl     *gomock.Controller
+	recorder *MockDayShutdownReaderMockRecorder
+	isgomock struct{}
+}
+
+// MockDayShutdownReaderMockRecorder is the mock recorder for MockDayShutdownReader.
+type MockDayShutdownReaderMockRecorder struct {
+	mock *MockDayShutdownReader
+}
+
+// NewMockDayShutdownReader creates a new mock instance.
+func NewMockDayShutdownReader(ctrl *gomock.Controller) *MockDayShutdownReader {
+	mock := &MockDayShutdownReader{ctrl: ctrl}
+	mock.recorder = &MockDayShutdownReaderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockDayShutdownReader) EXPECT() *MockDayShutdownReaderMockRecorder {
+	return m.recorder
+}
+
+// LatestRecent mocks base method.
+func (m *MockDayShutdownReader) LatestRecent(ctx context.Context, userID uuid.UUID, maxAgeDays int) (domain.DayShutdownSnapshot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LatestRecent", ctx, userID, maxAgeDays)
+	ret0, _ := ret[0].(domain.DayShutdownSnapshot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LatestRecent indicates an expected call of LatestRecent.
+func (mr *MockDayShutdownReaderMockRecorder) LatestRecent(ctx, userID, maxAgeDays any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LatestRecent", reflect.TypeOf((*MockDayShutdownReader)(nil).LatestRecent), ctx, userID, maxAgeDays)
+}
+
 // MockResourceEngagementReader is a mock of ResourceEngagementReader interface.
 type MockResourceEngagementReader struct {
 	ctrl     *gomock.Controller

@@ -466,6 +466,89 @@ export const linguaHandlers = [
       return HttpResponse.json(created)
     },
   ),
+  // Phase K Wave 15 — Sergey-curated ready library (static).
+  http.get(`${base}/hone/listening/curated`, ({ request }) => {
+    const url = new URL(request.url)
+    const level = (url.searchParams.get('level') ?? '').toUpperCase()
+    const all = [
+      {
+        id: 'sed-amazon-leadership',
+        title: 'Amazon Leadership Principles with Colin Bryar and Bill Carr',
+        speaker: 'Jeff Meyerson',
+        url: 'https://softwareengineeringdaily.com/2021/03/15/amazon-leadership-principles/',
+        level: 'B2',
+        estimated_minutes: 60,
+        topic: 'engineering culture',
+        tags: ['leadership', 'amazon', 'culture'],
+        source: 'Software Engineering Daily',
+        why: 'Двое экс-Amazon рассказывают про process language.',
+      },
+      {
+        id: 'changelog-go-2-was-a-lie',
+        title: 'Go 2 was a lie',
+        speaker: 'Russ Cox',
+        url: 'https://changelog.com/gotime/100',
+        level: 'B2',
+        estimated_minutes: 75,
+        topic: 'Go language',
+        tags: ['golang', 'language-design'],
+        source: 'Go Time (Changelog)',
+        why: 'Russ Cox разворачивает Go 2 vision.',
+      },
+      {
+        id: 'lex-karpathy-2',
+        title: 'Andrej Karpathy: Tesla AI, Self-Driving, Optimus, Aliens, and AGI',
+        speaker: 'Andrej Karpathy',
+        url: 'https://lexfridman.com/andrej-karpathy-2/',
+        level: 'C1',
+        estimated_minutes: 210,
+        topic: 'AI / ML',
+        tags: ['ai', 'karpathy'],
+        source: 'Lex Fridman Podcast',
+        why: 'Karpathy на ML и AI.',
+      },
+      {
+        id: 'hanselminutes-rust-bridge',
+        title: 'Building a Bridge to Rust',
+        speaker: 'Mara Bos',
+        url: 'https://hanselminutes.com/848/building-a-bridge-to-rust-with-mara-bos',
+        level: 'B1',
+        estimated_minutes: 30,
+        topic: 'languages',
+        tags: ['rust', 'education'],
+        source: 'Hanselminutes',
+        why: 'Slow deliberate diction для B1 listening.',
+      },
+      {
+        id: 'ted-simon-sinek',
+        title: 'How great leaders inspire action',
+        speaker: 'Simon Sinek',
+        url: 'https://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action',
+        level: 'B1',
+        estimated_minutes: 18,
+        topic: 'leadership',
+        tags: ['leadership', 'communication'],
+        source: 'TED',
+        why: 'Sinek «Why» talk — narrative structure для interviews.',
+      },
+      {
+        id: 'strangeloop-rich-hickey',
+        title: 'Simple Made Easy',
+        speaker: 'Rich Hickey',
+        url: 'https://www.youtube.com/watch?v=SxdOUGdseq4',
+        level: 'C1',
+        estimated_minutes: 60,
+        topic: 'programming philosophy',
+        tags: ['clojure', 'complexity'],
+        source: 'Strange Loop',
+        why: 'Hickey классика — senior+ vocabulary.',
+      },
+    ]
+    const items = level === 'B1' || level === 'B2' || level === 'C1'
+      ? all.filter((t) => t.level === level)
+      : all
+    return HttpResponse.json({ items })
+  }),
 
   // Speaking
   http.get(`${base}/hone/speaking/exercises`, ({ request }) => {

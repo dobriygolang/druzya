@@ -142,5 +142,23 @@ func (r *QuotaAwareNoteRepo) ExistsByTitleForUser(ctx context.Context, userID uu
 	return ok, nil
 }
 
+// SetAIExcluded delegates straight to inner — no quota relevance.
+func (r *QuotaAwareNoteRepo) SetAIExcluded(ctx context.Context, userID, noteID uuid.UUID, excluded bool) (domain.Note, error) {
+	out, err := r.inner.SetAIExcluded(ctx, userID, noteID, excluded)
+	if err != nil {
+		return out, fmt.Errorf("hone.QuotaAwareNoteRepo.SetAIExcluded: %w", err)
+	}
+	return out, nil
+}
+
+// ListAIAvailable delegates straight to inner.
+func (r *QuotaAwareNoteRepo) ListAIAvailable(ctx context.Context, userID uuid.UUID, lookback time.Duration, limit int) ([]domain.Note, error) {
+	out, err := r.inner.ListAIAvailable(ctx, userID, lookback, limit)
+	if err != nil {
+		return out, fmt.Errorf("hone.QuotaAwareNoteRepo.ListAIAvailable: %w", err)
+	}
+	return out, nil
+}
+
 // Compile-time assertion: ensure decorator satisfies the interface.
 var _ domain.NoteRepo = (*QuotaAwareNoteRepo)(nil)

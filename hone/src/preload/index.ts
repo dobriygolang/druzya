@@ -12,6 +12,7 @@ import {
   eventChannels,
   invokeChannels,
   type AuthSession,
+  type FocusModeResult,
   type HoneAPI,
   type PomodoroSnapshot,
   type TelegramPollResult,
@@ -54,6 +55,15 @@ const api: HoneAPI = {
     update: (title: string, tooltip: string) =>
       ipcRenderer.invoke(invokeChannels.trayUpdate, { title, tooltip }) as Promise<void>,
   },
+  focusMode: {
+    // Phase K Wave 15 — `shortcuts run "<name>"` через child_process.exec
+    // в main процессе. Возвращает { ok: false, error: '…' } если шорткат
+    // не найден / OS не darwin / имя пустое. UI решает что показать.
+    start: (name: string) =>
+      ipcRenderer.invoke(invokeChannels.focusModeStart, name) as Promise<FocusModeResult>,
+    stop: (name: string) =>
+      ipcRenderer.invoke(invokeChannels.focusModeStop, name) as Promise<FocusModeResult>,
+  },
   vault: {
     passLoad: () =>
       ipcRenderer.invoke(invokeChannels.vaultPassLoad) as Promise<string | null>,
@@ -73,3 +83,55 @@ const api: HoneAPI = {
 };
 
 contextBridge.exposeInMainWorld('hone', api);
+
+// ── Phase K Wave 15 — Quick Capture overlay window. Tiny IPC surface
+// exposed to BOTH the main app window (Settings toggle) and the
+// quick-capture overlay window. Keeping it on `window.honeQuickCapture`
+// rather than nested in `window.hone.*` so the overlay's minimal
+// vanilla-JS module can call it without type acrobatics, and so it
+// doesn't break the `HoneAPI` interface contract for the main app.
+// ── Phase K Wave 15 — narrow IPC proxy for settings channels that don't
+// fit the strict HoneAPI shape (DayShutdownSection's time/enabled
+// settings). Whitelist of allowed channels — DO NOT expand to generic
+// invoke without auditing — passing arbitrary channels would let
+// renderer escape the typed HoneAPI surface.
+const DAY_SHUTDOWN_GET = 'day-shutdown:get-settings';
+const DAY_SHUTDOWN_SET = 'day-shutdown:set-settings';
+const ALLOWED_INVOKE_CHANNELS = new Set<string>([
+  DAY_SHUTDOWN_GET,
+  DAY_SHUTDOWN_SET,
+]);
+const ALLOWED_EVENT_CHANNELS = new Set<string>(['day-shutdown:open-modal']);
+contextBridge.exposeInMainWorld('__honeIPC', {
+  invoke: (channel: string, ...args: unknown[]) => {
+    if (!ALLOWED_INVOKE_CHANNELS.has(channel)) {
+      return Promise.reject(new Error(`[__honeIPC] channel not allowed: ${channel}`));
+    }
+    return ipcRenderer.invoke(channel, ...args);
+  },
+  on: (channel: string, listener: (...args: unknown[]) => void) => {
+    if (!ALLOWED_EVENT_CHANNELS.has(channel)) {
+      throw new Error(`[__honeIPC] channel not allowed: ${channel}`);
+    }
+    const handler = (_e: Electron.IpcRendererEvent, ...args: unknown[]) => listener(...args);
+    ipcRenderer.on(channel, handler);
+    return () => ipcRenderer.off(channel, handler);
+  },
+});
+
+contextBridge.exposeInMainWorld('honeQuickCapture', {
+  /** Save a captured thought. Returns { ok, error? }. */
+  save: (text: string) =>
+    ipcRenderer.invoke(invokeChannels.quickCaptureSave, text) as Promise<{
+      ok: boolean;
+      error?: string;
+    }>,
+  /** Dismiss the overlay without saving. */
+  dismiss: () => ipcRenderer.invoke(invokeChannels.quickCaptureDismiss) as Promise<void>,
+  /** Read the persisted "enabled" flag (Settings toggle). */
+  getEnabled: () =>
+    ipcRenderer.invoke(invokeChannels.quickCaptureGetEnabled) as Promise<boolean>,
+  /** Toggle the global shortcut on/off. */
+  setEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke(invokeChannels.quickCaptureSetEnabled, enabled) as Promise<void>,
+});

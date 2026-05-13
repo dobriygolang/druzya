@@ -266,8 +266,8 @@ func (c *Companies) Get(ctx context.Context, id uuid.UUID) (domain.CompanyContex
 	}, nil
 }
 
-// Users fetches just the subscription plan + user id. Everything else (model
-// preference, response language) has no storage today and falls back to defaults.
+// Users fetches the subscription plan + user id + response locale. Model
+// preference has no storage today and falls back to default.
 type Users struct {
 	q *ai_mockdb.Queries
 }
@@ -276,20 +276,26 @@ type Users struct {
 func NewUsers(pool *pgxpool.Pool) *Users { return &Users{q: ai_mockdb.New(pool)} }
 
 // Get returns the minimal user context. Free-plan is the conservative fallback
-// when the subscription row is missing (e.g. new user pre-onboarding).
+// when the user row is missing (e.g. brand-new user pre-onboarding). locale
+// comes from users.locale (DEFAULT 'ru') and feeds the LLM language directive
+// in domain.BuildSystemPrompt.
 func (u *Users) Get(ctx context.Context, id uuid.UUID) (domain.UserContext, error) {
-	plan, err := u.q.GetUserSubscription(ctx, sharedpg.UUID(id))
+	row, err := u.q.GetUserSubscriptionAndLocale(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.UserContext{ID: id, Subscription: enums.SubscriptionPlanFree}, nil
+			return domain.UserContext{ID: id, Subscription: enums.SubscriptionPlanFree, ResponseLanguage: "ru"}, nil
 		}
 		return domain.UserContext{}, fmt.Errorf("mock.Users.Get: %w", err)
 	}
-	sub := enums.SubscriptionPlan(plan)
+	sub := enums.SubscriptionPlan(row.Plan)
 	if !sub.IsValid() {
 		sub = enums.SubscriptionPlanFree
 	}
-	return domain.UserContext{ID: id, Subscription: sub}, nil
+	locale := row.Locale
+	if locale != "en" {
+		locale = "ru"
+	}
+	return domain.UserContext{ID: id, Subscription: sub, ResponseLanguage: locale}, nil
 }
 
 // ─────────────────────────────────────────────────────────────────────────

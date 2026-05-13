@@ -97,8 +97,17 @@ func incFallback(p Provider, reason string) {
 // фактически-ушедший model id (Response.Model echo) — для virtual chains
 // резолвится в конкретную модель.
 //
+// Wave 15: also emits InvocationEvent to the admin audit log (when the
+// hook is wired). userID may be empty (system / probe calls).
+//
 // Безопасно для нулевых tokens (ранние fail'ы / driver не отдал usage).
 func observeCost(p Provider, task, model string, tokensIn, tokensOut int) {
+	observeCostWithUser(p, task, model, "", tokensIn, tokensOut, 0)
+}
+
+// observeCostWithUser — Wave 15 extension. Captures user_id + latency
+// for the admin audit log. latencyMs may be 0 if caller doesn't track.
+func observeCostWithUser(p Provider, task, model, userID string, tokensIn, tokensOut, latencyMs int) {
 	if tokensIn > 0 || tokensOut > 0 {
 		sharedMetrics.RecordLLMUsage(model, tokensIn, tokensOut)
 	}
@@ -106,6 +115,16 @@ func observeCost(p Provider, task, model string, tokensIn, tokensOut int) {
 	if usd > 0 {
 		llmCostUSDCentsTotal.WithLabelValues(string(p), task).Add(usd * 100)
 	}
+	emitInvocation(InvocationEvent{
+		Provider:     string(p),
+		Model:        model,
+		TaskKind:     task,
+		UserID:       userID,
+		InputTokens:  tokensIn,
+		OutputTokens: tokensOut,
+		CostCents:    EstimateCostCents(model, tokensIn, tokensOut),
+		LatencyMs:    latencyMs,
+	})
 }
 
 func observeUnknownModel(model string) {

@@ -29,9 +29,13 @@ export interface EditorProps {
   onTitleChange: (v: string) => void;
   onBodyChange: (v: string) => void;
   onCreate: () => void;
+  // Phase K Wave 15 — toggle «AI может читать эту заметку». Optional —
+  // если не передан, chip скрыт. Parent (NotesPage) wires это в
+  // updateNoteAIExcluded RPC.
+  onToggleAIExcluded?: (noteId: string, next: boolean) => void;
 }
 
-export function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, saveStatus, folders, onTitleChange, onBodyChange, onCreate }: EditorProps) {
+export function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, saveStatus, folders, onTitleChange, onBodyChange, onCreate, onToggleAIExcluded }: EditorProps) {
   const [hover, setHover] = useState(false);
   // Editor max-width — drag-resizable, persisted в localStorage. Range
   // [500 .. (window.innerWidth - 80)] (clamp в onMove). Hand-rolled drag
@@ -203,6 +207,35 @@ export function Editor({ list, active, activeError, draftTitle, draftBody, encry
             })}
           </div>
           <SaveStatusIndicator status={saveStatus} />
+          {onToggleAIExcluded && !encrypted && (
+            <button
+              type="button"
+              onClick={() => onToggleAIExcluded(active.id, !active.aiExcluded)}
+              className="focus-ring"
+              title={
+                active.aiExcluded
+                  ? 'AI не читает эту заметку — клик чтобы разрешить'
+                  : 'AI может читать — клик чтобы скрыть от AI'
+              }
+              style={{
+                padding: '3px 8px',
+                fontSize: 9.5,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: active.aiExcluded ? 'var(--ink-40)' : 'var(--ink)',
+                background: active.aiExcluded
+                  ? 'transparent'
+                  : 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 4,
+                cursor: 'pointer',
+                transition:
+                  'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
+              }}
+            >
+              {active.aiExcluded ? 'ai · off' : 'ai · on'}
+            </button>
+          )}
           <span>{formatTime(active.updatedAt)}</span>
         </div>
       )}

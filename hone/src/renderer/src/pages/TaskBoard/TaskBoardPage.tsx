@@ -30,6 +30,7 @@ import { TodayGoalSection } from '../Today';
 import { MyTutorsRail } from '../../components/MyTutorsRail';
 import { trackEvent } from '../../api/events';
 import { analytics, ANALYTICS_EVENTS } from '../../lib/analytics';
+import { TasksSuggestionsCard } from '../../components/taskboard/TasksSuggestionsCard';
 import { COLUMNS, type TabKey } from './lib/columns';
 import { KINDS, KindIcon, readKindFilter, writeKindFilter } from './lib/kinds';
 import { hdrStyle, emptyStyle, emptyIconStyle, kindChipStyle } from './lib/styles';
@@ -485,6 +486,11 @@ export function TaskBoardPage(): JSX.Element {
           );
         })}
       </div>
+
+      {/* Phase K Wave 15 — Coach reads recent notes (last 7d, AI-readable
+          only) и предлагает добавить in-line action-items как задачи.
+          Card сама прячется когда нет suggestions / LLM не wired. */}
+      {!loading && <TasksSuggestionsCard onAccepted={() => void refresh()} />}
 
       {/* States */}
       {loading && (

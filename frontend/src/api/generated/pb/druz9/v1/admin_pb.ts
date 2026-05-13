@@ -102,6 +102,76 @@ proto3.util.setEnumType(AdminReportStatus, "druz9.v1.AdminReportStatus", [
 ]);
 
 /**
+ * @generated from enum druz9.v1.LLMUsagePeriod
+ */
+export enum LLMUsagePeriod {
+  /**
+   * @generated from enum value: LLM_USAGE_PERIOD_UNSPECIFIED = 0;
+   */
+  LLM_USAGE_PERIOD_UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: LLM_USAGE_PERIOD_1D = 1;
+   */
+  LLM_USAGE_PERIOD_1D = 1,
+
+  /**
+   * @generated from enum value: LLM_USAGE_PERIOD_7D = 2;
+   */
+  LLM_USAGE_PERIOD_7D = 2,
+
+  /**
+   * @generated from enum value: LLM_USAGE_PERIOD_30D = 3;
+   */
+  LLM_USAGE_PERIOD_30D = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(LLMUsagePeriod)
+proto3.util.setEnumType(LLMUsagePeriod, "druz9.v1.LLMUsagePeriod", [
+  { no: 0, name: "LLM_USAGE_PERIOD_UNSPECIFIED" },
+  { no: 1, name: "LLM_USAGE_PERIOD_1D" },
+  { no: 2, name: "LLM_USAGE_PERIOD_7D" },
+  { no: 3, name: "LLM_USAGE_PERIOD_30D" },
+]);
+
+/**
+ * @generated from enum druz9.v1.LLMUsageGroup
+ */
+export enum LLMUsageGroup {
+  /**
+   * @generated from enum value: LLM_USAGE_GROUP_UNSPECIFIED = 0;
+   */
+  LLM_USAGE_GROUP_UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: LLM_USAGE_GROUP_TASK = 1;
+   */
+  LLM_USAGE_GROUP_TASK = 1,
+
+  /**
+   * @generated from enum value: LLM_USAGE_GROUP_USER = 2;
+   */
+  LLM_USAGE_GROUP_USER = 2,
+
+  /**
+   * @generated from enum value: LLM_USAGE_GROUP_DAY = 3;
+   */
+  LLM_USAGE_GROUP_DAY = 3,
+
+  /**
+   * @generated from enum value: LLM_USAGE_GROUP_PROVIDER = 4;
+   */
+  LLM_USAGE_GROUP_PROVIDER = 4,
+}
+// Retrieve enum metadata with: proto3.getEnumType(LLMUsageGroup)
+proto3.util.setEnumType(LLMUsageGroup, "druz9.v1.LLMUsageGroup", [
+  { no: 0, name: "LLM_USAGE_GROUP_UNSPECIFIED" },
+  { no: 1, name: "LLM_USAGE_GROUP_TASK" },
+  { no: 2, name: "LLM_USAGE_GROUP_USER" },
+  { no: 3, name: "LLM_USAGE_GROUP_DAY" },
+  { no: 4, name: "LLM_USAGE_GROUP_PROVIDER" },
+]);
+
+/**
  * ConfigEntry mirrors OpenAPI ConfigEntry. The OpenAPI `value` field is a
  * oneOf<number|string|bool|object>; we use google.protobuf.Value to keep the
  * JSON shape opaque on the wire. The app layer still round-trips the raw
@@ -1155,6 +1225,173 @@ export class GetStatusPageRequest extends Message<GetStatusPageRequest> {
 
   static equals(a: GetStatusPageRequest | PlainMessage<GetStatusPageRequest> | undefined, b: GetStatusPageRequest | PlainMessage<GetStatusPageRequest> | undefined): boolean {
     return proto3.util.equals(GetStatusPageRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.LLMUsageRow
+ */
+export class LLMUsageRow extends Message<LLMUsageRow> {
+  /**
+   * task name / user_id / YYYY-MM-DD / provider
+   *
+   * @generated from field: string dimension_key = 1;
+   */
+  dimensionKey = "";
+
+  /**
+   * @generated from field: int64 total_calls = 2;
+   */
+  totalCalls = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 total_input_tokens = 3;
+   */
+  totalInputTokens = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 total_output_tokens = 4;
+   */
+  totalOutputTokens = protoInt64.zero;
+
+  /**
+   * USD cents, sum from cost_estimate_cents
+   *
+   * @generated from field: int64 total_cost_cents = 5;
+   */
+  totalCostCents = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 avg_latency_ms = 6;
+   */
+  avgLatencyMs = protoInt64.zero;
+
+  constructor(data?: PartialMessage<LLMUsageRow>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.LLMUsageRow";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "dimension_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "total_calls", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "total_input_tokens", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "total_output_tokens", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 5, name: "total_cost_cents", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 6, name: "avg_latency_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LLMUsageRow {
+    return new LLMUsageRow().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LLMUsageRow {
+    return new LLMUsageRow().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LLMUsageRow {
+    return new LLMUsageRow().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LLMUsageRow | PlainMessage<LLMUsageRow> | undefined, b: LLMUsageRow | PlainMessage<LLMUsageRow> | undefined): boolean {
+    return proto3.util.equals(LLMUsageRow, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetLLMUsageStatsRequest
+ */
+export class GetLLMUsageStatsRequest extends Message<GetLLMUsageStatsRequest> {
+  /**
+   * @generated from field: druz9.v1.LLMUsagePeriod period = 1;
+   */
+  period = LLMUsagePeriod.LLM_USAGE_PERIOD_UNSPECIFIED;
+
+  /**
+   * @generated from field: druz9.v1.LLMUsageGroup group_by = 2;
+   */
+  groupBy = LLMUsageGroup.LLM_USAGE_GROUP_UNSPECIFIED;
+
+  constructor(data?: PartialMessage<GetLLMUsageStatsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetLLMUsageStatsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "period", kind: "enum", T: proto3.getEnumType(LLMUsagePeriod) },
+    { no: 2, name: "group_by", kind: "enum", T: proto3.getEnumType(LLMUsageGroup) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetLLMUsageStatsRequest {
+    return new GetLLMUsageStatsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetLLMUsageStatsRequest {
+    return new GetLLMUsageStatsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetLLMUsageStatsRequest {
+    return new GetLLMUsageStatsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetLLMUsageStatsRequest | PlainMessage<GetLLMUsageStatsRequest> | undefined, b: GetLLMUsageStatsRequest | PlainMessage<GetLLMUsageStatsRequest> | undefined): boolean {
+    return proto3.util.equals(GetLLMUsageStatsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetLLMUsageStatsResponse
+ */
+export class GetLLMUsageStatsResponse extends Message<GetLLMUsageStatsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.LLMUsageRow rows = 1;
+   */
+  rows: LLMUsageRow[] = [];
+
+  /**
+   * total_cost_cents — sum over all rows (UI footer).
+   *
+   * @generated from field: int64 total_cost_cents = 2;
+   */
+  totalCostCents = protoInt64.zero;
+
+  /**
+   * total_calls — sum over all rows.
+   *
+   * @generated from field: int64 total_calls = 3;
+   */
+  totalCalls = protoInt64.zero;
+
+  constructor(data?: PartialMessage<GetLLMUsageStatsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetLLMUsageStatsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "rows", kind: "message", T: LLMUsageRow, repeated: true },
+    { no: 2, name: "total_cost_cents", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "total_calls", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetLLMUsageStatsResponse {
+    return new GetLLMUsageStatsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetLLMUsageStatsResponse {
+    return new GetLLMUsageStatsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetLLMUsageStatsResponse {
+    return new GetLLMUsageStatsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetLLMUsageStatsResponse | PlainMessage<GetLLMUsageStatsResponse> | undefined, b: GetLLMUsageStatsResponse | PlainMessage<GetLLMUsageStatsResponse> | undefined): boolean {
+    return proto3.util.equals(GetLLMUsageStatsResponse, a, b);
   }
 }
 

@@ -15,6 +15,7 @@ import (
 	"druz9/shared/pkg/killswitch"
 	"druz9/shared/pkg/metrics"
 	tokenquota "druz9/shared/pkg/quota"
+	"druz9/shared/pkg/userlocale"
 
 	"github.com/google/uuid"
 )
@@ -83,10 +84,10 @@ type ConversationDoneFrame struct {
 
 // systemPrompt is the server-controlled prelude prepended to every copilot
 // conversation. Client never sees this. Kept short — budget for the user's
-// screenshot bytes and follow-up context.
+// screenshot bytes and follow-up context. Response language is set via a
+// separate language directive injected as slot 0 (see buildLLMMessages).
 const systemPrompt = `You are Druz9 Copilot — a stealthy, precise assistant for software engineers.
 You are being shown a screenshot of the user's screen (code, terminal, a task, or an error).
-Answer in the language the user wrote to you (Russian by default).
 Be concise. Use Markdown. When quoting code, use fenced blocks with the correct language tag.
 When the screenshot shows a programming task, explain the idea first, then show a clean solution.
 Never mention that you cannot see the image if an image is provided — analyse it as given.
@@ -205,6 +206,12 @@ type Analyze struct {
 	// cross-product context (same ordering rationale as Suggest). nil-
 	// safe.
 	InterviewPrep domain.InterviewPrepProvider
+
+	// LocaleReader resolves users.locale → response language. Injected
+	// as slot-0 system message so the LLM honours the user's locale
+	// regardless of screenshot/transcript language. nil-safe (defaults
+	// to "ru").
+	LocaleReader userlocale.Reader
 
 	Log *slog.Logger
 	Now func() time.Time
@@ -389,7 +396,11 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 		contextUsed = true
 	}
 
-	llmMessages := buildLLMMessages(window.RunningSummary, docsContext, contextBlock, prepBlock, in.PersonaSystemPrompt, turnsToMessages(window.Tail), in.PromptText, in.Attachments)
+	locale := "ru"
+	if uc.LocaleReader != nil {
+		locale = uc.LocaleReader.Get(ctx, in.UserID)
+	}
+	llmMessages := buildLLMMessages(locale, window.RunningSummary, docsContext, contextBlock, prepBlock, in.PersonaSystemPrompt, turnsToMessages(window.Tail), in.PromptText, in.Attachments)
 
 	// Open the LLM stream.
 	events, err := uc.LLM.Stream(ctx, domain.CompletionRequest{
@@ -771,8 +782,15 @@ func (uc *Analyze) priorMessages(ctx context.Context, conversationID, currentUse
 //     latching onto an old summary fact that the new docs override.
 //  7. prior tail — raw recent turns.
 //  8. current user turn — with images.
-func buildLLMMessages(runningSummary, docsContext, userContext, interviewPrepBlock, personaPrompt string, prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
-	out := make([]domain.LLMMessage, 0, len(prior)+7)
+func buildLLMMessages(locale, runningSummary, docsContext, userContext, interviewPrepBlock, personaPrompt string, prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
+	out := make([]domain.LLMMessage, 0, len(prior)+8)
+	// Slot 0: language directive (see userlocale package). Goes before
+	// the base systemPrompt so the LLM treats the user's locale as the
+	// strongest anchor against any non-locale text further in context.
+	out = append(out, domain.LLMMessage{
+		Role:    enums.MessageRoleSystem,
+		Content: userlocale.LanguageDirective(locale),
+	})
 	out = append(out, domain.LLMMessage{Role: enums.MessageRoleSystem, Content: systemPrompt})
 	// Persona — отдельный system message сразу после base. До summary/docs
 	// чтобы persona-instructions имели приоритет в context'е модели. История

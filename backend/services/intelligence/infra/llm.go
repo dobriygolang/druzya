@@ -8,6 +8,7 @@ import (
 
 	"druz9/intelligence/domain"
 	"druz9/shared/pkg/llmchain"
+	"druz9/shared/pkg/userlocale"
 )
 
 // ─── Floor adapters (no llmchain) ─────────────────────────────────────────
@@ -46,20 +47,22 @@ func (*NoLLMNoteAnswerer) Answer(_ context.Context, _ domain.AskNotesPromptInput
 type LLMChainBriefSynthesiser struct {
 	chain   llmchain.ChatClient
 	cfg     CoachConfigReader
+	locale  userlocale.Reader
 	log     *slog.Logger
 	timeout time.Duration
 }
 
 // NewLLMChainBriefSynthesiser wires the adapter. chain MUST be non-nil.
-// cfg может быть nil — тогда pin отключён (legacy task-routing).
-func NewLLMChainBriefSynthesiser(chain llmchain.ChatClient, cfg CoachConfigReader, log *slog.Logger) *LLMChainBriefSynthesiser {
+// cfg может быть nil — тогда pin отключён (legacy task-routing). locale
+// может быть nil — fallback на 'ru' (default users.locale).
+func NewLLMChainBriefSynthesiser(chain llmchain.ChatClient, cfg CoachConfigReader, locale userlocale.Reader, log *slog.Logger) *LLMChainBriefSynthesiser {
 	if chain == nil {
 		panic("intelligence.NewLLMChainBriefSynthesiser: chain is required")
 	}
 	if log == nil {
 		panic("intelligence.NewLLMChainBriefSynthesiser: logger is required")
 	}
-	return &LLMChainBriefSynthesiser{chain: chain, cfg: cfg, log: log, timeout: 30 * time.Second}
+	return &LLMChainBriefSynthesiser{chain: chain, cfg: cfg, locale: locale, log: log, timeout: 30 * time.Second}
 }
 
 // Synthesise builds the prompt, calls the chain, parses JSON envelope.
@@ -98,8 +101,18 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 	// critique). Order: persona (tone), variant (format), ML (domain
 	// framing). ML goes last so its forbidden-list / resource pool
 	// overrides any persona/variant generic phrasing.
+	localeStr := "ru"
+	if s.locale != nil {
+		localeStr = s.locale.Get(ctx, in.UserID)
+	}
+
 	sketchMessages := func() []llmchain.Message {
 		out := []llmchain.Message{
+			// Slot 0: language directive (see userlocale package). The
+			// few-shot examples below are in English; this directive tells
+			// the LLM that the **response** language must follow the user's
+			// locale regardless of the few-shot example language.
+			{Role: llmchain.RoleSystem, Content: userlocale.LanguageDirective(localeStr)},
 			{Role: llmchain.RoleSystem, Content: briefSystemPrompt},
 		}
 		if personaOverlay != "" {
@@ -237,7 +250,12 @@ func (s *LLMChainBriefSynthesiser) reflect(
 	variantOverlay string,
 	mlOverlay string,
 ) (domain.DailyBrief, error) {
+	localeStr := "ru"
+	if s.locale != nil {
+		localeStr = s.locale.Get(ctx, in.UserID)
+	}
 	messages := []llmchain.Message{
+		{Role: llmchain.RoleSystem, Content: userlocale.LanguageDirective(localeStr)},
 		{Role: llmchain.RoleSystem, Content: critiqueSystemPrompt},
 	}
 	if personaOverlay != "" {

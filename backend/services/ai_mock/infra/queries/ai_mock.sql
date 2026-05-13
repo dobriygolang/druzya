@@ -108,7 +108,13 @@ SELECT id, slug, name
   FROM companies
  WHERE id = $1;
 
--- name: GetUserSubscription :one
-SELECT plan
-  FROM subscriptions
- WHERE user_id = $1;
+-- name: GetUserSubscriptionAndLocale :one
+-- Returns plan + the user's preferred response language in one round-trip.
+-- LEFT JOIN: not every user has a subscription row (new / free-tier);
+-- COALESCE in the caller defaults to 'free'. users.locale is NOT NULL with
+-- DEFAULT 'ru' since 00001_baseline, so a non-null locale is always present
+-- for any extant user row.
+SELECT COALESCE(s.plan, 'free')::text AS plan, u.locale
+  FROM users u
+  LEFT JOIN subscriptions s ON s.user_id = u.id
+ WHERE u.id = $1;

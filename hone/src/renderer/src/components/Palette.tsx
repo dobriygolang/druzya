@@ -11,10 +11,12 @@ export type PageId =
   | 'stats'
   | 'assignments'
   | 'calendar'
+  | 'schedule'
+  | 'energy'
   | 'memory'
   | 'settings';
 
-export type PaletteAction = PageId | 'copilot';
+export type PaletteAction = PageId | 'copilot' | 'day-shutdown';
 
 interface PaletteProps {
   onClose: () => void;
@@ -36,6 +38,8 @@ const ITEMS_BY_SECTION: { section: string; items: Omit<PaletteItem, 'run' | 'sec
     items: [
       { id: 'today', label: 'Today', icon: 'sun', shortcut: ['T'] },
       { id: 'coach', label: 'Coach', icon: 'sparkle', shortcut: ['C'] },
+      { id: 'schedule', label: 'Schedule', icon: 'calendar', shortcut: ['Y'] },
+      { id: 'energy', label: 'Energy', icon: 'bars', shortcut: ['E'] },
       { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'] },
     ],
   },
@@ -44,6 +48,8 @@ const ITEMS_BY_SECTION: { section: string; items: Omit<PaletteItem, 'run' | 'sec
     items: [
       { id: 'notes', label: 'Notes', icon: 'note', shortcut: ['N'] },
       { id: 'memory', label: 'Memory', icon: 'sparkle' },
+      // Phase K Wave 15 — end-of-day shutdown ritual (manual trigger).
+      { id: 'day-shutdown', label: 'Закрыть день', icon: 'sun' },
     ],
   },
   {

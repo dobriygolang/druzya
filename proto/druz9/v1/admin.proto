@@ -217,6 +217,57 @@ message StatusPage {
 message GetStatusPageRequest {}
 
 // ─────────────────────────────────────────────────────────────────────────
+// Wave 15: LLM cost / usage panel
+//
+// Reads llm_invocations (migration 00120) and groups by one of:
+//   - task      : task_kind (next_action / daily_brief / writing_grade)
+//   - user      : user_id (UUID string)
+//   - day       : bucket_day (YYYY-MM-DD)
+//   - provider  : provider name (groq / cerebras / google ...)
+//
+// Each row carries the group key + aggregate counters + estimated USD-cents
+// cost (0 for free-tier calls — kept anyway for audit / future paid-tier
+// guesses). UI surfaces top spenders + flags rows > $1/day in red.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum LLMUsagePeriod {
+  LLM_USAGE_PERIOD_UNSPECIFIED = 0;
+  LLM_USAGE_PERIOD_1D          = 1;
+  LLM_USAGE_PERIOD_7D          = 2;
+  LLM_USAGE_PERIOD_30D         = 3;
+}
+
+enum LLMUsageGroup {
+  LLM_USAGE_GROUP_UNSPECIFIED = 0;
+  LLM_USAGE_GROUP_TASK        = 1;
+  LLM_USAGE_GROUP_USER        = 2;
+  LLM_USAGE_GROUP_DAY         = 3;
+  LLM_USAGE_GROUP_PROVIDER    = 4;
+}
+
+message LLMUsageRow {
+  string dimension_key      = 1;  // task name / user_id / YYYY-MM-DD / provider
+  int64  total_calls        = 2;
+  int64  total_input_tokens = 3;
+  int64  total_output_tokens = 4;
+  int64  total_cost_cents   = 5;  // USD cents, sum from cost_estimate_cents
+  int64  avg_latency_ms     = 6;
+}
+
+message GetLLMUsageStatsRequest {
+  LLMUsagePeriod period   = 1;
+  LLMUsageGroup  group_by = 2;
+}
+
+message GetLLMUsageStatsResponse {
+  repeated LLMUsageRow rows = 1;
+  // total_cost_cents — sum over all rows (UI footer).
+  int64 total_cost_cents = 2;
+  // total_calls — sum over all rows.
+  int64 total_calls = 3;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Service
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -272,5 +323,13 @@ service AdminService {
   // data.
   rpc GetStatusPage(GetStatusPageRequest) returns (StatusPage) {
     option (google.api.http) = {get: "/api/v1/status"};
+  }
+
+  // ── Wave 15: LLM usage panel ───────────────────────────────────────
+  rpc GetLLMUsageStats(GetLLMUsageStatsRequest) returns (GetLLMUsageStatsResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/llm-usage"
+      body: "*"
+    };
   }
 }

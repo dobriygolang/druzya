@@ -30,7 +30,12 @@ type Querier interface {
 	GetMockSession(ctx context.Context, id pgtype.UUID) (MockSession, error)
 	// Same caveat as PickTaskForSection — private to ai_mock's prompt builder.
 	GetTaskWithHint(ctx context.Context, id pgtype.UUID) (GetTaskWithHintRow, error)
-	GetUserSubscription(ctx context.Context, userID pgtype.UUID) (string, error)
+	// Returns plan + the user's preferred response language in one round-trip.
+	// LEFT JOIN: not every user has a subscription row (new / free-tier);
+	// COALESCE in the caller defaults to 'free'. users.locale is NOT NULL with
+	// DEFAULT 'ru' since 00001_baseline, so a non-null locale is always present
+	// for any extant user row.
+	GetUserSubscriptionAndLocale(ctx context.Context, id pgtype.UUID) (GetUserSubscriptionAndLocaleRow, error)
 	ListAllMockMessages(ctx context.Context, sessionID pgtype.UUID) ([]MockMessage, error)
 	ListLastMockMessages(ctx context.Context, arg ListLastMockMessagesParams) ([]MockMessage, error)
 	// Internal: returns the task PLUS solution_hint for LLM-only consumption.

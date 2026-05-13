@@ -171,6 +171,12 @@ const (
 	// HoneServiceUpdateTaskKindProcedure is the fully-qualified name of the HoneService's
 	// UpdateTaskKind RPC.
 	HoneServiceUpdateTaskKindProcedure = "/druz9.v1.HoneService/UpdateTaskKind"
+	// HoneServiceScheduleTaskProcedure is the fully-qualified name of the HoneService's ScheduleTask
+	// RPC.
+	HoneServiceScheduleTaskProcedure = "/druz9.v1.HoneService/ScheduleTask"
+	// HoneServiceUnscheduleTaskProcedure is the fully-qualified name of the HoneService's
+	// UnscheduleTask RPC.
+	HoneServiceUnscheduleTaskProcedure = "/druz9.v1.HoneService/UnscheduleTask"
 	// HoneServiceBulkAutoCategoriseProcedure is the fully-qualified name of the HoneService's
 	// BulkAutoCategorise RPC.
 	HoneServiceBulkAutoCategoriseProcedure = "/druz9.v1.HoneService/BulkAutoCategorise"
@@ -286,6 +292,32 @@ const (
 	// HoneServiceGenerateSpeakingTTSProcedure is the fully-qualified name of the HoneService's
 	// GenerateSpeakingTTS RPC.
 	HoneServiceGenerateSpeakingTTSProcedure = "/druz9.v1.HoneService/GenerateSpeakingTTS"
+	// HoneServiceLogEnergyProcedure is the fully-qualified name of the HoneService's LogEnergy RPC.
+	HoneServiceLogEnergyProcedure = "/druz9.v1.HoneService/LogEnergy"
+	// HoneServiceListEnergyLogsProcedure is the fully-qualified name of the HoneService's
+	// ListEnergyLogs RPC.
+	HoneServiceListEnergyLogsProcedure = "/druz9.v1.HoneService/ListEnergyLogs"
+	// HoneServiceSubmitDayShutdownProcedure is the fully-qualified name of the HoneService's
+	// SubmitDayShutdown RPC.
+	HoneServiceSubmitDayShutdownProcedure = "/druz9.v1.HoneService/SubmitDayShutdown"
+	// HoneServiceGetTodayShutdownProcedure is the fully-qualified name of the HoneService's
+	// GetTodayShutdown RPC.
+	HoneServiceGetTodayShutdownProcedure = "/druz9.v1.HoneService/GetTodayShutdown"
+	// HoneServiceLogResistanceProcedure is the fully-qualified name of the HoneService's LogResistance
+	// RPC.
+	HoneServiceLogResistanceProcedure = "/druz9.v1.HoneService/LogResistance"
+	// HoneServiceListResistanceLogsProcedure is the fully-qualified name of the HoneService's
+	// ListResistanceLogs RPC.
+	HoneServiceListResistanceLogsProcedure = "/druz9.v1.HoneService/ListResistanceLogs"
+	// HoneServiceUpdateNoteAIExcludedProcedure is the fully-qualified name of the HoneService's
+	// UpdateNoteAIExcluded RPC.
+	HoneServiceUpdateNoteAIExcludedProcedure = "/druz9.v1.HoneService/UpdateNoteAIExcluded"
+	// HoneServiceSuggestTasksFromNotesProcedure is the fully-qualified name of the HoneService's
+	// SuggestTasksFromNotes RPC.
+	HoneServiceSuggestTasksFromNotesProcedure = "/druz9.v1.HoneService/SuggestTasksFromNotes"
+	// HoneServiceAcceptTaskSuggestionProcedure is the fully-qualified name of the HoneService's
+	// AcceptTaskSuggestion RPC.
+	HoneServiceAcceptTaskSuggestionProcedure = "/druz9.v1.HoneService/AcceptTaskSuggestion"
 )
 
 // HoneServiceClient is a client for the druz9.v1.HoneService service.
@@ -350,6 +382,11 @@ type HoneServiceClient interface {
 	AddTaskComment(context.Context, *connect.Request[v1.AddTaskCommentRequest]) (*connect.Response[v1.TaskComment], error)
 	// Phase J / H3 (P1, 2026-05-12) — manual kind override + bulk re-categorise.
 	UpdateTaskKind(context.Context, *connect.Request[v1.UpdateTaskKindRequest]) (*connect.Response[v1.Task], error)
+	// Phase K Wave 15 (2026-05-14) — time-blocking surface.
+	// ScheduleTask пишет scheduled_start + scheduled_duration_min;
+	// UnscheduleTask возвращает карточку в бэклог (NULL'ит оба поля).
+	ScheduleTask(context.Context, *connect.Request[v1.ScheduleTaskRequest]) (*connect.Response[v1.Task], error)
+	UnscheduleTask(context.Context, *connect.Request[v1.UnscheduleTaskRequest]) (*connect.Response[v1.Task], error)
 	// Server-streams categorise events as each task is processed. Frontend
 	// consumes via Connect stream client (the existing SSE cursor path stays
 	// for cursor.move / card.move; this is a one-shot scoped stream).
@@ -451,6 +488,48 @@ type HoneServiceClient interface {
 	// body itself only requires authenticated user (admin role enforced
 	// before the transcoder fires).
 	GenerateSpeakingTTS(context.Context, *connect.Request[v1.GenerateSpeakingTTSRequest]) (*connect.Response[v1.GenerateSpeakingTTSResponse], error)
+	// ─── Energy tracker (Phase K Wave 15, 2026-05-14) ───────────────────
+	// Юзер тэгает уровень энергии 1-5 раз в N часов. Через неделю видны
+	// паттерны (утро — пик, обед — провал). Помогает планировать сложные
+	// задачи на peak hours в time-blocking UI.
+	LogEnergy(context.Context, *connect.Request[v1.LogEnergyRequest]) (*connect.Response[v1.EnergyLog], error)
+	ListEnergyLogs(context.Context, *connect.Request[v1.ListEnergyLogsRequest]) (*connect.Response[v1.ListEnergyLogsResponse], error)
+	// ─── End-of-day shutdown ritual (Phase K Wave 15, 2026-05-14) ──────
+	// Вечером (21:00 default, настраивается) Hone показывает тихий nudge:
+	// юзер заполняет 3 короткие textarea — что сделал, что не успел, что
+	// важно на завтра. SubmitDayShutdown — UPSERT по (user_id, shutdown_date),
+	// чтобы повторное нажатие просто обновляло, а не плодило дубль. Утром
+	// daily_brief use case (intelligence) читает вчерашнюю запись и кладёт
+	// в coach prompt секцией DAY SHUTDOWN.
+	SubmitDayShutdown(context.Context, *connect.Request[v1.SubmitDayShutdownRequest]) (*connect.Response[v1.SubmitDayShutdownResponse], error)
+	GetTodayShutdown(context.Context, *connect.Request[v1.GetTodayShutdownRequest]) (*connect.Response[v1.GetTodayShutdownResponse], error)
+	// ─── Resistance journal (Phase K Wave 15, 2026-05-14) ───────────────
+	//
+	// Optional pre-focus prompt «что трудно прямо сейчас?». Юзер либо
+	// пропускает (no-op), либо отправляет одну фразу — она падает в
+	// resistance_log. Раз в неделю Coach next-action use case читает
+	// последние записи для контекстного совета. Текст до 200 chars enforced
+	// на app-уровне; пустые строки не принимаются (frontend не шлёт,
+	// server возвращает InvalidArgument).
+	LogResistance(context.Context, *connect.Request[v1.LogResistanceRequest]) (*connect.Response[v1.ResistanceEntry], error)
+	// ListResistanceLogs — coach + analytics surfaces. `days` = окно (default
+	// 7, max 90). Возвращает записи в обратном хроно порядке.
+	ListResistanceLogs(context.Context, *connect.Request[v1.ListResistanceLogsRequest]) (*connect.Response[v1.ListResistanceLogsResponse], error)
+	// ─── Notes AI flag (Phase K Wave 15, 2026-05-14) ────────────────────
+	//
+	// Soft-privacy toggle: юзер хочет, чтобы конкретная заметка не попадала
+	// в SuggestTasksFromNotes / coach reading pipeline. Не путать с vault
+	// (encrypted) — там ноту вообще не видно серверу.
+	UpdateNoteAIExcluded(context.Context, *connect.Request[v1.UpdateNoteAIExcludedRequest]) (*connect.Response[v1.Note], error)
+	// ─── Tasks from notes (Phase K Wave 15, 2026-05-14) ─────────────────
+	//
+	// Coach читает свежие заметки (last 7 days, AI-readable only) и
+	// предлагает добавить in-line action-items как таски в TaskBoard.
+	// Pre-filter regex'ом снимает heavy lift с LLM — мы шлём только
+	// matched фрагменты, не всю заметку. Response cached в Redis на 1 час
+	// per user.
+	SuggestTasksFromNotes(context.Context, *connect.Request[v1.SuggestTasksFromNotesRequest]) (*connect.Response[v1.SuggestTasksFromNotesResponse], error)
+	AcceptTaskSuggestion(context.Context, *connect.Request[v1.AcceptTaskSuggestionRequest]) (*connect.Response[v1.Task], error)
 }
 
 // NewHoneServiceClient constructs a client for the druz9.v1.HoneService service. By default, it
@@ -728,6 +807,18 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("UpdateTaskKind")),
 			connect.WithClientOptions(opts...),
 		),
+		scheduleTask: connect.NewClient[v1.ScheduleTaskRequest, v1.Task](
+			httpClient,
+			baseURL+HoneServiceScheduleTaskProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ScheduleTask")),
+			connect.WithClientOptions(opts...),
+		),
+		unscheduleTask: connect.NewClient[v1.UnscheduleTaskRequest, v1.Task](
+			httpClient,
+			baseURL+HoneServiceUnscheduleTaskProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("UnscheduleTask")),
+			connect.WithClientOptions(opts...),
+		),
 		bulkAutoCategorise: connect.NewClient[v1.BulkAutoCategoriseRequest, v1.BulkAutoCategoriseEvent](
 			httpClient,
 			baseURL+HoneServiceBulkAutoCategoriseProcedure,
@@ -968,6 +1059,60 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("GenerateSpeakingTTS")),
 			connect.WithClientOptions(opts...),
 		),
+		logEnergy: connect.NewClient[v1.LogEnergyRequest, v1.EnergyLog](
+			httpClient,
+			baseURL+HoneServiceLogEnergyProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("LogEnergy")),
+			connect.WithClientOptions(opts...),
+		),
+		listEnergyLogs: connect.NewClient[v1.ListEnergyLogsRequest, v1.ListEnergyLogsResponse](
+			httpClient,
+			baseURL+HoneServiceListEnergyLogsProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListEnergyLogs")),
+			connect.WithClientOptions(opts...),
+		),
+		submitDayShutdown: connect.NewClient[v1.SubmitDayShutdownRequest, v1.SubmitDayShutdownResponse](
+			httpClient,
+			baseURL+HoneServiceSubmitDayShutdownProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("SubmitDayShutdown")),
+			connect.WithClientOptions(opts...),
+		),
+		getTodayShutdown: connect.NewClient[v1.GetTodayShutdownRequest, v1.GetTodayShutdownResponse](
+			httpClient,
+			baseURL+HoneServiceGetTodayShutdownProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GetTodayShutdown")),
+			connect.WithClientOptions(opts...),
+		),
+		logResistance: connect.NewClient[v1.LogResistanceRequest, v1.ResistanceEntry](
+			httpClient,
+			baseURL+HoneServiceLogResistanceProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("LogResistance")),
+			connect.WithClientOptions(opts...),
+		),
+		listResistanceLogs: connect.NewClient[v1.ListResistanceLogsRequest, v1.ListResistanceLogsResponse](
+			httpClient,
+			baseURL+HoneServiceListResistanceLogsProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListResistanceLogs")),
+			connect.WithClientOptions(opts...),
+		),
+		updateNoteAIExcluded: connect.NewClient[v1.UpdateNoteAIExcludedRequest, v1.Note](
+			httpClient,
+			baseURL+HoneServiceUpdateNoteAIExcludedProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("UpdateNoteAIExcluded")),
+			connect.WithClientOptions(opts...),
+		),
+		suggestTasksFromNotes: connect.NewClient[v1.SuggestTasksFromNotesRequest, v1.SuggestTasksFromNotesResponse](
+			httpClient,
+			baseURL+HoneServiceSuggestTasksFromNotesProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("SuggestTasksFromNotes")),
+			connect.WithClientOptions(opts...),
+		),
+		acceptTaskSuggestion: connect.NewClient[v1.AcceptTaskSuggestionRequest, v1.Task](
+			httpClient,
+			baseURL+HoneServiceAcceptTaskSuggestionProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("AcceptTaskSuggestion")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1017,6 +1162,8 @@ type honeServiceClient struct {
 	listTaskComments          *connect.Client[v1.ListTaskCommentsRequest, v1.ListTaskCommentsResponse]
 	addTaskComment            *connect.Client[v1.AddTaskCommentRequest, v1.TaskComment]
 	updateTaskKind            *connect.Client[v1.UpdateTaskKindRequest, v1.Task]
+	scheduleTask              *connect.Client[v1.ScheduleTaskRequest, v1.Task]
+	unscheduleTask            *connect.Client[v1.UnscheduleTaskRequest, v1.Task]
 	bulkAutoCategorise        *connect.Client[v1.BulkAutoCategoriseRequest, v1.BulkAutoCategoriseEvent]
 	publishNote               *connect.Client[v1.PublishNoteRequest, v1.PublishNoteResponse]
 	unpublishNote             *connect.Client[v1.UnpublishNoteRequest, v1.UnpublishNoteResponse]
@@ -1057,6 +1204,15 @@ type honeServiceClient struct {
 	gradeSpeaking             *connect.Client[v1.GradeSpeakingRequest, v1.GradeSpeakingResponse]
 	listSpeakingHistory       *connect.Client[v1.ListSpeakingHistoryRequest, v1.ListSpeakingHistoryResponse]
 	generateSpeakingTTS       *connect.Client[v1.GenerateSpeakingTTSRequest, v1.GenerateSpeakingTTSResponse]
+	logEnergy                 *connect.Client[v1.LogEnergyRequest, v1.EnergyLog]
+	listEnergyLogs            *connect.Client[v1.ListEnergyLogsRequest, v1.ListEnergyLogsResponse]
+	submitDayShutdown         *connect.Client[v1.SubmitDayShutdownRequest, v1.SubmitDayShutdownResponse]
+	getTodayShutdown          *connect.Client[v1.GetTodayShutdownRequest, v1.GetTodayShutdownResponse]
+	logResistance             *connect.Client[v1.LogResistanceRequest, v1.ResistanceEntry]
+	listResistanceLogs        *connect.Client[v1.ListResistanceLogsRequest, v1.ListResistanceLogsResponse]
+	updateNoteAIExcluded      *connect.Client[v1.UpdateNoteAIExcludedRequest, v1.Note]
+	suggestTasksFromNotes     *connect.Client[v1.SuggestTasksFromNotesRequest, v1.SuggestTasksFromNotesResponse]
+	acceptTaskSuggestion      *connect.Client[v1.AcceptTaskSuggestionRequest, v1.Task]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -1279,6 +1435,16 @@ func (c *honeServiceClient) UpdateTaskKind(ctx context.Context, req *connect.Req
 	return c.updateTaskKind.CallUnary(ctx, req)
 }
 
+// ScheduleTask calls druz9.v1.HoneService.ScheduleTask.
+func (c *honeServiceClient) ScheduleTask(ctx context.Context, req *connect.Request[v1.ScheduleTaskRequest]) (*connect.Response[v1.Task], error) {
+	return c.scheduleTask.CallUnary(ctx, req)
+}
+
+// UnscheduleTask calls druz9.v1.HoneService.UnscheduleTask.
+func (c *honeServiceClient) UnscheduleTask(ctx context.Context, req *connect.Request[v1.UnscheduleTaskRequest]) (*connect.Response[v1.Task], error) {
+	return c.unscheduleTask.CallUnary(ctx, req)
+}
+
 // BulkAutoCategorise calls druz9.v1.HoneService.BulkAutoCategorise.
 func (c *honeServiceClient) BulkAutoCategorise(ctx context.Context, req *connect.Request[v1.BulkAutoCategoriseRequest]) (*connect.ServerStreamForClient[v1.BulkAutoCategoriseEvent], error) {
 	return c.bulkAutoCategorise.CallServerStream(ctx, req)
@@ -1479,6 +1645,51 @@ func (c *honeServiceClient) GenerateSpeakingTTS(ctx context.Context, req *connec
 	return c.generateSpeakingTTS.CallUnary(ctx, req)
 }
 
+// LogEnergy calls druz9.v1.HoneService.LogEnergy.
+func (c *honeServiceClient) LogEnergy(ctx context.Context, req *connect.Request[v1.LogEnergyRequest]) (*connect.Response[v1.EnergyLog], error) {
+	return c.logEnergy.CallUnary(ctx, req)
+}
+
+// ListEnergyLogs calls druz9.v1.HoneService.ListEnergyLogs.
+func (c *honeServiceClient) ListEnergyLogs(ctx context.Context, req *connect.Request[v1.ListEnergyLogsRequest]) (*connect.Response[v1.ListEnergyLogsResponse], error) {
+	return c.listEnergyLogs.CallUnary(ctx, req)
+}
+
+// SubmitDayShutdown calls druz9.v1.HoneService.SubmitDayShutdown.
+func (c *honeServiceClient) SubmitDayShutdown(ctx context.Context, req *connect.Request[v1.SubmitDayShutdownRequest]) (*connect.Response[v1.SubmitDayShutdownResponse], error) {
+	return c.submitDayShutdown.CallUnary(ctx, req)
+}
+
+// GetTodayShutdown calls druz9.v1.HoneService.GetTodayShutdown.
+func (c *honeServiceClient) GetTodayShutdown(ctx context.Context, req *connect.Request[v1.GetTodayShutdownRequest]) (*connect.Response[v1.GetTodayShutdownResponse], error) {
+	return c.getTodayShutdown.CallUnary(ctx, req)
+}
+
+// LogResistance calls druz9.v1.HoneService.LogResistance.
+func (c *honeServiceClient) LogResistance(ctx context.Context, req *connect.Request[v1.LogResistanceRequest]) (*connect.Response[v1.ResistanceEntry], error) {
+	return c.logResistance.CallUnary(ctx, req)
+}
+
+// ListResistanceLogs calls druz9.v1.HoneService.ListResistanceLogs.
+func (c *honeServiceClient) ListResistanceLogs(ctx context.Context, req *connect.Request[v1.ListResistanceLogsRequest]) (*connect.Response[v1.ListResistanceLogsResponse], error) {
+	return c.listResistanceLogs.CallUnary(ctx, req)
+}
+
+// UpdateNoteAIExcluded calls druz9.v1.HoneService.UpdateNoteAIExcluded.
+func (c *honeServiceClient) UpdateNoteAIExcluded(ctx context.Context, req *connect.Request[v1.UpdateNoteAIExcludedRequest]) (*connect.Response[v1.Note], error) {
+	return c.updateNoteAIExcluded.CallUnary(ctx, req)
+}
+
+// SuggestTasksFromNotes calls druz9.v1.HoneService.SuggestTasksFromNotes.
+func (c *honeServiceClient) SuggestTasksFromNotes(ctx context.Context, req *connect.Request[v1.SuggestTasksFromNotesRequest]) (*connect.Response[v1.SuggestTasksFromNotesResponse], error) {
+	return c.suggestTasksFromNotes.CallUnary(ctx, req)
+}
+
+// AcceptTaskSuggestion calls druz9.v1.HoneService.AcceptTaskSuggestion.
+func (c *honeServiceClient) AcceptTaskSuggestion(ctx context.Context, req *connect.Request[v1.AcceptTaskSuggestionRequest]) (*connect.Response[v1.Task], error) {
+	return c.acceptTaskSuggestion.CallUnary(ctx, req)
+}
+
 // HoneServiceHandler is an implementation of the druz9.v1.HoneService service.
 type HoneServiceHandler interface {
 	// ─── Plan ───────────────────────────────────────────────────────────
@@ -1541,6 +1752,11 @@ type HoneServiceHandler interface {
 	AddTaskComment(context.Context, *connect.Request[v1.AddTaskCommentRequest]) (*connect.Response[v1.TaskComment], error)
 	// Phase J / H3 (P1, 2026-05-12) — manual kind override + bulk re-categorise.
 	UpdateTaskKind(context.Context, *connect.Request[v1.UpdateTaskKindRequest]) (*connect.Response[v1.Task], error)
+	// Phase K Wave 15 (2026-05-14) — time-blocking surface.
+	// ScheduleTask пишет scheduled_start + scheduled_duration_min;
+	// UnscheduleTask возвращает карточку в бэклог (NULL'ит оба поля).
+	ScheduleTask(context.Context, *connect.Request[v1.ScheduleTaskRequest]) (*connect.Response[v1.Task], error)
+	UnscheduleTask(context.Context, *connect.Request[v1.UnscheduleTaskRequest]) (*connect.Response[v1.Task], error)
 	// Server-streams categorise events as each task is processed. Frontend
 	// consumes via Connect stream client (the existing SSE cursor path stays
 	// for cursor.move / card.move; this is a one-shot scoped stream).
@@ -1642,6 +1858,48 @@ type HoneServiceHandler interface {
 	// body itself only requires authenticated user (admin role enforced
 	// before the transcoder fires).
 	GenerateSpeakingTTS(context.Context, *connect.Request[v1.GenerateSpeakingTTSRequest]) (*connect.Response[v1.GenerateSpeakingTTSResponse], error)
+	// ─── Energy tracker (Phase K Wave 15, 2026-05-14) ───────────────────
+	// Юзер тэгает уровень энергии 1-5 раз в N часов. Через неделю видны
+	// паттерны (утро — пик, обед — провал). Помогает планировать сложные
+	// задачи на peak hours в time-blocking UI.
+	LogEnergy(context.Context, *connect.Request[v1.LogEnergyRequest]) (*connect.Response[v1.EnergyLog], error)
+	ListEnergyLogs(context.Context, *connect.Request[v1.ListEnergyLogsRequest]) (*connect.Response[v1.ListEnergyLogsResponse], error)
+	// ─── End-of-day shutdown ritual (Phase K Wave 15, 2026-05-14) ──────
+	// Вечером (21:00 default, настраивается) Hone показывает тихий nudge:
+	// юзер заполняет 3 короткие textarea — что сделал, что не успел, что
+	// важно на завтра. SubmitDayShutdown — UPSERT по (user_id, shutdown_date),
+	// чтобы повторное нажатие просто обновляло, а не плодило дубль. Утром
+	// daily_brief use case (intelligence) читает вчерашнюю запись и кладёт
+	// в coach prompt секцией DAY SHUTDOWN.
+	SubmitDayShutdown(context.Context, *connect.Request[v1.SubmitDayShutdownRequest]) (*connect.Response[v1.SubmitDayShutdownResponse], error)
+	GetTodayShutdown(context.Context, *connect.Request[v1.GetTodayShutdownRequest]) (*connect.Response[v1.GetTodayShutdownResponse], error)
+	// ─── Resistance journal (Phase K Wave 15, 2026-05-14) ───────────────
+	//
+	// Optional pre-focus prompt «что трудно прямо сейчас?». Юзер либо
+	// пропускает (no-op), либо отправляет одну фразу — она падает в
+	// resistance_log. Раз в неделю Coach next-action use case читает
+	// последние записи для контекстного совета. Текст до 200 chars enforced
+	// на app-уровне; пустые строки не принимаются (frontend не шлёт,
+	// server возвращает InvalidArgument).
+	LogResistance(context.Context, *connect.Request[v1.LogResistanceRequest]) (*connect.Response[v1.ResistanceEntry], error)
+	// ListResistanceLogs — coach + analytics surfaces. `days` = окно (default
+	// 7, max 90). Возвращает записи в обратном хроно порядке.
+	ListResistanceLogs(context.Context, *connect.Request[v1.ListResistanceLogsRequest]) (*connect.Response[v1.ListResistanceLogsResponse], error)
+	// ─── Notes AI flag (Phase K Wave 15, 2026-05-14) ────────────────────
+	//
+	// Soft-privacy toggle: юзер хочет, чтобы конкретная заметка не попадала
+	// в SuggestTasksFromNotes / coach reading pipeline. Не путать с vault
+	// (encrypted) — там ноту вообще не видно серверу.
+	UpdateNoteAIExcluded(context.Context, *connect.Request[v1.UpdateNoteAIExcludedRequest]) (*connect.Response[v1.Note], error)
+	// ─── Tasks from notes (Phase K Wave 15, 2026-05-14) ─────────────────
+	//
+	// Coach читает свежие заметки (last 7 days, AI-readable only) и
+	// предлагает добавить in-line action-items как таски в TaskBoard.
+	// Pre-filter regex'ом снимает heavy lift с LLM — мы шлём только
+	// matched фрагменты, не всю заметку. Response cached в Redis на 1 час
+	// per user.
+	SuggestTasksFromNotes(context.Context, *connect.Request[v1.SuggestTasksFromNotesRequest]) (*connect.Response[v1.SuggestTasksFromNotesResponse], error)
+	AcceptTaskSuggestion(context.Context, *connect.Request[v1.AcceptTaskSuggestionRequest]) (*connect.Response[v1.Task], error)
 }
 
 // NewHoneServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1915,6 +2173,18 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("UpdateTaskKind")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceScheduleTaskHandler := connect.NewUnaryHandler(
+		HoneServiceScheduleTaskProcedure,
+		svc.ScheduleTask,
+		connect.WithSchema(honeServiceMethods.ByName("ScheduleTask")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceUnscheduleTaskHandler := connect.NewUnaryHandler(
+		HoneServiceUnscheduleTaskProcedure,
+		svc.UnscheduleTask,
+		connect.WithSchema(honeServiceMethods.ByName("UnscheduleTask")),
+		connect.WithHandlerOptions(opts...),
+	)
 	honeServiceBulkAutoCategoriseHandler := connect.NewServerStreamHandler(
 		HoneServiceBulkAutoCategoriseProcedure,
 		svc.BulkAutoCategorise,
@@ -2155,6 +2425,60 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("GenerateSpeakingTTS")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceLogEnergyHandler := connect.NewUnaryHandler(
+		HoneServiceLogEnergyProcedure,
+		svc.LogEnergy,
+		connect.WithSchema(honeServiceMethods.ByName("LogEnergy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListEnergyLogsHandler := connect.NewUnaryHandler(
+		HoneServiceListEnergyLogsProcedure,
+		svc.ListEnergyLogs,
+		connect.WithSchema(honeServiceMethods.ByName("ListEnergyLogs")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceSubmitDayShutdownHandler := connect.NewUnaryHandler(
+		HoneServiceSubmitDayShutdownProcedure,
+		svc.SubmitDayShutdown,
+		connect.WithSchema(honeServiceMethods.ByName("SubmitDayShutdown")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceGetTodayShutdownHandler := connect.NewUnaryHandler(
+		HoneServiceGetTodayShutdownProcedure,
+		svc.GetTodayShutdown,
+		connect.WithSchema(honeServiceMethods.ByName("GetTodayShutdown")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceLogResistanceHandler := connect.NewUnaryHandler(
+		HoneServiceLogResistanceProcedure,
+		svc.LogResistance,
+		connect.WithSchema(honeServiceMethods.ByName("LogResistance")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListResistanceLogsHandler := connect.NewUnaryHandler(
+		HoneServiceListResistanceLogsProcedure,
+		svc.ListResistanceLogs,
+		connect.WithSchema(honeServiceMethods.ByName("ListResistanceLogs")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceUpdateNoteAIExcludedHandler := connect.NewUnaryHandler(
+		HoneServiceUpdateNoteAIExcludedProcedure,
+		svc.UpdateNoteAIExcluded,
+		connect.WithSchema(honeServiceMethods.ByName("UpdateNoteAIExcluded")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceSuggestTasksFromNotesHandler := connect.NewUnaryHandler(
+		HoneServiceSuggestTasksFromNotesProcedure,
+		svc.SuggestTasksFromNotes,
+		connect.WithSchema(honeServiceMethods.ByName("SuggestTasksFromNotes")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceAcceptTaskSuggestionHandler := connect.NewUnaryHandler(
+		HoneServiceAcceptTaskSuggestionProcedure,
+		svc.AcceptTaskSuggestion,
+		connect.WithSchema(honeServiceMethods.ByName("AcceptTaskSuggestion")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.HoneService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HoneServiceGenerateDailyPlanProcedure:
@@ -2245,6 +2569,10 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceAddTaskCommentHandler.ServeHTTP(w, r)
 		case HoneServiceUpdateTaskKindProcedure:
 			honeServiceUpdateTaskKindHandler.ServeHTTP(w, r)
+		case HoneServiceScheduleTaskProcedure:
+			honeServiceScheduleTaskHandler.ServeHTTP(w, r)
+		case HoneServiceUnscheduleTaskProcedure:
+			honeServiceUnscheduleTaskHandler.ServeHTTP(w, r)
 		case HoneServiceBulkAutoCategoriseProcedure:
 			honeServiceBulkAutoCategoriseHandler.ServeHTTP(w, r)
 		case HoneServicePublishNoteProcedure:
@@ -2325,6 +2653,24 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceListSpeakingHistoryHandler.ServeHTTP(w, r)
 		case HoneServiceGenerateSpeakingTTSProcedure:
 			honeServiceGenerateSpeakingTTSHandler.ServeHTTP(w, r)
+		case HoneServiceLogEnergyProcedure:
+			honeServiceLogEnergyHandler.ServeHTTP(w, r)
+		case HoneServiceListEnergyLogsProcedure:
+			honeServiceListEnergyLogsHandler.ServeHTTP(w, r)
+		case HoneServiceSubmitDayShutdownProcedure:
+			honeServiceSubmitDayShutdownHandler.ServeHTTP(w, r)
+		case HoneServiceGetTodayShutdownProcedure:
+			honeServiceGetTodayShutdownHandler.ServeHTTP(w, r)
+		case HoneServiceLogResistanceProcedure:
+			honeServiceLogResistanceHandler.ServeHTTP(w, r)
+		case HoneServiceListResistanceLogsProcedure:
+			honeServiceListResistanceLogsHandler.ServeHTTP(w, r)
+		case HoneServiceUpdateNoteAIExcludedProcedure:
+			honeServiceUpdateNoteAIExcludedHandler.ServeHTTP(w, r)
+		case HoneServiceSuggestTasksFromNotesProcedure:
+			honeServiceSuggestTasksFromNotesHandler.ServeHTTP(w, r)
+		case HoneServiceAcceptTaskSuggestionProcedure:
+			honeServiceAcceptTaskSuggestionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2510,6 +2856,14 @@ func (UnimplementedHoneServiceHandler) UpdateTaskKind(context.Context, *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.UpdateTaskKind is not implemented"))
 }
 
+func (UnimplementedHoneServiceHandler) ScheduleTask(context.Context, *connect.Request[v1.ScheduleTaskRequest]) (*connect.Response[v1.Task], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ScheduleTask is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) UnscheduleTask(context.Context, *connect.Request[v1.UnscheduleTaskRequest]) (*connect.Response[v1.Task], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.UnscheduleTask is not implemented"))
+}
+
 func (UnimplementedHoneServiceHandler) BulkAutoCategorise(context.Context, *connect.Request[v1.BulkAutoCategoriseRequest], *connect.ServerStream[v1.BulkAutoCategoriseEvent]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.BulkAutoCategorise is not implemented"))
 }
@@ -2668,4 +3022,40 @@ func (UnimplementedHoneServiceHandler) ListSpeakingHistory(context.Context, *con
 
 func (UnimplementedHoneServiceHandler) GenerateSpeakingTTS(context.Context, *connect.Request[v1.GenerateSpeakingTTSRequest]) (*connect.Response[v1.GenerateSpeakingTTSResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GenerateSpeakingTTS is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) LogEnergy(context.Context, *connect.Request[v1.LogEnergyRequest]) (*connect.Response[v1.EnergyLog], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.LogEnergy is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListEnergyLogs(context.Context, *connect.Request[v1.ListEnergyLogsRequest]) (*connect.Response[v1.ListEnergyLogsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListEnergyLogs is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) SubmitDayShutdown(context.Context, *connect.Request[v1.SubmitDayShutdownRequest]) (*connect.Response[v1.SubmitDayShutdownResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.SubmitDayShutdown is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GetTodayShutdown(context.Context, *connect.Request[v1.GetTodayShutdownRequest]) (*connect.Response[v1.GetTodayShutdownResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetTodayShutdown is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) LogResistance(context.Context, *connect.Request[v1.LogResistanceRequest]) (*connect.Response[v1.ResistanceEntry], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.LogResistance is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListResistanceLogs(context.Context, *connect.Request[v1.ListResistanceLogsRequest]) (*connect.Response[v1.ListResistanceLogsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListResistanceLogs is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) UpdateNoteAIExcluded(context.Context, *connect.Request[v1.UpdateNoteAIExcludedRequest]) (*connect.Response[v1.Note], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.UpdateNoteAIExcluded is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) SuggestTasksFromNotes(context.Context, *connect.Request[v1.SuggestTasksFromNotesRequest]) (*connect.Response[v1.SuggestTasksFromNotesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.SuggestTasksFromNotes is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) AcceptTaskSuggestion(context.Context, *connect.Request[v1.AcceptTaskSuggestionRequest]) (*connect.Response[v1.Task], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AcceptTaskSuggestion is not implemented"))
 }

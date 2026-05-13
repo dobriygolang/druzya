@@ -38,7 +38,11 @@ import { clearSession, loadSession, saveSession } from './keychain';
 import { clearVaultPassphrase, loadVaultPassphrase, saveVaultPassphrase } from './vaultKeychain';
 import { loadPomodoro, savePomodoro } from './pomodoro_store';
 import { quitAndInstall, startPeriodicCheck, wireUpdater } from './updater';
+// Phase K Wave 15 — Quick Capture global hotkey + End-of-day shutdown ritual.
+import { initQuickCapture, disposeQuickCapture } from './quick_capture';
+import { initDayShutdownScheduler, disposeDayShutdownScheduler } from './day_shutdown_scheduler';
 import { parseDeepLink, dispatchIntent } from './auth/deeplink';
+import { runFocusShortcut } from './focus_mode';
 
 // Backend host. Main can't import the renderer alias due to electron-vite's
 // split bundles, so we duplicate the resolution logic here.
@@ -420,6 +424,17 @@ app.whenReady().then(() => {
     },
   );
 
+  // Phase K Wave 15 — macOS Focus mode trigger. Renderer передаёт имя
+  // shortcut'а (which the user pre-configured to flip a Focus on/off);
+  // мы прокидываем в `shortcuts run "<name>"`. focus_mode.ts само
+  // обрабатывает empty name + non-darwin + shortcut-not-found.
+  ipcMain.handle(invokeChannels.focusModeStart, async (_e, name: string) => {
+    return await runFocusShortcut(typeof name === 'string' ? name : '');
+  });
+  ipcMain.handle(invokeChannels.focusModeStop, async (_e, name: string) => {
+    return await runFocusShortcut(typeof name === 'string' ? name : '');
+  });
+
   // ── Window + tray ──────────────────────────────────────────────────────
   consumeColdStartURL();
   mainWindow = createMainWindow();
@@ -430,6 +445,16 @@ app.whenReady().then(() => {
   // Updater: wire events to renderer + kick periodic check.
   wireUpdater(() => mainWindow);
   startPeriodicCheck();
+
+  // Phase K Wave 15 — Quick Capture (⌘⇧Space) + End-of-day nudge.
+  // Async init: reads disk flag for enabled state. Failures here are
+  // non-fatal — the main window already works without the global hotkey.
+  initQuickCapture(API_BASE).catch((err) =>
+    console.warn('[main] quick-capture init failed:', err),
+  );
+  initDayShutdownScheduler(() => mainWindow).catch((err) =>
+    console.warn('[main] day-shutdown scheduler init failed:', err),
+  );
 
   // Доставка отложенного deep-link'а после первого render'а.
   mainWindow.webContents.once('did-finish-load', () => {
@@ -443,6 +468,13 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) mainWindow = createMainWindow();
   });
+});
+
+app.on('will-quit', () => {
+  // Phase K Wave 15 cleanup. Unregister the global hotkey and tear down
+  // pending timers; without this, dev-mode reload leaks shortcuts.
+  disposeQuickCapture();
+  disposeDayShutdownScheduler();
 });
 
 app.on('window-all-closed', () => {

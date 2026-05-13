@@ -21,4 +21,5 @@ var (
 	_ domain.ResistanceRepo = (*Resistance)(nil)
 	_ domain.QueueRepo      = (*Queue)(nil)
 	_ domain.CueSessionRepo = (*CueSessions)(nil)
+	_ domain.JournalRepo    = (*Journal)(nil)
 )

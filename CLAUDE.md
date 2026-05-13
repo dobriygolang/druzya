@@ -154,6 +154,7 @@ druzya/
 - **DB v108** — interview_prep_sessions (Cue interview-prep wizard CV+JD upload)
 - **DB v109** — user_atlas_struggle_marks (atlas node struggle handoff signal)
 - **DB v110** — restore_ml_active_track (M1 identity fix: 'ml' восстановлен в hone_user_settings.active_track CHECK; ML — first-class equal track per identity.md)
+- **DB v125** — users_locale_check (CHECK constraint `locale IN ('ru','en')` — defense-in-depth для i18n unification, Phase K Wave 16)
 
 ## Текущий roadmap (2026-05-12)
 
@@ -166,3 +167,5 @@ Comprehensive roadmap утверждённый 2026-05-11 — identity-driven re
 - Polish post-launch: Firefox extension port, Stripe trial/refunds/multi-currency, Hone Dock 6 focus modes, voice audio upload
 
 **Phase K Wave 8 shipped 2026-05-13** — English → web Lingua migration. Hone English-страницы (EnglishOverview / Reading / Writing / Listening / Speaking) удалены; learning переехал в web `druz9.online/lingua` (read / write / listen / speak + vocab SRS). PWA + IndexedDB vocab queue для оффлайн review (мобильный + tablet). Existing Hone users получают one-time LinguaMigrationModal с deep-link через `shell.openExternal`. Admin surface `frontend/src/pages/admin/lingua/*` для content management. Identity refined: «Hone = doing, web = learning, Cue = performing».
+
+**Phase K Wave 16 shipped 2026-05-14** — i18n унификация (web + Hone + Cue + backend LLM). Single source of truth: `users.locale` ('ru'/'en'). Backend changes: shared `backend/shared/pkg/userlocale/` (Reader interface + LRU cache + `LanguageDirective` + `ResponseLanguagePolicy`). LLM-сервисы (copilot Suggest/Analyze/Chat, intelligence brief, mock_interview judge Pass1/Pass2/Canvas) injectят language directive слотом 0 в каждый LLM call. ai_mock postgres.go теперь грузит `users.locale` через `GetUserSubscriptionAndLocale` SQL (фиксит «AI mock всегда отвечает на ru»). Frontend SettingsPage + AppShell `onLang` теперь вызывают `useUpdateSettingsMutation({locale})` — без этого fix'а UI флипался, а LLM продолжал отвечать на старом языке. Shared package `shared/i18n/` (root-level, alias `@d9-i18n`) — flat type-safe dict для Hone+Cue с zustand store, `useT()` hook, `bootstrapLocaleFromBackend()` helper. Hone Settings/appearance получил LanguageSection с backend write-through через ProfileService.UpdateSettings. Cue dead `cue/src/renderer/i18n/` удалён, GeneralTab.LocaleRow переключён на `@d9-i18n`. Storage key унифицирован на `'druz9.locale'` (legacy `'druz9_lang'` мигрируется автоматически на init). Lingua/english_hr mock — `PolicyForceEnglish` сохранён (output always English by design). Deferred polish: ~50 frontend хардкод-строк, ~95 Hone hardcoded-русский файлов, ~100 Cue hardcoded-russian-файлов, ESLint no-cyrillic rule, parity detectors — отдельный PR.

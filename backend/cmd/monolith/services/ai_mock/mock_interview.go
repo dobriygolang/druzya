@@ -12,6 +12,7 @@ import (
 	miPorts "druz9/mock_interview/ports"
 	profileInfra "druz9/profile/infra"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
+	"druz9/shared/pkg/userlocale"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -109,6 +110,7 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 		// returns a nil hook when the UC isn't wired (dev runs without
 		// intelligence) and the orchestrator short-circuits.
 		Struggle: newAtlasStruggleProducer(d.IntelligenceMarkAtlasStruggle, d.Log),
+		Locale:   userlocale.NewPostgresReader(d.Pool),
 		Now:      d.Now,
 		Log:      d.Log,
 	}
@@ -147,6 +149,18 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 		Attempts: attempts,
 		Stages:   pipelineStages,
 		Log:      d.Log,
+	}
+	// Wave 15 — post-debrief replay. attempts is shared (it implements
+	// both PipelineAttemptRepo and ReplayRepo via the new postgres_replay.go
+	// methods on the same struct).
+	server.Replay = &miApp.MockReplay{
+		D: miApp.MockReplayDeps{
+			Attempts: attempts,
+			Replays:  attempts, // same struct, dual-role interface satisfier
+			Chain:    d.LLMChain,
+			Log:      d.Log,
+			Now:      d.Now,
+		},
 	}
 
 	// Phase: incremental chi→proto migration. 4 public read endpoints

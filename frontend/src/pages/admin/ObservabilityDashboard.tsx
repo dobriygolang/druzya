@@ -34,11 +34,12 @@ import {
   type MockBlockMetricsResp,
   type TrackDistributionResp,
 } from '../../lib/queries/observability'
+import { LLMUsagePanel } from './observability/LLMUsagePanel'
 import { PanelSkeleton } from './shared'
 
 const COLLAPSE_KEY = 'druz9.admin.obs_dashboard.collapsed'
 
-type SectionId = 'llm_usage' | 'coach' | 'tracks' | 'english_hr' | 'mock_block' | 'eval'
+type SectionId = 'llm_usage' | 'llm_cost' | 'coach' | 'tracks' | 'english_hr' | 'mock_block' | 'eval'
 
 interface TaskRollup {
   Task: string
@@ -242,6 +243,16 @@ export function ObservabilityDashboard() {
             </Card>
           )}
         </ErrorBoundary>
+      </Section>
+
+      {/* ── Wave 15: LLM cost / usage breakdown ─────────────────────── */}
+      <Section
+        id="llm_cost"
+        title="Расходы нейросетей"
+        collapsed={collapsed.has('llm_cost')}
+        onToggle={toggle}
+      >
+        <LLMUsagePanel />
       </Section>
 
       {/* ── Coach intelligence ──────────────────────────────────────── */}

@@ -15,6 +15,7 @@ import (
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/metrics"
 	"druz9/shared/pkg/rediscache"
+	"druz9/shared/pkg/userlocale"
 	"time"
 
 	"connectrpc.com/connect"
@@ -94,6 +95,11 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	planR := intelInfra.NewPlanReader(d.Pool)
 	notesR := intelInfra.NewNotesReader(d.Pool)
 	externalR := intelInfra.NewExternalActivityReader(d.Pool)
+	// Phase K Wave 15 — End-of-day shutdown ritual (Hone day_shutdowns).
+	// nil-safe в GetDailyBrief.Do; пустая запись → секция в prompt'е
+	// отсутствует. Reader живёт в intelligence-infra (cross-domain), а не
+	// импортит hone-infra.
+	dayShutdownR := intelInfra.NewDayShutdownReader(d.Pool)
 	// Cross-product readers — все опциональные. Coach prompt получает
 	// сигналы и из Hone, и из druz9 (mocks/arena/kata) и из user'ского
 	// Today (queue, daily notes). См. domain/repo.go BriefPromptInput
@@ -123,7 +129,8 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		// При выставленном pin'e DailyBrief + AskNotes идут через
 		// ModelOverride — admin контролирует личность коуча явно.
 		coachCfg := intelInfra.NewDBCoachConfigReader(d.Pool)
-		synth = intelInfra.NewLLMChainBriefSynthesiser(d.LLMChain, coachCfg, d.Log)
+		localeReader := userlocale.NewPostgresReader(d.Pool)
+		synth = intelInfra.NewLLMChainBriefSynthesiser(d.LLMChain, coachCfg, localeReader, d.Log)
 		baseAnswerer := intelInfra.NewLLMChainNoteAnswerer(d.LLMChain, coachCfg, d.Log)
 		// Cost guardrail: 5-минутный Redis cache на AskNotes LLM-ответы
 		// ловит дубликаты (юзер задаёт тот же вопрос после рефреша
@@ -211,6 +218,11 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			// Huyen resource pool) когда user.primary_goal=ml_offer OR
 			// hone_user_settings.active_track=ml. nil-safe.
 			MLProfile: mlProfileR,
+			// Wave 15: 24h activity counts surface continuity context.
+			RecentActivity: intelInfra.NewRecentActivityReader(d.Pool),
+			// Phase K Wave 15 — DAY SHUTDOWN. Hone-side ритуал, intelligence
+			// читает вчерашнюю запись и кладёт coach prompt секцией.
+			DayShutdown: dayShutdownR,
 			// Share snapshot with the insight stream.
 			Insights:     generateInsightsUC,
 			InsightsPool: insightsPool,
@@ -341,17 +353,31 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	// adapter below. Goals + Episodes + ResourceEng + Mocks readers
 	// already wired above.
 	atlasReader := newAtlasReaderAdapter(d.Pool)
+	recentActivityR := intelInfra.NewRecentActivityReader(d.Pool)
 	getUserContextUC := &intelApp.GetUserContext{
 		Goals:            primaryGoalsRepo,
 		Episodes:         episodes,
 		ResourceEng:      resourceEngagementR,
 		Mocks:            mockR,
 		AtlasReader:      atlasReader,
+		RecentActivity:   recentActivityR,
 		MemoryLimit:      12,
 		MemoryWindowDays: 14,
 		Now:              d.Now,
 	}
 	server.GetUserContextUC = getUserContextUC
+
+	// ── Wave 15: Cross-vertical insights v2 ──────────────────────────
+	englishActivityR := intelInfra.NewEnglishActivityReader(d.Pool)
+	vocabLagR := intelInfra.NewVocabLagReader(d.Pool)
+	crossVertical := &intelApp.CrossVerticalInsights{
+		English: englishActivityR,
+		Vocab:   vocabLagR,
+		Mocks:   mockR,
+		Log:     d.Log,
+		Now:     d.Now,
+	}
+	server.CrossVerticalInsightsUC = crossVertical
 
 	if d.LLMChain != nil {
 		server.NextActionUC = &intelApp.GetNextAction{
@@ -365,6 +391,7 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			tracks:           trackR,
 			focusReflections: focusReflectionsRepo,
 			mlProfile:        mlProfileR,
+			recentActivity:   recentActivityR,
 		}
 	}
 

@@ -348,11 +348,58 @@ func (r *TaskRepo) ListAutoCategorisable(ctx context.Context, userID uuid.UUID, 
 	return out, nil
 }
 
+// Schedule pins a task to a calendar slot. Phase K Wave 15 — time-blocking.
+func (r *TaskRepo) Schedule(ctx context.Context, userID, taskID uuid.UUID, start time.Time, durationMin int) (domain.Task, error) {
+	if durationMin < 15 || durationMin > 480 {
+		return domain.Task{}, fmt.Errorf("hone.TaskRepo.Schedule: %w: duration_min out of range (15..480)", domain.ErrInvalidInput)
+	}
+	row := r.pool.QueryRow(ctx, `
+        UPDATE hone_tasks
+           SET scheduled_start = $3,
+               scheduled_duration_min = $4,
+               updated_at = now()
+         WHERE id = $1 AND user_id = $2
+        RETURNING `+taskColumns,
+		sharedpg.UUID(taskID), sharedpg.UUID(userID),
+		pgtype.Timestamptz{Time: start.UTC(), Valid: true},
+		int32(durationMin),
+	)
+	t, err := scanTask(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Task{}, domain.ErrNotFound
+		}
+		return domain.Task{}, fmt.Errorf("hone.TaskRepo.Schedule: %w", err)
+	}
+	return t, nil
+}
+
+// Unschedule clears the calendar pin on a task.
+func (r *TaskRepo) Unschedule(ctx context.Context, userID, taskID uuid.UUID) (domain.Task, error) {
+	row := r.pool.QueryRow(ctx, `
+        UPDATE hone_tasks
+           SET scheduled_start = NULL,
+               scheduled_duration_min = NULL,
+               updated_at = now()
+         WHERE id = $1 AND user_id = $2
+        RETURNING `+taskColumns,
+		sharedpg.UUID(taskID), sharedpg.UUID(userID))
+	t, err := scanTask(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Task{}, domain.ErrNotFound
+		}
+		return domain.Task{}, fmt.Errorf("hone.TaskRepo.Unschedule: %w", err)
+	}
+	return t, nil
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────
 
 const taskColumns = `id, user_id, status, kind, source, title, brief_md,
         skill_key, deep_link, recommended_reading, priority, due_at,
-        created_at, updated_at, completed_at, dismissed_at, manual_kind_override`
+        created_at, updated_at, completed_at, dismissed_at, manual_kind_override,
+        scheduled_start, scheduled_duration_min`
 
 const taskSelect = `SELECT ` + taskColumns + ` FROM hone_tasks`
 
@@ -370,11 +417,14 @@ func scanTask(s pgx.Row) (domain.Task, error) {
 		createdAt, updatedAt time.Time
 		completedAt, dismAt  pgtype.Timestamptz
 		manualOverride       bool
+		schedStart           pgtype.Timestamptz
+		schedDuration        pgtype.Int4
 	)
 	if err := s.Scan(
 		&id, &uid, &status, &kind, &source, &title, &briefMD,
 		&skillKey, &deepLink, &recommendedReading, &priority, &dueAt,
 		&createdAt, &updatedAt, &completedAt, &dismAt, &manualOverride,
+		&schedStart, &schedDuration,
 	); err != nil {
 		return domain.Task{}, fmt.Errorf("hone.scanTask: %w", err)
 	}
@@ -402,6 +452,13 @@ func scanTask(s pgx.Row) (domain.Task, error) {
 	if dismAt.Valid {
 		ts := dismAt.Time
 		t.DismissedAt = &ts
+	}
+	if schedStart.Valid {
+		ts := schedStart.Time
+		t.ScheduledStart = &ts
+	}
+	if schedDuration.Valid {
+		t.ScheduledDurationMin = int(schedDuration.Int32)
 	}
 	return t, nil
 }
