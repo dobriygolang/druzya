@@ -1,8 +1,4 @@
-// WritingPage — Phase K W8 port of Hone Writing.
-//
 // Title + textarea + «Get feedback» → LLM grading с per-issue Apply Fix.
-// No persistence (web-only state). Phase K W9: AICoachPill (per-issue +
-// overall) — coach explains rubric criterion + how to fix in general.
 import { useCallback, useMemo, useState } from 'react'
 
 import { AICoachPill } from '../../components/AICoachPill'

@@ -1,5 +1,3 @@
-// queries/whiteboard.ts — solo-mode whiteboard CRUD (D4 Stream F, 2026-05-12).
-//
 // Peer-collab WS was dropped together with Hone SharedBoards.tsx; what
 // remains is plain REST persistence over the existing whiteboard_rooms
 // service. The room id is the document id, the title is the document

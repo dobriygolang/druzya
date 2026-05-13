@@ -136,7 +136,6 @@ export function useCheckoutSessionQuery(sessionId: string | null | undefined) {
 // useCancelSubscriptionMutation — выставляет cancel_at_period_end=true.
 // До period_end юзер сохраняет Pro доступ; после — webhook deleted
 // откатит tier. После success — invalidate tier-info так чтобы UI
-// показал badge «cancelled, ends 2026-06-12».
 export function useCancelSubscriptionMutation() {
   const qc = useQueryClient()
   return useMutation({

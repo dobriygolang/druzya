@@ -177,7 +177,7 @@ func NewSemanticCache(rds *redis.Client, embedder Embedder, opts Options) Cache 
 		closed:       make(chan struct{}),
 	}
 	sc.workersWG.Add(opts.AsyncStoreWorkers)
-	for i := 0; i < opts.AsyncStoreWorkers; i++ {
+	for range opts.AsyncStoreWorkers {
 		go sc.storeWorker()
 	}
 	return sc

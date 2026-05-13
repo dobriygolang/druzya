@@ -1,14 +1,9 @@
 // TrayScreen — custom HTML tray dropdown.
 // All actions route through the same IPC APIs as app buttons/hotkeys.
-//
-// 2026-05-12: v2 visual language — hover blue (#0a84ff system blue)
-// заменён на ink-ramp 8% tint (b/w rule). PrototypeMark inner circle —
-// red signal dot (canonical accent) вместо системного синего.
 
 import { useEffect, useState } from 'react';
 
 // CSS injection — hover background uses ink-ramp 8% via --d9-hairline,
-// the canonical white-alpha 8% token (b/w rule, see memory/feedback_color_rule.md).
 const trayStyle = `
 @keyframes d9-tray-in {
   from { opacity: 0; transform: translateY(-6px); }
@@ -102,10 +97,6 @@ export function TrayScreen() {
         await window.druz9.hotkeys.trigger('cursor_freeze_toggle');
         break;
       case 'session':
-        // CI1: wrap session start/end в try/catch + toast. Silent fail
-        // здесь = юзер думает что сессия закрылась, а на бэке всё ещё
-        // running (или vice-versa). Tray pop'ает + sessionLive optimistic
-        // обновляется, на error катимся обратно.
         if (sessionLive) {
           try {
             await window.druz9.sessions.end();

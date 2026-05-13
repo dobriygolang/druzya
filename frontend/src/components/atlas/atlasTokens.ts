@@ -9,7 +9,6 @@
 // All colours match design-system tokens (frontend/src/lib/cn.ts / tailwind
 // theme). Hex literals are intentional here — SVG gradients can't consume
 // CSS variables directly under all browsers, and these values are stable
-// в dark theme (light theme killed Phase J 2026-05-12, dark-only forever).
 
 export type AtlasNodeKind = 'hub' | 'keystone' | 'notable' | 'small'
 

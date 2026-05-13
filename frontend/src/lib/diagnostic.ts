@@ -1,12 +1,8 @@
-// diagnostic.ts — F9 (Phase B+C) Diagnostic Quiz multi-track.
-//
 // Цель: replace Atlas-Pokedex first impression. Юзер выбирает track (Go /
 // ML / English), отвечает на 8 quick questions → heuristic resolver выдаёт
 // (a) suggested goal preset для F2 GoalWizard и (b) 3 first-week actions.
 //
 // Backend-free: questions hard-coded per-track, mapping детерминированный.
-// Когда Phase C ship'нет TaskAtlasClassify / TaskCustomPathGenerate,
-// заменим resolver'а на LLM call но сохраним same answer shape.
 
 import type { GoalKind, TopTierCompany, UserGoal } from './goal'
 

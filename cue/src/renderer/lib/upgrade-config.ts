@@ -1,5 +1,3 @@
-// X2 (P0) — Pro upgrade + BYOK URLs used by Cue UpgradeModal.
-//
 // These are duplicated from `main/config/bootstrap.ts` because the
 // renderer doesn't import main-process modules. Acceptable trade-off:
 // these are compile-time-stable production URLs, override через Vite env

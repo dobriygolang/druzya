@@ -4,9 +4,6 @@
 // Atlas. The mutation tolerates backend 404 (endpoint may not be
 // deployed yet); on success, profile cache is invalidated so /sanctum
 // reflects the new focus class.
-//
-// 2026-05-12: v2 visual language — hairline cards, selection = white
-// border + red signal dot in corner, type tokens, motion-press.
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -14,9 +11,6 @@ import { useNavigate } from 'react-router-dom'
 import { OnboardingLayout } from './_shared/Layout'
 import { useOnboarding, type FocusClass } from './_shared/useOnboarding'
 
-// Identity 2026-05-04: arena ELO выпилен. Вместо ELO band показываем
-// прикидочный объём подготовки в часах — это полезный сигнал для
-// планирования, не legacy-rating.
 const CLASSES: {
   id: FocusClass
   title: string

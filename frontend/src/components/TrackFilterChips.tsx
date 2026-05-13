@@ -1,7 +1,5 @@
 // TrackFilterChips — reusable «3 equal tracks» filter for surfaces
 // that need to scope content по Go / ML / English / Cross-cutting
-// (identity rebalance UI, Phase K 6.1 2026-05-13).
-//
 // Visual: hairline B/W chips, active = filled ink, inactive = hairline +
 // secondary text. The «All» chip is rendered first when `showAll` is on;
 // pressing it clears the selection (== «show everything»). Pressing a

@@ -1,14 +1,8 @@
-// dailyPlan.ts — F7 (Phase C) MVP daily plan engine.
-//
 // Цель: generate 3-5 actions per day на основе (a) F2 goal kind/company,
 // (b) F3 readiness pct (low → focus learning, high → focus practice),
 // (c) F9 diagnostic weakest area, (d) daily budget (из F9 diagnostic).
 //
 // Plan'ит ровно один день за раз — стек MVP не покрывает weekly milestones
-// (тот scope в Phase C — F2 goal_milestones table). Каждое утро (или manual
-// refresh) — fresh plan.
-//
-// Backend-free MVP: deterministic mapping. Когда Phase C ship'нет
 // `GetDailyPlan` UC + LLM milestone decomposition, swap engine но keep
 // shape стабильным.
 
@@ -183,7 +177,6 @@ function buildCandidates(
     })
   } else if (midReadiness && Math.random() > 0.4) {
     // Mid-readiness: mock примерно каждый второй день. Math.random для
-    // variety; deterministic alternative — даты parity. Sergey 2026-05-12:
     // MVP-OK seedless random.
     candidates.push({
       id: 'mock-checkpoint-today',

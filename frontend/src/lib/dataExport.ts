@@ -1,8 +1,5 @@
 // dataExport — localStorage MVP data backup/restore.
 //
-// Зачем: пока backend persistence не shipped (Phase C+), весь user state
-// (goal, activity log, diagnostic, mini-mock, cue sessions, plan-done set)
-// живёт в localStorage. Юзер чистит браузер / меняет device → теряет всё.
 // Этот модуль bundle'ит весь state в один portable JSON file.
 //
 // Когда backend ship'нет:

@@ -1,5 +1,3 @@
-// goal.ts — F2 (2026-05-12) primary goal store для Hone.
-//
 // Offline-first contract:
 //   - localStorage `hone:primary_goal:v1` — last-known goal (instant render).
 //   - hydrate() — read из backend, fills/replaces local cache. 404 → clear.

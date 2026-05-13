@@ -1,5 +1,3 @@
-// TutorStudentPage — Wave 2.6.
-//
 // Route: /tutor/students/:id
 //
 // Two-tab layout:
@@ -461,7 +459,6 @@ function formatRelative(iso: string): string {
   return d.toLocaleDateString()
 }
 
-// ── Assignments pane (Wave 5.1) ────────────────────────────────────────
 
 function AssignmentsPane({ studentId }: { studentId: string | undefined }) {
   if (!studentId) return <ErrorCard message="Student id не указан в URL." />
@@ -648,8 +645,6 @@ function assignmentStatus(a: TutorAssignment): 'open' | 'overdue' | 'completed' 
   return 'open'
 }
 
-// ── English pane (Wave pivot 2026-05-03) ──────────────────────────────
-//
 // Тутор-side focused dashboard для English-track студента. Reads existing
 // TutorStudentSnapshot и показывает ТОЛЬКО English axes (Reading /
 // Vocabulary / Writing / Listening / English mocks) — без шума focus

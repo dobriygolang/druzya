@@ -46,7 +46,6 @@ export interface MemoryStats {
   byKind: Record<string, number>;
 }
 
-// MemoryEntry — single timeline row для /memory page (Phase B preview).
 // Mirrors proto MemoryEntry; source = 'hone' | 'cue' | 'mock' | 'coach'
 // for grouping. importance reserved для будущей weighting (0 = unscored).
 export interface MemoryEntry {
@@ -208,8 +207,6 @@ export async function getMemoryStats(): Promise<MemoryStats> {
   return { total30d: resp.total30d, byKind };
 }
 
-// listMemoryEntries — Phase B preview: pull последних N memory entries для
-// /memory timeline page. kind = "" → all kinds.
 export async function listMemoryEntries(
   args: { kind?: string; limit?: number; offset?: number } = {},
 ): Promise<{ items: MemoryEntry[]; total: number }> {
@@ -343,7 +340,6 @@ export async function listRecentBriefs(days = 30): Promise<RecentBrief[]> {
   }
 }
 
-// ── Phase 2 learning-companion (2026-05-04) ────────────────────────────
 
 export type ActionKind =
   | 'focus_block'
@@ -552,8 +548,6 @@ export async function getSkillRadar(rubric?: string): Promise<SkillRadar> {
 
 // ── Phase 2 finalizer: snapshot stats ──────────────────────────────────
 
-// CoachStats — Arena/Lobby final purge 2026-05-06: streakDays /
-// nextMockInDays / nextMockCompany dropped from the proto and this shape.
 // The "next mock" snapshot tile collapsed to a static placeholder client-side.
 export interface CoachStats {
   focusTodayMin: number;
@@ -570,8 +564,6 @@ export async function getCoachStats(): Promise<CoachStats> {
   };
 }
 
-// ── F2 Primary goal (2026-05-12) ────────────────────────────────────────
-//
 // Mirror web's lib/queries/primaryGoal.ts: hits chi-direct REST endpoints
 // (google.api.http transcoding) с snake_case wire shape. 404 на active GET
 // → null (no goal yet). Connect-RPC client намеренно не использется — wire
@@ -650,8 +642,6 @@ export async function updateGoal(body: UpdatePrimaryGoalBody): Promise<PrimaryGo
   return (await resp.json()) as PrimaryGoal;
 }
 
-// ── H2 Focus reflection persistence (Phase J 2026-05-12) ────────────────
-//
 // Hone end-of-pomodoro reflection prompt раньше собирал grade + notes,
 // но они не сохранялись. Эти wrappers закрывают loop: save через RPC
 // (online) или outbox (offline → retry on reconnect), list для grade-trend
@@ -727,8 +717,6 @@ function clampGrade(g: number): number {
   return r;
 }
 
-// ── Phase J / X1 (P0) install tracking (single onboarding funnel) ──────
-//
 // Hone fires `recordAppInstall` once on startup (after auth) so the
 // backend knows the user actually launched the desktop app. First call
 // across all 3 surfaces (web/hone/cue) issues a 7-day Pro trial; the

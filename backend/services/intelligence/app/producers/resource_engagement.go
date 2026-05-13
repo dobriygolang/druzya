@@ -82,12 +82,9 @@ func unhelpfulEvidence(touches []domain.ResourceTouch) string {
 	if len(touches) == 0 {
 		return ""
 	}
-	limit := 3
-	if len(touches) < limit {
-		limit = len(touches)
-	}
+	limit := min(3, len(touches))
 	out := ""
-	for i := 0; i < limit; i++ {
+	for i := range limit {
 		if i > 0 {
 			out += "; "
 		}

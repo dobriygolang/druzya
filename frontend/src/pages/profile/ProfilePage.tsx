@@ -1,9 +1,4 @@
-// ProfilePage — pivot 2026-05-02 redesign.
-//
 // Старая страница строилась под arena rating system (GPS / Vessel / Lv /
-// matches / brones). После pivot 2026-05-01 arena/lobby/rating выпилены —
-// эти carды стали мёртвой UX'ой («у тебя 0 матчей и Lv 24 ни от чего»).
-//
 // Новая identity: AI-coach + free tutor-toolkit + mock prep. Profile —
 // «дашборд подготовки»:
 //   1. Header: имя, аватар, member-since, settings link

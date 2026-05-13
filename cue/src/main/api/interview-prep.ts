@@ -1,7 +1,5 @@
 // Desktop-side wrapper for the Cue interview-prep RPCs.
 //
-// Phase J / C6 (P1) — single-active per user. Cue's main process owns
-// the bearer auth; the renderer goes through these REST endpoints via
 // IPC so the renderer never sees the token.
 //
 // REST (not Connect-RPC) for the same reason sessions.ts does: four

@@ -1,9 +1,3 @@
-// MemoryTimeline — Phase B preview surface для identity «AI-coach с памятью».
-//
-// Brainstorm 2026-05-12: «memory-as-UX prototype» — единый экран что Coach
-// знает про юзера, grouped by source (Hone / Cue / mock / coach). Без этого
-// identity «AI-coach с памятью» не materialize'тся в mental model юзера.
-//
 // Rendering:
 //   - header: total count + by-source chips (filter)
 //   - timeline: groups by day (today / yesterday / ISO date), within group
@@ -12,7 +6,6 @@
 //     приходят side-effect'ом этих actions.
 //
 // Privacy: юзер может soft-delete entry (server hides from coach reads but
-// keeps row для audit). Edit ещё не wired здесь — это Phase B+ scope.
 import React, { useMemo, useState } from 'react';
 
 import { listMemoryEntries, deleteMemoryEntry, type MemoryEntry } from '../api/intelligence';

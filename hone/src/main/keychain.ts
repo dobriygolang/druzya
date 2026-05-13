@@ -7,10 +7,6 @@
 //   gnome-keyring / Windows Credential Vault) через приложение, без
 //   native deps.
 //
-// TODO (Phase J / X1): Hone и Cue не делят keychain entry — `auth.bin`
-// здесь vs `session.json` в Cue. `app.getPath('userData')` per-app
-// (Electron изолирует через productName) → cross-app SSO требует
-// миграцию обоих на OS-level keychain entry с shared key name
 // «druz9-auth-token». Из-за potential auth-loss риск для уже
 // залогиненных юзеров делаем отдельным миграционным PR'ом. Текущий
 // flow: оба приложения логинят пользователя через web-OAuth (druz9://

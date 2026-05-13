@@ -1,5 +1,3 @@
-// InstallHoneCTA — Phase J / X1 (P0) "Install Hone" step on /all-set.
-//
 // Sits between the "Запусти первый mock" card and the ghost-pill links.
 // B/W only. Hairline border, apple icon, ghost dismiss link. The CTA
 // opens the DMG download URL — actual binary is hosted on the GitHub

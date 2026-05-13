@@ -1,3 +1,5 @@
+//go:generate mockgen -package mocks -destination mocks/ab_experiments_mock.go -source ab_experiments.go
+
 // ab_experiments.go — Admin Phase 2: A/B experiment entity + repo port.
 //
 // Minimal scaffolding для admin surface. Variant rollout logic,

@@ -75,12 +75,8 @@ export function ProGate({ feature = 'generic', fallback, children }: ProGateProp
 
 // InlinePrompt — компактный upgrade-блок. B/W: левая полоса 1.5px белого,
 // .indicator-dot — единственный 6px красный кружок (брендовая точка,
-// не gradient/fill). См memory/feedback_color_rule.md.
 function InlinePrompt({ feature }: { feature: FeatureKey }) {
   const copy = FEATURE_COPY[feature]
-  // Phase J / X3 — fire upgrade_modal_shown once per mount. `feature`
-  // bucket is categorical (whitelisted in FeatureKey union) → safe to
-  // send без sanitization concerns.
   useEffect(() => {
     analytics.track(ANALYTICS_EVENTS.upgrade_modal_shown, { feature })
   }, [feature])

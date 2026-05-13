@@ -21,9 +21,6 @@ export type HotkeyAction =
   | 'move_window_right'
   | 'move_window_up'
   | 'move_window_down'
-  // Wave 6.2 — Cue English mode. Reads the clipboard, calls
-  // GradeEnglishWriting (Wave 4.4 backend), opens a mini-window with
-  // the structured feedback. Default chord ⌃⇧L; user can rebind in
   // Settings.
   | 'english_polish';
 

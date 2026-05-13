@@ -1,5 +1,3 @@
-// Calendar — Wave 5.2b student-side surface for tutor-scheduled events.
-//
 // Layout: vertical column.
 //   - Header copy
 //   - Empty / loading / error states
@@ -8,10 +6,6 @@
 // Polls upcoming events every 60 s + on window focus (matches the
 // HomePage chip refresh cadence). Events render in the viewer's local
 // timezone — backend stores UTC, we re-render via toLocaleString.
-//
-// 2026-05-12: v2 visual language — hairline cards, status stripes via
-// ink-ramp + var(--red) only (was green/yellow/blue/purple violating
-// b/w + red rule), caption-mono 0.08em canonical.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -88,10 +82,6 @@ const captionMonoTiny: React.CSSProperties = {
 
 export function CalendarPage() {
   const [state, setState] = useState<State>(INITIAL);
-  // X2 (P0) — Pro gate для двух-сторонней Google Calendar sync. Banner
-  // показывается только на free tier; click → UpgradeModal с calendar_sync
-  // context'ом. Сам sync flow живёт в Settings → Integrations (TODO когда
-  // backend GoogleCalendarIntegration RPC будет ready).
   const tier = useQuotaStore((s) => s.tier);
 
   const refresh = useCallback(async () => {

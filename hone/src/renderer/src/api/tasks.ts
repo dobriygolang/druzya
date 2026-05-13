@@ -17,8 +17,6 @@ function authHeaders(): Record<string, string> {
 }
 
 export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done' | 'dismissed';
-// TaskKind — Phase K M7 (2026-05-13) extended с `ml` для ML/MLE work items
-// (model design, training pipeline, MLOps, paper-with-impl, fine-tuning,
 // RAG). См. backend/services/hone/domain/task.go TaskKindML +
 // proto/druz9/v1/hone.proto TaskKind enum.
 export type TaskKind = 'algo' | 'sysdesign' | 'quiz' | 'reflection' | 'reading' | 'ml' | 'custom';
@@ -38,9 +36,6 @@ export interface TaskCard {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
-  // Phase J / H3 (P1, 2026-05-12): user-asserted kind flag. When true,
-  // background re-categorisers (BulkAutoCategorise, coach_listener) skip
-  // this card. Set via updateTaskKind(taskId, kind, /*manualOverride*/ true).
   manualKindOverride?: boolean;
 }
 
@@ -133,7 +128,6 @@ export async function addTaskComment(taskId: string, bodyMd: string): Promise<Ta
   return (await resp.json()) as TaskComment;
 }
 
-// ─── Phase J / H3 (P1, 2026-05-12) — manual override + bulk categorise ──
 
 // updateTaskKind — manual chip-picker path. Flips manual_kind_override=true
 // on the server so background re-categorisers skip this card going forward.
@@ -279,8 +273,6 @@ export type CursorEventKind =
   | 'card.thinking'
   | 'card.comment'
   | 'card.move'
-  // Phase J / H3 — emitted by CreateTask / BulkAutoCategorise когда LLM
-  // присваивает kind. Frontend показывает CategorizeToast.
   | 'card.categorise';
 
 export interface CursorEvent {
@@ -290,7 +282,6 @@ export interface CursorEvent {
   fromColumn?: TaskStatus;
   body?: string;
   occurredAt: string;
-  // Phase J / H3 — card.categorise payload extension.
   detectedKind?: TaskKind;
   confidence?: number;
 }

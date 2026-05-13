@@ -10,11 +10,6 @@
 // Skip is opt-in per step via the onSkip prop; Steps 3 & 4 pass it,
 // Steps 1, 2, 5 don't. Persistence (where in the flow we are) lives in
 // useOnboarding — Layout is purely visual.
-//
-// 2026-05-12: applied v2 visual language — hairline header (no surface
-// fill on logo box), caption-mono uppercase for back/skip, motion-tokens,
-// focus-ring on focusables, density tokens for spacing. Page wrapped in
-// staggerContainer for entry choreography.
 
 import { type ReactNode } from 'react'
 import { ArrowLeft } from 'lucide-react'

@@ -1,7 +1,5 @@
 // StepPath — Wave «hybrid path»: preset OR custom.
 //
-// Sergey 2026-05-03: «при выборе трека спрашивает по какому пути хочешь
-// пойти (есть готовый атлас) либо пользователь сам себе назначает трек.
 // Также было бы круто взять готовый путь и потом редактировать —
 // например путь устраивает, но математику знает и не хочет повторять».
 //
@@ -15,9 +13,6 @@
 // отдельной волной (Phase 3 в roadmap'е).
 //
 // После save → /today (новый landing).
-//
-// 2026-05-12: v2 visual language — hairline preset cards, accent icons
-// neutralized (was `text-accent`), caption-mono labels 0.08em canonical.
 
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, BookOpen, Sparkles } from 'lucide-react'

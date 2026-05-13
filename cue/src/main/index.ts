@@ -135,7 +135,6 @@ app.whenReady().then(async () => {
     },
   });
 
-  // Phase J / X1 (P0) — install heartbeat. Idempotent: backend uses
   // ON CONFLICT to refresh last_seen_at. First install across all 3
   // surfaces issues a 7-day Pro trial; we silently log here, the
   // renderer can show the celebratory toast when it asks for tier-info.
@@ -150,22 +149,12 @@ app.whenReady().then(async () => {
   });
 
   // Spawn CursorHelper Swift binary (CGAssociateMouseAndMouseCursorPosition
-   // wrapper). Used by area-screenshot flow to freeze the system cursor
-   // so viewer'ы при demo-share не видят как мы драгаем прямоугольник
-   // выделения. Если бинарь не найден — фича silently disabled, остальное
-   // приложение работает.
   const { bootstrap: cursorBootstrap } = await import('./cursor/freeze-bridge');
   cursorBootstrap();
 
   ensureTray({ resourcesPath, windowOptions });
 
   // Register druz9:// protocol scheme + open-url / second-instance
-  // listeners. Used by Hone-companion: when the user clicks "Start Cue"
-  // on a meeting note, Hone fires `druz9://cue/open?file=<path>` and we
-  // surface it to renderer via 'cue:openSession' channel. Pass the
-  // compact window (created by showWindow below) — but here we pass null
-  // because window isn't yet created; updated later from window-manager.
-  // (The handler queues the URL via `pendingUrl` until renderer asks.)
   registerDeepLinks(null);
 
   setHotkeyHandler(async (action) => {
@@ -205,9 +194,6 @@ app.whenReady().then(async () => {
       return;
     }
     if (action === 'english_polish') {
-      // Wave 6.2 — open the panel anchored top-right, then forward the
-      // hotkey-fired event so the renderer triggers the auto-grade flow
-      // on mount (clipboard read happens renderer-side via navigator).
       const win = showWindow('english-polish', windowOptions);
       win.webContents.send(eventChannels.hotkeyFired, { action });
       win.show();
@@ -252,8 +238,6 @@ app.whenReady().then(async () => {
     { action: 'move_window_right', accelerator: 'CommandOrControl+Alt+Right' },
     { action: 'move_window_up', accelerator: 'CommandOrControl+Alt+Up' },
     { action: 'move_window_down', accelerator: 'CommandOrControl+Alt+Down' },
-    // Wave 6.2 — Cue English mode. ⌃⇧L (CmdOrCtrl+Shift+L) opens the
-    // polish panel; renderer reads the clipboard on mount.
     { action: 'english_polish', accelerator: 'CommandOrControl+Shift+L' },
   ]);
 

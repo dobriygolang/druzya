@@ -1,10 +1,3 @@
-// MilestonesCard — F2 Phase B/C weekly roadmap. Shows 10-12 milestones
-// generated deterministically из goal kind + targetDate. Each milestone
-// toggle-able «done» — progress visible через filled count + bar.
-//
-// 2026-05-12: heuristic templates. Когда backend LLM `GenerateMilestones`
-// ship'нет (Phase C), source swap'ится но shape остаётся.
-//
 // Hidden когда no goal — anti-fallback (нет смысла предлагать roadmap
 // без целевой даты).
 

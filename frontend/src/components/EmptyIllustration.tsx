@@ -5,7 +5,6 @@
 // Why inline SVG vs sprite/atlas: each illustration is ~10 lines, no
 // network round-trip, easy to swap colour via CSS vars. The `<svg>`s use
 // `currentColor`-friendly hex from our tokens — они не theme-flip потому
-// что light theme killed Phase J 2026-05-12 (dark-only across surfaces).
 
 import type { JSX } from 'react'
 import type { EmptyVariant } from './EmptyState'

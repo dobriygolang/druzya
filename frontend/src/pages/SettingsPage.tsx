@@ -294,8 +294,6 @@ function IntegrationRow({
 
 function AppearanceCard() {
   const { t } = useTranslation('settings')
-  // Theme picker removed CI4 2026-05-11 + finalised Phase J 2026-05-12.
-  // Light theme killed forever (B/W only — memory/feedback_color_rule.md).
   // Card retained для language picker; theme — single read-only label.
   // NOTE: keep coordinated with analytics toggle (parallel Agent Q context).
   const [, force] = useState(0)
@@ -356,8 +354,6 @@ function AppearanceCard() {
 
 // Dev-only: lets QA flip the simulated subscription tier so the voice gate
 // (premium-only TTS) can be exercised end-to-end against MSW. The handler
-// Legacy DevTierCard removed — replaced by the real DevTierSwitchCard
-// inside BillingTab which calls POST /admin/subscriptions/set-tier.
 // Local-storage tier hack is a footgun (handlers don't read it).
 
 // AICoachCard — per-user picker for the OpenRouter model that generates the
@@ -474,9 +470,6 @@ function AICoachCard() {
   )
 }
 
-// R8 (Phase A W3 — 2026-05-11): URL ?tab=X support так что /profile → Settings
-// deep-links могут открывать конкретный раздел. Полное merge /profile + /settings
-// → /profile (plan R8) отложено; minimal step — URL routability сейчас.
 const TAB_IDS = new Set<NavId>([
   'account', 'tracks', 'billing', 'integrations',
   'notifications', 'ai', 'privacy', 'appearance', 'danger',
@@ -629,7 +622,6 @@ function PrivacyCard() {
   )
 }
 
-// AnalyticsConsentCard — Phase J / X3 (P1).
 // 3 controls: opt-in toggle + export-events + delete-events.
 //   - Toggle: localStorage caches + backend SetConsent для cross-device sync.
 //   - Export: GET /api/v1/telemetry/export → JSON blob download.

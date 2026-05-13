@@ -22,10 +22,11 @@
 package intelligence
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	intelApp "druz9/intelligence/app"
@@ -145,12 +146,12 @@ func (a *atlasReaderAdapter) TopRelevantNodes(
 		return nil, fmt.Errorf("intelligence.atlasReaderAdapter rows: %w", err)
 	}
 
-	sort.SliceStable(scoredNodes, func(i, j int) bool {
-		if scoredNodes[i].score != scoredNodes[j].score {
-			return scoredNodes[i].score > scoredNodes[j].score
+	slices.SortStableFunc(scoredNodes, func(a, b scored) int {
+		if a.score != b.score {
+			return cmp.Compare(b.score, a.score) // desc by score
 		}
 		// Ties: smaller total_count first (quicker win).
-		return scoredNodes[i].total < scoredNodes[j].total
+		return cmp.Compare(a.total, b.total)
 	})
 
 	if len(scoredNodes) > limit {

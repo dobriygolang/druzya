@@ -6,10 +6,6 @@
 //      (не red, не pulsate); если не running — пусто как раньше
 //   3. Reflection-prompt — после auto-end таймера, inline в нижнем правом
 //      углу, не модалка-блокер
-//
-// 2026-05-12: v2 visual language — letter-spacing 0.08em canonical (was
-// mix of 0.14/0.18/0.22), hairline tokens (var(--hair)/--hair-2 instead
-// of inline rgba), motion tokens for transitions, focus-ring on inputs.
 
 import { memo, useEffect, useRef, useState } from 'react';
 
@@ -25,15 +21,10 @@ interface HomePageProps {
   pinnedTitle: string | null;
   reflectionPrompt: ReflectionPrompt | null;
   onStop: () => void;
-  // H2 (Phase J 2026-05-12) — grade ∈ [1,5] или 0 (juzer skipped grade,
-  // submitted notes only). undefined never passed — caller всегда подставляет 0.
   onSubmitReflection: (text: string, grade: number) => void | Promise<void>;
   onDismissReflection: () => void;
 }
 
-// R10 (Phase A 2026-05-12) — subtle persistent timer на верхнем правом
-// показывает mm:ss tick-by-tick, поэтому remain должна re-render каждую
-// секунду когда running. Idle case (running=false) — remain игнорим.
 function homeArePropsEqual(a: HomePageProps, b: HomePageProps): boolean {
   if (a.running !== b.running) return false;
   if (a.pinnedTitle !== b.pinnedTitle) return false;
@@ -179,7 +170,6 @@ function ReflectionInline({
   onDismiss: () => void;
 }) {
   const [value, setValue] = useState('');
-  // H2 (Phase J 2026-05-12) — grade 0 = "no rating", 1..5 = explicit.
   // Юзер может submit'ить только notes без grade — тогда grade=0 уезжает,
   // backend сохраняет NULL в grade column.
   const [grade, setGrade] = useState(0);
@@ -337,7 +327,6 @@ function ReflectionInline({
         </button>
         <button
           onClick={() => void submit()}
-          // H2 (Phase J): grade OR notes — either один enough to submit.
           // Plain dismiss = explicit decline; SAVE on either lever closes loop.
           disabled={submitting || (!value.trim() && grade === 0)}
           className="focus-ring motion-press"

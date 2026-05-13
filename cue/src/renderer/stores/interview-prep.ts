@@ -1,5 +1,3 @@
-// stores/interview-prep.ts — Phase J / C6 (P1).
-//
 // Zustand store that owns:
 //   - wizard step state (cv / jd / review / launch);
 //   - parsed CV / JD shapes (filled by ParseCV / ParseJD calls);

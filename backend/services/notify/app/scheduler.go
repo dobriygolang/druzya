@@ -190,10 +190,7 @@ func (s *WeeklyReportScheduler) fireOnce(ctx context.Context, at time.Time) {
 				slog.Int("remaining", len(users)-start))
 			return
 		}
-		end := start + weeklyFanoutChunkSize
-		if end > len(users) {
-			end = len(users)
-		}
+		end := min(start+weeklyFanoutChunkSize, len(users))
 		s.publishBatch(ctx, users[start:end], at)
 		if end < len(users) {
 			select {

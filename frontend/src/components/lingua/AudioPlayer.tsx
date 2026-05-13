@@ -1,6 +1,3 @@
-// AudioPlayer — Phase K W8 web-port. Used by both Listening (transcript +
-// audio) и Speaking (reference TTS + recorded blob playback).
-//
 // Two flavours:
 //   • <AudioPlayer src="..."> — plays backend-served TTS asset.
 //   • <BlobPlayer blob={blob}> — plays local recording.

@@ -6,38 +6,15 @@ import (
 	"testing"
 
 	"druz9/admin/domain"
+	"druz9/admin/domain/mocks"
 
-	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-type fakeNotifTplRepo struct {
-	list      []domain.NotificationTemplate
-	createIn  domain.NotificationTemplateUpsert
-	createOut domain.NotificationTemplate
-	listErr   error
-	createErr error
-}
-
-func (f *fakeNotifTplRepo) List(_ context.Context, _ string, _ bool) ([]domain.NotificationTemplate, error) {
-	return f.list, f.listErr
-}
-func (f *fakeNotifTplRepo) GetByID(_ context.Context, _ uuid.UUID) (domain.NotificationTemplate, error) {
-	return domain.NotificationTemplate{}, domain.ErrNotFound
-}
-func (f *fakeNotifTplRepo) Create(_ context.Context, in domain.NotificationTemplateUpsert) (domain.NotificationTemplate, error) {
-	f.createIn = in
-	return f.createOut, f.createErr
-}
-func (f *fakeNotifTplRepo) Update(_ context.Context, _ uuid.UUID, _ domain.NotificationTemplatePatch) (domain.NotificationTemplate, error) {
-	return domain.NotificationTemplate{}, nil
-}
-func (f *fakeNotifTplRepo) Deactivate(_ context.Context, _ uuid.UUID) error {
-	return nil
-}
 
 func TestCreateNotificationTemplate_RejectsBadChannel(t *testing.T) {
 	t.Parallel()
-	uc := &CreateNotificationTemplate{Repo: &fakeNotifTplRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &CreateNotificationTemplate{Repo: mocks.NewMockNotificationTemplateRepo(ctrl)}
 	_, err := uc.Do(context.Background(), domain.NotificationTemplateUpsert{
 		Slug: "x", Channel: "fax", BodyTemplate: "hi",
 	})
@@ -48,7 +25,8 @@ func TestCreateNotificationTemplate_RejectsBadChannel(t *testing.T) {
 
 func TestCreateNotificationTemplate_EmailRequiresSubject(t *testing.T) {
 	t.Parallel()
-	uc := &CreateNotificationTemplate{Repo: &fakeNotifTplRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &CreateNotificationTemplate{Repo: mocks.NewMockNotificationTemplateRepo(ctrl)}
 	_, err := uc.Do(context.Background(), domain.NotificationTemplateUpsert{
 		Slug: "x", Channel: domain.NotificationChannelEmail, BodyTemplate: "body",
 	})
@@ -59,7 +37,9 @@ func TestCreateNotificationTemplate_EmailRequiresSubject(t *testing.T) {
 
 func TestCreateNotificationTemplate_TGOK(t *testing.T) {
 	t.Parallel()
-	repo := &fakeNotifTplRepo{createOut: domain.NotificationTemplate{Slug: "x"}}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockNotificationTemplateRepo(ctrl)
+	repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(domain.NotificationTemplate{Slug: "x"}, nil)
 	uc := &CreateNotificationTemplate{Repo: repo}
 	_, err := uc.Do(context.Background(), domain.NotificationTemplateUpsert{
 		Slug: "x", Channel: domain.NotificationChannelTG, BodyTemplate: "hi {{u}}",
@@ -72,7 +52,8 @@ func TestCreateNotificationTemplate_TGOK(t *testing.T) {
 
 func TestListNotificationTemplates_RejectsBadChannelFilter(t *testing.T) {
 	t.Parallel()
-	uc := &ListNotificationTemplates{Repo: &fakeNotifTplRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &ListNotificationTemplates{Repo: mocks.NewMockNotificationTemplateRepo(ctrl)}
 	_, err := uc.Do(context.Background(), "fax", false)
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)

@@ -2,10 +2,6 @@ import { http, HttpResponse } from 'msw'
 
 const base = '/api/v1'
 
-// Identity 2026-05-04: arena/cohort выпилены. Notification prefs теперь
-// строятся вокруг mock + tutor + coach surfaces. Backend поля переименованы
-// в продуктовом языке когда будет proto-bump; пока мок поддерживает старые
-// ключи для совместимости с легаси handlers.
 let notifyPrefs = {
   email_weekly: true,
   email_calendar: true,

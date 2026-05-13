@@ -63,9 +63,6 @@ export function AtlasListMode({
     })
   }, [atlas, highlightKeys])
 
-  // X5 (Phase J P2 2026-05-12) — cross-product struggle marks. Hydrate
-  // once at top of list so each row can probe O(1). 503 / no data —
-  // empty set, no highlights.
   const struggles = useAtlasStrugglesQuery(30).data ?? []
   const struggleKeys = useMemo(() => {
     const s = new Set<string>()

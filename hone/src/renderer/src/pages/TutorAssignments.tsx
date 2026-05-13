@@ -1,5 +1,3 @@
-// TutorAssignments — Wave 5.1d (student-side mirror of Wave 5.1).
-//
 // Surfaces pending tutor-pushed assignments inside Hone, separate from
 // the AI-generated Today plan. The two streams stay distinct on purpose:
 // AI plan items respond to skill-atlas weakness, tutor assignments are
@@ -10,10 +8,6 @@
 // chip, body markdown (rendered as preserved-whitespace), and a Done
 // button that flips completed_at. After complete the row disappears
 // from the pending feed (server-side filter).
-//
-// 2026-05-12: v2 visual language — hairline cards, status stripes use
-// ink-ramp + var(--red) only (was red/yellow/blue palette violating b/w
-// rule), caption-mono 0.08em canonical.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -138,8 +132,6 @@ export function TutorAssignmentsPage() {
   // Highlights the assignment row matching the active path's «next step»
   // (set when user clicks View next step on an ActivePathCard).
   const [highlightId, setHighlightId] = useState<string | null>(null);
-  // Phase K T4 — fresh-stripe baseline: stamp captured ONCE per mount so
-  // that a note becomes «fresh» if shared_at > lastViewedAt at load time.
   // We re-stamp on unmount (effect cleanup).
   const [lastViewedAt] = useState(() => loadLastViewed());
   // Per-card scroll-into-view targets. Keyed by assignment id.

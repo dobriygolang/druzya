@@ -1,5 +1,3 @@
-// TutorDashboardPage — Wave 2.6 of docs/feature/plan.md.
-//
 // Routes:
 //   /tutor               — this dashboard (invites + students panes)
 //   /tutor/students/:id  — TutorStudentPage (snapshot + brief)
@@ -68,10 +66,8 @@ const TABS: { id: DashTab; label: string; hint: string }[] = [
   { id: 'overview', label: 'Обзор', hint: 'Активность за 30 дней + быстрые действия' },
   { id: 'students', label: 'Студенты', hint: 'Invites + active relationships' },
   { id: 'library', label: 'Reading library', hint: 'Shared reading material для всех студентов' },
-  // Stream D (2026-05-12) — curated atlas-node sequences.
   { id: 'paths', label: 'Paths', hint: 'Curated reading paths из atlas-узлов' },
   { id: 'calendar', label: 'Календарь', hint: 'Sessions + broadcast assignments' },
-  // Phase K T1 (2026-05-12) — directory profile + pending applications.
   { id: 'directory', label: 'Directory', hint: 'Публичный профиль + заявки от студентов' },
 ]
 
@@ -190,7 +186,6 @@ export default function TutorDashboardPage() {
   )
 }
 
-// ── Activity pane (Wave 9.5) ───────────────────────────────────────────
 
 function ActivityPane() {
   const q = useTutorActivityQuery(30)
@@ -273,7 +268,6 @@ function Stat({
   )
 }
 
-// ── Events pane (Wave 5.2b) ────────────────────────────────────────────
 
 function EventsPane() {
   const studentsQ = useTutorStudentsQuery()
@@ -598,8 +592,6 @@ function EventRow({
   completing: boolean
 }) {
   const [completeModalOpen, setCompleteModalOpen] = useState(false)
-  // Phase K T4: tutor can re-toggle visibility on already-completed events
-  // through a dedicated SharedVisibilityToggle below the session note.
   const setVisibility = useSetSessionNoteVisibilityMutation()
 
   const status = eventDisplayStatus(event)
@@ -763,7 +755,6 @@ function eventDisplayStatus(
   return 'scheduled'
 }
 
-// ── Broadcast pane (Wave 5.2a) ─────────────────────────────────────────
 
 function BroadcastPane() {
   const [title, setTitle] = useState('')

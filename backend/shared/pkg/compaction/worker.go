@@ -135,7 +135,7 @@ func (w *Worker) Start(ctx context.Context) {
 	if w.stopped.Load() {
 		return
 	}
-	for i := 0; i < w.cfg.Workers; i++ {
+	for range w.cfg.Workers {
 		w.wg.Add(1)
 		go w.loop(ctx)
 	}

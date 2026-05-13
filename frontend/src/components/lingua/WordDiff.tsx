@@ -1,5 +1,3 @@
-// WordDiff — Phase K W8. Word-level diff renderer for Speaking results.
-//
 // B/W only: categorical visual через stroke style, не цвет.
 //   match      → plain text, no border
 //   substitute → dotted border, expected + actual stacked

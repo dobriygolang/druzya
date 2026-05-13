@@ -1,5 +1,3 @@
-// toast.ts — Hone toast store (Phase J / H3, 2026-05-12).
-//
 // Hosts two streams:
 //   1. Auto-categorise toasts (CategorizeToast component) — surface
 //      backend's «Auto-tagged as <Kind>» events. Shows reasoning peek

@@ -1,10 +1,3 @@
-// DailyPlanCard — F7 (Phase C) MVP UI. Renders today's 3-5 actions из
-// computeDailyPlan(). No-goal fallback: hints + diagnostic CTA.
-//
-// 2026-05-12 v2: F7 → F5 1-click logging. Each ActionRow имеет «✓»
-// inline-button рядом с ArrowRight — клик логирует activity без
-// navigation. Goal-driven loop: action card → ✓ → readiness ticks →
-// tomorrow's plan адаптируется.
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'

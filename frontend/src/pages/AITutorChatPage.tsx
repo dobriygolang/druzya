@@ -307,11 +307,6 @@ function ChatBody({
   )
 }
 
-// CoachKnowsBadge (F1 Phase B — 2026-05-12). Trust indicator в header — даёт
-// юзеру немедленный signal что AI помнит his trajectory. Уровни:
-//
-//   loading / null  → «coach …» (тихо, не fake-промптится)
-//   total30d === 0  → «coach · learning…» (только что зарегистрировался)
 //   1..9            → «coach · знает N событий»
 //   10+             → «coach · знает N событий за 30 дн» (более развёрнуто)
 //
@@ -338,7 +333,6 @@ function CoachKnowsBadge({
   )
 }
 
-// CoachMemoryCard (F1 + F2 + F3 + F5 streak + F10 — Phase B/C — 2026-05-12).
 // Sticky card с пятью уровнями памяти:
 //   1. Active goal — из useGoal() (F2 localStorage MVP). Goal CTA → wizard.
 //   2. **Readiness + streak** — F3 computed % + F5 streak в одной строке.

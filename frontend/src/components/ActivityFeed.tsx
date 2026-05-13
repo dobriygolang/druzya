@@ -1,6 +1,3 @@
-// ActivityFeed — F5 (Phase C) MVP UI. Renders recent activities + summary
-// stats. «+ занятие» button opens QuickLogModal. Empty state nudges юзера
-// к first log.
 
 import { useMemo, useState } from 'react'
 import { Plus, BookOpen, MessageSquare, Pencil, Sparkles, Timer, Code2, Globe } from 'lucide-react'

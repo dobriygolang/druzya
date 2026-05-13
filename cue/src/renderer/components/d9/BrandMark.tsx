@@ -16,8 +16,6 @@
 //
 // History: was "9" glyph (Druz9 Copilot), then "C" glyph (rename),
 // now the proper brand mark on solid black. `persona` / `background`
-// props removed — any caller that wants a custom panel colour should
-// wrap BrandMark in its own container instead of mutating the mark.
 
 import type { CSSProperties } from 'react';
 

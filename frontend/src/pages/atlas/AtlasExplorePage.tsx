@@ -407,8 +407,6 @@ export default function AtlasExplorePage() {
   const [status, setStatus] = useState<NodeState | 'all'>('all')
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph')
 
-  // Track filter (Phase K 6.1) — overlays category/status/search to scope
-  // the atlas to Go / ML / English / Cross-cutting. Defaults to the user's
   // PrimaryGoal-derived track when LS+URL are empty; otherwise hydrates
   // from last-used per-surface preference.
   const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({

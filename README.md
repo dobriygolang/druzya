@@ -2,19 +2,19 @@
 
 Экосистема из трёх продуктов для роста разработчика:
 
-- **[druz9.online](./docs/for_investment/druz9.md)** — веб-продукт. AI-coach с памятью, AI-mock с 5-axis radar, Skill Atlas, Codex, free tutor-toolkit.
-- **[Hone](./docs/for_investment/hone.md)** — desktop focus-cockpit. AI-план дня, Pomodoro, заметки с AI-link, TaskBoard с auto-categorise, English hub.
-- **[Cue](./docs/for_investment/cue.md)** — stealth tray-copilot. Невидимый AI поверх ОС, live-транскрипт встреч.
+- **druz9.online** (`frontend/`) — веб-продукт. AI-coach с памятью, AI-mock с 5-axis radar, Skill Atlas, Codex, Lingua (English hub), free tutor-toolkit.
+- **Hone** (`hone/`) — desktop focus-cockpit. AI-план дня, Pomodoro/Stopwatch/Free/Plan/Pinned/Countdown, заметки с AI-link, TaskBoard с auto-categorise.
+- **Cue** (`cue/`) — stealth tray-copilot. Невидимый AI поверх ОС, live-транскрипт встреч.
 
 **3 equal tracks** (выбираешь при онбординге, меняешь в Settings): Go senior · ML engineering · English. Все три — first-class, нет «главного». Каждый — свой Atlas-подграф, mock-rubric, AI-coach persona.
 
-Один аккаунт, одна подписка `druz9 Pro`, три поверхности под три состояния разработчика.
+Один аккаунт, одна подписка `druz9 Pro` (BYOK escape для tech-юзеров), три поверхности под три состояния разработчика.
 
 ## Документация
 
-- **[docs/for_investment/](./docs/for_investment/ecosystem.md)** — продуктовый обзор, как продукты связаны, монетизация.
-- **[docs/tech/](./docs/tech/README.md)** — техническая база. Архитектура, бэкенд, фронт, деплой, конвенции.
-- **[CLAUDE.md](./CLAUDE.md)** — orientation для AI-агентов, работающих в репо.
+- **[CLAUDE.md](./CLAUDE.md)** — orientation для AI-агентов: identity, правила (B/W only, free-LLM cascade, offline-first), команды, skills.
+- **[docs/feature/identity.md](./docs/feature/identity.md)** — каноническая identity (что мы / что мы НЕ / 3 трека / монетизация).
+- **[docs/tech/](./docs/tech/README.md)** — техническая база. Архитектура, бэкенд, фронт, деплой, конвенции, runbook, observability, perf, a11y, stubs.
 
 ## Быстрый старт
 
@@ -45,7 +45,7 @@ druzya/
 ├── hone/                Hone Electron app
 ├── cue/                 Cue Electron app
 ├── infra/               docker-compose.prod, nginx, monitoring
-├── docs/                Документация (for_investment/ + tech/ + feature/)
+├── docs/                Документация (tech/ + feature/)
 └── .ai/skills/          Project-specific workflows для AI-агентов
 ```
 

@@ -1,6 +1,3 @@
-// MyTutorsRail — Phase K T6 (2026-05-12). Compact one-line social-proof
-// rail for Hone's bookkeeping surfaces (TaskBoard / Home).
-//
 // Layout: «3 tutors · Alice recently active». Single-line, mono-caption
 // rhythm to match the rest of Hone's minimalist language. Hidden when
 // student has zero tutors or fetch fails (rail is non-critical).

@@ -64,7 +64,6 @@ vi.mock('electron', () => {
   // wipes the implementation and the factory starts returning undefined.
   const BrowserWindow = vi.fn(browserWindowFactory);
 
-  // screen — used by window-manager for top-right positioning + bounds clamping.
   const screen = {
     getPrimaryDisplay: vi.fn(() => ({
       bounds: { x: 0, y: 0, width: 1920, height: 1080 },

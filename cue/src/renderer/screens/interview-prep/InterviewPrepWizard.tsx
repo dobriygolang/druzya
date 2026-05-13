@@ -1,5 +1,3 @@
-// InterviewPrepWizard.tsx — Phase J / C6 (P1).
-//
 // Standalone wizard separate from first-run onboarding (which lives at
 // /onboarding and handles permissions+stealth-demo). This one runs
 // BEFORE every interview: upload CV → upload JD → review → launch.
@@ -129,7 +127,6 @@ export function InterviewPrepWizard() {
         background: 'var(--d9-obsidian)',
         color: 'var(--d9-ink)',
         fontFamily: 'var(--d9-font-sans)',
-        // Min/max + flex-wrap rule (memory/feedback_responsive_rule.md).
         minWidth: 0,
         overflow: 'hidden',
       }}

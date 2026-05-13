@@ -1,5 +1,3 @@
-// CoverageBadge — R3 (Phase A 2026-05-12) per-node activity overlay pill.
-//
 // Renders compact state pill для atlas-node based на activity-log fuzzy
 // match. Subscribes to activity store так что live updates flow when
 // юзер логирует new activity.

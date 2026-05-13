@@ -1,6 +1,4 @@
 // MockCompaniesPanel — companies CRUD + per-company stage config.
-// Phase A.2 of ADR-002.
-//
 // 2-column: list of companies on the left, selected company detail on
 // the right. Detail has a top form (name/desc/logo/sort/active) and a
 // CompanyStagesEditor below — drag-replacement via simple ↑/↓ arrows

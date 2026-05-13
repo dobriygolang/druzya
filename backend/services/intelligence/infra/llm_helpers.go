@@ -2,13 +2,6 @@ package infra
 
 // briefJSONEnvelope mirrors the JSON shape locked in by the system prompt.
 
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func firstN(s string, n int) string {
 	if n <= 0 {
 		return ""

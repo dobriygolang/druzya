@@ -5,9 +5,6 @@
 // lang field). Пока что store существует sebagai preference-сlot —
 // SettingsScreen позволяет юзеру выставить значение, оно сохраняется,
 // рестарт сессии подхватит.
-//
-// Sergey 2026-05-12 polish wave — single language picker, не пытаемся
-// продублировать в obvious places (avoid two-place sync hell).
 import { create } from 'zustand';
 
 export type TranscriptionLang = 'ru-RU' | 'en-US' | 'en-GB' | 'auto';

@@ -117,44 +117,56 @@ FROM whiteboard_rooms WHERE owner_id=$1
 		},
 	}
 	for _, q := range queries {
-		rows, err := r.pool.Query(c, q.sql, ownerID)
-		if err != nil {
-			return nil, fmt.Errorf("rooms.ListMy %s: %w", q.kind, err)
+		if err := r.collectRoomsForKind(c, q.sql, q.kind, ownerID, now, status, &out); err != nil {
+			return nil, err
 		}
-		for rows.Next() {
-			room := domain.Room{OwnerID: ownerID, Kind: q.kind}
-			var archived *time.Time
-			if q.kind == domain.KindCode {
-				if err := rows.Scan(&room.ID, &room.ExpiresAt, &archived, &room.FreeTier, &room.Visibility, &room.CreatedAt); err != nil {
-					rows.Close()
-					return nil, fmt.Errorf("rooms.ListMy editor scan: %w", err)
-				}
-				room.UpdatedAt = room.CreatedAt
-			} else {
-				if err := rows.Scan(&room.ID, &room.Title, &room.ExpiresAt, &archived, &room.FreeTier, &room.Visibility, &room.CreatedAt, &room.UpdatedAt); err != nil {
-					rows.Close()
-					return nil, fmt.Errorf("rooms.ListMy whiteboard scan: %w", err)
-				}
-			}
-			room.ArchivedAt = archived
-			active := archived == nil && room.ExpiresAt.After(now)
-			switch status {
-			case domain.StatusActive:
-				if !active {
-					continue
-				}
-			case domain.StatusPast:
-				if active {
-					continue
-				}
-			case domain.StatusAll:
-				// no filter
-			}
-			out = append(out, room)
-		}
-		rows.Close()
 	}
 	return out, nil
+}
+
+// collectRoomsForKind runs one of the per-kind queries in ListMy and appends
+// matching rooms to *out. Extracted so rows.Close fires via defer on every
+// exit path (scan error, rows.Err()), instead of the prior manual Close calls
+// that also skipped the rows.Err() check entirely.
+func (r *Rooms) collectRoomsForKind(c context.Context, sql string, kind domain.Kind, ownerID uuid.UUID, now time.Time, status domain.Status, out *[]domain.Room) error {
+	rows, err := r.pool.Query(c, sql, ownerID)
+	if err != nil {
+		return fmt.Errorf("rooms.ListMy %s: %w", kind, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		room := domain.Room{OwnerID: ownerID, Kind: kind}
+		var archived *time.Time
+		if kind == domain.KindCode {
+			if err := rows.Scan(&room.ID, &room.ExpiresAt, &archived, &room.FreeTier, &room.Visibility, &room.CreatedAt); err != nil {
+				return fmt.Errorf("rooms.ListMy editor scan: %w", err)
+			}
+			room.UpdatedAt = room.CreatedAt
+		} else {
+			if err := rows.Scan(&room.ID, &room.Title, &room.ExpiresAt, &archived, &room.FreeTier, &room.Visibility, &room.CreatedAt, &room.UpdatedAt); err != nil {
+				return fmt.Errorf("rooms.ListMy whiteboard scan: %w", err)
+			}
+		}
+		room.ArchivedAt = archived
+		active := archived == nil && room.ExpiresAt.After(now)
+		switch status {
+		case domain.StatusActive:
+			if !active {
+				continue
+			}
+		case domain.StatusPast:
+			if active {
+				continue
+			}
+		case domain.StatusAll:
+			// no filter
+		}
+		*out = append(*out, room)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("rooms.ListMy %s rows: %w", kind, err)
+	}
+	return nil
 }
 
 func (r *Rooms) ExtendExpiry(ctx interface{}, kind domain.Kind, id uuid.UUID, newExpiry time.Time) error {

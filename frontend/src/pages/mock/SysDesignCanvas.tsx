@@ -1,5 +1,3 @@
-// SysDesignCanvas — Phase D.2 sysdesign-canvas attempt surface.
-//
 // Layout (lg+): 3-column grid
 //   [Task brief] · [Excalidraw canvas] · [Reqs + Context + Submit]
 // Narrow viewports collapse to a single column.

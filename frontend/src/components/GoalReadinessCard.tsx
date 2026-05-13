@@ -1,6 +1,3 @@
-// GoalReadinessCard — F3 (Phase B) MVP UI surface. Renders deterministic
-// readiness % + weeks-to-target + factor breakdown. Без backend.
-//
 // Three visible states:
 //   1. No goal yet → CTA «Поставить цель» (open GoalWizardModal upstream) +
 //      hint «Без цели coach плывёт».

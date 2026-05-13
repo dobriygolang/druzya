@@ -1,5 +1,3 @@
-// DataLoader — CI1 (Phase A 2026-05-12) standardised query state surface.
-//
 // Цель: единый UX контракт для async data:
 //   - loading → skeleton (height-stable, не «Loading…» строка)
 //   - error → red 1.5px stripe + retry button (если onRetry дан)

@@ -1,13 +1,8 @@
 // PathEdit — Wave «hybrid path» editor.
 //
-// Sergey 2026-05-03: «было бы круто взять готовый путь и редактировать —
-// например путь устраивает, но математику знает и не хочет повторять».
 // Юзер пришёл с /onboarding/path?preset=...; видит группированный список
 // тем; toggle'ит чекбоксы какие SKIP'нуть. Save → сохраняем выбор в
 // localStorage (V1) → /today.
-//
-// 2026-05-12: v2 visual language — hairline checkbox rows, white-filled
-// checkmark when active (no `accent` color), caption-mono labels 0.08em.
 
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'

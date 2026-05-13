@@ -12,9 +12,10 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"sync"
 	"time"
 
@@ -136,13 +137,11 @@ func (uc *ListMyTutorsActivity) Do(
 	}
 
 	// 3) Sort: most-recently-active first; ties by tutor_id (stable).
-	sort.SliceStable(out, func(i, j int) bool {
-		ai := out[i].LastActiveAt
-		aj := out[j].LastActiveAt
-		if ai.Equal(aj) {
-			return out[i].TutorID.String() < out[j].TutorID.String()
+	slices.SortStableFunc(out, func(a, b MyTutorActivityItem) int {
+		if a.LastActiveAt.Equal(b.LastActiveAt) {
+			return cmp.Compare(a.TutorID.String(), b.TutorID.String())
 		}
-		return ai.After(aj)
+		return cmp.Compare(b.LastActiveAt.UnixNano(), a.LastActiveAt.UnixNano())
 	})
 
 	uc.cache.Store(key, cacheEntry{

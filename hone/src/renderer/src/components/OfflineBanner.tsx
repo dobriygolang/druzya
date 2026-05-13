@@ -57,8 +57,6 @@ export function OfflineBanner() {
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [serverState, setServerState] = useState<ServerState>('unknown');
   const [recovered, setRecovered] = useState<number | null>(null);
-  // Phase R3 cooldown — refs mirror state so the polling effect can
-  // short-circuit reads without busting the effect's dep array.
   const pendingCountRef = useRef(0);
   const deadCountRef = useRef(0);
   pendingCountRef.current = pendingCount;

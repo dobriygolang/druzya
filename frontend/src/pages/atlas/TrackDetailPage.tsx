@@ -11,7 +11,6 @@
 //   • Bottom: Codex pre-reads — все recommended_reading из всех steps,
 //     дедуп по slug. Пока статичные ссылки (deep-link на /codex).
 //
-// Practice CTA (post-pivot 2026-05-01): открывает /mock company picker.
 // Раньше создавалось solo lobby + arena match; lobby/arena сервисы дропнуты.
 
 import { useMemo, useState } from 'react'

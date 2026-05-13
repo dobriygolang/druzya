@@ -138,7 +138,6 @@ export function OnboardingFlow() {
         outline: 'none',
         // Min-width / overflow guards so the flex children don't push the
         // container past the BrowserWindow's fixed 720 width. See
-        // memory/feedback_responsive_rule.md — no fixed widths без min/max
         // + flex-wrap. Min 0 here protects the inner column.
         minWidth: 0,
         overflow: 'hidden',

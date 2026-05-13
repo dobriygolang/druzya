@@ -1,12 +1,7 @@
-// OnboardingModal v2 — Phase 6 4-step wizard (Sergey 2026-05-04).
-//
 // Step 1: pick stack (Go / DE / Other-explore)
 // Step 2: pick mode (Explore / Commit / Deep) — shapes coach behavior
 // Step 3: shortcuts tour (⌘K / T / C / F / N)
 // Step 4: free vs pro — soft tier exposure (no push, юзер всегда может skip)
-//
-// Phase K Wave 8 (2026-05-13): English stack option removed — vertical
-// migrated to web /lingua. ML option remains kept-out per identity 2026-05-04.
 //
 // Storage:
 //   - localStorage.hone:profile:v2 — { stack, mode, savedAt }
@@ -23,12 +18,6 @@ interface OnboardingModalProps {
   onClose: () => void;
 }
 
-// Identity 2026-05-04 (Phase 4.1): ML-track выпилен. Specialization
-// сохранена внутри dev_senior. 'ml' оставлен в union только для legacy
-// localStorage migration (см saveProfile read-back). 'english' оставлен
-// в union по той же причине — Phase K Wave 8 (2026-05-13) убрал English
-// vertical из Hone, но legacy profiles на диске могут иметь stack='english';
-// мы их парсим, просто не предлагаем option в UI.
 type Stack = 'go' | 'ml' | 'de' | 'english' | 'other';
 type Mode = 'explore' | 'commit' | 'deep';
 
@@ -48,11 +37,8 @@ function saveProfile(p: HoneProfile): void {
   }
 }
 
-// 'ml' option выпилен из onboarding selection (Phase 4.1, identity 2026-05-04).
 // ML-материалы остаются специализацией внутри dev_senior — onboarding не
 // предлагает их как отдельный трек.
-// 'english' option выпилен 2026-05-13 (Phase K Wave 8) — English vertical
-// migrated to web /lingua. Hone теперь pure focus cockpit (dev surfaces).
 const STACKS: { k: Stack; l: string; d: string; g: string }[] = [
   { k: 'go', l: 'Go senior', d: 'concurrency · runtime · profiling', g: 'go' },
   { k: 'de', l: 'Data engineering', d: 'pipelines · CDC · streaming', g: '☷' },
@@ -239,12 +225,8 @@ function ShortcutsTour() {
   );
 }
 
-// TierTour — soft exposure of free vs pro tiers. Sergey 2026-05-12: «pro
-// tier — текст в Settings который никто не открывает». Onboarding step 4
-// показывает что разблокирует Pro, без push: stay on free — кнопка primary,
 // «activate pro» — secondary external link на /profile в web.
 //
-// Free / Pro списки — соответствуют memory/feedback_monetization.md tier matrix.
 // Source of truth для cents/currency живёт в backend subscription service;
 // здесь UI value-prop, не actual price processor.
 const FREE_FEATURES = [

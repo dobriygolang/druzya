@@ -10,10 +10,6 @@
 // shows a disabled hint так чтобы curator знал куда это поедет.
 //
 // B/W only. Inputs follow existing admin form pattern.
-//
-// 2026-05-12: migrated inline side-panel to foundation Drawer primitive
-// (focus trap, ESC, scroll lock, smooth slide-in). Form fields use
-// underline-only spec.
 
 import { useEffect, useState } from 'react'
 import { Button } from '../../../components/Button'

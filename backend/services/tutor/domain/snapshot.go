@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/snapshot_mock.go -source snapshot.go
 package domain
 
 import (

@@ -1,5 +1,3 @@
-// install-heartbeat.ts — Phase J / X1 (P0).
-//
 // Cue main process fires this once on launch (after auth session is
 // valid). Idempotent: backend uses ON CONFLICT (user_id, app) DO UPDATE
 // SET last_seen_at = now(), so any number of restarts only refresh the

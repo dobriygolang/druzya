@@ -5,9 +5,7 @@ Stopwatch / Free / Plan / Pinned / Countdown), заметки с AI-link,
 TaskBoard с auto-categorise. **NO learning content** — учебный layer
 (English / Atlas / Codex) живёт в web `druz9.online`.
 
-See [../docs/for_investment/hone.md](../docs/for_investment/hone.md) for the product spec and
-[../docs/for_investment/ecosystem.md](../docs/for_investment/ecosystem.md) for how Hone fits with druz9.online (web AI-coach + AI-mock + atlas + Lingua)
-and the stealth copilot Cue (`../cue/`).
+See [../docs/feature/identity.md](../docs/feature/identity.md) for the canonical identity (3 surfaces: web learning / Hone doing / Cue performing) and how Hone fits with druz9.online (web AI-coach + AI-mock + atlas + Lingua) and the stealth copilot Cue (`../cue/`).
 
 Electron + Vite + React. macOS-first, Windows/Linux parked for v2.
 
@@ -145,4 +143,4 @@ production-билдов не экспортируется.
 
 These lines matter because the day someone adds stealth to Hone "just to
 help", the product's mental model breaks (see
-[../docs/for_investment/ecosystem.md](../docs/for_investment/ecosystem.md) §«Правило несаморазмывания»).
+[../docs/feature/identity.md](../docs/feature/identity.md) §«Three surfaces» — Hone = doing, Cue = performing, stealth lives in Cue only).

@@ -1,7 +1,5 @@
 // Palette — ⌘K command surface for druz9.online. Ported 1:1 from
 // hone/src/renderer/src/components/Palette.tsx so the keyboard-first UX
-// feels identical between web ↔ Hone (single ecosystem, identity 2026-05-04).
-//
 // Filter-by-prefix over a static set of routes; Enter runs the highlighted
 // item, Arrows navigate, Escape closes. Items are inline (not props) — the
 // set IS the product surface; if a destination needs to appear here, the

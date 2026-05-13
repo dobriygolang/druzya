@@ -1,6 +1,5 @@
 // Persona store — active expert-mode preset.
 //
-// Refactor (session 2026-04-24): catalogue moved from a hardcoded
 // `@shared/personas` module to a server-driven fetch through
 // `window.druz9.personas.list()`. The main process caches the /api/v1/
 // personas response on boot, so the renderer call returns instantly in
@@ -33,11 +32,6 @@ const PlaceholderPersona: Persona = {
   brand_gradient:
     'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-ink-mute) 100%)',
   suggested_task: '',
-  // CI3 (Phase A 2026-05-12) — placeholder теперь содержит non-empty
-  // system_prompt fallback. Раньше пустая строка приводила к LLM responses
-  // без instructions (generic Claude-style), что палево юзеру: «персона»
-  // означает specialized prompt. Минимальный baseline: roleplay-as-assistant
-  // grounded в interview-context.
   system_prompt:
     'You are Cue, a discreet interview assistant. You help the user answer questions during live interviews and practice sessions. Keep responses concise, focused on the immediate question, and grounded in the user\'s context. Avoid generic platitudes — be specific.',
   sort_order: 0,

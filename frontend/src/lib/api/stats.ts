@@ -1,5 +1,3 @@
-// Public platform metrics — used by the marketing welcome page.
-//
 // Backed by GET /api/v1/stats/public (no auth). The endpoint returns
 // integer counts; we type the shape exhaustively here so call sites get
 // completion + protection against drift.

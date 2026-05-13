@@ -1,8 +1,6 @@
 // SHARED EVENT TAXONOMY — keep synced with:
 //   frontend/src/lib/analytics-events.ts
 //   cue/src/renderer/lib/analytics-events.ts
-// Used for cross-product funnel analysis (X3, phase j).
-//
 // Convention: snake_case, dotted namespaces. Names live here as constants
 // so call sites get rename safety. Server stores raw string — no proto
 // enum drift if we add an event mid-week.
@@ -49,8 +47,6 @@ export const ANALYTICS_EVENTS = {
   task_auto_categorised: 'task.auto_categorised',
   task_kind_manually_overridden: 'task.kind.manually_overridden',
 
-  // English hub events removed 2026-05-13 (Phase K Wave 8) — vertical
-  // migrated to web /lingua; analytics events live in frontend/.
 
   // Cross-app handoff
   cross_app_opened: 'cross_app.opened',

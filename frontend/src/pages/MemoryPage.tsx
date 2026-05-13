@@ -1,5 +1,3 @@
-// MemoryPage — F1 Phase 2 (2026-05-12) user-facing AI memory audit surface.
-//
 // «What Coach remembers about you» — full list paginated по kind. Каждая
 // entry соответствует coach_episodes row backend'а (kind=goal_set /
 // mock_complete / cue_session / reflection_grade / weak_topic / streak_milestone

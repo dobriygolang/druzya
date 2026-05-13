@@ -1,4 +1,3 @@
-// api/tutor.ts — Hone-side mirror of Wave 5.1 tutor assignment RPCs.
 // Hone speaks Connect-RPC directly via the @generated/pb client; the web
 // frontend uses the REST transcoder (see lib/queries/tutor.ts there).
 // Same backend — different transports.
@@ -66,7 +65,6 @@ export async function completeAssignment(assignmentId: string): Promise<void> {
   await client.completeAssignment({ assignmentId });
 }
 
-// ── Events (Wave 5.2b) ────────────────────────────────────────────────
 
 export type TutorEventStatus = 'scheduled' | 'cancelled' | 'completed' | string;
 
@@ -131,7 +129,6 @@ function unwrapEvent(e: ProtoEvent): TutorEvent {
   };
 }
 
-// ── Multi-tutor (Wave 9.4) ────────────────────────────────────────────
 
 export interface MyTutor {
   relationshipId: string;
@@ -164,7 +161,6 @@ export async function listMyTutors(): Promise<MyTutor[]> {
   });
 }
 
-// ── Tutor activity social-proof (Phase K T6, 2026-05-12) ──────────────
 
 export interface MyTutorActivitySummary {
   tutorUserId: string;
@@ -212,7 +208,6 @@ export async function listUpcomingEvents(limit = 25): Promise<TutorEvent[]> {
   return resp.items.map((ev) => unwrapEvent(ev as unknown as ProtoEvent));
 }
 
-// ── Group events (Wave 5.2) ──────────────────────────────────────────
 
 /** Student-side group event feed: events on circles the student is a
  *  member of. They render with JOIN buttons; once joined, the row also
@@ -235,7 +230,6 @@ export async function getEventRSVPCount(eventId: string): Promise<number> {
   return resp.count;
 }
 
-// ── Path assignments (Phase K T2+T3, 2026-05-12) ──────────────────────
 
 export interface PathAssignment {
   id: string;
@@ -307,7 +301,6 @@ export async function advancePathStep(assignmentId: string): Promise<{
   };
 }
 
-// ── Shared session notes (Phase K T4, 2026-05-13) ─────────────────────
 
 export interface SharedSessionNote {
   eventId: string;

@@ -1,5 +1,3 @@
-// ReadingPage — Phase K W8 port of Hone Reading.
-//
 // Two-pane: library list + reader. Click-on-word → vocab popover →
 // addVocab mutation. EndSession on exit. SRS daily review widget bottom-left.
 //

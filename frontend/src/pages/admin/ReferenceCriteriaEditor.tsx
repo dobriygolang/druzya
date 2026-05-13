@@ -1,5 +1,3 @@
-// Shared 3-section reference-criteria editor (Phase A.2 ADR-002).
-//
 // Both task-level and question-level criteria use the same JSONB shape:
 //   { must_mention?, nice_to_have?, common_pitfalls? } : string[]
 //

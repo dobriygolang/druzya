@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/insights_mock.go -source insights.go
 package domain
 
 import (

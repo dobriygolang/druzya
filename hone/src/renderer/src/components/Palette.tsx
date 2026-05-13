@@ -6,12 +6,6 @@
 // `items` is kept inline (not a prop) because the set is the product's
 // surface area; if a new destination needs to appear in the palette, the
 // right change is here, not at the call site.
-//
-// Recent section (2026-05-12) — last 5 ran commands пишутся в localStorage
-// (`hone:palette:recent:v1`) и рендерятся сверху над основным списком
-// когда q пустой. Каждый click bumps id на верх рекенди. Кейс: юзер
-// часто скачет между Today / Notes / Coach — без recents в палитре
-// каждый раз skim'ит весь list.
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon, type IconName } from './primitives/Icon';
@@ -23,11 +17,7 @@ export type PageId =
   | 'coach' // Phase 2 (2026-05-04) — learning-companion surface (mode switcher + fork + hero next-action)
   | 'notes'
   | 'stats'
-  // 'podcasts' removed 2026-05-12 (D5) — migrated to web /podcasts.
-  // 'editor' / 'shared_boards' removed 2026-05-12 (D4/Stream F) — migrated to web solo.
   // 'english_overview' / 'reading' / 'writing' / 'speaking' / 'listening'
-  // removed 2026-05-13 (Phase K Wave 8) — English vertical migrated to
-  // web /lingua. Hone теперь pure focus cockpit.
   | 'assignments' // Wave 5.1d — pending tutor-pushed assignments
   | 'calendar' // Wave 5.2b — upcoming tutor-scheduled events
   | 'memory' // Phase B preview (2026-05-12) — what Coach remembers, by source
@@ -87,15 +77,8 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
   // Snapshot recents at mount — палетка живёт коротко, не нужно reactivity.
   const recentIds = useMemo(() => readRecent(), []);
 
-  // Phase 11 (Sergey 2026-05-04) — Hone-native only. Palette = focus
-  // cockpit shortcuts; web-pages открываются через контекстные deeplinks
-  // на конкретных surfaces (Coach hero «start mock», Today step «practice»,
-  // step UI «graduation», TaskBoard tutor-card, Notes resource-link, Atlas
-  // chip). См memory/project_hone — «Hone consumes, Web produces».
-  //
   // Removed: Tutor (assignments + sessions, A·M), Boards · Code rooms (D·B·E),
   // Group events (V), «Stats dashboard» duplicate (G·S), English entry
-  // (Phase K Wave 8 — moved to web /lingua).
   const items: PaletteItem[] = useMemo(
     () => [
       { id: 'today', label: 'Today', icon: 'sun', shortcut: ['T'], section: 'Daily', run: () => onOpen('today') },
@@ -104,9 +87,6 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
 
       { id: 'notes', label: 'Notes', icon: 'note', shortcut: ['N'], section: 'Capture', run: () => onOpen('notes') },
       { id: 'memory', label: 'Memory', icon: 'sparkle', section: 'Capture', run: () => onOpen('memory') },
-      // 'shared_boards' palette entry removed 2026-05-12 (D4/Stream F) —
-      // migrated to web solo. Hone Palette B-shortcut освобождён (см. App.tsx
-      // onKey handler — KeyB теперь openExternal('/whiteboard/new')).
 
       { id: 'settings', label: 'Settings', icon: 'settings', shortcut: [','], section: 'System', run: () => onOpen('settings') },
     ],
@@ -115,8 +95,6 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
 
   // Recents — реcонструируем как PaletteItem'ы из айдишек. Если recent
   // id больше не присутствует в текущем items (например legacy 'reading' /
-  // 'english_overview' после Phase K Wave 8 cleanup) — filter mismatch
-  // drop'нет его, чтобы клик не привёл к dead-action'у.
   const recentItems = useMemo<PaletteItem[]>(() => {
     if (!recentIds.length) return [];
     const byId = new Map(items.map((i) => [i.id, i] as const));
@@ -237,8 +215,6 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
             const active = i === idx;
             // Recent section: header вставляем перед первым recent (i===0),
             // separator — перед первым «обычным» (i===recentHeadCount).
-            // Sergey 2026-05-03 убрал плоские section labels, но Recent —
-            // отдельный case: сигнал «эти команды ты часто запускаешь».
             const isRecentHeader = recentHeadCount > 0 && i === 0;
             const isAllHeader = recentHeadCount > 0 && i === recentHeadCount;
             return (

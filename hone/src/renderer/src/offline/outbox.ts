@@ -59,24 +59,9 @@ export type OutboxOpKind =
   // Phase 4 (existing). Verify в Phase 4 wire — graceful enqueue если
   // log session offline.
   | 'external_activity.log'
-  // Phase A cleanup (2026-05-12) — focus session end. RPC `endFocusSession`
-  // ставит метку завершения + сохраняет reflection. Offline → reflection
-  // юзера терялся (silent catch). Backend закрывает session по таймауту,
-  // но reflection — pure user data, её надо сохранить. Drain отправит
-  // повторный end на ту же sessionId; если backend EndFocusSession не
-  // идемпотентна — second call вернёт ошибку, op станет dead после
   // MAX_ATTEMPTS, reflection доедет с первой удачной попытки.
   | 'focus.end'
-  // H2 (Phase J 2026-05-12) — structured pomodoro reflection (grade 1-5 +
-  // notes). RPC SaveFocusReflection идемпотентна через UNIQUE(user_id,
-  // session_id) ON CONFLICT DO UPDATE — repeat drain безопасен; latest
-  // grade/notes wins (юзер мог дополнить позже).
   | 'focus.reflection';
-// Phase K Wave 8 (2026-05-13) — 'speaking.submission' op-kind removed.
-// English vertical (Reading/Writing/Listening/Speaking) migrated to web
-// /lingua; Hone больше не enqueue'ит submission'ы. Pending op'ы на диске
-// у существующих юзеров — executor не зарегистрирован, drain их игнорит
-// (см. drainAll's "Unknown kind" branch).
 
 export interface OutboxOp {
   id: string; // client-generated uuid v4

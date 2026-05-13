@@ -1,5 +1,3 @@
-// deeplink.ts — Hone druz9:// intent router (X5 Phase J P2 2026-05-12).
-//
 // Previously deep-link parsing lived inline in hone/src/main/index.ts as a
 // chain of `if (url.startsWith('druz9://auth')) {…}`. X5 (bidirectional
 // cross-product handoff) added enough new intents — focus.start with goal,

@@ -155,7 +155,7 @@ CI ловит drift — забывшие = revert.
 
 ## Если сомнения
 
-- Какая фича чья (web / Hone / Cue) — см [for_investment/ecosystem.md](../for_investment/ecosystem.md) §«Правило несаморазмывания».
+- Какая фича чья (web / Hone / Cue) — см [feature/identity.md](../feature/identity.md) §«Three surfaces» (web learning / Hone doing / Cue performing).
 - Как добавить LLM-задачу — [.ai/skills/llmchain-task.md](../../.ai/skills/llmchain-task.md).
 - Как добавить миграцию — [.ai/skills/add-migration.md](../../.ai/skills/add-migration.md).
 - Какой тон в коммите / PR — копируем стиль из последних 10 коммитов в `git log`.

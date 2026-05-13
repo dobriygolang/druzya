@@ -9,7 +9,6 @@
 // Старый flow («открой web /login → druz9://auth») удалён: Chrome блокировал
 // custom-scheme redirect из async-контекста, в dev Electron вообще не
 // регистрировал druz9:// в LaunchServices, итого «логонюсь и ничего не
-// происходит» (см комментарий пользователя 2026-04-25).
 import { useEffect, useRef, useState } from 'react';
 
 import type { TelegramStart } from '@shared/ipc';

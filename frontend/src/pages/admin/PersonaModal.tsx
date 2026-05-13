@@ -7,9 +7,6 @@
 // id, label, hint, icon_emoji, brand_gradient (free-form CSS),
 // suggested_task (whitelist), system_prompt (big textarea), sort_order,
 // is_enabled.
-//
-// 2026-05-12: migrated to foundation Modal primitive + v2 underline-only
-// inputs + red signal stripe on error banner.
 
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/primitives/Modal'

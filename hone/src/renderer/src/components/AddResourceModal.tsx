@@ -9,9 +9,6 @@
 // empty fields. Юзер заполняет руками.
 //
 // Designed для embed в step UI / atlas-node detail.
-//
-// 2026-05-12: migrated to foundation Modal primitive. Field underline-only
-// styling per v2 spec. Cmd+Enter shortcut preserved.
 import { useEffect, useRef, useState } from 'react';
 
 import {

@@ -1,5 +1,3 @@
-// honeTasks.ts — react-query hooks для TaskBoard (Phase G FE).
-//
 // Bridge между UI компонентами (TaskBoardPage / TaskCard / ColumnList)
 // и backend HoneService TaskBoard ручками. Wire shape — proto enum NAME
 // эмитится через vanguard transcoder; нормализуем через canonical-helpers

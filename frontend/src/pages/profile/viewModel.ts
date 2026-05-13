@@ -54,9 +54,6 @@ export const SECTION_LABELS: Record<string, string> = {
   behavioral: 'Behavioral',
 }
 
-// Identity 2026-05-04 — pivot убрал arena/matches/cohort/bookings из
-// продукта. Profile теперь это: Overview (контекст) + Stats (метрики из
-// /insights). Mock-сессии видны на /mock, события — в Hone.
 export const PROFILE_TABS_OWN = ['Overview', 'Stats'] as const
 export const PROFILE_TABS_PUBLIC = ['Overview', 'Stats'] as const
 export type ProfileTab = (typeof PROFILE_TABS_OWN)[number]

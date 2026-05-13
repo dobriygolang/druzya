@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
@@ -447,12 +448,7 @@ func encodeDataURI(img Image) string {
 }
 
 func hasImages(msgs []Message) bool {
-	for _, m := range msgs {
-		if len(m.Images) > 0 {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(msgs, func(m Message) bool { return len(m.Images) > 0 })
 }
 
 func jsonFormat(enabled bool) *oaiRF {

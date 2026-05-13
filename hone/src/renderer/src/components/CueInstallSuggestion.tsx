@@ -1,11 +1,6 @@
 // CueInstallSuggestion — subtle banner showing once after the user has
 // completed a focus session AND we know they don't have Cue installed.
 //
-// Phase J / X1 (P0). The decision to show is made by the parent (App.tsx)
-// using GetInstalledApps; this component renders only when `open` is true,
-// stays minimal, and persists its «dismissed» state to localStorage so
-// it never nags after the user closes it once.
-//
 // B/W only. Hairline borders. Single red dot = subtle highlight of the
 // download CTA on hover. The DMG link opens via shell.openExternal —
 // we don't bundle the actual binary, the download lives on

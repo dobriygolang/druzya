@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/assignment_mock.go -source assignment.go
 package domain
 
 import (

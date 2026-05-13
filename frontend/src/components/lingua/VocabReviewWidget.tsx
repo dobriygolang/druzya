@@ -1,4 +1,3 @@
-// VocabReviewWidget — Phase K W8. Inline SRS review для Reading sidebar +
 // Overview. Pull'ит due cards (react-query), показывает по одной, кнопки
 // Reveal / Again / Got it. После последней карточки auto-refetches очередь.
 //

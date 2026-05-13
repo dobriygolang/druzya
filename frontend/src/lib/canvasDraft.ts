@@ -134,17 +134,11 @@ export function clearCanvasDraft(attemptId: string): void {
   }
 }
 
-// Sweep drafts for every attempt of a finished pipeline. Called from
-// the debrief page on mount (debrief = the only place the user lands
-// after finalisation, so the cleanup is reliably triggered).
 export function clearCanvasDraftsForAttempts(attemptIds: string[]): void {
   for (const id of attemptIds) clearCanvasDraft(id)
 }
 
 // sweepAllCanvasDrafts wipes EVERY draft in localStorage regardless of
-// TTL. Called from logoutCurrentSession so a fresh user on the same
-// browser can't see stale "восстановлено" prompts that point at attempts
-// they don't own (the server would 403 anyway, but the UI is noisy).
 export function sweepAllCanvasDrafts(): void {
   try {
     const toDelete: string[] = []

@@ -339,9 +339,6 @@ function MetricsCard({ uptime90d, incidentCount }: { uptime90d: string; incident
   )
 }
 
-// SubscribeCard removed — there was no /status/subscribe backend
-// endpoint, the form was a dead placeholder. Re-add when an
-// incident-notify worker exists.
 
 export default function StatusPage() {
   const { data, isPending, error } = useStatusPageQuery()

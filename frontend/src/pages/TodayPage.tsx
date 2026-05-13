@@ -1,7 +1,5 @@
 // TodayPage — landing для авторизованного юзера.
 //
-// Pivot 2026-05-03: до этого landing'ом был /atlas, но Sergey справедливо
-// заметил «зачем мне atlas сейчас, что бы что?» — он не action'абельный.
 // Today — это «ты пришёл, вот что делать»: hero с приветствием + 4 cards
 // с конкретными действиями (mock / coach insight / pending assignments /
 // weak spots).
@@ -52,7 +50,6 @@ import { useGoal } from '../lib/useGoal'
 import { useState } from 'react'
 
 // Section в атласе → AI-coach persona slug. Display-name всегда role-only
-// lowercase, без human first names — см memory/feedback_persona_names.md.
 function pickPersonaFor(section: string, activeTrack: ActiveTrack): {
   slug: string
   name: string

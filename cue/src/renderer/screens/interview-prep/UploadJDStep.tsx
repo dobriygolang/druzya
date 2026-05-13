@@ -1,5 +1,3 @@
-// UploadJDStep.tsx — Phase J / C6 (P1).
-//
 // Step 2: paste JD text OR a job-board URL. Backend ParseJD handles
 // both — URL fetching is best-effort and we surface a clear hint when
 // the host blocks bots (LinkedIn does, hh.ru sometimes does).

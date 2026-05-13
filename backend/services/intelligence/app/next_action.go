@@ -200,11 +200,8 @@ func buildNextActionPrompt(in NextActionInput) string {
 	if len(in.RecentFocusReflections) > 0 {
 		b.WriteString("\nRECENT FOCUS REFLECTIONS (newest first):\n")
 		// Cap at 5 entries — prompt budget conservation.
-		max := len(in.RecentFocusReflections)
-		if max > 5 {
-			max = 5
-		}
-		for i := 0; i < max; i++ {
+		capN := min(5, len(in.RecentFocusReflections))
+		for i := range capN {
 			r := in.RecentFocusReflections[i]
 			grade := "no grade"
 			if r.Grade != nil {

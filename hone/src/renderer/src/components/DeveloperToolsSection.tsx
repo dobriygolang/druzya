@@ -1,9 +1,5 @@
-// DeveloperToolsSection — Phase 7 §7a (Sergey 2026-05-04 Path C low-key).
-//
 // Collapsed-by-default section в Settings. Single manual entry-point для
 // standalone collab rooms (code/whiteboard). NO palette / nav / promo —
-// см memory/feedback_path_c_rooms.md.
-//
 // Free-tier 3 active · 24h TTL · 3 ppl max. После create — открывает
 // share URL в new tab.
 import { useEffect, useState } from 'react';

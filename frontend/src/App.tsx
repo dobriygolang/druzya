@@ -6,9 +6,6 @@ import { OfflineBanner } from './components/OfflineBanner'
 import { readAccessToken } from './lib/apiClient'
 
 // RootRedirect: гость → /welcome, авторизованный → /today.
-// Pivot 2026-05-03: landing'ом стал /today (action-driven dashboard) вместо
-// /atlas — Sergey справедливо заметил «zachem мне atlas сейчас, что бы что?».
-// /atlas остаётся в nav как «карта тем для подготовки».
 function RootRedirect() {
   return <Navigate to={readAccessToken() ? '/today' : '/welcome'} replace />
 }
@@ -19,7 +16,6 @@ const AtlasExplorePage = lazy(() => import('./pages/atlas/AtlasExplorePage'))
 const TrackDetailPage = lazy(() => import('./pages/atlas/TrackDetailPage'))
 const TaskBoardPage = lazy(() => import('./pages/TaskBoardPage'))
 const InsightsPage = lazy(() => import('./pages/InsightsPage'))
-// /goals UI removed 2026-05-05 (R10 cleanup) — orphan page без nav-links.
 // Coach всё ещё читает goals через GoalsReader (см services/intelligence/
 // infra/cross_readers.go), CRUD endpoints в backend остаются для будущего
 // surface'а или CLI-доступа.
@@ -38,12 +34,8 @@ const AuthCallbackYandexPage = lazy(() => import('./pages/AuthCallbackYandexPage
 const GoogleCalendarCallbackPage = lazy(() => import('./pages/auth/GoogleCalendarCallback'))
 const AllSetPage = lazy(() => import('./pages/AllSetPage'))
 const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage'))
-// Wave 2.6 — tutor dashboard. Both routes are tutor-authenticated; the
-// backend gates per-row, so an unauthorised viewer just sees an empty list.
 const TutorDashboardPage = lazy(() => import('./pages/TutorDashboardPage'))
 const TutorStudentPage = lazy(() => import('./pages/TutorStudentPage'))
-// Phase K T1 (2026-05-12) — tutor directory MVP. Student-side discovery
-// page. Backend: ListDirectoryTutors RPC. Identity rule: free, no rates.
 const TutorsDiscoverPage = lazy(() => import('./pages/TutorsDiscoverPage'))
 const AITutorChatPage = lazy(() => import('./pages/AITutorChatPage'))
 // Wave-10 onboarding flow (design-review v3 part A) — 5-step gated flow
@@ -66,23 +58,15 @@ const MockCompanyPicker = lazy(() => import('./pages/mock/MockCompanyPicker'))
 const MockPipelinePage = lazy(() => import('./pages/mock/MockPipelinePage'))
 const MockPipelineDebrief = lazy(() => import('./pages/mock/MockPipelineDebrief'))
 const MockCanvasFullscreen = lazy(() => import('./pages/mock/MockCanvasFullscreen'))
-// F8 (Phase D, 2026-05-12) — mini-mock diagnostic mode. Single-page flow,
-// localStorage-backed result feeds F3 readiness.
 const MockDiagnosticPage = lazy(() => import('./pages/mock/DiagnosticPage'))
-// D5 (2026-05-12) — podcasts back from Hone. Web content surface теперь
-// hosts both articles (/codex) и podcasts (/podcasts) под KnowledgeHubTabs.
 const PodcastsPage = lazy(() => import('./pages/PodcastsPage'))
-// F1 Phase 2 (2026-05-12) — user-facing AI memory audit. Reads
 // IntelligenceService.ListMemoryEntries (Agent I backend).
 const MemoryPage = lazy(() => import('./pages/MemoryPage'))
-// Phase-4 ADR-001 Wave 1+2 — `cohort`, `achievements`, `warroom` removed.
 // Frontend pages deleted; routes redirect to /circles or /profile.
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
-// /voice-mock standalone deleted (D7 2026-05-12) — voice answer теперь
-// inline-инпут BehavioralStage'а; старые ссылки редиректим на /mock.
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminInterviewerApplicationsPage = lazy(() => import('./pages/AdminInterviewerApplicationsPage'))
 const StatusPage = lazy(() => import('./pages/StatusPage'))
@@ -93,22 +77,13 @@ const PricingPage = lazy(() => import('./pages/pricing/PricingPage'))
 const CheckoutPage = lazy(() => import('./pages/checkout/CheckoutPage'))
 const CheckoutSuccess = lazy(() => import('./pages/checkout/CheckoutSuccess'))
 const CheckoutFailure = lazy(() => import('./pages/checkout/CheckoutFailure'))
-// Wave 5 (2026-05-12) — Stripe success_url target. Renders post-checkout
-// hero + unlocked Pro features + next-action cards. Cancel route reuses
-// /upgrade с ?retry=true banner.
 const BillingWelcomePage = lazy(() => import('./pages/BillingWelcome'))
-// Pair-coding (collaborative editor) переехал в Hone (bible §2.1 DNA-revision).
 // Web-routes /pair удалены — primary surface теперь desktop, shareable URL
 // приведёт сюда лендинг «Open in Hone». TODO: добавить hone-handoff page
 // если понадобится поделиться ссылкой web-юзеру без Hone'а.
 
-// Circles — community-layer (bible §9 Phase 6.5.3). UI создания circle +
-// events (Book Club Fridays) — единственное web-creation-место для этой
-// поверхности; Hone только показывает + RSVP.
 const CirclesPage = lazy(() => import('./pages/circles/CirclesPage'))
 const CircleDetailPage = lazy(() => import('./pages/circles/CircleDetailPage'))
-// D4 (Stream F, 2026-05-12) — Whiteboard / Editor migrated from Hone to web
-// в solo-mode. Peer-collab WS (Yjs / awareness / presence) dropped. Legacy
 // WhiteboardSharePage / EditorRoomSharePage оставлены под их же URL'ами
 // в виде новых SoloWhiteboardPage / SoloEditorPage; multi-player «share»
 // flow сворачивается, обёртка над solo persistence.

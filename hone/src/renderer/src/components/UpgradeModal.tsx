@@ -1,5 +1,3 @@
-// UpgradeModal — context-aware Pro-upgrade modal (Phase J / X2 P0).
-//
 // Goal: replace generic «Pro required» blocks с unified, pre-filled context
 // modal showing «you tried X, Pro unlocks Y». Conversion lift expected from:
 //   - Concrete frustration callout вместо generic copy
@@ -413,8 +411,6 @@ function ModalBody({ ctx, onClose }: { ctx: UpgradeContext; onClose: () => void 
 }
 
 // liftStats — placeholder per-feature numbers. TODO replace with real
-// telemetry once analytics layer ships (Phase X3 in upgrade-funnel plan).
-// Each key matches the `feature` slug used by trigger sites.
 export const LIFT_STATS: Record<string, string> = {
   unlimited_mock: 'Pro users complete 2.3× more mock pipelines (placeholder)',
   long_session: 'Pro users average 47 min per Cue session vs 12 min on free (placeholder)',

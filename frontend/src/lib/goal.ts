@@ -1,12 +1,6 @@
-// goal.ts — F2 (Phase B) MVP store для user goal'а.
-//
 // Зачем localStorage (а не Connect-RPC + backend table):
 // - F2 full design (plan §F2): `user_goals` + `goal_milestones` tables +
 //   backend service. 10 дней работы; не блокеры для F1/F3 prototyping.
-// - MVP здесь — localStorage. Когда backend ship'нется (Phase C W6-7), key
-//   станет cache layer over RPC (миграция: read localStorage → POST CreateGoal
-//   → drop key). Wire shape намеренно совпадает с planned proto:
-//
 //     UserGoal {
 //       kind: GoalKind                    // 5 предефиниций per plan
 //       target_company?: string           // только для top_tier_co
@@ -30,7 +24,6 @@ export type GoalKind =
   | 'english_target'   // TOEFL 100+ / IELTS 7+ / CEFR-B2+
   | 'custom'           // free-text, AI parses later
 
-// Backend proto enum string (proto3 JSON). Wire when backend Phase C
 // CreateGoal RPC available.
 export type BackendGoalKind =
   | 'GOAL_KIND_TOP_TIER_CO'

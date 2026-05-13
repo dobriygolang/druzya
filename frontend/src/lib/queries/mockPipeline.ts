@@ -1,11 +1,3 @@
-// mockPipeline — multi-stage mock interview pipeline (Phase B.2 / ADR-002).
-//
-// Phase B.1 backend (chi REST under /api/v1/mock/*) is shipped. The pipeline
-// is a server-driven HR / algo / coding / sysdesign / behavioral sequence;
-// each stage owns one or more `attempts` (questions). The frontend reads
-// the full pipeline via `useMockPipelineQuery` and dispatches mutations to
-// advance stages or submit answers.
-//
 // Anti-fallback: companies endpoint is the only one that may legitimately
 // be empty (admin hasn't seeded). All other endpoints surface real backend
 // errors; we never fake data.
@@ -13,10 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
-// ── New (Phase B.2) backend contract types ───────────────────────────────
 
-// StageKind — Phase K M6 (2026-05-13) extended с ML stages для FAANG ML
-// hiring loops. Mirrors backend domain.StageKind + admin mockAdmin.StageKind.
 export type StageKind =
   | 'hr'
   | 'algo'
@@ -45,8 +34,6 @@ export type PipelineAttempt = {
   expected_answer_md: string | null
   reference_criteria: ReferenceCriteria
   user_answer_md: string | null
-  // Phase D.1: user-provided sysdesign-canvas extras. Empty for non-canvas
-  // attempts; backend always emits them.
   user_context_md?: string | null
   // Legacy: pre-F-3 v2 inline data URL. Empty/null on new rows.
   user_excalidraw_image_url?: string | null
@@ -63,7 +50,6 @@ export type PipelineAttempt = {
   ai_feedback_md: string | null
   ai_missing_points: string[]
   ai_judged_at: string | null
-  // Phase D.2: present only when attempt is rooted on a mock_tasks row.
   task_functional_requirements_md?: string | null
   task_language?: string | null
 }
@@ -95,9 +81,6 @@ export type Pipeline = {
   stages: PipelineStage[]
 }
 
-// Phase F-5 cleanup: LegacyStageKind / LegacyStageStatus removed — their
-// only consumer (PipelineStepper.tsx) deleted in F-5. Phase B/C/D contracts
-// are now the single source of truth.
 
 // MockCompany — wire shape mirrors backend companyDTO
 // (services/mock_interview/ports/dto.go). The earlier ad-hoc shape with

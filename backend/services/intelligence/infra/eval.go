@@ -21,7 +21,6 @@
 package infra
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -218,8 +217,3 @@ func EvalReportText(rep EvalReport) string {
 	}
 	return sb.String()
 }
-
-// Used to keep ctx in the signature scaffold even when we don't
-// need it; allows Future async-only checks (semantic-similarity over
-// embedder, etc) to slot in без breaking caller'а.
-var _ = context.TODO

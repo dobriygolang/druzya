@@ -80,11 +80,6 @@ export function loadRuntimeConfig(): RuntimeConfig {
     // (для разработки) или Settings UI (runtime).
     voiceSource:
       (process.env.DRUZ9_VOICE_SOURCE === 'system' ? 'system' : 'mic') as 'mic' | 'system',
-    // X2 (P0) — Pro upgrade + BYOK URLs. Renderer тянет через DesktopConfig
-    // bootstrap'а если он есть, иначе fallback'ает на эти dev-default'ы в
-    // renderer/lib/upgrade-config. Главная UX-цель: один источник правды
-    // для «куда вести юзера на upgrade», изолированный от Boosty server-
-    // driven paywall flow выше — это разные voronkы.
     proUpgradeURLBase:
       process.env.DRUZ9_PRO_URL || 'https://druz9.online/upgrade',
     byokURL:

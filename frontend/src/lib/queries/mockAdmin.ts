@@ -1,5 +1,3 @@
-// Mock-interview admin queries — Phase A.2 of ADR-002.
-//
 // Wraps every endpoint under /api/v1/admin/mock/*. One file because the
 // surface is tightly scoped to a single admin feature (companies,
 // strictness profiles, tasks + task-questions, default questions, and
@@ -17,8 +15,6 @@ import { api } from '../apiClient'
 
 // ── shared shapes ────────────────────────────────────────────────────────
 
-// StageKind — Phase K M6 (2026-05-13) extended с ml_coding / ml_system_design
-// / ml_theory для FAANG-style ML hiring loops (Google ML / Meta AI / OpenAI /
 // Anthropic / DeepMind / Yandex Cloud ML / Sber Devices / Avito ML / T-Bank AI).
 // Backend domain.StageKind в backend/services/mock_interview/domain/enum.go —
 // canonical source of truth; this string union mirrors it 1:1.

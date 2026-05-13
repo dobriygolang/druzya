@@ -75,9 +75,6 @@ export const useCoachStore = create<State>((set, get) => ({
           },
           error: null,
         });
-        // Phase J / X3 — cue_suggestion_received. latencyMs bucketed
-        // (fast/med/slow) keeps cardinality low without leaking exact
-        // model timings into property keys.
         void import('../lib/analytics').then(({ analytics, ANALYTICS_EVENTS }) => {
           const ms = ev.latencyMs;
           const latency_bucket = ms < 500 ? 'fast' : ms < 1500 ? 'med' : 'slow';

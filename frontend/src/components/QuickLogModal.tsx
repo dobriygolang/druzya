@@ -1,4 +1,3 @@
-// QuickLogModal — F5 (Phase C) MVP UI для ручного логирования активности.
 // Simple modal: kind picker + title + optional source + optional minutes.
 // При submit добавляет в lib/activity store → ActivityFeed reactively
 // рендерит + F3 readiness реагирует boost'ом.

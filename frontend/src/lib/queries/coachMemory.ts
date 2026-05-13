@@ -1,5 +1,3 @@
-// queries/coachMemory.ts — F1 Phase 2 memory entries surface (2026-05-12).
-//
 // Anticipates backend `IntelligenceService.{ListMemoryEntries,DeleteMemoryEntry}`
 // (Agent I implementing in parallel). Wire shape matches expected proto:
 //   - GET /api/v1/intelligence/memory/entries?kind=&since=&limit=&offset=

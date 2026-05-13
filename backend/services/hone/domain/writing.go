@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/writing_mock.go -source writing.go
 package domain
 
 import "context"

@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"druz9/intelligence/domain"
+	"druz9/intelligence/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
 func TestDeriveCoverageState(t *testing.T) {
@@ -36,38 +38,30 @@ func TestDeriveCoverageState(t *testing.T) {
 	}
 }
 
-// fakeCoverageReader — in-memory backstop.
-type fakeCoverageReader struct {
-	rows []domain.NodeCoverage
-	err  error
-}
-
-func (r *fakeCoverageReader) CoverageForNodes(_ context.Context, _ uuid.UUID, keys []string) ([]domain.NodeCoverage, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-	indexed := map[string]domain.NodeCoverage{}
-	for _, c := range r.rows {
-		indexed[c.NodeKey] = c
-	}
-	out := make([]domain.NodeCoverage, 0, len(keys))
-	for _, k := range keys {
-		if c, ok := indexed[k]; ok {
-			out = append(out, c)
-		} else {
-			out = append(out, domain.NodeCoverage{NodeKey: k, State: domain.NodeCoverageNotYet})
-		}
-	}
-	return out, nil
-}
-
 func TestGetNodeCoverage_HappyPath(t *testing.T) {
-	reader := &fakeCoverageReader{
-		rows: []domain.NodeCoverage{
-			{NodeKey: "go.gc", State: domain.NodeCoverageCovered, MatchCount30d: 5, MatchCount7d: 2, LastMatchAt: time.Now()},
-			{NodeKey: "ml.attention", State: domain.NodeCoveragePartial, MatchCount30d: 2, MatchCount7d: 1},
+	ctrl := gomock.NewController(t)
+	reader := mocks.NewMockNodeCoverageReader(ctrl)
+	reader.EXPECT().CoverageForNodes(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, keys []string) ([]domain.NodeCoverage, error) {
+			seed := []domain.NodeCoverage{
+				{NodeKey: "go.gc", State: domain.NodeCoverageCovered, MatchCount30d: 5, MatchCount7d: 2, LastMatchAt: time.Now()},
+				{NodeKey: "ml.attention", State: domain.NodeCoveragePartial, MatchCount30d: 2, MatchCount7d: 1},
+			}
+			indexed := map[string]domain.NodeCoverage{}
+			for _, c := range seed {
+				indexed[c.NodeKey] = c
+			}
+			out := make([]domain.NodeCoverage, 0, len(keys))
+			for _, k := range keys {
+				if c, ok := indexed[k]; ok {
+					out = append(out, c)
+				} else {
+					out = append(out, domain.NodeCoverage{NodeKey: k, State: domain.NodeCoverageNotYet})
+				}
+			}
+			return out, nil
 		},
-	}
+	)
 	uc := &GetNodeCoverage{Reader: reader}
 	out, err := uc.Do(context.Background(), GetNodeCoverageInput{
 		UserID:   uuid.New(),
@@ -85,7 +79,9 @@ func TestGetNodeCoverage_HappyPath(t *testing.T) {
 }
 
 func TestGetNodeCoverage_EmptyNodeKeysShortCircuits(t *testing.T) {
-	reader := &fakeCoverageReader{err: errors.New("should not be called")}
+	ctrl := gomock.NewController(t)
+	reader := mocks.NewMockNodeCoverageReader(ctrl)
+	// No EXPECT — UC must short-circuit before calling the reader.
 	uc := &GetNodeCoverage{Reader: reader}
 	out, err := uc.Do(context.Background(), GetNodeCoverageInput{UserID: uuid.New()})
 	if err != nil {
@@ -97,7 +93,8 @@ func TestGetNodeCoverage_EmptyNodeKeysShortCircuits(t *testing.T) {
 }
 
 func TestGetNodeCoverage_RejectsZeroUser(t *testing.T) {
-	uc := &GetNodeCoverage{Reader: &fakeCoverageReader{}}
+	ctrl := gomock.NewController(t)
+	uc := &GetNodeCoverage{Reader: mocks.NewMockNodeCoverageReader(ctrl)}
 	_, err := uc.Do(context.Background(), GetNodeCoverageInput{NodeKeys: []string{"x"}})
 	if err == nil || !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
@@ -105,8 +102,15 @@ func TestGetNodeCoverage_RejectsZeroUser(t *testing.T) {
 }
 
 func TestGetNodeCoverage_CapsAt500(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	called := 0
-	reader := &fakeCoverageReaderCap{count: &called}
+	reader := mocks.NewMockNodeCoverageReader(ctrl)
+	reader.EXPECT().CoverageForNodes(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, keys []string) ([]domain.NodeCoverage, error) {
+			called = len(keys)
+			return nil, nil
+		},
+	)
 	uc := &GetNodeCoverage{Reader: reader}
 	bigKeys := make([]string, 1000)
 	for i := range bigKeys {
@@ -119,13 +123,4 @@ func TestGetNodeCoverage_CapsAt500(t *testing.T) {
 	if called > 500 {
 		t.Fatalf("expected cap at 500 keys, got %d", called)
 	}
-}
-
-type fakeCoverageReaderCap struct {
-	count *int
-}
-
-func (r *fakeCoverageReaderCap) CoverageForNodes(_ context.Context, _ uuid.UUID, keys []string) ([]domain.NodeCoverage, error) {
-	*r.count = len(keys)
-	return nil, nil
 }

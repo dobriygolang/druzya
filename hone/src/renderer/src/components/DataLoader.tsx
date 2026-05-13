@@ -2,13 +2,10 @@
 //
 // Заменяет повсеместный pattern «{loading ? 'loading…' : data ? <Body/> :
 // '— нет данных —'}» который не различает error и empty, тихо проглатывает
-// network failures и не предлагает retry. CI1 (Phase A W2 roadmap) —
-// разворачиваем DataLoader по 20+ страницам Stats / Coach / Notes /
 // English / DailyBrief, чтобы skeleton + error + retry были консистентны.
 //
 // B/W rule: error stripe — `#FF3B30` 1.5px top-border + plain text label,
 // никакого fill/background. Никаких иконок-эмодзи — только текстовые
-// affordances (Sergey 2026-05-04).
 
 import type { ReactNode } from 'react';
 

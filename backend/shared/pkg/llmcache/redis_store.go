@@ -83,7 +83,7 @@ func decodeVector(b []byte, dim int) ([]float32, error) {
 		return nil, fmt.Errorf("llmcache: vector dim mismatch: got %d bytes, want %d", len(b), 4*dim)
 	}
 	out := make([]float32, dim)
-	for i := 0; i < dim; i++ {
+	for i := range dim {
 		out[i] = math.Float32frombits(binary.LittleEndian.Uint32(b[i*4:]))
 	}
 	return out, nil
@@ -232,11 +232,8 @@ func dot(a, b []float32) float32 {
 	var s float32
 	// Защита от mismatched dim — не должно случаться, но если случится,
 	// лучше вернуть -1 (гарантированно ниже любого threshold) чем panic.
-	n := len(a)
-	if len(b) < n {
-		n = len(b)
-	}
-	for i := 0; i < n; i++ {
+	n := min(len(a), len(b))
+	for i := range n {
 		s += a[i] * b[i]
 	}
 	return s

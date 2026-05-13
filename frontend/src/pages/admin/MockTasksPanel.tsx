@@ -1,6 +1,4 @@
 // MockTasksPanel — task CRUD with structured reference editor + per-task
-// follow-up questions. Phase A.2 of ADR-002.
-//
 // 2-column layout. Left: filterable list of tasks (chip filters for stage
 // + language + active). Right: editor with three tabs — Body / Reference /
 // Questions. The "+ New task" button opens a minimal modal (just stage,

@@ -76,7 +76,7 @@ druzya/
 ├── cue/                     Cue Electron app
 ├── infra/                   docker-compose.prod, nginx, monitoring, deploy.sh
 ├── docs/
-│   ├── for_investment/      Инвестор-ориентированное (ecosystem, per-app)
+│   ├── feature/             Каноническая identity (identity.md)
 │   └── tech/                Технические доки (читать при работе с кодом)
 └── .ai/skills/              Project-specific workflows
 ```
@@ -157,7 +157,7 @@ druzya/
 
 ## Текущий roadmap (2026-05-12)
 
-Старый phased plan (Phase 0-12.5 на основе 13 mockups) **закрыт**. Все wave-фазы либо ship'нуты, либо deferred/replaced. См [docs/feature/implementation-plan.md](./docs/feature/implementation-plan.md) для исторического статуса + текущего pointer'а.
+Старый phased plan (Phase 0-12.5 на основе 13 mockups) **закрыт**. Все wave-фазы либо ship'нуты, либо deferred/replaced — история живёт в `git log`.
 
 Comprehensive roadmap утверждённый 2026-05-11 — identity-driven rebuild на 9 фаз (A → I) + J (polish). **Phases A-H полностью shipped 2026-05-12** в single-day marathon через 17 параллельных агентов (DB v95→v96). **Phase J shipped 2026-05-12 post-marathon**: light theme kill switch finalised (B/W only), Cue onboarding wizard, Cue interview-prep wizard (mig 00108), C4 diarization, stealth-verifier probe, Cue masquerade builds CI'd (workflows `cue-masquerade-release.yml` + `cue-masquerade-validate.yml`), H6 README refresh. Phase I (Admin Phase 3 + final launch readiness) — текущая. Roadmap живёт в `~/.claude/plans/system-design-ux-copy-user-research-compiled-beacon.md` (private).
 

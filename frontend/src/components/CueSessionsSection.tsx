@@ -1,10 +1,6 @@
 // CueSessionsSection — F10 list view + manual log button. Renders на TodayPage
 // под ActivityFeed. Empty state когда журнал пуст; иначе показывает 3
 // recent sessions с stages + ratings + opens detail/delete inline.
-//
-// Когда real Cue ingestion ship'нет (Phase C backend), эта секция остаётся
-// — список читается из same store, лишь источник sessions меняется
-// (manual log + ingested transcript merge).
 
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'

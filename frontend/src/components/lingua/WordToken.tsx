@@ -1,5 +1,3 @@
-// WordToken — Phase K W8. Click-on-word renderer для Reading + Listening.
-//
 // Splits body text на абзацы → tokens. «Слово» = 2+ Unicode-letter подряд.
 // Punctuation сохраняется как non-clickable gaps. Click на слово → popover
 // callback (handled by parent — обычно мутация addVocab).

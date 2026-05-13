@@ -1,4 +1,3 @@
-// GoogleCalendarSection — Stream E Settings surface. Two states:
 //   1. Disconnected → «Подключить Google Calendar» CTA. Opens auth URL в
 //      новом окне; callback page завершает OAuth и инвалидирует status.
 //   2. Connected → calendar_id + last_synced + Sync / Disconnect actions.

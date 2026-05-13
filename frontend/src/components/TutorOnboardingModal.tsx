@@ -1,16 +1,8 @@
 // TutorOnboardingModal — 4-step explainer для тутора при первом /tutor visit.
 //
-// Sergey 2026-05-01: «Onboarding wizard для тутора при первом /tutor visit
-// — 4-step explanation + invite-code generator». Это убирает «А что вообще
-// делать?»-вопрос для нового тутора и ведёт его прямо к созданию первого
-// invite-кода.
-//
 // State persisted в localStorage (key: 'tutor:onboarded'). Re-open
 // возможен из dashboard'а через explicit «Tutorial» кнопку (не сделано в
 // этой волне — добавим если попросят).
-//
-// 2026-05-12: migrated to foundation Modal primitive. Focus trap + ESC close +
-// scroll lock + smooth in/out + restore focus on close — all handled by Modal.
 
 import { useState } from 'react'
 import { Check, Copy, X } from 'lucide-react'

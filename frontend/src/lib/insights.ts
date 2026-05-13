@@ -1,13 +1,7 @@
-// insights.ts — F4 (Phase C) MVP proactive coach insights.
-//
 // Цель: coach не ждёт юзера. Detection rules смотрят на F5 activity log,
 // F2 goal, F3 readiness + F9 diagnostic и produce «nudge» / «warn» events.
 // Coach начинает «говорить сам»: «Не log'ал 3 дня — что случилось?»,
 // «Streak 5 дней — продолжай», «Дедлайн через 20 дней, readiness 35%».
-//
-// MVP backend-free: rules pure functions over localStorage. Когда Phase C
-// ship'нет backend insight producer (intelligence.app/insights), мигрируем
-// shape но keep UI стабильным.
 
 import { computeStreak, computeTrajectory, getActivitySummary, listActivities } from './activity'
 import { getCueSessionsSummary } from './cueSessions'

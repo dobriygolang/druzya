@@ -3,10 +3,6 @@
 // Source of truth — backend hone_user_settings. Store: optimistic UI на
 // switch + reload from backend on mount. localStorage используется только
 // как hint до hydrate, чтобы dropdown не флипал на 'general' и обратно.
-//
-// Phase K Wave 8 (Sergey 2026-05-13): English vertical вынесен из Hone в
-// web. `englishActive` + 'english' track удалены из store; Hone теперь —
-// pure focus cockpit (dev/ML/go).
 import { create } from 'zustand';
 
 import {

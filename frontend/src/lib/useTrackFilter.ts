@@ -129,8 +129,6 @@ export function useTrackFilter(opts: UseTrackFilterOptions = {}) {
     lastSyncedUrlRef.current = fromUrl
     const parsed = parseTracksFromUrl(fromUrl)
     if (parsed === null) {
-      // Param removed — but don't clear if it was just our LS-loaded
-      // state не показанное в URL изначально.
       return
     }
     setSelectedState(parsed)

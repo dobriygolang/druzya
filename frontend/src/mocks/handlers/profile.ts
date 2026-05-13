@@ -2,11 +2,6 @@ import { http, HttpResponse } from 'msw'
 
 const base = '/api/v1'
 
-// Identity 2026-05-04 — RPG-витрина (Vessel/ascendant/Crimson Sigil)
-// выпилена. Backend поля title/char_class/level/global_power_score
-// остаются в proto до следующего bump'а — UI их игнорирует (ProfilePage
-// rewrite не показывает rating-stats). Mock держит neutral значения,
-// чтобы dev-snapshots не путали новых разработчиков.
 const profileFull = {
   id: '00000000-0000-0000-0000-000000000001',
   username: 'hero',

@@ -1,5 +1,3 @@
-// IdentityIntroModal — Phase J / X4 (P1) first-run identity-discovery.
-//
 // Проблема (из docs/feature analysis): юзер не понимает что Hone делает
 // vs web druz9.online vs Cue. Identity overlap → cannibalization risk.
 // Юзер открывает Hone, ищет «AI mock», не находит и думает «не работает».

@@ -1,3 +1,5 @@
+//go:generate mockgen -package mocks -destination mocks/dashboard_mock.go -source dashboard.go
+
 // dashboard.go — admin dashboard entity + repository contract.
 //
 // The dashboard surface is a simple counters payload assembled from several

@@ -1,5 +1,3 @@
-// milestones — F2 Phase B/C milestone decomposition (frontend MVP, deterministic).
-//
 // Цель: цель — это не вершина, а 10-12 weekly чекпоинтов. Deterministic
 // генерация на основе goal kind + targetDate + diagnostic weakest area
 // (без backend, без LLM — pure heuristic). Когда backend ship'нет

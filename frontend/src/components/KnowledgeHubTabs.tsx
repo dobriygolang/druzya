@@ -1,5 +1,4 @@
 // WAVE-13 IA refactor — segmented control at the top of /codex.
-// 2026-05-12 (D5): Podcasts вернулись из Hone в web как `/podcasts` —
 // Hone превратился в pure focus cockpit, content surfaces живут в web.
 
 import { Link } from 'react-router-dom'

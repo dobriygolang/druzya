@@ -1,7 +1,4 @@
-// readiness.ts — F3 (Phase B) MVP readiness prediction engine.
-//
 // Цель: deterministic computation готовности 0..100% к active goal'у. Без
-// backend / без LLM — pure heuristic. Когда Phase C ship'нет
 // `GetReadinessPrediction` RPC, можно swap source но keep UI shape стабильным.
 //
 // Inputs (all localStorage-backed):

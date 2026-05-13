@@ -428,7 +428,6 @@ function Ritual() {
 }
 
 /* ────────────────────────── Tracks ─────────────────────────── */
-// Wave 3.7 of docs/feature/plan.md — visual call-out of the multi-track
 // Atlas. Sits between Ritual (day-in-the-life) and product rows so the
 // reader sees «один продукт, шесть треков» before the per-app deep-dives.
 //

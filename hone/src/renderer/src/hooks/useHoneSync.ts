@@ -1,13 +1,8 @@
-// useHoneSync — sync replication loop (Phase C-4).
-//
 // На login: full bootstrap pull → IndexedDB cache. После — polling каждые
 // 30s + immediate pull on window focus / online events. Errors silent
 // (sync — best-effort, не должен ломать app). При 401 device_revoked
 // sync.ts internally trigger'ит session.clear() — see api/sync.ts.
 //
-// Phase R3 cooldown — sync interval pauses when the app is in the
-// background (`document.hidden`). When the user comes back to Hone, the
-// visibilitychange handler triggers an immediate pull and resumes the
 // 30s cadence. This stops Hone from waking the laptop's NIC every 30s
 // while the user is in IDE / browser / Slack, which was a major heat
 // contributor on M1 Airs.

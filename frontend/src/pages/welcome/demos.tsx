@@ -1,5 +1,3 @@
-// Interactive demo frames for the landing page (Wave 1.5.6–1.5.10 of
-// docs/feature/plan.md). Three animated mocks — Hone / Cue / Mock
 // English — running on a tiny shared state-machine. Hover pauses the
 // timeline; click opens a zoom-in modal with the same frame larger.
 //

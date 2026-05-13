@@ -1,5 +1,3 @@
-// TutorsDiscoverPage — Phase K T1 (P0) 2026-05-12.
-//
 // Public-ish (auth-gated) discovery surface: students browse visible
 // tutor profiles, filter by expertise/language chip, и apply.
 //

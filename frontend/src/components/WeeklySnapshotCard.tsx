@@ -1,5 +1,3 @@
-// WeeklySnapshotCard — R6 (Phase D 2026-05-12) local weekly summary.
-//
 // Цель: surface краткий рост-of-numbers за прошедшие 7 дней прямо на
 // /today, чтобы юзеру не приходилось переходить на /weekly. Frontend-only
 // MVP читает activity log, computes top-kind, total minutes, sessions

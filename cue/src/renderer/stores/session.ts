@@ -80,8 +80,6 @@ export const useSessionStore = create<State>((set, get) => ({
     try {
       const s = await window.druz9.sessions.start(kind);
       set({ current: s, loading: false, lastAnalysis: null, notesFilePath: null, attachedDocIds: [] });
-      // Phase J / X3 — cue_session_started. `kind` is the SessionKind
-      // enum value (categorical, low-cardinality) — safe to track.
       void import('../lib/analytics').then(({ analytics, ANALYTICS_EVENTS }) => {
         analytics.track(ANALYTICS_EVENTS.cue_session_started, { kind });
       });
@@ -99,9 +97,6 @@ export const useSessionStore = create<State>((set, get) => ({
     try {
       const s = await window.druz9.sessions.end();
       set({ current: null, loading: false, attachedDocIds: [] });
-      // Phase J / X3 — cue_session_completed. Backend later emits
-      // sessionAnalysisReady; we fire on `end()` so we attribute the
-      // user's explicit stop, not the post-hoc analyzer finish.
       void import('../lib/analytics').then(({ analytics, ANALYTICS_EVENTS }) => {
         analytics.track(ANALYTICS_EVENTS.cue_session_completed, {
           had_session: s !== null,

@@ -56,10 +56,6 @@ export function ensureTray(deps: TrayDeps): void {
   tray.on('click', () => toggleTrayPopup(deps));
   tray.on('right-click', () => toggleTrayPopup(deps));
 
-  // CI3 (Phase A 2026-05-12) — register tray для masquerade.applyPreset(),
-  // которая swap'ает menu-bar icon когда юзер выбирает alias. Без registry
-  // tray остаётся «Cue» в menu bar даже после Dock-swap, что палево
-  // при screen-share.
   registerTrayForMasquerade(tray);
 }
 

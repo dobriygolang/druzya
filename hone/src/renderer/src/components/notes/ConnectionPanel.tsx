@@ -328,10 +328,6 @@ export function ConnectionPanel({
 
   const activate = useCallback(
     (it: PanelItem) => {
-      // Phase J / X3 — record the link click. `kind` (note/atlas/codex) is
-      // categorical, low-cardinality; never log the target string itself
-      // (URLs / note titles may carry PII — sanitize would strip but we
-      // pre-filter for clarity).
       analytics.track(ANALYTICS_EVENTS.note_link_clicked, { kind: it.kind });
       if (it.kind === 'note' || it.kind === 'codex') {
         // Codex items today are session/pr/task — they share id namespace

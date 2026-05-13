@@ -1,5 +1,4 @@
 // queries/circles.ts — REST-обёртки для circles + events bounded-contexts
-// (bible §9 Phase 6.5.3). Backend контракты:
 //   POST   /api/v1/circles                      → Circle
 //   GET    /api/v1/circles                      → {items: Circle[]}
 //   GET    /api/v1/circles/{id}                 → Circle (auto-join)
@@ -15,7 +14,6 @@
 //   DELETE /api/v1/events/{id}                  → {ok}
 //
 // Web-UI единственное место создания circles/events; Hone только
-// показывает + RSVP (bible §17 hard cut).
 
 import { api } from '../apiClient'
 
@@ -263,8 +261,6 @@ export async function deleteEvent(id: string): Promise<void> {
   })
 }
 
-// Phase-4 ADR-001 Wave 2 — react-query hooks for the profile rewrite
-// (CohortCard / CohortsPanel → circles-backed equivalents).
 import { useQuery } from '@tanstack/react-query'
 
 export function useMyCirclesQuery() {

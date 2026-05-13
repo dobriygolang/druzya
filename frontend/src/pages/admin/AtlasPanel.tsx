@@ -36,7 +36,6 @@ export function AtlasPanel() {
   const [edgeFrom, setEdgeFrom] = useState('')
   const [edgeTo, setEdgeTo] = useState('')
   const [edgeError, setEdgeError] = useState<string | null>(null)
-  // Track-kind filter (Wave 3 / admin add-on for the multi-track Atlas).
   // Empty string = «все треки». Stored as state so re-renders don't reset
   // the dropdown when nodes refetch.
   const [trackFilter, setTrackFilter] = useState<string>('')

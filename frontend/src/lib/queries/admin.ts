@@ -10,9 +10,6 @@ import { api } from '../apiClient'
 // Dashboard
 // ─────────────────────────────────────────────────────────────────────────
 
-// Arena/Lobby final purge 2026-05-06: active_arena_matches dropped — proto
-// already reserved the slot back in the 2026-05-01 pivot, this just brings
-// the TS shape and reader in line.
 export type AdminDashboard = {
   users_total: number
   users_active_today: number

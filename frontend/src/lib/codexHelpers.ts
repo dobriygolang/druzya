@@ -1,5 +1,3 @@
-// codexHelpers — pure-presentation utilities для R1 (Phase A) Codex
-// ranking-proxy enhancements:
 //   - getSourceIcon(source): maps source string → lucide icon component
 //   - pickRecommendedArticles(articles, weakest): F9 diagnostic-driven «for you»
 //   - sortArticles(articles, mode): ranking-proxy dropdown

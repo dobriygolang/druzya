@@ -356,9 +356,6 @@ interface VolumeBtnProps {
 // что у dock'а) absolute-positioned: левый край прижат к правому краю
 // volume-кнопки, разворачивается вправо за границу dock'а. Таймер и
 // остальные кнопки не дёргаются.
-// Phase R3 cooldown — wrapped in React.memo so 1Hz pomodoro tick re-render
-// of Dock doesn't bust this child's reconciliation. vol prop only changes
-// on actual slider interaction.
 const VolumeBtn = memo(VolumeBtnImpl);
 
 function VolumeBtnImpl({ vol, onVol }: VolumeBtnProps) {

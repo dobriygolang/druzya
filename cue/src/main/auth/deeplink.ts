@@ -2,8 +2,6 @@
 //
 // History: Originally only `druz9-cue://open?file=<path>` was supported
 // (Hone → Cue handoff: «start Cue with this imported note → open the
-// session in local list»). X5 (Phase J P2 2026-05-12) generalises into a
-// typed intent system so future cross-product handoffs (web → Cue
 // «start session for upcoming interview», Hone → Cue «record this note
 // as voice»…) can plug in without touching the URL parser.
 //
@@ -156,7 +154,6 @@ export function parseCueDeepLink(raw: string): CueDeepLinkIntent | null {
       return { kind: 'session.open', filePath: file, source };
     }
 
-    // X5 — `druz9-cue://session.start?company=&persona=`
     if (host === 'session.start' || host === 'start') {
       return {
         kind: 'session.start',
@@ -166,7 +163,6 @@ export function parseCueDeepLink(raw: string): CueDeepLinkIntent | null {
       };
     }
 
-    // X5 — `druz9-cue://transcript.open?id=<session-id>`
     if (host === 'transcript.open' || host === 'transcript') {
       const id = u.searchParams.get('id') ?? u.searchParams.get('session');
       if (!id) return null;

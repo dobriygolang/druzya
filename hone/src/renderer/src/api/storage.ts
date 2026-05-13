@@ -1,5 +1,3 @@
-// storage.ts — Phase C storage quota client.
-//
 // Бэкенд: GET /api/v1/storage/quota → {usedBytes, quotaBytes, tier}.
 // Этот endpoint — плоский REST (не Connect-RPC), потому что storage
 // service не имеет proto schema'ы и оборачивать его ради одного reader'а
@@ -8,9 +6,6 @@ import { API_BASE_URL, DEV_BEARER_TOKEN } from './config';
 import { useSessionStore } from '../stores/session';
 
 // StorageTier унифицирован с subscription.Tier (`free` | `seeker` | `ascended`).
-// Старые значения 'pro' / 'pro_plus' deprecated — backend mapping добавлен в
-// services/storage для backward compat но fronted принимает обе формы и
-// нормализует.
 export type StorageTier = 'free' | 'seeker' | 'ascended' | 'pro' | 'pro_plus';
 
 export interface StorageQuota {
@@ -72,9 +67,6 @@ function authHeaders(): Record<string, string> {
   const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
   const h: Record<string, string> = {};
   if (token) h.authorization = `Bearer ${token}`;
-  // X-Device-ID — Phase C-3.1. Читаем напрямую из localStorage чтобы
-  // избежать циклической зависимости (device.ts импортирует
-  // registerDevice/DeviceLimitError отсюда).
   try {
     const did = window.localStorage.getItem('hone:device-id');
     if (did) h['x-device-id'] = did;
@@ -209,7 +201,6 @@ export class DeviceLimitError extends Error {
   }
 }
 
-// ─── Publish to web (Phase C-4) ───────────────────────────────────────────
 
 export interface PublishStatus {
   published: boolean;
@@ -278,8 +269,6 @@ export async function makeNotePrivate(noteId: string, ciphertextB64: string): Pr
   if (!resp.ok) throw new Error(`makePrivate: ${resp.status}`);
 }
 
-// ─── Bulk note meta (Phase C-7 follow-up) ─────────────────────────────────
-//
 // Возвращает per-note flags (encrypted, published) для всех active notes.
 // Используется sidebar'ом для отрисовки lock-icons без N+1 hover-запросов.
 

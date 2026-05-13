@@ -1,5 +1,3 @@
-// queries/lingua.ts — react-query hooks for /lingua (Phase K Wave 8).
-//
 // Reading + Writing + Listening + Speaking. Каждая mutation invalidate'ит
 // соответствующие query keys так чтобы UI refresh'ился без лишнего refetch
 // callsite-кода.

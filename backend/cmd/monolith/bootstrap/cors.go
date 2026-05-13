@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -39,12 +40,7 @@ func corsMiddleware() func(http.Handler) http.Handler {
 			strings.HasPrefix(origin, "http://127.0.0.1:") {
 			return true
 		}
-		for _, e := range extra {
-			if e != "" && e == origin {
-				return true
-			}
-		}
-		return false
+		return origin != "" && slices.Contains(extra, origin)
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

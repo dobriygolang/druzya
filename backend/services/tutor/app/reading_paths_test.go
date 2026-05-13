@@ -7,57 +7,17 @@ import (
 	"time"
 
 	"druz9/tutor/domain"
+	"druz9/tutor/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// fakeReadingPathRepo follows the same hand-rolled fake convention used
-// by fakeAssignmentRepo / fakeSnapshotRepo in this package. Nil closure
-// = «not expected to be called» — surfaced as an explicit error so the
-// failing test pinpoints the misconfigured field.
-type fakeReadingPathRepo struct {
-	create   func(ctx context.Context, p domain.ReadingPath) (domain.ReadingPath, error)
-	update   func(ctx context.Context, p domain.ReadingPath) (domain.ReadingPath, error)
-	archive  func(ctx context.Context, t, p uuid.UUID, now time.Time) error
-	listPage func(ctx context.Context, t uuid.UUID, limit int, cursor string) ([]domain.ReadingPath, string, error)
-	get      func(ctx context.Context, t, p uuid.UUID) (domain.ReadingPath, error)
-}
-
-func (f fakeReadingPathRepo) CreateReadingPath(ctx context.Context, p domain.ReadingPath) (domain.ReadingPath, error) {
-	if f.create == nil {
-		return domain.ReadingPath{}, errors.New("create not set")
-	}
-	return f.create(ctx, p)
-}
-func (f fakeReadingPathRepo) UpdateReadingPath(ctx context.Context, p domain.ReadingPath) (domain.ReadingPath, error) {
-	if f.update == nil {
-		return domain.ReadingPath{}, errors.New("update not set")
-	}
-	return f.update(ctx, p)
-}
-func (f fakeReadingPathRepo) ArchiveReadingPath(ctx context.Context, t, p uuid.UUID, now time.Time) error {
-	if f.archive == nil {
-		return errors.New("archive not set")
-	}
-	return f.archive(ctx, t, p, now)
-}
-func (f fakeReadingPathRepo) ListReadingPathsByTutorPaged(ctx context.Context, t uuid.UUID, limit int, cursor string) ([]domain.ReadingPath, string, error) {
-	if f.listPage == nil {
-		return nil, "", errors.New("listPage not set")
-	}
-	return f.listPage(ctx, t, limit, cursor)
-}
-func (f fakeReadingPathRepo) GetReadingPathForTutor(ctx context.Context, t, p uuid.UUID) (domain.ReadingPath, error) {
-	if f.get == nil {
-		return domain.ReadingPath{}, errors.New("get not set")
-	}
-	return f.get(ctx, t, p)
-}
 
 // ── ListReadingPaths ─────────────────────────────────────────────────
 
 func TestListReadingPaths_NilTutor(t *testing.T) {
-	uc := &ListReadingPaths{Repo: fakeReadingPathRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &ListReadingPaths{Repo: mocks.NewMockReadingPathRepo(ctrl)}
 	_, err := uc.Do(context.Background(), uuid.Nil, 50, "")
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
@@ -78,18 +38,14 @@ func TestListReadingPaths_NilRepo_ReturnsEmpty(t *testing.T) {
 }
 
 func TestListReadingPaths_Happy(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
 	want := []domain.ReadingPath{
 		{ID: uuid.New(), TutorID: tutorID, Name: "Senior Go basics"},
 	}
-	uc := &ListReadingPaths{Repo: fakeReadingPathRepo{
-		listPage: func(_ context.Context, tid uuid.UUID, _ int, _ string) ([]domain.ReadingPath, string, error) {
-			if tid != tutorID {
-				t.Fatalf("wrong tutor id: got %v want %v", tid, tutorID)
-			}
-			return want, "cursor-2", nil
-		},
-	}}
+	repo := mocks.NewMockReadingPathRepo(ctrl)
+	repo.EXPECT().ListReadingPathsByTutorPaged(gomock.Any(), tutorID, gomock.Any(), gomock.Any()).Return(want, "cursor-2", nil)
+	uc := &ListReadingPaths{Repo: repo}
 	out, err := uc.Do(context.Background(), tutorID, 50, "")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
@@ -102,6 +58,7 @@ func TestListReadingPaths_Happy(t *testing.T) {
 // ── CreateReadingPath ────────────────────────────────────────────────
 
 func TestCreateReadingPath_Validation(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
 	cases := []struct {
 		name string
@@ -117,7 +74,7 @@ func TestCreateReadingPath_Validation(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			uc := &CreateReadingPath{Repo: fakeReadingPathRepo{}}
+			uc := &CreateReadingPath{Repo: mocks.NewMockReadingPathRepo(ctrl)}
 			_, err := uc.Do(context.Background(), c.in)
 			if !errors.Is(err, domain.ErrInvalidInput) {
 				t.Fatalf("expected ErrInvalidInput, got %v", err)
@@ -127,18 +84,21 @@ func TestCreateReadingPath_Validation(t *testing.T) {
 }
 
 func TestCreateReadingPath_DedupesAndTrims(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
 	now := time.Date(2026, 5, 12, 10, 0, 0, 0, time.UTC)
 	var saved domain.ReadingPath
-	uc := &CreateReadingPath{
-		Now: func() time.Time { return now },
-		Repo: fakeReadingPathRepo{
-			create: func(_ context.Context, p domain.ReadingPath) (domain.ReadingPath, error) {
-				saved = p
-				p.ID = uuid.New()
-				return p, nil
-			},
+	repo := mocks.NewMockReadingPathRepo(ctrl)
+	repo.EXPECT().CreateReadingPath(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, p domain.ReadingPath) (domain.ReadingPath, error) {
+			saved = p
+			p.ID = uuid.New()
+			return p, nil
 		},
+	)
+	uc := &CreateReadingPath{
+		Now:  func() time.Time { return now },
+		Repo: repo,
 	}
 	res, err := uc.Do(context.Background(), CreateReadingPathInput{
 		TutorID:       tutorID,
@@ -169,7 +129,8 @@ func TestCreateReadingPath_DedupesAndTrims(t *testing.T) {
 // ── UpdateReadingPath ────────────────────────────────────────────────
 
 func TestUpdateReadingPath_NilIDs(t *testing.T) {
-	uc := &UpdateReadingPath{Repo: fakeReadingPathRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &UpdateReadingPath{Repo: mocks.NewMockReadingPathRepo(ctrl)}
 	_, err := uc.Do(context.Background(), UpdateReadingPathInput{Name: "x"})
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
@@ -177,16 +138,17 @@ func TestUpdateReadingPath_NilIDs(t *testing.T) {
 }
 
 func TestUpdateReadingPath_PassesThrough(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	tutorID, pathID := uuid.New(), uuid.New()
 	var got domain.ReadingPath
-	uc := &UpdateReadingPath{
-		Repo: fakeReadingPathRepo{
-			update: func(_ context.Context, p domain.ReadingPath) (domain.ReadingPath, error) {
-				got = p
-				return p, nil
-			},
+	repo := mocks.NewMockReadingPathRepo(ctrl)
+	repo.EXPECT().UpdateReadingPath(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, p domain.ReadingPath) (domain.ReadingPath, error) {
+			got = p
+			return p, nil
 		},
-	}
+	)
+	uc := &UpdateReadingPath{Repo: repo}
 	_, err := uc.Do(context.Background(), UpdateReadingPathInput{
 		TutorID: tutorID,
 		PathID:  pathID,
@@ -203,20 +165,23 @@ func TestUpdateReadingPath_PassesThrough(t *testing.T) {
 // ── ArchiveReadingPath ───────────────────────────────────────────────
 
 func TestArchiveReadingPath_Forwards(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	tutorID, pathID := uuid.New(), uuid.New()
 	now := time.Date(2026, 5, 12, 11, 0, 0, 0, time.UTC)
 	called := false
-	uc := &ArchiveReadingPath{
-		Now: func() time.Time { return now },
-		Repo: fakeReadingPathRepo{
-			archive: func(_ context.Context, t, p uuid.UUID, ts time.Time) error {
-				called = true
-				if t != tutorID || p != pathID || !ts.Equal(now) {
-					return errors.New("wrong args")
-				}
-				return nil
-			},
+	repo := mocks.NewMockReadingPathRepo(ctrl)
+	repo.EXPECT().ArchiveReadingPath(gomock.Any(), tutorID, pathID, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _, _ uuid.UUID, ts time.Time) error {
+			called = true
+			if !ts.Equal(now) {
+				return errors.New("wrong timestamp")
+			}
+			return nil
 		},
+	)
+	uc := &ArchiveReadingPath{
+		Now:  func() time.Time { return now },
+		Repo: repo,
 	}
 	if err := uc.Do(context.Background(), ArchiveReadingPathInput{TutorID: tutorID, PathID: pathID}); err != nil {
 		t.Fatalf("unexpected err: %v", err)

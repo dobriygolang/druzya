@@ -1,5 +1,3 @@
-// web-handoff.ts (Cue renderer) — X5 (Phase J P2 2026-05-12).
-//
 // Renderer-side mirror of cue/src/main/api/web-handoff.ts. Renderer can't
 // import main process modules, so we duplicate the URL-builder logic here
 // and route through the shell.openExternal preload bridge.

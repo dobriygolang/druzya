@@ -1,7 +1,5 @@
 // frontend/src/pages/editor/EditorPage.tsx
 //
-// Solo-mode Monaco-ish editor (D4 Stream F migration, 2026-05-12). Pivot:
-// peer-collab (Yjs / WS / awareness / yCollab) был дропнут вместе с Hone
 // Editor.tsx; что осталось — личная code-room с persistence + Judge0 run.
 //
 // Маршруты:

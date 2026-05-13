@@ -1,5 +1,3 @@
-// MyTutorsCard — Phase K T6 (2026-05-12). Student-side social-proof
-// surface on /today. Renders one row per active tutor with subtle
 // «recently active» dot + aggregate counts (no other-student names,
 // no event titles). Hidden entirely when student has zero tutors.
 //

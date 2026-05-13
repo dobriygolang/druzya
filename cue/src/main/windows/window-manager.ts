@@ -32,9 +32,6 @@ export const STEALTHED_WINDOWS: ReadonlySet<WindowName> = new Set([
   'history',
   'picker',
   'area-overlay',
-  // Wave 6.2 — English polish window: same stealth treatment as the
-  // compact/expanded so screen-share viewers don't see «AI is editing
-  // my message».
   'english-polish',
 ]);
 
@@ -186,10 +183,6 @@ function createManagedWindow(
     win.on('move', scheduleSave);
   }
 
-  // English polish — Wave 6.2: same stealth + always-on-top treatment
-  // as compact, so it sits cleanly on top of an IDE / Slack / email and
-  // doesn't show up on a screen share. Single-shot use, blur-to-hide
-  // mirrors the picker pattern (clicking elsewhere dismisses the panel).
   if (name === 'english-polish') {
     win.setContentProtection(stealthEnabled);
     win.setAlwaysOnTop(true, 'floating', 1);
@@ -245,8 +238,6 @@ function createManagedWindow(
     toast: '#/toast',
     'tray-popup': '#/tray-popup',
     'english-polish': '#/english-polish',
-    // Phase J / C6 — interview-prep wizard. Separate window (not the
-    // first-run onboarding) for the "Upload CV → JD → Start" flow.
     'interview-prep': '#/interview-prep',
   };
   const url = options.initialURL ?? `${opts.rendererURL}${hashFor[name]}`;
@@ -805,9 +796,6 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
       });
     }
     case 'english-polish': {
-      // Wave 6.2 — Cue English mode panel. Resizable так что юзер может
-      // развернуть его если pasted text длинный. Focusable: true — мы
-      // ждём что юзер кликает по issues row'ам и копирует suggestions.
       return new BrowserWindow({
         ...base,
         width: 480,
@@ -825,8 +813,6 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
       });
     }
     case 'interview-prep': {
-      // Phase J / C6 — interview-prep wizard. Standalone window (not
-      // first-run onboarding), opens from compact / expanded / settings.
       // Deliberately NOT stealthed: this runs BEFORE the user starts
       // sharing their screen; stealth wouldn't add value and would
       // hide the wizard from any screen-share if they accidentally

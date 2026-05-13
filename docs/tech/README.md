@@ -58,7 +58,7 @@ druzya/
 ├── cue/                      Cue (Electron + Vite + React + Swift binary)
 ├── infra/                    docker-compose.prod, nginx, monitoring, deploy.sh
 ├── docs/
-│   ├── for_investment/       Инвестор-ориентированные тексты
+│   ├── feature/              Каноническая identity (identity.md)
 │   └── tech/                 ← вы здесь
 └── .ai/skills/               Project-specific skills для Claude
 ```

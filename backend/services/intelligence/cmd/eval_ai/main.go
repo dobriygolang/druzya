@@ -34,6 +34,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -250,7 +251,7 @@ func checkConfidence(s sample) (bool, string) {
 	}
 	if hasDelta {
 		prior, _ := floatFlag(s.Input, "prior_confidence")
-		if v := abs(resp.Confidence - prior); v > deltaMax {
+		if v := math.Abs(resp.Confidence - prior); v > deltaMax {
 			return false, fmt.Sprintf("|delta|=%.2f > %.2f", v, deltaMax)
 		}
 	}
@@ -315,9 +316,3 @@ func floatFlag(m map[string]any, key string) (float64, bool) {
 	return v, ok
 }
 
-func abs(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
-}

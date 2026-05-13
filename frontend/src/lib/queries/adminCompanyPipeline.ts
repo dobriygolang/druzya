@@ -179,8 +179,6 @@ export function useRemoveStageMutation() {
   }
 }
 
-// Stage-update helper used by the side drawer when curator changes a
-// single stage's strictness / pool / optional flag etc.
 type UpdateStageInput = {
   companyId: string
   current: CompanyStageConfig[]

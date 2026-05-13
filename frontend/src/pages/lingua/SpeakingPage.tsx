@@ -1,9 +1,5 @@
-// SpeakingPage — Phase K W8 port of Hone Speaking.
-//
 // Catalog (B1/B2/C1 filter) + MicRecorder + AI grading (pronunciation +
 // fluency) + word-diff visualisation. 14-session sparkline history.
-// Phase K W9: AICoachPill в graded panel — coach explains weakest dim +
-// drills.
 import { useCallback, useMemo, useState } from 'react'
 
 import { AICoachPill } from '../../components/AICoachPill'

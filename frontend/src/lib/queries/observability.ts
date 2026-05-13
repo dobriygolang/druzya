@@ -1,7 +1,3 @@
-// observability.ts — react-query hooks for the three Wave 3.5.x admin
-// panels (Tracks / English HR / Mock-block). Backend is chi-direct
-// (services/admin/ports/observability_handler.go), no proto stubs.
-//
 // All endpoints gate on role=admin server-side; the hooks don't add
 // retries on 403 — they just propagate the error so AdminPage's role
 // guard handles redirect.

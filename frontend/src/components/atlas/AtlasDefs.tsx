@@ -1,4 +1,3 @@
-// AtlasDefs — all SVG <defs> needed by the atlas canvas in one place.
 // Rendered once at the top of the <svg> by AtlasCanvas; every child
 // component references by url(#id). Changing a gradient or filter is
 // localised here.

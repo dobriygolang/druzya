@@ -1,12 +1,8 @@
-// miniMock — F8 (Phase D) Mock pipeline diagnostic mode. MVP — frontend-only,
-// deterministic. 1 algo (multi-choice) + 1 sysdesign (keyword-checklist).
-//
 // Цель: дать юзеру 20-минутный self-check который генерит «ground truth»
 // signal для F3 readiness. Без этого F3 опирается на self-reported
 // diagnostic (F9) + activity proxy — а это slow / biased. Mini-mock = first
 // honest evaluation pass.
 //
-// Wire shape совпадает с planned backend `mock.RunDiagnostic` UC (Phase E
 // R2). Когда backend ship'нется, swap localStorage → RPC, UI keep'ит shape.
 //
 // Storage: один key с last result. История не хранится (один MVP signal —
@@ -67,8 +63,6 @@ export interface MiniMockResult {
 
 // ────────────────────────────────────────────────────────────────────────
 // Content bank — handpicked questions per track. Не LLM-сгенерированный,
-// чтобы MVP был полностью deterministic / offline. Backend Phase E будет
-// generate via LLM cascade.
 
 const GO_ALGO: AlgoQuestion[] = [
   {

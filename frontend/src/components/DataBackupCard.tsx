@@ -1,5 +1,3 @@
-// DataBackupCard — local-first backup surface (Phase A 2026-05-12).
-//
 // Цель: пока persistence backend не shipped, юзер должен иметь way to
 // сохранить и restore свой state. Браузер cleanup / device switch не
 // должен стирать streak / mini-mock / goal.

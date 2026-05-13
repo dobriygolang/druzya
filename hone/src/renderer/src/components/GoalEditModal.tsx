@@ -1,5 +1,3 @@
-// GoalEditModal — F2 (2026-05-12) simplified Hone-side goal editor.
-//
 // Mirrors web GoalWizardModal step 2 only: kind selection assumed (юзер
 // уже создал цель в web), здесь только refine target_company / target_text /
 // target_date. Full multi-step wizard живёт в web — Hone shows «edit in web»

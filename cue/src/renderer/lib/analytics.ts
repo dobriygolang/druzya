@@ -1,6 +1,5 @@
 // analytics.ts — opt-in product analytics client for Cue (stealth desktop).
 //
-// Phase J / X3 (P1) — mirrored API shape across 3 surfaces (web/hone/cue).
 // Stealth product privacy posture: defaults OPTED-OUT. User must explicitly
 // flip the toggle in Settings → Privacy. Once on, behaves identically to
 // the web/hone clients.

@@ -1,4 +1,3 @@
-// queries/googleCalendar.ts — Stream E (D3 pivot Circles → Google Calendar).
 // REST контракты — see proto/druz9/v1/google_calendar.proto:
 //   GET   /api/v1/google_calendar/status                  → ConnectionStatus
 //   POST  /api/v1/google_calendar/oauth/start             → {auth_url, state}

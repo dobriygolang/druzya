@@ -1,5 +1,3 @@
-// 2026-05-12: migrated to foundation Modal primitive (focus trap, ESC,
-// scroll lock, smooth in/out). Underline-only inputs per v2 spec.
 
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/primitives/Modal'

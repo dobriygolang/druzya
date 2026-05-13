@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -76,11 +78,7 @@ func (h *Hub) BroadcastIntervention(sessionID uuid.UUID, text string) {
 
 func (h *Hub) broadcast(sessionID uuid.UUID, f WSFrame) {
 	h.mu.RLock()
-	set := h.conn[sessionID]
-	conns := make([]*wsConn, 0, len(set))
-	for c := range set {
-		conns = append(conns, c)
-	}
+	conns := slices.Collect(maps.Keys(h.conn[sessionID]))
 	h.mu.RUnlock()
 	for _, c := range conns {
 		c.send(f)

@@ -1,5 +1,3 @@
-// queries/primaryGoal.ts — F2 backend RPC hooks (2026-05-12).
-//
 // Wraps backend `IntelligenceService.{CreateGoal,GetActiveGoal,UpdateGoal,
 // DeactivateGoal}` через chi-direct REST (google.api.http transcoding).
 //

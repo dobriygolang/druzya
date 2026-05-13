@@ -1,5 +1,3 @@
-// DiagnosticPage — F8 (Phase D) Mock diagnostic mode.
-//
 // Route: /mock/diagnostic
 //
 // Flow:

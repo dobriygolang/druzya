@@ -1,7 +1,3 @@
-// InviteAcceptPage — Wave 2.7 of docs/feature/plan.md. Public landing
-// at /invite/{code}: shows tutor display + invite status. PeekInvite
-// renders before auth; the Accept button gates on a logged-in user.
-//
 // Flow:
 //   1. PeekInvite (public) → render «<Maria> приглашает тебя…»
 //   2. If not logged in → «Войти» CTA → /login?next=/invite/{code}

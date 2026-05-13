@@ -412,7 +412,7 @@ func currentTopics(in domain.BriefPromptInput, limit int) []string {
 		add(w.Title, 1)
 	}
 	for _, kw := range in.MockKeywords {
-		add(kw.Keyword, maxInt(1, kw.Count))
+		add(kw.Keyword, max(1, kw.Count))
 	}
 	for _, ep := range in.CueMemories {
 		_, topics := cuePromptMeta(ep.Payload)

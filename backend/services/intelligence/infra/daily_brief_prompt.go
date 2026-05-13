@@ -608,7 +608,7 @@ func convergedTopics(in domain.BriefPromptInput, limit int) []string {
 		add(w.Title, "skill_atlas", 1)
 	}
 	for _, kw := range in.MockKeywords {
-		add(kw.Keyword, "mock_keywords", maxInt(1, kw.Count))
+		add(kw.Keyword, "mock_keywords", max(1, kw.Count))
 	}
 	for _, ep := range in.CueMemories {
 		_, topics := cuePromptMeta(ep.Payload)

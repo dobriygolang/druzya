@@ -1,6 +1,4 @@
 // /billing/welcome — Stripe Checkout вернул сюда после успешной оплаты
-// (wave 4 / S Stripe enhancements, success_url из BillingTab.tsx).
-//
 // Flow:
 //   1. Stripe редиректит на /billing/welcome?session_id={CHECKOUT_SESSION_ID}.
 //   2. useCheckoutSessionQuery() стучится в /subscription/checkout-session/<id>

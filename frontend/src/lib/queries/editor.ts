@@ -1,5 +1,3 @@
-// queries/editor.ts — solo-mode editor CRUD (D4 Stream F, 2026-05-12).
-//
 // Peer-collab WS was dropped together with Hone Editor.tsx; что осталось —
 // plain REST persistence над services/editor (CreateRoom / GetRoom). Run
 // code остаётся: backend Judge0 sandbox через POST /editor/room/:id/run.

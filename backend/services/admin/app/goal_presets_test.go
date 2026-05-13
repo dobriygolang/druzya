@@ -7,89 +7,37 @@ import (
 	"time"
 
 	"druz9/admin/domain"
+	"druz9/admin/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// fakeGoalPresetRepo — hand-rolled fake (no mockgen для маленького surface).
-type fakeGoalPresetRepo struct {
-	list         []domain.GoalPreset
-	listErr      error
-	listCalls    int
-	lastActive   bool
-	createIn     domain.GoalPresetUpsert
-	createOut    domain.GoalPreset
-	createErr    error
-	updateID     uuid.UUID
-	updatePatch  domain.GoalPresetPatch
-	updateOut    domain.GoalPreset
-	updateErr    error
-	deactivateID uuid.UUID
-	deactErr     error
-}
-
-func (f *fakeGoalPresetRepo) List(_ context.Context, activeOnly bool) ([]domain.GoalPreset, error) {
-	f.listCalls++
-	f.lastActive = activeOnly
-	return f.list, f.listErr
-}
-
-func (f *fakeGoalPresetRepo) GetByID(_ context.Context, id uuid.UUID) (domain.GoalPreset, error) {
-	for _, p := range f.list {
-		if p.ID == id {
-			return p, nil
-		}
-	}
-	return domain.GoalPreset{}, domain.ErrNotFound
-}
-
-func (f *fakeGoalPresetRepo) GetBySlug(_ context.Context, slug string) (domain.GoalPreset, error) {
-	for _, p := range f.list {
-		if p.Slug == slug {
-			return p, nil
-		}
-	}
-	return domain.GoalPreset{}, domain.ErrNotFound
-}
-
-func (f *fakeGoalPresetRepo) Create(_ context.Context, in domain.GoalPresetUpsert) (domain.GoalPreset, error) {
-	f.createIn = in
-	if f.createErr != nil {
-		return domain.GoalPreset{}, f.createErr
-	}
-	return f.createOut, nil
-}
-
-func (f *fakeGoalPresetRepo) Update(_ context.Context, id uuid.UUID, in domain.GoalPresetPatch) (domain.GoalPreset, error) {
-	f.updateID = id
-	f.updatePatch = in
-	if f.updateErr != nil {
-		return domain.GoalPreset{}, f.updateErr
-	}
-	return f.updateOut, nil
-}
-
-func (f *fakeGoalPresetRepo) Deactivate(_ context.Context, id uuid.UUID) error {
-	f.deactivateID = id
-	return f.deactErr
-}
 
 func TestListGoalPresets_PassesActiveFlag(t *testing.T) {
 	t.Parallel()
-	repo := &fakeGoalPresetRepo{list: []domain.GoalPreset{{Slug: "x"}}}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockGoalPresetRepo(ctrl)
+	var lastActive bool
+	repo.EXPECT().List(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, activeOnly bool) ([]domain.GoalPreset, error) {
+			lastActive = activeOnly
+			return []domain.GoalPreset{{Slug: "x"}}, nil
+		},
+	)
 	uc := &ListGoalPresets{Repo: repo}
 	out, err := uc.Do(context.Background(), true)
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if len(out) != 1 || !repo.lastActive {
-		t.Fatalf("activeOnly not propagated; calls=%d active=%v", repo.listCalls, repo.lastActive)
+	if len(out) != 1 || !lastActive {
+		t.Fatalf("activeOnly not propagated; active=%v", lastActive)
 	}
 }
 
 func TestCreateGoalPreset_Validates(t *testing.T) {
 	t.Parallel()
-	uc := &CreateGoalPreset{Repo: &fakeGoalPresetRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &CreateGoalPreset{Repo: mocks.NewMockGoalPresetRepo(ctrl)}
 	cases := []struct {
 		name string
 		in   domain.GoalPresetUpsert
@@ -111,16 +59,22 @@ func TestCreateGoalPreset_Validates(t *testing.T) {
 
 func TestCreateGoalPreset_Success(t *testing.T) {
 	t.Parallel()
-	repo := &fakeGoalPresetRepo{
-		createOut: domain.GoalPreset{
-			ID:        uuid.New(),
-			Slug:      "senior-yandex",
-			Title:     "Senior Backend @ Yandex",
-			Kind:      "GOAL_KIND_TOP_TIER_CO",
-			IsActive:  true,
-			CreatedAt: time.Now(),
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockGoalPresetRepo(ctrl)
+	var captured domain.GoalPresetUpsert
+	repo.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in domain.GoalPresetUpsert) (domain.GoalPreset, error) {
+			captured = in
+			return domain.GoalPreset{
+				ID:        uuid.New(),
+				Slug:      in.Slug,
+				Title:     in.Title,
+				Kind:      in.Kind,
+				IsActive:  true,
+				CreatedAt: time.Now(),
+			}, nil
 		},
-	}
+	)
 	uc := &CreateGoalPreset{Repo: repo}
 	out, err := uc.Do(context.Background(), domain.GoalPresetUpsert{
 		Slug: "senior-yandex", Title: "Senior Backend @ Yandex", Kind: "GOAL_KIND_TOP_TIER_CO",
@@ -129,14 +83,15 @@ func TestCreateGoalPreset_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if out.Slug != "senior-yandex" || repo.createIn.TargetCompany != "Yandex" {
-		t.Fatalf("payload not propagated: %+v", repo.createIn)
+	if out.Slug != "senior-yandex" || captured.TargetCompany != "Yandex" {
+		t.Fatalf("payload not propagated: %+v", captured)
 	}
 }
 
 func TestUpdateGoalPreset_RejectsNilID(t *testing.T) {
 	t.Parallel()
-	uc := &UpdateGoalPreset{Repo: &fakeGoalPresetRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &UpdateGoalPreset{Repo: mocks.NewMockGoalPresetRepo(ctrl)}
 	if _, err := uc.Do(context.Background(), uuid.Nil, domain.GoalPresetPatch{}); !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
 	}
@@ -144,7 +99,8 @@ func TestUpdateGoalPreset_RejectsNilID(t *testing.T) {
 
 func TestUpdateGoalPreset_RejectsBlankTitle(t *testing.T) {
 	t.Parallel()
-	uc := &UpdateGoalPreset{Repo: &fakeGoalPresetRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &UpdateGoalPreset{Repo: mocks.NewMockGoalPresetRepo(ctrl)}
 	blank := "   "
 	if _, err := uc.Do(context.Background(), uuid.New(), domain.GoalPresetPatch{Title: &blank}); !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
@@ -153,7 +109,9 @@ func TestUpdateGoalPreset_RejectsBlankTitle(t *testing.T) {
 
 func TestUpdateGoalPreset_AllowsClearDefaultTargetDays(t *testing.T) {
 	t.Parallel()
-	repo := &fakeGoalPresetRepo{updateOut: domain.GoalPreset{Slug: "x"}}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockGoalPresetRepo(ctrl)
+	repo.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.GoalPreset{Slug: "x"}, nil)
 	uc := &UpdateGoalPreset{Repo: repo}
 	clear := -1
 	if _, err := uc.Do(context.Background(), uuid.New(), domain.GoalPresetPatch{DefaultTargetDays: &clear}); err != nil {
@@ -163,7 +121,8 @@ func TestUpdateGoalPreset_AllowsClearDefaultTargetDays(t *testing.T) {
 
 func TestDeactivateGoalPreset_RejectsNilID(t *testing.T) {
 	t.Parallel()
-	uc := &DeactivateGoalPreset{Repo: &fakeGoalPresetRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &DeactivateGoalPreset{Repo: mocks.NewMockGoalPresetRepo(ctrl)}
 	if err := uc.Do(context.Background(), uuid.Nil); !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
 	}
@@ -171,14 +130,13 @@ func TestDeactivateGoalPreset_RejectsNilID(t *testing.T) {
 
 func TestDeactivateGoalPreset_DelegatesToRepo(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	id := uuid.New()
-	repo := &fakeGoalPresetRepo{}
+	repo := mocks.NewMockGoalPresetRepo(ctrl)
+	repo.EXPECT().Deactivate(gomock.Any(), id).Return(nil)
 	uc := &DeactivateGoalPreset{Repo: repo}
 	if err := uc.Do(context.Background(), id); err != nil {
 		t.Fatalf("unexpected: %v", err)
-	}
-	if repo.deactivateID != id {
-		t.Fatalf("repo.Deactivate not called with id; got %v", repo.deactivateID)
 	}
 }
 

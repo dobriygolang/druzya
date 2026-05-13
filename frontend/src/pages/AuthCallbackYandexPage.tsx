@@ -92,8 +92,6 @@ export default function AuthCallbackYandexPage() {
         // Recover ?next= proxied through sessionStorage (LoginPage.tsx stashes
         // it before the Yandex redirect — URL params don't survive the round
         // trip). New users always land on /onboarding regardless of `next`,
-        // returning users go to `next` if set, else /today (pivot 2026-05-03:
-        // landing — action-driven dashboard).
         let dest = isNewUser ? '/onboarding' : '/today'
         try {
           const stashedNext = sessionStorage.getItem('oauth_next')

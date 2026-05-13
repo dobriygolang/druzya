@@ -369,13 +369,11 @@ export default function MockResultPage() {
   const ownershipCell = sections['ownership'] ?? { score: 0, comment: '—' }
   const impactCell = sections['impact'] ?? { score: 0, comment: '—' }
   const learningCell = sections['learning'] ?? { score: 0, comment: '—' }
-  // Sysanalyst (Wave 7). Keys mirror BuildSysanalystReportPrompt.
   const requirementsCell = sections['requirements'] ?? { score: 0, comment: '—' }
   const modelingCell = sections['modeling'] ?? { score: 0, comment: '—' }
   const integrationCell = sections['integration'] ?? { score: 0, comment: '—' }
   const dataCell = sections['data'] ?? { score: 0, comment: '—' }
   const processCell = sections['process'] ?? { score: 0, comment: '—' }
-  // Product analyst (Wave 8). Keys mirror BuildProductAnalystReportPrompt.
   const metricsCell = sections['metrics'] ?? { score: 0, comment: '—' }
   const sqlCell = sections['sql'] ?? { score: 0, comment: '—' }
   const experimentationCell = sections['experimentation'] ?? { score: 0, comment: '—' }
@@ -383,14 +381,12 @@ export default function MockResultPage() {
   // `communication` is reused — engineering rubric also has it (cm); rename
   // here to avoid shadowing.
   const paCommunicationCell = sections['communication'] ?? { score: 0, comment: '—' }
-  // QA (Wave 9.2). Keys mirror BuildQAReportPrompt.
   const testDesignCell = sections['test_design'] ?? { score: 0, comment: '—' }
   const apiCell = sections['api'] ?? { score: 0, comment: '—' }
   const automationCell = sections['automation'] ?? { score: 0, comment: '—' }
   const bugAnalysisCell = sections['bug_analysis'] ?? { score: 0, comment: '—' }
   // QA also has `process` — same key as Sysanalyst (`processCell` already
   // declared above), so we reuse it.
-  // DevOps (Wave 9.3). Keys mirror BuildDevOpsReportPrompt.
   const infraCell = sections['infra'] ?? { score: 0, comment: '—' }
   const observabilityCell = sections['observability'] ?? { score: 0, comment: '—' }
   const cicdCell = sections['cicd'] ?? { score: 0, comment: '—' }
@@ -543,7 +539,6 @@ export default function MockResultPage() {
           <div className="flex flex-1 flex-col gap-4">
             {(() => {
               const sec = session?.section ?? 'algorithms'
-              // Display-name role-only lowercase per memory/feedback_persona_names.md.
               const persona = activeTrack === 'go'
                 ? { slug: 'go-coach', name: 'go coach' }
                 : activeTrack === 'ml'
@@ -608,8 +603,6 @@ export default function MockResultPage() {
   )
 }
 
-// MockHoneHandoff — discrete X5 (Phase J P2 2026-05-12) handoff. Two CTAs
-// — «reflect in Hone» (opens Hone Coach with topic=mock-reflection) and
 // «practice top weakness» (opens Hone focus with goal=stage:<section>).
 // B/W only, hairline, no marketing tone — Sergey solo-quality bar.
 function MockHoneHandoff({ topWeakness, section }: { topWeakness: string; section: string }) {

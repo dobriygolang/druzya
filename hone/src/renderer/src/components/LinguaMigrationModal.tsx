@@ -1,7 +1,4 @@
 // LinguaMigrationModal — one-time cue для существующих Hone-юзеров после
-// того как English vertical переехал в web druz9.online/lingua (Phase K
-// Wave 8, 2026-05-13).
-//
 // Поведение:
 //   - Mount на boot после auth-gate (App.tsx).
 //   - shouldShowLinguaMigrationModal() — async heuristic; см

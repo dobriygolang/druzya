@@ -227,8 +227,6 @@ export const PRICE_TABLE: Record<BillingPlanTier, { monthly: number; annual: num
 // ── REAL subscription hooks ──────────────────────────────────────────────
 //
 // Below are the hooks bound to actual backend endpoints (vs the stub
-// `useCurrentPlanQuery` above). Used by the /settings/billing tab on
-// prod. Eventually these replace the stubs entirely.
 
 import { api } from '../apiClient'
 

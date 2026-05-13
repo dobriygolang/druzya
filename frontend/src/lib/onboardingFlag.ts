@@ -1,5 +1,3 @@
-// onboardingFlag — CI2 (Phase A 2026-05-12) instant-read onboarding state.
-//
 // Backend persistence через PUT /profile/me/settings {onboarding_completed:
 // true} уже сделано (useOnboarding.completeOnboarding). Здесь добавляем
 // localStorage mirror чтобы:

@@ -2,7 +2,6 @@
 // и Cue. Hone — desktop focus cockpit; serious mock practice / curriculum
 // browsing / live interview copilot живут в других surfaces.
 //
-// Идентичность экосистемы (Phase J / X4 P1, 2026-05-12):
 //   - Hone  = тихая ежедневная работа (этот процесс)
 //   - Web   = практика, мок-собеседования, atlas — druz9.online
 //   - Cue   = live interview/meeting stealth copilot — отдельный desktop
@@ -116,8 +115,6 @@ export function openDruz9Web(): void {
   openExternal(buildURL('/'));
 }
 
-// ─── X5 extensions (Phase J P2 2026-05-12) ──────────────────────────────
-//
 // Bidirectional handoff — Hone → web for surfaces that Hone deliberately
 // doesn't host:
 //   • web /mock pipeline stage continuation (когда юзер finished focus в

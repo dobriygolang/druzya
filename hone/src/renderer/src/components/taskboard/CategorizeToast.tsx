@@ -1,5 +1,3 @@
-// CategorizeToast — Phase J / H3 (P1, 2026-05-12).
-//
 // Transient toast «Auto-tagged as <Kind>» surfaced when backend's
 // categoriser pushes a card.categorise SSE event OR BulkAutoCategorise
 // stream packet arrives. Shows:

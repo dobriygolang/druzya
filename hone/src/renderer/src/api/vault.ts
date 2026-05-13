@@ -1,5 +1,3 @@
-// vault.ts — Phase C-7 Private Vault E2E client.
-//
 // Threat model & crypto choices: см. backend/migrations/00035_vault_e2e.sql.
 //
 // Public API:

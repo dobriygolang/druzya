@@ -1,6 +1,4 @@
 // trackFilter.ts — shared types and helpers for the «3 equal tracks»
-// identity rebalance UI (Phase K vertical analysis 6.1, 2026-05-13).
-//
 // Tracks parallel the Postgres `track_kind` enum but collapse the
 // dev/dev_senior/sysanalyst/product_analyst/qa group into a single
 // «go» bucket (engineering track shipped in 3-equal-track identity);

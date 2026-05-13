@@ -1,5 +1,3 @@
-// ErrorBoundary — CI1 (Phase A 2026-05-12) baseline error containment.
-//
 // Цель: единичный page-level crash не валит весь app. React'ovy
 // error-boundary semantics (try/catch для render-time errors). Async errors
 // (fetch / promise) НЕ ловятся здесь — для них есть DataLoader.

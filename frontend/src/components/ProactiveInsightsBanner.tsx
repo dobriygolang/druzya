@@ -1,5 +1,3 @@
-// ProactiveInsightsBanner — F4 (Phase C) MVP UI. Renders top-1 active
-// insight как banner вверху /today. Severity → stripe color + copy tone.
 // B/W rule: red `#FF3B30` only для critical 1.5px left stripe; warn/nudge/
 // cruise — neutral на surface-1 background.
 //

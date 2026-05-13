@@ -1,7 +1,3 @@
-// tutor.ts — react-query hooks for the tutor bounded context (Wave 2
-// of docs/feature/tutor.md). Backend exposes Connect-RPC + REST aliases
-// at /api/v1/tutor/*. PeekInvite is the only PUBLIC endpoint (used by
-// /invite/{code} landing before student auth).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
@@ -72,7 +68,6 @@ export function useAcceptInviteMutation() {
   })
 }
 
-// ── Tutor-dashboard hooks (Wave 2.6) ──────────────────────────────────
 
 // Snapshot wire shape — proto3 timestamps come through as RFC3339 strings
 // via the vanguard transcoder. Empty `last_active_at` means «no activity
@@ -94,7 +89,6 @@ export type TutorStudentSnapshot = {
   english_mocks_last_score: number
   weak_spots: TutorWeakSpot[]
   notes_count: number
-  // English-track activity from Hone (extended snapshot — Wave 4 + 6.1).
   reading_sessions_count: number
   reading_minutes_window: number
   reading_materials_total: number
@@ -269,7 +263,6 @@ export function useStudentBriefQuery(studentId: string | undefined, windowDays =
   })
 }
 
-// ── Assignments (Wave 5.1) ────────────────────────────────────────────
 
 // All timestamps come from the vanguard transcoder as RFC3339 strings.
 // Empty fields (= zero proto Timestamp) come back as undefined.
@@ -373,7 +366,6 @@ export function useCompleteAssignmentMutation() {
   })
 }
 
-// ── Broadcast (Wave 5.2a) ─────────────────────────────────────────────
 
 export type TutorBroadcastFailure = {
   student_id: string
@@ -409,7 +401,6 @@ export function useBroadcastAssignmentMutation() {
   })
 }
 
-// ── Shared reading library (Wave pivot 2026-05-02) ────────────────────
 
 export type TutorSharedMaterial = {
   id: string
@@ -458,7 +449,6 @@ export function usePushSharedReadingMutation() {
   })
 }
 
-// ── Events (Wave 5.2b) ────────────────────────────────────────────────
 
 export type TutorEventStatus = 'scheduled' | 'cancelled' | 'completed' | string
 
@@ -490,7 +480,6 @@ export type TutorEvent = {
   updated_at?: string
 }
 
-// ── Tutor analytics (Wave 9.5) ────────────────────────────────────────
 
 export type TutorActivity = {
   window_days: number
@@ -512,8 +501,6 @@ export function useTutorActivityQuery(windowDays = 30) {
   })
 }
 
-// ── Student-side tutor activity (Phase K T6, 2026-05-12) ─────────────
-//
 // Drives the «Тебя сегодня учат: ...» card on /today + Hone Home rail.
 // Privacy contract: NO other-student names, NO event titles — only
 // aggregate counts + the tutor's own public display fields.
@@ -787,8 +774,6 @@ export function useSaveSessionNotesMutation(studentId: string | undefined) {
   })
 }
 
-// ── Tutor directory (Phase K T1, 2026-05-12) ──────────────────────────
-//
 // Student-discovery surface. Tutor authors a profile (visible toggle),
 // students browse + apply. Identity rule: free per identity, no rates.
 

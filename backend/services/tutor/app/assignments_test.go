@@ -8,109 +8,29 @@ import (
 	"time"
 
 	"druz9/tutor/domain"
+	"druz9/tutor/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// fakeAssignmentRepo — hand-rolled fake matching domain.AssignmentRepo.
-// Same convention as fakeSnapshotRepo: nil closure = «not expected to
-// be called»; we surface that as an explicit error rather than a nil
-// panic so the failing test points at the wrong field.
-type fakeAssignmentRepo struct {
-	ensure       func(ctx context.Context, tutorID, studentID uuid.UUID) error
-	create       func(ctx context.Context, a domain.Assignment) (domain.Assignment, error)
-	get          func(ctx context.Context, requesterID, assignmentID uuid.UUID) (domain.Assignment, error)
-	listByPair   func(ctx context.Context, tutorID, studentID uuid.UUID, limit int) ([]domain.Assignment, error)
-	listPending  func(ctx context.Context, studentID uuid.UUID, limit int) ([]domain.Assignment, error)
-	markComplete func(ctx context.Context, studentID, assignmentID uuid.UUID, now time.Time) error
-	archive      func(ctx context.Context, tutorID, assignmentID uuid.UUID, now time.Time) error
-}
-
-func (f fakeAssignmentRepo) EnsureRelationship(ctx context.Context, t, s uuid.UUID) error {
-	if f.ensure == nil {
-		return errors.New("ensure not set")
-	}
-	return f.ensure(ctx, t, s)
-}
-func (f fakeAssignmentRepo) CreateAssignment(ctx context.Context, a domain.Assignment) (domain.Assignment, error) {
-	if f.create == nil {
-		return domain.Assignment{}, errors.New("create not set")
-	}
-	return f.create(ctx, a)
-}
-func (f fakeAssignmentRepo) GetAssignment(ctx context.Context, r, a uuid.UUID) (domain.Assignment, error) {
-	if f.get == nil {
-		return domain.Assignment{}, errors.New("get not set")
-	}
-	return f.get(ctx, r, a)
-}
-func (f fakeAssignmentRepo) ListByTutorStudent(ctx context.Context, t, s uuid.UUID, l int) ([]domain.Assignment, error) {
-	if f.listByPair == nil {
-		return nil, errors.New("listByPair not set")
-	}
-	return f.listByPair(ctx, t, s, l)
-}
-func (f fakeAssignmentRepo) ListByTutorStudentPaged(ctx context.Context, t, s uuid.UUID, l int, _ string) ([]domain.Assignment, string, error) {
-	if f.listByPair == nil {
-		return nil, "", errors.New("listByPair not set")
-	}
-	rows, err := f.listByPair(ctx, t, s, l)
-	return rows, "", err
-}
-func (f fakeAssignmentRepo) ListPendingForStudent(ctx context.Context, s uuid.UUID, l int) ([]domain.Assignment, error) {
-	if f.listPending == nil {
-		return nil, errors.New("listPending not set")
-	}
-	return f.listPending(ctx, s, l)
-}
-func (f fakeAssignmentRepo) ListPendingForStudentPaged(ctx context.Context, s uuid.UUID, l int, _ string) ([]domain.Assignment, string, error) {
-	if f.listPending == nil {
-		return nil, "", errors.New("listPending not set")
-	}
-	rows, err := f.listPending(ctx, s, l)
-	return rows, "", err
-}
-func (f fakeAssignmentRepo) MarkComplete(ctx context.Context, s, a uuid.UUID, now time.Time) error {
-	if f.markComplete == nil {
-		return errors.New("markComplete not set")
-	}
-	return f.markComplete(ctx, s, a, now)
-}
-func (f fakeAssignmentRepo) ArchiveAssignment(ctx context.Context, t, a uuid.UUID, now time.Time) error {
-	if f.archive == nil {
-		return errors.New("archive not set")
-	}
-	return f.archive(ctx, t, a, now)
-}
-func (f fakeAssignmentRepo) DueWithinNeedsNotify(ctx context.Context, now time.Time, window time.Duration, limit int) ([]domain.Assignment, error) {
-	return nil, nil
-}
-func (f fakeAssignmentRepo) MarkDueNotified(ctx context.Context, a uuid.UUID, now time.Time) error {
-	return nil
-}
 
 // ── PushAssignment ────────────────────────────────────────────────
 
 func TestPushAssignment_HappyPath_GatesViaEnsure(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
 	studentID := uuid.New()
 
-	ensureCalls := 0
-	repo := fakeAssignmentRepo{
-		ensure: func(_ context.Context, t, s uuid.UUID) error {
-			ensureCalls++
-			if t != tutorID || s != studentID {
-				return errors.New("wrong ids in ensure")
-			}
-			return nil
-		},
-		create: func(_ context.Context, a domain.Assignment) (domain.Assignment, error) {
+	repo := mocks.NewMockAssignmentRepo(ctrl)
+	repo.EXPECT().EnsureRelationship(gomock.Any(), tutorID, studentID).Return(nil).Times(1)
+	repo.EXPECT().CreateAssignment(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, a domain.Assignment) (domain.Assignment, error) {
 			a.ID = uuid.New()
 			a.CreatedAt = time.Now().UTC()
 			return a, nil
 		},
-	}
+	)
 	uc := &PushAssignment{Repo: repo}
 	out, err := uc.Do(context.Background(), PushAssignmentInput{
 		TutorID:   tutorID,
@@ -121,9 +41,6 @@ func TestPushAssignment_HappyPath_GatesViaEnsure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
-	if ensureCalls != 1 {
-		t.Errorf("ensure expected 1 call, got %d", ensureCalls)
-	}
 	if out.Title != "Read chapter 4" {
 		t.Errorf("title not trimmed: %q", out.Title)
 	}
@@ -131,13 +48,9 @@ func TestPushAssignment_HappyPath_GatesViaEnsure(t *testing.T) {
 
 func TestPushAssignment_RejectsBadInput(t *testing.T) {
 	t.Parallel()
-	repo := fakeAssignmentRepo{
-		ensure: func(_ context.Context, _, _ uuid.UUID) error {
-			t.Fatal("ensure must not be called for bad input")
-			return nil
-		},
-	}
-	uc := &PushAssignment{Repo: repo}
+	ctrl := gomock.NewController(t)
+	// No EXPECT — ensure must not be called.
+	uc := &PushAssignment{Repo: mocks.NewMockAssignmentRepo(ctrl)}
 	cases := []struct {
 		name string
 		in   PushAssignmentInput
@@ -182,9 +95,9 @@ func TestPushAssignment_RejectsBadInput(t *testing.T) {
 
 func TestPushAssignment_RelationshipMissingPropagates(t *testing.T) {
 	t.Parallel()
-	repo := fakeAssignmentRepo{
-		ensure: func(_ context.Context, _, _ uuid.UUID) error { return domain.ErrNotFound },
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockAssignmentRepo(ctrl)
+	repo.EXPECT().EnsureRelationship(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.ErrNotFound)
 	uc := &PushAssignment{Repo: repo}
 	_, err := uc.Do(context.Background(), PushAssignmentInput{
 		TutorID:   uuid.New(),
@@ -200,11 +113,9 @@ func TestPushAssignment_RelationshipMissingPropagates(t *testing.T) {
 
 func TestMarkAssignmentComplete_AlreadyCompletedPropagates(t *testing.T) {
 	t.Parallel()
-	repo := fakeAssignmentRepo{
-		markComplete: func(_ context.Context, _, _ uuid.UUID, _ time.Time) error {
-			return domain.ErrAlreadyCompleted
-		},
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockAssignmentRepo(ctrl)
+	repo.EXPECT().MarkComplete(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.ErrAlreadyCompleted)
 	uc := &MarkAssignmentComplete{Repo: repo}
 	err := uc.Do(context.Background(), uuid.New(), uuid.New())
 	if !errors.Is(err, domain.ErrAlreadyCompleted) {
@@ -214,7 +125,8 @@ func TestMarkAssignmentComplete_AlreadyCompletedPropagates(t *testing.T) {
 
 func TestMarkAssignmentComplete_RejectsZeroIDs(t *testing.T) {
 	t.Parallel()
-	uc := &MarkAssignmentComplete{Repo: fakeAssignmentRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &MarkAssignmentComplete{Repo: mocks.NewMockAssignmentRepo(ctrl)}
 	if err := uc.Do(context.Background(), uuid.Nil, uuid.New()); err == nil {
 		t.Error("expected error for zero student id")
 	}
@@ -222,74 +134,29 @@ func TestMarkAssignmentComplete_RejectsZeroIDs(t *testing.T) {
 
 // ── BroadcastAssignment ───────────────────────────────────────────
 
-// fakeStudentsRepo — minimal stand-in for domain.Repo, only the
-// ListTutorStudents method exercised by BroadcastAssignment.
-type fakeStudentsRepo struct {
-	listStudents func(ctx context.Context, tutorID uuid.UUID) ([]domain.Relationship, error)
-}
-
-func (f fakeStudentsRepo) CreateInvite(_ context.Context, _ domain.Invite) (domain.Invite, error) {
-	return domain.Invite{}, errors.New("not implemented")
-}
-func (f fakeStudentsRepo) GetInviteByCode(_ context.Context, _ string) (domain.Invite, error) {
-	return domain.Invite{}, errors.New("not implemented")
-}
-func (f fakeStudentsRepo) ListTutorInvites(_ context.Context, _ uuid.UUID, _ int) ([]domain.Invite, error) {
-	return nil, errors.New("not implemented")
-}
-func (f fakeStudentsRepo) ListTutorInvitesPaged(_ context.Context, _ uuid.UUID, _ int, _ string) ([]domain.Invite, string, error) {
-	return nil, "", errors.New("not implemented")
-}
-func (f fakeStudentsRepo) RevokeInvite(_ context.Context, _, _ uuid.UUID, _ time.Time) error {
-	return errors.New("not implemented")
-}
-func (f fakeStudentsRepo) AcceptInvite(_ context.Context, _ string, _ uuid.UUID, _ time.Time) (domain.Relationship, error) {
-	return domain.Relationship{}, errors.New("not implemented")
-}
-func (f fakeStudentsRepo) ListTutorStudents(ctx context.Context, t uuid.UUID) ([]domain.Relationship, error) {
-	if f.listStudents == nil {
-		return nil, errors.New("listStudents not set")
-	}
-	return f.listStudents(ctx, t)
-}
-func (f fakeStudentsRepo) ListStudentTutors(_ context.Context, _ uuid.UUID) ([]domain.Relationship, error) {
-	return nil, errors.New("not implemented")
-}
-func (f fakeStudentsRepo) EndRelationship(_ context.Context, _, _ uuid.UUID, _ time.Time) error {
-	return errors.New("not implemented")
-}
-func (f fakeStudentsRepo) FindUserByUsername(_ context.Context, _ string) (uuid.UUID, error) {
-	return uuid.Nil, errors.New("not implemented")
-}
-func (f fakeStudentsRepo) ListPendingInvitesForUser(_ context.Context, _ uuid.UUID, _ time.Time) ([]domain.Invite, error) {
-	return nil, errors.New("not implemented")
-}
-
 func TestBroadcastAssignment_HappyPath(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
 	s1, s2 := uuid.New(), uuid.New()
 
-	students := fakeStudentsRepo{
-		listStudents: func(_ context.Context, tid uuid.UUID) ([]domain.Relationship, error) {
-			if tid != tutorID {
-				t.Errorf("wrong tutor id: %v", tid)
-			}
-			return []domain.Relationship{
-				{ID: uuid.New(), TutorID: tid, StudentID: s1},
-				{ID: uuid.New(), TutorID: tid, StudentID: s2},
-			}, nil
-		},
-	}
+	students := mocks.NewMockRepo(ctrl)
+	students.EXPECT().ListTutorStudents(gomock.Any(), tutorID).Return([]domain.Relationship{
+		{ID: uuid.New(), TutorID: tutorID, StudentID: s1},
+		{ID: uuid.New(), TutorID: tutorID, StudentID: s2},
+	}, nil)
+
+	assignments := mocks.NewMockAssignmentRepo(ctrl)
 	createCalls := 0
-	assignments := fakeAssignmentRepo{
-		ensure: func(_ context.Context, _, _ uuid.UUID) error { return nil },
-		create: func(_ context.Context, a domain.Assignment) (domain.Assignment, error) {
+	assignments.EXPECT().EnsureRelationship(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	assignments.EXPECT().CreateAssignment(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, a domain.Assignment) (domain.Assignment, error) {
 			createCalls++
 			a.ID = uuid.New()
 			return a, nil
 		},
-	}
+	).AnyTimes()
+
 	uc := &BroadcastAssignment{Students: students, Assignments: assignments}
 
 	out, err := uc.Do(context.Background(), BroadcastAssignmentInput{
@@ -309,28 +176,31 @@ func TestBroadcastAssignment_HappyPath(t *testing.T) {
 
 func TestBroadcastAssignment_PartialFailure(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
 	s1, s2 := uuid.New(), uuid.New()
 
-	students := fakeStudentsRepo{
-		listStudents: func(_ context.Context, _ uuid.UUID) ([]domain.Relationship, error) {
-			return []domain.Relationship{
-				{StudentID: s1}, {StudentID: s2},
-			}, nil
-		},
-	}
-	assignments := fakeAssignmentRepo{
-		ensure: func(_ context.Context, _, sid uuid.UUID) error {
+	students := mocks.NewMockRepo(ctrl)
+	students.EXPECT().ListTutorStudents(gomock.Any(), gomock.Any()).Return([]domain.Relationship{
+		{StudentID: s1}, {StudentID: s2},
+	}, nil)
+
+	assignments := mocks.NewMockAssignmentRepo(ctrl)
+	assignments.EXPECT().EnsureRelationship(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _, sid uuid.UUID) error {
 			if sid == s2 {
 				return domain.ErrNotFound // relationship vanished mid-batch
 			}
 			return nil
 		},
-		create: func(_ context.Context, a domain.Assignment) (domain.Assignment, error) {
+	).AnyTimes()
+	assignments.EXPECT().CreateAssignment(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, a domain.Assignment) (domain.Assignment, error) {
 			a.ID = uuid.New()
 			return a, nil
 		},
-	}
+	).AnyTimes()
+
 	uc := &BroadcastAssignment{Students: students, Assignments: assignments}
 	out, err := uc.Do(context.Background(), BroadcastAssignmentInput{
 		TutorID: tutorID,
@@ -349,19 +219,14 @@ func TestBroadcastAssignment_PartialFailure(t *testing.T) {
 
 func TestBroadcastAssignment_NoStudentsYieldsEmpty(t *testing.T) {
 	t.Parallel()
-	students := fakeStudentsRepo{
-		listStudents: func(_ context.Context, _ uuid.UUID) ([]domain.Relationship, error) {
-			return nil, nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	students := mocks.NewMockRepo(ctrl)
+	students.EXPECT().ListTutorStudents(gomock.Any(), gomock.Any()).Return(nil, nil)
+	// No assignments.EXPECT — ensure must not be called when no students.
+	assignments := mocks.NewMockAssignmentRepo(ctrl)
 	uc := &BroadcastAssignment{
-		Students: students,
-		Assignments: fakeAssignmentRepo{
-			ensure: func(_ context.Context, _, _ uuid.UUID) error {
-				t.Fatal("ensure must not be called when no students")
-				return nil
-			},
-		},
+		Students:    students,
+		Assignments: assignments,
 	}
 	out, err := uc.Do(context.Background(), BroadcastAssignmentInput{
 		TutorID: uuid.New(),
@@ -379,17 +244,12 @@ func TestBroadcastAssignment_NoStudentsYieldsEmpty(t *testing.T) {
 
 func TestListAssignmentsForTutor_GatesViaEnsureFirst(t *testing.T) {
 	t.Parallel()
-	calls := []string{}
-	repo := fakeAssignmentRepo{
-		ensure: func(_ context.Context, _, _ uuid.UUID) error {
-			calls = append(calls, "ensure")
-			return nil
-		},
-		listByPair: func(_ context.Context, _, _ uuid.UUID, _ int) ([]domain.Assignment, error) {
-			calls = append(calls, "list")
-			return []domain.Assignment{{Title: "ok"}}, nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockAssignmentRepo(ctrl)
+	gomock.InOrder(
+		repo.EXPECT().EnsureRelationship(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil),
+		repo.EXPECT().ListByTutorStudentPaged(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.Assignment{{Title: "ok"}}, "", nil),
+	)
 	uc := &ListAssignmentsForTutor{Repo: repo}
 	out, err := uc.Do(context.Background(), ListAssignmentsForTutorInput{
 		TutorID:   uuid.New(),
@@ -400,8 +260,5 @@ func TestListAssignmentsForTutor_GatesViaEnsureFirst(t *testing.T) {
 	}
 	if len(out.Items) != 1 {
 		t.Errorf("expected 1 item, got %d", len(out.Items))
-	}
-	if len(calls) != 2 || calls[0] != "ensure" || calls[1] != "list" {
-		t.Errorf("ensure must be called BEFORE list; got %v", calls)
 	}
 }

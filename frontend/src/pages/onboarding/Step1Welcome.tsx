@@ -1,11 +1,6 @@
 // Onboarding Step 1 — Welcome gate.
 // Single value-prop H1 + 3 mini-cards (mock / atlas / coach) — identity
-// 2026-05-04: arena/duels/ELO выпилены, продукт = AI-mock + Skill Atlas
 // + AI-coach. Skip-route ведёт на /atlas (Atlas — основная карта).
-//
-// 2026-05-12: v2 visual language — h1/body via type tokens, hairline cards
-// (no surface fill), ghost + primary pill buttons with motion-press +
-// focus-ring + token-based hover transitions.
 
 import { useNavigate } from 'react-router-dom'
 

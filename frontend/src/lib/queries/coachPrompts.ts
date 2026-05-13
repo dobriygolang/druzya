@@ -15,8 +15,6 @@ export type CoachPromptCategory =
   | 'reflection_grade'
   | 'cue_summary'
   | 'milestones_gen'
-  // Phase K, M5 (2026-05-13) — ML-axis-specific drill recommender. Backend
-  // allowedCoachCategories whitelist mirror.
   | 'ml_drill'
 
 export interface CoachPrompt {

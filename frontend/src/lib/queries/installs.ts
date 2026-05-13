@@ -1,8 +1,4 @@
-// installs.ts — Phase J / X1 (P0) single onboarding funnel.
-//
 // Web calls recordAppInstall('web') once after signup (post-auth
-// bootstrap). The same backend RPC is used by Hone (renderer) and Cue
-// (main process). First install across all 3 surfaces issues a 7-day
 // Pro trial — see backend/services/subscription/app/grant_trial_pro.go.
 
 import { api } from '../apiClient'

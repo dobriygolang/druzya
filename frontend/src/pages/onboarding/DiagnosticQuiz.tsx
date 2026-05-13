@@ -1,5 +1,3 @@
-// DiagnosticQuiz — F9 (Phase B) MVP page. 8 questions / one-at-a-time / result.
-//
 // Flow:
 //   /diagnostic       → quiz step (progress bar + Q + 4-option picker)
 //   on answer 8       → resolve() → store result + suggest goal preset
@@ -9,8 +7,6 @@
 // и вернуться). Result + accepted goal flow в localStorage F2 store
 // (см lib/goal.ts), не теряются после accept.
 //
-// 2026-05-12: v2 visual language — hairline shell + question card +
-// option rows; red signal stripe on active option (already had it).
 // Done step: hairline goal card + hairline action cards.
 
 import { useEffect, useMemo, useState } from 'react'

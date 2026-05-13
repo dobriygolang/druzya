@@ -1,6 +1,5 @@
 // analytics.ts — opt-in product analytics client for Hone (desktop).
 //
-// Phase J / X3 (P1) — wraps the existing Connect-RPC telemetry client at
 // `api/events.ts` with the spec API shape mirrored across 3 surfaces
 // (web/hone/cue). Hone уже имеет working trackEvent + auto-flush через
 // Connect transport (better than fetch due to typed errors); этот файл

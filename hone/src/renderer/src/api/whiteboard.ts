@@ -81,8 +81,6 @@ export async function listMyWhiteboardRooms(): Promise<WhiteboardRoom[]> {
   return (resp.items ?? []).map((r) => unwrapRoom(r as never));
 }
 
-// ─── Visibility (private | shared) — Phase C-7+ ──────────────────────────
-//
 // Не Connect-RPC а REST: бэкенд экспонирует через
 // /api/v1/whiteboard/room/{id}/visibility (см. services/whiteboard_rooms.go).
 // Делается так чтобы не тащить proto-regen ради одного boolean-поля.

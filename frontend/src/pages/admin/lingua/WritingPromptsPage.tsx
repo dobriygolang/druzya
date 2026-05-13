@@ -1,6 +1,5 @@
 // WritingPromptsPage — defer'нутый placeholder.
 //
-// Backend status check (2026-05-13):
 //   - GradeEnglishWriting RPC существует — но это one-shot grader, не
 //     content store. Принимает draft + title (опционально), отдаёт
 //     overall_score + issues. No persistence layer.

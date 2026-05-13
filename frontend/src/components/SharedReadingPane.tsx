@@ -1,8 +1,5 @@
 // SharedReadingPane — Reading library tab для тутора.
 //
-// Sergey 2026-05-01: «Tutor settings tab Reading library — pool of
-// materials shareable to students. Student-side: автоматически видит
-// материалы тутора в Hone Reading». Реализовано:
 //   - Form для recommend material (title + url + note + button «Отправить»)
 //   - Под капотом — `tutor.PushSharedReading` (broadcast assignments + INSERT
 //     в tutor_shared_materials для history)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"druz9/hone/domain"
 
@@ -201,7 +200,6 @@ func (s *AtlasTopicSearcher) SearchByPrefix(ctx context.Context, prefix string, 
 		}
 		out = append(out, s)
 	}
-	_ = time.Now() // silence import on minimal rebuilds
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("hone.AtlasTopicSearcher rows: %w", err)
 	}

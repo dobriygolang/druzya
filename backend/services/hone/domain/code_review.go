@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/code_review_mock.go -source code_review.go
 package domain
 
 import "context"

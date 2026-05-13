@@ -1,3 +1,5 @@
+//go:generate mockgen -package mocks -destination mocks/reading_path_mock.go -source reading_path.go
+
 // reading_path.go — Stream D (2026-05-12). Curated atlas-node sequence
 // that a tutor crafts for a student/cohort to walk through. Complements
 // SharedMaterial (one-off broadcast) — a path is reusable curriculum,

@@ -182,10 +182,7 @@ func splitLongSentence(s string, maxTokens int) []string {
 	}
 	out := make([]string, 0, (len(words)/maxTokens)+1)
 	for i := 0; i < len(words); i += maxTokens {
-		end := i + maxTokens
-		if end > len(words) {
-			end = len(words)
-		}
+		end := min(i+maxTokens, len(words))
 		out = append(out, strings.Join(words[i:end], " "))
 	}
 	return out

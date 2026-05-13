@@ -1,14 +1,6 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-// 2026-05-05 — KZ locale выпилен (продуктовое решение). Раньше был
-// scaffold под docs/strategic/i18n.md, но контент так и не подъехал, а
-// держать ru-копии под видом kz было misleading. UA выпилен раньше
-// (WAVE-13). Сейчас live: ru + en.
-//
-// Pivot 2026-05-04: arena/daily namespaces удалены ради bundle-size +
-// чтобы не путать новые AI-агенты. t('arena:*') / t('daily:*') нигде
-// не используются.
 import ruCommon from '../locales/ru/common.json'
 import ruProfile from '../locales/ru/profile.json'
 import ruWelcome from '../locales/ru/welcome.json'

@@ -25,21 +25,14 @@ import { useMotion } from '../lib/motion-presets'
 // Настройки, Выход) уехало в user-menu под аватаром, чтобы header не был
 // перегружен (раньше было 8 nav-items + 5 кнопок справа = 13 элементов).
 //
-// Stream D (2026-05-12) — «Tutor» отображается только если у пользователя
-// включён tutor_mode_enabled. Тогглится в /profile (TutorRoleToggle).
 // Это совпадает с identity.md: tutor mode — role toggle, не отдельное
 // приложение, не paywall.
 function useNavItems() {
   const profile = useProfileQuery()
   const settings = useActiveStudyModeQuery()
   const isTutor = Boolean(profile.data?.tutor_mode_enabled)
-  // Phase K Wave 8 (2026-05-13) — Lingua nav-item conditional on user
-  // english_active flag (mirrored tutor-mode pattern). False по дефолту,
-  // toggle'ится в Settings. Mirrors Hone's English-loop opt-in.
   const isEnglishActive = Boolean(settings.data?.englishActive)
   const base = [
-    // Pivot 2026-05-03: /today первым — action-driven landing для авторизованного
-    // юзера. Atlas остаётся как «карта тем». Insights / Codex — secondary surfaces.
     { to: '/today', label: 'Today' },
     { to: '/atlas', label: 'Atlas' },
     { to: '/mock', label: 'Mock' },
@@ -88,7 +81,6 @@ function NavItem({ to, label, onClick }: { to: string; label: string; onClick?: 
   )
 }
 
-// ThemeToggleButton removed 2026-05-11 (CI4 kill switch) — see lib/theme.ts.
 
 // LanguageToggleButton — dropdown со всеми 4 языками (RU/EN/KZ/UA).
 // Выбор персистится в localStorage внутри changeLanguage → languageChanged
@@ -186,8 +178,6 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   const adminStatus = (admin.error as { status?: number } | null)?.status
   const isAdmin = !admin.isError && admin.isSuccess && adminStatus !== 403
   // User-menu (under avatar) — персональные разделы вне top-nav.
-  // R10 cleanup 2026-05-05: /copilot landing удалён в Phase-4 ADR-001
-  // (см App.tsx комментарий) — link тоже удалён.
   const items: { to: string; label: string; icon: typeof User; badge?: 'new' }[] = [
     { to: '/profile', label: t('nav.profile'), icon: User },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
@@ -391,8 +381,6 @@ export function AppShellV2({ children }: { children: ReactNode }) {
   const location = useLocation()
   const [notifOpen, setNotifOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  // F5 (2026-05-12): Cmd+L global hotkey opens QuickLogModal from any auth'd
-  // page. Mirrors Hone's quick-capture muscle memory.
   const [quickLogOpen, setQuickLogOpen] = useState(false)
   // Unread count drives both the header bell badge and the mobile-nav profile
   // tab badge. The hook polls every 60s and degrades to 0 on errors so a
@@ -406,19 +394,12 @@ export function AppShellV2({ children }: { children: ReactNode }) {
     return () => document.body.classList.remove('v2')
   }, [])
 
-  // Phase J / X1 (P0) — fire idempotent install heartbeat once after the
-  // user lands on any authenticated page. Backend ON CONFLICT keeps the
-  // call cheap; the once-per-session guard is in installs.ts.
   useEffect(() => {
     void import('../lib/queries/installs').then(({ recordWebInstallOnce }) => {
       void recordWebInstallOnce()
     })
   }, [])
 
-  // Phase J / X3 (P1) — opt-in product analytics bootstrap. Web default:
-  // opted-OUT until the user accepts via Settings → Privacy. SDK hydrates
-  // its consent flag from localStorage so the toggle survives reloads;
-  // backend GetConsent is best-effort cross-device sync (not blocking).
   // Profile data carries the user_id we attach to all subsequent events
   // (backend pulls it from auth middleware anyway — this is purely so
   // future client-side enrichment can be user-scoped).

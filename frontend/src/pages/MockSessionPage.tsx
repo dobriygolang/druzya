@@ -219,7 +219,6 @@ function SystemDesignSeniorPanel() {
   )
 }
 
-// Sysanalyst — Wave 7. Free-form interview. Same panel pattern as
 // SystemDesignSeniorPanel; rubric mirrors BuildSysanalystReportPrompt
 // (requirements / modeling / integration / data / process).
 function SysanalystPanel() {
@@ -257,7 +256,6 @@ function SysanalystPanel() {
   )
 }
 
-// Product analyst — Wave 8. Same shape; rubric mirrors
 // BuildProductAnalystReportPrompt (metrics / sql / experimentation /
 // frameworks / communication).
 function ProductAnalystPanel() {
@@ -295,7 +293,6 @@ function ProductAnalystPanel() {
   )
 }
 
-// QA / тестировщик — Wave 9.2.
 function QAPanel() {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
@@ -331,7 +328,6 @@ function QAPanel() {
   )
 }
 
-// DevOps / SRE — Wave 9.3.
 function DevOpsPanel() {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>

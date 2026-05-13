@@ -1,8 +1,5 @@
-// Desktop wrapper for POST /api/v1/hone/writing/grade — Wave 6.2 Cue
 // English mode. Same bearer-from-keychain REST pattern as the other
 // main-side API clients (suggestion.ts, etc.). The endpoint itself
-// landed in Wave 4.4; we just call it from Cue's main process and
-// surface the structured feedback on the EnglishPolish window.
 
 import type { EnglishPolishCategory, EnglishPolishResult } from '@shared/ipc';
 

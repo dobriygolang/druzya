@@ -1,7 +1,5 @@
 // api/lingua/reading.ts — Reading-модуль API client для web /lingua.
 //
-// Phase K Wave 8 migration: English vertical уехал из Hone (desktop Electron)
-// в web под /lingua. Backend HoneService (proto/druz9/v1/hone.proto) тот же —
 // REST endpoints через google.api.http transcoding. Здесь — JSON wrappers
 // поверх general-purpose `api()` fetcher (frontend pattern, см honeTasks.ts).
 //

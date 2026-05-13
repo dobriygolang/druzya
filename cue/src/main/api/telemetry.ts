@@ -1,5 +1,3 @@
-// telemetry.ts — Phase J / X3 (P1).
-//
 // Cue main-process REST adapter for the backend telemetry endpoints.
 // Renderer batches events + flips consent through IPC; main attaches the
 // bearer token (lives in keychain, never crosses the bridge) and POSTs.

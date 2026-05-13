@@ -1,5 +1,3 @@
-// MockPipelinePage — multi-stage mock interview cockpit (Phase B.2 / ADR-002).
-//
 // Route: /mock/pipeline/:pipelineId
 //
 // Layout:
@@ -17,7 +15,6 @@
 //   - currentStage.status === 'pending'  → auto-fire start-next-stage once
 //   - stage_kind === 'hr' && in_progress  → render <HRChat>
 //   - other kinds                → <ComingSoonStage> with "Пропустить"
-//                                  (Phase C/D/E will replace these stubs)
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
@@ -105,8 +102,6 @@ export default function MockPipelinePage() {
     startNext.mutate()
   }, [pipeline, currentStage, startNext])
 
-  // Phase J / X3 — fire mock_pipeline_started once per pipeline mount,
-  // mock_pipeline_completed when verdict transitions away from in_progress.
   // The redirect upstream skips the second branch on subsequent mounts,
   // so the completed signal fires exactly once per outcome.
   const trackedStartedRef = useRef<string | null>(null)
@@ -590,7 +585,6 @@ function QuestionCard({
     }
   }, [attempt.ai_verdict, attempt.id, attempts])
 
-  // ── sysdesign_canvas — Phase D.2 full canvas surface ──
   if (attempt.kind === 'sysdesign_canvas') {
     return (
       <div id={`question-${attempt.id}`} ref={cardRef}>
@@ -599,7 +593,6 @@ function QuestionCard({
     )
   }
 
-  // ── voice_answer (Phase E) → still placeholder ──
   if (attempt.kind === 'voice_answer') {
     return (
       <Card
@@ -770,8 +763,6 @@ function CodeAnswerEditor({
   const submit = useSubmitAnswerMutation(pipelineId)
   const [code, setCode] = useState<string>('')
   const [language, setLanguage] = useState<CodeLanguage>(() => {
-    // Prefer the real task.language from backend (Phase D.2). Fall back to
-    // the brief-text heuristic if the field is missing/unrecognized.
     const known: CodeLanguage[] = ['go', 'python', 'sql', 'javascript', 'typescript']
     if (taskLanguage && (known as string[]).includes(taskLanguage)) {
       return taskLanguage as CodeLanguage

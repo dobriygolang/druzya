@@ -1,8 +1,5 @@
 // pathPresets — curated learning paths для нового onboarding wizard'а.
 //
-// Sergey 2026-05-03: hybrid model — preset OR custom; preset потом
-// editable (checkbox toggle, «знаю / не знаю»).
-//
 // V1 — frontend-only constants. Phase 3: эти presets переедут в backend
 // (`learning_path_presets` table) + AI generator для custom paths добавит
 // rows в `user_custom_path_nodes`.

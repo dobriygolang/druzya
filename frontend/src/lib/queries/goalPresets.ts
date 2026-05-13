@@ -64,7 +64,6 @@ type ListResp = { items: GoalPreset[] }
 const KEY_ADMIN = ['goal-presets', 'admin'] as const
 const KEY_PUBLIC = ['goal-presets', 'public'] as const
 
-// ── Public (used by GoalWizard) ──────────────────────────────────────────
 
 /**
  * GET /api/v1/goal-presets — active-only public read.

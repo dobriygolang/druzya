@@ -1,5 +1,3 @@
-// transport.ts — the Connect-RPC transport used by every generated client.
-//
 // Single global transport: creating one per query would be a waste (each
 // allocates headers maps + interceptor chain). Connect-Web transports are
 // thread-safe by construction, so we memoise.
@@ -26,10 +24,6 @@ const authInterceptor: Interceptor = (next) => async (req) => {
     else req.header.delete('authorization');
   };
   apply();
-  // X-Device-ID — Phase C-3.1 sync foundation. Backend пишет heartbeat
-  // и проверяет revocation. Когда device-id ещё не зарегистрирован
-  // (первый запуск до ensureDevice) — header просто отсутствует,
-  // backend трактует как «legacy без sync» и пропускает.
   const deviceId = getDeviceId();
   if (deviceId) {
     req.header.set('x-device-id', deviceId);

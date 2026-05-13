@@ -1,4 +1,3 @@
-// kinds.ts — shared TaskKind taxonomy used by TaskBoard, KindPicker,
 // CategorizeToast. Extracted from TaskBoard.tsx so the picker chip + toast
 // chip can re-render the same iconography (B/W rule: иконка несёт kind,
 // цвет нулевой, не radio-color-coded).
@@ -31,7 +30,6 @@ export const KINDS: Record<TaskKind, KindDef> = {
 export const ALL_KINDS: TaskKind[] = ['algo', 'sysdesign', 'quiz', 'reflection', 'reading', 'ml', 'custom'];
 
 // KindIcon — единая SVG-обёртка для всех мест где раньше был эмодзи.
-// Used by TaskBoard cards, KindPicker chips, CategorizeToast badge.
 export function KindIcon({
   kind, size = 14, color,
 }: { kind: TaskKind; size?: number; color?: string }): JSX.Element {

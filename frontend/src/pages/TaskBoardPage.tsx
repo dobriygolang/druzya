@@ -82,9 +82,6 @@ const KINDS: Record<TaskKindCanonical, KindDef> = {
   quiz: { label: 'Quiz', text: 'text-text-secondary', strip: 'bg-white/40', Icon: CircleHelp },
   reflection: { label: 'Reflection', text: 'text-text-secondary', strip: 'bg-white/40', Icon: Brain },
   reading: { label: 'Reading', text: 'text-text-secondary', strip: 'bg-white/40', Icon: BookOpen },
-  // ML — Phase K M7 (2026-05-13). Cpu icon as the closest lucide-monochrome
-  // glyph для ML/MLE work (model training / inference / pipelines). B/W
-  // rule: same ink-on-ink strip, no hue distinction.
   ml: { label: 'ML', text: 'text-text-secondary', strip: 'bg-white/40', Icon: Cpu },
   custom: { label: 'Custom', text: 'text-text-muted', strip: 'bg-neutral-500', Icon: Sparkles },
   unspecified: { label: '—', text: 'text-text-muted', strip: 'bg-neutral-500', Icon: Sparkles },
@@ -611,12 +608,6 @@ function ContextMenu({
 }
 
 // ── Clock ──────────────────────────────────────────────────────────────
-// Phase R3 cooldown — was a 1Hz setInterval / setState that re-rendered the
-// board header every second. Since the only thing rendered is HH:MM (no
-// seconds), 60s cadence is sufficient. We also align to the next minute
-// boundary so the displayed time flips at :00 instead of an arbitrary
-// offset, which used to make the clock look "stuck" if the board mounted
-// at :59.
 
 function Clock() {
   const [t, setT] = useState(new Date())

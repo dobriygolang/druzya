@@ -5,30 +5,23 @@ import (
 	"testing"
 
 	"druz9/intelligence/domain"
+	"druz9/intelligence/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-type fakeForkReader struct {
-	snap domain.ForkProgressSnapshot
-	err  error
-}
-
-func (f fakeForkReader) Snapshot(_ context.Context, _ uuid.UUID) (domain.ForkProgressSnapshot, error) {
-	return f.snap, f.err
-}
-
 func TestGetForkSnapshot_DERLeansHigher(t *testing.T) {
-	r := fakeForkReader{
-		snap: domain.ForkProgressSnapshot{
-			Mode: "explore",
-			ScoresByBranch: []domain.ForkBranchScore{
-				{Branch: "mle", MockCount: 1, AvgScore: 60, VoluntaryDeepDives: 1},
-				{Branch: "de", MockCount: 3, AvgScore: 75, VoluntaryDeepDives: 4},
-			},
+	ctrl := gomock.NewController(t)
+	reader := mocks.NewMockForkProgressReader(ctrl)
+	reader.EXPECT().Snapshot(gomock.Any(), gomock.Any()).Return(domain.ForkProgressSnapshot{
+		Mode: "explore",
+		ScoresByBranch: []domain.ForkBranchScore{
+			{Branch: "mle", MockCount: 1, AvgScore: 60, VoluntaryDeepDives: 1},
+			{Branch: "de", MockCount: 3, AvgScore: 75, VoluntaryDeepDives: 4},
 		},
-	}
-	uc := GetForkSnapshot{Reader: r}
+	}, nil)
+	uc := GetForkSnapshot{Reader: reader}
 	out, err := uc.Do(context.Background(), uuid.New())
 	if err != nil {
 		t.Fatal(err)
@@ -45,14 +38,16 @@ func TestGetForkSnapshot_DERLeansHigher(t *testing.T) {
 }
 
 func TestGetForkSnapshot_NoSignal(t *testing.T) {
-	r := fakeForkReader{snap: domain.ForkProgressSnapshot{
+	ctrl := gomock.NewController(t)
+	reader := mocks.NewMockForkProgressReader(ctrl)
+	reader.EXPECT().Snapshot(gomock.Any(), gomock.Any()).Return(domain.ForkProgressSnapshot{
 		Mode: "explore",
 		ScoresByBranch: []domain.ForkBranchScore{
 			{Branch: "mle"},
 			{Branch: "de"},
 		},
-	}}
-	uc := GetForkSnapshot{Reader: r}
+	}, nil)
+	uc := GetForkSnapshot{Reader: reader}
 	out, err := uc.Do(context.Background(), uuid.New())
 	if err != nil {
 		t.Fatal(err)

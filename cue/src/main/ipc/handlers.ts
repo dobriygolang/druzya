@@ -136,7 +136,6 @@ export function registerHandlers(opts: RegisterOptions): void {
     defaultLocale: 'ru',
     isDev: false,
   });
-  // F10 (Phase D 2026-05-12) — Intelligence client for backend ingest.
   // Cue session.end → analysis ready → POST к /interview-sessions/ingest.
   const intelligenceREST = createIntelligenceClient({
     apiBaseURL,
@@ -860,9 +859,7 @@ export function registerHandlers(opts: RegisterOptions): void {
     documentsREST.listAttachedToSession(sessionId),
   );
 
-  // ── English polish (Wave 6.2) ──
   // Renderer passes the clipboard text; we proxy to /hone/writing/grade
-  // (Wave 4.4 backend). Keeps the bearer token main-only.
   const englishREST = createEnglishPolishClient({
     apiBaseURL,
     updateFeedURL: '',
@@ -984,7 +981,6 @@ export function registerHandlers(opts: RegisterOptions): void {
   });
   ipcMain.handle(invokeChannels.coachGetAutoSuggest, async () => coachPolicy.isEnabled());
 
-  // ── Interview prep (Phase J / C6, 2026-05-12) ──
   // Bearer auth lives in main; renderer never sees the token. PDF
   // extraction is best-effort (see api/pdf-extractor.ts) — for scanned
   // CVs the wizard falls back to "paste manually".
@@ -1072,7 +1068,6 @@ export function registerHandlers(opts: RegisterOptions): void {
     await interviewPrepREST.end();
   });
 
-  // ── Telemetry (Phase J / X3, 2026-05-12) ──
   // Renderer batches events + flips consent; main attaches the bearer
   // token and POSTs. Errors swallowed inside telemetry.ts — events are
   // ephemeral, retry storms hurt UX more than missing a few data points.

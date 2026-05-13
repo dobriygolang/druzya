@@ -1,7 +1,3 @@
-// GoalWizardModal — F2 (Phase B) MVP wizard для goal-picking. localStorage
-// backed (см lib/goal.ts); потом мигрирует на backend CreateGoal RPC когда
-// Phase C ship'нет user_goals table.
-//
 // UX:
 //   Step 1 — pick kind (5 cards): Senior@TopTier / Senior@Any / ML offer /
 //            English / Custom.

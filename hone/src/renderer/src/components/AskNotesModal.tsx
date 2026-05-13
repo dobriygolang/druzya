@@ -5,10 +5,6 @@
 //
 // History: localStorage hone:notes:qa-history хранит последние 10 вопросов;
 // показываем как chips под input'ом, пока inputs пустой.
-//
-// 2026-05-12: migrated to foundation Modal primitive (focus trap, esc, scroll
-// lock, restore focus, smooth in/out). Citation chip blue tint removed —
-// b/w + red rule per memory/feedback_color_rule.md.
 import { useCallback, useRef, useState } from 'react';
 
 import { askNotes, type AskAnswer, type Citation } from '../api/intelligence';

@@ -1,6 +1,4 @@
 // CueLogModal — F10 manual entry для Cue session log. Без real Cue Electron
-// ingestion (Phase C backend deferred), юзер может вручную залогировать
-// interview/practice session так что:
 //   • CoachMemoryCard latestCue slice показывает recent context
 //   • F4 insights detect struggling stages (2+ low-rated sessions)
 //   • F3 readiness не affected (Cue не direct activity log — отдельная story)

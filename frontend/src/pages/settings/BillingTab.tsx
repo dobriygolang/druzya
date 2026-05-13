@@ -1,4 +1,3 @@
-// /settings/billing — вкладка биллинга. Stream-C (2026-05-12): добавлен
 // BYOK flow + source-aware tier projection.
 //
 // Endpoints:

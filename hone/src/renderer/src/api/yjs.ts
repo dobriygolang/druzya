@@ -1,5 +1,3 @@
-// yjs.ts — Phase C-6 client для Yjs append/updates/compact endpoints.
-//
 // Server — dumb storage (см. backend/services/yjs_notes.go). Все
 // CRDT semantics здесь, на клиенте: формируем Y.Doc, observe local
 // changes → POST /append, polling /updates → applyUpdate.

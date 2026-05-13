@@ -1,6 +1,3 @@
-// hone-handoff.ts — web → Hone deep-link helpers (X5 Phase J P2 2026-05-12).
-//
-// druz9 ecosystem has three surfaces — web (this codebase, druz9.online),
 // Hone (desktop focus cockpit), Cue (stealth tray-copilot). Web Coach,
 // Atlas, Mock surfaces all benefit from «practice this in Hone» / «reflect
 // in Hone» CTAs — single moment of intent is too valuable to leave hanging.

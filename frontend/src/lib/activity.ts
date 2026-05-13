@@ -1,5 +1,3 @@
-// activity.ts — F5 (Phase C) MVP activity log.
-//
 // Цель: localStorage-backed журнал того что юзер сделал — solved LeetCode,
 // прочитал главу DDIA, сыграл mock, etc. Это foundation для:
 //   - F3 readiness boost (activity count за последние 7d → +up to 20%)
@@ -8,10 +6,6 @@
 //     приоритет next mock на завтра)
 //
 // MVP storage: один localStorage key с array of Activity. Cap 200 entries
-// чтобы quota не вылетела. Когда Phase C ship'нет `LogResource` UC через
-// existing intelligence service (DB v65 user_resource_log table уже есть!),
-// wire shape намеренно совпадает с planned proto.
-//
 // Wire mapping → backend `user_resource_log`:
 //   kind 'leetcode' / 'reading' → log.kind = 'finished'
 //   kind 'mock' / 'reflection'  → log.kind = 'reflection_submitted'

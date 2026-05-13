@@ -148,9 +148,6 @@ export function useGlobalHotkeys(deps: GlobalHotkeysDeps): void {
       };
       if (code === 'KeyT') toggleTo('today');
       else if (code === 'KeyN') toggleTo('notes');
-      // KeyB / KeyE — Boards / Editor migrated to web solo (D4 Stream F,
-      // 2026-05-12). Hone hotkey открывает new browser tab; deep-link
-      // авто-логинит через cookie session если юзер залогинен в web.
       else if (code === 'KeyB') {
         void window.hone?.shell.openExternal('https://druz9.online/whiteboard/new');
       }
@@ -158,10 +155,6 @@ export function useGlobalHotkeys(deps: GlobalHotkeysDeps): void {
         void window.hone?.shell.openExternal('https://druz9.online/editor/new');
       }
       else if (code === 'KeyS') toggleTo('stats');
-      // KeyP — released (was podcasts; D5 migrated to web /podcasts).
-      // KeyR / KeyW / KeyL / KeyK — released 2026-05-13 (Phase K Wave 8)
-      // — English vertical (reading/writing/listening/speaking) migrated
-      // to web /lingua.
       else if (code === 'KeyA') toggleTo('assignments');
       else if (code === 'KeyM') toggleTo('calendar');
       else if (code === 'Comma') toggleTo('settings');

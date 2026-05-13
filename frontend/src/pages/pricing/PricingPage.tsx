@@ -7,11 +7,6 @@
 //
 // Anti-pattern budget: 0 timer-pressure, 0 «осталось 4 места», 0 dark
 // patterns.
-//
-// 2026-05-12: v2 visual language — hairline plan cards (no warn/pink
-// gradient tint, no success bg), opacity stratification for emphasis,
-// red signal stripe on emphasised plan (Pro), letter-spacing 0.08em
-// canonical, motion-tokens for transitions.
 
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -139,9 +134,6 @@ function formatRub(amount: number, period: BillingPeriod): string {
 export default function PricingPage() {
   const [period, setPeriod] = useState<BillingPeriod>(readPeriod())
   const [params] = useSearchParams()
-  // Wave 5 (2026-05-12) — Stripe cancel_url полирован. ?retry=true →
-  // показываем subtle banner. Не auto-restart'аем checkout — юзер сам
-  // решит, попробует другую карту или передумает.
   const retry = params.get('retry') === 'true'
 
   useEffect(() => writePeriod(period), [period])

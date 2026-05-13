@@ -13,10 +13,6 @@
 // Persistence: PUT /api/v1/profile/me/tracks (SetUserTracks RPC). On
 // failure, the form stays mounted with an error message; we never
 // silently advance.
-//
-// 2026-05-12: v2 visual language — hairline track cards, selection = white
-// border + red signal stripe, hairline seniority chips, primary = red signal
-// dot, error banner = red stripe.
 
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -26,13 +22,6 @@ import { api, ApiError } from '../../lib/apiClient'
 
 // Wire-side enum values mirror druz9.v1.Track (proto3 JSON encoding uses
 // the prefixed UPPER_SNAKE name, not the lowercase DB value).
-//
-// M1 (2026-05-12): 'TRACK_ML_VIRTUAL' — pseudo-wire для ML Engineering
-// карточки. На submit time трансформируется в подлежащий TRACK_DEV_SENIOR
-// (seniority='senior'), плюс side-effects: hone_user_settings.active_track
-// устанавливается в 'ml', primary_goal.kind — в GOAL_KIND_ML_OFFER. Так
-// проще, чем растягивать proto Track enum + track_kind ENUM (которые
-// требовали бы полного rebuild по mig 00046 паттерну) ради UI affordance.
 type WireTrack =
   | 'TRACK_DEV'
   | 'TRACK_DEV_SENIOR'

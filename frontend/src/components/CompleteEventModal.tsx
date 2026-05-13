@@ -1,5 +1,3 @@
-// CompleteEventModal — Phase K T4 (P1) 2026-05-13.
-//
 // Tutor closes a session с post-event write-up. Wraps the legacy
 // window.prompt path in a proper modal so the tutor can:
 //   1) write the full private session_note (required)

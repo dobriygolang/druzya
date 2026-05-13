@@ -7,41 +7,27 @@ import (
 	"time"
 
 	"druz9/admin/domain"
+	"druz9/admin/domain/mocks"
+
+	"go.uber.org/mock/gomock"
 )
-
-type fakeProber struct {
-	out []domain.StatusServiceState
-	err error
-}
-
-func (f *fakeProber) Probe(_ context.Context) ([]domain.StatusServiceState, error) {
-	return f.out, f.err
-}
-
-type fakeIncidents struct {
-	recent   []domain.StatusIncident
-	downtime int64
-	err      error
-}
-
-func (f *fakeIncidents) Recent(_ context.Context, _ int) ([]domain.StatusIncident, error) {
-	return f.recent, f.err
-}
-func (f *fakeIncidents) DowntimeSeconds(_ context.Context, _ time.Duration, _ time.Time) (int64, error) {
-	return f.downtime, f.err
-}
-func (f *fakeIncidents) DailyBuckets(_ context.Context, _ string, _ int, _ time.Time) ([]domain.StatusDayBucket, error) {
-	return nil, f.err
-}
 
 func TestGetStatus_Do_OperationalAggregation(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
+	prober := mocks.NewMockStatusProber(ctrl)
+	prober.EXPECT().Probe(gomock.Any()).Return([]domain.StatusServiceState{
+		{Name: "PostgreSQL", Slug: "postgres", Status: domain.StatusOperational, Uptime30D: 100},
+		{Name: "Redis", Slug: "redis", Status: domain.StatusOperational, Uptime30D: 100},
+	}, nil)
+	incidents := mocks.NewMockIncidentRepo(ctrl)
+	incidents.EXPECT().Recent(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	incidents.EXPECT().DowntimeSeconds(gomock.Any(), gomock.Any(), gomock.Any()).Return(int64(0), nil).AnyTimes()
+	incidents.EXPECT().DailyBuckets(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
 	uc := &GetStatus{
-		Prober: &fakeProber{out: []domain.StatusServiceState{
-			{Name: "PostgreSQL", Slug: "postgres", Status: domain.StatusOperational, Uptime30D: 100},
-			{Name: "Redis", Slug: "redis", Status: domain.StatusOperational, Uptime30D: 100},
-		}},
-		Incidents: &fakeIncidents{},
+		Prober:    prober,
+		Incidents: incidents,
 		Now:       func() time.Time { return time.Unix(1700000000, 0) },
 	}
 	page, err := uc.Do(context.Background())
@@ -58,13 +44,20 @@ func TestGetStatus_Do_OperationalAggregation(t *testing.T) {
 
 func TestGetStatus_Do_DegradedAggregation(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
+	prober := mocks.NewMockStatusProber(ctrl)
+	prober.EXPECT().Probe(gomock.Any()).Return([]domain.StatusServiceState{
+		{Name: "PostgreSQL", Slug: "postgres", Status: domain.StatusOperational},
+		{Name: "Redis", Slug: "redis", Status: domain.StatusDegraded},
+		{Name: "Judge0", Slug: "judge0", Status: domain.StatusOperational},
+	}, nil)
+	incidents := mocks.NewMockIncidentRepo(ctrl)
+	incidents.EXPECT().Recent(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	incidents.EXPECT().DowntimeSeconds(gomock.Any(), gomock.Any(), gomock.Any()).Return(int64(0), nil).AnyTimes()
+	incidents.EXPECT().DailyBuckets(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	uc := &GetStatus{
-		Prober: &fakeProber{out: []domain.StatusServiceState{
-			{Name: "PostgreSQL", Slug: "postgres", Status: domain.StatusOperational},
-			{Name: "Redis", Slug: "redis", Status: domain.StatusDegraded},
-			{Name: "Judge0", Slug: "judge0", Status: domain.StatusOperational},
-		}},
-		Incidents: &fakeIncidents{},
+		Prober:    prober,
+		Incidents: incidents,
 	}
 	page, err := uc.Do(context.Background())
 	if err != nil {
@@ -77,12 +70,19 @@ func TestGetStatus_Do_DegradedAggregation(t *testing.T) {
 
 func TestGetStatus_Do_DownBeatsDegraded(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
+	prober := mocks.NewMockStatusProber(ctrl)
+	prober.EXPECT().Probe(gomock.Any()).Return([]domain.StatusServiceState{
+		{Name: "PostgreSQL", Slug: "postgres", Status: domain.StatusDegraded},
+		{Name: "Redis", Slug: "redis", Status: domain.StatusDown},
+	}, nil)
+	incidents := mocks.NewMockIncidentRepo(ctrl)
+	incidents.EXPECT().Recent(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	incidents.EXPECT().DowntimeSeconds(gomock.Any(), gomock.Any(), gomock.Any()).Return(int64(0), nil).AnyTimes()
+	incidents.EXPECT().DailyBuckets(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	uc := &GetStatus{
-		Prober: &fakeProber{out: []domain.StatusServiceState{
-			{Name: "PostgreSQL", Slug: "postgres", Status: domain.StatusDegraded},
-			{Name: "Redis", Slug: "redis", Status: domain.StatusDown},
-		}},
-		Incidents: &fakeIncidents{},
+		Prober:    prober,
+		Incidents: incidents,
 	}
 	page, _ := uc.Do(context.Background())
 	if page.OverallStatus != domain.StatusDown {
@@ -92,10 +92,17 @@ func TestGetStatus_Do_DownBeatsDegraded(t *testing.T) {
 
 func TestGetStatus_Do_UptimeFromDowntime(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	// 90d window = 7,776,000 sec. 60s downtime ⇒ ≈99.99923%.
+	prober := mocks.NewMockStatusProber(ctrl)
+	prober.EXPECT().Probe(gomock.Any()).Return(nil, nil)
+	incidents := mocks.NewMockIncidentRepo(ctrl)
+	incidents.EXPECT().Recent(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	incidents.EXPECT().DowntimeSeconds(gomock.Any(), gomock.Any(), gomock.Any()).Return(int64(60), nil).AnyTimes()
+	incidents.EXPECT().DailyBuckets(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	uc := &GetStatus{
-		Prober:    &fakeProber{out: nil},
-		Incidents: &fakeIncidents{downtime: 60},
+		Prober:    prober,
+		Incidents: incidents,
 	}
 	page, err := uc.Do(context.Background())
 	if err != nil {
@@ -111,10 +118,14 @@ func TestGetStatus_Do_UptimeFromDowntime(t *testing.T) {
 
 func TestGetStatus_Do_ProbeErrorPropagates(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	want := errors.New("probe boom")
+	prober := mocks.NewMockStatusProber(ctrl)
+	prober.EXPECT().Probe(gomock.Any()).Return(nil, want)
+	incidents := mocks.NewMockIncidentRepo(ctrl)
 	uc := &GetStatus{
-		Prober:    &fakeProber{err: want},
-		Incidents: &fakeIncidents{},
+		Prober:    prober,
+		Incidents: incidents,
 	}
 	if _, err := uc.Do(context.Background()); !errors.Is(err, want) {
 		t.Fatalf("expected probe error to wrap, got %v", err)

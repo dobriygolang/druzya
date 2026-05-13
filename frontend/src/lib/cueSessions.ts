@@ -1,11 +1,4 @@
-// cueSessions.ts — F10 (Phase C) frontend stub для cross-product Cue
-// session ingestion. Cue (stealth tray-copilot) end-of-session должен
-// flow transcript + metadata в web Coach memory чтобы AI знал «вчера на
 // Google interview struggled with sharding».
-//
-// MVP storage: localStorage `druz9.cue_sessions.v1`. Когда Phase C ship'нет
-// real backend `IngestSessionTranscript` UC + Connect-RPC, replacement —
-// migrate localStorage → POST на mount, keep frontend API стабильным.
 //
 // Wire shape намеренно совпадает с planned backend message: persona /
 // company / sections[] / transcript_url / completed_at.

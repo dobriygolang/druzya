@@ -250,9 +250,6 @@ function createMainWindow(): BrowserWindow {
 let pendingDeepLink: string | null = null;
 
 // dispatchDeepLink — thin wrapper over the auth/deeplink intent router.
-// X5 (Phase J P2 2026-05-12): scattered if-chains migrated into a typed
-// parseDeepLink + dispatchIntent in ./auth/deeplink.ts. This function
-// only handles the «queue when window not ready» concern.
 function dispatchDeepLink(url: string): void {
   if (!mainWindow || mainWindow.isDestroyed()) {
     pendingDeepLink = url;

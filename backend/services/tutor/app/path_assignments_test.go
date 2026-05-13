@@ -8,59 +8,21 @@ import (
 	"time"
 
 	"druz9/tutor/domain"
+	"druz9/tutor/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// fakePathAssignmentRepo follows the same hand-rolled fake convention
-// used by the rest of this package (fakeAssignmentRepo etc.).
-type fakePathAssignmentRepo struct {
-	create    func(ctx context.Context, a domain.PathAssignment) (domain.PathAssignment, error)
-	get       func(ctx context.Context, r, a uuid.UUID) (domain.PathAssignment, error)
-	listAct   func(ctx context.Context, s uuid.UUID) ([]domain.PathAssignment, error)
-	advance   func(ctx context.Context, r, a uuid.UUID, now time.Time) (domain.PathAssignment, bool, error)
-	bumpPath  func(ctx context.Context, p uuid.UUID) error
-}
-
-func (f fakePathAssignmentRepo) CreatePathAssignment(ctx context.Context, a domain.PathAssignment) (domain.PathAssignment, error) {
-	if f.create == nil {
-		return domain.PathAssignment{}, errors.New("create not set")
-	}
-	return f.create(ctx, a)
-}
-func (f fakePathAssignmentRepo) GetPathAssignment(ctx context.Context, r, a uuid.UUID) (domain.PathAssignment, error) {
-	if f.get == nil {
-		return domain.PathAssignment{}, errors.New("get not set")
-	}
-	return f.get(ctx, r, a)
-}
-func (f fakePathAssignmentRepo) ListActiveByStudent(ctx context.Context, s uuid.UUID) ([]domain.PathAssignment, error) {
-	if f.listAct == nil {
-		return nil, errors.New("listAct not set")
-	}
-	return f.listAct(ctx, s)
-}
-func (f fakePathAssignmentRepo) AdvanceStep(ctx context.Context, r, a uuid.UUID, now time.Time) (domain.PathAssignment, bool, error) {
-	if f.advance == nil {
-		return domain.PathAssignment{}, false, errors.New("advance not set")
-	}
-	return f.advance(ctx, r, a, now)
-}
-func (f fakePathAssignmentRepo) IncrementPathAssignedCount(ctx context.Context, p uuid.UUID) error {
-	if f.bumpPath == nil {
-		return nil // best-effort path; nil is fine
-	}
-	return f.bumpPath(ctx, p)
-}
 
 // ── AssignReadingPath ─────────────────────────────────────────────────
 
 func TestAssignReadingPath_NilIDs(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uc := &AssignReadingPath{
-		Paths:           fakeReadingPathRepo{},
-		PathAssignments: fakePathAssignmentRepo{},
-		Assignments:     fakeAssignmentRepo{},
+		Paths:           mocks.NewMockReadingPathRepo(ctrl),
+		PathAssignments: mocks.NewMockPathAssignmentRepo(ctrl),
+		Assignments:     mocks.NewMockAssignmentRepo(ctrl),
 	}
 	_, err := uc.Do(context.Background(), AssignReadingPathInput{})
 	if !errors.Is(err, domain.ErrInvalidInput) {
@@ -70,11 +32,12 @@ func TestAssignReadingPath_NilIDs(t *testing.T) {
 
 func TestAssignReadingPath_SelfAssign(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	id := uuid.New()
 	uc := &AssignReadingPath{
-		Paths:           fakeReadingPathRepo{},
-		PathAssignments: fakePathAssignmentRepo{},
-		Assignments:     fakeAssignmentRepo{},
+		Paths:           mocks.NewMockReadingPathRepo(ctrl),
+		PathAssignments: mocks.NewMockPathAssignmentRepo(ctrl),
+		Assignments:     mocks.NewMockAssignmentRepo(ctrl),
 	}
 	_, err := uc.Do(context.Background(), AssignReadingPathInput{
 		TutorID:   id,
@@ -88,6 +51,7 @@ func TestAssignReadingPath_SelfAssign(t *testing.T) {
 
 func TestAssignReadingPath_HappyPath(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
 	studentID := uuid.New()
 	pathID := uuid.New()
@@ -104,36 +68,33 @@ func TestAssignReadingPath_HappyPath(t *testing.T) {
 	var savedPathAssignment domain.PathAssignment
 	pathAssignID := uuid.New()
 
+	paths := mocks.NewMockReadingPathRepo(ctrl)
+	paths.EXPECT().GetReadingPathForTutor(gomock.Any(), tutorID, pathID).Return(path, nil)
+
+	pathAssignments := mocks.NewMockPathAssignmentRepo(ctrl)
+	pathAssignments.EXPECT().CreatePathAssignment(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, a domain.PathAssignment) (domain.PathAssignment, error) {
+			a.ID = pathAssignID
+			savedPathAssignment = a
+			return a, nil
+		},
+	)
+	pathAssignments.EXPECT().IncrementPathAssignedCount(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	assignments := mocks.NewMockAssignmentRepo(ctrl)
+	assignments.EXPECT().EnsureRelationship(gomock.Any(), tutorID, studentID).Return(nil)
+	assignments.EXPECT().CreateAssignment(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, a domain.Assignment) (domain.Assignment, error) {
+			a.ID = uuid.New()
+			createdAssignments = append(createdAssignments, a)
+			return a, nil
+		},
+	).AnyTimes()
+
 	uc := &AssignReadingPath{
-		Paths: fakeReadingPathRepo{
-			get: func(_ context.Context, t, p uuid.UUID) (domain.ReadingPath, error) {
-				if t != tutorID || p != pathID {
-					return domain.ReadingPath{}, domain.ErrNotFound
-				}
-				return path, nil
-			},
-		},
-		PathAssignments: fakePathAssignmentRepo{
-			create: func(_ context.Context, a domain.PathAssignment) (domain.PathAssignment, error) {
-				a.ID = pathAssignID
-				savedPathAssignment = a
-				return a, nil
-			},
-			bumpPath: func(_ context.Context, p uuid.UUID) error { return nil },
-		},
-		Assignments: fakeAssignmentRepo{
-			ensure: func(_ context.Context, t, s uuid.UUID) error {
-				if t != tutorID || s != studentID {
-					return domain.ErrNotFound
-				}
-				return nil
-			},
-			create: func(_ context.Context, a domain.Assignment) (domain.Assignment, error) {
-				a.ID = uuid.New()
-				createdAssignments = append(createdAssignments, a)
-				return a, nil
-			},
-		},
+		Paths:           paths,
+		PathAssignments: pathAssignments,
+		Assignments:     assignments,
 	}
 
 	out, err := uc.Do(context.Background(), AssignReadingPathInput{
@@ -167,22 +128,21 @@ func TestAssignReadingPath_HappyPath(t *testing.T) {
 
 func TestAssignReadingPath_RejectsArchivedPath(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
 	pathID := uuid.New()
 	archived := time.Now()
+	paths := mocks.NewMockReadingPathRepo(ctrl)
+	paths.EXPECT().GetReadingPathForTutor(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.ReadingPath{
+		ID:            pathID,
+		TutorID:       tutorID,
+		AtlasNodeKeys: []string{"x"},
+		ArchivedAt:    &archived,
+	}, nil)
 	uc := &AssignReadingPath{
-		Paths: fakeReadingPathRepo{
-			get: func(_ context.Context, _, _ uuid.UUID) (domain.ReadingPath, error) {
-				return domain.ReadingPath{
-					ID:            pathID,
-					TutorID:       tutorID,
-					AtlasNodeKeys: []string{"x"},
-					ArchivedAt:    &archived,
-				}, nil
-			},
-		},
-		PathAssignments: fakePathAssignmentRepo{},
-		Assignments:     fakeAssignmentRepo{},
+		Paths:           paths,
+		PathAssignments: mocks.NewMockPathAssignmentRepo(ctrl),
+		Assignments:     mocks.NewMockAssignmentRepo(ctrl),
 	}
 	_, err := uc.Do(context.Background(), AssignReadingPathInput{
 		TutorID:   tutorID,
@@ -196,15 +156,14 @@ func TestAssignReadingPath_RejectsArchivedPath(t *testing.T) {
 
 func TestAssignReadingPath_RejectsEmptyPath(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
+	paths := mocks.NewMockReadingPathRepo(ctrl)
+	paths.EXPECT().GetReadingPathForTutor(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.ReadingPath{ID: uuid.New(), TutorID: tutorID}, nil)
 	uc := &AssignReadingPath{
-		Paths: fakeReadingPathRepo{
-			get: func(_ context.Context, _, _ uuid.UUID) (domain.ReadingPath, error) {
-				return domain.ReadingPath{ID: uuid.New(), TutorID: tutorID}, nil
-			},
-		},
-		PathAssignments: fakePathAssignmentRepo{},
-		Assignments:     fakeAssignmentRepo{},
+		Paths:           paths,
+		PathAssignments: mocks.NewMockPathAssignmentRepo(ctrl),
+		Assignments:     mocks.NewMockAssignmentRepo(ctrl),
 	}
 	_, err := uc.Do(context.Background(), AssignReadingPathInput{
 		TutorID:   tutorID,
@@ -220,7 +179,8 @@ func TestAssignReadingPath_RejectsEmptyPath(t *testing.T) {
 
 func TestListMyActivePathAssignments_NilStudent(t *testing.T) {
 	t.Parallel()
-	uc := &ListMyActivePathAssignments{Repo: fakePathAssignmentRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &ListMyActivePathAssignments{Repo: mocks.NewMockPathAssignmentRepo(ctrl)}
 	_, err := uc.Do(context.Background(), uuid.Nil)
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
@@ -243,7 +203,8 @@ func TestListMyActivePathAssignments_NilRepo_ReturnsEmpty(t *testing.T) {
 
 func TestAdvancePathStep_NilIDs(t *testing.T) {
 	t.Parallel()
-	uc := &AdvancePathStep{Repo: fakePathAssignmentRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &AdvancePathStep{Repo: mocks.NewMockPathAssignmentRepo(ctrl)}
 	_, err := uc.Do(context.Background(), AdvancePathStepInput{})
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
@@ -252,17 +213,17 @@ func TestAdvancePathStep_NilIDs(t *testing.T) {
 
 func TestAdvancePathStep_AlreadyCompleted_NoError(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	completed := time.Now()
-	repo := fakePathAssignmentRepo{
-		advance: func(_ context.Context, _, _ uuid.UUID, _ time.Time) (domain.PathAssignment, bool, error) {
-			return domain.PathAssignment{
-				ID:          uuid.New(),
-				CurrentStep: 5,
-				TotalSteps:  5,
-				CompletedAt: &completed,
-			}, true, domain.ErrAlreadyCompleted
-		},
-	}
+	repo := mocks.NewMockPathAssignmentRepo(ctrl)
+	repo.EXPECT().AdvanceStep(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.PathAssignment{
+			ID:          uuid.New(),
+			CurrentStep: 5,
+			TotalSteps:  5,
+			CompletedAt: &completed,
+		}, true, domain.ErrAlreadyCompleted,
+	)
 	uc := &AdvancePathStep{Repo: repo}
 	out, err := uc.Do(context.Background(), AdvancePathStepInput{
 		RequesterID:  uuid.New(),

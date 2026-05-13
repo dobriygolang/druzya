@@ -44,7 +44,6 @@ export function QuotaMeterMini({ used, cap, width = 44 }: Props) {
       ? `Осталось ${remaining} запросов из ${cap}. Скоро лимит — рекомендуем Pro.`
       : `Использовано ${used} из ${cap} запросов в день.`;
 
-  // X2 (P0) — переключили с server-driven PaywallModal на context-aware
   // UpgradeModal. PaywallModal остаётся для stream rate_limited auto-pop
   // (см. conversation.ts), а тут click на meter — explicit user intent,
   // даём structured pre-filled context «вы near LLM cap, Pro removes cap».

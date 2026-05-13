@@ -1,5 +1,4 @@
 // intelligence.ts — Cue Electron client for druz9 Intelligence service.
-// F10 (Phase D 2026-05-12): после ready'd analysis Cue POST'ит session
 // + transcript + per-stage notes к backend
 // /api/v1/intelligence/interview-sessions/ingest.
 //

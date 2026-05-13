@@ -1,9 +1,3 @@
-// TutorRoleToggle — Stream D (2026-05-12). Self-toggle for the tutor
-// role, surfaced on /profile. Identity.md states tutor mode is a role
-// toggle (not a separate app, not paywalled), so this is the entire
-// onboarding flow: flip ON → AppShell shows the Tutor nav item +
-// /tutor sub-surfaces unlock.
-//
 // Wire shape: backend reads/writes `users.tutor_mode_enabled` via
 // /profile/me/settings (PUT) and /profile/me (GET). Until `make
 // generate` regenerates the proto, the wire field lives on the

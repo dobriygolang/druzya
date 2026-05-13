@@ -1,6 +1,3 @@
-// tutorPaths.ts — Stream D (2026-05-12). React-Query hooks for tutor
-// reading paths CRUD. Wire endpoint /api/v1/tutor/paths.
-//
 // A reading path = ordered atlas-node-keys + resource-ids the tutor
 // curates for a student/cohort. Complements `tutorSharedReading`
 // (one-off broadcast); paths are reusable curricula.
@@ -105,7 +102,6 @@ export function useArchiveReadingPathMutation() {
   })
 }
 
-// ── Path assignments (Phase K T2, 2026-05-12) ─────────────────────────
 
 export type TutorPathAssignment = {
   id: string

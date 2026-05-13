@@ -8,54 +8,25 @@ import (
 	"time"
 
 	"druz9/admin/domain"
+	"druz9/admin/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-type fakeUserRepo struct {
-	banCalls   int
-	unbanCalls int
-	listCalls  int
-	getCalls   int
-	user       domain.AdminUserRow
-	page       domain.UserPage
-	banErr     error
-	unbanErr   error
-}
-
-func (f *fakeUserRepo) List(_ context.Context, _ domain.UserListFilter) (domain.UserPage, error) {
-	f.listCalls++
-	return f.page, nil
-}
-
-func (f *fakeUserRepo) Get(_ context.Context, _ uuid.UUID) (domain.AdminUserRow, error) {
-	f.getCalls++
-	return f.user, nil
-}
-
-func (f *fakeUserRepo) Ban(_ context.Context, in domain.BanInput) (domain.AdminUserRow, error) {
-	f.banCalls++
-	if f.banErr != nil {
-		return domain.AdminUserRow{}, f.banErr
-	}
-	return domain.AdminUserRow{
-		ID: in.UserID, Username: f.user.Username,
-		IsBanned: true, BanReason: in.Reason, BanExpiresAt: in.ExpiresAt,
-	}, nil
-}
-
-func (f *fakeUserRepo) Unban(_ context.Context, _, _ uuid.UUID) (domain.AdminUserRow, error) {
-	f.unbanCalls++
-	if f.unbanErr != nil {
-		return domain.AdminUserRow{}, f.unbanErr
-	}
-	return domain.AdminUserRow{ID: f.user.ID, Username: f.user.Username, IsBanned: false}, nil
-}
 
 func TestBanUser_Do_Success(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	uid := uuid.New()
-	repo := &fakeUserRepo{user: domain.AdminUserRow{ID: uid, Username: "alice"}}
+	repo := mocks.NewMockUserRepo(ctrl)
+	repo.EXPECT().Ban(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in domain.BanInput) (domain.AdminUserRow, error) {
+			return domain.AdminUserRow{
+				ID: in.UserID, Username: "alice",
+				IsBanned: true, BanReason: in.Reason, BanExpiresAt: in.ExpiresAt,
+			}, nil
+		},
+	).Times(1)
 	uc := &BanUser{Users: repo}
 	out, err := uc.Do(context.Background(), BanInput{
 		UserID: uid, Reason: "spam", IssuedBy: uuid.New(),
@@ -66,14 +37,12 @@ func TestBanUser_Do_Success(t *testing.T) {
 	if !out.IsBanned {
 		t.Fatal("expected IsBanned=true")
 	}
-	if repo.banCalls != 1 {
-		t.Fatalf("ban should be called once, got %d", repo.banCalls)
-	}
 }
 
 func TestBanUser_Do_RejectsBlankReason(t *testing.T) {
 	t.Parallel()
-	uc := &BanUser{Users: &fakeUserRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &BanUser{Users: mocks.NewMockUserRepo(ctrl)}
 	_, err := uc.Do(context.Background(), BanInput{
 		UserID: uuid.New(), Reason: "   ",
 	})
@@ -84,7 +53,8 @@ func TestBanUser_Do_RejectsBlankReason(t *testing.T) {
 
 func TestBanUser_Do_RejectsZeroUUID(t *testing.T) {
 	t.Parallel()
-	uc := &BanUser{Users: &fakeUserRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &BanUser{Users: mocks.NewMockUserRepo(ctrl)}
 	if _, err := uc.Do(context.Background(), BanInput{Reason: "x"}); !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("nil user_id must fail, got %v", err)
 	}
@@ -92,7 +62,8 @@ func TestBanUser_Do_RejectsZeroUUID(t *testing.T) {
 
 func TestBanUser_Do_RejectsLongReason(t *testing.T) {
 	t.Parallel()
-	uc := &BanUser{Users: &fakeUserRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &BanUser{Users: mocks.NewMockUserRepo(ctrl)}
 	_, err := uc.Do(context.Background(), BanInput{
 		UserID: uuid.New(),
 		Reason: strings.Repeat("x", MaxBanReasonLen+1),
@@ -104,8 +75,9 @@ func TestBanUser_Do_RejectsLongReason(t *testing.T) {
 
 func TestBanUser_Do_RejectsExpiresInPast(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	past := time.Now().Add(-time.Hour)
-	uc := &BanUser{Users: &fakeUserRepo{}}
+	uc := &BanUser{Users: mocks.NewMockUserRepo(ctrl)}
 	_, err := uc.Do(context.Background(), BanInput{
 		UserID: uuid.New(), Reason: "x", ExpiresAt: &past,
 	})
@@ -116,10 +88,9 @@ func TestBanUser_Do_RejectsExpiresInPast(t *testing.T) {
 
 func TestBanUser_Do_PropagatesAlreadyBanned(t *testing.T) {
 	t.Parallel()
-	repo := &fakeUserRepo{
-		user:   domain.AdminUserRow{ID: uuid.New()},
-		banErr: domain.ErrAlreadyBanned,
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockUserRepo(ctrl)
+	repo.EXPECT().Ban(gomock.Any(), gomock.Any()).Return(domain.AdminUserRow{}, domain.ErrAlreadyBanned)
 	uc := &BanUser{Users: repo}
 	_, err := uc.Do(context.Background(), BanInput{
 		UserID: uuid.New(), Reason: "x",
@@ -131,7 +102,12 @@ func TestBanUser_Do_PropagatesAlreadyBanned(t *testing.T) {
 
 func TestUnbanUser_Do_Success(t *testing.T) {
 	t.Parallel()
-	repo := &fakeUserRepo{user: domain.AdminUserRow{ID: uuid.New(), Username: "bob"}}
+	ctrl := gomock.NewController(t)
+	uid := uuid.New()
+	repo := mocks.NewMockUserRepo(ctrl)
+	repo.EXPECT().Unban(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.AdminUserRow{ID: uid, Username: "bob", IsBanned: false}, nil,
+	).Times(1)
 	uc := &UnbanUser{Users: repo}
 	out, err := uc.Do(context.Background(), uuid.New(), uuid.New())
 	if err != nil {
@@ -140,17 +116,13 @@ func TestUnbanUser_Do_Success(t *testing.T) {
 	if out.IsBanned {
 		t.Fatal("expected IsBanned=false")
 	}
-	if repo.unbanCalls != 1 {
-		t.Fatalf("unban should be called once, got %d", repo.unbanCalls)
-	}
 }
 
 func TestUnbanUser_Do_PropagatesNotBanned(t *testing.T) {
 	t.Parallel()
-	repo := &fakeUserRepo{
-		user:     domain.AdminUserRow{ID: uuid.New()},
-		unbanErr: domain.ErrNotBanned,
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockUserRepo(ctrl)
+	repo.EXPECT().Unban(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.AdminUserRow{}, domain.ErrNotBanned)
 	uc := &UnbanUser{Users: repo}
 	_, err := uc.Do(context.Background(), uuid.New(), uuid.New())
 	if !errors.Is(err, domain.ErrNotBanned) {

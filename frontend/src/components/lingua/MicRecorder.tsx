@@ -1,5 +1,3 @@
-// MicRecorder — Phase K W8 web-port of hone speaking recorder.
-//
 // MediaRecorder API → audio/webm; codecs=opus. Caps at 15s default, auto-
 // stop on cap. Live waveform via AnalyserNode + canvas. Returns the
 // recorded Blob via `onRecorded` callback.

@@ -5,9 +5,6 @@
 //   - тонкий 1.5px stripe сверху + tiny status pill снизу-справа;
 //   - explicitly Lingua-aware: упоминает vocab review + outbox count.
 //
-// Color rule (Sergey 2026-05-04): #FF3B30 — точка-индикатор / 1.5px stripe /
-// single SVG stroke. Никогда в bg/fill/gradient. Здесь используем тонкий 1.5px
-// горизонтальный stripe вверху на чёрном — это допустимое использование.
 // Текст pill'а — белый на #0A0A0F (B/W).
 
 import { useEffect, useState } from 'react'

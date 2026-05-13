@@ -2,16 +2,11 @@
 //   atlas (карта)  ·  mock (PRIMARY · centred, larger)  ·  tutor (coach)
 // Profile / Settings / Notifications живут в hamburger-меню AppShell — на
 // mobile они не нужны как top-level CTA, потому что главное действие —
-// «запусти mock» (identity 2026-05-04: главный продукт = AI-mock).
-//
 // Hide-rules (HIDE_ON regex list):
 //   /onboarding/*  — guided flow shouldn't have escape hatches
 //   /auth/* /login /welcome — unauth user, tabs go nowhere
 //   /mock/{id}     — immersive session
 // Default: show.
-// Note (D7 2026-05-12): /voice-mock standalone deleted — route now
-// redirects to /mock, no hide-rule needed.
-//
 // Safe-area: paddingBottom uses env(safe-area-inset-bottom) so the bar
 // stays above the iPhone home indicator.
 
@@ -121,8 +116,6 @@ function Tab({
           <div
             className={cn(
               'relative grid place-items-center',
-              // CI4 (Phase A 2026-05-12) — bump primary FAB to 44×44 для
-              // iOS HIG / WCAG touch target compliance (was h-9 w-9 = 36px).
               primary &&
                 'rounded-full border border-border-strong bg-surface-2 h-11 w-11 -mt-3',
             )}

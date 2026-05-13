@@ -1,6 +1,3 @@
-// 2026-05-12: migrated to foundation Modal primitive (focus trap, ESC,
-// scroll lock, restore focus, smooth in/out). Inputs underline-only per
-// v2 spec, error banner uses red signal stripe.
 
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/primitives/Modal'

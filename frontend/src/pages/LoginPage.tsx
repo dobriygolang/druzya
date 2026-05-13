@@ -37,9 +37,6 @@ import { Modal } from '../components/primitives/Modal'
 import { motion as motionTokens } from '../lib/design-tokens'
 
 const YANDEX_CLIENT_ID = import.meta.env.VITE_YANDEX_CLIENT_ID as string | undefined
-// Phase R3 cooldown — bumped 2000 → 3000ms. The TG bot side typically
-// confirms a code in 5–15s; faster polling just spammed the auth backend
-// during long-tail flows (user fishing the t.me link out of the spam tab).
 const POLL_INTERVAL_MS = 3000
 const yandexRedirectURI = () => `${window.location.origin}/auth/callback/yandex`
 const DESKTOP_RETURN_KEY = 'desktop_return_url'
@@ -99,8 +96,6 @@ export default function LoginPage() {
   const { t } = useTranslation('welcome')
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  // Pivot 2026-05-03: landing → /today (action-driven dashboard) вместо
-  // /atlas. См RootRedirect в App.tsx.
   const nextHref = params.get('next') ?? '/today'
   // ?reason=expired — выставляется apiClient'ом после неудачного refresh,
   // чтобы пользователь увидел осмысленное сообщение, а не «просто кинуло

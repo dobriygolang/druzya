@@ -7,37 +7,32 @@ import (
 	"testing"
 
 	"druz9/hone/domain"
+	"druz9/hone/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-type stubReviewGrader struct {
-	out   domain.CodeReviewFeedback
-	err   error
-	last  domain.GradeCodeReviewInput
-	calls int
-}
-
-func (s *stubReviewGrader) GradeReview(_ context.Context, in domain.GradeCodeReviewInput) (domain.CodeReviewFeedback, error) {
-	s.calls++
-	s.last = in
-	return s.out, s.err
-}
 
 func TestGradeCodeReview_HappyPath(t *testing.T) {
 	t.Parallel()
-	g := &stubReviewGrader{
-		out: domain.CodeReviewFeedback{
-			OverallScore: 72,
-			Issues: []domain.CodeReviewIssue{
-				{
-					Excerpt:    "this is wrong",
-					Category:   domain.ReviewIssueCorrectness,
-					Suggestion: "actually it does X correctly",
+	ctrl := gomock.NewController(t)
+	g := mocks.NewMockCodeReviewGrader(ctrl)
+	var last domain.GradeCodeReviewInput
+	g.EXPECT().GradeReview(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in domain.GradeCodeReviewInput) (domain.CodeReviewFeedback, error) {
+			last = in
+			return domain.CodeReviewFeedback{
+				OverallScore: 72,
+				Issues: []domain.CodeReviewIssue{
+					{
+						Excerpt:    "this is wrong",
+						Category:   domain.ReviewIssueCorrectness,
+						Suggestion: "actually it does X correctly",
+					},
 				},
-			},
+			}, nil
 		},
-	}
+	)
 	uc := &GradeCodeReview{Grader: g}
 	out, err := uc.Do(context.Background(), GradeCodeReviewInput{
 		UserID:   uuid.New(),
@@ -52,17 +47,18 @@ func TestGradeCodeReview_HappyPath(t *testing.T) {
 		t.Errorf("feedback round-trip broken: %+v", out)
 	}
 	// Inputs trimmed before reaching the grader.
-	if g.last.PRTitle != "add cache eviction" {
-		t.Errorf("PR title not trimmed: %q", g.last.PRTitle)
+	if last.PRTitle != "add cache eviction" {
+		t.Errorf("PR title not trimmed: %q", last.PRTitle)
 	}
-	if g.last.DiffMD != "diff --git a/foo.go b/foo.go ..." {
-		t.Errorf("diff not trimmed: %q", g.last.DiffMD)
+	if last.DiffMD != "diff --git a/foo.go b/foo.go ..." {
+		t.Errorf("diff not trimmed: %q", last.DiffMD)
 	}
 }
 
 func TestGradeCodeReview_RejectsMissingInputs(t *testing.T) {
 	t.Parallel()
-	uc := &GradeCodeReview{Grader: &stubReviewGrader{}}
+	ctrl := gomock.NewController(t)
+	uc := &GradeCodeReview{Grader: mocks.NewMockCodeReviewGrader(ctrl)}
 	cases := []struct {
 		name string
 		in   GradeCodeReviewInput
@@ -84,7 +80,9 @@ func TestGradeCodeReview_RejectsMissingInputs(t *testing.T) {
 
 func TestGradeCodeReview_RejectsOversizedDiff(t *testing.T) {
 	t.Parallel()
-	g := &stubReviewGrader{}
+	ctrl := gomock.NewController(t)
+	g := mocks.NewMockCodeReviewGrader(ctrl)
+	// No EXPECT — UC must reject the request before calling the grader.
 	uc := &GradeCodeReview{Grader: g}
 	huge := strings.Repeat("a", codeReviewDiffMax+1)
 	if _, err := uc.Do(context.Background(), GradeCodeReviewInput{
@@ -94,14 +92,13 @@ func TestGradeCodeReview_RejectsOversizedDiff(t *testing.T) {
 	}); err == nil {
 		t.Fatal("expected size-cap rejection")
 	}
-	if g.calls != 0 {
-		t.Errorf("grader must not be called for oversize diff; calls=%d", g.calls)
-	}
 }
 
 func TestGradeCodeReview_GraderErrorPropagates(t *testing.T) {
 	t.Parallel()
-	g := &stubReviewGrader{err: errors.New("provider down")}
+	ctrl := gomock.NewController(t)
+	g := mocks.NewMockCodeReviewGrader(ctrl)
+	g.EXPECT().GradeReview(gomock.Any(), gomock.Any()).Return(domain.CodeReviewFeedback{}, errors.New("provider down"))
 	uc := &GradeCodeReview{Grader: g}
 	_, err := uc.Do(context.Background(), GradeCodeReviewInput{
 		UserID:   uuid.New(),

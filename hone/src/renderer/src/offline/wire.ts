@@ -12,8 +12,6 @@ import { setEditorRoomVisibility } from '../api/editor';
 import { setRoomVisibility as setWhiteboardRoomVisibility } from '../api/whiteboard';
 import { endFocusSession } from '../api/hone';
 import { saveFocusReflection } from '../api/intelligence';
-// gradeSpeaking import removed 2026-05-13 (Phase K Wave 8) — English vertical
-// migrated to web /lingua; speaking.submission executor больше не нужен.
 import { API_BASE_URL, DEV_BEARER_TOKEN } from '../api/config';
 import { useSessionStore } from '../stores/session';
 import { emitConflict } from '../components/ConflictModal';
@@ -272,7 +270,6 @@ export function wireOutboxExecutors(): void {
     }
   });
 
-  // ── Phase A cleanup (2026-05-12) focus.end ────────────────────────────
   // Drain re-attempts via Connect-RPC client (same path как online finish).
   // Если backend не идемпотентен — non-2xx → throw → bumpAttempt → eventually
   // dead после MAX_ATTEMPTS. Reflection text уже donated с первой попытки.
@@ -300,7 +297,6 @@ export function wireOutboxExecutors(): void {
     }
   });
 
-  // ── H2 focus.reflection (Phase J 2026-05-12) ──────────────────────────
   // Backend SaveFocusReflection идемпотентна через UNIQUE(user_id, session_id)
   // ON CONFLICT DO UPDATE — replay safe, latest write wins. Payload — JSON
   // wire-shape с ISO-string timestamps (Date.toJSON), мы их parse'им обратно
@@ -330,7 +326,4 @@ export function wireOutboxExecutors(): void {
     });
   });
 
-  // H4 speaking.submission executor removed 2026-05-13 (Phase K Wave 8) —
-  // English vertical migrated to web /lingua. Pending op'ы у существующих
-  // юзеров — drain просто skip'ает (unknown kind branch).
 }

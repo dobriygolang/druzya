@@ -1,5 +1,3 @@
-// ReviewStep.tsx — Phase J / C6 (P1).
-//
 // Step 3: side-by-side recap of parsed CV + JD with a single CTA
 // "Запустить подготовку". On click → backend StartInterviewPrep →
 // active prep stored → next step = Launch.

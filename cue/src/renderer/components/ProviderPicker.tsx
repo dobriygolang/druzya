@@ -8,10 +8,6 @@
 // next Analyze/Chat turn uses it. Every call goes through the backend
 // — the BYOK "bring your own key" path was removed, so there is no
 // "ваш ключ" badge anymore.
-//
-// 2026-05-12: migrated to foundation Modal primitive (focus trap, ESC,
-// scroll lock, restore focus, smooth in/out). Badge green tint removed
-// per b/w + red rule (memory/feedback_color_rule.md).
 
 import { useMemo, useRef, useState } from 'react';
 

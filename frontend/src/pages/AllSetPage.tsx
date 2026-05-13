@@ -1,8 +1,4 @@
 // AllSet — celebratory exit screen after onboarding.
-//
-// 2026-05-12: v2 visual language — hairline logo box, hairline reward
-// cards, ghost CTA pills, display-family h1 with v2 weight (600 lighter
-// than legacy 800/extrabold). Confetti unchanged — already b/w + #FF3B30.
 
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'

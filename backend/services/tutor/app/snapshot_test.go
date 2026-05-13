@@ -4,38 +4,17 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"druz9/tutor/domain"
+	"druz9/tutor/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-// fakeSnapshotRepo is a hand-rolled fake — there's no mockgen target
-// for SnapshotRepo (the directive on repo.go covers Repo only). Two
-// closures satisfy the two interface methods; nil = unimplemented
-// fail (a test that hits a missing closure fails loudly).
-type fakeSnapshotRepo struct {
-	ensure   func(ctx context.Context, tutorID, studentID uuid.UUID) error
-	snapshot func(ctx context.Context, studentID uuid.UUID, w int, now time.Time) (domain.StudentSnapshot, error)
-}
-
-func (f fakeSnapshotRepo) EnsureRelationship(ctx context.Context, tutorID, studentID uuid.UUID) error {
-	if f.ensure == nil {
-		return errors.New("ensure not set")
-	}
-	return f.ensure(ctx, tutorID, studentID)
-}
-
-func (f fakeSnapshotRepo) GetStudentSnapshot(ctx context.Context, studentID uuid.UUID, w int, now time.Time) (domain.StudentSnapshot, error) {
-	if f.snapshot == nil {
-		return domain.StudentSnapshot{}, errors.New("snapshot not set")
-	}
-	return f.snapshot(ctx, studentID, w, now)
-}
 
 func TestGetStudentSnapshot_HappyPath(t *testing.T) {
 	t.Parallel()
+	ctrl := gomock.NewController(t)
 	tutorID := uuid.New()
 	studentID := uuid.New()
 
@@ -50,23 +29,9 @@ func TestGetStudentSnapshot_HappyPath(t *testing.T) {
 			{NodeKey: "eng_read_tech", Title: "Reading: tech", Progress: 25},
 		},
 	}
-	repo := fakeSnapshotRepo{
-		ensure: func(_ context.Context, tID, sID uuid.UUID) error {
-			if tID != tutorID || sID != studentID {
-				t.Errorf("ensure called with wrong ids: %v / %v", tID, sID)
-			}
-			return nil
-		},
-		snapshot: func(_ context.Context, sID uuid.UUID, w int, _ time.Time) (domain.StudentSnapshot, error) {
-			if sID != studentID {
-				t.Errorf("snapshot called with wrong studentID: %v", sID)
-			}
-			if w != 7 {
-				t.Errorf("expected default window=7, got %d", w)
-			}
-			return want, nil
-		},
-	}
+	repo := mocks.NewMockSnapshotRepo(ctrl)
+	repo.EXPECT().EnsureRelationship(gomock.Any(), tutorID, studentID).Return(nil)
+	repo.EXPECT().GetStudentSnapshot(gomock.Any(), studentID, 7, gomock.Any()).Return(want, nil)
 	uc := &GetStudentSnapshot{Repo: repo}
 	got, err := uc.Do(context.Background(), GetStudentSnapshotInput{TutorID: tutorID, StudentID: studentID})
 	if err != nil {
@@ -82,29 +47,21 @@ func TestGetStudentSnapshot_HappyPath(t *testing.T) {
 
 func TestGetStudentSnapshot_AuthGate_PreventsForeignProbe(t *testing.T) {
 	t.Parallel()
-	called := false
-	repo := fakeSnapshotRepo{
-		ensure: func(_ context.Context, _, _ uuid.UUID) error {
-			return domain.ErrNotFound // simulate «no active relationship»
-		},
-		snapshot: func(_ context.Context, _ uuid.UUID, _ int, _ time.Time) (domain.StudentSnapshot, error) {
-			called = true
-			return domain.StudentSnapshot{}, nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockSnapshotRepo(ctrl)
+	repo.EXPECT().EnsureRelationship(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.ErrNotFound)
+	// No EXPECT for GetStudentSnapshot — that's the leak protection assertion.
 	uc := &GetStudentSnapshot{Repo: repo}
 	_, err := uc.Do(context.Background(), GetStudentSnapshotInput{TutorID: uuid.New(), StudentID: uuid.New()})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
 	}
-	if called {
-		t.Error("snapshot must NOT be fetched when ensure fails — that's the leak protection")
-	}
 }
 
 func TestGetStudentSnapshot_RejectsZeroIDs(t *testing.T) {
 	t.Parallel()
-	uc := &GetStudentSnapshot{Repo: fakeSnapshotRepo{}}
+	ctrl := gomock.NewController(t)
+	uc := &GetStudentSnapshot{Repo: mocks.NewMockSnapshotRepo(ctrl)}
 	_, err := uc.Do(context.Background(), GetStudentSnapshotInput{TutorID: uuid.Nil, StudentID: uuid.New()})
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Errorf("zero tutor must be ErrInvalidInput, got %v", err)
@@ -116,7 +73,9 @@ func TestGetStudentSnapshot_RejectsZeroIDs(t *testing.T) {
 }
 
 // fakeBriefer renders a placeholder using the snapshot — enough to
-// confirm wiring without dragging an LLM into the test.
+// confirm wiring without dragging an LLM into the test. PreSessionBriefer
+// lives in the app package, so an inline stub stays here rather than
+// generating an app-level mock for this single test usage.
 type fakeBriefer struct {
 	out string
 	err error
@@ -128,19 +87,18 @@ func (f fakeBriefer) Render(_ context.Context, _ domain.StudentSnapshot) (string
 
 func TestGeneratePreSessionBrief_NoBrieferReturnsSnapshotOnly(t *testing.T) {
 	t.Parallel()
-	tutorID := uuid.New()
+	ctrl := gomock.NewController(t)
 	studentID := uuid.New()
-	repo := fakeSnapshotRepo{
-		ensure: func(_ context.Context, _, _ uuid.UUID) error { return nil },
-		snapshot: func(_ context.Context, _ uuid.UUID, _ int, _ time.Time) (domain.StudentSnapshot, error) {
-			return domain.StudentSnapshot{StudentID: studentID, FocusMinutesWindow: 100}, nil
-		},
-	}
+	repo := mocks.NewMockSnapshotRepo(ctrl)
+	repo.EXPECT().EnsureRelationship(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	repo.EXPECT().GetStudentSnapshot(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.StudentSnapshot{StudentID: studentID, FocusMinutesWindow: 100}, nil,
+	)
 	uc := &GeneratePreSessionBrief{
 		Snapshot: &GetStudentSnapshot{Repo: repo},
 		Briefer:  nil, // <- no LLM
 	}
-	out, err := uc.Do(context.Background(), GetStudentSnapshotInput{TutorID: tutorID, StudentID: studentID})
+	out, err := uc.Do(context.Background(), GetStudentSnapshotInput{TutorID: uuid.New(), StudentID: studentID})
 	if err != nil {
 		t.Fatalf("unexpected: %v", err)
 	}
@@ -154,12 +112,12 @@ func TestGeneratePreSessionBrief_NoBrieferReturnsSnapshotOnly(t *testing.T) {
 
 func TestGeneratePreSessionBrief_BrieferErrorIsNonFatal(t *testing.T) {
 	t.Parallel()
-	repo := fakeSnapshotRepo{
-		ensure: func(_ context.Context, _, _ uuid.UUID) error { return nil },
-		snapshot: func(_ context.Context, _ uuid.UUID, _ int, _ time.Time) (domain.StudentSnapshot, error) {
-			return domain.StudentSnapshot{FocusMinutesWindow: 50}, nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockSnapshotRepo(ctrl)
+	repo.EXPECT().EnsureRelationship(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	repo.EXPECT().GetStudentSnapshot(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.StudentSnapshot{FocusMinutesWindow: 50}, nil,
+	)
 	uc := &GeneratePreSessionBrief{
 		Snapshot: &GetStudentSnapshot{Repo: repo},
 		Briefer:  fakeBriefer{err: errors.New("groq quota exhausted")},
@@ -178,12 +136,12 @@ func TestGeneratePreSessionBrief_BrieferErrorIsNonFatal(t *testing.T) {
 
 func TestGeneratePreSessionBrief_HappyPath(t *testing.T) {
 	t.Parallel()
-	repo := fakeSnapshotRepo{
-		ensure: func(_ context.Context, _, _ uuid.UUID) error { return nil },
-		snapshot: func(_ context.Context, _ uuid.UUID, _ int, _ time.Time) (domain.StudentSnapshot, error) {
-			return domain.StudentSnapshot{FocusMinutesWindow: 200}, nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockSnapshotRepo(ctrl)
+	repo.EXPECT().EnsureRelationship(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	repo.EXPECT().GetStudentSnapshot(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		domain.StudentSnapshot{FocusMinutesWindow: 200}, nil,
+	)
 	const briefText = "Маша провела 200 минут focus-сессий..."
 	uc := &GeneratePreSessionBrief{
 		Snapshot: &GetStudentSnapshot{Repo: repo},

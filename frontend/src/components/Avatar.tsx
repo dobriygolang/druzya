@@ -26,11 +26,6 @@ const SIZE_TEXT: Record<AvatarSize, string> = {
 // Phase-1: avatar gradients collapsed to a monochrome ramp (varying ink
 // opacities over black). Names retained so callsites don't break; visual
 // differentiation comes from the index, not the hue.
-// Hero-treatment 2026-05-12: hardcoded hex → ink-ramp via rgba(var(--ink))
-// stratification (single ink source, opacity = differentiator). `pink-red`
-// keeps the canonical accent `var(--red)` as its terminal stop — the only
-// gradient that earns a hue stop because it semantically signals «live /
-// danger» (used for in-match presence avatars).
 const GRADIENT_CSS: Record<AvatarGradient, string> = {
   'violet-cyan':  'linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.35) 100%)',
   'pink-violet':  'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.29) 100%)',
@@ -53,8 +48,6 @@ const STATUS_COLOR: Record<AvatarStatus, string> = {
 
 // Tier rings — full B/W ramp. Heraldic metallics (bronze/silver/gold)
 // заменены на ink-ramp; diamond цяан → text-secondary; master/platinum
-// держат ink. Identity 2026-05-04: no gamification, tiers — это просто
-// orderable opacity, не «цветная иерархия достижений».
 const TIER_RING: Record<AvatarTier, string> = {
   bronze: 'ring-text-muted',
   silver: 'ring-text-secondary',

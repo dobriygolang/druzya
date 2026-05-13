@@ -21,7 +21,6 @@ import { useAtlasStrugglesQuery } from '../../lib/queries/intelligence'
 // pickPersonaForNode — выбирает AI-coach персону. mode='go' / 'ml' выигрывает
 // над section'ом (юзер явно сказал что в go-режиме / ml-режиме). Иначе — по
 // section'у узла. Display-name: role-only lowercase per
-// memory/feedback_persona_names.md.
 function pickPersonaForNode(
   node: AtlasNode,
   activeTrack: ActiveTrack,
@@ -298,8 +297,6 @@ export function AtlasDrawer({
 // just the struggle pill, mobile sees nothing.
 function AtlasDrawerHoneCTA({ nodeKey, nodeTitle }: { nodeKey: string; nodeTitle: string }) {
   const struggles = useAtlasStrugglesQuery(30).data ?? []
-  // Match by exact key OR by "node:<key>" anchor convention used by reflection
-  // pinned-task heuristic OR by "stage:<lowercased>" from Cue ingestion.
   const struggleMark = struggles.find(
     (s) =>
       s.atlasNodeId === nodeKey ||

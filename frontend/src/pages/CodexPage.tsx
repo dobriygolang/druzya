@@ -1,8 +1,4 @@
 // /codex — каталог статей-знаний (System Design, алгоритмы, карьера...).
-//
-// R1 (Phase A 2026-05-12): ranking-proxy enhancements — source type icons,
-// sort dropdown, «Для тебя» AI-recommended section на основе F9 diagnostic
-// weakest area. Identity claim: druz9 ранжирует чужой content, не строит свой.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArrowUpRight, Search, Sparkles, ChevronDown } from 'lucide-react'
@@ -319,8 +315,6 @@ export default function CodexPage() {
     else setSearchParams({ topic: slug }, { replace: true })
   }
 
-  // Track filter (Phase K 6.1) — pre-filters articles by Go/ML/English/
-  // cross-cutting BEFORE category/search/sort. Hidden in the URL via
   // ?tracks=ml so a coach link «check this ML reading» can scope the
   // surface in one go.
   const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({

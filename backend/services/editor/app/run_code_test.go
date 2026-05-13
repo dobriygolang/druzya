@@ -30,6 +30,8 @@ func (r *fakeRoomRepo) SetVisibility(_ context.Context, _ uuid.UUID, _ domain.Vi
 	return nil
 }
 func (r *fakeRoomRepo) DeleteOwned(_ context.Context, _, _ uuid.UUID) error { return nil }
+func (r *fakeRoomRepo) GetCode(_ context.Context, _ uuid.UUID) (string, error)  { return "", nil }
+func (r *fakeRoomRepo) SaveCode(_ context.Context, _ uuid.UUID, _ string) error { return nil }
 
 type fakeParticipants struct{ list []domain.Participant }
 

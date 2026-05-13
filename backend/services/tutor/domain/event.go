@@ -1,3 +1,4 @@
+//go:generate mockgen -package mocks -destination mocks/event_mock.go -source event.go
 package domain
 
 import (

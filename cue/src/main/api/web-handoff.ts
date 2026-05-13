@@ -1,6 +1,4 @@
 // web-handoff.ts — Cue → web (druz9.online) deep-link helpers.
-// X5 (Phase J P2 2026-05-12) cross-product bidirectional handoff.
-//
 // Cue is a stealth tray-copilot — its UI is minimalist by design (live
 // transcript + suggestion cards). Anything that needs more screen real
 // estate or persistence (full session report with annotations, atlas

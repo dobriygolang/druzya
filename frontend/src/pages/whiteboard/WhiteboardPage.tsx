@@ -1,9 +1,5 @@
 // frontend/src/pages/whiteboard/WhiteboardPage.tsx
 //
-// Solo-mode Excalidraw canvas (D4 Stream F migration, 2026-05-12). Pivot:
-// peer-collab (Yjs / WS / awareness) был дропнут вместе с Hone SharedBoards;
-// что осталось — личная доска с persistence на бэк через REST snapshot.
-//
 // Маршруты:
 //   /whiteboard/new        → создать новую комнату, redirect на /whiteboard/:id
 //   /whiteboard/:id        → editable canvas, debounced autosave

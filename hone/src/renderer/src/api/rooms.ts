@@ -1,7 +1,4 @@
 // api/rooms.ts — Phase 9a Path C standalone collab rooms client.
-//
-// Used by Settings → Developer tools section ([Settings.tsx](../pages/Settings.tsx)).
-// NO palette / nav entry — Sergey 2026-05-04 Path C low-key.
 import { createPromiseClient } from '@connectrpc/connect';
 import { RoomService } from '@generated/pb/druz9/v1/rooms_connect';
 

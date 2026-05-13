@@ -1,3 +1,5 @@
+//go:generate mockgen -package mocks -destination mocks/users_mock.go -source users.go
+
 // users.go — admin user-management entities + repo contract.
 //
 // The admin user surface is a thin wrapper over the existing `users` table

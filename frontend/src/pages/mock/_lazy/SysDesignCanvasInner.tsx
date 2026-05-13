@@ -24,8 +24,6 @@ export type SysDesignCanvasInnerProps = {
   // the live editor's `getSceneElements()` / `getFiles()`.
   initialData?: ExcalidrawInitialDataState | null
   viewModeEnabled?: boolean
-  // Fires on every scene mutation. Used by the autosave hook
-  // (useCanvasDraft) — debouncing happens inside the hook, NOT here.
   onChange?: (
     elements: readonly OrderedExcalidrawElement[],
     appState: AppState,

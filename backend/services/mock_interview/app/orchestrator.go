@@ -948,7 +948,6 @@ func (o *Orchestrator) FinishPipeline(ctx context.Context, pipelineID uuid.UUID)
 	// inside the adapter, never propagate up to the user submit.
 	o.emitStruggleMarks(ctx, pipe.UserID, stages)
 
-	// TODO: publish leaderboard event with ai_assist=pipeline.AIAssist watermark
 	return pipe, nil
 }
 

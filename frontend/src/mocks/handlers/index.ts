@@ -1,5 +1,3 @@
-// Pivot 2026-05-01/02: arena/lobby/marketplace/clubs/rating/slot/review
-// сервисы выпилены. Соответствующие MSW handlers удалены.
 
 import { authHandlers } from './auth'
 import { profileHandlers } from './profile'

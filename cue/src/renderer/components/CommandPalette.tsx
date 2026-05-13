@@ -12,10 +12,6 @@
 //
 // Цель — ускорить power-user flow + дать discoverability фичей которые
 // раньше прятались за глубокими меню (Export MD, Save to Hone, etc).
-//
-// 2026-05-12: migrated to foundation Modal primitive (focus trap, ESC,
-// scroll lock, restore focus, smooth in/out). Action list keyboard nav
-// (↑/↓/Enter) preserved as before.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 

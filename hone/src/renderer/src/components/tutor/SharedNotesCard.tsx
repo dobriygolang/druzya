@@ -1,5 +1,3 @@
-// SharedNotesCard — Phase K T4 (P1) 2026-05-13.
-//
 // Student-side card on TutorAssignments. Surfaces a single session note
 // the tutor opted to share post-event. Expandable: collapsed shows
 // event title + tutor + date + 2-line preview; clicking expands to full

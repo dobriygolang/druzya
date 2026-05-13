@@ -1,9 +1,5 @@
-// ListeningPage — Phase K W8 port of Hone Listening.
-//
 // Two-pane: library + player. Audio player + transcript click-on-word.
 // Vocab queue shared с Reading (single SRS table).
-// Phase K W9: AICoachPill в Player'е — coach видит transcript excerpt
-// (selection если есть, иначе head 600 chars).
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { AICoachPill } from '../../components/AICoachPill'

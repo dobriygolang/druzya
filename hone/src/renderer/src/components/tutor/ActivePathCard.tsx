@@ -1,5 +1,3 @@
-// ActivePathCard — Phase K T3 (2026-05-12).
-//
 // Student-side card surfaced atop TutorAssignments. Shows one curated
 // path the tutor pushed: «<Path name> · step N/M · tutor: <name>» +
 // hairline progress bar.

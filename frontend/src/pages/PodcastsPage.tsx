@@ -1,7 +1,3 @@
-// PodcastsPage — D5 (Phase A 2026-05-12) web podcasts surface.
-//
-// Pivot back from Hone: после revisit identity бесплатно (2026-05-04+),
-// content reference (articles + podcasts + English hub) живёт в web.
 // Hone остался focus cockpit (taskboard / coach / notes / English drills).
 //
 // Reads `usePodcastsQuery` + `usePodcastCategoriesQuery` (DB-backed via

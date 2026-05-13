@@ -7,33 +7,28 @@ import (
 	"testing"
 
 	"druz9/hone/domain"
+	"druz9/hone/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
-
-type stubWritingGrader struct {
-	out   domain.WritingFeedback
-	err   error
-	last  domain.GradeWritingInput
-	calls int
-}
-
-func (s *stubWritingGrader) GradeWriting(_ context.Context, in domain.GradeWritingInput) (domain.WritingFeedback, error) {
-	s.calls++
-	s.last = in
-	return s.out, s.err
-}
 
 func TestGradeEnglishWriting_HappyPath(t *testing.T) {
 	t.Parallel()
-	g := &stubWritingGrader{
-		out: domain.WritingFeedback{
-			OverallScore: 78,
-			Issues: []domain.WritingIssue{
-				{Excerpt: "I done it", Category: domain.WritingIssueGrammar, Suggestion: "I did it"},
-			},
+	ctrl := gomock.NewController(t)
+	g := mocks.NewMockWritingGrader(ctrl)
+	var last domain.GradeWritingInput
+	g.EXPECT().GradeWriting(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in domain.GradeWritingInput) (domain.WritingFeedback, error) {
+			last = in
+			return domain.WritingFeedback{
+				OverallScore: 78,
+				Issues: []domain.WritingIssue{
+					{Excerpt: "I done it", Category: domain.WritingIssueGrammar, Suggestion: "I did it"},
+				},
+			}, nil
 		},
-	}
+	)
 	uc := &GradeEnglishWriting{Grader: g}
 	out, err := uc.Do(context.Background(), GradeEnglishWritingInput{
 		UserID: uuid.New(),
@@ -47,14 +42,15 @@ func TestGradeEnglishWriting_HappyPath(t *testing.T) {
 		t.Errorf("feedback round-trip broken: %+v", out)
 	}
 	// Title + text trimmed before reaching grader.
-	if g.last.Title != "My day" || g.last.Text != "I done it yesterday." {
-		t.Errorf("input not trimmed: %+v", g.last)
+	if last.Title != "My day" || last.Text != "I done it yesterday." {
+		t.Errorf("input not trimmed: %+v", last)
 	}
 }
 
 func TestGradeEnglishWriting_RejectsZeroIDsAndEmptyText(t *testing.T) {
 	t.Parallel()
-	uc := &GradeEnglishWriting{Grader: &stubWritingGrader{}}
+	ctrl := gomock.NewController(t)
+	uc := &GradeEnglishWriting{Grader: mocks.NewMockWritingGrader(ctrl)}
 	cases := []struct {
 		name string
 		in   GradeEnglishWritingInput
@@ -75,7 +71,9 @@ func TestGradeEnglishWriting_RejectsZeroIDsAndEmptyText(t *testing.T) {
 
 func TestGradeEnglishWriting_RejectsOversizedText(t *testing.T) {
 	t.Parallel()
-	g := &stubWritingGrader{}
+	ctrl := gomock.NewController(t)
+	g := mocks.NewMockWritingGrader(ctrl)
+	// No EXPECT — UC must reject before calling.
 	uc := &GradeEnglishWriting{Grader: g}
 	huge := strings.Repeat("a", 50_001)
 	if _, err := uc.Do(context.Background(), GradeEnglishWritingInput{
@@ -84,14 +82,13 @@ func TestGradeEnglishWriting_RejectsOversizedText(t *testing.T) {
 	}); err == nil {
 		t.Fatal("expected size-cap rejection")
 	}
-	if g.calls != 0 {
-		t.Errorf("grader must not be called for oversize text; calls=%d", g.calls)
-	}
 }
 
 func TestGradeEnglishWriting_GraderErrorPropagates(t *testing.T) {
 	t.Parallel()
-	g := &stubWritingGrader{err: errors.New("provider down")}
+	ctrl := gomock.NewController(t)
+	g := mocks.NewMockWritingGrader(ctrl)
+	g.EXPECT().GradeWriting(gomock.Any(), gomock.Any()).Return(domain.WritingFeedback{}, errors.New("provider down"))
 	uc := &GradeEnglishWriting{Grader: g}
 	_, err := uc.Do(context.Background(), GradeEnglishWritingInput{
 		UserID: uuid.New(),

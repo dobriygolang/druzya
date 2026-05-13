@@ -1,5 +1,3 @@
-// sync.ts — Phase C-4 replication client.
-//
 // Two operations:
 //   - pullChanges(cursor)  — incremental fetch since cursor (or full
 //                            bootstrap if cursor=null).

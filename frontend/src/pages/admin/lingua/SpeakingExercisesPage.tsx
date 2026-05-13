@@ -1,6 +1,3 @@
-// SpeakingExercisesPage — Phase K Wave 9 (E4 P1) admin view with TTS
-// regen action. 15 baseline rows seeded в migration 00105_speaking.sql;
-// audio_url originally NULL (frontend SpeakingPage falls back to
 // `window.speechSynthesis`). Admin now triggers Cloudflare MeloTTS
 // synthesis per-row OR bulk for all missing — backend persists URL into
 // speaking_exercises.audio_url; client cache (audio element) picks

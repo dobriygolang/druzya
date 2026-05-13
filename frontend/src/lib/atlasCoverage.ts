@@ -1,8 +1,4 @@
-// atlasCoverage — R3 (Phase A 2026-05-12) per-node coverage overlay.
-//
 // Цель: показать каждой atlas-node визуальный signal «что юзер уже трогал»
-// без backend wire (resource_to_atlas mapping приедет в Phase C). MVP:
-// fuzzy-match activity log titles / sources / atlas section на node title
 // + section. Возвращает CoverageState per node-key.
 //
 // Когда backend mapping ship'нет — этот модуль становится fallback для

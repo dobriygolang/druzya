@@ -302,8 +302,6 @@ export default function NotificationsPage() {
       key={n.id}
       n={n}
       onMarkRead={() => markRead.mutate(n.id)}
-      // arena removed post-pivot 2026-05-01; replay no-op (любые
-      // stale rating/match-уведомления просто не имеют куда вести).
       onOpenReplay={() => { /* arena removed */ }}
       onOpenPlan={() => navigate('/weekly')}
     />

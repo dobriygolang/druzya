@@ -6,9 +6,6 @@
 //
 // Deliberately нет real CodeEditor — heavy dependency, onboarding не
 // должен платить bundle cost. Read-only preview даёт ощущение layout'а.
-//
-// 2026-05-12: v2 visual language — hairline panels, mono code blocks
-// on transparent bg, ghost run button (no green tint per b/w + red rule).
 
 import { useNavigate } from 'react-router-dom'
 

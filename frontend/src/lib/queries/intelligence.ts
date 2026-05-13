@@ -77,7 +77,6 @@ export function useDailyBriefQuery() {
   })
 }
 
-// MemoryStats — F1 trust indicator (Phase B 2026-05-12). Backend endpoint:
 // GET /api/v1/intelligence/memory/stats (см intelligence.proto:337). Возвращает
 // сколько событий coach «помнит» за 30 дней + breakdown по kind. Используется
 // на AITutorChatPage (badge «coach помнит N событий») и в Hone DailyBriefPanel.
@@ -118,8 +117,6 @@ export function useMemoryStatsQuery() {
   })
 }
 
-// ── X5 Atlas struggle marks (Phase J P2 2026-05-12) ─────────────────────
-//
 // Cross-product handoff: Cue session analysis + Hone reflection emit
 // MarkAtlasStruggle when user is stuck on a topic. Web Atlas reads via
 // useAtlasStrugglesQuery and renders subtle b/w indicators (single red

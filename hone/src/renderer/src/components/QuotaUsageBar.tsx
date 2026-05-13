@@ -111,7 +111,6 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
     );
   }
 
-  // X2 (P0) — full variant теперь clickable когда usage ≥80% или overLimit.
   // Раньше bar был purely visual → юзер видел "9 / 10 SYNCED" и не понимал
   // куда тыкать. Click open'ит UpgradeModal с relevant feature context.
   const nearOrOver = !isUnlimited && (overLimit || pct >= 80);

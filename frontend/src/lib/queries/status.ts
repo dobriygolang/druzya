@@ -63,7 +63,6 @@ export function useStatusPageQuery() {
     staleTime: STATUS_REFETCH_MS,
     gcTime: 5 * 60_000,
     refetchInterval: STATUS_REFETCH_MS,
-    // Phase R3 cooldown — refetchOnWindowFocus disabled.
     // The 30s refetchInterval already keeps the page fresh. Each focus/blur
     // (Cmd-Tab, switching virtual desktops) was triggering a full status
     // refetch, multiplying network + render work by orders of magnitude on

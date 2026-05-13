@@ -1,3 +1,5 @@
+//go:generate mockgen -package mocks -destination mocks/reports_mock.go -source reports.go
+
 // reports.go — moderation queue entities + repo contract.
 //
 // `user_reports` rows live until a moderator transitions them to

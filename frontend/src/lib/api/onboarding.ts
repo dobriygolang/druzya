@@ -1,5 +1,3 @@
-// Onboarding preview kata — used by step 3 of the onboarding flow.
-//
 // Backed by GET /api/v1/onboarding/preview-kata (no auth). The endpoint
 // returns a fixed "Two Sum" task with starter code + an immutable
 // tests_total/tests_passed pair so the marketing UI can demo the kata

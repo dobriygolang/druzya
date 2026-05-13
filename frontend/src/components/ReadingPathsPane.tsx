@@ -1,7 +1,3 @@
-// ReadingPathsPane — Stream D (2026-05-12). 4th sub-surface of the
-// tutor dashboard. Lists curated atlas-node sequences + provides a
-// new-path form + per-path archive.
-//
 // V1 surface: minimal create form (name + textarea of `atlas.node.keys,
 // one-per-line`). Drag-drop ribbon onto atlas-nodes is deferred to a
 // UX pass — the textarea is honest about being a list editor, not a

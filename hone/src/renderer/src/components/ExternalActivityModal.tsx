@@ -1,10 +1,5 @@
 // ExternalActivityModal — structured form для логирования внешних занятий
 // (LeetCode / Coursera / YouTube / книги). НЕ чат: явная associarion с
-// GPT-чатом — плохая (Sergey 2026-05-01). Form: source dropdown + topic
-// autocomplete по atlas-узлам + duration + notes.
-//
-// 2026-05-12: migrated to foundation Modal primitive (focus trap + ESC +
-// scroll lock + smooth in/out). Underline-only inputs per v2 spec.
 import { useEffect, useRef, useState } from 'react';
 
 import {

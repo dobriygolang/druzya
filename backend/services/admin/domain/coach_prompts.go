@@ -1,3 +1,5 @@
+//go:generate mockgen -package mocks -destination mocks/coach_prompts_mock.go -source coach_prompts.go
+
 // coach_prompts.go — Admin Phase 2: coach prompt entity + repo port.
 //
 // Admin-curated LLM prompt templates. Stored in coach_prompts table;

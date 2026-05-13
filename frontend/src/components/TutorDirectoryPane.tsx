@@ -1,5 +1,3 @@
-// TutorDirectoryPane — Phase K T1 (P0) 2026-05-12.
-//
 // Tutor-side panel inside /tutor/directory tab. Two sections:
 //   1. Profile editor — visible toggle + bio + chips + optional fields.
 //   2. Pending applications — accept / decline.

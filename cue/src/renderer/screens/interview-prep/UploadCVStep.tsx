@@ -1,5 +1,3 @@
-// UploadCVStep.tsx — Phase J / C6 (P1).
-//
 // Step 1 of the wizard. Two paths:
 //   1. Native file picker → Cue main extracts text (.pdf / .md / .txt).
 //   2. Manual paste textarea (fallback when extraction fails on a

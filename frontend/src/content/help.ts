@@ -46,7 +46,6 @@ export type HelpContact = {
 
 const ic = (Comp: typeof Rocket, cls = 'h-5 w-5') => createElement(Comp, { className: cls })
 
-// Identity 2026-05-04: arena/cohort выпилены, gamification — нет.
 // Категории — продуктовые поверхности: Mock / Atlas / Coach / Tutor toolkit.
 export const HELP_CATEGORIES: HelpCategory[] = [
   { slug: 'start', icon: ic(Rocket), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'Старт', count: 8 },

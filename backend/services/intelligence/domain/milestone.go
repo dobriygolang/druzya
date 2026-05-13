@@ -1,3 +1,5 @@
+//go:generate mockgen -package mocks -destination mocks/milestone_mock.go -source milestone.go
+
 // milestone.go — F2 LLM-driven milestones (Phase B/C).
 //
 // 10-12 weekly checkpoints, decomposed by LLM из active PrimaryGoal. Cached

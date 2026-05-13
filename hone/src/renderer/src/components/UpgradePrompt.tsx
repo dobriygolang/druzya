@@ -7,9 +7,6 @@
 //   - При попытке cross-device sync на free tier (Settings)
 //
 // UX: blocking modal с двумя actions — Upgrade (открывает /pricing в default
-// browser) и Dismiss. 2026-05-12: migrated to foundation Modal primitive
-// (focus trap, escape, scroll lock, restore focus, in/out motion). Tokens —
-// b/w + red rule, no hardcoded #fff.
 
 import { useCallback, useState } from 'react';
 

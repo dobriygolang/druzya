@@ -1,12 +1,5 @@
 // analytics.ts — opt-in product analytics client for web (druz9.online).
 //
-// Phase J / X3 (P1) — mirrored across 3 surfaces (web/hone/cue). API shape
-// matches Hone + Cue clients so call sites read identically:
-//   analytics.init({ userId })
-//   analytics.track(ANALYTICS_EVENTS.focus_session_started, { ... })
-//   analytics.setOptedIn(true)
-//   analytics.isOptedIn()
-//
 // Privacy model:
 //   - Web default: opted-OUT until user explicitly accepts in Settings.
 //   - localStorage caches consent для instant boot decision; backend

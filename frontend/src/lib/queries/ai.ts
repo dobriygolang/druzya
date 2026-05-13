@@ -47,7 +47,6 @@ export type AIModelsResponse = {
 // Omit for the full list. Backend validates the value and returns 400 on
 // unknown strings — we don't enforce client-side. (arena flag is legacy;
 // will be dropped together with the track_step_kind enum value in a
-// later Phase A migration.)
 export type AIModelUse = 'arena' | 'insight' | 'mock'
 
 export function useAIModelsQuery(use?: AIModelUse) {

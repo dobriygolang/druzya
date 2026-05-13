@@ -785,11 +785,6 @@ export async function sendCueSessionToTelegram(id: string): Promise<SendCueSessi
 
 // ─── User settings (active study mode) ────────────────────────────────────
 
-// Phase K Wave 8 (Sergey 2026-05-13): English vertical вынесен из Hone в
-// web `frontend/src/pages/lingua/*`. ActiveTrack теперь — pure dev/ML/go
-// surface; 'english' track больше не валиден на клиенте (backend схема
-// допускает его для web Lingua, но Hone не выставляет).
-//
 // `englishActive` поле в UserSettings оставлено для miграционного probe'а
 // (см. lib/linguaMigration.ts) — backend всё ещё возвращает флаг, мы
 // просто его читаем для решения «показать ли LinguaMigrationModal».

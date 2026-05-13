@@ -26,10 +26,11 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -197,7 +198,6 @@ func (uc *GetUserContext) Do(ctx context.Context, in GetUserContextInput) (UserC
 		if windowDays <= 0 {
 			windowDays = 14
 		}
-		_ = windowDays // reserved for kind-filtered LatestPerKind expansion (TODO).
 
 		// LatestByKinds with empty kinds = "all kinds" via repo contract.
 		eps, err := uc.Episodes.LatestByKinds(ctx, in.UserID, nil, limit)
@@ -375,16 +375,13 @@ func topKindsFromTouches(eng domain.ResourceEngagement) []string {
 	for k, v := range counts {
 		pairs = append(pairs, kv{k, v})
 	}
-	sort.SliceStable(pairs, func(i, j int) bool {
-		if pairs[i].v != pairs[j].v {
-			return pairs[i].v > pairs[j].v
+	slices.SortStableFunc(pairs, func(a, b kv) int {
+		if a.v != b.v {
+			return cmp.Compare(b.v, a.v) // desc by count
 		}
-		return pairs[i].k < pairs[j].k
+		return cmp.Compare(a.k, b.k) // asc by key as tiebreak
 	})
-	limit := 5
-	if len(pairs) < limit {
-		limit = len(pairs)
-	}
+	limit := min(5, len(pairs))
 	out := make([]string, 0, limit)
 	for _, p := range pairs[:limit] {
 		out = append(out, p.k)

@@ -40,7 +40,7 @@ func (w *Worker) Run(ctx context.Context) {
 	}
 	var wg sync.WaitGroup
 	wg.Add(w.PoolSize)
-	for i := 0; i < w.PoolSize; i++ {
+	for i := range w.PoolSize {
 		go func(id int) {
 			defer wg.Done()
 			w.loop(ctx, id)

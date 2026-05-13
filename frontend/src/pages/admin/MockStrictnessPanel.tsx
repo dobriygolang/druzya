@@ -1,5 +1,3 @@
-// MockStrictnessPanel — AI strictness profile CRUD. Phase A.2 of ADR-002.
-//
 // One profile = one set of penalties + an optional custom prompt template
 // that overrides the default rubric prompt. Penalty inputs are rendered as
 // hone-styled <input type=range> sliders (no library) showing the numeric

@@ -1,5 +1,3 @@
-// queries/interviewSessions.ts — F10 backend RPC hooks (2026-05-12).
-//
 // Wraps `IntelligenceService.{IngestInterviewSession,ListInterviewSessions}`
 // через chi-direct REST.
 //

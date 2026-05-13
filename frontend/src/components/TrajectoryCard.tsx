@@ -1,5 +1,3 @@
-// TrajectoryCard — R3 (progress twin v0 — frontend MVP) — 2026-05-12.
-//
 // Цель: визуализировать персональную траекторию юзера over 30d. Это
 // «прогресс-двойник» не на уровне per-skill (это придёт с backend
 // resource→atlas node mapping), а на уровне overall activity. Mirror'ит:

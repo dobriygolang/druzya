@@ -1,6 +1,4 @@
 // MockQuestionsPanel — default + company-overlay HR/behavioral questions.
-// Phase A.2 of ADR-002.
-//
 // Single-column panel with two sections:
 //   1. Default questions (universal pool, grouped by stage_kind).
 //   2. Company-specific overlays (pick a company → see/manage its overlay).

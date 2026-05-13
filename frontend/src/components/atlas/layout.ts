@@ -6,7 +6,6 @@
 // Until designer pins every node, we need deterministic auto-place так
 // чтобы page никогда не была сломана.
 //
-// Fix 2026-05-01 — раньше algorithm имел три проблемы:
 //   1. Все hub'ы садились на CENTER → если юзер выбрал 2+ track-kind с
 //      разными hubs, они накладывались друг на друга (mlplat_root +
 //      qa_root + do_root в одной точке).

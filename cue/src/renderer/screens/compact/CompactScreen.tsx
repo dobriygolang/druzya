@@ -121,7 +121,6 @@ export function CompactScreen() {
     };
   }, [authBootstrap, conversationBootstrap, cursorBootstrap, sessionBootstrap]);
 
-  // ── Analytics opt-in SDK bootstrap (Phase J / X3, 2026-05-12) ──────────
   // Stealth-product default: opted-OUT. SDK hydrates consent from
   // localStorage; Settings → Privacy lets the user opt in.
   useEffect(() => {
@@ -261,10 +260,6 @@ export function CompactScreen() {
 
     const conversationId = useConversationStore.getState().conversationId;
     const currentPersona = usePersonaStore.getState().active;
-    // CI1: analyze.start raw call раньше падал silently — text propagated
-    // в expanded screen, юзер думал что отправилось, но conversationId
-    // оставался null. Wrap try/catch + toast: input preserved, expanded
-    // не открывается, юзер может retry без потери prompt'а.
     try {
       const handle = await window.druz9.analyze.start({
         conversationId,

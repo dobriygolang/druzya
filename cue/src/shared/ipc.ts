@@ -120,13 +120,8 @@ export const invokeChannels = {
   appQuit: 'app:quit',
   appVersion: 'app:version',
 
-  // Wave 6.2 — Cue English mode. Renderer asks main to grade text via
-  // the existing /api/v1/hone/writing/grade endpoint (auth lives in
-  // main, so the API call is naturally proxied here).
   englishPolishGrade: 'english:polish-grade',
 
-  // Phase J / C6 (2026-05-12) — Interview prep wizard. Main process
-  // owns the bearer auth + the optional local PDF extraction step.
   // Renderer drives the wizard UI and dispatches via these channels.
   /** Pick a CV file via native open-dialog. Main extracts text locally
    *  (PDF via pdf-parse, md/txt as utf-8). Returns null on cancel. */
@@ -433,11 +428,7 @@ export type WindowName =
   | 'picker'
   | 'toast'
   | 'tray-popup'
-  // Wave 6.2 — Cue English mode. Mini panel that opens via ⌃⇧L,
-  // reads the clipboard, and shows GradeEnglishWriting feedback.
   | 'english-polish'
-  // Phase J / C6 — Interview-prep wizard. Separate window (not first-run
-  // onboarding) for the "Upload CV → Upload JD → Start practice" flow.
   | 'interview-prep';
 
 /** Picker kind — which dropdown the compact opens in the floating picker
@@ -977,7 +968,6 @@ export interface Druz9API {
   on: <T = unknown>(channel: string, handler: (payload: T) => void) => () => void;
 }
 
-// Phase J / X3 — opt-in product analytics wire shapes.
 export interface TelemetryEventInput {
   name: string;
   /** ISO-8601 client timestamp. */
@@ -991,7 +981,6 @@ export interface TelemetryConsentInput {
   consentVersion: number;
 }
 
-// Phase J / C6 — Interview prep wire shapes. Mirrors the proto fields
 // 1:1 so the IPC translator in main is a flat key-copy.
 export interface ParsedCVDTO {
   name: string;
@@ -1046,10 +1035,6 @@ export interface PickCVResultDTO {
   ok: boolean;
 }
 
-// Wave 6.2 wire shape returned by `english.polish`. Mirrors
-// frontend/src/api/writing.ts on the web side; we keep an independent
-// declaration here because Cue's @shared/types deliberately doesn't
-// import the @generated proto bundle.
 export type EnglishPolishCategory = 'grammar' | 'vocab' | 'style' | 'clarity';
 
 export interface EnglishPolishIssue {

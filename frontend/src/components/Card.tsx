@@ -3,23 +3,14 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '../lib/cn';
 
-// `min-w-0` критичен для flex-children: без него длинный контент внутри
-// (truncate / break-words) пушит саму карточку шире, чем заданная ширина
-// родителя — отсюда вылезающие "контент не помещается в блок".
-// `overflow-hidden` сохраняет border-radius при overflow в auto-children.
-// Phase-3 ADR-001 — Hone-aligned card variants.
-//
-// Hone surfaces are flat: black bg + 1px hairline border. No gradient
-// `from-surface-3 to-surface-1` (the violet-tinted surface-3 is gone),
-// no `` (violet glow), no `ring-text-primary/40`. Selection/interactive
-// states show only via border opacity bump.
+// `min-w-0` is critical for flex-children: without it, long content with
+// truncate/break-words pushes the card wider than its parent's width.
+// `overflow-hidden` preserves border-radius when children overflow.
 const card = cva(['relative flex min-w-0 flex-col overflow-hidden text-text-primary'], {
   variants: {
     variant: {
       default: 'bg-surface-1 border border-border rounded-xl',
       elevated: 'bg-surface-2 border border-border-strong rounded-xl',
-      // `gradient` was the violet→cyan brand surface; collapsed to a
-      // slightly lifted plain surface so existing callsites still work.
       gradient: 'bg-surface-2 border border-border-strong rounded-xl',
       selected: 'bg-surface-2 border border-text-primary rounded-xl',
     },
@@ -53,10 +44,8 @@ export interface CardProps
 const CardRoot = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant, interactive, padding, ...props }, ref) => {
     const reduced = useReducedMotion();
-    // Hero-treatment 2026-05-12: hardcoded 0.2s → motion-medium token
-    // (240ms canonical). Framer-motion transitions don't accept CSS var
-    // strings, so we mirror the dur-small motion token (160ms) as a number
-    // here — small fits hover-lift micro-interaction better than medium.
+    // Framer-motion transitions don't accept CSS var strings, so mirror the
+    // dur-small motion token (160ms) as a number here.
     const motionProps = interactive && !reduced
       ? { whileHover: { y: -2 }, transition: { duration: 0.16, ease: [0.2, 0.7, 0.2, 1] as const } }
       : {};

@@ -1,5 +1,3 @@
-// device.ts — Phase C-3.1 device bootstrap.
-//
 // Lifecycle:
 //   - On app start (App.tsx mount): ensureDevice() — checks localStorage for
 //     hone:device-id; if missing, calls registerDevice(); persists returned id.

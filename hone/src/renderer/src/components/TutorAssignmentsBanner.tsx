@@ -1,7 +1,4 @@
 // TutorAssignmentsBanner — surfaces the most-urgent pending tutor
-// assignment on Hone HomePage. Connects Wave 5.1 (tutor pushes) to
-// the student's daily flow without forcing them to navigate to /assignments.
-//
 // Design constraints:
 //  - Hidden during an active focus session (don't distract mid-work).
 //  - Hidden when zero pending — silent state is the common case.
@@ -82,9 +79,6 @@ export function TutorAssignmentsBanner({ running, onOpenAll }: Props) {
     void refresh();
     // Poll every 60s — covers «tutor pushed something while I was
     // working». Cheap GET against a partial-indexed table.
-    // Phase R3 cooldown — paused while the document is hidden (Hone in
-    // background). The visibilitychange handler resumes the cadence and
-    // immediately refreshes so the user sees up-to-date state on return.
     let id: number | null = null;
     const startPolling = () => {
       if (id !== null) return;
@@ -142,8 +136,6 @@ export function TutorAssignmentsBanner({ running, onOpenAll }: Props) {
   if (!top) return null;
 
   const status = rowStatus(top);
-  // B/W rule per memory/feedback_color_rule.md: canonical red for live/
-  // overdue signal only — other statuses fall back to ink-ramp opacity.
   // Red 1.5px stripe is the active-state hero. due_soon keeps the same
   // red at lower opacity (visually softer urgency), open hides the stripe
   // entirely (hair border only).

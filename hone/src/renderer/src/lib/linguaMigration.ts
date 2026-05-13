@@ -1,9 +1,7 @@
 // linguaMigration.ts — one-time migration cue for existing English users.
 //
-// Context (Sergey 2026-05-13, Phase K Wave 8): identity refinement landed
 // «Hone = doing, web = learning, Cue = performing». English vertical was a
 // non-trivial 5-page surface inside Hone (EnglishOverview / Reading / Writing
-// / Listening / Speaking). Wave 8 strips those pages and re-points the
 // English flow to web `druz9.online/lingua`. Existing Hone users who toggled
 // englishActive=true expect their reading/writing workflow to still work;
 // without an in-app cue they would see a missing tab and assume regression.

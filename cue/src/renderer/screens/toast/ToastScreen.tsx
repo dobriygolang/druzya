@@ -10,8 +10,6 @@
 // hideWindow). The renderer just animates a progress-bar to show time
 // remaining; if the user lingers, the main timer fires first.
 //
-// 2026-05-12: v2 visual language — warn yellow (oklch) → ink-ramp 75%
-// per b/w + red rule. Error stays red (canonical), info stays white.
 // Mono caption canonical 0.08em.
 
 import { useEffect, useState } from 'react';

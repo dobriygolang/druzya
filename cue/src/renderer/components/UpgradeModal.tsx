@@ -1,5 +1,3 @@
-// UpgradeModal — context-aware Pro upgrade modal (Phase J / X2 P0).
-//
 // Mirror of hone/src/renderer/src/components/UpgradeModal.tsx — кодоген'ить
 // мы не стали (YAGNI shared workspace), но контракт идентичный: фичу,
 // которую юзер тыкнул, мы пишем как pre-filled callout, плюс рисуем

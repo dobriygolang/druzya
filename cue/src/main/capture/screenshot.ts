@@ -32,8 +32,6 @@ export const screenRecordingDeniedMessage =
 // app to Privacy → Screen Recording only the first time it attempts a
 // capture API that needs the right. Bailing here would mean the app
 // never shows up in the list at all — exactly the bug we're fixing
-// (2026-04-24). Let Electron's desktopCapturer make the first attempt;
-// the OS handles the prompt UX from there.
 function checkScreenRecordingPermission(): Error | null {
   if (process.platform !== 'darwin') return null;
   const status = systemPreferences.getMediaAccessStatus('screen');

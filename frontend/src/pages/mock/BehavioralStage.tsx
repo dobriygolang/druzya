@@ -10,7 +10,6 @@
 //   │   └ STAR breakdown card (post-rubric / submit) │
 //   └────────────────────────────────────────────────┘
 //
-// Voice flow (D7 2026-05-12):
 //   - Web Speech API (SpeechRecognition) streams interim transcript into
 //     the textarea — user can edit any time.
 //   - MediaRecorder is engaged only to gate UI state (and future audio

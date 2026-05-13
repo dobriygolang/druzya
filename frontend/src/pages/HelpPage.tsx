@@ -275,9 +275,6 @@ export default function HelpPage() {
 // POST /api/v1/support/ticket → запись в БД + alert в support-чат в Telegram.
 // Ответ юзеру приходит на указанный канал (email или @druz9_bot deep-link).
 function SupportForm() {
-  // Phase B (schema_v2): support is Telegram-only. The DB column
-  // contact_kind has CHECK IN ('telegram') and email-auth was dropped, so the
-  // form locks the channel to TG. Users without a linked TG account see the
   // 'link TG to contact support' notice instead of the form (handled by the
   // parent HelpPage based on tg_user_link).
   const contactKind: SupportContactKind = 'telegram'

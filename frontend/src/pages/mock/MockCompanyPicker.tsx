@@ -104,10 +104,6 @@ export default function MockCompanyPicker() {
   const [aiAssist, setAiAssist] = useState<boolean>(loadInitialAiAssist)
   const [selectedSections, setSelectedSections] = useState<string[]>(loadInitialSections)
 
-  // Track filter (Phase K 6.1) — narrows the company list down to firms
-  // whose pipeline sections touch the active track(s). Companies are
-  // multi-track by nature (most carry algo+sysdesign+behavioral), so we
-  // classify section→TrackKey set and match by intersection.
   const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({
     persistKey: 'mock:track-filter:v1',
     defaultFromPrimaryGoal: true,

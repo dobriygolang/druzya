@@ -6,10 +6,6 @@
 // destructive — drop existing stages config).
 //
 // B/W only. Selected card = inverted (black bg, white text).
-//
-// 2026-05-12: migrated inline dialog to foundation Modal primitive
-// (focus trap, ESC, scroll lock, smooth in/out). Selected card now
-// shows 1.5×24px red signal stripe.
 
 import { useState } from 'react'
 import { Button } from '../../../components/Button'

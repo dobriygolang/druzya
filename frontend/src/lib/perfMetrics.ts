@@ -1,5 +1,3 @@
-// perfMetrics.ts — Core Web Vitals capture (Phase I launch readiness, 2026-05-12).
-//
 // Why hand-rolled and not `web-vitals` npm package:
 //   1. The library is ~5KB but pulls a runtime dep we can avoid — same
 //      PerformanceObserver primitives below.

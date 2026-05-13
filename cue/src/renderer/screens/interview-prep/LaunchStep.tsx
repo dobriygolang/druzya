@@ -1,5 +1,3 @@
-// LaunchStep.tsx — Phase J / C6 (P1).
-//
 // Final step shown after StartInterviewPrep succeeds. Confirms the user
 // is set up, gives them the entry point to Cue's main compact window,
 // and explains what just got activated.

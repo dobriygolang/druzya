@@ -1,5 +1,3 @@
-// Stats — Phase 4 dashboard surface (2026-05-04).
-//
 // Mockup: docs/mocks/druz9-hone-bundle/hone-stats.html.
 // Backend: HoneService.GetStats (existing) + IntelligenceService.GetCoachStats
 // (Phase 2) + HoneService.ListExternalActivity (existing).
@@ -12,10 +10,6 @@
 //
 // StatsOverlay (S-key from home) остаётся параллельно — он lighter-weight
 // "peek" версия. Эта page — full dashboard для tab navigation.
-//
-// 2026-05-12: v2 visual language — hairline-only cards (был `#0a0a0a` fill),
-// letter-spacing 0.08em canonical, foundation `.motion-stagger` + `.motion-page-in`
-// classes (inline keyframes удалены), range picker hairline active state.
 import React, { useMemo, useState } from 'react';
 
 import { getStats, type HoneStats, type FocusDay } from '../api/hone';
@@ -34,12 +28,8 @@ type Range = '7d' | '30d' | '90d';
 
 export const Stats: React.FC = () => {
   const [range, setRange] = useState<Range>('7d');
-  // logOpen state retired — Sergey 2026-05-05: no manual logging button.
   const [reload, setReload] = useState(0);
 
-  // CI1 (Phase A W2): unify async fetch state via useDataState. Previously
-  // each .catch set state to null silently — KPIs would just show «—» without
-  // any indication something failed. Now we surface error stripe + retry via
   // <ErrorStripe> below.
   const statsState = useDataState(() => getStats(), [reload]);
   const coachState = useDataState(() => getCoachStats(), [reload]);
@@ -47,8 +37,6 @@ export const Stats: React.FC = () => {
     () => listExternalActivity({ limit: 30 }),
     [reload],
   );
-  // H2 (Phase J 2026-05-12) — pomodoro grade trend. Window matches range
-  // picker; default 30 covers the typical "how am I doing?" question.
   const reflectionsWindow =
     range === '7d' ? 7 : range === '30d' ? 30 : 90;
   const reflectionsState = useDataState(
@@ -186,8 +174,6 @@ const Header: React.FC<{
   </header>
 );
 
-// ── ErrorStripe (CI1 Phase A W2) ────────────────────────────────────────
-//
 // Shows one combined stripe + retry button when any of Stats' three async
 // sources (getStats / getCoachStats / listExternalActivity) failed. Single
 // retry bumps the shared `reload` tick so all three refetch together —
@@ -351,8 +337,6 @@ const TopTopicsCard: React.FC<{ topics: Topic[] }> = ({ topics }) => (
   </div>
 );
 
-// ── grade trend (H2 Phase J 2026-05-12) ────────────────────────────────
-//
 // Closed-loop visualization: после того как юзер submit'ит grade в Hone
 // reflection prompt, бар появляется тут. B/W-only — высота столбика
 // proportional to grade (max=5), хайрлайн-граница, mono cap'tions.
@@ -463,7 +447,6 @@ const GradeTrendCard: React.FC<{
   );
 };
 
-// ── X5 (Phase J P2 2026-05-12) web handoff footer ──────────────────────
 
 const StatsWebHandoff: React.FC = () => {
   return (

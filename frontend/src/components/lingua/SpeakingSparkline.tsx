@@ -1,6 +1,3 @@
-// SpeakingSparkline — 14-session pronunciation trend (Phase K W8).
-//
-// B/W only. Simple bar-chart sparkline, no SVG library. Used by Overview
 // + Speaking page.
 import type { SpeakingSession } from '../../api/lingua/speaking'
 

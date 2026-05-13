@@ -1,5 +1,3 @@
-// pdf-extractor.ts — Phase J / C6 (P1).
-//
 // Minimal CV file → plain text extractor that runs in Cue's main process.
 // Owned by main (not renderer) because:
 //   - File-system read needs Node fs APIs the renderer doesn't have.

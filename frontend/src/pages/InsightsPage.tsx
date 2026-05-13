@@ -57,11 +57,6 @@ const SEVERITY_PILL: Record<CoachSeverity, string> = {
 export default function InsightsPage() {
  const overviewQ = useMockInsightsOverviewQuery()
  const overview = overviewQ.data
- // Track filter (Phase K 6.1) — для Insights это пока контекст-маркер,
- // не реальный фильтр данных (insights уже user-scoped, и backend пока
- // не возвращает track_kind на агрегатах). Selecting a track surfaces
- // a header hint «scope: ML» для shareable links + preps the surface
- // when track-scoped aggregates ship.
  const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({
   persistKey: 'insights:track-filter:v1',
   defaultFromPrimaryGoal: true,
@@ -732,12 +727,6 @@ function LeaderboardCard() {
 }
 
 // ── English HR trend card ─────────────────────────────────────────────
-//
-// Wave 1 of docs/feature/english.md. Renders only when the user has at
-// least one finished English HR mock in the window — InsightsPage gates
-// on overview.english_hr presence so this component can assume a non-
-// empty trend. Sparkline mirrors the engineering one in shape but uses
-// a single colour (no verdict — there's no pass/fail in HR rounds).
 function EnglishHRTrendCard({ trend }: { trend: EnglishHRTrend }) {
  const navigate = useNavigate()
  const lastDate = trend.last_finished_at ? new Date(trend.last_finished_at).toLocaleDateString() : '—'

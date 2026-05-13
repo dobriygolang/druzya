@@ -1,4 +1,3 @@
-// UpcomingEventChip — Wave 5.2b student-side chip on Hone HomePage.
 // Shows the NEXT scheduled tutor session (if any within the next 24h)
 // as a small pill at top-right. Click → /calendar page; meet-link click
 // opens the URL directly. Hidden during focus session and when nothing
@@ -49,9 +48,6 @@ export function UpcomingEventChip({ running, onOpenCalendar }: Props) {
   useEffect(() => {
     void refresh();
     // 60s poll matches the assignments banner cadence.
-    // Phase R3 cooldown — paused while the document is hidden. Without
-    // this, every Hone instance was hitting `/tutor/events` once a minute
-    // even when the laptop was sleeping in another Space.
     let id: number | null = null;
     const startPolling = () => {
       if (id !== null) return;

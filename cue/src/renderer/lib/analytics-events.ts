@@ -1,8 +1,6 @@
 // SHARED EVENT TAXONOMY — keep synced with:
 //   frontend/src/lib/analytics-events.ts
 //   hone/src/renderer/src/lib/analytics-events.ts
-// Used for cross-product funnel analysis (X3, phase j).
-//
 // Convention: snake_case, dotted namespaces. Names live here as constants
 // so call sites get rename safety. Server stores raw string — no proto
 // enum drift if we add an event mid-week.

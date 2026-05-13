@@ -1,14 +1,8 @@
-// EnglishPolishScreen — Wave 6.2.
-//
 // Opens via the english_polish hotkey (default ⌃⇧L). Reads the system
 // clipboard on mount, calls window.druz9.english.polish (which proxies
 // to /hone/writing/grade in main), and renders the structured feedback.
 // Click "Apply" on any issue to copy the suggested rewrite to the
 // clipboard so the user can paste it back wherever they came from.
-//
-// 2026-05-12: v2 visual language — категорийные stripes red-soft/blue/
-// yellow/purple → ink-ramp opacities (b/w + red rule). Tier stripe
-// preserves red ONLY for weak (canonical signal). Caption-mono 0.08em.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

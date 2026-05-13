@@ -1,6 +1,5 @@
 // PathCustom — Wave «hybrid path» — custom-mode entry.
 //
-// Sergey 2026-05-03: «либо пользователь сам себе назначает трек».
 // Юзер пишет цель в свободной форме («Senior Go в финтех») → нажимает
 // «Сгенерировать карту тем» → backend GenerateCustomPath (llmchain
 // TaskCustomPathGenerate) возвращает 8-15 nodes, сгруппированных по
@@ -10,10 +9,6 @@
 // Backend nil-safe: если LLMChain не сконфигурён, RPC отвечает
 // Unimplemented — UI показывает inline-сообщение и оставляет
 // «coming soon» fallback (юзер может всё равно сохранить goal).
-//
-// 2026-05-12: v2 visual language — underline textarea (был filled),
-// white-filled checkmark (был accent), red signal stripe on error/info
-// banner, caption-mono labels 0.08em canonical.
 
 import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'

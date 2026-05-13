@@ -1,3 +1,5 @@
+//go:generate mockgen -package mocks -destination mocks/status_mock.go -source status.go
+
 // status.go — public status page entities + repo contracts.
 //
 // The /status page is PUBLIC (no admin gate, no bearer auth) — it is the

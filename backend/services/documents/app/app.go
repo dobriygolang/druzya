@@ -142,9 +142,7 @@ func (u *Upload) embedAll(ctx context.Context, docID uuid.UUID, pieces []string)
 	if workers <= 0 {
 		workers = 4
 	}
-	if workers > len(pieces) {
-		workers = len(pieces)
-	}
+	workers = min(workers, len(pieces))
 
 	type job struct {
 		idx int
@@ -160,7 +158,7 @@ func (u *Upload) embedAll(ctx context.Context, docID uuid.UUID, pieces []string)
 	results := make(chan result, len(pieces))
 	var wg sync.WaitGroup
 
-	for i := 0; i < workers; i++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

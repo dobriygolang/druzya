@@ -6,7 +6,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -261,10 +263,8 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 
 // currencyKeys возвращает отсортированные ключи map'ы для log'ов.
 func currencyKeys(m map[string]string) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
+	out := slices.Collect(maps.Keys(m))
+	slices.Sort(out)
 	return out
 }
 

@@ -145,7 +145,6 @@ export type WeekComparison = {
   pct: number
 }
 
-// Phase A killer-stats типы. Бэк (proto/druz9/v1/profile.proto) расширил
 // WeeklyReport под /weekly dashboard rewrite — фронт читает их напрямую,
 // без перепаковки в weekly.ts adapter (там и так всё мёртвое legacy).
 export type EloPoint = {
@@ -194,8 +193,6 @@ export type WeeklyReport = {
   strong_sections?: SectionBreakdown[]
   weak_sections?: SectionBreakdown[]
   weekly_xp?: WeekComparison[]
-  // Phase A killer-stats поля. Опциональны — старый бэк отдаст undefined,
-  // фронт безопасно переходит к empty-state.
   hourly_heatmap?: number[] // 168 ячеек, dow*24+hour
   elo_series?: EloPoint[]
   percentiles?: PercentileView
@@ -230,20 +227,11 @@ export function useProfileQuery() {
   })
 }
 
-// ── Settings PATCH (Stream D, 2026-05-12) ──────────────────────────────
-//
-// useUpdateSettingsMutation — partial-update wrapper around PUT
-// /profile/me/settings. The backend `ProfileSettings` payload supports
-// proto3 `optional` field-mask gating, so omitted keys leave the column
-// untouched. Used by /profile surfaces (TutorRoleToggle) that need to
-// flip a single field without round-tripping the whole settings shape.
 export type ProfilePatch = {
   display_name?: string
   locale?: string
   voice_mode_enabled?: boolean
   ai_insight_model?: string
-  // tutor_mode_enabled — Stream D toggle. Optional so omitting it does
-  // not clobber the stored value.
   tutor_mode_enabled?: boolean
 }
 

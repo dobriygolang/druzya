@@ -1,5 +1,3 @@
-// 2026-05-12: migrated to foundation Modal primitive + v2 underline-only
-// inputs + red signal stripe on error banner.
 
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../../components/primitives/Modal'

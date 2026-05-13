@@ -235,12 +235,12 @@ gen-mocks: ## Generate mockgen mocks from //go:generate directives
 	cd backend/tools && GOWORK=off go build -o ../../bin/mockgen go.uber.org/mock/mockgen
 	# go generate должен запускаться ВНУТРИ Go-модуля. backend/ — не модуль
 	# (модули — services/<svc>/), поэтому cd внутрь каждого сервиса перед запуском.
-	# List is auto-detected: any services/<svc>/domain/*.go containing
+	# List is auto-detected: any services/<svc>/{domain,app}/*.go containing
 	# //go:generate. Adding a new service with a //go:generate directive
 	# is enough — no Makefile edit needed.
-	@for svc in $$(grep -rl --include='*.go' '^//go:generate' backend/services/*/domain/ 2>/dev/null | sed -E 's|backend/services/([^/]+)/.*|\1|' | sort -u); do \
+	@for svc in $$(grep -rl --include='*.go' '^//go:generate' backend/services/*/domain/ backend/services/*/app/ 2>/dev/null | sed -E 's|backend/services/([^/]+)/.*|\1|' | sort -u); do \
 		echo "==> $$svc"; \
-		(cd backend/services/$$svc && PATH="$(CURDIR)/bin:$$PATH" GOWORK=off GOFLAGS= go generate ./domain/...) \
+		(cd backend/services/$$svc && PATH="$(CURDIR)/bin:$$PATH" GOWORK=off GOFLAGS= go generate ./domain/... ./app/...) \
 			|| (echo "FAILED: $$svc" && exit 1); \
 	done
 

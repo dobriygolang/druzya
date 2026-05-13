@@ -3,9 +3,6 @@
 // Skip-able. If user clicks «подберите сами», we auto-select the middle
 // skill so Atlas isn't empty when they arrive. The picked skill becomes
 // the user's first allocated atlas node — the "starting point of gravity".
-//
-// 2026-05-12: v2 visual language — hairline cards, selection = white
-// border + red signal stripe in corner, type tokens, motion-press.
 
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'

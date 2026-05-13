@@ -2,10 +2,6 @@ import { http, HttpResponse } from 'msw'
 
 const base = '/api/v1'
 
-// Identity 2026-05-04: arena/cohort/ranked выпилены. Mock items кружатся
-// вокруг продуктовых поверхностей: coach insights, mock results, tutor
-// invites, system alerts. Match-invite kind типа сохранён для backward
-// compat (proto union), но мок его больше не отдаёт.
 export type NotificationItem = {
   id: string
   kind: 'challenge' | 'win' | 'ai' | 'cohort' | 'achievement' | 'friend' | 'rank' | 'streak' | 'system'

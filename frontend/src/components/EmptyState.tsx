@@ -136,8 +136,6 @@ export function EmptyState(props: EmptyStateProps) {
 
   // Throttle countdown — driven by parent-supplied retryAfterSec. Local
   // state ticks down once per second; resets if parent passes a new value.
-  // Phase R3 cooldown — the interval auto-clears when remaining hits 0
-  // (was previously ticking forever doing useless setState(0)→0 work).
   const [remaining, setRemaining] = useState(props.retryAfterSec ?? 0)
   useEffect(() => {
     if (props.variant !== 'throttled' || !props.retryAfterSec) return

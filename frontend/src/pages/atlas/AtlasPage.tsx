@@ -394,15 +394,6 @@ function ErrorBlock({ onRetry }: { onRetry: () => void }) {
 }
 
 // ── Phase 3.1: free-form TODO → atlas node ─────────────────────────────
-//
-// Sergey 2026-05-03: «сейчас изучаю ml и ии сам подхватывает это,
-// дополняет атлас». Юзер пишет «изучить транзакции в Postgres» —
-// бэк (TaskAtlasClassify) либо мэтчит в существующий узел (sql_perf),
-// либо создаёт новый user_atlas_nodes row (cluster='custom'). useAtlasQuery
-// инвалидируется, новый узел появляется в /atlas/explore.
-//
-// nil-safe: backend без LLM возвращает Unimplemented → показываем
-// inline-сообщение «AI пока недоступен», sync-режим не блокируется.
 function AddAtlasTodoCard() {
   const [todo, setTodo] = useState('')
   const [result, setResult] = useState<ClassifyAtlasTodoResponse | null>(null)

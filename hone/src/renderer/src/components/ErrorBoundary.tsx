@@ -1,4 +1,3 @@
-// ErrorBoundary — CI1 (Phase A 2026-05-12) render-time error containment for
 // Hone. Mirror'ит frontend/src/components/ErrorBoundary.tsx, но стилизован
 // под Hone'овый B/W hairline язык: классы `.data-loader-error*` уже
 // определены в styles/globals.css (см. CI1 stylesheet block 1265).
