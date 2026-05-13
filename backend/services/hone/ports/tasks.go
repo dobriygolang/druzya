@@ -312,6 +312,8 @@ func taskKindToProto(k domain.TaskKind) pb.TaskKind {
 		return pb.TaskKind_TASK_KIND_REFLECTION
 	case domain.TaskKindReading:
 		return pb.TaskKind_TASK_KIND_READING
+	case domain.TaskKindML:
+		return pb.TaskKind_TASK_KIND_ML
 	case domain.TaskKindCustom:
 		return pb.TaskKind_TASK_KIND_CUSTOM
 	default:
@@ -331,6 +333,8 @@ func taskKindFromProto(k pb.TaskKind) domain.TaskKind {
 		return domain.TaskKindReflection
 	case pb.TaskKind_TASK_KIND_READING:
 		return domain.TaskKindReading
+	case pb.TaskKind_TASK_KIND_ML:
+		return domain.TaskKindML
 	case pb.TaskKind_TASK_KIND_CUSTOM:
 		return domain.TaskKindCustom
 	case pb.TaskKind_TASK_KIND_UNSPECIFIED:

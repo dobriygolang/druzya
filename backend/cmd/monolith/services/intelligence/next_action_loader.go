@@ -21,12 +21,17 @@ import (
 //
 // Phase J 2026-05-12: focusReflections reader added so prompt видит recent
 // pomodoro grade+notes — direct lever для «previously stuck on X» rationale.
+//
+// Phase K M5 2026-05-13: mlProfile reader added so prompt swaps default
+// Go-senior framing for ML overlay когда user committed to ML offer track
+// (primary_goal=ml_offer) OR using Hone with active_track=ml.
 type nextActionLoader struct {
 	fork             *intelInfra.ForkProgressReader
 	resourceTrail    *intelInfra.ResourceEngagementReader
 	mocks            *intelInfra.MockReader
 	tracks           *intelInfra.TrackReader
 	focusReflections *intelInfra.FocusReflectionsPostgres
+	mlProfile        *intelInfra.MLProfileReader
 }
 
 // LoadNextActionContext implements intelPorts.NextActionContextLoader.
@@ -85,6 +90,15 @@ func (l *nextActionLoader) LoadNextActionContext(
 				refl = refl[:10]
 			}
 			out.RecentFocusReflections = refl
+		}
+	}
+
+	// Phase K M5 — ML profile detection (primary_goal=ml_offer OR
+	// active_track=ml). Reader is fail-soft (returns IsML=false on any
+	// error) so UC деградирует к default-prompt'у gracefully.
+	if l.mlProfile != nil {
+		if profile, err := l.mlProfile.GetMLProfile(ctx, userID); err == nil {
+			out.ML = profile
 		}
 	}
 

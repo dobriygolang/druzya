@@ -929,6 +929,169 @@ export class TutorActivityResponse extends Message<TutorActivityResponse> {
 }
 
 /**
+ * @generated from message druz9.v1.TutorMyTutorsActivityRequest
+ */
+export class TutorMyTutorsActivityRequest extends Message<TutorMyTutorsActivityRequest> {
+  /**
+   * Recent-events window. 0 → server default (7 days). Capped at 30.
+   *
+   * @generated from field: int32 recent_window_days = 1;
+   */
+  recentWindowDays = 0;
+
+  constructor(data?: PartialMessage<TutorMyTutorsActivityRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorMyTutorsActivityRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "recent_window_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorMyTutorsActivityRequest {
+    return new TutorMyTutorsActivityRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorMyTutorsActivityRequest {
+    return new TutorMyTutorsActivityRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorMyTutorsActivityRequest {
+    return new TutorMyTutorsActivityRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorMyTutorsActivityRequest | PlainMessage<TutorMyTutorsActivityRequest> | undefined, b: TutorMyTutorsActivityRequest | PlainMessage<TutorMyTutorsActivityRequest> | undefined): boolean {
+    return proto3.util.equals(TutorMyTutorsActivityRequest, a, b);
+  }
+}
+
+/**
+ * One row per active tutor of the caller. Order — most-recently-active
+ * first (matches the «who's around today» UX intent).
+ *
+ * @generated from message druz9.v1.TutorMyTutorActivitySummary
+ */
+export class TutorMyTutorActivitySummary extends Message<TutorMyTutorActivitySummary> {
+  /**
+   * @generated from field: string tutor_user_id = 1;
+   */
+  tutorUserId = "";
+
+  /**
+   * public profile field
+   *
+   * @generated from field: string tutor_display_name = 2;
+   */
+  tutorDisplayName = "";
+
+  /**
+   * @generated from field: string tutor_username = 3;
+   */
+  tutorUsername = "";
+
+  /**
+   * @generated from field: string tutor_avatar_url = 4;
+   */
+  tutorAvatarUrl = "";
+
+  /**
+   * Zero Timestamp = «no activity ever recorded». Maximum across
+   * (tutor_events.created_at | scheduled_at | completed_at) restricted
+   * to events authored by this tutor — no student-side data exposed.
+   *
+   * @generated from field: google.protobuf.Timestamp last_active_at = 5;
+   */
+  lastActiveAt?: Timestamp;
+
+  /**
+   * Active students of this tutor MINUS the caller. Floor 0.
+   *
+   * @generated from field: int32 active_student_count_other = 6;
+   */
+  activeStudentCountOther = 0;
+
+  /**
+   * Count of events (any status) authored by this tutor inside the
+   * recent window. Aggregate-only — no per-student or per-title detail.
+   *
+   * @generated from field: int32 recent_events_count = 7;
+   */
+  recentEventsCount = 0;
+
+  constructor(data?: PartialMessage<TutorMyTutorActivitySummary>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorMyTutorActivitySummary";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "tutor_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "tutor_display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "tutor_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "tutor_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "last_active_at", kind: "message", T: Timestamp },
+    { no: 6, name: "active_student_count_other", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "recent_events_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorMyTutorActivitySummary {
+    return new TutorMyTutorActivitySummary().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorMyTutorActivitySummary {
+    return new TutorMyTutorActivitySummary().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorMyTutorActivitySummary {
+    return new TutorMyTutorActivitySummary().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorMyTutorActivitySummary | PlainMessage<TutorMyTutorActivitySummary> | undefined, b: TutorMyTutorActivitySummary | PlainMessage<TutorMyTutorActivitySummary> | undefined): boolean {
+    return proto3.util.equals(TutorMyTutorActivitySummary, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorMyTutorsActivityResponse
+ */
+export class TutorMyTutorsActivityResponse extends Message<TutorMyTutorsActivityResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TutorMyTutorActivitySummary items = 1;
+   */
+  items: TutorMyTutorActivitySummary[] = [];
+
+  constructor(data?: PartialMessage<TutorMyTutorsActivityResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorMyTutorsActivityResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: TutorMyTutorActivitySummary, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorMyTutorsActivityResponse {
+    return new TutorMyTutorsActivityResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorMyTutorsActivityResponse {
+    return new TutorMyTutorsActivityResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorMyTutorsActivityResponse {
+    return new TutorMyTutorsActivityResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorMyTutorsActivityResponse | PlainMessage<TutorMyTutorsActivityResponse> | undefined, b: TutorMyTutorsActivityResponse | PlainMessage<TutorMyTutorsActivityResponse> | undefined): boolean {
+    return proto3.util.equals(TutorMyTutorsActivityResponse, a, b);
+  }
+}
+
+/**
  * @generated from message druz9.v1.TutorCreateGroupEventRequest
  */
 export class TutorCreateGroupEventRequest extends Message<TutorCreateGroupEventRequest> {
@@ -2579,11 +2742,36 @@ export class TutorEvent extends Message<TutorEvent> {
 
   /**
    * Wave 5.2d — tutor's post-session write-up. Non-empty iff
-   * status=='completed'. Visible to both tutor + student.
+   * status=='completed'. Tutor-visible always; student-visible only when
+   * visibility=='shared' (see field 16).
    *
    * @generated from field: string session_note = 15;
    */
   sessionNote = "";
+
+  /**
+   * Phase K T4 (2026-05-13) — session-note share toggle. 'private' (default)
+   * means student never sees the note; 'shared' surfaces it via
+   * ListSharedSessionNotesForStudent.
+   *
+   * @generated from field: string visibility = 16;
+   */
+  visibility = "";
+
+  /**
+   * Optional curated copy for student-facing audience. Empty string with
+   * visibility='shared' means «share the full private note as-is».
+   *
+   * @generated from field: string shared_content_md = 17;
+   */
+  sharedContentMd = "";
+
+  /**
+   * Stamp of first transition private→shared. Zero when never shared.
+   *
+   * @generated from field: google.protobuf.Timestamp shared_at = 18;
+   */
+  sharedAt?: Timestamp;
 
   constructor(data?: PartialMessage<TutorEvent>) {
     super();
@@ -2608,6 +2796,9 @@ export class TutorEvent extends Message<TutorEvent> {
     { no: 13, name: "created_at", kind: "message", T: Timestamp },
     { no: 14, name: "updated_at", kind: "message", T: Timestamp },
     { no: 15, name: "session_note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 16, name: "visibility", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 17, name: "shared_content_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 18, name: "shared_at", kind: "message", T: Timestamp },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorEvent {
@@ -4800,6 +4991,276 @@ export class TutorDeclineApplicationResponse extends Message<TutorDeclineApplica
 
   static equals(a: TutorDeclineApplicationResponse | PlainMessage<TutorDeclineApplicationResponse> | undefined, b: TutorDeclineApplicationResponse | PlainMessage<TutorDeclineApplicationResponse> | undefined): boolean {
     return proto3.util.equals(TutorDeclineApplicationResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorSetSessionNoteVisibilityRequest
+ */
+export class TutorSetSessionNoteVisibilityRequest extends Message<TutorSetSessionNoteVisibilityRequest> {
+  /**
+   * @generated from field: string event_id = 1;
+   */
+  eventId = "";
+
+  /**
+   * 'private' | 'shared'
+   *
+   * @generated from field: string visibility = 2;
+   */
+  visibility = "";
+
+  /**
+   * Optional. Empty string + visibility='shared' = share raw private note.
+   *
+   * @generated from field: string shared_content_md = 3;
+   */
+  sharedContentMd = "";
+
+  constructor(data?: PartialMessage<TutorSetSessionNoteVisibilityRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorSetSessionNoteVisibilityRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "event_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "visibility", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "shared_content_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorSetSessionNoteVisibilityRequest {
+    return new TutorSetSessionNoteVisibilityRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorSetSessionNoteVisibilityRequest {
+    return new TutorSetSessionNoteVisibilityRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorSetSessionNoteVisibilityRequest {
+    return new TutorSetSessionNoteVisibilityRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorSetSessionNoteVisibilityRequest | PlainMessage<TutorSetSessionNoteVisibilityRequest> | undefined, b: TutorSetSessionNoteVisibilityRequest | PlainMessage<TutorSetSessionNoteVisibilityRequest> | undefined): boolean {
+    return proto3.util.equals(TutorSetSessionNoteVisibilityRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorSetSessionNoteVisibilityResponse
+ */
+export class TutorSetSessionNoteVisibilityResponse extends Message<TutorSetSessionNoteVisibilityResponse> {
+  /**
+   * Refreshed event row (visibility / shared_content_md / shared_at).
+   *
+   * @generated from field: druz9.v1.TutorEvent event = 1;
+   */
+  event?: TutorEvent;
+
+  constructor(data?: PartialMessage<TutorSetSessionNoteVisibilityResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorSetSessionNoteVisibilityResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "event", kind: "message", T: TutorEvent },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorSetSessionNoteVisibilityResponse {
+    return new TutorSetSessionNoteVisibilityResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorSetSessionNoteVisibilityResponse {
+    return new TutorSetSessionNoteVisibilityResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorSetSessionNoteVisibilityResponse {
+    return new TutorSetSessionNoteVisibilityResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorSetSessionNoteVisibilityResponse | PlainMessage<TutorSetSessionNoteVisibilityResponse> | undefined, b: TutorSetSessionNoteVisibilityResponse | PlainMessage<TutorSetSessionNoteVisibilityResponse> | undefined): boolean {
+    return proto3.util.equals(TutorSetSessionNoteVisibilityResponse, a, b);
+  }
+}
+
+/**
+ * TutorSharedSessionNote — student-side projection of a shared note.
+ * Combines event metadata + tutor display info so the UI doesn't N+1.
+ *
+ * @generated from message druz9.v1.TutorSharedSessionNote
+ */
+export class TutorSharedSessionNote extends Message<TutorSharedSessionNote> {
+  /**
+   * @generated from field: string event_id = 1;
+   */
+  eventId = "";
+
+  /**
+   * @generated from field: string event_title = 2;
+   */
+  eventTitle = "";
+
+  /**
+   * @generated from field: string tutor_id = 3;
+   */
+  tutorId = "";
+
+  /**
+   * @generated from field: string tutor_display_name = 4;
+   */
+  tutorDisplayName = "";
+
+  /**
+   * @generated from field: string tutor_avatar_url = 5;
+   */
+  tutorAvatarUrl = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp scheduled_at = 6;
+   */
+  scheduledAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp shared_at = 7;
+   */
+  sharedAt?: Timestamp;
+
+  /**
+   * The content the student should see: server resolves shared_content_md
+   * if non-empty, else falls back to session_note. Always non-empty for
+   * rows returned here (only shared+completed events qualify).
+   *
+   * @generated from field: string shared_content_md = 8;
+   */
+  sharedContentMd = "";
+
+  constructor(data?: PartialMessage<TutorSharedSessionNote>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorSharedSessionNote";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "event_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "event_title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "tutor_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "tutor_display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "tutor_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "scheduled_at", kind: "message", T: Timestamp },
+    { no: 7, name: "shared_at", kind: "message", T: Timestamp },
+    { no: 8, name: "shared_content_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorSharedSessionNote {
+    return new TutorSharedSessionNote().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorSharedSessionNote {
+    return new TutorSharedSessionNote().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorSharedSessionNote {
+    return new TutorSharedSessionNote().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorSharedSessionNote | PlainMessage<TutorSharedSessionNote> | undefined, b: TutorSharedSessionNote | PlainMessage<TutorSharedSessionNote> | undefined): boolean {
+    return proto3.util.equals(TutorSharedSessionNote, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListSharedSessionNotesForStudentRequest
+ */
+export class TutorListSharedSessionNotesForStudentRequest extends Message<TutorListSharedSessionNotesForStudentRequest> {
+  /**
+   * 0 → server default (25), max 200
+   *
+   * @generated from field: int32 limit = 1;
+   */
+  limit = 0;
+
+  /**
+   * opaque keyset cursor (shared_at DESC, id DESC)
+   *
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
+
+  constructor(data?: PartialMessage<TutorListSharedSessionNotesForStudentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListSharedSessionNotesForStudentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListSharedSessionNotesForStudentRequest {
+    return new TutorListSharedSessionNotesForStudentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListSharedSessionNotesForStudentRequest {
+    return new TutorListSharedSessionNotesForStudentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListSharedSessionNotesForStudentRequest {
+    return new TutorListSharedSessionNotesForStudentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListSharedSessionNotesForStudentRequest | PlainMessage<TutorListSharedSessionNotesForStudentRequest> | undefined, b: TutorListSharedSessionNotesForStudentRequest | PlainMessage<TutorListSharedSessionNotesForStudentRequest> | undefined): boolean {
+    return proto3.util.equals(TutorListSharedSessionNotesForStudentRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TutorListSharedSessionNotesForStudentResponse
+ */
+export class TutorListSharedSessionNotesForStudentResponse extends Message<TutorListSharedSessionNotesForStudentResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TutorSharedSessionNote items = 1;
+   */
+  items: TutorSharedSessionNote[] = [];
+
+  /**
+   * empty when no more pages
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
+  constructor(data?: PartialMessage<TutorListSharedSessionNotesForStudentResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TutorListSharedSessionNotesForStudentResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: TutorSharedSessionNote, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TutorListSharedSessionNotesForStudentResponse {
+    return new TutorListSharedSessionNotesForStudentResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TutorListSharedSessionNotesForStudentResponse {
+    return new TutorListSharedSessionNotesForStudentResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TutorListSharedSessionNotesForStudentResponse {
+    return new TutorListSharedSessionNotesForStudentResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TutorListSharedSessionNotesForStudentResponse | PlainMessage<TutorListSharedSessionNotesForStudentResponse> | undefined, b: TutorListSharedSessionNotesForStudentResponse | PlainMessage<TutorListSharedSessionNotesForStudentResponse> | undefined): boolean {
+    return proto3.util.equals(TutorListSharedSessionNotesForStudentResponse, a, b);
   }
 }
 

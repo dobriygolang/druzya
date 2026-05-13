@@ -17,7 +17,11 @@ function authHeaders(): Record<string, string> {
 }
 
 export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done' | 'dismissed';
-export type TaskKind = 'algo' | 'sysdesign' | 'quiz' | 'reflection' | 'reading' | 'custom';
+// TaskKind — Phase K M7 (2026-05-13) extended с `ml` для ML/MLE work items
+// (model design, training pipeline, MLOps, paper-with-impl, fine-tuning,
+// RAG). См. backend/services/hone/domain/task.go TaskKindML +
+// proto/druz9/v1/hone.proto TaskKind enum.
+export type TaskKind = 'algo' | 'sysdesign' | 'quiz' | 'reflection' | 'reading' | 'ml' | 'custom';
 export type TaskSource = 'ai' | 'user';
 
 export interface TaskCard {

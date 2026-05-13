@@ -70,7 +70,9 @@ func (p *Postgres) GetEvent(ctx context.Context, requesterID, eventID uuid.UUID)
 	const q = `
 		SELECT id, tutor_id, student_id, circle_id, title, body_md,
 		       scheduled_at, duration_min, meet_url, capacity,
-		       status, cancellation_reason, session_note, created_at, updated_at
+		       status, cancellation_reason, session_note,
+		       visibility, shared_content_md, shared_at,
+		       created_at, updated_at
 		FROM tutor_events
 		WHERE id = $1 AND (tutor_id = $2 OR student_id = $2)`
 	row := p.pool.QueryRow(ctx, q, pgUUID(eventID), pgUUID(requesterID))
@@ -167,7 +169,9 @@ func (p *Postgres) ListByTutor(ctx context.Context, tutorID uuid.UUID, limit int
 	const q = `
 		SELECT id, tutor_id, student_id, circle_id, title, body_md,
 		       scheduled_at, duration_min, meet_url, capacity,
-		       status, cancellation_reason, session_note, created_at, updated_at
+		       status, cancellation_reason, session_note,
+		       visibility, shared_content_md, shared_at,
+		       created_at, updated_at
 		FROM tutor_events
 		WHERE tutor_id = $1
 		ORDER BY scheduled_at DESC
@@ -204,7 +208,9 @@ func (p *Postgres) ListUpcomingForStudent(ctx context.Context, studentID uuid.UU
 	const q = `
 		SELECT id, tutor_id, student_id, circle_id, title, body_md,
 		       scheduled_at, duration_min, meet_url, capacity,
-		       status, cancellation_reason, session_note, created_at, updated_at
+		       status, cancellation_reason, session_note,
+		       visibility, shared_content_md, shared_at,
+		       created_at, updated_at
 		FROM tutor_events
 		WHERE student_id = $1
 		  AND status = 'scheduled'
@@ -250,7 +256,9 @@ func (p *Postgres) ListByTutorPaged(
 	q := `
 		SELECT id, tutor_id, student_id, circle_id, title, body_md,
 		       scheduled_at, duration_min, meet_url, capacity,
-		       status, cancellation_reason, session_note, created_at, updated_at
+		       status, cancellation_reason, session_note,
+		       visibility, shared_content_md, shared_at,
+		       created_at, updated_at
 		FROM tutor_events
 		WHERE tutor_id = $1`
 	if !c.ScheduledAt.IsZero() {
@@ -312,7 +320,9 @@ func (p *Postgres) ListUpcomingForStudentPaged(
 	q := `
 		SELECT id, tutor_id, student_id, circle_id, title, body_md,
 		       scheduled_at, duration_min, meet_url, capacity,
-		       status, cancellation_reason, session_note, created_at, updated_at
+		       status, cancellation_reason, session_note,
+		       visibility, shared_content_md, shared_at,
+		       created_at, updated_at
 		FROM tutor_events
 		WHERE student_id = $1
 		  AND status = 'scheduled'
@@ -433,6 +443,117 @@ func (p *Postgres) TutorEventStats(ctx context.Context, tutorID uuid.UUID, windo
 			}
 			idx++
 		}
+	}
+	return out, nil
+}
+
+// TutorsActivitySummary — Phase K T6 (2026-05-12). Student-facing
+// social-proof aggregate over a list of tutor_ids. Three sub-queries
+// run in a single round-trip via UNION-ed CTEs:
+//   1. LastActiveAt — MAX of created_at/scheduled_at/COALESCE updated_at
+//      over all events authored by each tutor.
+//   2. ActiveStudentCountOther — COUNT(tutor_students) - 1 if caller is
+//      a student of that tutor (it always is via the ListMyTutors
+//      pre-filter, but we still GREATEST-clamp to 0 defensively).
+//   3. RecentEventsCount — COUNT(tutor_events) inside windowDays.
+// Privacy: no event titles / body / per-student rows returned —
+// aggregate-only by design. Missing tutorIDs absent from the result.
+func (p *Postgres) TutorsActivitySummary(
+	ctx context.Context,
+	callerID uuid.UUID,
+	tutorIDs []uuid.UUID,
+	windowDays int,
+	now time.Time,
+) (map[uuid.UUID]domain.MyTutorActivity, error) {
+	out := make(map[uuid.UUID]domain.MyTutorActivity, len(tutorIDs))
+	if len(tutorIDs) == 0 {
+		return out, nil
+	}
+	if windowDays <= 0 {
+		windowDays = 7
+	}
+	if windowDays > 30 {
+		windowDays = 30
+	}
+	since := pgtype.Timestamptz{Time: now.AddDate(0, 0, -windowDays), Valid: true}
+
+	// One SQL round-trip via LEFT JOIN over CTEs.
+	const q = `
+		WITH tutor_ids AS (
+			SELECT unnest($1::uuid[]) AS tutor_id
+		),
+		last_active AS (
+			SELECT t.tutor_id,
+			       MAX(GREATEST(
+			           COALESCE(e.created_at, 'epoch'::timestamptz),
+			           COALESCE(e.scheduled_at, 'epoch'::timestamptz),
+			           COALESCE(e.updated_at, 'epoch'::timestamptz)
+			       )) AS last_active_at
+			FROM tutor_ids t
+			LEFT JOIN tutor_events e ON e.tutor_id = t.tutor_id
+			GROUP BY t.tutor_id
+		),
+		other_students AS (
+			SELECT t.tutor_id,
+			       COUNT(*) FILTER (
+			           WHERE ts.ended_at IS NULL AND ts.student_id <> $2
+			       )::int AS other_count
+			FROM tutor_ids t
+			LEFT JOIN tutor_students ts ON ts.tutor_id = t.tutor_id
+			GROUP BY t.tutor_id
+		),
+		recent_events AS (
+			SELECT t.tutor_id,
+			       COUNT(*) FILTER (WHERE e.created_at >= $3)::int AS recent_count
+			FROM tutor_ids t
+			LEFT JOIN tutor_events e ON e.tutor_id = t.tutor_id
+			GROUP BY t.tutor_id
+		)
+		SELECT t.tutor_id,
+		       la.last_active_at,
+		       COALESCE(os.other_count, 0),
+		       COALESCE(re.recent_count, 0)
+		FROM tutor_ids t
+		LEFT JOIN last_active     la ON la.tutor_id = t.tutor_id
+		LEFT JOIN other_students  os ON os.tutor_id = t.tutor_id
+		LEFT JOIN recent_events   re ON re.tutor_id = t.tutor_id`
+
+	rows, err := p.pool.Query(ctx, q, tutorIDs, pgUUID(callerID), since)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.TutorsActivitySummary: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			id       pgtype.UUID
+			lastAct  pgtype.Timestamptz
+			others   int
+			recent   int
+		)
+		if err := rows.Scan(&id, &lastAct, &others, &recent); err != nil {
+			return nil, fmt.Errorf("tutor.TutorsActivitySummary: scan: %w", err)
+		}
+		tutorID := uuidFrom(id)
+		summary := domain.MyTutorActivity{
+			TutorID:                 tutorID,
+			ActiveStudentCountOther: others,
+			RecentEventsCount:       recent,
+		}
+		if lastAct.Valid {
+			// «epoch» fallback from COALESCE shows up when there are no
+			// events at all — treat that as «never active», zero-time.
+			if lastAct.Time.Year() > 1970 {
+				summary.LastActiveAt = lastAct.Time
+			}
+		}
+		// Defensive clamp — should never be negative given COUNT > 0 always.
+		if summary.ActiveStudentCountOther < 0 {
+			summary.ActiveStudentCountOther = 0
+		}
+		out[tutorID] = summary
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("tutor.TutorsActivitySummary: rows: %w", err)
 	}
 	return out, nil
 }
@@ -591,7 +712,9 @@ func (p *Postgres) ListUpcomingGroupEventsForStudent(ctx context.Context, studen
 	const q = `
 		SELECT e.id, e.tutor_id, e.student_id, e.circle_id, e.title, e.body_md,
 		       e.scheduled_at, e.duration_min, e.meet_url, e.capacity,
-		       e.status, e.cancellation_reason, e.session_note, e.created_at, e.updated_at
+		       e.status, e.cancellation_reason, e.session_note,
+		       e.visibility, e.shared_content_md, e.shared_at,
+		       e.created_at, e.updated_at
 		FROM tutor_events e
 		JOIN circle_members cm ON cm.circle_id = e.circle_id AND cm.user_id = $1
 		WHERE e.circle_id IS NOT NULL
@@ -622,22 +745,191 @@ func (p *Postgres) ListUpcomingGroupEventsForStudent(ctx context.Context, studen
 	return out, nil
 }
 
+// ── Session-note visibility (Phase K T4, 2026-05-13) ────────────────
+
+// SetSessionNoteVisibility — toggle private↔shared + optional curated copy.
+// Conditional shared_at update: stamps on FIRST private→shared transition
+// (where shared_at IS NULL), refreshes on re-share, preserved on toggle
+// back to private (audit trail).
+//
+// Gates (in order):
+//   1) event must exist and be owned by tutorID → else ErrNotFound
+//   2) event must be status='completed' → else ErrInvalidInput (can't
+//      share a note that doesn't exist yet)
+// Visibility/value validation happens at the use case layer; SQL CHECK
+// is defence-in-depth.
+func (p *Postgres) SetSessionNoteVisibility(
+	ctx context.Context,
+	tutorID, eventID uuid.UUID,
+	visibility domain.EventVisibility,
+	sharedContentMD string,
+	now time.Time,
+) (domain.Event, error) {
+	// Single UPDATE с conditional shared_at: NULLIF + COALESCE chain
+	// keeps the first-stamp/preservation semantics atomic. When toggling
+	// to private we don't touch shared_at; when toggling to shared we
+	// set shared_at if NULL, else refresh.
+	const q = `
+		UPDATE tutor_events
+		   SET visibility = $1,
+		       shared_content_md = $2,
+		       shared_at = CASE
+		           WHEN $1 = 'shared' THEN $3
+		           ELSE shared_at
+		       END,
+		       updated_at = $3
+		 WHERE id = $4
+		   AND tutor_id = $5
+		   AND status = 'completed'
+		RETURNING id, tutor_id, student_id, circle_id, title, body_md,
+		          scheduled_at, duration_min, meet_url, capacity,
+		          status, cancellation_reason, session_note,
+		          visibility, shared_content_md, shared_at,
+		          created_at, updated_at`
+	row := p.pool.QueryRow(ctx, q,
+		string(visibility), sharedContentMD,
+		pgtype.Timestamptz{Time: now, Valid: true},
+		pgUUID(eventID), pgUUID(tutorID),
+	)
+	out, err := scanEvent(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Distinguish: «event not yours / doesn't exist» vs «not yet
+			// completed». The use case caller wants different errors for
+			// each (NotFound vs FailedPrecondition).
+			var existsNotCompleted bool
+			_ = p.pool.QueryRow(ctx, `
+				SELECT EXISTS (
+					SELECT 1 FROM tutor_events
+					 WHERE id = $1 AND tutor_id = $2 AND status <> 'completed'
+				)`, pgUUID(eventID), pgUUID(tutorID)).Scan(&existsNotCompleted)
+			if existsNotCompleted {
+				return domain.Event{}, fmt.Errorf("tutor.SetSessionNoteVisibility: %w", domain.ErrInvalidInput)
+			}
+			return domain.Event{}, fmt.Errorf("tutor.SetSessionNoteVisibility: %w", domain.ErrNotFound)
+		}
+		return domain.Event{}, fmt.Errorf("tutor.SetSessionNoteVisibility: %w", err)
+	}
+	return out, nil
+}
+
+// ListSharedSessionNotesForStudent — student-side feed of completed
+// events whose tutor opted to share the session note. Joined с users
+// для tutor display_name + avatar; COALESCE resolves shared_content_md
+// → session_note fallback at SQL layer so domain callers always see
+// non-empty content.
+//
+// Keyset cursor: shared_at DESC, event_id DESC. Hits the partial idx
+// idx_tutor_events_student_shared.
+func (p *Postgres) ListSharedSessionNotesForStudent(
+	ctx context.Context,
+	studentID uuid.UUID,
+	limit int,
+	cursor string,
+) ([]domain.SharedSessionNote, string, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 25
+	}
+	c, err := decodeScheduledAtCursor(cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListSharedSessionNotesForStudent: %w", err)
+	}
+	args := []any{pgUUID(studentID)}
+	q := `
+		SELECT e.id, e.title, e.tutor_id,
+		       COALESCE(u.display_name, u.username, '')      AS tutor_display_name,
+		       COALESCE(u.avatar_url, '')                    AS tutor_avatar_url,
+		       e.scheduled_at, e.shared_at,
+		       CASE
+		           WHEN e.shared_content_md <> '' THEN e.shared_content_md
+		           ELSE e.session_note
+		       END AS resolved_md
+		  FROM tutor_events e
+		  LEFT JOIN users u ON u.id = e.tutor_id
+		 WHERE e.student_id = $1
+		   AND e.status = 'completed'
+		   AND e.visibility = 'shared'`
+	if !c.ScheduledAt.IsZero() {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListSharedSessionNotesForStudent: cursor id: %w", parseErr)
+		}
+		args = append(args, c.ScheduledAt, pgUUID(cid))
+		q += fmt.Sprintf(` AND (e.shared_at, e.id) < ($%d, $%d)`, len(args)-1, len(args))
+	}
+	args = append(args, limit+1)
+	q += fmt.Sprintf(` ORDER BY e.shared_at DESC, e.id DESC LIMIT $%d`, len(args))
+
+	rows, err := p.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, "", fmt.Errorf("tutor.ListSharedSessionNotesForStudent: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.SharedSessionNote, 0, limit)
+	for rows.Next() {
+		var (
+			eventID, tutorID         pgtype.UUID
+			title, displayName, av   string
+			resolvedMD               string
+			scheduledAt, sharedAt    pgtype.Timestamptz
+		)
+		if scanErr := rows.Scan(
+			&eventID, &title, &tutorID, &displayName, &av,
+			&scheduledAt, &sharedAt, &resolvedMD,
+		); scanErr != nil {
+			return nil, "", fmt.Errorf("tutor.ListSharedSessionNotesForStudent: scan: %w", scanErr)
+		}
+		n := domain.SharedSessionNote{
+			EventID:          uuidFrom(eventID),
+			EventTitle:       title,
+			TutorID:          uuidFrom(tutorID),
+			TutorDisplayName: displayName,
+			TutorAvatarURL:   av,
+			SharedContentMD:  resolvedMD,
+		}
+		if scheduledAt.Valid {
+			n.ScheduledAt = scheduledAt.Time
+		}
+		if sharedAt.Valid {
+			n.SharedAt = sharedAt.Time
+		}
+		out = append(out, n)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", fmt.Errorf("tutor.ListSharedSessionNotesForStudent: %w", err)
+	}
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeScheduledAtCursor(scheduledAtCursor{
+			ScheduledAt: last.SharedAt,
+			ID:          last.EventID.String(),
+		})
+	}
+	return out, nextCursor, nil
+}
+
 // ── helpers ────────────────────────────────────────────────────────
 
 func scanEvent(r rowScanner) (domain.Event, error) {
 	var (
-		id, tutorID                       pgtype.UUID
-		studentID, circleID               pgtype.UUID
-		title, body, meetURL              string
-		scheduledAt, createdAt, updatedAt pgtype.Timestamptz
-		durationMin                       int
-		capacity                          pgtype.Int4
-		status, cancellation, sessionNote string
+		id, tutorID                        pgtype.UUID
+		studentID, circleID                pgtype.UUID
+		title, body, meetURL               string
+		scheduledAt, createdAt, updatedAt  pgtype.Timestamptz
+		sharedAt                           pgtype.Timestamptz
+		durationMin                        int
+		capacity                           pgtype.Int4
+		status, cancellation, sessionNote  string
+		visibility, sharedContentMD        string
 	)
 	if err := r.Scan(
 		&id, &tutorID, &studentID, &circleID,
 		&title, &body, &scheduledAt, &durationMin, &meetURL, &capacity,
-		&status, &cancellation, &sessionNote, &createdAt, &updatedAt,
+		&status, &cancellation, &sessionNote,
+		&visibility, &sharedContentMD, &sharedAt,
+		&createdAt, &updatedAt,
 	); err != nil {
 		return domain.Event{}, fmt.Errorf("scanEvent: %w", err)
 	}
@@ -651,6 +943,8 @@ func scanEvent(r rowScanner) (domain.Event, error) {
 		Status:             domain.EventStatus(status),
 		CancellationReason: cancellation,
 		SessionNote:        sessionNote,
+		Visibility:         domain.EventVisibility(visibility),
+		SharedContentMD:    sharedContentMD,
 	}
 	if studentID.Valid {
 		sid := uuidFrom(studentID)
@@ -666,6 +960,9 @@ func scanEvent(r rowScanner) (domain.Event, error) {
 	if capacity.Valid {
 		v := int(capacity.Int32)
 		ev.Capacity = &v
+	}
+	if sharedAt.Valid {
+		ev.SharedAt = sharedAt.Time
 	}
 	if createdAt.Valid {
 		ev.CreatedAt = createdAt.Time

@@ -73,6 +73,12 @@ proto3.util.setEnumType(TaskStatus, "druz9.v1.TaskStatus", [
 /**
  * TaskKind — тип задачи; маршрутизирует deep_link / иконку на FE.
  *
+ * Phase K M7 (2026-05-13): TASK_KIND_ML добавлен для ML/MLE work items
+ * (model design / training pipeline / MLOps / paper read с implementation /
+ * fine-tuning LoRA / RAG). Auto-categoriser routes по keywords
+ * (см. backend/services/hone/app/categorise_task.go); coach listener
+ * settles через mock_interview.MockPipelineFinished с ML section.
+ *
  * @generated from enum druz9.v1.TaskKind
  */
 export enum TaskKind {
@@ -110,6 +116,11 @@ export enum TaskKind {
    * @generated from enum value: TASK_KIND_CUSTOM = 6;
    */
   CUSTOM = 6,
+
+  /**
+   * @generated from enum value: TASK_KIND_ML = 7;
+   */
+  ML = 7,
 }
 // Retrieve enum metadata with: proto3.getEnumType(TaskKind)
 proto3.util.setEnumType(TaskKind, "druz9.v1.TaskKind", [
@@ -120,6 +131,7 @@ proto3.util.setEnumType(TaskKind, "druz9.v1.TaskKind", [
   { no: 4, name: "TASK_KIND_REFLECTION" },
   { no: 5, name: "TASK_KIND_READING" },
   { no: 6, name: "TASK_KIND_CUSTOM" },
+  { no: 7, name: "TASK_KIND_ML" },
 ]);
 
 /**

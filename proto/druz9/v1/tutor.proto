@@ -123,6 +123,46 @@ message TutorActivityResponse {
   repeated int32 daily_minutes   = 9;
 }
 
+// ─── Student-facing tutor activity (Phase K T6, 2026-05-12) ─────────
+//
+// «Тебя сегодня учат: N tutors recently active» — subtle social-proof
+// surface на /today + Hone Home. Privacy contract:
+//   - exposes:   count of OTHER students (excluding caller),
+//                aggregate recent-events count (no titles / no content),
+//                last_active_at (server-derived MAX of event times)
+//   - hides:     names / ids of other students,
+//                event titles / body / session notes,
+//                per-student breakdowns
+// 5-minute server-side cache TTL — keeps the read path cheap and avoids
+// hot-path fanout when many students share popular tutors.
+
+message TutorMyTutorsActivityRequest {
+  // Recent-events window. 0 → server default (7 days). Capped at 30.
+  int32 recent_window_days = 1;
+}
+
+// One row per active tutor of the caller. Order — most-recently-active
+// first (matches the «who's around today» UX intent).
+message TutorMyTutorActivitySummary {
+  string tutor_user_id      = 1;
+  string tutor_display_name = 2; // public profile field
+  string tutor_username     = 3;
+  string tutor_avatar_url   = 4;
+  // Zero Timestamp = «no activity ever recorded». Maximum across
+  // (tutor_events.created_at | scheduled_at | completed_at) restricted
+  // to events authored by this tutor — no student-side data exposed.
+  google.protobuf.Timestamp last_active_at = 5;
+  // Active students of this tutor MINUS the caller. Floor 0.
+  int32 active_student_count_other = 6;
+  // Count of events (any status) authored by this tutor inside the
+  // recent window. Aggregate-only — no per-student or per-title detail.
+  int32 recent_events_count = 7;
+}
+
+message TutorMyTutorsActivityResponse {
+  repeated TutorMyTutorActivitySummary items = 1;
+}
+
 // ─── Group events (Wave 5.2) ───────────────────────────────────────
 
 message TutorCreateGroupEventRequest {
@@ -333,8 +373,18 @@ message TutorEvent {
   google.protobuf.Timestamp created_at = 13;
   google.protobuf.Timestamp updated_at = 14;
   // Wave 5.2d — tutor's post-session write-up. Non-empty iff
-  // status=='completed'. Visible to both tutor + student.
+  // status=='completed'. Tutor-visible always; student-visible only when
+  // visibility=='shared' (see field 16).
   string session_note = 15;
+  // Phase K T4 (2026-05-13) — session-note share toggle. 'private' (default)
+  // means student never sees the note; 'shared' surfaces it via
+  // ListSharedSessionNotesForStudent.
+  string visibility = 16;
+  // Optional curated copy for student-facing audience. Empty string with
+  // visibility='shared' means «share the full private note as-is».
+  string shared_content_md = 17;
+  // Stamp of first transition private→shared. Zero when never shared.
+  google.protobuf.Timestamp shared_at = 18;
 }
 
 message TutorCreateEventRequest {
@@ -705,6 +755,15 @@ service TutorService {
     option (google.api.http) = {get: "/api/v1/tutor/activity"};
   }
 
+  // ListMyTutorsActivity — Phase K T6 (2026-05-12). Student-side
+  // social-proof surface: «Тебя сегодня учат: Alice (2 other students),
+  // Bob (1 student) recently active». Returns one row per active tutor.
+  // Privacy: NO other-student names / ids / event titles — only
+  // aggregate counts + tutor's own public display fields. 5-min cache.
+  rpc ListMyTutorsActivity(TutorMyTutorsActivityRequest) returns (TutorMyTutorsActivityResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/my-tutors/activity"};
+  }
+
   // ── Wave 5.2 group events on circles ──────────────────────────────
   // CreateGroupEvent — tutor schedules a calendar event bound to a
   // circle (group class). Tutor must own / admin the circle.
@@ -868,6 +927,32 @@ service TutorService {
       body: "*"
     };
   }
+
+  // ── Session-note visibility (Phase K T4, 2026-05-13) ─────────────────
+  //
+  // Tutor's per-event session_note (recorded на CompleteEvent) is PRIVATE
+  // by default. T4 lets the tutor opt in to share the note with the
+  // student — either as-is (full private note) или curated (separate
+  // shared_content_md crafted для student-facing audience).
+
+  // SetSessionNoteVisibility — tutor toggles share + optionally edits
+  // curated student-facing copy. Visibility ∈ {'private','shared'}.
+  // shared_content_md empty when sharing the raw private note as-is.
+  // Tutor must own the event; non-completed events return FailedPrecondition.
+  rpc SetSessionNoteVisibility(TutorSetSessionNoteVisibilityRequest) returns (TutorSetSessionNoteVisibilityResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tutor/events/{event_id}/note-visibility"
+      body: "*"
+    };
+  }
+
+  // ListSharedSessionNotesForStudent — student-side feed. Returns
+  // completed events whose tutors opted to share the session note,
+  // most-recently-shared first. Server fills tutor display_name +
+  // event title так что student UI не делает N+1.
+  rpc ListSharedSessionNotesForStudent(TutorListSharedSessionNotesForStudentRequest) returns (TutorListSharedSessionNotesForStudentResponse) {
+    option (google.api.http) = {get: "/api/v1/tutor/session-notes/shared"};
+  }
 }
 
 // TutorGetSessionNotesRequest — tutor читает свои заметки про студента.
@@ -992,4 +1077,45 @@ message TutorAcceptApplicationResponse {
 
 message TutorDeclineApplicationRequest  { string application_id = 1; }
 message TutorDeclineApplicationResponse {}
+
+// ── Session-note visibility messages (Phase K T4, 2026-05-13) ────────
+
+message TutorSetSessionNoteVisibilityRequest {
+  string event_id          = 1;
+  // 'private' | 'shared'
+  string visibility        = 2;
+  // Optional. Empty string + visibility='shared' = share raw private note.
+  string shared_content_md = 3;
+}
+
+message TutorSetSessionNoteVisibilityResponse {
+  // Refreshed event row (visibility / shared_content_md / shared_at).
+  TutorEvent event = 1;
+}
+
+// TutorSharedSessionNote — student-side projection of a shared note.
+// Combines event metadata + tutor display info so the UI doesn't N+1.
+message TutorSharedSessionNote {
+  string event_id              = 1;
+  string event_title           = 2;
+  string tutor_id              = 3;
+  string tutor_display_name    = 4;
+  string tutor_avatar_url      = 5;
+  google.protobuf.Timestamp scheduled_at = 6;
+  google.protobuf.Timestamp shared_at    = 7;
+  // The content the student should see: server resolves shared_content_md
+  // if non-empty, else falls back to session_note. Always non-empty for
+  // rows returned here (only shared+completed events qualify).
+  string shared_content_md     = 8;
+}
+
+message TutorListSharedSessionNotesForStudentRequest {
+  int32  limit  = 1; // 0 → server default (25), max 200
+  string cursor = 2; // opaque keyset cursor (shared_at DESC, id DESC)
+}
+
+message TutorListSharedSessionNotesForStudentResponse {
+  repeated TutorSharedSessionNote items = 1;
+  string next_cursor = 2; // empty when no more pages
+}
 

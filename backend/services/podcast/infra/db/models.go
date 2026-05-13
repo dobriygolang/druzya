@@ -1988,6 +1988,10 @@ type TutorEvent struct {
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
 	SessionNote        string
+	Visibility         string
+	SharedAt           pgtype.Timestamptz
+	// Optional separate copy for student-facing surface — tutor can edit shared version without affecting private full note. Empty string means «share the raw session_note as-is» when visibility=shared.
+	SharedContentMd string
 }
 
 type TutorEventRsvp struct {

@@ -84,6 +84,15 @@ func (f fakeEventRepo) ListUpcomingForStudentPaged(ctx context.Context, s uuid.U
 func (f fakeEventRepo) TutorEventStats(_ context.Context, _ uuid.UUID, _ int, _ time.Time) (domain.TutorActivity, error) {
 	return domain.TutorActivity{}, nil
 }
+func (f fakeEventRepo) TutorsActivitySummary(
+	_ context.Context,
+	_ uuid.UUID,
+	_ []uuid.UUID,
+	_ int,
+	_ time.Time,
+) (map[uuid.UUID]domain.MyTutorActivity, error) {
+	return nil, nil
+}
 func (f fakeEventRepo) EnsureCircleOwner(_ context.Context, _, _ uuid.UUID) error  { return nil }
 func (f fakeEventRepo) EnsureCircleMember(_ context.Context, _, _ uuid.UUID) error { return nil }
 func (f fakeEventRepo) JoinEvent(_ context.Context, _, _ uuid.UUID, _ time.Time) error {
@@ -93,6 +102,23 @@ func (f fakeEventRepo) LeaveEvent(_ context.Context, _, _ uuid.UUID) error      
 func (f fakeEventRepo) ListEventRSVPCount(_ context.Context, _ uuid.UUID) (int, error) { return 0, nil }
 func (f fakeEventRepo) ListUpcomingGroupEventsForStudent(_ context.Context, _ uuid.UUID, _ time.Time, _ int) ([]domain.Event, error) {
 	return nil, nil
+}
+func (f fakeEventRepo) SetSessionNoteVisibility(
+	_ context.Context,
+	_, _ uuid.UUID,
+	_ domain.EventVisibility,
+	_ string,
+	_ time.Time,
+) (domain.Event, error) {
+	return domain.Event{}, nil
+}
+func (f fakeEventRepo) ListSharedSessionNotesForStudent(
+	_ context.Context,
+	_ uuid.UUID,
+	_ int,
+	_ string,
+) ([]domain.SharedSessionNote, string, error) {
+	return nil, "", nil
 }
 
 // ── CreateEvent ───────────────────────────────────────────────────

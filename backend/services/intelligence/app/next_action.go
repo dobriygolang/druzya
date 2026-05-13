@@ -44,6 +44,10 @@ type NextAction struct {
 // Phase J 2026-05-12: RecentFocusReflections added so prompt видит «вчера
 // 25 min on prefix-sum, grade 2, stuck on joins» — directly inflects today's
 // recommendation rationale.
+//
+// Phase K M5 2026-05-13: ML — MLProfile signal so caller-loader can pass
+// (primary_goal=ml_offer OR active_track=ml) detection; UC appends ML
+// overlay system message to swap default Go-senior framing for ML.
 type NextActionInput struct {
 	UserID                 uuid.UUID
 	LearningState          LearningStateView
@@ -52,6 +56,9 @@ type NextActionInput struct {
 	ResourceTrail          domain.ResourceEngagement
 	ActiveTrack            *ActiveTrackStep
 	RecentFocusReflections []domain.FocusReflection
+	// ML — Phase K M5. Zero-value (IsML=false) = no overlay, default coach
+	// next-action behaviour preserved.
+	ML domain.MLProfile
 }
 
 // LearningStateView — slim projection (UC не импортирует learning_state
@@ -91,15 +98,28 @@ func (uc *GetNextAction) Do(ctx context.Context, in NextActionInput) (NextAction
 	defer cancel()
 
 	prompt := buildNextActionPrompt(in)
+	// Phase K M5 — ML overlay (2026-05-13). Append as second system message
+	// when in.ML.IsML=true. Hot-path mirror of canonical prompt body stored
+	// in coach_prompts.slug='weak_axis_ml_drill' (migration 00116) — admin
+	// edits go through DB; this constant is the fallback when DB lookup
+	// would add latency (next-action serves on /today first-load).
+	messages := []llmchain.Message{
+		{Role: llmchain.RoleSystem, Content: nextActionSystemPrompt},
+	}
+	if in.ML.IsML {
+		messages = append(messages, llmchain.Message{
+			Role:    llmchain.RoleSystem,
+			Content: nextActionMLOverlay,
+		})
+	}
+	messages = append(messages, llmchain.Message{Role: llmchain.RoleUser, Content: prompt})
+
 	req := llmchain.Request{
 		Task:        llmchain.TaskAssistantNextAction,
 		JSONMode:    true,
 		Temperature: 0.5,
 		MaxTokens:   400,
-		Messages: []llmchain.Message{
-			{Role: llmchain.RoleSystem, Content: nextActionSystemPrompt},
-			{Role: llmchain.RoleUser, Content: prompt},
-		},
+		Messages:    messages,
 	}
 	resp, err := uc.Chain.Chat(ctx, req)
 	if err != nil {
@@ -126,6 +146,17 @@ Constraints:
 - Rationale MUST cite a SPECIFIC signal: weak axis from last mock, concrete track step, named resource, named atlas node. Generic ("practice algorithms", "be consistent") = FAIL.
 - If learning_state.mode=='explore' — DO NOT push commit; suggest exploration of underdeveloped fork-branch.
 - estimated_minutes ∈ [15, 120].`
+
+// nextActionMLOverlay — Phase K M5 (2026-05-13). Hot-path mirror of
+// coach_prompts.slug='weak_axis_ml_drill' (migration 00116). Appended as
+// second system message when NextActionInput.ML.IsML=true. Reframes default
+// action recommendations through ML lens without rewriting output contract
+// (JSON envelope identical для default + ML — downstream parser один).
+const nextActionMLOverlay = `ML-COACH OVERLAY (user committed to ML offer track):
+- Reframe action targets to ML (numpy/pytorch coding drill > algo kata; recsys/ranking sysdesign > generic distributed-systems).
+- Rationale must cite ML-specific signal (last ml_coding mock weak topic, ML radar axis with progress<30, named ML resource user has been engaging with).
+- For action_kind=review_resource — prefer Lilian Weng / Karpathy / Chip Huyen / HF course / Papers with Code over generic CS textbooks.
+- For action_kind=start_mock — ML stage_kinds (ml_coding / ml_system_design / ml_theory), не algorithms/coding/sysdesign.`
 
 func buildNextActionPrompt(in NextActionInput) string {
 	var b strings.Builder

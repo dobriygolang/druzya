@@ -40,6 +40,7 @@ import { CueSessionsSection } from '../components/CueSessionsSection'
 import { StreakChip } from '../components/StreakChip'
 import { TrajectoryCard } from '../components/TrajectoryCard'
 import { MilestonesCard } from '../components/MilestonesCard'
+import { MyTutorsCard } from '../components/MyTutorsCard'
 import { WeeklySnapshotCard } from '../components/WeeklySnapshotCard'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { useProfileQuery } from '../lib/queries/profile'
@@ -112,6 +113,11 @@ export default function TodayPage() {
             + factors + weeks-to-target. Computed deterministically на
             localStorage data (F2 goal + F9 quiz answers), без backend. */}
         <GoalReadinessCard goal={goal} onSetGoal={() => setGoalWizardOpen(true)} />
+
+        {/* T6 (Phase K 2026-05-12) — student-side tutor social proof.
+            Subtle one-line-per-tutor card; hidden when zero active tutors.
+            Privacy-aware: aggregate counts only, no other-student names. */}
+        <MyTutorsCard />
 
         {/* F7 (Phase C) daily plan card — 3-5 goal-driven actions based на
             current readiness + weakest area + budget. Cached per-date via

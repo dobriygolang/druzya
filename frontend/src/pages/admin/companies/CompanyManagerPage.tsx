@@ -51,9 +51,21 @@ const STAGE_LABELS: Record<StageKind, string> = {
   coding: 'Coding',
   sysdesign: 'SysDesign',
   behavioral: 'Behavioral',
+  ml_coding: 'ML Coding',
+  ml_system_design: 'ML SysDesign',
+  ml_theory: 'ML Theory',
 }
 
-const STAGE_KINDS: StageKind[] = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral']
+const STAGE_KINDS: StageKind[] = [
+  'hr',
+  'algo',
+  'coding',
+  'sysdesign',
+  'behavioral',
+  'ml_coding',
+  'ml_system_design',
+  'ml_theory',
+]
 
 export function CompanyManagerPage() {
   const companies = useCompaniesQuery()

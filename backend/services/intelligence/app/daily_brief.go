@@ -83,6 +83,12 @@ type GetDailyBrief struct {
 	// nil-safe: пустой reader → секция просто отсутствует в prompt'е.
 	External domain.ExternalActivityReader
 
+	// MLProfile — Phase K, M5 (2026-05-13). nil-safe. When wired AND the
+	// user is on ML track (primary_goal=ml_offer OR active_track=ml), the
+	// brief synthesiser swaps in the ML overlay. Without this reader,
+	// coach behaviour остаётся default (no regression).
+	MLProfile domain.MLProfileReader
+
 	// Insights — Phase 1.5b. nil-safe. When set, the brief use-case
 	// passes the same prompt-input snapshot to the insight generator
 	// after synthesise — so both surfaces (full DailyBrief + atomic
@@ -315,6 +321,19 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 			}
 		}()
 	}
+	var mlProfile domain.MLProfile
+	if uc.MLProfile != nil {
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			// Reader is fail-soft contract: IsML=false on any error.
+			if v, err := uc.MLProfile.GetMLProfile(ctx, in.UserID); err == nil {
+				mlProfile = v
+			} else {
+				warnReader(uc.Log, "ml_profile", err)
+			}
+		}()
+	}
 	optionalWG.Wait()
 	recent = freshRecentNotesForBrief(recent, today)
 	dailyNotes = freshDailyNotesForBrief(dailyNotes, today)
@@ -413,6 +432,7 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		ActiveGoals:         goals,
 		GhostedClubs:        ghostedClubs,
 		External:            external,
+		ML:                  mlProfile,
 	}
 	brief, err := uc.Synthesiser.Synthesise(ctx, snapshot)
 	if err != nil {

@@ -27,7 +27,16 @@ import {
 } from '../../../lib/queries/mockAdmin'
 import { useUpdateStageMutation } from '../../../lib/queries/adminCompanyPipeline'
 
-const STAGE_KINDS: StageKind[] = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral']
+const STAGE_KINDS: StageKind[] = [
+  'hr',
+  'algo',
+  'coding',
+  'sysdesign',
+  'behavioral',
+  'ml_coding',
+  'ml_system_design',
+  'ml_theory',
+]
 const LANGS: TaskLanguage[] = ['go', 'python', 'sql', 'any']
 
 type Props = {

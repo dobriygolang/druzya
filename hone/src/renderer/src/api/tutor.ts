@@ -164,6 +164,48 @@ export async function listMyTutors(): Promise<MyTutor[]> {
   });
 }
 
+// ── Tutor activity social-proof (Phase K T6, 2026-05-12) ──────────────
+
+export interface MyTutorActivitySummary {
+  tutorUserId: string;
+  tutorDisplayName: string;
+  tutorUsername: string;
+  tutorAvatarUrl: string;
+  lastActiveAt: Date | null;
+  activeStudentCountOther: number;
+  recentEventsCount: number;
+}
+
+type ProtoMyTutorActivitySummary = {
+  tutorUserId: string;
+  tutorDisplayName: string;
+  tutorUsername: string;
+  tutorAvatarUrl: string;
+  lastActiveAt?: { seconds: bigint; nanos: number };
+  activeStudentCountOther: number;
+  recentEventsCount: number;
+};
+
+/** Student-side: tutor activity summary for the «who's around today» rail.
+ *  Privacy-aware aggregate — no other-student names or event titles. */
+export async function listMyTutorsActivity(
+  recentWindowDays = 7,
+): Promise<MyTutorActivitySummary[]> {
+  const resp = await client.listMyTutorsActivity({ recentWindowDays });
+  return resp.items.map((it) => {
+    const proto = it as unknown as ProtoMyTutorActivitySummary;
+    return {
+      tutorUserId: proto.tutorUserId,
+      tutorDisplayName: proto.tutorDisplayName,
+      tutorUsername: proto.tutorUsername,
+      tutorAvatarUrl: proto.tutorAvatarUrl,
+      lastActiveAt: protoTs(proto.lastActiveAt),
+      activeStudentCountOther: proto.activeStudentCountOther,
+      recentEventsCount: proto.recentEventsCount,
+    };
+  });
+}
+
 /** Student-side: scheduled events whose end time hasn't passed yet. */
 export async function listUpcomingEvents(limit = 25): Promise<TutorEvent[]> {
   const resp = await client.listUpcomingEventsForStudent({ limit });
@@ -263,4 +305,50 @@ export async function advancePathStep(assignmentId: string): Promise<{
     assignment: unwrapPathAssignment(resp.assignment as unknown as ProtoPathAssignment),
     completed: resp.completed,
   };
+}
+
+// ── Shared session notes (Phase K T4, 2026-05-13) ─────────────────────
+
+export interface SharedSessionNote {
+  eventId: string;
+  eventTitle: string;
+  tutorId: string;
+  tutorDisplayName: string;
+  tutorAvatarUrl: string;
+  scheduledAt: Date | null;
+  sharedAt: Date | null;
+  sharedContentMd: string;
+}
+
+type ProtoSharedSessionNote = {
+  eventId: string;
+  eventTitle: string;
+  tutorId: string;
+  tutorDisplayName: string;
+  tutorAvatarUrl: string;
+  scheduledAt?: { seconds: bigint; nanos: number };
+  sharedAt?: { seconds: bigint; nanos: number };
+  sharedContentMd: string;
+};
+
+function unwrapSharedSessionNote(n: ProtoSharedSessionNote): SharedSessionNote {
+  return {
+    eventId: n.eventId,
+    eventTitle: n.eventTitle,
+    tutorId: n.tutorId,
+    tutorDisplayName: n.tutorDisplayName ?? '',
+    tutorAvatarUrl: n.tutorAvatarUrl ?? '',
+    scheduledAt: protoTs(n.scheduledAt),
+    sharedAt: protoTs(n.sharedAt),
+    sharedContentMd: n.sharedContentMd ?? '',
+  };
+}
+
+/** Student-side: completed events whose tutors opted to share the
+ *  session note. Most-recently-shared first. */
+export async function listSharedSessionNotes(limit = 25): Promise<SharedSessionNote[]> {
+  const resp = await client.listSharedSessionNotesForStudent({ limit });
+  return resp.items.map((it) =>
+    unwrapSharedSessionNote(it as unknown as ProtoSharedSessionNote),
+  );
 }

@@ -32,6 +32,9 @@ import {
   type NodeState,
   nodeState,
 } from './AtlasCanvasLegacy'
+import { TrackFilterChips } from '../../components/TrackFilterChips'
+import { useTrackFilter } from '../../lib/useTrackFilter'
+import { classifyAtlasNode, itemMatchesFilter } from '../../lib/trackFilter'
 
 // v2 feature-flag — opt-in via `?v=2` URL param OR localStorage key.
 function useAtlasV2Flag(): [boolean, (v: boolean) => void] {
@@ -404,9 +407,19 @@ export default function AtlasExplorePage() {
   const [status, setStatus] = useState<NodeState | 'all'>('all')
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph')
 
+  // Track filter (Phase K 6.1) — overlays category/status/search to scope
+  // the atlas to Go / ML / English / Cross-cutting. Defaults to the user's
+  // PrimaryGoal-derived track when LS+URL are empty; otherwise hydrates
+  // from last-used per-surface preference.
+  const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({
+    persistKey: 'atlas:track-filter:v1',
+    defaultFromPrimaryGoal: true,
+  })
+
   const highlightKeys = useMemo<Set<string> | null>(() => {
     if (!atlas) return null
-    const noFilters = !query.trim() && category === 'all' && status === 'all'
+    const noFilters =
+      !query.trim() && category === 'all' && status === 'all' && selectedTracks.size === 0
     if (noFilters) return null
     const cat = CATEGORIES.find((c) => c.key === category)
     const q = query.trim().toLowerCase()
@@ -415,10 +428,20 @@ export default function AtlasExplorePage() {
       if (cat && !cat.sections.includes(n.section)) continue
       if (q && !n.title.toLowerCase().includes(q)) continue
       if (status !== 'all' && nodeState(n) !== status) continue
+      if (selectedTracks.size > 0) {
+        // n.section sometimes carries the track prefix in legacy data;
+        // we route through the canonical classifier so the heuristic
+        // stays single-source-of-truth.
+        const track = classifyAtlasNode({
+          cluster: n.cluster ?? null,
+          section: n.section ?? null,
+        })
+        if (!itemMatchesFilter(track, selectedTracks)) continue
+      }
       keys.add(n.key)
     }
     return keys
-  }, [atlas, query, category, status])
+  }, [atlas, query, category, status, selectedTracks])
 
   const selectedNode =
     atlas && selectedKey ? atlas.nodes.find((n) => n.key === selectedKey) ?? null : null
@@ -447,14 +470,31 @@ export default function AtlasExplorePage() {
           </ErrorBoundary>
         )}
         {!isLoading && !isError && atlas && atlas.nodes.length > 0 && (
-          <AtlasFilters
-            query={query}
-            setQuery={setQuery}
-            category={category}
-            setCategory={setCategory}
-            status={status}
-            setStatus={setStatus}
-          />
+          <>
+            {/* Track filter chips — Phase K 6.1 (identity rebalance UI).
+                Sits как пред-фильтр над search/category/status; selecting a
+                chip narrows the atlas to a single track (or multiple via
+                cmd/ctrl-click). Persisted per-user via localStorage и в URL. */}
+            <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-8 lg:px-20">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+                трек
+              </span>
+              <TrackFilterChips
+                selected={selectedTracks}
+                onChange={setSelectedTracks}
+                persistKey="atlas:track-filter:v1"
+                ariaLabel="Фильтр атласа по трекам"
+              />
+            </div>
+            <AtlasFilters
+              query={query}
+              setQuery={setQuery}
+              category={category}
+              setCategory={setCategory}
+              status={status}
+              setStatus={setStatus}
+            />
+          </>
         )}
         <ErrorBoundary section="Atlas canvas" onRetry={() => void refetch()}>
           <div className="flex flex-col lg:flex-row">

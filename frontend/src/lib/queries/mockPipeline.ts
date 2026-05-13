@@ -15,7 +15,17 @@ import { api } from '../apiClient'
 
 // ── New (Phase B.2) backend contract types ───────────────────────────────
 
-export type StageKind = 'hr' | 'algo' | 'coding' | 'sysdesign' | 'behavioral'
+// StageKind — Phase K M6 (2026-05-13) extended с ML stages для FAANG ML
+// hiring loops. Mirrors backend domain.StageKind + admin mockAdmin.StageKind.
+export type StageKind =
+  | 'hr'
+  | 'algo'
+  | 'coding'
+  | 'sysdesign'
+  | 'behavioral'
+  | 'ml_coding'
+  | 'ml_system_design'
+  | 'ml_theory'
 export type StageStatus = 'pending' | 'in_progress' | 'finished' | 'skipped'
 export type StageVerdict = 'pass' | 'fail' | 'borderline' | null
 export type AttemptKind = 'task_solve' | 'question_answer' | 'sysdesign_canvas' | 'voice_answer'
@@ -488,6 +498,9 @@ export const STAGE_LABEL: Record<StageKind, string> = {
   coding: 'Live Coding',
   sysdesign: 'System Design',
   behavioral: 'Behavioral',
+  ml_coding: 'ML Coding',
+  ml_system_design: 'ML System Design',
+  ml_theory: 'ML Theory',
 }
 
 export function isComingSoonError(err: unknown): boolean {

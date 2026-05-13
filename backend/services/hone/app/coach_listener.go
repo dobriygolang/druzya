@@ -48,6 +48,11 @@ func xpAmountForKind(k domain.TaskKind) int {
 		return 20
 	case domain.TaskKindSysDesign:
 		return 30
+	case domain.TaskKindML:
+		// ML — between sysdesign (architecture-heavy) и algo (coding-heavy);
+		// most ML tasks combine math reasoning + hands-on implementation
+		// + production awareness — similar effort budget as sysdesign.
+		return 28
 	case domain.TaskKindQuiz:
 		return 10
 	case domain.TaskKindReflection, domain.TaskKindReading:

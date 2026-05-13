@@ -22,10 +22,13 @@ import {
   completeAssignment,
   listMyActivePathAssignments,
   listPendingAssignments,
+  listSharedSessionNotes,
   type PathAssignment,
+  type SharedSessionNote,
   type TutorAssignment,
 } from '../api/tutor';
 import { ActivePathCard } from '../components/tutor/ActivePathCard';
+import { SharedNotesCard } from '../components/tutor/SharedNotesCard';
 
 interface State {
   status: 'loading' | 'ok' | 'error';
@@ -38,8 +41,37 @@ interface PathsState {
   items: PathAssignment[];
 }
 
+interface SharedNotesState {
+  status: 'loading' | 'ok' | 'error';
+  items: SharedSessionNote[];
+}
+
 const INITIAL: State = { status: 'loading', items: [], error: null };
 const INITIAL_PATHS: PathsState = { status: 'loading', items: [] };
+const INITIAL_NOTES: SharedNotesState = { status: 'loading', items: [] };
+
+// localStorage key — used to mark «note виден» once expanded. Note that
+// we don't pre-mark anything: the fresh-stripe simply renders for notes
+// shared after the last-viewed timestamp. Avoids needing a server-side
+// «seen-state» table for V1.
+const LAST_VIEWED_KEY = 'hone.tutor.sharedNotes.lastViewedAt';
+
+function loadLastViewed(): number {
+  try {
+    const raw = localStorage.getItem(LAST_VIEWED_KEY);
+    return raw ? Number(raw) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function stampLastViewed(): void {
+  try {
+    localStorage.setItem(LAST_VIEWED_KEY, String(Date.now()));
+  } catch {
+    // ignore — fresh-stripe will keep showing, harmless degradation.
+  }
+}
 
 // Match the per-step assignment title prefix emitted by the backend
 // (`<Path name> — step N/M: <node_key>`). We use it to (a) detect
@@ -101,10 +133,15 @@ const captionMonoTiny: React.CSSProperties = {
 export function TutorAssignmentsPage() {
   const [state, setState] = useState<State>(INITIAL);
   const [paths, setPaths] = useState<PathsState>(INITIAL_PATHS);
+  const [notes, setNotes] = useState<SharedNotesState>(INITIAL_NOTES);
   const [busyId, setBusyId] = useState<string | null>(null);
   // Highlights the assignment row matching the active path's «next step»
   // (set when user clicks View next step on an ActivePathCard).
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  // Phase K T4 — fresh-stripe baseline: stamp captured ONCE per mount so
+  // that a note becomes «fresh» if shared_at > lastViewedAt at load time.
+  // We re-stamp on unmount (effect cleanup).
+  const [lastViewedAt] = useState(() => loadLastViewed());
   // Per-card scroll-into-view targets. Keyed by assignment id.
   const rowRefs = useRef<Map<string, HTMLLIElement | null>>(new Map());
 
@@ -131,10 +168,27 @@ export function TutorAssignmentsPage() {
     }
   }, []);
 
+  const loadNotes = useCallback(async () => {
+    setNotes((prev) => ({ ...prev, status: 'loading' }));
+    try {
+      const items = await listSharedSessionNotes();
+      setNotes({ status: 'ok', items });
+    } catch {
+      // Same fail-soft policy as paths — empty list, no blocker.
+      setNotes({ status: 'error', items: [] });
+    }
+  }, []);
+
   useEffect(() => {
     void load();
     void loadPaths();
-  }, [load, loadPaths]);
+    void loadNotes();
+    // Stamp on unmount — once user leaves the page, treat all currently
+    // visible shared notes as «seen» for the next visit.
+    return () => {
+      stampLastViewed();
+    };
+  }, [load, loadPaths, loadNotes]);
 
   const onDone = useCallback(
     async (id: string) => {
@@ -287,6 +341,53 @@ export function TutorAssignmentsPage() {
                   <ActivePathCard path={p} onFocusStep={focusPathStep} />
                 </li>
               ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Phase K T4 — Shared session notes section. Tutor opt-in;
+            renders only when at least one shared note exists. */}
+        {notes.status === 'ok' && notes.items.length > 0 && (
+          <section
+            style={{
+              marginBottom: 28,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 'var(--type-h3-size)',
+                lineHeight: 'var(--type-h3-lh)',
+                letterSpacing: 'var(--type-h3-ls)',
+                fontWeight: 'var(--type-h3-weight)',
+                color: 'var(--ink)',
+              }}
+            >
+              Session notes
+            </h2>
+            <ul
+              className="motion-stagger"
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              {notes.items.map((n) => {
+                const isFresh =
+                  n.sharedAt != null && n.sharedAt.getTime() > lastViewedAt;
+                return (
+                  <li key={n.eventId}>
+                    <SharedNotesCard note={n} isFresh={isFresh} />
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}

@@ -27,6 +27,9 @@ import {
   type CodexSortMode,
 } from '../lib/codexHelpers'
 import { loadProgress } from '../lib/diagnostic'
+import { TrackFilterChips } from '../components/TrackFilterChips'
+import { useTrackFilter } from '../lib/useTrackFilter'
+import { classifyCodexCategory, itemMatchesFilter } from '../lib/trackFilter'
 
 type CodexArticle = DBCodexArticle
 
@@ -316,6 +319,15 @@ export default function CodexPage() {
     else setSearchParams({ topic: slug }, { replace: true })
   }
 
+  // Track filter (Phase K 6.1) — pre-filters articles by Go/ML/English/
+  // cross-cutting BEFORE category/search/sort. Hidden in the URL via
+  // ?tracks=ml so a coach link «check this ML reading» can scope the
+  // surface in one go.
+  const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({
+    persistKey: 'codex:track-filter:v1',
+    defaultFromPrimaryGoal: true,
+  })
+
   const articlesQ = useCodexArticlesQuery()
   const categoriesQ = useCodexCategoriesQuery()
   const articles: CodexArticle[] = useMemo(() => articlesQ.data ?? [], [articlesQ.data])
@@ -347,6 +359,10 @@ export default function CodexPage() {
 
   const norm = q.trim().toLowerCase()
   const filtered = articles.filter((a) => {
+    if (selectedTracks.size > 0) {
+      const track = classifyCodexCategory(a.category)
+      if (!itemMatchesFilter(track, selectedTracks)) return false
+    }
     if (category !== ALL && a.category !== category) return false
     if (norm.length === 0) return true
     return (
@@ -382,10 +398,14 @@ export default function CodexPage() {
   }, [])
 
   const showRecommended = category === ALL && norm.length === 0
-  const recommendedArticles = useMemo(
-    () => (showRecommended ? pickRecommendedArticles(articles, diagnosticWeakest, 3) : []),
-    [showRecommended, articles, diagnosticWeakest],
-  )
+  const recommendedArticles = useMemo(() => {
+    if (!showRecommended) return []
+    const pool =
+      selectedTracks.size > 0
+        ? articles.filter((a) => itemMatchesFilter(classifyCodexCategory(a.category), selectedTracks))
+        : articles
+    return pickRecommendedArticles(pool, diagnosticWeakest, 3)
+  }, [showRecommended, articles, diagnosticWeakest, selectedTracks])
 
   return (
     <AppShellV2>
@@ -398,6 +418,20 @@ export default function CodexPage() {
           чтением Codex articles. F2 + F5 reactive. */}
       <div className="px-4 pt-5 sm:px-8 lg:px-20">
         <PersonalContextBanner />
+      </div>
+      {/* Track filter chips — Phase K 6.1. Coarse «3 equal tracks»
+          pre-filter above the per-category chips. Selecting «ML» narrows
+          both the recommended section и the main feed. */}
+      <div className="flex flex-wrap items-center gap-3 px-4 pt-5 sm:px-8 lg:px-20">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+          трек
+        </span>
+        <TrackFilterChips
+          selected={selectedTracks}
+          onChange={setSelectedTracks}
+          persistKey="codex:track-filter:v1"
+          ariaLabel="Фильтр Codex по трекам"
+        />
       </div>
       <CategoryFilters
         active={category}

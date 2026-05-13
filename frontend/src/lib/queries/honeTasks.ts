@@ -14,7 +14,7 @@ import { api } from '../apiClient'
 // ── Canonical types ────────────────────────────────────────────────────
 
 export type TaskStatusCanonical = 'todo' | 'in_progress' | 'in_review' | 'done' | 'dismissed' | 'unspecified'
-export type TaskKindCanonical = 'algo' | 'sysdesign' | 'quiz' | 'reflection' | 'reading' | 'custom' | 'unspecified'
+export type TaskKindCanonical = 'algo' | 'sysdesign' | 'quiz' | 'reflection' | 'reading' | 'ml' | 'custom' | 'unspecified'
 export type TaskSourceCanonical = 'ai' | 'user' | 'unspecified'
 export type TaskCommentAuthorCanonical = 'ai' | 'user' | 'unspecified'
 
@@ -61,6 +61,9 @@ export function normalizeTaskKind(raw: string | undefined | null): TaskKindCanon
     case 'reading':
     case 'TASK_KIND_READING':
       return 'reading'
+    case 'ml':
+    case 'TASK_KIND_ML':
+      return 'ml'
     case 'custom':
     case 'TASK_KIND_CUSTOM':
       return 'custom'
@@ -114,6 +117,8 @@ export function taskKindToWire(k: TaskKindCanonical): string {
       return 'TASK_KIND_REFLECTION'
     case 'reading':
       return 'TASK_KIND_READING'
+    case 'ml':
+      return 'TASK_KIND_ML'
     case 'custom':
       return 'TASK_KIND_CUSTOM'
     default:

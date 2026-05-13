@@ -36,7 +36,16 @@ import {
 } from '../../lib/queries/mockAdmin'
 import { useAIModelsQuery } from '../../lib/queries/ai'
 
-const STAGE_KINDS: StageKind[] = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral']
+const STAGE_KINDS: StageKind[] = [
+  'hr',
+  'algo',
+  'coding',
+  'sysdesign',
+  'behavioral',
+  'ml_coding',
+  'ml_system_design',
+  'ml_theory',
+]
 const LANGS: TaskLanguage[] = ['go', 'python', 'sql', 'any']
 type EditorTab = 'body' | 'reference' | 'questions' | 'tests'
 

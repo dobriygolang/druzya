@@ -89,10 +89,17 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 		variantOverlay = variantPromptOverlay(s.cfg.PromptVariant(ctx))
 	}
 
+	// Phase K M5 — ML overlay (2026-05-13). Detection in BriefPromptInput.ML
+	// (primary_goal=ml_offer OR active_track=ml). When set, append ML-flavoured
+	// overlay so coach swaps generic Go-senior tropes for numpy/pytorch coding,
+	// recsys sysdesign, Lilian Weng / Chip Huyen resource pool. Persona/variant
+	// overlays remain applicable on top.
+	mlOverlay := MLBriefOverlay(in.ML)
+
 	// Phase 4.2 + Phase 5 — overlays = optional system messages added в обе
-	// stages (sketch + critique). Order: persona, variant — persona задаёт
-	// tone (warmth / rigor), variant — формат (terse / sharp). Variant идёт
-	// последним, чтобы при конфликте перевешивать.
+	// stages (sketch + critique). Order: persona (tone), variant (format),
+	// ML (domain framing). ML goes last so its forbidden-list / resource
+	// pool overrides any persona/variant generic phrasing.
 	sketchMessages := func() []llmchain.Message {
 		out := []llmchain.Message{
 			{Role: llmchain.RoleSystem, Content: briefSystemPrompt},
@@ -102,6 +109,9 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 		}
 		if variantOverlay != "" {
 			out = append(out, llmchain.Message{Role: llmchain.RoleSystem, Content: variantOverlay})
+		}
+		if mlOverlay != "" {
+			out = append(out, llmchain.Message{Role: llmchain.RoleSystem, Content: mlOverlay})
 		}
 		out = append(out, llmchain.Message{Role: llmchain.RoleUser, Content: userMsg})
 		return out
@@ -152,7 +162,7 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 
 	// Phase 4.1 — reflective critique gate (Phase R6 — selective by signal confidence).
 	if s.shouldReflect(ctx, sketch, in) {
-		refined, err := s.reflect(ctx, in, sketch, sketchRaw, pinnedModel, personaOverlay, variantOverlay)
+		refined, err := s.reflect(ctx, in, sketch, sketchRaw, pinnedModel, personaOverlay, variantOverlay, mlOverlay)
 		if err != nil {
 			s.log.Warn("intelligence.LLMChainBriefSynthesiser: critique fell back to sketch",
 				slog.Any("err", err), slog.String("user_id", in.UserID.String()),
@@ -220,6 +230,9 @@ func warnGradeReflectsBenefit(in domain.BriefPromptInput) bool {
 // personaOverlay (Phase 4.2) применяется и здесь — иначе critique-stage
 // мог бы «выправить» tone обратно к default'у, что особенно заметно для
 // strict/sparring персон.
+//
+// mlOverlay (Phase K M5) — same reasoning: critique stage без него
+// генерил бы «improved» draft с generic Go-senior фразами, теряя ML lens.
 func (s *LLMChainBriefSynthesiser) reflect(
 	ctx context.Context,
 	in domain.BriefPromptInput,
@@ -228,6 +241,7 @@ func (s *LLMChainBriefSynthesiser) reflect(
 	pinnedModel string,
 	personaOverlay string,
 	variantOverlay string,
+	mlOverlay string,
 ) (domain.DailyBrief, error) {
 	messages := []llmchain.Message{
 		{Role: llmchain.RoleSystem, Content: critiqueSystemPrompt},
@@ -237,6 +251,9 @@ func (s *LLMChainBriefSynthesiser) reflect(
 	}
 	if variantOverlay != "" {
 		messages = append(messages, llmchain.Message{Role: llmchain.RoleSystem, Content: variantOverlay})
+	}
+	if mlOverlay != "" {
+		messages = append(messages, llmchain.Message{Role: llmchain.RoleSystem, Content: mlOverlay})
 	}
 	messages = append(messages, llmchain.Message{
 		Role:    llmchain.RoleUser,

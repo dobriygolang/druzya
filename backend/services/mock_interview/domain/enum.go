@@ -27,11 +27,31 @@ const (
 	// path: orchestrator detects sandbox-error and falls back to LLM-only
 	// rubric grading via the same hybrid path as StageCoding.
 	StageMLCoding StageKind = "ml_coding"
+	// StageMLSystemDesign — ML system design stage (Phase K M6 2026-05-13).
+	// Recsys / ranking / candidate-gen → light → heavy stack / training
+	// pipeline / serving SLO architecture. Wire shape mirrors StageSysDesign:
+	// one sysdesign_canvas attempt seeded по materialiseSysDesignAttempts;
+	// judge uses the SysDesignGrader 5-axis rubric (availability /
+	// consistency / scalability / cost / simplicity). LLM prompt получает
+	// ML-system bias через ReferenceCriteria seed (см. company_questions
+	// для google-ml/meta-ai/anthropic/openai). NO sandbox path.
+	StageMLSystemDesign StageKind = "ml_system_design"
+	// StageMLTheory — ML theory stage (Phase K M6 2026-05-13). Deep learning
+	// fundamentals quiz: attention math / BatchNorm vs LayerNorm /
+	// optimizers / gradient flow / regularization / scaling laws. Wire
+	// shape — question_pool (same as StageHR/StageBehavioral): one
+	// question_answer attempt per default + optional company-overlay
+	// question. Judge uses pass2 generic correctness prompt (NOT STAR-rubric).
+	// Question pool seeded via stage_default_questions с stage_kind='ml_theory'
+	// + company_questions overlay для openai/anthropic/deepmind (heavy on
+	// theory).
+	StageMLTheory StageKind = "ml_theory"
 )
 
 func (s StageKind) Valid() bool {
 	switch s {
-	case StageHR, StageAlgo, StageCoding, StageSysDesign, StageBehavioral, StageMLCoding:
+	case StageHR, StageAlgo, StageCoding, StageSysDesign, StageBehavioral,
+		StageMLCoding, StageMLSystemDesign, StageMLTheory:
 		return true
 	}
 	return false

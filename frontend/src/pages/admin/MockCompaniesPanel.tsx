@@ -28,7 +28,16 @@ import {
   type TaskLanguage,
 } from '../../lib/queries/mockAdmin'
 
-const STAGE_KINDS: StageKind[] = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral']
+const STAGE_KINDS: StageKind[] = [
+  'hr',
+  'algo',
+  'coding',
+  'sysdesign',
+  'behavioral',
+  'ml_coding',
+  'ml_system_design',
+  'ml_theory',
+]
 const LANGS: TaskLanguage[] = ['go', 'python', 'sql', 'any']
 
 export function MockCompaniesPanel() {
@@ -514,7 +523,9 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
                 <span className="ml-1 font-mono text-[10px] text-text-muted">#{i}</span>
                 {(s.stage_kind === 'algo' ||
                   s.stage_kind === 'coding' ||
-                  s.stage_kind === 'sysdesign') && (
+                  s.stage_kind === 'sysdesign' ||
+                  s.stage_kind === 'ml_coding' ||
+                  s.stage_kind === 'ml_system_design') && (
                   <span
                     className={`ml-1 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase ${
                       s.task_pool_ids.length === 0
@@ -618,7 +629,9 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
                   </div>
                 )}
 
-                {(s.stage_kind === 'hr' || s.stage_kind === 'behavioral') && (
+                {(s.stage_kind === 'hr' ||
+                  s.stage_kind === 'behavioral' ||
+                  s.stage_kind === 'ml_theory') && (
                   <div className="flex flex-col gap-2 sm:col-span-2">
                     <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
                       Question sampling
@@ -717,6 +730,9 @@ function CandidatePreview({ companyId }: { companyId: string }) {
     coding: 'Coding',
     sysdesign: 'System design',
     behavioral: 'Behavioral',
+    ml_coding: 'ML coding',
+    ml_system_design: 'ML system design',
+    ml_theory: 'ML theory',
   }
 
   return (

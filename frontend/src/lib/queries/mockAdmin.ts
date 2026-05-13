@@ -17,7 +17,20 @@ import { api } from '../apiClient'
 
 // ── shared shapes ────────────────────────────────────────────────────────
 
-export type StageKind = 'hr' | 'algo' | 'coding' | 'sysdesign' | 'behavioral'
+// StageKind — Phase K M6 (2026-05-13) extended с ml_coding / ml_system_design
+// / ml_theory для FAANG-style ML hiring loops (Google ML / Meta AI / OpenAI /
+// Anthropic / DeepMind / Yandex Cloud ML / Sber Devices / Avito ML / T-Bank AI).
+// Backend domain.StageKind в backend/services/mock_interview/domain/enum.go —
+// canonical source of truth; this string union mirrors it 1:1.
+export type StageKind =
+  | 'hr'
+  | 'algo'
+  | 'coding'
+  | 'sysdesign'
+  | 'behavioral'
+  | 'ml_coding'
+  | 'ml_system_design'
+  | 'ml_theory'
 export type TaskLanguage = 'go' | 'python' | 'sql' | 'any'
 
 export type ReferenceCriteria = {

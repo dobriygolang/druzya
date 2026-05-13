@@ -125,11 +125,13 @@ func (uc *ValidatePipeline) Do(ctx context.Context, companyID uuid.UUID) (Valida
 
 func isTaskSolveKind(k string) bool {
 	switch k {
-	case "algo", "coding", "sysdesign", "ml_coding":
+	case "algo", "coding", "sysdesign", "ml_coding", "ml_system_design":
 		// ml_coding shares the task_solve wire shape with coding —
 		// admin pipeline validator must count active ML tasks via
 		// TaskPoolSize so curators can verify the pool is non-empty
 		// before saving a company's stage config.
+		// ml_system_design uses the sysdesign canvas wire shape; the
+		// task-pool counter resolves to the ML sysdesign task seed.
 		return true
 	}
 	return false
@@ -137,7 +139,10 @@ func isTaskSolveKind(k string) bool {
 
 func isQuestionPoolKind(k string) bool {
 	switch k {
-	case "hr", "behavioral":
+	case "hr", "behavioral", "ml_theory":
+		// ml_theory uses the question-pool path (stage_default_questions +
+		// company_questions overlay) — same shape как HR/behavioral, judge
+		// branches на pass2MLTheorySystemPrompt.
 		return true
 	}
 	return false

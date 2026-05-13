@@ -19,12 +19,15 @@
 //     `mock_pipeline.coming_soon` and we render the EmptyState with a retry
 //     CTA (the legacy /voice-mock fallback was dropped in D7 2026-05-12).
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Bot, Check, Target } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
 import { EmptyState } from '../../components/EmptyState'
 import { CompanyCard } from '../../components/mock/CompanyCard'
+import { TrackFilterChips } from '../../components/TrackFilterChips'
+import { useTrackFilter } from '../../lib/useTrackFilter'
+import { classifyMockCompanySections, itemMatchesFilter } from '../../lib/trackFilter'
 import {
   isComingSoonError,
   MOCK_AI_ASSIST_STORAGE_KEY,
@@ -100,6 +103,24 @@ export default function MockCompanyPicker() {
   const create = useCreateMockPipelineMutation()
   const [aiAssist, setAiAssist] = useState<boolean>(loadInitialAiAssist)
   const [selectedSections, setSelectedSections] = useState<string[]>(loadInitialSections)
+
+  // Track filter (Phase K 6.1) — narrows the company list down to firms
+  // whose pipeline sections touch the active track(s). Companies are
+  // multi-track by nature (most carry algo+sysdesign+behavioral), so we
+  // classify section→TrackKey set and match by intersection.
+  const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({
+    persistKey: 'mock:track-filter:v1',
+    defaultFromPrimaryGoal: true,
+  })
+
+  const filteredCompanies = useMemo(() => {
+    if (!companies.data) return []
+    if (selectedTracks.size === 0) return companies.data
+    return companies.data.filter((c) => {
+      const trackSet = classifyMockCompanySections(c.sections ?? [])
+      return itemMatchesFilter(trackSet, selectedTracks)
+    })
+  }, [companies.data, selectedTracks])
 
   // ?focus=<atlas_node_id>&section=<atlas_section>&title=<node_title> —
   // пришли из Atlas drawer. Pre-select'аем mock-секции под этот узел и
@@ -260,6 +281,28 @@ export default function MockCompanyPicker() {
           />
         </fieldset>
 
+        {/* Track filter chips — Phase K 6.1. Narrows visible companies
+            to firms touching the active track. Hidden during loading /
+            error / empty states (no point filtering nothing). */}
+        {companies.isSuccess && companies.data.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface-1 p-4">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+              трек
+            </span>
+            <TrackFilterChips
+              selected={selectedTracks}
+              onChange={setSelectedTracks}
+              persistKey="mock:track-filter:v1"
+              ariaLabel="Фильтр компаний по трекам"
+            />
+            {selectedTracks.size > 0 && (
+              <span className="font-mono text-[10px] text-text-muted">
+                · {filteredCompanies.length} / {companies.data.length}
+              </span>
+            )}
+          </div>
+        )}
+
         {companies.isLoading && <EmptyState variant="loading" skeletonLayout="card-grid" />}
 
         {companies.isError && isComingSoonError(companies.error) && (
@@ -289,9 +332,18 @@ export default function MockCompanyPicker() {
           />
         )}
 
-        {companies.isSuccess && companies.data.length > 0 && (
+        {companies.isSuccess && companies.data.length > 0 && filteredCompanies.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border bg-surface-1 p-6 text-center">
+            <p className="text-sm text-text-secondary">
+              Ни одна компания не покрывает выбранный трек. Сбрось фильтр или
+              выбери другой трек.
+            </p>
+          </div>
+        )}
+
+        {companies.isSuccess && filteredCompanies.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {companies.data.map((c) => (
+            {filteredCompanies.map((c) => (
               <CompanyCard
                 key={c.id}
                 company={c}

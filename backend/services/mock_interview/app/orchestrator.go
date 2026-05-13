@@ -166,11 +166,12 @@ func (o *Orchestrator) StartNextStage(ctx context.Context, pipelineID uuid.UUID)
 	// behavioral / sysdesign are Phase D/E — keep the stub (no attempts).
 	var attempts []AttemptView
 	switch stage.StageKind {
-	case domain.StageHR, domain.StageBehavioral:
-		// HR + behavioral share the question-pool shape: one pipeline_attempt
-		// per default + (optional) company-overlay question. Judge prompt
-		// branches on StageKind for STAR-rubric (behavioral) vs general
-		// (HR) — see judge.go pass-2 prompt selector.
+	case domain.StageHR, domain.StageBehavioral, domain.StageMLTheory:
+		// HR + behavioral + ml_theory share the question-pool shape: one
+		// pipeline_attempt per default + (optional) company-overlay question.
+		// Judge prompt branches on StageKind for STAR-rubric (behavioral)
+		// vs ML-theory rubric (deep-learning fundamentals) vs general
+		// (HR / ml_theory fallback) — see judge.go pass-2 prompt selector.
 		attempts, err = o.materialiseQuestionAttempts(ctx, stage.ID, stage.StageKind, pipe.CompanyID)
 		if err != nil {
 			return StageWithAttempts{}, fmt.Errorf("materialise %s attempts: %w", stage.StageKind, err)
@@ -180,7 +181,11 @@ func (o *Orchestrator) StartNextStage(ctx context.Context, pipelineID uuid.UUID)
 		if err != nil {
 			return StageWithAttempts{}, fmt.Errorf("materialise task attempts: %w", err)
 		}
-	case domain.StageSysDesign:
+	case domain.StageSysDesign, domain.StageMLSystemDesign:
+		// ml_system_design uses the same canvas wire shape as sysdesign;
+		// 5-axis SysDesignGrader rubric scores both. ML-specific bias is
+		// applied through ReferenceCriteria seed (recsys / ranking /
+		// training pipeline) — see company_questions seed for ML companies.
 		attempts, err = o.materialiseSysDesignAttempts(ctx, stage, pipe)
 		if err != nil {
 			return StageWithAttempts{}, fmt.Errorf("materialise sysdesign attempts: %w", err)
@@ -961,6 +966,13 @@ var stageToStruggleAnchor = map[domain.StageKind]string{
 	// ML-failed mock still surfaces under coding struggle, и atlas
 	// bump'ит ml_basics through stageToAtlasNode ниже.
 	domain.StageMLCoding: "stage:coding",
+	// ML system design folds into sysdesign struggle anchor — same axis,
+	// different bias. Atlas keeps ml_system_design as a separate node для
+	// curriculum drill-down. ml_theory же — отдельный учебный axis
+	// (DL fundamentals), используем `stage:ml_theory` anchor чтобы tutor
+	// + curation могли таргетно подтянуть ресурсы по теории.
+	domain.StageMLSystemDesign: "stage:sysdesign",
+	domain.StageMLTheory:       "stage:ml_theory",
 }
 
 // emitStruggleMarks walks the final stages and fires the struggle hook
@@ -989,17 +1001,23 @@ func (o *Orchestrator) emitStruggleMarks(ctx context.Context, userID uuid.UUID, 
 }
 
 // stageToAtlasNode — primary atlas node_key per stage_kind. Maps
-// directly to the seeded atlas catalogue (см. migration 00002):
-//   - algo       → algo_basics  (массивы, хеш-таблицы, two-pointers)
-//   - coding     → go_concurrency (главный коридор coding-практики)
-//   - sysdesign  → sd_basics
-//   - behavioral → beh_star
-//   - hr         — пропускается (HR не «навык»)
+// directly to the seeded atlas catalogue (см. migration 00002 / 00033):
+//   - algo             → algo_basics  (массивы, хеш-таблицы, two-pointers)
+//   - coding           → go_concurrency (главный коридор coding-практики)
+//   - sysdesign        → sd_basics
+//   - behavioral       → beh_star
+//   - ml_coding        → ml_classical (numpy/sklearn/torch — hands-on)
+//   - ml_system_design → ml_system_design (recsys / ranking / serving)
+//   - ml_theory        → ml_deep_learning (backprop / attention / optim)
+//   - hr               — пропускается (HR не «навык»)
 var stageToAtlasNode = map[domain.StageKind]string{
-	domain.StageAlgo:       "algo_basics",
-	domain.StageCoding:     "go_concurrency",
-	domain.StageSysDesign:  "sd_basics",
-	domain.StageBehavioral: "beh_star",
+	domain.StageAlgo:           "algo_basics",
+	domain.StageCoding:         "go_concurrency",
+	domain.StageSysDesign:      "sd_basics",
+	domain.StageBehavioral:     "beh_star",
+	domain.StageMLCoding:       "ml_classical",
+	domain.StageMLSystemDesign: "ml_system_design",
+	domain.StageMLTheory:       "ml_deep_learning",
 }
 
 // bumpAtlasFromStages пробегает по финальным stages и upsert'ит

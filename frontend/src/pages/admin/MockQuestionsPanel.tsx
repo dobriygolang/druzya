@@ -29,7 +29,16 @@ import {
   type StageKind,
 } from '../../lib/queries/mockAdmin'
 
-const STAGE_KINDS: StageKind[] = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral']
+const STAGE_KINDS: StageKind[] = [
+  'hr',
+  'algo',
+  'coding',
+  'sysdesign',
+  'behavioral',
+  'ml_coding',
+  'ml_system_design',
+  'ml_theory',
+]
 
 export function MockQuestionsPanel() {
   return (

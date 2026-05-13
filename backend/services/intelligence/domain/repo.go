@@ -277,6 +277,14 @@ type BriefPromptInput struct {
 	// ResourceTrail — engagement signals из user_resource_log за окно.
 	// Prompt-block RESOURCE TRAIL активен когда total events > 0.
 	ResourceTrail ResourceEngagement
+
+	// ML — Phase K, M5 (2026-05-13) ML-track detection. When IsML=true,
+	// brief synthesiser injects mlBriefOverlay (см infra/ml_prompt.go) as
+	// second system message — coach swaps generic Go-senior tropes for
+	// ML-flavoured guidance (numpy/pytorch coding, recsys/ranking sysdesign,
+	// Lilian Weng / Chip Huyen resource pool). Zero-value (IsML=false) — no
+	// overlay, default coach behaviour.
+	ML MLProfile
 }
 
 // ExternalActivitySummary — 7-дневная агрегация external_activity записей.

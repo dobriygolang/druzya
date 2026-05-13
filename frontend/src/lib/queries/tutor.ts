@@ -480,6 +480,12 @@ export type TutorEvent = {
   cancellation_reason: string
   /** Wave 5.2d — non-empty iff status='completed'. Tutor's session write-up. */
   session_note: string
+  /** Phase K T4 — 'private' | 'shared'. Default 'private'. */
+  visibility?: 'private' | 'shared'
+  /** Phase K T4 — optional curated copy для student-facing audience. */
+  shared_content_md?: string
+  /** Phase K T4 — stamp of first private→shared transition. RFC3339. */
+  shared_at?: string
   created_at?: string
   updated_at?: string
 }
@@ -503,6 +509,36 @@ export function useTutorActivityQuery(windowDays = 30) {
     queryKey: ['tutor', 'activity', windowDays] as const,
     queryFn: () => api<TutorActivity>(`/tutor/activity?window_days=${windowDays}`),
     staleTime: 60_000,
+  })
+}
+
+// ── Student-side tutor activity (Phase K T6, 2026-05-12) ─────────────
+//
+// Drives the «Тебя сегодня учат: ...» card on /today + Hone Home rail.
+// Privacy contract: NO other-student names, NO event titles — only
+// aggregate counts + the tutor's own public display fields.
+
+export type MyTutorActivitySummary = {
+  tutor_user_id: string
+  tutor_display_name: string
+  tutor_username: string
+  tutor_avatar_url: string
+  /** RFC3339 or empty when never active. */
+  last_active_at?: string
+  active_student_count_other: number
+  recent_events_count: number
+}
+
+export function useMyTutorsActivityQuery(recentWindowDays = 7) {
+  return useQuery({
+    queryKey: ['tutor', 'my-tutors', 'activity', recentWindowDays] as const,
+    queryFn: () =>
+      api<{ items: MyTutorActivitySummary[] }>(
+        `/tutor/my-tutors/activity?recent_window_days=${recentWindowDays}`,
+      ),
+    // Backend caches per-user 5 min; frontend keeps its own short stale
+    // window so a tutor's just-scheduled event reflects on next navigate.
+    staleTime: 120_000,
   })
 }
 
@@ -668,6 +704,36 @@ export function useCompleteEventMutation() {
           body: JSON.stringify({
             event_id: vars.event_id,
             session_note: vars.session_note,
+          }),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tutor', 'events'] })
+    },
+  })
+}
+
+/** Phase K T4 (2026-05-13) — tutor toggles session-note visibility for
+ *  the student. visibility='private' hides (default); 'shared' surfaces
+ *  the note via the student-side feed. Optional `shared_content_md`
+ *  lets the tutor craft a curated student-facing copy без editing the
+ *  full private note (empty = share raw private note as-is). */
+export function useSetSessionNoteVisibilityMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: {
+      event_id: string
+      visibility: 'private' | 'shared'
+      shared_content_md?: string
+    }) =>
+      api<{ event: TutorEvent }>(
+        `/tutor/events/${encodeURIComponent(vars.event_id)}/note-visibility`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            event_id: vars.event_id,
+            visibility: vars.visibility,
+            shared_content_md: vars.shared_content_md ?? '',
           }),
         },
       ),

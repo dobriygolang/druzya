@@ -1124,6 +1124,195 @@ func (x *TutorActivityResponse) GetDailyMinutes() []int32 {
 	return nil
 }
 
+type TutorMyTutorsActivityRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Recent-events window. 0 → server default (7 days). Capped at 30.
+	RecentWindowDays int32 `protobuf:"varint,1,opt,name=recent_window_days,json=recentWindowDays,proto3" json:"recent_window_days,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *TutorMyTutorsActivityRequest) Reset() {
+	*x = TutorMyTutorsActivityRequest{}
+	mi := &file_druz9_v1_tutor_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TutorMyTutorsActivityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TutorMyTutorsActivityRequest) ProtoMessage() {}
+
+func (x *TutorMyTutorsActivityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tutor_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TutorMyTutorsActivityRequest.ProtoReflect.Descriptor instead.
+func (*TutorMyTutorsActivityRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *TutorMyTutorsActivityRequest) GetRecentWindowDays() int32 {
+	if x != nil {
+		return x.RecentWindowDays
+	}
+	return 0
+}
+
+// One row per active tutor of the caller. Order — most-recently-active
+// first (matches the «who's around today» UX intent).
+type TutorMyTutorActivitySummary struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	TutorUserId      string                 `protobuf:"bytes,1,opt,name=tutor_user_id,json=tutorUserId,proto3" json:"tutor_user_id,omitempty"`
+	TutorDisplayName string                 `protobuf:"bytes,2,opt,name=tutor_display_name,json=tutorDisplayName,proto3" json:"tutor_display_name,omitempty"` // public profile field
+	TutorUsername    string                 `protobuf:"bytes,3,opt,name=tutor_username,json=tutorUsername,proto3" json:"tutor_username,omitempty"`
+	TutorAvatarUrl   string                 `protobuf:"bytes,4,opt,name=tutor_avatar_url,json=tutorAvatarUrl,proto3" json:"tutor_avatar_url,omitempty"`
+	// Zero Timestamp = «no activity ever recorded». Maximum across
+	// (tutor_events.created_at | scheduled_at | completed_at) restricted
+	// to events authored by this tutor — no student-side data exposed.
+	LastActiveAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=last_active_at,json=lastActiveAt,proto3" json:"last_active_at,omitempty"`
+	// Active students of this tutor MINUS the caller. Floor 0.
+	ActiveStudentCountOther int32 `protobuf:"varint,6,opt,name=active_student_count_other,json=activeStudentCountOther,proto3" json:"active_student_count_other,omitempty"`
+	// Count of events (any status) authored by this tutor inside the
+	// recent window. Aggregate-only — no per-student or per-title detail.
+	RecentEventsCount int32 `protobuf:"varint,7,opt,name=recent_events_count,json=recentEventsCount,proto3" json:"recent_events_count,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *TutorMyTutorActivitySummary) Reset() {
+	*x = TutorMyTutorActivitySummary{}
+	mi := &file_druz9_v1_tutor_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TutorMyTutorActivitySummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TutorMyTutorActivitySummary) ProtoMessage() {}
+
+func (x *TutorMyTutorActivitySummary) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tutor_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TutorMyTutorActivitySummary.ProtoReflect.Descriptor instead.
+func (*TutorMyTutorActivitySummary) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *TutorMyTutorActivitySummary) GetTutorUserId() string {
+	if x != nil {
+		return x.TutorUserId
+	}
+	return ""
+}
+
+func (x *TutorMyTutorActivitySummary) GetTutorDisplayName() string {
+	if x != nil {
+		return x.TutorDisplayName
+	}
+	return ""
+}
+
+func (x *TutorMyTutorActivitySummary) GetTutorUsername() string {
+	if x != nil {
+		return x.TutorUsername
+	}
+	return ""
+}
+
+func (x *TutorMyTutorActivitySummary) GetTutorAvatarUrl() string {
+	if x != nil {
+		return x.TutorAvatarUrl
+	}
+	return ""
+}
+
+func (x *TutorMyTutorActivitySummary) GetLastActiveAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastActiveAt
+	}
+	return nil
+}
+
+func (x *TutorMyTutorActivitySummary) GetActiveStudentCountOther() int32 {
+	if x != nil {
+		return x.ActiveStudentCountOther
+	}
+	return 0
+}
+
+func (x *TutorMyTutorActivitySummary) GetRecentEventsCount() int32 {
+	if x != nil {
+		return x.RecentEventsCount
+	}
+	return 0
+}
+
+type TutorMyTutorsActivityResponse struct {
+	state         protoimpl.MessageState         `protogen:"open.v1"`
+	Items         []*TutorMyTutorActivitySummary `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TutorMyTutorsActivityResponse) Reset() {
+	*x = TutorMyTutorsActivityResponse{}
+	mi := &file_druz9_v1_tutor_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TutorMyTutorsActivityResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TutorMyTutorsActivityResponse) ProtoMessage() {}
+
+func (x *TutorMyTutorsActivityResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tutor_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TutorMyTutorsActivityResponse.ProtoReflect.Descriptor instead.
+func (*TutorMyTutorsActivityResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *TutorMyTutorsActivityResponse) GetItems() []*TutorMyTutorActivitySummary {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 type TutorCreateGroupEventRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CircleId      string                 `protobuf:"bytes,1,opt,name=circle_id,json=circleId,proto3" json:"circle_id,omitempty"`
@@ -1139,7 +1328,7 @@ type TutorCreateGroupEventRequest struct {
 
 func (x *TutorCreateGroupEventRequest) Reset() {
 	*x = TutorCreateGroupEventRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[17]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1151,7 +1340,7 @@ func (x *TutorCreateGroupEventRequest) String() string {
 func (*TutorCreateGroupEventRequest) ProtoMessage() {}
 
 func (x *TutorCreateGroupEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[17]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1164,7 +1353,7 @@ func (x *TutorCreateGroupEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorCreateGroupEventRequest.ProtoReflect.Descriptor instead.
 func (*TutorCreateGroupEventRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{17}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *TutorCreateGroupEventRequest) GetCircleId() string {
@@ -1225,7 +1414,7 @@ type TutorJoinEventRequest struct {
 
 func (x *TutorJoinEventRequest) Reset() {
 	*x = TutorJoinEventRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[18]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1237,7 +1426,7 @@ func (x *TutorJoinEventRequest) String() string {
 func (*TutorJoinEventRequest) ProtoMessage() {}
 
 func (x *TutorJoinEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[18]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1250,7 +1439,7 @@ func (x *TutorJoinEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorJoinEventRequest.ProtoReflect.Descriptor instead.
 func (*TutorJoinEventRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{18}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *TutorJoinEventRequest) GetEventId() string {
@@ -1268,7 +1457,7 @@ type TutorJoinEventResponse struct {
 
 func (x *TutorJoinEventResponse) Reset() {
 	*x = TutorJoinEventResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[19]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1280,7 +1469,7 @@ func (x *TutorJoinEventResponse) String() string {
 func (*TutorJoinEventResponse) ProtoMessage() {}
 
 func (x *TutorJoinEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[19]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1293,7 +1482,7 @@ func (x *TutorJoinEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorJoinEventResponse.ProtoReflect.Descriptor instead.
 func (*TutorJoinEventResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{19}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{22}
 }
 
 type TutorLeaveEventRequest struct {
@@ -1305,7 +1494,7 @@ type TutorLeaveEventRequest struct {
 
 func (x *TutorLeaveEventRequest) Reset() {
 	*x = TutorLeaveEventRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[20]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1317,7 +1506,7 @@ func (x *TutorLeaveEventRequest) String() string {
 func (*TutorLeaveEventRequest) ProtoMessage() {}
 
 func (x *TutorLeaveEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[20]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1330,7 +1519,7 @@ func (x *TutorLeaveEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorLeaveEventRequest.ProtoReflect.Descriptor instead.
 func (*TutorLeaveEventRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{20}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *TutorLeaveEventRequest) GetEventId() string {
@@ -1348,7 +1537,7 @@ type TutorLeaveEventResponse struct {
 
 func (x *TutorLeaveEventResponse) Reset() {
 	*x = TutorLeaveEventResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[21]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1360,7 +1549,7 @@ func (x *TutorLeaveEventResponse) String() string {
 func (*TutorLeaveEventResponse) ProtoMessage() {}
 
 func (x *TutorLeaveEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[21]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1373,7 +1562,7 @@ func (x *TutorLeaveEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorLeaveEventResponse.ProtoReflect.Descriptor instead.
 func (*TutorLeaveEventResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{21}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{24}
 }
 
 type TutorListUpcomingGroupEventsRequest struct {
@@ -1385,7 +1574,7 @@ type TutorListUpcomingGroupEventsRequest struct {
 
 func (x *TutorListUpcomingGroupEventsRequest) Reset() {
 	*x = TutorListUpcomingGroupEventsRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[22]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1397,7 +1586,7 @@ func (x *TutorListUpcomingGroupEventsRequest) String() string {
 func (*TutorListUpcomingGroupEventsRequest) ProtoMessage() {}
 
 func (x *TutorListUpcomingGroupEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[22]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1410,7 +1599,7 @@ func (x *TutorListUpcomingGroupEventsRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use TutorListUpcomingGroupEventsRequest.ProtoReflect.Descriptor instead.
 func (*TutorListUpcomingGroupEventsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{22}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *TutorListUpcomingGroupEventsRequest) GetLimit() int32 {
@@ -1429,7 +1618,7 @@ type TutorGetEventRSVPCountRequest struct {
 
 func (x *TutorGetEventRSVPCountRequest) Reset() {
 	*x = TutorGetEventRSVPCountRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[23]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1441,7 +1630,7 @@ func (x *TutorGetEventRSVPCountRequest) String() string {
 func (*TutorGetEventRSVPCountRequest) ProtoMessage() {}
 
 func (x *TutorGetEventRSVPCountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[23]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1454,7 +1643,7 @@ func (x *TutorGetEventRSVPCountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorGetEventRSVPCountRequest.ProtoReflect.Descriptor instead.
 func (*TutorGetEventRSVPCountRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{23}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *TutorGetEventRSVPCountRequest) GetEventId() string {
@@ -1473,7 +1662,7 @@ type TutorGetEventRSVPCountResponse struct {
 
 func (x *TutorGetEventRSVPCountResponse) Reset() {
 	*x = TutorGetEventRSVPCountResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[24]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1485,7 +1674,7 @@ func (x *TutorGetEventRSVPCountResponse) String() string {
 func (*TutorGetEventRSVPCountResponse) ProtoMessage() {}
 
 func (x *TutorGetEventRSVPCountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[24]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1498,7 +1687,7 @@ func (x *TutorGetEventRSVPCountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorGetEventRSVPCountResponse.ProtoReflect.Descriptor instead.
 func (*TutorGetEventRSVPCountResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{24}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *TutorGetEventRSVPCountResponse) GetCount() int32 {
@@ -1517,7 +1706,7 @@ type TutorEndRelationshipRequest struct {
 
 func (x *TutorEndRelationshipRequest) Reset() {
 	*x = TutorEndRelationshipRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[25]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1529,7 +1718,7 @@ func (x *TutorEndRelationshipRequest) String() string {
 func (*TutorEndRelationshipRequest) ProtoMessage() {}
 
 func (x *TutorEndRelationshipRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[25]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1542,7 +1731,7 @@ func (x *TutorEndRelationshipRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorEndRelationshipRequest.ProtoReflect.Descriptor instead.
 func (*TutorEndRelationshipRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{25}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *TutorEndRelationshipRequest) GetStudentId() string {
@@ -1560,7 +1749,7 @@ type TutorEndRelationshipResponse struct {
 
 func (x *TutorEndRelationshipResponse) Reset() {
 	*x = TutorEndRelationshipResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[26]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1572,7 +1761,7 @@ func (x *TutorEndRelationshipResponse) String() string {
 func (*TutorEndRelationshipResponse) ProtoMessage() {}
 
 func (x *TutorEndRelationshipResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[26]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1585,7 +1774,7 @@ func (x *TutorEndRelationshipResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorEndRelationshipResponse.ProtoReflect.Descriptor instead.
 func (*TutorEndRelationshipResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{26}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{29}
 }
 
 type TutorWeakSpot struct {
@@ -1599,7 +1788,7 @@ type TutorWeakSpot struct {
 
 func (x *TutorWeakSpot) Reset() {
 	*x = TutorWeakSpot{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[27]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1611,7 +1800,7 @@ func (x *TutorWeakSpot) String() string {
 func (*TutorWeakSpot) ProtoMessage() {}
 
 func (x *TutorWeakSpot) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[27]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1624,7 +1813,7 @@ func (x *TutorWeakSpot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorWeakSpot.ProtoReflect.Descriptor instead.
 func (*TutorWeakSpot) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{27}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *TutorWeakSpot) GetNodeKey() string {
@@ -1678,7 +1867,7 @@ type TutorStudentSnapshot struct {
 
 func (x *TutorStudentSnapshot) Reset() {
 	*x = TutorStudentSnapshot{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[28]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1690,7 +1879,7 @@ func (x *TutorStudentSnapshot) String() string {
 func (*TutorStudentSnapshot) ProtoMessage() {}
 
 func (x *TutorStudentSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[28]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1703,7 +1892,7 @@ func (x *TutorStudentSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorStudentSnapshot.ProtoReflect.Descriptor instead.
 func (*TutorStudentSnapshot) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{28}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *TutorStudentSnapshot) GetStudentId() string {
@@ -1835,7 +2024,7 @@ type TutorGetStudentSnapshotRequest struct {
 
 func (x *TutorGetStudentSnapshotRequest) Reset() {
 	*x = TutorGetStudentSnapshotRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[29]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1847,7 +2036,7 @@ func (x *TutorGetStudentSnapshotRequest) String() string {
 func (*TutorGetStudentSnapshotRequest) ProtoMessage() {}
 
 func (x *TutorGetStudentSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[29]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1860,7 +2049,7 @@ func (x *TutorGetStudentSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorGetStudentSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*TutorGetStudentSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{29}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *TutorGetStudentSnapshotRequest) GetStudentId() string {
@@ -1887,7 +2076,7 @@ type TutorPreSessionBrief struct {
 
 func (x *TutorPreSessionBrief) Reset() {
 	*x = TutorPreSessionBrief{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[30]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1899,7 +2088,7 @@ func (x *TutorPreSessionBrief) String() string {
 func (*TutorPreSessionBrief) ProtoMessage() {}
 
 func (x *TutorPreSessionBrief) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[30]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1912,7 +2101,7 @@ func (x *TutorPreSessionBrief) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorPreSessionBrief.ProtoReflect.Descriptor instead.
 func (*TutorPreSessionBrief) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{30}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *TutorPreSessionBrief) GetSnapshot() *TutorStudentSnapshot {
@@ -1939,7 +2128,7 @@ type TutorGenerateBriefRequest struct {
 
 func (x *TutorGenerateBriefRequest) Reset() {
 	*x = TutorGenerateBriefRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[31]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1951,7 +2140,7 @@ func (x *TutorGenerateBriefRequest) String() string {
 func (*TutorGenerateBriefRequest) ProtoMessage() {}
 
 func (x *TutorGenerateBriefRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[31]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1964,7 +2153,7 @@ func (x *TutorGenerateBriefRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorGenerateBriefRequest.ProtoReflect.Descriptor instead.
 func (*TutorGenerateBriefRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{31}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *TutorGenerateBriefRequest) GetStudentId() string {
@@ -2004,7 +2193,7 @@ type TutorAssignment struct {
 
 func (x *TutorAssignment) Reset() {
 	*x = TutorAssignment{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[32]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2016,7 +2205,7 @@ func (x *TutorAssignment) String() string {
 func (*TutorAssignment) ProtoMessage() {}
 
 func (x *TutorAssignment) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[32]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2029,7 +2218,7 @@ func (x *TutorAssignment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorAssignment.ProtoReflect.Descriptor instead.
 func (*TutorAssignment) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{32}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *TutorAssignment) GetId() string {
@@ -2109,7 +2298,7 @@ type TutorPushAssignmentRequest struct {
 
 func (x *TutorPushAssignmentRequest) Reset() {
 	*x = TutorPushAssignmentRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[33]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2121,7 +2310,7 @@ func (x *TutorPushAssignmentRequest) String() string {
 func (*TutorPushAssignmentRequest) ProtoMessage() {}
 
 func (x *TutorPushAssignmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[33]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2134,7 +2323,7 @@ func (x *TutorPushAssignmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorPushAssignmentRequest.ProtoReflect.Descriptor instead.
 func (*TutorPushAssignmentRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{33}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *TutorPushAssignmentRequest) GetStudentId() string {
@@ -2176,7 +2365,7 @@ type TutorListAssignmentsRequest struct {
 
 func (x *TutorListAssignmentsRequest) Reset() {
 	*x = TutorListAssignmentsRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[34]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2188,7 +2377,7 @@ func (x *TutorListAssignmentsRequest) String() string {
 func (*TutorListAssignmentsRequest) ProtoMessage() {}
 
 func (x *TutorListAssignmentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[34]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2201,7 +2390,7 @@ func (x *TutorListAssignmentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListAssignmentsRequest.ProtoReflect.Descriptor instead.
 func (*TutorListAssignmentsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{34}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *TutorListAssignmentsRequest) GetStudentId() string {
@@ -2235,7 +2424,7 @@ type TutorListPendingAssignmentsRequest struct {
 
 func (x *TutorListPendingAssignmentsRequest) Reset() {
 	*x = TutorListPendingAssignmentsRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[35]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2247,7 +2436,7 @@ func (x *TutorListPendingAssignmentsRequest) String() string {
 func (*TutorListPendingAssignmentsRequest) ProtoMessage() {}
 
 func (x *TutorListPendingAssignmentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[35]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2260,7 +2449,7 @@ func (x *TutorListPendingAssignmentsRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use TutorListPendingAssignmentsRequest.ProtoReflect.Descriptor instead.
 func (*TutorListPendingAssignmentsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{35}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *TutorListPendingAssignmentsRequest) GetLimit() int32 {
@@ -2287,7 +2476,7 @@ type TutorListAssignmentsResponse struct {
 
 func (x *TutorListAssignmentsResponse) Reset() {
 	*x = TutorListAssignmentsResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[36]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2299,7 +2488,7 @@ func (x *TutorListAssignmentsResponse) String() string {
 func (*TutorListAssignmentsResponse) ProtoMessage() {}
 
 func (x *TutorListAssignmentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[36]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2312,7 +2501,7 @@ func (x *TutorListAssignmentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListAssignmentsResponse.ProtoReflect.Descriptor instead.
 func (*TutorListAssignmentsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{36}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *TutorListAssignmentsResponse) GetItems() []*TutorAssignment {
@@ -2338,7 +2527,7 @@ type TutorCompleteAssignmentRequest struct {
 
 func (x *TutorCompleteAssignmentRequest) Reset() {
 	*x = TutorCompleteAssignmentRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[37]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2350,7 +2539,7 @@ func (x *TutorCompleteAssignmentRequest) String() string {
 func (*TutorCompleteAssignmentRequest) ProtoMessage() {}
 
 func (x *TutorCompleteAssignmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[37]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2363,7 +2552,7 @@ func (x *TutorCompleteAssignmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorCompleteAssignmentRequest.ProtoReflect.Descriptor instead.
 func (*TutorCompleteAssignmentRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{37}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *TutorCompleteAssignmentRequest) GetAssignmentId() string {
@@ -2381,7 +2570,7 @@ type TutorCompleteAssignmentResponse struct {
 
 func (x *TutorCompleteAssignmentResponse) Reset() {
 	*x = TutorCompleteAssignmentResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[38]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2393,7 +2582,7 @@ func (x *TutorCompleteAssignmentResponse) String() string {
 func (*TutorCompleteAssignmentResponse) ProtoMessage() {}
 
 func (x *TutorCompleteAssignmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[38]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2406,7 +2595,7 @@ func (x *TutorCompleteAssignmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorCompleteAssignmentResponse.ProtoReflect.Descriptor instead.
 func (*TutorCompleteAssignmentResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{38}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{41}
 }
 
 type TutorArchiveAssignmentRequest struct {
@@ -2418,7 +2607,7 @@ type TutorArchiveAssignmentRequest struct {
 
 func (x *TutorArchiveAssignmentRequest) Reset() {
 	*x = TutorArchiveAssignmentRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[39]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2430,7 +2619,7 @@ func (x *TutorArchiveAssignmentRequest) String() string {
 func (*TutorArchiveAssignmentRequest) ProtoMessage() {}
 
 func (x *TutorArchiveAssignmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[39]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2443,7 +2632,7 @@ func (x *TutorArchiveAssignmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorArchiveAssignmentRequest.ProtoReflect.Descriptor instead.
 func (*TutorArchiveAssignmentRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{39}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *TutorArchiveAssignmentRequest) GetAssignmentId() string {
@@ -2461,7 +2650,7 @@ type TutorArchiveAssignmentResponse struct {
 
 func (x *TutorArchiveAssignmentResponse) Reset() {
 	*x = TutorArchiveAssignmentResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[40]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2473,7 +2662,7 @@ func (x *TutorArchiveAssignmentResponse) String() string {
 func (*TutorArchiveAssignmentResponse) ProtoMessage() {}
 
 func (x *TutorArchiveAssignmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[40]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2486,7 +2675,7 @@ func (x *TutorArchiveAssignmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorArchiveAssignmentResponse.ProtoReflect.Descriptor instead.
 func (*TutorArchiveAssignmentResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{40}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{43}
 }
 
 type TutorBroadcastAssignmentRequest struct {
@@ -2501,7 +2690,7 @@ type TutorBroadcastAssignmentRequest struct {
 
 func (x *TutorBroadcastAssignmentRequest) Reset() {
 	*x = TutorBroadcastAssignmentRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[41]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2513,7 +2702,7 @@ func (x *TutorBroadcastAssignmentRequest) String() string {
 func (*TutorBroadcastAssignmentRequest) ProtoMessage() {}
 
 func (x *TutorBroadcastAssignmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[41]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2526,7 +2715,7 @@ func (x *TutorBroadcastAssignmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorBroadcastAssignmentRequest.ProtoReflect.Descriptor instead.
 func (*TutorBroadcastAssignmentRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{41}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *TutorBroadcastAssignmentRequest) GetTitle() string {
@@ -2563,7 +2752,7 @@ type TutorBroadcastFailure struct {
 
 func (x *TutorBroadcastFailure) Reset() {
 	*x = TutorBroadcastFailure{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[42]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2575,7 +2764,7 @@ func (x *TutorBroadcastFailure) String() string {
 func (*TutorBroadcastFailure) ProtoMessage() {}
 
 func (x *TutorBroadcastFailure) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[42]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2588,7 +2777,7 @@ func (x *TutorBroadcastFailure) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorBroadcastFailure.ProtoReflect.Descriptor instead.
 func (*TutorBroadcastFailure) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{42}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *TutorBroadcastFailure) GetStudentId() string {
@@ -2620,7 +2809,7 @@ type TutorSharedMaterial struct {
 
 func (x *TutorSharedMaterial) Reset() {
 	*x = TutorSharedMaterial{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[43]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2632,7 +2821,7 @@ func (x *TutorSharedMaterial) String() string {
 func (*TutorSharedMaterial) ProtoMessage() {}
 
 func (x *TutorSharedMaterial) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[43]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2645,7 +2834,7 @@ func (x *TutorSharedMaterial) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorSharedMaterial.ProtoReflect.Descriptor instead.
 func (*TutorSharedMaterial) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{43}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *TutorSharedMaterial) GetId() string {
@@ -2708,7 +2897,7 @@ type TutorPushSharedReadingRequest struct {
 
 func (x *TutorPushSharedReadingRequest) Reset() {
 	*x = TutorPushSharedReadingRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[44]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2720,7 +2909,7 @@ func (x *TutorPushSharedReadingRequest) String() string {
 func (*TutorPushSharedReadingRequest) ProtoMessage() {}
 
 func (x *TutorPushSharedReadingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[44]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2733,7 +2922,7 @@ func (x *TutorPushSharedReadingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorPushSharedReadingRequest.ProtoReflect.Descriptor instead.
 func (*TutorPushSharedReadingRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{44}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *TutorPushSharedReadingRequest) GetTitle() string {
@@ -2768,7 +2957,7 @@ type TutorPushSharedReadingResponse struct {
 
 func (x *TutorPushSharedReadingResponse) Reset() {
 	*x = TutorPushSharedReadingResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[45]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2780,7 +2969,7 @@ func (x *TutorPushSharedReadingResponse) String() string {
 func (*TutorPushSharedReadingResponse) ProtoMessage() {}
 
 func (x *TutorPushSharedReadingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[45]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2793,7 +2982,7 @@ func (x *TutorPushSharedReadingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorPushSharedReadingResponse.ProtoReflect.Descriptor instead.
 func (*TutorPushSharedReadingResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{45}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *TutorPushSharedReadingResponse) GetMaterial() *TutorSharedMaterial {
@@ -2827,7 +3016,7 @@ type TutorListSharedReadingRequest struct {
 
 func (x *TutorListSharedReadingRequest) Reset() {
 	*x = TutorListSharedReadingRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[46]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2839,7 +3028,7 @@ func (x *TutorListSharedReadingRequest) String() string {
 func (*TutorListSharedReadingRequest) ProtoMessage() {}
 
 func (x *TutorListSharedReadingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[46]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2852,7 +3041,7 @@ func (x *TutorListSharedReadingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListSharedReadingRequest.ProtoReflect.Descriptor instead.
 func (*TutorListSharedReadingRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{46}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *TutorListSharedReadingRequest) GetLimit() int32 {
@@ -2879,7 +3068,7 @@ type TutorListSharedReadingResponse struct {
 
 func (x *TutorListSharedReadingResponse) Reset() {
 	*x = TutorListSharedReadingResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[47]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2891,7 +3080,7 @@ func (x *TutorListSharedReadingResponse) String() string {
 func (*TutorListSharedReadingResponse) ProtoMessage() {}
 
 func (x *TutorListSharedReadingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[47]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2904,7 +3093,7 @@ func (x *TutorListSharedReadingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListSharedReadingResponse.ProtoReflect.Descriptor instead.
 func (*TutorListSharedReadingResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{47}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *TutorListSharedReadingResponse) GetItems() []*TutorSharedMaterial {
@@ -2931,7 +3120,7 @@ type TutorBroadcastAssignmentResponse struct {
 
 func (x *TutorBroadcastAssignmentResponse) Reset() {
 	*x = TutorBroadcastAssignmentResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[48]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2943,7 +3132,7 @@ func (x *TutorBroadcastAssignmentResponse) String() string {
 func (*TutorBroadcastAssignmentResponse) ProtoMessage() {}
 
 func (x *TutorBroadcastAssignmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[48]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2956,7 +3145,7 @@ func (x *TutorBroadcastAssignmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorBroadcastAssignmentResponse.ProtoReflect.Descriptor instead.
 func (*TutorBroadcastAssignmentResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{48}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *TutorBroadcastAssignmentResponse) GetPushed() []*TutorAssignment {
@@ -2999,15 +3188,25 @@ type TutorEvent struct {
 	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt          *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Wave 5.2d — tutor's post-session write-up. Non-empty iff
-	// status=='completed'. Visible to both tutor + student.
-	SessionNote   string `protobuf:"bytes,15,opt,name=session_note,json=sessionNote,proto3" json:"session_note,omitempty"`
+	// status=='completed'. Tutor-visible always; student-visible only when
+	// visibility=='shared' (see field 16).
+	SessionNote string `protobuf:"bytes,15,opt,name=session_note,json=sessionNote,proto3" json:"session_note,omitempty"`
+	// Phase K T4 (2026-05-13) — session-note share toggle. 'private' (default)
+	// means student never sees the note; 'shared' surfaces it via
+	// ListSharedSessionNotesForStudent.
+	Visibility string `protobuf:"bytes,16,opt,name=visibility,proto3" json:"visibility,omitempty"`
+	// Optional curated copy for student-facing audience. Empty string with
+	// visibility='shared' means «share the full private note as-is».
+	SharedContentMd string `protobuf:"bytes,17,opt,name=shared_content_md,json=sharedContentMd,proto3" json:"shared_content_md,omitempty"`
+	// Stamp of first transition private→shared. Zero when never shared.
+	SharedAt      *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=shared_at,json=sharedAt,proto3" json:"shared_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TutorEvent) Reset() {
 	*x = TutorEvent{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[49]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3019,7 +3218,7 @@ func (x *TutorEvent) String() string {
 func (*TutorEvent) ProtoMessage() {}
 
 func (x *TutorEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[49]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3032,7 +3231,7 @@ func (x *TutorEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorEvent.ProtoReflect.Descriptor instead.
 func (*TutorEvent) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{49}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *TutorEvent) GetId() string {
@@ -3140,6 +3339,27 @@ func (x *TutorEvent) GetSessionNote() string {
 	return ""
 }
 
+func (x *TutorEvent) GetVisibility() string {
+	if x != nil {
+		return x.Visibility
+	}
+	return ""
+}
+
+func (x *TutorEvent) GetSharedContentMd() string {
+	if x != nil {
+		return x.SharedContentMd
+	}
+	return ""
+}
+
+func (x *TutorEvent) GetSharedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SharedAt
+	}
+	return nil
+}
+
 type TutorCreateEventRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	StudentId string                 `protobuf:"bytes,1,opt,name=student_id,json=studentId,proto3" json:"student_id,omitempty"` // V1: required
@@ -3155,7 +3375,7 @@ type TutorCreateEventRequest struct {
 
 func (x *TutorCreateEventRequest) Reset() {
 	*x = TutorCreateEventRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[50]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3167,7 +3387,7 @@ func (x *TutorCreateEventRequest) String() string {
 func (*TutorCreateEventRequest) ProtoMessage() {}
 
 func (x *TutorCreateEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[50]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3180,7 +3400,7 @@ func (x *TutorCreateEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorCreateEventRequest.ProtoReflect.Descriptor instead.
 func (*TutorCreateEventRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{50}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *TutorCreateEventRequest) GetStudentId() string {
@@ -3235,7 +3455,7 @@ type TutorCancelEventRequest struct {
 
 func (x *TutorCancelEventRequest) Reset() {
 	*x = TutorCancelEventRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[51]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3247,7 +3467,7 @@ func (x *TutorCancelEventRequest) String() string {
 func (*TutorCancelEventRequest) ProtoMessage() {}
 
 func (x *TutorCancelEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[51]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3260,7 +3480,7 @@ func (x *TutorCancelEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorCancelEventRequest.ProtoReflect.Descriptor instead.
 func (*TutorCancelEventRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{51}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *TutorCancelEventRequest) GetEventId() string {
@@ -3285,7 +3505,7 @@ type TutorCancelEventResponse struct {
 
 func (x *TutorCancelEventResponse) Reset() {
 	*x = TutorCancelEventResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[52]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3297,7 +3517,7 @@ func (x *TutorCancelEventResponse) String() string {
 func (*TutorCancelEventResponse) ProtoMessage() {}
 
 func (x *TutorCancelEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[52]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3310,7 +3530,7 @@ func (x *TutorCancelEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorCancelEventResponse.ProtoReflect.Descriptor instead.
 func (*TutorCancelEventResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{52}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{55}
 }
 
 type TutorCompleteEventRequest struct {
@@ -3323,7 +3543,7 @@ type TutorCompleteEventRequest struct {
 
 func (x *TutorCompleteEventRequest) Reset() {
 	*x = TutorCompleteEventRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[53]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3335,7 +3555,7 @@ func (x *TutorCompleteEventRequest) String() string {
 func (*TutorCompleteEventRequest) ProtoMessage() {}
 
 func (x *TutorCompleteEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[53]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3348,7 +3568,7 @@ func (x *TutorCompleteEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorCompleteEventRequest.ProtoReflect.Descriptor instead.
 func (*TutorCompleteEventRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{53}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *TutorCompleteEventRequest) GetEventId() string {
@@ -3373,7 +3593,7 @@ type TutorCompleteEventResponse struct {
 
 func (x *TutorCompleteEventResponse) Reset() {
 	*x = TutorCompleteEventResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[54]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3385,7 +3605,7 @@ func (x *TutorCompleteEventResponse) String() string {
 func (*TutorCompleteEventResponse) ProtoMessage() {}
 
 func (x *TutorCompleteEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[54]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3398,7 +3618,7 @@ func (x *TutorCompleteEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorCompleteEventResponse.ProtoReflect.Descriptor instead.
 func (*TutorCompleteEventResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{54}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{57}
 }
 
 type TutorListEventsRequest struct {
@@ -3411,7 +3631,7 @@ type TutorListEventsRequest struct {
 
 func (x *TutorListEventsRequest) Reset() {
 	*x = TutorListEventsRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[55]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3423,7 +3643,7 @@ func (x *TutorListEventsRequest) String() string {
 func (*TutorListEventsRequest) ProtoMessage() {}
 
 func (x *TutorListEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[55]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3436,7 +3656,7 @@ func (x *TutorListEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListEventsRequest.ProtoReflect.Descriptor instead.
 func (*TutorListEventsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{55}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *TutorListEventsRequest) GetLimit() int32 {
@@ -3463,7 +3683,7 @@ type TutorListUpcomingEventsRequest struct {
 
 func (x *TutorListUpcomingEventsRequest) Reset() {
 	*x = TutorListUpcomingEventsRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[56]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3475,7 +3695,7 @@ func (x *TutorListUpcomingEventsRequest) String() string {
 func (*TutorListUpcomingEventsRequest) ProtoMessage() {}
 
 func (x *TutorListUpcomingEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[56]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3488,7 +3708,7 @@ func (x *TutorListUpcomingEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListUpcomingEventsRequest.ProtoReflect.Descriptor instead.
 func (*TutorListUpcomingEventsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{56}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *TutorListUpcomingEventsRequest) GetLimit() int32 {
@@ -3515,7 +3735,7 @@ type TutorListEventsResponse struct {
 
 func (x *TutorListEventsResponse) Reset() {
 	*x = TutorListEventsResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[57]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3527,7 +3747,7 @@ func (x *TutorListEventsResponse) String() string {
 func (*TutorListEventsResponse) ProtoMessage() {}
 
 func (x *TutorListEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[57]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3540,7 +3760,7 @@ func (x *TutorListEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListEventsResponse.ProtoReflect.Descriptor instead.
 func (*TutorListEventsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{57}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *TutorListEventsResponse) GetItems() []*TutorEvent {
@@ -3573,7 +3793,7 @@ type TutorPeekInviteResponse struct {
 
 func (x *TutorPeekInviteResponse) Reset() {
 	*x = TutorPeekInviteResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[58]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3585,7 +3805,7 @@ func (x *TutorPeekInviteResponse) String() string {
 func (*TutorPeekInviteResponse) ProtoMessage() {}
 
 func (x *TutorPeekInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[58]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3598,7 +3818,7 @@ func (x *TutorPeekInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorPeekInviteResponse.ProtoReflect.Descriptor instead.
 func (*TutorPeekInviteResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{58}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *TutorPeekInviteResponse) GetInvite() *TutorInvite {
@@ -3636,7 +3856,7 @@ type TutorReadingPath struct {
 
 func (x *TutorReadingPath) Reset() {
 	*x = TutorReadingPath{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[59]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3648,7 +3868,7 @@ func (x *TutorReadingPath) String() string {
 func (*TutorReadingPath) ProtoMessage() {}
 
 func (x *TutorReadingPath) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[59]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3661,7 +3881,7 @@ func (x *TutorReadingPath) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorReadingPath.ProtoReflect.Descriptor instead.
 func (*TutorReadingPath) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{59}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *TutorReadingPath) GetId() string {
@@ -3744,7 +3964,7 @@ type TutorListReadingPathsRequest struct {
 
 func (x *TutorListReadingPathsRequest) Reset() {
 	*x = TutorListReadingPathsRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[60]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3756,7 +3976,7 @@ func (x *TutorListReadingPathsRequest) String() string {
 func (*TutorListReadingPathsRequest) ProtoMessage() {}
 
 func (x *TutorListReadingPathsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[60]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3769,7 +3989,7 @@ func (x *TutorListReadingPathsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListReadingPathsRequest.ProtoReflect.Descriptor instead.
 func (*TutorListReadingPathsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{60}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *TutorListReadingPathsRequest) GetLimit() int32 {
@@ -3796,7 +4016,7 @@ type TutorListReadingPathsResponse struct {
 
 func (x *TutorListReadingPathsResponse) Reset() {
 	*x = TutorListReadingPathsResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[61]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3808,7 +4028,7 @@ func (x *TutorListReadingPathsResponse) String() string {
 func (*TutorListReadingPathsResponse) ProtoMessage() {}
 
 func (x *TutorListReadingPathsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[61]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3821,7 +4041,7 @@ func (x *TutorListReadingPathsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListReadingPathsResponse.ProtoReflect.Descriptor instead.
 func (*TutorListReadingPathsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{61}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *TutorListReadingPathsResponse) GetItems() []*TutorReadingPath {
@@ -3850,7 +4070,7 @@ type TutorCreateReadingPathRequest struct {
 
 func (x *TutorCreateReadingPathRequest) Reset() {
 	*x = TutorCreateReadingPathRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[62]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3862,7 +4082,7 @@ func (x *TutorCreateReadingPathRequest) String() string {
 func (*TutorCreateReadingPathRequest) ProtoMessage() {}
 
 func (x *TutorCreateReadingPathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[62]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3875,7 +4095,7 @@ func (x *TutorCreateReadingPathRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorCreateReadingPathRequest.ProtoReflect.Descriptor instead.
 func (*TutorCreateReadingPathRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{62}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *TutorCreateReadingPathRequest) GetName() string {
@@ -3919,7 +4139,7 @@ type TutorUpdateReadingPathRequest struct {
 
 func (x *TutorUpdateReadingPathRequest) Reset() {
 	*x = TutorUpdateReadingPathRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[63]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3931,7 +4151,7 @@ func (x *TutorUpdateReadingPathRequest) String() string {
 func (*TutorUpdateReadingPathRequest) ProtoMessage() {}
 
 func (x *TutorUpdateReadingPathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[63]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3944,7 +4164,7 @@ func (x *TutorUpdateReadingPathRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorUpdateReadingPathRequest.ProtoReflect.Descriptor instead.
 func (*TutorUpdateReadingPathRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{63}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *TutorUpdateReadingPathRequest) GetPathId() string {
@@ -3991,7 +4211,7 @@ type TutorArchiveReadingPathRequest struct {
 
 func (x *TutorArchiveReadingPathRequest) Reset() {
 	*x = TutorArchiveReadingPathRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[64]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4003,7 +4223,7 @@ func (x *TutorArchiveReadingPathRequest) String() string {
 func (*TutorArchiveReadingPathRequest) ProtoMessage() {}
 
 func (x *TutorArchiveReadingPathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[64]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4016,7 +4236,7 @@ func (x *TutorArchiveReadingPathRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorArchiveReadingPathRequest.ProtoReflect.Descriptor instead.
 func (*TutorArchiveReadingPathRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{64}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *TutorArchiveReadingPathRequest) GetPathId() string {
@@ -4034,7 +4254,7 @@ type TutorArchiveReadingPathResponse struct {
 
 func (x *TutorArchiveReadingPathResponse) Reset() {
 	*x = TutorArchiveReadingPathResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[65]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4046,7 +4266,7 @@ func (x *TutorArchiveReadingPathResponse) String() string {
 func (*TutorArchiveReadingPathResponse) ProtoMessage() {}
 
 func (x *TutorArchiveReadingPathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[65]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4059,7 +4279,7 @@ func (x *TutorArchiveReadingPathResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorArchiveReadingPathResponse.ProtoReflect.Descriptor instead.
 func (*TutorArchiveReadingPathResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{65}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{68}
 }
 
 type TutorPathAssignment struct {
@@ -4087,7 +4307,7 @@ type TutorPathAssignment struct {
 
 func (x *TutorPathAssignment) Reset() {
 	*x = TutorPathAssignment{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[66]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4099,7 +4319,7 @@ func (x *TutorPathAssignment) String() string {
 func (*TutorPathAssignment) ProtoMessage() {}
 
 func (x *TutorPathAssignment) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[66]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4112,7 +4332,7 @@ func (x *TutorPathAssignment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorPathAssignment.ProtoReflect.Descriptor instead.
 func (*TutorPathAssignment) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{66}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *TutorPathAssignment) GetId() string {
@@ -4219,7 +4439,7 @@ type TutorAssignReadingPathRequest struct {
 
 func (x *TutorAssignReadingPathRequest) Reset() {
 	*x = TutorAssignReadingPathRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[67]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4231,7 +4451,7 @@ func (x *TutorAssignReadingPathRequest) String() string {
 func (*TutorAssignReadingPathRequest) ProtoMessage() {}
 
 func (x *TutorAssignReadingPathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[67]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4244,7 +4464,7 @@ func (x *TutorAssignReadingPathRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorAssignReadingPathRequest.ProtoReflect.Descriptor instead.
 func (*TutorAssignReadingPathRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{67}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *TutorAssignReadingPathRequest) GetPathId() string {
@@ -4281,7 +4501,7 @@ type TutorAssignReadingPathResponse struct {
 
 func (x *TutorAssignReadingPathResponse) Reset() {
 	*x = TutorAssignReadingPathResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[68]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4293,7 +4513,7 @@ func (x *TutorAssignReadingPathResponse) String() string {
 func (*TutorAssignReadingPathResponse) ProtoMessage() {}
 
 func (x *TutorAssignReadingPathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[68]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4306,7 +4526,7 @@ func (x *TutorAssignReadingPathResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorAssignReadingPathResponse.ProtoReflect.Descriptor instead.
 func (*TutorAssignReadingPathResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{68}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *TutorAssignReadingPathResponse) GetAssignment() *TutorPathAssignment {
@@ -4331,7 +4551,7 @@ type TutorListMyActivePathAssignmentsRequest struct {
 
 func (x *TutorListMyActivePathAssignmentsRequest) Reset() {
 	*x = TutorListMyActivePathAssignmentsRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[69]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4343,7 +4563,7 @@ func (x *TutorListMyActivePathAssignmentsRequest) String() string {
 func (*TutorListMyActivePathAssignmentsRequest) ProtoMessage() {}
 
 func (x *TutorListMyActivePathAssignmentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[69]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4356,7 +4576,7 @@ func (x *TutorListMyActivePathAssignmentsRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use TutorListMyActivePathAssignmentsRequest.ProtoReflect.Descriptor instead.
 func (*TutorListMyActivePathAssignmentsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{69}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{72}
 }
 
 type TutorListMyActivePathAssignmentsResponse struct {
@@ -4368,7 +4588,7 @@ type TutorListMyActivePathAssignmentsResponse struct {
 
 func (x *TutorListMyActivePathAssignmentsResponse) Reset() {
 	*x = TutorListMyActivePathAssignmentsResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[70]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4380,7 +4600,7 @@ func (x *TutorListMyActivePathAssignmentsResponse) String() string {
 func (*TutorListMyActivePathAssignmentsResponse) ProtoMessage() {}
 
 func (x *TutorListMyActivePathAssignmentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[70]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4393,7 +4613,7 @@ func (x *TutorListMyActivePathAssignmentsResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use TutorListMyActivePathAssignmentsResponse.ProtoReflect.Descriptor instead.
 func (*TutorListMyActivePathAssignmentsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{70}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *TutorListMyActivePathAssignmentsResponse) GetItems() []*TutorPathAssignment {
@@ -4412,7 +4632,7 @@ type TutorAdvancePathStepRequest struct {
 
 func (x *TutorAdvancePathStepRequest) Reset() {
 	*x = TutorAdvancePathStepRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[71]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4424,7 +4644,7 @@ func (x *TutorAdvancePathStepRequest) String() string {
 func (*TutorAdvancePathStepRequest) ProtoMessage() {}
 
 func (x *TutorAdvancePathStepRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[71]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4437,7 +4657,7 @@ func (x *TutorAdvancePathStepRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorAdvancePathStepRequest.ProtoReflect.Descriptor instead.
 func (*TutorAdvancePathStepRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{71}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *TutorAdvancePathStepRequest) GetAssignmentId() string {
@@ -4458,7 +4678,7 @@ type TutorAdvancePathStepResponse struct {
 
 func (x *TutorAdvancePathStepResponse) Reset() {
 	*x = TutorAdvancePathStepResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[72]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4470,7 +4690,7 @@ func (x *TutorAdvancePathStepResponse) String() string {
 func (*TutorAdvancePathStepResponse) ProtoMessage() {}
 
 func (x *TutorAdvancePathStepResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[72]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4483,7 +4703,7 @@ func (x *TutorAdvancePathStepResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorAdvancePathStepResponse.ProtoReflect.Descriptor instead.
 func (*TutorAdvancePathStepResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{72}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *TutorAdvancePathStepResponse) GetAssignment() *TutorPathAssignment {
@@ -4510,7 +4730,7 @@ type TutorGetSessionNotesRequest struct {
 
 func (x *TutorGetSessionNotesRequest) Reset() {
 	*x = TutorGetSessionNotesRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[73]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4522,7 +4742,7 @@ func (x *TutorGetSessionNotesRequest) String() string {
 func (*TutorGetSessionNotesRequest) ProtoMessage() {}
 
 func (x *TutorGetSessionNotesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[73]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4535,7 +4755,7 @@ func (x *TutorGetSessionNotesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorGetSessionNotesRequest.ProtoReflect.Descriptor instead.
 func (*TutorGetSessionNotesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{73}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *TutorGetSessionNotesRequest) GetStudentId() string {
@@ -4556,7 +4776,7 @@ type TutorSaveSessionNotesRequest struct {
 
 func (x *TutorSaveSessionNotesRequest) Reset() {
 	*x = TutorSaveSessionNotesRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[74]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4568,7 +4788,7 @@ func (x *TutorSaveSessionNotesRequest) String() string {
 func (*TutorSaveSessionNotesRequest) ProtoMessage() {}
 
 func (x *TutorSaveSessionNotesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[74]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4581,7 +4801,7 @@ func (x *TutorSaveSessionNotesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorSaveSessionNotesRequest.ProtoReflect.Descriptor instead.
 func (*TutorSaveSessionNotesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{74}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *TutorSaveSessionNotesRequest) GetStudentId() string {
@@ -4610,7 +4830,7 @@ type TutorSessionNotes struct {
 
 func (x *TutorSessionNotes) Reset() {
 	*x = TutorSessionNotes{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[75]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4622,7 +4842,7 @@ func (x *TutorSessionNotes) String() string {
 func (*TutorSessionNotes) ProtoMessage() {}
 
 func (x *TutorSessionNotes) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[75]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4635,7 +4855,7 @@ func (x *TutorSessionNotes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorSessionNotes.ProtoReflect.Descriptor instead.
 func (*TutorSessionNotes) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{75}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *TutorSessionNotes) GetStudentId() string {
@@ -4685,7 +4905,7 @@ type TutorDirectoryProfile struct {
 
 func (x *TutorDirectoryProfile) Reset() {
 	*x = TutorDirectoryProfile{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[76]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4697,7 +4917,7 @@ func (x *TutorDirectoryProfile) String() string {
 func (*TutorDirectoryProfile) ProtoMessage() {}
 
 func (x *TutorDirectoryProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[76]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4710,7 +4930,7 @@ func (x *TutorDirectoryProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorDirectoryProfile.ProtoReflect.Descriptor instead.
 func (*TutorDirectoryProfile) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{76}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *TutorDirectoryProfile) GetUserId() string {
@@ -4824,7 +5044,7 @@ type TutorDirectoryEntry struct {
 
 func (x *TutorDirectoryEntry) Reset() {
 	*x = TutorDirectoryEntry{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[77]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4836,7 +5056,7 @@ func (x *TutorDirectoryEntry) String() string {
 func (*TutorDirectoryEntry) ProtoMessage() {}
 
 func (x *TutorDirectoryEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[77]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4849,7 +5069,7 @@ func (x *TutorDirectoryEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorDirectoryEntry.ProtoReflect.Descriptor instead.
 func (*TutorDirectoryEntry) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{77}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *TutorDirectoryEntry) GetUserId() string {
@@ -4935,7 +5155,7 @@ type TutorDirectoryApplication struct {
 
 func (x *TutorDirectoryApplication) Reset() {
 	*x = TutorDirectoryApplication{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[78]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4947,7 +5167,7 @@ func (x *TutorDirectoryApplication) String() string {
 func (*TutorDirectoryApplication) ProtoMessage() {}
 
 func (x *TutorDirectoryApplication) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[78]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4960,7 +5180,7 @@ func (x *TutorDirectoryApplication) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorDirectoryApplication.ProtoReflect.Descriptor instead.
 func (*TutorDirectoryApplication) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{78}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *TutorDirectoryApplication) GetId() string {
@@ -5034,7 +5254,7 @@ type TutorGetMyDirectoryProfileRequest struct {
 
 func (x *TutorGetMyDirectoryProfileRequest) Reset() {
 	*x = TutorGetMyDirectoryProfileRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[79]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5046,7 +5266,7 @@ func (x *TutorGetMyDirectoryProfileRequest) String() string {
 func (*TutorGetMyDirectoryProfileRequest) ProtoMessage() {}
 
 func (x *TutorGetMyDirectoryProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[79]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5059,7 +5279,7 @@ func (x *TutorGetMyDirectoryProfileRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use TutorGetMyDirectoryProfileRequest.ProtoReflect.Descriptor instead.
 func (*TutorGetMyDirectoryProfileRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{79}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{82}
 }
 
 type TutorGetMyDirectoryProfileResponse struct {
@@ -5071,7 +5291,7 @@ type TutorGetMyDirectoryProfileResponse struct {
 
 func (x *TutorGetMyDirectoryProfileResponse) Reset() {
 	*x = TutorGetMyDirectoryProfileResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[80]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5083,7 +5303,7 @@ func (x *TutorGetMyDirectoryProfileResponse) String() string {
 func (*TutorGetMyDirectoryProfileResponse) ProtoMessage() {}
 
 func (x *TutorGetMyDirectoryProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[80]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5096,7 +5316,7 @@ func (x *TutorGetMyDirectoryProfileResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use TutorGetMyDirectoryProfileResponse.ProtoReflect.Descriptor instead.
 func (*TutorGetMyDirectoryProfileResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{80}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *TutorGetMyDirectoryProfileResponse) GetProfile() *TutorDirectoryProfile {
@@ -5123,7 +5343,7 @@ type TutorUpsertDirectoryProfileRequest struct {
 
 func (x *TutorUpsertDirectoryProfileRequest) Reset() {
 	*x = TutorUpsertDirectoryProfileRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[81]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5135,7 +5355,7 @@ func (x *TutorUpsertDirectoryProfileRequest) String() string {
 func (*TutorUpsertDirectoryProfileRequest) ProtoMessage() {}
 
 func (x *TutorUpsertDirectoryProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[81]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5148,7 +5368,7 @@ func (x *TutorUpsertDirectoryProfileRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use TutorUpsertDirectoryProfileRequest.ProtoReflect.Descriptor instead.
 func (*TutorUpsertDirectoryProfileRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{81}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *TutorUpsertDirectoryProfileRequest) GetVisible() bool {
@@ -5223,7 +5443,7 @@ type TutorUpsertDirectoryProfileResponse struct {
 
 func (x *TutorUpsertDirectoryProfileResponse) Reset() {
 	*x = TutorUpsertDirectoryProfileResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[82]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5235,7 +5455,7 @@ func (x *TutorUpsertDirectoryProfileResponse) String() string {
 func (*TutorUpsertDirectoryProfileResponse) ProtoMessage() {}
 
 func (x *TutorUpsertDirectoryProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[82]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5248,7 +5468,7 @@ func (x *TutorUpsertDirectoryProfileResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use TutorUpsertDirectoryProfileResponse.ProtoReflect.Descriptor instead.
 func (*TutorUpsertDirectoryProfileResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{82}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *TutorUpsertDirectoryProfileResponse) GetProfile() *TutorDirectoryProfile {
@@ -5270,7 +5490,7 @@ type TutorListDirectoryTutorsRequest struct {
 
 func (x *TutorListDirectoryTutorsRequest) Reset() {
 	*x = TutorListDirectoryTutorsRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[83]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5282,7 +5502,7 @@ func (x *TutorListDirectoryTutorsRequest) String() string {
 func (*TutorListDirectoryTutorsRequest) ProtoMessage() {}
 
 func (x *TutorListDirectoryTutorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[83]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5295,7 +5515,7 @@ func (x *TutorListDirectoryTutorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListDirectoryTutorsRequest.ProtoReflect.Descriptor instead.
 func (*TutorListDirectoryTutorsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{83}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *TutorListDirectoryTutorsRequest) GetExpertiseTags() []string {
@@ -5336,7 +5556,7 @@ type TutorListDirectoryTutorsResponse struct {
 
 func (x *TutorListDirectoryTutorsResponse) Reset() {
 	*x = TutorListDirectoryTutorsResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[84]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5348,7 +5568,7 @@ func (x *TutorListDirectoryTutorsResponse) String() string {
 func (*TutorListDirectoryTutorsResponse) ProtoMessage() {}
 
 func (x *TutorListDirectoryTutorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[84]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5361,7 +5581,7 @@ func (x *TutorListDirectoryTutorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorListDirectoryTutorsResponse.ProtoReflect.Descriptor instead.
 func (*TutorListDirectoryTutorsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{84}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *TutorListDirectoryTutorsResponse) GetItems() []*TutorDirectoryEntry {
@@ -5388,7 +5608,7 @@ type TutorApplyToTutorRequest struct {
 
 func (x *TutorApplyToTutorRequest) Reset() {
 	*x = TutorApplyToTutorRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[85]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5400,7 +5620,7 @@ func (x *TutorApplyToTutorRequest) String() string {
 func (*TutorApplyToTutorRequest) ProtoMessage() {}
 
 func (x *TutorApplyToTutorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[85]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5413,7 +5633,7 @@ func (x *TutorApplyToTutorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorApplyToTutorRequest.ProtoReflect.Descriptor instead.
 func (*TutorApplyToTutorRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{85}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *TutorApplyToTutorRequest) GetTutorUserId() string {
@@ -5439,7 +5659,7 @@ type TutorApplyToTutorResponse struct {
 
 func (x *TutorApplyToTutorResponse) Reset() {
 	*x = TutorApplyToTutorResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[86]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5451,7 +5671,7 @@ func (x *TutorApplyToTutorResponse) String() string {
 func (*TutorApplyToTutorResponse) ProtoMessage() {}
 
 func (x *TutorApplyToTutorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[86]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5464,7 +5684,7 @@ func (x *TutorApplyToTutorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorApplyToTutorResponse.ProtoReflect.Descriptor instead.
 func (*TutorApplyToTutorResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{86}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *TutorApplyToTutorResponse) GetApplication() *TutorDirectoryApplication {
@@ -5482,7 +5702,7 @@ type TutorListPendingApplicationsRequest struct {
 
 func (x *TutorListPendingApplicationsRequest) Reset() {
 	*x = TutorListPendingApplicationsRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[87]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5494,7 +5714,7 @@ func (x *TutorListPendingApplicationsRequest) String() string {
 func (*TutorListPendingApplicationsRequest) ProtoMessage() {}
 
 func (x *TutorListPendingApplicationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[87]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5507,7 +5727,7 @@ func (x *TutorListPendingApplicationsRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use TutorListPendingApplicationsRequest.ProtoReflect.Descriptor instead.
 func (*TutorListPendingApplicationsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{87}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{90}
 }
 
 type TutorListPendingApplicationsResponse struct {
@@ -5519,7 +5739,7 @@ type TutorListPendingApplicationsResponse struct {
 
 func (x *TutorListPendingApplicationsResponse) Reset() {
 	*x = TutorListPendingApplicationsResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[88]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5531,7 +5751,7 @@ func (x *TutorListPendingApplicationsResponse) String() string {
 func (*TutorListPendingApplicationsResponse) ProtoMessage() {}
 
 func (x *TutorListPendingApplicationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[88]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5544,7 +5764,7 @@ func (x *TutorListPendingApplicationsResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use TutorListPendingApplicationsResponse.ProtoReflect.Descriptor instead.
 func (*TutorListPendingApplicationsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{88}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *TutorListPendingApplicationsResponse) GetItems() []*TutorDirectoryApplication {
@@ -5563,7 +5783,7 @@ type TutorAcceptApplicationRequest struct {
 
 func (x *TutorAcceptApplicationRequest) Reset() {
 	*x = TutorAcceptApplicationRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[89]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5575,7 +5795,7 @@ func (x *TutorAcceptApplicationRequest) String() string {
 func (*TutorAcceptApplicationRequest) ProtoMessage() {}
 
 func (x *TutorAcceptApplicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[89]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5588,7 +5808,7 @@ func (x *TutorAcceptApplicationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorAcceptApplicationRequest.ProtoReflect.Descriptor instead.
 func (*TutorAcceptApplicationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{89}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *TutorAcceptApplicationRequest) GetApplicationId() string {
@@ -5607,7 +5827,7 @@ type TutorAcceptApplicationResponse struct {
 
 func (x *TutorAcceptApplicationResponse) Reset() {
 	*x = TutorAcceptApplicationResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[90]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5619,7 +5839,7 @@ func (x *TutorAcceptApplicationResponse) String() string {
 func (*TutorAcceptApplicationResponse) ProtoMessage() {}
 
 func (x *TutorAcceptApplicationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[90]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5632,7 +5852,7 @@ func (x *TutorAcceptApplicationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorAcceptApplicationResponse.ProtoReflect.Descriptor instead.
 func (*TutorAcceptApplicationResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{90}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *TutorAcceptApplicationResponse) GetRelationship() *TutorRelationship {
@@ -5651,7 +5871,7 @@ type TutorDeclineApplicationRequest struct {
 
 func (x *TutorDeclineApplicationRequest) Reset() {
 	*x = TutorDeclineApplicationRequest{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[91]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5663,7 +5883,7 @@ func (x *TutorDeclineApplicationRequest) String() string {
 func (*TutorDeclineApplicationRequest) ProtoMessage() {}
 
 func (x *TutorDeclineApplicationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[91]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5676,7 +5896,7 @@ func (x *TutorDeclineApplicationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorDeclineApplicationRequest.ProtoReflect.Descriptor instead.
 func (*TutorDeclineApplicationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{91}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *TutorDeclineApplicationRequest) GetApplicationId() string {
@@ -5694,7 +5914,7 @@ type TutorDeclineApplicationResponse struct {
 
 func (x *TutorDeclineApplicationResponse) Reset() {
 	*x = TutorDeclineApplicationResponse{}
-	mi := &file_druz9_v1_tutor_proto_msgTypes[92]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5706,7 +5926,7 @@ func (x *TutorDeclineApplicationResponse) String() string {
 func (*TutorDeclineApplicationResponse) ProtoMessage() {}
 
 func (x *TutorDeclineApplicationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_tutor_proto_msgTypes[92]
+	mi := &file_druz9_v1_tutor_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5719,7 +5939,323 @@ func (x *TutorDeclineApplicationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TutorDeclineApplicationResponse.ProtoReflect.Descriptor instead.
 func (*TutorDeclineApplicationResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{92}
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{95}
+}
+
+type TutorSetSessionNoteVisibilityRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	EventId string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	// 'private' | 'shared'
+	Visibility string `protobuf:"bytes,2,opt,name=visibility,proto3" json:"visibility,omitempty"`
+	// Optional. Empty string + visibility='shared' = share raw private note.
+	SharedContentMd string `protobuf:"bytes,3,opt,name=shared_content_md,json=sharedContentMd,proto3" json:"shared_content_md,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *TutorSetSessionNoteVisibilityRequest) Reset() {
+	*x = TutorSetSessionNoteVisibilityRequest{}
+	mi := &file_druz9_v1_tutor_proto_msgTypes[96]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TutorSetSessionNoteVisibilityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TutorSetSessionNoteVisibilityRequest) ProtoMessage() {}
+
+func (x *TutorSetSessionNoteVisibilityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tutor_proto_msgTypes[96]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TutorSetSessionNoteVisibilityRequest.ProtoReflect.Descriptor instead.
+func (*TutorSetSessionNoteVisibilityRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{96}
+}
+
+func (x *TutorSetSessionNoteVisibilityRequest) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *TutorSetSessionNoteVisibilityRequest) GetVisibility() string {
+	if x != nil {
+		return x.Visibility
+	}
+	return ""
+}
+
+func (x *TutorSetSessionNoteVisibilityRequest) GetSharedContentMd() string {
+	if x != nil {
+		return x.SharedContentMd
+	}
+	return ""
+}
+
+type TutorSetSessionNoteVisibilityResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Refreshed event row (visibility / shared_content_md / shared_at).
+	Event         *TutorEvent `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TutorSetSessionNoteVisibilityResponse) Reset() {
+	*x = TutorSetSessionNoteVisibilityResponse{}
+	mi := &file_druz9_v1_tutor_proto_msgTypes[97]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TutorSetSessionNoteVisibilityResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TutorSetSessionNoteVisibilityResponse) ProtoMessage() {}
+
+func (x *TutorSetSessionNoteVisibilityResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tutor_proto_msgTypes[97]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TutorSetSessionNoteVisibilityResponse.ProtoReflect.Descriptor instead.
+func (*TutorSetSessionNoteVisibilityResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{97}
+}
+
+func (x *TutorSetSessionNoteVisibilityResponse) GetEvent() *TutorEvent {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+// TutorSharedSessionNote — student-side projection of a shared note.
+// Combines event metadata + tutor display info so the UI doesn't N+1.
+type TutorSharedSessionNote struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	EventId          string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	EventTitle       string                 `protobuf:"bytes,2,opt,name=event_title,json=eventTitle,proto3" json:"event_title,omitempty"`
+	TutorId          string                 `protobuf:"bytes,3,opt,name=tutor_id,json=tutorId,proto3" json:"tutor_id,omitempty"`
+	TutorDisplayName string                 `protobuf:"bytes,4,opt,name=tutor_display_name,json=tutorDisplayName,proto3" json:"tutor_display_name,omitempty"`
+	TutorAvatarUrl   string                 `protobuf:"bytes,5,opt,name=tutor_avatar_url,json=tutorAvatarUrl,proto3" json:"tutor_avatar_url,omitempty"`
+	ScheduledAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=scheduled_at,json=scheduledAt,proto3" json:"scheduled_at,omitempty"`
+	SharedAt         *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=shared_at,json=sharedAt,proto3" json:"shared_at,omitempty"`
+	// The content the student should see: server resolves shared_content_md
+	// if non-empty, else falls back to session_note. Always non-empty for
+	// rows returned here (only shared+completed events qualify).
+	SharedContentMd string `protobuf:"bytes,8,opt,name=shared_content_md,json=sharedContentMd,proto3" json:"shared_content_md,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *TutorSharedSessionNote) Reset() {
+	*x = TutorSharedSessionNote{}
+	mi := &file_druz9_v1_tutor_proto_msgTypes[98]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TutorSharedSessionNote) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TutorSharedSessionNote) ProtoMessage() {}
+
+func (x *TutorSharedSessionNote) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tutor_proto_msgTypes[98]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TutorSharedSessionNote.ProtoReflect.Descriptor instead.
+func (*TutorSharedSessionNote) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{98}
+}
+
+func (x *TutorSharedSessionNote) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *TutorSharedSessionNote) GetEventTitle() string {
+	if x != nil {
+		return x.EventTitle
+	}
+	return ""
+}
+
+func (x *TutorSharedSessionNote) GetTutorId() string {
+	if x != nil {
+		return x.TutorId
+	}
+	return ""
+}
+
+func (x *TutorSharedSessionNote) GetTutorDisplayName() string {
+	if x != nil {
+		return x.TutorDisplayName
+	}
+	return ""
+}
+
+func (x *TutorSharedSessionNote) GetTutorAvatarUrl() string {
+	if x != nil {
+		return x.TutorAvatarUrl
+	}
+	return ""
+}
+
+func (x *TutorSharedSessionNote) GetScheduledAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ScheduledAt
+	}
+	return nil
+}
+
+func (x *TutorSharedSessionNote) GetSharedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SharedAt
+	}
+	return nil
+}
+
+func (x *TutorSharedSessionNote) GetSharedContentMd() string {
+	if x != nil {
+		return x.SharedContentMd
+	}
+	return ""
+}
+
+type TutorListSharedSessionNotesForStudentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`  // 0 → server default (25), max 200
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"` // opaque keyset cursor (shared_at DESC, id DESC)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TutorListSharedSessionNotesForStudentRequest) Reset() {
+	*x = TutorListSharedSessionNotesForStudentRequest{}
+	mi := &file_druz9_v1_tutor_proto_msgTypes[99]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TutorListSharedSessionNotesForStudentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TutorListSharedSessionNotesForStudentRequest) ProtoMessage() {}
+
+func (x *TutorListSharedSessionNotesForStudentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tutor_proto_msgTypes[99]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TutorListSharedSessionNotesForStudentRequest.ProtoReflect.Descriptor instead.
+func (*TutorListSharedSessionNotesForStudentRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{99}
+}
+
+func (x *TutorListSharedSessionNotesForStudentRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *TutorListSharedSessionNotesForStudentRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+type TutorListSharedSessionNotesForStudentResponse struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Items         []*TutorSharedSessionNote `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	NextCursor    string                    `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // empty when no more pages
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TutorListSharedSessionNotesForStudentResponse) Reset() {
+	*x = TutorListSharedSessionNotesForStudentResponse{}
+	mi := &file_druz9_v1_tutor_proto_msgTypes[100]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TutorListSharedSessionNotesForStudentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TutorListSharedSessionNotesForStudentResponse) ProtoMessage() {}
+
+func (x *TutorListSharedSessionNotesForStudentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_tutor_proto_msgTypes[100]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TutorListSharedSessionNotesForStudentResponse.ProtoReflect.Descriptor instead.
+func (*TutorListSharedSessionNotesForStudentResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{100}
+}
+
+func (x *TutorListSharedSessionNotesForStudentResponse) GetItems() []*TutorSharedSessionNote {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *TutorListSharedSessionNotesForStudentResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
 }
 
 var File_druz9_v1_tutor_proto protoreflect.FileDescriptor
@@ -5808,7 +6344,19 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\x0eminutes_taught\x18\x06 \x01(\x05R\rminutesTaught\x12+\n" +
 	"\x11cancellation_rate\x18\a \x01(\x01R\x10cancellationRate\x12'\n" +
 	"\x0fdaily_completed\x18\b \x03(\x05R\x0edailyCompleted\x12#\n" +
-	"\rdaily_minutes\x18\t \x03(\x05R\fdailyMinutes\"\x83\x02\n" +
+	"\rdaily_minutes\x18\t \x03(\x05R\fdailyMinutes\"L\n" +
+	"\x1cTutorMyTutorsActivityRequest\x12,\n" +
+	"\x12recent_window_days\x18\x01 \x01(\x05R\x10recentWindowDays\"\xef\x02\n" +
+	"\x1bTutorMyTutorActivitySummary\x12\"\n" +
+	"\rtutor_user_id\x18\x01 \x01(\tR\vtutorUserId\x12,\n" +
+	"\x12tutor_display_name\x18\x02 \x01(\tR\x10tutorDisplayName\x12%\n" +
+	"\x0etutor_username\x18\x03 \x01(\tR\rtutorUsername\x12(\n" +
+	"\x10tutor_avatar_url\x18\x04 \x01(\tR\x0etutorAvatarUrl\x12@\n" +
+	"\x0elast_active_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\flastActiveAt\x12;\n" +
+	"\x1aactive_student_count_other\x18\x06 \x01(\x05R\x17activeStudentCountOther\x12.\n" +
+	"\x13recent_events_count\x18\a \x01(\x05R\x11recentEventsCount\"\\\n" +
+	"\x1dTutorMyTutorsActivityResponse\x12;\n" +
+	"\x05items\x18\x01 \x03(\v2%.druz9.v1.TutorMyTutorActivitySummaryR\x05items\"\x83\x02\n" +
 	"\x1cTutorCreateGroupEventRequest\x12\x1b\n" +
 	"\tcircle_id\x18\x01 \x01(\tR\bcircleId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x17\n" +
@@ -5946,7 +6494,7 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"nextCursor\"\x8e\x01\n" +
 	" TutorBroadcastAssignmentResponse\x121\n" +
 	"\x06pushed\x18\x01 \x03(\v2\x19.druz9.v1.TutorAssignmentR\x06pushed\x127\n" +
-	"\x06failed\x18\x02 \x03(\v2\x1f.druz9.v1.TutorBroadcastFailureR\x06failed\"\x9d\x04\n" +
+	"\x06failed\x18\x02 \x03(\v2\x1f.druz9.v1.TutorBroadcastFailureR\x06failed\"\xa2\x05\n" +
 	"\n" +
 	"TutorEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
@@ -5967,7 +6515,12 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12!\n" +
-	"\fsession_note\x18\x0f \x01(\tR\vsessionNote\"\xe4\x01\n" +
+	"\fsession_note\x18\x0f \x01(\tR\vsessionNote\x12\x1e\n" +
+	"\n" +
+	"visibility\x18\x10 \x01(\tR\n" +
+	"visibility\x12*\n" +
+	"\x11shared_content_md\x18\x11 \x01(\tR\x0fsharedContentMd\x127\n" +
+	"\tshared_at\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\bsharedAt\"\xe4\x01\n" +
 	"\x17TutorCreateEventRequest\x12\x1d\n" +
 	"\n" +
 	"student_id\x18\x01 \x01(\tR\tstudentId\x12\x14\n" +
@@ -6166,13 +6719,38 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\frelationship\x18\x01 \x01(\v2\x1b.druz9.v1.TutorRelationshipR\frelationship\"G\n" +
 	"\x1eTutorDeclineApplicationRequest\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\"!\n" +
-	"\x1fTutorDeclineApplicationResponse*\x99\x01\n" +
+	"\x1fTutorDeclineApplicationResponse\"\x8d\x01\n" +
+	"$TutorSetSessionNoteVisibilityRequest\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x1e\n" +
+	"\n" +
+	"visibility\x18\x02 \x01(\tR\n" +
+	"visibility\x12*\n" +
+	"\x11shared_content_md\x18\x03 \x01(\tR\x0fsharedContentMd\"S\n" +
+	"%TutorSetSessionNoteVisibilityResponse\x12*\n" +
+	"\x05event\x18\x01 \x01(\v2\x14.druz9.v1.TutorEventR\x05event\"\xeb\x02\n" +
+	"\x16TutorSharedSessionNote\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x1f\n" +
+	"\vevent_title\x18\x02 \x01(\tR\n" +
+	"eventTitle\x12\x19\n" +
+	"\btutor_id\x18\x03 \x01(\tR\atutorId\x12,\n" +
+	"\x12tutor_display_name\x18\x04 \x01(\tR\x10tutorDisplayName\x12(\n" +
+	"\x10tutor_avatar_url\x18\x05 \x01(\tR\x0etutorAvatarUrl\x12=\n" +
+	"\fscheduled_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vscheduledAt\x127\n" +
+	"\tshared_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\bsharedAt\x12*\n" +
+	"\x11shared_content_md\x18\b \x01(\tR\x0fsharedContentMd\"\\\n" +
+	",TutorListSharedSessionNotesForStudentRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\"\x88\x01\n" +
+	"-TutorListSharedSessionNotesForStudentResponse\x126\n" +
+	"\x05items\x18\x01 \x03(\v2 .druz9.v1.TutorSharedSessionNoteR\x05items\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor*\x99\x01\n" +
 	"\fInviteStatus\x12\x1d\n" +
 	"\x19INVITE_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14INVITE_STATUS_ACTIVE\x10\x01\x12\x1a\n" +
 	"\x16INVITE_STATUS_ACCEPTED\x10\x02\x12\x19\n" +
 	"\x15INVITE_STATUS_REVOKED\x10\x03\x12\x19\n" +
-	"\x15INVITE_STATUS_EXPIRED\x10\x042\xf94\n" +
+	"\x15INVITE_STATUS_EXPIRED\x10\x042\x899\n" +
 	"\fTutorService\x12k\n" +
 	"\fCreateInvite\x12\".druz9.v1.TutorCreateInviteRequest\x1a\x15.druz9.v1.TutorInvite\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/v1/tutor/invites\x12\x7f\n" +
 	"\x10InviteByUsername\x12&.druz9.v1.TutorInviteByUsernameRequest\x1a\x15.druz9.v1.TutorInvite\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/tutor/invites/by-username\x12\xa6\x01\n" +
@@ -6200,7 +6778,8 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\rCompleteEvent\x12#.druz9.v1.TutorCompleteEventRequest\x1a$.druz9.v1.TutorCompleteEventResponse\"3\x82\xd3\xe4\x93\x02-:\x01*\"(/api/v1/tutor/events/{event_id}/complete\x12w\n" +
 	"\x12ListEventsForTutor\x12 .druz9.v1.TutorListEventsRequest\x1a!.druz9.v1.TutorListEventsResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/api/v1/tutor/events\x12\x92\x01\n" +
 	"\x1cListUpcomingEventsForStudent\x12(.druz9.v1.TutorListUpcomingEventsRequest\x1a!.druz9.v1.TutorListEventsResponse\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/v1/tutor/events/upcoming\x12v\n" +
-	"\x10GetTutorActivity\x12!.druz9.v1.TutorGetActivityRequest\x1a\x1f.druz9.v1.TutorActivityResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/v1/tutor/activity\x12w\n" +
+	"\x10GetTutorActivity\x12!.druz9.v1.TutorGetActivityRequest\x1a\x1f.druz9.v1.TutorActivityResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/v1/tutor/activity\x12\x91\x01\n" +
+	"\x14ListMyTutorsActivity\x12&.druz9.v1.TutorMyTutorsActivityRequest\x1a'.druz9.v1.TutorMyTutorsActivityResponse\"(\x82\xd3\xe4\x93\x02\"\x12 /api/v1/tutor/my-tutors/activity\x12w\n" +
 	"\x10CreateGroupEvent\x12&.druz9.v1.TutorCreateGroupEventRequest\x1a\x14.druz9.v1.TutorEvent\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/v1/tutor/events/group\x12\x7f\n" +
 	"\tJoinEvent\x12\x1f.druz9.v1.TutorJoinEventRequest\x1a .druz9.v1.TutorJoinEventResponse\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/v1/tutor/events/{event_id}/join\x12\x83\x01\n" +
 	"\n" +
@@ -6222,7 +6801,9 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\fApplyToTutor\x12\".druz9.v1.TutorApplyToTutorRequest\x1a#.druz9.v1.TutorApplyToTutorResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/v1/tutor/directory/apply\x12\xa6\x01\n" +
 	"\x17ListPendingApplications\x12-.druz9.v1.TutorListPendingApplicationsRequest\x1a..druz9.v1.TutorListPendingApplicationsResponse\",\x82\xd3\xe4\x93\x02&\x12$/api/v1/tutor/directory/applications\x12\xaf\x01\n" +
 	"\x11AcceptApplication\x12'.druz9.v1.TutorAcceptApplicationRequest\x1a(.druz9.v1.TutorAcceptApplicationResponse\"G\x82\xd3\xe4\x93\x02A:\x01*\"</api/v1/tutor/directory/applications/{application_id}/accept\x12\xb3\x01\n" +
-	"\x12DeclineApplication\x12(.druz9.v1.TutorDeclineApplicationRequest\x1a).druz9.v1.TutorDeclineApplicationResponse\"H\x82\xd3\xe4\x93\x02B:\x01*\"=/api/v1/tutor/directory/applications/{application_id}/declineB\x87\x01\n" +
+	"\x12DeclineApplication\x12(.druz9.v1.TutorDeclineApplicationRequest\x1a).druz9.v1.TutorDeclineApplicationResponse\"H\x82\xd3\xe4\x93\x02B:\x01*\"=/api/v1/tutor/directory/applications/{application_id}/decline\x12\xb7\x01\n" +
+	"\x18SetSessionNoteVisibility\x12..druz9.v1.TutorSetSessionNoteVisibilityRequest\x1a/.druz9.v1.TutorSetSessionNoteVisibilityResponse\":\x82\xd3\xe4\x93\x024:\x01*\"//api/v1/tutor/events/{event_id}/note-visibility\x12\xbf\x01\n" +
+	" ListSharedSessionNotesForStudent\x126.druz9.v1.TutorListSharedSessionNotesForStudentRequest\x1a7.druz9.v1.TutorListSharedSessionNotesForStudentResponse\"*\x82\xd3\xe4\x93\x02$\x12\"/api/v1/tutor/session-notes/sharedB\x87\x01\n" +
 	"\fcom.druz9.v1B\n" +
 	"TutorProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
@@ -6239,254 +6820,275 @@ func file_druz9_v1_tutor_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_tutor_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_druz9_v1_tutor_proto_msgTypes = make([]protoimpl.MessageInfo, 93)
+var file_druz9_v1_tutor_proto_msgTypes = make([]protoimpl.MessageInfo, 101)
 var file_druz9_v1_tutor_proto_goTypes = []any{
-	(InviteStatus)(0),                                // 0: druz9.v1.InviteStatus
-	(*TutorInvite)(nil),                              // 1: druz9.v1.TutorInvite
-	(*TutorRelationship)(nil),                        // 2: druz9.v1.TutorRelationship
-	(*TutorCreateInviteRequest)(nil),                 // 3: druz9.v1.TutorCreateInviteRequest
-	(*TutorInviteByUsernameRequest)(nil),             // 4: druz9.v1.TutorInviteByUsernameRequest
-	(*TutorListPendingInvitesForMeRequest)(nil),      // 5: druz9.v1.TutorListPendingInvitesForMeRequest
-	(*TutorListPendingInvitesForMeResponse)(nil),     // 6: druz9.v1.TutorListPendingInvitesForMeResponse
-	(*TutorPendingInvite)(nil),                       // 7: druz9.v1.TutorPendingInvite
-	(*TutorRevokeInviteRequest)(nil),                 // 8: druz9.v1.TutorRevokeInviteRequest
-	(*TutorPeekInviteRequest)(nil),                   // 9: druz9.v1.TutorPeekInviteRequest
-	(*TutorAcceptInviteRequest)(nil),                 // 10: druz9.v1.TutorAcceptInviteRequest
-	(*TutorListInvitesRequest)(nil),                  // 11: druz9.v1.TutorListInvitesRequest
-	(*TutorListInvitesResponse)(nil),                 // 12: druz9.v1.TutorListInvitesResponse
-	(*TutorListStudentsRequest)(nil),                 // 13: druz9.v1.TutorListStudentsRequest
-	(*TutorListStudentsResponse)(nil),                // 14: druz9.v1.TutorListStudentsResponse
-	(*TutorListMyTutorsRequest)(nil),                 // 15: druz9.v1.TutorListMyTutorsRequest
-	(*TutorGetActivityRequest)(nil),                  // 16: druz9.v1.TutorGetActivityRequest
-	(*TutorActivityResponse)(nil),                    // 17: druz9.v1.TutorActivityResponse
-	(*TutorCreateGroupEventRequest)(nil),             // 18: druz9.v1.TutorCreateGroupEventRequest
-	(*TutorJoinEventRequest)(nil),                    // 19: druz9.v1.TutorJoinEventRequest
-	(*TutorJoinEventResponse)(nil),                   // 20: druz9.v1.TutorJoinEventResponse
-	(*TutorLeaveEventRequest)(nil),                   // 21: druz9.v1.TutorLeaveEventRequest
-	(*TutorLeaveEventResponse)(nil),                  // 22: druz9.v1.TutorLeaveEventResponse
-	(*TutorListUpcomingGroupEventsRequest)(nil),      // 23: druz9.v1.TutorListUpcomingGroupEventsRequest
-	(*TutorGetEventRSVPCountRequest)(nil),            // 24: druz9.v1.TutorGetEventRSVPCountRequest
-	(*TutorGetEventRSVPCountResponse)(nil),           // 25: druz9.v1.TutorGetEventRSVPCountResponse
-	(*TutorEndRelationshipRequest)(nil),              // 26: druz9.v1.TutorEndRelationshipRequest
-	(*TutorEndRelationshipResponse)(nil),             // 27: druz9.v1.TutorEndRelationshipResponse
-	(*TutorWeakSpot)(nil),                            // 28: druz9.v1.TutorWeakSpot
-	(*TutorStudentSnapshot)(nil),                     // 29: druz9.v1.TutorStudentSnapshot
-	(*TutorGetStudentSnapshotRequest)(nil),           // 30: druz9.v1.TutorGetStudentSnapshotRequest
-	(*TutorPreSessionBrief)(nil),                     // 31: druz9.v1.TutorPreSessionBrief
-	(*TutorGenerateBriefRequest)(nil),                // 32: druz9.v1.TutorGenerateBriefRequest
-	(*TutorAssignment)(nil),                          // 33: druz9.v1.TutorAssignment
-	(*TutorPushAssignmentRequest)(nil),               // 34: druz9.v1.TutorPushAssignmentRequest
-	(*TutorListAssignmentsRequest)(nil),              // 35: druz9.v1.TutorListAssignmentsRequest
-	(*TutorListPendingAssignmentsRequest)(nil),       // 36: druz9.v1.TutorListPendingAssignmentsRequest
-	(*TutorListAssignmentsResponse)(nil),             // 37: druz9.v1.TutorListAssignmentsResponse
-	(*TutorCompleteAssignmentRequest)(nil),           // 38: druz9.v1.TutorCompleteAssignmentRequest
-	(*TutorCompleteAssignmentResponse)(nil),          // 39: druz9.v1.TutorCompleteAssignmentResponse
-	(*TutorArchiveAssignmentRequest)(nil),            // 40: druz9.v1.TutorArchiveAssignmentRequest
-	(*TutorArchiveAssignmentResponse)(nil),           // 41: druz9.v1.TutorArchiveAssignmentResponse
-	(*TutorBroadcastAssignmentRequest)(nil),          // 42: druz9.v1.TutorBroadcastAssignmentRequest
-	(*TutorBroadcastFailure)(nil),                    // 43: druz9.v1.TutorBroadcastFailure
-	(*TutorSharedMaterial)(nil),                      // 44: druz9.v1.TutorSharedMaterial
-	(*TutorPushSharedReadingRequest)(nil),            // 45: druz9.v1.TutorPushSharedReadingRequest
-	(*TutorPushSharedReadingResponse)(nil),           // 46: druz9.v1.TutorPushSharedReadingResponse
-	(*TutorListSharedReadingRequest)(nil),            // 47: druz9.v1.TutorListSharedReadingRequest
-	(*TutorListSharedReadingResponse)(nil),           // 48: druz9.v1.TutorListSharedReadingResponse
-	(*TutorBroadcastAssignmentResponse)(nil),         // 49: druz9.v1.TutorBroadcastAssignmentResponse
-	(*TutorEvent)(nil),                               // 50: druz9.v1.TutorEvent
-	(*TutorCreateEventRequest)(nil),                  // 51: druz9.v1.TutorCreateEventRequest
-	(*TutorCancelEventRequest)(nil),                  // 52: druz9.v1.TutorCancelEventRequest
-	(*TutorCancelEventResponse)(nil),                 // 53: druz9.v1.TutorCancelEventResponse
-	(*TutorCompleteEventRequest)(nil),                // 54: druz9.v1.TutorCompleteEventRequest
-	(*TutorCompleteEventResponse)(nil),               // 55: druz9.v1.TutorCompleteEventResponse
-	(*TutorListEventsRequest)(nil),                   // 56: druz9.v1.TutorListEventsRequest
-	(*TutorListUpcomingEventsRequest)(nil),           // 57: druz9.v1.TutorListUpcomingEventsRequest
-	(*TutorListEventsResponse)(nil),                  // 58: druz9.v1.TutorListEventsResponse
-	(*TutorPeekInviteResponse)(nil),                  // 59: druz9.v1.TutorPeekInviteResponse
-	(*TutorReadingPath)(nil),                         // 60: druz9.v1.TutorReadingPath
-	(*TutorListReadingPathsRequest)(nil),             // 61: druz9.v1.TutorListReadingPathsRequest
-	(*TutorListReadingPathsResponse)(nil),            // 62: druz9.v1.TutorListReadingPathsResponse
-	(*TutorCreateReadingPathRequest)(nil),            // 63: druz9.v1.TutorCreateReadingPathRequest
-	(*TutorUpdateReadingPathRequest)(nil),            // 64: druz9.v1.TutorUpdateReadingPathRequest
-	(*TutorArchiveReadingPathRequest)(nil),           // 65: druz9.v1.TutorArchiveReadingPathRequest
-	(*TutorArchiveReadingPathResponse)(nil),          // 66: druz9.v1.TutorArchiveReadingPathResponse
-	(*TutorPathAssignment)(nil),                      // 67: druz9.v1.TutorPathAssignment
-	(*TutorAssignReadingPathRequest)(nil),            // 68: druz9.v1.TutorAssignReadingPathRequest
-	(*TutorAssignReadingPathResponse)(nil),           // 69: druz9.v1.TutorAssignReadingPathResponse
-	(*TutorListMyActivePathAssignmentsRequest)(nil),  // 70: druz9.v1.TutorListMyActivePathAssignmentsRequest
-	(*TutorListMyActivePathAssignmentsResponse)(nil), // 71: druz9.v1.TutorListMyActivePathAssignmentsResponse
-	(*TutorAdvancePathStepRequest)(nil),              // 72: druz9.v1.TutorAdvancePathStepRequest
-	(*TutorAdvancePathStepResponse)(nil),             // 73: druz9.v1.TutorAdvancePathStepResponse
-	(*TutorGetSessionNotesRequest)(nil),              // 74: druz9.v1.TutorGetSessionNotesRequest
-	(*TutorSaveSessionNotesRequest)(nil),             // 75: druz9.v1.TutorSaveSessionNotesRequest
-	(*TutorSessionNotes)(nil),                        // 76: druz9.v1.TutorSessionNotes
-	(*TutorDirectoryProfile)(nil),                    // 77: druz9.v1.TutorDirectoryProfile
-	(*TutorDirectoryEntry)(nil),                      // 78: druz9.v1.TutorDirectoryEntry
-	(*TutorDirectoryApplication)(nil),                // 79: druz9.v1.TutorDirectoryApplication
-	(*TutorGetMyDirectoryProfileRequest)(nil),        // 80: druz9.v1.TutorGetMyDirectoryProfileRequest
-	(*TutorGetMyDirectoryProfileResponse)(nil),       // 81: druz9.v1.TutorGetMyDirectoryProfileResponse
-	(*TutorUpsertDirectoryProfileRequest)(nil),       // 82: druz9.v1.TutorUpsertDirectoryProfileRequest
-	(*TutorUpsertDirectoryProfileResponse)(nil),      // 83: druz9.v1.TutorUpsertDirectoryProfileResponse
-	(*TutorListDirectoryTutorsRequest)(nil),          // 84: druz9.v1.TutorListDirectoryTutorsRequest
-	(*TutorListDirectoryTutorsResponse)(nil),         // 85: druz9.v1.TutorListDirectoryTutorsResponse
-	(*TutorApplyToTutorRequest)(nil),                 // 86: druz9.v1.TutorApplyToTutorRequest
-	(*TutorApplyToTutorResponse)(nil),                // 87: druz9.v1.TutorApplyToTutorResponse
-	(*TutorListPendingApplicationsRequest)(nil),      // 88: druz9.v1.TutorListPendingApplicationsRequest
-	(*TutorListPendingApplicationsResponse)(nil),     // 89: druz9.v1.TutorListPendingApplicationsResponse
-	(*TutorAcceptApplicationRequest)(nil),            // 90: druz9.v1.TutorAcceptApplicationRequest
-	(*TutorAcceptApplicationResponse)(nil),           // 91: druz9.v1.TutorAcceptApplicationResponse
-	(*TutorDeclineApplicationRequest)(nil),           // 92: druz9.v1.TutorDeclineApplicationRequest
-	(*TutorDeclineApplicationResponse)(nil),          // 93: druz9.v1.TutorDeclineApplicationResponse
-	(*timestamppb.Timestamp)(nil),                    // 94: google.protobuf.Timestamp
+	(InviteStatus)(0),                                     // 0: druz9.v1.InviteStatus
+	(*TutorInvite)(nil),                                   // 1: druz9.v1.TutorInvite
+	(*TutorRelationship)(nil),                             // 2: druz9.v1.TutorRelationship
+	(*TutorCreateInviteRequest)(nil),                      // 3: druz9.v1.TutorCreateInviteRequest
+	(*TutorInviteByUsernameRequest)(nil),                  // 4: druz9.v1.TutorInviteByUsernameRequest
+	(*TutorListPendingInvitesForMeRequest)(nil),           // 5: druz9.v1.TutorListPendingInvitesForMeRequest
+	(*TutorListPendingInvitesForMeResponse)(nil),          // 6: druz9.v1.TutorListPendingInvitesForMeResponse
+	(*TutorPendingInvite)(nil),                            // 7: druz9.v1.TutorPendingInvite
+	(*TutorRevokeInviteRequest)(nil),                      // 8: druz9.v1.TutorRevokeInviteRequest
+	(*TutorPeekInviteRequest)(nil),                        // 9: druz9.v1.TutorPeekInviteRequest
+	(*TutorAcceptInviteRequest)(nil),                      // 10: druz9.v1.TutorAcceptInviteRequest
+	(*TutorListInvitesRequest)(nil),                       // 11: druz9.v1.TutorListInvitesRequest
+	(*TutorListInvitesResponse)(nil),                      // 12: druz9.v1.TutorListInvitesResponse
+	(*TutorListStudentsRequest)(nil),                      // 13: druz9.v1.TutorListStudentsRequest
+	(*TutorListStudentsResponse)(nil),                     // 14: druz9.v1.TutorListStudentsResponse
+	(*TutorListMyTutorsRequest)(nil),                      // 15: druz9.v1.TutorListMyTutorsRequest
+	(*TutorGetActivityRequest)(nil),                       // 16: druz9.v1.TutorGetActivityRequest
+	(*TutorActivityResponse)(nil),                         // 17: druz9.v1.TutorActivityResponse
+	(*TutorMyTutorsActivityRequest)(nil),                  // 18: druz9.v1.TutorMyTutorsActivityRequest
+	(*TutorMyTutorActivitySummary)(nil),                   // 19: druz9.v1.TutorMyTutorActivitySummary
+	(*TutorMyTutorsActivityResponse)(nil),                 // 20: druz9.v1.TutorMyTutorsActivityResponse
+	(*TutorCreateGroupEventRequest)(nil),                  // 21: druz9.v1.TutorCreateGroupEventRequest
+	(*TutorJoinEventRequest)(nil),                         // 22: druz9.v1.TutorJoinEventRequest
+	(*TutorJoinEventResponse)(nil),                        // 23: druz9.v1.TutorJoinEventResponse
+	(*TutorLeaveEventRequest)(nil),                        // 24: druz9.v1.TutorLeaveEventRequest
+	(*TutorLeaveEventResponse)(nil),                       // 25: druz9.v1.TutorLeaveEventResponse
+	(*TutorListUpcomingGroupEventsRequest)(nil),           // 26: druz9.v1.TutorListUpcomingGroupEventsRequest
+	(*TutorGetEventRSVPCountRequest)(nil),                 // 27: druz9.v1.TutorGetEventRSVPCountRequest
+	(*TutorGetEventRSVPCountResponse)(nil),                // 28: druz9.v1.TutorGetEventRSVPCountResponse
+	(*TutorEndRelationshipRequest)(nil),                   // 29: druz9.v1.TutorEndRelationshipRequest
+	(*TutorEndRelationshipResponse)(nil),                  // 30: druz9.v1.TutorEndRelationshipResponse
+	(*TutorWeakSpot)(nil),                                 // 31: druz9.v1.TutorWeakSpot
+	(*TutorStudentSnapshot)(nil),                          // 32: druz9.v1.TutorStudentSnapshot
+	(*TutorGetStudentSnapshotRequest)(nil),                // 33: druz9.v1.TutorGetStudentSnapshotRequest
+	(*TutorPreSessionBrief)(nil),                          // 34: druz9.v1.TutorPreSessionBrief
+	(*TutorGenerateBriefRequest)(nil),                     // 35: druz9.v1.TutorGenerateBriefRequest
+	(*TutorAssignment)(nil),                               // 36: druz9.v1.TutorAssignment
+	(*TutorPushAssignmentRequest)(nil),                    // 37: druz9.v1.TutorPushAssignmentRequest
+	(*TutorListAssignmentsRequest)(nil),                   // 38: druz9.v1.TutorListAssignmentsRequest
+	(*TutorListPendingAssignmentsRequest)(nil),            // 39: druz9.v1.TutorListPendingAssignmentsRequest
+	(*TutorListAssignmentsResponse)(nil),                  // 40: druz9.v1.TutorListAssignmentsResponse
+	(*TutorCompleteAssignmentRequest)(nil),                // 41: druz9.v1.TutorCompleteAssignmentRequest
+	(*TutorCompleteAssignmentResponse)(nil),               // 42: druz9.v1.TutorCompleteAssignmentResponse
+	(*TutorArchiveAssignmentRequest)(nil),                 // 43: druz9.v1.TutorArchiveAssignmentRequest
+	(*TutorArchiveAssignmentResponse)(nil),                // 44: druz9.v1.TutorArchiveAssignmentResponse
+	(*TutorBroadcastAssignmentRequest)(nil),               // 45: druz9.v1.TutorBroadcastAssignmentRequest
+	(*TutorBroadcastFailure)(nil),                         // 46: druz9.v1.TutorBroadcastFailure
+	(*TutorSharedMaterial)(nil),                           // 47: druz9.v1.TutorSharedMaterial
+	(*TutorPushSharedReadingRequest)(nil),                 // 48: druz9.v1.TutorPushSharedReadingRequest
+	(*TutorPushSharedReadingResponse)(nil),                // 49: druz9.v1.TutorPushSharedReadingResponse
+	(*TutorListSharedReadingRequest)(nil),                 // 50: druz9.v1.TutorListSharedReadingRequest
+	(*TutorListSharedReadingResponse)(nil),                // 51: druz9.v1.TutorListSharedReadingResponse
+	(*TutorBroadcastAssignmentResponse)(nil),              // 52: druz9.v1.TutorBroadcastAssignmentResponse
+	(*TutorEvent)(nil),                                    // 53: druz9.v1.TutorEvent
+	(*TutorCreateEventRequest)(nil),                       // 54: druz9.v1.TutorCreateEventRequest
+	(*TutorCancelEventRequest)(nil),                       // 55: druz9.v1.TutorCancelEventRequest
+	(*TutorCancelEventResponse)(nil),                      // 56: druz9.v1.TutorCancelEventResponse
+	(*TutorCompleteEventRequest)(nil),                     // 57: druz9.v1.TutorCompleteEventRequest
+	(*TutorCompleteEventResponse)(nil),                    // 58: druz9.v1.TutorCompleteEventResponse
+	(*TutorListEventsRequest)(nil),                        // 59: druz9.v1.TutorListEventsRequest
+	(*TutorListUpcomingEventsRequest)(nil),                // 60: druz9.v1.TutorListUpcomingEventsRequest
+	(*TutorListEventsResponse)(nil),                       // 61: druz9.v1.TutorListEventsResponse
+	(*TutorPeekInviteResponse)(nil),                       // 62: druz9.v1.TutorPeekInviteResponse
+	(*TutorReadingPath)(nil),                              // 63: druz9.v1.TutorReadingPath
+	(*TutorListReadingPathsRequest)(nil),                  // 64: druz9.v1.TutorListReadingPathsRequest
+	(*TutorListReadingPathsResponse)(nil),                 // 65: druz9.v1.TutorListReadingPathsResponse
+	(*TutorCreateReadingPathRequest)(nil),                 // 66: druz9.v1.TutorCreateReadingPathRequest
+	(*TutorUpdateReadingPathRequest)(nil),                 // 67: druz9.v1.TutorUpdateReadingPathRequest
+	(*TutorArchiveReadingPathRequest)(nil),                // 68: druz9.v1.TutorArchiveReadingPathRequest
+	(*TutorArchiveReadingPathResponse)(nil),               // 69: druz9.v1.TutorArchiveReadingPathResponse
+	(*TutorPathAssignment)(nil),                           // 70: druz9.v1.TutorPathAssignment
+	(*TutorAssignReadingPathRequest)(nil),                 // 71: druz9.v1.TutorAssignReadingPathRequest
+	(*TutorAssignReadingPathResponse)(nil),                // 72: druz9.v1.TutorAssignReadingPathResponse
+	(*TutorListMyActivePathAssignmentsRequest)(nil),       // 73: druz9.v1.TutorListMyActivePathAssignmentsRequest
+	(*TutorListMyActivePathAssignmentsResponse)(nil),      // 74: druz9.v1.TutorListMyActivePathAssignmentsResponse
+	(*TutorAdvancePathStepRequest)(nil),                   // 75: druz9.v1.TutorAdvancePathStepRequest
+	(*TutorAdvancePathStepResponse)(nil),                  // 76: druz9.v1.TutorAdvancePathStepResponse
+	(*TutorGetSessionNotesRequest)(nil),                   // 77: druz9.v1.TutorGetSessionNotesRequest
+	(*TutorSaveSessionNotesRequest)(nil),                  // 78: druz9.v1.TutorSaveSessionNotesRequest
+	(*TutorSessionNotes)(nil),                             // 79: druz9.v1.TutorSessionNotes
+	(*TutorDirectoryProfile)(nil),                         // 80: druz9.v1.TutorDirectoryProfile
+	(*TutorDirectoryEntry)(nil),                           // 81: druz9.v1.TutorDirectoryEntry
+	(*TutorDirectoryApplication)(nil),                     // 82: druz9.v1.TutorDirectoryApplication
+	(*TutorGetMyDirectoryProfileRequest)(nil),             // 83: druz9.v1.TutorGetMyDirectoryProfileRequest
+	(*TutorGetMyDirectoryProfileResponse)(nil),            // 84: druz9.v1.TutorGetMyDirectoryProfileResponse
+	(*TutorUpsertDirectoryProfileRequest)(nil),            // 85: druz9.v1.TutorUpsertDirectoryProfileRequest
+	(*TutorUpsertDirectoryProfileResponse)(nil),           // 86: druz9.v1.TutorUpsertDirectoryProfileResponse
+	(*TutorListDirectoryTutorsRequest)(nil),               // 87: druz9.v1.TutorListDirectoryTutorsRequest
+	(*TutorListDirectoryTutorsResponse)(nil),              // 88: druz9.v1.TutorListDirectoryTutorsResponse
+	(*TutorApplyToTutorRequest)(nil),                      // 89: druz9.v1.TutorApplyToTutorRequest
+	(*TutorApplyToTutorResponse)(nil),                     // 90: druz9.v1.TutorApplyToTutorResponse
+	(*TutorListPendingApplicationsRequest)(nil),           // 91: druz9.v1.TutorListPendingApplicationsRequest
+	(*TutorListPendingApplicationsResponse)(nil),          // 92: druz9.v1.TutorListPendingApplicationsResponse
+	(*TutorAcceptApplicationRequest)(nil),                 // 93: druz9.v1.TutorAcceptApplicationRequest
+	(*TutorAcceptApplicationResponse)(nil),                // 94: druz9.v1.TutorAcceptApplicationResponse
+	(*TutorDeclineApplicationRequest)(nil),                // 95: druz9.v1.TutorDeclineApplicationRequest
+	(*TutorDeclineApplicationResponse)(nil),               // 96: druz9.v1.TutorDeclineApplicationResponse
+	(*TutorSetSessionNoteVisibilityRequest)(nil),          // 97: druz9.v1.TutorSetSessionNoteVisibilityRequest
+	(*TutorSetSessionNoteVisibilityResponse)(nil),         // 98: druz9.v1.TutorSetSessionNoteVisibilityResponse
+	(*TutorSharedSessionNote)(nil),                        // 99: druz9.v1.TutorSharedSessionNote
+	(*TutorListSharedSessionNotesForStudentRequest)(nil),  // 100: druz9.v1.TutorListSharedSessionNotesForStudentRequest
+	(*TutorListSharedSessionNotesForStudentResponse)(nil), // 101: druz9.v1.TutorListSharedSessionNotesForStudentResponse
+	(*timestamppb.Timestamp)(nil),                         // 102: google.protobuf.Timestamp
 }
 var file_druz9_v1_tutor_proto_depIdxs = []int32{
-	94, // 0: druz9.v1.TutorInvite.created_at:type_name -> google.protobuf.Timestamp
-	94, // 1: druz9.v1.TutorInvite.expires_at:type_name -> google.protobuf.Timestamp
-	94, // 2: druz9.v1.TutorInvite.accepted_at:type_name -> google.protobuf.Timestamp
-	94, // 3: druz9.v1.TutorInvite.revoked_at:type_name -> google.protobuf.Timestamp
-	0,  // 4: druz9.v1.TutorInvite.status:type_name -> druz9.v1.InviteStatus
-	94, // 5: druz9.v1.TutorRelationship.started_at:type_name -> google.protobuf.Timestamp
-	94, // 6: druz9.v1.TutorRelationship.ended_at:type_name -> google.protobuf.Timestamp
-	7,  // 7: druz9.v1.TutorListPendingInvitesForMeResponse.items:type_name -> druz9.v1.TutorPendingInvite
-	94, // 8: druz9.v1.TutorPendingInvite.created_at:type_name -> google.protobuf.Timestamp
-	94, // 9: druz9.v1.TutorPendingInvite.expires_at:type_name -> google.protobuf.Timestamp
-	1,  // 10: druz9.v1.TutorListInvitesResponse.items:type_name -> druz9.v1.TutorInvite
-	2,  // 11: druz9.v1.TutorListStudentsResponse.items:type_name -> druz9.v1.TutorRelationship
-	94, // 12: druz9.v1.TutorCreateGroupEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
-	94, // 13: druz9.v1.TutorStudentSnapshot.last_active_at:type_name -> google.protobuf.Timestamp
-	28, // 14: druz9.v1.TutorStudentSnapshot.weak_spots:type_name -> druz9.v1.TutorWeakSpot
-	29, // 15: druz9.v1.TutorPreSessionBrief.snapshot:type_name -> druz9.v1.TutorStudentSnapshot
-	94, // 16: druz9.v1.TutorAssignment.due_at:type_name -> google.protobuf.Timestamp
-	94, // 17: druz9.v1.TutorAssignment.created_at:type_name -> google.protobuf.Timestamp
-	94, // 18: druz9.v1.TutorAssignment.completed_at:type_name -> google.protobuf.Timestamp
-	94, // 19: druz9.v1.TutorAssignment.archived_at:type_name -> google.protobuf.Timestamp
-	94, // 20: druz9.v1.TutorPushAssignmentRequest.due_at:type_name -> google.protobuf.Timestamp
-	33, // 21: druz9.v1.TutorListAssignmentsResponse.items:type_name -> druz9.v1.TutorAssignment
-	94, // 22: druz9.v1.TutorBroadcastAssignmentRequest.due_at:type_name -> google.protobuf.Timestamp
-	94, // 23: druz9.v1.TutorSharedMaterial.created_at:type_name -> google.protobuf.Timestamp
-	44, // 24: druz9.v1.TutorPushSharedReadingResponse.material:type_name -> druz9.v1.TutorSharedMaterial
-	44, // 25: druz9.v1.TutorListSharedReadingResponse.items:type_name -> druz9.v1.TutorSharedMaterial
-	33, // 26: druz9.v1.TutorBroadcastAssignmentResponse.pushed:type_name -> druz9.v1.TutorAssignment
-	43, // 27: druz9.v1.TutorBroadcastAssignmentResponse.failed:type_name -> druz9.v1.TutorBroadcastFailure
-	94, // 28: druz9.v1.TutorEvent.scheduled_at:type_name -> google.protobuf.Timestamp
-	94, // 29: druz9.v1.TutorEvent.created_at:type_name -> google.protobuf.Timestamp
-	94, // 30: druz9.v1.TutorEvent.updated_at:type_name -> google.protobuf.Timestamp
-	94, // 31: druz9.v1.TutorCreateEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
-	50, // 32: druz9.v1.TutorListEventsResponse.items:type_name -> druz9.v1.TutorEvent
-	1,  // 33: druz9.v1.TutorPeekInviteResponse.invite:type_name -> druz9.v1.TutorInvite
-	94, // 34: druz9.v1.TutorReadingPath.archived_at:type_name -> google.protobuf.Timestamp
-	94, // 35: druz9.v1.TutorReadingPath.created_at:type_name -> google.protobuf.Timestamp
-	94, // 36: druz9.v1.TutorReadingPath.updated_at:type_name -> google.protobuf.Timestamp
-	60, // 37: druz9.v1.TutorListReadingPathsResponse.items:type_name -> druz9.v1.TutorReadingPath
-	94, // 38: druz9.v1.TutorPathAssignment.assigned_at:type_name -> google.protobuf.Timestamp
-	94, // 39: druz9.v1.TutorPathAssignment.completed_at:type_name -> google.protobuf.Timestamp
-	94, // 40: druz9.v1.TutorPathAssignment.archived_at:type_name -> google.protobuf.Timestamp
-	67, // 41: druz9.v1.TutorAssignReadingPathResponse.assignment:type_name -> druz9.v1.TutorPathAssignment
-	67, // 42: druz9.v1.TutorListMyActivePathAssignmentsResponse.items:type_name -> druz9.v1.TutorPathAssignment
-	67, // 43: druz9.v1.TutorAdvancePathStepResponse.assignment:type_name -> druz9.v1.TutorPathAssignment
-	77, // 44: druz9.v1.TutorGetMyDirectoryProfileResponse.profile:type_name -> druz9.v1.TutorDirectoryProfile
-	77, // 45: druz9.v1.TutorUpsertDirectoryProfileResponse.profile:type_name -> druz9.v1.TutorDirectoryProfile
-	78, // 46: druz9.v1.TutorListDirectoryTutorsResponse.items:type_name -> druz9.v1.TutorDirectoryEntry
-	79, // 47: druz9.v1.TutorApplyToTutorResponse.application:type_name -> druz9.v1.TutorDirectoryApplication
-	79, // 48: druz9.v1.TutorListPendingApplicationsResponse.items:type_name -> druz9.v1.TutorDirectoryApplication
-	2,  // 49: druz9.v1.TutorAcceptApplicationResponse.relationship:type_name -> druz9.v1.TutorRelationship
-	3,  // 50: druz9.v1.TutorService.CreateInvite:input_type -> druz9.v1.TutorCreateInviteRequest
-	4,  // 51: druz9.v1.TutorService.InviteByUsername:input_type -> druz9.v1.TutorInviteByUsernameRequest
-	5,  // 52: druz9.v1.TutorService.ListPendingInvitesForMe:input_type -> druz9.v1.TutorListPendingInvitesForMeRequest
-	8,  // 53: druz9.v1.TutorService.RevokeInvite:input_type -> druz9.v1.TutorRevokeInviteRequest
-	11, // 54: druz9.v1.TutorService.ListInvites:input_type -> druz9.v1.TutorListInvitesRequest
-	9,  // 55: druz9.v1.TutorService.PeekInvite:input_type -> druz9.v1.TutorPeekInviteRequest
-	10, // 56: druz9.v1.TutorService.AcceptInvite:input_type -> druz9.v1.TutorAcceptInviteRequest
-	13, // 57: druz9.v1.TutorService.ListStudents:input_type -> druz9.v1.TutorListStudentsRequest
-	15, // 58: druz9.v1.TutorService.ListMyTutors:input_type -> druz9.v1.TutorListMyTutorsRequest
-	26, // 59: druz9.v1.TutorService.EndRelationship:input_type -> druz9.v1.TutorEndRelationshipRequest
-	30, // 60: druz9.v1.TutorService.GetStudentSnapshot:input_type -> druz9.v1.TutorGetStudentSnapshotRequest
-	32, // 61: druz9.v1.TutorService.GeneratePreSessionBrief:input_type -> druz9.v1.TutorGenerateBriefRequest
-	34, // 62: druz9.v1.TutorService.PushAssignment:input_type -> druz9.v1.TutorPushAssignmentRequest
-	35, // 63: druz9.v1.TutorService.ListAssignmentsForTutor:input_type -> druz9.v1.TutorListAssignmentsRequest
-	36, // 64: druz9.v1.TutorService.ListPendingAssignments:input_type -> druz9.v1.TutorListPendingAssignmentsRequest
-	38, // 65: druz9.v1.TutorService.CompleteAssignment:input_type -> druz9.v1.TutorCompleteAssignmentRequest
-	40, // 66: druz9.v1.TutorService.ArchiveAssignment:input_type -> druz9.v1.TutorArchiveAssignmentRequest
-	42, // 67: druz9.v1.TutorService.BroadcastAssignment:input_type -> druz9.v1.TutorBroadcastAssignmentRequest
-	45, // 68: druz9.v1.TutorService.PushSharedReading:input_type -> druz9.v1.TutorPushSharedReadingRequest
-	47, // 69: druz9.v1.TutorService.ListSharedReading:input_type -> druz9.v1.TutorListSharedReadingRequest
-	51, // 70: druz9.v1.TutorService.CreateEvent:input_type -> druz9.v1.TutorCreateEventRequest
-	52, // 71: druz9.v1.TutorService.CancelEvent:input_type -> druz9.v1.TutorCancelEventRequest
-	54, // 72: druz9.v1.TutorService.CompleteEvent:input_type -> druz9.v1.TutorCompleteEventRequest
-	56, // 73: druz9.v1.TutorService.ListEventsForTutor:input_type -> druz9.v1.TutorListEventsRequest
-	57, // 74: druz9.v1.TutorService.ListUpcomingEventsForStudent:input_type -> druz9.v1.TutorListUpcomingEventsRequest
-	16, // 75: druz9.v1.TutorService.GetTutorActivity:input_type -> druz9.v1.TutorGetActivityRequest
-	18, // 76: druz9.v1.TutorService.CreateGroupEvent:input_type -> druz9.v1.TutorCreateGroupEventRequest
-	19, // 77: druz9.v1.TutorService.JoinEvent:input_type -> druz9.v1.TutorJoinEventRequest
-	21, // 78: druz9.v1.TutorService.LeaveEvent:input_type -> druz9.v1.TutorLeaveEventRequest
-	23, // 79: druz9.v1.TutorService.ListUpcomingGroupEventsForStudent:input_type -> druz9.v1.TutorListUpcomingGroupEventsRequest
-	24, // 80: druz9.v1.TutorService.GetEventRSVPCount:input_type -> druz9.v1.TutorGetEventRSVPCountRequest
-	74, // 81: druz9.v1.TutorService.GetSessionNotes:input_type -> druz9.v1.TutorGetSessionNotesRequest
-	75, // 82: druz9.v1.TutorService.SaveSessionNotes:input_type -> druz9.v1.TutorSaveSessionNotesRequest
-	61, // 83: druz9.v1.TutorService.ListReadingPaths:input_type -> druz9.v1.TutorListReadingPathsRequest
-	63, // 84: druz9.v1.TutorService.CreateReadingPath:input_type -> druz9.v1.TutorCreateReadingPathRequest
-	64, // 85: druz9.v1.TutorService.UpdateReadingPath:input_type -> druz9.v1.TutorUpdateReadingPathRequest
-	65, // 86: druz9.v1.TutorService.ArchiveReadingPath:input_type -> druz9.v1.TutorArchiveReadingPathRequest
-	68, // 87: druz9.v1.TutorService.AssignReadingPath:input_type -> druz9.v1.TutorAssignReadingPathRequest
-	70, // 88: druz9.v1.TutorService.ListMyActivePathAssignments:input_type -> druz9.v1.TutorListMyActivePathAssignmentsRequest
-	72, // 89: druz9.v1.TutorService.AdvancePathStep:input_type -> druz9.v1.TutorAdvancePathStepRequest
-	80, // 90: druz9.v1.TutorService.GetMyDirectoryProfile:input_type -> druz9.v1.TutorGetMyDirectoryProfileRequest
-	82, // 91: druz9.v1.TutorService.UpsertDirectoryProfile:input_type -> druz9.v1.TutorUpsertDirectoryProfileRequest
-	84, // 92: druz9.v1.TutorService.ListDirectoryTutors:input_type -> druz9.v1.TutorListDirectoryTutorsRequest
-	86, // 93: druz9.v1.TutorService.ApplyToTutor:input_type -> druz9.v1.TutorApplyToTutorRequest
-	88, // 94: druz9.v1.TutorService.ListPendingApplications:input_type -> druz9.v1.TutorListPendingApplicationsRequest
-	90, // 95: druz9.v1.TutorService.AcceptApplication:input_type -> druz9.v1.TutorAcceptApplicationRequest
-	92, // 96: druz9.v1.TutorService.DeclineApplication:input_type -> druz9.v1.TutorDeclineApplicationRequest
-	1,  // 97: druz9.v1.TutorService.CreateInvite:output_type -> druz9.v1.TutorInvite
-	1,  // 98: druz9.v1.TutorService.InviteByUsername:output_type -> druz9.v1.TutorInvite
-	6,  // 99: druz9.v1.TutorService.ListPendingInvitesForMe:output_type -> druz9.v1.TutorListPendingInvitesForMeResponse
-	1,  // 100: druz9.v1.TutorService.RevokeInvite:output_type -> druz9.v1.TutorInvite
-	12, // 101: druz9.v1.TutorService.ListInvites:output_type -> druz9.v1.TutorListInvitesResponse
-	59, // 102: druz9.v1.TutorService.PeekInvite:output_type -> druz9.v1.TutorPeekInviteResponse
-	2,  // 103: druz9.v1.TutorService.AcceptInvite:output_type -> druz9.v1.TutorRelationship
-	14, // 104: druz9.v1.TutorService.ListStudents:output_type -> druz9.v1.TutorListStudentsResponse
-	14, // 105: druz9.v1.TutorService.ListMyTutors:output_type -> druz9.v1.TutorListStudentsResponse
-	27, // 106: druz9.v1.TutorService.EndRelationship:output_type -> druz9.v1.TutorEndRelationshipResponse
-	29, // 107: druz9.v1.TutorService.GetStudentSnapshot:output_type -> druz9.v1.TutorStudentSnapshot
-	31, // 108: druz9.v1.TutorService.GeneratePreSessionBrief:output_type -> druz9.v1.TutorPreSessionBrief
-	33, // 109: druz9.v1.TutorService.PushAssignment:output_type -> druz9.v1.TutorAssignment
-	37, // 110: druz9.v1.TutorService.ListAssignmentsForTutor:output_type -> druz9.v1.TutorListAssignmentsResponse
-	37, // 111: druz9.v1.TutorService.ListPendingAssignments:output_type -> druz9.v1.TutorListAssignmentsResponse
-	39, // 112: druz9.v1.TutorService.CompleteAssignment:output_type -> druz9.v1.TutorCompleteAssignmentResponse
-	41, // 113: druz9.v1.TutorService.ArchiveAssignment:output_type -> druz9.v1.TutorArchiveAssignmentResponse
-	49, // 114: druz9.v1.TutorService.BroadcastAssignment:output_type -> druz9.v1.TutorBroadcastAssignmentResponse
-	46, // 115: druz9.v1.TutorService.PushSharedReading:output_type -> druz9.v1.TutorPushSharedReadingResponse
-	48, // 116: druz9.v1.TutorService.ListSharedReading:output_type -> druz9.v1.TutorListSharedReadingResponse
-	50, // 117: druz9.v1.TutorService.CreateEvent:output_type -> druz9.v1.TutorEvent
-	53, // 118: druz9.v1.TutorService.CancelEvent:output_type -> druz9.v1.TutorCancelEventResponse
-	55, // 119: druz9.v1.TutorService.CompleteEvent:output_type -> druz9.v1.TutorCompleteEventResponse
-	58, // 120: druz9.v1.TutorService.ListEventsForTutor:output_type -> druz9.v1.TutorListEventsResponse
-	58, // 121: druz9.v1.TutorService.ListUpcomingEventsForStudent:output_type -> druz9.v1.TutorListEventsResponse
-	17, // 122: druz9.v1.TutorService.GetTutorActivity:output_type -> druz9.v1.TutorActivityResponse
-	50, // 123: druz9.v1.TutorService.CreateGroupEvent:output_type -> druz9.v1.TutorEvent
-	20, // 124: druz9.v1.TutorService.JoinEvent:output_type -> druz9.v1.TutorJoinEventResponse
-	22, // 125: druz9.v1.TutorService.LeaveEvent:output_type -> druz9.v1.TutorLeaveEventResponse
-	58, // 126: druz9.v1.TutorService.ListUpcomingGroupEventsForStudent:output_type -> druz9.v1.TutorListEventsResponse
-	25, // 127: druz9.v1.TutorService.GetEventRSVPCount:output_type -> druz9.v1.TutorGetEventRSVPCountResponse
-	76, // 128: druz9.v1.TutorService.GetSessionNotes:output_type -> druz9.v1.TutorSessionNotes
-	76, // 129: druz9.v1.TutorService.SaveSessionNotes:output_type -> druz9.v1.TutorSessionNotes
-	62, // 130: druz9.v1.TutorService.ListReadingPaths:output_type -> druz9.v1.TutorListReadingPathsResponse
-	60, // 131: druz9.v1.TutorService.CreateReadingPath:output_type -> druz9.v1.TutorReadingPath
-	60, // 132: druz9.v1.TutorService.UpdateReadingPath:output_type -> druz9.v1.TutorReadingPath
-	66, // 133: druz9.v1.TutorService.ArchiveReadingPath:output_type -> druz9.v1.TutorArchiveReadingPathResponse
-	69, // 134: druz9.v1.TutorService.AssignReadingPath:output_type -> druz9.v1.TutorAssignReadingPathResponse
-	71, // 135: druz9.v1.TutorService.ListMyActivePathAssignments:output_type -> druz9.v1.TutorListMyActivePathAssignmentsResponse
-	73, // 136: druz9.v1.TutorService.AdvancePathStep:output_type -> druz9.v1.TutorAdvancePathStepResponse
-	81, // 137: druz9.v1.TutorService.GetMyDirectoryProfile:output_type -> druz9.v1.TutorGetMyDirectoryProfileResponse
-	83, // 138: druz9.v1.TutorService.UpsertDirectoryProfile:output_type -> druz9.v1.TutorUpsertDirectoryProfileResponse
-	85, // 139: druz9.v1.TutorService.ListDirectoryTutors:output_type -> druz9.v1.TutorListDirectoryTutorsResponse
-	87, // 140: druz9.v1.TutorService.ApplyToTutor:output_type -> druz9.v1.TutorApplyToTutorResponse
-	89, // 141: druz9.v1.TutorService.ListPendingApplications:output_type -> druz9.v1.TutorListPendingApplicationsResponse
-	91, // 142: druz9.v1.TutorService.AcceptApplication:output_type -> druz9.v1.TutorAcceptApplicationResponse
-	93, // 143: druz9.v1.TutorService.DeclineApplication:output_type -> druz9.v1.TutorDeclineApplicationResponse
-	97, // [97:144] is the sub-list for method output_type
-	50, // [50:97] is the sub-list for method input_type
-	50, // [50:50] is the sub-list for extension type_name
-	50, // [50:50] is the sub-list for extension extendee
-	0,  // [0:50] is the sub-list for field type_name
+	102, // 0: druz9.v1.TutorInvite.created_at:type_name -> google.protobuf.Timestamp
+	102, // 1: druz9.v1.TutorInvite.expires_at:type_name -> google.protobuf.Timestamp
+	102, // 2: druz9.v1.TutorInvite.accepted_at:type_name -> google.protobuf.Timestamp
+	102, // 3: druz9.v1.TutorInvite.revoked_at:type_name -> google.protobuf.Timestamp
+	0,   // 4: druz9.v1.TutorInvite.status:type_name -> druz9.v1.InviteStatus
+	102, // 5: druz9.v1.TutorRelationship.started_at:type_name -> google.protobuf.Timestamp
+	102, // 6: druz9.v1.TutorRelationship.ended_at:type_name -> google.protobuf.Timestamp
+	7,   // 7: druz9.v1.TutorListPendingInvitesForMeResponse.items:type_name -> druz9.v1.TutorPendingInvite
+	102, // 8: druz9.v1.TutorPendingInvite.created_at:type_name -> google.protobuf.Timestamp
+	102, // 9: druz9.v1.TutorPendingInvite.expires_at:type_name -> google.protobuf.Timestamp
+	1,   // 10: druz9.v1.TutorListInvitesResponse.items:type_name -> druz9.v1.TutorInvite
+	2,   // 11: druz9.v1.TutorListStudentsResponse.items:type_name -> druz9.v1.TutorRelationship
+	102, // 12: druz9.v1.TutorMyTutorActivitySummary.last_active_at:type_name -> google.protobuf.Timestamp
+	19,  // 13: druz9.v1.TutorMyTutorsActivityResponse.items:type_name -> druz9.v1.TutorMyTutorActivitySummary
+	102, // 14: druz9.v1.TutorCreateGroupEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
+	102, // 15: druz9.v1.TutorStudentSnapshot.last_active_at:type_name -> google.protobuf.Timestamp
+	31,  // 16: druz9.v1.TutorStudentSnapshot.weak_spots:type_name -> druz9.v1.TutorWeakSpot
+	32,  // 17: druz9.v1.TutorPreSessionBrief.snapshot:type_name -> druz9.v1.TutorStudentSnapshot
+	102, // 18: druz9.v1.TutorAssignment.due_at:type_name -> google.protobuf.Timestamp
+	102, // 19: druz9.v1.TutorAssignment.created_at:type_name -> google.protobuf.Timestamp
+	102, // 20: druz9.v1.TutorAssignment.completed_at:type_name -> google.protobuf.Timestamp
+	102, // 21: druz9.v1.TutorAssignment.archived_at:type_name -> google.protobuf.Timestamp
+	102, // 22: druz9.v1.TutorPushAssignmentRequest.due_at:type_name -> google.protobuf.Timestamp
+	36,  // 23: druz9.v1.TutorListAssignmentsResponse.items:type_name -> druz9.v1.TutorAssignment
+	102, // 24: druz9.v1.TutorBroadcastAssignmentRequest.due_at:type_name -> google.protobuf.Timestamp
+	102, // 25: druz9.v1.TutorSharedMaterial.created_at:type_name -> google.protobuf.Timestamp
+	47,  // 26: druz9.v1.TutorPushSharedReadingResponse.material:type_name -> druz9.v1.TutorSharedMaterial
+	47,  // 27: druz9.v1.TutorListSharedReadingResponse.items:type_name -> druz9.v1.TutorSharedMaterial
+	36,  // 28: druz9.v1.TutorBroadcastAssignmentResponse.pushed:type_name -> druz9.v1.TutorAssignment
+	46,  // 29: druz9.v1.TutorBroadcastAssignmentResponse.failed:type_name -> druz9.v1.TutorBroadcastFailure
+	102, // 30: druz9.v1.TutorEvent.scheduled_at:type_name -> google.protobuf.Timestamp
+	102, // 31: druz9.v1.TutorEvent.created_at:type_name -> google.protobuf.Timestamp
+	102, // 32: druz9.v1.TutorEvent.updated_at:type_name -> google.protobuf.Timestamp
+	102, // 33: druz9.v1.TutorEvent.shared_at:type_name -> google.protobuf.Timestamp
+	102, // 34: druz9.v1.TutorCreateEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
+	53,  // 35: druz9.v1.TutorListEventsResponse.items:type_name -> druz9.v1.TutorEvent
+	1,   // 36: druz9.v1.TutorPeekInviteResponse.invite:type_name -> druz9.v1.TutorInvite
+	102, // 37: druz9.v1.TutorReadingPath.archived_at:type_name -> google.protobuf.Timestamp
+	102, // 38: druz9.v1.TutorReadingPath.created_at:type_name -> google.protobuf.Timestamp
+	102, // 39: druz9.v1.TutorReadingPath.updated_at:type_name -> google.protobuf.Timestamp
+	63,  // 40: druz9.v1.TutorListReadingPathsResponse.items:type_name -> druz9.v1.TutorReadingPath
+	102, // 41: druz9.v1.TutorPathAssignment.assigned_at:type_name -> google.protobuf.Timestamp
+	102, // 42: druz9.v1.TutorPathAssignment.completed_at:type_name -> google.protobuf.Timestamp
+	102, // 43: druz9.v1.TutorPathAssignment.archived_at:type_name -> google.protobuf.Timestamp
+	70,  // 44: druz9.v1.TutorAssignReadingPathResponse.assignment:type_name -> druz9.v1.TutorPathAssignment
+	70,  // 45: druz9.v1.TutorListMyActivePathAssignmentsResponse.items:type_name -> druz9.v1.TutorPathAssignment
+	70,  // 46: druz9.v1.TutorAdvancePathStepResponse.assignment:type_name -> druz9.v1.TutorPathAssignment
+	80,  // 47: druz9.v1.TutorGetMyDirectoryProfileResponse.profile:type_name -> druz9.v1.TutorDirectoryProfile
+	80,  // 48: druz9.v1.TutorUpsertDirectoryProfileResponse.profile:type_name -> druz9.v1.TutorDirectoryProfile
+	81,  // 49: druz9.v1.TutorListDirectoryTutorsResponse.items:type_name -> druz9.v1.TutorDirectoryEntry
+	82,  // 50: druz9.v1.TutorApplyToTutorResponse.application:type_name -> druz9.v1.TutorDirectoryApplication
+	82,  // 51: druz9.v1.TutorListPendingApplicationsResponse.items:type_name -> druz9.v1.TutorDirectoryApplication
+	2,   // 52: druz9.v1.TutorAcceptApplicationResponse.relationship:type_name -> druz9.v1.TutorRelationship
+	53,  // 53: druz9.v1.TutorSetSessionNoteVisibilityResponse.event:type_name -> druz9.v1.TutorEvent
+	102, // 54: druz9.v1.TutorSharedSessionNote.scheduled_at:type_name -> google.protobuf.Timestamp
+	102, // 55: druz9.v1.TutorSharedSessionNote.shared_at:type_name -> google.protobuf.Timestamp
+	99,  // 56: druz9.v1.TutorListSharedSessionNotesForStudentResponse.items:type_name -> druz9.v1.TutorSharedSessionNote
+	3,   // 57: druz9.v1.TutorService.CreateInvite:input_type -> druz9.v1.TutorCreateInviteRequest
+	4,   // 58: druz9.v1.TutorService.InviteByUsername:input_type -> druz9.v1.TutorInviteByUsernameRequest
+	5,   // 59: druz9.v1.TutorService.ListPendingInvitesForMe:input_type -> druz9.v1.TutorListPendingInvitesForMeRequest
+	8,   // 60: druz9.v1.TutorService.RevokeInvite:input_type -> druz9.v1.TutorRevokeInviteRequest
+	11,  // 61: druz9.v1.TutorService.ListInvites:input_type -> druz9.v1.TutorListInvitesRequest
+	9,   // 62: druz9.v1.TutorService.PeekInvite:input_type -> druz9.v1.TutorPeekInviteRequest
+	10,  // 63: druz9.v1.TutorService.AcceptInvite:input_type -> druz9.v1.TutorAcceptInviteRequest
+	13,  // 64: druz9.v1.TutorService.ListStudents:input_type -> druz9.v1.TutorListStudentsRequest
+	15,  // 65: druz9.v1.TutorService.ListMyTutors:input_type -> druz9.v1.TutorListMyTutorsRequest
+	29,  // 66: druz9.v1.TutorService.EndRelationship:input_type -> druz9.v1.TutorEndRelationshipRequest
+	33,  // 67: druz9.v1.TutorService.GetStudentSnapshot:input_type -> druz9.v1.TutorGetStudentSnapshotRequest
+	35,  // 68: druz9.v1.TutorService.GeneratePreSessionBrief:input_type -> druz9.v1.TutorGenerateBriefRequest
+	37,  // 69: druz9.v1.TutorService.PushAssignment:input_type -> druz9.v1.TutorPushAssignmentRequest
+	38,  // 70: druz9.v1.TutorService.ListAssignmentsForTutor:input_type -> druz9.v1.TutorListAssignmentsRequest
+	39,  // 71: druz9.v1.TutorService.ListPendingAssignments:input_type -> druz9.v1.TutorListPendingAssignmentsRequest
+	41,  // 72: druz9.v1.TutorService.CompleteAssignment:input_type -> druz9.v1.TutorCompleteAssignmentRequest
+	43,  // 73: druz9.v1.TutorService.ArchiveAssignment:input_type -> druz9.v1.TutorArchiveAssignmentRequest
+	45,  // 74: druz9.v1.TutorService.BroadcastAssignment:input_type -> druz9.v1.TutorBroadcastAssignmentRequest
+	48,  // 75: druz9.v1.TutorService.PushSharedReading:input_type -> druz9.v1.TutorPushSharedReadingRequest
+	50,  // 76: druz9.v1.TutorService.ListSharedReading:input_type -> druz9.v1.TutorListSharedReadingRequest
+	54,  // 77: druz9.v1.TutorService.CreateEvent:input_type -> druz9.v1.TutorCreateEventRequest
+	55,  // 78: druz9.v1.TutorService.CancelEvent:input_type -> druz9.v1.TutorCancelEventRequest
+	57,  // 79: druz9.v1.TutorService.CompleteEvent:input_type -> druz9.v1.TutorCompleteEventRequest
+	59,  // 80: druz9.v1.TutorService.ListEventsForTutor:input_type -> druz9.v1.TutorListEventsRequest
+	60,  // 81: druz9.v1.TutorService.ListUpcomingEventsForStudent:input_type -> druz9.v1.TutorListUpcomingEventsRequest
+	16,  // 82: druz9.v1.TutorService.GetTutorActivity:input_type -> druz9.v1.TutorGetActivityRequest
+	18,  // 83: druz9.v1.TutorService.ListMyTutorsActivity:input_type -> druz9.v1.TutorMyTutorsActivityRequest
+	21,  // 84: druz9.v1.TutorService.CreateGroupEvent:input_type -> druz9.v1.TutorCreateGroupEventRequest
+	22,  // 85: druz9.v1.TutorService.JoinEvent:input_type -> druz9.v1.TutorJoinEventRequest
+	24,  // 86: druz9.v1.TutorService.LeaveEvent:input_type -> druz9.v1.TutorLeaveEventRequest
+	26,  // 87: druz9.v1.TutorService.ListUpcomingGroupEventsForStudent:input_type -> druz9.v1.TutorListUpcomingGroupEventsRequest
+	27,  // 88: druz9.v1.TutorService.GetEventRSVPCount:input_type -> druz9.v1.TutorGetEventRSVPCountRequest
+	77,  // 89: druz9.v1.TutorService.GetSessionNotes:input_type -> druz9.v1.TutorGetSessionNotesRequest
+	78,  // 90: druz9.v1.TutorService.SaveSessionNotes:input_type -> druz9.v1.TutorSaveSessionNotesRequest
+	64,  // 91: druz9.v1.TutorService.ListReadingPaths:input_type -> druz9.v1.TutorListReadingPathsRequest
+	66,  // 92: druz9.v1.TutorService.CreateReadingPath:input_type -> druz9.v1.TutorCreateReadingPathRequest
+	67,  // 93: druz9.v1.TutorService.UpdateReadingPath:input_type -> druz9.v1.TutorUpdateReadingPathRequest
+	68,  // 94: druz9.v1.TutorService.ArchiveReadingPath:input_type -> druz9.v1.TutorArchiveReadingPathRequest
+	71,  // 95: druz9.v1.TutorService.AssignReadingPath:input_type -> druz9.v1.TutorAssignReadingPathRequest
+	73,  // 96: druz9.v1.TutorService.ListMyActivePathAssignments:input_type -> druz9.v1.TutorListMyActivePathAssignmentsRequest
+	75,  // 97: druz9.v1.TutorService.AdvancePathStep:input_type -> druz9.v1.TutorAdvancePathStepRequest
+	83,  // 98: druz9.v1.TutorService.GetMyDirectoryProfile:input_type -> druz9.v1.TutorGetMyDirectoryProfileRequest
+	85,  // 99: druz9.v1.TutorService.UpsertDirectoryProfile:input_type -> druz9.v1.TutorUpsertDirectoryProfileRequest
+	87,  // 100: druz9.v1.TutorService.ListDirectoryTutors:input_type -> druz9.v1.TutorListDirectoryTutorsRequest
+	89,  // 101: druz9.v1.TutorService.ApplyToTutor:input_type -> druz9.v1.TutorApplyToTutorRequest
+	91,  // 102: druz9.v1.TutorService.ListPendingApplications:input_type -> druz9.v1.TutorListPendingApplicationsRequest
+	93,  // 103: druz9.v1.TutorService.AcceptApplication:input_type -> druz9.v1.TutorAcceptApplicationRequest
+	95,  // 104: druz9.v1.TutorService.DeclineApplication:input_type -> druz9.v1.TutorDeclineApplicationRequest
+	97,  // 105: druz9.v1.TutorService.SetSessionNoteVisibility:input_type -> druz9.v1.TutorSetSessionNoteVisibilityRequest
+	100, // 106: druz9.v1.TutorService.ListSharedSessionNotesForStudent:input_type -> druz9.v1.TutorListSharedSessionNotesForStudentRequest
+	1,   // 107: druz9.v1.TutorService.CreateInvite:output_type -> druz9.v1.TutorInvite
+	1,   // 108: druz9.v1.TutorService.InviteByUsername:output_type -> druz9.v1.TutorInvite
+	6,   // 109: druz9.v1.TutorService.ListPendingInvitesForMe:output_type -> druz9.v1.TutorListPendingInvitesForMeResponse
+	1,   // 110: druz9.v1.TutorService.RevokeInvite:output_type -> druz9.v1.TutorInvite
+	12,  // 111: druz9.v1.TutorService.ListInvites:output_type -> druz9.v1.TutorListInvitesResponse
+	62,  // 112: druz9.v1.TutorService.PeekInvite:output_type -> druz9.v1.TutorPeekInviteResponse
+	2,   // 113: druz9.v1.TutorService.AcceptInvite:output_type -> druz9.v1.TutorRelationship
+	14,  // 114: druz9.v1.TutorService.ListStudents:output_type -> druz9.v1.TutorListStudentsResponse
+	14,  // 115: druz9.v1.TutorService.ListMyTutors:output_type -> druz9.v1.TutorListStudentsResponse
+	30,  // 116: druz9.v1.TutorService.EndRelationship:output_type -> druz9.v1.TutorEndRelationshipResponse
+	32,  // 117: druz9.v1.TutorService.GetStudentSnapshot:output_type -> druz9.v1.TutorStudentSnapshot
+	34,  // 118: druz9.v1.TutorService.GeneratePreSessionBrief:output_type -> druz9.v1.TutorPreSessionBrief
+	36,  // 119: druz9.v1.TutorService.PushAssignment:output_type -> druz9.v1.TutorAssignment
+	40,  // 120: druz9.v1.TutorService.ListAssignmentsForTutor:output_type -> druz9.v1.TutorListAssignmentsResponse
+	40,  // 121: druz9.v1.TutorService.ListPendingAssignments:output_type -> druz9.v1.TutorListAssignmentsResponse
+	42,  // 122: druz9.v1.TutorService.CompleteAssignment:output_type -> druz9.v1.TutorCompleteAssignmentResponse
+	44,  // 123: druz9.v1.TutorService.ArchiveAssignment:output_type -> druz9.v1.TutorArchiveAssignmentResponse
+	52,  // 124: druz9.v1.TutorService.BroadcastAssignment:output_type -> druz9.v1.TutorBroadcastAssignmentResponse
+	49,  // 125: druz9.v1.TutorService.PushSharedReading:output_type -> druz9.v1.TutorPushSharedReadingResponse
+	51,  // 126: druz9.v1.TutorService.ListSharedReading:output_type -> druz9.v1.TutorListSharedReadingResponse
+	53,  // 127: druz9.v1.TutorService.CreateEvent:output_type -> druz9.v1.TutorEvent
+	56,  // 128: druz9.v1.TutorService.CancelEvent:output_type -> druz9.v1.TutorCancelEventResponse
+	58,  // 129: druz9.v1.TutorService.CompleteEvent:output_type -> druz9.v1.TutorCompleteEventResponse
+	61,  // 130: druz9.v1.TutorService.ListEventsForTutor:output_type -> druz9.v1.TutorListEventsResponse
+	61,  // 131: druz9.v1.TutorService.ListUpcomingEventsForStudent:output_type -> druz9.v1.TutorListEventsResponse
+	17,  // 132: druz9.v1.TutorService.GetTutorActivity:output_type -> druz9.v1.TutorActivityResponse
+	20,  // 133: druz9.v1.TutorService.ListMyTutorsActivity:output_type -> druz9.v1.TutorMyTutorsActivityResponse
+	53,  // 134: druz9.v1.TutorService.CreateGroupEvent:output_type -> druz9.v1.TutorEvent
+	23,  // 135: druz9.v1.TutorService.JoinEvent:output_type -> druz9.v1.TutorJoinEventResponse
+	25,  // 136: druz9.v1.TutorService.LeaveEvent:output_type -> druz9.v1.TutorLeaveEventResponse
+	61,  // 137: druz9.v1.TutorService.ListUpcomingGroupEventsForStudent:output_type -> druz9.v1.TutorListEventsResponse
+	28,  // 138: druz9.v1.TutorService.GetEventRSVPCount:output_type -> druz9.v1.TutorGetEventRSVPCountResponse
+	79,  // 139: druz9.v1.TutorService.GetSessionNotes:output_type -> druz9.v1.TutorSessionNotes
+	79,  // 140: druz9.v1.TutorService.SaveSessionNotes:output_type -> druz9.v1.TutorSessionNotes
+	65,  // 141: druz9.v1.TutorService.ListReadingPaths:output_type -> druz9.v1.TutorListReadingPathsResponse
+	63,  // 142: druz9.v1.TutorService.CreateReadingPath:output_type -> druz9.v1.TutorReadingPath
+	63,  // 143: druz9.v1.TutorService.UpdateReadingPath:output_type -> druz9.v1.TutorReadingPath
+	69,  // 144: druz9.v1.TutorService.ArchiveReadingPath:output_type -> druz9.v1.TutorArchiveReadingPathResponse
+	72,  // 145: druz9.v1.TutorService.AssignReadingPath:output_type -> druz9.v1.TutorAssignReadingPathResponse
+	74,  // 146: druz9.v1.TutorService.ListMyActivePathAssignments:output_type -> druz9.v1.TutorListMyActivePathAssignmentsResponse
+	76,  // 147: druz9.v1.TutorService.AdvancePathStep:output_type -> druz9.v1.TutorAdvancePathStepResponse
+	84,  // 148: druz9.v1.TutorService.GetMyDirectoryProfile:output_type -> druz9.v1.TutorGetMyDirectoryProfileResponse
+	86,  // 149: druz9.v1.TutorService.UpsertDirectoryProfile:output_type -> druz9.v1.TutorUpsertDirectoryProfileResponse
+	88,  // 150: druz9.v1.TutorService.ListDirectoryTutors:output_type -> druz9.v1.TutorListDirectoryTutorsResponse
+	90,  // 151: druz9.v1.TutorService.ApplyToTutor:output_type -> druz9.v1.TutorApplyToTutorResponse
+	92,  // 152: druz9.v1.TutorService.ListPendingApplications:output_type -> druz9.v1.TutorListPendingApplicationsResponse
+	94,  // 153: druz9.v1.TutorService.AcceptApplication:output_type -> druz9.v1.TutorAcceptApplicationResponse
+	96,  // 154: druz9.v1.TutorService.DeclineApplication:output_type -> druz9.v1.TutorDeclineApplicationResponse
+	98,  // 155: druz9.v1.TutorService.SetSessionNoteVisibility:output_type -> druz9.v1.TutorSetSessionNoteVisibilityResponse
+	101, // 156: druz9.v1.TutorService.ListSharedSessionNotesForStudent:output_type -> druz9.v1.TutorListSharedSessionNotesForStudentResponse
+	107, // [107:157] is the sub-list for method output_type
+	57,  // [57:107] is the sub-list for method input_type
+	57,  // [57:57] is the sub-list for extension type_name
+	57,  // [57:57] is the sub-list for extension extendee
+	0,   // [0:57] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_tutor_proto_init() }
@@ -6500,7 +7102,7 @@ func file_druz9_v1_tutor_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_tutor_proto_rawDesc), len(file_druz9_v1_tutor_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   93,
+			NumMessages:   101,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

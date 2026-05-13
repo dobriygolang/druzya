@@ -32,7 +32,9 @@ func (s TaskStatus) IsValid() bool {
 // TaskKind — which validator the coach listener uses when transitioning
 // `in_review → done`. Algorithms / sysdesign / quiz / reflection have
 // real signals on the bus; reading is settled by `codex.ArticleRead`;
-// custom is always user-driven (no AI review).
+// ml is settled by mock_interview.MockPipelineFinished с ML section
+// (ml_eng / ml_coding / ml_system_design / ml_theory); custom is always
+// user-driven (no AI review).
 type TaskKind string
 
 const (
@@ -41,13 +43,23 @@ const (
 	TaskKindQuiz       TaskKind = "quiz"
 	TaskKindReflection TaskKind = "reflection"
 	TaskKindReading    TaskKind = "reading"
-	TaskKindCustom     TaskKind = "custom"
+	// TaskKindML — Phase K M7 (2026-05-13). ML/MLE work item: model design,
+	// training pipeline drafting, MLOps experiments, paper reading с
+	// implementation, fine-tuning runs (LoRA / QLoRA), RAG pipelines.
+	// Auto-categoriser (см. categorise_task.go) routes tasks с keywords
+	// «deep learning / gradient / attention / dataset / fine-tune / RAG /
+	// LoRA / MLOps / training pipeline» в этот kind. Coach listener
+	// settles `in_review → done` через mock_interview pipeline finish
+	// event с ML section.
+	TaskKindML     TaskKind = "ml"
+	TaskKindCustom TaskKind = "custom"
 )
 
 // IsValid reports whether the value matches a known kind.
 func (k TaskKind) IsValid() bool {
 	switch k {
-	case TaskKindAlgo, TaskKindSysDesign, TaskKindQuiz, TaskKindReflection, TaskKindReading, TaskKindCustom:
+	case TaskKindAlgo, TaskKindSysDesign, TaskKindQuiz, TaskKindReflection,
+		TaskKindReading, TaskKindML, TaskKindCustom:
 		return true
 	}
 	return false

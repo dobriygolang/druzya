@@ -6,8 +6,9 @@
 // (UI ждёт drag-drop), 8B-class через TaskTaskboardCategorise.
 //
 // Phase J / H3 (2026-05-12) — extended:
-//   - Kind inference: LLM decides one of {algo|sysdesign|quiz|reflection|reading|custom}
+//   - Kind inference: LLM decides one of {algo|sysdesign|quiz|reflection|reading|ml|custom}
 //     based on title/brief. Replaces input.Kind (auto-categoriser overrides).
+//     M7 Phase K (2026-05-13): `ml` added для ML/MLE work items.
 //   - Reasoning: 1-2 sentence explanation surfaced as a toast «Auto-tagged
 //     as Algo · why?». Cheap to regen, не персистится в DB.
 //   - Confidence 0..1: low-confidence (<0.4) → UI skip auto-toast, поскольку
@@ -33,7 +34,7 @@ import (
 type CategoriseTaskOutput struct {
 	// Column ∈ todo | doing | done. Default — todo.
 	Column string `json:"column"`
-	// Kind ∈ algo | sysdesign | quiz | reflection | reading | custom.
+	// Kind ∈ algo | sysdesign | quiz | reflection | reading | ml | custom.
 	// Empty (или unknown) — fallback на input.Kind в caller'е.
 	Kind string `json:"kind"`
 	// Tags — optional list of short labels (e.g. ["streaming", "urgent"]).
@@ -99,7 +100,7 @@ func (uc *CategoriseTask) Do(ctx context.Context, in CategoriseTaskInput) (Categ
 const categoriseSystemPrompt = `You categorise a freshly-created kanban task for a senior IT developer's focus cockpit.
 
 Output JSON ONLY (no markdown, no commentary):
-{"column":"todo|doing|done","kind":"algo|sysdesign|quiz|reflection|reading|custom","tags":["<short>","..."],"estimated_minutes":<int>,"reasoning":"<one short sentence>","confidence":<0..1>}
+{"column":"todo|doing|done","kind":"algo|sysdesign|quiz|reflection|reading|ml|custom","tags":["<short>","..."],"estimated_minutes":<int>,"reasoning":"<one short sentence>","confidence":<0..1>}
 
 Kind rules:
 - algo       — competitive programming, LeetCode-style, data structures, dynamic programming, graph algorithms, big-O analysis.
@@ -107,7 +108,13 @@ Kind rules:
 - quiz       — Q&A drills, flashcards, multiple-choice, theory recall, English grammar drills.
 - reflection — retrospectives, journaling, post-mortems, weekly review, learnings.
 - reading    — books, articles, papers, RFCs, documentation deep-dives.
+- ml         — ML/MLE work: model design, training pipelines, MLOps, paper implementations, fine-tuning (LoRA/QLoRA), RAG pipelines, recsys/ranking design. Keywords: deep learning, gradient, attention, model, dataset, fine-tune, RAG, LoRA, MLOps, embedding, recsys, training pipeline, PyTorch, scikit-learn, numpy, transformer, BERT, GPT, recommender, ranking, inference.
 - custom     — none of the above, or task too vague (project setup, personal, errand).
+
+Disambiguation:
+- "reading a paper" → reading (passive consumption). But "implement LoRA from a paper" → ml (active build).
+- "system design for recsys ranking" → ml (ML-specific architecture). Pure non-ML distributed systems → sysdesign.
+- "BatchNorm vs LayerNorm quiz" → quiz (recall drill). But "derive backprop through LayerNorm" → ml (theory work).
 
 Column rules:
 - Default column=todo. Use "doing" only if input clearly describes in-flight work; "done" only when title indicates completion.

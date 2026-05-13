@@ -32,6 +32,10 @@ const CATEGORY_OPTIONS: { value: CoachPromptCategory; label: string }[] = [
   { value: 'reflection_grade', label: 'Reflection grade' },
   { value: 'cue_summary', label: 'Cue summary' },
   { value: 'milestones_gen', label: 'Milestones generator' },
+  // Phase K, M5 (2026-05-13) — ML-axis-specific drill recommender.
+  // Daily_brief / mock_grade re-used для ML slugs (daily_brief_ml /
+  // mock_grade_ml) — routing идёт по slug в intelligence service.
+  { value: 'ml_drill', label: 'ML drill' },
 ]
 
 export function CoachPromptsPanel() {

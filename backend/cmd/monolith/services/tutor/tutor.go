@@ -63,6 +63,10 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 		ListStudentsUC:     &tutorApp.ListStudents{Repo: repo},
 		ListMyTutorsUC:     &tutorApp.ListMyTutors{Repo: repo},
 		GetTutorActivityUC: &tutorApp.GetTutorActivity{Repo: repo, Now: d.Now},
+		// Phase K T6 (2026-05-12) — student-facing tutor activity surface
+		// для /today + Hone home rail. *Postgres satisfies both Repo (для
+		// ListStudentTutors) и EventRepo (для TutorsActivitySummary).
+		ListMyTutorsActivityUC: &tutorApp.ListMyTutorsActivity{Repo: repo, Stats: repo, Now: d.Now},
 		// Wave 5.2 group events on circles.
 		CreateGroupEventUC:                  &tutorApp.CreateGroupEvent{Repo: repo, Now: d.Now},
 		JoinEventUC:                         &tutorApp.JoinEvent{Repo: repo, Now: d.Now},
@@ -139,6 +143,9 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 		CompleteEventUC:                &tutorApp.CompleteEvent{Repo: repo, Now: d.Now},
 		ListEventsForTutorUC:           &tutorApp.ListEventsForTutor{Repo: repo},
 		ListUpcomingEventsForStudentUC: &tutorApp.ListUpcomingEventsForStudent{Repo: repo, Now: d.Now},
+		// Phase K T4 (2026-05-13) — session-note visibility / sharing.
+		SetSessionNoteVisibilityUC:         &tutorApp.SetSessionNoteVisibility{Repo: repo, Now: d.Now},
+		ListSharedSessionNotesForStudentUC: &tutorApp.ListSharedSessionNotesForStudent{Repo: repo},
 
 		TutorDisplay: tdeps.TutorDisplay,
 		Displays:     displays,
@@ -159,8 +166,9 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 			r.Post("/tutor/invites/accept", transcoder.ServeHTTP)
 			r.Get("/tutor/invites/peek/{code}", transcoder.ServeHTTP) // PUBLIC
 			r.Get("/tutor/students", transcoder.ServeHTTP)
-			r.Get("/tutor/my-tutors", transcoder.ServeHTTP) // Wave 9.4
-			r.Get("/tutor/activity", transcoder.ServeHTTP)  // Wave 9.5
+			r.Get("/tutor/my-tutors", transcoder.ServeHTTP)          // Wave 9.4
+			r.Get("/tutor/my-tutors/activity", transcoder.ServeHTTP) // Phase K T6
+			r.Get("/tutor/activity", transcoder.ServeHTTP)           // Wave 9.5
 			// Wave 5.2 group events.
 			r.Post("/tutor/events/group", transcoder.ServeHTTP)
 			r.Post("/tutor/events/{event_id}/join", transcoder.ServeHTTP)

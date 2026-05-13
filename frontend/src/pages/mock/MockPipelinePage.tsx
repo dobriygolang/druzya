@@ -55,7 +55,16 @@ import { CodingStage } from './CodingStage'
 import { SysDesignStage } from './SysDesignStage'
 import { BehavioralStage } from './BehavioralStage'
 
-const STAGE_ORDER_DISPLAY: StageKind[] = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral']
+const STAGE_ORDER_DISPLAY: StageKind[] = [
+  'hr',
+  'algo',
+  'coding',
+  'sysdesign',
+  'behavioral',
+  'ml_coding',
+  'ml_system_design',
+  'ml_theory',
+]
 
 export default function MockPipelinePage() {
   const { pipelineId } = useParams<{ pipelineId: string }>()
@@ -1001,6 +1010,9 @@ function ComingSoonStage({
     coding: 'Phase D',
     sysdesign: 'Phase E',
     behavioral: 'Phase E',
+    ml_coding: 'Phase K',
+    ml_system_design: 'Phase K',
+    ml_theory: 'Phase K',
   }
   return (
     <Card variant="default" padding="lg" className="flex flex-col gap-3">

@@ -101,6 +101,12 @@ func (TaskStatus) EnumDescriptor() ([]byte, []int) {
 }
 
 // TaskKind — тип задачи; маршрутизирует deep_link / иконку на FE.
+//
+// Phase K M7 (2026-05-13): TASK_KIND_ML добавлен для ML/MLE work items
+// (model design / training pipeline / MLOps / paper read с implementation /
+// fine-tuning LoRA / RAG). Auto-categoriser routes по keywords
+// (см. backend/services/hone/app/categorise_task.go); coach listener
+// settles через mock_interview.MockPipelineFinished с ML section.
 type TaskKind int32
 
 const (
@@ -111,6 +117,7 @@ const (
 	TaskKind_TASK_KIND_REFLECTION  TaskKind = 4
 	TaskKind_TASK_KIND_READING     TaskKind = 5
 	TaskKind_TASK_KIND_CUSTOM      TaskKind = 6
+	TaskKind_TASK_KIND_ML          TaskKind = 7
 )
 
 // Enum value maps for TaskKind.
@@ -123,6 +130,7 @@ var (
 		4: "TASK_KIND_REFLECTION",
 		5: "TASK_KIND_READING",
 		6: "TASK_KIND_CUSTOM",
+		7: "TASK_KIND_ML",
 	}
 	TaskKind_value = map[string]int32{
 		"TASK_KIND_UNSPECIFIED": 0,
@@ -132,6 +140,7 @@ var (
 		"TASK_KIND_REFLECTION":  4,
 		"TASK_KIND_READING":     5,
 		"TASK_KIND_CUSTOM":      6,
+		"TASK_KIND_ML":          7,
 	}
 )
 
@@ -9811,7 +9820,7 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x17TASK_STATUS_IN_PROGRESS\x10\x02\x12\x19\n" +
 	"\x15TASK_STATUS_IN_REVIEW\x10\x03\x12\x14\n" +
 	"\x10TASK_STATUS_DONE\x10\x04\x12\x19\n" +
-	"\x15TASK_STATUS_DISMISSED\x10\x05*\xad\x01\n" +
+	"\x15TASK_STATUS_DISMISSED\x10\x05*\xbf\x01\n" +
 	"\bTaskKind\x12\x19\n" +
 	"\x15TASK_KIND_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eTASK_KIND_ALGO\x10\x01\x12\x17\n" +
@@ -9819,7 +9828,8 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x0eTASK_KIND_QUIZ\x10\x03\x12\x18\n" +
 	"\x14TASK_KIND_REFLECTION\x10\x04\x12\x15\n" +
 	"\x11TASK_KIND_READING\x10\x05\x12\x14\n" +
-	"\x10TASK_KIND_CUSTOM\x10\x06*S\n" +
+	"\x10TASK_KIND_CUSTOM\x10\x06\x12\x10\n" +
+	"\fTASK_KIND_ML\x10\a*S\n" +
 	"\n" +
 	"TaskSource\x12\x1b\n" +
 	"\x17TASK_SOURCE_UNSPECIFIED\x10\x00\x12\x12\n" +

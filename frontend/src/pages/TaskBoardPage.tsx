@@ -21,6 +21,7 @@ import {
   CircleCheck,
   CircleHelp,
   CircleX,
+  Cpu,
   Eye,
   GripVertical,
   Loader2,
@@ -81,6 +82,10 @@ const KINDS: Record<TaskKindCanonical, KindDef> = {
   quiz: { label: 'Quiz', text: 'text-text-secondary', strip: 'bg-white/40', Icon: CircleHelp },
   reflection: { label: 'Reflection', text: 'text-text-secondary', strip: 'bg-white/40', Icon: Brain },
   reading: { label: 'Reading', text: 'text-text-secondary', strip: 'bg-white/40', Icon: BookOpen },
+  // ML — Phase K M7 (2026-05-13). Cpu icon as the closest lucide-monochrome
+  // glyph для ML/MLE work (model training / inference / pipelines). B/W
+  // rule: same ink-on-ink strip, no hue distinction.
+  ml: { label: 'ML', text: 'text-text-secondary', strip: 'bg-white/40', Icon: Cpu },
   custom: { label: 'Custom', text: 'text-text-muted', strip: 'bg-neutral-500', Icon: Sparkles },
   unspecified: { label: '—', text: 'text-text-muted', strip: 'bg-neutral-500', Icon: Sparkles },
 }
@@ -803,7 +808,7 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── Create Task Modal — Linear-стиль, компактный ───────────────────────
 
-const CREATE_KINDS: TaskKindCanonical[] = ['algo', 'sysdesign', 'quiz', 'reflection', 'reading', 'custom']
+const CREATE_KINDS: TaskKindCanonical[] = ['algo', 'sysdesign', 'quiz', 'reflection', 'reading', 'ml', 'custom']
 
 function CreateTaskModal({
   open,

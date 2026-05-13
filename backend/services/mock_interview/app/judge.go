@@ -372,6 +372,45 @@ const pass2BehavioralSystemPrompt = `Ты — строгий behavioral-инте
 - По умолчанию FAIL. PASS только при чётком STAR-структурированном кейсе.
 - feedback — конкретный совет: "В следующий раз начни с одной фразы про situation, потом сразу task в одном предложении" — не общая морализация.`
 
+// pass2MLTheorySystemPrompt — DL fundamentals rubric for ml_theory stage
+// (Phase K M6 2026-05-13). Distinct from generic pass2 because ml_theory
+// asks short quiz-style questions where the right answer requires math
+// derivation OR geometric intuition (e.g. «выведи backprop через linear
+// layer», «почему BatchNorm fail на batch=1»). Memorised terminology
+// without understanding scores LOW — мы явно требуем derivation chain
+// или intuitive explanation, не флэшинг определений.
+//
+// Reference_criteria.must_mention обычно содержит формулы / ключевые
+// шаги вывода ("производная по W: dL/dW = x^T · dL/dy") — не общие
+// фразы про "оптимизация градиентов".
+const pass2MLTheorySystemPrompt = `Ты — senior ML researcher проводишь theory-round по deep learning fundamentals. Оцениваешь ответ кандидата на вопрос по математике DL.
+
+ТЫ ВЫВОДИШЬ СТРОГО JSON ОДНИМ ОБЪЕКТОМ, без markdown-обёрток, без комментариев, без поясняющего текста снаружи объекта. Все ключи обязательны.
+
+Схема ответа:
+{
+  "score": <число 0..100>,
+  "matched_must_mention": [<строки из must_mention, которые кандидат раскрыл>],
+  "matched_nice_to_have": [<строки из nice_to_have, которые кандидат раскрыл>],
+  "missing_points": [<до 5 пропущенных пунктов>],
+  "feedback": "<2-4 предложения по-русски: что хорошо, что улучшить>"
+}
+
+Что оцениваешь:
+1. Математическая корректность (правильные формулы, размерности тензоров, направления производных).
+2. Вывод vs запоминание (умеет ли кандидат вывести формулу с нуля, или просто называет термины).
+3. Геометрическая / физическая интуиция (почему именно так — а не просто что именно).
+4. Edge cases (что ломается при batch=1 / dim=1 / mode=eval / sequence_length=0).
+5. Связь с практикой (какой optimizer / init / regulariser лучше для какого режима и почему).
+
+Правила оценки:
+- Memorised terminology без понимания (например «attention — это weighted sum» без объяснения KV/Q) → score < 40.
+- Неверная формула или wrong dimension → score < 30.
+- Математически корректный вывод + интуиция + edge cases → score >= 80.
+- ОДИН пропущенный must_mention (формула / производная / ключевой механизм) = снять минимум 30 баллов.
+- По умолчанию FAIL. PASS только при доказательно-корректном ответе.
+- feedback — конкретный: «правильно про softmax, но не вывел почему делишь на sqrt(d_k) — это про variance активаций до softmax».`
+
 // pass1WaterScore calls the LLM with the on-topic detector prompt and
 // parses {"water_score": N}. Returns 0 on parse failure (fail-soft toward
 // "not penalising").
@@ -414,7 +453,8 @@ func (j *LLMJudge) pass2Correctness(ctx context.Context, in JudgeInput) (float64
 	//   1. AttemptTaskSolve + StageMLCoding → ML code-review template
 	//   2. AttemptTaskSolve                 → generic code-review template
 	//   3. StageBehavioral                  → STAR-rubric template
-	//   4. default                          → general HR / question-answer
+	//   4. StageMLTheory                    → DL-fundamentals rubric
+	//   5. default                          → general HR / question-answer
 	// Admins override anything via StrictnessProfile.CustomPromptTemplate.
 	systemPrompt := pass2SystemPrompt
 	switch {
@@ -424,6 +464,8 @@ func (j *LLMJudge) pass2Correctness(ctx context.Context, in JudgeInput) (float64
 		systemPrompt = pass2CodeReviewSystemPrompt
 	case in.StageKind == domain.StageBehavioral:
 		systemPrompt = pass2BehavioralSystemPrompt
+	case in.StageKind == domain.StageMLTheory:
+		systemPrompt = pass2MLTheorySystemPrompt
 	}
 	if strings.TrimSpace(in.StrictnessProfile.CustomPromptTemplate) != "" {
 		systemPrompt = in.StrictnessProfile.CustomPromptTemplate

@@ -18,6 +18,7 @@ import { Loader2 } from 'lucide-react'
 
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
+import { CompleteEventModal } from '../components/CompleteEventModal'
 import { TutorOnboardingModal, isTutorOnboarded } from '../components/TutorOnboardingModal'
 import { SharedReadingPane } from '../components/SharedReadingPane'
 import { ReadingPathsPane } from '../components/ReadingPathsPane'
@@ -34,6 +35,7 @@ import {
   useInviteByUsernameMutation,
   useEndRelationshipMutation,
   useRevokeInviteMutation,
+  useSetSessionNoteVisibilityMutation,
   useTutorActivityQuery,
   useTutorEventsQuery,
   useTutorInvitesQuery,
@@ -572,9 +574,6 @@ function EventsPane() {
                   onCancel={(reason) =>
                     cancel.mutate({ event_id: ev.id, reason })
                   }
-                  onComplete={(note) =>
-                    complete.mutate({ event_id: ev.id, session_note: note })
-                  }
                   cancelling={cancel.isPending}
                   completing={complete.isPending}
                 />
@@ -590,16 +589,19 @@ function EventsPane() {
 function EventRow({
   event,
   onCancel,
-  onComplete,
   cancelling,
   completing,
 }: {
   event: TutorEvent
   onCancel: (reason: string) => void
-  onComplete: (note: string) => void
   cancelling: boolean
   completing: boolean
 }) {
+  const [completeModalOpen, setCompleteModalOpen] = useState(false)
+  // Phase K T4: tutor can re-toggle visibility on already-completed events
+  // through a dedicated SharedVisibilityToggle below the session note.
+  const setVisibility = useSetSessionNoteVisibilityMutation()
+
   const status = eventDisplayStatus(event)
   const badge =
     status === 'cancelled'
@@ -619,6 +621,7 @@ function EventRow({
   const isCompletable = status === 'past' || status === 'live'
   // Cancellable only before the slot is over.
   const isCancellable = status === 'scheduled' || status === 'live'
+  const isShared = event.visibility === 'shared'
 
   return (
     <Card
@@ -640,12 +643,41 @@ function EventRow({
           )}
           {event.session_note && (
             <div className="mt-2 rounded-md border border-success/30 bg-success/5 px-2.5 py-1.5">
-              <div className="font-mono text-[9px] uppercase tracking-[0.08em] text-success/80">
-                Session note
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-mono text-[9px] uppercase tracking-[0.08em] text-success/80">
+                  Session note · {isShared ? 'shared with student' : 'private'}
+                </div>
+                {/* Phase K T4 — quick re-toggle from row view (no modal) */}
+                {status === 'completed' && (
+                  <button
+                    type="button"
+                    disabled={setVisibility.isPending}
+                    onClick={() =>
+                      setVisibility.mutate({
+                        event_id: event.id,
+                        visibility: isShared ? 'private' : 'shared',
+                        shared_content_md: event.shared_content_md ?? '',
+                      })
+                    }
+                    className="rounded-md border border-hairline px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary disabled:opacity-50"
+                  >
+                    {isShared ? 'Hide from student' : 'Share with student'}
+                  </button>
+                )}
               </div>
               <pre className="mt-0.5 whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-text-secondary">
                 {event.session_note}
               </pre>
+              {isShared && event.shared_content_md && (
+                <div className="mt-2 border-t border-hairline pt-2">
+                  <div className="font-mono text-[9px] uppercase tracking-[0.08em] text-text-muted">
+                    Curated copy для ученика
+                  </div>
+                  <pre className="mt-0.5 whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-text-secondary">
+                    {event.shared_content_md}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -680,17 +712,7 @@ function EventRow({
           {isCompletable && (
             <button
               type="button"
-              onClick={() => {
-                // window.prompt is plenty for the V1 surface — short notes,
-                // nothing fancy. If we want rich Markdown later (links to
-                // Hone Notes etc.), swap to a modal with a <textarea>.
-                const note = window.prompt(
-                  'Session note (what was covered, next steps):',
-                )
-                if (note && note.trim()) {
-                  onComplete(note.trim())
-                }
-              }}
+              onClick={() => setCompleteModalOpen(true)}
               disabled={completing}
               className="rounded-md border border-success/40 bg-success/5 px-2 py-0.5 text-success transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-success/10 disabled:opacity-50"
             >
@@ -714,6 +736,12 @@ function EventRow({
           )}
         </div>
       </div>
+      <CompleteEventModal
+        open={completeModalOpen}
+        eventId={event.id}
+        eventTitle={event.title}
+        onClose={() => setCompleteModalOpen(false)}
+      />
     </Card>
   )
 }

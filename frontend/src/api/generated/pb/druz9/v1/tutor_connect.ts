@@ -15,7 +15,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { TutorAcceptApplicationRequest, TutorAcceptApplicationResponse, TutorAcceptInviteRequest, TutorActivityResponse, TutorAdvancePathStepRequest, TutorAdvancePathStepResponse, TutorApplyToTutorRequest, TutorApplyToTutorResponse, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorArchiveReadingPathRequest, TutorArchiveReadingPathResponse, TutorAssignment, TutorAssignReadingPathRequest, TutorAssignReadingPathResponse, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorCancelEventRequest, TutorCancelEventResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCompleteEventRequest, TutorCompleteEventResponse, TutorCreateEventRequest, TutorCreateGroupEventRequest, TutorCreateInviteRequest, TutorCreateReadingPathRequest, TutorDeclineApplicationRequest, TutorDeclineApplicationResponse, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorEvent, TutorGenerateBriefRequest, TutorGetActivityRequest, TutorGetEventRSVPCountRequest, TutorGetEventRSVPCountResponse, TutorGetMyDirectoryProfileRequest, TutorGetMyDirectoryProfileResponse, TutorGetSessionNotesRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorInviteByUsernameRequest, TutorJoinEventRequest, TutorJoinEventResponse, TutorLeaveEventRequest, TutorLeaveEventResponse, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListDirectoryTutorsRequest, TutorListDirectoryTutorsResponse, TutorListEventsRequest, TutorListEventsResponse, TutorListInvitesRequest, TutorListInvitesResponse, TutorListMyActivePathAssignmentsRequest, TutorListMyActivePathAssignmentsResponse, TutorListMyTutorsRequest, TutorListPendingApplicationsRequest, TutorListPendingApplicationsResponse, TutorListPendingAssignmentsRequest, TutorListPendingInvitesForMeRequest, TutorListPendingInvitesForMeResponse, TutorListReadingPathsRequest, TutorListReadingPathsResponse, TutorListSharedReadingRequest, TutorListSharedReadingResponse, TutorListStudentsRequest, TutorListStudentsResponse, TutorListUpcomingEventsRequest, TutorListUpcomingGroupEventsRequest, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPushAssignmentRequest, TutorPushSharedReadingRequest, TutorPushSharedReadingResponse, TutorReadingPath, TutorRelationship, TutorRevokeInviteRequest, TutorSaveSessionNotesRequest, TutorSessionNotes, TutorStudentSnapshot, TutorUpdateReadingPathRequest, TutorUpsertDirectoryProfileRequest, TutorUpsertDirectoryProfileResponse } from "./tutor_pb.js";
+import { TutorAcceptApplicationRequest, TutorAcceptApplicationResponse, TutorAcceptInviteRequest, TutorActivityResponse, TutorAdvancePathStepRequest, TutorAdvancePathStepResponse, TutorApplyToTutorRequest, TutorApplyToTutorResponse, TutorArchiveAssignmentRequest, TutorArchiveAssignmentResponse, TutorArchiveReadingPathRequest, TutorArchiveReadingPathResponse, TutorAssignment, TutorAssignReadingPathRequest, TutorAssignReadingPathResponse, TutorBroadcastAssignmentRequest, TutorBroadcastAssignmentResponse, TutorCancelEventRequest, TutorCancelEventResponse, TutorCompleteAssignmentRequest, TutorCompleteAssignmentResponse, TutorCompleteEventRequest, TutorCompleteEventResponse, TutorCreateEventRequest, TutorCreateGroupEventRequest, TutorCreateInviteRequest, TutorCreateReadingPathRequest, TutorDeclineApplicationRequest, TutorDeclineApplicationResponse, TutorEndRelationshipRequest, TutorEndRelationshipResponse, TutorEvent, TutorGenerateBriefRequest, TutorGetActivityRequest, TutorGetEventRSVPCountRequest, TutorGetEventRSVPCountResponse, TutorGetMyDirectoryProfileRequest, TutorGetMyDirectoryProfileResponse, TutorGetSessionNotesRequest, TutorGetStudentSnapshotRequest, TutorInvite, TutorInviteByUsernameRequest, TutorJoinEventRequest, TutorJoinEventResponse, TutorLeaveEventRequest, TutorLeaveEventResponse, TutorListAssignmentsRequest, TutorListAssignmentsResponse, TutorListDirectoryTutorsRequest, TutorListDirectoryTutorsResponse, TutorListEventsRequest, TutorListEventsResponse, TutorListInvitesRequest, TutorListInvitesResponse, TutorListMyActivePathAssignmentsRequest, TutorListMyActivePathAssignmentsResponse, TutorListMyTutorsRequest, TutorListPendingApplicationsRequest, TutorListPendingApplicationsResponse, TutorListPendingAssignmentsRequest, TutorListPendingInvitesForMeRequest, TutorListPendingInvitesForMeResponse, TutorListReadingPathsRequest, TutorListReadingPathsResponse, TutorListSharedReadingRequest, TutorListSharedReadingResponse, TutorListSharedSessionNotesForStudentRequest, TutorListSharedSessionNotesForStudentResponse, TutorListStudentsRequest, TutorListStudentsResponse, TutorListUpcomingEventsRequest, TutorListUpcomingGroupEventsRequest, TutorMyTutorsActivityRequest, TutorMyTutorsActivityResponse, TutorPeekInviteRequest, TutorPeekInviteResponse, TutorPreSessionBrief, TutorPushAssignmentRequest, TutorPushSharedReadingRequest, TutorPushSharedReadingResponse, TutorReadingPath, TutorRelationship, TutorRevokeInviteRequest, TutorSaveSessionNotesRequest, TutorSessionNotes, TutorSetSessionNoteVisibilityRequest, TutorSetSessionNoteVisibilityResponse, TutorStudentSnapshot, TutorUpdateReadingPathRequest, TutorUpsertDirectoryProfileRequest, TutorUpsertDirectoryProfileResponse } from "./tutor_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -345,6 +345,21 @@ export const TutorService = {
       kind: MethodKind.Unary,
     },
     /**
+     * ListMyTutorsActivity — Phase K T6 (2026-05-12). Student-side
+     * social-proof surface: «Тебя сегодня учат: Alice (2 other students),
+     * Bob (1 student) recently active». Returns one row per active tutor.
+     * Privacy: NO other-student names / ids / event titles — only
+     * aggregate counts + tutor's own public display fields. 5-min cache.
+     *
+     * @generated from rpc druz9.v1.TutorService.ListMyTutorsActivity
+     */
+    listMyTutorsActivity: {
+      name: "ListMyTutorsActivity",
+      I: TutorMyTutorsActivityRequest,
+      O: TutorMyTutorsActivityResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
      * ── Wave 5.2 group events on circles ──────────────────────────────
      * CreateGroupEvent — tutor schedules a calendar event bound to a
      * circle (group class). Tutor must own / admin the circle.
@@ -569,6 +584,34 @@ export const TutorService = {
       name: "DeclineApplication",
       I: TutorDeclineApplicationRequest,
       O: TutorDeclineApplicationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetSessionNoteVisibility — tutor toggles share + optionally edits
+     * curated student-facing copy. Visibility ∈ {'private','shared'}.
+     * shared_content_md empty when sharing the raw private note as-is.
+     * Tutor must own the event; non-completed events return FailedPrecondition.
+     *
+     * @generated from rpc druz9.v1.TutorService.SetSessionNoteVisibility
+     */
+    setSessionNoteVisibility: {
+      name: "SetSessionNoteVisibility",
+      I: TutorSetSessionNoteVisibilityRequest,
+      O: TutorSetSessionNoteVisibilityResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListSharedSessionNotesForStudent — student-side feed. Returns
+     * completed events whose tutors opted to share the session note,
+     * most-recently-shared first. Server fills tutor display_name +
+     * event title так что student UI не делает N+1.
+     *
+     * @generated from rpc druz9.v1.TutorService.ListSharedSessionNotesForStudent
+     */
+    listSharedSessionNotesForStudent: {
+      name: "ListSharedSessionNotesForStudent",
+      I: TutorListSharedSessionNotesForStudentRequest,
+      O: TutorListSharedSessionNotesForStudentResponse,
       kind: MethodKind.Unary,
     },
   }

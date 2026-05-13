@@ -122,6 +122,9 @@ const (
 	// TutorServiceGetTutorActivityProcedure is the fully-qualified name of the TutorService's
 	// GetTutorActivity RPC.
 	TutorServiceGetTutorActivityProcedure = "/druz9.v1.TutorService/GetTutorActivity"
+	// TutorServiceListMyTutorsActivityProcedure is the fully-qualified name of the TutorService's
+	// ListMyTutorsActivity RPC.
+	TutorServiceListMyTutorsActivityProcedure = "/druz9.v1.TutorService/ListMyTutorsActivity"
 	// TutorServiceCreateGroupEventProcedure is the fully-qualified name of the TutorService's
 	// CreateGroupEvent RPC.
 	TutorServiceCreateGroupEventProcedure = "/druz9.v1.TutorService/CreateGroupEvent"
@@ -183,6 +186,12 @@ const (
 	// TutorServiceDeclineApplicationProcedure is the fully-qualified name of the TutorService's
 	// DeclineApplication RPC.
 	TutorServiceDeclineApplicationProcedure = "/druz9.v1.TutorService/DeclineApplication"
+	// TutorServiceSetSessionNoteVisibilityProcedure is the fully-qualified name of the TutorService's
+	// SetSessionNoteVisibility RPC.
+	TutorServiceSetSessionNoteVisibilityProcedure = "/druz9.v1.TutorService/SetSessionNoteVisibility"
+	// TutorServiceListSharedSessionNotesForStudentProcedure is the fully-qualified name of the
+	// TutorService's ListSharedSessionNotesForStudent RPC.
+	TutorServiceListSharedSessionNotesForStudentProcedure = "/druz9.v1.TutorService/ListSharedSessionNotesForStudent"
 )
 
 // TutorServiceClient is a client for the druz9.v1.TutorService service.
@@ -274,6 +283,12 @@ type TutorServiceClient interface {
 	// count + event counters + minutes taught + cancellation rate over
 	// the trailing window (default 30 days).
 	GetTutorActivity(context.Context, *connect.Request[v1.TutorGetActivityRequest]) (*connect.Response[v1.TutorActivityResponse], error)
+	// ListMyTutorsActivity — Phase K T6 (2026-05-12). Student-side
+	// social-proof surface: «Тебя сегодня учат: Alice (2 other students),
+	// Bob (1 student) recently active». Returns one row per active tutor.
+	// Privacy: NO other-student names / ids / event titles — only
+	// aggregate counts + tutor's own public display fields. 5-min cache.
+	ListMyTutorsActivity(context.Context, *connect.Request[v1.TutorMyTutorsActivityRequest]) (*connect.Response[v1.TutorMyTutorsActivityResponse], error)
 	// ── Wave 5.2 group events on circles ──────────────────────────────
 	// CreateGroupEvent — tutor schedules a calendar event bound to a
 	// circle (group class). Tutor must own / admin the circle.
@@ -323,6 +338,16 @@ type TutorServiceClient interface {
 	ListPendingApplications(context.Context, *connect.Request[v1.TutorListPendingApplicationsRequest]) (*connect.Response[v1.TutorListPendingApplicationsResponse], error)
 	AcceptApplication(context.Context, *connect.Request[v1.TutorAcceptApplicationRequest]) (*connect.Response[v1.TutorAcceptApplicationResponse], error)
 	DeclineApplication(context.Context, *connect.Request[v1.TutorDeclineApplicationRequest]) (*connect.Response[v1.TutorDeclineApplicationResponse], error)
+	// SetSessionNoteVisibility — tutor toggles share + optionally edits
+	// curated student-facing copy. Visibility ∈ {'private','shared'}.
+	// shared_content_md empty when sharing the raw private note as-is.
+	// Tutor must own the event; non-completed events return FailedPrecondition.
+	SetSessionNoteVisibility(context.Context, *connect.Request[v1.TutorSetSessionNoteVisibilityRequest]) (*connect.Response[v1.TutorSetSessionNoteVisibilityResponse], error)
+	// ListSharedSessionNotesForStudent — student-side feed. Returns
+	// completed events whose tutors opted to share the session note,
+	// most-recently-shared first. Server fills tutor display_name +
+	// event title так что student UI не делает N+1.
+	ListSharedSessionNotesForStudent(context.Context, *connect.Request[v1.TutorListSharedSessionNotesForStudentRequest]) (*connect.Response[v1.TutorListSharedSessionNotesForStudentResponse], error)
 }
 
 // NewTutorServiceClient constructs a client for the druz9.v1.TutorService service. By default, it
@@ -492,6 +517,12 @@ func NewTutorServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(tutorServiceMethods.ByName("GetTutorActivity")),
 			connect.WithClientOptions(opts...),
 		),
+		listMyTutorsActivity: connect.NewClient[v1.TutorMyTutorsActivityRequest, v1.TutorMyTutorsActivityResponse](
+			httpClient,
+			baseURL+TutorServiceListMyTutorsActivityProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ListMyTutorsActivity")),
+			connect.WithClientOptions(opts...),
+		),
 		createGroupEvent: connect.NewClient[v1.TutorCreateGroupEventRequest, v1.TutorEvent](
 			httpClient,
 			baseURL+TutorServiceCreateGroupEventProcedure,
@@ -618,6 +649,18 @@ func NewTutorServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(tutorServiceMethods.ByName("DeclineApplication")),
 			connect.WithClientOptions(opts...),
 		),
+		setSessionNoteVisibility: connect.NewClient[v1.TutorSetSessionNoteVisibilityRequest, v1.TutorSetSessionNoteVisibilityResponse](
+			httpClient,
+			baseURL+TutorServiceSetSessionNoteVisibilityProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("SetSessionNoteVisibility")),
+			connect.WithClientOptions(opts...),
+		),
+		listSharedSessionNotesForStudent: connect.NewClient[v1.TutorListSharedSessionNotesForStudentRequest, v1.TutorListSharedSessionNotesForStudentResponse](
+			httpClient,
+			baseURL+TutorServiceListSharedSessionNotesForStudentProcedure,
+			connect.WithSchema(tutorServiceMethods.ByName("ListSharedSessionNotesForStudent")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -649,6 +692,7 @@ type tutorServiceClient struct {
 	listEventsForTutor                *connect.Client[v1.TutorListEventsRequest, v1.TutorListEventsResponse]
 	listUpcomingEventsForStudent      *connect.Client[v1.TutorListUpcomingEventsRequest, v1.TutorListEventsResponse]
 	getTutorActivity                  *connect.Client[v1.TutorGetActivityRequest, v1.TutorActivityResponse]
+	listMyTutorsActivity              *connect.Client[v1.TutorMyTutorsActivityRequest, v1.TutorMyTutorsActivityResponse]
 	createGroupEvent                  *connect.Client[v1.TutorCreateGroupEventRequest, v1.TutorEvent]
 	joinEvent                         *connect.Client[v1.TutorJoinEventRequest, v1.TutorJoinEventResponse]
 	leaveEvent                        *connect.Client[v1.TutorLeaveEventRequest, v1.TutorLeaveEventResponse]
@@ -670,6 +714,8 @@ type tutorServiceClient struct {
 	listPendingApplications           *connect.Client[v1.TutorListPendingApplicationsRequest, v1.TutorListPendingApplicationsResponse]
 	acceptApplication                 *connect.Client[v1.TutorAcceptApplicationRequest, v1.TutorAcceptApplicationResponse]
 	declineApplication                *connect.Client[v1.TutorDeclineApplicationRequest, v1.TutorDeclineApplicationResponse]
+	setSessionNoteVisibility          *connect.Client[v1.TutorSetSessionNoteVisibilityRequest, v1.TutorSetSessionNoteVisibilityResponse]
+	listSharedSessionNotesForStudent  *connect.Client[v1.TutorListSharedSessionNotesForStudentRequest, v1.TutorListSharedSessionNotesForStudentResponse]
 }
 
 // CreateInvite calls druz9.v1.TutorService.CreateInvite.
@@ -802,6 +848,11 @@ func (c *tutorServiceClient) GetTutorActivity(ctx context.Context, req *connect.
 	return c.getTutorActivity.CallUnary(ctx, req)
 }
 
+// ListMyTutorsActivity calls druz9.v1.TutorService.ListMyTutorsActivity.
+func (c *tutorServiceClient) ListMyTutorsActivity(ctx context.Context, req *connect.Request[v1.TutorMyTutorsActivityRequest]) (*connect.Response[v1.TutorMyTutorsActivityResponse], error) {
+	return c.listMyTutorsActivity.CallUnary(ctx, req)
+}
+
 // CreateGroupEvent calls druz9.v1.TutorService.CreateGroupEvent.
 func (c *tutorServiceClient) CreateGroupEvent(ctx context.Context, req *connect.Request[v1.TutorCreateGroupEventRequest]) (*connect.Response[v1.TutorEvent], error) {
 	return c.createGroupEvent.CallUnary(ctx, req)
@@ -907,6 +958,16 @@ func (c *tutorServiceClient) DeclineApplication(ctx context.Context, req *connec
 	return c.declineApplication.CallUnary(ctx, req)
 }
 
+// SetSessionNoteVisibility calls druz9.v1.TutorService.SetSessionNoteVisibility.
+func (c *tutorServiceClient) SetSessionNoteVisibility(ctx context.Context, req *connect.Request[v1.TutorSetSessionNoteVisibilityRequest]) (*connect.Response[v1.TutorSetSessionNoteVisibilityResponse], error) {
+	return c.setSessionNoteVisibility.CallUnary(ctx, req)
+}
+
+// ListSharedSessionNotesForStudent calls druz9.v1.TutorService.ListSharedSessionNotesForStudent.
+func (c *tutorServiceClient) ListSharedSessionNotesForStudent(ctx context.Context, req *connect.Request[v1.TutorListSharedSessionNotesForStudentRequest]) (*connect.Response[v1.TutorListSharedSessionNotesForStudentResponse], error) {
+	return c.listSharedSessionNotesForStudent.CallUnary(ctx, req)
+}
+
 // TutorServiceHandler is an implementation of the druz9.v1.TutorService service.
 type TutorServiceHandler interface {
 	// CreateInvite — tutor-authenticated. tutor_id taken from bearer.
@@ -996,6 +1057,12 @@ type TutorServiceHandler interface {
 	// count + event counters + minutes taught + cancellation rate over
 	// the trailing window (default 30 days).
 	GetTutorActivity(context.Context, *connect.Request[v1.TutorGetActivityRequest]) (*connect.Response[v1.TutorActivityResponse], error)
+	// ListMyTutorsActivity — Phase K T6 (2026-05-12). Student-side
+	// social-proof surface: «Тебя сегодня учат: Alice (2 other students),
+	// Bob (1 student) recently active». Returns one row per active tutor.
+	// Privacy: NO other-student names / ids / event titles — only
+	// aggregate counts + tutor's own public display fields. 5-min cache.
+	ListMyTutorsActivity(context.Context, *connect.Request[v1.TutorMyTutorsActivityRequest]) (*connect.Response[v1.TutorMyTutorsActivityResponse], error)
 	// ── Wave 5.2 group events on circles ──────────────────────────────
 	// CreateGroupEvent — tutor schedules a calendar event bound to a
 	// circle (group class). Tutor must own / admin the circle.
@@ -1045,6 +1112,16 @@ type TutorServiceHandler interface {
 	ListPendingApplications(context.Context, *connect.Request[v1.TutorListPendingApplicationsRequest]) (*connect.Response[v1.TutorListPendingApplicationsResponse], error)
 	AcceptApplication(context.Context, *connect.Request[v1.TutorAcceptApplicationRequest]) (*connect.Response[v1.TutorAcceptApplicationResponse], error)
 	DeclineApplication(context.Context, *connect.Request[v1.TutorDeclineApplicationRequest]) (*connect.Response[v1.TutorDeclineApplicationResponse], error)
+	// SetSessionNoteVisibility — tutor toggles share + optionally edits
+	// curated student-facing copy. Visibility ∈ {'private','shared'}.
+	// shared_content_md empty when sharing the raw private note as-is.
+	// Tutor must own the event; non-completed events return FailedPrecondition.
+	SetSessionNoteVisibility(context.Context, *connect.Request[v1.TutorSetSessionNoteVisibilityRequest]) (*connect.Response[v1.TutorSetSessionNoteVisibilityResponse], error)
+	// ListSharedSessionNotesForStudent — student-side feed. Returns
+	// completed events whose tutors opted to share the session note,
+	// most-recently-shared first. Server fills tutor display_name +
+	// event title так что student UI не делает N+1.
+	ListSharedSessionNotesForStudent(context.Context, *connect.Request[v1.TutorListSharedSessionNotesForStudentRequest]) (*connect.Response[v1.TutorListSharedSessionNotesForStudentResponse], error)
 }
 
 // NewTutorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1210,6 +1287,12 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(tutorServiceMethods.ByName("GetTutorActivity")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tutorServiceListMyTutorsActivityHandler := connect.NewUnaryHandler(
+		TutorServiceListMyTutorsActivityProcedure,
+		svc.ListMyTutorsActivity,
+		connect.WithSchema(tutorServiceMethods.ByName("ListMyTutorsActivity")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tutorServiceCreateGroupEventHandler := connect.NewUnaryHandler(
 		TutorServiceCreateGroupEventProcedure,
 		svc.CreateGroupEvent,
@@ -1336,6 +1419,18 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(tutorServiceMethods.ByName("DeclineApplication")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tutorServiceSetSessionNoteVisibilityHandler := connect.NewUnaryHandler(
+		TutorServiceSetSessionNoteVisibilityProcedure,
+		svc.SetSessionNoteVisibility,
+		connect.WithSchema(tutorServiceMethods.ByName("SetSessionNoteVisibility")),
+		connect.WithHandlerOptions(opts...),
+	)
+	tutorServiceListSharedSessionNotesForStudentHandler := connect.NewUnaryHandler(
+		TutorServiceListSharedSessionNotesForStudentProcedure,
+		svc.ListSharedSessionNotesForStudent,
+		connect.WithSchema(tutorServiceMethods.ByName("ListSharedSessionNotesForStudent")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.TutorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TutorServiceCreateInviteProcedure:
@@ -1390,6 +1485,8 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 			tutorServiceListUpcomingEventsForStudentHandler.ServeHTTP(w, r)
 		case TutorServiceGetTutorActivityProcedure:
 			tutorServiceGetTutorActivityHandler.ServeHTTP(w, r)
+		case TutorServiceListMyTutorsActivityProcedure:
+			tutorServiceListMyTutorsActivityHandler.ServeHTTP(w, r)
 		case TutorServiceCreateGroupEventProcedure:
 			tutorServiceCreateGroupEventHandler.ServeHTTP(w, r)
 		case TutorServiceJoinEventProcedure:
@@ -1432,6 +1529,10 @@ func NewTutorServiceHandler(svc TutorServiceHandler, opts ...connect.HandlerOpti
 			tutorServiceAcceptApplicationHandler.ServeHTTP(w, r)
 		case TutorServiceDeclineApplicationProcedure:
 			tutorServiceDeclineApplicationHandler.ServeHTTP(w, r)
+		case TutorServiceSetSessionNoteVisibilityProcedure:
+			tutorServiceSetSessionNoteVisibilityHandler.ServeHTTP(w, r)
+		case TutorServiceListSharedSessionNotesForStudentProcedure:
+			tutorServiceListSharedSessionNotesForStudentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1545,6 +1646,10 @@ func (UnimplementedTutorServiceHandler) GetTutorActivity(context.Context, *conne
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.GetTutorActivity is not implemented"))
 }
 
+func (UnimplementedTutorServiceHandler) ListMyTutorsActivity(context.Context, *connect.Request[v1.TutorMyTutorsActivityRequest]) (*connect.Response[v1.TutorMyTutorsActivityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ListMyTutorsActivity is not implemented"))
+}
+
 func (UnimplementedTutorServiceHandler) CreateGroupEvent(context.Context, *connect.Request[v1.TutorCreateGroupEventRequest]) (*connect.Response[v1.TutorEvent], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.CreateGroupEvent is not implemented"))
 }
@@ -1627,4 +1732,12 @@ func (UnimplementedTutorServiceHandler) AcceptApplication(context.Context, *conn
 
 func (UnimplementedTutorServiceHandler) DeclineApplication(context.Context, *connect.Request[v1.TutorDeclineApplicationRequest]) (*connect.Response[v1.TutorDeclineApplicationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.DeclineApplication is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) SetSessionNoteVisibility(context.Context, *connect.Request[v1.TutorSetSessionNoteVisibilityRequest]) (*connect.Response[v1.TutorSetSessionNoteVisibilityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.SetSessionNoteVisibility is not implemented"))
+}
+
+func (UnimplementedTutorServiceHandler) ListSharedSessionNotesForStudent(context.Context, *connect.Request[v1.TutorListSharedSessionNotesForStudentRequest]) (*connect.Response[v1.TutorListSharedSessionNotesForStudentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.TutorService.ListSharedSessionNotesForStudent is not implemented"))
 }

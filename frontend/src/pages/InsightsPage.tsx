@@ -20,6 +20,9 @@ import {
  type CoachSeverity,
  type RecommendationKind,
 } from '../lib/queries/intelligence'
+import { TrackFilterChips } from '../components/TrackFilterChips'
+import { useTrackFilter } from '../lib/useTrackFilter'
+import { TRACK_LABEL } from '../lib/trackFilter'
 
 // Phase 4.4 — severity-based UI tokens. Stripe = top border colour;
 // pill = badge background+text. B/W rule: только critical держит
@@ -54,12 +57,25 @@ const SEVERITY_PILL: Record<CoachSeverity, string> = {
 export default function InsightsPage() {
  const overviewQ = useMockInsightsOverviewQuery()
  const overview = overviewQ.data
+ // Track filter (Phase K 6.1) — для Insights это пока контекст-маркер,
+ // не реальный фильтр данных (insights уже user-scoped, и backend пока
+ // не возвращает track_kind на агрегатах). Selecting a track surfaces
+ // a header hint «scope: ML» для shareable links + preps the surface
+ // when track-scoped aggregates ship.
+ const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({
+  persistKey: 'insights:track-filter:v1',
+  defaultFromPrimaryGoal: true,
+ })
+ const trackHint =
+  selectedTracks.size === 0
+   ? null
+   : Array.from(selectedTracks).map((k) => TRACK_LABEL[k]).join(' · ')
  return (
  <AppShellV2>
  <div className="flex flex-col gap-8 px-4 py-6 sm:px-8 lg:px-20 lg:py-10">
  <header className="flex flex-col gap-3">
  <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
- last 30 days
+ last 30 days{trackHint ? ` · scope: ${trackHint}` : ''}
  </span>
  <div className="flex flex-col gap-1.5 lg:flex-row lg:items-end lg:justify-between lg:gap-4">
  <h1 className="font-display text-3xl font-bold leading-tight text-text-primary lg:text-4xl">
@@ -87,6 +103,19 @@ export default function InsightsPage() {
  themes worth sharpening, and your score trajectory. All counts are
  user-scoped and refresh after every finished mock session.
  </p>
+ {/* Track filter — subtle context selector. Phase K 6.1. */}
+ <div className="flex flex-wrap items-center gap-2 pt-1">
+  <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+   filter by track
+  </span>
+  <TrackFilterChips
+   selected={selectedTracks}
+   onChange={setSelectedTracks}
+   size="sm"
+   persistKey="insights:track-filter:v1"
+   ariaLabel="Контекст-фильтр инсайтов по трекам"
+  />
+ </div>
  </header>
 
  {/* Phase 1.5 — atomic AI-coach insight cards. Hero strip above

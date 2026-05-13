@@ -57,6 +57,8 @@ type TutorServer struct {
 	ListMyTutorsUC *app.ListMyTutors
 	// Wave 9.5 — tutor analytics aggregate.
 	GetTutorActivityUC *app.GetTutorActivity
+	// Phase K T6 (2026-05-12) — student-facing tutor activity.
+	ListMyTutorsActivityUC *app.ListMyTutorsActivity
 
 	// Wave 5.2 — group events on circles.
 	CreateGroupEventUC                  *app.CreateGroupEvent
@@ -119,6 +121,10 @@ type TutorServer struct {
 	ListUpcomingEventsForStudentUC *app.ListUpcomingEventsForStudent
 	// Wave 5.2d — event completion + session notes.
 	CompleteEventUC *app.CompleteEvent
+
+	// Phase K T4 (2026-05-13) — session-note visibility / sharing.
+	SetSessionNoteVisibilityUC         *app.SetSessionNoteVisibility
+	ListSharedSessionNotesForStudentUC *app.ListSharedSessionNotesForStudent
 
 	TutorDisplay TutorDisplayLookup
 	// Displays — bulk users lookup (username/display_name/avatar). Used for
@@ -691,6 +697,56 @@ func (s *TutorServer) ListUpcomingEventsForStudent(
 	return connect.NewResponse(resp), nil
 }
 
+// ListMyTutorsActivity — Phase K T6 (2026-05-12). Student-facing
+// social-proof aggregate. Privacy: NO other-student names / ids, NO
+// event titles / content — only aggregate counts + the tutor's own
+// public display fields (which the caller already sees via ListMyTutors).
+func (s *TutorServer) ListMyTutorsActivity(
+	ctx context.Context,
+	req *connect.Request[pb.TutorMyTutorsActivityRequest],
+) (*connect.Response[pb.TutorMyTutorsActivityResponse], error) {
+	if s.ListMyTutorsActivityUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListMyTutorsActivity not wired"))
+	}
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	items, err := s.ListMyTutorsActivityUC.Do(ctx, uid, int(req.Msg.GetRecentWindowDays()))
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListMyTutorsActivity: %w", s.toConnectErr(err))
+	}
+	// Bulk display enrichment — same N+1-guard pattern as ListMyTutors.
+	var displays map[uuid.UUID]UserDisplay
+	if s.Displays != nil && len(items) > 0 {
+		ids := make([]uuid.UUID, 0, len(items))
+		for _, it := range items {
+			ids = append(ids, it.TutorID)
+		}
+		displays = s.Displays.Resolve(ctx, ids)
+	}
+	out := &pb.TutorMyTutorsActivityResponse{
+		Items: make([]*pb.TutorMyTutorActivitySummary, 0, len(items)),
+	}
+	for _, it := range items {
+		row := &pb.TutorMyTutorActivitySummary{
+			TutorUserId:             it.TutorID.String(),
+			ActiveStudentCountOther: int32(it.ActiveStudentCountOther),
+			RecentEventsCount:       int32(it.RecentEventsCount),
+		}
+		if !it.LastActiveAt.IsZero() {
+			row.LastActiveAt = timestamppb.New(it.LastActiveAt)
+		}
+		if d, ok := displays[it.TutorID]; ok {
+			row.TutorDisplayName = d.DisplayName
+			row.TutorUsername = d.Username
+			row.TutorAvatarUrl = d.AvatarURL
+		}
+		out.Items = append(out.Items, row)
+	}
+	return connect.NewResponse(out), nil
+}
+
 // GetTutorActivity — Wave 9.5 analytics aggregate.
 func (s *TutorServer) GetTutorActivity(
 	ctx context.Context,
@@ -918,6 +974,13 @@ func toRelationshipProto(r domain.Relationship) *pb.TutorRelationship {
 }
 
 func toEventProto(e domain.Event) *pb.TutorEvent {
+	// Phase K T4: visibility defaults to 'private' if backend row predates
+	// migration 00115 (defensive — should never trigger в practice but
+	// avoids empty-string surface на проводе).
+	vis := string(e.Visibility)
+	if vis == "" {
+		vis = string(domain.EventVisibilityPrivate)
+	}
 	out := &pb.TutorEvent{
 		Id:                 e.ID.String(),
 		TutorId:            e.TutorID.String(),
@@ -928,6 +991,8 @@ func toEventProto(e domain.Event) *pb.TutorEvent {
 		Status:             string(e.Status),
 		CancellationReason: e.CancellationReason,
 		SessionNote:        e.SessionNote,
+		Visibility:         vis,
+		SharedContentMd:    e.SharedContentMD,
 	}
 	if e.StudentID != nil {
 		out.StudentId = e.StudentID.String()
@@ -940,6 +1005,9 @@ func toEventProto(e domain.Event) *pb.TutorEvent {
 	}
 	if e.Capacity != nil {
 		out.Capacity = int32(*e.Capacity)
+	}
+	if !e.SharedAt.IsZero() {
+		out.SharedAt = timestamppb.New(e.SharedAt.UTC())
 	}
 	if !e.CreatedAt.IsZero() {
 		out.CreatedAt = timestamppb.New(e.CreatedAt.UTC())
@@ -1218,6 +1286,99 @@ func toSessionNotesProto(n domain.SessionNotes) *pb.TutorSessionNotes {
 	}
 	if !n.UpdatedAt.IsZero() {
 		out.UpdatedAt = n.UpdatedAt.UTC().Format(time.RFC3339)
+	}
+	return out
+}
+
+// ── Session-note visibility (Phase K T4, 2026-05-13) ────────────────
+
+// SetSessionNoteVisibility — tutor toggles share + optionally edits the
+// student-facing curated copy. Tutor must own the event (else NotFound);
+// event must be status='completed' (else FailedPrecondition).
+//
+// Best-effort audit log: emits a structured log line on visibility flips.
+// Service-level audit pipeline can pick up the `audit=tutor.note_visibility`
+// marker if needed downstream; this stays Go-stdlib slog only so it never
+// blocks the save (Phase K T4 §E).
+func (s *TutorServer) SetSessionNoteVisibility(
+	ctx context.Context,
+	req *connect.Request[pb.TutorSetSessionNoteVisibilityRequest],
+) (*connect.Response[pb.TutorSetSessionNoteVisibilityResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.SetSessionNoteVisibilityUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("session-note visibility UC not wired"))
+	}
+	eventID, err := uuid.Parse(req.Msg.EventId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("event_id: %w", err))
+	}
+	out, err := s.SetSessionNoteVisibilityUC.Do(ctx, app.SetSessionNoteVisibilityInput{
+		TutorID:         uid,
+		EventID:         eventID,
+		Visibility:      domain.EventVisibility(req.Msg.Visibility),
+		SharedContentMD: req.Msg.SharedContentMd,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("tutor.SetSessionNoteVisibility: %w", s.toConnectErr(err))
+	}
+	// Best-effort audit log — never blocks (see method comment).
+	if s.Log != nil {
+		s.Log.Info("tutor.note_visibility",
+			slog.String("audit", "tutor.note_visibility"),
+			slog.String("tutor_id", uid.String()),
+			slog.String("event_id", eventID.String()),
+			slog.String("visibility", req.Msg.Visibility),
+			slog.Bool("has_curated_copy", req.Msg.SharedContentMd != ""),
+		)
+	}
+	return connect.NewResponse(&pb.TutorSetSessionNoteVisibilityResponse{
+		Event: toEventProto(out),
+	}), nil
+}
+
+// ListSharedSessionNotesForStudent — student-side feed.
+func (s *TutorServer) ListSharedSessionNotesForStudent(
+	ctx context.Context,
+	req *connect.Request[pb.TutorListSharedSessionNotesForStudentRequest],
+) (*connect.Response[pb.TutorListSharedSessionNotesForStudentResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.ListSharedSessionNotesForStudentUC == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("shared-notes feed UC not wired"))
+	}
+	out, err := s.ListSharedSessionNotesForStudentUC.Do(ctx, uid, int(req.Msg.Limit), req.Msg.Cursor)
+	if err != nil {
+		return nil, fmt.Errorf("tutor.ListSharedSessionNotesForStudent: %w", s.toConnectErr(err))
+	}
+	items := make([]*pb.TutorSharedSessionNote, 0, len(out.Items))
+	for _, n := range out.Items {
+		items = append(items, toSharedSessionNoteProto(n))
+	}
+	return connect.NewResponse(&pb.TutorListSharedSessionNotesForStudentResponse{
+		Items:      items,
+		NextCursor: out.NextCursor,
+	}), nil
+}
+
+func toSharedSessionNoteProto(n domain.SharedSessionNote) *pb.TutorSharedSessionNote {
+	out := &pb.TutorSharedSessionNote{
+		EventId:          n.EventID.String(),
+		EventTitle:       n.EventTitle,
+		TutorId:          n.TutorID.String(),
+		TutorDisplayName: n.TutorDisplayName,
+		TutorAvatarUrl:   n.TutorAvatarURL,
+		SharedContentMd:  n.SharedContentMD,
+	}
+	if !n.ScheduledAt.IsZero() {
+		out.ScheduledAt = timestamppb.New(n.ScheduledAt.UTC())
+	}
+	if !n.SharedAt.IsZero() {
+		out.SharedAt = timestamppb.New(n.SharedAt.UTC())
 	}
 	return out
 }

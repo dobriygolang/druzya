@@ -154,12 +154,21 @@ func (g *CoachGenerator) generateForUser(ctx context.Context, userID uuid.UUID, 
 // kindForSkill maps an atlas skill_key to the right TaskBoard column
 // kind. Non-mapped skills default to algo (the safest bucket — solving
 // at arena is the universal fallback).
+//
+// ML-track atlas nodes (см. migration 00033) route to TaskKindML so the
+// TaskBoard kind-chip filter + auto-categoriser tag ML practice
+// consistently. Non-ML-named ML nodes (например ml_root hub) тоже
+// маршрутизируем как ML — hub задачи всё равно про ML curriculum.
 func kindForSkill(nodeKey string) domain.TaskKind {
 	switch nodeKey {
 	case "sd_basics", "sd_scale":
 		return domain.TaskKindSysDesign
 	case "beh_star":
 		return domain.TaskKindReflection
+	case "ml_root", "ml_classical", "ml_evaluation", "ml_data_intuition",
+		"ml_deep_learning", "ml_transformers", "ml_cnn_rnn", "ml_llm",
+		"ml_lora_pft", "ml_system_design", "ml_serving", "ml_mlops":
+		return domain.TaskKindML
 	}
 	return domain.TaskKindAlgo
 }

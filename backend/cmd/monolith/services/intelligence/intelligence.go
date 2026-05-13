@@ -108,6 +108,10 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	trackR := intelInfra.NewTrackReader(d.Pool)
 	goalsR := intelInfra.NewGoalsReader(d.Pool)
 	clubsR := intelInfra.NewClubReader(d.Pool)
+	// Phase K M5 — ML profile detection (primary_goal=ml_offer OR
+	// active_track=ml). nil-safe: when Pool is nil (тесты), reader returns
+	// MLProfile{} (IsML=false) и coach деградирует к default-prompt'у.
+	mlProfileR := intelInfra.NewMLProfileReader(d.Pool)
 
 	embedder := newIntelEmbedder(d)
 
@@ -204,6 +208,11 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			Goals:        goalsR,
 			Clubs:        clubsR,
 			Codex:        codexR,
+			// Phase K M5 — ML profile detection swaps coach prompt overlay
+			// (numpy/pytorch coding / recsys sysdesign / Lilian Weng / Chip
+			// Huyen resource pool) когда user.primary_goal=ml_offer OR
+			// hone_user_settings.active_track=ml. nil-safe.
+			MLProfile: mlProfileR,
 			// Phase 1.5b — share snapshot with the insight stream.
 			Insights:     generateInsightsUC,
 			InsightsPool: insightsPool,
@@ -357,6 +366,7 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			mocks:            mockR,
 			tracks:           trackR,
 			focusReflections: focusReflectionsRepo,
+			mlProfile:        mlProfileR,
 		}
 	}
 
