@@ -167,6 +167,17 @@ lint-ts: ## Run ESLint + tsc on every JS app (frontend, hone, cue)
 		exit 1; \
 	fi
 
+.PHONY: check-i18n-parity
+check-i18n-parity: ## Verify ru/en locale key parity (frontend JSON + shared/i18n flat Dict)
+	@node tools/check-i18n-parity.mjs
+
+.PHONY: check-i18n-unused
+check-i18n-unused: ## Report orphan locale keys (advisory, exits 0 even on findings)
+	@node tools/check-i18n-unused.mjs
+
+.PHONY: check-i18n
+check-i18n: check-i18n-parity check-i18n-unused ## Full i18n health check (parity + orphans)
+
 .PHONY: lint-proto
 lint-proto: ## Run `buf lint` over proto/ (mirrors CI proto-lint job)
 	@# CI uses bufbuild/buf-action; локально build buf из tools и зовём lint.

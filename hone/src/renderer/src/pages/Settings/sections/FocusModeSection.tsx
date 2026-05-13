@@ -18,6 +18,8 @@
 // = блокировка отключена (no-op).
 import { useEffect, useState } from 'react';
 
+import { useT, translate } from '@d9-i18n';
+
 export const FOCUS_MODE_NAME_KEY = 'hone:focus:macos-mode-name';
 
 /** Returns the stored shortcut name (trimmed) or '' если не задано. */
@@ -31,6 +33,7 @@ export function readFocusModeName(): string {
 }
 
 export function FocusModeSection() {
+  const t = useT();
   const [value, setValue] = useState<string>(() => readFocusModeName());
   const [status, setStatus] = useState<{ kind: 'idle' } | { kind: 'busy' } | { kind: 'ok' } | { kind: 'err'; msg: string }>(
     { kind: 'idle' },
@@ -50,12 +53,12 @@ export function FocusModeSection() {
   const handleCheck = async () => {
     const name = value.trim();
     if (!name) {
-      setStatus({ kind: 'err', msg: 'Сначала впишите имя shortcut.' });
+      setStatus({ kind: 'err', msg: translate('hone.focus_mode.err.empty') });
       return;
     }
     const bridge = typeof window !== 'undefined' ? window.hone : undefined;
     if (!bridge?.focusMode?.start) {
-      setStatus({ kind: 'err', msg: 'IPC bridge недоступен.' });
+      setStatus({ kind: 'err', msg: translate('hone.focus_mode.err.no_bridge') });
       return;
     }
     setStatus({ kind: 'busy' });
@@ -64,7 +67,7 @@ export function FocusModeSection() {
       if (res.ok) {
         setStatus({ kind: 'ok' });
       } else {
-        setStatus({ kind: 'err', msg: res.error ?? 'Не удалось запустить shortcut.' });
+        setStatus({ kind: 'err', msg: res.error ?? translate('hone.focus_mode.err.run_failed') });
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -83,14 +86,7 @@ export function FocusModeSection() {
           maxWidth: 580,
         }}
       >
-        Hone может включать встроенный режим Focus macOS на время помодоро.
-        Создай Focus в Системных настройках (например, заблокируй
-        Twitter / Reddit / YouTube), затем сделай Shortcut «Set Focus → Turn On»
-        и впиши его имя сюда. На старте сессии Hone выполнит{' '}
-        <span className="mono" style={{ color: 'var(--ink-90)' }}>
-          shortcuts run «имя»
-        </span>
-        , на завершении — повторный вызов выключит Focus.
+        {t('hone.focus_mode.lead')}
       </p>
       {!isMac && (
         <div
@@ -104,7 +100,7 @@ export function FocusModeSection() {
             borderRadius: 6,
           }}
         >
-          ⓘ macOS only — на этой ОС функция будет no-op.
+          {t('hone.focus_mode.note_macos_only')}
         </div>
       )}
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -151,13 +147,12 @@ export function FocusModeSection() {
             letterSpacing: '0.04em',
           }}
         >
-          {status.kind === 'busy' ? 'Проверяем…' : 'Проверить'}
+          {status.kind === 'busy' ? t('hone.focus_mode.cta.testing') : t('hone.focus_mode.cta.test')}
         </button>
       </div>
       {status.kind === 'ok' && (
         <div style={{ fontSize: 12, color: 'var(--ink-60)' }}>
-          Готово — shortcut отработал. Если Focus не включился, проверь что в
-          shortcut'е выбран action «Set Focus → Druz9 Focus → Turn On».
+          {t('hone.focus_mode.ready')}
         </div>
       )}
       {status.kind === 'err' && (

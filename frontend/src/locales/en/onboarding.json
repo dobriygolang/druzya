@@ -56,5 +56,48 @@
     "b3_sub": "Free tier to start",
     "watch_video": "Watch video",
     "begin_spar": "Begin session"
+  },
+  "goal_wizard": {
+    "title_step1": "What is your goal?",
+    "title_step2": "Details and deadline",
+    "step_caption": "GOAL · STEP {{step}}/2",
+    "quick_start": "Quick start",
+    "quick_or_build": "Or build the goal from scratch below.",
+    "field": {
+      "company": "Company",
+      "target": "Target",
+      "custom_label": "Describe the goal",
+      "custom_placeholder": "Example: SDET in fintech with Python + automation tests",
+      "custom_counter": "{{used}}/{{max}} · AI will parse later",
+      "date_label": "Deadline (optional)",
+      "date_hint": "Without a date AI plans \"when ready\". A date sets the tempo — F3 predictions will count weeks to ready."
+    },
+    "step": {
+      "back": "Back",
+      "continue": "Continue",
+      "save": "Save goal"
+    },
+    "kind": {
+      "top_tier_co": {
+        "label": "Senior at Top-Tier Co",
+        "hint": "Google · Yandex · Wildberries · Ozon · Tinkoff · VK · Meta · Amazon"
+      },
+      "any_senior": {
+        "label": "Senior at any Co",
+        "hint": "Generic senior IT track — no specific employer"
+      },
+      "ml_offer": {
+        "label": "ML Engineer offer",
+        "hint": "ML / DS role in any company"
+      },
+      "english_target": {
+        "label": "English fluency",
+        "hint": "TOEFL 100+ · IELTS 7+ · CEFR B2/C1"
+      },
+      "custom": {
+        "label": "Custom",
+        "hint": "Describe the goal in free text — AI will parse later"
+      }
+    }
   }
 }

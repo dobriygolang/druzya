@@ -12,6 +12,7 @@
 // TODO i18n
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useProfileQuery } from '../../lib/queries/profile'
 import { useAdminDashboardQuery } from '../../lib/queries/admin'
 import { Sidebar, type Tab } from './shared'
@@ -40,6 +41,7 @@ import { ABExperimentsPanel } from './ab/ABExperimentsPanel'
 import { LinguaAdminPage } from './lingua'
 
 export default function AdminPage() {
+  const { t } = useTranslation('admin')
   const profile = useProfileQuery()
   const dashboard = useAdminDashboardQuery()
   const [tab, setTab] = useState<Tab>('dashboard')
@@ -51,7 +53,7 @@ export default function AdminPage() {
   if (profile.isPending) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg text-text-muted">
-        Загрузка…
+        {t('loading')}
       </div>
     )
   }
@@ -74,53 +76,9 @@ export default function AdminPage() {
         <div className="flex h-auto flex-col gap-1 border-b border-border bg-bg px-4 py-3 sm:px-7 lg:h-14 lg:flex-row lg:items-center lg:justify-between lg:py-0">
           <div>
             <h1 className="font-display text-lg font-bold text-text-primary">
-              {tab === 'dashboard'
-                ? 'Dashboard'
-                : tab === 'users'
-                  ? 'Users'
-                  : tab === 'reports'
-                    ? 'Reports'
-                    : tab === 'podcasts'
-                      ? 'Подкасты'
-                      : tab === 'codex'
-                        ? 'Codex · статьи'
-                      : tab === 'atlas'
-                        ? 'Atlas CMS'
-                        : tab === 'personas'
-                          ? 'Персоны'
-                          : tab === 'llm_chain'
-                            ? 'LLM Chain'
-                            : tab === 'mock_company_manager'
-                              ? 'Company Manager'
-                              : tab === 'mock_companies'
-                              ? 'Mock · компании (legacy)'
-                              : tab === 'mock_tasks'
-                                ? 'Mock · задачи'
-                                : tab === 'mock_questions'
-                                  ? 'Mock · вопросы'
-                                  : tab === 'mock_strictness'
-                                    ? 'Mock · строгость AI'
-                                    : tab === 'quotas'
-                                      ? 'Subscription · квоты'
-                                      : tab === 'copilot_plans'
-                                        ? 'Copilot · тарифы'
-                                        : tab === 'observability'
-                                          ? 'Observability'
-                                          : tab === 'rooms'
-                                            ? 'Rooms · moderation'
-                                            : tab === 'goal_presets'
-                                              ? 'Goal presets'
-                                              : tab === 'coach_prompts'
-                                                ? 'Coach prompts'
-                                                : tab === 'notification_templates'
-                                                  ? 'Notifications'
-                                                  : tab === 'ab_experiments'
-                                                    ? 'A/B experiments'
-                                                    : tab === 'lingua'
-                                                      ? 'Lingua · English'
-                                                      : 'AI Modельки'}
+              {t(`tab.${tab === 'ai_models' ? 'ai_models' : tab}`, { defaultValue: t('tab.ai_models') })}
             </h1>
-            <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
+            <span className="font-mono text-[11px] text-text-muted">{t('console_subtitle')}</span>
           </div>
         </div>
         {tab === 'dashboard' && <DashboardPanel setTab={setTab} />}

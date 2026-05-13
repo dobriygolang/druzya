@@ -31,5 +31,30 @@
     "yandex": "Preparing for Yandex",
     "system_design": "System Design from zero",
     "favourites": "Favourites"
-  }
+  },
+  "hero": {
+    "eyebrow": "CODEX · KNOWLEDGE LIBRARY",
+    "title": "What to read before the interview",
+    "description_html": "<1>{{total}}</1> articles and references on System Design, algorithms, SQL, Go and behavioral interviews. Every link points to a stable public source: Wikipedia, MDN, RFC, official docs."
+  },
+  "search": {
+    "placeholder": "Search by title or description..."
+  },
+  "filter": {
+    "sort": "Sort",
+    "track_label": "track",
+    "track_aria": "Filter Codex by track",
+    "minutes": "{{count}} min",
+    "for_you_aria": "for you"
+  },
+  "recommended": {
+    "title": "For you · from diagnostic",
+    "weakest_caption": "weakest area · {{count}}"
+  },
+  "loading_card": "Loading Codex",
+  "unavailable_card": "Codex is currently unavailable",
+  "unavailable_desc": "Could not load articles from backend.",
+  "categories_fallback": "Categories did not load — falling back to article-derived list.",
+  "empty_title": "Nothing found",
+  "empty_desc": "Try removing the category filter or clearing your search."
 }

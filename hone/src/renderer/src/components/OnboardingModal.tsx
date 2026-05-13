@@ -10,6 +10,8 @@
 // Recovery: «Open onboarding again» в Settings → стирает onboarded flag.
 import { useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import { Kbd } from './primitives/Kbd';
 import { Modal } from './primitives/Modal';
 import { motion as motionTokens } from '../lib/design-tokens';
@@ -100,11 +102,17 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
 }
 
 function StepHeader({ step }: { step: Step }) {
-  const titles = ['pick stack', 'pick mode', 'shortcuts tour', 'free vs pro'];
+  const t = useT();
+  const titles = [
+    t('hone.onboarding.step1.title'),
+    t('hone.onboarding.step2.title'),
+    t('hone.onboarding.step3.title'),
+    t('hone.onboarding.step4.title'),
+  ];
   return (
     <div style={{ paddingBottom: 12, borderBottom: '1px solid var(--hair)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10 }}>
-        <span className="mono" style={mono10}>step {step} of 4</span>
+        <span className="mono" style={mono10}>{t('hone.onboarding.step_label', { n: step })}</span>
         <span style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
         <div style={{ display: 'flex', gap: 5 }}>
           {[1, 2, 3, 4].map((i) => (
@@ -128,10 +136,11 @@ function StepHeader({ step }: { step: Step }) {
 }
 
 function StackPicker({ selected, onPick }: { selected: Stack | null; onPick: (s: Stack) => void }) {
+  const t = useT();
   return (
     <div>
       <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
-        what are you preparing for? pick one — you can always change later in settings.
+        {t('hone.onboarding.stack.hint')}
       </p>
       <div role="radiogroup" aria-label="Stack" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
         {STACKS.map((s) => (
@@ -158,10 +167,11 @@ function StackPicker({ selected, onPick }: { selected: Stack | null; onPick: (s:
 }
 
 function ModePicker({ selected, onPick }: { selected: Mode | null; onPick: (m: Mode) => void }) {
+  const t = useT();
   return (
     <div>
       <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
-        mode shapes coach behavior · daily UI · what gets pinned to today.
+        {t('hone.onboarding.mode.hint')}
       </p>
       <div role="radiogroup" aria-label="Mode" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
         {MODES.map((m) => (
@@ -193,10 +203,11 @@ function ModePicker({ selected, onPick }: { selected: Mode | null; onPick: (m: M
 }
 
 function ShortcutsTour() {
+  const t = useT();
   return (
     <div>
       <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
-        hone is keyboard-first. these cover ~80% of daily use.
+        {t('hone.onboarding.shortcuts.hint')}
       </p>
       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {SHORTCUTS.map((s) => (
@@ -246,12 +257,11 @@ const PRO_FEATURES = [
 ];
 
 function TierTour() {
+  const t = useT();
   return (
     <div>
       <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>
-        free covers learning. pro covers evaluation — interview prep, deep
-        analytics, unlimited mock. byok escape: activate pro features for free
-        by bringing your own LLM key.
+        {t('hone.onboarding.tier.hint')}
       </p>
       <div
         style={{
@@ -271,8 +281,7 @@ function TierTour() {
           lineHeight: 1.5,
         }}
       >
-        no credit card required to start. activate pro later from Settings →
-        Subscription, or skip — you can use Hone fully on free.
+        {t('hone.onboarding.tier.note')}
       </p>
     </div>
   );
@@ -349,6 +358,7 @@ function Footer({
   onSkip: () => void;
   onFinish: () => void;
 }) {
+  const t = useT();
   return (
     <div
       style={{
@@ -362,21 +372,21 @@ function Footer({
       }}
     >
       <button onClick={onSkip} className="mono" style={btnGhost()}>
-        skip
+        {t('hone.onboarding.btn.skip')}
       </button>
       <span style={{ flex: 1 }} />
       {step > 1 && (
         <button onClick={onBack} className="mono" style={btnGhost()}>
-          back
+          {t('hone.onboarding.btn.back')}
         </button>
       )}
       {step < 4 ? (
         <button onClick={onNext} disabled={!canNext} className="mono" style={btnPrimary(!canNext)}>
-          next →
+          {t('hone.onboarding.btn.next')}
         </button>
       ) : (
         <button onClick={onFinish} className="mono" style={btnPrimary(false)}>
-          stay on free
+          {t('hone.onboarding.btn.stay_on_free')}
         </button>
       )}
     </div>

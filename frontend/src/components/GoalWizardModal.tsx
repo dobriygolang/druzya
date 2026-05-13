@@ -14,6 +14,7 @@
 
 import { useState } from 'react'
 import { ChevronRight, ArrowLeft } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from './Button'
 import { Modal } from './primitives/Modal'
@@ -45,41 +46,10 @@ interface Props {
   onClose: () => void
 }
 
-interface KindCard {
-  id: GoalKind
-  label: string
-  hint: string
-}
-
-const KIND_CARDS: KindCard[] = [
-  {
-    id: 'top_tier_co',
-    label: 'Senior at Top-Tier Co',
-    hint: 'Google · Yandex · Wildberries · Ozon · Tinkoff · VK · Meta · Amazon',
-  },
-  {
-    id: 'any_senior',
-    label: 'Senior at any Co',
-    hint: 'Generic senior IT track — без конкретного работодателя',
-  },
-  {
-    id: 'ml_offer',
-    label: 'ML Engineer offer',
-    hint: 'ML / DS позиция в любой компании',
-  },
-  {
-    id: 'english_target',
-    label: 'English fluency',
-    hint: 'TOEFL 100+ · IELTS 7+ · CEFR B2/C1',
-  },
-  {
-    id: 'custom',
-    label: 'Custom',
-    hint: 'Опиши цель свободным текстом — AI распарсит позже',
-  },
-]
+const KIND_IDS = ['top_tier_co', 'any_senior', 'ml_offer', 'english_target', 'custom'] as const satisfies readonly GoalKind[]
 
 export function GoalWizardModal({ initial, onClose }: Props) {
+  const { t } = useTranslation('onboarding')
   const [step, setStep] = useState<1 | 2>(1)
   const [kind, setKind] = useState<GoalKind | null>(initial?.kind ?? null)
   const [company, setCompany] = useState<TopTierCompany | null>(
@@ -181,16 +151,16 @@ export function GoalWizardModal({ initial, onClose }: Props) {
   }
 
   return (
-    <Modal open onClose={onClose} size="lg" title={step === 1 ? 'Какая твоя цель?' : 'Детали и срок'}>
+    <Modal open onClose={onClose} size="lg" title={step === 1 ? t('goal_wizard.title_step1') : t('goal_wizard.title_step2')}>
       <div className="flex flex-col gap-5">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          GOAL · STEP {step}/2
+          {t('goal_wizard.step_caption', { step })}
         </span>
 
         {step === 1 && topPresets.length > 0 && (
           <div className="flex flex-col gap-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-              Quick start
+              {t('goal_wizard.quick_start')}
             </span>
             <div className="flex flex-wrap gap-2">
               {topPresets.map((p) => (
@@ -205,20 +175,20 @@ export function GoalWizardModal({ initial, onClose }: Props) {
               ))}
             </div>
             <span className="font-mono text-[10px] text-text-muted">
-              Или собери цель с нуля ниже.
+              {t('goal_wizard.quick_or_build')}
             </span>
           </div>
         )}
 
         {step === 1 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {KIND_CARDS.map((card) => {
-              const active = kind === card.id
+            {KIND_IDS.map((kindId) => {
+              const active = kind === kindId
               return (
                 <button
-                  key={card.id}
+                  key={kindId}
                   type="button"
-                  onClick={() => setKind(card.id)}
+                  onClick={() => setKind(kindId)}
                   aria-pressed={active}
                   className={cn(
                     'relative flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all',
@@ -236,9 +206,9 @@ export function GoalWizardModal({ initial, onClose }: Props) {
                     />
                   )}
                   <span className="text-[14px] font-bold text-text-primary">
-                    {card.label}
+                    {t(`goal_wizard.kind.${kindId}.label`)}
                   </span>
-                  <span className="text-[11.5px] text-text-muted">{card.hint}</span>
+                  <span className="text-[11.5px] text-text-muted">{t(`goal_wizard.kind.${kindId}.hint`)}</span>
                 </button>
               )
             })}
@@ -250,7 +220,7 @@ export function GoalWizardModal({ initial, onClose }: Props) {
             {kind === 'top_tier_co' && (
               <div className="flex flex-col gap-2">
                 <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                  Компания
+                  {t('goal_wizard.field.company')}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {TOP_TIER_COMPANIES.map((c) => {
@@ -279,7 +249,7 @@ export function GoalWizardModal({ initial, onClose }: Props) {
             {kind === 'english_target' && (
               <div className="flex flex-col gap-2">
                 <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                  Цель
+                  {t('goal_wizard.field.target')}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {ENGLISH_TARGETS.map((t) => {
@@ -308,18 +278,18 @@ export function GoalWizardModal({ initial, onClose }: Props) {
             {kind === 'custom' && (
               <div className="flex flex-col gap-2">
                 <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                  Опиши цель
+                  {t('goal_wizard.field.custom_label')}
                 </label>
                 <textarea
                   value={customText}
                   onChange={(e) => setCustomText(e.target.value)}
-                  placeholder="Например: SDET в финтехе с фокусом на Python + automation tests"
+                  placeholder={t('goal_wizard.field.custom_placeholder')}
                   rows={3}
                   maxLength={400}
                   className="resize-none rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
                 />
                 <span className="self-end font-mono text-[10px] text-text-muted">
-                  {customText.length}/400 · AI распарсит позже
+                  {t('goal_wizard.field.custom_counter', { used: customText.length, max: 400 })}
                 </span>
               </div>
             )}
@@ -329,7 +299,7 @@ export function GoalWizardModal({ initial, onClose }: Props) {
                 htmlFor="goal-target-date"
                 className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted"
               >
-                Срок (опционально)
+                {t('goal_wizard.field.date_label')}
               </label>
               <input
                 id="goal-target-date"
@@ -339,7 +309,7 @@ export function GoalWizardModal({ initial, onClose }: Props) {
                 className="rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary focus:border-text-primary focus:outline-none"
               />
               <span className="text-[11px] text-text-muted">
-                Без даты AI будет планировать как «когда готов». Дата задаёт темп — F3 predictions будут считать недели до ready.
+                {t('goal_wizard.field.date_hint')}
               </span>
             </div>
           </div>
@@ -348,7 +318,7 @@ export function GoalWizardModal({ initial, onClose }: Props) {
         <footer className="flex items-center justify-between gap-3">
           {step === 2 ? (
             <Button variant="ghost" onClick={() => setStep(1)} icon={<ArrowLeft className="h-4 w-4" />}>
-              Назад
+              {t('goal_wizard.step.back')}
             </Button>
           ) : (
             <span />
@@ -359,11 +329,11 @@ export function GoalWizardModal({ initial, onClose }: Props) {
               disabled={!canProceedFromStep1}
               icon={<ChevronRight className="h-4 w-4" />}
             >
-              Продолжить
+              {t('goal_wizard.step.continue')}
             </Button>
           ) : (
             <Button onClick={onSubmit} disabled={!canSubmit}>
-              Сохранить цель
+              {t('goal_wizard.step.save')}
             </Button>
           )}
         </footer>

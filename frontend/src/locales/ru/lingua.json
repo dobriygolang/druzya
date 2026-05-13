@@ -1,0 +1,48 @@
+{
+  "hub_label": "Lingua hub",
+  "overview": {
+    "title": "English overview",
+    "subtitle": "Reading / Writing / Listening / Speaking собраны в один loop. Здесь — что требует внимания сегодня.",
+    "load_partial_error": "Не удалось загрузить часть Lingua-данных",
+    "stat_vocab_due": "Карточки готовы к review",
+    "stat_library": "Материалов в Reading",
+    "stat_speaking": "Sessions logged",
+    "vocab_section": "Vocab due для review",
+    "recent_materials": "Недавние материалы",
+    "library_empty": "Библиотека пуста. Открой Reading и добавь первый материал.",
+    "speaking_trend": "Speaking trend",
+    "quick": {
+      "reading": "Reading",
+      "writing": "Writing",
+      "listening": "Listening",
+      "speaking": "Speaking"
+    }
+  },
+  "nav": {
+    "reading": "Reading",
+    "writing": "Writing",
+    "listening": "Listening",
+    "speaking": "Speaking",
+    "back": "Назад"
+  },
+  "actions": {
+    "archive": "Архивировать",
+    "open": "Открыть",
+    "add": "Добавить",
+    "save": "Сохранить",
+    "delete": "Удалить"
+  },
+  "empty": {
+    "library": "Библиотека пуста",
+    "vocab": "Карточек на review нет",
+    "speaking": "Ещё нет sessions"
+  },
+  "offline": {
+    "banner": "Оффлайн-режим — изменения встанут в очередь и применятся после восстановления связи."
+  },
+  "pwa": {
+    "prompt": "Установить druz9 Lingua на устройство для оффлайн-доступа?",
+    "install": "Установить",
+    "dismiss": "Позже"
+  }
+}

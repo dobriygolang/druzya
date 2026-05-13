@@ -14,6 +14,8 @@
 // инвалидирует).
 import React, { useEffect, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import {
   suggestTasksFromNotes,
   acceptTaskSuggestion,
@@ -35,6 +37,7 @@ const initial: State = {
 };
 
 export const TasksSuggestionsCard: React.FC<{ onAccepted?: () => void }> = ({ onAccepted }) => {
+  const t = useT();
   const [state, setState] = useState<State>(initial);
 
   useEffect(() => {
@@ -157,7 +160,7 @@ export const TasksSuggestionsCard: React.FC<{ onAccepted?: () => void }> = ({ on
                 type="button"
                 onClick={() => void accept(s)}
                 className="focus-ring"
-                title="Добавить как задачу"
+                title={t('hone.taskboard.suggest.add_as_task')}
                 style={{
                   padding: '4px 10px',
                   fontSize: 11,
@@ -177,7 +180,7 @@ export const TasksSuggestionsCard: React.FC<{ onAccepted?: () => void }> = ({ on
                 type="button"
                 onClick={() => dismiss(s)}
                 className="focus-ring"
-                title="Не сейчас"
+                title={t('hone.taskboard.suggest.dismiss')}
                 style={{
                   padding: '4px 8px',
                   fontSize: 11,

@@ -10,6 +10,10 @@ import ruCodex from '../locales/ru/codex.json'
 import ruErrors from '../locales/ru/errors.json'
 import ruPages from '../locales/ru/pages.json'
 import ruWave10 from '../locales/ru/wave10.json'
+import ruAuth from '../locales/ru/auth.json'
+import ruToasts from '../locales/ru/toasts.json'
+import ruLingua from '../locales/ru/lingua.json'
+import ruAdmin from '../locales/ru/admin.json'
 
 import enCommon from '../locales/en/common.json'
 import enProfile from '../locales/en/profile.json'
@@ -20,6 +24,10 @@ import enCodex from '../locales/en/codex.json'
 import enErrors from '../locales/en/errors.json'
 import enPages from '../locales/en/pages.json'
 import enWave10 from '../locales/en/wave10.json'
+import enAuth from '../locales/en/auth.json'
+import enToasts from '../locales/en/toasts.json'
+import enLingua from '../locales/en/lingua.json'
+import enAdmin from '../locales/en/admin.json'
 
 // Unified storage key across web / Hone / Cue. The legacy 'druz9_lang' value
 // is read once below and migrated forward so existing users don't lose their
@@ -39,6 +47,10 @@ export const NAMESPACES = [
   'errors',
   'pages',
   'wave10',
+  'auth',
+  'toasts',
+  'lingua',
+  'admin',
 ] as const
 
 export const resources = {
@@ -52,6 +64,10 @@ export const resources = {
     errors: ruErrors,
     pages: ruPages,
     wave10: ruWave10,
+    auth: ruAuth,
+    toasts: ruToasts,
+    lingua: ruLingua,
+    admin: ruAdmin,
   },
   en: {
     common: enCommon,
@@ -63,6 +79,10 @@ export const resources = {
     errors: enErrors,
     pages: enPages,
     wave10: enWave10,
+    auth: enAuth,
+    toasts: enToasts,
+    lingua: enLingua,
+    admin: enAdmin,
   },
 }
 

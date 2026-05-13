@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/redis/go-redis/v9 v9.6.1
+	go.uber.org/mock v0.6.0
 	golang.org/x/sync v0.20.0
 	google.golang.org/protobuf v1.36.11
 )

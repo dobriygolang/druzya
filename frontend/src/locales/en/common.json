@@ -52,5 +52,45 @@
     "label": "Language",
     "ru": "Русский",
     "en": "English"
+  },
+  "actions": {
+    "copy": "Copy",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "dismiss": "Dismiss",
+    "retry": "Retry",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "create": "Create",
+    "open": "Open",
+    "apply": "Apply",
+    "continue": "Continue",
+    "add": "Add",
+    "remove": "Remove",
+    "archive": "Archive"
+  },
+  "status": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "deleting": "Deleting…",
+    "deleted": "Deleted",
+    "syncing": "Syncing…",
+    "offline": "Offline",
+    "empty": "Empty",
+    "ready": "Ready",
+    "thinking": "Thinking…",
+    "preparing": "Preparing…"
+  },
+  "dates": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "last_week": "Last week",
+    "this_month": "This month",
+    "this_year": "This year"
   }
 }

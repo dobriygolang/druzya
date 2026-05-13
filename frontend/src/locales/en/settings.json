@@ -3,6 +3,7 @@
   "subtitle": "Manage your account, integrations and preferences.",
   "nav": {
     "account": "Account",
+    "tracks": "Tracks",
     "billing": "Billing",
     "integrations": "Integrations",
     "notifications": "Notifications",
@@ -28,7 +29,8 @@
     "id": "Account ID",
     "registered": "Registered",
     "plan": "Plan",
-    "devices": "Connected devices"
+    "devices": "Connected devices",
+    "until": "until {{date}}"
   },
   "devices_value": "3 devices · MacBook Pro, iPhone, Web",
   "buy_premium": "Buy Premium",
@@ -40,6 +42,7 @@
   "appearance_title": "Appearance",
   "theme_label": "Color theme",
   "theme_desc": "Pick the interface color scheme.",
+  "theme_dark_only_note": "Dark theme — B/W aesthetic across web / Hone / Cue. Light theme is not supported.",
   "theme_auto": "Auto",
   "theme_auto_desc": "Match system",
   "theme_dark": "Dark",
@@ -47,5 +50,82 @@
   "theme_light": "Light",
   "theme_light_desc": "For daylight",
   "language_label": "Interface language",
-  "language_desc": "Applies immediately."
+  "language_desc": "Applies immediately.",
+  "integrations": {
+    "title": "Integrations",
+    "telegram": {
+      "linked": "Linked as @{{username}}",
+      "unlinked": "Link your account to receive pings in Telegram.",
+      "instructions": "Open @druz9_bot in Telegram and send /start — pings will start arriving to your account."
+    },
+    "yandex": {
+      "linked": "Yandex OAuth sign-in is active.",
+      "unlinked": "OAuth linking is available on the sign-in page."
+    },
+    "link_action": "link →"
+  },
+  "notifications_card": {
+    "title": "Notifications",
+    "description": "Toggle channels — the switch saves immediately. The Telegram channel works only when a Telegram account is linked (see Integrations).",
+    "save_failed": "Could not save — please try again.",
+    "channel": {
+      "match": {
+        "label": "Matches",
+        "description": "Match results and invitations."
+      },
+      "social": {
+        "label": "Circles",
+        "description": "Events and activity in circles."
+      },
+      "system": {
+        "label": "System",
+        "description": "Technical notifications + maintenance."
+      },
+      "cohort": {
+        "label": "Cohort",
+        "description": "Cohort summaries (legacy)."
+      },
+      "wins": {
+        "label": "Wins",
+        "description": "Streaks, achievements, milestones."
+      }
+    }
+  },
+  "ai_coach": {
+    "title": "AI Coach — model",
+    "description": "Pick the LLM that generates the weekly insight. Empty ⇒ the default free model. Premium models require a paid subscription.",
+    "load_failed": "Could not load the model catalogue",
+    "unavailable": "AI Coach is currently disabled (OPENROUTER_API_KEY missing)",
+    "default_label": "Default (free)",
+    "default_desc": "server picks the model for your tier",
+    "save_failed": "Could not save the choice"
+  },
+  "privacy_card": {
+    "title": "Privacy",
+    "description_html": "Your profile is visible only to members of your circles and opponents in matches. You can manually publish anonymous report links from <1>/profile/weekly</1>.",
+    "footnote_html": "Data is stored in RU; Redis cache clears 24 hours after sign-out. Full export and deletion live in <1>the Danger zone</1>."
+  },
+  "analytics": {
+    "title": "Product analytics",
+    "description": "Anonymous usage events help prioritise features. No PII. Toggle off anytime — pending events are dropped from memory immediately.",
+    "opt_in_label": "Share anonymous usage events to improve druz9",
+    "data_rights": "Data rights",
+    "preparing": "Preparing…",
+    "export_action": "Download my events",
+    "deleting": "Deleting…",
+    "delete_action": "Delete my events",
+    "delete_confirm": "Delete ALL your analytics events irreversibly?",
+    "deleted_one": "Done — {{count}} event removed.",
+    "deleted_many": "Done — {{count}} events removed."
+  },
+  "danger": {
+    "title": "Danger zone",
+    "description": "Account deletion is irreversible. Notes, progress, mock sessions and subscriptions are wiped. External subscriptions (legacy Boosty etc.) remain — cancel those separately.",
+    "confirmation_input_label": "To confirm, type your username",
+    "delete_button": "Delete account",
+    "deleting": "Deleting…",
+    "delete_confirm": "Really delete the account? All data will be erased irreversibly.",
+    "username_mismatch": "Type your username exactly to confirm.",
+    "failure": "Could not delete the account."
+  }
 }

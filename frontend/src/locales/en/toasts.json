@@ -1,0 +1,68 @@
+{
+  "task": {
+    "created": "Task created",
+    "deleted": "Task deleted",
+    "saved": "Task saved",
+    "save_failed": "Could not save the task"
+  },
+  "goal": {
+    "created": "Goal created",
+    "updated": "Goal updated",
+    "deleted": "Goal deleted"
+  },
+  "memory": {
+    "delete_confirm": "Delete this memory entry? AI will no longer use it.",
+    "deleted": "Memory entry deleted"
+  },
+  "auth": {
+    "logged_in": "Signed in",
+    "logged_out": "Signed out",
+    "session_expired": "Session expired"
+  },
+  "session": {
+    "abort_confirm": "Abort the interview? Progress will be lost."
+  },
+  "account": {
+    "delete_confirm": "Really delete the account? All data will be erased irreversibly.",
+    "delete_username_mismatch": "Type your username exactly to confirm.",
+    "delete_failed": "Could not delete the account."
+  },
+  "telemetry": {
+    "delete_confirm": "Delete ALL your analytics events irreversibly?",
+    "deleted": "Done — {{count}} event removed",
+    "deleted_plural": "Done — {{count}} events removed",
+    "export_failed": "Export failed",
+    "delete_failed": "Delete failed"
+  },
+  "tutor": {
+    "drop_confirm": "End the relationship with this student? Their data stays."
+  },
+  "lingua": {
+    "archive_reading_confirm": "Archive this material? It won't appear in the library.",
+    "archive_listening_confirm": "Archive this material?",
+    "archive_failed": "Archive failed: {{message}}",
+    "open_failed": "Could not open the material: {{message}}"
+  },
+  "reading_paths": {
+    "archive_confirm": "Archive \"{{name}}\"? This is a soft-delete — data stays."
+  },
+  "telegram_integration": {
+    "instructions": "Open @druz9_bot in Telegram and send /start — pings will start arriving to your account."
+  },
+  "atlas_admin": {
+    "delete_edge_confirm": "Delete edge {{from}} → {{to}}?"
+  },
+  "ai_admin": {
+    "delete_model_confirm": "Delete {{id}}?"
+  },
+  "podcasts_admin": {
+    "delete_confirm": "Delete \"{{title}}\"? The MinIO file will also be removed."
+  },
+  "error": {
+    "generic": "Something went wrong. Try again.",
+    "network": "No network",
+    "unauthorized": "Authentication required",
+    "retry": "Retry",
+    "save_failed": "Could not save — please try again."
+  }
+}

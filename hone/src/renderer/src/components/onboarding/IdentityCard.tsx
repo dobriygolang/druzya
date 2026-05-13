@@ -1,13 +1,13 @@
 // IdentityCard — single column в 3-pane ecosystem comparison. Используется
 // в IdentityIntroModal (first-run) и Settings → Ecosystem section.
 //
-// Зачем abstrahirovano: данные про trio (Hone / web / Cue) живут в одном
-// месте, чтобы copy и iconography не расходились между modal'ом и
-// Settings card'ами. Если меняем positioning — меняем только PRODUCTS
-// const ниже + сам IdentityCard layout, не оба места.
-//
 // Iconography — monochrome SVG inline, 1.5px stroke, currentColor.
-// B/W only design rule из CLAUDE.md — никаких градиентов / fill цветов.
+// B/W only design rule из CLAUDE.md.
+//
+// Copy moved to i18n: taglineRu/En + features are translation keys looked
+// up at render time so the card swaps language when locale changes.
+
+import { useT, type Dict } from '@d9-i18n';
 
 export type ProductKey = 'hone' | 'web' | 'cue';
 
@@ -15,65 +15,64 @@ export interface ProductInfo {
   key: ProductKey;
   /** Short display name. Lowercase / casual — matches Hone copy voice. */
   name: string;
-  /** RU one-liner — primary positioning sentence. */
-  taglineRu: string;
-  /** EN one-liner — secondary descriptor (for ESL users / clarity). */
-  taglineEn: string;
-  /** Feature pills — 4-5 short keywords. */
-  features: ReadonlyArray<string>;
+  /** i18n key for RU one-liner (primary positioning sentence). */
+  taglineRuKey: keyof Dict;
+  /** i18n key for EN one-liner (secondary descriptor). */
+  taglineEnKey: keyof Dict;
+  /** i18n keys for feature pills — 4-5 short keywords. */
+  featureKeys: ReadonlyArray<keyof Dict>;
   /** Whether this is the current process — "you are here" indicator. */
   current?: boolean;
-  /** CTA button label. Hidden если ctaLabel пуст (current product = no CTA). */
-  ctaLabel?: string;
+  /** CTA button i18n key. Omit для current product = no CTA. */
+  ctaLabelKey?: keyof Dict;
   /** Click handler — обычно открывает cross-app link. */
   onCta?: () => void;
 }
 
 /**
  * Source-of-truth для positioning copy. Импортируется обоими: модалью и
- * Settings ecosystem section. Если меняем slogan / features — меняем
- * здесь, не в каждом surface отдельно.
+ * Settings ecosystem section. Strings живут в i18n под `hone.identity.*`.
  */
 export const PRODUCTS: Record<ProductKey, Omit<ProductInfo, 'current' | 'onCta'>> = {
   hone: {
     key: 'hone',
     name: 'Hone',
-    taglineRu: 'Тихая ежедневная работа',
-    taglineEn: 'Daily focus cockpit',
-    features: [
-      'AI-план дня',
-      'Заметки с AI-link',
-      'Taskboard',
-      'English hub',
-      'Pomodoro + reflection',
+    taglineRuKey: 'hone.identity.hone.tagline_ru',
+    taglineEnKey: 'hone.identity.hone.tagline_en',
+    featureKeys: [
+      'hone.identity.hone.feature.ai_plan',
+      'hone.identity.hone.feature.notes',
+      'hone.identity.hone.feature.taskboard',
+      'hone.identity.hone.feature.english',
+      'hone.identity.hone.feature.pomodoro',
     ],
   },
   web: {
     key: 'web',
     name: 'druz9.online',
-    taglineRu: 'Практика и мок-собеседования',
-    taglineEn: 'Practice + mock interviews',
-    features: [
-      'AI-mock 5-stage pipeline',
-      'Skill Atlas',
-      'Codex curation',
-      'AI-coach chat',
-      'Whiteboard + Editor',
+    taglineRuKey: 'hone.identity.web.tagline_ru',
+    taglineEnKey: 'hone.identity.web.tagline_en',
+    featureKeys: [
+      'hone.identity.web.feature.mock',
+      'hone.identity.web.feature.atlas',
+      'hone.identity.web.feature.codex',
+      'hone.identity.web.feature.coach',
+      'hone.identity.web.feature.whiteboard',
     ],
-    ctaLabel: 'Open druz9.online',
+    ctaLabelKey: 'hone.identity.web.cta',
   },
   cue: {
     key: 'cue',
     name: 'Cue',
-    taglineRu: 'Live interview / meeting copilot',
-    taglineEn: 'Stealth desktop copilot',
-    features: [
-      'Невидим при screen-share',
-      'Live транскрипт встреч',
-      'AI-подсказки в реальном времени',
-      'Pre-call prep',
+    taglineRuKey: 'hone.identity.cue.tagline_ru',
+    taglineEnKey: 'hone.identity.cue.tagline_en',
+    featureKeys: [
+      'hone.identity.cue.feature.invisible',
+      'hone.identity.cue.feature.transcript',
+      'hone.identity.cue.feature.hints',
+      'hone.identity.cue.feature.prep',
     ],
-    ctaLabel: 'Install Cue',
+    ctaLabelKey: 'hone.identity.cue.cta',
   },
 };
 
@@ -169,6 +168,7 @@ interface IdentityCardProps {
 }
 
 export function IdentityCard({ info }: IdentityCardProps): JSX.Element {
+  const t = useT();
   const isCurrent = info.current === true;
   return (
     <div
@@ -262,12 +262,12 @@ export function IdentityCard({ info }: IdentityCardProps): JSX.Element {
                   background: 'rgba(255,255,255,0.08)',
                 }}
               >
-                you are here
+                {t('hone.identity.you_are_here')}
               </span>
             )}
           </div>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 1.4 }}>
-            {info.taglineRu}
+            {t(info.taglineRuKey)}
           </div>
           <div
             className="mono"
@@ -278,7 +278,7 @@ export function IdentityCard({ info }: IdentityCardProps): JSX.Element {
               letterSpacing: '0.02em',
             }}
           >
-            {info.taglineEn}
+            {t(info.taglineEnKey)}
           </div>
         </div>
       </div>
@@ -293,9 +293,9 @@ export function IdentityCard({ info }: IdentityCardProps): JSX.Element {
           gap: 5,
         }}
       >
-        {info.features.map((f) => (
+        {info.featureKeys.map((fk) => (
           <li
-            key={f}
+            key={fk}
             style={{
               fontSize: 12,
               color: 'rgba(255,255,255,0.72)',
@@ -316,12 +316,12 @@ export function IdentityCard({ info }: IdentityCardProps): JSX.Element {
                 background: 'rgba(255,255,255,0.4)',
               }}
             />
-            {f}
+            {t(fk)}
           </li>
         ))}
       </ul>
 
-      {info.ctaLabel && info.onCta && !isCurrent && (
+      {info.ctaLabelKey && info.onCta && !isCurrent && (
         <button
           type="button"
           onClick={info.onCta}
@@ -349,7 +349,7 @@ export function IdentityCard({ info }: IdentityCardProps): JSX.Element {
             e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)';
           }}
         >
-          {info.ctaLabel} →
+          {t(info.ctaLabelKey)} →
         </button>
       )}
     </div>

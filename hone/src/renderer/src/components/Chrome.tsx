@@ -15,7 +15,11 @@ export function Wordmark() {
     <div
       style={{
         position: 'absolute',
-        top: 28,
+        // top: 28 ставил HONE ровно под нижним краем macOS traffic-light
+        // кнопок (которые сидят y≈14-28) — когда юзер hover'ил угол,
+        // визуально кнопки «приклеивались» к логотипу. 48 даёт ~20px
+        // breathing room ниже зоны кнопок.
+        top: 48,
         left: 32,
         zIndex: 10,
         pointerEvents: 'none',

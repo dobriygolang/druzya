@@ -11,6 +11,8 @@
 // регистрировал druz9:// в LaunchServices, итого «логонюсь и ничего не
 import { useEffect, useRef, useState } from 'react';
 
+import { useT, translate } from '@d9-i18n';
+
 import type { TelegramStart } from '@shared/ipc';
 import { Wordmark } from './Chrome';
 import { useSessionStore } from '../stores/session';
@@ -32,6 +34,7 @@ type Phase =
   | { kind: 'error'; message: string };
 
 export function LoginScreen() {
+  const t = useT();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [devUsername, setDevUsername] = useState('sergey');
   const [devBusy, setDevBusy] = useState(false);
@@ -132,8 +135,7 @@ export function LoginScreen() {
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         setPhase({
           kind: 'error',
-          message:
-            "Bot didn't respond within 2 min. Likely the bot webhook isn't registered on the server, or the bot didn't receive your /start message. Try again, and if it still fails, contact admin.",
+          message: translate('hone.auth.bot_timeout'),
         });
         return;
       }
@@ -199,7 +201,7 @@ export function LoginScreen() {
     >
       <Wordmark />
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center', padding: '0 32px' }}>
-        <div style={captionMonoSmall}>QUIET COCKPIT FOR DEVELOPERS</div>
+        <div style={captionMonoSmall}>{t('hone.auth.eyebrow')}</div>
         <h1
           style={{
             margin: '22px 0 12px',
@@ -210,7 +212,7 @@ export function LoginScreen() {
             color: 'var(--ink)',
           }}
         >
-          Sign in to start.
+          {t('hone.auth.headline')}
         </h1>
         <p
           style={{
@@ -222,8 +224,7 @@ export function LoginScreen() {
             marginInline: 'auto',
           }}
         >
-          Hone uses your druz9 account. Подтверди вход в Telegram, мы поймаем подтверждение
-          автоматически.
+          {t('hone.auth.body')}
         </p>
 
         {phase.kind === 'awaiting' ? (
@@ -247,7 +248,7 @@ export function LoginScreen() {
                 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
             }}
           >
-            {phase.kind === 'starting' ? 'Connecting…' : 'Sign in via Telegram'}
+            {phase.kind === 'starting' ? t('hone.auth.cta.connecting') : t('hone.auth.cta.sign_in')}
           </button>
         )}
 
@@ -262,7 +263,7 @@ export function LoginScreen() {
             }}
           >
             <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)' }} />
-            CODE EXPIRED — TRY AGAIN
+            {t('hone.auth.code_expired')}
           </p>
         )}
         {phase.kind === 'error' && (
@@ -311,16 +312,16 @@ export function LoginScreen() {
               }}
             >
               <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)' }} />
-              dev only · insecure · local backend with DEV_AUTH=true
+              {t('hone.auth.dev.eyebrow')}
             </div>
             <div className="flex-wrap-row" style={{ gap: 10, alignItems: 'baseline', justifyContent: 'center' }}>
               <input
                 type="text"
                 value={devUsername}
                 onChange={(e) => setDevUsername(e.target.value)}
-                placeholder="username"
+                placeholder={t('hone.auth.dev.username_placeholder')}
                 disabled={devBusy}
-                aria-label="DEV username"
+                aria-label={t('hone.auth.dev.label')}
                 className="focus-ring min-w-0"
                 style={{
                   flex: '0 1 160px',
@@ -358,7 +359,7 @@ export function LoginScreen() {
                     'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
                 }}
               >
-                {devBusy ? 'signing in…' : 'dev login'}
+                {devBusy ? t('hone.auth.dev.busy') : t('hone.auth.dev.cta')}
               </button>
             </div>
           </div>
@@ -369,6 +370,7 @@ export function LoginScreen() {
 }
 
 function AwaitingPanel({ flow, onCancel }: { flow: TelegramStart; onCancel: () => void }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
     try {
@@ -397,7 +399,7 @@ function AwaitingPanel({ flow, onCancel }: { flow: TelegramStart; onCancel: () =
         }}
       >
         <div style={{ textAlign: 'left', minWidth: 0 }}>
-          <div style={{ ...captionMonoTiny }}>CODE</div>
+          <div style={{ ...captionMonoTiny }}>{t('hone.auth.code_label')}</div>
           <div
             style={{
               fontFamily: monoFont,
@@ -426,7 +428,7 @@ function AwaitingPanel({ flow, onCancel }: { flow: TelegramStart; onCancel: () =
               'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
-          {copied ? '✓ COPIED' : 'COPY'}
+          {copied ? t('hone.auth.cta.copied') : t('hone.auth.cta.copy')}
         </button>
       </div>
       <p
@@ -438,7 +440,7 @@ function AwaitingPanel({ flow, onCancel }: { flow: TelegramStart; onCancel: () =
           textAlign: 'left',
         }}
       >
-        Открой бота в Telegram и нажми Start. Если бот не открылся автоматически — клик{' '}
+        {t('hone.auth.bot_open_again_pre')}
         <button
           onClick={() => void onReopenBot()}
           className="focus-ring"
@@ -453,9 +455,9 @@ function AwaitingPanel({ flow, onCancel }: { flow: TelegramStart; onCancel: () =
             fontFamily: 'inherit',
           }}
         >
-          сюда
+          {t('hone.auth.bot_open_again_link')}
         </button>
-        .
+        {t('hone.auth.bot_open_again_post')}
       </p>
       <p
         style={{
@@ -467,7 +469,7 @@ function AwaitingPanel({ flow, onCancel }: { flow: TelegramStart; onCancel: () =
         }}
       >
         <span aria-hidden="true" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--red)' }} />
-        WAITING FOR CONFIRMATION…
+        {t('hone.auth.waiting')}
       </p>
       <div>
         <button
@@ -484,7 +486,7 @@ function AwaitingPanel({ flow, onCancel }: { flow: TelegramStart; onCancel: () =
             transition: 'color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
-          CANCEL
+          {t('hone.auth.cta.cancel')}
         </button>
       </div>
     </div>

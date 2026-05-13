@@ -5,10 +5,28 @@ import tsPlugin from '@typescript-eslint/eslint-plugin';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+// Custom rule lives one level up — shared by frontend / hone / cue.
+const noCyrillicLiterals = require('../tools/eslint-no-cyrillic-literals.cjs');
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', 'src/api/generated/**', 'public/**'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'src/api/generated/**',
+      'public/**',
+      // The locale JSONs themselves obviously contain Cyrillic; mocks/tests
+      // and Lingua learning content (English-by-design pages) are also
+      // legitimate exceptions to the no-Cyrillic rule.
+      'src/locales/**',
+      'src/mocks/**',
+      'src/test/**',
+      '**/*.test.{ts,tsx}',
+      'src/pages/lingua/**',
+    ],
   },
   js.configs.recommended,
   {
@@ -26,6 +44,11 @@ export default [
       '@typescript-eslint': tsPlugin,
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
+      'd9-i18n': {
+        rules: {
+          'no-cyrillic-literals': noCyrillicLiterals,
+        },
+      },
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
@@ -37,6 +60,10 @@ export default [
       'no-console': 'warn',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+      // Phase K Wave 16: hardcoded Cyrillic in JSX / string literals should
+      // live in locales/<ns>.json instead. Starts as 'warn' during the
+      // sweep; flip to 'error' once parity is reached.
+      'd9-i18n/no-cyrillic-literals': 'warn',
     },
   },
   // Legacy plain JS sources (pre-TS migration) — same browser+ES env as the

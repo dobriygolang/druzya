@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+
+import { useT, translate } from '@d9-i18n';
+
 import type { TaskCard, TaskStatus } from '../../api/tasks';
 import { COLUMNS } from './lib/columns';
 import { ctxBtnStyle } from './lib/styles';
@@ -13,6 +16,7 @@ interface ContextMenuProps {
 }
 
 export function ContextMenu({ x, y, task, onMove, onDelete }: ContextMenuProps): JSX.Element | null {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y });
 
@@ -41,15 +45,15 @@ export function ContextMenu({ x, y, task, onMove, onDelete }: ContextMenuProps):
       {COLUMNS.filter((c) => c.status !== task.status).map((c) => (
         <button key={c.status} onClick={() => onMove(c.status)} style={ctxBtnStyle}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.accent, marginRight: 4 }} />
-          Move to {c.label}
+          {t('hone.taskboard.ctx.move_to', { label: c.label })}
         </button>
       ))}
       <div style={{ height: 1, background: 'var(--ink-20)', margin: '4px 8px' }} />
       <button
-        onClick={() => { if (confirm('Удалить задачу?')) onDelete(); }}
+        onClick={() => { if (confirm(translate('hone.taskboard.ctx.delete_confirm'))) onDelete(); }}
         style={{ ...ctxBtnStyle, color: 'var(--red)' }}
       >
-        🗑 Delete
+        🗑 {t('hone.taskboard.ctx.delete')}
       </button>
     </div>
   );

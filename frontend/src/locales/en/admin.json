@@ -1,0 +1,57 @@
+{
+  "loading": "Loading…",
+  "console_subtitle": "druz9 operations console",
+  "tab": {
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "reports": "Reports",
+    "podcasts": "Podcasts",
+    "codex": "Codex · articles",
+    "atlas": "Atlas CMS",
+    "personas": "Personas",
+    "llm_chain": "LLM Chain",
+    "ai_models": "AI Models",
+    "mock_company_manager": "Company Manager",
+    "mock_companies": "Mock · companies (legacy)",
+    "mock_tasks": "Mock · tasks",
+    "mock_questions": "Mock · questions",
+    "mock_strictness": "Mock · AI strictness",
+    "quotas": "Subscription · quotas",
+    "copilot_plans": "Copilot · plans",
+    "observability": "Observability",
+    "rooms": "Rooms · moderation",
+    "goal_presets": "Goal presets",
+    "coach_prompts": "Coach prompts",
+    "notification_templates": "Notifications",
+    "ab_experiments": "A/B experiments",
+    "lingua": "Lingua · English"
+  },
+  "lingua": {
+    "title": "Lingua content management",
+    "subtitle": "Curated reading / listening / speaking / writing content for the English track. Reuses shared HoneService endpoints — admin scope.",
+    "sub": {
+      "reading": "Reading",
+      "listening": "Listening",
+      "speaking": "Speaking",
+      "writing": "Writing"
+    },
+    "hint": {
+      "reading": "Materials library",
+      "listening": "Audio + transcripts",
+      "speaking": "Shadowing exercises",
+      "writing": "Prompts"
+    }
+  },
+  "common": {
+    "delete": "Delete",
+    "save": "Save",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "create": "Create",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "load_failed": "Failed to load",
+    "save_failed": "Failed to save",
+    "delete_failed": "Failed to delete"
+  }
+}

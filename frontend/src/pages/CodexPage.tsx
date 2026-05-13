@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArrowUpRight, Search, Sparkles, ChevronDown } from 'lucide-react'
+import { useTranslation, Trans } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { KnowledgeHubTabs } from '../components/KnowledgeHubTabs'
 import { Card } from '../components/Card'
@@ -53,6 +54,7 @@ function categoriesFromArticles(articles: CodexArticle[]): RenderCategory[] {
 }
 
 function Hero({ total }: { total: number }) {
+  const { t } = useTranslation('codex')
   return (
     <section
       className="flex flex-col items-start justify-center gap-3 bg-surface-1 px-4 py-10 sm:px-8 lg:px-20 lg:py-12"
@@ -70,21 +72,25 @@ function Hero({ total }: { total: number }) {
           style={{ background: 'var(--red)' }}
           aria-hidden
         />
-        CODEX · БИБЛИОТЕКА ЗНАНИЙ
+        {t('hero.eyebrow')}
       </span>
       <h1 className="font-display text-3xl font-bold leading-[1.1] lg:text-[40px]"
         style={{ color: 'rgb(var(--ink))' }}
       >
-        Что почитать к собесу
+        {t('hero.title')}
       </h1>
       <p
         className="max-w-[640px] text-[15px] leading-relaxed"
         style={{ color: 'var(--ink-60)' }}
       >
-        <span className="font-display tabular-nums" style={{ color: 'rgb(var(--ink))' }}>{total}</span>{' '}
-        статей и референсов про System Design, алгоритмы, SQL,
-        Go и поведенческие интервью. Все ссылки — на стабильные публичные
-        источники: Wikipedia, MDN, RFC, официальные доки.
+        <Trans
+          ns="codex"
+          i18nKey="hero.description_html"
+          values={{ total }}
+          components={{
+            1: <span className="font-display tabular-nums" style={{ color: 'rgb(var(--ink))' }} />,
+          }}
+        />
       </p>
     </section>
   )
@@ -103,6 +109,7 @@ function CategoryFilters({
   countsByCat: Map<string, number>
   categories: RenderCategory[]
 }) {
+  const { t } = useTranslation('codex')
   const cats = categories.map((c) => ({
     slug: c.slug,
     label: c.label,
@@ -120,7 +127,7 @@ function CategoryFilters({
             : 'inline-flex items-center gap-1.5 rounded-full border border-border bg-bg px-3.5 py-1.5 text-[13px] text-text-secondary hover:border-border-strong hover:text-text-primary'
         }
       >
-        Все <span className="font-mono text-[11px] text-text-muted">{total}</span>
+        {t('filters.all')} <span className="font-mono text-[11px] text-text-muted">{total}</span>
       </button>
       {cats.map((c) => (
         <button
@@ -141,6 +148,7 @@ function CategoryFilters({
 }
 
 function SearchBox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation('codex')
   // Underline-only form field — foundation style. Border-bottom only,
   // no surface fill / box outline. Focus ramps the underline to full ink.
   return (
@@ -155,7 +163,7 @@ function SearchBox({ value, onChange }: { value: string; onChange: (v: string) =
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Поиск по заголовку или описанию..."
+        placeholder={t('search.placeholder')}
         className="w-full bg-transparent text-[13px] focus:outline-none"
         style={{ color: 'rgb(var(--ink))' }}
       />
@@ -175,6 +183,7 @@ function ArticleCard({
   /** Marked если попал в «Для тебя» секцию — мелкий sparkle перед источником. */
   recommended?: boolean
 }) {
+  const { t } = useTranslation('codex')
   // Coach memory tap: when the user opens an article, ping the backend
   // so the Daily Brief can later say "ты регулярно читаешь sysdesign —
   // попробуй mock этого этапа".
@@ -221,12 +230,12 @@ function ArticleCard({
             style={{ color: 'var(--ink-40)' }}
           >
             {recommended && (
-              <Sparkles className="h-3 w-3" style={{ color: 'rgb(var(--ink))' }} aria-label="для тебя" />
+              <Sparkles className="h-3 w-3" style={{ color: 'rgb(var(--ink))' }} aria-label={t('filter.for_you_aria')} />
             )}
             <SourceIcon className="h-3 w-3" aria-hidden />
             {a.source}
           </span>
-          <span className="font-mono text-[11px]" style={{ color: 'var(--ink-40)' }}>{a.read_min} мин</span>
+          <span className="font-mono text-[11px]" style={{ color: 'var(--ink-40)' }}>{t('filter.minutes', { count: a.read_min })}</span>
         </div>
       </Card>
     </a>
@@ -236,10 +245,11 @@ function ArticleCard({
 // SortPicker — R1 ranking-proxy dropdown. Native <select> для keyboard a11y +
 // mobile native picker. Inline в toolbar над SearchBox.
 function SortPicker({ value, onChange }: { value: CodexSortMode; onChange: (v: CodexSortMode) => void }) {
+  const { t } = useTranslation('codex')
   return (
     <label className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-[12.5px] text-text-secondary">
       <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-        Сортировка
+        {t('filter.sort')}
       </span>
       <span className="relative inline-flex items-center">
         <select
@@ -271,6 +281,7 @@ function RecommendedSection({
   highlightedSlug: string
   articleRef: (slug: string, node: HTMLAnchorElement | null) => void
 }) {
+  const { t } = useTranslation('codex')
   if (articles.length === 0) return null
   return (
     <section className="px-4 pb-2 pt-4 sm:px-8 lg:px-20">
@@ -278,11 +289,11 @@ function RecommendedSection({
         <div className="flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 text-text-primary" />
           <h2 className="font-display text-base font-bold leading-tight text-text-primary">
-            Для тебя · по диагностике
+            {t('recommended.title')}
           </h2>
         </div>
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          weakest area · {articles.length}
+          {t('recommended.weakest_caption', { count: articles.length })}
         </span>
       </header>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -301,6 +312,7 @@ function RecommendedSection({
 }
 
 export default function CodexPage() {
+  const { t } = useTranslation('codex')
   // Coach links to /codex?topic=<slug>&article=<slug>.
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTopic = searchParams.get('topic') || ALL
@@ -418,13 +430,13 @@ export default function CodexPage() {
           both the recommended section и the main feed. */}
       <div className="flex flex-wrap items-center gap-3 px-4 pt-5 sm:px-8 lg:px-20">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          трек
+          {t('filter.track_label')}
         </span>
         <TrackFilterChips
           selected={selectedTracks}
           onChange={setSelectedTracks}
           persistKey="codex:track-filter:v1"
-          ariaLabel="Фильтр Codex по трекам"
+          ariaLabel={t('filter.track_aria')}
         />
       </div>
       <CategoryFilters
@@ -454,17 +466,17 @@ export default function CodexPage() {
             skeleton={
               <Card className="flex-col gap-1 p-8 text-center">
                 <span className="font-display text-base font-bold text-text-primary">
-                  Загружаем Codex
+                  {t('loading_card')}
                 </span>
               </Card>
             }
             errorContent={() => (
               <Card className="flex-col gap-1 p-8 text-center">
                 <span className="font-display text-base font-bold text-text-primary">
-                  Codex сейчас недоступен
+                  {t('unavailable_card')}
                 </span>
                 <span className="text-sm text-text-secondary">
-                  Не удалось загрузить статьи из backend.
+                  {t('unavailable_desc')}
                 </span>
               </Card>
             )}
@@ -474,17 +486,17 @@ export default function CodexPage() {
                 {categoriesQ.isError && (
                   <Card className="flex-col gap-1 p-4 text-center">
                     <span className="text-sm text-text-secondary">
-                      Категории не подгрузились — используется fallback из статей.
+                      {t('categories_fallback')}
                     </span>
                   </Card>
                 )}
                 {visible.length === 0 ? (
                   <Card className="flex-col gap-1 p-8 text-center">
                     <span className="font-display text-base font-bold text-text-primary">
-                      Ничего не нашлось
+                      {t('empty_title')}
                     </span>
                     <span className="text-sm text-text-secondary">
-                      Попробуй убрать фильтр категории или почистить поиск.
+                      {t('empty_desc')}
                     </span>
                   </Card>
                 ) : (

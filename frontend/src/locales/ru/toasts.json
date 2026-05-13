@@ -1,0 +1,68 @@
+{
+  "task": {
+    "created": "Задача создана",
+    "deleted": "Задача удалена",
+    "saved": "Задача сохранена",
+    "save_failed": "Не удалось сохранить задачу"
+  },
+  "goal": {
+    "created": "Цель создана",
+    "updated": "Цель обновлена",
+    "deleted": "Цель удалена"
+  },
+  "memory": {
+    "delete_confirm": "Удалить эту memory entry? AI больше не будет её использовать.",
+    "deleted": "Memory entry удалена"
+  },
+  "auth": {
+    "logged_in": "Вход выполнен",
+    "logged_out": "Вы вышли",
+    "session_expired": "Сессия истекла"
+  },
+  "session": {
+    "abort_confirm": "Прервать собес? Прогресс будет потерян."
+  },
+  "account": {
+    "delete_confirm": "Точно удалить аккаунт? Все данные будут стёрты безвозвратно.",
+    "delete_username_mismatch": "Введи точно свой username для подтверждения.",
+    "delete_failed": "Не удалось удалить аккаунт."
+  },
+  "telemetry": {
+    "delete_confirm": "Удалить ВСЕ свои analytics-events безвозвратно?",
+    "deleted": "Готово — удалено {{count}} событие",
+    "deleted_plural": "Готово — удалено {{count}} событий",
+    "export_failed": "Экспорт не выполнен",
+    "delete_failed": "Не удалось удалить"
+  },
+  "tutor": {
+    "drop_confirm": "Завершить отношения с этим студентом? Он сохранит свои данные."
+  },
+  "lingua": {
+    "archive_reading_confirm": "Архивировать этот материал? Его не будет в библиотеке.",
+    "archive_listening_confirm": "Архивировать этот материал?",
+    "archive_failed": "Не получилось архивировать: {{message}}",
+    "open_failed": "Не удалось открыть материал: {{message}}"
+  },
+  "reading_paths": {
+    "archive_confirm": "Архивировать «{{name}}»? Это soft-delete — данные останутся."
+  },
+  "telegram_integration": {
+    "instructions": "Открой @druz9_bot в Telegram и пришли /start — после этого пинги придут на твой аккаунт."
+  },
+  "atlas_admin": {
+    "delete_edge_confirm": "Удалить связь {{from}} → {{to}}?"
+  },
+  "ai_admin": {
+    "delete_model_confirm": "Удалить {{id}}?"
+  },
+  "podcasts_admin": {
+    "delete_confirm": "Удалить «{{title}}»? Файл из MinIO тоже удалится."
+  },
+  "error": {
+    "generic": "Что-то пошло не так. Попробуй ещё раз.",
+    "network": "Нет сети",
+    "unauthorized": "Требуется авторизация",
+    "retry": "Повторить",
+    "save_failed": "Не удалось сохранить — попробуй ещё раз."
+  }
+}

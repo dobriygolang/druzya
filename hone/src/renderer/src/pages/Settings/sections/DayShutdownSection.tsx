@@ -10,6 +10,8 @@
 // main owns the timer, so main owns the truth.
 import { useEffect, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 // IPC channel names hard-coded here to avoid polluting @shared/ipc with
 // settings that only one section reads. Main-side mirror lives in
 // day_shutdown_scheduler.ts → DAY_SHUTDOWN_IPC.
@@ -65,6 +67,7 @@ function getBridge(): DayShutdownBridge | null {
 const DEFAULT_TIME = '21:00';
 
 export function DayShutdownSection() {
+  const t = useT();
   const bridge = getBridge();
   const [enabled, setEnabled] = useState<boolean>(true);
   const [time, setTime] = useState<string>(DEFAULT_TIME);
@@ -104,9 +107,7 @@ export function DayShutdownSection() {
           maxWidth: 580,
         }}
       >
-        В назначенное время вечером Hone тихо предложит закрыть день — три
-        короткие textarea: что сделал, что не успел, что важно на завтра.
-        Утром коуч в дневном плане учитывает эти заметки.
+        {t('hone.day_shutdown.lead')}
       </p>
       {!bridge && (
         <div
@@ -120,7 +121,7 @@ export function DayShutdownSection() {
             borderRadius: 6,
           }}
         >
-          ⓘ Доступно только в desktop-сборке Hone (требуется обновление preload).
+          {t('hone.day_shutdown.note_desktop_only')}
         </div>
       )}
       <label
@@ -140,7 +141,7 @@ export function DayShutdownSection() {
           disabled={!bridge}
           style={{ width: 16, height: 16, accentColor: '#ffffff' }}
         />
-        Включить вечерний ритуал
+        {t('hone.day_shutdown.toggle_label')}
       </label>
       <label
         style={{
@@ -152,7 +153,7 @@ export function DayShutdownSection() {
           opacity: enabled && bridge ? 1 : 0.5,
         }}
       >
-        Время:
+        {t('hone.day_shutdown.time_label')}
         <input
           type="time"
           value={time}

@@ -94,6 +94,7 @@ function buildYandexAuthorizeURL(): string | null {
 
 export default function LoginPage() {
   const { t } = useTranslation('welcome')
+  const { t: tAuth } = useTranslation('auth')
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const nextHref = params.get('next') ?? '/today'
@@ -102,7 +103,7 @@ export default function LoginPage() {
   // на логин».
   const sessionExpired = params.get('reason') === 'expired'
   const [error, setError] = useState<string | null>(
-    sessionExpired ? 'Сессия истекла, переавторизуйтесь.' : null,
+    sessionExpired ? tAuth('error.session_expired') : null,
   )
   const [tgFlow, setTgFlow] = useState<TelegramStartResponse | null>(null)
   const [tgPolling, setTgPolling] = useState(false)
@@ -165,15 +166,15 @@ export default function LoginPage() {
         return
       }
       if (result.kind === 'expired') {
-        setError('Код истёк. Попробуй ещё раз.')
+        setError(tAuth('error.code_expired'))
         setTgFlow(null)
         return
       }
       if (result.kind === 'rate_limited') {
-        setError(`Слишком часто опрашиваем. Подожди ${result.retry_after}с.`)
+        setError(tAuth('error.rate_limited', { seconds: result.retry_after }))
         return
       }
-      setError(result.message || 'Не удалось проверить код.')
+      setError(result.message || tAuth('error.verify_failed'))
     }
     pollTimer.current = window.setTimeout(tick, POLL_INTERVAL_MS)
   }
@@ -190,7 +191,7 @@ export default function LoginPage() {
       void pollLoop(res.code)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      setError(`Не удалось запустить вход через Telegram: ${msg}`)
+      setError(tAuth('error.telegram_start_failed', { message: msg }))
     } finally {
       setTgStarting(false)
     }
@@ -307,8 +308,8 @@ export default function LoginPage() {
               color: 'rgb(var(--ink))',
             }}
           >
-            <span className="sm:hidden">Войти</span>
-            <span className="hidden sm:inline">Войти / Зарегистрироваться</span>
+            <span className="sm:hidden">{tAuth('headline.short')}</span>
+            <span className="hidden sm:inline">{tAuth('headline.long')}</span>
           </h1>
           <p
             style={{
@@ -319,7 +320,7 @@ export default function LoginPage() {
               maxWidth: '60ch',
             }}
           >
-            Один клик — и мы создадим профиль автоматически. Email и пароли больше не нужны.
+            {tAuth('hint.one_click')}
           </p>
         </motion.div>
 
@@ -346,7 +347,7 @@ export default function LoginPage() {
 
         <motion.div variants={staggerItem} className="flex flex-col" style={{ gap: 'var(--gap-row)' }}>
           {/* Telegram — deep-link + код */}
-          <SectionLabel>Telegram</SectionLabel>
+          <SectionLabel>{tAuth('section.telegram')}</SectionLabel>
           <button
             type="button"
             onClick={handleTelegramClick}
@@ -355,20 +356,20 @@ export default function LoginPage() {
             style={ghostButton}
           >
             {tgStarting ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-[18px] w-[18px]" />}
-            <span>Войти через Telegram</span>
+            <span>{tAuth('cta.via_telegram')}</span>
           </button>
         </motion.div>
 
         <motion.div variants={staggerItem} className="flex flex-col" style={{ gap: 'var(--gap-row)' }}>
           {/* Yandex */}
-          <SectionLabel>Yandex ID</SectionLabel>
+          <SectionLabel>{tAuth('section.yandex')}</SectionLabel>
           {yandexHref ? (
             <a
               href={yandexHref}
               className="focus-ring motion-hover-lift motion-press"
               style={ghostButton}
             >
-              <span>Войти через Yandex</span>
+              <span>{tAuth('cta.via_yandex')}</span>
               <ArrowRight className="h-[18px] w-[18px]" />
             </a>
           ) : (
@@ -381,7 +382,7 @@ export default function LoginPage() {
                 color: 'var(--ink-40)',
               }}
             >
-              Yandex-логин не настроен (нет VITE_YANDEX_CLIENT_ID).
+              {tAuth('hint.yandex_not_configured')}
             </div>
           )}
         </motion.div>
@@ -397,7 +398,7 @@ export default function LoginPage() {
             alignSelf: 'center',
           }}
         >
-          Первый раз? Просто нажми Yandex или Telegram — мы создадим профиль автоматически.
+          {tAuth('hint.first_time')}
         </motion.p>
 
         {/* DEV-ONLY login. Endpoint доступен ТОЛЬКО когда backend стартует
@@ -487,6 +488,7 @@ function TelegramCodeModal({
   onCopy: () => void
   onCancel: () => void
 }) {
+  const { t: tAuth } = useTranslation('auth')
   // Local open state for smooth exit animation. Parent unmounts TelegramCodeModal
   // when tgFlow flips to null — we delay that by motion.dur.medium so the
   // exit anim plays out.
@@ -509,11 +511,11 @@ function TelegramCodeModal({
             color: 'rgb(var(--ink))',
           }}
         >
-          Подтверди вход в Telegram
+          {tAuth('telegram_modal.title')}
         </h2>
         <button
           type="button"
-          aria-label="Закрыть"
+          aria-label={tAuth('aria.close')}
           onClick={close}
           className="focus-ring"
           style={{
@@ -543,8 +545,7 @@ function TelegramCodeModal({
         </button>
       </header>
       <p style={{ margin: 0, marginBottom: 20, fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
-        Мы открыли бота в новой вкладке. Если этого не произошло — нажми «Открыть Telegram» ниже.
-        После того как бот пришлёт «Готово», ты автоматически окажешься на сайте.
+        {tAuth('telegram_modal.description')}
       </p>
 
       <div
@@ -570,7 +571,7 @@ function TelegramCodeModal({
               color: 'var(--ink-40)',
             }}
           >
-            Код
+            {tAuth('section.code')}
           </span>
           <span
             style={{
@@ -587,7 +588,7 @@ function TelegramCodeModal({
         <button
           type="button"
           onClick={onCopy}
-          aria-label="Скопировать код"
+          aria-label={tAuth('aria.copy_code')}
           className="focus-ring motion-press"
           style={{
             display: 'grid',
@@ -648,19 +649,19 @@ function TelegramCodeModal({
         }}
       >
         <ExternalLink className="h-4 w-4" />
-        Открыть Telegram
+        {tAuth('cta.open_telegram')}
       </a>
 
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--ink-60)' }}>
         {polling ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Ждём подтверждения…
+            {tAuth('telegram_modal.waiting')}
           </>
         ) : (
           <>
             <span aria-hidden="true" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--red)' }} />
-            Готово.
+            {tAuth('telegram_modal.ready')}
           </>
         )}
       </div>
@@ -692,7 +693,7 @@ function TelegramCodeModal({
           e.currentTarget.style.color = 'var(--ink-60)'
         }}
       >
-        Отмена
+        {tAuth('cta.cancel')}
       </button>
     </Modal>
   )
@@ -710,6 +711,7 @@ interface DevLoginPaneProps {
 }
 
 function DevLoginPane({ onSuccess, onError }: DevLoginPaneProps) {
+  const { t: tAuth } = useTranslation('auth')
   const [username, setUsername] = useState('sergey')
   const [busy, setBusy] = useState(false)
 
@@ -755,7 +757,7 @@ function DevLoginPane({ onSuccess, onError }: DevLoginPaneProps) {
       >
         {/* Red signal stripe — 1.5×24px, the v2 metaphor: live/dev indicator. */}
         <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: '#FF3B30' }} />
-        DEV-only · DEV_AUTH=true
+        {tAuth('hint.dev_only')}
       </div>
       <div className="flex flex-wrap-row" style={{ gap: 12, alignItems: 'baseline' }}>
         <input
@@ -764,7 +766,7 @@ function DevLoginPane({ onSuccess, onError }: DevLoginPaneProps) {
           placeholder="username"
           className="min-w-0"
           disabled={busy}
-          aria-label="DEV username"
+          aria-label={tAuth('aria.dev_username')}
           style={{
             flex: '1 1 160px',
             minWidth: 0,
@@ -802,11 +804,11 @@ function DevLoginPane({ onSuccess, onError }: DevLoginPaneProps) {
           }}
           onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--ink)')}
         >
-          {busy ? '…' : 'Войти'}
+          {busy ? '…' : tAuth('cta.login')}
         </button>
       </div>
       <p style={{ margin: 0, marginTop: 12, fontSize: 11, color: 'var(--ink-40)', lineHeight: 1.5 }}>
-        Никаких паролей. Создаёт/пере-логинит юзера по имени. Видно только локально — на проде 404.
+        {tAuth('hint.dev_no_passwords')}
       </p>
     </form>
   )

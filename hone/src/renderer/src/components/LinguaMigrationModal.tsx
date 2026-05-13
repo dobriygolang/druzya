@@ -14,6 +14,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import {
   markLinguaMigrationSeen,
   shouldShowLinguaMigrationModal,
@@ -27,6 +29,7 @@ interface Props {
 }
 
 export function LinguaMigrationModal({ forceOpen }: Props) {
+  const t = useT();
   const [open, setOpen] = useState<boolean>(Boolean(forceOpen));
 
   useEffect(() => {
@@ -112,7 +115,7 @@ export function LinguaMigrationModal({ forceOpen }: Props) {
             letterSpacing: '-0.01em',
           }}
         >
-          English переехал в web
+          {t('hone.lingua.title')}
         </h2>
         <p
           style={{
@@ -122,10 +125,7 @@ export function LinguaMigrationModal({ forceOpen }: Props) {
             opacity: 0.85,
           }}
         >
-          Lingua hub теперь живёт в druz9.online/lingua: Reading, Writing,
-          Listening, Speaking + vocab SRS. Hone остаётся focus cockpit'ом
-          для работы и фокуса. Vocab review доступен оффлайн через PWA
-          (мобильный + tablet).
+          {t('hone.lingua.body')}
         </p>
         <div
           style={{
@@ -158,7 +158,7 @@ export function LinguaMigrationModal({ forceOpen }: Props) {
               e.currentTarget.style.background = 'transparent';
             }}
           >
-            Перейти в Lingua
+            {t('hone.lingua.cta.open')}
           </button>
           <button
             type="button"
@@ -184,7 +184,7 @@ export function LinguaMigrationModal({ forceOpen }: Props) {
               e.currentTarget.style.opacity = '0.7';
             }}
           >
-            Понял, закрой
+            {t('hone.lingua.cta.close')}
           </button>
         </div>
       </div>

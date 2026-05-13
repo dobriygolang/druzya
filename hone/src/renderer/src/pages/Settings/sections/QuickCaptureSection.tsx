@@ -11,6 +11,8 @@
 // follows). Disk-backed state is the single source of truth.
 import { useEffect, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 declare global {
   interface Window {
     honeQuickCapture?: {
@@ -23,6 +25,7 @@ declare global {
 }
 
 export function QuickCaptureSection() {
+  const t = useT();
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [pending, setPending] = useState<boolean>(false);
 
@@ -65,12 +68,11 @@ export function QuickCaptureSection() {
           maxWidth: 580,
         }}
       >
-        Глобальная горячая клавиша{' '}
+        {t('hone.quick_capture.lead_pre')}
         <span className="mono" style={{ color: 'var(--ink-90)' }}>
           ⌘⇧Space
-        </span>{' '}
-        в любом приложении — выскакивает строка ввода поверх всех окон. Мысль
-        падает в папку «Inbox» как заметка с тегом{' '}
+        </span>
+        {t('hone.quick_capture.lead_post')}
         <span className="mono" style={{ color: 'var(--ink-90)' }}>
           #inbox
         </span>
@@ -93,7 +95,7 @@ export function QuickCaptureSection() {
           onChange={() => void handleToggle()}
           style={{ width: 16, height: 16, accentColor: '#ffffff' }}
         />
-        Включить глобальный захват (⌘⇧Space)
+        {t('hone.quick_capture.toggle_label')}
       </label>
     </div>
   );

@@ -4,5 +4,20 @@
   "not_found_title": "Page not found",
   "not_found_sub": "Looks like a wrong turn. Head back home.",
   "go_home": "Go home",
-  "generic": "Something went wrong. Try again."
+  "generic": "Something went wrong. Try again.",
+  "network": "No connection to the server.",
+  "unauthorized": "Session expired. Sign in again.",
+  "forbidden": "You don't have access to this resource.",
+  "rate_limited": "Too many requests. Please wait.",
+  "server": "Server error. We're already on it — try again later.",
+  "validation": "Check the input.",
+  "save_failed": "Could not save",
+  "delete_failed": "Could not delete",
+  "export_failed": "Could not export",
+  "load_partial": "Some data didn't load",
+  "fallback_caption": "Using a local fallback dataset.",
+  "offline": "Offline. Changes will be queued.",
+  "retry": "Retry",
+  "retry_in": "Retry in {{seconds}}s",
+  "details": "Error details"
 }

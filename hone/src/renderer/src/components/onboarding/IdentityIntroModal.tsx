@@ -20,6 +20,8 @@
 
 import { useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import { Modal } from '../primitives/Modal';
 import { motion as motionTokens } from '../../lib/design-tokens';
 import { openCueInstall, openDruz9Web } from '../../lib/cross-app-links';
@@ -68,6 +70,7 @@ interface IdentityIntroModalProps {
 }
 
 export function IdentityIntroModal({ onClose }: IdentityIntroModalProps): JSX.Element {
+  const t = useT();
   const [open, setOpen] = useState(true);
 
   function close(): void {
@@ -106,7 +109,7 @@ export function IdentityIntroModal({ onClose }: IdentityIntroModalProps): JSX.El
             marginBottom: 6,
           }}
         >
-          welcome to druz9
+          {t('hone.identity.welcome')}
         </div>
         <h2
           style={{
@@ -117,7 +120,7 @@ export function IdentityIntroModal({ onClose }: IdentityIntroModalProps): JSX.El
             color: '#fff',
           }}
         >
-          Три surface'а, одна экосистема
+          {t('hone.identity.title')}
         </h2>
         <p
           style={{
@@ -128,8 +131,7 @@ export function IdentityIntroModal({ onClose }: IdentityIntroModalProps): JSX.El
             maxWidth: 580,
           }}
         >
-          Hone — для тихой ежедневной работы. <strong style={{ color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>druz9.online</strong> — для практики и мок-собеседований.
-          {' '}<strong style={{ color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>Cue</strong> — невидимый copilot во время живого собеседования.
+          {t('hone.identity.intro')}
         </p>
       </div>
 
@@ -170,7 +172,7 @@ export function IdentityIntroModal({ onClose }: IdentityIntroModalProps): JSX.El
             lineHeight: 1.5,
           }}
         >
-          Tip: открыть этот intro снова можно из Settings → Ecosystem.
+          {t('hone.identity.tip')}
         </span>
         <button
           type="button"
@@ -190,7 +192,7 @@ export function IdentityIntroModal({ onClose }: IdentityIntroModalProps): JSX.El
             fontWeight: 600,
           }}
         >
-          got it
+          {t('hone.identity.btn.got_it')}
         </button>
       </div>
     </Modal>

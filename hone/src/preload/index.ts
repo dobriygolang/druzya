@@ -97,11 +97,20 @@ contextBridge.exposeInMainWorld('hone', api);
 // renderer escape the typed HoneAPI surface.
 const DAY_SHUTDOWN_GET = 'day-shutdown:get-settings';
 const DAY_SHUTDOWN_SET = 'day-shutdown:set-settings';
+// Phase K Wave 16 — energy nudge: per-user 3h soft check настройка + event
+// open-picker когда юзер кликает по нативной нотификации.
+const ENERGY_NUDGE_GET = 'energy-nudge:get-settings';
+const ENERGY_NUDGE_SET = 'energy-nudge:set-settings';
 const ALLOWED_INVOKE_CHANNELS = new Set<string>([
   DAY_SHUTDOWN_GET,
   DAY_SHUTDOWN_SET,
+  ENERGY_NUDGE_GET,
+  ENERGY_NUDGE_SET,
 ]);
-const ALLOWED_EVENT_CHANNELS = new Set<string>(['day-shutdown:open-modal']);
+const ALLOWED_EVENT_CHANNELS = new Set<string>([
+  'day-shutdown:open-modal',
+  'energy-nudge:open-picker',
+]);
 contextBridge.exposeInMainWorld('__honeIPC', {
   invoke: (channel: string, ...args: unknown[]) => {
     if (!ALLOWED_INVOKE_CHANNELS.has(channel)) {

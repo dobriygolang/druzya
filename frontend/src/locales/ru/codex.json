@@ -31,5 +31,30 @@
     "yandex": "Готовлюсь к Yandex",
     "system_design": "System Design с нуля",
     "favourites": "Избранное"
-  }
+  },
+  "hero": {
+    "eyebrow": "CODEX · БИБЛИОТЕКА ЗНАНИЙ",
+    "title": "Что почитать к собесу",
+    "description_html": "<1>{{total}}</1> статей и референсов про System Design, алгоритмы, SQL, Go и поведенческие интервью. Все ссылки — на стабильные публичные источники: Wikipedia, MDN, RFC, официальные доки."
+  },
+  "search": {
+    "placeholder": "Поиск по заголовку или описанию..."
+  },
+  "filter": {
+    "sort": "Сортировка",
+    "track_label": "трек",
+    "track_aria": "Фильтр Codex по трекам",
+    "minutes": "{{count}} мин",
+    "for_you_aria": "для тебя"
+  },
+  "recommended": {
+    "title": "Для тебя · по диагностике",
+    "weakest_caption": "weakest area · {{count}}"
+  },
+  "loading_card": "Загружаем Codex",
+  "unavailable_card": "Codex сейчас недоступен",
+  "unavailable_desc": "Не удалось загрузить статьи из backend.",
+  "categories_fallback": "Категории не подгрузились — используется fallback из статей.",
+  "empty_title": "Ничего не нашлось",
+  "empty_desc": "Попробуй убрать фильтр категории или почистить поиск."
 }

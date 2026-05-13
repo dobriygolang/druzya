@@ -41,6 +41,8 @@ import { quitAndInstall, startPeriodicCheck, wireUpdater } from './updater';
 // Phase K Wave 15 — Quick Capture global hotkey + End-of-day shutdown ritual.
 import { initQuickCapture, disposeQuickCapture } from './quick_capture';
 import { initDayShutdownScheduler, disposeDayShutdownScheduler } from './day_shutdown_scheduler';
+// Phase K Wave 16 — soft energy-check nudge every 3 hours (quiet 00-08).
+import { initEnergyNudgeScheduler, disposeEnergyNudgeScheduler } from './energy_nudge';
 import { parseDeepLink, dispatchIntent } from './auth/deeplink';
 import { runFocusShortcut } from './focus_mode';
 
@@ -455,6 +457,12 @@ app.whenReady().then(() => {
   initDayShutdownScheduler(() => mainWindow).catch((err) =>
     console.warn('[main] day-shutdown scheduler init failed:', err),
   );
+  // Phase K Wave 16 — energy nudge. Polls last log via REST every 30 min;
+  // fires Notification + IPC event if last log > settings.intervalHours ago
+  // and current time is outside quiet hours (00-08).
+  initEnergyNudgeScheduler(API_BASE, () => mainWindow).catch((err) =>
+    console.warn('[main] energy-nudge scheduler init failed:', err),
+  );
 
   // Доставка отложенного deep-link'а после первого render'а.
   mainWindow.webContents.once('did-finish-load', () => {
@@ -475,6 +483,7 @@ app.on('will-quit', () => {
   // pending timers; without this, dev-mode reload leaks shortcuts.
   disposeQuickCapture();
   disposeDayShutdownScheduler();
+  disposeEnergyNudgeScheduler();
 });
 
 app.on('window-all-closed', () => {

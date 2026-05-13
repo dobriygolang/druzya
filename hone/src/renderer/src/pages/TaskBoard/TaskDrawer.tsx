@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+
+import { useT } from '@d9-i18n';
+
 import {
   listTaskComments,
   addTaskComment,
@@ -16,6 +19,7 @@ interface TaskDrawerProps {
 }
 
 export function TaskDrawer({ taskId, task, onClose }: TaskDrawerProps): JSX.Element | null {
+  const t = useT();
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -93,13 +97,13 @@ export function TaskDrawer({ taskId, task, onClose }: TaskDrawerProps): JSX.Elem
 
           {task.deepLink && (
             <a href={task.deepLink} style={{ display: 'inline-block', marginTop: 12, fontSize: 12, color: 'var(--ink-60)', textDecoration: 'underline' }}>
-              Открыть →
+              {t('hone.taskboard.drawer.open_external')}
             </a>
           )}
 
           <div style={{ height: 1, background: 'var(--ink-20)', margin: '16px 0' }} />
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-60)', marginBottom: 12 }}>
-            Comments {comments.length}
+            {t('hone.taskboard.drawer.comments_label')} {comments.length}
           </div>
 
           {comments.map((cm) => (
@@ -109,7 +113,7 @@ export function TaskDrawer({ taskId, task, onClose }: TaskDrawerProps): JSX.Elem
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-60)', marginBottom: 2 }}>
-                  {cm.authorKind === 'ai' ? 'AI Coach' : 'Ты'}
+                  {cm.authorKind === 'ai' ? t('hone.taskboard.drawer.author_ai') : t('hone.taskboard.drawer.author_you')}
                   <time style={{ fontWeight: 400, color: 'var(--ink-40)', marginLeft: 6 }}>
                     {cm.createdAt.slice(0, 10)}
                   </time>
@@ -121,7 +125,7 @@ export function TaskDrawer({ taskId, task, onClose }: TaskDrawerProps): JSX.Elem
 
           {comments.length === 0 && (
             <p style={{ fontSize: 12, color: 'var(--ink-40)', textAlign: 'center', padding: '12px 0' }}>
-              Комментариев пока нет
+              {t('hone.taskboard.drawer.no_comments')}
             </p>
           )}
 
@@ -129,7 +133,7 @@ export function TaskDrawer({ taskId, task, onClose }: TaskDrawerProps): JSX.Elem
             <input
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Add a comment..."
+              placeholder={t('hone.taskboard.drawer.add_comment_placeholder')}
               style={{
                 flex: 1, padding: '8px 12px', background: 'var(--surface-2)',
                 border: '1px solid var(--ink-20)', borderRadius: 6, color: 'var(--ink)',

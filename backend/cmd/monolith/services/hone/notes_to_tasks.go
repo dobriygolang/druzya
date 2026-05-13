@@ -1,24 +1,24 @@
-// notes_to_tasks.go — wiring adapters для Phase K Wave 15 «suggest-tasks-
+// notes_to_tasks.go — wiring adapters для Phase K Wave 15/16 «suggest-tasks-
 // from-notes» фичи. Два shim'а:
 //
 //  1. notesSuggestionRedisCache — per-user TTL cache над rediscache.
 //     Сериализуется payload (suggestions + storedAt) в JSON, TTL = 1h
 //     (см. honeApp.NotesSuggestionCacheTTL).
-//  2. naiveNoteActionExtractor — fallback NoteActionExtractor для случая
-//     когда LLM-chain не wired (dev / tests). Возвращает по одной
-//     suggestion на excerpt с title=первая строка матча; в проде
-//     заменяется LLM-backed реализацией из intelligence-агента (TBD —
-//     отдельной волной, чтобы не блокировать UI shipping).
+//  2. buildNoteActionExtractor — выбирает между LLM-backed реализацией
+//     (Phase K Wave 16) и floor NoNoteActionExtractor когда llmchain
+//     не сконфигурён. Naive deterministic shim (per-excerpt → одна
+//     suggestion с title = first matched line) удалён вместе с Wave 15
+//     shipping — в проде LLM либо есть, либо panel тихо пуст.
 package hone
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	honeApp "druz9/hone/app"
 	honeDomain "druz9/hone/domain"
 	monolithServices "druz9/cmd/monolith/services"
+	honeInfra "druz9/hone/infra"
 	"druz9/shared/pkg/rediscache"
 
 	"github.com/google/uuid"
@@ -82,54 +82,12 @@ func (a *notesSuggestionRedisCache) Delete(ctx context.Context, userID uuid.UUID
 }
 
 // buildNoteActionExtractor returns LLM-extractor for SuggestTasksFromNotes.
-// Phase K Wave 15 ship — naive deterministic extractor пока LLM-port
-// в intelligence не подключён. Контракт чистый, заменим без затрагивания
-// hone-app.
-//
-// Naive: per excerpt → одна suggestion с title = first matched line,
-// excerpt = matched block. На проде LLM сворачивает 5 строк в одну
-// короткую actionable фразу.
-func buildNoteActionExtractor(_ monolithServices.Deps) honeApp.NoteActionExtractor {
-	return &naiveNoteActionExtractor{}
-}
-
-type naiveNoteActionExtractor struct{}
-
-func (e *naiveNoteActionExtractor) Extract(_ context.Context, batch honeApp.ExtractActionBatch) ([]honeApp.ExtractedAction, error) {
-	out := make([]honeApp.ExtractedAction, 0, len(batch.Items))
-	for _, item := range batch.Items {
-		title := firstNonEmptyLine(item.Excerpt)
-		if title == "" {
-			continue
-		}
-		// Trim leading list markers / checkbox для чистого title.
-		title = strings.TrimPrefix(title, "- [ ] ")
-		title = strings.TrimPrefix(title, "- ")
-		title = strings.TrimPrefix(title, "* ")
-		title = strings.TrimSpace(title)
-		if title == "" {
-			continue
-		}
-		// Cap title length — таски лучше короткие.
-		if len([]rune(title)) > 120 {
-			runes := []rune(title)
-			title = string(runes[:120]) + "…"
-		}
-		out = append(out, honeApp.ExtractedAction{
-			Title:         title,
-			SourceNoteID:  item.NoteID,
-			SourceExcerpt: item.Excerpt,
-		})
+// Phase K Wave 16: LLM-backed реализация (TaskHoneNoteActionExtract, 8B-class).
+// Floor — NoNoteActionExtractor: panel рендерит пустой list, БЕЗ 503
+// (soft feature: лучше тихо скрыть suggestions чем показать ошибку).
+func buildNoteActionExtractor(d monolithServices.Deps) honeApp.NoteActionExtractor {
+	if d.LLMChain == nil {
+		return honeInfra.NewNoNoteActionExtractor()
 	}
-	return out, nil
-}
-
-func firstNonEmptyLine(s string) string {
-	for _, line := range strings.Split(s, "\n") {
-		t := strings.TrimSpace(line)
-		if t != "" {
-			return t
-		}
-	}
-	return ""
+	return honeInfra.NewLLMChainNoteActionExtractor(d.LLMChain, d.Log)
 }

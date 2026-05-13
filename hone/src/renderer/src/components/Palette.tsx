@@ -131,28 +131,28 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
         onClick={(e) => e.stopPropagation()}
         className="scale-pop"
         style={{
-          width: 520,
+          width: 348,
           maxWidth: '92%',
           height: 'fit-content',
           background: 'rgba(12,12,12,0.96)',
           border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 16,
+          borderRadius: 12,
           overflow: 'hidden',
-          boxShadow: '0 40px 100px -20px rgba(0,0,0,0.85)',
+          boxShadow: '0 28px 70px -14px rgba(0,0,0,0.85)',
         }}
       >
         <div
           style={{
-            padding: '14px 16px',
+            padding: '9px 11px',
             display: 'grid',
             gridTemplateColumns: 'auto 1fr auto',
-            gap: 10,
+            gap: 7,
             alignItems: 'center',
             borderBottom: '1px solid rgba(255,255,255,0.05)',
           }}
         >
           <span style={{ color: 'var(--ink-40)', display: 'flex' }}>
-            <Icon name="search" size={15} />
+            <Icon name="search" size={11} />
           </span>
           <input
             ref={inputRef}
@@ -162,7 +162,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
             placeholder="Type a command…"
             style={{
               width: '100%',
-              fontSize: 14,
+              fontSize: 11,
               color: 'var(--ink)',
               background: 'transparent',
               border: 'none',
@@ -172,7 +172,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
           <Chip>esc</Chip>
         </div>
 
-        <div role="listbox" aria-label="Commands" style={{ padding: '6px 0' }}>
+        <div role="listbox" aria-label="Commands" style={{ padding: '4px 0' }}>
           {filtered.map((it, i) => {
             const active = i === idx;
             const showHeader = !q.trim() && it.section !== lastSection;
@@ -193,10 +193,10 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
                   style={{
                     width: '100%',
                     display: 'grid',
-                    gridTemplateColumns: '40px 1fr auto',
-                    gap: 8,
+                    gridTemplateColumns: '26px 1fr auto',
+                    gap: 6,
                     alignItems: 'center',
-                    padding: '10px 14px',
+                    padding: '7px 10px',
                     background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
                     border: 'none',
                     cursor: 'pointer',
@@ -206,21 +206,21 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
                 >
                   <span
                     style={{
-                      width: 30,
-                      height: 30,
+                      width: 20,
+                      height: 20,
                       display: 'grid',
                       placeItems: 'center',
-                      borderRadius: 8,
+                      borderRadius: 6,
                       background: 'rgba(255,255,255,0.04)',
                       color: active ? 'var(--ink)' : 'var(--ink-60)',
                       transition: 'color 120ms ease-out',
                     }}
                   >
-                    <Icon name={it.icon} size={14} />
+                    <Icon name={it.icon} size={11} />
                   </span>
                   <span
                     style={{
-                      fontSize: 14,
+                      fontSize: 11,
                       fontWeight: 500,
                       color: active ? 'var(--ink)' : 'var(--ink-90)',
                       transition: 'color 120ms ease-out',
@@ -228,14 +228,14 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
                   >
                     {it.label}
                   </span>
-                  <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <span style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
                     {(it.shortcut ?? []).map((k, ki) => (
                       <span
                         key={ki}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}
                       >
                         {ki > 0 && (
-                          <span style={{ color: 'var(--ink-40)', fontSize: 9, opacity: 0.6 }}>·</span>
+                          <span style={{ color: 'var(--ink-40)', fontSize: 7, opacity: 0.6 }}>·</span>
                         )}
                         <Chip>{k}</Chip>
                       </span>
@@ -246,7 +246,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
             );
           })}
           {filtered.length === 0 && (
-            <div style={{ padding: '20px 16px', color: 'var(--ink-40)', fontSize: 13 }}>
+            <div style={{ padding: '14px 11px', color: 'var(--ink-40)', fontSize: 9 }}>
               No matches.
             </div>
           )}
@@ -256,22 +256,22 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
-            padding: '10px 16px',
+            gap: 8,
+            padding: '7px 11px',
             borderTop: '1px solid rgba(255,255,255,0.05)',
-            fontSize: 10,
+            fontSize: 7,
             color: 'var(--ink-40)',
           }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Chip>↑</Chip>
             <Chip>↓</Chip> select
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Chip>↵</Chip> open
           </span>
           <span style={{ flex: 1 }} />
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
             <Chip>⌘</Chip>
             <Chip>K</Chip>
           </span>
@@ -285,8 +285,8 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        padding: '10px 16px 4px',
-        fontSize: 9.5,
+        padding: '7px 11px 3px',
+        fontSize: 7,
         letterSpacing: '0.14em',
         textTransform: 'uppercase',
         color: 'var(--ink-40)',
@@ -306,15 +306,15 @@ function Chip({ children }: { children: React.ReactNode }) {
       style={{
         display: 'inline-grid',
         placeItems: 'center',
-        minWidth: 20,
-        height: 20,
-        padding: '0 6px',
-        fontSize: 10,
+        minWidth: 14,
+        height: 14,
+        padding: '0 4px',
+        fontSize: 7,
         letterSpacing: '0.04em',
         color: 'var(--ink-60)',
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 6,
+        borderRadius: 4,
       }}
     >
       {children}

@@ -226,6 +226,14 @@ const (
 	// is sufficient; same model tier as writing feedback. Latency-sensitive
 	// (UI пользователя ждёт после Stop recording).
 	TaskHoneSpeakingGrade Task = "hone_speaking_grade"
+	// TaskHoneNoteActionExtract — Phase K Wave 16. Coach reads matched
+	// excerpts from notes (regex pre-filter) и формулирует короткий
+	// actionable title для каждого реального action item. Skips: voprosy
+	// к себе, упоминания без action, завершённые чекбоксы. Output: strict
+	// JSON {suggestions: [{title, source_note_id, source_excerpt}]}.
+	// 8B-class: classification + 5-word title formulation, не reasoning.
+	// Latency-sensitive (юзер открывает suggestions panel и ждёт).
+	TaskHoneNoteActionExtract Task = "hone_note_action_extract"
 	// TaskAITutorChat — main chat-call для AI-тутора (см
 	// docs/feature/ai-tutor.md). 4-layer memory собирается на каждый ход,
 	// LLM возвращает свободный текст. 70B-class для качества рассуждений

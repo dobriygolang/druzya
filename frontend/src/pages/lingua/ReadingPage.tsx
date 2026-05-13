@@ -4,6 +4,7 @@
 // AICoachPill: existing /lingua reader keeps coach pill (только Reading
 // получает coach surface per E2 plan). Persona — active-track based.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { AICoachPill } from '../../components/AICoachPill'
 import { VocabPopover, WordTokenizedText, type VocabPopoverAnchor } from '../../components/lingua/WordToken'
@@ -46,6 +47,7 @@ function formatRelative(d: Date | null): string {
 }
 
 export default function ReadingPage() {
+  const { t } = useTranslation('toasts')
   const materialsQuery = useReadingMaterialsQuery()
   const archiveMut = useArchiveReadingMaterialMutation()
   const startSessionMut = useStartReadingSessionMutation()
@@ -62,23 +64,23 @@ export default function ReadingPage() {
         setMode({ kind: 'reader', material: full, session })
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'unknown'
-        window.alert(`Не удалось открыть материал: ${msg}`)
+        window.alert(t('lingua.open_failed', { message: msg }))
       }
     },
-    [startSessionMut],
+    [startSessionMut, t],
   )
 
   const handleArchive = useCallback(
     async (id: string) => {
-      if (!window.confirm('Архивировать этот материал? Его не будет в библиотеке.')) return
+      if (!window.confirm(t('lingua.archive_reading_confirm'))) return
       try {
         await archiveMut.mutateAsync(id)
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'unknown'
-        window.alert(`Не получилось архивировать: ${msg}`)
+        window.alert(t('lingua.archive_failed', { message: msg }))
       }
     },
-    [archiveMut],
+    [archiveMut, t],
   )
 
   return (

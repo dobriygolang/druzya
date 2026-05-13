@@ -16,7 +16,7 @@ import {
   Check,
   Layers,
 } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -50,7 +50,7 @@ function useNav() {
   const { t } = useTranslation('settings')
   return [
     { id: 'account' as const, label: t('nav.account'), icon: User },
-    { id: 'tracks' as const, label: 'Треки', icon: Layers },
+    { id: 'tracks' as const, label: t('nav.tracks'), icon: Layers },
     { id: 'billing' as const, label: t('nav.billing'), icon: CreditCard, badge: 'Premium' },
     { id: 'integrations' as const, label: t('nav.integrations'), icon: Plug },
     { id: 'notifications' as const, label: t('nav.notifications'), icon: Bell },
@@ -179,7 +179,7 @@ function AccountInfoCard() {
             </span>
             {expiryDate && (
               <span className="font-mono text-[11px] text-text-muted">
-                до {expiryDate}
+                {t('rows.until', { date: expiryDate })}
               </span>
             )}
             {/* Wave-11: «Управлять» → /pricing (was a no-op Button). */}
@@ -220,27 +220,28 @@ function InfoRow({ label, children, last }: { label: string; children: React.Rea
 // API client / scheduled scan / prompt pipeline — всё нужно строить с
 // нуля, ~600-800 LOC + отдельный сервис). Возвращём, когда будет.
 function IntegrationsCard() {
+  const { t } = useTranslation('settings')
   const { data: profile } = useProfileQuery()
   const oauthYandex = (profile as unknown as { oauth_providers?: string[] })?.oauth_providers?.includes('yandex') ?? false
   const tgLinked = (profile as unknown as { tg_username?: string })?.tg_username
   return (
     <Card className="flex-col gap-4 p-6">
-      <h3 className="font-display text-lg font-bold text-text-primary">Integrations</h3>
+      <h3 className="font-display text-lg font-bold text-text-primary">{t('integrations.title')}</h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <IntegrationRow
           icon={<Send className="h-5 w-5" />}
           name="Telegram"
           status={tgLinked ? 'connected' : 'disconnected'}
-          description={tgLinked ? `Привязан как @${tgLinked}` : 'Привяжи аккаунт чтобы получать пинги в TG.'}
+          description={tgLinked ? t('integrations.telegram.linked', { username: tgLinked }) : t('integrations.telegram.unlinked')}
           onAction={() => {
-            window.alert('Открой @druz9_bot в Telegram и пришли /start — после этого пинги придут на твой аккаунт.')
+            window.alert(t('integrations.telegram.instructions'))
           }}
         />
         <IntegrationRow
           icon={<Globe className="h-5 w-5" />}
           name="Yandex"
           status={oauthYandex ? 'connected' : 'disconnected'}
-          description={oauthYandex ? 'OAuth-вход через Yandex активен.' : 'Привязка через OAuth — на странице логина.'}
+          description={oauthYandex ? t('integrations.yandex.linked') : t('integrations.yandex.unlinked')}
           onAction={undefined}
         />
       </div>
@@ -261,6 +262,7 @@ function IntegrationRow({
   description: string
   onAction?: () => void
 }) {
+  const { t } = useTranslation('settings')
   const statusLabel =
     status === 'connected'
       ? 'connected'
@@ -284,7 +286,7 @@ function IntegrationRow({
             onClick={onAction}
             className="mt-1 self-start font-mono text-[11px] uppercase tracking-wider text-text-primary hover:underline"
           >
-            привязать →
+            {t('integrations.link_action')}
           </button>
         )}
       </div>
@@ -317,7 +319,7 @@ function AppearanceCard() {
         <div className="flex flex-col gap-1">
           <span className="text-[14px] font-semibold text-text-primary">{t('theme_label')}</span>
           <span className="text-[12px] text-text-muted">
-            Dark theme — B/W aesthetic across web / Hone / Cue. Light theme is not supported.
+            {t('theme_dark_only_note')}
           </span>
         </div>
       </div>
@@ -405,13 +407,10 @@ function AICoachCard() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h3 className="font-display text-lg font-bold text-text-primary">
-            {t('ai_coach_title', { defaultValue: 'AI Coach — модель' })}
+            {t('ai_coach.title')}
           </h3>
           <p className="text-[12px] text-text-muted">
-            {t('ai_coach_desc', {
-              defaultValue:
-                'Выбор LLM для недельного инсайта. Пусто ⇒ дефолтная бесплатная модель. Premium-модели доступны на платной подписке.',
-            })}
+            {t('ai_coach.description')}
           </p>
         </div>
         {update.isPending && (
@@ -424,14 +423,12 @@ function AICoachCard() {
       )}
       {isError && (
         <div className="rounded-md bg-danger/15 px-3 py-2 font-mono text-[11px] text-danger">
-          {t('ai_coach_load_failed', { defaultValue: 'Не удалось загрузить каталог моделей' })}
+          {t('ai_coach.load_failed')}
         </div>
       )}
       {!isLoading && !isError && !available && (
         <div className="rounded-md bg-surface-2 px-3 py-2 font-mono text-[11px] text-text-muted">
-          {t('ai_coach_unavailable', {
-            defaultValue: 'AI Coach сейчас отключён (OPENROUTER_API_KEY не задан)',
-          })}
+          {t('ai_coach.unavailable')}
         </div>
       )}
       {available && items.length > 0 && (
@@ -439,8 +436,8 @@ function AICoachCard() {
           {/* Default row — empty string maps to server-default free model */}
           <AIModelRow
             id=""
-            label={t('ai_coach_default', { defaultValue: 'По умолчанию (бесплатная)' })}
-            meta={t('ai_coach_default_desc', { defaultValue: 'сервер выбирает модель под ваш тариф' })}
+            label={t('ai_coach.default_label')}
+            meta={t('ai_coach.default_desc')}
             tier="free"
             selected={selected === ''}
             onSelect={onPick}
@@ -471,7 +468,7 @@ function AICoachCard() {
       )}
       {update.isError && (
         <div className="rounded-md bg-danger/15 px-3 py-2 font-mono text-[11px] text-danger">
-          {t('ai_coach_save_failed', { defaultValue: 'Не удалось сохранить выбор' })}
+          {t('ai_coach.save_failed')}
         </div>
       )}
     </Card>
@@ -554,15 +551,10 @@ export default function SettingsPage() {
 // NotificationsCard — channel toggles bound to backend notify prefs.
 // Backend keeps a `channel_enabled` map so we don't hardcode the set
 // here; we list every channel the server knows about.
-const KNOWN_CHANNELS: { key: string; label: string; description: string }[] = [
-  { key: 'match', label: 'Matches', description: 'Результаты матчей и приглашения.' },
-  { key: 'social', label: 'Circles', description: 'События и активность в кругах.' },
-  { key: 'system', label: 'System', description: 'Технические уведомления + maintenance.' },
-  { key: 'cohort', label: 'Cohort', description: 'Когортные сводки (legacy).' },
-  { key: 'wins', label: 'Wins', description: 'Стрики, ачивки, milestones.' },
-]
+const KNOWN_CHANNEL_KEYS = ['match', 'social', 'system', 'cohort', 'wins'] as const
 
 function NotificationsCard() {
+  const { t } = useTranslation('settings')
   const q = useNotificationPrefsQuery()
   const upd = useUpdatePrefs()
   const enabled = q.data?.channel_enabled ?? {}
@@ -572,36 +564,34 @@ function NotificationsCard() {
   }
   return (
     <Card className="flex-col gap-4 p-6">
-      <h3 className="font-display text-lg font-bold text-text-primary">Уведомления</h3>
+      <h3 className="font-display text-lg font-bold text-text-primary">{t('notifications_card.title')}</h3>
       <p className="text-[13px] text-text-secondary">
-        Включай и выключай каналы — переключатель сохраняется сразу.
-        Telegram-канал работает только когда есть привязанный аккаунт
-        (см. Integrations).
+        {t('notifications_card.description')}
       </p>
       <div className="flex flex-col gap-2">
-        {KNOWN_CHANNELS.map((c) => {
-          const on = enabled[c.key] ?? true
+        {KNOWN_CHANNEL_KEYS.map((key) => {
+          const on = enabled[key] ?? true
           return (
             <label
-              key={c.key}
+              key={key}
               className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface-1 p-3"
             >
               <input
                 type="checkbox"
                 checked={on}
-                onChange={(e) => onToggle(c.key, e.target.checked)}
+                onChange={(e) => onToggle(key, e.target.checked)}
                 className="h-4 w-4 accent-text-primary"
               />
               <div className="flex flex-1 flex-col">
-                <span className="text-[14px] font-semibold text-text-primary">{c.label}</span>
-                <span className="text-[12px] text-text-muted">{c.description}</span>
+                <span className="text-[14px] font-semibold text-text-primary">{t(`notifications_card.channel.${key}.label`)}</span>
+                <span className="text-[12px] text-text-muted">{t(`notifications_card.channel.${key}.description`)}</span>
               </div>
             </label>
           )
         })}
       </div>
       {upd.isError && (
-        <p className="text-[12px] text-text-secondary">Не удалось сохранить — попробуй ещё раз.</p>
+        <p className="text-[12px] text-text-secondary">{t('notifications_card.save_failed')}</p>
       )}
     </Card>
   )
@@ -610,18 +600,28 @@ function NotificationsCard() {
 // ─── Privacy ───────────────────────────────────────────────────────────
 
 function PrivacyCard() {
+  const { t } = useTranslation('settings')
   return (
     <div className="flex flex-col gap-4">
       <Card className="flex-col gap-3 p-6">
-        <h3 className="font-display text-lg font-bold text-text-primary">Приватность</h3>
+        <h3 className="font-display text-lg font-bold text-text-primary">{t('privacy_card.title')}</h3>
         <p className="text-[13px] text-text-secondary">
-          Профиль виден только участникам твоих кругов и оппонентам в матчах.
-          Анонимные публичные ссылки на отчёты можно создавать вручную из{' '}
-          <Link to="/profile/weekly" className="underline">/profile/weekly</Link>.
+          <Trans
+            ns="settings"
+            i18nKey="privacy_card.description_html"
+            components={{
+              1: <Link to="/profile/weekly" className="underline" />,
+            }}
+          />
         </p>
         <p className="text-[12px] text-text-muted">
-          Данные хранятся в РФ; кэш Redis очищается через 24 часа после
-          выхода. Полный экспорт + удаление — в&nbsp;<b>Опасной зоне</b>.
+          <Trans
+            ns="settings"
+            i18nKey="privacy_card.footnote_html"
+            components={{
+              1: <b />,
+            }}
+          />
         </p>
       </Card>
 
@@ -637,6 +637,7 @@ function PrivacyCard() {
 // Web default — opted-OUT (anonymous web visitor trust gradient is low);
 // user must explicitly enable.
 function AnalyticsConsentCard() {
+  const { t } = useTranslation('settings')
   const [opted, setOpted] = useState<boolean>(() => analytics.isOptedIn())
   const [exporting, setExporting] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -674,7 +675,7 @@ function AnalyticsConsentCard() {
   async function handleDelete() {
     setDeleteErr(null)
     setDeletedCount(null)
-    if (!window.confirm('Удалить ВСЕ свои analytics-events безвозвратно?')) return
+    if (!window.confirm(t('analytics.delete_confirm'))) return
     setDeleting(true)
     try {
       const resp = await api<{ deleted: number }>('/telemetry/events', {
@@ -691,11 +692,10 @@ function AnalyticsConsentCard() {
   return (
     <Card className="flex-col gap-3 p-6">
       <h3 className="font-display text-lg font-bold text-text-primary">
-        Product analytics
+        {t('analytics.title')}
       </h3>
       <p className="text-[13px] text-text-secondary">
-        Anonymous usage events помогают приоритизировать фичи. No PII.
-        Toggle off anytime — мы сразу дропаем pending events из памяти.
+        {t('analytics.description')}
       </p>
 
       <label className="flex cursor-pointer items-center gap-3 pt-1">
@@ -710,13 +710,13 @@ function AnalyticsConsentCard() {
           className="h-4 w-4 cursor-pointer"
         />
         <span className="text-[13px] font-semibold text-text-primary">
-          Share anonymous usage events to improve druz9
+          {t('analytics.opt_in_label')}
         </span>
       </label>
 
       <div className="mt-2 flex flex-col gap-2 border-t border-border pt-4">
         <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-          Data rights
+          {t('analytics.data_rights')}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -724,14 +724,14 @@ function AnalyticsConsentCard() {
             onClick={() => void handleExport()}
             disabled={exporting}
           >
-            {exporting ? 'Готовим…' : 'Скачать мои события'}
+            {exporting ? t('analytics.preparing') : t('analytics.export_action')}
           </Button>
           <Button
             variant="ghost"
             onClick={() => void handleDelete()}
             disabled={deleting}
           >
-            {deleting ? 'Удаляем…' : 'Удалить мои события'}
+            {deleting ? t('analytics.deleting') : t('analytics.delete_action')}
           </Button>
         </div>
         {exportErr && (
@@ -742,7 +742,9 @@ function AnalyticsConsentCard() {
         )}
         {deletedCount !== null && deleteErr === null && (
           <p className="text-[12px] text-text-secondary">
-            Готово — удалено {deletedCount} {deletedCount === 1 ? 'событие' : 'событий'}.
+            {deletedCount === 1
+              ? t('analytics.deleted_one', { count: deletedCount })
+              : t('analytics.deleted_many', { count: deletedCount })}
           </p>
         )}
       </div>
@@ -753,6 +755,7 @@ function AnalyticsConsentCard() {
 // ─── Danger zone ───────────────────────────────────────────────────────
 
 function DangerCard() {
+  const { t } = useTranslation('settings')
   const profile = useProfileQuery()
   const username = profile.data?.username ?? ''
   const [confirm, setConfirm] = useState('')
@@ -762,10 +765,10 @@ function DangerCard() {
   async function handleDelete() {
     setErr(null)
     if (confirm.trim() !== username) {
-      setErr('Введи точно свой username для подтверждения.')
+      setErr(t('danger.username_mismatch'))
       return
     }
-    if (!window.confirm('Точно удалить аккаунт? Все данные будут стёрты безвозвратно.')) return
+    if (!window.confirm(t('danger.delete_confirm'))) return
     setSubmitting(true)
     try {
       await api<{ ok: boolean }>('/profile/me', {
@@ -782,22 +785,20 @@ function DangerCard() {
       }
       window.location.href = '/welcome'
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Не удалось удалить аккаунт.')
+      setErr(e instanceof Error ? e.message : t('danger.failure'))
       setSubmitting(false)
     }
   }
 
   return (
     <Card className="flex-col gap-4 p-6">
-      <h3 className="font-display text-lg font-bold text-text-primary">Опасная зона</h3>
+      <h3 className="font-display text-lg font-bold text-text-primary">{t('danger.title')}</h3>
       <p className="text-[13px] text-text-secondary">
-        Удаление аккаунта необратимо. Уйдут заметки, прогресс, mock-сессии
-        и подписки. Внешние подписки (Boosty, если есть legacy) останутся
-        на их стороне — их надо отменить отдельно.
+        {t('danger.description')}
       </p>
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-1 p-3">
         <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-          Чтобы подтвердить, введи свой username
+          {t('danger.confirmation_input_label')}
         </span>
         <input
           value={confirm}
@@ -816,7 +817,7 @@ function DangerCard() {
           'hover:bg-danger/90 disabled:cursor-not-allowed disabled:opacity-50',
         )}
       >
-        {submitting ? 'Удаляем…' : 'Удалить аккаунт'}
+        {submitting ? t('danger.deleting') : t('danger.delete_button')}
       </button>
     </Card>
   )

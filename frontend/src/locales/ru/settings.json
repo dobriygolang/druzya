@@ -3,6 +3,7 @@
   "subtitle": "Управляй аккаунтом, интеграциями и предпочтениями.",
   "nav": {
     "account": "Аккаунт",
+    "tracks": "Треки",
     "billing": "Биллинг",
     "integrations": "Интеграции",
     "notifications": "Нотификации",
@@ -28,7 +29,8 @@
     "id": "ID Account",
     "registered": "Регистрация",
     "plan": "Тариф",
-    "devices": "Подключённые устройства"
+    "devices": "Подключённые устройства",
+    "until": "до {{date}}"
   },
   "devices_value": "3 устройства · MacBook Pro, iPhone, Web",
   "buy_premium": "Купить Premium",
@@ -40,6 +42,7 @@
   "appearance_title": "Внешний вид",
   "theme_label": "Тема оформления",
   "theme_desc": "Выбери цветовую схему интерфейса.",
+  "theme_dark_only_note": "Dark theme — B/W aesthetic across web / Hone / Cue. Light theme is not supported.",
   "theme_auto": "Авто",
   "theme_auto_desc": "По системе",
   "theme_dark": "Тёмная",
@@ -47,5 +50,82 @@
   "theme_light": "Светлая",
   "theme_light_desc": "Для дневного света",
   "language_label": "Язык интерфейса",
-  "language_desc": "Применится после смены."
+  "language_desc": "Применится после смены.",
+  "integrations": {
+    "title": "Integrations",
+    "telegram": {
+      "linked": "Привязан как @{{username}}",
+      "unlinked": "Привяжи аккаунт чтобы получать пинги в TG.",
+      "instructions": "Открой @druz9_bot в Telegram и пришли /start — после этого пинги придут на твой аккаунт."
+    },
+    "yandex": {
+      "linked": "OAuth-вход через Yandex активен.",
+      "unlinked": "Привязка через OAuth — на странице логина."
+    },
+    "link_action": "привязать →"
+  },
+  "notifications_card": {
+    "title": "Уведомления",
+    "description": "Включай и выключай каналы — переключатель сохраняется сразу. Telegram-канал работает только когда есть привязанный аккаунт (см. Integrations).",
+    "save_failed": "Не удалось сохранить — попробуй ещё раз.",
+    "channel": {
+      "match": {
+        "label": "Matches",
+        "description": "Результаты матчей и приглашения."
+      },
+      "social": {
+        "label": "Circles",
+        "description": "События и активность в кругах."
+      },
+      "system": {
+        "label": "System",
+        "description": "Технические уведомления + maintenance."
+      },
+      "cohort": {
+        "label": "Cohort",
+        "description": "Когортные сводки (legacy)."
+      },
+      "wins": {
+        "label": "Wins",
+        "description": "Стрики, ачивки, milestones."
+      }
+    }
+  },
+  "ai_coach": {
+    "title": "AI Coach — модель",
+    "description": "Выбор LLM для недельного инсайта. Пусто ⇒ дефолтная бесплатная модель. Premium-модели доступны на платной подписке.",
+    "load_failed": "Не удалось загрузить каталог моделей",
+    "unavailable": "AI Coach сейчас отключён (OPENROUTER_API_KEY не задан)",
+    "default_label": "По умолчанию (бесплатная)",
+    "default_desc": "сервер выбирает модель под ваш тариф",
+    "save_failed": "Не удалось сохранить выбор"
+  },
+  "privacy_card": {
+    "title": "Приватность",
+    "description_html": "Профиль виден только участникам твоих кругов и оппонентам в матчах. Анонимные публичные ссылки на отчёты можно создавать вручную из <1>/profile/weekly</1>.",
+    "footnote_html": "Данные хранятся в РФ; кэш Redis очищается через 24 часа после выхода. Полный экспорт + удаление — в <1>Опасной зоне</1>."
+  },
+  "analytics": {
+    "title": "Product analytics",
+    "description": "Anonymous usage events помогают приоритизировать фичи. No PII. Toggle off anytime — мы сразу дропаем pending events из памяти.",
+    "opt_in_label": "Share anonymous usage events to improve druz9",
+    "data_rights": "Data rights",
+    "preparing": "Готовим…",
+    "export_action": "Скачать мои события",
+    "deleting": "Удаляем…",
+    "delete_action": "Удалить мои события",
+    "delete_confirm": "Удалить ВСЕ свои analytics-events безвозвратно?",
+    "deleted_one": "Готово — удалено {{count}} событие.",
+    "deleted_many": "Готово — удалено {{count}} событий."
+  },
+  "danger": {
+    "title": "Опасная зона",
+    "description": "Удаление аккаунта необратимо. Уйдут заметки, прогресс, mock-сессии и подписки. Внешние подписки (Boosty, если есть legacy) останутся на их стороне — их надо отменить отдельно.",
+    "confirmation_input_label": "Чтобы подтвердить, введи свой username",
+    "delete_button": "Удалить аккаунт",
+    "deleting": "Удаляем…",
+    "delete_confirm": "Точно удалить аккаунт? Все данные будут стёрты безвозвратно.",
+    "username_mismatch": "Введи точно свой username для подтверждения.",
+    "failure": "Не удалось удалить аккаунт."
+  }
 }

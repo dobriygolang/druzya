@@ -8,6 +8,9 @@
 // Топ-паддинг 64px чтобы под traffic-lights / draggable header не
 // уезжали title и FAB.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { useT, translate } from '@d9-i18n';
+
 import {
   listTasks,
   createTask,
@@ -41,6 +44,7 @@ import { ArchiveDrawer } from './ArchiveDrawer';
 import { CreateTaskModal } from './CreateTaskModal';
 
 export function TaskBoardPage(): JSX.Element {
+  const t = useT();
   const [tasks, setTasks] = useState<TaskCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>('my');
@@ -228,16 +232,16 @@ export function TaskBoardPage(): JSX.Element {
     async (taskId: string, nextKind: TaskKind) => {
       // Optimistic: write locally + flip manualKindOverride flag.
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, kind: nextKind, manualKindOverride: true } : t)),
+        prev.map((task) => (task.id === taskId ? { ...task, kind: nextKind, manualKindOverride: true } : task)),
       );
       trackEvent('taskboard_kind_override', { to_kind: nextKind });
       try {
         const updated = await updateTaskKind(taskId, nextKind, true);
         // Reconcile с сервером (в идеале — то же, но safe rewire).
-        setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+        setTasks((prev) => prev.map((task) => (task.id === taskId ? updated : task)));
       } catch {
         // Revert on failure.
-        showInfo('Override failed — reverted');
+        showInfo(translate('hone.notify.override_failed'));
         void refresh();
       }
     },
@@ -267,10 +271,10 @@ export function TaskBoardPage(): JSX.Element {
   }
 
   async function handleDelete(taskId: string): Promise<void> {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setTasks((prev) => prev.filter((task) => task.id !== taskId));
     try {
       await deleteTask(taskId);
-      toast('Task deleted');
+      toast(translate('hone.notify.task_deleted'));
     } catch {
       void refresh();
     }
@@ -291,9 +295,9 @@ export function TaskBoardPage(): JSX.Element {
         skillKey: input.skillKey || undefined,
       });
       setTasks((prev) => [c, ...prev]);
-      toast('Task created');
+      toast(translate('hone.notify.task_created'));
     } catch {
-      toast('Failed to create');
+      toast(translate('hone.notify.task_create_failed'));
     }
   }
 
@@ -320,24 +324,24 @@ export function TaskBoardPage(): JSX.Element {
       {/* Header — минимальный, tabs + bulk action + archive button */}
       <header style={{ ...hdrStyle, justifyContent: 'space-between' }}>
         <div role="tablist" aria-label="Task filter" style={{ display: 'flex', gap: 4 }}>
-          {(['my', 'week'] as TabKey[]).map((t) => (
+          {(['my', 'week'] as TabKey[]).map((key) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={key}
+              onClick={() => setTab(key)}
               role="tab"
-              aria-selected={tab === t}
-              aria-pressed={tab === t}
+              aria-selected={tab === key}
+              aria-pressed={tab === key}
               style={{
                 fontSize: 11, padding: '5px 12px', borderRadius: 6,
                 border: '1px solid var(--ink-20)',
-                background: tab === t ? 'var(--ink)' : 'transparent',
-                color: tab === t ? 'var(--bg)' : 'var(--ink-60)',
+                background: tab === key ? 'var(--ink)' : 'transparent',
+                color: tab === key ? 'var(--bg)' : 'var(--ink-60)',
                 cursor: 'pointer', letterSpacing: '0.08em', textTransform: 'uppercase',
                 fontWeight: 500,
                 transition: 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
               }}
             >
-              {t === 'my' ? 'My' : 'This week'}
+              {key === 'my' ? t('hone.taskboard.tab.my') : t('hone.taskboard.tab.week')}
             </button>
           ))}
         </div>
@@ -399,7 +403,7 @@ export function TaskBoardPage(): JSX.Element {
             aria-label="Open archive drawer"
             aria-expanded={archiveOpen}
             aria-haspopup="dialog"
-            title="Архив завершённых / dismissed задач"
+            title={t('hone.taskboard.btn.archive_title')}
             style={{
               fontSize: 11,
               padding: '5px 12px',
@@ -416,7 +420,7 @@ export function TaskBoardPage(): JSX.Element {
               gap: 6,
             }}
           >
-            Archive
+            {t('hone.taskboard.btn.archive')}
             {tasks.filter((t) => t.status === 'dismissed').length > 0 && (
               <span
                 style={{
@@ -501,10 +505,10 @@ export function TaskBoardPage(): JSX.Element {
         <div style={emptyStyle}>
           <div style={emptyIconStyle}>✨</div>
           <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink-60)', margin: 0 }}>
-            No tasks yet
+            {t('hone.taskboard.empty.title')}
           </h2>
           <p style={{ fontSize: 13, maxWidth: 320, textAlign: 'center', lineHeight: 1.6, margin: 0 }}>
-            AI-coach анализирует твою активность и скоро предложит персональные задачи
+            {t('hone.taskboard.empty.body')}
           </p>
           <button
             onClick={() => setCreateOpen(true)}
@@ -514,7 +518,7 @@ export function TaskBoardPage(): JSX.Element {
               background: 'none', border: 'none',
             }}
           >
-            Создать первую задачу
+            {t('hone.taskboard.empty.create_first')}
           </button>
         </div>
       )}
@@ -528,11 +532,10 @@ export function TaskBoardPage(): JSX.Element {
             ))}
           </div>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-60)', margin: 0 }}>
-            No tasks match the selected kind
-            {kindFilter.size > 1 ? 's' : ''}
+            {t('hone.taskboard.empty.filter_title')}
           </h2>
           <p style={{ fontSize: 12.5, maxWidth: 360, textAlign: 'center', lineHeight: 1.6, margin: 0, color: 'var(--ink-40)' }}>
-            Click the kind chip on any card to retag it, or run «Auto-tag» to let AI re-categorise the {autoEligibleCount} open task{autoEligibleCount === 1 ? '' : 's'}.
+            {t('hone.taskboard.empty.filter_body')}
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
@@ -543,7 +546,7 @@ export function TaskBoardPage(): JSX.Element {
                 background: 'none', border: 'none',
               }}
             >
-              Clear filter
+              {t('hone.taskboard.empty.clear_filter')}
             </button>
             {autoEligibleCount > 0 && !bulkProgress && (
               <button

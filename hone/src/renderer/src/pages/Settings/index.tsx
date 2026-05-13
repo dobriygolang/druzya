@@ -26,6 +26,8 @@
 //     (см. ./sections/FocusModeSection.tsx).
 import { useEffect, useMemo, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import { type ThemeId, THEME_IDS } from '../../components/CanvasBg';
 import {
   readPomodoroSeconds as readPomodoroSecondsFromPrefs,
@@ -59,6 +61,8 @@ import { FocusModeSection } from './sections/FocusModeSection';
 // Phase K Wave 15 — Quick Capture + Day Shutdown ritual.
 import { QuickCaptureSection } from './sections/QuickCaptureSection';
 import { DayShutdownSection } from './sections/DayShutdownSection';
+// Phase K Wave 16 — soft energy-check nudge (3-hour interval).
+import { EnergyNudgeSection } from './sections/EnergyNudgeSection';
 
 /** Re-exported from stores/prefs so legacy import paths keep working. */
 export const readPomodoroSeconds = readPomodoroSecondsFromPrefs;
@@ -82,16 +86,20 @@ type TabId =
   | 'analytics'
   | 'advanced';
 
-const TABS: ReadonlyArray<TabDef<TabId>> = [
-  { id: 'account', label: 'Аккаунт' },
-  { id: 'appearance', label: 'Внешний вид' },
-  { id: 'focus', label: 'Фокус' },
-  { id: 'memory', label: 'Память' },
-  { id: 'storage', label: 'Хранилище' },
-  { id: 'devices', label: 'Устройства' },
-  { id: 'analytics', label: 'Аналитика' },
-  { id: 'advanced', label: 'Продвинутые' },
-];
+// Tab labels resolved at render-time via t() so they reflect the active locale.
+function useTabs(): ReadonlyArray<TabDef<TabId>> {
+  const t = useT();
+  return [
+    { id: 'account', label: t('hone.settings.tab.account') },
+    { id: 'appearance', label: t('hone.settings.tab.appearance') },
+    { id: 'focus', label: t('hone.settings.tab.focus') },
+    { id: 'memory', label: t('hone.settings.tab.memory') },
+    { id: 'storage', label: t('hone.settings.tab.storage') },
+    { id: 'devices', label: t('hone.settings.tab.devices') },
+    { id: 'analytics', label: t('hone.settings.tab.analytics') },
+    { id: 'advanced', label: t('hone.settings.tab.advanced') },
+  ];
+}
 
 // SectionDef — declarative spec for a single tile inside a tab. `body`
 // — render function чтобы можно было прокидывать state в каждую Section.
@@ -106,6 +114,8 @@ interface SectionDef {
 }
 
 export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPageProps) {
+  const t = useT();
+  const TABS = useTabs();
   const [settings, setSettings] = useState<HoneSettings>(() => readSettings());
   const [tab, setTab] = useState<TabId>('account');
   const [query, setQuery] = useState('');
@@ -257,6 +267,13 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
       hint: 'Evening prompt (~21:00) to write down what shipped / what hangs / tomorrow.',
       keywords: 'shutdown evening ритуал вечер день daily',
       render: () => <DayShutdownSection />,
+    },
+    {
+      tab: 'focus',
+      title: 'ENERGY CHECK',
+      hint: 'Soft nudge every 3 hours: "как энергия сейчас?" Тихие часы 00–08.',
+      keywords: 'energy энергия nudge напоминание fatigue усталость 3 часа',
+      render: () => <EnergyNudgeSection />,
     },
     {
       tab: 'focus',
@@ -437,14 +454,14 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
         <SectionHead label="SETTINGS" />
         <h1 style={{ margin: '8px 0 24px', fontSize: 28, fontWeight: 500, letterSpacing: '-0.015em' }}>
-          Preferences
+          {t('hone.settings.heading')}
         </h1>
 
         {/* Search input — фильтрует все секции (across all tabs).
             Пустой query = классическая tab-based group view. */}
         <input
           type="search"
-          placeholder="Поиск настроек…"
+          placeholder={t('hone.settings.search_placeholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           spellCheck={false}
@@ -482,8 +499,8 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
             }}
           >
             {visible.length === 0
-              ? `0 РЕЗУЛЬТАТОВ ПО «${query.trim().toUpperCase()}»`
-              : `${visible.length} НАЙДЕНО ПО «${query.trim().toUpperCase()}»`}
+              ? t('hone.settings.search.zero_results', { q: query.trim().toUpperCase() })
+              : t('hone.settings.search.results_count', { n: visible.length, q: query.trim().toUpperCase() })}
           </div>
         )}
 
@@ -499,8 +516,7 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
               borderRadius: 12,
             }}
           >
-            Ничего не нашли. Попробуй другие слова — например «помодоро»,
-            «vault», «devices», «analytics».
+            {t('hone.settings.search.empty_help')}
           </div>
         ) : (
           visible.map((s) => (

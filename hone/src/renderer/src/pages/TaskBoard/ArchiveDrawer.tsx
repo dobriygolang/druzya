@@ -1,4 +1,7 @@
 import { useEffect } from 'react';
+
+import { useT, translate } from '@d9-i18n';
+
 import type { TaskCard } from '../../api/tasks';
 import { KINDS, KindIcon } from './lib/kinds';
 import { relativeAge, pluralArchive } from './lib/helpers';
@@ -11,6 +14,7 @@ interface ArchiveDrawerProps {
 }
 
 export function ArchiveDrawer({ tasks, onClose, onRestore, onDelete }: ArchiveDrawerProps): JSX.Element {
+  const t = useT();
   // Sort newest-first by updatedAt fallback createdAt.
   const sorted = [...tasks].sort((a, b) => {
     const at = Date.parse(a.updatedAt || a.createdAt);
@@ -80,11 +84,11 @@ export function ArchiveDrawer({ tasks, onClose, onRestore, onDelete }: ArchiveDr
                 marginBottom: 4,
               }}
             >
-              Архив · dismissed
+              {t('hone.taskboard.archive.eyebrow')}
             </p>
             <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-90)', margin: 0 }}>
               {sorted.length === 0
-                ? 'Архив пуст'
+                ? t('hone.taskboard.archive.empty_title')
                 : `${sorted.length} ${pluralArchive(sorted.length)}`}
             </h2>
           </div>
@@ -119,14 +123,13 @@ export function ArchiveDrawer({ tasks, onClose, onRestore, onDelete }: ArchiveDr
                 marginTop: 24,
               }}
             >
-              Сюда попадают задачи отмеченные как dismissed. Restore возвращает в To Do — не теряем
-              workflow когда оказывается «нет, это нужно».
+              {t('hone.taskboard.archive.empty_help')}
             </p>
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sorted.map((t) => (
+              {sorted.map((task) => (
                 <li
-                  key={t.id}
+                  key={task.id}
                   style={{
                     padding: '10px 12px',
                     background: 'var(--surface-1)',
@@ -138,9 +141,9 @@ export function ArchiveDrawer({ tasks, onClose, onRestore, onDelete }: ArchiveDr
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                    <KindIcon kind={t.kind} size={13} />
+                    <KindIcon kind={task.kind} size={13} />
                     <span style={{ fontSize: 13, color: 'var(--ink-90)', flex: 1, lineHeight: 1.4 }}>
-                      {t.title}
+                      {task.title}
                     </span>
                   </div>
                   <div
@@ -155,11 +158,11 @@ export function ArchiveDrawer({ tasks, onClose, onRestore, onDelete }: ArchiveDr
                     }}
                   >
                     <span>
-                      {KINDS[t.kind].label} · {relativeAge(t.updatedAt || t.createdAt)}
+                      {KINDS[task.kind].label} · {relativeAge(task.updatedAt || task.createdAt)}
                     </span>
                     <div style={{ display: 'flex', gap: 4 }}>
                       <button
-                        onClick={() => onRestore(t.id)}
+                        onClick={() => onRestore(task.id)}
                         style={{
                           background: 'transparent',
                           border: '1px solid var(--ink-20)',
@@ -176,7 +179,7 @@ export function ArchiveDrawer({ tasks, onClose, onRestore, onDelete }: ArchiveDr
                       </button>
                       <button
                         onClick={() => {
-                          if (window.confirm('Удалить навсегда?')) onDelete(t.id);
+                          if (window.confirm(translate('hone.taskboard.archive.delete_confirm'))) onDelete(task.id);
                         }}
                         style={{
                           background: 'transparent',

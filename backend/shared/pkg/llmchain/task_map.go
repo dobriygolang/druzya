@@ -322,6 +322,18 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
 	},
+	TaskHoneNoteActionExtract: {
+		// Note action item extraction — short JSON output (<=10 items),
+		// classification + 5-10-word title formulation per excerpt.
+		// Не reasoning-heavy, нужна скорость (юзер ждёт panel render).
+		// 8B-class. Russian-first контент (Sergey пишет заметки по-русски),
+		// llama-3.1-8b-instant + mistral-small справляются нативно.
+		ProviderGroq:       "llama-3.1-8b-instant",
+		ProviderCerebras:   "llama3.1-8b",
+		ProviderMistral:    "mistral-small-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
 	TaskAITutorChat: {
 		// AI-tutor chat — open-ended dialogue с 4-layer memory injection.
 		// Quality > latency (студент готов подождать 2-3s на coach reply).

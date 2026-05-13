@@ -153,6 +153,16 @@ export default function App() {
     if (!ipc) return;
     return ipc.on('day-shutdown:open-modal', () => setDayShutdownOpen(true));
   }, []);
+  // Phase K Wave 16 — energy nudge picker. Main process слушает таймер
+  // и шлёт event'ом когда пора предложить юзеру логнуть энергию;
+  // navigate'имся на /energy где EnergyPicker уже отрисован.
+  useEffect(() => {
+    const ipc = (window as unknown as {
+      __honeIPC?: { on: (channel: string, listener: () => void) => () => void };
+    }).__honeIPC;
+    if (!ipc) return;
+    return ipc.on('energy-nudge:open-picker', () => setPage('energy'));
+  }, [setPage]);
   const setPaletteOpen = useCallback((next: boolean | ((p: boolean) => boolean)) => {
     setPaletteOpenRaw((prev) => {
       const resolved = typeof next === 'function' ? next(prev) : next;

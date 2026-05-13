@@ -1,0 +1,48 @@
+{
+  "hub_label": "Lingua hub",
+  "overview": {
+    "title": "English overview",
+    "subtitle": "Reading / Writing / Listening / Speaking in one loop. Here's what needs attention today.",
+    "load_partial_error": "Could not load part of the Lingua data",
+    "stat_vocab_due": "Cards ready for review",
+    "stat_library": "Reading materials",
+    "stat_speaking": "Sessions logged",
+    "vocab_section": "Vocab due for review",
+    "recent_materials": "Recent materials",
+    "library_empty": "Library is empty. Open Reading and add your first material.",
+    "speaking_trend": "Speaking trend",
+    "quick": {
+      "reading": "Reading",
+      "writing": "Writing",
+      "listening": "Listening",
+      "speaking": "Speaking"
+    }
+  },
+  "nav": {
+    "reading": "Reading",
+    "writing": "Writing",
+    "listening": "Listening",
+    "speaking": "Speaking",
+    "back": "Back"
+  },
+  "actions": {
+    "archive": "Archive",
+    "open": "Open",
+    "add": "Add",
+    "save": "Save",
+    "delete": "Delete"
+  },
+  "empty": {
+    "library": "Library is empty",
+    "vocab": "No cards to review",
+    "speaking": "No sessions yet"
+  },
+  "offline": {
+    "banner": "Offline mode — changes are queued and will sync once you're back online."
+  },
+  "pwa": {
+    "prompt": "Install druz9 Lingua on your device for offline access?",
+    "install": "Install",
+    "dismiss": "Later"
+  }
+}

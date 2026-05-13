@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+
+import { useT } from '@d9-i18n';
+
 import type { TaskKind } from '../../api/tasks';
 import { KINDS, KindIcon } from './lib/kinds';
 
@@ -10,6 +13,7 @@ interface CreateModalProps {
 const CREATE_KINDS: TaskKind[] = ['algo', 'sysdesign', 'quiz', 'reflection', 'reading', 'ml', 'custom'];
 
 export function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.Element {
+  const t = useT();
   const [title, setTitle] = useState('');
   const [briefMd, setBriefMd] = useState('');
   const [kind, setKind] = useState<TaskKind>('custom');
@@ -74,7 +78,7 @@ export function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.El
           ref={titleRef}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Что нужно сделать?"
+          placeholder={t('hone.taskboard.create.title_placeholder')}
           required
           style={{
             background: 'transparent', border: 'none', outline: 'none',
@@ -85,7 +89,7 @@ export function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.El
         <textarea
           value={briefMd}
           onChange={(e) => setBriefMd(e.target.value)}
-          placeholder="Описание (опционально)"
+          placeholder={t('hone.taskboard.create.body_placeholder')}
           rows={2}
           style={{
             background: 'transparent', border: 'none', outline: 'none', resize: 'none',
@@ -124,7 +128,7 @@ export function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.El
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--ink-40)' }}>
-          <span id="priority-label">Priority</span>
+          <span id="priority-label">{t('hone.taskboard.create.priority_label')}</span>
           <div role="radiogroup" aria-labelledby="priority-label" style={{ display: 'flex', gap: 4 }}>
             {[1, 2, 3].map((n) => (
               <button
@@ -151,7 +155,7 @@ export function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.El
             aria-controls="task-skill-input"
             style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--ink-40)', background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            {showMore ? 'Скрыть' : 'Дополнительно'}
+            {showMore ? t('hone.taskboard.create.hide_more') : t('hone.taskboard.create.show_more')}
           </button>
         </div>
 
@@ -160,7 +164,7 @@ export function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.El
             id="task-skill-input"
             value={skillKey}
             onChange={(e) => setSkillKey(e.target.value)}
-            placeholder="Skill tag (например, Binary Search)"
+            placeholder={t('hone.taskboard.create.skill_placeholder')}
             style={{
               padding: '7px 10px', background: 'var(--surface-2)',
               border: '1px solid var(--ink-20)', borderRadius: 6,
@@ -171,7 +175,7 @@ export function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.El
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--ink-20)', paddingTop: 12, marginTop: 4 }}>
           <span style={{ fontSize: 10, color: 'var(--ink-40)' }}>
-            ⌘↵ — отправить · Esc — закрыть
+            {t('hone.taskboard.create.kbd_hint')}
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
@@ -179,14 +183,14 @@ export function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.El
               onClick={startClose}
               className="tb-modal-btn-ghost"
             >
-              Отмена
+              {t('hone.taskboard.create.cta.cancel')}
             </button>
             <button
               type="submit"
               disabled={!title.trim() || submitting}
               className="tb-modal-btn-primary"
             >
-              {submitting ? 'Создаём…' : 'Создать'}
+              {submitting ? t('hone.taskboard.create.cta.submitting') : t('hone.taskboard.create.cta.submit')}
             </button>
           </div>
         </div>

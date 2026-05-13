@@ -8,6 +8,7 @@
 // (YouTube / podcast page). Adding your own URL is still available as
 // the secondary CTA at the bottom.
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { AICoachPill } from '../../components/AICoachPill'
 import { AudioPlayer } from '../../components/lingua/AudioPlayer'
@@ -43,6 +44,7 @@ function formatRelative(d: Date | null): string {
 }
 
 export default function ListeningPage() {
+  const { t } = useTranslation('toasts')
   const materialsQuery = useListeningMaterialsQuery()
   const archiveMut = useArchiveListeningMaterialMutation()
   const [mode, setMode] = useState<Mode>({ kind: 'library' })
@@ -51,16 +53,16 @@ export default function ListeningPage() {
 
   const handleArchive = useCallback(
     async (id: string) => {
-      if (!window.confirm('Архивировать этот материал?')) return
+      if (!window.confirm(t('lingua.archive_listening_confirm'))) return
       try {
         await archiveMut.mutateAsync(id)
         if (mode.kind === 'player' && mode.materialId === id) setMode({ kind: 'library' })
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'unknown'
-        window.alert(`Не получилось архивировать: ${msg}`)
+        window.alert(t('lingua.archive_failed', { message: msg }))
       }
     },
-    [archiveMut, mode],
+    [archiveMut, mode, t],
   )
 
   return (

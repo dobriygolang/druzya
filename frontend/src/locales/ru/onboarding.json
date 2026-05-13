@@ -56,5 +56,48 @@
     "b3_sub": "Бесплатный лимит на старт",
     "watch_video": "Посмотреть видео",
     "begin_spar": "Начать сессию"
+  },
+  "goal_wizard": {
+    "title_step1": "Какая твоя цель?",
+    "title_step2": "Детали и срок",
+    "step_caption": "GOAL · STEP {{step}}/2",
+    "quick_start": "Quick start",
+    "quick_or_build": "Или собери цель с нуля ниже.",
+    "field": {
+      "company": "Компания",
+      "target": "Цель",
+      "custom_label": "Опиши цель",
+      "custom_placeholder": "Например: SDET в финтехе с фокусом на Python + automation tests",
+      "custom_counter": "{{used}}/{{max}} · AI распарсит позже",
+      "date_label": "Срок (опционально)",
+      "date_hint": "Без даты AI будет планировать как «когда готов». Дата задаёт темп — F3 predictions будут считать недели до ready."
+    },
+    "step": {
+      "back": "Назад",
+      "continue": "Продолжить",
+      "save": "Сохранить цель"
+    },
+    "kind": {
+      "top_tier_co": {
+        "label": "Senior at Top-Tier Co",
+        "hint": "Google · Yandex · Wildberries · Ozon · Tinkoff · VK · Meta · Amazon"
+      },
+      "any_senior": {
+        "label": "Senior at any Co",
+        "hint": "Generic senior IT track — без конкретного работодателя"
+      },
+      "ml_offer": {
+        "label": "ML Engineer offer",
+        "hint": "ML / DS позиция в любой компании"
+      },
+      "english_target": {
+        "label": "English fluency",
+        "hint": "TOEFL 100+ · IELTS 7+ · CEFR B2/C1"
+      },
+      "custom": {
+        "label": "Custom",
+        "hint": "Опиши цель свободным текстом — AI распарсит позже"
+      }
+    }
   }
 }

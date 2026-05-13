@@ -8,6 +8,8 @@
 
 import { useCallback } from 'react';
 
+import { useT } from '@d9-i18n';
+
 const DISMISS_KEY = 'hone:cue-install-suggestion:dismissed';
 const CUE_DOWNLOAD_URL = 'https://druz9.online/cue/download';
 
@@ -33,6 +35,7 @@ interface Props {
 }
 
 export function CueInstallSuggestion({ open, onClose }: Props) {
+  const t = useT();
   const handleDismiss = useCallback(() => {
     dismissCueSuggestion();
     onClose();
@@ -96,14 +99,13 @@ export function CueInstallSuggestion({ open, onClose }: Props) {
             background: '#FF3B30',
           }}
         />
-        Suggestion
+        {t('hone.cue_install.eyebrow')}
       </div>
       <div style={{ marginBottom: 10, color: '#fff' }}>
-        Practice interviews with Cue
+        {t('hone.cue_install.title')}
       </div>
       <div style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 14 }}>
-        Stealth tray-copilot — live AI suggestions during Zoom / Meet calls.
-        Same account, one download.
+        {t('hone.cue_install.body')}
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button
@@ -118,7 +120,7 @@ export function CueInstallSuggestion({ open, onClose }: Props) {
             padding: '6px 10px',
           }}
         >
-          Не сейчас
+          {t('hone.cue_install.cta.dismiss')}
         </button>
         <button
           type="button"
@@ -134,7 +136,7 @@ export function CueInstallSuggestion({ open, onClose }: Props) {
             cursor: 'pointer',
           }}
         >
-          Скачать Cue
+          {t('hone.cue_install.cta.install')}
         </button>
       </div>
     </div>
