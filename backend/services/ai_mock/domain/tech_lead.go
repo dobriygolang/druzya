@@ -8,9 +8,8 @@ import (
 	"druz9/shared/enums"
 )
 
-// Tech Lead / EM mock prompts (Wave 3.4 of docs/feature/plan.md).
-// Behavioral STAR-style round at TL/EM level — people scenarios, not
-// algorithms or system design.
+// Tech Lead / EM mock prompts. Behavioral STAR-style round at TL/EM
+// level — people scenarios, not algorithms or system design.
 //
 // Distinct from SectionBehavioral (engineering-flow with concrete
 // behavioral tasks pulled from the tasks table) — this is FREE-FORM

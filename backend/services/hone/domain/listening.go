@@ -8,10 +8,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// Listening sub-context — Wave 6.1 of docs/feature/plan.md.
-// Parallel to Reading (Wave 4): one library of materials, click-on-word
-// reuses the existing hone_vocab_queue table. No sessions for V1 — we
-// don't track «how much I listened» yet.
+// Listening sub-context. Parallel to Reading: one library of
+// materials, click-on-word reuses the existing hone_vocab_queue table.
+// No sessions for V1 — we don't track «how much I listened» yet.
 
 // ListeningMaterial mirrors a row in hone_listening_materials. AudioURL
 // is whatever the user pasted; the frontend is expected to validate that

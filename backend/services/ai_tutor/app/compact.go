@@ -139,7 +139,7 @@ func (uc *Compact) Do(ctx context.Context, threadID uuid.UUID) error {
 		}
 	}
 
-	// Phase R6 — fact decay sweep. Stale facts (LastUsedAt > 7d ago) get
+	// Fact decay sweep. Stale facts (LastUsedAt > 7d ago) get
 	// their confidence trimmed by FactDecayRate; if the new confidence
 	// drops below FactDecayThreshold, the fact is dropped entirely.
 	// Newly-upserted facts above are skipped because they were just
@@ -149,7 +149,7 @@ func (uc *Compact) Do(ctx context.Context, threadID uuid.UUID) error {
 	return nil
 }
 
-// decayStaleFacts — Phase R6. Pulls top-50 facts ranked by confidence/last_used_at,
+// decayStaleFacts pulls top-50 facts ranked by confidence/last_used_at,
 // scans for unused stale ones (LastUsedAt < now - FactDecayUnusedAfter),
 // reduces their confidence by FactDecayRate, drops below FactDecayThreshold.
 //

@@ -9,8 +9,8 @@ import (
 )
 
 // StudentSnapshot is the aggregated view a tutor sees for one of
-// their students (Wave 2.4b of docs/feature/plan.md). Read-only,
-// cross-context aggregation: pulled from hone_focus_sessions,
+// their students. Read-only cross-context aggregation: pulled from
+// hone_focus_sessions,
 // mock_sessions and skill_nodes via a dedicated repo method.
 //
 // Why a flat struct instead of nested per-source views: the consumer
@@ -43,7 +43,7 @@ type StudentSnapshot struct {
 	// directly; surfaces in the LLM brief.
 	NotesCount int
 
-	// English-track activity sourced from Hone (Wave 4 + 6.1).
+	// English-track activity sourced from Hone (Reading + Listening).
 	// All counts are bounded by WindowDays; vocab numbers reflect the
 	// CURRENT queue state (not windowed) since SRS is stateful — a
 	// «5 cards due today» counter is what the tutor actually wants to

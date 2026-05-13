@@ -1,7 +1,7 @@
-// reading.go — Hone Reading-модуль use cases (Wave 4 of
-// docs/feature/english.md). Six use cases covering library CRUD +
-// session lifecycle + vocab queue. Each is a thin orchestrator —
-// validation lives here, persistence in domain.ReadingRepo.
+// reading.go — Hone Reading module use cases. Six use cases covering
+// library CRUD + session lifecycle + vocab queue. Each is a thin
+// orchestrator — validation lives here, persistence in
+// domain.ReadingRepo.
 package app
 
 import (
@@ -167,8 +167,8 @@ func (uc *StartReadingSession) Do(ctx context.Context, userID, materialID uuid.U
 // before returning. Failures from the grader path are non-fatal — the
 // session is already saved, the user just sees `has_score=false`.
 //
-// Wave 4.3: returns the (possibly graded) session so the caller can show
-// the score immediately. Earlier signature returned `error` only; the
+// Returns the (possibly graded) session so the caller can show the
+// score immediately. Earlier signature returned `error` only; the
 // frontend now relies on session.AISummaryScore being populated when
 // available so it can render «AI scored you 78/100» before navigating
 // back to the library.
@@ -304,8 +304,8 @@ func (uc *ListVocabDue) Do(ctx context.Context, userID uuid.UUID, limit int) ([]
 	return out, nil
 }
 
-// ListVocabBySourceMaterial — Wave 4.2 reverse cross-link. Surface the
-// vocab entries the user previously saved while reading THIS material,
+// ListVocabBySourceMaterial — reverse cross-link. Surface the vocab
+// entries the user previously saved while reading THIS material,
 // so the reader sidebar can render «words you've saved here» without
 // pulling the entire queue.
 type ListVocabBySourceMaterial struct {

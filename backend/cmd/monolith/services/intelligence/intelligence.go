@@ -62,15 +62,14 @@ type IntelligenceModule struct {
 	// notes + embed enqueue) ещё не существует на момент New(). Bootstrap
 	// после honeServices.NewHone пишет mod.LogResourceUC.NoteCreator = ...
 	LogResourceUC *intelApp.LogResource
-	// InsightsRepo — public для curation_producers_cron (Phase 3.5d).
+	// InsightsRepo — public for curation_producers_cron.
 	InsightsRepo *intelInfra.InsightsPostgres
-	// GetUserContextUC — C3 cross-product context fetcher (Phase J).
-	// Public чтобы copilot-bootstrap мог обернуть его в
-	// UserContextProvider adapter (Redis-cached) и заинжектить
-	// в Suggest + Analyze.
+	// GetUserContextUC — cross-product context fetcher.
+	// Public so copilot-bootstrap can wrap it in a UserContextProvider
+	// adapter (Redis-cached) and inject into Suggest + Analyze.
 	GetUserContextUC *intelApp.GetUserContext
 
-	// X5 Atlas struggle marks (Phase J P2). Re-exposed public так что:
+	// Atlas struggle marks. Re-exposed public так что:
 	//   • Cue ingestion path (services/intelligence/app/ingest_session_transcript.go
 	//     side-effect adapter в bootstrap) может писать struggle сигналы
 	//     по low-rating stages,
@@ -108,9 +107,9 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	trackR := intelInfra.NewTrackReader(d.Pool)
 	goalsR := intelInfra.NewGoalsReader(d.Pool)
 	clubsR := intelInfra.NewClubReader(d.Pool)
-	// Phase K M5 — ML profile detection (primary_goal=ml_offer OR
-	// active_track=ml). nil-safe: when Pool is nil (тесты), reader returns
-	// MLProfile{} (IsML=false) и coach деградирует к default-prompt'у.
+	// ML profile detection (primary_goal=ml_offer OR active_track=ml).
+	// nil-safe: when Pool is nil (тесты), reader returns MLProfile{}
+	// (IsML=false) и coach деградирует к default-prompt'у.
 	mlProfileR := intelInfra.NewMLProfileReader(d.Pool)
 
 	embedder := newIntelEmbedder(d)
@@ -120,16 +119,16 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		answerer intelDomain.NoteAnswerer
 	)
 	if d.LLMChain != nil {
-		// Phase III: coach.pinned_model reader пишет в dynamic_config.
+		// coach.pinned_model reader пишет в dynamic_config.
 		// При выставленном pin'e DailyBrief + AskNotes идут через
 		// ModelOverride — admin контролирует личность коуча явно.
 		coachCfg := intelInfra.NewDBCoachConfigReader(d.Pool)
 		synth = intelInfra.NewLLMChainBriefSynthesiser(d.LLMChain, coachCfg, d.Log)
 		baseAnswerer := intelInfra.NewLLMChainNoteAnswerer(d.LLMChain, coachCfg, d.Log)
-		// Phase V cost guardrail: 5-минутный Redis cache на AskNotes
-		// LLM-ответы ловит дубликаты (юзер задаёт тот же вопрос после
-		// рефреша вкладки). При nil-Redis — fallthrough на голый
-		// answerer, fail-soft.
+		// Cost guardrail: 5-минутный Redis cache на AskNotes LLM-ответы
+		// ловит дубликаты (юзер задаёт тот же вопрос после рефреша
+		// вкладки). При nil-Redis — fallthrough на голый answerer,
+		// fail-soft.
 		if d.Redis != nil {
 			answerer = intelInfra.NewCachedNoteAnswerer(
 				baseAnswerer,
@@ -154,23 +153,22 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		Now:      d.Now,
 	}
 
-	// Phase 1.5 — Insights stream. Repo is pgx-backed; the use cases
-	// are nil-safe wrapped (port checks for nil) so this stays robust
-	// even before the periodic generator is wired.
+	// Insights stream. Repo is pgx-backed; the use cases are nil-safe
+	// wrapped (port checks for nil) so this stays robust even before the
+	// periodic generator is wired.
 	//
-	// Phase 1.5b — generator is constructed BEFORE GetDailyBrief so we
-	// can pass it as the optional Insights dependency: the brief
-	// use-case then shares its prompt-input snapshot with the generator
-	// in a detached goroutine, keeping both surfaces synchronised
-	// without re-fetching readers.
+	// The generator is constructed BEFORE GetDailyBrief so we can pass
+	// it as the optional Insights dependency: the brief use-case then
+	// shares its prompt-input snapshot with the generator in a detached
+	// goroutine, keeping both surfaces synchronised without re-fetching
+	// readers.
 	insightsRepo := intelInfra.NewInsightsPostgres(d.Pool)
-	// Phase D4: Redis-backed TTL cache на ListInsights (was in-memory ttlcache
-	// до R6 conflict resolution). 1h TTL — Today surface обновляется вечером
-	// после reflection submit'а, invalidate'ится через pattern-delete
-	// `insights:{uid}:*` в Generate/Ack путях. Cross-instance consistency:
-	// invalidate в одной replica виден всем — was a problem с in-memory.
-	// nil-safe: если Redis не wired (тесты) — cache=nil, ListInsights делает
-	// прямой запрос (см. intelApp.ListInsights.Do).
+	// Redis-backed TTL cache на ListInsights. 1h TTL — Today surface
+	// обновляется вечером после reflection submit'а, invalidate'ится
+	// через pattern-delete `insights:{uid}:*` в Generate/Ack путях.
+	// Cross-instance consistency: invalidate в одной replica виден всем.
+	// nil-safe: если Redis не wired (тесты) — cache=nil, ListInsights
+	// делает прямой запрос (см. intelApp.ListInsights.Do).
 	var insightsCache intelApp.InsightsListCache
 	if d.Redis != nil {
 		raw := rediscache.New[[]intelDomain.Insight](d.Redis, 1*time.Hour, "intelligence_insights")
@@ -208,12 +206,12 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			Goals:        goalsR,
 			Clubs:        clubsR,
 			Codex:        codexR,
-			// Phase K M5 — ML profile detection swaps coach prompt overlay
+			// ML profile detection swaps coach prompt overlay
 			// (numpy/pytorch coding / recsys sysdesign / Lilian Weng / Chip
 			// Huyen resource pool) когда user.primary_goal=ml_offer OR
 			// hone_user_settings.active_track=ml. nil-safe.
 			MLProfile: mlProfileR,
-			// Phase 1.5b — share snapshot with the insight stream.
+			// Share snapshot with the insight stream.
 			Insights:     generateInsightsUC,
 			InsightsPool: insightsPool,
 		},
@@ -229,7 +227,7 @@ func New(d monolithServices.Deps) IntelligenceModule {
 
 	server := intelPorts.NewIntelligenceServer(h, memory, listInsightsUC, ackInsightUC)
 
-	// ── Phase 2 learning-companion (2026-05-04) ───────────────────────
+	// ── Learning-companion ────────────────────────────────────────────
 	resourceEngagementR := intelInfra.NewResourceEngagementReader(d.Pool)
 	forkProgressR := intelInfra.NewForkProgressReader(d.Pool)
 	resourceLogRepo := intelInfra.NewResourceLogPostgres(d.Pool)
@@ -237,13 +235,13 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	server.ForkSnapshotUC = &intelApp.GetForkSnapshot{Reader: forkProgressR}
 	server.LogResourceUC = &intelApp.LogResource{
 		Repo: resourceLogRepo,
-		// NoteCreator wiring — in Phase 5 (Notes apply). Сейчас nil →
+		// NoteCreator wired later by hone bootstrap. Сейчас nil →
 		// reflection-flow пишется без auto-link, hone notes создаются
 		// клиентом отдельно.
 		NoteCreator: nil,
 	}
 
-	// Phase 2 mode persistence — learning_state mutator через adapter.
+	// Mode persistence — learning_state mutator через adapter.
 	lsRepo := lsInfra.NewPostgresRepo(d.Pool)
 	server.LearningState = &learningStateAdapter{
 		setMode: &lsApp.SetMode{Repo: lsRepo},
@@ -252,7 +250,7 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		pool:    d.Pool,
 	}
 
-	// Phase 2 finishers — activity stream + skill radar.
+	// Finishers — activity stream + skill radar.
 	server.ResourceTrailReader = resourceEngagementR
 	server.SkillRadarUC = &intelApp.GetSkillRadar{Mocks: mockR}
 	server.CoachStatsUC = &intelApp.GetCoachStats{
@@ -260,12 +258,12 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		Mocks: mockR,
 	}
 
-	// ── F2 LLM-driven milestones (2026-05-12) ──────────────────────────
-	// (Defined before goal UCs так что они могут invalidate milestone cache
+	// ── LLM-driven milestones ────────────────────────────────────────
+	// (Defined before goal UCs so they can invalidate milestone cache
 	// on goal mutation.)
 	milestonesRepo := intelInfra.NewMilestonesPostgres(d.Pool)
 
-	// ── F2 primary goal CRUD (2026-05-12) ──────────────────────────────
+	// ── Primary goal CRUD ────────────────────────────────────────────
 	primaryGoalsRepo := intelInfra.NewPrimaryGoals(d.Pool)
 	server.CreateGoalUC = &intelApp.CreateGoal{Repo: primaryGoalsRepo, Now: d.Now}
 	server.GetActiveGoalUC = &intelApp.GetActiveGoal{Repo: primaryGoalsRepo}
@@ -276,7 +274,7 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		Repo: primaryGoalsRepo, Milestones: milestonesRepo,
 	}
 
-	// ── F2 LLM milestones wiring (continued) ─────────────────────────
+	// ── LLM milestones wiring (continued) ────────────────────────────
 	server.GenerateMilestonesUC = &intelApp.GenerateMilestones{
 		Repo:  milestonesRepo,
 		Goals: primaryGoalsRepo,
@@ -287,21 +285,21 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	server.GetMilestonesUC = &intelApp.GetMilestones{Repo: milestonesRepo, Goals: primaryGoalsRepo}
 	server.MarkMilestoneDoneUC = &intelApp.MarkMilestoneDone{Repo: milestonesRepo}
 
-	// ── R3 Per-node coverage (2026-05-12) ──────────────────────────────
+	// ── Per-node coverage ────────────────────────────────────────────
 	nodeCoverageReader := intelInfra.NewNodeCoveragePostgres(d.Pool)
 	server.GetNodeCoverageUC = &intelApp.GetNodeCoverage{Reader: nodeCoverageReader}
 
-	// ── F1 Memory expansion Phase 2 (2026-05-12) ───────────────────────
+	// ── Memory expansion ─────────────────────────────────────────────
 	memoryEntriesReader := intelInfra.NewMemoryEntriesPostgres(d.Pool)
 	server.ListMemoryEntriesUC = &intelApp.ListMemoryEntries{Reader: memoryEntriesReader}
 	server.DeleteMemoryEntryUC = &intelApp.DeleteMemoryEntry{Reader: memoryEntriesReader}
 	server.EditMemoryEntryUC = &intelApp.EditMemoryEntry{Reader: memoryEntriesReader}
 
-	// ── X5 Atlas struggle marks (Phase J P2 2026-05-12) ────────────────
+	// ── Atlas struggle marks ─────────────────────────────────────────
 	// Cross-product handoff: any service can write «user stuck on X»
-	// here; web AtlasPage reads via ListAtlasStruggles. Constructed BEFORE
-	// F10/H2 wire-up so those UCs can inject MarkAtlasStruggle as a
-	// side-effect port.
+	// here; web AtlasPage reads via ListAtlasStruggles. Constructed
+	// BEFORE Cue ingest / focus reflection wire-up so those UCs can
+	// inject MarkAtlasStruggle as a side-effect port.
 	atlasStruggleRepo := intelInfra.NewAtlasStrugglePostgres(d.Pool)
 	markAtlasStruggleUC := &intelApp.MarkAtlasStruggle{
 		Repo: atlasStruggleRepo,
@@ -313,32 +311,32 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	server.ListAtlasStrugglesUC = listAtlasStrugglesUC
 	server.ClearAtlasStruggleUC = clearAtlasStruggleUC
 
-	// ── F10 Cue session ingestion (2026-05-12) ─────────────────────────
+	// ── Cue session ingestion ────────────────────────────────────────
 	interviewSessionsRepo := intelInfra.NewInterviewSessions(d.Pool)
 	server.IngestInterviewSessionUC = &intelApp.IngestSessionTranscript{
 		Repo:   interviewSessionsRepo,
 		Memory: memory, // *intelApp.Memory satisfies MemoryWriter via AppendAsync
 		Now:    d.Now,
-		// X5: when stages have self_rating ≤2, the UC fires a MarkAtlasStruggle
+		// When stages have self_rating ≤2, the UC fires a MarkAtlasStruggle
 		// per stage. nil-safe — if StruggleMark is nil, the side-effect is skipped.
 		StruggleMark: markAtlasStruggleUC,
 	}
 	server.ListInterviewSessionsUC = &intelApp.ListInterviewSessions{Repo: interviewSessionsRepo}
 
-	// ── H2 Focus reflection persistence (Phase J 2026-05-12) ───────────
+	// ── Focus reflection persistence ─────────────────────────────────
 	focusReflectionsRepo := intelInfra.NewFocusReflectionsPostgres(d.Pool)
 	server.SaveFocusReflectionUC = &intelApp.SaveFocusReflection{
 		Repo:   focusReflectionsRepo,
 		Memory: memory, // appends EpisodeFocusReflectionAdded для DailyBrief/Recall
 		Now:    d.Now,
-		// X5: when grade ≤2 AND task_pinned looks like an atlas node id,
+		// When grade ≤2 AND task_pinned looks like an atlas node id,
 		// fire MarkAtlasStruggle so the web AtlasPage highlights it.
 		// nil-safe — UC checks StruggleMark before calling.
 		StruggleMark: markAtlasStruggleUC,
 	}
 	server.ListFocusReflectionsUC = &intelApp.ListFocusReflections{Repo: focusReflectionsRepo}
 
-	// ── C3 Cross-product context (Phase J 2026-05-12) ───────────────────
+	// ── Cross-product context ────────────────────────────────────────
 	// AtlasReader bridges into atlas_nodes via the simple ILIKE-ranking
 	// adapter below. Goals + Episodes + ResourceEng + Mocks readers
 	// already wired above.

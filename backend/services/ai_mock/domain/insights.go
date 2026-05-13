@@ -44,8 +44,8 @@ type EnglishHRTrendPoint struct {
 	Score      int
 }
 
-// EnglishHRTrend — Wave 1 of docs/feature/english.md. Aggregates English
-// HR mock-rounds (section='english_hr') over the trailing window. Empty
+// EnglishHRTrend aggregates English HR mock-rounds
+// (section='english_hr') over the trailing window. Empty
 // values (TotalSessions = 0) mean "user hasn't done any English mocks
 // yet" — the frontend hides the card in that case so the page doesn't
 // look broken.

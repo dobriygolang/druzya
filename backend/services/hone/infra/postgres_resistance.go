@@ -1,4 +1,4 @@
-// Resistance repository — moved out of postgres.go (Wave 10 split).
+// Resistance repository — split out of postgres.go.
 package infra
 
 import (

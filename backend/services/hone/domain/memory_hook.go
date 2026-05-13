@@ -1,5 +1,5 @@
 //go:generate mockgen -package mocks -destination mocks/memory_hook_mock.go -source memory_hook.go
-// Phase B-2: thin hook into the Coach memory layer.
+// Thin hook into the Coach memory layer.
 //
 // hone-domain не импортит intelligence — это разрушит bounded context.
 // Вместо этого определяем здесь узкий interface MemoryHook, который

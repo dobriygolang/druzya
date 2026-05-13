@@ -1,6 +1,5 @@
-// server_writing_prompts.go — Phase K Wave 11 (2026-05-13)
-//
-// RPC handlers for the curated writing prompts library. Admin gating on
+// server_writing_prompts.go — RPC handlers for the curated writing
+// prompts library. Admin gating on
 // Add / Archive enforced at the REST router level (monolith/services/hone);
 // the RPCs themselves only require authenticated user. Same convention
 // as GenerateSpeakingTTS — admin role middleware runs before the handler.

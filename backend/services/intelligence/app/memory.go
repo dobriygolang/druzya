@@ -128,7 +128,7 @@ func (m *Memory) Recall(ctx context.Context, p RecallParams) ([]domain.Episode, 
 	if p.Query != "" && m.Embed != nil {
 		vec, modelName, err := m.Embed.Embed(ctx, p.Query)
 		if err == nil && len(vec) > 0 {
-			// Phase I: pass modelName so the repo filters episodes to the
+			// Pass modelName so the repo filters episodes to the
 			// same embedding space (mixed-model cosine is undefined).
 			scored, sErr := m.Episodes.SearchSimilar(ctx, p.UserID, vec, modelName, p.Kinds, p.K)
 			if sErr != nil && m.Log != nil {

@@ -22,9 +22,9 @@ import (
 
 // NewCopilot wires the "Druz9 Copilot" bounded context.
 //
-// Phase 12 additions: sessions (Start / End / GetAnalysis / List). A
-// buffered channel + background goroutine bridges EndSession → analyzer
-// so the Connect handler returns immediately and the LLM runs in the
+// Sessions (Start / End / GetAnalysis / List) bridge to a buffered
+// channel + background goroutine: EndSession → analyzer, so the
+// Connect handler returns immediately and the LLM runs in the
 // background.
 //
 // Screenshot bytes still flow client → server → LLM → /dev/null. See
@@ -35,9 +35,9 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	quotas := copilotInfra.NewQuotas(d.Pool)
 	sessions := copilotInfra.NewSessions(d.Pool)
 	reports := copilotInfra.NewReports(d.Pool)
-	// Phase J / C6 — interview-prep repo. Reads / writes
-	// interview_prep_sessions (DB v107). Implements both InterviewPrepRepo
-	// (writer-side: StartActive/GetActive/EndActive) and InterviewPrepProvider
+	// Interview-prep repo. Reads / writes interview_prep_sessions
+	// (DB v107). Implements both InterviewPrepRepo (writer-side:
+	// StartActive/GetActive/EndActive) and InterviewPrepProvider
 	// (reader-side, nil-safe per turn).
 	interviewPreps := copilotInfra.NewInterviewPreps(d.Pool)
 
@@ -59,8 +59,8 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 			if err := quotas.UpdatePlan(ctx, userID, enums.SubscriptionPlan(plan.ID), plan.RequestsCap, plan.ModelsAllowed); err != nil {
 				return fmt.Errorf("copilot: UpdatePlan: %w", err)
 			}
-			// Phase VII: tier-downgrade graceful migration. Если новый
-			// tier ограничивает models (Free whitelist = ["druz9/turbo"]),
+			// Tier-downgrade graceful migration. Если новый tier
+			// ограничивает models (Free whitelist = ["druz9/turbo"]),
 			// сбрасываем pinned-модели в conversations которые теперь
 			// недоступны. Next turn → DefaultModelID fallback (Turbo) →
 			// continuation вместо ErrTierRequired. Pro/Max имеют
@@ -77,7 +77,7 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 			return nil
 		}
 	}
-	// Phase-4 ADR-001 (Wave 3) — read-only gate into ai_mock.mock_sessions.
+	// Read-only gate into ai_mock.mock_sessions per ADR-001.
 	// Single canonical cross-service read: see infra/mock_gate.go.
 	mockGate := copilotInfra.NewMockSessionGate(d.Pool)
 	// LLM dispatch: prefer the multi-provider chain when boot registered
@@ -110,11 +110,11 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		d.Log.Info("copilot: compaction worker disabled", "reason", cwErr)
 	}
 
-	// C3 (Phase J) — cross-product context provider for the Cue
-	// suggestion path. Wraps intelligence's GetUserContext UC with a
-	// 60s Redis cache. nil-safe at every level: when intelligence UC
-	// not wired (d.IntelligenceUserContext=nil) or Redis is down,
-	// suggestion path falls back to generic prompts gracefully.
+	// Cross-product context provider for the Cue suggestion path.
+	// Wraps intelligence's GetUserContext UC with a 60s Redis cache.
+	// nil-safe at every level: when intelligence UC not wired
+	// (d.IntelligenceUserContext=nil) or Redis is down, the suggestion
+	// path falls back to generic prompts gracefully.
 	//
 	// userContextProvider is a typed nil-or-adapter. We assign it as an
 	// interface field below; pass nil-interface (not typed nil) when
@@ -137,11 +137,11 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		MockGate:      mockGate,
 		Compactor:     compactor,
 		CompactionCfg: compactionCfg,
-		// C3 cross-product context (Phase J 2026-05-12). nil-safe.
+		// Cross-product context. nil-safe.
 		UserContext: userContextProvider,
-		// C6 interview-prep (Phase J 2026-05-12). nil-safe — when the user
-		// hasn't run the wizard, LoadActivePrep returns an empty struct
-		// and the prep-block emission collapses to nothing.
+		// Interview-prep. nil-safe — when the user hasn't run the wizard,
+		// LoadActivePrep returns an empty struct and the prep-block
+		// emission collapses to nothing.
 		InterviewPrep: interviewPreps,
 		Log:           d.Log,
 		Now:           d.Now,
@@ -179,11 +179,11 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	listSessions := &copilotApp.ListSessions{Sessions: sessions}
 	checkBlock := &copilotApp.CheckBlock{Gate: mockGate}
 
-	// Phase J / C6 — interview-prep wizard use cases. ParseCV / ParseJD
-	// use the same llmchain.ChatClient as Analyze (free LLM cascade) so
-	// no extra credentials needed. nil-safe wiring: if d.LLMChain is nil
-	// (dev without GROQ_API_KEY), the use cases would always 502 — we
-	// guard by leaving them unwired in that branch.
+	// Interview-prep wizard use cases. ParseCV / ParseJD use the same
+	// llmchain.ChatClient as Analyze (free LLM cascade) so no extra
+	// credentials needed. nil-safe wiring: if d.LLMChain is nil (dev
+	// without GROQ_API_KEY), the use cases would always 502 — we guard
+	// by leaving them unwired in that branch.
 	var (
 		parseCVUC    *copilotApp.ParseCV
 		parseJDUC    *copilotApp.ParseJD
@@ -204,7 +204,7 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		Reports:      reports,
 		Analyzer:     analyzer,
 		ReportURLFor: analyzer.ReportURLFor,
-		// Phase C bus fan-out: CoachListener picks it up to fold into coach memory.
+		// Bus fan-out: CoachListener picks it up to fold into coach memory.
 		Bus: d.Bus,
 		Log: d.Log,
 	}
@@ -216,10 +216,9 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		checkBlock,
 		d.Log,
 	)
-	// Phase J / C6 — attach interview-prep use cases. Direct field
-	// assignment (not constructor) keeps the NewCopilotServer signature
-	// stable across waves; the server's compile-time interface check
-	// covers the handler set.
+	// Attach interview-prep use cases. Direct field assignment (not
+	// constructor) keeps the NewCopilotServer signature stable; the
+	// server's compile-time interface check covers the handler set.
 	server.ParseCVUC = parseCVUC
 	server.ParseJDUC = parseJDUC
 	server.StartInterviewPrepUC = startPrepUC
@@ -248,13 +247,12 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		Log:  d.Log,
 	})
 
-	// Auto-trigger suggestion endpoint (etap 3). Ephemeral — no
-	// conversation persistence. Shares the LLM provider with
-	// Analyze/Chat but with tighter temperature + token budget.
-	// C3 (Phase J): UserContext provider injects goal/memory/activity/
-	// radar as system-prompt prefix — moat vs Cluely. nil-safe.
-	// C6 (Phase J): InterviewPrep provider injects parsed CV+JD as a
-	// second system block — tailored per-interview prior.
+	// Auto-trigger suggestion endpoint. Ephemeral — no conversation
+	// persistence. Shares the LLM provider with Analyze/Chat but with
+	// tighter temperature + token budget. UserContext provider injects
+	// goal/memory/activity/radar as system-prompt prefix — moat vs
+	// Cluely (nil-safe). InterviewPrep provider injects parsed CV+JD as
+	// a second system block — tailored per-interview prior.
 	suggest := &copilotApp.Suggest{
 		LLM:           llm,
 		Config:        cfgProvider,
@@ -279,17 +277,11 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			// Pivot 2026-05-05: orphan copilot REST aliases удалены —
-			// Cue client дёргает Connect-RPC напрямую (см.
-			// cue/src/main/api/*.ts: client.getConversation/getQuota/
-			// rateMessage/getDesktopConfig/...). Удалены:
-			//   - /copilot/analyze, /copilot/check-block
-			//   - /copilot/conversations/{id} (GET/DELETE), /chat
-			//   - /copilot/desktop-config, /copilot/history
-			//   - /copilot/messages/{messageId}/rate
-			//   - /copilot/providers, /copilot/quota
-
-			// Sessions REST — реально используется Cue (см. cue/src/main/api/sessions.ts).
+			// Orphan copilot REST aliases удалены — Cue client дёргает
+			// Connect-RPC напрямую (см. cue/src/main/api/*.ts:
+			// client.getConversation/getQuota/rateMessage/...).
+			// Sessions REST — реально используется Cue
+			// (см. cue/src/main/api/sessions.ts).
 			r.Post("/copilot/sessions", transcoder.ServeHTTP)
 			r.Post("/copilot/sessions/{sessionId}/end", transcoder.ServeHTTP)
 			r.Get("/copilot/sessions/{sessionId}/analysis", transcoder.ServeHTTP)
@@ -300,7 +292,7 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 			sessionDocs.Mount(r)
 			r.Put("/copilot/memory/{conversationId}", memoryHandler.ServeHTTP)
 
-			// Ephemeral auto-trigger suggestion (etap 3).
+			// Ephemeral auto-trigger suggestion.
 			suggestionHandler.Mount(r)
 		},
 		Background: []func(ctx context.Context){

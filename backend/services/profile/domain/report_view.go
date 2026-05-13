@@ -18,7 +18,7 @@ type ReportView struct {
 	StressAnalysis  string
 	Recommendations []Recommendation
 
-	// AIInsight — Phase B: 2-paragraph Russian narrative produced by the
+	// AIInsight — 2-paragraph Russian narrative produced by the
 	// OpenRouter insight client. Empty string when the LLM is disabled
 	// (OPENROUTER_API_KEY missing) or upstream call failed; the frontend
 	// hides the section in that case (anti-fallback policy).

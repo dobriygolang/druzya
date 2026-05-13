@@ -139,7 +139,7 @@ func (i *Insights) ScoreTrajectory(ctx context.Context, userID uuid.UUID, limit 
 	return out, nil
 }
 
-// EnglishHRTrend — Wave 1 of docs/feature/english.md. Aggregates
+// EnglishHRTrend aggregates
 // English HR mock-rounds (section='english_hr') over the trailing
 // window. ai_report stores the LLM grader's JSON; we extract
 // overall_score (an int 0..100) for averaging and trajectory.

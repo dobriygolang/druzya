@@ -3,9 +3,8 @@ package domain
 
 import "context"
 
-// Writing sub-context — Wave 4.4 of docs/feature/english.md.
-//
-// Writing-as-Focus: the user drafts an English paragraph / short essay
+// Writing sub-context. Writing-as-Focus: the user drafts an English
+// paragraph / short essay
 // and asks the AI to surface concrete issues with concrete fixes. No
 // persistence layer in this slice — text lives in the renderer until
 // the user copies it into a Note. The backend only owns the grading

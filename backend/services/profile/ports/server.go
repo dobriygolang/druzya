@@ -352,9 +352,9 @@ func (s *ProfileServer) GetUserTracks(
 }
 
 // RecordAppInstall implements (POST /profile/me/installs).
-// Phase J / X1 (P0). Idempotent heartbeat fired by web / Hone / Cue on
-// launch. First install across all 3 surfaces triggers a 7d Pro trial
-// via the subscription bounded context.
+// Idempotent heartbeat fired by web / Hone / Cue on launch. First
+// install across all 3 surfaces triggers a 7d Pro trial via the
+// subscription bounded context.
 func (s *ProfileServer) RecordAppInstall(
 	ctx context.Context,
 	req *connect.Request[pb.RecordAppInstallRequest],
@@ -851,7 +851,7 @@ func trackToProto(t domain.Track) pb.Track {
 	}
 }
 
-// ── App install converters (Phase J / X1 (P0)) ─────────────────────────
+// ── App install converters ─────────────────────────────────────────────
 
 // appSurfaceWrapper carries the validated domain.AppSurface plus a helper
 // for building the UC input. Keeps the RPC body compact and tested.

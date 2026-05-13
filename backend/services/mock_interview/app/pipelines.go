@@ -28,8 +28,8 @@ var defaultStageOrder = []domain.StageKind{
 
 // CreatePipeline opens a pipeline + skeleton pipeline_stages rows.
 //
-// Phase A scope: just allocate the rows. The orchestrator (Phase B) is the
-// one that picks tasks, prompts the LLM judge, advances stages, etc.
+// Just allocates the rows. The orchestrator picks tasks, prompts the
+// LLM judge, advances stages, etc.
 //
 // companyID nil ⇢ random mode: use defaultStageOrder.
 // companyID set ⇢ pull company_stages config; fall back to default if empty.

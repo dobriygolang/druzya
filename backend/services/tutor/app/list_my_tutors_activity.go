@@ -24,8 +24,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// ListMyTutorsActivity — Phase K T6 (2026-05-12). Student lists their
-// active tutors with social-proof aggregates. Privacy contract enforced
+// ListMyTutorsActivity — student lists their active tutors with
+// social-proof aggregates. Privacy contract enforced
 // at the repo layer (TutorsActivitySummary returns aggregate counts
 // only — no other-student names / ids / event details).
 type ListMyTutorsActivity struct {

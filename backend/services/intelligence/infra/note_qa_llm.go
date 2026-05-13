@@ -12,7 +12,7 @@ import (
 	"druz9/shared/pkg/llmchain"
 )
 
-// LLMChainNoteAnswerer — RAG-ответ по notes. Phase III: при заданном
+// LLMChainNoteAnswerer — RAG-ответ по notes. При заданном
 // coach.pinned_model в dynamic_config идёт через ModelOverride; иначе —
 // TaskNoteQA routing.
 type LLMChainNoteAnswerer struct {

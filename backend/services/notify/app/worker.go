@@ -63,7 +63,13 @@ func (w *Worker) loop(ctx context.Context, id int) {
 				continue
 			}
 			w.Log.WarnContext(ctx, "notify.worker: dequeue", slog.Int("worker", id), slog.Any("err", err))
-			time.Sleep(500 * time.Millisecond)
+			// Backoff on error — ctx-aware so shutdown isn't blocked
+			// for up to 500ms by a stale sleep.
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(500 * time.Millisecond):
+			}
 			continue
 		}
 		w.process(ctx, n)

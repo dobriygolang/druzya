@@ -1,5 +1,5 @@
-// seed_english_resources — CLI для bulk-seed Sergey-curated English content
-// в external_resources jsonb на atlas_nodes eng_* (Phase K Wave 9 / E1 P0).
+// seed_english_resources — CLI для bulk-seed Sergey-curated English
+// content в external_resources jsonb на atlas_nodes eng_*.
 //
 // druz9 = ranking-proxy (memory/project_curation_model): не клонируем
 // content в БД, линкуем external resources на atlas_nodes. Этот CLI —

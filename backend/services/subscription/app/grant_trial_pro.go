@@ -1,4 +1,4 @@
-// Package app — Phase J / X1 (P0) first-install trial Pro reward.
+// Package app — first-install trial Pro reward.
 //
 // Triggered by the profile bounded context the very first time a user
 // heartbeats from ANY surface (web/hone/cue). Grants a 7-day Pro trial

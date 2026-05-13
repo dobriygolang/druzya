@@ -1,4 +1,4 @@
-// app_installs_repo.go — Phase J / X1 (P0) install-tracking storage.
+// app_installs_repo.go — install-tracking storage.
 //
 // Hand-rolled pgx (not sqlc) until the next gen-cycle picks up the new
 // queries in queries/profile.sql. The shape mirrors UpsertAppInstall +

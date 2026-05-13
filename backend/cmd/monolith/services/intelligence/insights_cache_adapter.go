@@ -1,6 +1,6 @@
 // insights_cache_adapter.go — Redis-backed adapter для intelApp.InsightsListCache.
 //
-// Phase D4: swap из ttlcache на shared/pkg/rediscache. Cross-instance consistency
+// Cross-instance consistency via shared/pkg/rediscache
 // — invalidate в одной replica виден всем подписчикам. Pattern delete
 // `insights:{uid}:*` для per-user invalidation одним SCAN+DEL.
 package intelligence

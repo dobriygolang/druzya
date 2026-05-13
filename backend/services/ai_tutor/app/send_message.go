@@ -252,10 +252,10 @@ func renderFactsBlock(facts []domain.Fact) string {
 // превышает threshold ИЛИ approx tokens прошлого ответа намекают что
 // мы скоро упрёмся в context budget.
 //
-// Phase R6 — added stale-summary trigger: thread с LastCompactedAt
-// старше CompactionStaleAfter (7d) compact'ится даже при низком
-// message_count. Без этого SummaryMD растёт unbounded для медленных
-// студентов (1-2 messages/week), и facts с low confidence не decay'ятся.
+// Stale-summary trigger: thread с LastCompactedAt старше
+// CompactionStaleAfter (7d) compact'ится даже при низком message_count.
+// Без этого SummaryMD растёт unbounded для медленных студентов (1-2
+// messages/week), и facts с low confidence не decay'ятся.
 func shouldCompact(thread domain.Thread, recent []domain.Episode, lastResp domain.LLMResponse) bool {
 	// Threshold по message_count: считаем диалог-ходов с момента
 	// последней compaction. message_count в thread теперь увеличен на 1
@@ -264,8 +264,8 @@ func shouldCompact(thread domain.Thread, recent []domain.Episode, lastResp domai
 		// Никогда не компактили; trigger по абсолютному count.
 		return thread.MessageCount >= domain.CompactionMessageThreshold
 	}
-	// Phase R6 — stale summary trigger. Если SummaryMD не обновлялся
-	// >7d, прогоняем compaction даже когда диалог редкий: facts decay'ятся,
+	// Stale summary trigger. Если SummaryMD не обновлялся >7d, прогоняем
+	// compaction даже когда диалог редкий: facts decay'ятся,
 	// summary освежается. Защищает медленные threads от unbounded growth.
 	if time.Since(*thread.LastCompactedAt) > domain.CompactionStaleAfter && thread.MessageCount > 0 {
 		return true

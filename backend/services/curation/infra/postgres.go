@@ -67,7 +67,7 @@ WHERE user_id=$1 AND COALESCE(atlas_node_id,'')=COALESCE($2,'')
 }
 
 func (r *Overrides) List(ctx context.Context, userID uuid.UUID, t app.Target) ([]app.Override, error) {
-	// Phase R5: hard LIMIT 500 cap as a defensive guard. Per-user
+	// Hard LIMIT 500 cap as a defensive guard. Per-user
 	// per-target overrides typically count under 50 (a single user has
 	// O(skills) overrides, not O(users)). Cap protects against runaway
 	// growth from bulk-import or test fixtures.

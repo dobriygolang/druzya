@@ -68,7 +68,7 @@ func (h *Handlers) SetStrictnessActive(ctx context.Context, id uuid.UUID, active
 // ResolveStrictness walks the cascade task → company_stage → global default.
 // Returns the resolved profile or ErrNotFound if even 'default' is missing.
 //
-// Used by the orchestrator (Phase B) when snapshotting strictness onto a
+// Used by the orchestrator when snapshotting strictness onto a
 // pipeline_stage row at start time so admin tweaks don't retroactively
 // rescore old pipelines.
 func (h *Handlers) ResolveStrictness(ctx context.Context, taskID uuid.UUID, companyID *uuid.UUID, stage domain.StageKind) (domain.AIStrictnessProfile, error) {

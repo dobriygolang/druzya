@@ -10,7 +10,6 @@ package infra
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -320,5 +319,3 @@ func (n noopTelegramAPI) Request(c tgbotapi.Chattable) (*tgbotapi.APIResponse, e
 
 // Compile-time assertion.
 var _ domain.Sender = (*TelegramBot)(nil)
-
-var _ = json.Marshal

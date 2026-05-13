@@ -1,5 +1,5 @@
 // Shared reading library + invite-by-username + session notes RPCs.
-// Moved out of server.go (Wave 10 split, 2026-05-13). Pure relocate.
+// Split out of server.go to keep file size manageable.
 package ports
 
 import (
@@ -217,7 +217,7 @@ func toSessionNotesProto(n domain.SessionNotes) *pb.TutorSessionNotes {
 	return out
 }
 
-// ── Session-note visibility (Phase K T4, 2026-05-13) ────────────────
+// ── Session-note visibility ──────────────────────────────────────────
 
 // SetSessionNoteVisibility — tutor toggles share + optionally edits the
 // student-facing curated copy. Tutor must own the event (else NotFound);
@@ -226,7 +226,7 @@ func toSessionNotesProto(n domain.SessionNotes) *pb.TutorSessionNotes {
 // Best-effort audit log: emits a structured log line on visibility flips.
 // Service-level audit pipeline can pick up the `audit=tutor.note_visibility`
 // marker if needed downstream; this stays Go-stdlib slog only so it never
-// blocks the save (Phase K T4 §E).
+// blocks the save.
 func (s *TutorServer) SetSessionNoteVisibility(
 	ctx context.Context,
 	req *connect.Request[pb.TutorSetSessionNoteVisibilityRequest],

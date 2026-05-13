@@ -61,8 +61,8 @@ func WireSubscriptionQuota(d *monolithServices.Deps) {
 	// SetTierUC заранее, чтобы NewCopilot мог set'нуть OnTierChanged hook
 	// (subscription.plan меняется → copilot_quotas.plan flip'ается).
 	d.SetTierUC = setTierUC
-	// Phase J / X1 (P0) — first-install trial Pro granter. Wired here so
-	// NewProfile downstream can attach it to the RecordAppInstall UC.
+	// First-install trial Pro granter. Wired here so NewProfile
+	// downstream can attach it to the RecordAppInstall UC.
 	d.TrialProGranter = subApp.NewGrantFirstInstallTrial(pg, clk, d.Log)
 }
 
@@ -188,8 +188,8 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 	var notifyTrialUC *subApp.NotifyTrialExpiring
 	if d.IntelligenceInsightUpserter != nil {
 		insightWriter := newTrialExpiringInsightWriter(d.IntelligenceInsightUpserter)
-		// Wave 4 / S follow-up — wire actual TrialExpiringNotifier через
-		// notify SendNotification UC. adapter живёт в trial_notify_adapter.go
+		// Wire actual TrialExpiringNotifier через notify
+		// SendNotification UC. adapter живёт в trial_notify_adapter.go
 		// (anti-cycle: subscription/app не импортирует notify-домен).
 		var trialNotifier subApp.TrialExpiringNotifier
 		if d.NotifySend != nil {

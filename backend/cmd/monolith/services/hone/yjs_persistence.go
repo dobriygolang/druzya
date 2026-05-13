@@ -1,4 +1,4 @@
-// Package services — Phase C-6 generic Yjs CRDT persistence.
+// Package services — generic Yjs CRDT persistence.
 package hone
 
 import (

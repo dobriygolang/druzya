@@ -1,7 +1,7 @@
-// generate_milestones.go — F2 LLM-driven milestone generation.
+// generate_milestones.go — LLM-driven milestone generation.
 //
 // Frontend (frontend/src/lib/milestones.ts) shipped 4 static templates × 12
-// weeks. Phase B/C goal: LLM cascade синтезирует per-user план из active
+// weeks. LLM cascade синтезирует per-user план из active
 // PrimaryGoal. Aggressive cache (30d staleness) — milestones это roadmap,
 // не daily action; regeneration редкая, через явный POST /milestones/generate
 // или GetMilestones когда staleness > 30d.

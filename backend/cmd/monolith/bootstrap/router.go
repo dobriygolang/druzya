@@ -42,7 +42,7 @@ type routerDeps struct {
 	ResolveTier func(ctx context.Context, userID uuid.UUID) string
 	Notify      *notifyServices.NotifyModule
 	Modules     []*services.Module // every Module in mount order, including auth's
-	// SyncHeartbeat — Phase C-3.1 middleware. Применяется ПОСЛЕ auth-gate'а
+	// SyncHeartbeat — middleware. Применяется ПОСЛЕ auth-gate'а
 	// в /api/v1 chain'е и в Connect-mux'е (через wrap auth + tier).
 	SyncHeartbeat services.SyncHeartbeatGate
 }

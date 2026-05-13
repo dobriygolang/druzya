@@ -22,11 +22,11 @@ type Conversation struct {
 	// compaction.Worker. Пустая строка у новых диалогов. Загружается только
 	// через Get (Create/List не возвращают, чтобы не раздувать history).
 	RunningSummary string
-	// SummaryModel — Phase II attribution: provider/model echo от
-	// llmchain которая написала текущий RunningSummary. Пустая строка =
-	// summary не писался / писался legacy-кодом без attribution. Phase VI
-	// сравнивает с Model — при mismatch (admin сменил pinned-модель)
-	// форсирует regen чтобы summary совпадал стилем с chat.
+	// SummaryModel — attribution: provider/model echo от llmchain
+	// которая написала текущий RunningSummary. Пустая строка = summary
+	// не писался / писался legacy-кодом без attribution. Compared с
+	// Model — при mismatch (admin сменил pinned-модель) forces regen
+	// чтобы summary совпадал стилем с chat.
 	SummaryModel string
 }
 

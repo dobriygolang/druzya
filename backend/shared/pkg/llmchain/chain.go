@@ -400,7 +400,7 @@ func (c *Chain) Chat(ctx context.Context, req Request) (Response, error) {
 			c.recordSuccess(cand.provider, cand.model, nil)
 			c.latency.Record(cand.provider, cand.model, req.Task, dur)
 			observeCall(cand.provider, string(req.Task), "ok", dur)
-			// Phase VIII: cost telemetry per successful call.
+			// Cost telemetry per successful call.
 			// Используем echo-model из Response — для virtual chains
 			// это реальная модель, не "druz9/turbo".
 			echoModel := resp.Model
@@ -541,7 +541,7 @@ func (c *Chain) observeStream(ctx context.Context, cand candidate, task Task, sr
 					slog.String("model", cand.model),
 					slog.Any("err", ev.Err))
 			}
-			// Phase VIII: cost telemetry на терминальном Done-frame'е.
+			// Cost telemetry на терминальном Done-frame'е.
 			// SSE возвращает usage только в финальном chunk'е (или
 			// иногда не возвращает вообще — тогда tokens=0 и
 			// observeCost ничего не пишет).
@@ -600,7 +600,7 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 			return nil, fmt.Errorf("%w: no chain for virtual %q", ErrNoProvider, req.ModelOverride)
 		}
 		expanded := c.expandVirtualChain(vChain)
-		// Phase IV: filter virtual chain by capability. Если ни один шаг
+		// Filter virtual chain by capability. Если ни один шаг
 		// не удовлетворяет требованиям (например JSON-задача, а в чейне
 		// только text-only providers) — typed error.
 		filtered := make([]candidate, 0, len(expanded))
@@ -628,7 +628,7 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 		if !ok {
 			return nil, fmt.Errorf("%w: %s for model %q", ErrNoProvider, p, req.ModelOverride)
 		}
-		// Phase IV: для pinned-модели capability mismatch — это ошибка
+		// Для pinned-модели capability mismatch — это ошибка
 		// конфигурации (admin запинил JSON-задачу к text-only-driver'у).
 		// Возвращаем typed error чтобы caller увидел осмысленный месседж,
 		// а не silent text-ответ.
@@ -677,7 +677,7 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 		if !ok {
 			continue
 		}
-		// Phase IV: capability filter. JSON-strict / tool-strict задачи
+		// Capability filter. JSON-strict / tool-strict задачи
 		// должны видеть только драйверы которые wire-уровнево поддерживают
 		// фичу — иначе failover уходит на text-only провайдер и парсер
 		// тихо ловит plain text вместо JSON.
@@ -827,8 +827,8 @@ func effectiveTier(t enums.SubscriptionPlan) enums.SubscriptionPlan {
 	return t
 }
 
-// driverSatisfies — Phase IV capability filter. Возвращает true если
-// driver покрывает все требуемые Request фичи (JSONMode, RequiresTools).
+// driverSatisfies — capability filter. Возвращает true если driver
+// покрывает все требуемые Request фичи (JSONMode, RequiresTools).
 // Используется и в task-routing path, и для virtual chains, и для
 // pinned ModelOverride. Без требований (текстовая задача) — всегда true.
 func driverSatisfies(d Driver, req Request) bool {

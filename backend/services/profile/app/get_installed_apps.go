@@ -1,4 +1,4 @@
-// Package app — Phase J / X1 (P0) install-state read use case.
+// Package app — install-state read use case.
 //
 // Returns the list of app surfaces the caller has heartbeat'd from.
 // Cross-app banners on Hone/Cue/web read this to decide whether to show

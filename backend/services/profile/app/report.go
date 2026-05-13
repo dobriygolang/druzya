@@ -56,8 +56,8 @@ type InsightGenerator interface {
 type GetReport struct {
 	Repo domain.ProfileRepo
 
-	// Insight is optional (Phase B). When nil, AIInsight is left empty and
-	// the frontend hides the section. When non-nil, generation errors are
+	// Insight is optional. When nil, AIInsight is left empty and the
+	// frontend hides the section. When non-nil, generation errors are
 	// swallowed (logged) — insight is best-effort and must not block the
 	// report.
 	Insight InsightGenerator
@@ -91,7 +91,7 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 		}},
 	}
 
-	// ── Phase B: AI insight ────────────────────────────────────────────────
+	// ── AI insight ─────────────────────────────────────────────────────────
 	//
 	// Build the payload from already-aggregated fields (no extra SQL) and
 	// ask the LLM. Errors are logged + swallowed: insight is best-effort,

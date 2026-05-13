@@ -1,7 +1,7 @@
 // Package tts — text-to-speech provider interface + free-tier driver
-// implementations. Phase K Wave 9 (E4 P1) — реальный native speaker
-// audio для Speaking shadowing exercises, заменяет client-side
-// speechSynthesis fallback.
+// implementations. Provides real native speaker audio for Speaking
+// shadowing exercises, replacing the client-side speechSynthesis
+// fallback.
 //
 // Cascade strategy: caller wires Provider один раз в bootstrap'е (см.
 // backend/cmd/monolith/services/hone/tts.go). Подходит любой free-tier

@@ -10,8 +10,8 @@
 //	FinishPipeline    — aggregate stages → pipeline verdict + total_score.
 //	CancelPipeline    — owner-only kill switch.
 //
-// Phase B.1 ships only the HR (question_answer) materialiser; Phase C/D/E
-// add the algo / coding / sysdesign / behavioral orchestrators.
+// The HR (question_answer) materialiser is the first orchestrator;
+// algo / coding / sysdesign / behavioral follow.
 package app
 
 import (
@@ -33,6 +33,8 @@ import (
 // effective profile per stage. *Handlers (this package) implements it via
 // ResolveStrictness; we keep it as an interface so Orchestrator tests can
 // inject a stub without dragging the whole Handlers fakeset.
+//
+//go:generate mockgen -package app -destination strictness_resolver_mock_test.go -source orchestrator.go StrictnessResolver
 type StrictnessResolver interface {
 	ResolveStrictness(ctx context.Context, taskID uuid.UUID, companyID *uuid.UUID, stage domain.StageKind) (domain.AIStrictnessProfile, error)
 }
@@ -77,8 +79,7 @@ type Orchestrator struct {
 	// Struggle is the optional intelligence-side struggle reporter.
 	// nil-safe. FinishPipeline fires OnStageStruggle for every stage
 	// whose normalised score < struggleAxisThreshold so the web AtlasPage
-	// can highlight nodes the user is stuck on (Phase J Wave 3 / O — X5
-	// cross-product handoff).
+	// can highlight nodes the user is stuck on.
 	Struggle domain.StruggleHook
 	Now      func() time.Time
 	Log      *slog.Logger
@@ -162,8 +163,8 @@ func (o *Orchestrator) StartNextStage(ctx context.Context, pipelineID uuid.UUID)
 	stage.StartedAt = &t
 	stage.AIStrictnessProfileID = &profile.ID
 
-	// Per-stage materialisation. HR is Phase B; algo/coding is Phase C.
-	// behavioral / sysdesign are Phase D/E — keep the stub (no attempts).
+	// Per-stage materialisation. HR + algo/coding have materialisers;
+	// behavioral / sysdesign keep the stub (no attempts).
 	var attempts []AttemptView
 	switch stage.StageKind {
 	case domain.StageHR, domain.StageBehavioral, domain.StageMLTheory:
@@ -296,8 +297,8 @@ func (o *Orchestrator) materialiseTaskAttempts(ctx context.Context, stage domain
 	return out, nil
 }
 
-// materialiseSysDesignAttempts — Phase D.1. Picks one sysdesign task and
-// creates ONE sysdesign_canvas attempt + one question_answer attempt per
+// materialiseSysDesignAttempts picks one sysdesign task and creates
+// ONE sysdesign_canvas attempt + one question_answer attempt per
 // task_question. Layout matches algo/coding (canvas first, follow-ups
 // after) so the frontend's `created_at`-ordered render is consistent.
 func (o *Orchestrator) materialiseSysDesignAttempts(ctx context.Context, stage domain.PipelineStage, pipe domain.MockPipeline) ([]AttemptView, error) {
@@ -609,7 +610,7 @@ func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, us
 	return updated, nil
 }
 
-// ── SubmitCanvas (Phase D.1) ────────────────────────────────────────────
+// ── SubmitCanvas ────────────────────────────────────────────────────
 
 // SubmitCanvasInput — payload for the sysdesign canvas submission.
 //

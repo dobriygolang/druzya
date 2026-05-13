@@ -72,7 +72,7 @@ type ProfileRepo interface {
 	// которые остались, и проставляется now() для новых.
 	SetUserTracks(ctx context.Context, userID uuid.UUID, items []UserTrack) ([]UserTrack, error)
 
-	// ── Phase J / X1 (P0) install tracking ───────────────────────────────
+	// ── Install tracking ─────────────────────────────────────────────────
 	// UpsertAppInstall idempotently records a heartbeat from one surface
 	// (web / hone / cue). `inserted` is true ONLY when this call created
 	// a fresh row — used by the trial-Pro grant gate. installCountBefore

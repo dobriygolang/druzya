@@ -41,7 +41,7 @@ type Suggest struct {
 	// quota without this check.
 	TokenQuota *tokenquota.DailyTokenQuota
 
-	// UserContext — optional cross-product context provider (C3, Phase J).
+	// UserContext — optional cross-product context provider.
 	// When wired, Suggest fetches the user's goal + recent Coach memory +
 	// activity + skill radar BEFORE the LLM call and injects it as a
 	// system message. This is the unique moat vs Cluely — Cluely has no
@@ -49,7 +49,7 @@ type Suggest struct {
 	// with generic prompts (current behaviour).
 	UserContext domain.UserContextProvider
 
-	// InterviewPrep — optional active-interview-prep provider (C6, Phase J).
+	// InterviewPrep — optional active-interview-prep provider.
 	// When the user uploaded CV+JD via the wizard, fetches the parsed
 	// shapes BEFORE the LLM call and injects them as a system message
 	// AFTER the UserContext block. The combination — generic

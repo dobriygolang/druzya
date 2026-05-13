@@ -1,9 +1,8 @@
-// atlas_reader_adapter.go — Phase J Wave 1 / D (C3 cross-product context).
+// atlas_reader_adapter.go — bridges intelligence.GetUserContext.AtlasReader
+// into the atlas_nodes catalogue (services/curation owns the writes;
+// this is read-only).
 //
-// Bridges intelligence.GetUserContext.AtlasReader into the atlas_nodes
-// catalogue (services/curation owns the writes; this is read-only).
-//
-// Strategy (MVP, semantic-free):
+// Strategy (semantic-free):
 //   - Tokenise goalText (active goal kind + company + custom text) into
 //     keywords and run ILIKE matches against atlas_nodes.title + description.
 //   - Boost nodes whose section/cluster overlaps recentActivity kinds.
@@ -15,7 +14,7 @@
 // Why ILIKE rather than pg_trgm / vectors:
 //   - atlas_nodes is small (~30 rows seeded; <1000 after F-curation produces).
 //   - Goal text is also short (few words).
-//   - Vector/embedding upgrade is a Phase J+ task once the corpus grows.
+//   - Vector/embedding upgrade can come once the corpus grows.
 //
 // Why no caching here: GetUserContext is itself cached at the copilot
 // boundary (Redis 60s TTL). Adapter stays stateless.

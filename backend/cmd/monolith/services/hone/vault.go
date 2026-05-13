@@ -1,4 +1,4 @@
-// Package services — Phase C-7 Private Vault E2E.
+// Package services — Private Vault E2E.
 package hone
 
 import (

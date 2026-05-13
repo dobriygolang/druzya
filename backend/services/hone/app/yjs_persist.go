@@ -1,4 +1,4 @@
-// yjs_persist.go — use-case'ы Phase C-6 generic Yjs CRDT persistence.
+// yjs_persist.go — use-case'ы generic Yjs CRDT persistence.
 package app
 
 import (

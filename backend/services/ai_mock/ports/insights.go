@@ -127,7 +127,7 @@ func (s *MockServer) GetInsightsOverview(
 			Score: st.Score, Verdict: st.Verdict,
 		})
 	}
-	// English HR trend (Wave 1 of docs/feature/english.md). Skip the
+	// English HR trend. Skip the
 	// whole field when the user has no English HR sessions in the
 	// window — the frontend hides the card on nil/zero, not on
 	// total_sessions == 0, so leaving the proto field unset is the

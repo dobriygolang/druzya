@@ -1,4 +1,4 @@
-// atlas_struggle.go — X5 (Phase J P2 2026-05-12) cross-product handoff UCs.
+// atlas_struggle.go — cross-product handoff UCs.
 //
 // MarkAtlasStruggle is the entry-point for any service that detects "user
 // is stuck on atlas node X" — Cue session analysis (low self_rating), Hone

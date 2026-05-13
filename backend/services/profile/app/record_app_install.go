@@ -1,4 +1,4 @@
-// Package app — Phase J / X1 (P0) install-tracking + trial-Pro grant.
+// Package app — install-tracking + trial-Pro grant.
 //
 // Heartbeat lifecycle:
 //

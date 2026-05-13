@@ -115,7 +115,7 @@ type XPGained struct {
 	// SourceID — UUID конкретного объекта-источника XP (task_id /
 	// mock_session_id / etc.). nil если контекст неприменим. Сейчас
 	// переживает только в логах OnXPGained — audit-log таблица xp_events
-	// удалена в migration 00081 (Phase E2 RPG/arena cleanup).
+	// удалена в migration 00081 (RPG/arena cleanup).
 	SourceID *uuid.UUID `json:"source_id,omitempty"`
 }
 

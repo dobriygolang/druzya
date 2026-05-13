@@ -69,7 +69,7 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 		profileInfra.DefaultProfileCacheTTL,
 		d.Log,
 	)
-	// ── Phase B: AI insight ────────────────────────────────────────────────
+	// ── AI insight ─────────────────────────────────────────────────────
 	//
 	// Build an InsightClient backed by OpenRouter. When OPENROUTER_API_KEY is
 	// empty the client self-disables (Generate returns "" + nil) and the
@@ -122,9 +122,9 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 		// load and the dataset per user is at most 6 rows.
 		GetUserTracks: &profileApp.GetUserTracks{Repo: pg},
 		SetUserTracks: &profileApp.SetUserTracks{Repo: pg},
-		// Phase J / X1 (P0) — single onboarding funnel. TrialProGranter is
-		// wired up-front by WireSubscriptionQuota; nil-safe — if absent,
-		// heartbeat still records, trial side-effect is skipped.
+		// Single onboarding funnel. TrialProGranter is wired up-front by
+		// WireSubscriptionQuota; nil-safe — if absent, heartbeat still
+		// records and the trial side-effect is skipped.
 		RecordAppInstall: &profileApp.RecordAppInstall{
 			Repo:  cached,
 			Trial: trialGranterAdapter(d.TrialProGranter),
@@ -160,9 +160,9 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/profile/me/atlas/allocate", transcoder.ServeHTTP)
 			r.Post("/profile/me/atlas/todo", transcoder.ServeHTTP)
 			r.Post("/profile/me/atlas/pref", transcoder.ServeHTTP)
-			// Multi-track persona (Wave 9.4) — GET читает текущий набор,
-			// PUT целиком заменяет (idempotent set-based update). Связано
-			// с onboarding Step0 + Welcome track-cards.
+			// Multi-track persona — GET читает текущий набор, PUT целиком
+			// заменяет (idempotent set-based update). Связано с onboarding
+			// Step0 + Welcome track-cards.
 			r.Get("/profile/me/tracks", transcoder.ServeHTTP)
 			r.Put("/profile/me/tracks", transcoder.ServeHTTP)
 			r.Get("/profile/me/report", transcoder.ServeHTTP)
@@ -172,7 +172,7 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 			r.Get("/admin/interviewer-applications", transcoder.ServeHTTP)
 			r.Post("/admin/interviewer-applications/{application_id}/approve", transcoder.ServeHTTP)
 			r.Post("/admin/interviewer-applications/{application_id}/reject", transcoder.ServeHTTP)
-			// Phase J / X1 (P0) — install-tracking funnel.
+			// Install-tracking funnel.
 			r.Post("/profile/me/installs", transcoder.ServeHTTP)
 			r.Get("/profile/me/installs", transcoder.ServeHTTP)
 			r.Get("/profile/{username}", transcoder.ServeHTTP)
@@ -323,7 +323,7 @@ func (a *atlasClassifierAdapter) Classify(
 	return out, nil
 }
 
-// ── Phase J / X1 (P0) trial-granter adapter ────────────────────────────
+// ── Trial-granter adapter ──────────────────────────────────────────────
 //
 // Bridges subscription.GrantFirstInstallTrial → profile.TrialProGranter
 // interface so the profile UC stays free of cross-service imports. nil

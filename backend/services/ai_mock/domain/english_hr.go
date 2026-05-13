@@ -8,8 +8,8 @@ import (
 	"druz9/shared/enums"
 )
 
-// English HR mock-round prompts (Wave 1 of docs/feature/english.md). The
-// English track has no algorithmic task — the session is a free-form
+// English HR mock-round prompts. The English track has no algorithmic
+// task — the session is a free-form
 // HR-style conversation where the AI plays a senior recruiter and the
 // user answers in English. We grade rubric-only at the end:
 // clarity / accuracy / range / fluency. No ELO, no stress profile.

@@ -1,4 +1,4 @@
-// Package app — telemetry consent UCs (Phase J / X3 P1).
+// Package app — telemetry consent UCs.
 package app
 
 import (

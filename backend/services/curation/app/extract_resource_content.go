@@ -111,9 +111,9 @@ func (uc *ExtractResourceContent) Do(ctx context.Context, in ExtractInput) (Extr
 		return ExtractOutput{}, fmt.Errorf("curation.ExtractResourceContent: empty url")
 	}
 
-	// Phase R6 — dedup cache. Hot URLs (popular blog posts, course
-	// landing pages, GH repos, batch retries) get served from memory
-	// without any network or LLM cost.
+	// Dedup cache. Hot URLs (popular blog posts, course landing pages,
+	// GH repos, batch retries) get served from memory without any
+	// network or LLM cost.
 	cacheKey := in.CacheKey()
 	if cached, ok := globalExtractCache.get(cacheKey); ok {
 		if log := uc.logger(); log != nil {
@@ -191,7 +191,7 @@ func (uc *ExtractResourceContent) logger() *slog.Logger {
 	return uc.Log
 }
 
-// ExtractMany — Phase D3 true multi-doc batched extraction. Returns one
+// ExtractMany — true multi-doc batched extraction. Returns one
 // ExtractOutput per input URL, in input order. Pipeline:
 //
 //  1. Cache lookup — every URL already in the dedup cache shortcuts to

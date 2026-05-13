@@ -98,7 +98,7 @@ type Config struct {
 		SMTPPass              string
 	}
 
-	// Telemetry — Phase J / X3 (P1) shared analytics layer. Все 3 поля
+	// Telemetry — shared analytics layer. Все 3 поля
 	// optional — без них fanout-to-PostHog отключается, телеметрия едет
 	// только в локальный telemetry_events table (90-day retention).
 	//

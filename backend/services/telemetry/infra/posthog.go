@@ -1,6 +1,6 @@
 // Package infra — PostHog AnalyticsSink.
 //
-// Provider choice (Phase J / X3 P1): PostHog Cloud free tier — 1M events
+// Provider choice: PostHog Cloud free tier — 1M events
 // /month, EU hosting (eu.i.posthog.com), built-in funnels/cohorts/retention
 // reports. SDK overhead — обычный HTTP POST к /capture endpoint, минимум
 // deps. Когда APIKey="" — wirer возвращает Noop.

@@ -3,10 +3,10 @@ package domain
 
 import "context"
 
-// Code review sub-context — Wave 3.6 of docs/feature/plan.md
-// (Code-review-coaching). Stateless evaluation, parallel to the Writing
-// surface (Wave 4.4): user pastes a unified diff + writes their review,
-// we grade the review across four axes. No persistence layer.
+// Code review sub-context (Code-review-coaching). Stateless
+// evaluation, parallel to the Writing surface: user pastes a unified
+// diff + writes their review, we grade the review across four axes.
+// No persistence layer.
 //
 // Why a separate domain file (vs reusing WritingGrader):
 // the rubric is fundamentally different — Writing scores fluency,

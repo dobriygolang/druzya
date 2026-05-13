@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// Reading sub-context (Wave 4 of docs/feature/english.md). Three flat
-// entities — materials, sessions, vocab queue — owned by Hone because
+// Reading sub-context: three flat entities — materials, sessions,
+// vocab queue — owned by Hone because
 // the user-facing surface is Hone's Reading-модуль (hotkey R), not
 // the web. Engineering-only tables (ratings/elo/tasks) are not
 // touched; English content lives free-form alongside Hone notes.
@@ -51,9 +51,9 @@ type ReadingMaterial struct {
 	Title      string
 	BodyMD     string
 	TotalChars int
-	// Book-only progress tracking (Wave 2026-05-03). Для SourceKind=book
-	// body_md обычно пустой — юзер читает offline; chapter+total_chapters
-	// дают visual progress в UI. Nil для не-book material'ов.
+	// Book-only progress tracking. Для SourceKind=book body_md обычно
+	// пустой — юзер читает offline; chapter+total_chapters дают visual
+	// progress в UI. Nil для не-book material'ов.
 	BookChapter       *int
 	BookTotalChapters *int
 	ArchivedAt        *time.Time // soft-delete; nil = active
@@ -66,8 +66,8 @@ type ReadingMaterial struct {
 // pomodoro timer expires.
 //
 // AISummaryScore + SummaryMD are populated by the post-chapter AI
-// summary-check (Wave 4.3 — outside this slice). Both nil/empty
-// when the session ends without a summary attempt.
+// summary-check (outside this slice). Both nil/empty when the session
+// ends without a summary attempt.
 type ReadingSession struct {
 	ID             uuid.UUID
 	UserID         uuid.UUID
@@ -139,7 +139,7 @@ type ReadingRepo interface {
 
 	// EndSession stamps ended_at and writes chars_read + summary_md
 	// (when the user submitted a summary). ai_summary_score stays
-	// nil here — the AI grader is a separate flow (Wave 4.3).
+	// nil here — the AI grader is a separate flow.
 	EndSession(ctx context.Context, userID, sessionID uuid.UUID, charsRead int, summaryMD string, now time.Time) error
 
 	// GetSession loads a single session row. Used by the post-end
@@ -167,8 +167,8 @@ type ReadingRepo interface {
 	// (box=0). LearnedAt is stamped when box reaches 5.
 	AdvanceVocab(ctx context.Context, userID uuid.UUID, word string, correct bool, now time.Time) (VocabEntry, error)
 
-	// ListVocabBySourceMaterial — Wave 4.2 reverse cross-link. Returns
-	// every vocab entry whose `source_material` points to materialID,
+	// ListVocabBySourceMaterial — reverse cross-link. Returns every
+	// vocab entry whose `source_material` points to materialID,
 	// scoped to the user. Reader UI shows «vocab you've saved from this
 	// material» sidebar; without this method that surface would require
 	// the client to fetch the entire vocab queue and filter.
@@ -177,8 +177,8 @@ type ReadingRepo interface {
 }
 
 // SummaryGrader scores a user-written summary against the source
-// material on a 0..100 scale. Wave 4.3 «AI summary check»: after
-// the user finishes a chapter and submits their summary, the grader
+// material on a 0..100 scale. After the user finishes a chapter and
+// submits their summary, the grader
 // compares it to the chapter body and returns coverage + accuracy.
 //
 // Implementations are LLM-backed; an explicit no-op fallback returns

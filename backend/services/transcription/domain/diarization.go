@@ -1,5 +1,5 @@
-// Diarization — rudimentary per-utterance speaker clustering. Mirrors
-// Phase J / C4 (P1) spec: «лучше чем 'они' — но не Pyannote-grade».
+// Diarization — rudimentary per-utterance speaker clustering.
+// Goal: «лучше чем 'они' — но не Pyannote-grade».
 //
 // Pipeline: каждое end-of-utterance окно из streaming WS handler'а →
 // извлекаем дешёвые audio features (RMS + ZCR) на PCM16 mono LE →

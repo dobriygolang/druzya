@@ -174,8 +174,8 @@ func (uc *ArchiveAssignment) Do(ctx context.Context, tutorID, assignmentID uuid.
 	return nil
 }
 
-// BroadcastAssignment — Wave 5.2a (slice of Tier 3 group classes).
-// Tutor sends the same assignment body to ALL of their active students
+// BroadcastAssignment — tutor sends the same assignment body to ALL
+// of their active students
 // in one call. Returns the per-student outcomes so the UI can show «5
 // pushed, 1 already had it» if some pre-existing dedup were ever wired
 // (today every call creates a fresh row — assignments are intentionally

@@ -364,8 +364,8 @@ func (p *Postgres) ListUpcomingForStudentPaged(
 	return out, nextCursor, nil
 }
 
-// TutorEventStats — Wave 9.5 aggregate. Three queries, fail-soft per
-// block (silently zeros if a sub-query errors). Active-student count
+// TutorEventStats — aggregate. Three queries, fail-soft per block
+// (silently zeros if a sub-query errors). Active-student count
 // reuses tutor_students; event aggregates over tutor_events filtered
 // by `created_at >= now - window`.
 func (p *Postgres) TutorEventStats(ctx context.Context, tutorID uuid.UUID, windowDays int, now time.Time) (domain.TutorActivity, error) {
@@ -445,8 +445,8 @@ func (p *Postgres) TutorEventStats(ctx context.Context, tutorID uuid.UUID, windo
 	return out, nil
 }
 
-// TutorsActivitySummary — Phase K T6 (2026-05-12). Student-facing
-// social-proof aggregate over a list of tutor_ids. Three sub-queries
+// TutorsActivitySummary — student-facing social-proof aggregate over
+// a list of tutor_ids. Three sub-queries
 // run in a single round-trip via UNION-ed CTEs:
 //   1. LastActiveAt — MAX of created_at/scheduled_at/COALESCE updated_at
 //      over all events authored by each tutor.
@@ -556,7 +556,7 @@ func (p *Postgres) TutorsActivitySummary(
 	return out, nil
 }
 
-// ── Wave 5.2 group events on circles ─────────────────────────────────
+// ── Group events on circles ───────────────────────────────────────────
 
 // EnsureCircleOwner — tutor must be circle.owner OR have admin role
 // in circle_members. Returns ErrNotFound on either «no such circle» or
@@ -743,7 +743,7 @@ func (p *Postgres) ListUpcomingGroupEventsForStudent(ctx context.Context, studen
 	return out, nil
 }
 
-// ── Session-note visibility (Phase K T4, 2026-05-13) ────────────────
+// ── Session-note visibility ──────────────────────────────────────────
 
 // SetSessionNoteVisibility — toggle private↔shared + optional curated copy.
 // Conditional shared_at update: stamps on FIRST private→shared transition

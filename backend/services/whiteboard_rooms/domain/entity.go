@@ -20,7 +20,7 @@ import (
 // implicitly whenever the hub flushes a snapshot (active room == relevant).
 const DefaultTTL = 24 * time.Hour
 
-// Visibility — Phase C-7+ flag. 'private' = только owner, 'shared' = любой
+// Visibility — 'private' = только owner, 'shared' = любой
 // с URL может join'ить (legacy default до миграции 00036).
 type Visibility string
 

@@ -1,4 +1,4 @@
-// user_context_adapter.go — C3 (Phase J) cross-product context bridge.
+// user_context_adapter.go — cross-product context bridge.
 //
 // Adapts intelligence.GetUserContext (rich domain types in intel/app)
 // to copilot/domain.UserContextProvider (narrow port). Sits in

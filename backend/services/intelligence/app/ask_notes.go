@@ -30,8 +30,8 @@ type AskNotes struct {
 	Embedder domain.Embedder
 	Answerer domain.NoteAnswerer
 	Log      *slog.Logger
-	// Memory — optional Phase B retrofit: позволяет сослаться на past
-	// Q&A эпизоды и записать сам qa_query.
+	// Memory — optional: позволяет сослаться на past Q&A эпизоды и
+	// записать сам qa_query.
 	Memory *Memory
 }
 
@@ -101,7 +101,7 @@ func (uc *AskNotes) Do(ctx context.Context, in AskNotesInput) (domain.AskAnswer,
 		contextNotes = append(contextNotes, r.n)
 	}
 
-	// Pull past Q&A episodes — Memory может быть nil (Phase A install
+	// Pull past Q&A episodes — Memory может быть nil (install
 	// без memory layer'а).
 	var past []domain.Episode
 	if uc.Memory != nil {

@@ -8,8 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Tutor events — Wave 5.2b of docs/feature/plan.md (Tutor Tier 3
-// scheduled sessions). One-on-one lessons in V1; group classes via
+// Tutor events: scheduled one-on-one lessons in V1; group classes via
 // circle_id are wired into the schema (migration 00016) but not yet
 // exposed by RPCs / UI — adding them in V2 doesn't require migration.
 
@@ -75,10 +74,10 @@ type Event struct {
 	CancellationReason string
 	// Tutor's post-session write-up. Non-empty iff Status==Completed
 	// (mirrored by SQL CHECK tutor_events_session_note_pair). Tutor-
-	// visible always; student-visible only when Visibility==Shared
-	// (Phase K T4, 2026-05-13). Used by Wave 9.5 analytics aggregations.
+	// visible always; student-visible only when Visibility==Shared.
+	// Used by analytics aggregations.
 	SessionNote string
-	// Phase K T4 — session-note share toggle. Default 'private' on insert
+	// Session-note share toggle. Default 'private' on insert
 	// (migration 00115). Tutor opts in via SetSessionNoteVisibility.
 	Visibility EventVisibility
 	// Optional curated student-facing copy. Empty + Visibility=Shared =
@@ -196,15 +195,15 @@ type EventRepo interface {
 	// scheduled lands first).
 	ListUpcomingForStudentPaged(ctx context.Context, studentID uuid.UUID, now time.Time, limit int, cursor string) ([]Event, string, error)
 
-	// TutorEventStats — Wave 9.5 analytics aggregate. Returns counts +
+	// TutorEventStats — analytics aggregate. Returns counts +
 	// total minutes taught for completed events authored by this tutor
 	// inside `windowDays`. cancellation_rate computed from the same
 	// window. Read-only; meant to back the tutor dashboard «Activity»
 	// card. Returns zero struct (no error) when tutor has no events.
 	TutorEventStats(ctx context.Context, tutorID uuid.UUID, windowDays int, now time.Time) (TutorActivity, error)
 
-	// TutorsActivitySummary — Phase K T6 (2026-05-12). Student-facing
-	// social-proof aggregate. Returns one row per `tutorID` containing:
+	// TutorsActivitySummary — student-facing social-proof aggregate.
+	// Returns one row per `tutorID` containing:
 	//   - LastActiveAt: max of (created_at, scheduled_at, COALESCE updated_at)
 	//     over events authored by this tutor (zero when none),
 	//   - ActiveStudentCountOther: COUNT(active tutor_students) − 1
@@ -222,7 +221,7 @@ type EventRepo interface {
 		now time.Time,
 	) (map[uuid.UUID]MyTutorActivity, error)
 
-	// ── Wave 5.2 group events on circles ─────────────────────────
+	// ── Group events on circles ───────────────────────────────────
 
 	// EnsureCircleOwner returns ErrNotFound if tutor isn't the owner
 	// (or admin) of the circle. Tutors can only schedule group events
@@ -259,7 +258,7 @@ type EventRepo interface {
 	// ListEventRSVPCount.
 	ListUpcomingGroupEventsForStudent(ctx context.Context, studentID uuid.UUID, now time.Time, limit int) ([]Event, error)
 
-	// ── Session-note visibility (Phase K T4, 2026-05-13) ────────────
+	// ── Session-note visibility ─────────────────────────────────────
 
 	// SetSessionNoteVisibility — tutor toggles share + optionally edits
 	// the curated student-facing copy. Requires:
@@ -310,7 +309,7 @@ type SharedSessionNote struct {
 	SharedContentMD  string
 }
 
-// MyTutorActivity — Phase K T6 student-facing summary per tutor.
+// MyTutorActivity — student-facing summary per tutor.
 // Privacy: ActiveStudentCountOther is COUNT-1 (excludes caller),
 // RecentEventsCount is aggregate (no per-student / per-title detail).
 type MyTutorActivity struct {
@@ -320,7 +319,7 @@ type MyTutorActivity struct {
 	RecentEventsCount       int
 }
 
-// TutorActivity — aggregated tutor-side metrics for Wave 9.5 dashboard.
+// TutorActivity — aggregated tutor-side metrics for the dashboard.
 type TutorActivity struct {
 	WindowDays         int
 	ActiveStudentCount int     // ListTutorStudents → count
@@ -329,7 +328,7 @@ type TutorActivity struct {
 	EventsScheduled    int     // status='scheduled' inside window (regardless of past/future)
 	MinutesTaught      int     // SUM(duration_min) over completed events
 	CancellationRate   float64 // cancelled / (completed + cancelled), 0 when no events
-	// Phase 8 — rolling daily counts (window-length series) for sparkline UI.
+	// Rolling daily counts (window-length series) for sparkline UI.
 	// Day-buckets oldest → newest. Length = WindowDays. Counts == completed
 	// events per day; minutes — SUM(duration) per day.
 	DailyCompleted []int

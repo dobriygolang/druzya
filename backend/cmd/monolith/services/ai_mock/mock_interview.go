@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// NewMockInterview wires the Phase A admin CRUD + Phase B orchestrator
-// surface for the multi-stage mock interview pipeline (ADR-002).
+// NewMockInterview wires the admin CRUD + orchestrator surface for
+// the multi-stage mock interview pipeline (per ADR-002).
 //
 // No Connect mount — the surface is large (~30 RPCs) and not yet stable
 // enough to lock into proto. Everything is chi-direct REST under
@@ -59,7 +59,7 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 		handlers.Now = d.Now
 	}
 
-	// Phase B orchestrator + LLM judge.
+	// Orchestrator + LLM judge.
 	judge := miApp.NewLLMJudge(d.LLMChain, d.Log)
 
 	// F-2: code-execution sandbox for task_solve attempts. JUDGE0_URL points
@@ -99,7 +99,7 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 		// orchestrator.bumpAtlasFromStages). Уж лучше иметь движение по
 		// атласу, чем «прошёл мок — а атлас не изменился».
 		Skills: mockSkillsAdapter{repo: profileInfra.NewPostgres(d.Pool)},
-		// Bus drives Phase C publishers — Hone's CoachListener subscribes to
+		// Bus drives publishers — Hone's CoachListener subscribes to
 		// MockPipelineFinished to settle kind=sysdesign / kind=reflection
 		// tasks. nil-safe: in dev runs without bus everything else still
 		// works, just no fan-out.

@@ -1,4 +1,4 @@
-// Phase C-4 sync replication endpoints — thin HTTP wrapper over
+// Sync replication endpoints — thin HTTP wrapper over
 // druz9/sync/app.{PullChanges,PushChanges}.
 //
 // Two REST endpoints на одной модели «cursor + table-deltas»:

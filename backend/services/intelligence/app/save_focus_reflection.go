@@ -30,7 +30,7 @@ type SaveFocusReflection struct {
 	Repo   domain.FocusReflectionRepo
 	Memory MemoryWriter // optional, nil-safe
 	Now    func() time.Time
-	// StruggleMark — X5 (Phase J P2). Optional. When grade ≤2 AND the
+	// StruggleMark — optional. When grade ≤2 AND the
 	// pinned task name looks like an atlas anchor («node:dist-sharding»
 	// или goose-style slug), emit a MarkAtlasStruggle so web AtlasPage
 	// highlights it. Heuristic: any task_pinned starting with «node:» or

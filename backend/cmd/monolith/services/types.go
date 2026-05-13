@@ -88,7 +88,7 @@ type Deps struct {
 	// call. Set in bootstrap right after NewIntelligence.
 	IntelligenceMockMemoryHook miDomain.MemoryHook
 
-	// IntelligenceMarkAtlasStruggle — Phase J / X5 cross-product handoff.
+	// IntelligenceMarkAtlasStruggle — cross-product handoff.
 	// mock_interview adapter (atlas_struggle_producer.go) wraps this UC
 	// into the StruggleHook port shape so FinishPipeline can emit
 	// struggle marks for low-axis stages. nil-safe: adapter returns nil
@@ -101,18 +101,18 @@ type Deps struct {
 	// nil-safe; consumers guard.
 	IntelligenceMemory *intelApp.Memory
 
-	// IntelligenceUserContext — C3 cross-product context fetcher (Phase J).
+	// IntelligenceUserContext — cross-product context fetcher.
 	// Copilot bootstrap wraps это в Redis-cached UserContextProvider
 	// adapter и заинжектит в Suggest + Analyze. nil-safe: when nil,
-	// copilot falls back to generic prompts (pre-C3 behaviour).
+	// copilot falls back to generic prompts.
 	IntelligenceUserContext *intelApp.GetUserContext
 
-	// IntelligenceLinkSuggester — Phase 5 LLM-rerank UC. Hone bootstrap
+	// IntelligenceLinkSuggester — LLM-rerank UC. Hone bootstrap
 	// заворачивает его в honeApp.LinkSuggester adapter и подключает в
 	// hone.app.SuggestNoteLinks. nil-safe: hone-adapter руководит fallback.
 	IntelligenceLinkSuggester *intelApp.SuggestNoteLinks
 
-	// IntelligenceLogResource — Phase 5 reflection auto-link bridge. Hone
+	// IntelligenceLogResource — reflection auto-link bridge. Hone
 	// bootstrap пишет .NoteCreator на этот pointer после построения своих
 	// notes-repo/embed-fn, чтобы reflection-submitted events создавали
 	// hone_notes row + embedding job. nil-safe: при отсутствии hook'а
@@ -120,14 +120,14 @@ type Deps struct {
 	// reflection стоит сама по себе ценность как event).
 	IntelligenceLogResource *intelApp.LogResource
 
-	// ExternalActivityCoachAppender — Phase pivot 2026-05-02. Hone
-	// AddExternalActivity UC дёргает его чтобы записать coach_episode
+	// ExternalActivityCoachAppender — Hone AddExternalActivity UC
+	// дёргает его чтобы записать coach_episode
 	// kind=external_activity для AI-tutor recall + daily-brief mention.
 	// nil-safe (hone проверяет).
 	ExternalActivityCoachAppender honeDomain.CoachEpisodeAppender
 
-	// StorageGate — Phase C quota guard. Hone оборачивает свои
-	// write-routes (notes/whiteboards POST'ы) этим middleware'ом, чтобы
+	// StorageGate — quota guard. Hone оборачивает свои write-routes
+	// (notes/whiteboards POST'ы) этим middleware'ом, чтобы
 	// возвращать 413 quota_exceeded при превышении тарифа. nil-safe:
 	// при отсутствии gate'а write'ы пропускаются без проверки. Built в
 	// bootstrap'е до NewHone. Interface — конкретный тип живёт в
@@ -135,15 +135,15 @@ type Deps struct {
 	// circular import services/types.go ↔ services/storage).
 	StorageGate StorageGate
 
-	// SyncHeartbeat — Phase C-3.1 device-revocation gate + throttled
-	// last_seen_at UPDATE. Подключается в router.go gated REST chain.
+	// SyncHeartbeat — device-revocation gate + throttled last_seen_at
+	// UPDATE. Подключается в router.go gated REST chain.
 	// nil-safe: при nil middleware превращается в passthrough.
 	// Interface — конкретный тип (*sync.Heartbeat) живёт в
 	// services/sync (вынесен туда, чтобы избежать cycle через Deps).
 	SyncHeartbeat SyncHeartbeatGate
 
-	// SyncEventBroker — Phase C-6.2 in-process pubsub для realtime SSE
-	// push. Write-handlers (yjs append, vault encrypt/decrypt, sync push)
+	// SyncEventBroker — in-process pubsub для realtime SSE push.
+	// Write-handlers (yjs append, vault encrypt/decrypt, sync push)
 	// дёргают Publish*; SSE-subscriber'ы получают fan-out. nil-safe: при
 	// nil publish — no-op (callers проверяют). Built в bootstrap до
 	// модулей которые его используют. Interface — конкретный тип
@@ -167,8 +167,8 @@ type Deps struct {
 	// SetTierUC.OnTierChanged hook.
 	SetTierUC *subApp.SetTier
 
-	// TrialProGranter — Phase J / X1 (P0). Set in WireSubscriptionQuota;
-	// consumed by NewProfile to wire the RecordAppInstall trial-gate.
+	// TrialProGranter — set in WireSubscriptionQuota; consumed by
+	// NewProfile to wire the RecordAppInstall trial-gate.
 	// nil-safe — when not wired, RecordAppInstall just skips the trial
 	// side-effect (heartbeat itself still records).
 	TrialProGranter *subApp.GrantFirstInstallTrial

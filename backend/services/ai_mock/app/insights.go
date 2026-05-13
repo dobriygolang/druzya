@@ -27,8 +27,8 @@ type InsightsOverviewOutput struct {
 	RecurringPatterns []domain.RecurringPattern
 	ScoreTrajectory   []domain.ScoreTrajectoryPoint
 	Headline          domain.PipelineHeadline
-	// English HR aggregation (Wave 1 of docs/feature/english.md).
-	// Zero-value EnglishHRTrend{} when the user has no English HR
+	// English HR aggregation. Zero-value EnglishHRTrend{} when the user
+	// has no English HR
 	// sessions in the window — frontend then hides the card.
 	EnglishHR domain.EnglishHRTrend
 }

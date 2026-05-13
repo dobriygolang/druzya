@@ -40,12 +40,11 @@ type RadarAxisDef struct {
 
 // SkillRadarAxis — one axis with averaged score.
 //
-// Phase R6 — Confidence guard: a single mock makes the radar jitter on
-// every refresh. We expose MockCount (raw sample size) and Confidence
+// Confidence guard: a single mock makes the radar jitter on every
+// refresh. We expose MockCount (raw sample size) and Confidence
 // (low / medium / high based on count) so the UI can indicate which
 // axes are reliable. Frontend will render low-confidence axes with a
-// dashed outline / smaller node until proto regen lifts these fields
-// onto the wire (deferred to R5).
+// dashed outline / smaller node.
 type SkillRadarAxis struct {
 	Key        string
 	Label      string
@@ -115,8 +114,8 @@ var rubrics = map[string]RadarRubric{
 			{Key: "data_intuition", Label: "data"},
 			{Key: "production_awareness", Label: "ops"},
 		},
-		// M2 Phase K (2026-05-12): granular ml_system_design / ml_coding /
-		// ml_theory sections share the MLE rubric. Skill radar agg'регирует
+		// Granular ml_system_design / ml_coding / ml_theory sections
+		// share the MLE rubric. Skill radar agg'регирует
 		// scores across all 4 ML sections так что granular stage results
 		// прозрачно копятся в общий ML radar (theoretical_depth axis
 		// получает signal как из ml_eng так и из ml_theory; ml_system_design

@@ -8,8 +8,8 @@ import (
 	"druz9/shared/enums"
 )
 
-// DevOps / SRE mock prompts — Wave 9.3 of docs/feature/plan.md.
-// Free-form interview round on infra / observability / CI/CD / incident
+// DevOps / SRE mock prompts — free-form interview round on infra /
+// observability / CI/CD / incident
 // response / security. Same structural pattern as Sysanalyst + QA.
 //
 // Curriculum reflects what's actually asked at senior-DevOps / SRE

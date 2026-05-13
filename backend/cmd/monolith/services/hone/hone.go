@@ -144,7 +144,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 
 	// Embedding job: CreateNote/UpdateNote enqueue job в Redis List, background
 	// EmbedWorker дрейнит очередь и персистит вектора. Redis-less окружение
-	// (tests) — fallback на in-process goroutine (Phase 4 поведение).
+	// (tests) — fallback на in-process goroutine.
 	var (
 		embedFn     func(ctx context.Context, userID, noteID uuid.UUID, text string)
 		embedWorker *honeApp.EmbedWorker
@@ -177,8 +177,8 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		d.Log.Warn("hone: Redis not configured — embed jobs run in-process (fire-and-forget)")
 	}
 
-	// Phase 10 — Categoriser instance, shared между Handler.CategoriseTask
-	// и CreateTask UC (он использует его как auto-place hook).
+	// Categoriser instance, shared between Handler.CategoriseTask and
+	// CreateTask UC (which uses it as an auto-place hook).
 	var categoriser *honeApp.CategoriseTask
 	if d.LLMChain != nil {
 		categoriser = &honeApp.CategoriseTask{Chain: d.LLMChain}
@@ -217,8 +217,8 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 			Log:       d.Log,
 		},
 
-		// Phase 10 — AI auto-place TaskBoard. Optional: nil-safe в callers.
-		// Активен когда LLMChain wired (free-tier groq/cerebras 8B).
+		// AI auto-place TaskBoard. Optional: nil-safe in callers.
+		// Active when LLMChain wired (free-tier groq/cerebras 8B).
 		CategoriseTask: categoriser,
 
 		// Folders
@@ -265,11 +265,10 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		Now: d.Now,
 	})
 
-	// Phase 5 reflection auto-link: intelligence.LogResource UC получает
-	// NoteCreator hook, который создаёт hone_notes row и enqueue'ит
-	// embedding job. После embedding'а — reflection note сам появляется
-	// в SuggestNoteLinks suggestions для упомянутых атлас-узлов (ничего
-	// LLM-extract не нужно для MVP).
+	// Reflection auto-link: intelligence.LogResource UC gets a NoteCreator
+	// hook that creates a hone_notes row and enqueues an embedding job.
+	// After embedding, the reflection note appears in SuggestNoteLinks
+	// suggestions for any referenced atlas nodes (no LLM-extract needed).
 	if d.IntelligenceLogResource != nil {
 		d.IntelligenceLogResource.NoteCreator = NewHoneReflectionNoteCreator(
 			notes, embedFn, d.Log, d.Now,
@@ -286,8 +285,8 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	// Pro-gate для премиум-RPC (GeneratePlan / Critique / Connections).
 	// nil-safe: subscription-таблица нет — все Pro, gate выключен.
 	server = server.WithTier(NewHoneTierAdapter(d.Pool))
-	// Phase 2 quota enforcement: free-tier лимит на synced_notes (default 10).
-	// nil-safe (см. EnforceCreate). Closure inline'на, чтобы захватить Deps.
+	// Quota enforcement: free-tier limit on synced_notes (default 10).
+	// nil-safe (see EnforceCreate). Closure inline to capture Deps.
 	server = server.WithCreateNoteQuotaCheck(func(ctx context.Context, uid uuid.UUID) error {
 		return subscriptionServices.EnforceCreate(ctx, d, uid,
 			honeNotesQuotaField,
@@ -425,13 +424,12 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	if d.CategoriserPool != nil {
 		categoriserPool = d.CategoriserPool
 	}
-	// Phase D4: Redis-backed TTL cache на ListTasks (was in-memory ttlcache до
-	// R6 conflict resolution). 15m TTL покрывает burst polling (frontend
-	// опрашивает на focus change), inline-invalidate в Create/Move/Delete
-	// keeps данные current. Cross-instance consistency: invalidate в одной
-	// replica виден всем — was a problem с in-memory.
-	// nil-safe: если Redis не wired (тесты) — cache=nil, ListTasks делает
-	// прямой запрос (см. honeApp.ListTasks.Do).
+	// Redis-backed TTL cache на ListTasks. 15m TTL покрывает burst
+	// polling (frontend опрашивает на focus change), inline-invalidate
+	// в Create/Move/Delete keeps данные current. Cross-instance
+	// consistency: invalidate в одной replica виден всем.
+	// nil-safe: если Redis не wired (тесты) — cache=nil, ListTasks
+	// делает прямой запрос (см. honeApp.ListTasks.Do).
 	var tasksCache honeApp.TasksListCache
 	if d.Redis != nil {
 		raw := rediscache.New[[]honeDomainTaskAlias](d.Redis, 15*time.Minute, "hone_tasks")
@@ -450,9 +448,9 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	h.DeleteTask = &honeApp.DeleteTask{Tasks: tasksRepo, Cache: tasksCache}
 	h.AddTaskComment = &honeApp.AddTaskComment{Tasks: tasksRepo}
 	h.ListTaskComments = &honeApp.ListTaskComments{Tasks: tasksRepo}
-	// Phase J / H3 (P1, 2026-05-12) — bulk categorise streaming RPC +
-	// manual kind override. BulkAutoCategorise nil-safe когда categoriser
-	// (LLMChain) не wired — server возвращает Unimplemented.
+	// Bulk categorise streaming RPC + manual kind override.
+	// BulkAutoCategorise is nil-safe when the categoriser (LLMChain) is
+	// not wired — the server returns Unimplemented.
 	h.BulkAutoCategorise = &honeApp.BulkAutoCategorise{
 		Tasks:       tasksRepo,
 		Categoriser: categoriser,
@@ -472,9 +470,9 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	h.ShareToWeb = &honeApp.ShareToWeb{Repo: publishRepo, Publisher: d.SyncEventBroker, Log: d.Log}
 	h.MakePrivate = &honeApp.MakePrivate{Repo: publishRepo, Publisher: d.SyncEventBroker, Log: d.Log}
 
-	// Reading-модуль (Wave 4 of docs/feature/english.md). Library, reader
-	// sessions, Leitner SRS vocab. Repo backed by hone_reading_* tables
-	// (migration 00013); free-form English content owned by Hone.
+	// Reading module: library, reader sessions, Leitner SRS vocab.
+	// Repo backed by hone_reading_* tables (migration 00013); free-form
+	// English content owned by Hone.
 	readingRepo := honeInfra.NewReadingRepo(d.Pool)
 	h.AddReadingMaterial = &honeApp.AddReadingMaterial{Repo: readingRepo}
 	h.UpdateBookProgress = &honeApp.UpdateBookProgress{Repo: readingRepo}
@@ -482,55 +480,53 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	h.ListReadingMaterials = &honeApp.ListReadingMaterials{Repo: readingRepo}
 	h.ArchiveReadingMaterial = &honeApp.ArchiveReadingMaterial{Repo: readingRepo, Now: d.Now}
 	h.StartReadingSession = &honeApp.StartReadingSession{Repo: readingRepo}
-	// Wave 4.3: EndReadingSession optionally calls the LLM-backed grader
-	// inline. nil-safe — useCase swallows errors so a slow / down provider
-	// just leaves ai_summary_score NULL.
+	// EndReadingSession optionally calls the LLM-backed grader inline.
+	// nil-safe — useCase swallows errors so a slow / down provider just
+	// leaves ai_summary_score NULL.
 	h.EndReadingSession = &honeApp.EndReadingSession{Repo: readingRepo, Grader: summaryGrader, Log: d.Log, Now: d.Now}
 	h.AddVocab = &honeApp.AddVocab{Repo: readingRepo}
 	h.ReviewVocab = &honeApp.ReviewVocab{Repo: readingRepo, Now: d.Now}
 	h.ListVocabDue = &honeApp.ListVocabDue{Repo: readingRepo, Now: d.Now}
-	// Wave 4.2 reverse cross-link.
+	// Reverse cross-link reader → saved vocab.
 	h.ListVocabBySourceMaterial = &honeApp.ListVocabBySourceMaterial{Repo: readingRepo}
 
-	// Wave 4.4: Writing-as-Focus AI grader. nil-safe — when llmchain is
-	// not configured, writingGrader is the floor adapter that returns
+	// Writing-as-Focus AI grader. nil-safe — when llmchain is not
+	// configured, writingGrader is the floor adapter that returns
 	// ErrLLMUnavailable, which the handler translates to 503.
 	h.GradeEnglishWriting = &honeApp.GradeEnglishWriting{Grader: writingGrader}
 
-	// Phase K Wave 11 (2026-05-13): Writing prompts library (curated catalog).
-	// Replaces deferred admin placeholder. List is public; Add/Archive
-	// gated at REST router admin role middleware.
+	// Writing prompts library (curated catalog). List is public;
+	// Add/Archive gated at REST router admin role middleware.
 	writingPromptsRepo := honeInfra.NewWritingPromptRepo(d.Pool)
 	h.ListWritingPrompts = &honeApp.ListWritingPrompts{Repo: writingPromptsRepo}
 	h.AddWritingPrompt = &honeApp.AddWritingPrompt{Repo: writingPromptsRepo}
 	h.ArchiveWritingPrompt = &honeApp.ArchiveWritingPrompt{Repo: writingPromptsRepo}
 
-	// Wave 3.6: Code-review-coaching grader. Same nil-safety as above.
+	// Code-review-coaching grader. Same nil-safety as above.
 	h.GradeCodeReview = &honeApp.GradeCodeReview{Grader: reviewGrader}
 
-	// Wave 6.1: Listening-модуль (audio + transcript library). Click-on-
-	// word reuses the AddVocab use case wired above; vocab queue is
-	// shared across Reading + Listening surfaces.
+	// Listening module (audio + transcript library). Click-on-word
+	// reuses the AddVocab use case wired above; vocab queue is shared
+	// across Reading + Listening surfaces.
 	listeningRepo := honeInfra.NewListeningRepo(d.Pool)
 	h.AddListeningMaterial = &honeApp.AddListeningMaterial{Repo: listeningRepo}
 	h.GetListeningMaterial = &honeApp.GetListeningMaterial{Repo: listeningRepo}
 	h.ListListeningMaterials = &honeApp.ListListeningMaterials{Repo: listeningRepo}
 	h.ArchiveListeningMaterial = &honeApp.ArchiveListeningMaterial{Repo: listeningRepo, Now: d.Now}
-	// YouTube transcript ingestion (Sergey 2026-05-03). yt-dlp бинарь должен
-	// быть на PATH api контейнера; если нет — handler вернёт 503 при
-	// первом вызове, фронт показывает «manual paste only». Wave dev:
-	// ставим всегда, real check на runtime.
+	// YouTube transcript ingestion. yt-dlp binary must be on PATH of the
+	// api container; if missing, handler returns 503 on first call and
+	// the front shows «manual paste only». Wired always, runtime check.
 	h.IngestYouTubeListening = &honeApp.IngestYouTubeListening{
 		Repo:    listeningRepo,
 		Fetcher: honeInfra.NewYouTubeFetcher(),
 		Now:     d.Now,
 	}
 
-	// Phase J / H4 (2026-05-12): Speaking-модуль (fourth English modality).
-	// Exercise catalog seeded в migration 00105; sessions persisted per
-	// user via UNIQUE(user_id, client_session_id) for outbox idempotency.
-	// STT (Groq Whisper) + LLM grader (8B-class) wired above; floor
-	// adapters surface ErrLLMUnavailable when keys are missing.
+	// Speaking module (fourth English modality). Exercise catalog seeded
+	// in migration 00105; sessions persisted per user via
+	// UNIQUE(user_id, client_session_id) for outbox idempotency. STT
+	// (Groq Whisper) + LLM grader (8B-class) wired above; floor adapters
+	// surface ErrLLMUnavailable when keys are missing.
 	speakingExercises := honeInfra.NewSpeakingExerciseRepo(d.Pool)
 	speakingSessions := honeInfra.NewSpeakingSessionRepo(d.Pool)
 	h.ListSpeakingExercises = &honeApp.ListSpeakingExercises{Repo: speakingExercises}
@@ -541,9 +537,9 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		Grader:    speakingGrader,
 	}
 	h.ListSpeakingHistory = &honeApp.ListSpeakingHistory{Repo: speakingSessions}
-	// Phase K Wave 9 (E4 P1) — admin-only TTS regen UC. nil-safe inside the
-	// UC: provider/store check happens на Do() call; handler returns 503
-	// если что-либо unwired. Cloudflare MeloTTS + MinIO bucket `tts-audio`.
+	// Admin-only TTS regen UC. nil-safe inside the UC: provider/store
+	// check happens on Do() call; handler returns 503 if anything unwired.
+	// Cloudflare MeloTTS + MinIO bucket `tts-audio`.
 	h.GenerateSpeakingTTS = &honeApp.GenerateSpeakingTTS{
 		Exercises: speakingExercises,
 		Provider:  buildTTSProvider(d),
@@ -573,7 +569,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Post("/notes/{id}/share-to-web", transcoder.ServeHTTP)
 		r.Post("/notes/{id}/make-private", transcoder.ServeHTTP)
 		r.Get("/notes/meta", transcoder.ServeHTTP)
-		// Reading-модуль REST aliases (Wave 4).
+		// Reading module REST aliases.
 		r.Post("/hone/reading/materials", transcoder.ServeHTTP)
 		r.Get("/hone/reading/materials", transcoder.ServeHTTP)
 		r.Get("/hone/reading/materials/{id}", transcoder.ServeHTTP)
@@ -584,16 +580,16 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Post("/hone/reading/vocab", transcoder.ServeHTTP)
 		r.Post("/hone/reading/vocab/review", transcoder.ServeHTTP)
 		r.Get("/hone/reading/vocab/due", transcoder.ServeHTTP)
-		// Wave 4.2 — reverse cross-link reader → saved vocab.
+		// Reverse cross-link reader → saved vocab.
 		r.Get("/hone/reading/materials/{material_id}/vocab", transcoder.ServeHTTP)
-		// Writing-as-Focus REST alias (Wave 4.4).
+		// Writing-as-Focus REST alias.
 		r.Post("/hone/writing/grade", transcoder.ServeHTTP)
-		// Writing prompts library REST aliases (Phase K Wave 11). List
-		// is public; admin-mutating routes go through adminGate below.
+		// Writing prompts library REST aliases. List is public;
+		// admin-mutating routes go through adminGate below.
 		r.Get("/hone/writing/prompts", transcoder.ServeHTTP)
-		// Code-review-coaching REST alias (Wave 3.6).
+		// Code-review-coaching REST alias.
 		r.Post("/hone/code-review/grade", transcoder.ServeHTTP)
-		// Listening-модуль REST aliases (Wave 6.1).
+		// Listening module REST aliases.
 		r.Post("/hone/listening/materials", transcoder.ServeHTTP)
 		r.Get("/hone/listening/materials", transcoder.ServeHTTP)
 		r.Get("/hone/listening/materials/{id}", transcoder.ServeHTTP)
@@ -609,10 +605,10 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		r.Post("/hone/external-activity/delete", transcoder.ServeHTTP)
 		r.Get("/hone/external-activity/atlas-topics", transcoder.ServeHTTP)
 		r.Get("/hone/atlas-node-tracks", transcoder.ServeHTTP)
-		// Phase K Wave 9 (E4 P1) — admin-only TTS regen for speaking
-		// exercise reference audio. RequireAdminInline before transcoder
-		// (mirrors podcast admin pattern). Path declared в hone.proto
-		// google.api.http annotation.
+		// Admin-only TTS regen for speaking exercise reference audio.
+		// RequireAdminInline before transcoder (mirrors podcast admin
+		// pattern). Path declared in hone.proto google.api.http
+		// annotation.
 		adminGate := func(w http.ResponseWriter, req *http.Request) {
 			if _, err := authServices.RequireAdminInline(req); err != nil {
 				w.Header().Set("Content-Type", "application/json")
@@ -623,8 +619,8 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 			transcoder.ServeHTTP(w, req)
 		}
 		r.Post("/admin/hone/speaking/exercises/{exercise_id}/tts", adminGate)
-		// Phase K Wave 11 (2026-05-13) — admin-only writing prompts CRUD.
-		// Same adminGate as speaking TTS; List is unguarded above.
+		// Admin-only writing prompts CRUD. Same adminGate as speaking
+		// TTS; List is unguarded above.
 		r.Post("/admin/hone/writing/prompts", adminGate)
 		r.Post("/admin/hone/writing/prompts/{id}/archive", adminGate)
 		cursorSSE.Mount(r)

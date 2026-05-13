@@ -43,9 +43,9 @@ type cursorEventWire struct {
 	FromColumn string    `json:"fromColumn,omitempty"`
 	Body       string    `json:"body,omitempty"`
 	OccurredAt time.Time `json:"occurredAt"`
-	// Phase J / H3 (2026-05-12) — CardCategorise payload extension.
-	// Frontend reads these on `card.categorise` events to show the
-	// «Auto-tagged as <kind>» toast with reasoning + confidence.
+	// CardCategorise payload extension. Frontend reads these on
+	// `card.categorise` events to show the «Auto-tagged as <kind>»
+	// toast with reasoning + confidence.
 	DetectedKind string  `json:"detectedKind,omitempty"`
 	Confidence   float32 `json:"confidence,omitempty"`
 }

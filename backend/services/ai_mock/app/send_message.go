@@ -252,8 +252,8 @@ func (uc *SendMessage) maybeSubmitCompaction(s domain.Session, priorWindow compa
 	if !fresh.NeedsCompaction {
 		return
 	}
-	// Phase II: pin summary к session.LLMModel чтобы суммаризация и chat
-	// шли одной моделью. Если поле пустое (legacy / не задано) — fall back
+	// Pin summary к session.LLMModel чтобы суммаризация и chat шли одной
+	// моделью. Если поле пустое (legacy / не задано) — fall back
 	// to task-routing.
 	err := uc.Compactor.Submit(compaction.Job{
 		SessionKey:  s.ID.String(),

@@ -1,4 +1,4 @@
-// openrouter_insight.go — Phase B of weekly killer-stats. Calls OpenRouter
+// openrouter_insight.go — weekly killer-stats. Calls OpenRouter
 // chat-completions to produce a 2-paragraph Russian "AI insight" for the
 // /profile/me/report endpoint. Wraps the call in a 24 h Redis cache keyed by
 // (user-id, weekISO) — LLM output for a finished week is stable, so the same

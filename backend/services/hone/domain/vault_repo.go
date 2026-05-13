@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// VaultRepo — Phase C-7 zero-knowledge vault salt + ciphertext-write helpers.
+// VaultRepo — zero-knowledge vault salt + ciphertext-write helpers.
 // Server держит per-user random salt в users.vault_kdf_salt и принимает
 // ciphertext'ы для отдельных заметок (encrypted=true).
 type VaultRepo interface {

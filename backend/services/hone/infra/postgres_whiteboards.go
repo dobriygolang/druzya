@@ -1,4 +1,4 @@
-// Whiteboards repository — moved out of postgres.go (Wave 10 split).
+// Whiteboards repository — split out of postgres.go.
 package infra
 
 import (
@@ -151,8 +151,8 @@ func (w *Whiteboards) List(ctx context.Context, userID uuid.UUID) ([]domain.Whit
 	return out, nil
 }
 
-// Delete removes a whiteboard. Phase C-4: атомарно с DELETE пишет
-// sync_tombstone (см. Notes.Delete для rationale).
+// Delete removes a whiteboard. Атомарно с DELETE пишет sync_tombstone
+// (см. Notes.Delete для rationale).
 func (w *Whiteboards) Delete(ctx context.Context, userID, wbID uuid.UUID) error {
 	tx, err := w.pool.Begin(ctx)
 	if err != nil {

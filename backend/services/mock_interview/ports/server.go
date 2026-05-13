@@ -1,7 +1,7 @@
 // Package ports — HTTP layer for mock_interview.
 //
-// Phase A keeps the surface chi-REST-only: the proto / Connect layer is
-// deferred to Phase B (where the orchestrator will stabilise the shapes).
+// The surface is chi-REST-only; the proto / Connect layer is deferred
+// until the orchestrator shapes stabilise.
 //
 // Auth model:
 //   - admin endpoints use requireAdmin (role=admin claim from auth middleware)
@@ -42,9 +42,9 @@ type Server struct {
 	Log              *slog.Logger
 }
 
-// NewServer takes the use-case bundle plus the orchestrator (Phase B). The
-// orchestrator may be nil — Phase A admin/CRUD endpoints don't need it,
-// they will simply 503 on the new public routes.
+// NewServer takes the use-case bundle plus the orchestrator. The
+// orchestrator may be nil — admin/CRUD endpoints don't need it, and
+// public routes simply 503 without one.
 func NewServer(h *app.Handlers, orch *app.Orchestrator, log *slog.Logger) *Server {
 	return &Server{H: h, Orch: orch, Log: log}
 }

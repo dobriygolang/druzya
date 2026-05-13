@@ -1,4 +1,4 @@
-// Package synctomb — tombstone writer для cross-device sync (Phase C-4).
+// Package synctomb — tombstone writer для cross-device sync.
 //
 // Use-case'ы из любого bounded-context'а (hone, intelligence, etc) при
 // удалении строки вызывают:

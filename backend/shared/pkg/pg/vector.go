@@ -1,4 +1,4 @@
-// vector.go — Phase IX pgvector helper.
+// vector.go — pgvector helper.
 //
 // Сериализует []float32 в строку формата '[v1,v2,...]', которую pgvector
 // extension парсит как `vector(N)` value. Альтернатива — использовать

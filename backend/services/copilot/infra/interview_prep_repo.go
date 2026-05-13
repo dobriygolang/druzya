@@ -1,6 +1,6 @@
 // interview_prep_repo.go — postgres adapter for InterviewPrepRepo.
-// Phase J / C6 (P1) — single-active per user via partial unique index
-// (migration 00107). StartActive is wrapped in a single tx so the prior
+// Single-active per user via partial unique index (migration 00107).
+// StartActive is wrapped in a single tx so the prior
 // active row is ended atomically with the new INSERT.
 package infra
 

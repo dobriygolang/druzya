@@ -1,4 +1,4 @@
-// atlas_struggle.go — X5 (Phase J P2 2026-05-12) cross-product handoff signal.
+// atlas_struggle.go — cross-product handoff signal.
 //
 // AtlasStruggleMark = "user is stuck on node X" derived from any surface
 // (Cue session low rating, Hone reflection grade ≤2, mock_stage poor score).

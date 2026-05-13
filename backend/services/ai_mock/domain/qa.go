@@ -8,8 +8,8 @@ import (
 	"druz9/shared/enums"
 )
 
-// QA / тестировщик mock prompts — Wave 9.2 of docs/feature/plan.md.
-// Free-form interview round on test design / API testing / automation /
+// QA / тестировщик mock prompts. Free-form interview round on test
+// design / API testing / automation /
 // bug analysis / process. Same structural pattern as Sysanalyst — no
 // algorithmic task at session create (gated by IsTaskBased() == false).
 //

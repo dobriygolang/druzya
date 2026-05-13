@@ -1,6 +1,6 @@
-// Package domain holds tutor entities and contracts (Wave 2 of
-// docs/feature/tutor.md). Tutor is a distribution-channel persona, not
-// a separate role on `users.role`. The domain only knows two concepts:
+// Package domain holds tutor entities and contracts. Tutor is a
+// distribution-channel persona, not a separate role on `users.role`.
+// The domain only knows two concepts:
 // invites (one-time tokens a tutor hands to a candidate) and
 // relationships (an active tutor↔student pairing).
 package domain

@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
 	"druz9/hone/domain"
 	sharedDomain "druz9/shared/domain"
@@ -140,12 +139,10 @@ func (l *CoachListener) settle(ctx context.Context, userID uuid.UUID, skillKey, 
 		l.warn(ctx, "settle.find", err)
 		return
 	}
-	updated, err := l.Tasks.SetStatus(ctx, userID, t.ID, domain.TaskStatusDone)
-	if err != nil {
+	if _, err := l.Tasks.SetStatus(ctx, userID, t.ID, domain.TaskStatusDone); err != nil {
 		l.warn(ctx, "settle.set", err)
 		return
 	}
-	_ = updated
 	if _, err := l.Tasks.AddComment(ctx, domain.TaskComment{
 		TaskID:     t.ID,
 		AuthorKind: domain.TaskCommentAuthorAI,
@@ -243,7 +240,3 @@ func skillKeyForSysDesignSection(section string) string {
 	return "sd_basics"
 }
 
-// Last-import guard for time so a future move-to-future-due-at field
-// using time.Time keeps a live import in this file even if all visible
-// usages are removed.
-var _ = time.Time{}

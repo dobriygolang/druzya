@@ -16,9 +16,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ReadingRepoPG — Postgres impl of domain.ReadingRepo (Wave 4 of
-// docs/feature/english.md). Sibling of PublishRepoPG / YjsRepoPG —
-// same per-feature struct pattern.
+// ReadingRepoPG — Postgres impl of domain.ReadingRepo. Sibling of
+// PublishRepoPG / YjsRepoPG — same per-feature struct pattern.
 type ReadingRepoPG struct {
 	pool *pgxpool.Pool
 }

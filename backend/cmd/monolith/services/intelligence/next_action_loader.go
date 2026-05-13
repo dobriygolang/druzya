@@ -15,16 +15,16 @@ import (
 // ResourceEngagementReader. Помещаем в bootstrap-слой чтобы UC не
 // импортировал readers напрямую (DI через ports interface).
 //
-// Calendar pivot 2026-05-04: CalendarReader/UpcomingEvents removed alongside
-// personal_events drop. Coach next-action no longer factors interview-window
-// pressure; mocks + track step + fork mode remain the active inputs.
+// CalendarReader/UpcomingEvents was dropped alongside personal_events;
+// coach next-action no longer factors interview-window pressure. Mocks
+// + track step + fork mode remain the active inputs.
 //
-// Phase J 2026-05-12: focusReflections reader added so prompt видит recent
-// pomodoro grade+notes — direct lever для «previously stuck on X» rationale.
+// focusReflections reader feeds the prompt with recent pomodoro
+// grade+notes — direct lever for «previously stuck on X» rationale.
 //
-// Phase K M5 2026-05-13: mlProfile reader added so prompt swaps default
-// Go-senior framing for ML overlay когда user committed to ML offer track
-// (primary_goal=ml_offer) OR using Hone with active_track=ml.
+// mlProfile reader swaps default Go-senior framing for ML overlay when
+// the user committed to the ML offer track (primary_goal=ml_offer) or
+// is using Hone with active_track=ml.
 type nextActionLoader struct {
 	fork             *intelInfra.ForkProgressReader
 	resourceTrail    *intelInfra.ResourceEngagementReader
@@ -73,13 +73,13 @@ func (l *nextActionLoader) LoadNextActionContext(
 				SkillKeys: t.CurrentStepSkills,
 				// CheckpointKeys требует tracks-domain reader — отложен,
 				// будет проброшен из tracks-bootstrap или через отдельный
-				// reader в Phase 2 UI handler scope.
+				// reader.
 			}
 		}
 	}
 	_ = intelDomain.ActiveTrack{}
 
-	// Phase J — recent focus reflections (last 14 days). Cap'нем cпеc'ом
+	// Recent focus reflections (last 14 days). Cap'нем cпеc'ом
 	// 5 entries в prompt builder'е; reader возвращает up to 1000 чтобы
 	// downstream Stats/Recall тоже мог использовать тот же snapshot.
 	if l.focusReflections != nil {
@@ -93,9 +93,9 @@ func (l *nextActionLoader) LoadNextActionContext(
 		}
 	}
 
-	// Phase K M5 — ML profile detection (primary_goal=ml_offer OR
-	// active_track=ml). Reader is fail-soft (returns IsML=false on any
-	// error) so UC деградирует к default-prompt'у gracefully.
+	// ML profile detection (primary_goal=ml_offer OR active_track=ml).
+	// Reader is fail-soft (returns IsML=false on any error) so UC
+	// деградирует к default-prompt'у gracefully.
 	if l.mlProfile != nil {
 		if profile, err := l.mlProfile.GetMLProfile(ctx, userID); err == nil {
 			out.ML = profile

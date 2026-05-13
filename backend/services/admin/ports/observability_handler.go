@@ -1,5 +1,5 @@
 // observability_handler.go — chi-direct admin endpoints for the three
-// observability panels (Wave 3.5.x of docs/feature/plan.md):
+// observability panels:
 //
 //	GET  /admin/observability/tracks        → track-kind distribution
 //	GET  /admin/observability/english-hr    → English HR mock stats

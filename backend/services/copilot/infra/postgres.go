@@ -165,7 +165,7 @@ func (r *Conversations) ListForUser(ctx context.Context, userID uuid.UUID, curso
 	return out, next, nil
 }
 
-// ResetModelsNotIn — Phase VII: при tier-downgrade (например max→free)
+// ResetModelsNotIn — при tier-downgrade (например max→free)
 // сбрасывает conv.Model для conversations, чьи pinned-модели больше не
 // доступны юзеру. На next turn такие conv'ы упадут в DefaultModelID
 // path в Analyze.Do (Turbo для Free) — юзер видит continuation вместо

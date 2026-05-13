@@ -106,8 +106,8 @@ func (uc *GenerateInsights) now() time.Time {
 // Не импортируем shared/pkg/rediscache напрямую — caller (bootstrap)
 // заворачивает concrete *rediscache.Cache[[]Insight] в этот interface.
 //
-// Phase D4: backed by Redis (was in-memory ttlcache до R6 conflict resolution).
-// Cross-instance consistency: invalidate в одной replica виден всем. Pattern-
+// Backed by Redis. Cross-instance consistency: invalidate в одной
+// replica виден всем. Pattern-
 // delete `insights:{uid}:*` для per-user invalidation.
 type InsightsListCache interface {
 	Get(ctx context.Context, key string) ([]domain.Insight, bool)
@@ -182,7 +182,7 @@ func insightsCacheKey(userID uuid.UUID, surface domain.InsightSurface, limit int
 // insightsCacheInvalidator — caller (Generate / Ack) уведомляет
 // что user'ские insights могли поменяться.
 //
-// Phase D4: Redis-backed cache supports pattern-delete (`insights:{uid}:*`),
+// Redis-backed cache supports pattern-delete (`insights:{uid}:*`),
 // так что не нужно перебирать все surface×limit комбинации — один SCAN+DEL.
 // Fallback на per-key Delete остаётся работающим для in-memory backends.
 type insightsCacheInvalidator struct {

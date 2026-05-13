@@ -8,9 +8,9 @@ import (
 	"druz9/shared/enums"
 )
 
-// Sysanalyst (системный аналитик) mock prompts — Wave 7 of
-// docs/feature/plan.md. Free-form interview round covering the standard
-// sysanalyst curriculum: requirements engineering / UML / integration
+// Sysanalyst (системный аналитик) mock prompts — free-form interview
+// round covering the standard sysanalyst curriculum: requirements
+// engineering / UML / integration
 // patterns / data design / process. No algorithmic task at session
 // create (gated by Section.IsTaskBased() == false).
 //

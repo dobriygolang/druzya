@@ -1,6 +1,6 @@
 // Package domain — telemetry bounded context. Opt-in product analytics layer
 // для Hone/Cue/web. Не PII, не identity tracking — measure user behavior
-// чтобы Phase B-I roadmap шипал на signal, не на guess.
+// чтобы roadmap шипал на signal, не на guess.
 package domain
 
 import (
@@ -50,8 +50,8 @@ type Event struct {
 	Properties map[string]string
 }
 
-// Consent — opt-in choice по конкретной surface. Phase J / X3 (P1).
-// Default (нет row) интерпретируется на клиенте: hone/web = banner-then-fire,
+// Consent — opt-in choice по конкретной surface. Default (нет row)
+// интерпретируется на клиенте: hone/web = banner-then-fire,
 // cue = silent-until-explicit.
 type Consent struct {
 	UserID         uuid.UUID

@@ -1,6 +1,4 @@
 // Package tutor wires the tutor bounded context into the monolith.
-// Wave 2 of docs/feature/tutor.md (tutor as distribution channel).
-//
 // The proto's PeekInvite RPC is intentionally PUBLIC (the /invite/{code}
 // landing page must render before student auth). The REST gate in
 // router.go whitelists the corresponding GET path.
@@ -63,11 +61,11 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 		ListStudentsUC:     &tutorApp.ListStudents{Repo: repo},
 		ListMyTutorsUC:     &tutorApp.ListMyTutors{Repo: repo},
 		GetTutorActivityUC: &tutorApp.GetTutorActivity{Repo: repo, Now: d.Now},
-		// Phase K T6 (2026-05-12) — student-facing tutor activity surface
-		// для /today + Hone home rail. *Postgres satisfies both Repo (для
-		// ListStudentTutors) и EventRepo (для TutorsActivitySummary).
+		// Student-facing tutor activity surface for /today + Hone home rail.
+		// *Postgres satisfies both Repo (for ListStudentTutors) and EventRepo
+		// (for TutorsActivitySummary).
 		ListMyTutorsActivityUC: &tutorApp.ListMyTutorsActivity{Repo: repo, Stats: repo, Now: d.Now},
-		// Wave 5.2 group events on circles.
+		// Group events on circles.
 		CreateGroupEventUC:                  &tutorApp.CreateGroupEvent{Repo: repo, Now: d.Now},
 		JoinEventUC:                         &tutorApp.JoinEvent{Repo: repo, Now: d.Now},
 		LeaveEventUC:                        &tutorApp.LeaveEvent{Repo: repo},
@@ -80,7 +78,7 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 			Snapshot: getSnapshot,
 			Briefer:  tdeps.Briefer,
 		},
-		// Wave 5.1 — assignments. *Postgres satisfies domain.AssignmentRepo
+		// Assignments. *Postgres satisfies domain.AssignmentRepo
 		// (CreateAssignment / List* / MarkComplete / ArchiveAssignment +
 		// the shared EnsureRelationship). Same struct, three interfaces.
 		PushAssignmentUC:          pushAssignmentUC,
@@ -88,8 +86,8 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 		ListPendingAssignmentsUC:  &tutorApp.ListPendingForStudent{Repo: repo},
 		CompleteAssignmentUC:      &tutorApp.MarkAssignmentComplete{Repo: repo, Now: d.Now},
 		ArchiveAssignmentUC:       &tutorApp.ArchiveAssignment{Repo: repo, Now: d.Now},
-		// Wave 5.2a — broadcast: needs both the Students repo (Repo) and
-		// the AssignmentRepo. *Postgres satisfies both.
+		// Broadcast needs both the Students repo (Repo) and the
+		// AssignmentRepo. *Postgres satisfies both.
 		BroadcastAssignmentUC: &tutorApp.BroadcastAssignment{
 			Students:    repo,
 			Assignments: repo,
@@ -97,7 +95,7 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 		},
 		InviteByUsernameUC:        &tutorApp.InviteByUsername{Repo: repo, Now: d.Now},
 		ListPendingInvitesForMeUC: &tutorApp.ListPendingInvitesForMe{Repo: repo, Now: d.Now},
-		// Phase 3.3 — tutor session notes-pad.
+		// Tutor session notes-pad.
 		GetSessionNotesUC:  &tutorApp.GetSessionNotes{Repo: repo, Notes: repo},
 		SaveSessionNotesUC: &tutorApp.SaveSessionNotes{Repo: repo, Notes: repo},
 		PushSharedReadingUC: &tutorApp.PushSharedReading{
@@ -110,14 +108,14 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 			Now: d.Now,
 		},
 		ListSharedReadingUC: &tutorApp.ListSharedReading{Materials: repo},
-		// Stream D (2026-05-12) — reading paths CRUD. *Postgres satisfies
-		// domain.ReadingPathRepo (5th interface on the same struct).
+		// Reading paths CRUD. *Postgres satisfies domain.ReadingPathRepo
+		// (5th interface on the same struct).
 		ListReadingPathsUC:   &tutorApp.ListReadingPaths{Repo: repo},
 		CreateReadingPathUC:  &tutorApp.CreateReadingPath{Repo: repo, Now: d.Now},
 		UpdateReadingPathUC:  &tutorApp.UpdateReadingPath{Repo: repo, Now: d.Now},
 		ArchiveReadingPathUC: &tutorApp.ArchiveReadingPath{Repo: repo, Now: d.Now},
-		// Phase K T2+T3 (2026-05-12) — path assignment tracking.
-		// *Postgres also satisfies domain.PathAssignmentRepo (6th interface).
+		// Path assignment tracking. *Postgres also satisfies
+		// domain.PathAssignmentRepo (6th interface).
 		AssignReadingPathUC: &tutorApp.AssignReadingPath{
 			Paths:           repo,
 			PathAssignments: repo,
@@ -126,8 +124,8 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 		},
 		ListMyActivePathAssignmentsUC: &tutorApp.ListMyActivePathAssignments{Repo: repo},
 		AdvancePathStepUC:             &tutorApp.AdvancePathStep{Repo: repo, Now: d.Now},
-		// Phase K T1 (2026-05-12) — tutor directory MVP. *Postgres also
-		// satisfies domain.DirectoryRepo (7th interface on the same struct).
+		// Tutor directory. *Postgres also satisfies domain.DirectoryRepo
+		// (7th interface on the same struct).
 		GetMyDirectoryProfileUC:   &tutorApp.GetMyDirectoryProfile{Repo: repo},
 		UpsertDirectoryProfileUC:  &tutorApp.UpsertDirectoryProfile{Repo: repo, Now: d.Now},
 		ListDirectoryTutorsUC:     &tutorApp.ListDirectoryTutors{Repo: repo},
@@ -135,15 +133,15 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 		ListPendingApplicationsUC: &tutorApp.ListPendingApplications{Repo: repo},
 		AcceptApplicationUC:       &tutorApp.AcceptApplication{Repo: repo, Now: d.Now},
 		DeclineApplicationUC:      &tutorApp.DeclineApplication{Repo: repo, Now: d.Now},
-		// Wave 5.2b — calendar events. *Postgres satisfies EventRepo
-		// (one struct now satisfies four interfaces: Repo + SnapshotRepo
-		// + AssignmentRepo + EventRepo).
+		// Calendar events. *Postgres satisfies EventRepo (one struct now
+		// satisfies four interfaces: Repo + SnapshotRepo + AssignmentRepo +
+		// EventRepo).
 		CreateEventUC:                  &tutorApp.CreateEvent{Repo: repo, Now: d.Now},
 		CancelEventUC:                  &tutorApp.CancelEvent{Repo: repo, Now: d.Now},
 		CompleteEventUC:                &tutorApp.CompleteEvent{Repo: repo, Now: d.Now},
 		ListEventsForTutorUC:           &tutorApp.ListEventsForTutor{Repo: repo},
 		ListUpcomingEventsForStudentUC: &tutorApp.ListUpcomingEventsForStudent{Repo: repo, Now: d.Now},
-		// Phase K T4 (2026-05-13) — session-note visibility / sharing.
+		// Session-note visibility / sharing.
 		SetSessionNoteVisibilityUC:         &tutorApp.SetSessionNoteVisibility{Repo: repo, Now: d.Now},
 		ListSharedSessionNotesForStudentUC: &tutorApp.ListSharedSessionNotesForStudent{Repo: repo},
 
@@ -166,10 +164,10 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 			r.Post("/tutor/invites/accept", transcoder.ServeHTTP)
 			r.Get("/tutor/invites/peek/{code}", transcoder.ServeHTTP) // PUBLIC
 			r.Get("/tutor/students", transcoder.ServeHTTP)
-			r.Get("/tutor/my-tutors", transcoder.ServeHTTP)          // Wave 9.4
-			r.Get("/tutor/my-tutors/activity", transcoder.ServeHTTP) // Phase K T6
-			r.Get("/tutor/activity", transcoder.ServeHTTP)           // Wave 9.5
-			// Wave 5.2 group events.
+			r.Get("/tutor/my-tutors", transcoder.ServeHTTP)
+			r.Get("/tutor/my-tutors/activity", transcoder.ServeHTTP)
+			r.Get("/tutor/activity", transcoder.ServeHTTP)
+			// Group events.
 			r.Post("/tutor/events/group", transcoder.ServeHTTP)
 			r.Post("/tutor/events/{event_id}/join", transcoder.ServeHTTP)
 			r.Post("/tutor/events/{event_id}/leave", transcoder.ServeHTTP)
@@ -180,34 +178,34 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 			r.Get("/tutor/students/{student_id}/brief", transcoder.ServeHTTP)
 			r.Get("/tutor/students/{student_id}/notes", transcoder.ServeHTTP)
 			r.Put("/tutor/students/{student_id}/notes", transcoder.ServeHTTP)
-			// Wave 5.1 — assignments REST aliases.
+			// Assignments REST aliases.
 			r.Post("/tutor/students/{student_id}/assignments", transcoder.ServeHTTP)
 			r.Get("/tutor/students/{student_id}/assignments", transcoder.ServeHTTP)
 			r.Get("/tutor/assignments/pending", transcoder.ServeHTTP)
 			r.Post("/tutor/assignments/{assignment_id}/complete", transcoder.ServeHTTP)
 			r.Post("/tutor/assignments/{assignment_id}/archive", transcoder.ServeHTTP)
-			r.Post("/tutor/assignments/broadcast", transcoder.ServeHTTP) // Wave 5.2a
+			r.Post("/tutor/assignments/broadcast", transcoder.ServeHTTP)
 			r.Post("/tutor/shared-reading", transcoder.ServeHTTP)
 			r.Get("/tutor/shared-reading", transcoder.ServeHTTP)
-			// Wave «Invite by @username».
+			// Invite by @username.
 			r.Post("/tutor/invites/by-username", transcoder.ServeHTTP)
 			r.Get("/tutor/invites/pending-for-me", transcoder.ServeHTTP)
-			// Wave 5.2b — events REST aliases.
+			// Events REST aliases.
 			r.Post("/tutor/events", transcoder.ServeHTTP)
 			r.Get("/tutor/events", transcoder.ServeHTTP)
 			r.Get("/tutor/events/upcoming", transcoder.ServeHTTP)
 			r.Post("/tutor/events/{event_id}/cancel", transcoder.ServeHTTP)
-			r.Post("/tutor/events/{event_id}/complete", transcoder.ServeHTTP) // Wave 5.2d
-			// Stream D (2026-05-12) — reading paths REST aliases.
+			r.Post("/tutor/events/{event_id}/complete", transcoder.ServeHTTP)
+			// Reading paths REST aliases.
 			r.Get("/tutor/paths", transcoder.ServeHTTP)
 			r.Post("/tutor/paths", transcoder.ServeHTTP)
 			r.Put("/tutor/paths/{path_id}", transcoder.ServeHTTP)
 			r.Post("/tutor/paths/{path_id}/archive", transcoder.ServeHTTP)
-			// Phase K T2+T3 (2026-05-12) — path assignment REST aliases.
+			// Path assignment REST aliases.
 			r.Post("/tutor/paths/{path_id}/assign", transcoder.ServeHTTP)
 			r.Get("/tutor/paths/active", transcoder.ServeHTTP)
 			r.Post("/tutor/path-assignments/{assignment_id}/advance", transcoder.ServeHTTP)
-			// Phase K T1 (2026-05-12) — tutor directory REST aliases.
+			// Tutor directory REST aliases.
 			r.Get("/tutor/directory/me", transcoder.ServeHTTP)
 			r.Put("/tutor/directory/me", transcoder.ServeHTTP)
 			r.Get("/tutor/directory", transcoder.ServeHTTP)
@@ -218,9 +216,9 @@ func NewTutor(d monolithServices.Deps, tdeps TutorDeps) TutorModule {
 		},
 	}
 
-	// AssignmentDueSoonWorker — Wave pivot 2026-05-02. Notifies the student
-	// 24h before due_at via notify-сервис. Idempotent through tutor_assignments
-	// .due_notified_at column. Only runs if notify is wired.
+	// AssignmentDueSoonWorker notifies the student 24h before due_at via the
+	// notify service. Idempotent through tutor_assignments.due_notified_at.
+	// Only runs if notify is wired.
 	if tdeps.NotifySend != nil {
 		w := &tutorApp.AssignmentDueSoonWorker{
 			Repo:         repo,

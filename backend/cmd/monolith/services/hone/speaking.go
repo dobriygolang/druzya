@@ -1,4 +1,4 @@
-// speaking.go — Phase J / H4 (P1) Speaking modality wiring.
+// speaking.go — Speaking modality wiring.
 //
 // Cross-context wiring: hone-side use cases consume an STT interface
 // (hone/domain.SpeakingSTT) — the concrete adapter wraps the existing

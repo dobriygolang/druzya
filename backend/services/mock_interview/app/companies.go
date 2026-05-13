@@ -1,7 +1,7 @@
 // Package app — use cases for the mock interview admin surface.
 //
-// Handlers struct is the single seam between ports/ and infra/. Phase A
-// covers admin CRUD plus the create-pipeline stub used by the /mock picker.
+// Handlers struct is the single seam between ports/ and infra/. Covers
+// admin CRUD plus the create-pipeline stub used by the /mock picker.
 package app
 
 import (

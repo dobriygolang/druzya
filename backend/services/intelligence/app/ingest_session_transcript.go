@@ -48,7 +48,7 @@ type IngestSessionTranscript struct {
 	Repo   domain.InterviewSessionRepo
 	Memory MemoryWriter // optional, nil-safe
 	Now    func() time.Time
-	// StruggleMark — X5 (Phase J P2). Optional. When non-nil, the UC scans
+	// StruggleMark — optional. When non-nil, the UC scans
 	// in.Stages and emits a MarkAtlasStruggle for each stage with
 	// self_rating ≤2 (the calibrated "low rating" threshold matches the
 	// product spec). Idempotent — repeated ingestion writes latest.

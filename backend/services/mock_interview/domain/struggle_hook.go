@@ -1,4 +1,4 @@
-// struggle_hook.go — Phase J Wave 3 / O (X5 cross-product handoff).
+// struggle_hook.go — cross-product handoff.
 //
 // Narrow side-effect channel from mock_interview into the intelligence
 // atlas-struggle store. Same shape as MemoryHook — the orchestrator

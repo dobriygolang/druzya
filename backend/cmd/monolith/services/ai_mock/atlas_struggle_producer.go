@@ -1,4 +1,4 @@
-// atlas_struggle_producer.go — Phase J Wave 3 / O (X5 cross-product handoff).
+// atlas_struggle_producer.go — cross-product handoff.
 //
 // Bridges mock_interview.Orchestrator's StruggleHook side-effect into
 // intelligence.MarkAtlasStruggle. Same pattern as mockMemoryHook /

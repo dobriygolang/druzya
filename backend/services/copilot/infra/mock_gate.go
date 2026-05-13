@@ -22,7 +22,7 @@ import (
 )
 
 // MockSessionGate is the postgres-backed implementation of
-// domain.MockSessionGate. Phase-4 ADR-001 (Wave 3).
+// domain.MockSessionGate per ADR-001.
 type MockSessionGate struct {
 	pool *pgxpool.Pool
 }

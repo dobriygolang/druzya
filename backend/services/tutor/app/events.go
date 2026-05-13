@@ -207,7 +207,7 @@ func (uc *ListEventsForTutor) Do(ctx context.Context, tutorID uuid.UUID, limit i
 	return ListEventsForTutorOutput{Items: out, NextCursor: next}, nil
 }
 
-// ── Wave 5.2 group events on circles ─────────────────────────────
+// ── Group events on circles ────────────────────────────────────────
 
 // EventCapacityMax bounds capacity to a sane upper limit. Past 200
 // the event is no longer a «class» but a webinar — different surface.
@@ -358,7 +358,7 @@ func (uc *GetEventRSVPCount) Do(ctx context.Context, eventID uuid.UUID) (int, er
 	return count, nil
 }
 
-// GetTutorActivity — Wave 9.5 analytics aggregate use case. windowDays
+// GetTutorActivity — analytics aggregate use case. windowDays
 // defaults to 30 in the repo. Pure pass-through with the standard
 // zero-id guard.
 type GetTutorActivity struct {

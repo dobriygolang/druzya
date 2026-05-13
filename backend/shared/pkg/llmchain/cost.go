@@ -1,4 +1,4 @@
-// cost.go — Phase VIII cost telemetry. Per-model USD rate table +
+// cost.go — cost telemetry. Per-model USD rate table +
 // observation hook. Цель: ops видит сколько $ уходит на coach / copilot
 // в день, и админ принимает решение «пора переключить task X на более
 // дешёвую модель».

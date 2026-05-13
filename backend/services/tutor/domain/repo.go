@@ -52,8 +52,8 @@ type Repo interface {
 	// «archived» tab if/when needed.
 	ListTutorStudents(ctx context.Context, tutorID uuid.UUID) ([]Relationship, error)
 
-	// ListStudentTutors — Wave 9.4. Returns this student's active
-	// tutors (multi-tutor support: schema allows e.g. English-tutor +
+	// ListStudentTutors returns this student's active tutors
+	// (multi-tutor support: schema allows e.g. English-tutor +
 	// Math-tutor concurrently). Same active-only filter.
 	ListStudentTutors(ctx context.Context, studentID uuid.UUID) ([]Relationship, error)
 

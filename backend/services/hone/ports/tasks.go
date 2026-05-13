@@ -159,7 +159,7 @@ func (s *HoneServer) AddTaskComment(
 	return connect.NewResponse(taskCommentToProto(c)), nil
 }
 
-// ── Phase J / H3 (P1, 2026-05-12) — UpdateTaskKind + BulkAutoCategorise ──
+// ── UpdateTaskKind + BulkAutoCategorise ──────────────────────────────
 
 // UpdateTaskKind sets the kind manually and flips manual_kind_override=true
 // so background re-categorisers skip the row.

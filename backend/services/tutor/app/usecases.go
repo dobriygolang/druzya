@@ -144,7 +144,7 @@ func (uc *ListStudents) Do(ctx context.Context, tutorID uuid.UUID) ([]domain.Rel
 	return out, nil
 }
 
-// ListMyTutors — Wave 9.4. Student lists their active tutors. Multiple
+// ListMyTutors — student lists their active tutors. Multiple
 // concurrent tutors are supported by the schema; the use case is a thin
 // pass-through with the standard zero-id guard.
 type ListMyTutors struct {

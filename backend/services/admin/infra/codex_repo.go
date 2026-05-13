@@ -40,7 +40,7 @@ func scanCodexArticle(row pgx.Row) (domain.CodexArticle, error) {
 
 // ListArticles returns codex articles. activeOnly=true filters to active=TRUE.
 //
-// Phase R5: hard LIMIT 500 cap as a defensive guard. The catalogue grows
+// Hard LIMIT 500 cap as a defensive guard. The catalogue grows
 // slowly (≈30-100 entries today, expected ~500 long-term) so a single-page
 // load remains correct UX. If catalogue ever overflows, switch caller to a
 // paginated repo method (cursor on (category, sort_order)).

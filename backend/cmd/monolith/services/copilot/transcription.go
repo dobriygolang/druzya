@@ -31,7 +31,7 @@ import (
 // Никаких model fallback chain'ов: один request → одна модель. Если
 // Groq fail'ит — 502; caller (audio-mac) ретрайт следующий audio chunk.
 //
-// Phase D2 — добавлен WS streaming endpoint `/ws/transcription/stream`.
+// WS streaming endpoint `/ws/transcription/stream`.
 // Реализация: handler аккумулирует BinaryMessage'ы (PCM16 16kHz mono)
 // в окно 1-2s и дёргает StreamingTranscriber. Default impl — GroqWhisperBatch
 // (WAV-wrap + batch /audio/transcriptions). Future: Deepgram / AssemblyAI

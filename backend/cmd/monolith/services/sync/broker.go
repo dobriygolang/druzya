@@ -1,4 +1,4 @@
-// broker.go — in-process pubsub broker for realtime sync push (Phase C-6.2).
+// broker.go — in-process pubsub broker for realtime sync push.
 //
 // Lives in the sync package (microservice-extraction friendly). Externally
 // observed only via the narrow services.SyncBroker interface (Publish*) so

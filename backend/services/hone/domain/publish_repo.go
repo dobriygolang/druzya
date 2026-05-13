@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// PublishRepo — низкоуровневая персистенция Phase C-4 «Publish to web» поверх
+// PublishRepo — низкоуровневая персистенция «Publish to web» поверх
 // колонок hone_notes.public_slug / published_at / encrypted. Держим отдельным
 // интерфейсом (а не методами на NoteRepo), чтобы не разрастать NoteRepo и не
 // тащить publish-семантику в чистый CRUD.

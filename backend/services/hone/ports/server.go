@@ -25,6 +25,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// Compile-time assertion — HoneServer must satisfy the generated
+// druz9v1connect.HoneServiceHandler. Catches signature drift on RPC
+// changes (e.g. adding a new proto method requires a matching method
+// here, otherwise this var declaration won't compile).
+var _ druz9v1connect.HoneServiceHandler = (*HoneServer)(nil)
+
 // ForcePlanLimitPerWindow / ForcePlanWindow — лимит на ручную регенерацию
 // дневного плана. 1 запрос в 5 минут на пользователя защищает LLM-квоту от
 // спама «⌘R, ⌘R, ⌘R» в UI и от случайного цикла при сбое кеш-слоя.
@@ -34,18 +40,6 @@ const (
 	ForcePlanLimitPerWindow = 1
 	ForcePlanWindow         = 5 * time.Minute
 )
-
-// Compile-time assertion — HoneServer satisfies the generated handler. This
-// guard fires the first time `make gen-proto` generates the interface, which
-// is also the first time this package can be compiled.
-//
-// STUB: uncomment once proto is generated (druz9v1connect.HoneServiceHandler
-// doesn't exist yet). Kept commented so the package compiles in isolation.
-//
-// var _ druz9v1connect.HoneServiceHandler = (*HoneServer)(nil)
-
-// Silence unused-import warning until the interface-guard above is enabled.
-var _ = druz9v1connect.NewHoneServiceHandler
 
 // HoneServer adapts hone use cases to Connect.
 type HoneServer struct {

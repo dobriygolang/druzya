@@ -240,8 +240,8 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// Insight upserter port — subscription notify_trial_expiring cron
 	// пишет insight'ы через узкий interface. Wired до NewSubscription.
 	deps.IntelligenceInsightUpserter = intelligenceMod.InsightsRepo
-	// C3 cross-product context — copilot bootstrap wraps в cached
-	// adapter и заинжектит в Suggest + Analyze (Phase J).
+	// Cross-product context — copilot bootstrap wraps в cached
+	// adapter и заинжектит в Suggest + Analyze.
 	deps.IntelligenceUserContext = intelligenceMod.GetUserContextUC
 	// External-activity → coach_episode bridge. Hone AddExternalActivity
 	// UC использует это чтобы AI-tutor recall + daily-brief видели
@@ -275,7 +275,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		// VPS retention sweep — see cleanup_crons.go header for tables/
 		// policies. Pure background, no REST surface.
 		adminServices.NewCleanupCrons(deps),
-		// Phase-4 ADR-001 (Wave 2) — `cohort` removed (feature merged into circles).
+		// Per ADR-001: `cohort` removed (feature merged into circles).
 		&notify.Module,
 		editorServices.NewEditor(deps),
 		podcastServices.NewPodcast(deps),
@@ -306,23 +306,20 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		aiMockServices.NewMockInterview(deps),
 		// Pivot 2026-05-04: calendar bounded context выпилен — нулевые
 		// frontend-вызовы /calendar/events*, ribbon на Hone Today
-		// никогда не материализовался. Phase E1 (migration 00080)
-		// дропнул personal_events table + CalendarReader/UpcomingInterview
+		// никогда не материализовался. Migration 00080 дропнул
+		// personal_events table + CalendarReader/UpcomingInterview
 		// legacy: coach больше не учитывает calendar pressure.
-		// Phase 2 — curated learning Tracks (bounded context tracks).
+		// Curated learning Tracks (bounded context tracks).
 		// Reads are auth-gated so the catalogue can show enrolment state.
 		tracksServices.NewTracks(deps),
-		// Phase A (2026-05-12, brainstorm follow-up) — opt-in product
-		// telemetry. Single batch-write endpoint POST /telemetry/events;
-		// 90-day retention via migration 00102. Без этого Phase B-I roadmap
-		// шипает фичи на guess'ах.
+		// Opt-in product telemetry. Single batch-write endpoint POST
+		// /telemetry/events; 90-day retention via migration 00102.
 		telemetryServices.NewTelemetry(deps),
-		// Wave 2 of docs/feature/tutor.md — tutor as distribution
-		// channel. Briefer wired via llmchain (Wave 2.5); the
-		// constructor returns nil when LLMChain is nil (offline /
+		// Tutor as distribution channel. Briefer wired via llmchain;
+		// the constructor returns nil when LLMChain is nil (offline /
 		// tests) and the use-case falls back to snapshot-only.
 		// TutorDisplay still nil — the profile display-name reader
-		// plugs in alongside /tutor frontend (Wave 2.6).
+		// plugs in alongside /tutor frontend.
 		tutorMod.Module,
 		// AI-tutor (см docs/feature/ai-tutor.md). Reuse'ит существующий
 		// tutor-сервис как relationship-store, использует llmchain для

@@ -1,6 +1,6 @@
 // Memory entries CRUD + focus reflections + cross-product user context +
-// atlas struggle marks RPCs. Moved out of server.go (Wave 10 split,
-// 2026-05-13). Pure relocate.
+// atlas struggle marks RPCs. Split out of server.go to keep file size
+// manageable.
 package ports
 
 import (
@@ -149,7 +149,7 @@ func memorySourceLabel(k domain.EpisodeKind) string {
 	return ""
 }
 
-// ── H2 Focus reflection persistence handlers (Phase J 2026-05-12) ────────
+// ── Focus reflection persistence handlers ────────────────────────────────
 
 // SaveFocusReflection implements druz9.v1.IntelligenceService/SaveFocusReflection.
 // Idempotent on (user_id, session_id) — Hone outbox replay безопасен.
@@ -230,7 +230,7 @@ func (s *IntelligenceServer) ListFocusReflections(
 	return connect.NewResponse(out), nil
 }
 
-// ── C3 Cross-product context handler (Phase J 2026-05-12) ────────────────
+// ── Cross-product context handler ────────────────────────────────────────
 
 // GetUserContext implements druz9.v1.IntelligenceService/GetUserContext.
 // Returns the compact bundle the Cue copilot uses to personalise its
@@ -298,7 +298,7 @@ func userContextToProto(b app.UserContextBundle) *pb.UserContext {
 	return out
 }
 
-// ── X5 Atlas struggle handlers (Phase J P2 2026-05-12) ──────────────────
+// ── Atlas struggle handlers ─────────────────────────────────────────────
 //
 // All three handlers are nil-safe; tests / partial bootstrap can call them
 // without wiring the UC trio. Auth-scoped via requireUser — atlas marks are

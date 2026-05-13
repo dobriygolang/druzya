@@ -470,8 +470,8 @@ func (c *CachedRepo) SetUserTracks(ctx context.Context, userID uuid.UUID, items 
 	return out, nil
 }
 
-// UpsertAppInstall — pass-through (Phase J / X1 (P0)). Heartbeats fire
-// at most a few times per session per app; caching adds nothing.
+// UpsertAppInstall — pass-through. Heartbeats fire at most a few
+// times per session per app; caching adds nothing.
 func (c *CachedRepo) UpsertAppInstall(
 	ctx context.Context,
 	userID uuid.UUID,

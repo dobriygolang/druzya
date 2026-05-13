@@ -3,9 +3,9 @@ package domain
 import "time"
 
 // Observability domain types — shapes returned by infra.Observability,
-// consumed by chi-direct admin handlers (Wave 3.5.x of
-// docs/feature/plan.md). Read-only by design — admin views over data
-// owned by other bounded contexts (user_persona_tracks, mock_sessions).
+// consumed by chi-direct admin handlers. Read-only by design — admin
+// views over data owned by other bounded contexts (user_persona_tracks,
+// mock_sessions).
 
 // TrackDistributionRow — one row per track_kind enum value with
 // per-track adoption stats. Includes tracks with zero users (LEFT

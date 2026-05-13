@@ -3,8 +3,8 @@
 // (not in services/tutor) so the tutor module's go.mod stays free of
 // llmchain — keeping the bounded context's import graph small.
 //
-// Wave 2.5 of docs/feature/plan.md. The prompt deliberately stays
-// numbers-only: snapshot has no PII (note bodies, message text, etc.)
+// The prompt deliberately stays numbers-only: snapshot has no PII
+// (note bodies, message text, etc.)
 // and the brief MUST not invent any.
 package tutor
 

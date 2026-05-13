@@ -1,5 +1,5 @@
 // observability_repo.go — read-only aggregations for the admin
-// observability panels (Wave 3.5.x of docs/feature/plan.md).
+// observability panels.
 //
 // Three queries, one struct:
 //   - TrackDistribution — counts per user_persona_tracks.track

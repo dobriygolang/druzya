@@ -151,7 +151,7 @@ type oaiUsage struct {
 
 func (d *openAIDriver) Provider() Provider { return d.provider }
 
-// Capabilities — Phase IV: driver caps на wire-уровне. Tools пока ни
+// Capabilities — driver caps на wire-уровне. Tools пока ни
 // одна задача не использует, поэтому false по умолчанию для всех
 // OpenAI-compat драйверов; при необходимости конкретный provider-файл
 // может выставить true (как с supportsVision/supportsJSONMode).

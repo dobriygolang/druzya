@@ -1,5 +1,5 @@
 // focus_reflections_postgres.go — pgx adapter over focus_reflections
-// (migration 00103). H2 (Phase J 2026-05-12).
+// (migration 00103).
 //
 // Insert использует ON CONFLICT (user_id, session_id) DO UPDATE так что
 // idempotent replay из Hone outbox безопасен — повторная попытка возвращает

@@ -53,7 +53,7 @@ var (
 		[]string{"provider", "reason"},
 	)
 
-	// Phase VIII cost telemetry. Tokens + RUB cost уже считаются в
+	// Cost telemetry. Tokens + RUB cost уже считаются в
 	// shared/pkg/metrics (LLMTokensTotal + LLMCostRubTotal через
 	// RecordLLMUsage). Здесь добавляем USD-side с per-task labelling
 	// (shared-metrics labellит только по model'и) и счётчик unknown
@@ -92,8 +92,8 @@ func incFallback(p Provider, reason string) {
 	llmFallbackTotal.WithLabelValues(string(p), reason).Inc()
 }
 
-// observeCost — Phase VIII: пишем tokens (через shared RecordLLMUsage) +
-// USD cost (per provider+task — оригинал к нашей цепочке). Caller передаёт
+// observeCost пишет tokens (через shared RecordLLMUsage) + USD cost
+// (per provider+task — оригинал к нашей цепочке). Caller передаёт
 // фактически-ушедший model id (Response.Model echo) — для virtual chains
 // резолвится в конкретную модель.
 //

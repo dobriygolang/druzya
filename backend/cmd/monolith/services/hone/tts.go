@@ -1,4 +1,4 @@
-// tts.go — Phase K Wave 9 (E4 P1) TTS provider + MinIO store wiring.
+// tts.go — TTS provider + MinIO store wiring.
 //
 // Free-tier cascade: Cloudflare MeloTTS only пока (`@cf/myshell-ai/melotts`)
 // — Sergey's rule "free LLM only", cascade в feedback_providers.md

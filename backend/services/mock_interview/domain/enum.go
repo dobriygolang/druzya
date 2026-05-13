@@ -1,4 +1,4 @@
-// Package domain — mock_interview bounded context (Phase A of ADR-002).
+// Package domain — mock_interview bounded context (per ADR-002).
 //
 // String-typed enums backed 1:1 by Postgres ENUM types defined in migration
 // 00043. Keeping them as string aliases (rather than int constants) lets us
@@ -15,8 +15,8 @@ const (
 	StageCoding     StageKind = "coding"
 	StageSysDesign  StageKind = "sysdesign"
 	StageBehavioral StageKind = "behavioral"
-	// StageMLCoding — ML coding stage (Phase K M3+M4 2026-05-12). Carries
-	// same wire shape as StageCoding (task_solve attempt + optional
+	// StageMLCoding — ML coding stage. Carries the same wire shape as
+	// StageCoding (task_solve attempt + optional
 	// follow-up question_answers) and shares the algo/coding sandbox
 	// runner, но routed to a separate judge prompt (ML-aware rubric:
 	// correctness of math/algorithm choice + idiomaticity for numpy/
@@ -27,7 +27,7 @@ const (
 	// path: orchestrator detects sandbox-error and falls back to LLM-only
 	// rubric grading via the same hybrid path as StageCoding.
 	StageMLCoding StageKind = "ml_coding"
-	// StageMLSystemDesign — ML system design stage (Phase K M6 2026-05-13).
+	// StageMLSystemDesign — ML system design stage.
 	// Recsys / ranking / candidate-gen → light → heavy stack / training
 	// pipeline / serving SLO architecture. Wire shape mirrors StageSysDesign:
 	// one sysdesign_canvas attempt seeded по materialiseSysDesignAttempts;
@@ -36,8 +36,8 @@ const (
 	// ML-system bias через ReferenceCriteria seed (см. company_questions
 	// для google-ml/meta-ai/anthropic/openai). NO sandbox path.
 	StageMLSystemDesign StageKind = "ml_system_design"
-	// StageMLTheory — ML theory stage (Phase K M6 2026-05-13). Deep learning
-	// fundamentals quiz: attention math / BatchNorm vs LayerNorm /
+	// StageMLTheory — ML theory stage. Deep learning fundamentals quiz:
+	// attention math / BatchNorm vs LayerNorm /
 	// optimizers / gradient flow / regularization / scaling laws. Wire
 	// shape — question_pool (same as StageHR/StageBehavioral): one
 	// question_answer attempt per default + optional company-overlay

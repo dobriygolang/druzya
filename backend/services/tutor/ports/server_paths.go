@@ -128,7 +128,7 @@ func (s *TutorServer) ArchiveReadingPath(
 	return connect.NewResponse(&pb.TutorArchiveReadingPathResponse{}), nil
 }
 
-// ── Path assignments (Phase K T2+T3, 2026-05-12) ──────────────────────
+// ── Path assignments ───────────────────────────────────────────────────
 
 func (s *TutorServer) AssignReadingPath(
 	ctx context.Context,

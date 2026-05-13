@@ -1,6 +1,6 @@
 //go:generate mockgen -package mocks -destination mocks/memory_mock.go -source memory.go
 // Memory layer types — coach episodes (single store for all coach
-// memory). Phase B: brief generations + user reactions + side-effect
+// memory). Holds brief generations + user reactions + side-effect
 // events from hone (reflections / standups / plan-skip-or-complete /
 // notes / focus-sessions).
 package domain
@@ -56,8 +56,8 @@ const (
 	// из Cue desktop. Coach recall видит «вчера на Google interview struggled
 	// with sharding» как один episode вместо storm'а conversation turns.
 	EpisodeCueSession EpisodeKind = "cue_session"
-	// EpisodeFocusReflectionAdded — H2 (Phase J). Юзер submit'ит grade
-	// (1-5) + notes после pomodoro. Coach next-action / DailyBrief читает
+	// EpisodeFocusReflectionAdded — юзер submit'ит grade (1-5) + notes
+	// после pomodoro. Coach next-action / DailyBrief читает
 	// these episodes как «previously stuck on X with grade 2». Distinct
 	// from EpisodeReflectionAdded (legacy hone_notes-based reflection):
 	// этот episode carries structured grade + duration в payload.
@@ -122,9 +122,9 @@ type EpisodeRepo interface {
 	// one query. Used by recall recency tails to avoid one SQL round-trip per kind.
 	LatestPerKind(ctx context.Context, userID uuid.UUID, kinds []EpisodeKind, perKindLimit int) ([]Episode, error)
 	// SearchSimilar returns top-K by cosine over embedding, filtered to
-	// episodes embedded with the given model (Phase I: embedding
-	// isolation — mixed-model cosine is undefined). modelName == ""
-	// disables the filter (test-only path). kinds is optional filter
+	// episodes embedded with the given model (embedding isolation —
+	// mixed-model cosine is undefined). modelName == "" disables the
+	// filter (test-only path). kinds is optional filter
 	// (empty = all kinds). Episodes без embedding'а автоматически пропускаются.
 	SearchSimilar(ctx context.Context, userID uuid.UUID, vec []float32, modelName string, kinds []EpisodeKind, limit int) ([]EpisodeWithScore, error)
 	// PendingEmbeddings returns rows where embedded_at IS NULL. Used by

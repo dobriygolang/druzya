@@ -154,16 +154,16 @@ type NoteRepo interface {
 	// re-embedding the whole corpus is expensive and must be deliberate.
 	MarkStaleForReembed(ctx context.Context, currentModelName string) (int64, error)
 	// WithEmbeddingsForUser loads notes with embeddings produced by the
-	// given model name (Phase I: embedding isolation). Vectors from other
-	// models are excluded — comparing across embedding spaces is undefined
-	// and silently corrupts cosine results. Returns minimal projection
+	// given model name (embedding isolation). Vectors from other models
+	// are excluded — comparing across embedding spaces is undefined and
+	// silently corrupts cosine results. Returns minimal projection
 	// (id, title, embedding) to keep payload small.
 	//
-	// Deprecated в пользу SearchSimilarNotes (Phase IX v2 — push-down
-	// в Postgres через pgvector). Оставлен для тестов / dev-окружений
-	// без pgvector extension.
+	// Deprecated in favour of SearchSimilarNotes (push-down to Postgres
+	// via pgvector). Kept for tests / dev environments without the
+	// pgvector extension.
 	WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID, modelName string) ([]NoteEmbedding, error)
-	// SearchSimilarNotes — Phase IX v2: top-K по cosine distance напрямую
+	// SearchSimilarNotes — top-K по cosine distance напрямую
 	// в Postgres через pgvector `<=>` operator + IVFFlat index. Никакого
 	// Go-cosine, никакого pre-fetch'а корпуса. excludeNoteID можно
 	// передать чтобы отфильтровать seed-note из результатов (использует
@@ -192,8 +192,8 @@ type NoteEmbedding struct {
 	Embedding []float32
 }
 
-// NoteSimilarityHit — Phase IX v2: row из SearchSimilarNotes pgvector
-// результата. Score уже посчитан в Postgres (1 - cosine_distance);
+// NoteSimilarityHit — row из SearchSimilarNotes pgvector результата.
+// Score уже посчитан в Postgres (1 - cosine_distance);
 // не нужно дополнительной cosine math на caller-side.
 type NoteSimilarityHit struct {
 	ID      uuid.UUID

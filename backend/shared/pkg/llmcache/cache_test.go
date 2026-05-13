@@ -56,9 +56,14 @@ func newTestRedis(t *testing.T) *redis.Client {
 func TestSemanticCache_StoreThenHit(t *testing.T) {
 	rds := newTestRedis(t)
 	emb := newFakeEmbedder()
+	// TaskInsightProse сознательно НЕ в DefaultCacheableTasks (см.
+	// TestDefaultCacheableTasks_Sanity). Тут явно opt-in'ем чтобы
+	// тестировать сам Store↔Lookup roundtrip — generic task picker
+	// от пакета не важен для семантики кеша.
 	c := NewSemanticCache(rds, emb, Options{
 		Log:                 slog.New(slog.NewTextHandler(io.Discard, nil)),
 		SimilarityThreshold: 0.99, // одинаковый текст → dot=1.0 → hit
+		CacheableTasks:      []llmchain.Task{llmchain.TaskInsightProse},
 	}).(*SemanticCache)
 	defer c.Close()
 
@@ -77,6 +82,7 @@ func TestSemanticCache_StoreThenHit(t *testing.T) {
 	c2 := NewSemanticCache(rds, emb, Options{
 		Log:                 slog.New(slog.NewTextHandler(io.Discard, nil)),
 		SimilarityThreshold: 0.99,
+		CacheableTasks:      []llmchain.Task{llmchain.TaskInsightProse},
 	}).(*SemanticCache)
 	defer c2.Close()
 
@@ -98,6 +104,7 @@ func TestSemanticCache_DistantPromptMisses(t *testing.T) {
 	c := NewSemanticCache(rds, emb, Options{
 		Log:                 slog.New(slog.NewTextHandler(io.Discard, nil)),
 		SimilarityThreshold: 0.95,
+		CacheableTasks:      []llmchain.Task{llmchain.TaskInsightProse},
 	}).(*SemanticCache)
 	ctx := context.Background()
 	want := llmchain.Response{Content: "apples"}
@@ -107,6 +114,7 @@ func TestSemanticCache_DistantPromptMisses(t *testing.T) {
 	c2 := NewSemanticCache(rds, emb, Options{
 		Log:                 slog.New(slog.NewTextHandler(io.Discard, nil)),
 		SimilarityThreshold: 0.95,
+		CacheableTasks:      []llmchain.Task{llmchain.TaskInsightProse},
 	}).(*SemanticCache)
 	defer c2.Close()
 
@@ -148,6 +156,7 @@ func TestSemanticCache_Eviction(t *testing.T) {
 		MaxEntriesPerTask:   5,
 		SimilarityThreshold: 0.99,
 		AsyncStoreWorkers:   1,
+		CacheableTasks:      []llmchain.Task{llmchain.TaskInsightProse},
 	}).(*SemanticCache)
 	ctx := context.Background()
 
@@ -188,7 +197,8 @@ func TestSemanticCache_StoreAfterCloseDoesNotPanic(t *testing.T) {
 	rds := newTestRedis(t)
 	emb := newFakeEmbedder()
 	c := NewSemanticCache(rds, emb, Options{
-		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		CacheableTasks: []llmchain.Task{llmchain.TaskInsightProse},
 	}).(*SemanticCache)
 
 	_ = c.Close()

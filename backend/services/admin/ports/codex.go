@@ -46,7 +46,7 @@ type CodexServer struct {
 	// to intelligence.Memory.AppendAsync.
 	MemoryAppend MemoryAppendFn
 
-	// Bus is the optional Phase C event publisher. nil-safe.
+	// Bus is the optional event publisher. nil-safe.
 	Bus sharedDomain.Bus
 
 	Log *slog.Logger

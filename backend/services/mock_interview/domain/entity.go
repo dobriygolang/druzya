@@ -13,8 +13,8 @@ import (
 // ReferenceCriteria is the typed shape we enforce for the JSONB
 // `reference_criteria` column on mock_tasks / task_questions / etc.
 //
-// The AI judge (Phase B) reads this deterministically — we keep the shape
-// closed so admin payloads can't smuggle unexpected keys.
+// The AI judge reads this deterministically — we keep the shape closed
+// so admin payloads can't smuggle unexpected keys.
 type ReferenceCriteria struct {
 	MustMention    []string `json:"must_mention"`
 	NiceToHave     []string `json:"nice_to_have"`
@@ -133,8 +133,8 @@ type CompanyStage struct {
 	CompanyQuestionLimit *int
 }
 
-// MockPipeline — one user attempt. Phase A creates the row + skeleton;
-// Phase B's orchestrator advances it.
+// MockPipeline — one user attempt. The row + skeleton are created
+// up-front; the orchestrator advances it.
 type MockPipeline struct {
 	ID              uuid.UUID
 	UserID          uuid.UUID

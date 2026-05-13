@@ -73,7 +73,7 @@ type ConversationDoneFrame struct {
 	RunningSummaryChars int
 	// ContextUsed — true когда backend инжектил cross-product context
 	// (goal/memory/activity/radar) в system-prompt этого turn'а. Cue
-	// рисует subtle hint в expanded окне. C3 (Phase J).
+	// рисует subtle hint в expanded окне.
 	ContextUsed bool
 }
 
@@ -177,9 +177,9 @@ type Analyze struct {
 	TokenQuota *tokenquota.DailyTokenQuota
 
 	// MockGate — server-side defense-in-depth for the "no Cue while a
-	// strict mock is live" rule (Phase-4 ADR-001 Wave 3). The Cue
-	// client also polls CheckBlock; this is the backstop for clients
-	// that didn't. Nil-safe (no enforcement when unset, e.g. tests).
+	// strict mock is live" rule (ADR-001). The Cue client also polls
+	// CheckBlock; this is the backstop for clients that didn't.
+	// Nil-safe (no enforcement when unset, e.g. tests).
 	MockGate domain.MockSessionGate
 
 	// RAGTopK caps how many chunks get injected per turn. Default 5.
@@ -193,14 +193,14 @@ type Analyze struct {
 	Compactor     *compaction.Worker
 	CompactionCfg compaction.Config
 
-	// UserContext — optional cross-product context provider (C3, Phase J).
-	// When wired, Analyze fetches the user's goal + recent Coach memory +
+	// UserContext — optional cross-product context provider. When
+	// wired, Analyze fetches the user's goal + recent Coach memory +
 	// activity + radar BEFORE the LLM call and injects it as a system
 	// message. Same shape as Suggest.UserContext. nil-safe.
 	UserContext domain.UserContextProvider
 
-	// InterviewPrep — optional active-prep provider (C6, Phase J). When
-	// the user uploaded CV+JD via the wizard, Analyze fetches the
+	// InterviewPrep — optional active-prep provider. When the user
+	// uploaded CV+JD via the wizard, Analyze fetches the
 	// parsed shapes and injects a tailored system block AFTER the
 	// cross-product context (same ordering rationale as Suggest). nil-
 	// safe.
@@ -594,8 +594,6 @@ func (uc *Analyze) pump(ctx context.Context, p pumpCtx) {
 		uc.Log.Warn("copilot.Analyze: read quota after commit failed", "err", err)
 	}
 
-	_ = modelEcho // reserved for future fallback logging
-
 	// Context window snapshot для Done frame. priorWindow — это срез
 	// ДО включения текущего user+assistant turn'а, поэтому добавляем +2
 	// для актуального счёта «turns в этой conversation после данного ответа».
@@ -660,8 +658,8 @@ func (uc *Analyze) maybeSubmitCompaction(p pumpCtx, assistantContent string) {
 		turns = append(turns, compaction.Turn{Role: string(enums.MessageRoleAssistant), Content: assistantContent})
 	}
 	fresh := compaction.BuildWindow(turns, p.priorWindow.RunningSummary, uc.compactionConfig())
-	// Phase VI: drift-детект. Если у summary есть attribution (Phase II
-	// уже пишет summary_model) и оно отличается от текущей conv.Model —
+	// Drift-детект. Если у summary есть attribution (summary_model
+	// уже пишется) и оно отличается от текущей conv.Model —
 	// форсим re-compaction даже когда window не дорос до NeedsCompaction.
 	// Иначе stale summary в старом стиле может жить пока окно не наберёт
 	// достаточно turns; на mid-conversation admin swap это видимый drift.
@@ -677,7 +675,7 @@ func (uc *Analyze) maybeSubmitCompaction(p pumpCtx, assistantContent string) {
 			"summary_model", p.conv.SummaryModel,
 			"current_model", p.conv.Model)
 	}
-	// Phase II: pin summary к той же модели что и chat (conv.Model). Иначе
+	// Pin summary к той же модели что и chat (conv.Model). Иначе
 	// summary пишется случайной моделью task_map'а и tone дрейфует на
 	// следующем turn'е когда чат-модель её читает.
 	//

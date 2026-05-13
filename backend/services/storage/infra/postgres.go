@@ -1,6 +1,6 @@
 // Package infra — Postgres-имплементация storage.domain.StorageRepo.
 //
-// SQL перенесён дословно из cmd/monolith/services/storage.go (Phase C).
+// SQL перенесён дословно из cmd/monolith/services/storage.go.
 // Изменения только косметические: pgx.ErrNoRows и ноль-affected-rows
 // маппятся в domain.ErrNotFound, остальные ошибки оборачиваются через
 // fmt.Errorf("storage.X: %w", err).

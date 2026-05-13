@@ -8,8 +8,8 @@ import (
 	"druz9/shared/enums"
 )
 
-// Senior System Design mock prompts (Wave 3.2 of docs/feature/plan.md).
-// Distinct from the engineering SECTION_SYSTEM_DESIGN flow:
+// Senior System Design mock prompts. Distinct from the engineering
+// SECTION_SYSTEM_DESIGN flow:
 //
 //   • SECTION_SYSTEM_DESIGN — task-paired ("design URL shortener with
 //     these throughput / latency requirements"); LLM grades a specific

@@ -1,4 +1,4 @@
-// user_context.go — C3 cross-product context contract (Phase J 2026-05-12).
+// user_context.go — cross-product context contract.
 //
 // The Cue copilot's unique moat vs Cluely / Final Round AI: when the user
 // fires a suggestion mid-interview, the backend already knows their

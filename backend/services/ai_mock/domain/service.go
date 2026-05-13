@@ -90,23 +90,23 @@ func BuildSystemPrompt(s Session, t TaskWithHint, user UserContext, company Comp
 	if IsTechLeadEMSection(s.Section) {
 		return BuildTechLeadSystemPrompt(s, user, company, elapsed)
 	}
-	// Sysanalyst free-form round (Wave 7).
+	// Sysanalyst free-form round.
 	if IsSysanalystSection(s.Section) {
 		return BuildSysanalystSystemPrompt(s, user, company, elapsed)
 	}
-	// Product analyst free-form round (Wave 8).
+	// Product analyst free-form round.
 	if IsProductAnalystSection(s.Section) {
 		return BuildProductAnalystSystemPrompt(s, user, company, elapsed)
 	}
-	// QA free-form round (Wave 9.2).
+	// QA free-form round.
 	if IsQASection(s.Section) {
 		return BuildQASystemPrompt(s, user, company, elapsed)
 	}
-	// DevOps / SRE free-form round (Wave 9.3).
+	// DevOps / SRE free-form round.
 	if IsDevOpsSection(s.Section) {
 		return BuildDevOpsSystemPrompt(s, user, company, elapsed)
 	}
-	// ML engineering free-form round (pivot 2026-05-01).
+	// ML engineering free-form round.
 	if IsMLEngSection(s.Section) {
 		return BuildMLEngSystemPrompt(s, user, company, elapsed)
 	}

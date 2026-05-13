@@ -7,7 +7,6 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -161,7 +160,3 @@ func (uc *SendCueSessionToTelegram) Do(ctx context.Context, userID, id uuid.UUID
 	return SendCueSessionToTelegramOutput{OK: ok, Message: msg}, nil
 }
 
-// Compile-time check — domain types referenced.
-var (
-	_ = errors.Is
-)

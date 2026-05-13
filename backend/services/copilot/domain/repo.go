@@ -72,7 +72,7 @@ type ConversationRepo interface {
 	// ListForUser returns up to `limit` summaries ordered by updated_at DESC.
 	// An empty cursor returns the first page.
 	ListForUser(ctx context.Context, userID uuid.UUID, cursor Cursor, limit int) ([]ConversationSummary, Cursor, error)
-	// ResetModelsNotIn — Phase VII: на tier-downgrade сбрасываем conv.Model
+	// ResetModelsNotIn — на tier-downgrade сбрасываем conv.Model
 	// для conversations, чья закреплённая модель теперь недоступна юзеру.
 	// allowed — whitelist моделей доступных на новом tier (например
 	// ["druz9/turbo"] для Free). Пустой / nil whitelist = "все модели
@@ -251,7 +251,7 @@ type Analyzer interface {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Mock-session block gate (Phase-4 ADR-001 Wave 3)
+// Mock-session block gate (per ADR-001)
 // ─────────────────────────────────────────────────────────────────────────
 
 // ErrAIAssistBlocked is returned by Analyze/Chat when the caller is mid-mock
@@ -274,7 +274,7 @@ type MockSessionGate interface {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Interview prep (Phase J / C6)
+// Interview prep
 // ─────────────────────────────────────────────────────────────────────────
 
 // InterviewPrepRepo persists interview_prep_sessions rows. StartActive

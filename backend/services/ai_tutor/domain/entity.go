@@ -114,7 +114,7 @@ type Fact struct {
 //
 //	message_count - last_compact_count >= MessageThreshold OR
 //	approximate_tokens >= TokenThreshold OR
-//	time.Since(last_compacted_at) >= CompactionStaleAfter (Phase R6)
+//	time.Since(last_compacted_at) >= CompactionStaleAfter
 //
 // Free-tier Mistral 7B → 8k context. Целимся в ≤4k input на ход:
 //
@@ -123,14 +123,14 @@ const (
 	CompactionMessageThreshold = 10
 	CompactionTokenThreshold   = 4000
 
-	// CompactionStaleAfter — Phase R6. Если thread не compact'ился >7d,
+	// CompactionStaleAfter — если thread не compact'ился >7d,
 	// SendMessage всё равно прогоняет compaction (даже при низком
 	// message_count). Защищает от двух bug'ов:
 	//   - SummaryMD растёт unbounded для медленных threads (1-2 msgs/week)
 	//   - Facts с low confidence не decay'ятся → stale memory
 	CompactionStaleAfter = 7 * 24 * time.Hour
 
-	// FactDecayRate — Phase R6. Каждый прогон compaction'а понижает
+	// FactDecayRate — каждый прогон compaction'а понижает
 	// confidence у facts которые давно не использовались (touch'ились).
 	// 0.1 значит fact полностью исчезает через ~10 неиспользованных
 	// compaction циклов (~10 weeks для медленного потока).

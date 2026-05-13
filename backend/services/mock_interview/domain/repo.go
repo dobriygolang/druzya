@@ -124,7 +124,7 @@ type PipelineAttemptRepo interface {
 	UpdateJudgeResult(ctx context.Context, id uuid.UUID, userAnswerMD string,
 		score float32, waterScore float32, verdict AttemptVerdict,
 		feedback string, missingPoints []string) error
-	// UpdateCanvasResult — Phase D.1 sysdesign-canvas writeback. Atomically
+	// UpdateCanvasResult — sysdesign-canvas writeback. Atomically
 	// persists user-provided fields (image data URL + context_md +
 	// non_functional_md collapsed into user_answer_md) and the judge's
 	// score/verdict/feedback/missing_points + ai_judged_at = now.

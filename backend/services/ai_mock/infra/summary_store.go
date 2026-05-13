@@ -29,7 +29,7 @@ func NewSessionSummaryStore(pool *pgxpool.Pool) *SessionSummaryStore {
 
 // Save атомарно записывает running_summary + summary_model для mock
 // session id. summaryModel — actual provider/model echo от llmchain
-// (Phase II attribution); пустая строка = unknown / legacy.
+// attribution; пустая строка = unknown / legacy.
 func (s *SessionSummaryStore) Save(ctx context.Context, sessionKey, summary, summaryModel string) error {
 	id, err := uuid.Parse(sessionKey)
 	if err != nil {

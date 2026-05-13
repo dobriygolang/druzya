@@ -13,8 +13,8 @@ import (
 	"druz9/sync/domain"
 )
 
-// allTables — таблицы которые мы синкаем в Phase C-4. notes/whiteboards
-// здесь как LWW — это temporary до C-6 когда их заменит Yjs sync.
+// allTables — таблицы которые мы синкаем. notes/whiteboards
+// здесь как LWW — это temporary, в дальнейшем заменит Yjs sync.
 // Таблица называется hone_daily_plans (см. migrations/00013_hone_focus.sql),
 // раньше тут было ошибочное "hone_plans" → 500 на каждый pull. Cursor
 // column = regenerated_at (когда AI-синтез последний раз перегенерил план).

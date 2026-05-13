@@ -119,7 +119,7 @@ func WithUserTier(ctx context.Context, tier string) context.Context {
 }
 
 // DeviceIDFromContext извлекает device-id положенный sync.Heartbeat
-// middleware'ом (Phase C-4). Возвращает uuid.Nil если header отсутствовал
+// middleware'ом. Возвращает uuid.Nil если header отсутствовал
 // (legacy client без sync-bootstrap'а или серверный код).
 func DeviceIDFromContext(ctx context.Context) uuid.UUID {
 	v, _ := ctx.Value(ctxKeyDeviceID).(uuid.UUID)

@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// Assignment — Wave 5.1 of docs/feature/plan.md (Tutor Tier 2).
-// A piece of work the tutor authors for a specific student: a chapter
+// Assignment — a piece of work the tutor authors for a specific
+// student: a chapter
 // to read, a writing prompt, a mock to take. Lives in tutor_assignments
 // (migration 00014). The student sees pending assignments on their
 // Hone Today surface; the tutor sees them on the per-student dashboard

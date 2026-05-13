@@ -1,4 +1,4 @@
-// Folders repository — moved out of postgres.go (Wave 10 split).
+// Folders repository — split out of postgres.go.
 package infra
 
 import (

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -236,5 +235,3 @@ func parseGroqResponse(raw []byte) (domain.TranscribeResult, error) {
 // against signature drift on the interface side.
 var _ domain.Provider = (*GroqProvider)(nil)
 
-// Ensure errors package is used (stays imported if we tweak above).
-var _ = errors.New

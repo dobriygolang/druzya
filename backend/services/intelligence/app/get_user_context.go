@@ -29,7 +29,6 @@ package app
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -178,15 +177,12 @@ func (uc *GetUserContext) Do(ctx context.Context, in GetUserContextInput) (UserC
 
 	// ── 1. Active primary goal ──
 	if uc.Goals != nil {
-		g, err := uc.Goals.GetActive(ctx, in.UserID)
-		if err == nil {
+		if g, err := uc.Goals.GetActive(ctx, in.UserID); err == nil {
 			out.ActiveGoal = &g
-		} else if !errors.Is(err, domain.ErrNotFound) {
-			// Non-NotFound is a real error — but we still return a
-			// useful partial bundle. Caller logs through its own
-			// path; we just degrade silently.
-			_ = err
 		}
+		// Non-NotFound is a real error — but we still return a useful
+		// partial bundle. Caller logs through its own path; we just
+		// degrade silently.
 	}
 
 	// ── 2. Recent coach memory (last N episodes across all kinds) ──
@@ -243,7 +239,7 @@ func (uc *GetUserContext) Do(ctx context.Context, in GetUserContextInput) (UserC
 		}
 	}
 
-	// ── 5. Atlas-relevant resources (Phase J Wave 1 / D) ──
+	// ── 5. Atlas-relevant resources ──
 	// Fold the bundle we just assembled into the atlas query:
 	//   - goalText derived from ActiveGoal (kind + company/text fields)
 	//   - recentActivity from top kinds and recent memory episode kinds

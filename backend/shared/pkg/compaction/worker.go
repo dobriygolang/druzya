@@ -23,7 +23,7 @@ type Job struct {
 	PrevSummary string
 	// OldTurns — turns, которые нужно свернуть в summary (из BuildWindow.OldTurns).
 	OldTurns []Turn
-	// PinnedModel — Phase II context-preservation: если задана, summary
+	// PinnedModel — context-preservation: если задана, summary
 	// пишется ровно этой моделью (не Task-роутингом). Caller обычно
 	// передаёт `conversation.Model` чтобы summary и chat были одной
 	// модели — иначе на следующем turn'е чат-модель читает summary,
@@ -217,7 +217,7 @@ func (w *Worker) handle(ctx context.Context, j Job) {
 		return
 	}
 	prompt := buildSummaryPrompt(j.PrevSummary, j.OldTurns)
-	// Phase II: если caller прислал PinnedModel — пинимся к ней через
+	// Если caller прислал PinnedModel — пинимся к ней через
 	// ModelOverride (single-candidate, no fallback). Так summary пишется
 	// той же моделью что и сам chat, и tone не дрейфует на следующем turn'е.
 	// Пустая строка → legacy task-routing.
@@ -250,7 +250,7 @@ func (w *Worker) handle(ctx context.Context, j Job) {
 		return
 	}
 	// summaryModel — фактический provider/model echo от llmchain. Пишется
-	// в attribution-колонку для drift-детекции на read-side (Phase II).
+	// в attribution-колонку для drift-детекции на read-side.
 	summaryModel := resp.Model
 	if summaryModel != "" && resp.Provider != "" {
 		summaryModel = string(resp.Provider) + "/" + summaryModel

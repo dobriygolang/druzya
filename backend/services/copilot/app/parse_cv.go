@@ -17,7 +17,6 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -254,7 +253,3 @@ func prefixModelEcho(p llmchain.Provider, m string) string {
 	return string(p) + "/" + m
 }
 
-// ensure error sentinel imports stay live in tests that exercise the
-// invalid-input path (the linter strips otherwise-unused identifier
-// imports otherwise).
-var _ = errors.New

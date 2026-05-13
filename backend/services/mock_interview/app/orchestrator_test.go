@@ -1,390 +1,622 @@
-// Orchestrator tests — in-memory fakes (we extend the existing fake repos
-// from handlers_test.go) plus narrowly-scoped fakes for the strictness
-// resolver and judge.
+// orchestrator_test.go — Orchestrator coverage backed by mockgen.
+//
+// Wave 14 refactor: 6 hand-rolled stateful fakes converted to MockX +
+// DoAndReturn-closures driven by a shared `orchStore`. State that crosses
+// repo boundaries (pipelines ↔ stages ↔ attempts ↔ taskQs) lives in one
+// place; mocks delegate via thin closures. Scripted Judge / Strictness
+// responses use callIdx-based scripts.
 package app
 
 import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"druz9/mock_interview/domain"
+	dmocks "druz9/mock_interview/domain/mocks"
 
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-// ── orchestrator-only fakes ─────────────────────────────────────────────
+// ── shared orchestrator store ──────────────────────────────────────────
+//
+// orchStore consolidates state that the orchestrator mutates through
+// multiple repos. Each repo mock's DoAndReturn closure reads/writes here
+// under a single mutex so cross-repo invariants hold (e.g. UpdateVerdict
+// writes a pipeline row that a subsequent Get reads).
+type orchStore struct {
+	mu sync.Mutex
 
-type orchFakeQuestionRepo struct {
-	defaults []domain.DefaultQuestion
-	company  []domain.CompanyQuestion
-	taskQs   map[uuid.UUID][]domain.TaskQuestion
-}
+	// pipelines
+	pipelines map[uuid.UUID]domain.MockPipeline
 
-func (f *orchFakeQuestionRepo) ListTaskQuestions(_ context.Context, taskID uuid.UUID) ([]domain.TaskQuestion, error) {
-	return f.taskQs[taskID], nil
-}
-func (f *orchFakeQuestionRepo) CreateTaskQuestion(_ context.Context, q domain.TaskQuestion) (domain.TaskQuestion, error) {
-	return q, nil
-}
-func (f *orchFakeQuestionRepo) UpdateTaskQuestion(_ context.Context, q domain.TaskQuestion) (domain.TaskQuestion, error) {
-	return q, nil
-}
-func (f *orchFakeQuestionRepo) DeleteTaskQuestion(context.Context, uuid.UUID) error { return nil }
-func (f *orchFakeQuestionRepo) ListDefaultQuestions(_ context.Context, stage domain.StageKind, _ bool) ([]domain.DefaultQuestion, error) {
-	out := []domain.DefaultQuestion{}
-	for _, d := range f.defaults {
-		if stage == "" || d.StageKind == stage {
-			out = append(out, d)
-		}
-	}
-	return out, nil
-}
-func (f *orchFakeQuestionRepo) CreateDefaultQuestion(_ context.Context, q domain.DefaultQuestion) (domain.DefaultQuestion, error) {
-	return q, nil
-}
-func (f *orchFakeQuestionRepo) UpdateDefaultQuestion(_ context.Context, q domain.DefaultQuestion) (domain.DefaultQuestion, error) {
-	return q, nil
-}
-func (f *orchFakeQuestionRepo) DeleteDefaultQuestion(context.Context, uuid.UUID) error { return nil }
-func (f *orchFakeQuestionRepo) SampleDefaultQuestions(ctx context.Context, stage domain.StageKind, limit int) ([]domain.DefaultQuestion, error) {
-	all, err := f.ListDefaultQuestions(ctx, stage, true)
-	if err != nil {
-		return nil, err
-	}
-	if limit <= 0 || limit >= len(all) {
-		return all, nil
-	}
-	return all[:limit], nil
-}
-func (f *orchFakeQuestionRepo) SampleCompanyQuestions(ctx context.Context, companyID uuid.UUID, stage domain.StageKind, limit int) ([]domain.CompanyQuestion, error) {
-	all, err := f.ListCompanyQuestions(ctx, companyID, stage)
-	if err != nil {
-		return nil, err
-	}
-	if limit <= 0 || limit >= len(all) {
-		return all, nil
-	}
-	return all[:limit], nil
-}
-func (f *orchFakeQuestionRepo) ListCompanyQuestions(_ context.Context, _ uuid.UUID, stage domain.StageKind) ([]domain.CompanyQuestion, error) {
-	out := []domain.CompanyQuestion{}
-	for _, c := range f.company {
-		if stage == "" || c.StageKind == stage {
-			out = append(out, c)
-		}
-	}
-	return out, nil
-}
-func (f *orchFakeQuestionRepo) CreateCompanyQuestion(_ context.Context, q domain.CompanyQuestion) (domain.CompanyQuestion, error) {
-	return q, nil
-}
-func (f *orchFakeQuestionRepo) UpdateCompanyQuestion(_ context.Context, q domain.CompanyQuestion) (domain.CompanyQuestion, error) {
-	return q, nil
-}
-func (f *orchFakeQuestionRepo) DeleteCompanyQuestion(context.Context, uuid.UUID) error { return nil }
+	// pipeline_stages
+	stages          map[uuid.UUID]domain.PipelineStage
+	stagesByPipe    map[uuid.UUID][]uuid.UUID
+	stagesInsertOrd []uuid.UUID
 
-// fakeAttempts — in-memory attempt store with per-attempt question
-// metadata so GetWithQuestion works.
-type fakeAttempts struct {
-	rows     map[uuid.UUID]domain.PipelineAttempt
-	byStage  map[uuid.UUID][]uuid.UUID
-	question map[uuid.UUID]domain.AttemptWithQuestion // attemptID → question fields
+	// pipeline_attempts
+	attempts        map[uuid.UUID]domain.PipelineAttempt
+	attemptsByStage map[uuid.UUID][]uuid.UUID
+	attemptQuestion map[uuid.UUID]domain.AttemptWithQuestion
+
+	// task_questions (taskID → []TaskQuestion)
+	taskQs map[uuid.UUID][]domain.TaskQuestion
+	// default_questions (StageKind → []DefaultQuestion)
+	defaultQs map[domain.StageKind][]domain.DefaultQuestion
+	// company_questions (StageKind → []CompanyQuestion)
+	companyQs map[domain.StageKind][]domain.CompanyQuestion
 }
 
-func newFakeAttempts() *fakeAttempts {
-	return &fakeAttempts{
-		rows:     map[uuid.UUID]domain.PipelineAttempt{},
-		byStage:  map[uuid.UUID][]uuid.UUID{},
-		question: map[uuid.UUID]domain.AttemptWithQuestion{},
+func newOrchStore() *orchStore {
+	return &orchStore{
+		pipelines:       map[uuid.UUID]domain.MockPipeline{},
+		stages:          map[uuid.UUID]domain.PipelineStage{},
+		stagesByPipe:    map[uuid.UUID][]uuid.UUID{},
+		attempts:        map[uuid.UUID]domain.PipelineAttempt{},
+		attemptsByStage: map[uuid.UUID][]uuid.UUID{},
+		attemptQuestion: map[uuid.UUID]domain.AttemptWithQuestion{},
+		taskQs:          map[uuid.UUID][]domain.TaskQuestion{},
+		defaultQs:       map[domain.StageKind][]domain.DefaultQuestion{},
+		companyQs:       map[domain.StageKind][]domain.CompanyQuestion{},
 	}
 }
 
-func (f *fakeAttempts) Create(_ context.Context, a domain.PipelineAttempt) (domain.PipelineAttempt, error) {
-	f.rows[a.ID] = a
-	f.byStage[a.PipelineStageID] = append(f.byStage[a.PipelineStageID], a.ID)
-	return a, nil
-}
-func (f *fakeAttempts) Get(_ context.Context, id uuid.UUID) (domain.PipelineAttempt, error) {
-	a, ok := f.rows[id]
-	if !ok {
-		return domain.PipelineAttempt{}, domain.ErrNotFound
-	}
-	return a, nil
-}
-func (f *fakeAttempts) ListByStage(_ context.Context, stageID uuid.UUID) ([]domain.PipelineAttempt, error) {
-	ids := f.byStage[stageID]
-	out := make([]domain.PipelineAttempt, 0, len(ids))
-	for _, id := range ids {
-		out = append(out, f.rows[id])
-	}
-	return out, nil
-}
-func (f *fakeAttempts) UpdateJudgeResult(_ context.Context, id uuid.UUID, userAnswerMD string,
-	score float32, water float32, verdict domain.AttemptVerdict,
-	feedback string, missing []string) error {
-	a, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	a.UserAnswerMD = userAnswerMD
-	a.AIScore = &score
-	a.AIWaterScore = &water
-	a.AIVerdict = verdict
-	a.AIFeedbackMD = feedback
-	a.AIMissingPoints = missing
-	t := time.Now().UTC()
-	a.AIJudgedAt = &t
-	f.rows[id] = a
-	return nil
-}
-func (f *fakeAttempts) UpdateCanvasResult(_ context.Context, id uuid.UUID, in domain.CanvasResultUpdate) error {
-	a, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	a.UserExcalidrawSceneJSON = in.SceneJSON
-	a.UserContextMD = in.ContextMD
-	a.UserAnswerMD = in.UserAnswerMD
-	score := in.Score
-	a.AIScore = &score
-	water := float32(0)
-	a.AIWaterScore = &water
-	a.AIVerdict = in.Verdict
-	a.AIFeedbackMD = in.Feedback
-	a.AIMissingPoints = in.MissingPoints
-	t := time.Now().UTC()
-	a.AIJudgedAt = &t
-	f.rows[id] = a
-	return nil
-}
-func (f *fakeAttempts) GetWithQuestion(_ context.Context, id uuid.UUID) (domain.AttemptWithQuestion, error) {
-	a, ok := f.rows[id]
-	if !ok {
-		return domain.AttemptWithQuestion{}, domain.ErrNotFound
-	}
-	q, ok := f.question[id]
-	if !ok {
-		return domain.AttemptWithQuestion{Attempt: a}, nil
-	}
-	q.Attempt = a
-	return q, nil
+// ── seeders (test-side; lock-aware) ────────────────────────────────────
+
+func (s *orchStore) seedPipeline(p domain.MockPipeline) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.pipelines[p.ID] = p
 }
 
-// fakePipelines — in-memory store for orchestrator tests.
-type fakePipelines struct {
-	rows map[uuid.UUID]domain.MockPipeline
+func (s *orchStore) seedStage(st domain.PipelineStage) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stages[st.ID] = st
+	s.stagesByPipe[st.PipelineID] = append(s.stagesByPipe[st.PipelineID], st.ID)
 }
 
-func newFakePipelines() *fakePipelines {
-	return &fakePipelines{rows: map[uuid.UUID]domain.MockPipeline{}}
-}
-func (f *fakePipelines) Create(_ context.Context, p domain.MockPipeline) (domain.MockPipeline, error) {
-	f.rows[p.ID] = p
-	return p, nil
-}
-func (f *fakePipelines) Get(_ context.Context, id uuid.UUID) (domain.MockPipeline, error) {
-	p, ok := f.rows[id]
-	if !ok {
-		return domain.MockPipeline{}, domain.ErrNotFound
-	}
-	return p, nil
-}
-func (f *fakePipelines) ListByUser(context.Context, uuid.UUID, int) ([]domain.MockPipeline, error) {
-	return nil, nil
-}
-func (f *fakePipelines) UpdateVerdict(_ context.Context, id uuid.UUID, v domain.PipelineVerdict, ts *float32) error {
-	p, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	p.Verdict = v
-	p.TotalScore = ts
-	now := time.Now().UTC()
-	p.FinishedAt = &now
-	f.rows[id] = p
-	return nil
-}
-func (f *fakePipelines) IncrementStageIdx(_ context.Context, id uuid.UUID) (int, error) {
-	p, ok := f.rows[id]
-	if !ok {
-		return 0, domain.ErrNotFound
-	}
-	p.CurrentStageIdx++
-	f.rows[id] = p
-	return p.CurrentStageIdx, nil
+func (s *orchStore) seedAttempt(a domain.PipelineAttempt) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.attempts[a.ID] = a
+	s.attemptsByStage[a.PipelineStageID] = append(s.attemptsByStage[a.PipelineStageID], a.ID)
 }
 
-// fakePipelineStages — in-memory store with all the orchestrator helpers.
-type fakePipelineStages struct {
-	rows       map[uuid.UUID]domain.PipelineStage
-	byPipeline map[uuid.UUID][]uuid.UUID
+func (s *orchStore) seedAttemptQuestion(id uuid.UUID, q domain.AttemptWithQuestion) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.attemptQuestion[id] = q
 }
 
-func newFakePipelineStages() *fakePipelineStages {
-	return &fakePipelineStages{
-		rows:       map[uuid.UUID]domain.PipelineStage{},
-		byPipeline: map[uuid.UUID][]uuid.UUID{},
-	}
-}
-func (f *fakePipelineStages) Create(_ context.Context, s domain.PipelineStage) (domain.PipelineStage, error) {
-	f.rows[s.ID] = s
-	f.byPipeline[s.PipelineID] = append(f.byPipeline[s.PipelineID], s.ID)
-	return s, nil
-}
-func (f *fakePipelineStages) Get(_ context.Context, id uuid.UUID) (domain.PipelineStage, error) {
-	s, ok := f.rows[id]
-	if !ok {
-		return domain.PipelineStage{}, domain.ErrNotFound
-	}
-	return s, nil
-}
-func (f *fakePipelineStages) ListByPipeline(_ context.Context, id uuid.UUID) ([]domain.PipelineStage, error) {
-	ids := f.byPipeline[id]
-	out := make([]domain.PipelineStage, 0, len(ids))
-	for _, id := range ids {
-		out = append(out, f.rows[id])
-	}
-	return out, nil
-}
-func (f *fakePipelineStages) UpdateStatus(_ context.Context, id uuid.UUID, st domain.StageStatus) error {
-	s, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	s.Status = st
-	f.rows[id] = s
-	return nil
-}
-func (f *fakePipelineStages) UpdateStartStage(_ context.Context, id uuid.UUID, profileID uuid.UUID) error {
-	s, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	if s.Status == domain.StageStatusPending {
-		s.Status = domain.StageStatusInProgress
-	}
-	if s.StartedAt == nil {
-		t := time.Now().UTC()
-		s.StartedAt = &t
-	}
-	if s.AIStrictnessProfileID == nil {
-		pid := profileID
-		s.AIStrictnessProfileID = &pid
-	}
-	f.rows[id] = s
-	return nil
-}
-func (f *fakePipelineStages) FinishStage(_ context.Context, id uuid.UUID, score float32, verdict domain.StageVerdict, feedback string) error {
-	s, ok := f.rows[id]
-	if !ok {
-		return domain.ErrNotFound
-	}
-	s.Status = domain.StageStatusFinished
-	sc := score
-	v := verdict
-	s.Score = &sc
-	s.Verdict = &v
-	s.AIFeedbackMD = feedback
-	now := time.Now().UTC()
-	s.FinishedAt = &now
-	f.rows[id] = s
-	return nil
+func (s *orchStore) seedTaskQuestions(taskID uuid.UUID, qs []domain.TaskQuestion) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.taskQs[taskID] = qs
 }
 
-// fakeStrictnessResolver — returns a single canned profile.
-type fakeStrictnessResolver struct {
+func (s *orchStore) seedDefaultQuestions(stage domain.StageKind, qs []domain.DefaultQuestion) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.defaultQs[stage] = qs
+}
+
+func (s *orchStore) getPipeline(id uuid.UUID) (domain.MockPipeline, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p, ok := s.pipelines[id]
+	return p, ok
+}
+
+// ── mock wirings ───────────────────────────────────────────────────────
+
+func wireOrchPipelineRepo(ctrl *gomock.Controller, s *orchStore) *dmocks.MockPipelineRepo {
+	m := dmocks.NewMockPipelineRepo(ctrl)
+	m.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, p domain.MockPipeline) (domain.MockPipeline, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.pipelines[p.ID] = p
+			return p, nil
+		},
+	).AnyTimes()
+	m.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID) (domain.MockPipeline, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			p, ok := s.pipelines[id]
+			if !ok {
+				return domain.MockPipeline{}, domain.ErrNotFound
+			}
+			return p, nil
+		},
+	).AnyTimes()
+	m.EXPECT().ListByUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	m.EXPECT().UpdateVerdict(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID, v domain.PipelineVerdict, ts *float32) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			p, ok := s.pipelines[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			p.Verdict = v
+			p.TotalScore = ts
+			now := time.Now().UTC()
+			p.FinishedAt = &now
+			s.pipelines[id] = p
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().IncrementStageIdx(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID) (int, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			p, ok := s.pipelines[id]
+			if !ok {
+				return 0, domain.ErrNotFound
+			}
+			p.CurrentStageIdx++
+			s.pipelines[id] = p
+			return p.CurrentStageIdx, nil
+		},
+	).AnyTimes()
+	return m
+}
+
+func wireOrchPipelineStageRepo(ctrl *gomock.Controller, s *orchStore) *dmocks.MockPipelineStageRepo {
+	m := dmocks.NewMockPipelineStageRepo(ctrl)
+	m.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, st domain.PipelineStage) (domain.PipelineStage, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.stages[st.ID] = st
+			s.stagesByPipe[st.PipelineID] = append(s.stagesByPipe[st.PipelineID], st.ID)
+			return st, nil
+		},
+	).AnyTimes()
+	m.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID) (domain.PipelineStage, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			st, ok := s.stages[id]
+			if !ok {
+				return domain.PipelineStage{}, domain.ErrNotFound
+			}
+			return st, nil
+		},
+	).AnyTimes()
+	m.EXPECT().ListByPipeline(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID) ([]domain.PipelineStage, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			ids := s.stagesByPipe[id]
+			out := make([]domain.PipelineStage, 0, len(ids))
+			for _, sid := range ids {
+				out = append(out, s.stages[sid])
+			}
+			return out, nil
+		},
+	).AnyTimes()
+	m.EXPECT().UpdateStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID, st domain.StageStatus) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			row, ok := s.stages[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			row.Status = st
+			s.stages[id] = row
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().UpdateStartStage(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID, profileID uuid.UUID) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			row, ok := s.stages[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			if row.Status == domain.StageStatusPending {
+				row.Status = domain.StageStatusInProgress
+			}
+			if row.StartedAt == nil {
+				t := time.Now().UTC()
+				row.StartedAt = &t
+			}
+			if row.AIStrictnessProfileID == nil {
+				pid := profileID
+				row.AIStrictnessProfileID = &pid
+			}
+			s.stages[id] = row
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().FinishStage(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID, score float32, verdict domain.StageVerdict, feedback string) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			row, ok := s.stages[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			row.Status = domain.StageStatusFinished
+			sc := score
+			v := verdict
+			row.Score = &sc
+			row.Verdict = &v
+			row.AIFeedbackMD = feedback
+			now := time.Now().UTC()
+			row.FinishedAt = &now
+			s.stages[id] = row
+			return nil
+		},
+	).AnyTimes()
+	return m
+}
+
+func wireOrchAttemptRepo(ctrl *gomock.Controller, s *orchStore) *dmocks.MockPipelineAttemptRepo {
+	m := dmocks.NewMockPipelineAttemptRepo(ctrl)
+	m.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, a domain.PipelineAttempt) (domain.PipelineAttempt, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.attempts[a.ID] = a
+			s.attemptsByStage[a.PipelineStageID] = append(s.attemptsByStage[a.PipelineStageID], a.ID)
+			return a, nil
+		},
+	).AnyTimes()
+	m.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID) (domain.PipelineAttempt, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			a, ok := s.attempts[id]
+			if !ok {
+				return domain.PipelineAttempt{}, domain.ErrNotFound
+			}
+			return a, nil
+		},
+	).AnyTimes()
+	m.EXPECT().ListByStage(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, stageID uuid.UUID) ([]domain.PipelineAttempt, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			ids := s.attemptsByStage[stageID]
+			out := make([]domain.PipelineAttempt, 0, len(ids))
+			for _, id := range ids {
+				out = append(out, s.attempts[id])
+			}
+			return out, nil
+		},
+	).AnyTimes()
+	m.EXPECT().UpdateJudgeResult(
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+		gomock.Any(), gomock.Any(), gomock.Any(),
+	).DoAndReturn(
+		func(_ context.Context, id uuid.UUID, userAnswerMD string,
+			score float32, water float32, verdict domain.AttemptVerdict,
+			feedback string, missing []string) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			a, ok := s.attempts[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			a.UserAnswerMD = userAnswerMD
+			a.AIScore = &score
+			a.AIWaterScore = &water
+			a.AIVerdict = verdict
+			a.AIFeedbackMD = feedback
+			a.AIMissingPoints = missing
+			t := time.Now().UTC()
+			a.AIJudgedAt = &t
+			s.attempts[id] = a
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().UpdateCanvasResult(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID, in domain.CanvasResultUpdate) error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			a, ok := s.attempts[id]
+			if !ok {
+				return domain.ErrNotFound
+			}
+			a.UserExcalidrawSceneJSON = in.SceneJSON
+			a.UserContextMD = in.ContextMD
+			a.UserAnswerMD = in.UserAnswerMD
+			score := in.Score
+			a.AIScore = &score
+			water := float32(0)
+			a.AIWaterScore = &water
+			a.AIVerdict = in.Verdict
+			a.AIFeedbackMD = in.Feedback
+			a.AIMissingPoints = in.MissingPoints
+			t := time.Now().UTC()
+			a.AIJudgedAt = &t
+			s.attempts[id] = a
+			return nil
+		},
+	).AnyTimes()
+	m.EXPECT().GetWithQuestion(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, id uuid.UUID) (domain.AttemptWithQuestion, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			a, ok := s.attempts[id]
+			if !ok {
+				return domain.AttemptWithQuestion{}, domain.ErrNotFound
+			}
+			q, ok := s.attemptQuestion[id]
+			if !ok {
+				return domain.AttemptWithQuestion{Attempt: a}, nil
+			}
+			q.Attempt = a
+			return q, nil
+		},
+	).AnyTimes()
+	return m
+}
+
+func wireOrchQuestionRepo(ctrl *gomock.Controller, s *orchStore) *dmocks.MockQuestionRepo {
+	m := dmocks.NewMockQuestionRepo(ctrl)
+	m.EXPECT().ListTaskQuestions(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, taskID uuid.UUID) ([]domain.TaskQuestion, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			return s.taskQs[taskID], nil
+		},
+	).AnyTimes()
+	m.EXPECT().CreateTaskQuestion(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, q domain.TaskQuestion) (domain.TaskQuestion, error) { return q, nil },
+	).AnyTimes()
+	m.EXPECT().UpdateTaskQuestion(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, q domain.TaskQuestion) (domain.TaskQuestion, error) { return q, nil },
+	).AnyTimes()
+	m.EXPECT().DeleteTaskQuestion(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	m.EXPECT().ListDefaultQuestions(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, stage domain.StageKind, _ bool) ([]domain.DefaultQuestion, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if stage == "" {
+				out := []domain.DefaultQuestion{}
+				for _, qs := range s.defaultQs {
+					out = append(out, qs...)
+				}
+				return out, nil
+			}
+			return s.defaultQs[stage], nil
+		},
+	).AnyTimes()
+	m.EXPECT().CreateDefaultQuestion(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, q domain.DefaultQuestion) (domain.DefaultQuestion, error) { return q, nil },
+	).AnyTimes()
+	m.EXPECT().UpdateDefaultQuestion(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, q domain.DefaultQuestion) (domain.DefaultQuestion, error) { return q, nil },
+	).AnyTimes()
+	m.EXPECT().DeleteDefaultQuestion(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	m.EXPECT().SampleDefaultQuestions(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, stage domain.StageKind, limit int) ([]domain.DefaultQuestion, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			all := s.defaultQs[stage]
+			if limit <= 0 || limit >= len(all) {
+				return all, nil
+			}
+			return all[:limit], nil
+		},
+	).AnyTimes()
+	m.EXPECT().ListCompanyQuestions(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, stage domain.StageKind) ([]domain.CompanyQuestion, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			return s.companyQs[stage], nil
+		},
+	).AnyTimes()
+	m.EXPECT().SampleCompanyQuestions(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, stage domain.StageKind, limit int) ([]domain.CompanyQuestion, error) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			all := s.companyQs[stage]
+			if limit <= 0 || limit >= len(all) {
+				return all, nil
+			}
+			return all[:limit], nil
+		},
+	).AnyTimes()
+	m.EXPECT().CreateCompanyQuestion(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, q domain.CompanyQuestion) (domain.CompanyQuestion, error) { return q, nil },
+	).AnyTimes()
+	m.EXPECT().UpdateCompanyQuestion(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, q domain.CompanyQuestion) (domain.CompanyQuestion, error) { return q, nil },
+	).AnyTimes()
+	m.EXPECT().DeleteCompanyQuestion(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	return m
+}
+
+// ── orchestrator-side mocks (Judge + Strictness — generated into package app) ──
+
+// wireOrchStrictness returns a resolver that yields the canned profile.
+// Profile is captured by reference so callers can mutate fields after
+// construction; tests use this to seed a profile ID before StartNextStage.
+type strictnessHandle struct {
+	mu      sync.Mutex
 	profile domain.AIStrictnessProfile
 	err     error
 }
 
-func (f *fakeStrictnessResolver) ResolveStrictness(context.Context, uuid.UUID, *uuid.UUID, domain.StageKind) (domain.AIStrictnessProfile, error) {
-	return f.profile, f.err
+func newStrictnessHandle() *strictnessHandle {
+	return &strictnessHandle{
+		profile: domain.AIStrictnessProfile{
+			ID:              uuid.New(),
+			Slug:            "default",
+			OffTopicPenalty: 0.30,
+		},
+	}
 }
 
-// fakeJudge — canned JudgeOutput, optional callback to capture inputs.
-type fakeJudge struct {
+func wireOrchStrictness(ctrl *gomock.Controller, h *strictnessHandle) *MockStrictnessResolver {
+	m := NewMockStrictnessResolver(ctrl)
+	m.EXPECT().ResolveStrictness(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, _ *uuid.UUID, _ domain.StageKind) (domain.AIStrictnessProfile, error) {
+			h.mu.Lock()
+			defer h.mu.Unlock()
+			return h.profile, h.err
+		},
+	).AnyTimes()
+	return m
+}
+
+// judgeHandle — capture the last JudgeInput and serve a canned response.
+type judgeHandle struct {
+	mu   sync.Mutex
 	out  JudgeOutput
 	err  error
 	last *JudgeInput
 }
 
-func (f *fakeJudge) JudgeAnswer(_ context.Context, in JudgeInput) (JudgeOutput, error) {
-	cp := in
-	f.last = &cp
-	return f.out, f.err
+func newJudgeHandle() *judgeHandle { return &judgeHandle{} }
+
+func wireOrchJudge(ctrl *gomock.Controller, h *judgeHandle) *MockJudgeClient {
+	m := NewMockJudgeClient(ctrl)
+	m.EXPECT().JudgeAnswer(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in JudgeInput) (JudgeOutput, error) {
+			h.mu.Lock()
+			defer h.mu.Unlock()
+			cp := in
+			h.last = &cp
+			return h.out, h.err
+		},
+	).AnyTimes()
+	return m
 }
 
-// helper: build a basic orchestrator with empty stores.
-func newTestOrchestrator() (*Orchestrator, *fakePipelines, *fakePipelineStages, *fakeAttempts, *orchFakeQuestionRepo, *fakeStrictnessResolver, *fakeJudge) {
-	o, pipes, stages, atts, qs, res, jdg, _, _ := newTestOrchestratorFull()
-	return o, pipes, stages, atts, qs, res, jdg
+// canvasJudge — implements BOTH JudgeClient and CanvasJudgeClient. Built
+// from two distinct mock types composed under a wrapper so the
+// orchestrator's type-assertion in SubmitCanvas succeeds.
+type canvasJudge struct {
+	*MockJudgeClient
+	canvasMock *MockCanvasJudgeClient
 }
 
-// newTestOrchestratorFull also exposes the Tasks fake + CompanyStages fake
-// for Phase C tests that need to seed task pools / language pools.
-func newTestOrchestratorFull() (*Orchestrator, *fakePipelines, *fakePipelineStages, *fakeAttempts, *orchFakeQuestionRepo, *fakeStrictnessResolver, *fakeJudge, *fakeTaskRepo, *fakeCompanyStageRepo) {
-	pipes := newFakePipelines()
-	stages := newFakePipelineStages()
-	atts := newFakeAttempts()
-	qs := &orchFakeQuestionRepo{}
-	tasks := &fakeTaskRepo{rows: map[uuid.UUID]domain.MockTask{}}
-	cs := &fakeCompanyStageRepo{}
-	res := &fakeStrictnessResolver{profile: domain.AIStrictnessProfile{ID: uuid.New(), Slug: "default", OffTopicPenalty: 0.30}}
-	jdg := &fakeJudge{}
+func (c *canvasJudge) JudgeCanvas(ctx context.Context, in JudgeCanvasInput) (JudgeOutput, error) {
+	return c.canvasMock.JudgeCanvas(ctx, in)
+}
+
+type canvasJudgeHandle struct {
+	mu        sync.Mutex
+	canvasOut JudgeOutput
+	canvasErr error
+	lastCv    *JudgeCanvasInput
+}
+
+func newCanvasJudgeHandle() *canvasJudgeHandle { return &canvasJudgeHandle{} }
+
+func wireOrchCanvasJudge(ctrl *gomock.Controller, jh *judgeHandle, ch *canvasJudgeHandle) *canvasJudge {
+	plain := wireOrchJudge(ctrl, jh)
+	cm := NewMockCanvasJudgeClient(ctrl)
+	cm.EXPECT().JudgeCanvas(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, in JudgeCanvasInput) (JudgeOutput, error) {
+			ch.mu.Lock()
+			defer ch.mu.Unlock()
+			cp := in
+			ch.lastCv = &cp
+			return ch.canvasOut, ch.canvasErr
+		},
+	).AnyTimes()
+	return &canvasJudge{MockJudgeClient: plain, canvasMock: cm}
+}
+
+// ── orchestrator builder ───────────────────────────────────────────────
+
+// orchFixture bundles store, knobs, and the orchestrator under test. Tests
+// seed via store, tune Judge/Strictness via handles, then call Orchestrator
+// methods.
+type orchFixture struct {
+	store      *orchStore
+	tasks      *taskStore // declared in test_helpers_test.go
+	compStages *compStageStore
+	judgeH     *judgeHandle
+	strictH    *strictnessHandle
+	orch       *Orchestrator
+}
+
+func newOrchFixture(t *testing.T) *orchFixture {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+
+	store := newOrchStore()
+	ts := newTaskStore()
+	cs := newCompStageStore()
+	strictH := newStrictnessHandle()
+	judgeH := newJudgeHandle()
+
 	o := &Orchestrator{
-		Pipelines:      pipes,
-		PipelineStages: stages,
-		Attempts:       atts,
-		Questions:      qs,
-		Tasks:          tasks,
-		CompanyStages:  cs,
-		Strictness:     res,
-		Judge:          jdg,
+		Pipelines:      wireOrchPipelineRepo(ctrl, store),
+		PipelineStages: wireOrchPipelineStageRepo(ctrl, store),
+		Attempts:       wireOrchAttemptRepo(ctrl, store),
+		Questions:      wireOrchQuestionRepo(ctrl, store),
+		Tasks:          wireMockTaskRepo(ctrl, ts),
+		CompanyStages:  wireMockCompanyStageRepo(ctrl, cs),
+		Strictness:     wireOrchStrictness(ctrl, strictH),
+		Judge:          wireOrchJudge(ctrl, judgeH),
 		Now:            func() time.Time { return time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC) },
 	}
-	return o, pipes, stages, atts, qs, res, jdg, tasks, cs
+	return &orchFixture{
+		store:      store,
+		tasks:      ts,
+		compStages: cs,
+		judgeH:     judgeH,
+		strictH:    strictH,
+		orch:       o,
+	}
 }
 
 // ── tests ───────────────────────────────────────────────────────────────
 
 func TestStartNextStage_HR_MaterializesQuestions(t *testing.T) {
-	o, pipes, stages, atts, qs, res, _ := newTestOrchestrator()
+	f := newOrchFixture(t)
 
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{
+	f.store.seedPipeline(domain.MockPipeline{
 		ID: pipeID, UserID: uuid.New(), Verdict: domain.PipelineInProgress,
-	}
+	})
 	stageID := uuid.New()
-	st := domain.PipelineStage{
+	f.store.seedStage(domain.PipelineStage{
 		ID: stageID, PipelineID: pipeID, StageKind: domain.StageHR,
 		Ordinal: 0, Status: domain.StageStatusPending,
-	}
-	stages.rows[stageID] = st
-	stages.byPipeline[pipeID] = []uuid.UUID{stageID}
-
-	qs.defaults = []domain.DefaultQuestion{
+	})
+	f.store.seedDefaultQuestions(domain.StageHR, []domain.DefaultQuestion{
 		{ID: uuid.New(), StageKind: domain.StageHR, Body: "Расскажи о себе"},
 		{ID: uuid.New(), StageKind: domain.StageHR, Body: "Почему мы?"},
-	}
+	})
 
-	out, err := o.StartNextStage(context.Background(), pipeID)
+	out, err := f.orch.StartNextStage(context.Background(), pipeID)
 	if err != nil {
 		t.Fatalf("StartNextStage: %v", err)
 	}
 	if out.Stage.Status != domain.StageStatusInProgress {
 		t.Errorf("stage.Status=%s, want in_progress", out.Stage.Status)
 	}
-	if out.Stage.AIStrictnessProfileID == nil || *out.Stage.AIStrictnessProfileID != res.profile.ID {
+	if out.Stage.AIStrictnessProfileID == nil || *out.Stage.AIStrictnessProfileID != f.strictH.profile.ID {
 		t.Errorf("strictness profile not snapshotted")
 	}
 	if len(out.Attempts) != 2 {
 		t.Fatalf("want 2 attempts, got %d", len(out.Attempts))
 	}
-	if len(atts.byStage[stageID]) != 2 {
-		t.Errorf("repo expected 2 attempts, got %d", len(atts.byStage[stageID]))
+
+	f.store.mu.Lock()
+	got := len(f.store.attemptsByStage[stageID])
+	f.store.mu.Unlock()
+	if got != 2 {
+		t.Errorf("repo expected 2 attempts, got %d", got)
 	}
 	for _, a := range out.Attempts {
 		if a.Attempt.Kind != domain.AttemptQuestionAnswer {
@@ -400,27 +632,26 @@ func TestStartNextStage_HR_MaterializesQuestions(t *testing.T) {
 }
 
 func TestSubmitAnswer_RoutesToJudge_StoresResult(t *testing.T) {
-	o, pipes, stages, atts, _, _, jdg := newTestOrchestrator()
+	f := newOrchFixture(t)
 
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{ID: pipeID, UserID: uuid.New(), Verdict: domain.PipelineInProgress}
+	f.store.seedPipeline(domain.MockPipeline{ID: pipeID, UserID: uuid.New(), Verdict: domain.PipelineInProgress})
 	stageID := uuid.New()
 	profID := uuid.New()
-	stages.rows[stageID] = domain.PipelineStage{
+	f.store.seedStage(domain.PipelineStage{
 		ID: stageID, PipelineID: pipeID, StageKind: domain.StageHR,
 		Status: domain.StageStatusInProgress, AIStrictnessProfileID: &profID,
-	}
+	})
 	attID := uuid.New()
-	atts.rows[attID] = domain.PipelineAttempt{
+	f.store.seedAttempt(domain.PipelineAttempt{
 		ID: attID, PipelineStageID: stageID, Kind: domain.AttemptQuestionAnswer,
 		AIVerdict: domain.AttemptVerdictPending,
-	}
-	atts.byStage[stageID] = []uuid.UUID{attID}
-	atts.question[attID] = domain.AttemptWithQuestion{
+	})
+	f.store.seedAttemptQuestion(attID, domain.AttemptWithQuestion{
 		QuestionBody: "Расскажи о себе",
-	}
+	})
 
-	jdg.out = JudgeOutput{
+	f.judgeH.out = JudgeOutput{
 		Score:         85,
 		Verdict:       domain.AttemptVerdictPass,
 		Feedback:      "Хороший ответ",
@@ -428,7 +659,7 @@ func TestSubmitAnswer_RoutesToJudge_StoresResult(t *testing.T) {
 		MissingPoints: []string{"больше деталей"},
 	}
 
-	out, err := o.SubmitAnswer(context.Background(), attID, "Я Senior Go разработчик")
+	out, err := f.orch.SubmitAnswer(context.Background(), attID, "Я Senior Go разработчик")
 	if err != nil {
 		t.Fatalf("SubmitAnswer: %v", err)
 	}
@@ -441,34 +672,34 @@ func TestSubmitAnswer_RoutesToJudge_StoresResult(t *testing.T) {
 	if out.UserAnswerMD == "" {
 		t.Errorf("user answer not persisted")
 	}
-	if jdg.last == nil || jdg.last.UserAnswer == "" {
+	f.judgeH.mu.Lock()
+	last := f.judgeH.last
+	f.judgeH.mu.Unlock()
+	if last == nil || last.UserAnswer == "" {
 		t.Errorf("judge wasn't called with the user answer")
 	}
 }
 
 func TestFinishStage_AggregatesScore_SetsVerdict(t *testing.T) {
-	o, pipes, stages, atts, _, _, _ := newTestOrchestrator()
+	f := newOrchFixture(t)
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{ID: pipeID, Verdict: domain.PipelineInProgress}
+	f.store.seedPipeline(domain.MockPipeline{ID: pipeID, Verdict: domain.PipelineInProgress})
 	stageID := uuid.New()
-	stages.rows[stageID] = domain.PipelineStage{
+	f.store.seedStage(domain.PipelineStage{
 		ID: stageID, PipelineID: pipeID, Status: domain.StageStatusInProgress,
 		StageKind: domain.StageHR,
-	}
-	stages.byPipeline[pipeID] = []uuid.UUID{stageID}
+	})
 
 	scores := []float32{80, 60, 90}
 	for _, s := range scores {
 		sc := s
-		id := uuid.New()
-		atts.rows[id] = domain.PipelineAttempt{
-			ID: id, PipelineStageID: stageID,
+		f.store.seedAttempt(domain.PipelineAttempt{
+			ID: uuid.New(), PipelineStageID: stageID,
 			AIVerdict: domain.AttemptVerdictPass, AIScore: &sc,
-		}
-		atts.byStage[stageID] = append(atts.byStage[stageID], id)
+		})
 	}
 
-	out, err := o.FinishStage(context.Background(), stageID)
+	out, err := f.orch.FinishStage(context.Background(), stageID)
 	if err != nil {
 		t.Fatalf("FinishStage: %v", err)
 	}
@@ -484,20 +715,18 @@ func TestFinishStage_AggregatesScore_SetsVerdict(t *testing.T) {
 }
 
 func TestFinishPipeline_AllStagesPass_PassesOverall(t *testing.T) {
-	o, pipes, stages, _, _, _, _ := newTestOrchestrator()
+	f := newOrchFixture(t)
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{ID: pipeID, Verdict: domain.PipelineInProgress}
+	f.store.seedPipeline(domain.MockPipeline{ID: pipeID, Verdict: domain.PipelineInProgress})
 	for i := 0; i < 5; i++ {
-		sid := uuid.New()
 		sc := float32(80)
 		v := domain.StageVerdictPass
-		stages.rows[sid] = domain.PipelineStage{
-			ID: sid, PipelineID: pipeID, Ordinal: i,
+		f.store.seedStage(domain.PipelineStage{
+			ID: uuid.New(), PipelineID: pipeID, Ordinal: i,
 			Status: domain.StageStatusFinished, Score: &sc, Verdict: &v,
-		}
-		stages.byPipeline[pipeID] = append(stages.byPipeline[pipeID], sid)
+		})
 	}
-	out, err := o.FinishPipeline(context.Background(), pipeID)
+	out, err := f.orch.FinishPipeline(context.Background(), pipeID)
 	if err != nil {
 		t.Fatalf("FinishPipeline: %v", err)
 	}
@@ -510,24 +739,22 @@ func TestFinishPipeline_AllStagesPass_PassesOverall(t *testing.T) {
 }
 
 func TestFinishPipeline_OneStageFails_FailsOverall(t *testing.T) {
-	o, pipes, stages, _, _, _, _ := newTestOrchestrator()
+	f := newOrchFixture(t)
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{ID: pipeID, Verdict: domain.PipelineInProgress}
+	f.store.seedPipeline(domain.MockPipeline{ID: pipeID, Verdict: domain.PipelineInProgress})
 	verdicts := []domain.StageVerdict{
 		domain.StageVerdictPass, domain.StageVerdictPass,
 		domain.StageVerdictPass, domain.StageVerdictPass, domain.StageVerdictFail,
 	}
 	for i, v := range verdicts {
-		sid := uuid.New()
 		sc := float32(70)
 		vc := v
-		stages.rows[sid] = domain.PipelineStage{
-			ID: sid, PipelineID: pipeID, Ordinal: i,
+		f.store.seedStage(domain.PipelineStage{
+			ID: uuid.New(), PipelineID: pipeID, Ordinal: i,
 			Status: domain.StageStatusFinished, Score: &sc, Verdict: &vc,
-		}
-		stages.byPipeline[pipeID] = append(stages.byPipeline[pipeID], sid)
+		})
 	}
-	out, err := o.FinishPipeline(context.Background(), pipeID)
+	out, err := f.orch.FinishPipeline(context.Background(), pipeID)
 	if err != nil {
 		t.Fatalf("FinishPipeline: %v", err)
 	}
@@ -537,75 +764,69 @@ func TestFinishPipeline_OneStageFails_FailsOverall(t *testing.T) {
 }
 
 func TestCancelPipeline_OwnerOnly(t *testing.T) {
-	o, pipes, _, _, _, _, _ := newTestOrchestrator()
+	f := newOrchFixture(t)
 	pipeID := uuid.New()
 	owner := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{ID: pipeID, UserID: owner, Verdict: domain.PipelineInProgress}
+	f.store.seedPipeline(domain.MockPipeline{ID: pipeID, UserID: owner, Verdict: domain.PipelineInProgress})
 
 	// Non-owner is rejected.
-	if err := o.CancelPipeline(context.Background(), pipeID, uuid.New()); err == nil {
+	if err := f.orch.CancelPipeline(context.Background(), pipeID, uuid.New()); err == nil {
 		t.Errorf("expected error for non-owner")
 	} else if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 
 	// Owner succeeds.
-	if err := o.CancelPipeline(context.Background(), pipeID, owner); err != nil {
+	if err := f.orch.CancelPipeline(context.Background(), pipeID, owner); err != nil {
 		t.Fatalf("owner cancel: %v", err)
 	}
-	if pipes.rows[pipeID].Verdict != domain.PipelineCancelled {
-		t.Errorf("verdict=%s, want cancelled", pipes.rows[pipeID].Verdict)
+	p, _ := f.store.getPipeline(pipeID)
+	if p.Verdict != domain.PipelineCancelled {
+		t.Errorf("verdict=%s, want cancelled", p.Verdict)
 	}
 }
-
-// belt-and-braces: fakeCompanyStageRepo from handlers_test.go satisfies the
-// interface but it lives there — guard via compile-time assertion here.
-var _ = strings.TrimSpace
 
 // ── Phase C.1 — algo / coding orchestrator ──────────────────────────────
 
 func TestStartNextStage_Algo_PicksTaskAndCreatesAttempts(t *testing.T) {
-	o, pipes, stages, atts, qs, _, _, tasks, _ := newTestOrchestratorFull()
+	f := newOrchFixture(t)
 
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{
+	f.store.seedPipeline(domain.MockPipeline{
 		ID: pipeID, UserID: uuid.New(), Verdict: domain.PipelineInProgress,
-	}
+	})
 	stageID := uuid.New()
-	stages.rows[stageID] = domain.PipelineStage{
+	f.store.seedStage(domain.PipelineStage{
 		ID: stageID, PipelineID: pipeID, StageKind: domain.StageAlgo,
 		Ordinal: 0, Status: domain.StageStatusPending,
-	}
-	stages.byPipeline[pipeID] = []uuid.UUID{stageID}
+	})
 
 	taskID := uuid.New()
-	tasks.rows[taskID] = domain.MockTask{
+	f.tasks.mu.Lock()
+	f.tasks.rows[taskID] = domain.MockTask{
 		ID: taskID, StageKind: domain.StageAlgo, Language: domain.LangGo,
 		Title: "Two Sum", BodyMD: "Найди пару чисел…", Active: true,
 	}
+	f.tasks.mu.Unlock()
 	q1, q2 := uuid.New(), uuid.New()
-	qs.taskQs = map[uuid.UUID][]domain.TaskQuestion{
-		taskID: {
-			{ID: q1, TaskID: taskID, Body: "Какова сложность?"},
-			{ID: q2, TaskID: taskID, Body: "Edge cases?"},
-		},
-	}
+	f.store.seedTaskQuestions(taskID, []domain.TaskQuestion{
+		{ID: q1, TaskID: taskID, Body: "Какова сложность?"},
+		{ID: q2, TaskID: taskID, Body: "Edge cases?"},
+	})
 
-	out, err := o.StartNextStage(context.Background(), pipeID)
+	out, err := f.orch.StartNextStage(context.Background(), pipeID)
 	if err != nil {
 		t.Fatalf("StartNextStage: %v", err)
 	}
 	if len(out.Attempts) != 3 {
 		t.Fatalf("want 3 attempts (1 task_solve + 2 question_answer), got %d", len(out.Attempts))
 	}
-	// First must be task_solve.
 	if out.Attempts[0].Attempt.Kind != domain.AttemptTaskSolve {
 		t.Errorf("first attempt kind=%s, want task_solve", out.Attempts[0].Attempt.Kind)
 	}
 	if out.Attempts[0].Attempt.TaskID == nil || *out.Attempts[0].Attempt.TaskID != taskID {
 		t.Errorf("task_solve missing task_id")
 	}
-	// Followups are question_answer + carry both task_id and task_question_id.
 	for _, a := range out.Attempts[1:] {
 		if a.Attempt.Kind != domain.AttemptQuestionAnswer {
 			t.Errorf("follow-up kind=%s, want question_answer", a.Attempt.Kind)
@@ -617,57 +838,60 @@ func TestStartNextStage_Algo_PicksTaskAndCreatesAttempts(t *testing.T) {
 			t.Errorf("follow-up missing task_question_id")
 		}
 	}
-	if len(atts.byStage[stageID]) != 3 {
-		t.Errorf("repo expected 3 attempts, got %d", len(atts.byStage[stageID]))
+	f.store.mu.Lock()
+	got := len(f.store.attemptsByStage[stageID])
+	f.store.mu.Unlock()
+	if got != 3 {
+		t.Errorf("repo expected 3 attempts, got %d", got)
 	}
 }
 
 func TestStartNextStage_Algo_NoTasksAvailable_ErrNoTaskAvailable(t *testing.T) {
-	o, pipes, stages, _, _, _, _, _, _ := newTestOrchestratorFull()
+	f := newOrchFixture(t)
 
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{ID: pipeID, UserID: uuid.New(), Verdict: domain.PipelineInProgress}
+	f.store.seedPipeline(domain.MockPipeline{ID: pipeID, UserID: uuid.New(), Verdict: domain.PipelineInProgress})
 	stageID := uuid.New()
-	stages.rows[stageID] = domain.PipelineStage{
+	f.store.seedStage(domain.PipelineStage{
 		ID: stageID, PipelineID: pipeID, StageKind: domain.StageAlgo,
 		Status: domain.StageStatusPending,
-	}
-	stages.byPipeline[pipeID] = []uuid.UUID{stageID}
+	})
 
-	_, err := o.StartNextStage(context.Background(), pipeID)
+	_, err := f.orch.StartNextStage(context.Background(), pipeID)
 	if err == nil || !errors.Is(err, domain.ErrNoTaskAvailable) {
 		t.Fatalf("want ErrNoTaskAvailable, got %v", err)
 	}
 }
 
 func TestStartNextStage_Coding_RespectsLanguagePool(t *testing.T) {
-	o, pipes, stages, _, _, _, _, tasks, cs := newTestOrchestratorFull()
+	f := newOrchFixture(t)
 
 	companyID := uuid.New()
-	cs.rows = map[uuid.UUID][]domain.CompanyStage{
-		companyID: {{
-			CompanyID: companyID, StageKind: domain.StageCoding, Ordinal: 0,
-			LanguagePool: []domain.TaskLanguage{domain.LangGo},
-		}},
-	}
+	f.compStages.mu.Lock()
+	f.compStages.rows[companyID] = []domain.CompanyStage{{
+		CompanyID: companyID, StageKind: domain.StageCoding, Ordinal: 0,
+		LanguagePool: []domain.TaskLanguage{domain.LangGo},
+	}}
+	f.compStages.mu.Unlock()
 
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{
+	f.store.seedPipeline(domain.MockPipeline{
 		ID: pipeID, UserID: uuid.New(), CompanyID: &companyID,
 		Verdict: domain.PipelineInProgress,
-	}
+	})
 	stageID := uuid.New()
-	stages.rows[stageID] = domain.PipelineStage{
+	f.store.seedStage(domain.PipelineStage{
 		ID: stageID, PipelineID: pipeID, StageKind: domain.StageCoding,
 		Status: domain.StageStatusPending,
-	}
-	stages.byPipeline[pipeID] = []uuid.UUID{stageID}
+	})
 
 	pyID, goID := uuid.New(), uuid.New()
-	tasks.rows[pyID] = domain.MockTask{ID: pyID, StageKind: domain.StageCoding, Language: domain.LangPython, Active: true, Title: "Py"}
-	tasks.rows[goID] = domain.MockTask{ID: goID, StageKind: domain.StageCoding, Language: domain.LangGo, Active: true, Title: "Go"}
+	f.tasks.mu.Lock()
+	f.tasks.rows[pyID] = domain.MockTask{ID: pyID, StageKind: domain.StageCoding, Language: domain.LangPython, Active: true, Title: "Py"}
+	f.tasks.rows[goID] = domain.MockTask{ID: goID, StageKind: domain.StageCoding, Language: domain.LangGo, Active: true, Title: "Go"}
+	f.tasks.mu.Unlock()
 
-	out, err := o.StartNextStage(context.Background(), pipeID)
+	out, err := f.orch.StartNextStage(context.Background(), pipeID)
 	if err != nil {
 		t.Fatalf("StartNextStage: %v", err)
 	}
@@ -681,55 +905,39 @@ func TestStartNextStage_Coding_RespectsLanguagePool(t *testing.T) {
 
 // ── Phase D.1 — sysdesign orchestrator + canvas submit ─────────────────
 
-// fakeCanvasJudge implements both JudgeClient and CanvasJudgeClient so
-// the SubmitCanvas test can exercise the full orchestrator path.
-type fakeCanvasJudge struct {
-	*fakeJudge
-	canvasOut JudgeOutput
-	canvasErr error
-	lastCv    *JudgeCanvasInput
-}
-
-func (f *fakeCanvasJudge) JudgeCanvas(_ context.Context, in JudgeCanvasInput) (JudgeOutput, error) {
-	cp := in
-	f.lastCv = &cp
-	return f.canvasOut, f.canvasErr
-}
-
 // 1×1 transparent PNG as a valid data URL — passes decodeDataURL without
 // dragging an image library into the test deps.
 const tinyPNGDataURL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII="
 
 func TestStartNextStage_SysDesign_PicksTaskAndCreatesAttempts(t *testing.T) {
-	o, pipes, stages, atts, qs, _, _, tasks, _ := newTestOrchestratorFull()
+	f := newOrchFixture(t)
 
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{
+	f.store.seedPipeline(domain.MockPipeline{
 		ID: pipeID, UserID: uuid.New(), Verdict: domain.PipelineInProgress,
-	}
+	})
 	stageID := uuid.New()
-	stages.rows[stageID] = domain.PipelineStage{
+	f.store.seedStage(domain.PipelineStage{
 		ID: stageID, PipelineID: pipeID, StageKind: domain.StageSysDesign,
 		Ordinal: 0, Status: domain.StageStatusPending,
-	}
-	stages.byPipeline[pipeID] = []uuid.UUID{stageID}
+	})
 
 	taskID := uuid.New()
-	tasks.rows[taskID] = domain.MockTask{
+	f.tasks.mu.Lock()
+	f.tasks.rows[taskID] = domain.MockTask{
 		ID: taskID, StageKind: domain.StageSysDesign, Language: domain.LangAny,
 		Title: "URL shortener", BodyMD: "Спроектируй tiny-url",
 		FunctionalRequirementsMD: "writes:1k/s, reads:100k/s",
 		Active:                   true,
 	}
+	f.tasks.mu.Unlock()
 	q1, q2 := uuid.New(), uuid.New()
-	qs.taskQs = map[uuid.UUID][]domain.TaskQuestion{
-		taskID: {
-			{ID: q1, TaskID: taskID, Body: "Почему такая БД?"},
-			{ID: q2, TaskID: taskID, Body: "Как масштабируешь?"},
-		},
-	}
+	f.store.seedTaskQuestions(taskID, []domain.TaskQuestion{
+		{ID: q1, TaskID: taskID, Body: "Почему такая БД?"},
+		{ID: q2, TaskID: taskID, Body: "Как масштабируешь?"},
+	})
 
-	out, err := o.StartNextStage(context.Background(), pipeID)
+	out, err := f.orch.StartNextStage(context.Background(), pipeID)
 	if err != nil {
 		t.Fatalf("StartNextStage: %v", err)
 	}
@@ -750,47 +958,52 @@ func TestStartNextStage_SysDesign_PicksTaskAndCreatesAttempts(t *testing.T) {
 			t.Errorf("follow-up missing task_question_id")
 		}
 	}
-	if len(atts.byStage[stageID]) != 3 {
-		t.Errorf("repo expected 3 attempts, got %d", len(atts.byStage[stageID]))
+	f.store.mu.Lock()
+	got := len(f.store.attemptsByStage[stageID])
+	f.store.mu.Unlock()
+	if got != 3 {
+		t.Errorf("repo expected 3 attempts, got %d", got)
 	}
 }
 
 func TestSubmitCanvas_RoutesToVisionJudge_StoresResult(t *testing.T) {
-	o, pipes, stages, atts, _, _, _, tasks, _ := newTestOrchestratorFull()
+	f := newOrchFixture(t)
+
+	// Replace plain judge with one that also implements CanvasJudgeClient.
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+	canvasH := newCanvasJudgeHandle()
+	canvasH.canvasOut = JudgeOutput{
+		Score: 78, Verdict: domain.AttemptVerdictPass,
+		Feedback: "Хороший дизайн", MissingPoints: []string{"кэш не описан"},
+	}
+	f.orch.Judge = wireOrchCanvasJudge(ctrl, f.judgeH, canvasH)
 
 	owner := uuid.New()
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{ID: pipeID, UserID: owner, Verdict: domain.PipelineInProgress}
+	f.store.seedPipeline(domain.MockPipeline{ID: pipeID, UserID: owner, Verdict: domain.PipelineInProgress})
 	stageID := uuid.New()
 	profID := uuid.New()
-	stages.rows[stageID] = domain.PipelineStage{
+	f.store.seedStage(domain.PipelineStage{
 		ID: stageID, PipelineID: pipeID, StageKind: domain.StageSysDesign,
 		Status: domain.StageStatusInProgress, AIStrictnessProfileID: &profID,
-	}
+	})
 	taskID := uuid.New()
-	tasks.rows[taskID] = domain.MockTask{
+	f.tasks.mu.Lock()
+	f.tasks.rows[taskID] = domain.MockTask{
 		ID: taskID, StageKind: domain.StageSysDesign,
 		Title: "URL shortener", FunctionalRequirementsMD: "writes:1k/s",
 		ReferenceSolutionMD: "use cassandra + cdn", Active: true,
 	}
+	f.tasks.mu.Unlock()
 	attID := uuid.New()
-	atts.rows[attID] = domain.PipelineAttempt{
+	f.store.seedAttempt(domain.PipelineAttempt{
 		ID: attID, PipelineStageID: stageID, Kind: domain.AttemptSysDesignCanvas,
 		TaskID: &taskID, AIVerdict: domain.AttemptVerdictPending,
-	}
-	atts.byStage[stageID] = []uuid.UUID{attID}
-
-	cj := &fakeCanvasJudge{
-		fakeJudge: &fakeJudge{},
-		canvasOut: JudgeOutput{
-			Score: 78, Verdict: domain.AttemptVerdictPass,
-			Feedback: "Хороший дизайн", MissingPoints: []string{"кэш не описан"},
-		},
-	}
-	o.Judge = cj
+	})
 
 	scene := []byte(`{"elements":[],"files":{}}`)
-	out, err := o.SubmitCanvas(context.Background(), SubmitCanvasInput{
+	out, err := f.orch.SubmitCanvas(context.Background(), SubmitCanvasInput{
 		AttemptID: attID, UserID: owner,
 		ImageDataURL:    tinyPNGDataURL,
 		SceneJSON:       scene,
@@ -815,33 +1028,42 @@ func TestSubmitCanvas_RoutesToVisionJudge_StoresResult(t *testing.T) {
 	if !strings.Contains(out.UserAnswerMD, "Non-functional requirements") {
 		t.Errorf("non_functional_md not collapsed into user_answer_md: %q", out.UserAnswerMD)
 	}
-	if cj.lastCv == nil {
+	canvasH.mu.Lock()
+	lastCv := canvasH.lastCv
+	canvasH.mu.Unlock()
+	if lastCv == nil {
 		t.Fatalf("canvas judge not invoked")
 	}
-	if !strings.Contains(cj.lastCv.TaskBody, "URL shortener") {
+	if !strings.Contains(lastCv.TaskBody, "URL shortener") {
 		t.Errorf("task body not forwarded to judge")
 	}
-	if cj.lastCv.FunctionalRequirementsMD != "writes:1k/s" {
+	if lastCv.FunctionalRequirementsMD != "writes:1k/s" {
 		t.Errorf("functional reqs not forwarded")
 	}
 }
 
 func TestSubmitCanvas_OwnerMismatch_ErrNotFound(t *testing.T) {
-	o, pipes, stages, atts, _, _, _, tasks, _ := newTestOrchestratorFull()
+	f := newOrchFixture(t)
+
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+	canvasH := newCanvasJudgeHandle()
+	f.orch.Judge = wireOrchCanvasJudge(ctrl, f.judgeH, canvasH)
 
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{ID: pipeID, UserID: uuid.New(), Verdict: domain.PipelineInProgress}
+	f.store.seedPipeline(domain.MockPipeline{ID: pipeID, UserID: uuid.New(), Verdict: domain.PipelineInProgress})
 	stageID := uuid.New()
-	stages.rows[stageID] = domain.PipelineStage{ID: stageID, PipelineID: pipeID, StageKind: domain.StageSysDesign, Status: domain.StageStatusInProgress}
+	f.store.seedStage(domain.PipelineStage{ID: stageID, PipelineID: pipeID, StageKind: domain.StageSysDesign, Status: domain.StageStatusInProgress})
 	taskID := uuid.New()
-	tasks.rows[taskID] = domain.MockTask{ID: taskID, StageKind: domain.StageSysDesign, Active: true}
+	f.tasks.mu.Lock()
+	f.tasks.rows[taskID] = domain.MockTask{ID: taskID, StageKind: domain.StageSysDesign, Active: true}
+	f.tasks.mu.Unlock()
 	attID := uuid.New()
-	atts.rows[attID] = domain.PipelineAttempt{
+	f.store.seedAttempt(domain.PipelineAttempt{
 		ID: attID, PipelineStageID: stageID, Kind: domain.AttemptSysDesignCanvas, TaskID: &taskID,
-	}
+	})
 
-	o.Judge = &fakeCanvasJudge{fakeJudge: &fakeJudge{}}
-	_, err := o.SubmitCanvas(context.Background(), SubmitCanvasInput{
+	_, err := f.orch.SubmitCanvas(context.Background(), SubmitCanvasInput{
 		AttemptID: attID, UserID: uuid.New(), // not owner
 		ImageDataURL: tinyPNGDataURL,
 	})
@@ -851,33 +1073,34 @@ func TestSubmitCanvas_OwnerMismatch_ErrNotFound(t *testing.T) {
 }
 
 func TestStartNextStage_Algo_RespectsTaskPoolIDs(t *testing.T) {
-	o, pipes, stages, _, _, _, _, tasks, cs := newTestOrchestratorFull()
+	f := newOrchFixture(t)
 
 	companyID := uuid.New()
 	allowedID, otherID := uuid.New(), uuid.New()
-	cs.rows = map[uuid.UUID][]domain.CompanyStage{
-		companyID: {{
-			CompanyID: companyID, StageKind: domain.StageAlgo,
-			TaskPoolIDs: []uuid.UUID{allowedID},
-		}},
-	}
+	f.compStages.mu.Lock()
+	f.compStages.rows[companyID] = []domain.CompanyStage{{
+		CompanyID: companyID, StageKind: domain.StageAlgo,
+		TaskPoolIDs: []uuid.UUID{allowedID},
+	}}
+	f.compStages.mu.Unlock()
 
 	pipeID := uuid.New()
-	pipes.rows[pipeID] = domain.MockPipeline{
+	f.store.seedPipeline(domain.MockPipeline{
 		ID: pipeID, UserID: uuid.New(), CompanyID: &companyID,
 		Verdict: domain.PipelineInProgress,
-	}
+	})
 	stageID := uuid.New()
-	stages.rows[stageID] = domain.PipelineStage{
+	f.store.seedStage(domain.PipelineStage{
 		ID: stageID, PipelineID: pipeID, StageKind: domain.StageAlgo,
 		Status: domain.StageStatusPending,
-	}
-	stages.byPipeline[pipeID] = []uuid.UUID{stageID}
+	})
 
-	tasks.rows[allowedID] = domain.MockTask{ID: allowedID, StageKind: domain.StageAlgo, Active: true, Title: "Allowed"}
-	tasks.rows[otherID] = domain.MockTask{ID: otherID, StageKind: domain.StageAlgo, Active: true, Title: "Other"}
+	f.tasks.mu.Lock()
+	f.tasks.rows[allowedID] = domain.MockTask{ID: allowedID, StageKind: domain.StageAlgo, Active: true, Title: "Allowed"}
+	f.tasks.rows[otherID] = domain.MockTask{ID: otherID, StageKind: domain.StageAlgo, Active: true, Title: "Other"}
+	f.tasks.mu.Unlock()
 
-	out, err := o.StartNextStage(context.Background(), pipeID)
+	out, err := f.orch.StartNextStage(context.Background(), pipeID)
 	if err != nil {
 		t.Fatalf("StartNextStage: %v", err)
 	}

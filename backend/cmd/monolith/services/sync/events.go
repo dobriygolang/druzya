@@ -1,4 +1,4 @@
-// Phase C-6.2 SSE wiring. Owns only the constructor that mounts
+// SSE wiring. Owns only the constructor that mounts
 // /sync/events. The Broker type itself lives in broker.go (same package).
 //
 // Why broker stays in monolith (not in druz9/sync module): it's a

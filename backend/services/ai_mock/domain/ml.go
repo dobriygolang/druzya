@@ -19,8 +19,8 @@ import (
 // для feed, обоснуй loss и offline metric, расскажи где будет drift».
 // Глубина reasoning > flashing terms.
 //
-// M2 Phase K (2026-05-12 vertical analysis): added granular ml_system_design,
-// ml_coding, ml_theory sections для FAANG-style hiring loops где stages
+// Granular ml_system_design / ml_coding / ml_theory sections cover
+// FAANG-style hiring loops где stages
 // разделены. Все 4 ML sections используют MLE rubric (theoretical_depth,
 // practical_implementation, ml_system_design, data_intuition,
 // production_awareness) — IsMLEngSection now matches the full cluster so

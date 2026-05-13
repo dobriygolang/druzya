@@ -8,11 +8,11 @@ import (
 	"druz9/shared/enums"
 )
 
-// Product analyst mock prompts — Wave 8 of docs/feature/plan.md.
-// Free-form interview round on the standard product-analyst curriculum:
-// product metrics / SQL for analytics / experimentation / prioritisation
-// frameworks / insight communication. Same structural pattern as
-// Sysanalyst (Wave 7) and Tech Lead (Wave 3.4) — no algorithmic task.
+// Product analyst mock prompts — free-form interview round on the
+// standard product-analyst curriculum: product metrics / SQL for
+// analytics / experimentation / prioritisation frameworks / insight
+// communication. Same structural pattern as Sysanalyst and Tech Lead —
+// no algorithmic task.
 //
 // Why these specific axes — they reflect what's actually asked at
 // senior product-analyst interviews in product-led companies:

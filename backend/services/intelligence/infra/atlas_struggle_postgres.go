@@ -1,5 +1,5 @@
 // atlas_struggle_postgres.go — pgx adapter over user_atlas_struggle_marks
-// (migration 00107). X5 cross-product handoff (Phase J P2 2026-05-12).
+// (migration 00107). Cross-product handoff.
 //
 // Upsert uses ON CONFLICT (user_id, atlas_node_id) DO UPDATE — latest write
 // wins. Producers across services (Cue, Hone, mock) emit these without

@@ -31,7 +31,7 @@ func NewConversationSummaryStore(pool *pgxpool.Pool) *ConversationSummaryStore {
 }
 
 // Save атомарно записывает новый running_summary + summary_model
-// (Phase II attribution) для conversation_id. sessionKey — строковое
+// attribution для conversation_id. sessionKey — строковое
 // представление uuid.UUID. summaryModel — actual provider/model echo
 // от llmchain (например "groq/llama-3.3-70b-versatile"); пустая строка =
 // unknown / legacy.

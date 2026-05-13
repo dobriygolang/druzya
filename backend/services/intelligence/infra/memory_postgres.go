@@ -165,8 +165,8 @@ func (r *Episodes) LatestPerKind(ctx context.Context, userID uuid.UUID, kinds []
 }
 
 // SearchSimilar returns top-K by cosine. Filtering by kinds — optional.
-// Phase I: episodes filtered by embedding_model_id matching modelName.
-// Phase IX v2: ranking pushed into Postgres через pgvector `<=>` cosine
+// Episodes are filtered by embedding_model_id matching modelName.
+// Ranking is pushed into Postgres via the pgvector `<=>` cosine
 // distance operator + IVFFlat index — no Go-side cosine, no candidate
 // pre-fetching. Score = 1 - distance (1.0 = identical, 0 = orthogonal,
 // -1.0 = opposite; для cosine_ops range фактически [0..2] → score [-1..1]).
@@ -264,7 +264,7 @@ func (r *Episodes) SetEmbedding(ctx context.Context, id uuid.UUID, vec []float32
 	return nil
 }
 
-// MarkStaleForReembed — Phase I admin tool. Clears embedded_at for every
+// MarkStaleForReembed — admin tool. Clears embedded_at for every
 // episode whose vector was produced by a model OTHER than
 // currentModelName. The async embed worker re-embeds via the same
 // `WHERE embedded_at IS NULL` partial index. Returns rows-affected count.

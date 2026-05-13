@@ -362,7 +362,7 @@ func (p *Postgres) ListTutorStudents(ctx context.Context, tutorID uuid.UUID) ([]
 	return out, nil
 }
 
-// ListStudentTutors — Wave 9.4 multi-tutor surface. Same shape as
+// ListStudentTutors — multi-tutor surface. Same shape as
 // ListTutorStudents but filtered by student_id. Hits the existing
 // idx_tutor_students_student_started index.
 func (p *Postgres) ListStudentTutors(ctx context.Context, studentID uuid.UUID) ([]domain.Relationship, error) {

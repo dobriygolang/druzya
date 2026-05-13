@@ -36,9 +36,9 @@ const (
 	// CardMove — карточка переехала в новый column. Анимация переноса.
 	CardMove CursorEventKind = "card.move"
 
-	// CardCategorise — Phase J / H3 (2026-05-12): emitted by the auto-
-	// categoriser after CreateTask / BulkAutoCategorise когда LLM
-	// determined a kind. Frontend renders a transient toast «Auto-tagged
+	// CardCategorise — emitted by the auto-categoriser after CreateTask
+	// / BulkAutoCategorise когда LLM determined a kind. Frontend renders
+	// a transient toast «Auto-tagged
 	// as <Kind>» with reasoning peek + undo affordance. Payload uses:
 	//   - Body          → reasoning string
 	//   - DetectedKind  → assigned kind (algo / sysdesign / ...)
@@ -59,7 +59,7 @@ type CursorEvent struct {
 	FromColumn TaskStatus // только для CardMove
 	Body       string     // CardComment reads comment body; CardCategorise reads reasoning
 	OccurredAt time.Time
-	// Phase J / H3 (2026-05-12) — CardCategorise payload extension.
+	// CardCategorise payload extension.
 	DetectedKind TaskKind // только для CardCategorise
 	Confidence   float32  // только для CardCategorise, 0..1
 }

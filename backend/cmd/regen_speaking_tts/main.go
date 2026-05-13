@@ -1,6 +1,6 @@
-// regen_speaking_tts — bulk regenerate reference TTS audio для speaking
-// exercises. Phase K Wave 9 (E4 P1) — admin-trigger CLI; not part of
-// boot path, runs manually когда:
+// regen_speaking_tts — bulk regenerate reference TTS audio для
+// speaking exercises. Admin-trigger CLI; not part of boot path, runs
+// manually когда:
 //
 //   - 15 baseline rows seeded в migration 00105 (initial audio_url=NULL);
 //   - admin меняет TTS provider (Cloudflare → Google) и хочет refresh;

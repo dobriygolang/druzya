@@ -1,5 +1,5 @@
 // snapshot_repo.go — cross-context read aggregator for the tutor
-// dashboard (Wave 2.4b of docs/feature/plan.md). Reads from tables
+// dashboard. Reads from tables
 // owned by other bounded contexts (hone_*, mock_sessions, skill_nodes,
 // atlas_nodes) — DB-level coupling is a deliberate trade-off: the
 // alternative (importing 3 service modules into tutor) would be much
@@ -180,7 +180,7 @@ func (p *Postgres) GetStudentSnapshot(
 		out.NotesCount = 0
 	}
 
-	// 5) English-track activity from Hone (Wave 4 + 6.1).
+	// 5) English-track activity from Hone (Reading + Listening).
 	//
 	// Each block is independently fail-soft: an env without the new
 	// tables (older deployment, fresh test setup) shouldn't black out
@@ -222,7 +222,7 @@ func (p *Postgres) GetStudentSnapshot(
 		pgUUID(studentID),
 	).Scan(&out.ReadingMaterialsTotal)
 
-	// 5c) Writing-grades proxy. Wave 4.4 Writing surface itself doesn't
+	// 5c) Writing-grades proxy. The Writing surface itself doesn't
 	//     persist (one-shot grader), so the closest tractable signal is
 	//     reading sessions where the user submitted a summary AND it got
 	//     graded. Reasonable approximation of «pieces of writing the

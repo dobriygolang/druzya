@@ -69,8 +69,8 @@ type Settings struct {
 	Locale           string // "ru" | "en" | "kz" | "ua"
 	Notifications    NotificationPrefs
 	VoiceModeEnabled bool
-	// AIInsightModel — пользовательский выбор LLM-модели для AI Coach insight
-	// (Phase B). Валидные значения берутся из GET /api/v1/ai/models — например
+	// AIInsightModel — пользовательский выбор LLM-модели для AI Coach
+	// insight. Валидные значения берутся из GET /api/v1/ai/models — например
 	// "openai/gpt-4o-mini", "anthropic/claude-sonnet-4". Пустая строка =
 	// "use server default" (free tier-aware fallback в openrouter_insight.go).
 	// Premium-модели для free-юзеров silently fallback на default — UI на
@@ -159,8 +159,8 @@ func (a AppSurface) IsValid() bool {
 	return false
 }
 
-// AppInstall mirrors a row in user_app_installs. Phase J / X1 (P0).
-// AppVersion is informational — Hone / Cue / web all push their semver
+// AppInstall mirrors a row in user_app_installs. AppVersion is
+// informational — Hone / Cue / web all push their semver
 // on every heartbeat; web typically stays empty (no versioning hook).
 type AppInstall struct {
 	App         AppSurface

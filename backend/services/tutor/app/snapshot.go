@@ -62,8 +62,8 @@ type PreSessionBriefer interface {
 	Render(ctx context.Context, snap domain.StudentSnapshot) (string, error)
 }
 
-// GeneratePreSessionBrief — Wave 2.5 of plan.md. Wraps
-// GetStudentSnapshot + the LLM render so the handler doesn't have to
+// GeneratePreSessionBrief wraps GetStudentSnapshot + the LLM render
+// so the handler doesn't have to
 // orchestrate two repo hops.
 type GeneratePreSessionBrief struct {
 	Snapshot *GetStudentSnapshot

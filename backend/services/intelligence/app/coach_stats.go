@@ -6,7 +6,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"druz9/intelligence/domain"
@@ -51,6 +50,5 @@ func (uc *GetCoachStats) Do(ctx context.Context, userID uuid.UUID) (CoachStats, 
 		out.LastMockSection = ms[0].Section
 	}
 
-	_ = fmt.Sprintf // unused-import guard for fmt; remove if needed
 	return out, nil
 }

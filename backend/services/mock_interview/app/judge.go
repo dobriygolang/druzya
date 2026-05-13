@@ -44,12 +44,14 @@ import (
 
 // JudgeClient is the seam — the orchestrator calls JudgeAnswer and is
 // agnostic to whether it's the real LLM or a fake in tests.
+//
+//go:generate mockgen -package app -destination judge_mock_test.go -source judge.go JudgeClient,CanvasJudgeClient
 type JudgeClient interface {
 	JudgeAnswer(ctx context.Context, in JudgeInput) (JudgeOutput, error)
 }
 
-// CanvasJudgeClient — extra capability for Phase D.1 sysdesign-canvas
-// scoring. Kept as a separate interface so non-vision consumers don't
+// CanvasJudgeClient — extra capability for sysdesign-canvas scoring.
+// Kept as a separate interface so non-vision consumers don't
 // have to implement it. The orchestrator type-asserts at SubmitCanvas
 // and falls back to errorFallback() when the wired judge doesn't
 // implement it (e.g. nil-chain dev environment).
@@ -372,9 +374,9 @@ const pass2BehavioralSystemPrompt = `Ты — строгий behavioral-инте
 - По умолчанию FAIL. PASS только при чётком STAR-структурированном кейсе.
 - feedback — конкретный совет: "В следующий раз начни с одной фразы про situation, потом сразу task в одном предложении" — не общая морализация.`
 
-// pass2MLTheorySystemPrompt — DL fundamentals rubric for ml_theory stage
-// (Phase K M6 2026-05-13). Distinct from generic pass2 because ml_theory
-// asks short quiz-style questions where the right answer requires math
+// pass2MLTheorySystemPrompt — DL fundamentals rubric for ml_theory
+// stage. Distinct from generic pass2 because ml_theory asks short
+// quiz-style questions where the right answer requires math
 // derivation OR geometric intuition (e.g. «выведи backprop через linear
 // layer», «почему BatchNorm fail на batch=1»). Memorised terminology
 // without understanding scores LOW — мы явно требуем derivation chain
@@ -527,7 +529,7 @@ func (j *LLMJudge) pass2Correctness(ctx context.Context, in JudgeInput) (float64
 	return parsed.Score, parsed.MissingPoints, strings.TrimSpace(parsed.Feedback), nil
 }
 
-// ── Phase D.1 — multimodal sysdesign canvas judge ─────────────────────
+// ── Multimodal sysdesign canvas judge ─────────────────────────────────
 
 // canvasSystemPrompt is the strict-JSON, single-pass prompt used by
 // JudgeCanvas. No water-detector pass — релевантность диаграммы
@@ -662,9 +664,9 @@ func (j *LLMJudge) JudgeCanvas(ctx context.Context, in JudgeCanvasInput) (JudgeO
 	}, nil
 }
 
-// decodeDataURL parses a "data:<mime>;base64,<payload>" URL into raw bytes
-// and the mime type. Accepts only image/png and image/jpeg per Phase D.1
-// spec; other types are an error so the orchestrator can 400 cleanly.
+// decodeDataURL parses a "data:<mime>;base64,<payload>" URL into raw
+// bytes and the mime type. Accepts only image/png and image/jpeg;
+// other types are an error so the orchestrator can 400 cleanly.
 func decodeDataURL(s string) ([]byte, string, error) {
 	const prefix = "data:"
 	s = strings.TrimSpace(s)
