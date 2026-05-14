@@ -14,6 +14,7 @@
 
 import { create } from 'zustand';
 
+import { translate } from '@d9-i18n';
 import {
   eventChannels,
   type CoachErrorEvent,
@@ -108,10 +109,10 @@ export const useCoachStore = create<State>((set, get) => ({
         let friendly: string;
         let kind: 'warn' | 'error';
         if (isRateLimit) {
-          friendly = 'AI rate-limited — следующая попытка через 15s';
+          friendly = translate('cue.store.coach.err.rate_limited');
           kind = 'warn';
         } else if (isCascadeExhausted) {
-          friendly = 'AI providers временно недоступны — попробуй через минуту';
+          friendly = translate('cue.store.coach.err.cascade_exhausted');
           kind = 'warn';
         } else {
           friendly = 'AI suggestion failed';

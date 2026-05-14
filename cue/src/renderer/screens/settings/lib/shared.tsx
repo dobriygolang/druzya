@@ -154,10 +154,14 @@ export const emptyStyle: React.CSSProperties = {
   lineHeight: 1.5,
 };
 
+// formatBytes uses the universal SI-prefixed B / KB / MB labels — these
+// abbreviations are recognised in both locales (a Cyrillic «Б/КБ/МБ»
+// variant would only save 1-2 chars and forces a translation roundtrip
+// for a label every reader of any locale parses identically).
 export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} Б`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} КБ`;
-  return `${(n / (1024 * 1024)).toFixed(1)} МБ`;
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function guessMIME(filename: string): string {

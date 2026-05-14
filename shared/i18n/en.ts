@@ -1266,6 +1266,15 @@ export const en: Dict = {
   'cue.store.interview_prep.cv_extract_failed': 'Failed to extract text from this file (possibly a scan). Paste resume text manually.',
   'cue.store.shared.err_request': 'Request error',
   'cue.store.export.model_label': 'Model',
+  'cue.store.export.session_title': 'Cue · session {{date}}',
+  'cue.store.export.turns_one': '{{count}} turn',
+  'cue.store.export.turns_many': '{{count}} turns (total)',
+  'cue.store.export.role_user': 'You',
+  'cue.store.export.streaming': 'streaming…',
+  'cue.store.export.error_prefix': 'Error',
+  'cue.store.coach.err.rate_limited': 'AI rate-limited — next try in 15s',
+  'cue.store.coach.err.cascade_exhausted': 'AI providers temporarily unavailable — try again in a minute',
+  'cue.onboarding.flow.keyboard_hint': '← → · ↵ next',
 
   // ── Cue: HotkeyRecorder ──────────────────────────────────────────────
   'cue.hotkey.recording_prompt': 'press keys · Esc to cancel',

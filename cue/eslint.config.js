@@ -20,9 +20,18 @@ export default [
       '../frontend/src/api/generated/**',
       '**/*.test.{ts,tsx}',
       'src/test/**',
+      // Main-process Electron strings (tray menu, what's-new banner,
+      // OS notifications) live outside the renderer Dict; tracked
+      // separately with app.getLocale().
+      'src/main/**',
     ],
   },
   js.configs.recommended,
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: false,
+    },
+  },
   {
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: {

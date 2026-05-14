@@ -48,7 +48,14 @@ export const useTranscriptionLangStore = create<State>((set) => ({
   },
 }));
 
+// Language self-names (Русский / English) are canonical — they always
+// appear in the language they refer to, regardless of the active locale.
+// Renderer GeneralTab now resolves through t('cue.settings.general.transcription.label.*')
+// for the active locale, this map stays as the fallback when t() isn't
+// wired (e.g. main-process boot logs).
+// eslint-disable-next-line d9-i18n/no-cyrillic-literals
 export const TRANSCRIPTION_LANG_LABELS: Record<TranscriptionLang, string> = {
+  // eslint-disable-next-line d9-i18n/no-cyrillic-literals
   'ru-RU': 'Русский',
   'en-US': 'English (US)',
   'en-GB': 'English (UK)',

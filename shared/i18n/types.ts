@@ -1270,6 +1270,15 @@ export interface Dict {
   'cue.store.interview_prep.cv_extract_failed': string;
   'cue.store.shared.err_request': string;
   'cue.store.export.model_label': string;
+  'cue.store.export.session_title': string;
+  'cue.store.export.turns_one': string;
+  'cue.store.export.turns_many': string;
+  'cue.store.export.role_user': string;
+  'cue.store.export.streaming': string;
+  'cue.store.export.error_prefix': string;
+  'cue.store.coach.err.rate_limited': string;
+  'cue.store.coach.err.cascade_exhausted': string;
+  'cue.onboarding.flow.keyboard_hint': string;
 
   // ── Cue: HotkeyRecorder ──────────────────────────────────────────────
   'cue.hotkey.recording_prompt': string;

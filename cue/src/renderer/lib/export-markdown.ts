@@ -71,13 +71,14 @@ export function exportConversationAsMarkdown(
   });
 
   const lines: string[] = [];
-  lines.push(`# ${opts.title ?? `Cue · сессия ${dateHuman}`}`);
+  lines.push(`# ${opts.title ?? translate('cue.store.export.session_title', { date: dateHuman })}`);
   const metaParts: string[] = [];
   if (opts.modelLabel) metaParts.push(`${translate('cue.store.export.model_label')}: \`${opts.modelLabel}\``);
+  const turnCount = messages.filter((m) => m.role === 'user').length;
   metaParts.push(
-    `${messages.filter((m) => m.role === 'user').length} turn${
-      messages.filter((m) => m.role === 'user').length === 1 ? '' : ' (всего)'
-    }`,
+    translate(turnCount === 1 ? 'cue.store.export.turns_one' : 'cue.store.export.turns_many', {
+      count: turnCount,
+    }),
   );
   if (metaParts.length > 0) {
     lines.push(`_${metaParts.join(' · ')}_`);
@@ -90,7 +91,7 @@ export function exportConversationAsMarkdown(
     // Error-only bubbles (pending=false + errorCode) still appear in
     // the chat UI; include them so the exported transcript is honest
     // about what the user actually saw.
-    const role = m.role === 'user' ? '🧑 Вы' : '🤖 Assistant';
+    const role = m.role === 'user' ? `🧑 ${translate('cue.store.export.role_user')}` : '🤖 Assistant';
     lines.push(`**${role}:**`);
     lines.push('');
 
@@ -104,12 +105,12 @@ export function exportConversationAsMarkdown(
       lines.push(content);
       lines.push('');
     } else if (m.role === 'assistant' && m.pending) {
-      lines.push('_(стримится…)_');
+      lines.push(`_(${translate('cue.store.export.streaming')})_`);
       lines.push('');
     }
 
     if (m.errorCode) {
-      lines.push(`> ⚠️ Ошибка ${m.errorCode}: ${m.errorMessage ?? ''}`);
+      lines.push(`> ⚠️ ${translate('cue.store.export.error_prefix')} ${m.errorCode}: ${m.errorMessage ?? ''}`);
       lines.push('');
     }
 

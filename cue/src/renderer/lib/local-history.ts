@@ -373,10 +373,14 @@ function buildRollingSummary(turns: ConversationMemory['turns']): string {
 }
 
 function buildLexicalEmbedding(text: string): ConversationMemory['embeddings'] {
+  // Bilingual stop-word list used for lexical embedding — these are data,
+  // not user-facing UI strings (they never reach the renderer).
+  /* eslint-disable d9-i18n/no-cyrillic-literals */
   const stop = new Set([
     'the', 'and', 'for', 'that', 'this', 'with', 'you', 'are', 'как', 'что', 'это',
     'для', 'или', 'при', 'про', 'мне', 'тебе', 'если', 'then', 'than',
   ]);
+  /* eslint-enable d9-i18n/no-cyrillic-literals */
   const counts = new Map<string, number>();
   for (const raw of text.toLowerCase().match(/[a-zа-я0-9_+#-]{3,}/gi) ?? []) {
     const term = raw.slice(0, 40);

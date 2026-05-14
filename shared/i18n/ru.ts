@@ -1266,6 +1266,15 @@ export const ru: Dict = {
   'cue.store.interview_prep.cv_extract_failed': 'Не удалось извлечь текст из этого файла (возможно, скан). Вставьте текст резюме вручную.',
   'cue.store.shared.err_request': 'Ошибка запроса',
   'cue.store.export.model_label': 'Модель',
+  'cue.store.export.session_title': 'Cue · сессия {{date}}',
+  'cue.store.export.turns_one': '{{count}} turn',
+  'cue.store.export.turns_many': '{{count}} turns (всего)',
+  'cue.store.export.role_user': 'Вы',
+  'cue.store.export.streaming': 'стримится…',
+  'cue.store.export.error_prefix': 'Ошибка',
+  'cue.store.coach.err.rate_limited': 'AI rate-limited — следующая попытка через 15s',
+  'cue.store.coach.err.cascade_exhausted': 'AI providers временно недоступны — попробуй через минуту',
+  'cue.onboarding.flow.keyboard_hint': '← → · ↵ дальше',
 
   // ── Cue: HotkeyRecorder ──────────────────────────────────────────────
   'cue.hotkey.recording_prompt': 'нажми клавиши · Esc для отмены',

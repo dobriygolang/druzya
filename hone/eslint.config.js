@@ -23,9 +23,21 @@ export default [
       '**/*.test.{ts,tsx}',
       'src/test/**',
       'src/renderer/src/quick-capture/**',
+      // Main-process Electron strings (system notifications) need their own
+      // i18n strategy via app.getLocale() + duplicated bilingual constants;
+      // tracked separately from the renderer Dict.
+      'src/main/**',
     ],
   },
   js.configs.recommended,
+  // Inline `// eslint-disable-next-line react-hooks/exhaustive-deps`
+  // comments litter the renderer; react-hooks plugin isn't wired here,
+  // so don't error on unknown disable directives.
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: false,
+    },
+  },
   {
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
@@ -50,6 +62,16 @@ export default [
       'no-undef': 'off',
       'no-unused-vars': 'off',
       'd9-i18n/no-cyrillic-literals': 'error',
+    },
+  },
+  // Settings page declares Russian search aliases inside `keywords: 'ru en'`
+  // strings deliberately, so non-EN-readers can find sections by Russian
+  // synonyms. Per Hone agent #1's notes — these are data, not user-facing
+  // copy, and the d9-i18n rule should ignore this single file.
+  {
+    files: ['src/renderer/src/pages/Settings/index.tsx'],
+    rules: {
+      'd9-i18n/no-cyrillic-literals': 'off',
     },
   },
 ];

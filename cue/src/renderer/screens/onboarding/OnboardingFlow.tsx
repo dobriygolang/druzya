@@ -21,6 +21,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 import { CompleteScreen } from './CompleteScreen';
 import { InvisibleDemoScreen } from './InvisibleDemoScreen';
 import { PermissionsScreen } from './PermissionsScreen';
@@ -44,6 +46,7 @@ function readResume(): OnboardingStep {
 }
 
 export function OnboardingFlow() {
+  const t = useT();
   const [step, setStep] = useState<OnboardingStep>(readResume);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -182,7 +185,7 @@ export function OnboardingFlow() {
       >
         <span>{idx + 1} / {ORDER.length}</span>
         <span aria-hidden="true">·</span>
-        <span>← → · ↵ дальше</span>
+        <span>{t('cue.onboarding.flow.keyboard_hint')}</span>
       </div>
     </div>
   );
