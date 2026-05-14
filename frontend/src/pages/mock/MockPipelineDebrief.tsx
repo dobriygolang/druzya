@@ -13,7 +13,9 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, XCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../../components/AppShell'
+import { bcp47 } from '../../lib/i18n'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { EmptyState } from '../../components/EmptyState'
@@ -29,6 +31,7 @@ import {
 } from '../../lib/queries/mockPipeline'
 
 export default function MockPipelineDebrief() {
+  const { t } = useTranslation('pages')
   const { pipelineId } = useParams<{ pipelineId: string }>()
   const navigate = useNavigate()
   const pipelineQ = useMockPipelineQuery(pipelineId)
@@ -64,8 +67,8 @@ export default function MockPipelineDebrief() {
           <EmptyState
             variant="coming-soon"
             title="Mock Interview"
-            body="Сервис пайплайна ещё не активен."
-            cta={{ label: 'К выбору компании', onClick: () => navigate('/mock') }}
+            body={t('mock_debrief.coming_soon_body')}
+            cta={{ label: t('mock_debrief.to_picker'), onClick: () => navigate('/mock') }}
           />
         </div>
       </AppShellV2>
@@ -78,9 +81,9 @@ export default function MockPipelineDebrief() {
         <div className="px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
           <EmptyState
             variant="error"
-            title="Отчёт недоступен"
-            cta={{ label: 'Повторить', onClick: () => pipelineQ.refetch() }}
-            secondaryCta={{ label: 'Новый собес', onClick: () => navigate('/mock') }}
+            title={t('mock_debrief.report_unavailable')}
+            cta={{ label: t('mock_debrief.retry'), onClick: () => pipelineQ.refetch() }}
+            secondaryCta={{ label: t('mock_debrief.new_interview'), onClick: () => navigate('/mock') }}
           />
         </div>
       </AppShellV2>
@@ -115,7 +118,7 @@ export default function MockPipelineDebrief() {
             onClick={() => navigate('/mock')}
             className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />К выбору компании
+            <ArrowLeft className="h-3.5 w-3.5" />{t('mock_debrief.to_picker')}
           </button>
         </div>
 
@@ -123,20 +126,19 @@ export default function MockPipelineDebrief() {
 
         <section className="flex flex-col gap-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-            Радар по этапам
+            {t('mock_debrief.radar_title')}
           </div>
           <Card variant="default" padding="lg" className="flex flex-col items-center gap-3">
             <PipelineRadar stages={stages} />
             <div className="font-mono text-[10px] text-text-secondary text-center max-w-md">
-              Каждая ось — нормализованный score этапа (0..5). Точка-индикатор —
-              средняя по всем заполненным осям.
+              {t('mock_debrief.radar_caption')}
             </div>
           </Card>
         </section>
 
         <section className="flex flex-col gap-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-            По этапам
+            {t('mock_debrief.by_stages')}
           </div>
           <div className="flex flex-col gap-2">
             {stages.map((s) => (
@@ -148,7 +150,7 @@ export default function MockPipelineDebrief() {
         {topMissing.length > 0 && (
           <section className="flex flex-col gap-2">
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-              Главное, что упустил
+              {t('mock_debrief.missing_title')}
             </div>
             <Card variant="default" padding="lg">
               <ul className="list-disc list-inside text-sm text-text-secondary space-y-1">
@@ -168,10 +170,10 @@ export default function MockPipelineDebrief() {
             loading={create.isPending}
             disabled={create.isPending}
           >
-            Попробовать ещё раз
+            {t('mock_debrief.try_again')}
           </Button>
           <Button variant="ghost" size="md" onClick={() => navigate('/insights')}>
-            В Insights
+            {t('mock_debrief.to_insights')}
           </Button>
         </div>
       </div>
@@ -188,6 +190,7 @@ function DebriefHero({
   pipeline: Pipeline
   companyName: string | null
 }) {
+  const { t } = useTranslation('pages')
   const v = pipeline.verdict
   const total = pipeline.total_score ?? 0
   const dateLabel = formatDate(pipeline.finished_at ?? pipeline.started_at)
@@ -196,10 +199,10 @@ function DebriefHero({
     return (
       <Card variant="default" padding="lg" className="flex flex-col gap-2">
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          Прервано
+          {t('mock_debrief.cancelled_eyebrow')}
         </div>
         <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
-          Собес прерван
+          {t('mock_debrief.cancelled_title')}
         </h1>
         <p className="text-sm text-text-secondary">
           {companyName ?? 'Random'} · {dateLabel}
@@ -210,10 +213,10 @@ function DebriefHero({
 
   const isPass = v === 'pass'
   const Icon = isPass ? CheckCircle2 : XCircle
-  const title = isPass ? 'Сдал собес' : 'Не сдал'
+  const title = isPass ? t('mock_debrief.passed') : t('mock_debrief.failed')
   const sub = isPass
-    ? 'Хорошая работа — продолжай в том же духе.'
-    : 'Готовься ещё. Слабые места — ниже.'
+    ? t('mock_debrief.pass_sub')
+    : t('mock_debrief.fail_sub')
 
   return (
     <Card
@@ -256,6 +259,7 @@ function DebriefHero({
 // ── StageRow ────────────────────────────────────────────────────────────
 
 function StageRow({ stage }: { stage: PipelineStage }) {
+  const { t } = useTranslation('pages')
   const navigate = useNavigate()
   const [open, setOpen] = useState<boolean>(false)
   const hasFeedback = !!stage.ai_feedback_md
@@ -343,7 +347,9 @@ function StageRow({ stage }: { stage: PipelineStage }) {
               }}
               className="rounded-md border border-border bg-transparent px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
             >
-              Разобрать{replayableAttempts.length > 1 ? ` · попытка ${i + 1}` : ''}
+              {replayableAttempts.length > 1
+                ? t('mock_debrief.replay_attempt', { n: i + 1 })
+                : t('mock_debrief.replay')}
             </button>
           ))}
         </div>
@@ -375,7 +381,7 @@ function formatDate(iso: string | null): string {
   if (!iso) return ''
   try {
     const d = new Date(iso)
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+    return d.toLocaleDateString(bcp47(), { day: 'numeric', month: 'short' })
   } catch {
     return ''
   }
@@ -400,6 +406,7 @@ const RADAR_AXES: { kind: PipelineStage['stage_kind']; label: string }[] = [
 ]
 
 function PipelineRadar({ stages }: { stages: PipelineStage[] }) {
+  const { t } = useTranslation('wave14')
   // Build a kind → 0..5 value map. Missing stage = 0.
   const byKind = new Map<PipelineStage['stage_kind'], number>()
   for (const s of stages) {
@@ -532,7 +539,7 @@ function PipelineRadar({ stages }: { stages: PipelineStage[] }) {
       </svg>
       <div className="flex items-center gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          Среднее
+          {t('mock_debrief_extra.average')}
         </span>
         <span className="font-mono text-lg font-bold text-text-primary tabular-nums">
           {avg.toFixed(1)}

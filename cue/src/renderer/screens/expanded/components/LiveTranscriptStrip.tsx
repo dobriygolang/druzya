@@ -90,7 +90,7 @@ export function SpeakerLabelsBar() {
           marginRight: 4,
         }}
       >
-        Speakers
+        {t('cue.expanded.speakers.eyebrow')}
       </span>
       {hasMic && <SpeakerLabel speakerId={0} source="mic" compact />}
       {systemSpeakerIds.map((id) => (

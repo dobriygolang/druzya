@@ -6,7 +6,9 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { X, AlertTriangle, AlertCircle, Lightbulb, CheckCircle2 } from 'lucide-react'
+import i18n from '../lib/i18n'
 
 import { dismissInsight, getActiveInsights, type CoachInsight, type InsightSeverity } from '../lib/insights'
 import { subscribeActivities } from '../lib/activity'
@@ -20,6 +22,7 @@ const SEVERITY_ICON: Record<InsightSeverity, typeof AlertTriangle> = {
 }
 
 export function ProactiveInsightsBanner() {
+  const { t } = useTranslation('wave14')
   const [insights, setInsights] = useState<CoachInsight[]>(() => getActiveInsights())
 
   // Re-detect on any underlying signal change (activity / goal). Diagnostic
@@ -82,8 +85,8 @@ export function ProactiveInsightsBanner() {
         )}
         {insights.length > 1 && (
           <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            ещё {insights.length - 1}{' '}
-            {pluralInsights(insights.length - 1)} в очереди
+            {t('proactive_insights.more')} {insights.length - 1}{' '}
+            {pluralInsights(insights.length - 1)} {t('proactive_insights.in_queue')}
           </p>
         )}
       </div>
@@ -95,7 +98,7 @@ export function ProactiveInsightsBanner() {
             dismissInsight(top.id)
             setInsights((prev) => prev.filter((i) => i.id !== top.id))
           }}
-          aria-label="Скрыть на 24 часа"
+          aria-label={t('proactive_insights.hide_24h')}
           className="shrink-0 rounded-md text-text-muted transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-2 hover:text-text-primary"
         >
           <X className="h-4 w-4" />
@@ -106,7 +109,7 @@ export function ProactiveInsightsBanner() {
 }
 
 function pluralInsights(n: number): string {
-  if (n === 1) return 'инсайт'
-  if (n >= 2 && n <= 4) return 'инсайта'
-  return 'инсайтов'
+  if (n === 1) return i18n.t('proactive_insights.insight', { ns: 'wave14' })
+  if (n >= 2 && n <= 4) return i18n.t('proactive_insights.insights_few', { ns: 'wave14' })
+  return i18n.t('proactive_insights.insights_many', { ns: 'wave14' })
 }

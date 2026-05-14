@@ -5,6 +5,7 @@
 // localStorage (V1) → /today.
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 
@@ -29,6 +30,7 @@ const captionMono: React.CSSProperties = {
 }
 
 export default function PathEdit() {
+  const { t } = useTranslation('wave14')
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const presetId = params.get('preset') ?? ''
@@ -62,7 +64,7 @@ export default function PathEdit() {
     return (
       <OnboardingLayout step={1}>
         <div className="mx-auto px-4 py-16 text-center" style={{ maxWidth: 460 }}>
-          <p style={{ color: 'var(--ink-60)', fontSize: 14 }}>Preset не найден.</p>
+          <p style={{ color: 'var(--ink-60)', fontSize: 14 }}>{t('onboarding_path.preset_not_found')}</p>
           <Link
             to="/onboarding/path"
             className="focus-ring motion-press"
@@ -79,7 +81,7 @@ export default function PathEdit() {
               textDecoration: 'none',
             }}
           >
-            Выбрать другой
+            {t('onboarding_path.pick_other')}
           </Link>
         </div>
       </OnboardingLayout>
@@ -120,10 +122,10 @@ export default function PathEdit() {
           onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
           onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
         >
-          <ArrowLeft style={{ width: 12, height: 12 }} /> К выбору пути
+          <ArrowLeft style={{ width: 12, height: 12 }} /> {t('onboarding_path.to_path_picker')}
         </Link>
         <header style={{ marginTop: 14, marginBottom: 12 }}>
-          <div style={captionMono}>ПУТЬ · {preset.title.toUpperCase()}</div>
+          <div style={captionMono}>{t('onboarding_path.path_label')} {preset.title.toUpperCase()}</div>
           <h1
             style={{
               margin: '8px 0 0',
@@ -134,7 +136,7 @@ export default function PathEdit() {
               color: 'rgb(var(--ink))',
             }}
           >
-            Что уже знаешь?
+            {t('onboarding_path.edit_title')}
           </h1>
           <p
             style={{
@@ -145,8 +147,7 @@ export default function PathEdit() {
               color: 'var(--ink-60)',
             }}
           >
-            Сними галочки с тем, которые точно знаешь — мы пропустим их в рекомендациях.
-            Можно вернуться и поменять позже.
+            {t('onboarding_path.edit_hint')}
           </p>
         </header>
 
@@ -155,13 +156,13 @@ export default function PathEdit() {
           style={{ marginBottom: 16, gap: 16, alignItems: 'center', color: 'var(--ink-60)', fontSize: 12 }}
         >
           <span style={captionMono}>
-            Учить:{' '}
+            {t('onboarding_path.learn')}{' '}
             <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
               {totalLearn}
             </strong>
           </span>
           <span style={captionMono}>
-            Пропустить:{' '}
+            {t('onboarding_path.skip_topic')}{' '}
             <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
               {totalSkip}
             </strong>
@@ -266,7 +267,7 @@ export default function PathEdit() {
                 'background-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
             }}
           >
-            Сохранить и начать <ArrowRight style={{ width: 16, height: 16 }} />
+            {t('onboarding_path.save_start')} <ArrowRight style={{ width: 16, height: 16 }} />
           </button>
         </div>
       </div>

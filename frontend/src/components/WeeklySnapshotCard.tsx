@@ -8,7 +8,8 @@
 //
 // Anti-fallback: пустой week → placeholder с CTA «залогировать первое».
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CalendarDays } from 'lucide-react'
 
 import {
@@ -21,14 +22,16 @@ import {
 } from '../lib/activity'
 import { loadResult, type MiniMockResult } from '../lib/miniMock'
 
-const KIND_LABEL: Record<ActivityKind, string> = {
-  mock: 'Mock',
-  leetcode: 'Задачи',
-  reading: 'Чтение',
-  coach: 'Coach',
-  focus_block: 'Focus',
-  reflection: 'Reflection',
-  external: 'Другое',
+function getKindLabels(t: (k: string) => string): Record<ActivityKind, string> {
+  return {
+    mock: 'Mock',
+    leetcode: t('weekly_snapshot.tasks'),
+    reading: t('weekly_snapshot.reading'),
+    coach: 'Coach',
+    focus_block: 'Focus',
+    reflection: 'Reflection',
+    external: t('weekly_snapshot.other'),
+  }
 }
 
 interface Snapshot {
@@ -46,6 +49,8 @@ function computeSnapshot(): Snapshot {
 }
 
 export function WeeklySnapshotCard() {
+  const { t } = useTranslation('wave14')
+  const KIND_LABEL = useMemo(() => getKindLabels(t), [t])
   const [snap, setSnap] = useState<Snapshot>(() => computeSnapshot())
 
   useEffect(() => {
@@ -77,37 +82,35 @@ export function WeeklySnapshotCard() {
       <header className="flex items-center gap-2">
         <CalendarDays className="h-4 w-4 text-text-secondary" />
         <h2 className="font-display text-base font-bold leading-tight">
-          Эта неделя
+          {t('weekly_snapshot.this_week')}
         </h2>
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Cell
-          label="Занятий"
+          label={t('weekly_snapshot.activities_count')}
           value={String(summary.last7d)}
-          hint={trajectory.weekDelta !== 0 ? `${trajectory.weekDelta >= 0 ? '+' : ''}${trajectory.weekDelta} vs пред.` : 'без изменений'}
+          hint={trajectory.weekDelta !== 0 ? `${trajectory.weekDelta >= 0 ? '+' : ''}${trajectory.weekDelta} ${t('weekly_snapshot.vs_prev')}` : t('weekly_snapshot.no_change')}
         />
         <Cell
-          label="Часов"
+          label={t('weekly_snapshot.hours_count')}
           value={hours7}
-          hint={summary.minutes7d > 0 ? 'фиксировал' : 'не фиксировал'}
+          hint={summary.minutes7d > 0 ? t('weekly_snapshot.tracked') : t('weekly_snapshot.not_tracked')}
         />
         <Cell
-          label="Топ-формат"
+          label={t('weekly_snapshot.top_format')}
           value={topKindLabel}
-          hint="за 7 дней"
+          hint={t('weekly_snapshot.in_7_days')}
         />
         <Cell
           label="Mini-mock"
           value={miniMock ? `${miniMock.overallScore.toFixed(1)}/5` : '—'}
-          hint={miniMock ? `track ${miniMock.track}` : 'не пройден'}
+          hint={miniMock ? `track ${miniMock.track}` : t('weekly_snapshot.not_logged')}
         />
       </div>
 
       <p className="text-[12px] italic text-text-muted">
-        Когда подключим backend, этот блок начнёт показывать AI insight за
-        неделю (top wins, blockers, recommended pivot). Сейчас — local
-        snapshot.
+        {t('weekly_snapshot.backend_pending')}
       </p>
     </section>
   )

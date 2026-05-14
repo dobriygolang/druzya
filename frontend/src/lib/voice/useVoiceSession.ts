@@ -1,6 +1,7 @@
 // Orchestrates a two-way voice session: STT → backend turn → TTS → loop.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import i18n from '../i18n'
 import { API_BASE } from '../apiClient'
 import { createSTT, isSTTSupported, type STTHandle } from './stt'
 import { cancel as cancelTTS, speak, type TTSVoice } from './tts'
@@ -106,7 +107,7 @@ export function useVoiceSession(opts: Opts): UseVoiceSession {
   const start = useCallback(() => {
     if (runningRef.current) return
     if (!isSTTSupported()) {
-      setError('Web Speech API недоступен в этом браузере')
+      setError(i18n.t('errors:voice.stt_unsupported'))
       setState('error')
       return
     }

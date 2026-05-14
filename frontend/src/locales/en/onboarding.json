@@ -37,7 +37,84 @@
     "task": "Problem",
     "task_text": "Given an array of numbers and a target. Return indexes of two numbers that sum to target. Each number used once.",
     "tooltip_title": "Hit Run to execute tests",
-    "tooltip_sub": "Don't worry — nobody sees your fails"
+    "tooltip_sub": "Don't worry — nobody sees your fails",
+    "skip_label": "pick for me",
+    "eyebrow": "step 3 · first atlas node",
+    "title_prefix": "Where shall we start ramping up",
+    "title_suffix": "?",
+    "subtitle_pick": "Pick one core node. It becomes your active point on the Atlas.",
+    "hours_short": "≈{{n}} h",
+    "tasks_short": "{{n}} problems",
+    "cta_continue": "Choose and continue →",
+    "class": {
+      "algo": "Algorithms",
+      "backend": "Backend",
+      "system": "System Design",
+      "concurrency": "Concurrency",
+      "ds": "Data Science"
+    },
+    "skill": {
+      "two-pointers": {
+        "title": "Two pointers",
+        "blurb": "The simplest way to feel an array. 80% of sliding-window problems become trivial after."
+      },
+      "sliding-window": {
+        "title": "Sliding window",
+        "blurb": "Base pattern for substrings/subarrays with dynamic bounds."
+      },
+      "binary-search": {
+        "title": "Binary search",
+        "blurb": "Not only on arrays — on answers, functions, and boundary problems."
+      },
+      "http-deep": {
+        "title": "HTTP deep",
+        "blurb": "Statuses, headers, idempotency, redirects, caching — interview-grade knowledge."
+      },
+      "caching-strategies": {
+        "title": "Cache strategies",
+        "blurb": "read-through / write-back / write-around — what to pick and what you pay for it."
+      },
+      "api-design": {
+        "title": "API design",
+        "blurb": "Versioning, contract evolution, REST vs gRPC trade-offs."
+      },
+      "cap-theorem": {
+        "title": "CAP & consistency",
+        "blurb": "Consistency ↔ availability under partition. Why single-master is not magic."
+      },
+      "load-balancing": {
+        "title": "Load balancing",
+        "blurb": "L4 vs L7, sticky sessions, health-checks, hashing strategies."
+      },
+      "sharding": {
+        "title": "Sharding & partitioning",
+        "blurb": "Range / hash / directory — when each and how to migrate."
+      },
+      "locks-mutex": {
+        "title": "Locks & mutex",
+        "blurb": "Mutex vs RWLock, deadlock, lock ordering, lock-free hints."
+      },
+      "channels-csp": {
+        "title": "Channels / CSP",
+        "blurb": "Go-style: share by communicating, fan-in/fan-out, cancellation."
+      },
+      "race-conditions": {
+        "title": "Race conditions",
+        "blurb": "race detector, memory barriers, happens-before — so you don't bluff at the interview."
+      },
+      "sql-windows": {
+        "title": "SQL window functions",
+        "blurb": "ROW_NUMBER / LAG / LEAD / partitioned aggregates — must for analysts."
+      },
+      "ab-testing": {
+        "title": "A/B testing",
+        "blurb": "CUPED, SRM, multiple comparisons — what they ask product analysts."
+      },
+      "probability": {
+        "title": "Probability basics",
+        "blurb": "Bayes, conditional, expectation — hygiene for DS interviews."
+      }
+    }
   },
   "step4": {
     "tag": "AI-COACH · SANDBOX",
@@ -56,6 +133,21 @@
     "b3_sub": "Free tier to start",
     "watch_video": "Watch video",
     "begin_spar": "Begin session"
+  },
+  "layout": {
+    "back": "back",
+    "step_aria": "step {{step}} of {{total}}",
+    "skip_default": "skip"
+  },
+  "step1_welcome": {
+    "step_indicator": "onboarding · 1 of 5",
+    "title_suffix": " — prep for Senior IT interviews",
+    "body": "Strict mock with watermark, AI-coach with memory, skill map. For those with a base who need an objective readiness check.",
+    "prop_mock": "strict + AI mode",
+    "prop_atlas": "skill map",
+    "prop_coach": "AI with memory",
+    "cta_start": "Start →",
+    "cta_later": "Not now"
   },
   "goal_wizard": {
     "title_step1": "What is your goal?",

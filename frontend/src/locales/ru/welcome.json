@@ -340,5 +340,25 @@
       "cue_cta_download": "Скачать Cue",
       "cue_tested": "Тестировано в Zoom · Meet · Chrome"
     }
+  },
+  "demos": {
+    "esc_close": "Esc · закрыть",
+    "hone": {
+      "today_date": "TODAY · 30 АПР",
+      "today_count": "3 пункта · ~1h 40m",
+      "insight_prefix": "За эту неделю —",
+      "insight_suffix": "и прокачка conditionals в English. SD ещё проседает — предложу одну sysdesign-задачу на завтра."
+    },
+    "mock": {
+      "mode_picker": "ВЫБИРАЕШЬ РЕЖИМ",
+      "strict_sub": "без AI · Cue выключен",
+      "ai_sub": "с подсказками",
+      "solved": "Решено",
+      "watermark_caption": "WATERMARK ЗАШИВАЕТ В РЕЗУЛЬТАТ",
+      "wm_strict_hint": "без AI · окно собеса",
+      "wm_ai_hint": "с подсказками",
+      "wm_delta_hint": "на сколько ты медленнее без AI",
+      "wm_caption": "OБЪЕКТИВНАЯ ВАЛЮТА · НЕ САМООЦЕНКА"
+    }
   }
 }

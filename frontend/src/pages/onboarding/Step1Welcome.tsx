@@ -3,19 +3,20 @@
 // + AI-coach. Skip-route ведёт на /atlas (Atlas — основная карта).
 
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { OnboardingLayout } from './_shared/Layout'
 import { useOnboarding } from './_shared/useOnboarding'
 
-const VALUE_PROPS = [
-  { kicker: 'mock', title: 'strict + AI-mode' },
-  { kicker: 'atlas', title: 'карта скиллов' },
-  { kicker: 'coach', title: 'AI с памятью' },
-] as const
-
 export default function Step1Welcome() {
+  const { t } = useTranslation('onboarding')
   const nav = useNavigate()
   const { setStep } = useOnboarding()
+  const VALUE_PROPS = [
+    { kicker: 'mock', title: t('step1_welcome.prop_mock') },
+    { kicker: 'atlas', title: t('step1_welcome.prop_atlas') },
+    { kicker: 'coach', title: t('step1_welcome.prop_coach') },
+  ]
 
   const next = () => {
     setStep(2)
@@ -37,7 +38,7 @@ export default function Step1Welcome() {
             marginBottom: 14,
           }}
         >
-          onboarding · 1 из 5
+          {t('step1_welcome.step_indicator')}
         </div>
         <h1
           style={{
@@ -51,7 +52,7 @@ export default function Step1Welcome() {
           }}
         >
           <span style={{ color: 'rgb(var(--ink))' }}>druz9</span>
-          {' — подготовка к Senior IT-собесам'}
+          {t('step1_welcome.title_suffix')}
         </h1>
         <p
           className="mx-auto"
@@ -63,8 +64,7 @@ export default function Step1Welcome() {
             color: 'var(--ink-60)',
           }}
         >
-          Strict mock с watermark, AI-coach с памятью, карта прогресса. Для тех, у кого есть база
-          и нужна объективная оценка готовности.
+          {t('step1_welcome.body')}
         </p>
         <div
           className="auto-fit-grid"
@@ -113,10 +113,10 @@ export default function Step1Welcome() {
         </div>
         <div className="flex-wrap-row" style={{ justifyContent: 'center', gap: 12 }}>
           <button type="button" onClick={next} className="focus-ring motion-press" style={primaryPill}>
-            Начать →
+            {t('step1_welcome.cta_start')}
           </button>
           <button type="button" onClick={defer} className="focus-ring motion-press" style={ghostPill}>
-            Не сейчас
+            {t('step1_welcome.cta_later')}
           </button>
         </div>
       </div>

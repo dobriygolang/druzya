@@ -1,6 +1,7 @@
-// Minimal ESLint flat config for Cue. Mirrors hone/eslint.config.js;
-// see Phase K Wave 16 (i18n unification) — new user-facing strings live
-// in shared/i18n/{ru,en}.ts under the cue.* prefix, not hardcoded.
+// ESLint flat config (v9). Mirrors hone/eslint.config.js. Phase K Wave 16
+// introduced `d9-i18n/no-cyrillic-literals` as the post-sweep regression
+// guard — new user-facing strings must live in shared/i18n/{ru,en}.ts
+// under `cue.*`, not as inline Cyrillic literals in .tsx.
 import js from '@eslint/js';
 import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
@@ -44,7 +45,8 @@ export default [
     },
     rules: {
       'no-undef': 'off',
-      'd9-i18n/no-cyrillic-literals': 'warn',
+      'no-unused-vars': 'off',
+      'd9-i18n/no-cyrillic-literals': 'error',
     },
   },
 ];

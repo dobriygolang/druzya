@@ -9,6 +9,8 @@
 
 import { memo, useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
+
 interface ReflectionPrompt {
   sessionId: string;
   secondsFocused: number;
@@ -59,6 +61,7 @@ function HomePageImpl({
   onSubmitReflection,
   onDismissReflection,
 }: HomePageProps) {
+  const t = useT();
   const mm = String(Math.floor(remain / 60)).padStart(2, '0');
   const ss = String(remain % 60).padStart(2, '0');
 
@@ -107,7 +110,7 @@ function HomePageImpl({
             userSelect: 'none',
             opacity: 0.7,
           }}
-          title={`${mm} минут ${ss} секунд осталось`}
+          title={t('hone.home.timer_title', { mm, ss })}
         >
           {mm}:{ss}
         </div>

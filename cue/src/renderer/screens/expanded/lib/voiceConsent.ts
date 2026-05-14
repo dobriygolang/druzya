@@ -10,6 +10,8 @@
 // чтобы не плодить React-state для одноразового вопроса. Confirm
 // блокирующий — запись стартует только после OK; на Cancel — no-op.
 
+import { translate } from '@d9-i18n';
+
 const VOICE_CONSENT_KEY = 'cue.voiceConsent.granted.v1';
 
 export function hasVoiceConsent(): boolean {
@@ -21,13 +23,7 @@ export function hasVoiceConsent(): boolean {
 }
 
 export function requestVoiceConsent(onAccept: () => void): void {
-  const ok = window.confirm(
-    'Cue будет передавать аудио на сервер для транскрипции (Groq Whisper).\n\n' +
-    'Если ты записываешь созвон с другими людьми (Zoom, Meet, Teams) — ' +
-    'предупреди их и получи согласие. В некоторых странах (ЕС, Калифорния, ' +
-    'Иллинойс) запись разговора без согласия всех участников — нарушение закона.\n\n' +
-    'Продолжить?',
-  );
+  const ok = window.confirm(translate('cue.voice_consent.prompt'));
   if (!ok) return;
   try {
     window.localStorage.setItem(VOICE_CONSENT_KEY, '1');

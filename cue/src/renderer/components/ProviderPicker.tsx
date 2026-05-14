@@ -13,6 +13,7 @@ import { useMemo, useRef, useState } from 'react';
 
 import type { ProviderModel } from '@shared/types';
 
+import { useT } from '@d9-i18n';
 import { IconCheck, IconSparkles } from './icons';
 import { StatusDot } from './primitives';
 import { Modal } from './primitives/Modal';
@@ -30,6 +31,7 @@ export interface ProviderPickerProps {
 }
 
 export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPickerProps) {
+  const t = useT();
   const [open, setOpen] = useState(true);
   const selected = useSelectedModelStore((s) => s.modelId);
   const setSelected = useSelectedModelStore((s) => s.setModel);
@@ -79,8 +81,8 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск модели…"
-            aria-label="Поиск модели"
+            placeholder={t('cue.provider_picker.placeholder')}
+            aria-label={t('cue.provider_picker.placeholder')}
             style={{
               width: '100%',
               padding: '6px 0',
@@ -101,24 +103,22 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
           {grouped.length === 0 && models.length === 0 && !session && (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--d9-ink-mute)', fontSize: 12, lineHeight: 1.5 }}>
               <div style={{ fontSize: 13, color: 'var(--d9-ink)', marginBottom: 4 }}>
-                Сначала нужно войти
+                {t('cue.provider_picker.signin_required_title')}
               </div>
-              Открой Настройки → Общее → Войти.
+              {t('cue.provider_picker.signin_required_body')}
             </div>
           )}
           {grouped.length === 0 && models.length === 0 && session && (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--d9-ink-mute)', fontSize: 12, lineHeight: 1.5 }}>
               <div style={{ fontSize: 13, color: 'var(--d9-ink)', marginBottom: 4 }}>
-                Каталог моделей не загрузился
+                {t('cue.provider_picker.catalog_failed_title')}
               </div>
-              Сервер недоступен или вернул ошибку.
-              <br />
-              Попробуй ещё раз через минуту.
+              {t('cue.provider_picker.catalog_failed_body')}
             </div>
           )}
           {grouped.length === 0 && models.length > 0 && (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--d9-ink-mute)', fontSize: 12 }}>
-              Ничего не найдено
+              {t('cue.provider_picker.not_found')}
             </div>
           )}
           {grouped.map(([provider, list]) => (
@@ -219,14 +219,14 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
                       >
                         {m.supportsReasoning && <IconSparkles size={11} />}
                         <StatusDot state={m.speedClass === 'fast' ? 'ready' : 'thinking'} size={5} />
-                        <span>{m.typicalLatencyMs} мс</span>
+                        <span>{t('cue.settings.providers.latency_ms', { ms: m.typicalLatencyMs })}</span>
                       </div>
                     </div>
 
                     {m.availableOnCurrentPlan ? (
-                      <Badge tone="plan">доступно</Badge>
+                      <Badge tone="plan">{t('cue.provider_picker.available')}</Badge>
                     ) : (
-                      <Badge tone="locked">pro</Badge>
+                      <Badge tone="locked">{t('cue.provider_picker.locked')}</Badge>
                     )}
 
                     {chosen && <IconCheck size={14} />}

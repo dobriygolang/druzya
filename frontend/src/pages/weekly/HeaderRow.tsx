@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { WeeklyReport } from '../../lib/queries/weekly'
 import { isoWeekKey } from './utils'
 
@@ -7,6 +8,7 @@ import { isoWeekKey } from './utils'
 // ============================================================================
 
 export function HeaderRow({ report, isLoading }: { report?: WeeklyReport; isLoading: boolean }) {
+  const { t } = useTranslation('wave14')
   // Week N номер — считаем по week_start из бэка (а не "сейчас"), потому что
   // отчёт может быть за прошлую неделю в кеше после инвалидации.
   const weekN = useMemo(() => {
@@ -25,10 +27,10 @@ export function HeaderRow({ report, isLoading }: { report?: WeeklyReport; isLoad
       />
       <div className="flex flex-col gap-1.5 sm:pl-4">
         <h1 className="font-display text-2xl lg:text-[32px] font-bold leading-[1.1] text-text-primary">
-          {weekN ? `Неделя ${weekN}` : isLoading ? 'Загрузка…' : 'Неделя'}
+          {weekN ? `${t('weekly_extra.week')} ${weekN}` : isLoading ? t('weekly_extra.loading') : t('weekly_extra.week')}
         </h1>
         <p className="text-sm text-text-secondary">
-          {report?.period ?? (isLoading ? '…' : '—')} · {report?.actions_count ?? 0} действий
+          {report?.period ?? (isLoading ? '…' : '—')} · {report?.actions_count ?? 0} {t('weekly_extra.actions')}
         </p>
       </div>
     </div>
@@ -40,6 +42,7 @@ export function HeaderRow({ report, isLoading }: { report?: WeeklyReport; isLoad
 // ============================================================================
 
 export function TldrCards({ report }: { report?: WeeklyReport }) {
+  const { t } = useTranslation('wave14')
   const best = report?.strong_sections?.[0]
   const weakest = report?.weak_sections?.[0]
   const streak = Number(report?.stats.streak.value.replace(/\D/g, '')) || 0
@@ -51,7 +54,7 @@ export function TldrCards({ report }: { report?: WeeklyReport }) {
       {/* Best section — strong rung on the ink ramp. */}
       <div className="flex flex-col gap-2 rounded-2xl border border-border-strong bg-surface-2 p-5">
         <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">
-          ЛУЧШАЯ СЕКЦИЯ
+          {t('weekly_extra.best_section')}
         </span>
         {best ? (
           <>
@@ -61,19 +64,19 @@ export function TldrCards({ report }: { report?: WeeklyReport }) {
             </span>
           </>
         ) : (
-          <span className="text-[12px] text-text-muted">Сыграй несколько матчей.</span>
+          <span className="text-[12px] text-text-muted">{t('weekly_extra.play_more')}</span>
         )}
       </div>
       {/* Streak — muted rung on the ink ramp. */}
       <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface-2 p-5">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">СТРИК</span>
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">{t('weekly_extra.streak')}</span>
         <span className="font-display text-xl font-extrabold text-text-primary">
-          {streak} {streak > 0 ? 'дней' : '—'}
+          {streak} {streak > 0 ? t('weekly_extra.days') : '—'}
         </span>
         <span className="text-[12px] text-text-secondary">
           {isStreakRecord && streak > 0
-            ? 'Личный рекорд!'
-            : `лучший: ${bestStreak} дн`}
+            ? t('weekly_extra.personal_record')
+            : `${t('weekly_extra.best_record')} ${bestStreak} ${t('weekly_extra.days_short')}`}
         </span>
       </div>
       {/* Focus next — red signal stripe (active selection / weak spot). */}
@@ -87,7 +90,7 @@ export function TldrCards({ report }: { report?: WeeklyReport }) {
           className="font-mono text-[11px] font-semibold tracking-[0.08em]"
           style={{ color: 'var(--red)' }}
         >
-          ФОКУС НА СЛЕДУЮЩУЮ
+          {t('weekly_extra.focus_next')}
         </span>
         {weakest ? (
           <>
@@ -98,7 +101,7 @@ export function TldrCards({ report }: { report?: WeeklyReport }) {
             </span>
           </>
         ) : (
-          <span className="text-[12px] text-text-muted">Слабых секций нет — отличная неделя.</span>
+          <span className="text-[12px] text-text-muted">{t('weekly_extra.no_weak_sections')}</span>
         )}
       </div>
     </div>

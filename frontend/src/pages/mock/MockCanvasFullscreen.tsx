@@ -21,6 +21,7 @@
 //     close after 3s.
 
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import { api } from '../../lib/apiClient'
@@ -30,6 +31,7 @@ import type { ExcalidrawImperativeAPI, BinaryFileData } from '@excalidraw/excali
 const SysDesignCanvasInner = lazy(() => import('./_lazy/SysDesignCanvasInner'))
 
 export default function MockCanvasFullscreen() {
+  const { t } = useTranslation('wave14')
   const { attemptId = '' } = useParams<{ attemptId: string }>()
   const { state, update, onSubmittedFromMain } = useCanvasDraft(attemptId, 'fullscreen')
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
@@ -126,7 +128,7 @@ export default function MockCanvasFullscreen() {
   if (!attemptId) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg text-text-muted">
-        Не указан attempt id.
+        {t('mock_canvas.no_attempt')}
       </div>
     )
   }
@@ -135,10 +137,9 @@ export default function MockCanvasFullscreen() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg text-text-primary">
         <CheckCircle2 className="h-16 w-16 text-text-primary" />
-        <h1 className="font-display text-2xl font-extrabold">Этап уже отправлен</h1>
+        <h1 className="font-display text-2xl font-extrabold">{t('mock_canvas.stage_sent')}</h1>
         <p className="max-w-sm text-center text-sm text-text-secondary">
-          Эта попытка закрыта. Можешь закрыть вкладку — результат смотри
-          на основной странице собеса.
+          {t('mock_canvas.stage_sent_body')}
         </p>
       </div>
     )
@@ -151,7 +152,7 @@ export default function MockCanvasFullscreen() {
           <span className="grid h-6 w-6 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-xs font-extrabold text-text-primary">
             9
           </span>
-          <span className="font-display text-sm font-bold">druz9 · доска</span>
+          <span className="font-display text-sm font-bold">{t('mock_canvas.header_title')}</span>
           <span className="rounded-full bg-surface-3 px-2 py-0.5 font-mono text-[9px] text-text-muted">
             system design
           </span>
@@ -166,7 +167,7 @@ export default function MockCanvasFullscreen() {
                 className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-md"
                 style={{ background: 'var(--red)' }}
               />
-              автосейв выкл — жми Submit
+              {t('mock_canvas.autosave_off')}
             </span>
           ) : state.quotaExceeded ? (
             <span
@@ -177,13 +178,13 @@ export default function MockCanvasFullscreen() {
                 className="absolute left-0 top-0 h-full w-[1.5px] rounded-l-md"
                 style={{ background: 'var(--red)' }}
               />
-              локалка переполнена — пишем на сервер
+              {t('mock_canvas.local_full')}
             </span>
           ) : (
-            <span className="text-text-secondary">автосейв · 24ч</span>
+            <span className="text-text-secondary">{t('mock_canvas.autosave_24h')}</span>
           )}
           <span>
-            submit на основной вкладке →
+            {t('mock_canvas.submit_main_tab')}
           </span>
         </div>
       </header>
@@ -193,7 +194,7 @@ export default function MockCanvasFullscreen() {
           fallback={
             <div className="absolute inset-0 flex items-center justify-center text-text-secondary">
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              <span className="text-sm">Загрузка канваса…</span>
+              <span className="text-sm">{t('mock_canvas.loading_canvas')}</span>
             </div>
           }
         >
@@ -223,11 +224,11 @@ export default function MockCanvasFullscreen() {
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-3 rounded-lg border border-border-strong bg-surface-1 px-6 py-5 text-text-primary">
               <CheckCircle2 className="h-10 w-10" />
-              <span className="font-display text-lg font-bold">Отправлено</span>
+              <span className="font-display text-lg font-bold">{t('mock_canvas.sent')}</span>
               <span className="font-mono text-xs tracking-[0.08em] text-text-secondary">
                 {closeBlocked
-                  ? 'Можно закрыть вкладку (✕ или Cmd/Ctrl+W)'
-                  : 'Закрываю вкладку…'}
+                  ? t('mock_canvas.sent_close_hint')
+                  : t('mock_canvas.closing_tab')}
               </span>
             </div>
           </div>

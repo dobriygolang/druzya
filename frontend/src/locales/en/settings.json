@@ -100,6 +100,12 @@
     "default_desc": "server picks the model for your tier",
     "save_failed": "Could not save the choice"
   },
+  "ai_models": {
+    "locked_title": "Available on Pro/Max subscription",
+    "turbo_badge": "turbo",
+    "upgrade_eyebrow": "pro/max models",
+    "upgrade_cta": "Connect →"
+  },
   "privacy_card": {
     "title": "Privacy",
     "description_html": "Your profile is visible only to members of your circles and opponents in matches. You can manually publish anonymous report links from <1>/profile/weekly</1>.",

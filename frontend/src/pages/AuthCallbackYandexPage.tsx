@@ -17,6 +17,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { API_BASE } from '../lib/apiClient'
 import { persistAuthTokens, type AuthUser } from '../lib/queries/auth'
 import { maybeRedirectToDesktop } from './LoginPage'
@@ -28,6 +29,7 @@ interface YandexAuthResponse {
 }
 
 export default function AuthCallbackYandexPage() {
+  const { t } = useTranslation('auth')
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
@@ -37,16 +39,16 @@ export default function AuthCallbackYandexPage() {
     const state = params.get('state')
     const errParam = params.get('error')
     if (errParam) {
-      setError(`Yandex отказал в авторизации: ${errParam}`)
+      setError(t('yandex_callback.refused', { error: errParam }))
       return
     }
     if (!code) {
-      setError('В ответе нет кода авторизации.')
+      setError(t('yandex_callback.no_code'))
       return
     }
     const expected = sessionStorage.getItem('oauth_state_yandex')
     if (expected && state && expected !== state) {
-      setError('CSRF state mismatch — повтори вход.')
+      setError(t('yandex_callback.csrf_mismatch'))
       return
     }
     sessionStorage.removeItem('oauth_state_yandex')
@@ -70,7 +72,7 @@ export default function AuthCallbackYandexPage() {
         const body = (await res.json()) as YandexAuthResponse
         if (cancelled) return
         if (!body.access_token) {
-          throw new Error('пустой access_token')
+          throw new Error(t('yandex_callback.empty_access_token'))
         }
         const refresh = res.headers.get('X-Refresh-Token')
         const isNewUser = res.headers.get('X-Is-New-User') === '1'
@@ -106,13 +108,13 @@ export default function AuthCallbackYandexPage() {
       } catch (e) {
         if (cancelled) return
         const msg = e instanceof Error ? e.message : String(e)
-        setError(`Не получилось обменять код на токен: ${msg}`)
+        setError(t('yandex_callback.exchange_failed', { message: msg }))
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [params, navigate])
+  }, [params, navigate, t])
 
   return (
     <div className="grid min-h-screen place-items-center bg-bg text-text-primary">
@@ -122,19 +124,19 @@ export default function AuthCallbackYandexPage() {
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
               auth error
             </div>
-            <h1 className="font-display text-2xl font-bold">Не удалось войти</h1>
+            <h1 className="font-display text-2xl font-bold">{t('yandex_callback.login_failed')}</h1>
             <p className="text-[14px] text-text-muted">{error}</p>
             <Link
               to="/login"
               className="mt-2 inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface-1 px-4 text-[14px] font-medium tracking-[0.08em] text-text-primary transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] hover:bg-surface-2"
             >
-              Вернуться к входу
+              {t('yandex_callback.back_to_login')}
             </Link>
           </>
         ) : (
           <>
             <Loader2 className="h-8 w-8 animate-spin text-text-secondary" />
-            <p className="text-[14px] tracking-[0.08em] text-text-muted">Заходим в твой профиль…</p>
+            <p className="text-[14px] tracking-[0.08em] text-text-muted">{t('yandex_callback.signing_in')}</p>
           </>
         )}
       </div>

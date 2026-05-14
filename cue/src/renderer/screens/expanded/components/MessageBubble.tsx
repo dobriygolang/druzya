@@ -2,11 +2,13 @@
 // prose) bubbles, plus the error card and assistant streaming content
 // helpers. Pulled out of ExpandedScreen.
 
+import { useT } from '@d9-i18n';
 import { D9IconCamera } from '../../../components/d9';
 import type { UIMessage } from '../../../stores/conversation';
 import { renderMiniMarkdown } from '../lib/markdown';
 
 export function MessageBubble({ m, persona: _persona }: { m: UIMessage; persona: string }) {
+  const t = useT();
   if (m.role === 'user') {
     return (
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
@@ -27,7 +29,7 @@ export function MessageBubble({ m, persona: _persona }: { m: UIMessage; persona:
               href={m.screenshotDataUrl}
               target="_blank"
               rel="noreferrer"
-              title="Открыть в полном размере"
+              title={t('cue.message.zoom_title')}
               style={{
                 display: 'block',
                 marginBottom: m.content ? 8 : 0,
@@ -39,7 +41,7 @@ export function MessageBubble({ m, persona: _persona }: { m: UIMessage; persona:
             >
               <img
                 src={m.screenshotDataUrl}
-                alt="скриншот"
+                alt={t('cue.message.alt.screenshot')}
                 style={{
                   display: 'block',
                   width: '100%',
@@ -62,10 +64,10 @@ export function MessageBubble({ m, persona: _persona }: { m: UIMessage; persona:
               }}
             >
               <D9IconCamera size={12} />
-              скриншот
+              {t('cue.message.screenshot_label')}
             </div>
           )}
-          {m.content || (!m.hasScreenshot && <span style={{ opacity: 0.6 }}>(пусто)</span>)}
+          {m.content || (!m.hasScreenshot && <span style={{ opacity: 0.6 }}>{t('cue.message.empty')}</span>)}
         </div>
       </div>
     );
@@ -99,6 +101,7 @@ export function MessageBubble({ m, persona: _persona }: { m: UIMessage; persona:
 }
 
 function ErrorCard({ code, message }: { code: string; message: string }) {
+  const t = useT();
   // A 401 Unauthenticated often ends up in the transport bucket because
   // the Connect error surfaces without a specific code string. Detect via
   // the message; everything else keeps its human label.
@@ -119,20 +122,20 @@ function ErrorCard({ code, message }: { code: string; message: string }) {
           letterSpacing: '-0.005em',
         }}
       >
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>Нужен вход</div>
+        <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('cue.message.err.signin_title')}</div>
         <div style={{ opacity: 0.85 }}>
-          Открой Настройки → Общее → Войти и авторизуйся через Telegram.
+          {t('cue.message.err.signin_body')}
         </div>
       </div>
     );
   }
 
   const label: Record<string, string> = {
-    rate_limited: 'Лимит запросов исчерпан',
-    model_unavailable: 'Модель недоступна на вашем плане',
-    invalid_input: 'Неверный ввод',
-    internal: 'Ошибка сервера',
-    transport: 'Потеряно соединение с сервером',
+    rate_limited: t('cue.message.err.rate_limited'),
+    model_unavailable: t('cue.message.err.model_unavailable'),
+    invalid_input: t('cue.message.err.invalid_input'),
+    internal: t('cue.message.err.internal'),
+    transport: t('cue.message.err.transport'),
   };
   return (
     <div

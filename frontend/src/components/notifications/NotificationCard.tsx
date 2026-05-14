@@ -18,6 +18,7 @@
 // caller still sees the title/body so nothing is silently dropped.
 
 import { Check, X, Award, ArrowRight, AlertTriangle, Sparkles, Swords } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../../lib/cn'
 import type { NotificationItem } from '../../lib/queries/notifications'
 
@@ -43,17 +44,21 @@ export function kindFromType(t: string): CardKind {
   }
 }
 
-function relativeTime(iso: string, now: Date = new Date()): string {
+function relativeTime(
+  iso: string,
+  t: (k: string, opts?: Record<string, unknown>) => string,
+  now: Date = new Date(),
+): string {
   const d = new Date(iso)
   const diffMs = now.getTime() - d.getTime()
   const min = Math.floor(diffMs / 60_000)
-  if (min < 1) return 'сейчас'
-  if (min < 60) return `${min} мин`
+  if (min < 1) return t('notif_card.now')
+  if (min < 60) return t('notif_card.minutes', { n: min })
   const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr} ч`
+  if (hr < 24) return t('notif_card.hours', { n: hr })
   const days = Math.floor(hr / 24)
-  if (days === 1) return 'вчера'
-  if (days < 7) return `${days} дн`
+  if (days === 1) return t('notif_card.yesterday')
+  if (days < 7) return t('notif_card.days', { n: days })
   return d.toLocaleDateString()
 }
 
@@ -151,6 +156,7 @@ function Glyph({ kind }: { item: NotificationItem; kind: CardKind }) {
 }
 
 function Header({ item }: { item: NotificationItem; kind: CardKind }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="text-sm text-text-primary">
       <b className="font-semibold">{item.title}</b>
@@ -161,13 +167,14 @@ function Header({ item }: { item: NotificationItem; kind: CardKind }) {
         </>
       ) : null}
       <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-        {relativeTime(item.created_at)}
+        {relativeTime(item.created_at, t)}
       </div>
     </div>
   )
 }
 
 function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKind }) {
+  const { t } = useTranslation('pages')
   // `item` is part of NotificationCardProps; we read it directly. The
   // remaining `props` carries action callbacks only.
   switch (kind) {
@@ -181,7 +188,7 @@ function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKi
             onClick={() => mid && props.onAcceptMatch?.(mid)}
             disabled={!mid}
           >
-            Принять
+            {t('notif_card.accept')}
           </ActionBtn>
           <ActionBtn
             tone="ghost"
@@ -189,7 +196,7 @@ function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKi
             onClick={() => mid && props.onDeclineMatch?.(mid)}
             disabled={!mid}
           >
-            Отклонить
+            {t('notif_card.decline')}
           </ActionBtn>
         </div>
       )
@@ -202,7 +209,7 @@ function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKi
           onClick={() => props.onOpenAchievement?.(aid)}
           className="inline-flex items-center gap-1 pt-1 text-left text-xs font-semibold text-success hover:brightness-110"
         >
-          Посмотреть <ArrowRight className="h-3 w-3" />
+          {t('notif_card.view')} <ArrowRight className="h-3 w-3" />
         </button>
       )
     }
@@ -214,7 +221,7 @@ function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKi
           onClick={() => props.onOpenInsight?.(id)}
           className="inline-flex items-center gap-1 pt-1 text-left text-xs font-semibold text-text-primary hover:brightness-110"
         >
-          Открыть инсайт <ArrowRight className="h-3 w-3 text-text-secondary" />
+          {t('notif_card.open_insight')} <ArrowRight className="h-3 w-3 text-text-secondary" />
         </button>
       )
     }
@@ -227,7 +234,7 @@ function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKi
           onClick={() => props.onOpenSystem?.(href)}
           className="inline-flex items-center gap-1 pt-1 text-left text-xs font-semibold text-warn hover:brightness-110"
         >
-          Подробнее <ArrowRight className="h-3 w-3" />
+          {t('notif_card.more')} <ArrowRight className="h-3 w-3" />
         </button>
       )
     }

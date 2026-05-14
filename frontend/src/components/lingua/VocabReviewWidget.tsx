@@ -3,6 +3,7 @@
 //
 // B/W only; #FF3B30 — точка-индикатор для «due > 0» badge (per Sergey rule).
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { useReviewVocabMutation, useVocabDueQuery } from '../../lib/queries/lingua'
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function VocabReviewWidget({ compact = false }: Props) {
+  const { t } = useTranslation('lingua')
   const due = useVocabDueQuery()
   const review = useReviewVocabMutation()
   const [idx, setIdx] = useState(0)
@@ -57,7 +59,7 @@ export function VocabReviewWidget({ compact = false }: Props) {
           SRS · Daily
         </div>
         <div className="mt-2 text-xs text-text-muted">
-          Очередь пуста. Кликай по словам в reader'е чтобы её наполнить.
+          {t('vocab.queue_empty')}
         </div>
       </div>
     )

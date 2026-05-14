@@ -32,6 +32,11 @@ import { api } from '../lib/apiClient'
 import { useUpdateProfileSettings } from '../lib/queries/settings'
 import { gradientStyleForUser } from '../lib/avatarGradients'
 import { changeLanguage, currentLanguage, type Lang } from '../lib/i18n'
+
+// Language self-names — each locale rendered in its own script (standard
+// practice for picker UIs).
+// eslint-disable-next-line d9-i18n/no-cyrillic-literals
+const LANG_SELF_NAME: Record<Lang, string> = { ru: 'Русский', en: 'English' }
 import { BillingTab } from './settings/BillingTab'
 import { TracksTab } from './settings/TracksTab'
 
@@ -346,7 +351,7 @@ function AppearanceCard() {
               >
                 <Languages className="h-5 w-5 text-text-primary" />
                 <span className="flex-1 text-[14px] font-bold text-text-primary">
-                  {l === 'ru' ? 'Русский' : 'English'}
+                  {l === 'ru' ? LANG_SELF_NAME.ru : LANG_SELF_NAME.en}
                 </span>
                 {active && (
                   <span className="grid h-5 w-5 place-items-center rounded-full bg-text-primary text-bg">

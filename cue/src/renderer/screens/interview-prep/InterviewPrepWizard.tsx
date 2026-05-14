@@ -12,8 +12,9 @@
 //   - Esc     prompts confirm if dirty, else closes the wizard
 //   - Enter   advances when the current step's CTA is enabled
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
+import { useT } from '@d9-i18n';
 import { UploadCVStep } from './UploadCVStep';
 import { UploadJDStep } from './UploadJDStep';
 import { ReviewStep } from './ReviewStep';
@@ -26,14 +27,18 @@ import {
 } from '../../stores/interview-prep';
 
 const ORDER: ReadonlyArray<WizardStep> = ['cv', 'jd', 'review', 'launch'];
-const TITLES: Record<WizardStep, string> = {
-  cv: 'Резюме',
-  jd: 'Вакансия',
-  review: 'Проверь',
-  launch: 'Готово',
-};
 
 export function InterviewPrepWizard() {
+  const t = useT();
+  const TITLES = useMemo<Record<WizardStep, string>>(
+    () => ({
+      cv: t('cue.prep.step.cv'),
+      jd: t('cue.prep.step.jd'),
+      review: t('cue.prep.step.review'),
+      launch: t('cue.prep.step.launch'),
+    }),
+    [t],
+  );
   const step = useInterviewPrepStore((s) => s.step);
   const setStep = useInterviewPrepStore((s) => s.setStep);
   const parsedCV = useInterviewPrepStore((s) => s.parsedCV);
@@ -79,13 +84,11 @@ export function InterviewPrepWizard() {
         jdText.trim().length > 0 ||
         jdURL.trim().length > 0);
     if (dirty) {
-      const ok = window.confirm(
-        'Закрыть мастер? Введённые данные не сохранятся.',
-      );
+      const ok = window.confirm(t('cue.prep.confirm_close'));
       if (!ok) return;
     }
     void window.druz9.windows.hide('interview-prep');
-  }, [cvText, jdText, jdURL, step]);
+  }, [cvText, jdText, jdURL, step, t]);
 
   // Keyboard nav. Skip when the focus is in an input — letting the
   // user type Enter inside a textarea would advance unintentionally.
@@ -131,7 +134,7 @@ export function InterviewPrepWizard() {
         overflow: 'hidden',
       }}
     >
-      <Header step={step} idx={idx} total={ORDER.length} onClose={closeWizard} />
+      <Header step={step} idx={idx} total={ORDER.length} onClose={closeWizard} titles={TITLES} />
 
       <main
         style={{
@@ -169,12 +172,15 @@ function Header({
   idx,
   total,
   onClose,
+  titles,
 }: {
   step: WizardStep;
   idx: number;
   total: number;
   onClose: () => void;
+  titles: Record<WizardStep, string>;
 }) {
+  const t = useT();
   return (
     <div
       style={{
@@ -194,7 +200,7 @@ function Header({
           color: 'var(--d9-ink-ghost)',
         }}
       >
-        Подготовка к интервью
+        {t('cue.prep.eyebrow')}
       </span>
       <StepDots current={idx} total={total} />
       <span style={{ flex: 1 }} />
@@ -205,11 +211,11 @@ function Header({
           letterSpacing: '-0.005em',
         }}
       >
-        {TITLES[step]} ({idx + 1} / {total})
+        {t('cue.prep.step_counter', { title: titles[step], idx: idx + 1, total })}
       </span>
       <button
         type="button"
-        aria-label="Закрыть"
+        aria-label={t('cue.prep.close_title')}
         onClick={onClose}
         style={{
           width: 26,
@@ -274,6 +280,7 @@ function Footer({
   onNext: () => void;
   step: WizardStep;
 }) {
+  const t = useT();
   if (step === 'launch') return null;
   return (
     <div
@@ -300,7 +307,7 @@ function Footer({
           fontFamily: 'inherit',
         }}
       >
-        ← Назад
+        {t('cue.prep.footer.back')}
       </button>
       <span
         style={{
@@ -313,7 +320,7 @@ function Footer({
           textTransform: 'uppercase',
         }}
       >
-        ← → · ↵ дальше · esc закрыть
+        {t('cue.prep.footer.hint')}
       </span>
       <button
         type="button"
@@ -332,7 +339,7 @@ function Footer({
           letterSpacing: '-0.005em',
         }}
       >
-        {idx >= total - 2 ? 'Старт ' : 'Дальше '}→
+        {idx >= total - 2 ? t('cue.prep.footer.start') : t('cue.prep.footer.next')}
       </button>
     </div>
   );

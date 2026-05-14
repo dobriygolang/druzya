@@ -10,6 +10,7 @@
 // Free-prompt blocка; Pro/BYOK badge — font-mono uppercase, без gradient.
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Button } from './Button'
 import { Card } from './Card'
 import { analytics, ANALYTICS_EVENTS } from '../lib/analytics'
@@ -27,33 +28,12 @@ export type FeatureKey =
 
 type FeatureCopy = { title: string; body: string }
 
-// FEATURE_COPY — короткие prompt'ы. Free-юзер видит конкретику «что
-// он получит», не абстрактное «upgrade now».
-const FEATURE_COPY: Record<FeatureKey, FeatureCopy> = {
-  mock_pipeline: {
-    title: 'Полный AI-mock pipeline — Pro',
-    body: 'Mini-mock доступен бесплатно. Полный multi-stage pipeline с AI-feedback и radar score — нужен Pro или свой LLM-ключ (BYOK).',
-  },
-  deep_analytics: {
-    title: 'Deep readiness analytics — Pro',
-    body: 'Базовый activity log бесплатен. Прогноз готовности к интервью + drift detection — Pro или BYOK.',
-  },
-  premium_cue: {
-    title: 'Premium Cue — Pro',
-    body: 'Cue basic (20 LLM calls/day) бесплатен. Безлимит + лучшая модель — Pro или BYOK.',
-  },
-  gcal_sync: {
-    title: 'Google Calendar sync — Pro',
-    body: 'Двунаправленная синхронизация Hone-плана с Google Calendar — Pro или BYOK.',
-  },
-  goal_analytics: {
-    title: 'Advanced goal analytics — Pro',
-    body: 'Per-skill радар, weekly trends, target-date estimator — Pro или BYOK.',
-  },
-  generic: {
-    title: 'Pro feature',
-    body: 'Эта фича доступна на Pro или с подключённым своим LLM-ключом (BYOK, бесплатно).',
-  },
+function useFeatureCopy(feature: FeatureKey): FeatureCopy {
+  const { t } = useTranslation('common')
+  return {
+    title: t(`pro_gate.${feature}.title`),
+    body: t(`pro_gate.${feature}.body`),
+  }
 }
 
 export interface ProGateProps {
@@ -76,7 +56,8 @@ export function ProGate({ feature = 'generic', fallback, children }: ProGateProp
 // InlinePrompt — компактный upgrade-блок. B/W: левая полоса 1.5px белого,
 // .indicator-dot — единственный 6px красный кружок (брендовая точка,
 function InlinePrompt({ feature }: { feature: FeatureKey }) {
-  const copy = FEATURE_COPY[feature]
+  const { t } = useTranslation('common')
+  const copy = useFeatureCopy(feature)
   useEffect(() => {
     analytics.track(ANALYTICS_EVENTS.upgrade_modal_shown, { feature })
   }, [feature])
@@ -100,7 +81,7 @@ function InlinePrompt({ feature }: { feature: FeatureKey }) {
           onClick={() => analytics.track(ANALYTICS_EVENTS.upgrade_modal_clicked, { feature })}
         >
           <Button variant="primary" size="md">
-            Открыть billing
+            {t('pro_gate.open_billing')}
           </Button>
         </Link>
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted self-center">

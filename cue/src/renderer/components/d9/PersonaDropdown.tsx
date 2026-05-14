@@ -4,6 +4,7 @@
 
 import { useEffect, useRef } from 'react';
 
+import { useT } from '@d9-i18n';
 
 export interface PersonaDropdownItem {
   id: string;
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function PersonaDropdown({ items, activeId, onSelect, onClose, style }: Props) {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,12 +47,12 @@ export function PersonaDropdown({ items, activeId, onSelect, onClose, style }: P
   return (
     <div ref={ref} className="d9-root d9-popover" style={{ width: 240, ...style }}>
       <div className="d9-popover-label">
-        <span>ПЕРСОНА</span>
+        <span>{t('cue.persona_dropdown.label')}</span>
         <span className="d9-popover-label-esc">ESC</span>
       </div>
       {items.length === 0 && (
         <div className="d9-popover-empty">
-          Personas не загружены
+          {t('cue.persona_dropdown.empty')}
         </div>
       )}
       {items.map((p) => {

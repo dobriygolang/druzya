@@ -797,7 +797,7 @@ function ExternalActivityCard() {
               {it.source}
             </span>
             <span style={{ color: 'var(--ink-90)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {it.topic || '(без темы)'}
+              {it.topic || t('hone.stats_overlay.topic_empty')}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 10, color: 'var(--ink-40)', flexShrink: 0 }}>

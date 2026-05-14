@@ -82,9 +82,10 @@ function NavItem({ to, label, onClick }: { to: string; label: string; onClick?: 
 }
 
 
-// LanguageToggleButton — dropdown со всеми 4 языками (RU/EN/KZ/UA).
-// Выбор персистится в localStorage внутри changeLanguage → languageChanged
-// listener в lib/i18n.ts. Закрытие по клику снаружи и по Escape.
+// LanguageToggleButton — dropdown RU/EN (только эти две локали в проекте,
+// Phase K Wave 16 removed legacy KZ/UA). Выбор персистится в localStorage
+// внутри changeLanguage → languageChanged listener в lib/i18n.ts + пишется
+// в backend через useUpdateSettingsMutation. Закрытие по клику снаружи и по Escape.
 function LanguageToggleButton() {
   const [, setTick] = useState(0)
   const [open, setOpen] = useState(false)
@@ -307,7 +308,7 @@ function TopNav({ onOpenNotifications, unreadCount, onOpenPalette }: {
             aria-label="User menu"
             aria-expanded={userMenuOpen}
           >
-            <Avatar size="md" gradient="pink-violet" initials="Д" />
+            <Avatar size="md" gradient="pink-violet" initials={t('user_menu.avatar_initials', { defaultValue: 'D' })} />
           </button>
           {userMenuOpen && <UserMenu onClose={() => setUserMenuOpen(false)} />}
         </div>
@@ -361,6 +362,7 @@ function TopNav({ onOpenNotifications, unreadCount, onOpenPalette }: {
 // Показывается короткое время и поверх редиректа (на случай, если редирект
 // тормозит из-за in-flight нав-перехода).
 function SessionExpiredToast() {
+  const { t } = useTranslation('auth')
   const [visible, setVisible] = useState(false)
   useEffect(() => {
     function onExpired() {
@@ -376,7 +378,7 @@ function SessionExpiredToast() {
       role="status"
       className="fixed left-1/2 top-4 z-[60] -translate-x-1/2 rounded-lg border border-warn/60 bg-surface-1 px-4 py-2 text-sm text-text-primary shadow-card"
     >
-      Сессия истекла, переавторизуйтесь.
+      {t('error.session_expired')}
     </div>
   )
 }

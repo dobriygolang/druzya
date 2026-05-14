@@ -9,9 +9,11 @@
 
 import { useEffect } from 'react';
 
+import { useT } from '@d9-i18n';
 import { useInterviewPrepStore } from '../../stores/interview-prep';
 
 export function UploadCVStep() {
+  const t = useT();
   const cvText = useInterviewPrepStore((s) => s.cvText);
   const cvFilename = useInterviewPrepStore((s) => s.cvFilename);
   const parsedCV = useInterviewPrepStore((s) => s.parsedCV);
@@ -44,18 +46,18 @@ export function UploadCVStep() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 640, margin: '0 auto' }}>
       <Intro />
 
-      <Card title="Источник" subtitle={cvFilename || 'Файл не выбран'}>
+      <Card title={t('cue.prep.cv.source_title')} subtitle={cvFilename || t('cue.prep.cv.no_file')}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => void pickCVFile()}
             style={btnSecondary}
           >
-            Выбрать файл…
+            {t('cue.prep.cv.pick_file')}
           </button>
           <span style={{ flex: 1 }} />
           <span style={{ fontSize: 11, color: 'var(--d9-ink-ghost)' }}>
-            PDF · Markdown · TXT, до 5MB
+            {t('cue.prep.cv.formats_hint')}
           </span>
         </div>
 
@@ -69,12 +71,12 @@ export function UploadCVStep() {
               textTransform: 'uppercase',
             }}
           >
-            или вставьте текст резюме
+            {t('cue.prep.cv.paste_label')}
           </label>
           <textarea
             value={cvText}
             onChange={(e) => setCV(e.target.value, cvFilename)}
-            placeholder="Senior Backend Engineer, 6+ years…"
+            placeholder={t('cue.prep.cv.placeholder')}
             rows={8}
             style={textarea}
           />
@@ -87,7 +89,7 @@ export function UploadCVStep() {
             onClick={() => void parseCV()}
             style={btnPrimary(Boolean(cvText.trim()) && !cvParsing)}
           >
-            {cvParsing ? 'Распознаю…' : 'Распознать'}
+            {cvParsing ? t('cue.prep.cv.parsing') : t('cue.prep.cv.parse_cta')}
           </button>
           {cvParseError && (
             <span style={{ fontSize: 11.5, color: 'var(--d9-ink-mute)' }}>{cvParseError}</span>
@@ -96,18 +98,18 @@ export function UploadCVStep() {
       </Card>
 
       {parsedReady && (
-        <Card title="Что я узнал из резюме" subtitle="Можно поправить вручную в следующем шаге">
-          <DataRow k="Имя" v={parsedCV.name} />
-          <DataRow k="Текущая роль" v={parsedCV.currentRole} />
+        <Card title={t('cue.prep.cv.recognized_title')} subtitle={t('cue.prep.cv.recognized_hint')}>
+          <DataRow k={t('cue.prep.cv.field.name')} v={parsedCV.name} />
+          <DataRow k={t('cue.prep.cv.field.current_role')} v={parsedCV.currentRole} />
           <DataRow
-            k="Опыт"
-            v={parsedCV.experienceYears > 0 ? `${parsedCV.experienceYears} лет` : ''}
+            k={t('cue.prep.cv.field.experience')}
+            v={parsedCV.experienceYears > 0 ? t('cue.prep.cv.field.experience_years', { n: parsedCV.experienceYears }) : ''}
           />
-          <DataRow k="Топ-навыки" v={parsedCV.topSkills.join(' · ')} />
-          <DataRow k="Образование" v={parsedCV.education} />
+          <DataRow k={t('cue.prep.cv.field.top_skills')} v={parsedCV.topSkills.join(' · ')} />
+          <DataRow k={t('cue.prep.cv.field.education')} v={parsedCV.education} />
           {parsedCV.summary && (
             <div style={{ marginTop: 8 }}>
-              <label style={dataLabel}>Кратко</label>
+              <label style={dataLabel}>{t('cue.prep.cv.field.summary')}</label>
               <p style={summaryParagraph}>{parsedCV.summary}</p>
             </div>
           )}
@@ -118,10 +120,11 @@ export function UploadCVStep() {
 }
 
 function Intro() {
+  const t = useT();
   return (
     <div>
       <h2 style={{ margin: 0, fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em' }}>
-        Загрузите резюме
+        {t('cue.prep.cv.title')}
       </h2>
       <p
         style={{
@@ -132,9 +135,7 @@ function Intro() {
           letterSpacing: '-0.005em',
         }}
       >
-        Cue будет учитывать ваш реальный опыт и стек в подсказках на интервью —
-        STAR-ответы и технические объяснения подгоняются под вашу карьеру, а не
-        под обобщённого кандидата.
+        {t('cue.prep.cv.body')}
       </p>
     </div>
   );

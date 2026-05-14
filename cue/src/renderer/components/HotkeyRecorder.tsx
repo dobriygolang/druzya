@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import type { HotkeyAction } from '@shared/types';
 import { Kbd, StatusDot } from './primitives';
 
@@ -31,6 +32,7 @@ export function HotkeyRecorder({
   onSave,
   onReset,
 }: HotkeyRecorderProps) {
+  const t = useT();
   const [recording, setRecording] = useState(false);
 
   const onKeyDown = useCallback(
@@ -78,7 +80,7 @@ export function HotkeyRecorder({
         }}
       >
         <StatusDot state="recording" size={6} />
-        <span>нажми клавиши · Esc для отмены</span>
+        <span>{t('cue.hotkey.recording_prompt')}</span>
       </div>
     );
   }
@@ -87,7 +89,7 @@ export function HotkeyRecorder({
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--pad-inline)' }}>
       <button
         onClick={() => setRecording(true)}
-        title="Нажми для перезаписи"
+        title={t('cue.hotkey.click_to_rebind')}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -125,7 +127,7 @@ export function HotkeyRecorder({
             padding: 0,
           }}
         >
-          сброс
+          {t('cue.hotkey.reset')}
         </button>
       )}
     </div>

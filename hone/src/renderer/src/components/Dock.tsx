@@ -22,6 +22,8 @@
 // текущего режима после 1.2s idle.
 import { memo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
+import { useT, type TFunc } from '@d9-i18n';
+
 import { Icon, type IconName } from './primitives/Icon';
 import type { FocusMode } from '../stores/prefs';
 
@@ -194,14 +196,24 @@ interface TimerAreaProps {
 // в массиве задаёт cycle-order для hover toggle.
 const MODE_ORDER: FocusMode[] = ['pomodoro', 'countdown', 'stopwatch', 'free', 'plan', 'pinned'];
 
-const MODE_LABEL: Record<FocusMode, string> = {
-  pomodoro: 'Pomodoro · 25:00 → 0 + reflection',
-  countdown: 'Countdown · фиксированные минуты',
-  stopwatch: 'Stopwatch · считает вверх',
-  free: 'Free · без таймера, ручной stop',
-  plan: 'Plan · 50/10 × 3 sequence',
-  pinned: 'Pinned · focus до завершения task',
-};
+function modeLabel(t: TFunc, mode: FocusMode): string {
+  switch (mode) {
+    case 'pomodoro':
+      return t('hone.dock.mode.pomodoro');
+    case 'countdown':
+      return t('hone.dock.mode.countdown');
+    case 'stopwatch':
+      return t('hone.dock.mode.stopwatch');
+    case 'free':
+      return t('hone.dock.mode.free');
+    case 'plan':
+      return t('hone.dock.mode.plan');
+    case 'pinned':
+      return t('hone.dock.mode.pinned');
+    default:
+      return mode;
+  }
+}
 
 // Renderer для mode-indicator в default-row TimerArea + collapsed mode-pill.
 // Возвращает icon name из ./primitives/Icon set'а.
@@ -227,6 +239,7 @@ function modeIcon(mode: FocusMode): { name: IconName; size: number } {
 // (controls) приезжает сверху с fade'ом. min-width: 100px удерживает
 // layout от «дёргания».
 function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaProps) {
+  const t = useT();
   const [hover, setHover] = useState(false);
   // Free / pinned не показывают mm:ss — для этих режимов рисуем mode-name.
   const showTime = mode === 'pomodoro' || mode === 'countdown' || mode === 'stopwatch';
@@ -273,7 +286,7 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
             Для остальных — соответствующий glyph из Icon set'а. */}
         {mode === 'pomodoro' || mode === 'countdown' ? (
           <span
-            title={MODE_LABEL[mode]}
+            title={modeLabel(t, mode)}
             style={{
               width: 9,
               height: 9,
@@ -285,7 +298,7 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
           />
         ) : (
           <span
-            title={MODE_LABEL[mode]}
+            title={modeLabel(t, mode)}
             style={{
               color: running ? 'var(--ink)' : 'var(--ink-90)',
               display: 'flex',
@@ -348,7 +361,7 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
         <DockBtn
           onClick={onToggleMode}
           // Tooltip показывает current + следующий режим в cycle.
-          title={`${MODE_LABEL[mode]} · → ${MODE_LABEL[nextMode]}`}
+          title={`${modeLabel(t, mode)} · → ${modeLabel(t, nextMode)}`}
           ariaLabel={`Current: ${mode}. Switch to ${nextMode} mode`}
           ariaPressed={mode !== 'pomodoro'}
           small
@@ -358,7 +371,7 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
         </DockBtn>
         <DockBtn
           onClick={onReset}
-          title="Reset · сбросить таймер"
+          title={t('hone.dock.reset_title')}
           ariaLabel="Reset timer"
           small
           variant="action"

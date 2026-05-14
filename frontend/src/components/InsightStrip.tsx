@@ -10,6 +10,7 @@
 // placeholder if needed.
 
 import { ArrowRight, Check, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import {
   severityLabel,
   useAckInsightMutation,
@@ -45,6 +46,7 @@ const RING_BY_SEVERITY: Record<InsightSeverity, string> = {
 }
 
 export function InsightStrip({ surface = 'today', limit = 6, showEmpty = false }: Props) {
+  const { t } = useTranslation('pages')
   const q = useInsightsQuery(surface, limit)
   if (q.isPending) return null
   if (q.isError) return null
@@ -53,7 +55,7 @@ export function InsightStrip({ surface = 'today', limit = 6, showEmpty = false }
     if (!showEmpty) return null
     return (
       <Card className="p-6 text-center text-sm text-text-muted">
-        Пока нет insights — данные подтянутся, когда появится первая активность.
+        {t('insight_strip.empty')}
       </Card>
     )
   }

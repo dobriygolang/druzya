@@ -114,7 +114,10 @@ export const TasksSuggestionsCard: React.FC<{ onAccepted?: () => void }> = ({ on
             color: 'var(--ink-60)',
           }}
         >
-          из заметок · {state.items.length} {state.cachedAt ? '· cached' : ''}
+          {t('hone.taskboard.suggest.title_from_notes', {
+            count: state.items.length,
+            cached: state.cachedAt ? ' · cached' : '',
+          })}
         </div>
       </div>
       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>

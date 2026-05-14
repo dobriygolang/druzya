@@ -10,6 +10,7 @@
 // would on click → the same drawer opens.
 
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Atlas, AtlasNode } from '../../lib/queries/profile'
 import { cn } from '../../lib/cn'
 import { CoverageBadge } from '../../components/CoverageBadge'
@@ -33,6 +34,7 @@ export function AtlasListMode({
   onSelect: (k: string) => void
   highlightKeys: Set<string> | null
 }) {
+  const { t } = useTranslation('atlas')
   // Group by section then sort by state (mastered → in-progress → available
   // → decaying → locked) so the most relevant rows surface first.
   const grouped = useMemo(() => {
@@ -82,7 +84,7 @@ export function AtlasListMode({
   if (grouped.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center bg-bg p-8">
-        <p className="text-sm text-text-muted">Ничего не найдено по фильтрам.</p>
+        <p className="text-sm text-text-muted">{t('list_mode.empty')}</p>
       </div>
     )
   }

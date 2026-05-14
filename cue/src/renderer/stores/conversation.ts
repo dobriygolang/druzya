@@ -13,6 +13,7 @@ import {
 } from '@shared/ipc';
 import type { Message, Quota } from '@shared/types';
 
+import { translate } from '@d9-i18n';
 import { saveLocalConversation } from '../lib/local-history';
 import { usePaywallStore } from './paywall';
 
@@ -126,7 +127,7 @@ export const useConversationStore = create<State>((set, get) => ({
       get().receiveError({
         streamId,
         code: 'transport',
-        message: 'Соединение с сервером потеряно. Проверь интернет и попробуй снова.',
+        message: translate('cue.store.conv.transport_lost'),
         retryAfterSeconds: 0,
       });
     });
@@ -156,7 +157,7 @@ export const useConversationStore = create<State>((set, get) => ({
       get().receiveError({
         streamId: sid,
         code: 'transport',
-        message: 'Стрим оборвался. Проверь интернет и попробуй снова.',
+        message: translate('cue.store.conv.stream_broken'),
         retryAfterSeconds: 0,
       });
     });
@@ -261,7 +262,7 @@ export const useConversationStore = create<State>((set, get) => ({
     // inline in the chat bubble — only this one needs an upgrade path.
     if (ev.code === 'rate_limited') {
       usePaywallStore.getState().show({
-        reason: 'Лимит запросов на сегодня исчерпан',
+        reason: translate('cue.paywall.rate_limited_reason'),
       });
     }
   },

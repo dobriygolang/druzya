@@ -20,6 +20,7 @@
 //     pasted note is self-describing. Pick Russian locale for the
 //     readable part, ISO for the machine-sortable part.
 
+import { translate } from '@d9-i18n';
 import type { UIMessage } from '../stores/conversation';
 
 export interface ExportOptions {
@@ -72,7 +73,7 @@ export function exportConversationAsMarkdown(
   const lines: string[] = [];
   lines.push(`# ${opts.title ?? `Cue · сессия ${dateHuman}`}`);
   const metaParts: string[] = [];
-  if (opts.modelLabel) metaParts.push(`Модель: \`${opts.modelLabel}\``);
+  if (opts.modelLabel) metaParts.push(`${translate('cue.store.export.model_label')}: \`${opts.modelLabel}\``);
   metaParts.push(
     `${messages.filter((m) => m.role === 'user').length} turn${
       messages.filter((m) => m.role === 'user').length === 1 ? '' : ' (всего)'

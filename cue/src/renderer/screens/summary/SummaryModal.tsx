@@ -16,6 +16,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { useT, useLocaleStore } from '@d9-i18n';
 import type { SessionAnalysis } from '@shared/types';
 import {
   D9IconClose,
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: Props) {
+  const t = useT();
   const [tab, setTab] = useState<Tab>('summary');
   const [hint, setHint] = useState<string | null>(null);
   const messages = useConversationStore((s) => s.messages);
@@ -56,19 +58,19 @@ export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: P
   const markdown = useMemo(
     () =>
       exportConversationAsMarkdown(messages, {
-        title: analysis.title || 'Cue — session summary',
+        title: analysis.title || t('cue.summary.export_default_title'),
         modelLabel,
       }),
-    [messages, modelLabel, analysis.title],
+    [messages, modelLabel, analysis.title, t],
   );
 
   const copyMarkdown = async () => {
     try {
-      await navigator.clipboard.writeText(summaryToMarkdown(analysis) + '\n\n---\n\n' + markdown);
-      setHint('✓ Скопировано');
+      await navigator.clipboard.writeText(summaryToMarkdown(analysis, t) + '\n\n---\n\n' + markdown);
+      setHint(t('cue.summary.copied_ok'));
       setTimeout(() => setHint(null), 1800);
     } catch {
-      setHint('Не удалось скопировать');
+      setHint(t('cue.summary.copy_failed'));
       setTimeout(() => setHint(null), 2200);
     }
   };
@@ -169,7 +171,7 @@ export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: P
               </div>
             )}
           </div>
-          <IconButton title={hint || 'Скопировать summary как Markdown'} onClick={() => void copyMarkdown()}>
+          <IconButton title={hint || t('cue.summary.copy_title')} onClick={() => void copyMarkdown()}>
             <D9IconCopy size={14} />
           </IconButton>
           {notesFilePath && (
@@ -190,12 +192,12 @@ export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: P
                 fontFamily: 'inherit',
                 transition: 'background var(--motion-dur-small) var(--motion-ease-standard)',
               }}
-              title={analysis.reportUrl ? 'Открыть отчёт' : 'Открыть сессию на druz9.online'}
+              title={analysis.reportUrl ? t('cue.summary.report_title') : t('cue.summary.web_session_title')}
             >
-              {analysis.reportUrl ? 'Открыть в браузере' : 'View on druz9.online'}
+              {analysis.reportUrl ? t('cue.summary.open_in_browser') : t('cue.summary.view_on_web')}
             </button>
           )}
-          <IconButton title="Закрыть (Esc)" onClick={onClose}>
+          <IconButton title={t('cue.summary.close_title')} onClick={onClose}>
             <D9IconClose size={12} />
           </IconButton>
         </div>
@@ -271,7 +273,7 @@ export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: P
               transition: 'color var(--motion-dur-small) var(--motion-ease-standard)',
             }}
           >
-            Продолжить сессию <Kbd size="sm">Esc</Kbd>
+            {t('cue.summary.continue_session')} <Kbd size="sm">Esc</Kbd>
           </button>
         </div>
 
@@ -291,6 +293,7 @@ export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: P
 // ─────────────────────────────────────────────────────────────────────────
 
 function SummaryTab({ a }: { a: SessionAnalysis }) {
+  const t = useT();
   const hasAnything =
     a.tldr ||
     (a.keyTopics?.length ?? 0) > 0 ||
@@ -303,8 +306,8 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
   if (!hasAnything) {
     return (
       <EmptySection
-        title="Summary пока не готов"
-        hint="Анализатор ещё обрабатывает сессию. Это занимает 10–30 секунд после её окончания."
+        title={t('cue.summary.empty_title')}
+        hint={t('cue.summary.empty_hint')}
       />
     );
   }
@@ -314,8 +317,8 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
       {a.keyTopics && a.keyTopics.length > 0 && (
         <Section title="Key topics">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {a.keyTopics.map((t, i) => (
-              <Tag key={i}>{t}</Tag>
+            {a.keyTopics.map((topic, i) => (
+              <Tag key={i}>{topic}</Tag>
             ))}
           </div>
           {/* X5 (Phase J P2 2026-05-12) — atlas handoff. Each key topic
@@ -334,11 +337,11 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
               color: 'var(--d9-ink-mute)',
             }}
           >
-            {a.keyTopics.slice(0, 3).map((t, i) => (
+            {a.keyTopics.slice(0, 3).map((topic, i) => (
               <button
                 key={`atlas-${i}`}
                 type="button"
-                onClick={() => openWebAtlasNode(t.toLowerCase().replace(/\s+/g, '-'))}
+                onClick={() => openWebAtlasNode(topic.toLowerCase().replace(/\s+/g, '-'))}
                 style={{
                   background: 'transparent',
                   border: 0,
@@ -349,9 +352,9 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
                   textUnderlineOffset: 2,
                   cursor: 'pointer',
                 }}
-                title={`Открыть «${t}» в web Atlas`}
+                title={t('cue.summary.atlas_review_title', { topic })}
               >
-                review «{t}» on atlas →
+                review «{topic}» on atlas →
               </button>
             ))}
           </div>
@@ -373,7 +376,7 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
       {a.terminology && a.terminology.length > 0 && (
         <Section title="Terminology">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pad-inline)' }}>
-            {a.terminology.map((t, i) => (
+            {a.terminology.map((term, i) => (
               <div
                 key={i}
                 style={{
@@ -391,7 +394,7 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
                     letterSpacing: '0.08em',
                   }}
                 >
-                  {t.term}
+                  {term.term}
                 </div>
                 <div
                   style={{
@@ -401,7 +404,7 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
                     letterSpacing: '-0.005em',
                   }}
                 >
-                  {t.definition}
+                  {term.definition}
                 </div>
               </div>
             ))}
@@ -479,12 +482,13 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
 }
 
 function TranscriptTab() {
+  const t = useT();
   const messages = useConversationStore((s) => s.messages);
   if (messages.length === 0) {
     return (
       <EmptySection
-        title="Нет сообщений"
-        hint="Транскрипт недоступен — в текущем окне нет загруженной сессии."
+        title={t('cue.summary.transcript_empty_title')}
+        hint={t('cue.summary.transcript_empty_hint')}
       />
     );
   }
@@ -525,7 +529,7 @@ function TranscriptTab() {
               whiteSpace: 'pre-wrap',
             }}
           >
-            {m.content || (m.pending ? '(стримится…)' : '(пусто)')}
+            {m.content || (m.pending ? t('cue.summary.transcript_streaming') : t('cue.summary.transcript_empty_inline'))}
           </div>
         </div>
       ))}
@@ -534,6 +538,8 @@ function TranscriptTab() {
 }
 
 function UsageTab({ a }: { a: SessionAnalysis }) {
+  const t = useT();
+  const locale = useLocaleStore((s) => s.locale);
   const u = a.usage;
   const sections = Object.entries(a.sectionScores ?? {});
   return (
@@ -547,14 +553,14 @@ function UsageTab({ a }: { a: SessionAnalysis }) {
               gap: 10,
             }}
           >
-            <Stat label="Turns" value={formatNum(u.turns)} />
+            <Stat label="Turns" value={formatNum(u.turns, locale)} />
             <Stat label="Wall time" value={formatDuration(u.totalLatencyMs)} />
-            <Stat label="Tokens in" value={formatNum(u.tokensIn)} />
-            <Stat label="Tokens out" value={formatNum(u.tokensOut)} />
+            <Stat label="Tokens in" value={formatNum(u.tokensIn, locale)} />
+            <Stat label="Tokens out" value={formatNum(u.tokensOut, locale)} />
           </div>
         ) : (
           <div style={{ fontSize: 12.5, color: 'var(--d9-ink-mute)' }}>
-            Данные о токенах недоступны для этой сессии.
+            {t('cue.summary.tokens_unavailable')}
           </div>
         )}
       </Section>
@@ -564,7 +570,7 @@ function UsageTab({ a }: { a: SessionAnalysis }) {
           <ScoreBar label="Overall" value={a.overallScore} />
           {sections.length === 0 && (
             <div style={{ fontSize: 12, color: 'var(--d9-ink-mute)' }}>
-              Section scores не рассчитаны — анализатор не нашёл явных тем.
+              {t('cue.summary.section_scores_empty')}
             </div>
           )}
           {sections.map(([k, v]) => (
@@ -788,8 +794,8 @@ const ulStyle: React.CSSProperties = {
   letterSpacing: '-0.005em',
 };
 
-function formatNum(n: number): string {
-  return n.toLocaleString('ru-RU');
+function formatNum(n: number, locale: 'ru' | 'en' = 'ru'): string {
+  return n.toLocaleString(locale === 'ru' ? 'ru-RU' : 'en-US');
 }
 
 function formatDuration(ms: number): string {
@@ -813,9 +819,9 @@ function labelize(key: string): string {
  * (for Copy-as-Markdown). The full transcript is appended by the caller
  * via exportConversationAsMarkdown.
  */
-function summaryToMarkdown(a: SessionAnalysis): string {
+function summaryToMarkdown(a: SessionAnalysis, t: ReturnType<typeof useT>): string {
   const lines: string[] = [];
-  const title = a.title || 'Cue — session summary';
+  const title = a.title || t('cue.summary.export_default_title');
   lines.push(`# ${title}`);
   if (a.tldr) {
     lines.push('');
@@ -899,6 +905,7 @@ const chipStyle: React.CSSProperties = {
 };
 
 function NotesActionsImpl({ filePath }: { filePath: string }) {
+  const t = useT();
   const [hint, setHint] = useState<string | null>(null);
 
   const flash = (msg: string) => {
@@ -910,7 +917,7 @@ function NotesActionsImpl({ filePath }: { filePath: string }) {
     try {
       await window.druz9.notes.openInHone(filePath);
     } catch {
-      flash('Hone не установлен');
+      flash(t('cue.summary.notes.hone_missing'));
     }
   };
 
@@ -930,22 +937,22 @@ function NotesActionsImpl({ filePath }: { filePath: string }) {
     <div style={{ display: 'flex', gap: 6 }}>
       <button
         onClick={() => void openInHone()}
-        title="Открыть заметки в приложении Hone"
+        title={t('cue.summary.notes.open_title')}
         style={chipStyle}
         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.10)')}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)')}
       >
         <HoneIcon />
-        Открыть в Hone
+        {t('cue.summary.notes.open_in_hone')}
       </button>
       <button
         onClick={() => void showInFinder()}
-        title="Показать файл заметок в Finder"
+        title={t('cue.summary.notes.show_title')}
         style={chipStyle}
         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.10)')}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)')}
       >
-        Показать в Finder
+        {t('cue.summary.notes.show_in_finder')}
       </button>
     </div>
   );

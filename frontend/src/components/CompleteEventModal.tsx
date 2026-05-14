@@ -16,6 +16,7 @@
 // re-write session_note.
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from './Button'
 import { Modal } from './primitives/Modal'
@@ -39,6 +40,7 @@ export function CompleteEventModal({
   onClose,
   onCompleted,
 }: CompleteEventModalProps) {
+  const { t } = useTranslation('wave14')
   const [note, setNote] = useState('')
   const [share, setShare] = useState(false) // default OFF per privacy rule
   const [curated, setCurated] = useState('')
@@ -82,7 +84,7 @@ export function CompleteEventModal({
       onCompleted?.()
       onClose()
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Не получилось'
+      const msg = e instanceof Error ? e.message : t('complete_event.failed')
       setError(msg)
     }
   }
@@ -92,7 +94,7 @@ export function CompleteEventModal({
       open={open}
       onClose={submitting ? () => {} : onClose}
       title="Session note"
-      description={`Запиши, что было пройдено на «${eventTitle}». Это нужно для завершения сессии.`}
+      description={`${t('complete_event.log_completion_pre')}${eventTitle}${t('complete_event.log_completion_post')}`}
       size="lg"
       initialFocusRef={focusRef}
       preventScrimClose
@@ -107,7 +109,7 @@ export function CompleteEventModal({
             ref={focusRef}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Что пройдено · ключевые моменты · следующие шаги"
+            placeholder={t('complete_event.what_was_done')}
             rows={6}
             disabled={submitting}
             className="resize-y rounded-md border border-hairline bg-bg px-3 py-2 font-sans text-[13px] leading-relaxed text-text-primary placeholder:text-text-muted focus:border-text-secondary focus:outline-none disabled:opacity-50"
@@ -129,10 +131,10 @@ export function CompleteEventModal({
           />
           <span className="flex flex-col gap-1">
             <span className="text-[13px] text-text-primary">
-              Поделиться с учеником
+              {t('complete_event.share_with_student')}
             </span>
             <span className="text-[12px] text-text-secondary">
-              Ученик увидит заметку в Hone. По умолчанию — private.
+              {t('complete_event.share_explain')}
             </span>
           </span>
         </label>
@@ -141,19 +143,19 @@ export function CompleteEventModal({
         {share && (
           <label className="flex flex-col gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-              Версия для ученика (необязательно)
+              {t('complete_event.student_version')}
             </span>
             <textarea
               value={curated}
               onChange={(e) => setCurated(e.target.value)}
-              placeholder="Оставь пустым чтобы поделиться полной заметкой как есть"
+              placeholder={t('complete_event.empty_share_full')}
               rows={4}
               disabled={submitting}
               className="resize-y rounded-md border border-hairline bg-bg px-3 py-2 font-sans text-[13px] leading-relaxed text-text-primary placeholder:text-text-muted focus:border-text-secondary focus:outline-none disabled:opacity-50"
               maxLength={8000}
             />
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-              {curated.length} / 8000 · пусто = full note as-is
+              {curated.length} {t('complete_event.chars_8000_hint')}
             </span>
           </label>
         )}
@@ -180,7 +182,7 @@ export function CompleteEventModal({
             disabled={submitting}
             type="button"
           >
-            Отмена
+            {t('complete_event.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -188,7 +190,7 @@ export function CompleteEventModal({
             disabled={submitting || !note.trim()}
             type="button"
           >
-            {submitting ? 'Сохраняем…' : share ? 'Завершить + поделиться' : 'Завершить'}
+            {submitting ? t('complete_event.saving') : share ? t('complete_event.finish_share') : t('complete_event.finish')}
           </Button>
         </div>
       </div>

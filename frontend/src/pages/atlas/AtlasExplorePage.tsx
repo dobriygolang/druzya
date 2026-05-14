@@ -208,17 +208,17 @@ function AtlasV2Surface({
 // formatUpdatedAge — relative-time label for the atlas "обновлено N мин"
 // hint. React Query gives us a wall-clock timestamp on the data; we only
 // need a coarse human label here, no live ticking.
-function formatUpdatedAge(ts: number): string | null {
+function formatUpdatedAge(ts: number, t: (k: string, opts?: Record<string, unknown>) => string): string | null {
   if (!ts) return null
   const sec = Math.max(0, Math.round((Date.now() - ts) / 1000))
-  if (sec < 10) return 'только что'
-  if (sec < 60) return `${sec} сек назад`
+  if (sec < 10) return t('explore.ago.just_now')
+  if (sec < 60) return t('explore.ago.sec', { n: sec })
   const min = Math.floor(sec / 60)
-  if (min < 60) return `${min} мин назад`
+  if (min < 60) return t('explore.ago.min', { n: min })
   const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr} ч назад`
+  if (hr < 24) return t('explore.ago.hr', { n: hr })
   const day = Math.floor(hr / 24)
-  return `${day} д назад`
+  return t('explore.ago.day', { n: day })
 }
 
 function HeaderStrip({
@@ -240,7 +240,8 @@ function HeaderStrip({
   updatedAt: number
   isFetching: boolean
 }) {
-  const ageLabel = formatUpdatedAge(updatedAt)
+  const { t } = useTranslation('atlas')
+  const ageLabel = formatUpdatedAge(updatedAt, t)
   return (
     <div className="flex flex-col items-start gap-4 border-b border-border bg-surface-1 px-4 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-20 lg:py-6">
       <div className="flex flex-col gap-1">
@@ -248,13 +249,13 @@ function HeaderStrip({
           Skill Atlas
         </h1>
         <p className="font-mono text-xs text-text-muted">
-          {isError ? 'Не удалось загрузить' : `${unlocked} / ${total} узлов открыто`}
+          {isError ? t('explore.load_failed_short') : t('explore.unlocked_count', { unlocked, total })}
         </p>
       </div>
       <div className="flex items-center gap-2">
         {ageLabel && (
           <span className="hidden font-mono text-[10px] uppercase tracking-wider text-text-muted sm:inline">
-            обновлено {ageLabel}
+            {t('explore.updated_ago', { age: ageLabel })}
           </span>
         )}
         <Button
@@ -262,8 +263,8 @@ function HeaderStrip({
           size="sm"
           icon={<RotateCcw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />}
           onClick={onRetry}
-          aria-label="Обновить атлас"
-          title="Обновить атлас"
+          aria-label={t('explore.refresh_aria')}
+          title={t('explore.refresh_aria')}
         >
           Refresh
         </Button>
@@ -348,13 +349,19 @@ function GraphSkeleton() {
         }}
       />
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-xs text-text-muted">
-        Загружаем атлас…
+        <GraphSkeletonLabel />
       </div>
     </div>
   )
 }
 
+function GraphSkeletonLabel() {
+  const { t } = useTranslation('atlas')
+  return <>{t('explore.loading_canvas')}</>
+}
+
 function EmptyProgressCTA() {
+  const { t } = useTranslation('atlas')
   return (
     <div className="flex flex-1 items-center justify-center bg-bg p-8">
       <div className="flex max-w-lg flex-col items-center gap-5 text-center">
@@ -363,17 +370,15 @@ function EmptyProgressCTA() {
         </span>
         <div className="flex flex-col gap-2">
           <h2 className="font-display text-xl font-bold text-text-primary">
-            Атлас пока пуст
+            {t('explore.empty.title')}
           </h2>
           <p className="text-sm text-text-secondary">
-            Реши первую задачу — и сюда придут первые навыки. Атлас покажет, что ты
-            уже освоил, какие темы стоит подтянуть и какие следующие шаги
-            рекомендованы.
+            {t('explore.empty.body')}
           </p>
         </div>
         <Link to="/mock">
           <Button size="md" iconRight={<ArrowRight className="h-4 w-4" />}>
-            Начать mock
+            {t('explore.empty.cta')}
           </Button>
         </Link>
       </div>
@@ -383,6 +388,7 @@ function EmptyProgressCTA() {
 
 // ── AtlasExplorePage — оркестратор. Мостит filter bar → highlight set → drawer.
 export default function AtlasExplorePage() {
+  const { t } = useTranslation('atlas')
   const { data: rawAtlas, isError, isLoading, refetch, dataUpdatedAt, isFetching } = useAtlasQuery()
 
   // Phase 3 — overlay filter: hidden узлы скрыты на canvas. Pinned остаются
@@ -475,13 +481,13 @@ export default function AtlasExplorePage() {
                 cmd/ctrl-click). Persisted per-user via localStorage и в URL. */}
             <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-8 lg:px-20">
               <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-                трек
+                {t('explore.track_filter_label')}
               </span>
               <TrackFilterChips
                 selected={selectedTracks}
                 onChange={setSelectedTracks}
                 persistKey="atlas:track-filter:v1"
-                ariaLabel="Фильтр атласа по трекам"
+                ariaLabel={t('explore.track_filter_aria')}
               />
             </div>
             <AtlasFilters
@@ -503,15 +509,14 @@ export default function AtlasExplorePage() {
                 <div className="flex max-w-md flex-col items-center gap-3 text-center">
                   <AlertCircle className="h-8 w-8 text-danger" />
                   <p className="text-sm text-text-secondary">
-                    Не удалось загрузить атлас. Попробуй обновить — если ошибка
-                    повторяется, проверь подключение.
+                    {t('explore.load_failed_body')}
                   </p>
                   <Button
                     variant="primary"
                     icon={<RotateCcw className="h-3.5 w-3.5" />}
                     onClick={() => void refetch()}
                   >
-                    Повторить
+                    {t('explore.retry')}
                   </Button>
                 </div>
               </div>

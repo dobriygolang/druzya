@@ -20,7 +20,8 @@ import {
   getSourceIcon,
   pickRecommendedArticles,
   sortArticles,
-  SORT_LABELS,
+  getSortLabel,
+  SORT_MODES,
   type CodexSortMode,
 } from '../lib/codexHelpers'
 import { loadProgress } from '../lib/diagnostic'
@@ -257,9 +258,9 @@ function SortPicker({ value, onChange }: { value: CodexSortMode; onChange: (v: C
           onChange={(e) => onChange(e.target.value as CodexSortMode)}
           className="appearance-none bg-transparent pr-6 text-[12.5px] font-semibold text-text-primary focus:outline-none"
         >
-          {(Object.keys(SORT_LABELS) as CodexSortMode[]).map((mode) => (
+          {SORT_MODES.map((mode) => (
             <option key={mode} value={mode} className="bg-bg text-text-primary">
-              {SORT_LABELS[mode]}
+              {getSortLabel(mode)}
             </option>
           ))}
         </select>

@@ -202,5 +202,60 @@
     "students_load_failed": "Could not load students",
     "students_empty": "No students yet. Create an invite and send it — after Accept the student will show up here.",
     "btn_end_relationship": "End relationship"
+  },
+  "role_toggle": {
+    "title": "Tutor mode",
+    "body": "Enables the tutor dashboard with mentees, assignments, sessions and reading paths. No confirmation needed. Free.",
+    "saving": "Saving…",
+    "btn_enable": "Become a tutor",
+    "btn_disable": "Turn off tutor mode",
+    "save_failed": "Could not save",
+    "open_dashboard": "open dashboard →"
+  },
+  "onboarding": {
+    "invite_label": "Onboarding invite",
+    "step_indicator": "Tutor onboarding · {{step}}/4",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "step0": {
+      "title": "druz9 — your free toolkit",
+      "body": "No marketplace and no monetary step here. druz9 is tools for you as a tutor: assignment queue, student snapshot, AI pre-session brief, shared calendar, shared reading library. The platform amplifies your work, it doesn't replace it."
+    },
+    "step1": {
+      "title": "Invite codes are the foundation",
+      "body": "You create an invite — give the code / link to a student. They navigate, register (or sign in) and land in your «My students» list. Until that moment you're not connected — only after Accept.",
+      "body_muted": "Invite is single-use. You can keep several active at the same time, e.g. one for each incoming student."
+    },
+    "step2": {
+      "title": "What you do between sessions",
+      "item1": {
+        "label": "Push assignment —",
+        "body": "schedule homework with a deadline; it shows up automatically in the student's Hone TaskBoard. 24h before the deadline they get a notification."
+      },
+      "item2": {
+        "label": "Student snapshot —",
+        "body": "what they did this week: focus seconds, mocks, weak spots, external activity (LeetCode/Coursera)."
+      },
+      "item3": {
+        "label": "AI brief before the session —",
+        "body": "summarized into a 1-paragraph «what to talk about today»."
+      },
+      "item4": {
+        "label": "AI-coach between your sessions —",
+        "body": "the student can ask the coach 24/7. AI is assistive, it doesn't duplicate your assignments."
+      }
+    },
+    "step3": {
+      "title": "Create your first invite",
+      "body": "Generate a code and send it to the student in any convenient way — Telegram, email, WhatsApp.",
+      "creating": "Creating…",
+      "generate": "Generate invite",
+      "retry": "Didn't work — try again.",
+      "copied": "Copied",
+      "copy": "Copy",
+      "hint": "You can create more invites from the dashboard below."
+    }
   }
 }

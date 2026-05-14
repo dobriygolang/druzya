@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Code } from '@connectrpc/connect';
+
+import { useT } from '@d9-i18n';
+
 import type { Folder, Note } from '../../api/hone';
 import { isLocalNoteId } from '../../api/localNotes';
 import { Kbd } from '../../components/primitives/Kbd';
@@ -36,6 +39,7 @@ export interface EditorProps {
 }
 
 export function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, saveStatus, folders, onTitleChange, onBodyChange, onCreate, onToggleAIExcluded }: EditorProps) {
+  const t = useT();
   const [hover, setHover] = useState(false);
   // Editor max-width — drag-resizable, persisted в localStorage. Range
   // [500 .. (window.innerWidth - 80)] (clamp в onMove). Hand-rolled drag
@@ -214,8 +218,8 @@ export function Editor({ list, active, activeError, draftTitle, draftBody, encry
               className="focus-ring"
               title={
                 active.aiExcluded
-                  ? 'AI не читает эту заметку — клик чтобы разрешить'
-                  : 'AI может читать — клик чтобы скрыть от AI'
+                  ? t('hone.notes.editor.ai_excluded_title')
+                  : t('hone.notes.editor.ai_visible_title')
               }
               style={{
                 padding: '3px 8px',

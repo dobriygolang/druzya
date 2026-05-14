@@ -56,5 +56,19 @@
   "unavailable_desc": "Could not load articles from backend.",
   "categories_fallback": "Categories did not load — falling back to article-derived list.",
   "empty_title": "Nothing found",
-  "empty_desc": "Try removing the category filter or clearing your search."
+  "empty_desc": "Try removing the category filter or clearing your search.",
+  "hub_tabs": {
+    "articles": "Articles",
+    "podcasts": "Podcasts"
+  },
+  "sort": {
+    "default": "Default",
+    "shortest": "Shortest first",
+    "longest": "Longest first",
+    "alphabetical": "A → Z"
+  },
+  "duration": {
+    "hours_minutes": "{{h}}h {{m}}m",
+    "minutes": "{{m}} min"
+  }
 }

@@ -19,6 +19,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Compass, Loader2, Plus, Sparkles, Check } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
@@ -40,6 +41,7 @@ import {
 } from '../../lib/queries/profile'
 
 export default function AtlasPage() {
+  const { t } = useTranslation('atlas')
   const catalogue = useTracksCatalogue()
   const userTracks = useUserTracks()
 
@@ -59,7 +61,7 @@ export default function AtlasPage() {
           </div>
 
           {active && (
-            <ErrorBoundary section="Активный трек">
+            <ErrorBoundary section={t('page.active_track_section')}>
               <ActiveTrackStrip progress={active} />
             </ErrorBoundary>
           )}
@@ -74,10 +76,10 @@ export default function AtlasPage() {
             isError={catalogue.isError}
           />
 
-          <ErrorBoundary section="Каталог треков">
+          <ErrorBoundary section={t('page.catalogue_section')}>
             <DataLoader
               state={catalogue}
-              section="Каталог треков"
+              section={t('page.catalogue_section')}
               skeleton={<SkeletonRibbon />}
               empty={(d) => (d?.length ?? 0) === 0}
               emptyContent={<EmptyCatalogue />}
@@ -97,6 +99,7 @@ export default function AtlasPage() {
 // ── Hero ─────────────────────────────────────────────────────────────────
 
 function Hero() {
+  const { t } = useTranslation('atlas')
   return (
     <div className="flex flex-col items-start gap-4 border-b border-border bg-surface-1 px-4 py-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-20 lg:py-8">
       <div className="flex flex-col gap-1">
@@ -104,8 +107,7 @@ function Hero() {
           Tracks
         </h1>
         <p className="max-w-xl text-sm text-text-secondary">
-          Курируемые программы под собес/промо. Шаги выстроены в порядке —
-          бери трек и идёшь по чек-листу до конца.
+          {t('page.hero_subtitle')}
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -188,25 +190,17 @@ function CatalogueHeader({
   isLoading: boolean
   isError: boolean
 }) {
+  const { t } = useTranslation('atlas')
   return (
     <div className="mb-3 flex items-baseline justify-between">
       <h2 className="font-display text-base font-bold text-text-primary">
-        Каталог
+        {t('page.catalogue_header')}
       </h2>
       <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-        {isError ? 'ошибка' : isLoading ? 'загружаем…' : `${count} трек${pluralEnding(count)}`}
+        {isError ? t('page.error_short') : isLoading ? t('page.loading_short') : t('page.tracks_count', { count })}
       </span>
     </div>
   )
-}
-
-function pluralEnding(n: number): string {
-  const last = n % 10
-  const lastTwo = n % 100
-  if (lastTwo >= 11 && lastTwo <= 14) return 'ов'
-  if (last === 1) return ''
-  if (last >= 2 && last <= 4) return 'а'
-  return 'ов'
 }
 
 function Ribbon({
@@ -236,6 +230,7 @@ function TrackCard({
   track: LearningTrack
   progress: LearningTrackProgress | undefined
 }) {
+  const { t } = useTranslation('atlas')
   const enrolled = Boolean(progress)
   const paused = Boolean(progress?.enrolment.paused_at)
   const completed = Boolean(progress?.enrolment.completed_at)
@@ -266,7 +261,7 @@ function TrackCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-            <span>{track.estimated_weeks} нед</span>
+            <span>{track.estimated_weeks} {t('page.weeks_short')}</span>
             <span>·</span>
             <span>{difficultyLabel(track.difficulty)}</span>
           </div>
@@ -368,26 +363,27 @@ function SkeletonRibbon() {
 }
 
 function EmptyCatalogue() {
+  const { t } = useTranslation('atlas')
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-surface-1 p-8 text-center">
       <Sparkles className="h-7 w-7 text-text-muted" />
       <p className="text-sm text-text-secondary">
-        Каталог пока пуст. Кураторы готовят первые программы — загляни
-        чуть позже.
+        {t('page.catalogue_empty')}
       </p>
     </div>
   )
 }
 
 function ErrorBlock({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation('atlas')
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-danger/40 bg-surface-1 p-8 text-center">
       <Loader2 className="h-7 w-7 text-danger" />
       <p className="text-sm text-text-secondary">
-        Не удалось загрузить треки. Попробуй обновить.
+        {t('page.load_failed')}
       </p>
       <Button size="sm" onClick={onRetry}>
-        Повторить
+        {t('page.retry')}
       </Button>
     </div>
   )
@@ -395,6 +391,7 @@ function ErrorBlock({ onRetry }: { onRetry: () => void }) {
 
 // ── Phase 3.1: free-form TODO → atlas node ─────────────────────────────
 function AddAtlasTodoCard() {
+  const { t } = useTranslation('atlas')
   const [todo, setTodo] = useState('')
   const [result, setResult] = useState<ClassifyAtlasTodoResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -403,16 +400,16 @@ function AddAtlasTodoCard() {
   const submit = async () => {
     setError(null)
     setResult(null)
-    const t = todo.trim()
-    if (t.length < 3) return
+    const text = todo.trim()
+    if (text.length < 3) return
     try {
-      const res = await m.mutateAsync(t)
+      const res = await m.mutateAsync(text)
       setResult(res)
       setTodo('')
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       if (/unimplemented/i.test(msg)) {
-        setError('AI-классификатор пока недоступен (LLM не сконфигурён).')
+        setError(t('page.classifier_unavailable'))
       } else {
         setError(msg)
       }
@@ -423,19 +420,17 @@ function AddAtlasTodoCard() {
     <section className="mb-6 rounded-xl border border-dashed border-border bg-surface-1 p-4">
       <div className="mb-2 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-accent" />
-        <h2 className="font-display text-sm font-bold">Добавить тему в атлас</h2>
+        <h2 className="font-display text-sm font-bold">{t('page.add_topic_title')}</h2>
       </div>
       <p className="mb-3 text-[12px] leading-relaxed text-text-secondary">
-        Опиши что хочешь изучить («Транзакции в Postgres», «Diffusion-модели»).
-        AI либо найдёт подходящий узел в curated-атласе, либо заведёт новый
-        в твоём личном слое.
+        {t('page.add_topic_body')}
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
           value={todo}
           onChange={(e) => setTodo(e.target.value)}
-          placeholder="Например: транзакции в Postgres"
+          placeholder={t('page.add_topic_placeholder')}
           className="atlas-underline-input flex-1 bg-transparent px-1 py-2 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none"
           style={{
             border: 'none',
@@ -466,7 +461,7 @@ function AddAtlasTodoCard() {
           }
           onClick={submit}
         >
-          Добавить
+          {t('page.add_topic_cta')}
         </Button>
       </div>
       {error && (
@@ -480,22 +475,22 @@ function AddAtlasTodoCard() {
           <div className="text-text-primary">
             {result.matched_key ? (
               <>
-                Тема уже есть в атласе:{' '}
+                {t('page.topic_matched_prefix')}{' '}
                 <code className="font-mono text-[11px] text-accent">
                   {result.matched_key}
                 </code>
-                . Прогресс по ней пойдёт сразу.
+                {t('page.topic_matched_suffix')}
               </>
             ) : result.new_node ? (
               <>
-                Создан новый узел{' '}
+                {t('page.topic_created_prefix')}{' '}
                 <b className="text-text-primary">{result.new_node.title}</b>{' '}
                 <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                   · {result.new_node.section} / {result.new_node.cluster}
                 </span>
               </>
             ) : (
-              'Готово.'
+              t('page.topic_done')
             )}
           </div>
         </div>

@@ -14,6 +14,7 @@
 // Раньше создавалось solo lobby + arena match; lobby/arena сервисы дропнуты.
 
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -43,6 +44,7 @@ import {
 } from '../../lib/queries/tracks'
 
 export default function TrackDetailPage() {
+  const { t } = useTranslation('wave14')
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
 
@@ -76,10 +78,10 @@ export default function TrackDetailPage() {
       <AppShellV2>
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-4 text-center">
           <p className="text-sm text-text-secondary">
-            Трек не найден или произошла ошибка.
+            {t('atlas_track.not_found')}
           </p>
           <Button variant="ghost" onClick={() => navigate('/atlas')}>
-            ← Каталог
+            {t('atlas_track.to_catalogue')}
           </Button>
         </div>
       </AppShellV2>
@@ -121,11 +123,11 @@ export default function TrackDetailPage() {
             {/* left — stairwell */}
             <div className="flex flex-col gap-3">
               <h2 className="font-display text-base font-bold text-text-primary">
-                Шаги
+                {t('atlas_track.steps_section')}
               </h2>
               {steps.length === 0 ? (
                 <div className="rounded-xl border border-border bg-surface-1 p-6 text-center text-sm text-text-secondary">
-                  У трека пока нет шагов.
+                  {t('atlas_track.no_steps')}
                 </div>
               ) : (
                 <Stairwell steps={steps} currentIdx={currentIdx} accent={accent} />
@@ -173,6 +175,7 @@ function Hero({
   progress: LearningTrackProgress | undefined
   accent: string
 }) {
+  const { t } = useTranslation('wave14')
   return (
     <div
       className="border-b border-border bg-surface-1 px-4 py-6 sm:px-8 lg:px-20 lg:py-8"
@@ -184,14 +187,14 @@ function Hero({
           className="inline-flex items-center gap-1 self-start font-mono text-[11px] text-text-muted transition-colors hover:text-text-primary"
         >
           <ArrowLeft className="h-3 w-3" />
-          Каталог
+          {t('atlas_track.catalogue')}
         </Link>
         <h1 className="font-display text-2xl font-bold leading-[1.1] text-text-primary lg:text-[28px]">
           {track.name}
         </h1>
         <p className="max-w-2xl text-sm text-text-secondary">{track.tagline}</p>
         <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-          <span>{track.estimated_weeks} нед</span>
+          <span>{track.estimated_weeks} {t('atlas_track.weeks_short')}</span>
           <span>·</span>
           <span>{difficultyLabel(track.difficulty)}</span>
           {(track.company_focus ?? []).length > 0 && (
@@ -262,6 +265,7 @@ function StepCard({
   status: 'done' | 'current' | 'future'
   accent: string
 }) {
+  const { t } = useTranslation('wave14')
   const borderClass =
     status === 'current'
       ? 'border-text-primary'
@@ -301,7 +305,7 @@ function StepCard({
           <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
             {stepKindLabel(step.required_kind)}
             {step.required_count > 1 && ` × ${step.required_count}`}
-            {step.estimated_minutes > 0 && ` · ~${step.estimated_minutes} мин`}
+            {step.estimated_minutes > 0 && ` · ~${step.estimated_minutes} ${t('atlas_track.minutes_short')}`}
           </span>
         </div>
         {step.description_md && (
@@ -404,21 +408,22 @@ function SidebarCTA({
   practicePending: boolean
   practiceError: string | null
 }) {
+  const { t } = useTranslation('wave14')
   if (completed) {
     return (
       <div className="flex flex-col gap-3 rounded-xl border border-success/40 bg-success/10 p-4 text-center">
         <Check className="mx-auto h-7 w-7 text-success" />
         <div>
           <h3 className="font-display text-sm font-bold text-text-primary">
-            Трек пройден
+            {t('atlas_track.track_done')}
           </h3>
           <p className="mt-1 text-xs text-text-secondary">
-            Поздравляем — ты дошёл до конца. Время взять следующий.
+            {t('atlas_track.track_done_body')}
           </p>
         </div>
         <Link to="/atlas">
           <Button variant="ghost" size="sm">
-            Каталог →
+            {t('atlas_track.catalogue_arrow')}
           </Button>
         </Link>
       </div>
@@ -429,14 +434,14 @@ function SidebarCTA({
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-1 p-4">
       <div className="flex flex-col gap-1">
         <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-          {enrolled ? (paused ? 'на паузе' : 'next step') : 'до начала'}
+          {enrolled ? (paused ? t('atlas_track.paused') : 'next step') : t('atlas_track.before_start')}
         </span>
         <h3 className="font-display text-sm font-bold text-text-primary">
           {nextStep
             ? nextStep.title
             : enrolled
-              ? 'Все шаги выполнены'
-              : track.tagline || 'Начни трек, чтобы получить пошаговый план'}
+              ? t('atlas_track.all_done')
+              : track.tagline || t('atlas_track.join_to_start')}
         </h3>
       </div>
 
@@ -448,7 +453,7 @@ function SidebarCTA({
           disabled={joinPending}
           icon={joinPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
         >
-          Вступить
+          {t('atlas_track.join')}
         </Button>
       )}
 
@@ -460,7 +465,7 @@ function SidebarCTA({
           disabled={joinPending}
           icon={joinPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
         >
-          Возобновить
+          {t('atlas_track.resume')}
         </Button>
       )}
 
@@ -487,7 +492,7 @@ function SidebarCTA({
           </button>
           {practiceError && (
             <span className="font-mono text-[10px] text-warn">
-              Solo lobby fail — открываем kata вручную…
+              {t('atlas_track.solo_lobby_fail')}
             </span>
           )}
           <Button
@@ -531,6 +536,7 @@ function SidebarCTA({
 // ── Pre-reads ────────────────────────────────────────────────────────────
 
 function PreReads({ steps }: { steps: TrackStep[] }) {
+  const { t } = useTranslation('wave14')
   const reads = useMemo(() => {
     const seen = new Set<string>()
     const out: { slug: string; stepIdx: number }[] = []
@@ -553,7 +559,7 @@ function PreReads({ steps }: { steps: TrackStep[] }) {
           Codex pre-reads
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-          {reads.length} материал{pluralReads(reads.length)}
+          {reads.length} {t('atlas_track.materials')}{pluralReads(reads.length, t)}
         </span>
       </div>
       <div className="grid gap-2 md:grid-cols-2">
@@ -578,11 +584,11 @@ function PreReads({ steps }: { steps: TrackStep[] }) {
   )
 }
 
-function pluralReads(n: number): string {
+function pluralReads(n: number, t: (k: string) => string): string {
   const last = n % 10
   const lastTwo = n % 100
-  if (lastTwo >= 11 && lastTwo <= 14) return 'ов'
-  if (last === 1) return ''
-  if (last >= 2 && last <= 4) return 'а'
-  return 'ов'
+  if (lastTwo >= 11 && lastTwo <= 14) return t('atlas_track.materials_few')
+  if (last === 1) return t('atlas_track.materials_one')
+  if (last >= 2 && last <= 4) return t('atlas_track.materials_few')
+  return t('atlas_track.materials_many')
 }

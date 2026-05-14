@@ -93,7 +93,7 @@ export const MemoryTimelinePage: React.FC = () => {
         <p style={{ fontSize: 13, color: 'var(--ink-60)', margin: 0, maxWidth: 580 }}>
           {total === 0
             ? t('hone.memory.empty')
-            : `${total} entries · показано ${filteredItems.length}. AI ссылается на это в daily brief / next-action / fork analysis.`}
+            : t('hone.memory.header.detail', { total, shown: filteredItems.length })}
         </p>
       </header>
 
@@ -278,10 +278,10 @@ const EmptyHint: React.FC = () => (
     </div>
     {translate('hone.memory.footer_note')}
     <ul style={{ paddingLeft: 18, margin: '8px 0' }}>
-      <li>Cue session → ingest → episode kind=cue_session</li>
-      <li>Reflection после focus → kind=reflection</li>
-      <li>Mock complete → kind=mock_pipeline_finished</li>
-      <li>Note create / external activity log → kind=external_activity</li>
+      <li>{translate('hone.memory.list.cue_session')}</li>
+      <li>{translate('hone.memory.list.reflection')}</li>
+      <li>{translate('hone.memory.list.mock_complete')}</li>
+      <li>{translate('hone.memory.list.note_external')}</li>
     </ul>
     {translate('hone.memory.footer_outro')}
   </div>

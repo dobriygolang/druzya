@@ -26,7 +26,10 @@ const STORAGE_KEY = 'druz9.persona.active-id';
 // selectable option.
 const PlaceholderPersona: Persona = {
   id: 'default',
-  label: 'Обычный',
+  // Hard-coded fallback when the persona catalog hasn't loaded yet.
+  // Stays in English so it works before i18n bootstrap; UI rarely
+  // surfaces this — PickerScreen renders explicit error/empty states.
+  label: 'Default',
   hint: '',
   icon_emoji: '💬',
   brand_gradient:

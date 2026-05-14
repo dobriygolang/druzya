@@ -90,12 +90,13 @@ export function pickRecommendedArticles(
 
 export type CodexSortMode = 'default' | 'shortest' | 'longest' | 'alphabetical'
 
-export const SORT_LABELS: Record<CodexSortMode, string> = {
-  default: 'По умолчанию',
-  shortest: 'Короче первым',
-  longest: 'Длиннее первым',
-  alphabetical: 'А → Я',
+import i18n from './i18n'
+
+export function getSortLabel(mode: CodexSortMode): string {
+  return i18n.t(`codex:sort.${mode}`)
 }
+
+export const SORT_MODES: CodexSortMode[] = ['default', 'shortest', 'longest', 'alphabetical']
 
 /**
  * Sort articles by ranking mode. Default uses CMS sort_order (admin curation).

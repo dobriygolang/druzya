@@ -11,6 +11,7 @@
 // on success, no rollback ceremony.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import i18n from '../i18n'
 import { api } from '../apiClient'
 
 // ── shared shapes ────────────────────────────────────────────────────────
@@ -529,11 +530,11 @@ export function usePutCompanyStagesMutation() {
 
 export function mockAdminErrorMessage(err: unknown): string {
   const status = (err as { status?: number } | null)?.status
-  if (status === 400) return 'Проверь поля — сервер не принял запрос.'
-  if (status === 403) return 'Нет доступа. Админских прав не хватает.'
-  if (status === 404) return 'Не найдено.'
-  if (status && status >= 500) return 'Сервер ответил ошибкой. Попробуй ещё раз.'
-  return 'Не удалось выполнить запрос.'
+  if (status === 400) return i18n.t('admin:mock_errors.bad_request')
+  if (status === 403) return i18n.t('admin:mock_errors.forbidden')
+  if (status === 404) return i18n.t('admin:mock_errors.not_found')
+  if (status && status >= 500) return i18n.t('admin:mock_errors.server')
+  return i18n.t('admin:mock_errors.generic')
 }
 
 // ── test cases (Judge0 grading rows) ─────────────────────────────────────

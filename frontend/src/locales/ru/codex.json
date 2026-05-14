@@ -56,5 +56,19 @@
   "unavailable_desc": "Не удалось загрузить статьи из backend.",
   "categories_fallback": "Категории не подгрузились — используется fallback из статей.",
   "empty_title": "Ничего не нашлось",
-  "empty_desc": "Попробуй убрать фильтр категории или почистить поиск."
+  "empty_desc": "Попробуй убрать фильтр категории или почистить поиск.",
+  "hub_tabs": {
+    "articles": "Статьи",
+    "podcasts": "Подкасты"
+  },
+  "sort": {
+    "default": "По умолчанию",
+    "shortest": "Короче первым",
+    "longest": "Длиннее первым",
+    "alphabetical": "А → Я"
+  },
+  "duration": {
+    "hours_minutes": "{{h}}ч {{m}}м",
+    "minutes": "{{m}} мин"
+  }
 }

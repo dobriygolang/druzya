@@ -79,10 +79,10 @@ export default [
       'no-console': 'warn',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      // Phase K Wave 16: hardcoded Cyrillic in JSX / string literals should
-      // live in locales/<ns>.json instead. Starts as 'warn' during the
-      // sweep; flip to 'error' once parity is reached.
-      'd9-i18n/no-cyrillic-literals': 'warn',
+      // Phase K Wave 16: hardcoded Cyrillic in JSX / string literals must
+      // live in locales/<ns>.json. After the 2026-05-14 sweep reached
+      // 0 warnings, the rule is hard-error to prevent regressions.
+      'd9-i18n/no-cyrillic-literals': 'error',
     },
   },
   // Legacy plain JS sources (pre-TS migration) — same browser+ES env as the

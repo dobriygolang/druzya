@@ -1,5 +1,6 @@
 // AutoSuggestPill — floating suggestion strip above the input row.
 
+import { useT } from '@d9-i18n';
 import { useCoachStore } from '../../../stores/coach';
 
 /**
@@ -18,6 +19,7 @@ export function AutoSuggestPill({
   draft: string;
   setDraft: (s: string) => void;
 }) {
+  const t = useT();
   const suggestion = useCoachStore((s) => s.suggestion);
   const thinking = useCoachStore((s) => s.thinking);
   const enabled = useCoachStore((s) => s.enabled);
@@ -96,7 +98,7 @@ export function AutoSuggestPill({
                 fontStyle: 'italic',
               }}
             >
-              AI формулирует ответ на вопрос собеседника…
+              {t('cue.expanded.suggest.placeholder_thinking')}
             </div>
           ) : suggestion ? (
             <>
@@ -113,7 +115,7 @@ export function AutoSuggestPill({
                   whiteSpace: 'nowrap',
                 }}
               >
-                Q: {suggestion.question}
+                {t('cue.expanded.suggest.q_prefix', { question: suggestion.question })}
               </div>
               <div
                 style={{
@@ -156,7 +158,7 @@ export function AutoSuggestPill({
             <button
               type="button"
               onClick={insert}
-              title="Вставить в поле ввода"
+              title={t('cue.expanded.suggest.insert_title')}
               style={{
                 padding: '3px 8px',
                 fontSize: 10.5,
@@ -169,12 +171,12 @@ export function AutoSuggestPill({
                 letterSpacing: '-0.005em',
               }}
             >
-              в ввод
+              {t('cue.expanded.suggest.cta_insert')}
             </button>
             <button
               type="button"
               onClick={dismiss}
-              title="Скрыть"
+              title={t('cue.expanded.suggest.dismiss_title')}
               style={{
                 padding: '3px 8px',
                 fontSize: 10.5,
@@ -187,7 +189,7 @@ export function AutoSuggestPill({
                 letterSpacing: '-0.005em',
               }}
             >
-              закрыть
+              {t('cue.expanded.suggest.cta_dismiss')}
             </button>
           </div>
         )}

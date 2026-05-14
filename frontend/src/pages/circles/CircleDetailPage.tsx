@@ -5,6 +5,7 @@
 // editor_room_id или whiteboard_room_id если хочет, чтобы event автоматически
 // открывал нужную комнату в Hone (Phase 6.5.3 smart-routing).
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Calendar, ExternalLink, Users } from 'lucide-react'
 
@@ -21,6 +22,7 @@ import {
 } from '../../lib/queries/circles'
 
 export default function CircleDetailPage() {
+  const { t } = useTranslation('wave14')
   const { circleId } = useParams<{ circleId: string }>()
   const [circle, setCircle] = useState<Circle | null>(null)
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -208,7 +210,7 @@ export default function CircleDetailPage() {
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    placeholder="Что обсудим"
+                    placeholder={t('circles.what_discuss')}
                     rows={2}
                     className="w-full resize-none border-b border-[var(--hair-2)] bg-transparent py-1.5 text-[13px] text-text-secondary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
                   />
@@ -276,11 +278,11 @@ export default function CircleDetailPage() {
                           <input
                             value={form.editor_room_id}
                             onChange={(e) => setForm({ ...form, editor_room_id: e.target.value })}
-                            placeholder="UUID комнаты-редактора"
+                            placeholder={t('circles.editor_room_uuid')}
                             className="mt-1 w-full border-b border-[var(--hair-2)] bg-transparent px-1 py-1.5 font-mono text-[11px] text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
                           />
                           <span className="mt-1 block font-mono text-[10px] text-text-muted">
-                            из URL <code className="text-text-secondary">/editor/&lt;id&gt;</code> — UUID после слэша
+                            {t('circles.from_url')} <code className="text-text-secondary">/editor/&lt;id&gt;</code> {t('circles.uuid_after_slash')}
                           </span>
                         </label>
                         <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
@@ -290,16 +292,16 @@ export default function CircleDetailPage() {
                             onChange={(e) =>
                               setForm({ ...form, whiteboard_room_id: e.target.value })
                             }
-                            placeholder="UUID доски"
+                            placeholder={t('circles.whiteboard_uuid')}
                             className="mt-1 w-full border-b border-[var(--hair-2)] bg-transparent px-1 py-1.5 font-mono text-[11px] text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] placeholder:text-text-muted focus:border-[rgb(var(--ink))]"
                           />
                           <span className="mt-1 block font-mono text-[10px] text-text-muted">
-                            из URL <code className="text-text-secondary">/whiteboard/&lt;id&gt;</code>
+                            {t('circles.from_url')} <code className="text-text-secondary">/whiteboard/&lt;id&gt;</code>
                           </span>
                         </label>
                       </div>
                       <p className="rounded-md border border-border bg-surface-2 px-3 py-2 text-[11px] text-text-secondary">
-                        Если укажешь — на карточке event'а появятся кнопки «Open editor» / «Open whiteboard» с прямой ссылкой на эту комнату.
+                        {t('circles.if_specified')}
                       </p>
                       <label className="block font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                         Recurrence
@@ -335,7 +337,7 @@ export default function CircleDetailPage() {
 
               {events.length === 0 ? (
                 <p className="text-[13px] text-text-muted">
-                  Пока ни одного. Создай событие сверху.
+                  {t('circles.empty_create')}
                 </p>
               ) : (
                 <ul className="space-y-3">

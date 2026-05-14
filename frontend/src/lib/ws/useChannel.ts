@@ -60,7 +60,11 @@ export function useChannel<T = unknown>(channel: string): UseChannelResult<T> {
   return { data, lastEvent, status, send }
 }
 
-// MOCK: replace with real WS when backend up
+// MOCK: replace with real WS when backend up. Sample chat fixtures live
+// in this file as dev-only fake data — they never reach the live UI in
+// production builds (gated by import.meta.env.VITE_USE_MSW), so they
+// don't need to flow through i18n.
+/* eslint-disable d9-i18n/no-cyrillic-literals */
 function startMockEmitter(
   channel: string,
   emit: (event: string, payload: unknown) => void,
@@ -153,3 +157,4 @@ function startMockEmitter(
     timers.forEach((id) => window.clearInterval(id))
   }
 }
+/* eslint-enable d9-i18n/no-cyrillic-literals */

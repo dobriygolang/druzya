@@ -11,6 +11,7 @@
 // «coming soon» fallback (юзер может всё равно сохранить goal).
 
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Sparkles, Loader2 } from 'lucide-react'
 
@@ -40,6 +41,7 @@ const captionMono: React.CSSProperties = {
 }
 
 export default function PathCustom() {
+  const { t } = useTranslation('wave14')
   const navigate = useNavigate()
   const [goal, setGoal] = useState<string>(() => {
     try {
@@ -74,7 +76,7 @@ export default function PathCustom() {
       const res = await gen.mutateAsync(trimmed)
       const list = res.nodes ?? []
       if (list.length === 0) {
-        setError('Пустой ответ от модели — попробуй переформулировать цель.')
+        setError(t('onboarding_path.empty_llm_response'))
         return
       }
       setNodes(list)
@@ -83,7 +85,7 @@ export default function PathCustom() {
       const msg = e instanceof Error ? e.message : String(e)
       // Unimplemented (no LLM) — мягкий fallback.
       if (/unimplemented/i.test(msg)) {
-        setError('AI-генерация пока недоступна (LLM не сконфигурён). Цель сохранена.')
+        setError(t('onboarding_path.llm_unavailable'))
       } else {
         setError(msg)
       }
@@ -131,10 +133,10 @@ export default function PathCustom() {
           onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
           onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
         >
-          <ArrowLeft style={{ width: 12, height: 12 }} /> К выбору пути
+          <ArrowLeft style={{ width: 12, height: 12 }} /> {t('onboarding_path.to_path_picker')}
         </Link>
         <header style={{ marginTop: 14, marginBottom: 24 }}>
-          <div style={captionMono}>СВОЙ ПУТЬ</div>
+          <div style={captionMono}>{t('onboarding_path.your_path')}</div>
           <h1
             style={{
               margin: '8px 0 0',
@@ -145,7 +147,7 @@ export default function PathCustom() {
               color: 'rgb(var(--ink))',
             }}
           >
-            Опиши цель
+            {t('onboarding_path.describe_goal_title')}
           </h1>
           <p
             style={{
@@ -156,8 +158,7 @@ export default function PathCustom() {
               color: 'var(--ink-60)',
             }}
           >
-            Чем точнее цель — тем релевантнее карта тем. Примеры: «Senior Go-разработчик
-            в Booking», «ML researcher в LLM-стартап», «Senior backend в Yandex Search».
+            {t('onboarding_path.goal_hint')}
           </p>
         </header>
 
@@ -165,9 +166,9 @@ export default function PathCustom() {
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
           rows={4}
-          placeholder="Senior Go-разработчик в финтех с фокусом на realtime-сервисы…"
+          placeholder={t('onboarding_path.goal_placeholder')}
           className="focus-ring"
-          aria-label="Цель"
+          aria-label={t('onboarding_path.goal_label')}
           style={{
             width: '100%',
             padding: '12px 0',
@@ -209,9 +210,9 @@ export default function PathCustom() {
             }}
           >
             {gen.isPending ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Sparkles style={{ width: 14, height: 14 }} />}
-            {nodes.length > 0 ? 'Перегенерировать' : 'Сгенерировать карту тем'}
+            {nodes.length > 0 ? t('onboarding_path.regenerate') : t('onboarding_path.generate_map')}
           </button>
-          <span style={captionMono}>8–15 тем · ~3–8 секунд</span>
+          <span style={captionMono}>{t('onboarding_path.generate_hint')}</span>
         </div>
 
         {error && (
@@ -243,13 +244,13 @@ export default function PathCustom() {
               style={{ marginBottom: 14, gap: 16, alignItems: 'center', color: 'var(--ink-60)' }}
             >
               <span style={captionMono}>
-                Учить:{' '}
+                {t('onboarding_path.learn')}{' '}
                 <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
                   {totalLearn}
                 </strong>
               </span>
               <span style={captionMono}>
-                Пропустить:{' '}
+                {t('onboarding_path.skip_topic')}{' '}
                 <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
                   {skip.size}
                 </strong>
@@ -355,7 +356,7 @@ export default function PathCustom() {
                 'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
             }}
           >
-            Отмена
+            {t('onboarding_path.cancel')}
           </button>
           <button
             type="button"
@@ -379,7 +380,7 @@ export default function PathCustom() {
                 'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
             }}
           >
-            Сохранить и начать <ArrowRight style={{ width: 16, height: 16 }} />
+            {t('onboarding_path.save_start')} <ArrowRight style={{ width: 16, height: 16 }} />
           </button>
         </div>
       </div>

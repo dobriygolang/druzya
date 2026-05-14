@@ -40,7 +40,19 @@
     "season": "Period",
     "level": "Node",
     "xp": "Hours",
-    "lp": "Score"
+    "lp": "Score",
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    },
+    "section": {
+      "algorithms": "Algorithms",
+      "sql": "SQL",
+      "go": "Go",
+      "system_design": "System Design",
+      "behavioral": "Behavioral"
+    }
   },
   "theme": {
     "label": "Theme",
@@ -111,5 +123,90 @@
     "day_short": "d",
     "at_risk_title": "{{days}}-day streak · today not logged — next day may break it",
     "ok_title": "{{days}} {{plural}} in a row · longest all-time {{longest}}"
+  },
+  "user_menu": {
+    "avatar_initials": "D"
+  },
+  "install_hone": {
+    "title": "Install Hone — daily focus",
+    "body": "A quiet desktop cockpit: AI plan for the day, focus, notes. Offline-first.",
+    "skip": "Later",
+    "download_macos": "Download for macOS"
+  },
+  "track_filter": {
+    "group_aria": "Filter by tracks",
+    "all_label": "All",
+    "reset_aria": "Reset filter — show all tracks"
+  },
+  "notifications_bell": {
+    "aria_empty": "Notifications",
+    "aria_with_count": "Notifications, unread: {{count}}"
+  },
+  "pro_gate": {
+    "open_billing": "Open billing",
+    "mock_pipeline": {
+      "title": "Full AI mock pipeline — Pro",
+      "body": "Mini-mock is free. Full multi-stage pipeline with AI feedback and radar score — needs Pro or your own LLM key (BYOK)."
+    },
+    "deep_analytics": {
+      "title": "Deep readiness analytics — Pro",
+      "body": "Basic activity log is free. Interview readiness forecast + drift detection — Pro or BYOK."
+    },
+    "premium_cue": {
+      "title": "Premium Cue — Pro",
+      "body": "Cue basic (20 LLM calls/day) is free. Unlimited + the best model — Pro or BYOK."
+    },
+    "gcal_sync": {
+      "title": "Google Calendar sync — Pro",
+      "body": "Two-way Hone plan ↔ Google Calendar sync — Pro or BYOK."
+    },
+    "goal_analytics": {
+      "title": "Advanced goal analytics — Pro",
+      "body": "Per-skill radar, weekly trends, target-date estimator — Pro or BYOK."
+    },
+    "generic": {
+      "title": "Pro feature",
+      "body": "This feature is available on Pro or with your own LLM key connected (BYOK, free)."
+    }
+  },
+  "quick_log": {
+    "modal_title": "What did you do?",
+    "eyebrow": "+ ACTIVITY",
+    "field": {
+      "kind": "Type",
+      "what": "What exactly",
+      "source": "Source",
+      "minutes": "Minutes (opt.)"
+    },
+    "kind": {
+      "mock": {
+        "label": "Mock",
+        "hint": "AI-mock pipeline / mini-mock"
+      },
+      "leetcode": {
+        "label": "Problem",
+        "hint": "LeetCode / NeetCode / Codewars"
+      },
+      "reading": {
+        "label": "Reading",
+        "hint": "DDIA / paper / Codex / blog post"
+      },
+      "coach": {
+        "label": "Coach",
+        "hint": "AI-tutor session"
+      },
+      "focus_block": {
+        "label": "Focus",
+        "hint": "Hone focus session"
+      },
+      "reflection": {
+        "label": "Reflection",
+        "hint": "End-of-day review"
+      },
+      "external": {
+        "label": "Other",
+        "hint": "Coursera lecture / podcast / etc"
+      }
+    }
   }
 }

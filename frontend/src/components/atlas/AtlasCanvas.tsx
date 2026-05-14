@@ -22,6 +22,7 @@
 // so the outside world still owns the interaction state.
 
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { AtlasNode as AtlasNodeData } from '../../lib/queries/profile'
 import { AtlasDefs } from './AtlasDefs'
 import { AtlasHub } from './AtlasHub'
@@ -103,9 +104,11 @@ export function AtlasCanvas({
   centerNodeKey,
   selectedKey,
   onSelectNode,
-  userClassName = 'Ядро класса',
+  userClassName,
   userTier = '',
 }: AtlasCanvasProps) {
+  const { t } = useTranslation('atlas')
+  const resolvedClassName = userClassName ?? t('canvas.hub_default')
   // Layout pass — puts (x, y) on every node. Pinned coords from admin CMS
   // win; otherwise ring-fallback. Deterministic, same input → same output.
   const laid = useMemo(() => layoutAtlas(nodes), [nodes])
@@ -267,7 +270,7 @@ export function AtlasCanvas({
         <AtlasHub
           cx={hub.x}
           cy={hub.y}
-          className={hub.title || userClassName}
+          className={hub.title || resolvedClassName}
           tier={userTier}
           onClick={onSelectNode ? () => onSelectNode(hub.key) : undefined}
         />
@@ -285,7 +288,7 @@ export function AtlasCanvas({
           fill="rgb(88,44,255)"
           style={{ pointerEvents: 'none' }}
         >
-          Начни здесь ↓
+          {t('canvas.start_here')}
         </text>
       )}
     </svg>

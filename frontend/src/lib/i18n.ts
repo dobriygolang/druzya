@@ -18,6 +18,7 @@ import ruTutor from '../locales/ru/tutor.json'
 import ruInvite from '../locales/ru/invite.json'
 import ruAtlas from '../locales/ru/atlas.json'
 import ruActivity from '../locales/ru/activity.json'
+import ruWave14 from '../locales/ru/wave14.json'
 
 import enCommon from '../locales/en/common.json'
 import enProfile from '../locales/en/profile.json'
@@ -36,6 +37,7 @@ import enTutor from '../locales/en/tutor.json'
 import enInvite from '../locales/en/invite.json'
 import enAtlas from '../locales/en/atlas.json'
 import enActivity from '../locales/en/activity.json'
+import enWave14 from '../locales/en/wave14.json'
 
 // Unified storage key across web / Hone / Cue. The legacy 'druz9_lang' value
 // is read once below and migrated forward so existing users don't lose their
@@ -63,6 +65,7 @@ export const NAMESPACES = [
   'invite',
   'atlas',
   'activity',
+  'wave14',
 ] as const
 
 export const resources = {
@@ -84,6 +87,7 @@ export const resources = {
     invite: ruInvite,
     atlas: ruAtlas,
     activity: ruActivity,
+    wave14: ruWave14,
   },
   en: {
     common: enCommon,
@@ -103,6 +107,7 @@ export const resources = {
     invite: enInvite,
     atlas: enAtlas,
     activity: enActivity,
+    wave14: enWave14,
   },
 }
 
@@ -171,10 +176,15 @@ export function toggleLanguage() {
 }
 
 // LANG_LIST — порядок отображения в dropdown'е языков (см. AppShell).
+// Labels are language self-names: each locale is always rendered in its
+// own script (standard practice for picker UIs), so they sit here as
+// literals rather than going through the i18n pipeline.
+/* eslint-disable d9-i18n/no-cyrillic-literals */
 export const LANG_LIST: { code: Lang; flag: string; label: string }[] = [
   { code: 'ru', flag: '🇷🇺', label: 'Русский' },
   { code: 'en', flag: '🇬🇧', label: 'English' },
 ]
+/* eslint-enable d9-i18n/no-cyrillic-literals */
 
 // bcp47 maps internal lang codes (ru/en) to canonical BCP47 tags для Intl.*.
 export function bcp47(lang: Lang = currentLanguage()): string {

@@ -2,8 +2,36 @@
 // Misc utilities — shared by every Weekly Report sub-component.
 // ============================================================================
 
-export const DAYS_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-export const DAYS_RU_FULL = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+import i18n from '../../lib/i18n'
+
+export function getDaysShort(): string[] {
+  return [
+    i18n.t('weekly_time.day_short_mon', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_short_tue', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_short_wed', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_short_thu', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_short_fri', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_short_sat', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_short_sun', { ns: 'wave14' }),
+  ]
+}
+
+export function getDaysFull(): string[] {
+  return [
+    i18n.t('weekly_time.day_full_mon', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_full_tue', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_full_wed', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_full_thu', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_full_fri', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_full_sat', { ns: 'wave14' }),
+    i18n.t('weekly_time.day_full_sun', { ns: 'wave14' }),
+  ]
+}
+
+// Legacy const exports kept for back-compat — read once at module load.
+// Callers that need locale-reactive arrays should use getDaysShort/getDaysFull.
+export const DAYS_RU = getDaysShort()
+export const DAYS_RU_FULL = getDaysFull()
 
 export const SECTION_NAMES: Record<string, string> = {
   algorithms: 'Algorithms',
@@ -51,12 +79,12 @@ export function relativeFromNow(iso: string): string {
   if (Number.isNaN(t)) return ''
   const diff = Date.now() - t
   const min = Math.floor(diff / 60_000)
-  if (min < 1) return 'только что'
-  if (min < 60) return `${min} мин назад`
+  if (min < 1) return i18n.t('weekly_time.just_now', { ns: 'wave14' })
+  if (min < 60) return `${min} ${i18n.t('weekly_time.min_ago', { ns: 'wave14' })}`
   const h = Math.floor(min / 60)
-  if (h < 24) return `${h} ч назад`
+  if (h < 24) return `${h} ${i18n.t('weekly_time.hours_ago', { ns: 'wave14' })}`
   const days = Math.floor(h / 24)
-  if (days === 1) return 'вчера'
-  if (days < 7) return `${days} дн назад`
+  if (days === 1) return i18n.t('weekly_time.yesterday', { ns: 'wave14' })
+  if (days < 7) return `${days} ${i18n.t('weekly_time.days_ago', { ns: 'wave14' })}`
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }

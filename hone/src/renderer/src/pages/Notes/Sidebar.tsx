@@ -1,4 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { useT } from '@d9-i18n';
+
 import type { CueSession, Folder, NoteSummary } from '../../api/hone';
 import type { NoteMeta } from '../../api/storage';
 import { QuotaUsageBar } from '../../components/QuotaUsageBar';
@@ -82,6 +85,7 @@ export function NotesExpandSidebarButton({ onClick }: { onClick: () => void }) {
 export const Sidebar = memo(SidebarImpl);
 
 function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSessions, folders, selectedFolder, onSelectFolder, onCreateFolder, onDeleteFolder, onMoveNote, onSelect, onSelectCueSession, onDeleteCueSession, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onCloudToLocal, onToggleCollapse }: SidebarProps) {
+  const t = useT();
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState<{ parentId: string | null } | null>(null);
   const [folderInputRef] = useState(() => ({ current: null as HTMLInputElement | null }));
@@ -230,8 +234,8 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
             lineHeight: 1.45,
             color: 'var(--ink-40)',
           }}>
-            Записи из Cue появятся здесь.<br/>
-            Сделай запись → Save analysis → Open in Hone.
+            {t('hone.notes.sidebar.cue_empty_lead')}<br/>
+            {t('hone.notes.sidebar.cue_empty_help')}
           </div>
         )}
         <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />

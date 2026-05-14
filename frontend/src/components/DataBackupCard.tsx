@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Download, Upload, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import {
   downloadBundle,
@@ -19,10 +20,12 @@ import {
   summarizeData,
   validateBundle,
   wipeAllData,
+  type BundleValidationError,
   type DataBundle,
   type DataSummary,
   type ImportSummary,
 } from '../lib/dataExport'
+import { bcp47 } from '../lib/i18n'
 
 type DialogState =
   | { kind: 'idle' }
@@ -32,7 +35,27 @@ type DialogState =
   | { kind: 'reset-confirm' }
   | { kind: 'reset-done' }
 
+function formatValidationError(err: BundleValidationError, t: (k: string, opts?: Record<string, unknown>) => string): string {
+  switch (err.code) {
+    case 'not_object':
+      return t('data_backup.err.not_object')
+    case 'missing_version':
+      return t('data_backup.err.missing_version')
+    case 'version_too_new':
+      return t('data_backup.err.version_too_new', { version: err.version, current: err.current })
+    case 'activities_not_array':
+      return t('data_backup.err.activities_not_array')
+    case 'cue_sessions_not_array':
+      return t('data_backup.err.cue_sessions_not_array')
+    case 'diagnostic_answers_not_object':
+      return t('data_backup.err.diagnostic_answers_not_object')
+    case 'daily_plan_done_not_object':
+      return t('data_backup.err.daily_plan_done_not_object')
+  }
+}
+
 export function DataBackupCard() {
+  const { t } = useTranslation('pages')
   const [summary, setSummary] = useState<DataSummary>(() => summarizeData())
   const [dialog, setDialog] = useState<DialogState>({ kind: 'idle' })
   const fileInput = useRef<HTMLInputElement>(null)
@@ -63,12 +86,13 @@ export function DataBackupCard() {
       const parsed = JSON.parse(text) as unknown
       const err = validateBundle(parsed)
       if (err) {
-        setDialog({ kind: 'import-error', error: err })
+        setDialog({ kind: 'import-error', error: formatValidationError(err, t) })
         return
       }
       setDialog({ kind: 'import-confirm', bundle: parsed as DataBundle })
     } catch (err) {
-      setDialog({ kind: 'import-error', error: 'не JSON или сломан' + (err instanceof Error ? `: ${err.message}` : '') })
+      const suffix = err instanceof Error ? `: ${err.message}` : ''
+      setDialog({ kind: 'import-error', error: t('data_backup.err.bad_json', { detail: suffix }) })
     }
   }
 
@@ -89,15 +113,13 @@ export function DataBackupCard() {
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface-1 p-5">
       <header className="flex flex-col gap-1">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          Локальные данные
+          {t('data_backup.eyebrow')}
         </span>
         <h2 className="font-display text-base font-bold leading-tight">
-          Backup / Restore
+          {t('data_backup.title')}
         </h2>
         <p className="text-[12.5px] leading-relaxed text-text-muted">
-          Пока backend persistence не подключён, цель / activity / streak /
-          mini-mock / Cue sessions живут в браузере. Скачивай backup перед
-          сменой устройства или чисткой.
+          {t('data_backup.subtitle')}
         </p>
       </header>
 
@@ -110,7 +132,7 @@ export function DataBackupCard() {
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[12px] font-semibold text-text-primary transition-colors hover:border-border-strong"
         >
           <Download className="h-3.5 w-3.5" />
-          Скачать backup
+          {t('data_backup.btn.export')}
         </button>
         <button
           type="button"
@@ -118,7 +140,7 @@ export function DataBackupCard() {
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[12px] font-semibold text-text-primary transition-colors hover:border-border-strong"
         >
           <Upload className="h-3.5 w-3.5" />
-          Импорт из файла
+          {t('data_backup.btn.import')}
         </button>
         <button
           type="button"
@@ -126,7 +148,7 @@ export function DataBackupCard() {
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[12px] font-semibold text-text-muted transition-colors hover:border-border-strong hover:text-text-primary"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          Сбросить всё
+          {t('data_backup.btn.reset')}
         </button>
         <input
           ref={fileInput}
@@ -164,13 +186,14 @@ export function DataBackupCard() {
 }
 
 function SummaryGrid({ summary }: { summary: DataSummary }) {
+  const { t } = useTranslation('pages')
   const cells: { label: string; value: string }[] = [
     { label: 'goal', value: summary.hasGoal ? '✓' : '—' },
     { label: 'activities', value: String(summary.activitiesCount) },
     { label: 'cue sessions', value: String(summary.cueSessionsCount) },
     { label: 'mini-mock', value: summary.hasMiniMock ? '✓' : '—' },
     { label: 'diagnostic', value: summary.diagnosticDone ? '✓' : '—' },
-    { label: 'plan-done', value: `${summary.dailyPlanDoneDays} дн` },
+    { label: 'plan-done', value: t('data_backup.days_count', { count: summary.dailyPlanDoneDays }) },
   ]
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -205,7 +228,8 @@ function ImportConfirm({
   onCancel: () => void
   onConfirm: () => void
 }) {
-  const exported = new Date(bundle.exportedAt).toLocaleString('ru-RU', {
+  const { t } = useTranslation('pages')
+  const exported = new Date(bundle.exportedAt).toLocaleString(bcp47(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -217,22 +241,22 @@ function ImportConfirm({
       <header className="mb-2 flex items-center gap-2">
         <AlertCircle className="h-4 w-4 text-text-primary" />
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          Импорт
+          {t('data_backup.import.header')}
         </span>
       </header>
       <p className="mb-2 text-[12.5px] leading-relaxed text-text-secondary">
-        Файл от <b className="text-text-primary">{exported}</b>. Слоты:
-        {' '}
-        {bundle.goal ? 'goal · ' : ''}
-        {bundle.activities.length} activities ·{' '}
-        {bundle.cueSessions.length} cue ·{' '}
-        {bundle.miniMockResult ? 'mini-mock · ' : ''}
-        {Object.keys(bundle.diagnosticAnswers).length} diagnostic answers ·{' '}
-        {Object.keys(bundle.dailyPlanDone).length} plan-days.
+        {t('data_backup.import.summary', {
+          date: exported,
+          goal: bundle.goal ? t('data_backup.import.goal_slot') : '',
+          activities: bundle.activities.length,
+          cue: bundle.cueSessions.length,
+          mock: bundle.miniMockResult ? t('data_backup.import.mock_slot') : '',
+          diagnostic: Object.keys(bundle.diagnosticAnswers).length,
+          plan: Object.keys(bundle.dailyPlanDone).length,
+        })}
       </p>
       <p className="mb-3 text-[12px] italic text-text-muted">
-        Replace strategy — текущий state будет перезаписан bundle'ом. Сделай
-        backup перед импортом если жалко потерять текущие данные.
+        {t('data_backup.import.replace_warning')}
       </p>
       <div className="flex items-center justify-end gap-2">
         <button
@@ -240,14 +264,14 @@ function ImportConfirm({
           onClick={onCancel}
           className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text-secondary hover:text-text-primary"
         >
-          Отмена
+          {t('data_backup.btn.cancel')}
         </button>
         <button
           type="button"
           onClick={onConfirm}
           className="rounded-md border border-border-strong bg-text-primary/10 px-3 py-1.5 text-[12px] font-semibold text-text-primary hover:bg-text-primary/15"
         >
-          Применить
+          {t('data_backup.btn.apply')}
         </button>
       </div>
     </div>
@@ -261,12 +285,13 @@ function ImportDone({
   summary: ImportSummary
   onClose: () => void
 }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="rounded-md border border-border bg-surface-2 p-3">
       <header className="mb-2 flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4 text-text-primary" />
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary">
-          Импорт завершён
+          {t('data_backup.import.done_header')}
         </span>
       </header>
       <ul className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-[12px] text-text-secondary">
@@ -282,13 +307,14 @@ function ImportDone({
         onClick={onClose}
         className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text-secondary hover:text-text-primary"
       >
-        Закрыть
+        {t('data_backup.btn.close')}
       </button>
     </div>
   )
 }
 
 function ImportError({ error, onClose }: { error: string; onClose: () => void }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="relative rounded-md border border-border bg-surface-2 p-3">
       <span
@@ -299,7 +325,7 @@ function ImportError({ error, onClose }: { error: string; onClose: () => void })
       <header className="mb-2 flex items-center gap-2">
         <AlertCircle className="h-4 w-4 text-text-primary" />
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary">
-          Ошибка
+          {t('data_backup.error_header')}
         </span>
       </header>
       <p className="mb-2 text-[12.5px] text-text-secondary">{error}</p>
@@ -308,13 +334,14 @@ function ImportError({ error, onClose }: { error: string; onClose: () => void })
         onClick={onClose}
         className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text-secondary hover:text-text-primary"
       >
-        Закрыть
+        {t('data_backup.btn.close')}
       </button>
     </div>
   )
 }
 
 function ResetConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useTranslation('pages')
   const [confirmText, setConfirmText] = useState('')
   const ok = confirmText.trim().toLowerCase() === 'wipe'
   return (
@@ -327,15 +354,16 @@ function ResetConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
       <header className="mb-2 flex items-center gap-2">
         <AlertCircle className="h-4 w-4 text-text-primary" />
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary">
-          Сброс всех данных
+          {t('data_backup.reset.header')}
         </span>
       </header>
       <p className="mb-3 text-[12.5px] leading-relaxed text-text-secondary">
-        Удалятся: goal, activity log, streak, mini-mock, diagnostic, daily-plan,
-        cue sessions, dismissed insights. Восстановить можно только из backup'а.
+        {t('data_backup.reset.body')}
       </p>
       <p className="mb-2 text-[11px] text-text-muted">
-        Введи <code className="font-mono text-text-primary">wipe</code> чтобы подтвердить:
+        {t('data_backup.reset.confirm_prompt_pre')}{' '}
+        <code className="font-mono text-text-primary">wipe</code>{' '}
+        {t('data_backup.reset.confirm_prompt_post')}
       </p>
       <input
         type="text"
@@ -350,7 +378,7 @@ function ResetConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
           onClick={onCancel}
           className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text-secondary hover:text-text-primary"
         >
-          Отмена
+          {t('data_backup.btn.cancel')}
         </button>
         <button
           type="button"
@@ -358,7 +386,7 @@ function ResetConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
           disabled={!ok}
           className="rounded-md border border-border-strong bg-text-primary/10 px-3 py-1.5 text-[12px] font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50 hover:bg-text-primary/15"
         >
-          Сбросить
+          {t('data_backup.btn.confirm_reset')}
         </button>
       </div>
     </div>
@@ -366,23 +394,24 @@ function ResetConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm
 }
 
 function ResetDone({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="rounded-md border border-border bg-surface-2 p-3">
       <header className="mb-2 flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4 text-text-primary" />
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary">
-          Сброшено
+          {t('data_backup.reset.done_header')}
         </span>
       </header>
       <p className="mb-3 text-[12.5px] text-text-secondary">
-        Локальные данные удалены. Если что-то нужно восстановить — импортируй backup-файл.
+        {t('data_backup.reset.done_body')}
       </p>
       <button
         type="button"
         onClick={onClose}
         className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-text-secondary hover:text-text-primary"
       >
-        Закрыть
+        {t('data_backup.btn.close')}
       </button>
     </div>
   )

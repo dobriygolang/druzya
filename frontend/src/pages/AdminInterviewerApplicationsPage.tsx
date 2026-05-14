@@ -6,10 +6,12 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
 import { EmptyState } from '../components/EmptyState'
+import { bcp47 } from '../lib/i18n'
 import {
   isInterviewerOrAdmin,
   useAdminInterviewerApplicationsQuery,
@@ -20,17 +22,13 @@ import {
 } from '../lib/queries/profile'
 
 type Status = 'pending' | 'approved' | 'rejected'
-const TABS: { key: Status; label: string }[] = [
-  { key: 'pending', label: 'На рассмотрении' },
-  { key: 'approved', label: 'Одобренные' },
-  { key: 'rejected', label: 'Отклонённые' },
-]
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleString(bcp47(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 export default function AdminInterviewerApplicationsPage() {
+  const { t } = useTranslation('admin')
   const profile = useProfileQuery()
   const role = profile.data?.role
   const isAdmin = (role ?? '').toUpperCase().includes('ADMIN')
@@ -57,8 +55,8 @@ export default function AdminInterviewerApplicationsPage() {
         <div className="px-4 py-8 sm:px-8 lg:px-20">
           <EmptyState
             variant="error"
-            title="Доступ только для админов"
-            body="Эта страница доступна пользователям с ролью admin."
+            title={t('interviewer_apps.admins_only_title')}
+            body={t('interviewer_apps.admins_only_body')}
           />
         </div>
       </AppShellV2>
@@ -69,6 +67,12 @@ export default function AdminInterviewerApplicationsPage() {
 }
 
 function AdminInner() {
+  const { t } = useTranslation('admin')
+  const TABS: { key: Status; label: string }[] = [
+    { key: 'pending', label: t('interviewer_apps.tab.pending') },
+    { key: 'approved', label: t('interviewer_apps.tab.approved') },
+    { key: 'rejected', label: t('interviewer_apps.tab.rejected') },
+  ]
   const [tab, setTab] = useState<Status>('pending')
   const list = useAdminInterviewerApplicationsQuery(tab)
   const items = list.data ?? []
@@ -78,35 +82,34 @@ function AdminInner() {
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20">
         <div className="flex flex-col gap-1.5">
           <h1 className="font-display text-2xl lg:text-[32px] font-bold text-text-primary">
-            Заявки на интервьюера
+            {t('interviewer_apps.title')}
           </h1>
           <p className="text-sm text-text-secondary">
-            Модерация: одобряй, отклоняй, оставляй комментарий. Одобрение сразу повышает
-            пользователя до роли interviewer.
+            {t('interviewer_apps.subtitle')}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {TABS.map((t) => (
+          {TABS.map((tabInfo) => (
             <button
-              key={t.key}
+              key={tabInfo.key}
               type="button"
-              onClick={() => setTab(t.key)}
-              aria-pressed={t.key === tab}
+              onClick={() => setTab(tabInfo.key)}
+              aria-pressed={tabInfo.key === tab}
               className={`relative rounded-full border px-3.5 py-1.5 text-[13px] tracking-[0.08em] transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] ${
-                t.key === tab
+                tabInfo.key === tab
                   ? 'border-text-primary bg-text-primary/15 text-text-primary'
                   : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong hover:text-text-primary'
               }`}
             >
-              {t.key === tab && (
+              {tabInfo.key === tab && (
                 <span
                   aria-hidden
                   className="absolute -left-px top-1/2 h-3 w-[1.5px] -translate-y-1/2 rounded-full"
                   style={{ background: 'var(--red)' }}
                 />
               )}
-              {t.label}
+              {tabInfo.label}
             </button>
           ))}
         </div>
@@ -115,15 +118,15 @@ function AdminInner() {
         {list.isError && (
           <EmptyState
             variant="error"
-            title="Не удалось загрузить очередь"
-            body="Обнови страницу — если повторится, проверь, что у тебя роль admin."
+            title={t('interviewer_apps.load_failed_title')}
+            body={t('interviewer_apps.load_failed_body')}
           />
         )}
         {!list.isLoading && !list.isError && items.length === 0 && (
           <EmptyState
             variant="no-data"
-            title="Очередь пуста"
-            body={tab === 'pending' ? 'Все заявки рассмотрены.' : 'Нет заявок с этим статусом.'}
+            title={t('interviewer_apps.empty_title')}
+            body={tab === 'pending' ? t('interviewer_apps.empty_body_pending') : t('interviewer_apps.empty_body_other')}
           />
         )}
 
@@ -138,12 +141,13 @@ function AdminInner() {
 }
 
 function ApplicationRow({ app, canModerate }: { app: InterviewerApplication; canModerate: boolean }) {
+  const { t } = useTranslation('admin')
   const approve = useApproveInterviewerApplication()
   const reject = useRejectInterviewerApplication()
   const [note, setNote] = useState('')
   const errMsg =
-    approve.isError ? (approve.error instanceof Error ? approve.error.message : 'Ошибка одобрения')
-    : reject.isError ? (reject.error instanceof Error ? reject.error.message : 'Ошибка отклонения')
+    approve.isError ? (approve.error instanceof Error ? approve.error.message : t('interviewer_apps.approve_error'))
+    : reject.isError ? (reject.error instanceof Error ? reject.error.message : t('interviewer_apps.reject_error'))
     : null
 
   return (
@@ -161,12 +165,12 @@ function ApplicationRow({ app, canModerate }: { app: InterviewerApplication; can
         <p className="text-sm text-text-secondary">{app.motivation}</p>
       )}
       {!app.motivation && (
-        <p className="text-sm italic text-text-muted">Заявитель не оставил мотивационного письма.</p>
+        <p className="text-sm italic text-text-muted">{t('interviewer_apps.no_motivation')}</p>
       )}
       {app.decision_note && (
         <div className="rounded-md border border-border bg-surface-2 px-3 py-2 text-xs text-text-secondary">
           <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-            Решение модератора:
+            {t('interviewer_apps.moderator_decision')}
           </span>{' '}
           {app.decision_note}
         </div>
@@ -178,7 +182,7 @@ function ApplicationRow({ app, canModerate }: { app: InterviewerApplication; can
             rows={2}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Комментарий (опционально, кандидат увидит)"
+            placeholder={t('interviewer_apps.comment_placeholder')}
             className="w-full resize-none border-0 border-b border-border bg-transparent px-0 py-2 text-sm text-text-primary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-standard)] placeholder:text-text-muted focus:border-text-primary"
           />
           <div className="flex flex-wrap gap-2">
@@ -187,7 +191,7 @@ function ApplicationRow({ app, canModerate }: { app: InterviewerApplication; can
               disabled={approve.isPending || reject.isPending}
             >
               <Check className="mr-1 h-3.5 w-3.5" />
-              {approve.isPending ? 'Одобряем…' : 'Одобрить'}
+              {approve.isPending ? t('interviewer_apps.approving') : t('interviewer_apps.approve')}
             </Button>
             <Button
               variant="ghost"
@@ -195,7 +199,7 @@ function ApplicationRow({ app, canModerate }: { app: InterviewerApplication; can
               disabled={approve.isPending || reject.isPending}
             >
               <X className="mr-1 h-3.5 w-3.5" />
-              {reject.isPending ? 'Отклоняем…' : 'Отклонить'}
+              {reject.isPending ? t('interviewer_apps.rejecting') : t('interviewer_apps.reject')}
             </Button>
           </div>
           {errMsg && (

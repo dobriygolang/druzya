@@ -50,13 +50,17 @@ export function nodeState(n: AtlasNode): NodeState {
   return 'locked'
 }
 
-export const STATE_LABEL: Record<NodeState, string> = {
-  locked: 'Заблокирован',
-  available: 'Доступен',
-  in_progress: 'В процессе',
-  mastered: 'Освоен',
-  decaying: 'Затухает',
+import i18n from '../../lib/i18n'
+
+export function getStateLabel(state: NodeState): string {
+  return i18n.t(`atlas:legacy.state.${state}`)
 }
+
+/** @deprecated keep for back-compat callers — use getStateLabel(state). */
+export const STATE_LABEL: Record<NodeState, string> = new Proxy(
+  {} as Record<NodeState, string>,
+  { get: (_, prop: string) => getStateLabel(prop as NodeState) },
+)
 
 type EdgeState = 'solid' | 'dashed' | 'faded'
 
@@ -69,14 +73,14 @@ function edgeState(from: AtlasNode | undefined, to: AtlasNode | undefined): Edge
 
 export function sectionLabel(section: string): string {
   const map: Record<string, string> = {
-    SECTION_ALGORITHMS: 'Алгоритмы',
+    SECTION_ALGORITHMS: i18n.t('atlas:legacy.section.algorithms'),
     SECTION_SQL: 'SQL',
     SECTION_GO: 'Go / Backend',
     SECTION_SYSTEM_DESIGN: 'System Design',
     SECTION_BEHAVIORAL: 'Behavioral',
     SECTION_CONCURRENCY: 'Concurrency',
     SECTION_DATA_STRUCTURES: 'Data Structures',
-    algorithms: 'Алгоритмы',
+    algorithms: i18n.t('atlas:legacy.section.algorithms'),
     sql: 'SQL',
     go: 'Go / Backend',
     system_design: 'System Design',
@@ -113,14 +117,19 @@ export const CATEGORIES: { key: string; label: string; sections: string[] }[] = 
   },
 ]
 
-export const STATUS_FILTERS: { key: NodeState | 'all'; label: string }[] = [
-  { key: 'all', label: 'Все' },
-  { key: 'locked', label: 'Закрытые' },
-  { key: 'available', label: 'Доступные' },
-  { key: 'in_progress', label: 'В процессе' },
-  { key: 'mastered', label: 'Освоенные' },
-  { key: 'decaying', label: 'Затухающие' },
-]
+export function getStatusFilters(): { key: NodeState | 'all'; label: string }[] {
+  return [
+    { key: 'all', label: i18n.t('atlas:legacy.filter.all') },
+    { key: 'locked', label: i18n.t('atlas:legacy.filter.locked') },
+    { key: 'available', label: i18n.t('atlas:legacy.filter.available') },
+    { key: 'in_progress', label: i18n.t('atlas:legacy.filter.in_progress') },
+    { key: 'mastered', label: i18n.t('atlas:legacy.filter.mastered') },
+    { key: 'decaying', label: i18n.t('atlas:legacy.filter.decaying') },
+  ]
+}
+
+/** @deprecated use getStatusFilters() so labels track the active locale. */
+export const STATUS_FILTERS = getStatusFilters()
 
 function categoryOf(node: AtlasNode): string {
   for (const c of CATEGORIES) if (c.sections.includes(node.section)) return c.key
@@ -540,13 +549,13 @@ function HoverTooltip({
           {node.decaying ? (
             <>
               <Flame className="h-3 w-3 text-warn" />
-              <span>Знание тает {days != null ? `· ${days} дн.` : ''}</span>
+              <span>{days != null ? i18n.t('atlas:legacy.tooltip.decaying', { days }) : i18n.t('atlas:legacy.tooltip.decaying_no_days')}</span>
             </>
           ) : (
             <>
               <Clock className="h-3 w-3" />
               <span>
-                {days === 0 ? 'Решал сегодня' : `Последняя задача: ${days ?? '?'} дн. назад`}
+                {days === 0 ? i18n.t('atlas:legacy.tooltip.solved_today') : i18n.t('atlas:legacy.tooltip.last_problem', { days: days ?? '?' })}
               </span>
             </>
           )}
@@ -555,7 +564,7 @@ function HoverTooltip({
       {recommended.length > 0 && (
         <div className="border-t border-border pt-2">
           <div className="mb-1 font-mono text-[9px] uppercase text-text-muted">
-            Рекомендованное
+            {i18n.t('atlas:legacy.tooltip.recommended')}
           </div>
           <ul className="flex flex-col gap-0.5">
             {recommended.map((k) => (
@@ -597,8 +606,8 @@ function MiniMap({
       type="button"
       onClick={onRecenter}
       className="absolute bottom-4 right-4 z-20 rounded-md border border-border bg-surface-1/90 p-1.5 backdrop-blur transition-colors hover:border-text-primary"
-      aria-label="Свернуть к центру"
-      title="Свернуть к центру"
+      aria-label={i18n.t('atlas:legacy.recenter')}
+      title={i18n.t('atlas:legacy.recenter')}
     >
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
         <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="#0A0E1A" />
@@ -869,11 +878,11 @@ export function GraphCanvas({
 export function LegendStrip() {
   return (
     <div className="flex h-14 items-center gap-4 overflow-x-auto border-t border-border bg-surface-1 px-4 sm:gap-6 sm:px-8 lg:px-20">
-      <LegendDot fill="#7C5CFF" stroke="#FFFFFF" label="Доступен" />
-      <LegendDot fill="#0A0E1A" stroke="#FFFFFF" label="В процессе" arc />
-      <LegendDot fill="#22C55E" stroke="#16A34A" label="Освоен" check />
-      <LegendDot fill="#0A0E1A" stroke="#F59E0B" label="Затухает" pulse />
-      <LegendDot fill="#1F2434" stroke="#2A2F45" label="Закрыт" lock />
+      <LegendDot fill="#7C5CFF" stroke="#FFFFFF" label={i18n.t('atlas:legacy.legend.available')} />
+      <LegendDot fill="#0A0E1A" stroke="#FFFFFF" label={i18n.t('atlas:legacy.legend.in_progress')} arc />
+      <LegendDot fill="#22C55E" stroke="#16A34A" label={i18n.t('atlas:legacy.legend.mastered')} check />
+      <LegendDot fill="#0A0E1A" stroke="#F59E0B" label={i18n.t('atlas:legacy.legend.decaying')} pulse />
+      <LegendDot fill="#1F2434" stroke="#2A2F45" label={i18n.t('atlas:legacy.legend.locked')} lock />
     </div>
   )
 }

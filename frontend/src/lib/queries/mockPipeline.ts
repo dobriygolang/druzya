@@ -475,16 +475,38 @@ export function useCancelPipelineMutation(pipelineId: string | undefined) {
 
 // ── Labels ───────────────────────────────────────────────────────────────
 
-export const STAGE_LABEL: Record<StageKind, string> = {
-  hr: 'HR',
-  algo: 'Алгоритмы',
-  coding: 'Live Coding',
-  sysdesign: 'System Design',
-  behavioral: 'Behavioral',
-  ml_coding: 'ML Coding',
-  ml_system_design: 'ML System Design',
-  ml_theory: 'ML Theory',
+import i18nForLabels from '../i18n'
+
+export function getStageLabel(kind: StageKind): string {
+  if (kind === 'algo') return i18nForLabels.t('atlas:tracks.stage.algo')
+  // All other stages keep their canonical English names — they are widely
+  // understood across the industry and Sergey explicitly wants them in
+  // English even in the RU locale.
+  switch (kind) {
+    case 'hr':
+      return 'HR'
+    case 'coding':
+      return 'Live Coding'
+    case 'sysdesign':
+      return 'System Design'
+    case 'behavioral':
+      return 'Behavioral'
+    case 'ml_coding':
+      return 'ML Coding'
+    case 'ml_system_design':
+      return 'ML System Design'
+    case 'ml_theory':
+      return 'ML Theory'
+    default:
+      return kind
+  }
 }
+
+/** @deprecated use getStageLabel(kind) so the label tracks the active locale. */
+export const STAGE_LABEL: Record<StageKind, string> = new Proxy(
+  {} as Record<StageKind, string>,
+  { get: (_, prop: string) => getStageLabel(prop as StageKind) },
+)
 
 export function isComingSoonError(err: unknown): boolean {
   return err instanceof Error && err.message === 'mock_pipeline.coming_soon'

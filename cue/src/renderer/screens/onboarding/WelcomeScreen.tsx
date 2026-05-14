@@ -7,6 +7,7 @@
 // (where each capability is named in context) and CompleteScreen
 // (which lists the hotkeys they'll actually use).
 
+import { useT } from '@d9-i18n';
 import { BrandMark } from '../../components/d9';
 import { Button } from '../../components/primitives';
 
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function WelcomeScreen({ onNext }: Props) {
+  const t = useT();
   return (
     <div
       style={{
@@ -43,7 +45,7 @@ export function WelcomeScreen({ onNext }: Props) {
           color: 'var(--d9-ink)',
         }}
       >
-        Добро пожаловать в Cue
+        {t('cue.onboarding.welcome.title')}
       </h1>
 
       <p
@@ -55,26 +57,15 @@ export function WelcomeScreen({ onNext }: Props) {
           letterSpacing: '-0.005em',
         }}
       >
-        Тихий AI-копилот для interview, встреч и кодинга.
+        {t('cue.onboarding.welcome.body')}
         <br />
-        Невидим при демонстрации экрана.
+        {t('cue.onboarding.welcome.body_followup')}
       </p>
 
-      <p
-        style={{
-          fontSize: 11.5,
-          lineHeight: 1.55,
-          color: 'var(--d9-ink-ghost)',
-          margin: '0 0 32px',
-          fontFamily: 'var(--d9-font-mono)',
-          letterSpacing: '0.02em',
-        }}
-      >
-        Скриншоты, голос, английский, чат — всё в одном floating-окне.
-      </p>
+      <div style={{ marginBottom: 32 }} />
 
       <Button variant="primary" size="md" onClick={onNext} autoFocus>
-        Начать настройку
+        {t('cue.onboarding.welcome.cta')}
       </Button>
 
       <p
@@ -87,7 +78,7 @@ export function WelcomeScreen({ onNext }: Props) {
           textTransform: 'uppercase',
         }}
       >
-        ~30 секунд · 3 шага
+        {t('cue.onboarding.welcome.note')}
       </p>
     </div>
   );

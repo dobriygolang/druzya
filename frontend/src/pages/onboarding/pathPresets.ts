@@ -37,7 +37,7 @@ export const PRESETS: PathPreset[] = [
       { id: 'sd-failure', group: 'System Design', title: 'Failure modes: retries, idempotency, circuit breaker' },
       { id: 'distrib-consensus', group: 'Distributed', title: 'Consensus (Raft / Paxos overview)' },
       { id: 'distrib-cap', group: 'Distributed', title: 'CAP / consistency models' },
-      { id: 'sql-explain', group: 'SQL', title: 'EXPLAIN, индексы, N+1' },
+      { id: 'sql-explain', group: 'SQL', title: 'EXPLAIN, indexes, N+1' },
       { id: 'behavior-leadership', group: 'Behavioural', title: 'Leadership stories: scope, conflict, ownership' },
     ],
   },
@@ -64,7 +64,7 @@ export const PRESETS: PathPreset[] = [
   {
     id: 'backend-junior-middle',
     title: 'Backend junior → middle',
-    blurb: 'Базовые алгоритмы · SQL · API design · Тестирование',
+    blurb: 'Core algorithms · SQL · API design · Testing',
     nodes: [
       { id: 'algo-arrays', group: 'Algorithms', title: 'Arrays, hash maps, two-pointer' },
       { id: 'algo-strings', group: 'Algorithms', title: 'Strings, sliding window' },

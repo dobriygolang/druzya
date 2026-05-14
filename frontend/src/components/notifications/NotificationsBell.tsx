@@ -20,6 +20,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Bell } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../../lib/cn'
 
 export type NotificationsBellProps = {
@@ -30,6 +31,7 @@ export type NotificationsBellProps = {
 }
 
 export function NotificationsBell({ unreadCount, onClick, ariaLabel }: NotificationsBellProps) {
+  const { t } = useTranslation('common')
   const prev = useRef<number | undefined>(undefined)
   const [pulse, setPulse] = useState(false)
 
@@ -46,7 +48,7 @@ export function NotificationsBell({ unreadCount, onClick, ariaLabel }: Notificat
   const has = unreadCount > 0
   const label =
     ariaLabel ??
-    (has ? `Уведомления, непрочитанных: ${unreadCount}` : 'Уведомления')
+    (has ? t('notifications_bell.aria_with_count', { count: unreadCount }) : t('notifications_bell.aria_empty'))
 
   return (
     <button

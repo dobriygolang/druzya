@@ -23,6 +23,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import { Kbd } from '../../components/d9';
 
 interface Rect {
@@ -37,6 +38,7 @@ type Drag =
   | { kind: 'dragging'; startX: number; startY: number };
 
 export function AreaOverlayScreen() {
+  const t = useT();
   // Virtual cursor position в логических pixels viewport'а.
   // Initial value (0, 0) сразу заменится на seed из main.
   const [virtual, setVirtual] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -268,15 +270,15 @@ export function AreaOverlayScreen() {
               background: 'var(--d9-accent)',
             }}
           />
-          Выдели область
+          {t('cue.area.hint_select')}
         </span>
         <span style={{ width: 1, height: 12, background: 'var(--d9-hairline)' }} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <Kbd size="sm">⏎</Kbd> отправить
+          <Kbd size="sm">⏎</Kbd> {t('cue.area.hint_submit')}
         </span>
         <span style={{ width: 1, height: 12, background: 'var(--d9-hairline)' }} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <Kbd size="sm">Esc</Kbd> отмена
+          <Kbd size="sm">Esc</Kbd> {t('cue.area.hint_cancel')}
         </span>
       </div>
     </div>

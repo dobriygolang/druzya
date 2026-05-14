@@ -27,7 +27,8 @@
 
 import { useState } from 'react';
 
-import { Button, Kbd } from '../../components/primitives';
+import { useT } from '@d9-i18n';
+import { Button } from '../../components/primitives';
 
 interface Props {
   onNext: () => void;
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function InvisibleDemoScreen({ onNext, onBack }: Props) {
+  const t = useT();
   // Toggle that animates the "viewer" panel between "before share"
   // (Cue visible to viewer) and "stealth on" (Cue gone). Lets the user
   // play with the demo for as long as they want before continuing.
@@ -64,7 +66,7 @@ export function InvisibleDemoScreen({ onNext, onBack }: Props) {
             color: 'var(--d9-ink)',
           }}
         >
-          Cue невидим при демонстрации
+          {t('cue.onboarding.invisible.title')}
         </h2>
         <p
           style={{
@@ -75,8 +77,7 @@ export function InvisibleDemoScreen({ onNext, onBack }: Props) {
             letterSpacing: '-0.005em',
           }}
         >
-          Откроешь Zoom, нажмёшь «Share screen» — собеседник увидит твой IDE,
-          но не увидит Cue. Включи тоггл — посмотри.
+          {t('cue.onboarding.invisible.body')}
         </p>
       </header>
 
@@ -90,14 +91,16 @@ export function InvisibleDemoScreen({ onNext, onBack }: Props) {
         }}
       >
         <DemoPane
-          label="Что видишь ты"
-          subtitle="Cue floating-окно, чат, скриншоты"
+          label={t('cue.onboarding.invisible.self_label')}
+          subtitle={t('cue.onboarding.invisible.self_subtitle')}
           flavor="self"
           showCue
         />
         <DemoPane
-          label="Что видит собеседник"
-          subtitle={stealthOn ? 'screen-share viewer · Cue невидим' : 'screen-share viewer · stealth OFF'}
+          label={t('cue.onboarding.invisible.viewer_label')}
+          subtitle={stealthOn
+            ? t('cue.onboarding.invisible.viewer_subtitle_on')
+            : t('cue.onboarding.invisible.viewer_subtitle_off')}
           flavor="viewer"
           showCue={!stealthOn}
           recording
@@ -128,8 +131,9 @@ export function InvisibleDemoScreen({ onNext, onBack }: Props) {
         >
           <DemoToggle on={stealthOn} onChange={setStealthOn} />
           <span>
-            Stealth: <b style={{ color: stealthOn ? 'var(--d9-ink)' : 'var(--d9-accent)' }}>
-              {stealthOn ? 'включён' : 'выключен'}
+            {t('cue.onboarding.invisible.stealth_prefix')}{' '}
+            <b style={{ color: stealthOn ? 'var(--d9-ink)' : 'var(--d9-accent)' }}>
+              {stealthOn ? t('cue.onboarding.invisible.stealth_on') : t('cue.onboarding.invisible.stealth_off')}
             </b>
           </span>
         </label>
@@ -142,7 +146,7 @@ export function InvisibleDemoScreen({ onNext, onBack }: Props) {
             textTransform: 'uppercase',
           }}
         >
-          Settings → Stealth — можно отключить для отладки
+          {t('cue.onboarding.invisible.settings_note')}
         </span>
       </div>
 
@@ -156,10 +160,7 @@ export function InvisibleDemoScreen({ onNext, onBack }: Props) {
           letterSpacing: '-0.005em',
         }}
       >
-        Работает в Zoom, Google Meet, Telegram, Discord, QuickTime,
-        системных screenshot'ах <Kbd size="sm">⌘⇧3</Kbd> /
-        <span style={{ display: 'inline-block', width: 2 }} />
-        <Kbd size="sm">⌘⇧4</Kbd>. На macOS под капотом — NSWindowSharingNone.
+        {t('cue.onboarding.invisible.footer_note')}
       </p>
 
       <footer
@@ -172,10 +173,10 @@ export function InvisibleDemoScreen({ onNext, onBack }: Props) {
         }}
       >
         <Button variant="ghost" size="sm" onClick={onBack}>
-          Назад
+          {t('cue.prep.footer.back').replace('← ', '')}
         </Button>
         <Button variant="primary" size="md" onClick={onNext}>
-          Понятно, дальше
+          {t('cue.onboarding.invisible.cta')}
         </Button>
       </footer>
     </div>

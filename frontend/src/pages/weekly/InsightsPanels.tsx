@@ -1,9 +1,11 @@
 import { Brain } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 // AI Insight panel — only the LLM-narrative section. Percentile/Achievement
 // blocks were removed when their data sources stopped being populated server-side.
 
 export function AiInsight({ text }: { text: string }) {
+  const { t } = useTranslation('pages')
   // Anti-fallback policy (Phase B): empty insight = backend deliberately
   // returned "" (OPENROUTER_API_KEY missing OR upstream errored). НИКОГДА
   // не рендерим placeholder — секция должна полностью исчезать.
@@ -17,10 +19,10 @@ export function AiInsight({ text }: { text: string }) {
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <Brain className="h-5 w-5 text-text-secondary" />
-          <h3 className="font-display text-lg font-bold text-text-primary">AI insight недели</h3>
+          <h3 className="font-display text-lg font-bold text-text-primary">{t('weekly_ai.title')}</h3>
         </div>
         <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          Сгенерировано Claude Sonnet 4
+          {t('weekly_ai.generated_by')}
         </p>
       </div>
       {paragraphs.map((p, i) => (

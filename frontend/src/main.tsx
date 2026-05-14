@@ -40,9 +40,13 @@ async function bootstrap() {
     },
   })
 
+  // Last-resort fallback before i18n is even initialised — kept as a
+  // literal so it always renders, even if i18next failed to bootstrap.
+  // eslint-disable-next-line d9-i18n/no-cyrillic-literals
+  const bootFallback = 'Что-то сломалось. Перезагрузи страницу.'
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <ErrorBoundary fallback={<div style={{padding:40,color:'#FFFFFF',background:'#000000',minHeight:'100vh'}}>Что-то сломалось. Перезагрузи страницу.</div>}>
+      <ErrorBoundary fallback={<div style={{padding:40,color:'#FFFFFF',background:'#000000',minHeight:'100vh'}}>{bootFallback}</div>}>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <App />

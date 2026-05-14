@@ -23,6 +23,7 @@ import { monoFont } from './lib/styles';
  * Hone не делает полный mock loop — это live в web.
  */
 export const CrossAppReminder: React.FC<{ action: NextAction | null }> = ({ action }) => {
+  const t = useT();
   // Parse action target / kind / rationale на mock-related keywords.
   // EN + RU чтобы поймать оба языка LLM output'а.
   const text = `${action?.target ?? ''} ${action?.actionKind ?? ''} ${action?.rationale ?? ''}`.toLowerCase();
@@ -93,8 +94,7 @@ export const CrossAppReminder: React.FC<{ action: NextAction | null }> = ({ acti
           letterSpacing: '0.02em',
         }}
       >
-        Hone = тихий ежедневный coach. For full 5-stage mock interviews,
-        Skill Atlas, and Codex curation, see{' '}
+        {t('hone.coach.cross.footer_lead')} {t('hone.coach.cross.footer_link_intro')}{' '}
         <button
           type="button"
           onClick={onFooterClick}

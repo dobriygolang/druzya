@@ -4,6 +4,7 @@
 //
 // Identity rule: free per identity. NO rate input, NO pricing UI.
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from './Button'
@@ -33,6 +34,7 @@ export function TutorDirectoryPane() {
 }
 
 function ProfileEditor() {
+  const { t } = useTranslation('wave14')
   const q = useMyDirectoryProfileQuery()
   const upsert = useUpsertDirectoryProfileMutation()
   const [visible, setVisible] = useState(false)
@@ -103,12 +105,10 @@ function ProfileEditor() {
         <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
           Profile · directory
         </span>
-        <h2 className="text-lg font-semibold">Твой публичный профиль</h2>
+        <h2 className="text-lg font-semibold">{t('tutor_pane.your_public_profile')}</h2>
         <p className="text-sm text-text-secondary">
-          Когда «Видимый» включён, твой профиль появляется в{' '}
-          <code className="font-mono text-[12px]">/tutors/discover</code> и
-          студенты могут отправлять заявки. Без денег и часовых ставок —
-          identity-led.
+          {t('tutor_pane.visible_explain_pre')}{' '}
+          <code className="font-mono text-[12px]">/tutors/discover</code> {t('tutor_pane.visible_explain_and')}
         </p>
       </header>
 
@@ -123,10 +123,10 @@ function ProfileEditor() {
           />
           <span className="flex flex-col">
             <span className="text-sm font-medium text-text-primary">
-              Видимый в директории
+              {t('tutor_pane.visible_in_directory')}
             </span>
             <span className="font-mono text-[11px] text-text-muted">
-              Студенты увидят аватар, имя, био и тэги.
+              {t('tutor_pane.visible_help')}
             </span>
           </span>
           {verified && (
@@ -146,7 +146,7 @@ function ProfileEditor() {
             onChange={(e) => setBio(e.target.value)}
             maxLength={2000}
             rows={5}
-            placeholder="Senior Go-инженер из Алматы. Готовлю к собесам в FAANG-tier..."
+            placeholder={t('tutor_pane.bio_placeholder')}
             className="resize-y rounded-md border border-border-strong bg-transparent p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
           />
           <span className="self-end font-mono text-[10px] text-text-muted">
@@ -157,7 +157,7 @@ function ProfileEditor() {
         {/* Expertise chips */}
         <div className="flex flex-col gap-2">
           <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-            Экспертиза
+            {t('tutor_pane.expertise')}
           </span>
           <div className="flex flex-wrap gap-2">
             {TUTOR_EXPERTISE_TAGS.map((t) => {
@@ -189,7 +189,7 @@ function ProfileEditor() {
         {/* Language chips */}
         <div className="flex flex-col gap-2">
           <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-            Язык преподавания
+            {t('tutor_pane.language_teaching')}
           </span>
           <div className="flex flex-wrap gap-2">
             {TUTOR_LANGUAGE_CODES.map((l) => {
@@ -221,7 +221,7 @@ function ProfileEditor() {
         {/* Timezone */}
         <label className="flex flex-col gap-1.5">
           <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-            Часовой пояс
+            {t('tutor_pane.timezone')}
           </span>
           <input
             type="text"
@@ -235,13 +235,13 @@ function ProfileEditor() {
         {/* Availability */}
         <label className="flex flex-col gap-1.5">
           <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
-            Когда доступен (markdown)
+            {t('tutor_pane.availability_md')}
           </span>
           <textarea
             value={availability}
             onChange={(e) => setAvailability(e.target.value)}
             rows={3}
-            placeholder="Будни 18:00–21:00 MSK, выходные по договорённости"
+            placeholder={t('tutor_pane.availability_placeholder')}
             className="resize-y rounded-md border border-border-strong bg-transparent p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
           />
         </label>
@@ -286,7 +286,7 @@ function ProfileEditor() {
 
         {cannotEnableVisible && (
           <p className="font-mono text-[12px] text-text-muted">
-            Чтобы стать видимым, заполни bio.
+            {t('tutor_pane.fill_bio_to_visible')}
           </p>
         )}
 
@@ -304,7 +304,7 @@ function ProfileEditor() {
             disabled={cannotEnableVisible}
             loading={upsert.isPending}
           >
-            Сохранить
+            {t('tutor_pane.save')}
           </Button>
         </div>
       </form>
@@ -313,6 +313,7 @@ function ProfileEditor() {
 }
 
 function PendingApplications() {
+  const { t } = useTranslation('wave14')
   const q = usePendingApplicationsQuery()
   const accept = useAcceptApplicationMutation()
   const decline = useDeclineApplicationMutation()
@@ -335,16 +336,16 @@ function PendingApplications() {
       {!q.isLoading && items.length === 0 && (
         <Card className="p-6">
           <p className="text-sm text-text-secondary">
-            Пока нет новых заявок. Когда студенты найдут твой профиль в{' '}
+            {t('tutor_pane.no_apps')}{' '}
             <code className="font-mono text-[12px]">/tutors/discover</code>{' '}
-            и нажмут Apply, они появятся здесь.
+            {t('tutor_pane.and_apply')}
           </p>
         </Card>
       )}
       <ul className="flex flex-col gap-3">
         {items.map((a) => {
           const display =
-            a.student_display_name || a.student_username || 'без имени'
+            a.student_display_name || a.student_username || t('tutor_pane.no_name')
           const initial = display.trim().slice(0, 1).toUpperCase() || '?'
           return (
             <Card key={a.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4">

@@ -1271,4 +1271,78 @@ export const en: Dict = {
   'cue.hotkey.recording_prompt': 'press keys · Esc to cancel',
   'cue.hotkey.click_to_rebind': 'Click to rebind',
   'cue.hotkey.reset': 'reset',
+
+  // ── Cue: QuotaMeterMini tooltip ──────────────────────────────────────
+  'cue.quota.tooltip.danger': '{{remaining}} of {{cap}} requests left. Click to see Pro.',
+  'cue.quota.tooltip.warn': '{{remaining}} of {{cap}} requests left. Limit near — Pro recommended.',
+  'cue.quota.tooltip.normal': '{{used}} of {{cap}} requests used today.',
+
+  // ── Cue: Voice consent prompt ────────────────────────────────────────
+  'cue.voice_consent.prompt':
+    'Cue will send audio to the server for transcription (Groq Whisper).\n\n' +
+    "If you're recording a call with other people (Zoom, Meet, Teams) — " +
+    'warn them and get consent. In some jurisdictions (EU, California, ' +
+    'Illinois) recording a conversation without all participants consenting is illegal.\n\n' +
+    'Continue?',
+
+  // ── Hone: Dock (Wave 16 tail) ────────────────────────────────────────
+  'hone.dock.mode.pomodoro': 'Pomodoro · 25:00 → 0 + reflection',
+  'hone.dock.mode.countdown': 'Countdown · fixed minutes',
+  'hone.dock.mode.stopwatch': 'Stopwatch · counts up',
+  'hone.dock.mode.free': 'Free · no timer, manual stop',
+  'hone.dock.mode.plan': 'Plan · 50/10 × 3 sequence',
+  'hone.dock.mode.pinned': 'Pinned · focus until task is done',
+  'hone.dock.reset_title': 'Reset · clear the timer',
+
+  // ── Hone: ExternalActivityModal (Wave 16 tail) ───────────────────────
+  'hone.external.err.duration_range': 'Duration must be between 1 and 600 minutes.',
+  'hone.external.header': '+ EXTERNAL ACTIVITY',
+  'hone.external.cta.cancel': 'Cancel',
+
+  // ── Hone: Calendar subtitle (Wave 16 tail) ───────────────────────────
+  'hone.calendar.subtitle':
+    'Events your tutor scheduled for you. A live session (happening now) is highlighted with a red signal; the meet link opens with one click.',
+
+  // ── Hone: CrossAppReminder footer (Wave 16 tail) ─────────────────────
+  'hone.coach.cross.footer_lead': 'Hone is a quiet daily coach.',
+  'hone.coach.cross.footer_link_intro': 'For the full 5-stage mock interviews, Skill Atlas, and Codex curation, see',
+
+  // ── Hone: MemoryTimeline (Wave 16 tail) ──────────────────────────────
+  'hone.memory.header.detail':
+    '{{total}} entries · {{shown}} shown. The AI references these in daily brief / next-action / fork analysis.',
+  'hone.memory.list.cue_session': 'Cue session → ingest → episode kind=cue_session',
+  'hone.memory.list.reflection': 'Reflection after focus → kind=reflection',
+  'hone.memory.list.mock_complete': 'Mock complete → kind=mock_pipeline_finished',
+  'hone.memory.list.note_external': 'Note create / external activity log → kind=external_activity',
+
+  // ── Hone: Notes editor AI badge (Wave 16 tail) ───────────────────────
+  'hone.notes.editor.ai_excluded_title': 'AI does not read this note — click to allow',
+  'hone.notes.editor.ai_visible_title': 'AI can read — click to hide from AI',
+
+  // ── Hone: Notes sidebar Cue empty (Wave 16 tail) ─────────────────────
+  'hone.notes.sidebar.cue_empty_lead': 'Cue recordings will appear here.',
+  'hone.notes.sidebar.cue_empty_help': 'Record → Save analysis → Open in Hone.',
+
+  // ── Hone: OnboardingModal Free features (Wave 16 tail) ───────────────
+  'hone.onboarding.free.ai_coach': 'AI coach with memory · unlimited',
+
+  // ── Hone: ResistanceModal pinned (Wave 16 tail) ──────────────────────
+  'hone.resistance.pinned_hint': 'focusing on «{{title}}»',
+
+  // ── Hone: StatsOverlay / Stats (Wave 16 tail) ────────────────────────
+  'hone.stats_overlay.topic_empty': '(no topic)',
+  'hone.stats.err_load_label': 'Stats failed to load',
+
+  // ── Hone: TasksSuggestionsCard (Wave 16 tail) ────────────────────────
+  'hone.taskboard.suggest.title_from_notes': 'from notes · {{count}}{{cached}}',
+
+  // ── Hone: Home timer tooltip (Wave 16 tail) ──────────────────────────
+  'hone.home.timer_title': '{{mm}} minutes {{ss}} seconds remaining',
+
+  // ── Hone: TaskCardView rename hint (Wave 16 tail) ────────────────────
+  'hone.taskboard.dblclick_rename_title': 'Double-click to rename',
+
+  // ── Hone: Settings — Resistance pulse hint (Wave 16 tail) ────────────
+  'hone.settings.resistance.hint':
+    'Ask «what is hard right now?» before each pomodoro start (10-second optional). Saved to the resistance journal — the coach reviews patterns weekly.',
 };

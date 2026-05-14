@@ -1271,4 +1271,78 @@ export const ru: Dict = {
   'cue.hotkey.recording_prompt': 'нажми клавиши · Esc для отмены',
   'cue.hotkey.click_to_rebind': 'Нажми для перезаписи',
   'cue.hotkey.reset': 'сброс',
+
+  // ── Cue: QuotaMeterMini tooltip ──────────────────────────────────────
+  'cue.quota.tooltip.danger': 'Осталось {{remaining}} запросов из {{cap}}. Кликни чтобы посмотреть Pro.',
+  'cue.quota.tooltip.warn': 'Осталось {{remaining}} запросов из {{cap}}. Скоро лимит — рекомендуем Pro.',
+  'cue.quota.tooltip.normal': 'Использовано {{used}} из {{cap}} запросов в день.',
+
+  // ── Cue: Voice consent prompt ────────────────────────────────────────
+  'cue.voice_consent.prompt':
+    'Cue будет передавать аудио на сервер для транскрипции (Groq Whisper).\n\n' +
+    'Если ты записываешь созвон с другими людьми (Zoom, Meet, Teams) — ' +
+    'предупреди их и получи согласие. В некоторых странах (ЕС, Калифорния, ' +
+    'Иллинойс) запись разговора без согласия всех участников — нарушение закона.\n\n' +
+    'Продолжить?',
+
+  // ── Hone: Dock (Wave 16 tail) ────────────────────────────────────────
+  'hone.dock.mode.pomodoro': 'Pomodoro · 25:00 → 0 + рефлексия',
+  'hone.dock.mode.countdown': 'Countdown · фиксированные минуты',
+  'hone.dock.mode.stopwatch': 'Stopwatch · считает вверх',
+  'hone.dock.mode.free': 'Free · без таймера, ручной stop',
+  'hone.dock.mode.plan': 'Plan · 50/10 × 3 последовательность',
+  'hone.dock.mode.pinned': 'Pinned · focus до завершения task',
+  'hone.dock.reset_title': 'Reset · сбросить таймер',
+
+  // ── Hone: ExternalActivityModal (Wave 16 tail) ───────────────────────
+  'hone.external.err.duration_range': 'Длительность должна быть от 1 до 600 минут.',
+  'hone.external.header': '+ ВНЕШНЕЕ ЗАНЯТИЕ',
+  'hone.external.cta.cancel': 'Отмена',
+
+  // ── Hone: Calendar subtitle (Wave 16 tail) ───────────────────────────
+  'hone.calendar.subtitle':
+    'События, которые тутор поставил тебе в расписание. Live-сессия (происходит сейчас) подсвечивается красным сигналом; meet-link открывается одним кликом.',
+
+  // ── Hone: CrossAppReminder footer (Wave 16 tail) ─────────────────────
+  'hone.coach.cross.footer_lead': 'Hone — тихий ежедневный коуч.',
+  'hone.coach.cross.footer_link_intro': 'Для полного 5-этапного mock, Skill Atlas и Codex curation — открой',
+
+  // ── Hone: MemoryTimeline (Wave 16 tail) ──────────────────────────────
+  'hone.memory.header.detail':
+    '{{total}} записей · показано {{shown}}. AI ссылается на это в daily brief / next-action / fork analysis.',
+  'hone.memory.list.cue_session': 'Cue session → ingest → episode kind=cue_session',
+  'hone.memory.list.reflection': 'Рефлексия после focus → kind=reflection',
+  'hone.memory.list.mock_complete': 'Mock complete → kind=mock_pipeline_finished',
+  'hone.memory.list.note_external': 'Создание заметки / лог внешней активности → kind=external_activity',
+
+  // ── Hone: Notes editor AI badge (Wave 16 tail) ───────────────────────
+  'hone.notes.editor.ai_excluded_title': 'AI не читает эту заметку — клик чтобы разрешить',
+  'hone.notes.editor.ai_visible_title': 'AI может читать — клик чтобы скрыть от AI',
+
+  // ── Hone: Notes sidebar Cue empty (Wave 16 tail) ─────────────────────
+  'hone.notes.sidebar.cue_empty_lead': 'Записи из Cue появятся здесь.',
+  'hone.notes.sidebar.cue_empty_help': 'Сделай запись → Save analysis → Open in Hone.',
+
+  // ── Hone: OnboardingModal Free features (Wave 16 tail) ───────────────
+  'hone.onboarding.free.ai_coach': 'AI-коуч с памятью · без лимитов',
+
+  // ── Hone: ResistanceModal pinned (Wave 16 tail) ──────────────────────
+  'hone.resistance.pinned_hint': 'фокус на «{{title}}»',
+
+  // ── Hone: StatsOverlay / Stats (Wave 16 tail) ────────────────────────
+  'hone.stats_overlay.topic_empty': '(без темы)',
+  'hone.stats.err_load_label': 'Не получилось загрузить статистику',
+
+  // ── Hone: TasksSuggestionsCard (Wave 16 tail) ────────────────────────
+  'hone.taskboard.suggest.title_from_notes': 'из заметок · {{count}}{{cached}}',
+
+  // ── Hone: Home timer tooltip (Wave 16 tail) ──────────────────────────
+  'hone.home.timer_title': '{{mm}} минут {{ss}} секунд осталось',
+
+  // ── Hone: TaskCardView rename hint (Wave 16 tail) ────────────────────
+  'hone.taskboard.dblclick_rename_title': 'Двойной клик — переименовать',
+
+  // ── Hone: Settings — Resistance pulse hint (Wave 16 tail) ────────────
+  'hone.settings.resistance.hint':
+    'Спрашивает «что трудно прямо сейчас?» перед стартом помодоро (10-секундный опционально). Сохраняется в журнал сопротивления — коуч раз в неделю видит паттерны.',
 };

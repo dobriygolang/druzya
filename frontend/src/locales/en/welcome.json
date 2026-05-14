@@ -340,5 +340,25 @@
       "cue_cta_download": "Download Cue",
       "cue_tested": "Tested in Zoom · Meet · Chrome"
     }
+  },
+  "demos": {
+    "esc_close": "Esc · close",
+    "hone": {
+      "today_date": "TODAY · APR 30",
+      "today_count": "3 items · ~1h 40m",
+      "insight_prefix": "This week —",
+      "insight_suffix": "and English conditionals up. SD still sagging — I'll suggest one sysdesign task for tomorrow."
+    },
+    "mock": {
+      "mode_picker": "PICKING A MODE",
+      "strict_sub": "no AI · Cue off",
+      "ai_sub": "with hints",
+      "solved": "Solved",
+      "watermark_caption": "WATERMARK BAKED INTO THE RESULT",
+      "wm_strict_hint": "no AI · interview window",
+      "wm_ai_hint": "with hints",
+      "wm_delta_hint": "how much slower without AI",
+      "wm_caption": "OBJECTIVE CURRENCY · NOT SELF-RATING"
+    }
   }
 }

@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import { ModelDropdown, type ModelDropdownItem } from '../../components/d9/ModelDropdown';
 import { PersonaDropdown, type PersonaDropdownItem } from '../../components/d9/PersonaDropdown';
 import { useConfig } from '../../hooks/use-config';
@@ -56,6 +57,7 @@ function close() {
 }
 
 function PersonaContent() {
+  const t = useT();
   const activePersona = usePersonaStore((s) => s.active);
   const list = usePersonaStore((s) => s.list);
   const loaded = usePersonaStore((s) => s.loaded);
@@ -80,20 +82,20 @@ function PersonaContent() {
   //   not-loaded        → spinner stub
   //   loaded + error    → "недоступны" + backend hint
   //   loaded + empty ok → "каталог пуст" (admin hasn't seeded yet)
-  if (!loaded) return <PickerPlaceholder label="Загружаю персоны…" />;
+  if (!loaded) return <PickerPlaceholder label={t('cue.picker.loading_personas')} />;
   if (error) {
     return (
       <PickerPlaceholder
-        label="Персоны недоступны"
-        hint="Сервер не отдал каталог. Проверь подключение или перезайди."
+        label={t('cue.picker.personas_unavailable')}
+        hint={t('cue.picker.personas_unavailable_hint')}
       />
     );
   }
   if (items.length === 0) {
     return (
       <PickerPlaceholder
-        label="Каталог пуст"
-        hint="Админ ещё не засеял персон в системе."
+        label={t('cue.picker.catalog_empty')}
+        hint={t('cue.picker.catalog_empty_hint')}
       />
     );
   }
@@ -152,6 +154,7 @@ function PickerPlaceholder({ label, hint }: { label: string; hint?: string }) {
 }
 
 function ModelContent() {
+  const t = useT();
   const { config } = useConfig();
   const selected = useSelectedModelStore((s) => s.modelId);
   const setModel = useSelectedModelStore((s) => s.setModel);
@@ -179,16 +182,16 @@ function ModelContent() {
   if (!config) {
     return (
       <PickerPlaceholder
-        label="Модели недоступны"
-        hint="Сервер не отдал каталог. Войди или проверь подключение."
+        label={t('cue.picker.models_unavailable')}
+        hint={t('cue.picker.models_unavailable_hint')}
       />
     );
   }
   if (items.length === 0) {
     return (
       <PickerPlaceholder
-        label="Каталог пуст"
-        hint="На твоём плане нет доступных моделей."
+        label={t('cue.picker.catalog_empty')}
+        hint={t('cue.picker.plan_no_models')}
       />
     );
   }

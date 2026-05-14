@@ -7,16 +7,20 @@
 // Deliberately нет real CodeEditor — heavy dependency, onboarding не
 // должен платить bundle cost. Read-only preview даёт ощущение layout'а.
 
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import { OnboardingLayout } from './_shared/Layout'
 import { useOnboarding } from './_shared/useOnboarding'
 
-const SANDBOX_PROBLEM = {
-  title: 'Longest substring without repeat',
-  tag: 'sliding window · entry',
-  body: 'Дана строка s. Найди длину самой длинной подстроки без повторов символов.',
-  sample: { input: '"abcabcbb"', output: '3' },
+function buildSandboxProblem(t: (k: string) => string) {
+  return {
+    title: 'Longest substring without repeat',
+    tag: 'sliding window · entry',
+    body: t('onboarding_task.task_text'),
+    sample: { input: '"abcabcbb"', output: '3' },
+  }
 }
 
 const captionMono: React.CSSProperties = {
@@ -42,8 +46,10 @@ const monoChip: React.CSSProperties = {
 }
 
 export default function Step4Task() {
+  const { t } = useTranslation('wave14')
   const nav = useNavigate()
   const { setStep } = useOnboarding()
+  const SANDBOX_PROBLEM = useMemo(() => buildSandboxProblem(t), [t])
 
   const runAndGo = () => {
     // Sandbox: no side-effects in storage. Just navigate to Atlas tour.
@@ -56,9 +62,9 @@ export default function Step4Task() {
   }
 
   return (
-    <OnboardingLayout step={4} onBack={() => nav('/onboarding/skill')} onSkip={skip} skipLabel="потом попробую">
+    <OnboardingLayout step={4} onBack={() => nav('/onboarding/skill')} onSkip={skip} skipLabel={t('onboarding_task.skip_label')}>
       <div className="text-center" style={{ marginBottom: 24 }}>
-        <div style={{ ...captionMono, fontSize: 11, marginBottom: 10 }}>шаг 4 · как выглядит mock</div>
+        <div style={{ ...captionMono, fontSize: 11, marginBottom: 10 }}>{t('onboarding_task.step_label')}</div>
         <h2
           style={{
             margin: 0,
@@ -70,10 +76,10 @@ export default function Step4Task() {
             color: 'rgb(var(--ink))',
           }}
         >
-          Первая задача — sandbox
+          {t('onboarding_task.first_task_title')}
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
-          Без таймера и без записи в историю — посмотри, как устроена сессия.
+          {t('onboarding_task.first_task_body')}
         </p>
       </div>
 
@@ -166,7 +172,7 @@ export default function Step4Task() {
               <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)' }} />
               ▶ run
             </button>
-            <span style={captionMono}>kbd ⏎ — то же самое в реальной арене</span>
+            <span style={captionMono}>kbd ⏎ — {t('onboarding_task.kbd_hint')}</span>
           </div>
         </section>
       </div>
@@ -189,7 +195,7 @@ export default function Step4Task() {
               'background-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
-          Запустить и далее →
+          {t('onboarding_task.run_next')}
         </button>
       </div>
     </OnboardingLayout>

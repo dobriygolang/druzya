@@ -37,6 +37,9 @@
     },
     "back": "Back"
   },
+  "throttled": {
+    "seconds_short": "s"
+  },
   "mobileNav": {
     "match": "mock",
     "matchAria": "launch mock",

@@ -7,6 +7,8 @@
 
 import { Loader2, RefreshCcw, Unplug, Link as LinkIcon, CheckCircle2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import i18n from '../lib/i18n'
 
 import {
   useConnectionStatusQuery,
@@ -25,17 +27,18 @@ function buildRedirectURI(): string {
 }
 
 function formatRelative(iso: string | null): string {
-  if (!iso) return 'ещё не синхронизировано'
+  if (!iso) return i18n.t('google_calendar.not_synced', { ns: 'wave14' })
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   const diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
-  if (diffSec < 60) return 'только что'
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} мин назад`
-  if (diffSec < 86_400) return `${Math.floor(diffSec / 3600)} ч назад`
+  if (diffSec < 60) return i18n.t('google_calendar.just_now', { ns: 'wave14' })
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} ${i18n.t('google_calendar.min_ago', { ns: 'wave14' })}`
+  if (diffSec < 86_400) return `${Math.floor(diffSec / 3600)} ${i18n.t('google_calendar.hours_ago', { ns: 'wave14' })}`
   return d.toLocaleString()
 }
 
 export function GoogleCalendarSection() {
+  const { t } = useTranslation('wave14')
   const status = useConnectionStatusQuery()
   const startOAuth = useStartOAuthMutation()
   const disconnect = useDisconnectMutation()
@@ -62,7 +65,7 @@ export function GoogleCalendarSection() {
         window.location.href = out.auth_url
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось начать подключение')
+      setError(e instanceof Error ? e.message : t('google_calendar.connect_failed'))
     }
   }
 
@@ -71,7 +74,7 @@ export function GoogleCalendarSection() {
     try {
       await disconnect.mutateAsync()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось отключить')
+      setError(e instanceof Error ? e.message : t('google_calendar.disconnect_failed'))
     }
   }
 
@@ -80,7 +83,7 @@ export function GoogleCalendarSection() {
     try {
       await sync.mutateAsync()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось синхронизировать')
+      setError(e instanceof Error ? e.message : t('google_calendar.sync_failed'))
     }
   }
 
@@ -92,15 +95,14 @@ export function GoogleCalendarSection() {
         </span>
         <h2 className="font-display text-base font-bold leading-tight">Google Calendar</h2>
         <p className="text-[12.5px] leading-relaxed text-text-muted">
-          Двусторонняя синхронизация: подтянем встречи и собеседования из Google в Hone Calendar,
-          и сможем класть мок-интервью / план-сессии обратно. Pull-обновление раз в 5 минут.
+          {t('google_calendar.two_way_sync')}
         </p>
       </header>
 
       {status.isLoading ? (
         <div className="flex items-center gap-2 text-[12.5px] text-text-muted">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Проверяем подключение…
+          {t('google_calendar.checking_status')}
         </div>
       ) : status.data?.connected ? (
         <div className="flex flex-col gap-3">
@@ -108,7 +110,7 @@ export function GoogleCalendarSection() {
             <CheckCircle2 className="h-4 w-4 text-text-primary" />
             <span className="font-mono">{status.data.calendar_id || 'primary'}</span>
             <span className="text-text-muted">·</span>
-            <span className="text-text-muted">синхронизировано: {formatRelative(status.data.last_synced)}</span>
+            <span className="text-text-muted">{t('google_calendar.synced_label')} {formatRelative(status.data.last_synced)}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -122,7 +124,7 @@ export function GoogleCalendarSection() {
               ) : (
                 <RefreshCcw className="h-3.5 w-3.5" />
               )}
-              Синхронизировать сейчас
+              {t('google_calendar.sync_now')}
             </button>
             <button
               type="button"
@@ -135,7 +137,7 @@ export function GoogleCalendarSection() {
               ) : (
                 <Unplug className="h-3.5 w-3.5" />
               )}
-              Отключить
+              {t('google_calendar.disconnect')}
             </button>
           </div>
         </div>
@@ -151,13 +153,13 @@ export function GoogleCalendarSection() {
           ) : (
             <LinkIcon className="h-3.5 w-3.5" />
           )}
-          Подключить Google Calendar
+          {t('google_calendar.connect_btn')}
         </button>
       )}
 
       {(error || status.isError) && (
         <p role="alert" aria-live="assertive" className="text-[12px] text-text-secondary">
-          {error ?? (status.error instanceof Error ? status.error.message : 'Ошибка чтения статуса')}
+          {error ?? (status.error instanceof Error ? status.error.message : t('google_calendar.status_error'))}
         </p>
       )}
     </section>

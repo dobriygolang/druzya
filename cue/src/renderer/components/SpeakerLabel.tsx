@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import { useAudioCaptureStore } from '../stores/audio-capture';
 
 interface SpeakerLabelProps {
@@ -34,6 +35,7 @@ interface SpeakerLabelProps {
  * переименовать «Я»). Эта инвариант encoded в renameSpeaker(speakerId=0) noop.
  */
 export function SpeakerLabel({ speakerId, source, compact = false }: SpeakerLabelProps) {
+  const t = useT();
   const label = useAudioCaptureStore((s) => s.labelFor(speakerId, source));
   const renameSpeaker = useAudioCaptureStore((s) => s.renameSpeaker);
   const [editing, setEditing] = useState(false);
@@ -110,7 +112,7 @@ export function SpeakerLabel({ speakerId, source, compact = false }: SpeakerLabe
               cancel();
             }
           }}
-          aria-label={`Имя для ${label}`}
+          aria-label={`${t('cue.history.row.rename_title')}: ${label}`}
           style={{
             width: 100,
             minWidth: 60,
@@ -132,7 +134,7 @@ export function SpeakerLabel({ speakerId, source, compact = false }: SpeakerLabe
     <button
       type="button"
       onClick={() => setEditing(true)}
-      title={`Переименовать ${label} (Enter для save, Esc для cancel)`}
+      title={`${t('cue.history.row.rename_title')}: ${label}`}
       aria-label={`Speaker: ${label}, click to rename`}
       style={{
         display: 'inline-block',

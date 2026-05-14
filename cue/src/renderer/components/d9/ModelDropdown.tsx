@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 
+import { useT } from '@d9-i18n';
 
 export interface ModelDropdownItem {
   id: string;
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function ModelDropdown({ items, activeId, onSelect, onClose, onManage, style }: Props) {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,11 +50,11 @@ export function ModelDropdown({ items, activeId, onSelect, onClose, onManage, st
   return (
     <div ref={ref} className="d9-root d9-popover" style={{ width: 260, ...style }}>
       <div className="d9-popover-label">
-        <span>МОДЕЛЬ</span>
+        <span>{t('cue.model_dropdown.label')}</span>
         <span className="d9-popover-label-esc">ESC</span>
       </div>
       {items.length === 0 && (
-        <div className="d9-popover-empty">Нет доступных моделей</div>
+        <div className="d9-popover-empty">{t('cue.model_dropdown.empty')}</div>
       )}
       {items.map((m) => {
         const active = m.id === activeId;
@@ -74,7 +76,7 @@ export function ModelDropdown({ items, activeId, onSelect, onClose, onManage, st
           >
             <span className="d9-menu-item-marker" />
             <span className="d9-menu-item-title">{m.displayName}</span>
-            {locked && <span className="d9-tag d9-tag-locked">pro</span>}
+            {locked && <span className="d9-tag d9-tag-locked">{t('cue.settings.providers.pro')}</span>}
             {metaParts && <span className="d9-menu-item-meta">{metaParts}</span>}
           </button>
         );
@@ -89,7 +91,7 @@ export function ModelDropdown({ items, activeId, onSelect, onClose, onManage, st
           >
             <span className="d9-menu-item-marker" />
             <span className="d9-menu-item-title" style={{ textTransform: 'none', letterSpacing: 0 }}>
-              Управление провайдерами →
+              {t('cue.model_dropdown.manage')}
             </span>
           </button>
         </>

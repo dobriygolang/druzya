@@ -44,5 +44,8 @@
     "prompt": "Install druz9 Lingua on your device for offline access?",
     "install": "Install",
     "dismiss": "Later"
+  },
+  "vocab": {
+    "queue_empty": "Queue is empty. Click words in a reader to fill it."
   }
 }

@@ -278,8 +278,7 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
     {
       tab: 'focus',
       title: 'PRE-FOCUS PULSE',
-      hint:
-        'Ask «what is hard right now?» before each pomodoro start (10-second optional). Сохраняется в журнал сопротивления — коуч раз в неделю видит паттерны.',
+      hint: t('hone.settings.resistance.hint'),
       keywords: 'resistance pulse journal сопротивление журнал',
       render: () => (
         <Toggle

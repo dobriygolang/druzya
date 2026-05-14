@@ -11,7 +11,8 @@
 //
 // B/W rule: red 1.5px stripe только на active stage card (uniform с other modals).
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 
 import { Button } from './Button'
@@ -35,13 +36,15 @@ interface StageDraft {
   selfRating: 1 | 2 | 3 | 4 | 5 | undefined
 }
 
-const STAGE_LABEL: Record<CueSessionStage, string> = {
-  hr: 'HR / screen',
-  algo: 'Algo / coding',
-  coding: 'Live coding',
-  sysdesign: 'System design',
-  behavioral: 'Behavioral',
-  other: 'Другое',
+function getStageLabels(t: (k: string) => string): Record<CueSessionStage, string> {
+  return {
+    hr: 'HR / screen',
+    algo: 'Algo / coding',
+    coding: 'Live coding',
+    sysdesign: 'System design',
+    behavioral: 'Behavioral',
+    other: t('cue_log.other'),
+  }
 }
 
 const STAGE_OPTIONS: CueSessionStage[] = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral', 'other']
@@ -51,6 +54,8 @@ function emptyStage(): StageDraft {
 }
 
 export function CueLogModal({ onClose }: Props) {
+  const { t } = useTranslation('wave14')
+  const STAGE_LABEL = useMemo(() => getStageLabels(t), [t])
   const [company, setCompany] = useState('')
   const [persona, setPersona] = useState('')
   const [stages, setStages] = useState<StageDraft[]>([emptyStage()])
@@ -112,7 +117,7 @@ export function CueLogModal({ onClose }: Props) {
   }
 
   return (
-    <Modal open onClose={onClose} size="md" title="Залогировать собес / mock">
+    <Modal open onClose={onClose} size="md" title={t('cue_log.log_interview')}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           + CUE SESSION
@@ -124,7 +129,7 @@ export function CueLogModal({ onClose }: Props) {
               htmlFor="cue-company"
               className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted"
             >
-              Компания
+              {t('cue_log.company')}
             </label>
             <input
               id="cue-company"
@@ -143,7 +148,7 @@ export function CueLogModal({ onClose }: Props) {
               htmlFor="cue-persona"
               className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted"
             >
-              Persona (опц.)
+              {t('cue_log.persona_optional')}
             </label>
             <input
               id="cue-persona"
@@ -160,7 +165,7 @@ export function CueLogModal({ onClose }: Props) {
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-              Стадии · {stages.length} / 5
+              {t('cue_log.stages_count')} {stages.length} / 5
             </label>
             {stages.length < 5 && (
               <button
@@ -168,7 +173,7 @@ export function CueLogModal({ onClose }: Props) {
                 onClick={onAddStage}
                 className="flex items-center gap-1 rounded-md border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary hover:border-border-strong hover:text-text-primary"
               >
-                <Plus className="h-3 w-3" /> Стадия
+                <Plus className="h-3 w-3" /> {t('cue_log.stage')}
               </button>
             )}
           </div>
@@ -176,6 +181,7 @@ export function CueLogModal({ onClose }: Props) {
             <StageRow
               key={idx}
               draft={stage}
+              stageLabels={STAGE_LABEL}
               onChange={(patch) => onUpdateStage(idx, patch)}
               onRemove={stages.length > 1 ? () => onRemoveStage(idx) : undefined}
             />
@@ -187,7 +193,7 @@ export function CueLogModal({ onClose }: Props) {
             htmlFor="cue-summary"
             className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted"
           >
-            AI summary (опц.) · что вынес для memory
+            {t('cue_log.ai_summary_optional')}
           </label>
           <textarea
             id="cue-summary"
@@ -202,10 +208,10 @@ export function CueLogModal({ onClose }: Props) {
 
         <footer className="flex items-center justify-end gap-2 pt-1">
           <Button variant="ghost" type="button" onClick={onClose}>
-            Отмена
+            {t('cue_log.cancel')}
           </Button>
           <Button type="submit" disabled={!canSubmit}>
-            Залогировать
+            {t('cue_log.log')}
           </Button>
         </footer>
       </form>
@@ -215,13 +221,16 @@ export function CueLogModal({ onClose }: Props) {
 
 function StageRow({
   draft,
+  stageLabels,
   onChange,
   onRemove,
 }: {
   draft: StageDraft
+  stageLabels: Record<CueSessionStage, string>
   onChange: (patch: Partial<StageDraft>) => void
   onRemove?: () => void
 }) {
+  const { t } = useTranslation('wave14')
   return (
     <div className="relative rounded-md border border-border bg-surface-2 p-3">
       {/* Active visual cue: red 1.5px top stripe только если selfRating <=2
@@ -241,7 +250,7 @@ function StageRow({
         >
           {STAGE_OPTIONS.map((s) => (
             <option key={s} value={s}>
-              {STAGE_LABEL[s]}
+              {stageLabels[s]}
             </option>
           ))}
         </select>
@@ -254,7 +263,7 @@ function StageRow({
           <button
             type="button"
             onClick={onRemove}
-            aria-label="Удалить стадию"
+            aria-label={t('cue_log.delete_stage')}
             className="rounded-md p-1 text-text-muted hover:bg-bg hover:text-text-primary"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -266,7 +275,7 @@ function StageRow({
         onChange={(e) => onChange({ notes: e.target.value })}
         rows={2}
         maxLength={400}
-        placeholder="Что обсуждали / в чём затыкался / результат"
+        placeholder={t('cue_log.stage_placeholder')}
         className="mt-2 w-full resize-none rounded-md border border-border bg-bg px-2.5 py-1.5 text-[12.5px] text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
       />
     </div>

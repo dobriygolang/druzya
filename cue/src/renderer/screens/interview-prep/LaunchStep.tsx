@@ -4,10 +4,13 @@
 
 import { useEffect, useState } from 'react';
 
+import { useT, useLocaleStore } from '@d9-i18n';
 import { useInterviewPrepStore } from '../../stores/interview-prep';
 import { Card, DataRow } from './UploadCVStep';
 
 export function LaunchStep() {
+  const t = useT();
+  const locale = useLocaleStore((s) => s.locale);
   const active = useInterviewPrepStore((s) => s.active);
   const reset = useInterviewPrepStore((s) => s.reset);
   const [closing, setClosing] = useState(false);
@@ -53,7 +56,7 @@ export function LaunchStep() {
           <Check />
         </div>
         <h2 style={{ margin: 0, fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em' }}>
-          Подготовка активирована
+          {t('cue.prep.launch.title')}
         </h2>
         <p
           style={{
@@ -64,18 +67,16 @@ export function LaunchStep() {
             maxWidth: 440,
           }}
         >
-          Каждая подсказка Cue будет учитывать ваше резюме и эту вакансию. Это
-          сохранится, пока вы не закроете режим подготовки (Settings → Interview
-          Prep).
+          {t('cue.prep.launch.body')}
         </p>
       </div>
 
-      <Card title="Активная подготовка" subtitle={active.startedAt ? new Date(active.startedAt).toLocaleString('ru-RU') : ''}>
-        <DataRow k="Компания" v={active.company || active.parsedJD.company} />
-        <DataRow k="Роль" v={active.role || active.parsedJD.role} />
-        <DataRow k="Уровень" v={active.parsedJD.seniority} />
-        <DataRow k="Опыт кандидата" v={active.parsedCV.experienceYears > 0 ? `${active.parsedCV.experienceYears} лет` : ''} />
-        <DataRow k="Топ-навыки" v={active.parsedCV.topSkills.slice(0, 6).join(' · ')} />
+      <Card title={t('cue.prep.launch.active_title')} subtitle={active.startedAt ? new Date(active.startedAt).toLocaleString(locale === 'ru' ? 'ru-RU' : 'en-US') : ''}>
+        <DataRow k={t('cue.prep.jd.field.company')} v={active.company || active.parsedJD.company} />
+        <DataRow k={t('cue.prep.jd.field.role')} v={active.role || active.parsedJD.role} />
+        <DataRow k={t('cue.prep.jd.field.seniority')} v={active.parsedJD.seniority} />
+        <DataRow k={t('cue.prep.launch.field.experience')} v={active.parsedCV.experienceYears > 0 ? t('cue.prep.cv.field.experience_years', { n: active.parsedCV.experienceYears }) : ''} />
+        <DataRow k={t('cue.prep.cv.field.top_skills')} v={active.parsedCV.topSkills.slice(0, 6).join(' · ')} />
       </Card>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
@@ -95,7 +96,7 @@ export function LaunchStep() {
             fontFamily: 'inherit',
           }}
         >
-          {closing ? 'Открываю Cue…' : 'Открыть Cue →'}
+          {closing ? t('cue.prep.launch.opening') : t('cue.prep.launch.open_cue')}
         </button>
       </div>
     </div>

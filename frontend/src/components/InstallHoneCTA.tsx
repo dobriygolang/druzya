@@ -13,6 +13,7 @@
 //     card works pre-auth-confirm too.
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Download as DownloadIcon } from 'lucide-react'
 
 const DISMISS_KEY = 'druz9:install-hone-cta:dismissed'
@@ -42,6 +43,7 @@ interface Props {
 }
 
 export function InstallHoneCTA({ forceShow = false }: Props) {
+  const { t } = useTranslation('common')
   const [dismissed, setDismissed] = useState(() => (forceShow ? false : wasDismissed()))
   if (dismissed) return null
 
@@ -81,10 +83,10 @@ export function InstallHoneCTA({ forceShow = false }: Props) {
             color: 'rgb(var(--ink))',
           }}
         >
-          Установи Hone — daily focus
+          {t('install_hone.title')}
         </span>
         <span style={{ fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
-          Тихий desktop-кокпит: AI-план на день, фокус, заметки. Offline-first.
+          {t('install_hone.body')}
         </span>
       </div>
       <div className="flex flex-wrap-row" style={{ gap: 10, alignItems: 'center' }}>
@@ -104,7 +106,7 @@ export function InstallHoneCTA({ forceShow = false }: Props) {
             textTransform: 'uppercase',
           }}
         >
-          Позже
+          {t('install_hone.skip')}
         </button>
         <button
           type="button"
@@ -126,7 +128,7 @@ export function InstallHoneCTA({ forceShow = false }: Props) {
           }}
         >
           <DownloadIcon style={{ width: 14, height: 14 }} />
-          Скачать для macOS
+          {t('install_hone.download_macos')}
         </button>
       </div>
     </div>

@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import { D9IconCopy } from '../../../components/d9';
 
 export function renderMiniMarkdown(text: string): React.ReactNode {
@@ -59,6 +60,7 @@ export function InlineText({ text }: { text: string }) {
 }
 
 export function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   return (
     <div
@@ -121,7 +123,7 @@ export function CodeBlock({ lang, code }: { lang: string; code: string }) {
           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         >
           <D9IconCopy size={11} />
-          {copied ? 'Скопировано' : 'Copy'}
+          {copied ? t('cue.markdown.copied') : t('cue.markdown.copy')}
         </button>
       </div>
       <pre

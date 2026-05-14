@@ -42,7 +42,7 @@ export function StreakChip({ compact }: Props) {
       title={
         atRisk
           ? t('streak.at_risk_title', { days: streak.days })
-          : t('streak.ok_title', { days: streak.days, plural: pluralDays(streak.days), longest: streak.longestDays })
+          : t('streak.ok_title', { days: streak.days, plural: pluralDays(streak.days, t), longest: streak.longestDays })
       }
     >
       {/* Red ring если streak at-risk (сегодня не log'ал). B/W rule preserved
@@ -61,7 +61,7 @@ export function StreakChip({ compact }: Props) {
       {!compact && (
         <>
           <span className="font-mono text-[10px] text-text-muted">
-            {pluralDaysShort(streak.days)}
+            {t('streak.day_short')}
           </span>
           {tierLabel && (
             <>
@@ -77,14 +77,10 @@ export function StreakChip({ compact }: Props) {
   )
 }
 
-function pluralDays(n: number): string {
+function pluralDays(n: number, t: (k: string, opts?: Record<string, unknown>) => string): string {
   // Russian plural rules — used by StreakChip title. English fallback is
   // wired via lookup in common.streak.day_one|few|many keys.
-  if (n === 1) return 'день'
-  if (n >= 2 && n <= 4) return 'дня'
-  return 'дней'
-}
-
-function pluralDaysShort(_n: number): string {
-  return 'дн.'
+  if (n === 1) return t('streak.day_one', { count: n })
+  if (n >= 2 && n <= 4) return t('streak.day_few', { count: n })
+  return t('streak.day_many', { count: n })
 }

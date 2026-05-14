@@ -33,7 +33,7 @@ export default defineConfig({
         name: 'druz9',
         short_name: 'druz9',
         description:
-          'Lingua + AI-coach: подготовка senior IT-разрабов (Go · ML · English) + offline vocab review',
+          'Lingua + AI-coach: senior IT engineering prep (Go · ML · English) + offline vocab review',
         start_url: '/lingua',
         scope: '/',
         display: 'standalone',

@@ -14,6 +14,7 @@
 //
 // После save → /today (новый landing).
 
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, BookOpen, Sparkles } from 'lucide-react'
 
@@ -32,6 +33,7 @@ const captionMono: React.CSSProperties = {
 }
 
 export default function StepPath() {
+  const { t } = useTranslation('wave14')
   const navigate = useNavigate()
 
   const pickPreset = (presetId: string) => {
@@ -56,7 +58,7 @@ export default function StepPath() {
     <OnboardingLayout step={1}>
       <div className="mx-auto px-4 py-10 sm:py-14" style={{ maxWidth: 760 }}>
         <header className="text-center" style={{ marginBottom: 32 }}>
-          <div style={captionMono}>ВЫБОР ПУТИ</div>
+          <div style={captionMono}>{t('onboarding_path.choice')}</div>
           <h1
             style={{
               margin: '12px 0 0',
@@ -67,7 +69,7 @@ export default function StepPath() {
               color: 'rgb(var(--ink))',
             }}
           >
-            Готовый путь или свой?
+            {t('onboarding_path.title')}
           </h1>
           <p
             style={{
@@ -78,8 +80,7 @@ export default function StepPath() {
               color: 'var(--ink-60)',
             }}
           >
-            У нас есть curated тропки для типовых ролей. Возьми готовый и убери темы, которые уже
-            знаешь — или собери свой с нуля.
+            {t('onboarding_path.curated_body')}
           </p>
         </header>
 
@@ -133,7 +134,7 @@ export default function StepPath() {
               </div>
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: 'var(--ink-60)' }}>{p.blurb}</p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                <span style={captionMono}>{p.nodes.length} тем</span>
+                <span style={captionMono}>{p.nodes.length} {t('onboarding_path.topics_short')}</span>
                 <ArrowRight style={{ width: 14, height: 14, color: 'var(--ink-40)' }} />
               </div>
             </button>
@@ -162,12 +163,11 @@ export default function StepPath() {
                 color: 'rgb(var(--ink))',
               }}
             >
-              Свой путь
+              {t('onboarding_path.custom_title')}
             </h2>
           </div>
           <p style={{ margin: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.55, color: 'var(--ink-60)' }}>
-            Опиши цель в свободной форме («Senior Go в финтех», «ML researcher в LLM-стартап»).
-            Мы соберём начальную карту тем, которую ты будешь редактировать дальше.
+            {t('onboarding_path.custom_body')}
           </p>
           <button
             type="button"
@@ -197,7 +197,7 @@ export default function StepPath() {
               e.currentTarget.style.color = 'var(--ink-60)'
             }}
           >
-            Описать цель <ArrowRight style={{ width: 14, height: 14 }} />
+            {t('onboarding_path.describe_goal')} <ArrowRight style={{ width: 14, height: 14 }} />
           </button>
         </div>
       </div>

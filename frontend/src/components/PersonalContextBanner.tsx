@@ -12,12 +12,15 @@
 // B/W rule: red — только если no-goal OR 0 activity (1.5px top stripe).
 
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { useGoal } from '../lib/useGoal'
 import { useActivitySummary } from '../lib/useActivity'
 import { formatGoal } from '../lib/goal'
+import i18n from '../lib/i18n'
 
 export function PersonalContextBanner() {
+  const { t } = useTranslation('wave14')
   const goal = useGoal()
   const summary = useActivitySummary()
 
@@ -29,26 +32,26 @@ export function PersonalContextBanner() {
 
   if (!goal) {
     stripe = 'red'
-    label = 'Курс ещё не задан'
-    detail = '8-минутная диагностика подберёт track, цель и 3 первых действия.'
+    label = t('personal_context.course_not_set')
+    detail = t('personal_context.diagnostic_intro')
     ctaHref = '/diagnostic'
-    ctaLabel = 'Пройти диагностику'
+    ctaLabel = t('personal_context.take_diagnostic')
   } else if (summary.last7d === 0) {
     stripe = 'red'
     label = `Goal: ${formatGoal(goal)}`
-    detail = 'Активность пуста за 7 дней — coach без сигналов. Залогируй любое занятие чтобы запустить feedback loop.'
+    detail = t('personal_context.activity_empty')
     ctaHref = '/today'
-    ctaLabel = 'К плану'
+    ctaLabel = t('personal_context.to_plan')
   } else if (summary.last7d <= 2) {
     label = `Goal: ${formatGoal(goal)}`
-    detail = `${summary.last7d} ${pluralActions(summary.last7d)} за неделю — coach видит, но темп слабый.`
+    detail = `${summary.last7d} ${pluralActions(summary.last7d)} ${t('personal_context.week_low_pace')}`
     ctaHref = '/today'
-    ctaLabel = 'К плану'
+    ctaLabel = t('personal_context.to_plan')
   } else {
     label = `Goal: ${formatGoal(goal)}`
-    detail = `${summary.last7d} ${pluralActions(summary.last7d)} за 7 дней · темп ОК.`
+    detail = `${summary.last7d} ${pluralActions(summary.last7d)} ${t('personal_context.week_ok_pace')}`
     ctaHref = '/today'
-    ctaLabel = 'К плану'
+    ctaLabel = t('personal_context.to_plan')
   }
 
   return (
@@ -83,7 +86,7 @@ export function PersonalContextBanner() {
 }
 
 function pluralActions(n: number): string {
-  if (n === 1) return 'занятие'
-  if (n >= 2 && n <= 4) return 'занятия'
-  return 'занятий'
+  if (n === 1) return i18n.t('personal_context.session', { ns: 'wave14' })
+  if (n >= 2 && n <= 4) return i18n.t('personal_context.sessions_few', { ns: 'wave14' })
+  return i18n.t('personal_context.sessions_many', { ns: 'wave14' })
 }

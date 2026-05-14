@@ -15,6 +15,7 @@
 // строка = «не выставлено».
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import i18n from '../i18n'
 import { api } from '../apiClient'
 
 export type TrackStepKind =
@@ -215,26 +216,28 @@ export function activeEnrolment(
   )
 }
 
-// stepKindLabel — human-readable русская подпись для UI.
-const KIND_LABEL: Record<TrackStepKind, string> = {
-  TRACK_STEP_KIND_UNSPECIFIED: '—',
-  TRACK_STEP_KIND_KATA: 'Решить катy',
-  TRACK_STEP_KIND_ARENA: 'Арена',
-  TRACK_STEP_KIND_MOCK: 'Мок-собес',
-  TRACK_STEP_KIND_CODEX_READ: 'Прочесть статью',
-  TRACK_STEP_KIND_FOCUS_BLOCK: 'Focus-блок',
+// stepKindLabel — human-readable подпись для UI, локализуется через i18n.
+const KIND_KEY: Record<TrackStepKind, string> = {
+  TRACK_STEP_KIND_UNSPECIFIED: 'unspecified',
+  TRACK_STEP_KIND_KATA: 'kata',
+  TRACK_STEP_KIND_ARENA: 'arena',
+  TRACK_STEP_KIND_MOCK: 'mock',
+  TRACK_STEP_KIND_CODEX_READ: 'codex_read',
+  TRACK_STEP_KIND_FOCUS_BLOCK: 'focus_block',
 }
 
 export function stepKindLabel(kind: TrackStepKind): string {
-  return KIND_LABEL[kind] ?? kind
+  const k = KIND_KEY[kind]
+  if (!k) return kind
+  return i18n.t(`atlas:tracks.step_kind.${k}`)
 }
 
 // difficultyLabel — easy/medium/hard → подпись.
 export function difficultyLabel(d: string): string {
   switch (d) {
-    case 'easy': return 'Лёгкий'
-    case 'medium': return 'Средний'
-    case 'hard': return 'Сложный'
+    case 'easy': return i18n.t('atlas:tracks.difficulty.easy')
+    case 'medium': return i18n.t('atlas:tracks.difficulty.medium')
+    case 'hard': return i18n.t('atlas:tracks.difficulty.hard')
     default: return d || '—'
   }
 }

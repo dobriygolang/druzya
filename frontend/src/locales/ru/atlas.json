@@ -29,5 +29,132 @@
     "unlocks_title": "Этот узел открывает",
     "hone_practice_title": "Открыть Hone и стартануть pomodoro на «{{title}}»",
     "minutes_suffix": "мин"
+  },
+  "canvas": {
+    "hub_default": "Ядро класса",
+    "start_here": "Начни здесь ↓"
+  },
+  "coverage": {
+    "label": {
+      "covered": "трогал",
+      "partial": "частично",
+      "struggling": "давно"
+    },
+    "match_title": "{{count}} match(es) за 30 дн · последнее {{ago}}",
+    "ago": {
+      "today": "сегодня",
+      "yesterday": "вчера",
+      "days": "{{n}}д назад",
+      "weeks": "{{n}}нд назад"
+    }
+  },
+  "tracks": {
+    "stage": {
+      "algo": "Алгоритмы"
+    },
+    "step_kind": {
+      "unspecified": "—",
+      "kata": "Решить кату",
+      "arena": "Арена",
+      "mock": "Мок-собес",
+      "codex_read": "Прочесть статью",
+      "focus_block": "Focus-блок"
+    },
+    "difficulty": {
+      "easy": "Лёгкий",
+      "medium": "Средний",
+      "hard": "Сложный"
+    }
+  },
+  "filters": {
+    "search_placeholder": "Поиск по названию навыка…",
+    "reset": "Сбросить",
+    "all_categories": "Все категории"
+  },
+  "list_mode": {
+    "empty": "Ничего не найдено по фильтрам."
+  },
+  "legacy": {
+    "state": {
+      "locked": "Заблокирован",
+      "available": "Доступен",
+      "in_progress": "В процессе",
+      "mastered": "Освоен",
+      "decaying": "Затухает"
+    },
+    "section": {
+      "algorithms": "Алгоритмы"
+    },
+    "filter": {
+      "all": "Все",
+      "locked": "Закрытые",
+      "available": "Доступные",
+      "in_progress": "В процессе",
+      "mastered": "Освоенные",
+      "decaying": "Затухающие"
+    },
+    "tooltip": {
+      "decaying": "Знание тает · {{days}} дн.",
+      "decaying_no_days": "Знание тает",
+      "solved_today": "Решал сегодня",
+      "last_problem": "Последняя задача: {{days}} дн. назад",
+      "recommended": "Рекомендованное"
+    },
+    "recenter": "Свернуть к центру",
+    "legend": {
+      "available": "Доступен",
+      "in_progress": "В процессе",
+      "mastered": "Освоен",
+      "decaying": "Затухает",
+      "locked": "Закрыт"
+    }
+  },
+  "explore": {
+    "load_failed_short": "Не удалось загрузить",
+    "load_failed_body": "Не удалось загрузить атлас. Попробуй обновить — если ошибка повторяется, проверь подключение.",
+    "unlocked_count": "{{unlocked}} / {{total}} узлов открыто",
+    "updated_ago": "обновлено {{age}}",
+    "refresh_aria": "Обновить атлас",
+    "retry": "Повторить",
+    "loading_canvas": "Загружаем атлас…",
+    "track_filter_label": "трек",
+    "track_filter_aria": "Фильтр атласа по трекам",
+    "ago": {
+      "just_now": "только что",
+      "sec": "{{n}} сек назад",
+      "min": "{{n}} мин назад",
+      "hr": "{{n}} ч назад",
+      "day": "{{n}} д назад"
+    },
+    "empty": {
+      "title": "Атлас пока пуст",
+      "body": "Реши первую задачу — и сюда придут первые навыки. Атлас покажет, что ты уже освоил, какие темы стоит подтянуть и какие следующие шаги рекомендованы.",
+      "cta": "Начать mock"
+    }
+  },
+  "page": {
+    "active_track_section": "Активный трек",
+    "catalogue_section": "Каталог треков",
+    "catalogue_header": "Каталог",
+    "hero_subtitle": "Курируемые программы под собес/промо. Шаги выстроены в порядке — бери трек и идёшь по чек-листу до конца.",
+    "error_short": "ошибка",
+    "loading_short": "загружаем…",
+    "tracks_count_one": "{{count}} трек",
+    "tracks_count_few": "{{count}} трека",
+    "tracks_count_many": "{{count}} треков",
+    "tracks_count": "{{count}} треков",
+    "weeks_short": "нед",
+    "catalogue_empty": "Каталог пока пуст. Кураторы готовят первые программы — загляни чуть позже.",
+    "load_failed": "Не удалось загрузить треки. Попробуй обновить.",
+    "retry": "Повторить",
+    "classifier_unavailable": "AI-классификатор пока недоступен (LLM не сконфигурён).",
+    "add_topic_title": "Добавить тему в атлас",
+    "add_topic_body": "Опиши что хочешь изучить («Транзакции в Postgres», «Diffusion-модели»). AI либо найдёт подходящий узел в curated-атласе, либо заведёт новый в твоём личном слое.",
+    "add_topic_placeholder": "Например: транзакции в Postgres",
+    "add_topic_cta": "Добавить",
+    "topic_matched_prefix": "Тема уже есть в атласе:",
+    "topic_matched_suffix": ". Прогресс по ней пойдёт сразу.",
+    "topic_created_prefix": "Создан новый узел",
+    "topic_done": "Готово."
   }
 }

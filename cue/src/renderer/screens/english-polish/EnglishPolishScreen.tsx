@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import type {
   EnglishPolishCategory,
   EnglishPolishIssue,
@@ -47,6 +48,7 @@ const captionMonoTiny: React.CSSProperties = {
 };
 
 export function EnglishPolishScreen() {
+  const t = useT();
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const ranOnceRef = useRef(false);
 
@@ -61,8 +63,7 @@ export function EnglishPolishScreen() {
       // call. Fall through to «empty» state with a hint.
       setStatus({
         kind: 'error',
-        message:
-          'Не удалось прочитать буфер обмена. Открой панель ещё раз — иногда первый запрос macOS отклоняет.',
+        message: t('cue.polish.cb_read_failed'),
       });
       return;
     }
@@ -142,11 +143,11 @@ export function EnglishPolishScreen() {
 
       <main style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px' }}>
         {status.kind === 'idle' && (
-          <Hint text="Жми ⌃⇧L снова чтобы обработать буфер обмена." />
+          <Hint text={t('cue.polish.idle_hint')} />
         )}
-        {status.kind === 'loading' && <Hint text="Grading…" />}
+        {status.kind === 'loading' && <Hint text={t('cue.polish.grading')} />}
         {status.kind === 'empty' && (
-          <Hint text="Буфер обмена пуст. Скопируй текст и нажми ⌃⇧L." />
+          <Hint text={t('cue.polish.empty_clipboard')} />
         )}
         {status.kind === 'error' && <Hint text={status.message} tone="error" />}
         {status.kind === 'ok' && (
@@ -168,13 +169,14 @@ function Header({
   stripe: string;
   onRegrade: () => void;
 }) {
+  const t = useT();
   const label =
     tier === 'strong'
-      ? 'Strong'
+      ? t('cue.polish.tier.strong')
       : tier === 'mid'
-        ? 'OK — some gaps'
+        ? t('cue.polish.tier.mid')
         : tier === 'weak'
-          ? 'Needs work'
+          ? t('cue.polish.tier.weak')
           : '—';
   return (
     <header
@@ -192,7 +194,7 @@ function Header({
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ ...captionMonoTiny }}>POLISH ENGLISH · ⌃⇧L</div>
+        <div style={{ ...captionMonoTiny }}>{t('cue.polish.eyebrow')}</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--pad-inline)', marginTop: 4, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--d9-ink)' }}>
             {score !== null ? score : '—'}
@@ -223,7 +225,7 @@ function Header({
             'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
         }}
       >
-        Re-grade
+        {t('cue.polish.regrade')}
       </button>
       <button
         type="button"
@@ -245,7 +247,7 @@ function Header({
           cursor: 'pointer',
         }}
       >
-        Esc
+        {t('cue.polish.close')}
       </button>
     </header>
   );
@@ -258,11 +260,12 @@ function ResultBody({
   original: string;
   result: EnglishPolishResult;
 }) {
+  const t = useT();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <OriginalBlock text={original} />
       {result.issues.length === 0 ? (
-        <Hint text="AI didn't flag anything. Looks clean." />
+        <Hint text={t('cue.polish.no_issues')} />
       ) : (
         <ul
           style={{
@@ -311,6 +314,7 @@ function OriginalBlock({ text }: { text: string }) {
 }
 
 function IssueRow({ issue }: { issue: EnglishPolishIssue }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   const apply = useCallback(async () => {
@@ -369,7 +373,7 @@ function IssueRow({ issue }: { issue: EnglishPolishIssue }) {
           {copied && (
             <span aria-hidden="true" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--d9-accent)' }} />
           )}
-          {copied ? 'Copied' : 'Copy fix'}
+          {copied ? t('cue.polish.copied') : t('cue.polish.copy_fix')}
         </button>
       </div>
       <div

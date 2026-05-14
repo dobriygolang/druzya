@@ -295,7 +295,7 @@ function ActionRow({
             {action.title}
           </span>
           <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            {action.estimatedMin}м
+            {action.estimatedMin}{t('daily_plan_card.minutes_short')}
           </span>
         </div>
         <p className="text-[11.5px] leading-snug text-text-muted">{action.rationale}</p>

@@ -151,8 +151,7 @@ export function CalendarPage() {
               maxWidth: 540,
             }}
           >
-            События, которые тутор поставил тебе в расписание. Live-сессия (происходит сейчас)
-            подсвечивается красным сигналом; meet-link открывается одним кликом.
+            {t('hone.calendar.subtitle')}
           </p>
         </header>
 

@@ -2,10 +2,12 @@
 // "Запустить подготовку". On click → backend StartInterviewPrep →
 // active prep stored → next step = Launch.
 
+import { useT } from '@d9-i18n';
 import { useInterviewPrepStore } from '../../stores/interview-prep';
 import { btnPrimary, Card, DataRow } from './UploadCVStep';
 
 export function ReviewStep() {
+  const t = useT();
   const parsedCV = useInterviewPrepStore((s) => s.parsedCV);
   const parsedJD = useInterviewPrepStore((s) => s.parsedJD);
   const starting = useInterviewPrepStore((s) => s.starting);
@@ -24,15 +26,15 @@ export function ReviewStep() {
           gap: 14,
         }}
       >
-        <Card title="Резюме" subtitle="То что попадёт в Cue">
-          <DataRow k="Имя" v={parsedCV.name} />
-          <DataRow k="Текущая роль" v={parsedCV.currentRole} />
+        <Card title={t('cue.prep.review.cv_title')} subtitle={t('cue.prep.review.cv_subtitle')}>
+          <DataRow k={t('cue.prep.cv.field.name')} v={parsedCV.name} />
+          <DataRow k={t('cue.prep.cv.field.current_role')} v={parsedCV.currentRole} />
           <DataRow
-            k="Опыт"
-            v={parsedCV.experienceYears > 0 ? `${parsedCV.experienceYears} лет` : ''}
+            k={t('cue.prep.cv.field.experience')}
+            v={parsedCV.experienceYears > 0 ? t('cue.prep.cv.field.experience_years', { n: parsedCV.experienceYears }) : ''}
           />
-          <DataRow k="Топ-навыки" v={parsedCV.topSkills.join(' · ')} />
-          <DataRow k="Образование" v={parsedCV.education} />
+          <DataRow k={t('cue.prep.cv.field.top_skills')} v={parsedCV.topSkills.join(' · ')} />
+          <DataRow k={t('cue.prep.cv.field.education')} v={parsedCV.education} />
           {parsedCV.summary && (
             <div style={{ marginTop: 8 }}>
               <p style={{ margin: 0, fontSize: 12.5, color: 'var(--d9-ink)', lineHeight: 1.5 }}>
@@ -55,15 +57,15 @@ export function ReviewStep() {
               textUnderlineOffset: 2,
             }}
           >
-            Поправить резюме
+            {t('cue.prep.review.edit_cv')}
           </button>
         </Card>
 
-        <Card title="Вакансия" subtitle="То что попадёт в Cue">
-          <DataRow k="Компания" v={parsedJD.company} />
-          <DataRow k="Роль" v={parsedJD.role} />
-          <DataRow k="Уровень" v={parsedJD.seniority} />
-          <DataRow k="Ключевые навыки" v={parsedJD.keySkills.join(' · ')} />
+        <Card title={t('cue.prep.review.jd_title')} subtitle={t('cue.prep.review.jd_subtitle')}>
+          <DataRow k={t('cue.prep.jd.field.company')} v={parsedJD.company} />
+          <DataRow k={t('cue.prep.jd.field.role')} v={parsedJD.role} />
+          <DataRow k={t('cue.prep.jd.field.seniority')} v={parsedJD.seniority} />
+          <DataRow k={t('cue.prep.jd.field.key_skills')} v={parsedJD.keySkills.join(' · ')} />
           {parsedJD.descriptionSummary && (
             <div style={{ marginTop: 8 }}>
               <p style={{ margin: 0, fontSize: 12.5, color: 'var(--d9-ink)', lineHeight: 1.5 }}>
@@ -86,7 +88,7 @@ export function ReviewStep() {
               textUnderlineOffset: 2,
             }}
           >
-            Поправить вакансию
+            {t('cue.prep.review.edit_jd')}
           </button>
         </Card>
       </div>
@@ -102,7 +104,7 @@ export function ReviewStep() {
           }}
           style={btnPrimary(!starting)}
         >
-          {starting ? 'Запускаю…' : 'Запустить подготовку'}
+          {starting ? t('cue.prep.review.starting') : t('cue.prep.review.start_cta')}
         </button>
         {startError && (
           <span style={{ fontSize: 11.5, color: 'var(--d9-ink-mute)' }}>{startError}</span>
@@ -113,10 +115,11 @@ export function ReviewStep() {
 }
 
 function Intro() {
+  const t = useT();
   return (
     <div>
       <h2 style={{ margin: 0, fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em' }}>
-        Проверь и запусти
+        {t('cue.prep.review.title')}
       </h2>
       <p
         style={{
@@ -127,8 +130,7 @@ function Intro() {
           letterSpacing: '-0.005em',
         }}
       >
-        После запуска Cue будет учитывать эти данные при каждой подсказке —
-        пока вы не закроете режим подготовки.
+        {t('cue.prep.review.body')}
       </p>
     </div>
   );

@@ -4,6 +4,7 @@
 // Settings PUT body but is consumed only by the new column write
 // path on the server.
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from './Button'
 import { ApiError } from '../lib/apiClient'
@@ -13,6 +14,7 @@ import {
 } from '../lib/queries/profile'
 
 export function TutorRoleToggle() {
+  const { t } = useTranslation('tutor')
   const profile = useProfileQuery()
   const update = useUpdateSettingsMutation()
   // Optimistic local state — the server round-trip + cache invalidate
@@ -44,11 +46,10 @@ export function TutorRoleToggle() {
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="font-display text-base font-bold leading-tight">
-            Режим тутора
+            {t('role_toggle.title')}
           </h2>
           <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
-            Включает дашборд тутора с подопечными, ассайнментами, сессиями
-            и reading paths. Не требует подтверждения. Бесплатно.
+            {t('role_toggle.body')}
           </p>
         </div>
         <span
@@ -71,16 +72,16 @@ export function TutorRoleToggle() {
           disabled={update.isPending}
         >
           {update.isPending
-            ? 'Сохраняем…'
+            ? t('role_toggle.saving')
             : enabled
-              ? 'Выключить режим тутора'
-              : 'Стать тутором'}
+              ? t('role_toggle.btn_disable')
+              : t('role_toggle.btn_enable')}
         </Button>
         {update.isError && (
           <span className="text-[12px] text-warn">
             {update.error instanceof ApiError
               ? update.error.body
-              : 'Не получилось сохранить'}
+              : t('role_toggle.save_failed')}
           </span>
         )}
         {enabled && (
@@ -88,7 +89,7 @@ export function TutorRoleToggle() {
             href="/tutor"
             className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary hover:text-text-primary"
           >
-            открыть дашборд →
+            {t('role_toggle.open_dashboard')}
           </a>
         )}
       </div>

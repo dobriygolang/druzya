@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import { IconButton } from '../../../components/d9';
 import { useInterviewPrepStore } from '../../../stores/interview-prep';
 import { useSessionStore } from '../../../stores/session';
@@ -22,6 +23,7 @@ import { truncate } from '../lib/markdown';
  * list. Keeping the badge simple avoids a second picker-panel to own.
  */
 export function InterviewPrepChip() {
+  const t = useT();
   // C6 (Phase J) — Interview-prep entry point. Two visual states:
   //   1. No active prep → "Prep" pill in muted hairline, click opens
   //      the wizard.
@@ -36,11 +38,12 @@ export function InterviewPrepChip() {
   }, [bootstrap]);
 
   const label = active.active
-    ? active.role || active.company || 'Prep'
-    : 'Prep';
+    ? active.role || active.company || t('cue.expanded.prep.label_default')
+    : t('cue.expanded.prep.label_default');
+  const summary = [active.company, active.role].filter(Boolean).join(' · ') || t('cue.expanded.prep.title_active_loaded');
   const title = active.active
-    ? `Active prep · ${[active.company, active.role].filter(Boolean).join(' · ') || 'CV+JD загружены'}. Клик: открыть мастер.`
-    : 'Подготовка к интервью — загрузи CV+JD до встречи';
+    ? t('cue.expanded.prep.title_active_prefix', { summary })
+    : t('cue.expanded.prep.title_idle');
   return (
     <button
       type="button"
@@ -63,21 +66,26 @@ export function InterviewPrepChip() {
         textOverflow: 'ellipsis',
       }}
     >
-      {active.active ? 'Prep · ' : 'Prep'}{active.active ? truncate(label, 14) : ''}
+      {active.active ? `${t('cue.expanded.prep.label_default')} · ` : t('cue.expanded.prep.label_default')}{active.active ? truncate(label, 14) : ''}
     </button>
   );
 }
 
 export function AttachedDocsBadge() {
+  const t = useT();
   const current = useSessionStore((s) => s.current);
   const attached = useSessionStore((s) => s.attachedDocIds);
   if (!current || current.finishedAt || attached.length === 0) return null;
-  const plural = attached.length === 1 ? 'документ' : attached.length < 5 ? 'документа' : 'документов';
+  const plural = attached.length === 1
+    ? t('cue.expanded.docs.attached_doc_one')
+    : attached.length < 5
+      ? t('cue.expanded.docs.attached_doc_few')
+      : t('cue.expanded.docs.attached_doc_many');
   return (
     <button
       type="button"
       onClick={() => void window.druz9.windows.show('settings')}
-      title={`Copilot учитывает ${attached.length} ${plural} в контексте. Открыть Настройки → Документы.`}
+      title={t('cue.expanded.docs.attached_title', { count: attached.length, plural })}
       style={{
         padding: '4px 10px',
         marginRight: 4,
@@ -144,6 +152,7 @@ export function ChatActionsOverflow({
   hasSummary: boolean;
   onOpenSummary: () => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -211,7 +220,7 @@ export function ChatActionsOverflow({
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <IconButton
-        title="Дополнительные действия"
+        title={t('cue.expanded.actions.overflow_title')}
         onClick={() => setOpen((s) => !s)}
         ariaHaspopup="menu"
         ariaExpanded={open}
@@ -238,15 +247,15 @@ export function ChatActionsOverflow({
         >
           {hasSummary && (
             <OverflowItem
-              label="Открыть Summary"
+              label={t('cue.expanded.actions.open_summary')}
               onClick={() => {
                 setOpen(false);
                 onOpenSummary();
               }}
             />
           )}
-          {hasMessages && <OverflowItem label="Сохранить в Hone" onClick={onSaveToHone} />}
-          {hasMessages && <OverflowItem label="Экспорт в Markdown" onClick={onExport} />}
+          {hasMessages && <OverflowItem label={t('cue.expanded.actions.save_to_hone')} onClick={onSaveToHone} />}
+          {hasMessages && <OverflowItem label={t('cue.expanded.actions.export_md')} onClick={onExport} />}
         </div>
       )}
     </div>

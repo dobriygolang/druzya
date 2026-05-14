@@ -187,7 +187,7 @@ export function EmptyState(props: EmptyStateProps) {
             <CtaButton
               cta={
                 props.variant === 'throttled' && remaining > 0
-                  ? { ...props.cta, label: `${props.cta.label} · ${remaining}с` }
+                  ? { ...props.cta, label: `${props.cta.label} · ${remaining}${t('throttled.seconds_short')}` }
                   : props.cta
               }
               primary

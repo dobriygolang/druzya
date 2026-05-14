@@ -4,6 +4,8 @@
 
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import i18n from '../lib/i18n'
 
 import { CueLogModal } from './CueLogModal'
 import { useCueSessions } from '../lib/useCueSessions'
@@ -21,6 +23,7 @@ const STAGE_LABEL: Record<CueSessionStage, string> = {
 const LIMIT_DEFAULT = 3
 
 export function CueSessionsSection() {
+  const { t } = useTranslation('wave14')
   const sessions = useCueSessions()
   const [logOpen, setLogOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
@@ -36,7 +39,7 @@ export function CueSessionsSection() {
           </span>
           <h2 className="font-display text-base font-bold leading-tight">
             {sessions.length === 0
-              ? 'Журнал пуст'
+              ? t('cue_sessions.empty_journal')
               : `${sessions.length} ${pluralSessions(sessions.length)}`}
           </h2>
         </div>
@@ -52,9 +55,7 @@ export function CueSessionsSection() {
 
       {sessions.length === 0 ? (
         <p className="text-[12.5px] italic text-text-muted">
-          Лог Cue session помогает coach помнить interview/practice context. После каждого
-          собеса / mock — короткая запись (компания · стадии · self-rating) даёт AI
-          честные сигналы куда подтянуть.
+          {t('cue_sessions.log_helps_coach')}
         </p>
       ) : (
         <ul className="flex flex-col divide-y divide-border">
@@ -70,7 +71,7 @@ export function CueSessionsSection() {
           onClick={() => setShowAll((v) => !v)}
           className="self-start font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
         >
-          {showAll ? `Свернуть · показано ${sessions.length}` : `Показать все ${sessions.length} →`}
+          {showAll ? `${t('cue_sessions.collapse_shown')} ${sessions.length}` : `${t('cue_sessions.show_all')} ${sessions.length} →`}
         </button>
       )}
 
@@ -80,6 +81,7 @@ export function CueSessionsSection() {
 }
 
 function SessionRow({ session }: { session: CueSession }) {
+  const { t } = useTranslation('wave14')
   const lowRatingStages = session.stages.filter(
     (s) => s.selfRating !== undefined && s.selfRating <= 2,
   )
@@ -98,7 +100,7 @@ function SessionRow({ session }: { session: CueSession }) {
             <span
               className="rounded-sm border border-border px-1 py-px font-mono text-[9px] uppercase tracking-[0.1em]"
               style={{ color: '#FF3B30', borderColor: 'rgba(255,59,48,0.4)' }}
-              title="Self-rating ≤ 2 на этой стадии"
+              title={t('cue_sessions.low_rating_warning')}
             >
               weak {lowRatingStages.length}
             </span>
@@ -137,8 +139,8 @@ function SessionRow({ session }: { session: CueSession }) {
       <button
         type="button"
         onClick={() => deleteCueSession(session.id)}
-        aria-label="Удалить запись"
-        title="Удалить"
+        aria-label={t('cue_sessions.delete_entry')}
+        title={t('cue_sessions.delete')}
         className="shrink-0 rounded-md p-1 text-text-muted opacity-50 transition-opacity hover:bg-surface-2 hover:text-text-primary hover:opacity-100"
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -148,18 +150,18 @@ function SessionRow({ session }: { session: CueSession }) {
 }
 
 function pluralSessions(n: number): string {
-  if (n === 1) return 'сессия'
-  if (n >= 2 && n <= 4) return 'сессии'
-  return 'сессий'
+  if (n === 1) return i18n.t('cue_sessions.session', { ns: 'wave14' })
+  if (n >= 2 && n <= 4) return i18n.t('cue_sessions.sessions_few', { ns: 'wave14' })
+  return i18n.t('cue_sessions.sessions_many', { ns: 'wave14' })
 }
 
 function formatAgo(ms: number): string {
   const diff = Date.now() - ms
   const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins} мин`
+  if (mins < 60) return `${mins} ${i18n.t('cue_sessions.min', { ns: 'wave14' })}`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}ч`
+  if (hrs < 24) return `${hrs}${i18n.t('cue_sessions.h', { ns: 'wave14' })}`
   const days = Math.floor(hrs / 24)
-  if (days <= 6) return `${days}д`
+  if (days <= 6) return `${days}${i18n.t('cue_sessions.d', { ns: 'wave14' })}`
   return new Date(ms).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }

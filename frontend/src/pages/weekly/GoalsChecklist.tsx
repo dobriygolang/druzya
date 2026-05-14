@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Check, Plus, X } from 'lucide-react'
 
 // ============================================================================
@@ -8,6 +9,7 @@ import { Check, Plus, X } from 'lucide-react'
 type Goal = { id: string; text: string; done: boolean }
 
 export function GoalsChecklist({ weekISO }: { weekISO: string }) {
+  const { t } = useTranslation('wave14')
   const storageKey = `druz9.weekly.goals.${weekISO}`
   const [goals, setGoals] = useState<Goal[]>([])
   const [draft, setDraft] = useState('')
@@ -57,7 +59,7 @@ export function GoalsChecklist({ weekISO }: { weekISO: string }) {
   return (
     <section className="flex flex-col gap-4 rounded-2xl bg-surface-2 p-5 sm:p-7">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-bold text-text-primary">Цели на следующую неделю</h2>
+        <h2 className="font-display text-lg font-bold text-text-primary">{t('weekly_extra.goals_next_week')}</h2>
         <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">{goals.length}/5</span>
       </div>
       <div className="flex flex-col gap-2">
@@ -72,7 +74,7 @@ export function GoalsChecklist({ weekISO }: { weekISO: string }) {
               className={`grid h-5 w-5 place-items-center rounded border transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] ${
                 g.done ? 'border-border-strong bg-text-primary/10' : 'border-border bg-transparent'
               }`}
-              aria-label={g.done ? 'Снять отметку' : 'Отметить выполненной'}
+              aria-label={g.done ? t('weekly_extra.uncheck') : t('weekly_extra.check_done')}
             >
               {g.done && <Check className="h-3 w-3 text-text-primary" />}
             </button>
@@ -92,14 +94,14 @@ export function GoalsChecklist({ weekISO }: { weekISO: string }) {
               onMouseLeave={(e) => {
                 e.currentTarget.style.color = ''
               }}
-              aria-label="Удалить"
+              aria-label={t('weekly_extra.delete')}
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}
         {goals.length === 0 && (
-          <span className="text-[12px] text-text-muted">Добавь до 5 целей — они сохранятся локально.</span>
+          <span className="text-[12px] text-text-muted">{t('weekly_extra.goals_hint')}</span>
         )}
       </div>
       {goals.length < 5 && (
@@ -114,7 +116,7 @@ export function GoalsChecklist({ weekISO }: { weekISO: string }) {
                 add()
               }
             }}
-            placeholder="Например: 5 LeetCode medium"
+            placeholder={t('weekly_extra.goal_placeholder')}
             maxLength={100}
             className="flex-1 border-0 border-b border-solid bg-transparent px-1 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] focus:outline-none"
             style={{ borderBottomColor: 'var(--hair-2)' }}
@@ -130,7 +132,7 @@ export function GoalsChecklist({ weekISO }: { weekISO: string }) {
             onClick={add}
             disabled={!canAdd}
             className="grid h-9 w-9 place-items-center rounded-lg bg-text-primary text-bg transition-opacity duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Добавить цель"
+            aria-label={t('weekly_extra.add_goal')}
           >
             <Plus className="h-4 w-4" />
           </button>

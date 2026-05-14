@@ -21,6 +21,7 @@
 // 1..5 score, AlertCircle for unavailable, no colored gradients.
 
 import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import {
   AlertCircle,
@@ -74,6 +75,7 @@ export function CodingStage({
   stage: PipelineStage
   pipelineId: string
 }) {
+  const { t } = useTranslation('wave14')
   const finishStage = useFinishStageMutation(pipelineId)
   const attempts = useMemo(() => stage.attempts ?? [], [stage.attempts])
   const solveAttempt = useMemo(
@@ -89,10 +91,7 @@ export function CodingStage({
       <Card variant="default" padding="lg" className="text-sm text-text-secondary">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4" style={{ color: 'var(--red)' }} />
-          <span>
-            Для этого этапа ещё не настроены задачи в пуле компании. Попроси админа
-            добавить mock_task через /admin → Mock Tasks.
-          </span>
+          <span>{t('mock_stage.no_coding_task')}</span>
         </div>
       </Card>
     )
@@ -101,7 +100,7 @@ export function CodingStage({
     return (
       <Card variant="default" padding="lg" className="text-sm text-text-secondary">
         <AlertCircle className="h-4 w-4 inline mr-2" style={{ color: 'var(--red)' }} />
-        В пайплайне нет task_solve attempt'а для Coding стадии.
+        {t('mock_stage.no_attempt')}
       </Card>
     )
   }
@@ -112,7 +111,7 @@ export function CodingStage({
       <div className="flex items-center justify-end gap-3 pt-2">
         {!allJudged && (
           <span className="text-xs text-text-secondary">
-            Дождись AI-оценки решения
+            {t('mock_stage.wait_coding_grading')}
           </span>
         )}
         <Button
@@ -123,7 +122,7 @@ export function CodingStage({
           disabled={!allJudged || finishStage.isPending}
           loading={finishStage.isPending}
         >
-          Завершить этап
+          {t('mock_stage.finish_stage')}
         </Button>
       </div>
     </div>
@@ -139,6 +138,7 @@ function CodingTaskPanel({
   attempt: PipelineAttempt
   pipelineId: string
 }) {
+  const { t } = useTranslation('wave14')
   const isAnswered = !!(attempt.user_answer_md && attempt.user_answer_md.length > 0)
   const isJudging = isAnswered && attempt.ai_verdict === 'pending'
   const isJudged = isAnswered && attempt.ai_verdict !== 'pending'
@@ -200,7 +200,7 @@ function CodingTaskPanel({
               disabled={runCoding.isPending || submit.isPending}
             />
             <span className="font-mono text-[10px] text-text-secondary">
-              {code.split('\n').length} строк · {code.length} символов
+              {code.split('\n').length} {t('mock_stage.lines_count')} {code.length} {t('mock_stage.char_count')}
             </span>
           </div>
           <div className="min-h-[440px]">
@@ -251,7 +251,7 @@ function CodingTaskPanel({
       ) : (
         <Card variant="default" padding="lg" className="flex flex-col gap-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-            Решение отправлено
+            {t('mock_stage.solution_sent')}
           </div>
           <pre className="text-sm text-text-primary whitespace-pre-wrap font-mono overflow-x-auto">
             {attempt.user_answer_md}
@@ -271,7 +271,7 @@ function CodingTaskPanel({
       {isJudging && (
         <Card variant="default" padding="md" className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
-          <span className="text-sm text-text-secondary">AI оценивает решение…</span>
+          <span className="text-sm text-text-secondary">{t('mock_stage.ai_grading_solution')}</span>
         </Card>
       )}
 
@@ -283,6 +283,7 @@ function CodingTaskPanel({
 // ── ProblemBrief ────────────────────────────────────────────────────────
 
 function ProblemBrief({ attempt }: { attempt: PipelineAttempt }) {
+  const { t } = useTranslation('wave14')
   const mustMention = attempt.reference_criteria?.must_mention ?? []
   const niceToHave = attempt.reference_criteria?.nice_to_have ?? []
 
@@ -290,7 +291,7 @@ function ProblemBrief({ attempt }: { attempt: PipelineAttempt }) {
     <Card variant="default" padding="lg" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          Задача
+          {t('mock_stage.task_label')}
         </span>
         {attempt.task_functional_requirements_md && (
           <span className="rounded-full border border-border-strong bg-surface-2 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
@@ -304,7 +305,7 @@ function ProblemBrief({ attempt }: { attempt: PipelineAttempt }) {
       {attempt.task_functional_requirements_md && (
         <div className="rounded-md border border-border bg-surface-1 p-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
-            Функциональные требования
+            {t('mock_stage.functional_req')}
           </div>
           <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
             {attempt.task_functional_requirements_md}
@@ -354,11 +355,12 @@ function RubricVerdictPanel({
   isLoading: boolean
   error: unknown
 }) {
+  const { t } = useTranslation('wave14')
   if (isLoading) {
     return (
       <Card variant="default" padding="md" className="flex items-center gap-2">
         <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
-        <span className="text-sm text-text-secondary">AI оценивает rubric…</span>
+        <span className="text-sm text-text-secondary">{t('mock_stage.ai_grading_rubric')}</span>
       </Card>
     )
   }
@@ -380,11 +382,10 @@ function RubricVerdictPanel({
     return (
       <Card variant="default" padding="md" className="text-sm text-text-secondary">
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] mb-1">
-          Rubric ещё не запускался
+          {t('mock_stage.rubric_empty')}
         </div>
         <p className="text-xs">
-          Напиши решение и нажми <span className="font-mono">Get rubric</span> — LLM
-          даст breakdown по 5 critic'ам. Финальная оценка — <span className="font-mono">Submit</span>.
+          {t('mock_stage.rubric_hint_pre')} <span className="font-mono">Get rubric</span> {t('mock_stage.rubric_hint_post')}
         </p>
       </Card>
     )
@@ -396,11 +397,11 @@ function RubricVerdictPanel({
         <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: 'var(--red)' }} />
         <div className="flex flex-col gap-1">
           <span className="font-display text-sm font-bold text-text-primary">
-            Оценка временно недоступна
+            {t('mock_stage.grade_error')}
           </span>
           <span className="text-xs text-text-secondary">
-            LLM не ответил — попробуй ещё раз. Можно сразу{' '}
-            <span className="font-mono">Submit</span> — финальный judge запустится в SubmitAnswer.
+            {t('mock_stage.grade_error_body')}{' '}
+            <span className="font-mono">Submit</span> {t('mock_stage.grade_error_hint')}
           </span>
         </div>
       </Card>
@@ -471,6 +472,7 @@ function RubricVerdictPanel({
 // ── SubmitVerdictPanel — post-submit final verdict ──────────────────────
 
 function SubmitVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
+  const { t } = useTranslation('wave14')
   const v = attempt.ai_verdict
   const passed = v === 'pass'
   const Icon = passed ? CheckCircle2 : XCircle
@@ -500,7 +502,7 @@ function SubmitVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
       {attempt.ai_missing_points.length > 0 && (
         <>
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-            Что упустил
+            {t('mock_stage.missed')}
           </div>
           <ul className="list-disc list-inside text-xs text-text-secondary space-y-0.5">
             {attempt.ai_missing_points.map((m, i) => (

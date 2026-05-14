@@ -25,5 +25,8 @@
     "section_failed": "{{section}} упала",
     "unknown_error": "Неизвестная ошибка",
     "retry": "Перезагрузить секцию"
+  },
+  "voice": {
+    "stt_unsupported": "Web Speech API недоступен в этом браузере"
   }
 }

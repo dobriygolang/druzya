@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import {
   IconCheck,
   IconKey,
@@ -48,32 +49,38 @@ interface PermDescriptor {
   preview: React.ReactNode;
 }
 
-const PERMISSIONS: ReadonlyArray<PermDescriptor> = [
-  {
-    kind: 'screen-recording',
-    title: 'Запись экрана',
-    why: 'Чтобы видеть код собеседника и задачу на экране — для скриншот-вопросов и live-чтения IDE.',
-    icon: <IconShield size={18} />,
-    required: true,
-    preview: <ScreenshotPreview />,
-  },
-  {
-    kind: 'microphone',
-    title: 'Микрофон',
-    why: 'Чтобы слышать ваш голос и собеседника — для live-транскрипта и auto-suggest на встречах.',
-    icon: <IconMic size={18} />,
-    required: false,
-    preview: <MicPreview />,
-  },
-  {
-    kind: 'accessibility',
-    title: 'Универсальный доступ',
-    why: 'Чтобы глобальные хоткеи ⌘⇧Space / ⌘⇧S работали поверх IDE, Zoom и любого приложения.',
-    icon: <IconKey size={18} />,
-    required: true,
-    preview: <HotkeyPreview />,
-  },
-];
+function usePermissions(): ReadonlyArray<PermDescriptor> {
+  const t = useT();
+  return useMemo<ReadonlyArray<PermDescriptor>>(
+    () => [
+      {
+        kind: 'screen-recording',
+        title: t('cue.onboarding.permissions.screen.title'),
+        why: t('cue.onboarding.permissions.screen.why'),
+        icon: <IconShield size={18} />,
+        required: true,
+        preview: <ScreenshotPreview />,
+      },
+      {
+        kind: 'microphone',
+        title: t('cue.onboarding.permissions.mic.title'),
+        why: t('cue.onboarding.permissions.mic.why'),
+        icon: <IconMic size={18} />,
+        required: false,
+        preview: <MicPreview />,
+      },
+      {
+        kind: 'accessibility',
+        title: t('cue.onboarding.permissions.a11y.title'),
+        why: t('cue.onboarding.permissions.a11y.why'),
+        icon: <IconKey size={18} />,
+        required: true,
+        preview: <HotkeyPreview />,
+      },
+    ],
+    [t],
+  );
+}
 
 interface Props {
   onNext: () => void;
@@ -81,6 +88,8 @@ interface Props {
 }
 
 export function PermissionsScreen({ onNext, onBack }: Props) {
+  const t = useT();
+  const PERMISSIONS = usePermissions();
   const [perms, setPerms] = useState<PermissionState | null>(null);
   const [granting, setGranting] = useState(false);
 
@@ -198,7 +207,7 @@ export function PermissionsScreen({ onNext, onBack }: Props) {
             color: 'var(--d9-ink)',
           }}
         >
-          Доступы macOS
+          {t('cue.onboarding.permissions.title')}
         </h2>
         <p
           style={{
@@ -209,8 +218,7 @@ export function PermissionsScreen({ onNext, onBack }: Props) {
             letterSpacing: '-0.005em',
           }}
         >
-          Объясняем заранее, зачем каждое разрешение. Нажми «Разрешить
-          доступы» — macOS покажет системные диалоги по очереди.
+          {t('cue.onboarding.permissions.body')}
         </p>
       </header>
 
@@ -265,10 +273,9 @@ export function PermissionsScreen({ onNext, onBack }: Props) {
           />
           <span>
             <b style={{ color: 'var(--d9-ink)' }}>
-              Macy отказал в системном диалоге?
+              {t('cue.onboarding.permissions.denied_banner_title')}
             </b>{' '}
-            macOS никогда не покажет этот диалог снова — открой Системные
-            настройки и включи Cue вручную в каждом разделе.
+            {t('cue.onboarding.permissions.denied_banner_body')}
           </span>
         </div>
       )}
@@ -284,7 +291,7 @@ export function PermissionsScreen({ onNext, onBack }: Props) {
         }}
       >
         <Button variant="ghost" size="sm" onClick={onBack}>
-          Назад
+          {t('cue.prep.footer.back').replace('← ', '')}
         </Button>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -302,14 +309,14 @@ export function PermissionsScreen({ onNext, onBack }: Props) {
               cursor: 'pointer',
               padding: '6px 4px',
             }}
-            title="Можно выдать позже через Настройки → Доступы macOS"
+            title={t('cue.onboarding.permissions.later_title')}
           >
-            позже
+            {t('cue.onboarding.permissions.cta.later')}
           </button>
 
           {allGranted ? (
             <Button variant="primary" size="md" onClick={onNext}>
-              Далее
+              {t('cue.onboarding.permissions.cta.next')}
             </Button>
           ) : (
             <Button
@@ -318,7 +325,9 @@ export function PermissionsScreen({ onNext, onBack }: Props) {
               onClick={() => void grantAll()}
               disabled={granting}
             >
-              {granting ? 'Запрашиваем…' : 'Разрешить доступы'}
+              {granting
+                ? t('cue.onboarding.permissions.cta.requesting')
+                : t('cue.onboarding.permissions.cta.grant')}
             </Button>
           )}
         </div>
@@ -341,6 +350,7 @@ function PermissionCard({
   status: PermStatus;
   onReopenSettings: () => void;
 }) {
+  const t = useT();
   const granted = status === 'granted';
   const denied = status === 'denied';
 
@@ -408,7 +418,7 @@ function PermissionCard({
                 textTransform: 'uppercase',
               }}
             >
-              опционально
+              {t('cue.onboarding.permissions.optional')}
             </span>
           )}
           {granted && (
@@ -421,7 +431,7 @@ function PermissionCard({
                 textTransform: 'uppercase',
               }}
             >
-              разрешено
+              {t('cue.onboarding.permissions.granted')}
             </span>
           )}
         </div>
@@ -455,7 +465,7 @@ function PermissionCard({
               cursor: 'pointer',
             }}
           >
-            ↗ Открыть Системные настройки
+            {t('cue.onboarding.permissions.open_settings')}
           </button>
         )}
       </div>

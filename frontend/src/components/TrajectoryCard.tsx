@@ -51,21 +51,22 @@ export function TrajectoryCard() {
     )
   }
 
-  const isDeclining = trend.verdict === 'просел'
+  const isDeclining = trend.verdict === 'drop'
   const TrendIcon =
     trend.weekDelta > 2 ? TrendingUp : trend.weekDelta < -2 ? TrendingDown : Minus
   const verdictColor =
-    trend.verdict === 'на подъёме' || trend.verdict === 'строит привычку'
+    trend.verdict === 'rising' || trend.verdict === 'habit'
       ? 'text-text-primary'
-      : trend.verdict === 'просел'
+      : trend.verdict === 'drop'
         ? 'text-text-secondary'
         : 'text-text-muted'
 
   const verdictLabel =
-    trend.verdict === 'на подъёме' ? t('trajectory_card.verdict_rising')
-    : trend.verdict === 'строит привычку' ? t('trajectory_card.verdict_habit')
-    : trend.verdict === 'просел' ? t('trajectory_card.verdict_drop')
-    : trend.verdict
+    trend.verdict === 'rising' ? t('trajectory_card.verdict_rising')
+    : trend.verdict === 'habit' ? t('trajectory_card.verdict_habit')
+    : trend.verdict === 'drop' ? t('trajectory_card.verdict_drop')
+    : trend.verdict === 'steady' ? t('trajectory_card.verdict_steady')
+    : t('trajectory_card.verdict_silence')
 
   const values = trend.daily30.map((b) => b.count)
   const peak = Math.max(...values)

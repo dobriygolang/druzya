@@ -37,6 +37,9 @@
     },
     "back": "Назад"
   },
+  "throttled": {
+    "seconds_short": "с"
+  },
   "mobileNav": {
     "match": "mock",
     "matchAria": "запустить mock",

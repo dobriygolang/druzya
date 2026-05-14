@@ -4,9 +4,11 @@
 //     ran sliding-window compaction
 //   - ContextMeter: footer mini-meter (used / threshold)
 
+import { useT } from '@d9-i18n';
 import { StatusDot } from '../../../components/d9';
 
 export function ThinkingIndicator() {
+  const t = useT();
   return (
     <div
       style={{
@@ -19,7 +21,7 @@ export function ThinkingIndicator() {
       }}
     >
       <StatusDot state="thinking" size={6} />
-      <span style={{ letterSpacing: '-0.005em' }}>думаю…</span>
+      <span style={{ letterSpacing: '-0.005em' }}>{t('cue.expanded.thinking_label')}</span>
     </div>
   );
 }
@@ -37,6 +39,7 @@ export function ThinkingIndicator() {
  * прогресс и ghost-message при триггере компакции.
  */
 export function ContextMeter({ ctx }: { ctx: { messagesInWindow: number; messagesTotal: number; compactionThreshold: number; runningSummaryChars: number } }) {
+  const t = useT();
   const total = Math.max(0, ctx.messagesTotal);
   const threshold = Math.max(1, ctx.compactionThreshold);
   const pct = Math.min(100, Math.round((total / threshold) * 100));
@@ -47,10 +50,12 @@ export function ContextMeter({ ctx }: { ctx: { messagesInWindow: number; message
       ? 'var(--d9-accent-hi)'
       : 'var(--d9-ink-ghost)';
   const tooltip = [
-    `Контекст: ${total} turns`,
-    `В LLM сейчас: ${ctx.messagesInWindow}`,
-    `Порог компакции: ${threshold}`,
-    ctx.runningSummaryChars > 0 ? `Summary: ${ctx.runningSummaryChars} симв.` : 'Summary пуст',
+    t('cue.expanded.context.title_prefix', { total }),
+    t('cue.expanded.context.in_llm', { count: ctx.messagesInWindow }),
+    t('cue.expanded.context.threshold', { threshold }),
+    ctx.runningSummaryChars > 0
+      ? t('cue.expanded.context.summary_chars', { chars: ctx.runningSummaryChars })
+      : t('cue.expanded.context.summary_empty'),
   ].join('\n');
   return (
     <span
@@ -98,6 +103,7 @@ export function ContextMeter({ ctx }: { ctx: { messagesInWindow: number; message
  * gated через `Date.now() - compactionNoticeAt < 10_000`).
  */
 export function CompactionGhostNotice() {
+  const t = useT();
   return (
     <div
       style={{
@@ -117,8 +123,7 @@ export function CompactionGhostNotice() {
     >
       <span aria-hidden>📜</span>
       <span>
-        Старые сообщения сжаты в summary. AI продолжает диалог с учётом
-        ключевых моментов из истории.
+        {t('cue.expanded.compaction_notice')}
       </span>
     </div>
   );

@@ -4,8 +4,9 @@
 // passes through change callbacks. Pure presentation otherwise.
 
 import { Search } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/Button'
-import { CATEGORIES, STATUS_FILTERS, type NodeState } from './AtlasCanvasLegacy'
+import { CATEGORIES, getStatusFilters, type NodeState } from './AtlasCanvasLegacy'
 
 export type AtlasFiltersProps = {
   query: string
@@ -24,6 +25,8 @@ export function AtlasFilters({
   status,
   setStatus,
 }: AtlasFiltersProps) {
+  const { t } = useTranslation('atlas')
+  const STATUS_FILTERS = getStatusFilters()
   return (
     <div className="flex flex-col gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-8 lg:px-20">
       <div className="flex items-center gap-2">
@@ -33,7 +36,7 @@ export function AtlasFilters({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по названию навыка…"
+            placeholder={t('filters.search_placeholder')}
             className="h-9 w-full bg-transparent pl-7 pr-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
             style={{
               border: 'none',
@@ -59,7 +62,7 @@ export function AtlasFilters({
               setStatus('all')
             }}
           >
-            Сбросить
+            {t('filters.reset')}
           </Button>
         )}
       </div>
@@ -67,7 +70,7 @@ export function AtlasFilters({
         <FilterChip
           active={category === 'all'}
           onClick={() => setCategory('all')}
-          label="Все категории"
+          label={t('filters.all_categories')}
         />
         {CATEGORIES.map((c) => (
           <FilterChip

@@ -75,7 +75,7 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
       return;
     }
     if (duration < 1 || duration > 600) {
-      setError('Duration должен быть от 1 до 600 минут.');
+      setError(t('hone.external.err.duration_range'));
       return;
     }
     setBusy(true);
@@ -103,7 +103,7 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
     <Modal open={open} onClose={close} size="md">
       <header style={headerStyle}>
         <span className="mono" style={titleStyle}>
-          + ВНЕШНЕЕ ЗАНЯТИЕ
+          {t('hone.external.header')}
         </span>
       </header>
       <form onSubmit={onSubmit} style={{ paddingTop: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -214,7 +214,7 @@ export function ExternalActivityModal({ onClose, onSaved }: Props) {
             className="mono focus-ring motion-press"
             style={secondaryBtnStyle}
           >
-            Отмена
+            {t('hone.external.cta.cancel')}
           </button>
           <button
             type="submit"

@@ -68,12 +68,11 @@ export class ErrorBoundary extends Component<Props, State> {
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-primary">
               {i18n.t('errors:boundary.section_failed', {
                 section: this.props.section ?? i18n.t('errors:boundary.default_section'),
-                defaultValue: `${this.props.section ?? 'Секция'} упала`,
               })}
             </span>
           </div>
           <p className="text-[12.5px] leading-relaxed text-text-secondary">
-            {this.state.error.message || i18n.t('errors:boundary.unknown_error', { defaultValue: 'Неизвестная ошибка' })}
+            {this.state.error.message || i18n.t('errors:boundary.unknown_error')}
           </p>
           <button
             type="button"
@@ -81,7 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
             className="inline-flex items-center gap-1.5 self-start rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[12px] font-semibold text-text-primary transition-colors hover:border-border-strong"
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            {i18n.t('errors:boundary.retry', { defaultValue: 'Перезагрузить секцию' })}
+            {i18n.t('errors:boundary.retry')}
           </button>
         </section>
       )

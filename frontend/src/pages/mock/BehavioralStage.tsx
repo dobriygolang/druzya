@@ -20,6 +20,7 @@
 //     и textarea остаётся primary input'ом.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   AlertCircle,
   ArrowRight,
@@ -50,6 +51,7 @@ export function BehavioralStage({
   stage: PipelineStage
   pipelineId: string
 }) {
+  const { t } = useTranslation('wave14')
   const finishStage = useFinishStageMutation(pipelineId)
   const attempts = stage.attempts ?? []
   const allJudged = attempts.every((a) => a.ai_verdict !== 'pending')
@@ -59,10 +61,7 @@ export function BehavioralStage({
       <Card variant="default" padding="lg" className="text-sm text-text-secondary">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4" style={{ color: 'var(--red)' }} />
-          <span>
-            Для этого этапа ещё не настроены behavioral-вопросы. Попроси админа
-            залить default_questions / company_questions.
-          </span>
+          <span>{t('mock_stage.no_questions')}</span>
         </div>
       </Card>
     )
@@ -81,7 +80,7 @@ export function BehavioralStage({
       <div className="flex items-center justify-end gap-3 pt-2">
         {!allJudged && (
           <span className="text-xs text-text-secondary">
-            Дождись AI-оценки всех ответов
+            {t('mock_stage.wait_grading')}
           </span>
         )}
         <Button
@@ -92,7 +91,7 @@ export function BehavioralStage({
           disabled={!allJudged || finishStage.isPending}
           loading={finishStage.isPending}
         >
-          Завершить этап
+          {t('mock_stage.finish_stage')}
         </Button>
       </div>
     </div>
@@ -110,6 +109,7 @@ function BehavioralQuestionCard({
   pipelineId: string
   ordinal: number
 }) {
+  const { t } = useTranslation('wave14')
   const submit = useSubmitAnswerMutation(pipelineId)
   const runRubric = useRunBehavioralMutation()
   const [draft, setDraft] = useState<string>('')
@@ -200,8 +200,8 @@ function BehavioralQuestionCard({
             disabled={submit.isPending || runRubric.isPending}
             placeholder={
               voice.supported
-                ? 'Расскажи кейс по STAR — нажми «Записать ответ» или печатай вручную…'
-                : 'Расскажи кейс по STAR: Situation → Task → Action → Result…'
+                ? t('mock_stage.recordable_hint')
+                : t('mock_stage.behavioral_hint')
             }
             className="w-full resize-y border-0 border-b border-solid bg-transparent p-2 text-sm text-text-primary placeholder:text-text-secondary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] focus:outline-none"
             style={{ borderBottomColor: 'var(--hair-2)' }}
@@ -214,7 +214,7 @@ function BehavioralQuestionCard({
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-mono text-[10px] tracking-[0.08em] text-text-secondary">
-              {draft.length} символов
+              {draft.length} {t('mock_stage.char_count')}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -234,7 +234,7 @@ function BehavioralQuestionCard({
                 disabled={runRubric.isPending || submit.isPending || draft.trim().length === 0}
                 loading={submit.isPending}
               >
-                Отправить
+                {t('mock_stage.send')}
               </Button>
             </div>
           </div>
@@ -243,7 +243,7 @@ function BehavioralQuestionCard({
           {runRubric.isPending && (
             <div className="flex items-center gap-2 text-sm text-text-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>AI разбирает по STAR…</span>
+              <span>{t('mock_stage.ai_analyzing_star')}</span>
             </div>
           )}
           {!runRubric.isPending && rubric && rubric.unavailable && (
@@ -258,7 +258,7 @@ function BehavioralQuestionCard({
                 style={{ color: 'var(--red)' }}
               />
               <span className="text-xs text-text-secondary">
-                Оценка временно недоступна — попробуй ещё раз.
+                {t('mock_stage.grade_unavailable')}
               </span>
             </div>
           )}
@@ -304,7 +304,7 @@ function BehavioralQuestionCard({
         <div className="flex flex-col gap-2">
           <div className="rounded-md border border-border bg-surface-1 p-2">
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-0.5">
-              Твой ответ
+              {t('mock_stage.your_answer')}
             </div>
             <div className="text-sm text-text-primary whitespace-pre-wrap font-mono">
               {attempt.user_answer_md}
@@ -313,7 +313,7 @@ function BehavioralQuestionCard({
           {isJudging && (
             <div className="flex items-center gap-2 text-sm text-text-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>AI оценивает…</span>
+              <span>{t('mock_stage.ai_grading')}</span>
             </div>
           )}
           {isJudged && <SubmitVerdictPanel attempt={attempt} />}
@@ -371,14 +371,12 @@ function VoiceRecorderBar({
   voice: ReturnType<typeof useVoiceRecorder>
   disabled: boolean
 }) {
+  const { t } = useTranslation('wave14')
   if (!voice.supported) {
     return (
       <div className="flex items-start gap-2 rounded-md border border-border bg-surface-1 p-2 text-xs text-text-secondary">
         <MicOff className="h-4 w-4 shrink-0 mt-0.5" />
-        <span>
-          Голосовой ввод не поддерживается в этом браузере (Firefox / Safari
-          ниже 14.1). Можно напечатать ответ в поле ниже.
-        </span>
+        <span>{t('mock_stage.voice_not_supported_short')}</span>
       </div>
     )
   }
@@ -405,9 +403,9 @@ function VoiceRecorderBar({
           <Mic className="h-3.5 w-3.5 text-text-secondary" />
         )}
         <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary tabular-nums">
-          {voice.state === 'idle' && 'Голос'}
-          {isRecording && `Запись · ${elapsed}`}
-          {isPaused && `Пауза · ${elapsed}`}
+          {voice.state === 'idle' && t('mock_stage.voice_label')}
+          {isRecording && `${t('mock_stage.voice_recording')} ${elapsed}`}
+          {isPaused && `${t('mock_stage.voice_paused')} ${elapsed}`}
         </span>
       </div>
 
@@ -420,7 +418,7 @@ function VoiceRecorderBar({
             onClick={voice.start}
             disabled={disabled}
           >
-            Записать ответ
+            {t('mock_stage.record_answer')}
           </Button>
         )}
         {isRecording && (
@@ -432,7 +430,7 @@ function VoiceRecorderBar({
               onClick={voice.pause}
               disabled={disabled}
             >
-              Пауза
+              {t('mock_stage.pause')}
             </Button>
             <Button
               variant="ghost"
@@ -441,7 +439,7 @@ function VoiceRecorderBar({
               onClick={voice.stop}
               disabled={disabled}
             >
-              Стоп
+              {t('mock_stage.stop')}
             </Button>
           </>
         )}
@@ -454,7 +452,7 @@ function VoiceRecorderBar({
               onClick={voice.resume}
               disabled={disabled}
             >
-              Продолжить
+              {t('mock_stage.resume')}
             </Button>
             <Button
               variant="ghost"
@@ -463,7 +461,7 @@ function VoiceRecorderBar({
               onClick={voice.stop}
               disabled={disabled}
             >
-              Стоп
+              {t('mock_stage.stop')}
             </Button>
           </>
         )}
@@ -504,6 +502,7 @@ interface UseVoiceRecorderProps {
 }
 
 function useVoiceRecorder({ onInterim, onFinal }: UseVoiceRecorderProps) {
+  const { t } = useTranslation('wave14')
   const supported = useMemo(() => isSpeechRecognitionSupported(), [])
   const [state, setState] = useState<VoiceState>('idle')
   const [elapsedMs, setElapsedMs] = useState(0)
@@ -575,7 +574,7 @@ function useVoiceRecorder({ onInterim, onFinal }: UseVoiceRecorderProps) {
 
   const start = async () => {
     if (!supported) {
-      setError('Голосовой ввод не поддерживается этим браузером')
+      setError(t('mock_stage.voice_not_supported_long'))
       return
     }
     setError(null)
@@ -619,7 +618,7 @@ function useVoiceRecorder({ onInterim, onFinal }: UseVoiceRecorderProps) {
       rec.onerror = (e: any) => {
         // 'no-speech' / 'aborted' — мягкие, не выводим юзеру.
         if (e.error && e.error !== 'no-speech' && e.error !== 'aborted') {
-          setError(`Ошибка распознавания: ${e.error}`)
+          setError(`${t('mock_stage.recognition_error')} ${e.error}`)
         }
       }
       rec.onend = () => {
@@ -642,7 +641,7 @@ function useVoiceRecorder({ onInterim, onFinal }: UseVoiceRecorderProps) {
       setState('recording')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
-      setError(e?.message ?? 'Не удалось включить микрофон')
+      setError(e?.message ?? t('mock_stage.mic_failed'))
       cleanup()
       setState('idle')
     }

@@ -1,5 +1,8 @@
+/* eslint-disable d9-i18n/no-cyrillic-literals */
 // adminCopilotPlans.ts — read/write copilot plans config через /admin/config
-// (dynamic_config table, key='copilot_plans').
+// (dynamic_config table, key='copilot_plans'). Defaults below are admin-
+// editable values surfaced inside /admin (excluded namespace), so they
+// don't flow through the public-facing i18n pipeline.
 //
 // Backend читает этот же ключ через DynamicConfigProvider.PlanForTier
 // (services/copilot/infra/config.go), там же CopilotPlanConfig schema.

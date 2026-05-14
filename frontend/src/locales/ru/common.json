@@ -40,7 +40,19 @@
     "season": "Период",
     "level": "Узел",
     "xp": "Часы",
-    "lp": "Score"
+    "lp": "Score",
+    "difficulty": {
+      "easy": "Лёгко",
+      "medium": "Средне",
+      "hard": "Сложно"
+    },
+    "section": {
+      "algorithms": "Алгоритмы",
+      "sql": "SQL",
+      "go": "Go",
+      "system_design": "System Design",
+      "behavioral": "Behavioral"
+    }
   },
   "theme": {
     "label": "Тема",
@@ -111,5 +123,90 @@
     "day_short": "дн.",
     "at_risk_title": "{{days}}-day streak · сегодня ещё не log'ал — successive day может прервать",
     "ok_title": "{{days}} {{plural}} подряд · longest за всё время {{longest}}"
+  },
+  "user_menu": {
+    "avatar_initials": "Д"
+  },
+  "install_hone": {
+    "title": "Установи Hone — daily focus",
+    "body": "Тихий desktop-кокпит: AI-план на день, фокус, заметки. Offline-first.",
+    "skip": "Позже",
+    "download_macos": "Скачать для macOS"
+  },
+  "track_filter": {
+    "group_aria": "Фильтр по трекам",
+    "all_label": "Все",
+    "reset_aria": "Сбросить фильтр — показать все треки"
+  },
+  "notifications_bell": {
+    "aria_empty": "Уведомления",
+    "aria_with_count": "Уведомления, непрочитанных: {{count}}"
+  },
+  "pro_gate": {
+    "open_billing": "Открыть billing",
+    "mock_pipeline": {
+      "title": "Полный AI-mock pipeline — Pro",
+      "body": "Mini-mock доступен бесплатно. Полный multi-stage pipeline с AI-feedback и radar score — нужен Pro или свой LLM-ключ (BYOK)."
+    },
+    "deep_analytics": {
+      "title": "Deep readiness analytics — Pro",
+      "body": "Базовый activity log бесплатен. Прогноз готовности к интервью + drift detection — Pro или BYOK."
+    },
+    "premium_cue": {
+      "title": "Premium Cue — Pro",
+      "body": "Cue basic (20 LLM calls/day) бесплатен. Безлимит + лучшая модель — Pro или BYOK."
+    },
+    "gcal_sync": {
+      "title": "Google Calendar sync — Pro",
+      "body": "Двунаправленная синхронизация Hone-плана с Google Calendar — Pro или BYOK."
+    },
+    "goal_analytics": {
+      "title": "Advanced goal analytics — Pro",
+      "body": "Per-skill радар, weekly trends, target-date estimator — Pro или BYOK."
+    },
+    "generic": {
+      "title": "Pro feature",
+      "body": "Эта фича доступна на Pro или с подключённым своим LLM-ключом (BYOK, бесплатно)."
+    }
+  },
+  "quick_log": {
+    "modal_title": "Что сделал?",
+    "eyebrow": "+ ЗАНЯТИЕ",
+    "field": {
+      "kind": "Тип",
+      "what": "Что именно",
+      "source": "Источник",
+      "minutes": "Минуты (опц.)"
+    },
+    "kind": {
+      "mock": {
+        "label": "Mock",
+        "hint": "AI-mock pipeline / mini-mock"
+      },
+      "leetcode": {
+        "label": "Задача",
+        "hint": "LeetCode / NeetCode / Codewars"
+      },
+      "reading": {
+        "label": "Чтение",
+        "hint": "DDIA / paper / Codex / блог-пост"
+      },
+      "coach": {
+        "label": "Coach",
+        "hint": "AI-tutor session"
+      },
+      "focus_block": {
+        "label": "Focus",
+        "hint": "Hone-сессия фокуса"
+      },
+      "reflection": {
+        "label": "Reflection",
+        "hint": "Вечерний разбор"
+      },
+      "external": {
+        "label": "Другое",
+        "hint": "Coursera lecture / подкаст / etc"
+      }
+    }
   }
 }

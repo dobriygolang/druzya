@@ -25,5 +25,8 @@
     "section_failed": "{{section}} crashed",
     "unknown_error": "Unknown error",
     "retry": "Reload section"
+  },
+  "voice": {
+    "stt_unsupported": "Web Speech API is not available in this browser"
   }
 }

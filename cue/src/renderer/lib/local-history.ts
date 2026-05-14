@@ -1,4 +1,6 @@
 import type { Conversation, ConversationMemory, Message } from '@shared/types';
+
+import { translate } from '@d9-i18n';
 import type { UIMessage } from '../stores/conversation';
 
 const STORE_KEY = 'cue.localHistory.v1';
@@ -145,7 +147,8 @@ export function renameLocalConversation(id: string, customTitle: string): boolea
 
 function autoTitleFromMessages(messages: Message[]): string {
   const firstUser = messages.find((m) => m.role === 'user');
-  return (firstUser?.content || 'Диалог').trim().slice(0, 80) || 'Диалог';
+  const fallback = translate('cue.store.history.default_title');
+  return (firstUser?.content || fallback).trim().slice(0, 80) || fallback;
 }
 
 /** Full-text search across all locally-stored conversations. Matches
@@ -189,7 +192,8 @@ export function saveLocalConversation(args: {
   // (первые 80 chars first user message) генерится только когда existing
   // title пуст ИЛИ совпадает со старым auto-title (юзер не переименовал).
   const firstUser = args.messages.find((m) => m.role === 'user');
-  const autoTitle = (firstUser?.content || 'Диалог').trim().slice(0, 80) || 'Диалог';
+  const fallbackTitle = translate('cue.store.history.default_title');
+  const autoTitle = (firstUser?.content || fallbackTitle).trim().slice(0, 80) || fallbackTitle;
   const existingTitle = existing?.conversation.title?.trim() ?? '';
   // Auto-regenerate title when:
   //   1. Нет existing title (новый conversation)
@@ -198,9 +202,9 @@ export function saveLocalConversation(args: {
   //      со старым auto-title для прежнего первого user message.
   // Иначе считаем что title custom — НЕ перезаписываем.
   const prevAutoTitle = existing
-    ? (existing.messages.find((m) => m.role === 'user')?.content || 'Диалог')
+    ? (existing.messages.find((m) => m.role === 'user')?.content || fallbackTitle)
         .trim()
-        .slice(0, 80) || 'Диалог'
+        .slice(0, 80) || fallbackTitle
     : '';
   const isAutoTitled = !existingTitle || existingTitle === prevAutoTitle;
   const title = isAutoTitled ? autoTitle : existingTitle;

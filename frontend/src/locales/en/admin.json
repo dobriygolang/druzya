@@ -53,5 +53,37 @@
     "load_failed": "Failed to load",
     "save_failed": "Failed to save",
     "delete_failed": "Failed to delete"
+  },
+  "mock_errors": {
+    "bad_request": "Check the fields — the server rejected the request.",
+    "forbidden": "Access denied. You lack admin rights.",
+    "not_found": "Not found.",
+    "server": "The server returned an error. Try again.",
+    "generic": "Could not complete the request."
+  },
+  "interviewer_apps": {
+    "title": "Interviewer applications",
+    "subtitle": "Moderation: approve, reject, leave a comment. Approval immediately promotes the user to the interviewer role.",
+    "tab": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "admins_only_title": "Admins only",
+    "admins_only_body": "This page is available only to users with the admin role.",
+    "load_failed_title": "Could not load the queue",
+    "load_failed_body": "Refresh the page — if it repeats, check that you have the admin role.",
+    "empty_title": "Queue is empty",
+    "empty_body_pending": "All applications have been reviewed.",
+    "empty_body_other": "No applications with this status.",
+    "approve_error": "Approval error",
+    "reject_error": "Rejection error",
+    "no_motivation": "The applicant did not leave a motivation letter.",
+    "moderator_decision": "Moderator decision:",
+    "comment_placeholder": "Comment (optional, applicant will see)",
+    "approving": "Approving…",
+    "approve": "Approve",
+    "rejecting": "Rejecting…",
+    "reject": "Reject"
   }
 }

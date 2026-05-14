@@ -7,6 +7,7 @@
 // видит в footer'е amber-цвет за 5+ запросов до cap'а — успеет планомерно
 // апгрейднуться или подождать reset'а.
 
+import { useT } from '@d9-i18n';
 import { requestUpgrade } from '../UpgradeModal';
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function QuotaMeterMini({ used, cap, width = 44 }: Props) {
+  const t = useT();
   const pct = cap > 0 ? Math.min(100, (used / cap) * 100) : 0;
   const ratio = cap > 0 ? used / cap : 0;
   const remaining = Math.max(0, cap - used);
@@ -39,10 +41,10 @@ export function QuotaMeterMini({ used, cap, width = 44 }: Props) {
       : 'var(--d9-ink-mute)';
 
   const tooltip = danger
-    ? `Осталось ${remaining} запросов из ${cap}. Кликни чтобы посмотреть Pro.`
+    ? t('cue.quota.tooltip.danger', { remaining, cap })
     : warn
-      ? `Осталось ${remaining} запросов из ${cap}. Скоро лимит — рекомендуем Pro.`
-      : `Использовано ${used} из ${cap} запросов в день.`;
+      ? t('cue.quota.tooltip.warn', { remaining, cap })
+      : t('cue.quota.tooltip.normal', { used, cap });
 
   // UpgradeModal. PaywallModal остаётся для stream rate_limited auto-pop
   // (см. conversation.ts), а тут click на meter — explicit user intent,

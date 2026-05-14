@@ -418,6 +418,8 @@
     "verdict_rising": "на подъёме",
     "verdict_habit": "строит привычку",
     "verdict_drop": "просел",
+    "verdict_steady": "ровно",
+    "verdict_silence": "тишина",
     "stat_days_active": "дней с активностью",
     "stat_days_value": "{{n}} / 30",
     "stat_habit": "привычка",
@@ -470,7 +472,290 @@
     "row_log_title": "Залогировать как занятие (✓)",
     "plural.one": "действие",
     "plural.few": "действия",
-    "plural.many": "действий"
+    "plural.many": "действий",
+    "minutes_short": "м"
+  },
+  "insight_strip": {
+    "empty": "Пока нет insights — данные подтянутся, когда появится первая активность."
+  },
+  "algo_stage": {
+    "no_tasks": "Для этого этапа ещё не настроены задачи в пуле компании. Попроси админа добавить mock_task через /admin → Mock Tasks.",
+    "no_task_solve": "В пайплайне нет task_solve attempt'а для Algo стадии. Проверь materialisation в backend orchestrator.",
+    "followup_header": "Follow-up вопросы",
+    "wait_judging": "Дождись AI-оценки всех ответов",
+    "finish_stage": "Завершить этап",
+    "lines_chars": "{{lines}} строк · {{chars}} символов",
+    "submitted": "Решение отправлено",
+    "judging": "AI оценивает решение…",
+    "problem": "Задача",
+    "sandbox_running": "Запускаю тесты в sandbox…",
+    "tests_not_run": "Тесты ещё не запускались",
+    "tests_hint_pre": "Напиши решение и нажми",
+    "tests_hint_mid": "чтобы прогнать код через sandbox. Финальная оценка —",
+    "tests_hint_post": ".",
+    "sandbox_unsupported": "Sandbox для этого языка пока не подключён — Run tests вернёт unavailable.",
+    "sandbox_unavailable_title": "Sandbox недоступен",
+    "sandbox_unavailable_body_pre": "Judge0 не подключён, не настроен на этот язык, или у задачи нет тест-кейсов. Можешь все равно",
+    "sandbox_unavailable_body_post": "— LLM-judge оценит логику.",
+    "tests_passed": "{{passed}} / {{total}} прошло",
+    "what_missed": "Что упустил",
+    "your_answer_placeholder": "Твой ответ…",
+    "send": "Отправить",
+    "answer_label": "Ответ"
+  },
+  "notif_card": {
+    "now": "сейчас",
+    "minutes": "{{n}} мин",
+    "hours": "{{n}} ч",
+    "yesterday": "вчера",
+    "days": "{{n}} дн",
+    "accept": "Принять",
+    "decline": "Отклонить",
+    "view": "Посмотреть",
+    "open_insight": "Открыть инсайт",
+    "more": "Подробнее"
+  },
+  "insights": {
+    "track_filter_aria": "Контекст-фильтр инсайтов по трекам",
+    "coach_offline_body": "Daily brief недоступен — LLM chain не отвечает или у тебя ещё нет данных. Попробуй позже.",
+    "atlas_blurb": "Снимок навыков: что освоено, что учишь, что начинает разваливаться. Обновляется после mock-собесов, kata-solves и матчей.",
+    "atlas_open": "Открыть Atlas",
+    "atlas_stat": {
+      "nodes": "Узлов",
+      "mastered": "Освоено",
+      "in_progress": "В работе",
+      "decay": "Декай"
+    },
+    "leaderboard": {
+      "fair_tooltip": "Учитываются только пайплайны, пройденные с выключенным AI-ассистом.",
+      "loading": "Загрузка…",
+      "unavailable": "Лидерборд временно недоступен.",
+      "empty": "Пока ни одного завершённого мок-собеса в честном режиме. Будь первым — запусти пайплайн с выключенным AI-ассистом."
+    }
+  },
+  "weekly_ai": {
+    "title": "AI insight недели",
+    "generated_by": "Сгенерировано Claude Sonnet 4"
+  },
+  "weekly": {
+    "section_summary": "{{matches}} матчей · {{rate}}% wr",
+    "lp_total": "{{delta}} lp всего"
+  },
+  "all_set": {
+    "title": "Готово!",
+    "subtitle": "Трек выбран, Atlas построен. Дальше — первый mock и AI-coach с памятью.",
+    "reward1": {
+      "title": "Mock unlocked",
+      "sub": "Strict + AI-режимы доступны"
+    },
+    "reward2": {
+      "title": "Skill Atlas",
+      "sub": "Карта прогресса по треку"
+    },
+    "reward3": {
+      "title": "AI-coach",
+      "sub": "Помнит твой контекст"
+    },
+    "cta_title": "Запусти первый mock",
+    "cta_sub": "Strict-режим без AI с watermark — честная оценка готовности за 25 минут",
+    "cta_btn": "Запустить",
+    "link_atlas": "Открыть Atlas",
+    "link_coach": "Поговорить с coach",
+    "link_codex": "Прочитать Codex"
+  },
+  "mock_debrief": {
+    "coming_soon_body": "Сервис пайплайна ещё не активен.",
+    "to_picker": "К выбору компании",
+    "report_unavailable": "Отчёт недоступен",
+    "retry": "Повторить",
+    "new_interview": "Новый собес",
+    "radar_title": "Радар по этапам",
+    "radar_caption": "Каждая ось — нормализованный score этапа (0..5). Точка-индикатор — средняя по всем заполненным осям.",
+    "by_stages": "По этапам",
+    "missing_title": "Главное, что упустил",
+    "try_again": "Попробовать ещё раз",
+    "to_insights": "В Insights",
+    "cancelled_eyebrow": "Прервано",
+    "cancelled_title": "Собес прерван",
+    "passed": "Сдал собес",
+    "failed": "Не сдал",
+    "pass_sub": "Хорошая работа — продолжай в том же духе.",
+    "fail_sub": "Готовься ещё. Слабые места — ниже.",
+    "replay": "Разобрать",
+    "replay_attempt": "Разобрать · попытка {{n}}"
+  },
+  "mock_replay": {
+    "no_attempt_id": "Нет attempt_id",
+    "open_failed": "Не удалось открыть разбор",
+    "try_again": "Попробовать снова",
+    "back": "Назад",
+    "eyebrow": "druz9 mock · разбор попытки",
+    "title_default": "Разбор ответа",
+    "title_not_ready": "Разбор не сгенерирован",
+    "regenerate": "Пере-сгенерировать",
+    "to_company_picker": "К выбору компании",
+    "not_ready": {
+      "title": "Готов разобрать этот ответ",
+      "body": "AI-интервьюер прочитает вопрос + твой ответ и подготовит «как могло бы быть лучше»: идеальный ответ + 3-5 точечных комментариев, где ты сбился. Занимает 10-30 секунд.",
+      "generate": "Сгенерировать разбор",
+      "generating": "Генерируем…",
+      "llm_unavailable": "LLM-провайдеры сейчас не отвечают. Попробуй через минуту."
+    },
+    "split": {
+      "your_answer": "Твой ответ",
+      "no_answer": "(ты не ответил)",
+      "ideal": "Как можно было лучше",
+      "comments": "Комментарии",
+      "suggested_better": "→ как лучше: «{{excerpt}}»"
+    },
+    "ann_type": {
+      "good": "попадание",
+      "incorrect": "неточно",
+      "missing": "пропущено"
+    },
+    "focus": {
+      "header": "3 вещи на которых можно сосредоточиться",
+      "should_have_said": "Что должно было прозвучать: «{{excerpt}}»",
+      "review_hint": "Возвращайся к этому списку перед следующей попыткой."
+    }
+  },
+  "goal_format": {
+    "until_suffix": " · до {{month}} {{year}}"
+  },
+  "readiness": {
+    "base": {
+      "faang": "Goal — Senior @ {{co}}: FAANG hiring bar высокий",
+      "top_tier_named": "Goal — Senior @ {{co}}: top-tier RU bar",
+      "top_tier_generic": "Goal — Senior @ top-tier company",
+      "ml_offer": "Goal — ML Engineer offer: narrow specialization",
+      "any_senior": "Goal — Senior at any Co: широкий рынок",
+      "english": "Goal — English fluency",
+      "custom": "Goal — Custom"
+    },
+    "factor": {
+      "exp": {
+        "5_plus": "5+ лет на Go",
+        "3_5": "3-5 лет опыта",
+        "1_3": "1-3 года опыта"
+      },
+      "budget": {
+        "4_plus": "4+ часов в день — sabbatical мод",
+        "2_4": "2-4 часа в день",
+        "0_1": "<1 часа в день — узкий budget"
+      },
+      "status": {
+        "steady": "Стабильный темп подготовки",
+        "between": "Между офферами — стресс снижает КПД"
+      },
+      "weak": {
+        "sysdesign_high": "Слабый sys-design на staff/FAANG target — критический gap",
+        "algo_faang": "Слабые algo на FAANG screen-кругу"
+      },
+      "time": {
+        "lt_month": "Меньше месяца до {{date}} — мало рантайм",
+        "lt_quarter": "<3 месяцев до {{date}}",
+        "gt_year": ">1 года до цели — запас времени"
+      }
+    }
+  },
+  "data_backup": {
+    "eyebrow": "Локальные данные",
+    "title": "Backup / Restore",
+    "subtitle": "Пока backend persistence не подключён, цель / activity / streak / mini-mock / Cue sessions живут в браузере. Скачивай backup перед сменой устройства или чисткой.",
+    "days_count": "{{count}} дн",
+    "btn": {
+      "export": "Скачать backup",
+      "import": "Импорт из файла",
+      "reset": "Сбросить всё",
+      "cancel": "Отмена",
+      "apply": "Применить",
+      "close": "Закрыть",
+      "confirm_reset": "Сбросить"
+    },
+    "import": {
+      "header": "Импорт",
+      "summary": "Файл от {{date}}. Слоты: {{goal}}{{activities}} activities · {{cue}} cue · {{mock}}{{diagnostic}} diagnostic answers · {{plan}} plan-days.",
+      "goal_slot": "goal · ",
+      "mock_slot": "mini-mock · ",
+      "replace_warning": "Replace strategy — текущий state будет перезаписан bundle'ом. Сделай backup перед импортом если жалко потерять текущие данные.",
+      "done_header": "Импорт завершён"
+    },
+    "reset": {
+      "header": "Сброс всех данных",
+      "body": "Удалятся: goal, activity log, streak, mini-mock, diagnostic, daily-plan, cue sessions, dismissed insights. Восстановить можно только из backup'а.",
+      "confirm_prompt_pre": "Введи",
+      "confirm_prompt_post": "чтобы подтвердить:",
+      "done_header": "Сброшено",
+      "done_body": "Локальные данные удалены. Если что-то нужно восстановить — импортируй backup-файл."
+    },
+    "error_header": "Ошибка",
+    "err": {
+      "not_object": "не объект",
+      "missing_version": "нет version",
+      "version_too_new": "новее (v{{version}}, текущий v{{current}}) — обнови app перед import",
+      "activities_not_array": "activities не массив",
+      "cue_sessions_not_array": "cueSessions не массив",
+      "diagnostic_answers_not_object": "diagnosticAnswers не объект",
+      "daily_plan_done_not_object": "dailyPlanDone не объект",
+      "bad_json": "не JSON или сломан{{detail}}"
+    }
+  },
+  "daily_plan": {
+    "candidates": {
+      "sysdesign": {
+        "title": "Sys-Design focus 45 min",
+        "rationale": "Sys-design — слабое место по диагностике. Без него senior offer не закроешь."
+      },
+      "algo": {
+        "title": "2 LeetCode medium-hard (algo)",
+        "rationale": "Algos — слабая ось. Каждый день по 2 задачи поднимут рабочую память."
+      },
+      "concurrency": {
+        "title": "Go concurrency drill (45 min)",
+        "rationale": "Channels / goroutines internals — твоя зона роста."
+      },
+      "databases": {
+        "title": "DB internals (DDIA ch. 3 — 7)",
+        "rationale": "Indices / isolation levels — senior gates."
+      },
+      "distributed": {
+        "title": "Raft paper + Kleinberg ch. 5",
+        "rationale": "Consensus + replication — backbone senior+ sysdesign."
+      },
+      "mock_pipeline": {
+        "title": "Mock pipeline (HR + Algo)",
+        "rationale": "Активный поиск / горящие сроки — нужен mock каждые 2-3 дня для калибровки."
+      },
+      "mock_diagnostic": {
+        "title": "Mini-mock для baseline",
+        "rationale": "Readiness низкий — нужен baseline чтобы знать с чего стартуем."
+      },
+      "mock_checkpoint": {
+        "title": "Mock checkpoint (40 min)",
+        "rationale": "Mid readiness — checkpoint показывает где залип."
+      },
+      "coach": {
+        "title": "Coach check-in (10 min)",
+        "rationale": "Coach helps вычистить blockers и валидировать план — daily 10 min достаточно."
+      },
+      "codex_read": {
+        "title": "Прочесть 1 Codex статью (sysdesign)",
+        "rationale": "FAANG / staff trajectory — sysdesign depth тут выигрывает."
+      },
+      "reflection": {
+        "title": "Reflection: что зашло сегодня",
+        "rationale": "5-минутный лог что выучил → coach сохранит в memory."
+      },
+      "diagnostic": {
+        "title": "Пройти 8-минутную диагностику",
+        "rationale": "Readiness низкий потому что я ещё мало знаю о тебе. Quiz уточнит план."
+      }
+    },
+    "rationale": {
+      "weeks_to_target": "{{n}} нед. до срока",
+      "readiness_pct": "{{pct}}% готовности",
+      "summary": "Подобрали под цель: {{details}}."
+    }
   },
   "tracks_tab": {
     "loading": "Загружаем треки…",

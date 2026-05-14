@@ -26,9 +26,13 @@ interface NodeRef {
   section: string
 }
 
+// Stopwords used for fuzzy matching of activity titles to atlas nodes.
+// These are algorithmic constants (NOT user-facing copy), so they
+// intentionally live next to the matcher rather than in locale files.
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
   'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from',
+  // eslint-disable-next-line d9-i18n/no-cyrillic-literals
   'и', 'в', 'на', 'с', 'для', 'из', 'к', 'о', 'об', 'от',
 ])
 

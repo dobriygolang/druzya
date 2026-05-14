@@ -1275,4 +1275,70 @@ export interface Dict {
   'cue.hotkey.recording_prompt': string;
   'cue.hotkey.click_to_rebind': string;
   'cue.hotkey.reset': string;
+
+  // ── Cue: QuotaMeterMini tooltip ──────────────────────────────────────
+  'cue.quota.tooltip.danger': string;
+  'cue.quota.tooltip.warn': string;
+  'cue.quota.tooltip.normal': string;
+
+  // ── Cue: Voice consent prompt ────────────────────────────────────────
+  'cue.voice_consent.prompt': string;
+
+  // ── Hone: Dock (Wave 16 tail) ────────────────────────────────────────
+  'hone.dock.mode.pomodoro': string;
+  'hone.dock.mode.countdown': string;
+  'hone.dock.mode.stopwatch': string;
+  'hone.dock.mode.free': string;
+  'hone.dock.mode.plan': string;
+  'hone.dock.mode.pinned': string;
+  'hone.dock.reset_title': string;
+
+  // ── Hone: ExternalActivityModal (Wave 16 tail) ───────────────────────
+  'hone.external.err.duration_range': string;
+  'hone.external.header': string;
+  'hone.external.cta.cancel': string;
+
+  // ── Hone: Calendar subtitle (Wave 16 tail) ───────────────────────────
+  'hone.calendar.subtitle': string;
+
+  // ── Hone: CrossAppReminder footer (Wave 16 tail) ─────────────────────
+  'hone.coach.cross.footer_lead': string;
+  'hone.coach.cross.footer_link_intro': string;
+
+  // ── Hone: MemoryTimeline (Wave 16 tail) ──────────────────────────────
+  'hone.memory.header.detail': string;
+  'hone.memory.list.cue_session': string;
+  'hone.memory.list.reflection': string;
+  'hone.memory.list.mock_complete': string;
+  'hone.memory.list.note_external': string;
+
+  // ── Hone: Notes editor AI badge (Wave 16 tail) ───────────────────────
+  'hone.notes.editor.ai_excluded_title': string;
+  'hone.notes.editor.ai_visible_title': string;
+
+  // ── Hone: Notes sidebar Cue empty (Wave 16 tail) ─────────────────────
+  'hone.notes.sidebar.cue_empty_lead': string;
+  'hone.notes.sidebar.cue_empty_help': string;
+
+  // ── Hone: OnboardingModal Free features (Wave 16 tail) ───────────────
+  'hone.onboarding.free.ai_coach': string;
+
+  // ── Hone: ResistanceModal pinned (Wave 16 tail) ──────────────────────
+  'hone.resistance.pinned_hint': string;
+
+  // ── Hone: StatsOverlay / Stats (Wave 16 tail) ────────────────────────
+  'hone.stats_overlay.topic_empty': string;
+  'hone.stats.err_load_label': string;
+
+  // ── Hone: TasksSuggestionsCard (Wave 16 tail) ────────────────────────
+  'hone.taskboard.suggest.title_from_notes': string;
+
+  // ── Hone: Home timer tooltip (Wave 16 tail) ──────────────────────────
+  'hone.home.timer_title': string;
+
+  // ── Hone: TaskCardView rename hint (Wave 16 tail) ────────────────────
+  'hone.taskboard.dblclick_rename_title': string;
+
+  // ── Hone: Settings — Resistance pulse hint (Wave 16 tail) ────────────
+  'hone.settings.resistance.hint': string;
 }

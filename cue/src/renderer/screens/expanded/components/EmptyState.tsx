@@ -1,10 +1,12 @@
 // EmptyState — hero card with brand mark + persona label + shortcut
 // list shown when the conversation is empty.
 
+import { useT } from '@d9-i18n';
 import { BrandMark, Kbds } from '../../../components/d9';
 import { usePersonaStore } from '../../../stores/persona';
 
 export function EmptyState() {
+  const t = useT();
   // The hero BrandMark is now always black (post-Cue rebrand), so we
   // only need the persona label for the subtitle — no gradient lookup.
   const persona = usePersonaStore((s) => s.active);
@@ -41,7 +43,7 @@ export function EmptyState() {
             lineHeight: 1.1,
           }}
         >
-          Незаметно. Точно.
+          {t('cue.empty.tagline')}
         </div>
         <div
           style={{
@@ -51,16 +53,16 @@ export function EmptyState() {
             letterSpacing: '-0.005em',
           }}
         >
-          {persona.label} · невидимо для screen-sharing
+          {t('cue.empty.persona_suffix', { persona: persona.label })}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 320 }}>
         {([
-          ['Все команды', ['⌘', 'K']],
-          ['Объяснить что я вижу', ['⌘', '⏎']],
-          ['Заскринить область + спросить', ['⌘', '⇧', 'S']],
-          ['Сменить персону', ['⌥', '1']],
-          ['Скрыть окно', ['⌘', '⇧', 'D']],
+          [t('cue.empty.shortcut.all_commands'), ['⌘', 'K']],
+          [t('cue.empty.shortcut.explain_view'), ['⌘', '⏎']],
+          [t('cue.empty.shortcut.screenshot_area'), ['⌘', '⇧', 'S']],
+          [t('cue.empty.shortcut.switch_persona'), ['⌥', '1']],
+          [t('cue.empty.shortcut.hide_window'), ['⌘', '⇧', 'D']],
         ] as Array<[string, string[]]>).map(([label, keys]) => (
           <div
             key={label}

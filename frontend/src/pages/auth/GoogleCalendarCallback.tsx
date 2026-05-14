@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { completeOAuth } from '../../lib/queries/googleCalendar'
 import {
@@ -20,6 +21,7 @@ import {
 const COMPLETE_BROADCAST_KEY = 'gcal_oauth_completed_at'
 
 export default function GoogleCalendarCallbackPage() {
+  const { t } = useTranslation('auth')
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
@@ -29,16 +31,16 @@ export default function GoogleCalendarCallbackPage() {
     const state = params.get('state')
     const errParam = params.get('error')
     if (errParam) {
-      setError(`Google отказал в доступе: ${errParam}`)
+      setError(t('gcal_callback.refused', { error: errParam }))
       return
     }
     if (!code || !state) {
-      setError('В ответе нет code/state.')
+      setError(t('gcal_callback.no_code_state'))
       return
     }
     const expected = sessionStorage.getItem(GCAL_OAUTH_STATE_KEY)
     if (expected && expected !== state) {
-      setError('CSRF state mismatch — попробуй ещё раз.')
+      setError(t('gcal_callback.csrf_mismatch'))
       return
     }
     const redirectURI =
@@ -69,13 +71,13 @@ export default function GoogleCalendarCallbackPage() {
         navigate('/profile/settings?tab=integrations', { replace: true })
       } catch (e) {
         if (cancelled) return
-        setError(e instanceof Error ? e.message : 'Не удалось завершить подключение')
+        setError(e instanceof Error ? e.message : t('gcal_callback.complete_failed'))
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [params, navigate])
+  }, [params, navigate, t])
 
   return (
     <div className="grid min-h-screen place-items-center bg-bg text-text-primary">
@@ -85,20 +87,20 @@ export default function GoogleCalendarCallbackPage() {
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
               google calendar
             </div>
-            <h1 className="font-display text-2xl font-bold">Подключение не удалось</h1>
+            <h1 className="font-display text-2xl font-bold">{t('gcal_callback.connect_failed')}</h1>
             <p className="text-[14px] text-text-muted">{error}</p>
             <Link
               to="/profile/settings?tab=integrations"
               className="mt-2 inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface-1 px-4 text-[14px] font-medium tracking-[0.08em] text-text-primary transition-colors hover:bg-surface-2"
             >
-              Назад к настройкам
+              {t('gcal_callback.back_to_settings')}
             </Link>
           </>
         ) : (
           <>
             <Loader2 className="h-8 w-8 animate-spin text-text-secondary" />
             <p className="text-[14px] tracking-[0.08em] text-text-muted">
-              Связываем твой Google Calendar…
+              {t('gcal_callback.linking')}
             </p>
           </>
         )}

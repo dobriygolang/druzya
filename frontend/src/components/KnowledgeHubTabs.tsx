@@ -2,14 +2,16 @@
 // Hone превратился в pure focus cockpit, content surfaces живут в web.
 
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 
 export type KnowledgeTab = 'articles' | 'podcasts'
 
 export function KnowledgeHubTabs({ active }: { active: KnowledgeTab }) {
+  const { t } = useTranslation('codex')
   const items: { key: KnowledgeTab; to: string; label: string }[] = [
-    { key: 'articles', to: '/codex', label: 'Статьи' },
-    { key: 'podcasts', to: '/podcasts', label: 'Подкасты' },
+    { key: 'articles', to: '/codex', label: t('hub_tabs.articles') },
+    { key: 'podcasts', to: '/podcasts', label: t('hub_tabs.podcasts') },
   ]
   return (
     <div className="flex h-[48px] items-center gap-1 overflow-x-auto border-b border-border bg-bg px-4 sm:px-8 lg:px-20">

@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+
+import { useT } from '@d9-i18n';
+
 import type { TaskCard, TaskKind } from '../../api/tasks';
 import { KINDS, KindIcon } from './lib/kinds';
 import { readTitleOverrides, writeTitleOverride, relativeAge } from './lib/helpers';
@@ -11,6 +14,7 @@ interface TaskCardViewProps {
 }
 
 export function TaskCardView({ task, onClick, onCtxMenu, onOpenKindPicker }: TaskCardViewProps): JSX.Element {
+  const t = useT();
   const [hover, setHover] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -142,7 +146,7 @@ export function TaskCardView({ task, onClick, onCtxMenu, onOpenKindPicker }: Tas
                 e.stopPropagation();
                 setEditing(true);
               }}
-              title="Double-click — переименовать"
+              title={t('hone.taskboard.dblclick_rename_title')}
               style={{
                 flex: 1,
                 fontSize: 13,

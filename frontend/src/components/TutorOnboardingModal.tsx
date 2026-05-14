@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { Check, Copy, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from './Button'
 import { Modal } from './primitives/Modal'
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function TutorOnboardingModal({ onClose }: Props) {
+  const { t } = useTranslation('tutor')
   const [open, setOpen] = useState(true)
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
@@ -54,7 +56,7 @@ export function TutorOnboardingModal({ onClose }: Props) {
   const generate = async () => {
     if (create.isPending || inviteUrl) return
     try {
-      const r = await create.mutateAsync('Onboarding invite')
+      const r = await create.mutateAsync(t('onboarding.invite_label'))
       const url = `${window.location.origin}/invite/${r.code}`
       setInviteUrl(url)
     } catch {
@@ -95,13 +97,13 @@ export function TutorOnboardingModal({ onClose }: Props) {
             color: 'var(--ink-60)',
           }}
         >
-          Онбординг тутора · {step + 1}/4
+          {t('onboarding.step_indicator', { step: step + 1 })}
         </span>
         <button
           type="button"
           onClick={close}
           className="focus-ring"
-          aria-label="Закрыть"
+          aria-label={t('onboarding.close')}
           style={{
             display: 'grid',
             placeItems: 'center',
@@ -129,11 +131,12 @@ export function TutorOnboardingModal({ onClose }: Props) {
       </header>
 
       <div style={{ minHeight: 220 }}>
-        {step === 0 && <Step0 />}
-        {step === 1 && <Step1 />}
-        {step === 2 && <Step2 />}
+        {step === 0 && <Step0 t={t} />}
+        {step === 1 && <Step1 t={t} />}
+        {step === 2 && <Step2 t={t} />}
         {step === 3 && (
           <Step3
+            t={t}
             inviteUrl={inviteUrl}
             busy={create.isPending}
             error={create.isError}
@@ -174,15 +177,15 @@ export function TutorOnboardingModal({ onClose }: Props) {
           }}
           onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
         >
-          Назад
+          {t('onboarding.back')}
         </button>
         {step < 3 ? (
           <Button size="sm" onClick={next}>
-            Далее
+            {t('onboarding.next')}
           </Button>
         ) : (
           <Button size="sm" onClick={close}>
-            Готово
+            {t('onboarding.done')}
           </Button>
         )}
       </footer>
@@ -224,40 +227,31 @@ function BodyText({ children, muted = false }: { children: React.ReactNode; mute
   )
 }
 
-function Step0() {
+type TutorT = (k: string, opts?: Record<string, unknown>) => string
+
+function Step0({ t }: { t: TutorT }) {
   return (
     <div>
-      <StepHeading>druz9 — твой бесплатный тулкит</StepHeading>
-      <BodyText>
-        Тут нет marketplace и нет денежного шага. druz9 — это инструменты для тебя как тутора:
-        очередь assignments, snapshot ученика, AI pre-session brief, общий календарь и shared
-        reading library. Платформа amplify-ит твою работу, не подменяет её.
-      </BodyText>
+      <StepHeading>{t('onboarding.step0.title')}</StepHeading>
+      <BodyText>{t('onboarding.step0.body')}</BodyText>
     </div>
   )
 }
 
-function Step1() {
+function Step1({ t }: { t: TutorT }) {
   return (
     <div>
-      <StepHeading>Invite-коды — основа всего</StepHeading>
-      <BodyText>
-        Ты создаёшь invite — даёшь код / ссылку ученику. Он переходит, регистрируется (или
-        логинится) и попадает к тебе в список «Мои студенты». До этого момента ничего у вас
-        не связано — только после accept'а.
-      </BodyText>
-      <BodyText muted>
-        Invite одноразовый. Можно держать несколько активных одновременно, например по одному
-        на каждого приходящего ученика.
-      </BodyText>
+      <StepHeading>{t('onboarding.step1.title')}</StepHeading>
+      <BodyText>{t('onboarding.step1.body')}</BodyText>
+      <BodyText muted>{t('onboarding.step1.body_muted')}</BodyText>
     </div>
   )
 }
 
-function Step2() {
+function Step2({ t }: { t: TutorT }) {
   return (
     <div>
-      <StepHeading>Что ты делаешь между сессиями</StepHeading>
+      <StepHeading>{t('onboarding.step2.title')}</StepHeading>
       <ul
         style={{
           margin: 0,
@@ -272,19 +266,16 @@ function Step2() {
         }}
       >
         <li>
-          <b>Push assignment</b> — задаёшь домашку с дедлайном; она автоматически появится у
-          ученика в Hone TaskBoard. За 24 часа до deadline ему придёт нотификация.
+          <b>{t('onboarding.step2.item1.label')}</b>{' '}{t('onboarding.step2.item1.body')}
         </li>
         <li>
-          <b>Snapshot ученика</b> — что он делал на неделе: focus seconds, mocks, weak spots,
-          external activity (LeetCode/Coursera).
+          <b>{t('onboarding.step2.item2.label')}</b>{' '}{t('onboarding.step2.item2.body')}
         </li>
         <li>
-          <b>AI brief перед сессией</b> — суммируется в 1-параграф «о чём говорить сегодня».
+          <b>{t('onboarding.step2.item3.label')}</b>{' '}{t('onboarding.step2.item3.body')}
         </li>
         <li>
-          <b>AI-coach между вашими сессиями</b> — ученик может спрашивать coach'а 24/7.
-          AI ассистивен, не дублирует твои assignment'ы.
+          <b>{t('onboarding.step2.item4.label')}</b>{' '}{t('onboarding.step2.item4.body')}
         </li>
       </ul>
     </div>
@@ -292,6 +283,7 @@ function Step2() {
 }
 
 function Step3({
+  t,
   inviteUrl,
   busy,
   error,
@@ -299,6 +291,7 @@ function Step3({
   onGenerate,
   onCopy,
 }: {
+  t: TutorT
   inviteUrl: string | null
   busy: boolean
   error: boolean
@@ -308,14 +301,12 @@ function Step3({
 }) {
   return (
     <div>
-      <StepHeading>Создай первый invite</StepHeading>
-      <BodyText>
-        Сгенерируй код и отправь его ученику любым удобным способом — Telegram, email, WhatsApp.
-      </BodyText>
+      <StepHeading>{t('onboarding.step3.title')}</StepHeading>
+      <BodyText>{t('onboarding.step3.body')}</BodyText>
       {!inviteUrl ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
           <Button size="sm" onClick={onGenerate} disabled={busy}>
-            {busy ? 'Создаю…' : 'Сгенерировать invite'}
+            {busy ? t('onboarding.step3.creating') : t('onboarding.step3.generate')}
           </Button>
           {error && (
             <span
@@ -328,7 +319,7 @@ function Step3({
               }}
             >
               <span aria-hidden="true" style={{ display: 'inline-block', width: 24, height: 1.5, background: 'var(--red)' }} />
-              Не получилось — повтори.
+              {t('onboarding.step3.retry')}
             </span>
           )}
         </div>
@@ -350,10 +341,10 @@ function Step3({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Button size="sm" variant="ghost" onClick={onCopy} icon={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}>
-              {copied ? 'Скопировано' : 'Скопировать'}
+              {copied ? t('onboarding.step3.copied') : t('onboarding.step3.copy')}
             </Button>
             <span style={{ fontSize: 12, color: 'var(--ink-60)' }}>
-              Можно создавать ещё invite'ы из dashboard'а ниже.
+              {t('onboarding.step3.hint')}
             </span>
           </div>
         </div>

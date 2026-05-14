@@ -327,7 +327,7 @@ export function detectInsights(): CoachInsight[] {
   // delta была meaningful). Anti-fallback: первая неделя — никаких verdict.
   const trajectory = computeTrajectory()
   if (trajectory.lastWeek > 0) {
-    if (trajectory.verdict === 'просел') {
+    if (trajectory.verdict === 'drop') {
       out.push({
         id: `trajectory-declining-${trajectory.thisWeek}-${trajectory.lastWeek}`,
         kind: 'trajectory_declining',
@@ -337,7 +337,7 @@ export function detectInsights(): CoachInsight[] {
           'Что-то сместило фокус? Открой план — adjust budget или типы actions можно прямо сейчас.',
         action: { href: '/today', label: 'Адаптировать план' },
       })
-    } else if (trajectory.verdict === 'на подъёме') {
+    } else if (trajectory.verdict === 'rising') {
       out.push({
         id: `trajectory-uptrend-${trajectory.thisWeek}`,
         kind: 'trajectory_uptrend',

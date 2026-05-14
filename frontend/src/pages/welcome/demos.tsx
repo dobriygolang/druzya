@@ -19,6 +19,7 @@
 //     and a plain `position:fixed` overlay works for our use.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // ── Timeline hook ─────────────────────────────────────────────────────
 
@@ -111,6 +112,7 @@ type DemoModalProps = {
 }
 
 function DemoModal({ open, onClose, title, children }: DemoModalProps) {
+  const { t } = useTranslation('welcome')
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -176,7 +178,7 @@ function DemoModal({ open, onClose, title, children }: DemoModalProps) {
               fontFamily: 'inherit',
             }}
           >
-            Esc · закрыть
+            {t('demos.esc_close')}
           </button>
         </div>
         {children}
@@ -245,6 +247,7 @@ function honeFrames(): Frame[] {
 }
 
 function HoneFrameToday() {
+  const { t } = useTranslation('welcome')
   const items = [
     { tag: 'dev_senior', text: 'System Design: distributed cache' },
     { tag: 'english',    text: 'Reading: chapter 4 (12 min)' },
@@ -253,11 +256,11 @@ function HoneFrameToday() {
   return (
     <div style={{ position: 'absolute', inset: 0, padding: '52px 28px 28px' }}>
       <div className="mono" style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 14 }}>
-        TODAY · 30 АПР
+        {t('demos.hone.today_date')}
       </div>
       <div style={{ fontSize: 22, letterSpacing: '-0.01em', marginBottom: 18 }}>
         Senior dev + English<br />
-        <span style={{ color: 'var(--ink-40)', fontSize: 14 }}>3 пункта · ~1h 40m</span>
+        <span style={{ color: 'var(--ink-40)', fontSize: 14 }}>{t('demos.hone.today_count')}</span>
       </div>
       {items.map((it, i) => (
         <div
@@ -325,15 +328,16 @@ function HoneFrameFocus() {
 }
 
 function HoneFrameInsight() {
+  const { t } = useTranslation('welcome')
   return (
     <div style={{ position: 'absolute', inset: 0, padding: '52px 28px 28px' }}>
       <div className="mono" style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 14 }}>
         AI COACH · INSIGHT
       </div>
       <div style={{ fontSize: 18, letterSpacing: '-0.01em', lineHeight: 1.4, marginBottom: 18 }}>
-        За эту неделю — <span style={{ color: '#fff', fontWeight: 600 }}>+2h focus</span> и
-        прокачка conditionals в English. SD ещё проседает —
-        предложу одну sysdesign-задачу на завтра.
+        {t('demos.hone.insight_prefix')}{' '}
+        <span style={{ color: '#fff', fontWeight: 600 }}>+2h focus</span>{' '}
+        {t('demos.hone.insight_suffix')}
       </div>
       <div style={{ display: 'flex', gap: 16, marginTop: 28, ...monoStyle }}>
         <Stat label="FOCUS" value="14h" delta="+2h" />
@@ -662,13 +666,19 @@ function MockFrameTask() {
         Output: 3  // "abc"
       </div>
       <div className="mono" style={{ marginTop: 22, fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)' }}>
-        ВЫБИРАЕШЬ РЕЖИМ <CursorBlink height={10} />
+        <MockModeLabel /><CursorBlink height={10} />
       </div>
     </div>
   )
 }
 
+function MockModeLabel() {
+  const { t } = useTranslation('welcome')
+  return <>{t('demos.mock.mode_picker')} </>
+}
+
 function MockFrameDual() {
+  const { t } = useTranslation('welcome')
   return (
     <div style={{ position: 'absolute', inset: 0, padding: '52px 24px 24px' }}>
       <div className="mono" style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 16 }}>
@@ -677,24 +687,24 @@ function MockFrameDual() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <DualColumn
           title="STRICT"
-          sub="без AI · Cue выключен"
+          sub={t('demos.mock.strict_sub')}
           time="14:22"
-          status="Решено"
+          status={t('demos.mock.solved')}
           dotColor="#fff"
           delay={0}
         />
         <DualColumn
           title="AI MODE"
-          sub="с подсказками"
+          sub={t('demos.mock.ai_sub')}
           time="06:48"
-          status="Решено"
+          status={t('demos.mock.solved')}
           dotColor="var(--ink-60)"
           delay={0.25}
         />
       </div>
       <div className="mono" style={{ marginTop: 18, fontSize: 10, letterSpacing: '.18em',
         color: 'var(--ink-40)', textAlign: 'center' }}>
-        WATERMARK ЗАШИВАЕТ В РЕЗУЛЬТАТ
+        {t('demos.mock.watermark_caption')}
       </div>
     </div>
   )
@@ -733,6 +743,7 @@ function DualColumn({ title, sub, time, status, dotColor, delay }: {
 }
 
 function MockFrameWatermark() {
+  const { t } = useTranslation('welcome')
   return (
     <div style={{ position: 'absolute', inset: 0, padding: '52px 28px 28px' }}>
       <div className="mono" style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)', marginBottom: 14 }}>
@@ -747,13 +758,13 @@ function MockFrameWatermark() {
         </span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <WatermarkRow label="STRICT TIME" v="14:22" hint="без AI · окно собеса" delay={0} />
-        <WatermarkRow label="AI TIME" v="06:48" hint="с подсказками" delay={0.12} />
-        <WatermarkRow label="DELTA" v="+7:34" hint="на сколько ты медленнее без AI" delay={0.24} highlight />
+        <WatermarkRow label="STRICT TIME" v="14:22" hint={t('demos.mock.wm_strict_hint')} delay={0} />
+        <WatermarkRow label="AI TIME" v="06:48" hint={t('demos.mock.wm_ai_hint')} delay={0.12} />
+        <WatermarkRow label="DELTA" v="+7:34" hint={t('demos.mock.wm_delta_hint')} delay={0.24} highlight />
       </div>
       <div className="mono" style={{ marginTop: 18, fontSize: 10, color: 'var(--ink-40)',
         letterSpacing: '.16em' }}>
-        OБЪЕКТИВНАЯ ВАЛЮТА · НЕ САМООЦЕНКА
+        {t('demos.mock.wm_caption')}
       </div>
     </div>
   )

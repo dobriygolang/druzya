@@ -10,6 +10,8 @@
 
 import { create } from 'zustand';
 
+import { translate } from '@d9-i18n';
+
 import type {
   ActivePrepDTO,
   ParsedCVDTO,
@@ -130,7 +132,7 @@ export const useInterviewPrepStore = create<InterviewPrepState & InterviewPrepAc
       const { cvText, cvFilename } = get();
       const t = cvText.trim();
       if (!t) {
-        set({ cvParseError: 'Загрузите файл или вставьте текст резюме.' });
+        set({ cvParseError: translate('cue.store.interview_prep.cv_required') });
         return;
       }
       set({ cvParsing: true, cvParseError: '' });
@@ -153,7 +155,7 @@ export const useInterviewPrepStore = create<InterviewPrepState & InterviewPrepAc
       const t = jdText.trim();
       const u = jdURL.trim();
       if (!t && !u) {
-        set({ jdParseError: 'Вставьте текст вакансии или URL.' });
+        set({ jdParseError: translate('cue.store.interview_prep.jd_required') });
         return;
       }
       set({ jdParsing: true, jdParseError: '' });
@@ -170,7 +172,7 @@ export const useInterviewPrepStore = create<InterviewPrepState & InterviewPrepAc
         // a fetch failure.
         const friendly =
           /fetch|status|404|403|503|host/i.test(msg) && u
-            ? 'Не удалось получить вакансию по ссылке (сайт блокирует ботов). Вставьте текст вручную.'
+            ? translate('cue.store.interview_prep.jd_url_failed')
             : msg;
         set({ jdParsing: false, jdParseError: friendly });
       }
@@ -184,8 +186,7 @@ export const useInterviewPrepStore = create<InterviewPrepState & InterviewPrepAc
         // filename: empty = cancel, non-empty = extract failure.
         if (r.filename) {
           set({
-            cvParseError:
-              'Не удалось извлечь текст из этого файла (возможно, скан). Вставьте текст резюме вручную.',
+            cvParseError: translate('cue.store.interview_prep.cv_extract_failed'),
           });
         }
         return;

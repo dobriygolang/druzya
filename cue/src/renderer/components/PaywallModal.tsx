@@ -19,6 +19,7 @@ import { useState } from 'react';
 
 import type { PaywallCopy, Quota } from '@shared/types';
 
+import { useT } from '@d9-i18n';
 import { IconCheck, IconClose, IconSparkles } from './icons';
 import { Button } from './primitives';
 import { Modal } from './primitives/Modal';
@@ -40,6 +41,7 @@ export interface PaywallModalProps {
 }
 
 export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: PaywallModalProps) {
+  const t = useT();
   const [open, setOpen] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -95,17 +97,16 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
                 color: 'var(--d9-ink)',
               }}
             >
-              {reason ?? 'Расширь возможности Cue'}
+              {reason ?? t('cue.paywall.title_default')}
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--d9-ink-mute)', marginTop: 4, lineHeight: 1.55 }}>
-              Или подключи свой OpenAI / Anthropic ключ в Настройках — инференс пойдёт напрямую,
-              без подписки.
+              {t('cue.paywall.body')}
             </div>
           </div>
           <button
             onClick={close}
-            title="Закрыть (Esc)"
-            aria-label="Закрыть"
+            title={t('cue.paywall.close_title')}
+            aria-label={t('cue.paywall.close_aria')}
             className="focus-ring"
             style={{
               width: 28,
@@ -163,7 +164,7 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
               color: 'var(--d9-ink-mute)',
             }}
           >
-            <span>После оплаты на Boosty ваш план обновится в течение минуты.</span>
+            <span>{t('cue.paywall.footer_note')}</span>
             <Button
               size="sm"
               variant="ghost"
@@ -177,7 +178,7 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
                 }
               }}
             >
-              {refreshing ? 'Проверяю…' : 'Я уже оплатил'}
+              {refreshing ? t('cue.paywall.checking') : t('cue.paywall.paid_already')}
             </Button>
           </div>
         )}
@@ -189,6 +190,7 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
 // ─────────────────────────────────────────────────────────────────────────
 
 function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }) {
+  const t = useT();
   const hasSubscribe = !!plan.subscribeUrl && !isCurrent;
   const isHighlighted = plan.planId === 'pro'; // "most popular"
 
@@ -249,7 +251,7 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
             whiteSpace: 'nowrap',
           }}
         >
-          Популярный
+          {t('cue.paywall.plan_popular')}
         </div>
       )}
 
@@ -273,7 +275,7 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
             }}
           >
             <span aria-hidden="true" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--d9-accent)' }} />
-            текущий
+            {t('cue.paywall.plan_current_badge')}
           </span>
         )}
       </div>
@@ -319,11 +321,11 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
           существует но платёжная интеграция не настроена операторами. */}
       {isCurrent ? (
         <Button size="md" variant="secondary" disabled>
-          Текущий план
+          {t('cue.paywall.plan_current_cta')}
         </Button>
       ) : !hasSubscribe ? (
         <Button size="md" variant="secondary" disabled>
-          Скоро доступно
+          {t('cue.paywall.plan_soon_cta')}
         </Button>
       ) : (
         <button

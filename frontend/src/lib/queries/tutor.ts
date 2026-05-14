@@ -799,10 +799,15 @@ export const TUTOR_EXPERTISE_TAG_LABELS: Record<TutorExpertiseTag, string> = {
 
 export const TUTOR_LANGUAGE_CODES = ['ru', 'en'] as const
 export type TutorLanguageCode = (typeof TUTOR_LANGUAGE_CODES)[number]
+// Language self-names — these are i18n-stable (each language's own name is
+// always displayed in that language), so keeping them as literals is the
+// canonical, accessible approach.
+/* eslint-disable d9-i18n/no-cyrillic-literals */
 export const TUTOR_LANGUAGE_LABELS: Record<TutorLanguageCode, string> = {
   ru: 'Русский',
   en: 'English',
 }
+/* eslint-enable d9-i18n/no-cyrillic-literals */
 
 export type TutorDirectoryProfile = {
   user_id: string

@@ -32,6 +32,7 @@
 // тестами сохраняем normalisePodcastCatalog.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import i18n from '../i18n'
 import { api, API_BASE, ApiError, readAccessToken } from '../apiClient'
 
 /** Категория подкаста (соответствует domain.PodcastCategory на бэке). */
@@ -341,8 +342,8 @@ export function formatDuration(durationSec: number): string {
   const total = Math.max(0, Math.round(durationSec))
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
-  if (h > 0) return `${h}ч ${m}м`
-  return `${m} мин`
+  if (h > 0) return i18n.t('codex:duration.hours_minutes', { h, m })
+  return i18n.t('codex:duration.minutes', { m })
 }
 
 /** Человекочитаемая дата публикации (RU). */

@@ -233,7 +233,7 @@ function SettingsPanel() {
             onClick={() => setSilence(null)}
             className="rounded-md border border-border bg-surface-2 px-3 py-1 text-[12px] text-text-muted hover:text-text-primary"
           >
-            {t('notifications.silence_off', 'Выкл')}
+            {t('notifications.silence_off')}
           </button>
         </div>
         {silenceUntil && (
@@ -363,7 +363,7 @@ export default function NotificationsPage() {
                 empty={(d) => (d?.items?.length ?? 0) === 0}
                 emptyContent={
                   <div className="p-8 text-center text-sm text-text-secondary">
-                    {t('notifications.empty', 'Пока тихо — никаких уведомлений.')}
+                    {t('notifications.empty')}
                   </div>
                 }
               >
@@ -372,7 +372,7 @@ export default function NotificationsPage() {
                     <Group label={t('notifications.today')} items={grouped.today} render={renderRow} />
                     <Group label={t('notifications.yesterday')} items={grouped.yesterday} render={renderRow} />
                     <Group label={t('notifications.this_week')} items={grouped.this_week} render={renderRow} />
-                    <Group label={t('notifications.older', 'РАНЬШЕ')} items={grouped.older} render={renderRow} />
+                    <Group label={t('notifications.older')} items={grouped.older} render={renderRow} />
                   </>
                 )}
               </DataLoader>

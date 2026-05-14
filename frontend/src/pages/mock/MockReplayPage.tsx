@@ -24,6 +24,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Sparkles } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
@@ -38,6 +39,7 @@ import {
 } from '../../lib/queries/mockPipeline'
 
 export default function MockReplayPage() {
+  const { t } = useTranslation('pages')
   const { attemptId } = useParams<{ attemptId: string }>()
   const navigate = useNavigate()
 
@@ -55,7 +57,7 @@ export default function MockReplayPage() {
     return (
       <AppShellV2>
         <div className="px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
-          <EmptyState variant="error" title="Нет attempt_id" />
+          <EmptyState variant="error" title={t('mock_replay.no_attempt_id')} />
         </div>
       </AppShellV2>
     )
@@ -77,9 +79,9 @@ export default function MockReplayPage() {
         <div className="px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
           <EmptyState
             variant="error"
-            title="Не удалось открыть разбор"
+            title={t('mock_replay.open_failed')}
             body={replayQ.error?.message ?? 'unknown'}
-            cta={{ label: 'Попробовать снова', onClick: () => replayQ.refetch() }}
+            cta={{ label: t('mock_replay.try_again'), onClick: () => replayQ.refetch() }}
           />
         </div>
       </AppShellV2>
@@ -96,18 +98,18 @@ export default function MockReplayPage() {
             className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Назад
+            {t('mock_replay.back')}
           </button>
         </div>
 
         <header className="flex flex-col gap-1">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-            druz9 mock · разбор попытки
+            {t('mock_replay.eyebrow')}
           </div>
           <h1 className="font-display text-2xl font-bold text-text-primary sm:text-3xl">
             {readyReplay
-              ? readyReplay.question_body || 'Разбор ответа'
-              : 'Разбор не сгенерирован'}
+              ? readyReplay.question_body || t('mock_replay.title_default')
+              : t('mock_replay.title_not_ready')}
           </h1>
         </header>
 
@@ -129,13 +131,13 @@ export default function MockReplayPage() {
                 loading={generateMut.isPending}
                 disabled={generateMut.isPending}
               >
-                Пере-сгенерировать
+                {t('mock_replay.regenerate')}
               </Button>
               <Link
                 to="/mock"
                 className="text-xs text-text-secondary hover:text-text-primary"
               >
-                К выбору компании
+                {t('mock_replay.to_company_picker')}
               </Link>
             </div>
           </>
@@ -156,18 +158,17 @@ function NotReadyPanel({
   isGenerating: boolean
   error: string | undefined
 }) {
+  const { t } = useTranslation('pages')
   return (
     <Card variant="default" padding="lg" className="flex flex-col gap-3">
       <div className="flex items-start gap-3">
         <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-text-primary" />
         <div>
           <div className="font-display text-base font-bold text-text-primary">
-            Готов разобрать этот ответ
+            {t('mock_replay.not_ready.title')}
           </div>
           <p className="mt-1 text-sm text-text-secondary">
-            AI-интервьюер прочитает вопрос + твой ответ и подготовит «как
-            могло бы быть лучше»: идеальный ответ + 3-5 точечных комментариев,
-            где ты сбился. Занимает 10-30 секунд.
+            {t('mock_replay.not_ready.body')}
           </p>
         </div>
       </div>
@@ -179,12 +180,12 @@ function NotReadyPanel({
         disabled={isGenerating}
         className="self-start"
       >
-        {isGenerating ? 'Генерируем…' : 'Сгенерировать разбор'}
+        {isGenerating ? t('mock_replay.not_ready.generating') : t('mock_replay.not_ready.generate')}
       </Button>
       {error && (
         <div role="alert" className="text-xs" style={{ color: '#FF3B30' }}>
           {error.includes('503') || error.toLowerCase().includes('unavailable')
-            ? 'LLM-провайдеры сейчас не отвечают. Попробуй через минуту.'
+            ? t('mock_replay.not_ready.llm_unavailable')
             : error}
         </div>
       )}
@@ -195,6 +196,7 @@ function NotReadyPanel({
 // ─── SplitView ─────────────────────────────────────────────────────────────
 
 function SplitView({ replay }: { replay: MockReplay }) {
+  const { t } = useTranslation('pages')
   // Slice annotations: which ones target *your* answer (ones with
   // non-empty your_excerpt) — they highlight in the left pane. Others
   // (your_excerpt === '') anchor on the ideal side instead.
@@ -205,10 +207,10 @@ function SplitView({ replay }: { replay: MockReplay }) {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
       <Card variant="default" padding="lg" className="flex flex-col gap-3">
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          <span>Твой ответ</span>
+          <span>{t('mock_replay.split.your_answer')}</span>
         </div>
         <AnnotatedText
-          text={replay.your_answer_md || '(ты не ответил)'}
+          text={replay.your_answer_md || t('mock_replay.split.no_answer')}
           annotations={annsForYour}
           mode="your"
         />
@@ -219,7 +221,7 @@ function SplitView({ replay }: { replay: MockReplay }) {
 
       <Card variant="default" padding="lg" className="flex flex-col gap-3">
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          <span>Как можно было лучше</span>
+          <span>{t('mock_replay.split.ideal')}</span>
         </div>
         <AnnotatedText
           text={replay.ideal_answer_md}
@@ -320,9 +322,10 @@ function AnnotationList({
   annotations: MockReplayAnnotation[]
   mode: 'your' | 'ideal'
 }) {
+  const { t } = useTranslation('pages')
   return (
     <ol className="mt-1 list-none space-y-2 border-t border-border pt-3 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-      <li className="text-text-muted">Комментарии</li>
+      <li className="text-text-muted">{t('mock_replay.split.comments')}</li>
       {annotations.map((a, i) => (
         <li
           key={i}
@@ -330,12 +333,12 @@ function AnnotationList({
         >
           <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
             <span>[{i + 1}]</span>
-            <span>· {labelForType(a.type)}</span>
+            <span>· {labelForType(a.type, t)}</span>
           </span>
           <span className="text-xs text-text-secondary">{a.comment}</span>
           {mode === 'your' && a.ideal_excerpt && (
             <span className="text-xs text-text-secondary">
-              → как лучше: «{a.ideal_excerpt}»
+              {t('mock_replay.split.suggested_better', { excerpt: a.ideal_excerpt })}
             </span>
           )}
         </li>
@@ -344,21 +347,22 @@ function AnnotationList({
   )
 }
 
-function labelForType(t: MockReplayAnnotation['type']): string {
-  switch (t) {
+function labelForType(type: MockReplayAnnotation['type'], t: (k: string) => string): string {
+  switch (type) {
     case 'good':
-      return 'попадание'
+      return t('mock_replay.ann_type.good')
     case 'incorrect':
-      return 'неточно'
+      return t('mock_replay.ann_type.incorrect')
     case 'missing':
     default:
-      return 'пропущено'
+      return t('mock_replay.ann_type.missing')
   }
 }
 
 // ─── FocusList ─────────────────────────────────────────────────────────────
 
 function FocusList({ annotations }: { annotations: MockReplayAnnotation[] }) {
+  const { t } = useTranslation('pages')
   // Top 3 things to focus on = first 3 non-"good" annotations. The LLM
   // returns them in narrative order which is usually substantive-first.
   const items = annotations.filter((a) => a.type !== 'good').slice(0, 3)
@@ -368,7 +372,7 @@ function FocusList({ annotations }: { annotations: MockReplayAnnotation[] }) {
   return (
     <section className="flex flex-col gap-3">
       <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-        3 вещи на которых можно сосредоточиться
+        {t('mock_replay.focus.header')}
       </div>
       <Card variant="default" padding="lg" className="flex flex-col gap-2">
         {items.map((a, i) => {
@@ -378,11 +382,11 @@ function FocusList({ annotations }: { annotations: MockReplayAnnotation[] }) {
               <Icon className="mt-0.5 h-4 w-4 shrink-0 text-text-primary" />
               <div className="flex flex-col gap-0.5">
                 <div className="text-sm text-text-primary">
-                  {a.comment || labelForType(a.type)}
+                  {a.comment || labelForType(a.type, t)}
                 </div>
                 {a.ideal_excerpt && (
                   <div className="text-xs text-text-secondary">
-                    Что должно было прозвучать: «{a.ideal_excerpt}»
+                    {t('mock_replay.focus.should_have_said', { excerpt: a.ideal_excerpt })}
                   </div>
                 )}
               </div>
@@ -391,7 +395,7 @@ function FocusList({ annotations }: { annotations: MockReplayAnnotation[] }) {
         })}
         <div className="mt-1 flex items-center gap-1.5 border-t border-border pt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
           <CheckCircle2 className="h-3 w-3" />
-          Возвращайся к этому списку перед следующей попыткой.
+          {t('mock_replay.focus.review_hint')}
         </div>
       </Card>
     </section>

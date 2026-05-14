@@ -11,6 +11,9 @@
 // the compact window with the brand mark in the top-right of their
 // monitor.
 
+import { useMemo } from 'react';
+
+import { useT } from '@d9-i18n';
 import { IconCheck } from '../../components/icons';
 import { Button, Kbd } from '../../components/primitives';
 
@@ -19,35 +22,38 @@ interface Props {
   onBack: () => void;
 }
 
-const HOTKEYS: ReadonlyArray<{ label: string; chord: string; note: string }> = [
-  {
-    label: 'Открыть / скрыть',
-    chord: 'CommandOrControl+Shift+D',
-    note: 'компактное окно поверх любого приложения',
-  },
-  {
-    label: 'Скриншот области',
-    chord: 'CommandOrControl+Shift+S',
-    note: 'выдели прямоугольник → Cue задаст вопрос AI',
-  },
-  {
-    label: 'Скриншот экрана',
-    chord: 'CommandOrControl+Shift+A',
-    note: 'весь дисплей → вопрос AI',
-  },
-  {
-    label: 'Polish English',
-    chord: 'CommandOrControl+Shift+L',
-    note: 'правит текст из буфера обмена',
-  },
-  {
-    label: 'Помочь сейчас',
-    chord: 'CommandOrControl+Return',
-    note: 'мгновенный chat-вход без выбора окна',
-  },
-];
-
 export function CompleteScreen({ onDone, onBack }: Props) {
+  const t = useT();
+  const HOTKEYS = useMemo<ReadonlyArray<{ label: string; chord: string; note: string }>>(
+    () => [
+      {
+        label: t('cue.onboarding.complete.hotkey.toggle_label'),
+        chord: 'CommandOrControl+Shift+D',
+        note: t('cue.onboarding.complete.hotkey.toggle_note'),
+      },
+      {
+        label: t('cue.onboarding.complete.hotkey.area_label'),
+        chord: 'CommandOrControl+Shift+S',
+        note: t('cue.onboarding.complete.hotkey.area_note'),
+      },
+      {
+        label: t('cue.onboarding.complete.hotkey.full_label'),
+        chord: 'CommandOrControl+Shift+A',
+        note: t('cue.onboarding.complete.hotkey.full_note'),
+      },
+      {
+        label: t('cue.onboarding.complete.hotkey.polish_label'),
+        chord: 'CommandOrControl+Shift+L',
+        note: t('cue.onboarding.complete.hotkey.polish_note'),
+      },
+      {
+        label: t('cue.onboarding.complete.hotkey.assist_label'),
+        chord: 'CommandOrControl+Return',
+        note: t('cue.onboarding.complete.hotkey.assist_note'),
+      },
+    ],
+    [t],
+  );
   return (
     <div
       style={{
@@ -87,7 +93,7 @@ export function CompleteScreen({ onDone, onBack }: Props) {
             color: 'var(--d9-ink)',
           }}
         >
-          Готово
+          {t('cue.onboarding.complete.title')}
         </h2>
         <p
           style={{
@@ -98,7 +104,7 @@ export function CompleteScreen({ onDone, onBack }: Props) {
             letterSpacing: '-0.005em',
           }}
         >
-          Запомни хоткеи — Cue работает из любого приложения.
+          {t('cue.onboarding.complete.body')}
         </p>
       </header>
 
@@ -127,7 +133,7 @@ export function CompleteScreen({ onDone, onBack }: Props) {
           letterSpacing: '-0.005em',
         }}
       >
-        Все клавиши настраиваются в Settings → Горячие клавиши.
+        {t('cue.onboarding.complete.footer_settings')}
       </p>
 
       {/*
@@ -145,7 +151,7 @@ export function CompleteScreen({ onDone, onBack }: Props) {
           letterSpacing: '-0.005em',
         }}
       >
-        Используешь Hone для daily focus?{' '}
+        {t('cue.onboarding.complete.hone_prefix')}{' '}
         <a
           href="https://druz9.online/hone"
           target="_blank"
@@ -166,10 +172,10 @@ export function CompleteScreen({ onDone, onBack }: Props) {
         }}
       >
         <Button variant="ghost" size="sm" onClick={onBack}>
-          Назад
+          {t('cue.prep.footer.back').replace('← ', '')}
         </Button>
         <Button variant="primary" size="md" onClick={onDone} autoFocus>
-          Начать работу
+          {t('cue.onboarding.complete.cta')}
         </Button>
       </footer>
     </div>

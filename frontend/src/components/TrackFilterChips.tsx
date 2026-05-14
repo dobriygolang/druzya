@@ -18,6 +18,7 @@
 // state otherwise rides on the ink ramp.
 
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   TRACK_KEYS,
   TRACK_LABEL,
@@ -50,8 +51,10 @@ export function TrackFilterChips({
   persistKey,
   size = 'md',
   className,
-  ariaLabel = 'Фильтр по трекам',
+  ariaLabel,
 }: TrackFilterChipsProps) {
+  const { t } = useTranslation('common')
+  const groupAriaLabel = ariaLabel ?? t('track_filter.group_aria')
   // Write-through to localStorage whenever the parent's selection changes.
   // Read happens via `useTrackFilter()` in the parent — keeps render →
   // storage one-directional, no useState loops.
@@ -88,17 +91,17 @@ export function TrackFilterChips({
   return (
     <div
       role="group"
-      aria-label={ariaLabel}
+      aria-label={groupAriaLabel}
       className={`flex flex-wrap items-center gap-1.5 ${className ?? ''}`}
       style={{ minWidth: 0 }}
     >
       {showAll && (
         <Chip
           active={allActive}
-          label="Все"
+          label={t('track_filter.all_label')}
           size={size}
           onClick={clearAll}
-          ariaLabel="Сбросить фильтр — показать все треки"
+          ariaLabel={t('track_filter.reset_aria')}
         />
       )}
       {TRACK_KEYS.map((key) => (

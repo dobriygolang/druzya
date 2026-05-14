@@ -3,6 +3,7 @@
 // рендерит + F3 readiness реагирует boost'ом.
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from './Button'
 import { Modal } from './primitives/Modal'
@@ -25,17 +26,17 @@ interface KindOption {
   hint: string
 }
 
-const KIND_OPTIONS: KindOption[] = [
-  { id: 'mock', label: 'Mock', hint: 'AI-mock pipeline / mini-mock' },
-  { id: 'leetcode', label: 'Задача', hint: 'LeetCode / NeetCode / Codewars' },
-  { id: 'reading', label: 'Чтение', hint: 'DDIA / paper / Codex / блог-пост' },
-  { id: 'coach', label: 'Coach', hint: 'AI-tutor session' },
-  { id: 'focus_block', label: 'Focus', hint: 'Hone-сессия фокуса' },
-  { id: 'reflection', label: 'Reflection', hint: 'Вечерний разбор' },
-  { id: 'external', label: 'Другое', hint: 'Coursera lecture / подкаст / etc' },
-]
-
 export function QuickLogModal({ onClose, preset }: Props) {
+  const { t } = useTranslation('common')
+  const KIND_OPTIONS: KindOption[] = [
+    { id: 'mock', label: t('quick_log.kind.mock.label'), hint: t('quick_log.kind.mock.hint') },
+    { id: 'leetcode', label: t('quick_log.kind.leetcode.label'), hint: t('quick_log.kind.leetcode.hint') },
+    { id: 'reading', label: t('quick_log.kind.reading.label'), hint: t('quick_log.kind.reading.hint') },
+    { id: 'coach', label: t('quick_log.kind.coach.label'), hint: t('quick_log.kind.coach.hint') },
+    { id: 'focus_block', label: t('quick_log.kind.focus_block.label'), hint: t('quick_log.kind.focus_block.hint') },
+    { id: 'reflection', label: t('quick_log.kind.reflection.label'), hint: t('quick_log.kind.reflection.hint') },
+    { id: 'external', label: t('quick_log.kind.external.label'), hint: t('quick_log.kind.external.hint') },
+  ]
   const [kind, setKind] = useState<ActivityKind>(preset?.kind ?? 'leetcode')
   const [title, setTitle] = useState(preset?.title ?? '')
   const [source, setSource] = useState(preset?.source ?? '')
@@ -57,16 +58,16 @@ export function QuickLogModal({ onClose, preset }: Props) {
   }
 
   return (
-    <Modal open onClose={onClose} size="sm" title="Что сделал?">
+    <Modal open onClose={onClose} size="sm" title={t('quick_log.modal_title')}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-          + ЗАНЯТИЕ
+          {t('quick_log.eyebrow')}
         </span>
 
         {/* Kind picker — 7 chips */}
         <div className="flex flex-col gap-2">
           <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Тип
+            {t('quick_log.field.kind')}
           </label>
           <div className="flex flex-wrap gap-1.5">
             {KIND_OPTIONS.map((opt) => {
@@ -97,7 +98,7 @@ export function QuickLogModal({ onClose, preset }: Props) {
             htmlFor="quicklog-title"
             className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted"
           >
-            Что именно
+            {t('quick_log.field.what')}
           </label>
           <input
             id="quicklog-title"
@@ -117,7 +118,7 @@ export function QuickLogModal({ onClose, preset }: Props) {
               htmlFor="quicklog-source"
               className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted"
             >
-              Источник
+              {t('quick_log.field.source')}
             </label>
             <input
               id="quicklog-source"
@@ -134,7 +135,7 @@ export function QuickLogModal({ onClose, preset }: Props) {
               htmlFor="quicklog-minutes"
               className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted"
             >
-              Минуты (опц.)
+              {t('quick_log.field.minutes')}
             </label>
             <input
               id="quicklog-minutes"
@@ -151,10 +152,10 @@ export function QuickLogModal({ onClose, preset }: Props) {
 
         <footer className="flex items-center justify-end gap-2 pt-2">
           <Button variant="ghost" type="button" onClick={onClose}>
-            Отмена
+            {t('actions.cancel')}
           </Button>
           <Button type="submit" disabled={!canSubmit}>
-            Сохранить
+            {t('actions.save')}
           </Button>
         </footer>
       </form>

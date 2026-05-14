@@ -5,25 +5,30 @@
 // deployed yet); on success, profile cache is invalidated so /sanctum
 // reflects the new focus class.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import { OnboardingLayout } from './_shared/Layout'
 import { useOnboarding, type FocusClass } from './_shared/useOnboarding'
 
-const CLASSES: {
+type ClassCard = {
   id: FocusClass
   title: string
   skills: string
   hours: string
   typical: string
-}[] = [
-  { id: 'algo', title: 'Алгоритмы', skills: 'two pointers · sliding window · binary search · graphs', hours: '40–80 ч', typical: 'Яндекс, Meta' },
-  { id: 'backend', title: 'Бекенд', skills: 'http · caching · db · queues · api design', hours: '30–60 ч', typical: 'Авито, Ozon' },
-  { id: 'system', title: 'System Design', skills: 'scalability · cap · sharding · load balancer', hours: '50–100 ч', typical: 'Meta, Google' },
-  { id: 'concurrency', title: 'Concurrency', skills: 'locks · channels · async · race conditions', hours: '40–80 ч', typical: 'Go, Rust ролы' },
-  { id: 'ds', title: 'Data Science', skills: 'sql · ab test · probability · ml basics', hours: '30–60 ч', typical: 'Яндекс, Tinkoff' },
-]
+}
+
+function buildClasses(t: (k: string) => string): ClassCard[] {
+  return [
+    { id: 'algo', title: t('onboarding_class.algorithms'), skills: 'two pointers · sliding window · binary search · graphs', hours: t('onboarding_class.hrs_40_80'), typical: t('onboarding_class.yandex_meta') },
+    { id: 'backend', title: t('onboarding_class.backend'), skills: 'http · caching · db · queues · api design', hours: t('onboarding_class.hrs_30_60'), typical: t('onboarding_class.avito_ozon') },
+    { id: 'system', title: 'System Design', skills: 'scalability · cap · sharding · load balancer', hours: t('onboarding_class.hrs_50_100'), typical: 'Meta, Google' },
+    { id: 'concurrency', title: t('onboarding_class.concurrency'), skills: 'locks · channels · async · race conditions', hours: t('onboarding_class.hrs_40_80'), typical: t('onboarding_class.go_rust') },
+    { id: 'ds', title: 'Data Science', skills: 'sql · ab test · probability · ml basics', hours: t('onboarding_class.hrs_30_60'), typical: t('onboarding_class.yandex_tinkoff') },
+  ]
+}
 
 const captionMono: React.CSSProperties = {
   fontFamily: "'JetBrains Mono', ui-monospace, monospace",
@@ -35,9 +40,11 @@ const captionMono: React.CSSProperties = {
 }
 
 export default function Step2Class() {
+  const { t } = useTranslation('wave14')
   const nav = useNavigate()
   const { setStep, setFocusClass } = useOnboarding()
   const [picked, setPicked] = useState<FocusClass>('algo')
+  const CLASSES = useMemo(() => buildClasses(t), [t])
 
   const next = async () => {
     await setFocusClass.mutateAsync(picked)
@@ -48,7 +55,7 @@ export default function Step2Class() {
   return (
     <OnboardingLayout step={2} onBack={() => nav('/onboarding/welcome')}>
       <div className="text-center" style={{ marginBottom: 28 }}>
-        <div style={{ ...captionMono, marginBottom: 10 }}>шаг 2 · focus-class</div>
+        <div style={{ ...captionMono, marginBottom: 10 }}>{t('onboarding_class.step_label')}</div>
         <h2
           style={{
             margin: 0,
@@ -60,10 +67,10 @@ export default function Step2Class() {
             color: 'rgb(var(--ink))',
           }}
         >
-          Что ты готовишь к собесам?
+          {t('onboarding_class.title')}
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
-          Один класс станет центром твоего Atlas. Можно поменять позже.
+          {t('onboarding_class.subtitle')}
         </p>
       </div>
 
@@ -121,11 +128,11 @@ export default function Step2Class() {
               <div style={{ fontSize: 11, color: 'var(--ink-40)', lineHeight: 1.5, marginBottom: 12 }}>{c.skills}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ color: 'var(--ink-40)' }}>подготовка</span>
+                  <span style={{ color: 'var(--ink-40)' }}>{t('onboarding_class.prep')}</span>
                   <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: 'var(--ink-60)' }}>{c.hours}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ color: 'var(--ink-40)' }}>типичный</span>
+                  <span style={{ color: 'var(--ink-40)' }}>{t('onboarding_class.typical')}</span>
                   <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: 'var(--ink-60)' }}>{c.typical}</span>
                 </div>
               </div>
@@ -136,11 +143,11 @@ export default function Step2Class() {
 
       <div className="flex-wrap-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-60)' }}>
-          выбрано:{' '}
+          {t('onboarding_class.selected')}{' '}
           <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontWeight: 600 }}>
             {picked}
           </strong>{' '}
-          · 3 core-скилла в следующем шаге
+          {t('onboarding_class.next_step_skills')}
         </div>
         <button
           type="button"
@@ -161,7 +168,7 @@ export default function Step2Class() {
               'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
-          Далее →
+          {t('onboarding_class.next_arrow')}
         </button>
       </div>
     </OnboardingLayout>

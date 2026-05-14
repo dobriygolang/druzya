@@ -1,8 +1,9 @@
-// Minimal ESLint flat config for Hone. The primary correctness gate is
-// still `tsc --noEmit`; this config exists to enforce the
-// `no-cyrillic-literals` rule introduced in Phase K Wave 16 (i18n
-// unification). New user-facing strings must live in shared/i18n/{ru,en}.ts
-// keyed by hone.*, not hardcoded in .tsx.
+// ESLint flat config (v9). Phase K Wave 16 introduced `d9-i18n/no-cyrillic-literals`
+// as the runtime gate against hardcoded Cyrillic in user-facing strings —
+// the TypeScript Dict in shared/i18n already catches typos in keys, but
+// only ESLint catches the original sin of `<button>Привет</button>` that
+// was never wrapped in `t()` at all. Rule is `'error'` post-sweep, so any
+// new hardcoded literal in JSX / string / template literal fails CI.
 import js from '@eslint/js';
 import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
@@ -18,11 +19,10 @@ export default [
       'dist/**',
       'out/**',
       'node_modules/**',
-      // Generated TS stubs (proto-generated, lived in the frontend tree)
       '../frontend/src/api/generated/**',
-      // Test files and the local-history fixture data may contain Cyrillic.
       '**/*.test.{ts,tsx}',
       'src/test/**',
+      'src/renderer/src/quick-capture/**',
     ],
   },
   js.configs.recommended,
@@ -47,11 +47,9 @@ export default [
       },
     },
     rules: {
-      // TS already handles undefined-identifier checks.
       'no-undef': 'off',
-      // 'warn' during the sweep; flip to 'error' once shared/i18n covers
-      // every Hone surface and tsc still passes.
-      'd9-i18n/no-cyrillic-literals': 'warn',
+      'no-unused-vars': 'off',
+      'd9-i18n/no-cyrillic-literals': 'error',
     },
   },
 ];

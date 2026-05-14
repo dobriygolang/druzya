@@ -21,6 +21,7 @@ import {
 import { useTutorStudentsQuery } from '../lib/queries/tutor'
 
 export function ReadingPathsPane() {
+  const { t: tw } = useTranslation('wave14')
   const q = useTutorReadingPathsQuery()
   const items = q.data?.items ?? []
 
@@ -29,10 +30,7 @@ export function ReadingPathsPane() {
       <header className="flex flex-col gap-2">
         <h2 className="font-display text-xl font-semibold">Reading paths</h2>
         <p className="max-w-2xl text-[13px] leading-relaxed text-text-secondary">
-          Кураторские маршруты — упорядоченные последовательности atlas-узлов,
-          которые ты рекомендуешь студентам пройти. В отличие от Reading library
-          (одноразовый broadcast) — path многоразовый: можешь назначать одной
-          стек'ой нескольким студентам через assignments.
+          {tw('reading_paths.curated_intro')}
         </p>
       </header>
 
@@ -41,22 +39,21 @@ export function ReadingPathsPane() {
       {q.isPending ? (
         <Card className="flex-row items-center gap-2 p-4 text-text-secondary" interactive={false}>
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Загружаем…</span>
+          <span className="text-sm">{tw('reading_paths.loading')}</span>
         </Card>
       ) : q.isError ? (
         <Card className="flex-col gap-1 border-danger/40 bg-danger/5 p-4" interactive={false}>
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-danger">
-            Ошибка
+            {tw('reading_paths.error_title')}
           </div>
           <p className="text-[13px] leading-relaxed text-text-secondary">
-            Не удалось загрузить paths. Попробуй обновить страницу.
+            {tw('reading_paths.load_failed')}
           </p>
         </Card>
       ) : items.length === 0 ? (
         <Card className="flex-col gap-1 p-4" interactive={false}>
           <p className="text-[13px] leading-relaxed text-text-secondary">
-            Пока нет ни одного пути. Создай первый — например, «Senior Go
-            basics» с 6–10 atlas-узлами, которые junior должен пройти.
+            {tw('reading_paths.empty_create_first')}
           </p>
         </Card>
       ) : (
@@ -73,6 +70,7 @@ export function ReadingPathsPane() {
 }
 
 function CreatePathForm() {
+  const { t: tw } = useTranslation('wave14')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [keysText, setKeysText] = useState('')
@@ -106,7 +104,7 @@ function CreatePathForm() {
   return (
     <Card className="flex-col gap-3 p-4" interactive={false}>
       <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-        Новый path
+        {tw('reading_paths.new_path')}
       </div>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <input
@@ -121,14 +119,14 @@ function CreatePathForm() {
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Что включает этот path, для кого, как пользоваться (optional)"
+          placeholder={tw('reading_paths.what_includes')}
           rows={3}
           maxLength={2000}
           className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
         />
         <label className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
-            Atlas node keys (по одному в строке, в порядке прохождения)
+            {tw('reading_paths.atlas_nodes_label')}
           </span>
           <textarea
             value={keysText}
@@ -141,11 +139,11 @@ function CreatePathForm() {
         </label>
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={create.isPending || name.trim() === ''}>
-            {create.isPending ? 'Создаём…' : 'Создать path'}
+            {create.isPending ? tw('reading_paths.creating') : tw('reading_paths.create_path')}
           </Button>
           {create.isError && (
             <span className="text-[12px] text-warn">
-              {create.error instanceof ApiError ? create.error.body : 'Не получилось'}
+              {create.error instanceof ApiError ? create.error.body : tw('reading_paths.create_failed')}
             </span>
           )}
         </div>
@@ -156,6 +154,7 @@ function CreatePathForm() {
 
 function PathRow({ path }: { path: TutorReadingPath }) {
   const { t } = useTranslation('toasts')
+  const { t: tw } = useTranslation('wave14')
   const archive = useArchiveReadingPathMutation()
   const [assignOpen, setAssignOpen] = useState(false)
   const created = path.created_at ? new Date(path.created_at).toLocaleDateString() : '—'
@@ -188,7 +187,7 @@ function PathRow({ path }: { path: TutorReadingPath }) {
         </ul>
       )}
       <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-        <span>создан {created}</span>
+        <span>{tw('reading_paths.created')} {created}</span>
         <button
           type="button"
           onClick={() => setAssignOpen(true)}
@@ -207,7 +206,7 @@ function PathRow({ path }: { path: TutorReadingPath }) {
           disabled={archive.isPending}
           className="rounded-md border border-warn/40 bg-warn/5 px-2 py-0.5 text-warn hover:bg-warn/10 disabled:opacity-50"
         >
-          Архивировать
+          {tw('reading_paths.archive')}
         </button>
       </div>
       {assignOpen && (
@@ -231,6 +230,7 @@ function AssignToStudentModal({
   path: TutorReadingPath
   onClose: () => void
 }) {
+  const { t: tw } = useTranslation('wave14')
   const studentsQ = useTutorStudentsQuery()
   const assign = useAssignReadingPathMutation()
   const [studentId, setStudentId] = useState('')
@@ -301,7 +301,7 @@ function AssignToStudentModal({
               required
               className="border-b border-[var(--hair-2)] bg-transparent px-1 py-2 text-sm text-[rgb(var(--ink))] outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-decelerate)] focus:border-[rgb(var(--ink))]"
             >
-              <option value="">— выбери студента —</option>
+              <option value="">{tw('reading_paths.pick_student')}</option>
               {students.map((rel) => (
                 <option key={rel.id} value={rel.student_id}>
                   student-{rel.student_id.slice(0, 8)}
@@ -311,7 +311,7 @@ function AssignToStudentModal({
             </select>
             {students.length === 0 && (
               <span className="text-[11px] text-text-muted">
-                Нет активных студентов. Сначала разошли инвайт.
+                {tw('reading_paths.no_active_students')}
               </span>
             )}
           </label>
@@ -330,7 +330,7 @@ function AssignToStudentModal({
 
           {assign.isError && (
             <span className="text-[12px] text-danger">
-              {assign.error instanceof ApiError ? assign.error.body : 'Не получилось'}
+              {assign.error instanceof ApiError ? assign.error.body : tw('reading_paths.push_failed')}
             </span>
           )}
           {done && (
@@ -339,12 +339,12 @@ function AssignToStudentModal({
               interactive={false}
             >
               <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-success">
-                Назначено
+                {tw('reading_paths.assigned')}
               </div>
               <p className="text-[12px] text-text-secondary">
-                Push'нули student-{done.studentId.slice(0, 8)}: создали{' '}
-                {done.count} per-step assignment{done.count === 1 ? '' : 's'}.
-                Студент увидит их у себя в Hone TutorAssignments.
+                {tw('reading_paths.pushed_to_student')}{done.studentId.slice(0, 8)}{tw('reading_paths.created_count')}{' '}
+                {done.count} per-step assignment{done.count === 1 ? '' : 's'}{tw('reading_paths.dot')}{' '}
+                {tw('reading_paths.students_will_see')}
               </p>
             </Card>
           )}

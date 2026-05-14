@@ -10,7 +10,7 @@
 // Recovery: «Open onboarding again» в Settings → стирает onboarded flag.
 import { useState } from 'react';
 
-import { useT } from '@d9-i18n';
+import { useT, type TFunc } from '@d9-i18n';
 
 import { Kbd } from './primitives/Kbd';
 import { Modal } from './primitives/Modal';
@@ -240,13 +240,15 @@ function ShortcutsTour() {
 //
 // Source of truth для cents/currency живёт в backend subscription service;
 // здесь UI value-prop, не actual price processor.
-const FREE_FEATURES = [
-  'AI-coach с памятью · unlimited',
-  'Atlas curation + Codex opinion',
-  'Hone focus cockpit + offline outbox',
-  'Cue 20 suggestions / day',
-  'Reflection grading + activity log',
-];
+function freeFeatures(t: TFunc): string[] {
+  return [
+    t('hone.onboarding.free.ai_coach'),
+    'Atlas curation + Codex opinion',
+    'Hone focus cockpit + offline outbox',
+    'Cue 20 suggestions / day',
+    'Reflection grading + activity log',
+  ];
+}
 
 const PRO_FEATURES = [
   'AI-mock unlimited · 5-stage pipeline',
@@ -270,7 +272,7 @@ function TierTour() {
           gap: 12,
         }}
       >
-        <TierColumn title="free" tag="default" features={FREE_FEATURES} accent={false} />
+        <TierColumn title="free" tag="default" features={freeFeatures(t)} accent={false} />
         <TierColumn title="pro" tag="990 ₽ / mo · or byok" features={PRO_FEATURES} accent />
       </div>
       <p

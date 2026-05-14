@@ -2,7 +2,9 @@
 // без целевой даты).
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Check, Compass, ChevronDown, ChevronUp } from 'lucide-react'
+import i18n from '../lib/i18n'
 
 import { useGoal } from '../lib/useGoal'
 import {
@@ -13,15 +15,19 @@ import {
 } from '../lib/milestones'
 import { subscribeGoal } from '../lib/goal'
 
-const CATEGORY_LABEL: Record<Milestone['category'], string> = {
-  foundation: 'основа',
-  practice: 'практика',
-  mock: 'mock',
-  reflection: 'review',
-  final: 'final push',
+function getCategoryLabels(t: (k: string) => string): Record<Milestone['category'], string> {
+  return {
+    foundation: t('milestones.foundation'),
+    practice: t('milestones.practice'),
+    mock: 'mock',
+    reflection: 'review',
+    final: 'final push',
+  }
 }
 
 export function MilestonesCard() {
+  const { t } = useTranslation('wave14')
+  const CATEGORY_LABEL = useMemo(() => getCategoryLabels(t), [t])
   const goal = useGoal()
   const [tick, setTick] = useState(0)
   const [collapsed, setCollapsed] = useState(true)
@@ -66,7 +72,7 @@ export function MilestonesCard() {
           </span>
           <h2 className="font-display text-base font-bold leading-tight">
             <Compass className="mr-1 inline h-4 w-4 text-text-secondary" />
-            {doneCount}/{total} {pluralDone(doneCount)} закрыто · {pct}%
+            {doneCount}/{total} {pluralDone(doneCount)} {t('milestones.closed_count')} {pct}%
           </h2>
         </div>
         <button
@@ -76,11 +82,11 @@ export function MilestonesCard() {
         >
           {collapsed ? (
             <>
-              развернуть <ChevronDown className="h-3 w-3" />
+              {t('milestones.expand')} <ChevronDown className="h-3 w-3" />
             </>
           ) : (
             <>
-              свернуть <ChevronUp className="h-3 w-3" />
+              {t('milestones.collapse')} <ChevronUp className="h-3 w-3" />
             </>
           )}
         </button>
@@ -99,6 +105,7 @@ export function MilestonesCard() {
           <MilestoneRow
             key={m.id}
             m={m}
+            categoryLabel={CATEGORY_LABEL[m.category]}
             isCurrent={!m.done && milestones.findIndex((x) => !x.done) === m.weekIndex - 1}
           />
         ))}
@@ -110,21 +117,22 @@ export function MilestonesCard() {
           onClick={() => setCollapsed(false)}
           className="self-start font-mono text-[11px] uppercase tracking-[0.08em] text-text-secondary underline-offset-2 hover:text-text-primary hover:underline"
         >
-          Показать все {total} milestones →
+          {t('milestones.show_all')} {total} milestones →
         </button>
       )}
     </section>
   )
 }
 
-function MilestoneRow({ m, isCurrent }: { m: Milestone; isCurrent: boolean }) {
+function MilestoneRow({ m, isCurrent, categoryLabel }: { m: Milestone; isCurrent: boolean; categoryLabel: string }) {
+  const { t } = useTranslation('wave14')
   const onToggle = () => toggleMilestoneDone(m.id)
   return (
     <li className="flex items-start gap-3 py-2.5">
       <button
         type="button"
         onClick={onToggle}
-        aria-label={m.done ? 'Снять отметку' : 'Отметить выполненным'}
+        aria-label={m.done ? t('milestones.uncheck') : t('milestones.check_done')}
         className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-sm border transition-colors ${
           m.done
             ? 'border-border-strong bg-text-primary/10 text-text-primary'
@@ -149,11 +157,11 @@ function MilestoneRow({ m, isCurrent }: { m: Milestone; isCurrent: boolean }) {
             {m.title}
           </span>
           <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-text-muted">
-            · {CATEGORY_LABEL[m.category]}
+            · {categoryLabel}
           </span>
           {isCurrent && (
             <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-text-primary">
-              · сейчас
+              {t('milestones.now')}
             </span>
           )}
         </div>
@@ -173,9 +181,9 @@ function MilestoneRow({ m, isCurrent }: { m: Milestone; isCurrent: boolean }) {
 }
 
 function pluralWeeks(n: number): string {
-  if (n === 1) return 'неделя'
-  if (n >= 2 && n <= 4) return 'недели'
-  return 'недель'
+  if (n === 1) return i18n.t('milestones.week', { ns: 'wave14' })
+  if (n >= 2 && n <= 4) return i18n.t('milestones.weeks_few', { ns: 'wave14' })
+  return i18n.t('milestones.weeks_many', { ns: 'wave14' })
 }
 
 function pluralDone(n: number): string {

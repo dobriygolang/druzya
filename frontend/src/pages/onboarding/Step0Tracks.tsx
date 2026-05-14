@@ -15,6 +15,7 @@
 // silently advance.
 
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import { OnboardingLayout } from './_shared/Layout'
@@ -47,20 +48,22 @@ type Card = {
   needsSeniority: boolean
 }
 
-const CARDS: Card[] = [
-  { wire: 'TRACK_DEV', title: 'Разработчик', blurb: 'Алгоритмы, бэкенд, базовый mock. Junior / Middle.', needsSeniority: true },
-  { wire: 'TRACK_DEV_SENIOR', title: 'Senior dev', blurb: 'System Design, Tech Lead / EM, code-review.', needsSeniority: true },
-  {
-    wire: 'TRACK_ML_VIRTUAL',
-    title: 'ML Engineering',
-    blurb: 'Senior ML/MLE — interview prep, atlas, mock pipeline. Classical ML, DL, transformers, LLM/GenAI, MLOps.',
-    needsSeniority: false,
-  },
-  { wire: 'TRACK_SYSANALYST', title: 'Системный аналитик', blurb: 'BPMN, use-cases, SQL, requirements gathering.', needsSeniority: true },
-  { wire: 'TRACK_PRODUCT_ANALYST', title: 'Product analyst', blurb: 'Метрики, A/B, SQL, dashboards.', needsSeniority: true },
-  { wire: 'TRACK_QA', title: 'QA / тестировщик', blurb: 'Тест-дизайн, API-тестирование, автотесты.', needsSeniority: true },
-  { wire: 'TRACK_ENGLISH', title: 'English', blurb: 'Дисциплина-слой между тобой и твоим тутром.', needsSeniority: false },
-]
+function buildCards(t: (k: string) => string): Card[] {
+  return [
+    { wire: 'TRACK_DEV', title: t('onboarding_track.developer'), blurb: t('onboarding_track.developer_blurb'), needsSeniority: true },
+    { wire: 'TRACK_DEV_SENIOR', title: 'Senior dev', blurb: 'System Design, Tech Lead / EM, code-review.', needsSeniority: true },
+    {
+      wire: 'TRACK_ML_VIRTUAL',
+      title: 'ML Engineering',
+      blurb: 'Senior ML/MLE — interview prep, atlas, mock pipeline. Classical ML, DL, transformers, LLM/GenAI, MLOps.',
+      needsSeniority: false,
+    },
+    { wire: 'TRACK_SYSANALYST', title: t('onboarding_track.sysanalyst'), blurb: 'BPMN, use-cases, SQL, requirements gathering.', needsSeniority: true },
+    { wire: 'TRACK_PRODUCT_ANALYST', title: 'Product analyst', blurb: t('onboarding_track.product_analyst_blurb'), needsSeniority: true },
+    { wire: 'TRACK_QA', title: t('onboarding_track.qa'), blurb: t('onboarding_track.qa_blurb'), needsSeniority: true },
+    { wire: 'TRACK_ENGLISH', title: 'English', blurb: t('onboarding_track.english_blurb'), needsSeniority: false },
+  ]
+}
 
 type PickState = {
   picked: Set<WireTrack>
@@ -111,7 +114,9 @@ const captionMono: React.CSSProperties = {
 }
 
 export default function Step0Tracks() {
+  const { t } = useTranslation('wave14')
   const nav = useNavigate()
+  const CARDS = useMemo(() => buildCards(t), [t])
   const [state, setState] = useState<PickState>(() => ({
     picked: new Set(),
     seniority: new Map(),
@@ -196,7 +201,7 @@ export default function Step0Tracks() {
         // apiClient redirects on 401 already; just stop spinner.
         return
       }
-      setError(e instanceof Error ? e.message : 'Не удалось сохранить выбор')
+      setError(e instanceof Error ? e.message : t('onboarding_track.save_failed'))
     } finally {
       setSubmitting(false)
     }
@@ -205,7 +210,7 @@ export default function Step0Tracks() {
   return (
     <OnboardingLayout step={1} total={5}>
       <div className="text-center" style={{ marginBottom: 28 }}>
-        <div style={{ ...captionMono, marginBottom: 10 }}>шаг 0 · треки</div>
+        <div style={{ ...captionMono, marginBottom: 10 }}>{t('onboarding_track.step_label')}</div>
         <h2
           style={{
             margin: 0,
@@ -217,11 +222,10 @@ export default function Step0Tracks() {
             color: 'rgb(var(--ink))',
           }}
         >
-          Кто ты и над чем хочешь расти?
+          {t('onboarding_track.title')}
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55, maxWidth: '60ch', marginInline: 'auto' }}>
-          Выбери один трек или несколько — мы покажем разный Atlas, разные mock-сессии и разные подсказки.
-          Любой выбор можно поменять в Settings.
+          {t('onboarding_track.subtitle')}
         </p>
       </div>
 
@@ -353,7 +357,7 @@ export default function Step0Tracks() {
                       style={{ display: 'inline-block', width: 5, height: 5, borderRadius: 999, background: 'var(--red)' }}
                     />
                   )}
-                  {isPrimary ? 'primary' : 'сделать primary'}
+                  {isPrimary ? 'primary' : t('onboarding_track.make_primary')}
                 </button>
               )}
             </div>
@@ -385,10 +389,10 @@ export default function Step0Tracks() {
       <div className="flex-wrap-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-60)' }}>
           {state.picked.size === 0
-            ? 'выбери хотя бы один трек'
+            ? t('onboarding_track.pick_one')
             : (
               <>
-                выбрано: <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontWeight: 600 }}>{state.picked.size}</strong>
+                {t('onboarding_track.selected')} <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontWeight: 600 }}>{state.picked.size}</strong>
                 {' · primary: '}
                 <strong style={{ color: 'rgb(var(--ink))', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontWeight: 600 }}>{state.primary ?? '—'}</strong>
               </>
@@ -413,7 +417,7 @@ export default function Step0Tracks() {
               'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
-          {submitting ? 'сохраняем…' : 'Далее →'}
+          {submitting ? t('onboarding_track.saving') : t('onboarding_track.next_arrow')}
         </button>
       </div>
     </OnboardingLayout>

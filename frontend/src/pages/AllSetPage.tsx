@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, Sparkles, Map as MapIcon, MessageSquare, ArrowRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { InstallHoneCTA } from '../components/InstallHoneCTA'
 
@@ -134,6 +135,7 @@ const ghostPill: React.CSSProperties = {
 }
 
 export default function AllSetPage() {
+  const { t } = useTranslation('pages')
   useEffect(() => {
     document.body.classList.add('v2')
     return () => document.body.classList.remove('v2')
@@ -173,7 +175,7 @@ export default function AllSetPage() {
             color: 'rgb(var(--ink))',
           }}
         >
-          Готово!
+          {t('all_set.title')}
         </h1>
         <p
           className="text-center"
@@ -185,24 +187,24 @@ export default function AllSetPage() {
             color: 'var(--ink-60)',
           }}
         >
-          Трек выбран, Atlas построен. Дальше — первый mock и AI-coach с памятью.
+          {t('all_set.subtitle')}
         </p>
 
         <div className="flex flex-wrap-row" style={{ gap: 12, justifyContent: 'center' }}>
           <RewardCard
             icon={<Sparkles style={{ width: 22, height: 22 }} />}
-            title="Mock unlocked"
-            sub="Strict + AI-режимы доступны"
+            title={t('all_set.reward1.title')}
+            sub={t('all_set.reward1.sub')}
           />
           <RewardCard
             icon={<MapIcon style={{ width: 22, height: 22 }} />}
-            title="Skill Atlas"
-            sub="Карта прогресса по треку"
+            title={t('all_set.reward2.title')}
+            sub={t('all_set.reward2.sub')}
           />
           <RewardCard
             icon={<MessageSquare style={{ width: 22, height: 22 }} />}
-            title="AI-coach"
-            sub="Помнит твой контекст"
+            title={t('all_set.reward3.title')}
+            sub={t('all_set.reward3.sub')}
           />
         </div>
 
@@ -230,10 +232,10 @@ export default function AllSetPage() {
                 color: 'rgb(var(--ink))',
               }}
             >
-              Запусти первый mock
+              {t('all_set.cta_title')}
             </span>
             <span style={{ fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
-              Strict-режим без AI с watermark — честная оценка готовности за 25 минут
+              {t('all_set.cta_sub')}
             </span>
           </div>
           <Link
@@ -256,7 +258,7 @@ export default function AllSetPage() {
                 'background-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
             }}
           >
-            Запустить <ArrowRight style={{ width: 16, height: 16 }} />
+            {t('all_set.cta_btn')} <ArrowRight style={{ width: 16, height: 16 }} />
           </Link>
         </div>
 
@@ -275,7 +277,7 @@ export default function AllSetPage() {
             onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
           >
-            Открыть Atlas
+            {t('all_set.link_atlas')}
           </Link>
           <Link
             to="/tutor"
@@ -284,7 +286,7 @@ export default function AllSetPage() {
             onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
           >
-            Поговорить с coach
+            {t('all_set.link_coach')}
           </Link>
           <Link
             to="/codex"
@@ -293,7 +295,7 @@ export default function AllSetPage() {
             onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
           >
-            Прочитать Codex
+            {t('all_set.link_codex')}
           </Link>
         </div>
       </main>

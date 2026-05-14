@@ -29,5 +29,132 @@
     "unlocks_title": "This node unlocks",
     "hone_practice_title": "Open Hone and start a pomodoro on «{{title}}»",
     "minutes_suffix": "min"
+  },
+  "canvas": {
+    "hub_default": "Class core",
+    "start_here": "Start here ↓"
+  },
+  "coverage": {
+    "label": {
+      "covered": "touched",
+      "partial": "partial",
+      "struggling": "stale"
+    },
+    "match_title": "{{count}} match(es) in 30d · last {{ago}}",
+    "ago": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "days": "{{n}}d ago",
+      "weeks": "{{n}}w ago"
+    }
+  },
+  "tracks": {
+    "stage": {
+      "algo": "Algorithms"
+    },
+    "step_kind": {
+      "unspecified": "—",
+      "kata": "Solve kata",
+      "arena": "Arena",
+      "mock": "Mock interview",
+      "codex_read": "Read article",
+      "focus_block": "Focus block"
+    },
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    }
+  },
+  "filters": {
+    "search_placeholder": "Search by skill name…",
+    "reset": "Reset",
+    "all_categories": "All categories"
+  },
+  "list_mode": {
+    "empty": "Nothing matches the filters."
+  },
+  "legacy": {
+    "state": {
+      "locked": "Locked",
+      "available": "Available",
+      "in_progress": "In progress",
+      "mastered": "Mastered",
+      "decaying": "Decaying"
+    },
+    "section": {
+      "algorithms": "Algorithms"
+    },
+    "filter": {
+      "all": "All",
+      "locked": "Locked",
+      "available": "Available",
+      "in_progress": "In progress",
+      "mastered": "Mastered",
+      "decaying": "Decaying"
+    },
+    "tooltip": {
+      "decaying": "Knowledge fading · {{days}}d",
+      "decaying_no_days": "Knowledge fading",
+      "solved_today": "Solved today",
+      "last_problem": "Last problem: {{days}} d ago",
+      "recommended": "Recommended"
+    },
+    "recenter": "Recenter",
+    "legend": {
+      "available": "Available",
+      "in_progress": "In progress",
+      "mastered": "Mastered",
+      "decaying": "Decaying",
+      "locked": "Locked"
+    }
+  },
+  "explore": {
+    "load_failed_short": "Failed to load",
+    "load_failed_body": "Could not load the atlas. Try refreshing — if the error repeats, check your connection.",
+    "unlocked_count": "{{unlocked}} / {{total}} nodes open",
+    "updated_ago": "updated {{age}}",
+    "refresh_aria": "Refresh atlas",
+    "retry": "Retry",
+    "loading_canvas": "Loading atlas…",
+    "track_filter_label": "track",
+    "track_filter_aria": "Filter the atlas by tracks",
+    "ago": {
+      "just_now": "just now",
+      "sec": "{{n}} sec ago",
+      "min": "{{n}} min ago",
+      "hr": "{{n}} h ago",
+      "day": "{{n}} d ago"
+    },
+    "empty": {
+      "title": "Atlas is empty",
+      "body": "Solve your first task — and the first skills will land here. The atlas shows what you've mastered, what to brush up, and what next steps are recommended.",
+      "cta": "Start mock"
+    }
+  },
+  "page": {
+    "active_track_section": "Active track",
+    "catalogue_section": "Tracks catalogue",
+    "catalogue_header": "Catalogue",
+    "hero_subtitle": "Curated programmes for interview/promo. Steps are ordered — pick a track and follow the checklist to the end.",
+    "error_short": "error",
+    "loading_short": "loading…",
+    "tracks_count_one": "{{count}} track",
+    "tracks_count_few": "{{count}} tracks",
+    "tracks_count_many": "{{count}} tracks",
+    "tracks_count": "{{count}} tracks",
+    "weeks_short": "wks",
+    "catalogue_empty": "The catalogue is empty. Curators are preparing the first programmes — check back soon.",
+    "load_failed": "Could not load tracks. Try refreshing.",
+    "retry": "Retry",
+    "classifier_unavailable": "AI classifier is currently unavailable (no LLM configured).",
+    "add_topic_title": "Add a topic to the atlas",
+    "add_topic_body": "Describe what you want to learn («Postgres transactions», «diffusion models»). AI will either match a curated node or create a new one in your personal layer.",
+    "add_topic_placeholder": "E.g.: Postgres transactions",
+    "add_topic_cta": "Add",
+    "topic_matched_prefix": "Already in the atlas:",
+    "topic_matched_suffix": ". Progress on it starts immediately.",
+    "topic_created_prefix": "Created a new node",
+    "topic_done": "Done."
   }
 }

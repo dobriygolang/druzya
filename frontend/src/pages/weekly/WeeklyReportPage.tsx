@@ -5,6 +5,7 @@
 //
 // Anti-fallback policy: если бэк отдаёт "" — секция вовсе скрывается.
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
@@ -32,6 +33,7 @@ function WeeklySkeleton() {
 }
 
 export default function WeeklyReportPage() {
+  const { t } = useTranslation('wave14')
   const weeklyQ = useWeeklyReportQuery()
   const { data, isLoading } = weeklyQ
 
@@ -50,7 +52,7 @@ export default function WeeklyReportPage() {
           to="/profile"
           className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary"
         >
-          <ChevronLeft className="h-4 w-4" /> Профиль
+          <ChevronLeft className="h-4 w-4" /> {t('weekly_extra.profile')}
         </Link>
         <span className="ml-2 text-sm text-text-muted">/ Weekly</span>
       </div>

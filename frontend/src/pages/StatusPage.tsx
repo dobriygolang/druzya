@@ -346,6 +346,7 @@ function MetricsCard({ uptime90d, incidentCount }: { uptime90d: string; incident
 
 
 export default function StatusPage() {
+  const { t } = useTranslation('pages')
   const { data, isPending, error } = useStatusPageQuery()
 
   if (isPending) {
@@ -368,8 +369,8 @@ export default function StatusPage() {
         <TopBar />
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 py-16 text-center">
           <AlertCircle className="h-14 w-14 text-danger" />
-          <h1 className="font-display text-2xl font-extrabold text-text-primary">Сервис недоступен</h1>
-          <p className="text-sm text-text-secondary">Не удалось загрузить страницу статуса. Попробуйте позже.</p>
+          <h1 className="font-display text-2xl font-extrabold text-text-primary">{t('status_full.error_title')}</h1>
+          <p className="text-sm text-text-secondary">{t('status_full.error_body')}</p>
         </div>
       </div>
     )

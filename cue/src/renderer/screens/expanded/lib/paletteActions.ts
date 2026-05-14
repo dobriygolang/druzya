@@ -3,6 +3,7 @@
 // actions (Export / Save / Summary) hide when not relevant (no messages
 // / no ready report).
 
+import { translate } from '@d9-i18n';
 import type { Action } from '../../../components/CommandPalette';
 
 export function buildPaletteActions(ctx: {
@@ -23,20 +24,20 @@ export function buildPaletteActions(ctx: {
   quitApp: () => void;
 }): Action[] {
   const list: Action[] = [
-    { id: 'history', label: 'История чатов', hint: 'Открыть список прошлых разговоров', run: ctx.openHistory },
-    { id: 'persona', label: 'Сменить persona', hint: '⌥1..⌥9 — быстрый switch', run: ctx.openPersonaPicker },
-    { id: 'model', label: 'Сменить модель', run: ctx.openModelPicker },
-    { id: 'screenshot', label: 'Сделать скриншот области', shortcut: '⌘⇧S', run: ctx.screenshot },
-    { id: 'settings', label: 'Открыть настройки', run: ctx.openSettings },
+    { id: 'history', label: translate('cue.palette.history_label'), hint: translate('cue.palette.history_hint'), run: ctx.openHistory },
+    { id: 'persona', label: translate('cue.palette.persona_label'), hint: translate('cue.palette.persona_hint'), run: ctx.openPersonaPicker },
+    { id: 'model', label: translate('cue.palette.model_label'), run: ctx.openModelPicker },
+    { id: 'screenshot', label: translate('cue.palette.screenshot_label'), shortcut: '⌘⇧S', run: ctx.screenshot },
+    { id: 'settings', label: translate('cue.palette.settings_label'), run: ctx.openSettings },
   ];
   if (ctx.hasSummary) {
-    list.push({ id: 'summary', label: 'Открыть Summary', hint: 'Отчёт по сессии', run: ctx.openSummary });
+    list.push({ id: 'summary', label: translate('cue.palette.summary_label'), hint: translate('cue.palette.summary_hint'), run: ctx.openSummary });
   }
   if (ctx.hasMessages) {
     list.push(
-      { id: 'export-md', label: 'Экспорт в Markdown', hint: 'Сохранить чат в .md файл', run: ctx.exportMarkdown },
-      { id: 'save-hone', label: 'Сохранить в Hone', hint: 'Перенести как заметку', run: ctx.saveToHone },
-      { id: 'clear-chat', label: 'Очистить чат', hint: 'Начать новый разговор', run: ctx.clearChat },
+      { id: 'export-md', label: translate('cue.palette.export_md_label'), hint: translate('cue.palette.export_md_hint'), run: ctx.exportMarkdown },
+      { id: 'save-hone', label: translate('cue.palette.save_hone_label'), hint: translate('cue.palette.save_hone_hint'), run: ctx.saveToHone },
+      { id: 'clear-chat', label: translate('cue.palette.clear_chat_label'), hint: translate('cue.palette.clear_chat_hint'), run: ctx.clearChat },
     );
   }
   // Subscription actions — always surfaced so users can find them via search.
@@ -47,8 +48,8 @@ export function buildPaletteActions(ctx: {
   if (ctx.isFreePlan) {
     list.push({
       id: 'upgrade',
-      label: 'Обновить план',
-      hint: 'Pro 990₽/mo · Cerebras priority · 8h sessions',
+      label: translate('cue.palette.upgrade_label'),
+      hint: translate('cue.palette.upgrade_hint'),
       run: () => {
         void import('../../../components/UpgradeModal').then(({ requestUpgrade }) => {
           requestUpgrade({
@@ -63,10 +64,10 @@ export function buildPaletteActions(ctx: {
   }
   list.push({
     id: 'refresh-quota',
-    label: 'Проверить подписку',
-    hint: 'Обновить статус плана с сервера',
+    label: translate('cue.palette.refresh_quota_label'),
+    hint: translate('cue.palette.refresh_quota_hint'),
     run: ctx.refreshQuota,
   });
-  list.push({ id: 'quit', label: 'Выйти из Cue', shortcut: '⌘Q', run: ctx.quitApp });
+  list.push({ id: 'quit', label: translate('cue.palette.quit_label'), shortcut: '⌘Q', run: ctx.quitApp });
   return list;
 }

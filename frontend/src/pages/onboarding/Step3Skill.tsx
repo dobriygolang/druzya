@@ -6,57 +6,56 @@
 
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { OnboardingLayout } from './_shared/Layout'
 import { readFocusClass, useOnboarding, type FocusClass } from './_shared/useOnboarding'
 
 type CoreSkill = { id: string; title: string; blurb: string; hours: number; tasks: number }
 
-// Hard-coded per focus-class until GET /atlas/core lands. Each block has
-// 3 entry-level core nodes that map onto real atlas_nodes ids the
-// allocator can claim. Keep title/blurb in Russian to match the rest of
-// the onboarding copy.
-const CORE_SKILLS_BY_CLASS: Record<FocusClass, { label: string; skills: CoreSkill[] }> = {
-  algo: {
-    label: 'Алгоритмы',
-    skills: [
-      { id: 'two-pointers', title: 'Two pointers', blurb: 'Самый простой способ почувствовать массив. 80% sliding-window задач после.', hours: 4, tasks: 12 },
-      { id: 'sliding-window', title: 'Sliding window', blurb: 'Базовый паттерн для подстрок и подмассивов с динамическими границами.', hours: 6, tasks: 14 },
-      { id: 'binary-search', title: 'Binary search', blurb: 'Не только в массивах — в ответах, на функциях, в boundary-задачах.', hours: 5, tasks: 10 },
-    ],
-  },
-  backend: {
-    label: 'Бекенд',
-    skills: [
-      { id: 'http-deep', title: 'HTTP deep', blurb: 'Statuses, headers, idempotency, redirects, caching — то, что собес-инженер должен бросить с любой стороны.', hours: 5, tasks: 12 },
-      { id: 'caching-strategies', title: 'Cache strategies', blurb: 'read-through / write-back / write-around — где какая стратегия и чем платишь за выбор.', hours: 6, tasks: 10 },
-      { id: 'api-design', title: 'API design', blurb: 'Версионирование, contract evolution, REST vs gRPC trade-offs.', hours: 5, tasks: 12 },
-    ],
-  },
-  system: {
-    label: 'System Design',
-    skills: [
-      { id: 'cap-theorem', title: 'CAP & consistency', blurb: 'Консистентность ↔ доступность под partition. Почему single-master не магия.', hours: 6, tasks: 10 },
-      { id: 'load-balancing', title: 'Load balancing', blurb: 'L4 vs L7, sticky sessions, health-checks, hashing strategies.', hours: 5, tasks: 12 },
-      { id: 'sharding', title: 'Sharding & partitioning', blurb: 'Range / hash / directory — когда какое и как мигрировать.', hours: 7, tasks: 14 },
-    ],
-  },
-  concurrency: {
-    label: 'Concurrency',
-    skills: [
-      { id: 'locks-mutex', title: 'Locks & mutex', blurb: 'Mutex vs RWLock, deadlock, lock ordering, lock-free hints.', hours: 5, tasks: 12 },
-      { id: 'channels-csp', title: 'Channels / CSP', blurb: 'Go-style: share by communicating, fan-in/fan-out, cancellation.', hours: 6, tasks: 14 },
-      { id: 'race-conditions', title: 'Race conditions', blurb: 'race detector, memory barriers, happens-before — чтобы не врать на собесе.', hours: 5, tasks: 10 },
-    ],
-  },
-  ds: {
-    label: 'Data Science',
-    skills: [
-      { id: 'sql-windows', title: 'SQL window functions', blurb: 'ROW_NUMBER / LAG / LEAD / partitioned aggregates — must для аналитика.', hours: 5, tasks: 12 },
-      { id: 'ab-testing', title: 'A/B testing', blurb: 'CUPED, SRM, multiple comparisons — что спросят на product analyst.', hours: 6, tasks: 10 },
-      { id: 'probability', title: 'Probability basics', blurb: 'Bayes, conditional, expectation — гигиена для DS-собесов.', hours: 5, tasks: 12 },
-    ],
-  },
+// Per focus-class core skills. Titles + blurbs are pulled from the
+// onboarding namespace so they translate alongside everything else.
+type SkillSeed = { id: string; hours: number; tasks: number }
+const CORE_SKILL_IDS: Record<FocusClass, SkillSeed[]> = {
+  algo: [
+    { id: 'two-pointers', hours: 4, tasks: 12 },
+    { id: 'sliding-window', hours: 6, tasks: 14 },
+    { id: 'binary-search', hours: 5, tasks: 10 },
+  ],
+  backend: [
+    { id: 'http-deep', hours: 5, tasks: 12 },
+    { id: 'caching-strategies', hours: 6, tasks: 10 },
+    { id: 'api-design', hours: 5, tasks: 12 },
+  ],
+  system: [
+    { id: 'cap-theorem', hours: 6, tasks: 10 },
+    { id: 'load-balancing', hours: 5, tasks: 12 },
+    { id: 'sharding', hours: 7, tasks: 14 },
+  ],
+  concurrency: [
+    { id: 'locks-mutex', hours: 5, tasks: 12 },
+    { id: 'channels-csp', hours: 6, tasks: 14 },
+    { id: 'race-conditions', hours: 5, tasks: 10 },
+  ],
+  ds: [
+    { id: 'sql-windows', hours: 5, tasks: 12 },
+    { id: 'ab-testing', hours: 6, tasks: 10 },
+    { id: 'probability', hours: 5, tasks: 12 },
+  ],
+}
+
+function getSkillsForClass(
+  cls: FocusClass,
+  t: (key: string) => string,
+): { label: string; skills: CoreSkill[] } {
+  return {
+    label: t(`onboarding:step3.class.${cls}`),
+    skills: CORE_SKILL_IDS[cls].map((seed) => ({
+      ...seed,
+      title: t(`onboarding:step3.skill.${seed.id}.title`),
+      blurb: t(`onboarding:step3.skill.${seed.id}.blurb`),
+    })),
+  }
 }
 
 const captionMono: React.CSSProperties = {
@@ -69,6 +68,7 @@ const captionMono: React.CSSProperties = {
 }
 
 export default function Step3Skill() {
+  const { t } = useTranslation()
   const nav = useNavigate()
   const { setStep, allocateFirstSkill } = useOnboarding()
   const [picked, setPicked] = useState<string | null>(null)
@@ -76,7 +76,7 @@ export default function Step3Skill() {
   // routing here, so a re-render can't lose it. Falls back to 'algo' if
   // user reached this URL directly without going through Step 2.
   const focusClass = useMemo(() => readFocusClass(), [])
-  const block = CORE_SKILLS_BY_CLASS[focusClass]
+  const block = useMemo(() => getSkillsForClass(focusClass, t), [focusClass, t])
 
   const go = async (skillId: string) => {
     await allocateFirstSkill.mutateAsync(skillId)
@@ -89,9 +89,9 @@ export default function Step3Skill() {
   const autopick = () => go(block.skills[Math.floor(block.skills.length / 2)].id)
 
   return (
-    <OnboardingLayout step={3} onBack={() => nav('/onboarding/class')} onSkip={autopick} skipLabel="подберите сами">
+    <OnboardingLayout step={3} onBack={() => nav('/onboarding/class')} onSkip={autopick} skipLabel={t('onboarding:step3.skip_label')}>
       <div className="text-center" style={{ marginBottom: 28 }}>
-        <div style={{ ...captionMono, marginBottom: 10 }}>шаг 3 · первая нода atlas</div>
+        <div style={{ ...captionMono, marginBottom: 10 }}>{t('onboarding:step3.eyebrow')}</div>
         <h2
           style={{
             margin: 0,
@@ -103,10 +103,12 @@ export default function Step3Skill() {
             color: 'rgb(var(--ink))',
           }}
         >
-          С чего начнём качать <span style={{ color: 'rgb(var(--ink))' }}>{block.label}</span>?
+          {t('onboarding:step3.title_prefix')}{' '}
+          <span style={{ color: 'rgb(var(--ink))' }}>{block.label}</span>
+          {t('onboarding:step3.title_suffix')}
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-60)', lineHeight: 1.55 }}>
-          Выбери одну core-ноду. Она станет активной точкой на Atlas.
+          {t('onboarding:step3.subtitle_pick')}
         </p>
       </div>
 
@@ -167,8 +169,8 @@ export default function Step3Skill() {
                   color: 'var(--ink-40)',
                 }}
               >
-                <span>≈{s.hours} ч.</span>
-                <span>{s.tasks} задач</span>
+                <span>{t('onboarding:step3.hours_short', { n: s.hours })}</span>
+                <span>{t('onboarding:step3.tasks_short', { n: s.tasks })}</span>
               </div>
             </button>
           )
@@ -195,7 +197,7 @@ export default function Step3Skill() {
               'background-color var(--motion-dur-small) var(--motion-ease-standard), opacity var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
         >
-          Выбрать и далее →
+          {t('onboarding:step3.cta_continue')}
         </button>
       </div>
     </OnboardingLayout>

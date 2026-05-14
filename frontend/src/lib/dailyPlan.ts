@@ -6,9 +6,13 @@
 // `GetDailyPlan` UC + LLM milestone decomposition, swap engine но keep
 // shape стабильным.
 
+import i18n from './i18n'
 import { loadProgress, type AnswerMap } from './diagnostic'
 import { getGoal, type UserGoal } from './goal'
 import { computeReadiness, type Readiness } from './readiness'
+
+const t = (key: string, opts?: Record<string, unknown>): string =>
+  i18n.t(`pages:daily_plan.${key}`, opts)
 
 export type ActionKind =
   | 'mock'         // AI-mock session
@@ -90,8 +94,8 @@ function buildCandidates(
   if (weakest === 'sysdesign') {
     candidates.push({
       id: 'sysdesign-deep-block',
-      title: 'Sys-Design focus 45 min',
-      rationale: 'Sys-design — слабое место по диагностике. Без него senior offer не закроешь.',
+      title: t('candidates.sysdesign.title'),
+      rationale: t('candidates.sysdesign.rationale'),
       estimatedMin: 45,
       kind: 'focus_block',
       href: '/atlas/track/system-design',
@@ -102,8 +106,8 @@ function buildCandidates(
   if (weakest === 'algos') {
     candidates.push({
       id: 'algo-leetcode-block',
-      title: '2 LeetCode medium-hard (algo)',
-      rationale: 'Algos — слабая ось. Каждый день по 2 задачи поднимут рабочую память.',
+      title: t('candidates.algo.title'),
+      rationale: t('candidates.algo.rationale'),
       estimatedMin: 45,
       kind: 'focus_block',
       href: '/atlas/track/algorithms',
@@ -114,8 +118,8 @@ function buildCandidates(
   if (weakest === 'concurrency') {
     candidates.push({
       id: 'go-concurrency-block',
-      title: 'Go concurrency drill (45 min)',
-      rationale: 'Channels / goroutines internals — твоя зона роста.',
+      title: t('candidates.concurrency.title'),
+      rationale: t('candidates.concurrency.rationale'),
       estimatedMin: 45,
       kind: 'focus_block',
       href: '/atlas/track/go-concurrency',
@@ -126,8 +130,8 @@ function buildCandidates(
   if (weakest === 'databases') {
     candidates.push({
       id: 'db-internals-block',
-      title: 'DB internals (DDIA ch. 3 — 7)',
-      rationale: 'Indices / isolation levels — senior gates.',
+      title: t('candidates.databases.title'),
+      rationale: t('candidates.databases.rationale'),
       estimatedMin: 45,
       kind: 'reading',
       href: '/codex',
@@ -138,8 +142,8 @@ function buildCandidates(
   if (weakest === 'distributed') {
     candidates.push({
       id: 'distributed-paper-read',
-      title: 'Raft paper + Kleinberg ch. 5',
-      rationale: 'Consensus + replication — backbone senior+ sysdesign.',
+      title: t('candidates.distributed.title'),
+      rationale: t('candidates.distributed.rationale'),
       estimatedMin: 60,
       kind: 'reading',
       href: '/codex',
@@ -156,8 +160,8 @@ function buildCandidates(
   ) {
     candidates.push({
       id: 'mock-pipeline-today',
-      title: 'Mock pipeline (HR + Algo)',
-      rationale: 'Активный поиск / горящие сроки — нужен mock каждые 2-3 дня для калибровки.',
+      title: t('candidates.mock_pipeline.title'),
+      rationale: t('candidates.mock_pipeline.rationale'),
       estimatedMin: 75,
       kind: 'mock',
       href: '/mock',
@@ -167,8 +171,8 @@ function buildCandidates(
   } else if (lowReadiness) {
     candidates.push({
       id: 'mock-diagnostic-today',
-      title: 'Mini-mock для baseline',
-      rationale: 'Readiness низкий — нужен baseline чтобы знать с чего стартуем.',
+      title: t('candidates.mock_diagnostic.title'),
+      rationale: t('candidates.mock_diagnostic.rationale'),
       estimatedMin: 30,
       kind: 'mock',
       href: '/mock',
@@ -180,8 +184,8 @@ function buildCandidates(
     // MVP-OK seedless random.
     candidates.push({
       id: 'mock-checkpoint-today',
-      title: 'Mock checkpoint (40 min)',
-      rationale: 'Mid readiness — checkpoint показывает где залип.',
+      title: t('candidates.mock_checkpoint.title'),
+      rationale: t('candidates.mock_checkpoint.rationale'),
       estimatedMin: 40,
       kind: 'mock',
       href: '/mock',
@@ -193,8 +197,8 @@ function buildCandidates(
   // ── 3. Coach session (caches readiness context) ──────────────────────
   candidates.push({
     id: 'coach-checkin',
-    title: 'Coach check-in (10 min)',
-    rationale: 'Coach helps вычистить blockers и валидировать план — daily 10 min достаточно.',
+    title: t('candidates.coach.title'),
+    rationale: t('candidates.coach.rationale'),
     estimatedMin: 10,
     kind: 'coach',
     href: '/tutor/ai/algo-coach',
@@ -206,8 +210,8 @@ function buildCandidates(
   if (targetCo === 'big_tech' || targetLevel === 'staff') {
     candidates.push({
       id: 'codex-distributed-read',
-      title: 'Прочесть 1 Codex статью (sysdesign)',
-      rationale: 'FAANG / staff trajectory — sysdesign depth тут выигрывает.',
+      title: t('candidates.codex_read.title'),
+      rationale: t('candidates.codex_read.rationale'),
       estimatedMin: 20,
       kind: 'reading',
       href: '/codex',
@@ -219,8 +223,8 @@ function buildCandidates(
   // ── 5. Reflection (end of day, лёгкая) ───────────────────────────────
   candidates.push({
     id: 'reflection-eod',
-    title: 'Reflection: что зашло сегодня',
-    rationale: '5-минутный лог что выучил → coach сохранит в memory.',
+    title: t('candidates.reflection.title'),
+    rationale: t('candidates.reflection.rationale'),
     estimatedMin: 5,
     kind: 'reflection',
     href: '/today#reflection',
@@ -233,8 +237,8 @@ function buildCandidates(
   if (lowReadiness && readiness.factors.length <= 2) {
     candidates.push({
       id: 'diagnostic-take',
-      title: 'Пройти 8-минутную диагностику',
-      rationale: 'Readiness низкий потому что я ещё мало знаю о тебе. Quiz уточнит план.',
+      title: t('candidates.diagnostic.title'),
+      rationale: t('candidates.diagnostic.rationale'),
       estimatedMin: 8,
       kind: 'diagnostic',
       href: '/diagnostic',
@@ -300,10 +304,10 @@ function buildRationale(goal: UserGoal, readiness: Readiness, _budgetMin: number
     parts.push('Senior IT')
   }
   if (readiness.weeksToTarget !== null) {
-    parts.push(`${readiness.weeksToTarget} нед. до срока`)
+    parts.push(t('rationale.weeks_to_target', { n: readiness.weeksToTarget }))
   }
-  parts.push(`${readiness.readinessPct}% готовности`)
-  return `Подобрали под цель: ${parts.join(' · ')}.`
+  parts.push(t('rationale.readiness_pct', { pct: readiness.readinessPct }))
+  return t('rationale.summary', { details: parts.join(' · ') })
 }
 
 /**

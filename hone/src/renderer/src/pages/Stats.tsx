@@ -185,18 +185,21 @@ const Header: React.FC<{
 const ErrorStripe: React.FC<{ message: string; onRetry: () => void }> = ({
   message,
   onRetry,
-}) => (
-  <div className="data-loader-error" style={{ marginBottom: 16 }}>
-    <div className="data-loader-error-stripe" />
-    <div className="data-loader-error-body">
-      <div className="data-loader-error-label">Stats не загружаются</div>
-      {message && <div className="data-loader-error-detail">{message}</div>}
-      <button type="button" className="data-loader-error-retry focus-ring motion-press" onClick={onRetry}>
-        retry
-      </button>
+}) => {
+  const t = useT();
+  return (
+    <div className="data-loader-error" style={{ marginBottom: 16 }}>
+      <div className="data-loader-error-stripe" />
+      <div className="data-loader-error-body">
+        <div className="data-loader-error-label">{t('hone.stats.err_load_label')}</div>
+        {message && <div className="data-loader-error-detail">{message}</div>}
+        <button type="button" className="data-loader-error-retry focus-ring motion-press" onClick={onRetry}>
+          retry
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ── KPI card ────────────────────────────────────────────────────────────
 

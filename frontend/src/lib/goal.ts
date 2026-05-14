@@ -14,6 +14,8 @@
 // Subscribe pattern: callers (CoachMemoryCard, Coach.tsx) register listeners
 // → store fires on update. Cross-tab sync via storage event — bonus.
 
+import i18n from './i18n'
+
 const KEY = 'druz9.goal.v1'
 
 // Plan §F2: 5 goal categories.
@@ -181,8 +183,8 @@ export function formatGoal(g: UserGoal | null): string {
   if (g.targetDate) {
     const d = new Date(g.targetDate)
     if (!isNaN(d.getTime())) {
-      const month = d.toLocaleDateString('ru', { month: 'long' })
-      title += ` · до ${month} ${d.getFullYear()}`
+      const month = d.toLocaleDateString(i18n.language || 'en', { month: 'long' })
+      title += i18n.t('pages:goal_format.until_suffix', { month, year: d.getFullYear() })
     }
   }
   return title

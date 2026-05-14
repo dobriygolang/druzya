@@ -13,6 +13,7 @@
 //   [SysDesignCanvas (existing)] · [Rubric run panel + 5-axis verdict]
 
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AlertCircle, ArrowRight, Loader2, Play } from 'lucide-react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
@@ -32,6 +33,7 @@ export function SysDesignStage({
   stage: PipelineStage
   pipelineId: string
 }) {
+  const { t } = useTranslation('wave14')
   const finishStage = useFinishStageMutation(pipelineId)
   const attempts = useMemo(() => stage.attempts ?? [], [stage.attempts])
   // Sysdesign stage typically has one sysdesign_canvas attempt; fall back to
@@ -47,9 +49,7 @@ export function SysDesignStage({
       <Card variant="default" padding="lg" className="text-sm text-text-secondary">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4" style={{ color: 'var(--red)' }} />
-          <span>
-            Для SysDesign этапа ещё не настроены задачи в пуле компании.
-          </span>
+          <span>{t('mock_stage.no_sysdesign_task')}</span>
         </div>
       </Card>
     )
@@ -58,7 +58,7 @@ export function SysDesignStage({
     return (
       <Card variant="default" padding="lg" className="text-sm text-text-secondary">
         <AlertCircle className="h-4 w-4 inline mr-2" style={{ color: 'var(--red)' }} />
-        Нет canvas attempt'а для SysDesign стадии.
+        {t('mock_stage.no_canvas_attempt')}
       </Card>
     )
   }
@@ -73,7 +73,7 @@ export function SysDesignStage({
       <div className="flex items-center justify-end gap-3 pt-2">
         {!allJudged && (
           <span className="text-xs text-text-secondary">
-            Дождись AI-оценки диаграммы
+            {t('mock_stage.wait_sysdesign_grading')}
           </span>
         )}
         <Button
@@ -84,7 +84,7 @@ export function SysDesignStage({
           disabled={!allJudged || finishStage.isPending}
           loading={finishStage.isPending}
         >
-          Завершить этап
+          {t('mock_stage.finish_stage')}
         </Button>
       </div>
     </div>
@@ -94,6 +94,7 @@ export function SysDesignStage({
 // ── RubricRunner ────────────────────────────────────────────────────────
 
 function RubricRunner({ attempt }: { attempt: PipelineAttempt }) {
+  const { t } = useTranslation('wave14')
   const runRubric = useRunSysDesignMutation()
   const [narration, setNarration] = useState<string>('')
   const [verdict, setVerdict] = useState<SysDesignVerdict | null>(null)
@@ -126,11 +127,10 @@ function RubricRunner({ attempt }: { attempt: PipelineAttempt }) {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex flex-col">
           <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-            Rubric (черновой прогон)
+            {t('mock_stage.rubric_draft_title')}
           </span>
           <span className="text-xs text-text-secondary">
-            Опционально: вкратце опиши trade-offs и нажми Run — LLM покажет 5-axis
-            breakdown без вызова дорогого vision-judge'а.
+            {t('mock_stage.rubric_draft_hint')}
           </span>
         </div>
         <Button
@@ -149,7 +149,7 @@ function RubricRunner({ attempt }: { attempt: PipelineAttempt }) {
         onChange={(e) => setNarration(e.target.value)}
         rows={4}
         disabled={runRubric.isPending}
-        placeholder="Кратко: почему такой выбор БД, что про шардинг, как масштабируется…"
+        placeholder={t('mock_stage.sysdesign_draft_placeholder')}
         className="w-full resize-y border-0 border-b border-solid bg-transparent p-2 text-sm text-text-primary placeholder:text-text-secondary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] focus:outline-none"
         style={{ borderBottomColor: 'var(--hair-2)' }}
         onFocus={(e) => {
@@ -179,11 +179,12 @@ function RubricVerdictPanel({
   isLoading: boolean
   error: unknown
 }) {
+  const { t } = useTranslation('wave14')
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-text-secondary">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>AI оценивает rubric…</span>
+        <span>{t('mock_stage.ai_grading_rubric')}</span>
       </div>
     )
   }
@@ -220,7 +221,7 @@ function RubricVerdictPanel({
           style={{ color: 'var(--red)' }}
         />
         <span className="text-xs text-text-secondary">
-          Оценка временно недоступна — попробуй ещё раз.
+          {t('mock_stage.grade_unavailable')}
         </span>
       </div>
     )
@@ -261,7 +262,7 @@ function RubricVerdictPanel({
       {verdict.missing_concepts.length > 0 && (
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-1">
-            Что упустил
+            {t('mock_stage.missed')}
           </div>
           <ul className="list-disc list-inside text-xs text-text-secondary space-y-0.5">
             {verdict.missing_concepts.map((m, i) => (

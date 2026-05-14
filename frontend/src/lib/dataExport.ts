@@ -126,21 +126,33 @@ export interface ImportSummary {
   insightsDismissed: number
 }
 
+export type BundleValidationError =
+  | { code: 'not_object' }
+  | { code: 'missing_version' }
+  | { code: 'version_too_new'; version: number; current: number }
+  | { code: 'activities_not_array' }
+  | { code: 'cue_sessions_not_array' }
+  | { code: 'diagnostic_answers_not_object' }
+  | { code: 'daily_plan_done_not_object' }
+
 /**
- * Validate bundle shape. Returns null если ok, error message otherwise.
+ * Validate bundle shape. Returns null если ok, structured error code otherwise.
+ * Caller is responsible for rendering a localised message from the code.
  */
-export function validateBundle(b: unknown): string | null {
-  if (typeof b !== 'object' || b === null) return 'не объект'
+export function validateBundle(b: unknown): BundleValidationError | null {
+  if (typeof b !== 'object' || b === null) return { code: 'not_object' }
   const bundle = b as DataBundle
-  if (typeof bundle.version !== 'number') return 'нет version'
-  if (bundle.version > VERSION) return `новее (v${bundle.version}, текущий v${VERSION}) — обнови app перед import`
-  if (!Array.isArray(bundle.activities)) return 'activities не массив'
-  if (!Array.isArray(bundle.cueSessions)) return 'cueSessions не массив'
+  if (typeof bundle.version !== 'number') return { code: 'missing_version' }
+  if (bundle.version > VERSION) {
+    return { code: 'version_too_new', version: bundle.version, current: VERSION }
+  }
+  if (!Array.isArray(bundle.activities)) return { code: 'activities_not_array' }
+  if (!Array.isArray(bundle.cueSessions)) return { code: 'cue_sessions_not_array' }
   if (typeof bundle.diagnosticAnswers !== 'object' || bundle.diagnosticAnswers === null) {
-    return 'diagnosticAnswers не объект'
+    return { code: 'diagnostic_answers_not_object' }
   }
   if (typeof bundle.dailyPlanDone !== 'object' || bundle.dailyPlanDone === null) {
-    return 'dailyPlanDone не объект'
+    return { code: 'daily_plan_done_not_object' }
   }
   return null
 }

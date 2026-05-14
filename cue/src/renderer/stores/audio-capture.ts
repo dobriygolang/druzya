@@ -14,6 +14,8 @@
 
 import { create } from 'zustand';
 
+import { translate } from '@d9-i18n';
+
 import {
   eventChannels,
   type AudioCaptureSource,
@@ -111,9 +113,10 @@ const sliceKey = (source: AudioCaptureSource): 'system' | 'mic' => source;
  * system без speaker_id (legacy) = «Они», system с speaker_id = «Собеседник N».
  */
 const defaultSpeakerLabel = (speakerId: number | undefined, source: AudioCaptureSource): string => {
-  if (source === 'mic' || speakerId === 0) return 'Я';
-  if (typeof speakerId === 'number' && speakerId > 0) return `Собеседник ${speakerId}`;
-  return 'Они';
+  if (source === 'mic' || speakerId === 0) return translate('cue.store.audio.speaker_me');
+  if (typeof speakerId === 'number' && speakerId > 0)
+    return translate('cue.store.audio.speaker_n', { n: speakerId });
+  return translate('cue.store.audio.speaker_them');
 };
 
 const resolveSpeakerLabel = (
@@ -122,7 +125,7 @@ const resolveSpeakerLabel = (
   overrides: Record<string, string>,
 ): string => {
   // Mic / speaker 0 never override'итcя — sacred anchor for the user.
-  if (source === 'mic' || speakerId === 0) return 'Я';
+  if (source === 'mic' || speakerId === 0) return translate('cue.store.audio.speaker_me');
   if (typeof speakerId === 'number') {
     const key = String(speakerId);
     if (overrides[key]) return overrides[key];
@@ -270,7 +273,7 @@ export const useAudioCaptureStore = create<State>((set, get) => ({
       }),
       window.druz9.on<AudioCaptureErrorEvent>(eventChannels.audioCaptureError, (ev) => {
         if (!ev || (ev.source !== 'system' && ev.source !== 'mic')) return;
-        const msg = ev.message || 'Ошибка записи';
+        const msg = ev.message || translate('cue.store.audio.err_record');
         apply(ev.source, (slice) => ({ ...slice, error: msg }));
         // Toast — у пользователя должен быть VISIBLE сигнал что start
         // не удался. Раньше error попадал только в slice.error и
@@ -278,7 +281,9 @@ export const useAudioCaptureStore = create<State>((set, get) => ({
         // только когда `recording` true → если start fail'ил ДО
         // перехода в running, юзер ничего не видел. Toast виден
         // ВСЕГДА (отдельное окно tray-style).
-        const label = ev.source === 'mic' ? 'Микрофон' : 'Звук';
+        const label = ev.source === 'mic'
+          ? translate('cue.store.audio.label_mic')
+          : translate('cue.store.audio.label_system');
         void window.druz9.toast.show(`${label}: ${msg}`, 'error').catch(() => {});
       }),
     ];
@@ -296,12 +301,14 @@ export const useAudioCaptureStore = create<State>((set, get) => ({
       // IPC вообще не дошёл (preload broken / main crashed) — это
       // catastrophic. Toast обязателен: иначе click → ничего →
       // юзер думает что приложение сломано.
-      const msg = err instanceof Error ? err.message : 'Не удалось запустить запись';
+      const msg = err instanceof Error ? err.message : translate('cue.store.audio.err_start');
       set((prev) => ({
         ...prev,
         [sliceKey(source)]: { ...prev[sliceKey(source)], error: msg },
       }));
-      const label = source === 'mic' ? 'Микрофон' : 'Звук';
+      const label = source === 'mic'
+        ? translate('cue.store.audio.label_mic')
+        : translate('cue.store.audio.label_system');
       void window.druz9.toast.show(`${label}: ${msg}`, 'error').catch(() => {});
     }
   },

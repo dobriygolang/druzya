@@ -27,10 +27,12 @@
 // on mobile).
 
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight, Lock, Maximize2, Search, X } from 'lucide-react'
 import type { AtlasNode } from '../../lib/queries/profile'
 import { clusterColor, type AtlasNodeKind } from './atlasTokens'
 import { cn } from '../../lib/cn'
+import i18n from '../../lib/i18n'
 
 export type AtlasMobileRoadmapProps = {
   nodes: AtlasNode[]
@@ -43,23 +45,33 @@ export type AtlasMobileRoadmapProps = {
   userTier?: string
 }
 
-const CLUSTER_LABEL: Record<string, string> = {
-  algorithms: 'Алгоритмы',
-  algo: 'Алгоритмы',
-  data_structures: 'Структуры данных',
-  ds: 'Структуры данных',
-  system_design: 'System Design',
-  sysdes: 'System Design',
-  sql: 'SQL',
-  go: 'Go',
-  backend: 'Backend',
-  concurrency: 'Concurrency',
-  behavioral: 'Behavioral',
-}
-
 function clusterLabel(c: string | undefined): string {
-  if (!c) return 'Прочее'
-  return CLUSTER_LABEL[c] ?? c
+  if (!c) return i18n.t('atlas_mobile.other', { ns: 'wave14' })
+  const ru = i18n.t('atlas_mobile.algorithms', { ns: 'wave14' })
+  const ds = i18n.t('atlas_mobile.data_structures', { ns: 'wave14' })
+  switch (c) {
+    case 'algorithms':
+    case 'algo':
+      return ru
+    case 'data_structures':
+    case 'ds':
+      return ds
+    case 'system_design':
+    case 'sysdes':
+      return 'System Design'
+    case 'sql':
+      return 'SQL'
+    case 'go':
+      return 'Go'
+    case 'backend':
+      return 'Backend'
+    case 'concurrency':
+      return 'Concurrency'
+    case 'behavioral':
+      return 'Behavioral'
+    default:
+      return c
+  }
 }
 
 // Sort priority within a cluster: keystone first (signature), then notable,
@@ -168,9 +180,11 @@ export function AtlasMobileRoadmap({
   selectedKey,
   onSelectNode,
   onOpenFullMap,
-  userClassName = 'Ядро класса',
+  userClassName,
   userTier = '',
 }: AtlasMobileRoadmapProps) {
+  const { t } = useTranslation('wave14')
+  const className = userClassName ?? t('atlas_mobile.core_hub')
   const [query, setQuery] = useState('')
 
   // Group by cluster, hub goes into a header card not the list.
@@ -244,15 +258,15 @@ export function AtlasMobileRoadmap({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent font-mono text-[11px] text-text-primary outline-none placeholder:text-text-muted"
-            placeholder="поиск по ноде…"
-            aria-label="Поиск по ноде"
+            placeholder={t('atlas_mobile.search_placeholder')}
+            aria-label={t('atlas_mobile.search_aria')}
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
               className="text-text-muted hover:text-text-primary"
-              aria-label="Очистить"
+              aria-label={t('atlas_mobile.clear')}
             >
               <X className="h-3 w-3" />
             </button>
@@ -268,13 +282,13 @@ export function AtlasMobileRoadmap({
           <div
             className="relative overflow-hidden rounded-2xl border border-border-strong bg-surface-2 p-4"
             role="region"
-            aria-label="Класс"
+            aria-label={t('atlas_mobile.class_label')}
           >
             <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-text-primary/10 blur-3xl pointer-events-none" />
             <div className="relative">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-primary">
-                  ◆ твой atlas
+                  {t('atlas_mobile.your_atlas')}
                 </span>
                 {userTier && (
                   <span className="font-mono text-[10px] text-text-muted">{userTier}</span>
@@ -287,7 +301,7 @@ export function AtlasMobileRoadmap({
                     <span className="text-text-muted">/{totalNodes}</span>
                   </h2>
                   <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-                    {userClassName}
+                    {className}
                   </div>
                 </div>
                 <ProgressRing
@@ -303,11 +317,11 @@ export function AtlasMobileRoadmap({
                   onClick={onOpenFullMap}
                   className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-text-primary px-3 py-2.5 font-display text-[13px] font-extrabold text-bg hover:bg-text-primary-hover"
                 >
-                  <Maximize2 className="h-3.5 w-3.5" /> Полная карта
+                  <Maximize2 className="h-3.5 w-3.5" /> {t('atlas_mobile.full_map')}
                 </button>
               )}
               <div className="mt-1.5 text-center font-mono text-[9px] text-text-muted">
-                pinch · drag · tap на ноду
+                {t('atlas_mobile.interact_hint')}
               </div>
             </div>
           </div>
@@ -351,8 +365,8 @@ export function AtlasMobileRoadmap({
                         {mastered === total && total > 0
                           ? 'complete'
                           : mastered > 0
-                            ? 'в процессе'
-                            : 'старт'}
+                            ? t('atlas_mobile.in_progress')
+                            : t('atlas_mobile.start')}
                       </span>
                     </div>
                     {/* Segment bar — one tick per node, filled = mastered.
@@ -408,12 +422,12 @@ export function AtlasMobileRoadmap({
                               </div>
                               <div className="truncate font-mono text-[10px] text-text-muted">
                                 {locked
-                                  ? 'требует prereq'
+                                  ? t('atlas_mobile.needs_prereq')
                                   : isMastered
                                     ? 'mastered'
                                     : (n.progress ?? 0) > 0
                                       ? `progress · ${n.progress ?? 0}%`
-                                      : 'готово к прокачке'}
+                                      : t('atlas_mobile.ready_to_pump')}
                               </div>
                             </div>
                             {!locked && (
@@ -464,16 +478,16 @@ export function AtlasMobileRoadmap({
               <div className="grid h-full place-items-center px-6 text-center">
                 <div className="space-y-2">
                   <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-                    карта
+                    {t('atlas_mobile.map')}
                   </div>
                   <p className="font-display text-[12.5px] text-text-secondary">
-                    Tap «Полная карта» для интерактивного дерева с pinch-zoom.
+                    {t('atlas_mobile.interactive_hint')}
                   </p>
                 </div>
               </div>
             </div>
             <div className="border-t border-border px-4 py-2.5 font-mono text-[10px] text-text-muted">
-              {totalNodes} нод · {grouped.length} кластеров
+              {totalNodes} {t('atlas_mobile.nodes_count')} {grouped.length} {t('atlas_mobile.clusters_count')}
             </div>
           </aside>
         )}

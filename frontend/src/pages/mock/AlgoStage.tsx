@@ -33,6 +33,7 @@ import {
   Play,
   XCircle,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import {
@@ -86,6 +87,7 @@ export function AlgoStage({
   stage: PipelineStage
   pipelineId: string
 }) {
+  const { t } = useTranslation('pages')
   const finishStage = useFinishStageMutation(pipelineId)
   const attempts = useMemo(() => stage.attempts ?? [], [stage.attempts])
 
@@ -110,10 +112,7 @@ export function AlgoStage({
       <Card variant="default" padding="lg" className="text-sm text-text-secondary">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4" style={{ color: 'var(--red)' }} />
-          <span>
-            Для этого этапа ещё не настроены задачи в пуле компании. Попроси админа
-            добавить mock_task через /admin → Mock Tasks.
-          </span>
+          <span>{t('algo_stage.no_tasks')}</span>
         </div>
       </Card>
     )
@@ -122,8 +121,7 @@ export function AlgoStage({
     return (
       <Card variant="default" padding="lg" className="text-sm text-text-secondary">
         <AlertCircle className="h-4 w-4 inline mr-2" style={{ color: 'var(--red)' }} />
-        В пайплайне нет task_solve attempt'а для Algo стадии. Проверь
-        materialisation в backend orchestrator.
+        {t('algo_stage.no_task_solve')}
       </Card>
     )
   }
@@ -139,7 +137,7 @@ export function AlgoStage({
       {followUps.length > 0 && (
         <div className="flex flex-col gap-4">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-            Follow-up вопросы
+            {t('algo_stage.followup_header')}
           </div>
           {followUps.map((a, idx) => (
             <FollowUpQuestion
@@ -155,7 +153,7 @@ export function AlgoStage({
       <div className="flex items-center justify-end gap-3 pt-2">
         {!allJudged && (
           <span className="text-xs text-text-secondary">
-            Дождись AI-оценки всех ответов
+            {t('algo_stage.wait_judging')}
           </span>
         )}
         <Button
@@ -166,7 +164,7 @@ export function AlgoStage({
           disabled={!allJudged || finishStage.isPending}
           loading={finishStage.isPending}
         >
-          Завершить этап
+          {t('algo_stage.finish_stage')}
         </Button>
       </div>
     </div>
@@ -182,6 +180,7 @@ function AlgoTaskPanel({
   attempt: PipelineAttempt
   pipelineId: string
 }) {
+  const { t } = useTranslation('pages')
   const isAnswered = !!(attempt.user_answer_md && attempt.user_answer_md.length > 0)
   const isJudging = isAnswered && attempt.ai_verdict === 'pending'
   const isJudged = isAnswered && attempt.ai_verdict !== 'pending'
@@ -246,7 +245,7 @@ function AlgoTaskPanel({
               disabled={runAlgo.isPending || submit.isPending}
             />
             <span className="font-mono text-[10px] text-text-secondary">
-              {code.split('\n').length} строк · {code.length} символов
+              {t('algo_stage.lines_chars', { lines: code.split('\n').length, chars: code.length })}
             </span>
           </div>
           <div className="flex-1 min-h-[360px]">
@@ -297,7 +296,7 @@ function AlgoTaskPanel({
       ) : (
         <Card variant="default" padding="lg" className="flex flex-col gap-3 min-w-0">
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-            Решение отправлено
+            {t('algo_stage.submitted')}
           </div>
           <pre className="text-sm text-text-primary whitespace-pre-wrap font-mono overflow-x-auto">
             {attempt.user_answer_md}
@@ -318,7 +317,7 @@ function AlgoTaskPanel({
         {isJudging && (
           <Card variant="default" padding="md" className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
-            <span className="text-sm text-text-secondary">AI оценивает решение…</span>
+            <span className="text-sm text-text-secondary">{t('algo_stage.judging')}</span>
           </Card>
         )}
         {isJudged && <SubmitVerdictPanel attempt={attempt} />}
@@ -330,6 +329,7 @@ function AlgoTaskPanel({
 // ── ProblemPanel ────────────────────────────────────────────────────────
 
 function ProblemPanel({ attempt }: { attempt: PipelineAttempt }) {
+  const { t } = useTranslation('pages')
   const mustMention = attempt.reference_criteria?.must_mention ?? []
   const niceToHave = attempt.reference_criteria?.nice_to_have ?? []
   const complexityHint = mustMention.find((m) => /O\(/.test(m))
@@ -338,7 +338,7 @@ function ProblemPanel({ attempt }: { attempt: PipelineAttempt }) {
     <Card variant="default" padding="lg" className="flex flex-col gap-3 min-w-0">
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-          Задача
+          {t('algo_stage.problem')}
         </span>
         {complexityHint && (
           <span className="rounded-full border border-border-strong bg-surface-2 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
@@ -390,11 +390,12 @@ function RunVerdictPanel({
   error: unknown
   backendSupported: boolean
 }) {
+  const { t } = useTranslation('pages')
   if (isLoading) {
     return (
       <Card variant="default" padding="md" className="flex items-center gap-2">
         <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
-        <span className="text-sm text-text-secondary">Запускаю тесты в sandbox…</span>
+        <span className="text-sm text-text-secondary">{t('algo_stage.sandbox_running')}</span>
       </Card>
     )
   }
@@ -416,15 +417,18 @@ function RunVerdictPanel({
     return (
       <Card variant="default" padding="md" className="flex flex-col gap-2 text-sm text-text-secondary">
         <div className="font-mono text-[10px] uppercase tracking-[0.08em]">
-          Тесты ещё не запускались
+          {t('algo_stage.tests_not_run')}
         </div>
         <p className="text-xs">
-          Напиши решение и нажми <span className="font-mono">Run tests</span> чтобы прогнать
-          код через sandbox. Финальная оценка — <span className="font-mono">Submit</span>.
+          {t('algo_stage.tests_hint_pre')}{' '}
+          <span className="font-mono">Run tests</span>{' '}
+          {t('algo_stage.tests_hint_mid')}{' '}
+          <span className="font-mono">Submit</span>
+          {t('algo_stage.tests_hint_post')}
         </p>
         {!backendSupported && (
           <p className="text-xs" style={{ color: 'var(--red)' }}>
-            Sandbox для этого языка пока не подключён — Run tests вернёт unavailable.
+            {t('algo_stage.sandbox_unsupported')}
           </p>
         )}
       </Card>
@@ -437,11 +441,12 @@ function RunVerdictPanel({
         <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: 'var(--red)' }} />
         <div className="flex flex-col gap-1">
           <span className="font-display text-sm font-bold text-text-primary">
-            Sandbox недоступен
+            {t('algo_stage.sandbox_unavailable_title')}
           </span>
           <span className="text-xs text-text-secondary">
-            Judge0 не подключён, не настроен на этот язык, или у задачи нет тест-кейсов.
-            Можешь все равно <span className="font-mono">Submit</span> — LLM-judge оценит логику.
+            {t('algo_stage.sandbox_unavailable_body_pre')}{' '}
+            <span className="font-mono">Submit</span>{' '}
+            {t('algo_stage.sandbox_unavailable_body_post')}
           </span>
         </div>
       </Card>
@@ -463,7 +468,7 @@ function RunVerdictPanel({
           />
         )}
         <span className="font-display text-sm font-bold text-text-primary">
-          {verdict.passed} / {verdict.total} прошло
+          {t('algo_stage.tests_passed', { passed: verdict.passed, total: verdict.total })}
         </span>
         {verdict.runtime_ms > 0 && (
           <span className="font-mono text-[10px] text-text-secondary ml-auto">
@@ -565,6 +570,7 @@ function TestCaseRow({ test }: { test: AlgoTestResult }) {
 // ── SubmitVerdictPanel — final LLM + sandbox verdict after Submit ───────
 
 function SubmitVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
+  const { t } = useTranslation('pages')
   const v = attempt.ai_verdict
   const passed = v === 'pass'
   const Icon = passed ? CheckCircle2 : XCircle
@@ -594,7 +600,7 @@ function SubmitVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
       {attempt.ai_missing_points.length > 0 && (
         <>
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary">
-            Что упустил
+            {t('algo_stage.what_missed')}
           </div>
           <ul className="list-disc list-inside text-xs text-text-secondary space-y-0.5">
             {attempt.ai_missing_points.map((m, i) => (
@@ -618,6 +624,7 @@ function FollowUpQuestion({
   pipelineId: string
   ordinal: number
 }) {
+  const { t } = useTranslation('pages')
   const submit = useSubmitAnswerMutation(pipelineId)
   const [draft, setDraft] = useState<string>('')
   const isAnswered = !!(attempt.user_answer_md && attempt.user_answer_md.length > 0)
@@ -640,7 +647,7 @@ function FollowUpQuestion({
             onChange={(e) => setDraft(e.target.value)}
             rows={4}
             disabled={submit.isPending}
-            placeholder="Твой ответ…"
+            placeholder={t('algo_stage.your_answer_placeholder')}
             className="w-full resize-y border-0 border-b border-solid bg-transparent p-2 text-sm text-text-primary placeholder:text-text-secondary outline-none transition-colors duration-[var(--motion-dur-small)] ease-[var(--motion-ease-emphasized)] focus:outline-none"
             style={{ borderBottomColor: 'var(--hair-2)' }}
             onFocus={(e) => {
@@ -662,7 +669,7 @@ function FollowUpQuestion({
               disabled={submit.isPending || draft.trim().length === 0}
               loading={submit.isPending}
             >
-              Отправить
+              {t('algo_stage.send')}
             </Button>
           </div>
         </>
@@ -672,7 +679,7 @@ function FollowUpQuestion({
         <div className="flex flex-col gap-2">
           <div className="rounded-md border border-border bg-surface-1 p-2">
             <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-secondary mb-0.5">
-              Ответ
+              {t('algo_stage.answer_label')}
             </div>
             <div className="text-xs text-text-primary whitespace-pre-wrap font-mono">
               {attempt.user_answer_md}

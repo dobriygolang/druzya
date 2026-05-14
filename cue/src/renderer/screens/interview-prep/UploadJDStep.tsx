@@ -2,10 +2,12 @@
 // both — URL fetching is best-effort and we surface a clear hint when
 // the host blocks bots (LinkedIn does, hh.ru sometimes does).
 
+import { useT } from '@d9-i18n';
 import { useInterviewPrepStore } from '../../stores/interview-prep';
 import { btnPrimary, Card, DataRow, textarea } from './UploadCVStep';
 
 export function UploadJDStep() {
+  const t = useT();
   const jdText = useInterviewPrepStore((s) => s.jdText);
   const jdURL = useInterviewPrepStore((s) => s.jdURL);
   const parsedJD = useInterviewPrepStore((s) => s.parsedJD);
@@ -26,7 +28,7 @@ export function UploadJDStep() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 640, margin: '0 auto' }}>
       <Intro />
 
-      <Card title="Источник" subtitle="Текст приоритетнее URL">
+      <Card title={t('cue.prep.jd.source_title')} subtitle={t('cue.prep.jd.source_subtitle')}>
         <label
           style={{
             fontSize: 11,
@@ -36,12 +38,12 @@ export function UploadJDStep() {
             textTransform: 'uppercase',
           }}
         >
-          Текст вакансии
+          {t('cue.prep.jd.text_label')}
         </label>
         <textarea
           value={jdText}
           onChange={(e) => setJDText(e.target.value)}
-          placeholder="Senior Backend Engineer · Go · L4…"
+          placeholder={t('cue.prep.jd.text_placeholder')}
           rows={8}
           style={textarea}
         />
@@ -56,13 +58,13 @@ export function UploadJDStep() {
               textTransform: 'uppercase',
             }}
           >
-            или ссылка на вакансию
+            {t('cue.prep.jd.url_label')}
           </label>
           <input
             type="url"
             value={jdURL}
             onChange={(e) => setJDURL(e.target.value)}
-            placeholder="https://hh.ru/vacancy/12345"
+            placeholder={t('cue.prep.jd.url_placeholder')}
             style={{
               width: '100%',
               marginTop: 6,
@@ -84,8 +86,7 @@ export function UploadJDStep() {
               lineHeight: 1.45,
             }}
           >
-            Иногда сайты блокируют запросы — если ссылка не подтянется, вставь
-            текст вручную в поле выше.
+            {t('cue.prep.jd.url_hint')}
           </p>
         </div>
 
@@ -96,7 +97,7 @@ export function UploadJDStep() {
             onClick={() => void parseJD()}
             style={btnPrimary(canParse && !jdParsing)}
           >
-            {jdParsing ? 'Распознаю…' : 'Распознать'}
+            {jdParsing ? t('cue.prep.jd.parsing') : t('cue.prep.jd.parse_cta')}
           </button>
           {jdParseError && (
             <span style={{ fontSize: 11.5, color: 'var(--d9-ink-mute)', maxWidth: 360 }}>
@@ -107,11 +108,11 @@ export function UploadJDStep() {
       </Card>
 
       {parsedReady && (
-        <Card title="Что я узнал о вакансии" subtitle="Проверь на следующем шаге">
-          <DataRow k="Компания" v={parsedJD.company} />
-          <DataRow k="Роль" v={parsedJD.role} />
-          <DataRow k="Уровень" v={parsedJD.seniority} />
-          <DataRow k="Ключевые навыки" v={parsedJD.keySkills.join(' · ')} />
+        <Card title={t('cue.prep.jd.recognized_title')} subtitle={t('cue.prep.jd.recognized_hint')}>
+          <DataRow k={t('cue.prep.jd.field.company')} v={parsedJD.company} />
+          <DataRow k={t('cue.prep.jd.field.role')} v={parsedJD.role} />
+          <DataRow k={t('cue.prep.jd.field.seniority')} v={parsedJD.seniority} />
+          <DataRow k={t('cue.prep.jd.field.key_skills')} v={parsedJD.keySkills.join(' · ')} />
           {parsedJD.descriptionSummary && (
             <div style={{ marginTop: 8 }}>
               <label
@@ -123,7 +124,7 @@ export function UploadJDStep() {
                   fontFamily: 'var(--d9-font-mono)',
                 }}
               >
-                Кратко
+                {t('cue.prep.cv.field.summary')}
               </label>
               <p
                 style={{
@@ -144,10 +145,11 @@ export function UploadJDStep() {
 }
 
 function Intro() {
+  const t = useT();
   return (
     <div>
       <h2 style={{ margin: 0, fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em' }}>
-        Опиши вакансию
+        {t('cue.prep.jd.title')}
       </h2>
       <p
         style={{
@@ -158,9 +160,7 @@ function Intro() {
           letterSpacing: '-0.005em',
         }}
       >
-        Cue прицельно подберёт ответы под эту конкретную роль — компания,
-        уровень, требуемые навыки. Так подсказки будут на месте, а не как из
-        учебника.
+        {t('cue.prep.jd.body')}
       </p>
     </div>
   );

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 
 import type { Conversation } from '@shared/types';
 
+import { useT, useLocaleStore } from '@d9-i18n';
 import { IconClose, IconHistory } from '../../components/icons';
 import { BrandMark } from '../../components/d9';
 import { IconButton, Kbd } from '../../components/primitives';
@@ -21,6 +22,7 @@ import {
 import { useConversationStore } from '../../stores/conversation';
 
 export function HistoryScreen() {
+  const t = useT();
   const [items, setItems] = useState<Conversation[]>([]);
   const [cursor, setCursor] = useState('');
   const [hasMore, setHasMore] = useState(false);
@@ -82,7 +84,7 @@ export function HistoryScreen() {
   const open = async (id: string) => {
     try {
       const detail = getLocalConversation(id);
-      if (!detail) throw new Error('Диалог не найден в локальной истории');
+      if (!detail) throw new Error(t('cue.history.dialog_not_found'));
       // КРИТИЧНО: history и expanded — РАЗНЫЕ BrowserWindow'ы, каждый
       // имеет свой renderer process и свой instance zustand store'а.
       // Hydrate'нуть store внутри history-процесса бесполезно: expanded
@@ -151,7 +153,7 @@ export function HistoryScreen() {
         } as React.CSSProperties}
       >
         <BrandMark size={22} />
-        <div style={{ fontSize: 13, fontWeight: 600 }}>История</div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{t('cue.history.title')}</div>
         <div style={{ flex: 1 }} />
         <div
           style={{
@@ -161,12 +163,12 @@ export function HistoryScreen() {
             WebkitAppRegion: 'no-drag',
           } as React.CSSProperties}
         >
-          {items.length} {pluralize(items.length, 'диалог', 'диалога', 'диалогов')}
+          {items.length} {pluralize(items.length, t('cue.history.dialog.one'), t('cue.history.dialog.few'), t('cue.history.dialog.many'))}
         </div>
         <button
-          title="Очистить всю локальную историю — используется когда content испорчен (видны странные символы вместо текста)"
+          title={t('cue.history.clear_title')}
           onClick={() => {
-            if (!window.confirm('Удалить всю локальную историю чатов? Действие необратимо.')) return;
+            if (!window.confirm(t('cue.history.clear_confirm'))) return;
             clearLocalHistory();
             setItems([]);
             setCursor('');
@@ -184,10 +186,10 @@ export function HistoryScreen() {
             fontFamily: 'inherit',
           } as React.CSSProperties}
         >
-          Очистить
+          {t('cue.history.clear_cta')}
         </button>
         <IconButton
-          title="Закрыть"
+          title={t('cue.history.close_title')}
           onClick={() => void window.druz9.windows.hide('history')}
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
@@ -206,8 +208,8 @@ export function HistoryScreen() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Поиск по заголовку и содержимому…"
-          aria-label="Поиск по истории"
+          placeholder={t('cue.history.search_placeholder')}
+          aria-label={t('cue.history.search_aria')}
           className="focus-ring"
           style={{
             width: '100%',
@@ -270,7 +272,7 @@ export function HistoryScreen() {
               cursor: loading ? 'default' : 'pointer',
             }}
           >
-            {loading ? 'Загрузка…' : 'Показать ещё'}
+            {loading ? t('cue.history.loading') : t('cue.history.show_more')}
           </button>
         )}
 
@@ -309,7 +311,7 @@ export function HistoryScreen() {
         }}
       >
         <span>
-          <Kbd size="sm">Esc</Kbd> — закрыть
+          <Kbd size="sm">Esc</Kbd> — {t('cue.history.esc_hint')}
         </span>
       </div>
     </div>
@@ -354,6 +356,8 @@ function HistoryRow({
   onDelete: () => void;
   onRename: (newTitle: string) => void;
 }) {
+  const t = useT();
+  const locale = useLocaleStore((s) => s.locale);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(c.title || '');
 
@@ -435,7 +439,7 @@ function HistoryRow({
             // Tooltip полным текстом — title-row truncate'ит overflow с
             // ellipsis. Без native title='...' юзер вынужден open chat
             // чтобы прочитать длинный заголовок.
-            title={c.title || '(без названия)'}
+            title={c.title || t('cue.history.row.untitled')}
             style={{
               fontSize: 13,
               color: 'var(--d9-ink)',
@@ -444,7 +448,7 @@ function HistoryRow({
               whiteSpace: 'nowrap',
             }}
           >
-            {c.title || '(без названия)'}
+            {c.title || t('cue.history.row.untitled')}
           </div>
         )}
         <div
@@ -457,15 +461,15 @@ function HistoryRow({
             gap: 'var(--pad-inline)',
           }}
         >
-          <span>{c.messageCount} сообщ.</span>
+          <span>{t('cue.history.row.message_label', { n: c.messageCount })}</span>
           <span>·</span>
           <span>{c.model}</span>
           <span>·</span>
-          <span>{formatDate(c.updatedAt)}</span>
+          <span>{formatDate(c.updatedAt, locale)}</span>
         </div>
       </div>
       <IconButton
-        title="Переименовать"
+        title={t('cue.history.row.rename_title')}
         onClick={(e) => {
           e.stopPropagation();
           setDraft(c.title || '');
@@ -476,7 +480,7 @@ function HistoryRow({
         <PencilIcon />
       </IconButton>
       <IconButton
-        title="Удалить"
+        title={t('cue.history.row.delete_title')}
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
@@ -490,6 +494,7 @@ function HistoryRow({
 }
 
 function SearchEmptyState({ query }: { query: string }) {
+  const t = useT();
   return (
     <div
       style={{
@@ -499,7 +504,7 @@ function SearchEmptyState({ query }: { query: string }) {
         fontSize: 12,
       }}
     >
-      Ничего не найдено по «{query}»
+      {t('cue.history.search_empty', { query })}
     </div>
   );
 }
@@ -514,6 +519,7 @@ function PencilIcon() {
 }
 
 function EmptyState() {
+  const t = useT();
   return (
     <div
       style={{
@@ -535,9 +541,9 @@ function EmptyState() {
       >
         <IconHistory size={20} />
       </div>
-      <div style={{ fontSize: 13, color: 'var(--d9-ink-dim)' }}>Диалогов пока нет</div>
+      <div style={{ fontSize: 13, color: 'var(--d9-ink-dim)' }}>{t('cue.history.empty_title')}</div>
       <div style={{ marginTop: 4, fontSize: 11 }}>
-        Сделай скриншот или задай вопрос в compact-окне
+        {t('cue.history.empty_body')}
       </div>
     </div>
   );
@@ -546,7 +552,7 @@ function EmptyState() {
 // ─────────────────────────────────────────────────────────────────────────
 // Formatting
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: 'ru' | 'en'): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
@@ -555,8 +561,9 @@ function formatDate(iso: string): string {
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate();
-  if (sameDay) return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
+  const bcp47 = locale === 'ru' ? 'ru-RU' : 'en-US';
+  if (sameDay) return d.toLocaleTimeString(bcp47, { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString(bcp47, { day: '2-digit', month: 'short' });
 }
 
 function pluralize(n: number, one: string, few: string, many: string): string {

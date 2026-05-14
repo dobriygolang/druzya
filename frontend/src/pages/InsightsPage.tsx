@@ -1,6 +1,7 @@
 import type * as React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Compass, Map as MapIcon, Shield, Sparkles, Target, TrendingUp, Trophy } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
 import { ErrorBoundary } from '../components/ErrorBoundary'
@@ -55,6 +56,7 @@ const SEVERITY_PILL: Record<CoachSeverity, string> = {
  * to sharpen", not "where you're weak".
  */
 export default function InsightsPage() {
+ const { t } = useTranslation('pages')
  const overviewQ = useMockInsightsOverviewQuery()
  const overview = overviewQ.data
  const { selected: selectedTracks, setSelected: setSelectedTracks } = useTrackFilter({
@@ -108,7 +110,7 @@ export default function InsightsPage() {
    onChange={setSelectedTracks}
    size="sm"
    persistKey="insights:track-filter:v1"
-   ariaLabel="Контекст-фильтр инсайтов по трекам"
+   ariaLabel={t('insights.track_filter_aria')}
   />
  </div>
  </header>
@@ -202,6 +204,7 @@ export default function InsightsPage() {
 /* ─── Widgets ─── */
 
 function WeeklyDigestCard() {
+ const { t } = useTranslation('pages')
  const briefQ = useDailyBriefQuery()
  const brief = briefQ.data
  const loading = briefQ.isPending
@@ -246,8 +249,7 @@ function WeeklyDigestCard() {
  Coach is offline.
  </h3>
  <p className="text-[13px] leading-relaxed text-text-secondary">
- Daily brief недоступен — LLM chain не отвечает или у тебя ещё нет
- данных. Попробуй позже.
+ {t('insights.coach_offline_body')}
  </p>
  </>
  )}
@@ -610,6 +612,7 @@ function PatternsCard({
 }
 
 function AtlasPreviewCard() {
+ const { t } = useTranslation('pages')
  const atlasQ = useAtlasQuery()
  const nodes = atlasQ.data?.nodes ?? []
  // Stat semantics:
@@ -633,22 +636,21 @@ function AtlasPreviewCard() {
  </span>
  </div>
  <p className="text-[13px] leading-relaxed text-text-secondary">
- Снимок навыков: что освоено, что учишь, что начинает разваливаться.
- Обновляется после mock-собесов, kata-solves и матчей.
+ {t('insights.atlas_blurb')}
  </p>
  </div>
  <Link
  to="/atlas"
  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border-strong bg-text-primary/5 px-4 py-2 font-sans text-[13px] font-medium text-text-primary hover:bg-text-primary/10"
  >
- Открыть Atlas <ArrowRight className="h-3.5 w-3.5" />
+ {t('insights.atlas_open')} <ArrowRight className="h-3.5 w-3.5" />
  </Link>
  </div>
  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
- <AtlasMiniStat label="Узлов" value={fmt(total)} />
- <AtlasMiniStat label="Освоено" value={fmt(mastered)} />
- <AtlasMiniStat label="В работе" value={fmt(inProgress)} />
- <AtlasMiniStat label="Декай" value={fmt(decaying)} />
+ <AtlasMiniStat label={t('insights.atlas_stat.nodes')} value={fmt(total)} />
+ <AtlasMiniStat label={t('insights.atlas_stat.mastered')} value={fmt(mastered)} />
+ <AtlasMiniStat label={t('insights.atlas_stat.in_progress')} value={fmt(inProgress)} />
+ <AtlasMiniStat label={t('insights.atlas_stat.decay')} value={fmt(decaying)} />
  </div>
  </Card>
  )
@@ -666,6 +668,7 @@ function AtlasMiniStat({ label, value }: { label: string; value: string }) {
 }
 
 function LeaderboardCard() {
+ const { t } = useTranslation('pages')
  const { data, isLoading, error } = useMockLeaderboardQuery({ limit: 10 })
  const items = data?.items ?? []
  return (
@@ -679,24 +682,23 @@ function LeaderboardCard() {
  </div>
  <span
   className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted"
-  title="Учитываются только пайплайны, пройденные с выключенным AI-ассистом."
+  title={t('insights.leaderboard.fair_tooltip')}
  >
  <Shield className="h-3 w-3" />
  fair · ai-off only
  </span>
  </div>
  {isLoading && (
- <p className="text-[13px] text-text-muted">Загрузка…</p>
+ <p className="text-[13px] text-text-muted">{t('insights.leaderboard.loading')}</p>
  )}
  {error && !isLoading && (
  <p className="text-[13px] text-text-muted">
- Лидерборд временно недоступен.
+ {t('insights.leaderboard.unavailable')}
  </p>
  )}
  {!isLoading && !error && items.length === 0 && (
  <p className="text-[13px] text-text-secondary">
- Пока ни одного завершённого мок-собеса в честном режиме. Будь первым —
- запусти пайплайн с выключенным AI-ассистом.
+ {t('insights.leaderboard.empty')}
  </p>
  )}
  {items.length > 0 && (

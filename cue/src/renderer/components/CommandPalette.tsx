@@ -15,6 +15,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useT } from '@d9-i18n';
 import { Modal } from './primitives/Modal';
 
 export interface Action {
@@ -35,6 +36,7 @@ export function CommandPalette({
   open: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -110,8 +112,8 @@ export function CommandPalette({
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Команда или поиск…"
-          aria-label="Команда или поиск"
+          placeholder={t('cue.palette.placeholder')}
+          aria-label={t('cue.palette.aria_label')}
           style={{
             padding: '14px 18px',
             background: 'transparent',
@@ -140,7 +142,7 @@ export function CommandPalette({
                 color: 'var(--d9-ink-mute)',
               }}
             >
-              Ничего не найдено
+              {t('cue.palette.empty')}
             </div>
           ) : (
             filtered.map((a, i) => (
@@ -217,9 +219,9 @@ export function CommandPalette({
             flexWrap: 'wrap',
           }}
         >
-          <span>↑↓ NAV</span>
-          <span>↵ RUN</span>
-          <span>ESC CLOSE</span>
+          <span>{t('cue.palette.nav_label')}</span>
+          <span>{t('cue.palette.run_label')}</span>
+          <span>{t('cue.palette.close_label')}</span>
         </div>
       </div>
     </Modal>

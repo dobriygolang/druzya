@@ -1,3 +1,5 @@
+import i18n from './i18n'
+
 // Цель: localStorage-backed журнал того что юзер сделал — solved LeetCode,
 // прочитал главу DDIA, сыграл mock, etc. Это foundation для:
 //   - F3 readiness boost (activity count за последние 7d → +up to 20%)
@@ -204,8 +206,12 @@ export function computeActivityBoost(): { delta: number; reason: string | null }
 
   const detail =
     mockBonus > 0
-      ? `${s.last7d} activities + ${s.byKind7d.mock} mock(s) за 7 дней`
-      : `${s.last7d} activities за 7 дней`
+      ? i18n.t('activity_boost.reason_with_mock', {
+          ns: 'wave14',
+          count: s.last7d,
+          mocks: s.byKind7d.mock,
+        })
+      : i18n.t('activity_boost.reason', { ns: 'wave14', count: s.last7d })
   return { delta: total, reason: detail }
 }
 
@@ -263,8 +269,8 @@ export interface TrajectoryTrend {
   minutes7: number
   /** Days with activity in last 30d. */
   activeDays30: number
-  /** Verdict label. */
-  verdict: 'строит привычку' | 'на подъёме' | 'ровно' | 'просел' | 'тишина'
+  /** Verdict identifier (language-neutral key). */
+  verdict: 'habit' | 'rising' | 'steady' | 'drop' | 'silence'
 }
 
 export function computeTrajectory(): TrajectoryTrend {
@@ -289,11 +295,11 @@ export function computeTrajectory(): TrajectoryTrend {
   const weekDelta = thisWeek - lastWeek
 
   let verdict: TrajectoryTrend['verdict']
-  if (thisWeek === 0 && lastWeek === 0) verdict = 'тишина'
-  else if (thisWeek > lastWeek + 2) verdict = 'на подъёме'
-  else if (thisWeek < lastWeek - 2) verdict = 'просел'
-  else if (activeDays30 >= 21) verdict = 'строит привычку'
-  else verdict = 'ровно'
+  if (thisWeek === 0 && lastWeek === 0) verdict = 'silence'
+  else if (thisWeek > lastWeek + 2) verdict = 'rising'
+  else if (thisWeek < lastWeek - 2) verdict = 'drop'
+  else if (activeDays30 >= 21) verdict = 'habit'
+  else verdict = 'steady'
 
   return { daily30, thisWeek, lastWeek, weekDelta, minutes30, minutes7, activeDays30, verdict }
 }

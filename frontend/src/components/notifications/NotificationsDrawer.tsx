@@ -17,6 +17,7 @@
 // Animation: framer-motion AnimatePresence; honors prefers-reduced-motion.
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 
@@ -42,19 +43,23 @@ type Tab = 'all' | 'unread' | 'mentions'
 
 type ChipKind = 'all' | CardKind
 
-const CHIPS: { id: ChipKind; label: string }[] = [
-  { id: 'all', label: 'Всё' },
-  { id: 'match-invite', label: 'Match' },
-  { id: 'achievement-unlocked', label: 'Achievement' },
-  { id: 'coach-insight-ready', label: 'Coach' },
-  { id: 'system-alert', label: 'System' },
-]
+function buildChips(t: (k: string) => string): { id: ChipKind; label: string }[] {
+  return [
+    { id: 'all', label: t('notifications_drawer.all') },
+    { id: 'match-invite', label: 'Match' },
+    { id: 'achievement-unlocked', label: 'Achievement' },
+    { id: 'coach-insight-ready', label: 'Coach' },
+    { id: 'system-alert', label: 'System' },
+  ]
+}
 
 export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps) {
+  const { t } = useTranslation('wave14')
   const navigate = useNavigate()
   const reduced = useReducedMotion()
   const [tab, setTab] = useState<Tab>('all')
   const [chip, setChip] = useState<ChipKind>('all')
+  const CHIPS = useMemo(() => buildChips(t), [t])
 
   // Tab → backend filter. The "mentions" tab is a client-side derived view
   // (we don't have a `mention=1` flag on the API yet) — see filtered useMemo.
@@ -112,7 +117,7 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
   return (
     <AnimatePresence>
       {open && (
-        <div ref={trapRef} className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Уведомления">
+        <div ref={trapRef} className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={t('notifications_drawer.title')}>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -140,9 +145,9 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
 
             <div className="border-b border-border px-4">
               <div className="flex gap-1 pt-1">
-                {(['all', 'unread', 'mentions'] as Tab[]).map((t) => (
-                  <TabButton key={t} active={tab === t} onClick={() => setTab(t)}>
-                    {t === 'all' ? 'Все' : t === 'unread' ? 'Непрочитанные' : 'Упоминания'}
+                {(['all', 'unread', 'mentions'] as Tab[]).map((tk) => (
+                  <TabButton key={tk} active={tab === tk} onClick={() => setTab(tk)}>
+                    {tk === 'all' ? t('notifications_drawer.all_filter') : tk === 'unread' ? t('notifications_drawer.unread_filter') : t('notifications_drawer.mentions_filter')}
                   </TabButton>
                 ))}
               </div>
@@ -165,13 +170,13 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
               ) : list.isError ? (
                 <EmptyState
                   variant="error"
-                  title="Не удалось загрузить уведомления"
-                  body="Сервис недоступен. Попробуй ещё раз через минуту."
-                  cta={{ label: 'Повторить', onClick: () => list.refetch() }}
+                  title={t('notifications_drawer.load_failed')}
+                  body={t('notifications_drawer.service_unavailable')}
+                  cta={{ label: t('notifications_drawer.retry'), onClick: () => list.refetch() }}
                   compact
                 />
               ) : items.length === 0 ? (
-                <EmptyState variant="no-data" title="Нет уведомлений · отдыхай" body={null} compact />
+                <EmptyState variant="no-data" title={t('notifications_drawer.none_rest')} body={null} compact />
               ) : (
                 <ul className="flex flex-col divide-y divide-border">
                   {items.map((n: NotificationItem) => (
@@ -206,14 +211,14 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
                 disabled={unreadCount === 0 || markAll.isPending}
                 className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-semibold text-text-secondary hover:bg-surface-2 hover:text-text-primary disabled:opacity-40"
               >
-                <Check className="h-3.5 w-3.5" /> Прочитать все
+                <Check className="h-3.5 w-3.5" /> {t('notifications_drawer.read_all')}
               </button>
               <button
                 type="button"
                 onClick={() => navigateAndClose('/notifications')}
                 className="inline-flex items-center gap-1.5 rounded-md bg-text-primary px-3 py-1.5 text-[12px] font-semibold text-bg hover:bg-text-primary-hover"
               >
-                Открыть все <ArrowRight className="h-3.5 w-3.5" />
+                {t('notifications_drawer.open_all')} <ArrowRight className="h-3.5 w-3.5" />
               </button>
             </div>
           </motion.aside>
@@ -224,18 +229,19 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
 }
 
 function Header({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation('wave14')
   return (
     <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
       <div className="flex flex-col gap-0.5">
         <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Notifications</span>
         <span className="font-display text-lg font-bold text-text-primary">
-          Уведомления
+          {t('notifications_drawer.title')}
         </span>
       </div>
       <button
         type="button"
         onClick={onClose}
-        aria-label="Закрыть"
+        aria-label={t('notifications_drawer.close')}
         className="grid h-8 w-8 place-items-center rounded-md text-text-secondary hover:bg-surface-2 hover:text-text-primary"
       >
         <X className="h-4 w-4" />

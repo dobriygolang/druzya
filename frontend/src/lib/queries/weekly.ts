@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import i18n, { bcp47 } from '../i18n'
 import { api } from '../apiClient'
 import type { WeeklyReport as ProfileWeeklyReport } from './profile'
 
@@ -82,13 +83,13 @@ function adapt(raw: ProfileWeeklyReport): WeeklyReport {
   const strong = (raw.strong_sections ?? []).map((s) => ({
     id: SECTION_LETTERS[s.section] ?? s.section.charAt(0).toUpperCase(),
     name: SECTION_NAMES[s.section] ?? s.section,
-    sub: `${s.matches} матчей · ${s.win_rate_pct}% wr`,
+    sub: i18n.t('pages:weekly.section_summary', { matches: s.matches, rate: s.win_rate_pct }),
     xp: `${s.xp_delta >= 0 ? '+' : ''}${s.xp_delta} XP`,
   }))
   const weak = (raw.weak_sections ?? []).map((s, idx) => ({
     id: SECTION_LETTERS[s.section] ?? s.section.charAt(0).toUpperCase(),
     name: SECTION_NAMES[s.section] ?? s.section,
-    sub: `${s.matches} матчей · ${s.win_rate_pct}% wr`,
+    sub: i18n.t('pages:weekly.section_summary', { matches: s.matches, rate: s.win_rate_pct }),
     xp: `${s.xp_delta >= 0 ? '+' : ''}${s.xp_delta} XP`,
     tone: idx === 0 ? 'danger' : 'warn',
   }))
@@ -102,10 +103,10 @@ function adapt(raw: ProfileWeeklyReport): WeeklyReport {
     period: fmtPeriod(raw.week_start, raw.week_end),
     actions_count: raw.actions_count ?? matchesTotal,
     stats: {
-      xp: { value: xpEarned.toLocaleString('ru-RU', { signDisplay: 'always' }), delta: fmtPercent(xpEarned, prevXP) },
+      xp: { value: xpEarned.toLocaleString(bcp47(), { signDisplay: 'always' }), delta: fmtPercent(xpEarned, prevXP) },
       matches: { value: String(matchesTotal), wins, losses, delta: fmtPercent(matchesTotal, 0) },
       streak: { value: streakCur > 0 ? `${streakCur} 🔥` : '0', best: streakBest },
-      avg_lp: { value: `${avgLp >= 0 ? '+' : ''}${avgLp.toFixed(1)}`, total: `${lpDelta >= 0 ? '+' : ''}${lpDelta} lp всего` },
+      avg_lp: { value: `${avgLp >= 0 ? '+' : ''}${avgLp.toFixed(1)}`, total: i18n.t('pages:weekly.lp_total', { delta: lpDelta >= 0 ? `+${lpDelta}` : String(lpDelta) }) },
     },
     strong_sections: strong,
     weak_sections: weak,

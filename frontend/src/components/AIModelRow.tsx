@@ -16,6 +16,7 @@
 // affordance. This is the deliberate version.
 
 import { Check, Lock, Zap } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 
 export type AIModelTier = 'free' | 'pro' | 'max'
@@ -41,6 +42,7 @@ export type AIModelRowProps = {
 }
 
 export function AIModelRow({ id, label, meta, tier, selected, locked, isVirtual, onSelect }: AIModelRowProps) {
+  const { t } = useTranslation('settings')
   return (
     <button
       type="button"
@@ -58,7 +60,7 @@ export function AIModelRow({ id, label, meta, tier, selected, locked, isVirtual,
         isVirtual && !selected && 'border-border-strong bg-text-primary/[0.04] hover:border-text-primary',
         locked && 'cursor-not-allowed hover:border-warn/40 hover:bg-warn/[0.04]',
       )}
-      title={locked ? 'Доступно на Pro/Max подписке' : undefined}
+      title={locked ? t('ai_models.locked_title') : undefined}
     >
       {/* Radio / lock indicator */}
       <span
@@ -98,13 +100,14 @@ function RightChip({
   locked?: boolean
   isVirtual?: boolean
 }) {
+  const { t } = useTranslation('settings')
   // Virtual rows (Turbo) win the chip slot regardless of tier/selected
   // state — the ⚡ badge is the whole point of the row.
   if (isVirtual) {
     return (
       <span className="flex items-center gap-1 rounded-md bg-text-primary/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-text-primary">
         <Zap className="h-3 w-3" strokeWidth={3} />
-        турбо
+        {t('ai_models.turbo_badge')}
       </span>
     )
   }
@@ -135,10 +138,11 @@ function RightChip({
 // показа цены»). Если parent передаст onUpgrade — он вызовется ДО
 // навигации (полезно, например, чтобы залогировать impression).
 export function PremiumUpgradeHint({ onUpgrade }: { onUpgrade?: () => void }) {
+  const { t } = useTranslation('settings')
   return (
     <div className="mt-3 flex items-center gap-3 rounded-md border border-warn/25 bg-warn/[0.04] px-4 py-2.5">
       <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-warn">
-        pro/max модели
+        {t('ai_models.upgrade_eyebrow')}
       </span>
       <span className="text-[12px] text-text-secondary">
         GPT-4o, Claude Sonnet 4, Gemini Pro
@@ -150,7 +154,7 @@ export function PremiumUpgradeHint({ onUpgrade }: { onUpgrade?: () => void }) {
         }}
         className="ml-auto text-[12px] font-semibold text-warn hover:underline"
       >
-        Подключить →
+        {t('ai_models.upgrade_cta')}
       </a>
     </div>
   )

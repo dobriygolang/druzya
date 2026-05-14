@@ -14,6 +14,7 @@
 import { type ReactNode } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '../../../lib/cn'
 import { staggerContainer, staggerItem } from '../../../lib/motion-presets'
@@ -53,6 +54,7 @@ export function OnboardingLayout({
   skipLabel,
   children,
 }: OnboardingLayoutProps) {
+  const { t } = useTranslation('onboarding')
   // Step 1 is the gate — no stepper dots (we don't want a "1/5"
   // pressure on first-touch; let the value-prop stand alone).
   const showStepper = step > 1
@@ -102,7 +104,7 @@ export function OnboardingLayout({
             onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> назад
+            <ArrowLeft className="h-3.5 w-3.5" /> {t('layout.back')}
           </button>
         )}
       </header>
@@ -110,7 +112,7 @@ export function OnboardingLayout({
       {showStepper && (
         <div
           className="flex items-center justify-center gap-1.5 pt-6"
-          aria-label={`шаг ${step} из ${total}`}
+          aria-label={t('layout.step_aria', { step, total })}
           role="progressbar"
           aria-valuenow={step}
           aria-valuemin={1}
@@ -153,7 +155,7 @@ export function OnboardingLayout({
             onMouseEnter={(e) => (e.currentTarget.style.color = 'rgb(var(--ink))')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
           >
-            {skipLabel ?? 'пропустить'} →
+            {skipLabel ?? t('layout.skip_default')} →
           </button>
         </div>
       )}

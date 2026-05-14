@@ -144,7 +144,7 @@ export const ResistanceModal: React.FC<ResistanceModalProps> = ({
               color: 'rgba(255,255,255,0.45)',
             }}
           >
-            фокус на «{pinnedTitle}»
+            {t('hone.resistance.pinned_hint', { title: pinnedTitle ?? '' })}
           </div>
         ) : null}
         <textarea
