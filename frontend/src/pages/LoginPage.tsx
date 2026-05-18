@@ -32,6 +32,7 @@ import {
   type PollSuccess,
   type TelegramStartResponse,
 } from '../lib/queries/auth'
+import { API_BASE } from '../lib/apiClient'
 import { staggerContainer, staggerItem } from '../lib/motion-presets'
 import { Modal } from '../components/primitives/Modal'
 import { motion as motionTokens } from '../lib/design-tokens'
@@ -80,16 +81,27 @@ export function maybeRedirectToDesktop(tokens: {
   return true
 }
 
-function buildYandexAuthorizeURL(): string | null {
-  if (!YANDEX_CLIENT_ID) return null
-  const state = crypto.randomUUID()
-  sessionStorage.setItem('oauth_state_yandex', state)
-  const u = new URL('https://oauth.yandex.ru/authorize')
-  u.searchParams.set('response_type', 'code')
-  u.searchParams.set('client_id', YANDEX_CLIENT_ID)
-  u.searchParams.set('redirect_uri', yandexRedirectURI())
-  u.searchParams.set('state', state)
-  return u.toString()
+// startYandexAuth — серверный flow: POST /auth/yandex/start генерит state+
+// PKCE verifier на бэке, кладёт в Redis с TTL и возвращает готовый
+// authorize_url. Без этого вызова callback /auth/yandex упадёт 400
+// `invalid oauth state`, потому что backend.ConsumeState не найдёт key.
+// Echo'им state в sessionStorage как defense-in-depth CSRF check на фронте.
+async function startYandexAuth(): Promise<string> {
+  const res = await fetch(`${API_BASE}/auth/yandex/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ redirect_uri: yandexRedirectURI() }),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`yandex/start ${res.status}: ${text}`)
+  }
+  const data = (await res.json()) as { authorize_url: string; state: string }
+  if (!data.authorize_url || !data.state) {
+    throw new Error('yandex/start: empty authorize_url or state')
+  }
+  sessionStorage.setItem('oauth_state_yandex', data.state)
+  return data.authorize_url
 }
 
 export default function LoginPage() {
@@ -108,6 +120,7 @@ export default function LoginPage() {
   const [tgFlow, setTgFlow] = useState<TelegramStartResponse | null>(null)
   const [tgPolling, setTgPolling] = useState(false)
   const [tgStarting, setTgStarting] = useState(false)
+  const [yandexBusy, setYandexBusy] = useState(false)
   const pollTimer = useRef<number | null>(null)
 
   useEffect(() => {
@@ -228,7 +241,21 @@ export default function LoginPage() {
     }
   }
 
-  const yandexHref = buildYandexAuthorizeURL()
+  const yandexEnabled = !!YANDEX_CLIENT_ID
+
+  async function handleYandexClick() {
+    if (!yandexEnabled || yandexBusy) return
+    setError(null)
+    setYandexBusy(true)
+    try {
+      const authorizeURL = await startYandexAuth()
+      window.location.href = authorizeURL
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setError(tAuth('error.yandex_start_failed', { message: msg }))
+      setYandexBusy(false)
+    }
+  }
 
   return (
     <div
@@ -363,15 +390,20 @@ export default function LoginPage() {
         <motion.div variants={staggerItem} className="flex flex-col" style={{ gap: 'var(--gap-row)' }}>
           {/* Yandex */}
           <SectionLabel>{tAuth('section.yandex')}</SectionLabel>
-          {yandexHref ? (
-            <a
-              href={yandexHref}
+          {yandexEnabled ? (
+            <button
+              type="button"
+              onClick={handleYandexClick}
+              disabled={yandexBusy}
               className="focus-ring motion-hover-lift motion-press"
               style={ghostButton}
             >
+              {yandexBusy ? (
+                <Loader2 className="h-[18px] w-[18px] animate-spin" />
+              ) : null}
               <span>{tAuth('cta.via_yandex')}</span>
               <ArrowRight className="h-[18px] w-[18px]" />
-            </a>
+            </button>
           ) : (
             <div
               style={{
@@ -533,7 +565,7 @@ function TelegramCodeModal({
               'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+            e.currentTarget.style.background = 'rgb(var(--color-text-primary) / 0.05)'
             e.currentTarget.style.color = 'rgb(var(--ink))'
           }}
           onMouseLeave={(e) => {
@@ -604,7 +636,7 @@ function TelegramCodeModal({
               'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+            e.currentTarget.style.background = 'rgb(var(--color-text-primary) / 0.05)'
             e.currentTarget.style.color = 'rgb(var(--ink))'
           }}
           onMouseLeave={(e) => {
@@ -640,8 +672,8 @@ function TelegramCodeModal({
             'background-color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
-          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)'
+          e.currentTarget.style.background = 'rgb(var(--color-text-primary) / 0.06)'
+          e.currentTarget.style.borderColor = 'rgb(var(--color-text-primary) / 0.18)'
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'transparent'
@@ -685,7 +717,7 @@ function TelegramCodeModal({
             'background-color var(--motion-dur-small) var(--motion-ease-standard), color var(--motion-dur-small) var(--motion-ease-standard), border-color var(--motion-dur-small) var(--motion-ease-standard), transform var(--motion-dur-small) var(--motion-ease-standard)',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+          e.currentTarget.style.background = 'rgb(var(--color-text-primary) / 0.04)'
           e.currentTarget.style.color = 'rgb(var(--ink))'
         }}
         onMouseLeave={(e) => {
@@ -738,7 +770,7 @@ function DevLoginPane({ onSuccess, onError }: DevLoginPaneProps) {
         padding: '16px 18px',
         border: '1px solid var(--hair)',
         borderRadius: 'var(--radius-outer)',
-        background: 'rgba(255, 255, 255, 0.02)',
+        background: 'rgb(var(--color-text-primary) / 0.02)',
       }}
     >
       <div
@@ -800,9 +832,9 @@ function DevLoginPane({ onSuccess, onError }: DevLoginPaneProps) {
             transition: 'opacity var(--motion-dur-small) var(--motion-ease-standard), background-color var(--motion-dur-small) var(--motion-ease-standard)',
           }}
           onMouseEnter={(e) => {
-            if (!busy && username.trim()) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.92)'
+            if (!busy && username.trim()) e.currentTarget.style.background = 'rgb(var(--color-text-primary) / 0.92)'
           }}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--ink)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgb(var(--ink))')}
         >
           {busy ? '…' : tAuth('cta.login')}
         </button>
