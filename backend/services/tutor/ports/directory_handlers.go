@@ -282,7 +282,7 @@ func toApplicationProto(
 		TutorId:             a.TutorID.String(),
 		StudentId:           a.StudentID.String(),
 		Message:             a.Message,
-		Status:              string(a.Status),
+		Status:              applicationStatusToProto(a.Status),
 		StudentDisplayName:  displayName,
 		StudentUsername:     username,
 		StudentAvatarUrl:    avatarURL,

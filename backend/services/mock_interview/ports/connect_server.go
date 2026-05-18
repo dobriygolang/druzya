@@ -526,9 +526,81 @@ func algoVerdictToProto(out app.RunAlgoOutput) *pb.AlgoVerdict {
 		RuntimeMs:          int32(out.RuntimeMs),
 		MemoryKb:           int32(out.MemoryKB),
 		SandboxUnavailable: out.SandboxUnavailable,
-		Status:             string(out.Status),
+		Status:             algoVerdictStatusToProto(out.Status),
 		Tests:              tests,
 	}
+}
+
+func algoVerdictStatusToProto(s app.AlgoStatus) pb.AlgoVerdictStatus {
+	switch s {
+	case app.AlgoStatusOK:
+		return pb.AlgoVerdictStatus_ALGO_VERDICT_STATUS_OK
+	case app.AlgoStatusCompileError:
+		return pb.AlgoVerdictStatus_ALGO_VERDICT_STATUS_COMPILE_ERROR
+	case app.AlgoStatusRuntimeError:
+		return pb.AlgoVerdictStatus_ALGO_VERDICT_STATUS_RUNTIME_ERROR
+	case app.AlgoStatusUnavailable:
+		return pb.AlgoVerdictStatus_ALGO_VERDICT_STATUS_UNAVAILABLE
+	}
+	return pb.AlgoVerdictStatus_ALGO_VERDICT_STATUS_UNSPECIFIED
+}
+
+func stageKindToProto(k domain.StageKind) pb.PipelineStageKind {
+	switch k {
+	case domain.StageHR:
+		return pb.PipelineStageKind_PIPELINE_STAGE_KIND_HR
+	case domain.StageAlgo:
+		return pb.PipelineStageKind_PIPELINE_STAGE_KIND_ALGO
+	case domain.StageCoding:
+		return pb.PipelineStageKind_PIPELINE_STAGE_KIND_CODING
+	case domain.StageSysDesign:
+		return pb.PipelineStageKind_PIPELINE_STAGE_KIND_SYSDESIGN
+	case domain.StageBehavioral:
+		return pb.PipelineStageKind_PIPELINE_STAGE_KIND_BEHAVIORAL
+	case domain.StageMLCoding:
+		return pb.PipelineStageKind_PIPELINE_STAGE_KIND_ML_CODING
+	case domain.StageMLSystemDesign:
+		return pb.PipelineStageKind_PIPELINE_STAGE_KIND_ML_SYSTEM_DESIGN
+	case domain.StageMLTheory:
+		return pb.PipelineStageKind_PIPELINE_STAGE_KIND_ML_THEORY
+	}
+	return pb.PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
+}
+
+func stageKindFromProto(p pb.PipelineStageKind) domain.StageKind {
+	switch p {
+	case pb.PipelineStageKind_PIPELINE_STAGE_KIND_HR:
+		return domain.StageHR
+	case pb.PipelineStageKind_PIPELINE_STAGE_KIND_ALGO:
+		return domain.StageAlgo
+	case pb.PipelineStageKind_PIPELINE_STAGE_KIND_CODING:
+		return domain.StageCoding
+	case pb.PipelineStageKind_PIPELINE_STAGE_KIND_SYSDESIGN:
+		return domain.StageSysDesign
+	case pb.PipelineStageKind_PIPELINE_STAGE_KIND_BEHAVIORAL:
+		return domain.StageBehavioral
+	case pb.PipelineStageKind_PIPELINE_STAGE_KIND_ML_CODING:
+		return domain.StageMLCoding
+	case pb.PipelineStageKind_PIPELINE_STAGE_KIND_ML_SYSTEM_DESIGN:
+		return domain.StageMLSystemDesign
+	case pb.PipelineStageKind_PIPELINE_STAGE_KIND_ML_THEORY:
+		return domain.StageMLTheory
+	}
+	return ""
+}
+
+func stageStatusToProto(s domain.StageStatus) pb.PipelineStageStatus {
+	switch s {
+	case domain.StageStatusPending:
+		return pb.PipelineStageStatus_PIPELINE_STAGE_STATUS_PENDING
+	case domain.StageStatusInProgress:
+		return pb.PipelineStageStatus_PIPELINE_STAGE_STATUS_IN_PROGRESS
+	case domain.StageStatusFinished:
+		return pb.PipelineStageStatus_PIPELINE_STAGE_STATUS_FINISHED
+	case domain.StageStatusSkipped:
+		return pb.PipelineStageStatus_PIPELINE_STAGE_STATUS_SKIPPED
+	}
+	return pb.PipelineStageStatus_PIPELINE_STAGE_STATUS_UNSPECIFIED
 }
 
 // ── stage / attempt mappers ─────────────────────────────────────────────
@@ -536,9 +608,9 @@ func algoVerdictToProto(out app.RunAlgoOutput) *pb.AlgoVerdict {
 func pipelineStageToProto(s domain.PipelineStage) *pb.PipelineStage {
 	out := &pb.PipelineStage{
 		Id:           s.ID.String(),
-		StageKind:    string(s.StageKind),
+		StageKind:    stageKindToProto(s.StageKind),
 		Ordinal:      int32(s.Ordinal),
-		Status:       string(s.Status),
+		Status:       stageStatusToProto(s.Status),
 		AiFeedbackMd: s.AIFeedbackMD,
 	}
 	if s.Score != nil {

@@ -28,6 +28,32 @@ enum InviteStatus {
   INVITE_STATUS_EXPIRED     = 4;
 }
 
+// TutorEventStatus mirrors domain.EventStatus + CHECK on tutor_events.status.
+enum TutorEventStatus {
+  TUTOR_EVENT_STATUS_UNSPECIFIED = 0;
+  TUTOR_EVENT_STATUS_SCHEDULED   = 1;
+  TUTOR_EVENT_STATUS_CANCELLED   = 2;
+  TUTOR_EVENT_STATUS_COMPLETED   = 3;
+}
+
+// TutorEventVisibility mirrors domain.EventVisibility for the session-note
+// share toggle. Used by TutorEvent.visibility and the SetSessionNoteVisibility
+// RPC payload.
+enum TutorEventVisibility {
+  TUTOR_EVENT_VISIBILITY_UNSPECIFIED = 0;
+  TUTOR_EVENT_VISIBILITY_PRIVATE     = 1;
+  TUTOR_EVENT_VISIBILITY_SHARED      = 2;
+}
+
+// TutorApplicationStatus mirrors domain.ApplicationStatus on directory
+// application rows.
+enum TutorApplicationStatus {
+  TUTOR_APPLICATION_STATUS_UNSPECIFIED = 0;
+  TUTOR_APPLICATION_STATUS_PENDING     = 1;
+  TUTOR_APPLICATION_STATUS_ACCEPTED    = 2;
+  TUTOR_APPLICATION_STATUS_DECLINED    = 3;
+}
+
 message TutorInvite {
   string id           = 1;
   string tutor_id     = 2;
@@ -366,20 +392,18 @@ message TutorEvent {
   // Optional. Only set for circle (group) events. Zero = unlimited /
   // not applicable.
   int32  capacity     = 10;
-  // 'scheduled' | 'cancelled' | 'completed'. Wire it as a free string
-  // so older clients don't break when we add 'rescheduled' etc.
-  string status              = 11;
+  TutorEventStatus status    = 11;
   string cancellation_reason = 12;
   google.protobuf.Timestamp created_at = 13;
   google.protobuf.Timestamp updated_at = 14;
   // Wave 5.2d — tutor's post-session write-up. Non-empty iff
-  // status=='completed'. Tutor-visible always; student-visible only when
-  // visibility=='shared' (see field 16).
+  // status==COMPLETED. Tutor-visible always; student-visible only when
+  // visibility==SHARED (see field 16).
   string session_note = 15;
-  // Phase K T4 (2026-05-13) — session-note share toggle. 'private' (default)
-  // means student never sees the note; 'shared' surfaces it via
+  // Phase K T4 (2026-05-13) — session-note share toggle. PRIVATE (default)
+  // means student never sees the note; SHARED surfaces it via
   // ListSharedSessionNotesForStudent.
-  string visibility = 16;
+  TutorEventVisibility visibility = 16;
   // Optional curated copy for student-facing audience. Empty string with
   // visibility='shared' means «share the full private note as-is».
   string shared_content_md = 17;
@@ -1017,7 +1041,7 @@ message TutorDirectoryApplication {
   string tutor_id      = 2;
   string student_id    = 3;
   string message       = 4;
-  string status        = 5; // 'pending' | 'accepted' | 'declined'
+  TutorApplicationStatus status = 5;
   string created_at    = 6; // RFC3339
   // Student display info (server-filled from users JOIN). Empty when
   // student row is unavailable (extremely rare — ON DELETE CASCADE).
@@ -1082,9 +1106,8 @@ message TutorDeclineApplicationResponse {}
 
 message TutorSetSessionNoteVisibilityRequest {
   string event_id          = 1;
-  // 'private' | 'shared'
-  string visibility        = 2;
-  // Optional. Empty string + visibility='shared' = share raw private note.
+  TutorEventVisibility visibility = 2;
+  // Optional. Empty string + visibility==SHARED = share raw private note.
   string shared_content_md = 3;
 }
 

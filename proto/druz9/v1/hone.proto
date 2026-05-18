@@ -26,19 +26,26 @@ option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
 // ─── Daily Plan ────────────────────────────────────────────────────────────
 
 // PlanItemKind classifies a row in the AI-generated plan. The client renders
-// each kind differently (icon, deep-link shape). Kept as a string for wire
-// simplicity — the set is small and stable.
+// each kind differently (icon, deep-link shape).
 //
-//   solve    — open a task on druz9.ru (carries target_ref like "dsa/p-102")
-//   mock     — scheduled mock interview (target_ref is a slot_id)
-//   review   — review PR / feedback waiting (target_ref is a URL)
-//   read     — reading / book continuation (target_ref optional)
-//   custom   — free-form item user added manually
+//   SOLVE    — open a task on druz9.ru (carries target_ref like "dsa/p-102")
+//   MOCK     — scheduled mock interview (target_ref is a slot_id)
+//   REVIEW   — review PR / feedback waiting (target_ref is a URL)
+//   READ     — reading / book continuation (target_ref optional)
+//   CUSTOM   — free-form item user added manually
+enum PlanItemKind {
+  PLAN_ITEM_KIND_UNSPECIFIED = 0;
+  PLAN_ITEM_KIND_SOLVE = 1;
+  PLAN_ITEM_KIND_MOCK = 2;
+  PLAN_ITEM_KIND_REVIEW = 3;
+  PLAN_ITEM_KIND_READ = 4;
+  PLAN_ITEM_KIND_CUSTOM = 5;
+}
 
 // PlanItem is one row in a day's plan.
 message PlanItem {
   string id = 1;
-  string kind = 2;                   // solve | mock | review | read | custom
+  PlanItemKind kind = 2;
   string title = 3;
   string subtitle = 4;               // one-liner reason ("Targets your weak spot — BFS on trees")
   string target_ref = 5;             // deep-link payload (task slug, slot id, URL)
@@ -138,13 +145,26 @@ message Stats {
 
 // ─── Focus Queue ───────────────────────────────────────────────────────────
 
+// QueueItemSource — кто положил карточку в очередь.
+enum QueueItemSource {
+  QUEUE_ITEM_SOURCE_UNSPECIFIED = 0;
+  QUEUE_ITEM_SOURCE_AI = 1;
+  QUEUE_ITEM_SOURCE_USER = 2;
+}
+
+// QueueItemStatus — kanban-state для focus queue card.
+enum QueueItemStatus {
+  QUEUE_ITEM_STATUS_UNSPECIFIED = 0;
+  QUEUE_ITEM_STATUS_TODO = 1;
+  QUEUE_ITEM_STATUS_IN_PROGRESS = 2;
+  QUEUE_ITEM_STATUS_DONE = 3;
+}
+
 message QueueItem {
   string id = 1;
   string title = 2;
-  // 'ai' | 'user'.
-  string source = 3;
-  // 'todo' | 'in_progress' | 'done'.
-  string status = 4;
+  QueueItemSource source = 3;
+  QueueItemStatus status = 4;
   // Skill key копируется из PlanItem для AI items, пустой для user items.
   string skill_key = 5;
   // YYYY-MM-DD.
@@ -174,7 +194,7 @@ message AddQueueItemRequest {
 
 message UpdateQueueItemStatusRequest {
   string id = 1;
-  string status = 2;
+  QueueItemStatus status = 2;
 }
 
 message DeleteQueueItemRequest {

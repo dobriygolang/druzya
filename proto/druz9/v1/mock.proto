@@ -129,6 +129,44 @@ enum MockAttemptVerdict {
   MOCK_ATTEMPT_VERDICT_FAIL = 3;
 }
 
+// PipelineStageKind mirrors domain.StageKind + the Postgres `mock_stage_kind`
+// enum. Routes attempt grading + question pool selection.
+enum PipelineStageKind {
+  PIPELINE_STAGE_KIND_UNSPECIFIED      = 0;
+  PIPELINE_STAGE_KIND_HR               = 1;
+  PIPELINE_STAGE_KIND_ALGO             = 2;
+  PIPELINE_STAGE_KIND_CODING           = 3;
+  PIPELINE_STAGE_KIND_SYSDESIGN        = 4;
+  PIPELINE_STAGE_KIND_BEHAVIORAL       = 5;
+  PIPELINE_STAGE_KIND_ML_CODING        = 6;
+  PIPELINE_STAGE_KIND_ML_SYSTEM_DESIGN = 7;
+  PIPELINE_STAGE_KIND_ML_THEORY        = 8;
+}
+
+// PipelineStageStatus mirrors domain.StageStatus + Postgres
+// `pipeline_stage_status` enum. Distinct from MockStatus (which describes the
+// top-level pipeline lifecycle): SKIPPED applies to stages dropped by section
+// filter, while pipelines themselves go CREATED → IN_PROGRESS → FINISHED |
+// ABANDONED.
+enum PipelineStageStatus {
+  PIPELINE_STAGE_STATUS_UNSPECIFIED = 0;
+  PIPELINE_STAGE_STATUS_PENDING     = 1;
+  PIPELINE_STAGE_STATUS_IN_PROGRESS = 2;
+  PIPELINE_STAGE_STATUS_FINISHED    = 3;
+  PIPELINE_STAGE_STATUS_SKIPPED     = 4;
+}
+
+// AlgoVerdictStatus — outcome of the «Run tests» sandbox call. UNAVAILABLE is
+// emitted when Judge0 is offline or the language is unsupported; the rest
+// mirror the typical compile/run lifecycle.
+enum AlgoVerdictStatus {
+  ALGO_VERDICT_STATUS_UNSPECIFIED   = 0;
+  ALGO_VERDICT_STATUS_OK            = 1;
+  ALGO_VERDICT_STATUS_COMPILE_ERROR = 2;
+  ALGO_VERDICT_STATUS_RUNTIME_ERROR = 3;
+  ALGO_VERDICT_STATUS_UNAVAILABLE   = 4;
+}
+
 message AttemptFinalisedRequest {
   string id = 1;
 }
@@ -141,9 +179,9 @@ message AttemptFinalisedResponse {
 // PipelineStage — одна стадия pipeline'а (HR, кодинг, sysdesign, etc.).
 message PipelineStage {
   string id = 1;
-  string stage_kind = 2; // free-form: hr/coding/sysdesign/...
+  PipelineStageKind stage_kind = 2;
   int32 ordinal = 3;
-  string status = 4; // pending|in_progress|finished|abandoned
+  PipelineStageStatus status = 4;
   // has_score=true когда score задан (proto3 nullable workaround).
   bool has_score = 5;
   float score = 6;
@@ -238,7 +276,7 @@ message AlgoVerdict {
   int32 runtime_ms = 3;         // max runtime across visible cases
   int32 memory_kb = 4;          // max memory across visible cases (0 when unavailable)
   bool sandbox_unavailable = 5; // true when Judge0 is not wired / language unsupported
-  string status = 6;            // free-form short status: "ok" | "compile_error" | "runtime_error" | "unavailable"
+  AlgoVerdictStatus status = 6;
   repeated AlgoTestResult tests = 7;
 }
 
@@ -414,7 +452,7 @@ message AdminUpdateStrictnessRequest {
 // MockTask — admin-editable task row для pipeline-stage.
 message MockTask {
   string id = 1;
-  string stage_kind = 2;
+  PipelineStageKind stage_kind = 2;
   string language = 3;
   int32 difficulty = 4;
   string title = 5;
@@ -443,7 +481,7 @@ message MockTaskQuestion {
 }
 
 message AdminListMockTasksRequest {
-  string stage_kind = 1;  // empty = all
+  PipelineStageKind stage_kind = 1;  // empty = all
   string language = 2;    // empty = all
   bool only_active = 3;
 }
@@ -464,7 +502,7 @@ message AdminGetMockTaskResponse {
 
 // MockTaskInput — общая форма для Create + Update.
 message MockTaskInput {
-  string stage_kind = 1;
+  PipelineStageKind stage_kind = 1;
   string language = 2;
   int32 difficulty = 3;
   string title = 4;
@@ -561,7 +599,7 @@ message AdminDeleteTestCaseRequest {
 // MockDefaultQuestion — global HR/behavioral pool row.
 message MockDefaultQuestion {
   string id = 1;
-  string stage_kind = 2;
+  PipelineStageKind stage_kind = 2;
   string body = 3;
   string expected_answer_md = 4;
   ReferenceCriteria reference_criteria = 5;
@@ -571,7 +609,7 @@ message MockDefaultQuestion {
 }
 
 message MockDefaultQuestionInput {
-  string stage_kind = 1;
+  PipelineStageKind stage_kind = 1;
   string body = 2;
   string expected_answer_md = 3;
   ReferenceCriteria reference_criteria = 4;
@@ -580,7 +618,7 @@ message MockDefaultQuestionInput {
 }
 
 message AdminListDefaultQuestionsRequest {
-  string stage_kind = 1; // empty = all
+  PipelineStageKind stage_kind = 1; // empty = all
   bool only_active = 2;
 }
 
@@ -607,7 +645,7 @@ message AdminDeleteDefaultQuestionRequest {
 message MockCompanyQuestion {
   string id = 1;
   string company_id = 2;
-  string stage_kind = 3;
+  PipelineStageKind stage_kind = 3;
   string body = 4;
   string expected_answer_md = 5;
   ReferenceCriteria reference_criteria = 6;
@@ -617,7 +655,7 @@ message MockCompanyQuestion {
 }
 
 message MockCompanyQuestionInput {
-  string stage_kind = 1;
+  PipelineStageKind stage_kind = 1;
   string body = 2;
   string expected_answer_md = 3;
   ReferenceCriteria reference_criteria = 4;
@@ -627,7 +665,7 @@ message MockCompanyQuestionInput {
 
 message AdminListCompanyQuestionsRequest {
   string company_id = 1;
-  string stage_kind = 2; // empty = all
+  PipelineStageKind stage_kind = 2; // empty = all
 }
 
 message AdminListCompanyQuestionsResponse {
@@ -652,7 +690,7 @@ message AdminDeleteCompanyQuestionRequest {
 
 // CompanyStage — одна стадия в шаблоне pipeline'а компании.
 message MockCompanyStage {
-  string stage_kind = 1;
+  PipelineStageKind stage_kind = 1;
   int32 ordinal = 2;
   bool optional = 3;
   repeated string language_pool = 4;
@@ -690,7 +728,7 @@ message MockBulkTestCase {
 }
 
 message MockBulkTaskImportItem {
-  string stage_kind = 1;
+  PipelineStageKind stage_kind = 1;
   string language = 2;
   int32 difficulty = 3;
   string title = 4;

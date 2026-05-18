@@ -967,11 +967,11 @@ func toRelationshipProto(r domain.Relationship) *pb.TutorRelationship {
 }
 
 func toEventProto(e domain.Event) *pb.TutorEvent {
-	// Defensive default: visibility 'private' when row predates migration
-	// 00115. Avoids empty-string surface on the wire.
-	vis := string(e.Visibility)
+	// Defensive default: visibility PRIVATE when row predates migration
+	// 00115. Avoids UNSPECIFIED on the wire.
+	vis := e.Visibility
 	if vis == "" {
-		vis = string(domain.EventVisibilityPrivate)
+		vis = domain.EventVisibilityPrivate
 	}
 	out := &pb.TutorEvent{
 		Id:                 e.ID.String(),
@@ -980,10 +980,10 @@ func toEventProto(e domain.Event) *pb.TutorEvent {
 		BodyMd:             e.BodyMD,
 		DurationMin:        int32(e.DurationMin),
 		MeetUrl:            e.MeetURL,
-		Status:             string(e.Status),
+		Status:             eventStatusToProto(e.Status),
 		CancellationReason: e.CancellationReason,
 		SessionNote:        e.SessionNote,
-		Visibility:         vis,
+		Visibility:         eventVisibilityToProto(vis),
 		SharedContentMd:    e.SharedContentMD,
 	}
 	if e.StudentID != nil {
@@ -1044,6 +1044,50 @@ func inviteStatusToProto(s domain.InviteStatus) pb.InviteStatus {
 	default:
 		return pb.InviteStatus_INVITE_STATUS_UNSPECIFIED
 	}
+}
+
+func eventStatusToProto(s domain.EventStatus) pb.TutorEventStatus {
+	switch s {
+	case domain.EventStatusScheduled:
+		return pb.TutorEventStatus_TUTOR_EVENT_STATUS_SCHEDULED
+	case domain.EventStatusCancelled:
+		return pb.TutorEventStatus_TUTOR_EVENT_STATUS_CANCELLED
+	case domain.EventStatusCompleted:
+		return pb.TutorEventStatus_TUTOR_EVENT_STATUS_COMPLETED
+	}
+	return pb.TutorEventStatus_TUTOR_EVENT_STATUS_UNSPECIFIED
+}
+
+func eventVisibilityToProto(v domain.EventVisibility) pb.TutorEventVisibility {
+	switch v {
+	case domain.EventVisibilityPrivate:
+		return pb.TutorEventVisibility_TUTOR_EVENT_VISIBILITY_PRIVATE
+	case domain.EventVisibilityShared:
+		return pb.TutorEventVisibility_TUTOR_EVENT_VISIBILITY_SHARED
+	}
+	return pb.TutorEventVisibility_TUTOR_EVENT_VISIBILITY_UNSPECIFIED
+}
+
+func eventVisibilityFromProto(p pb.TutorEventVisibility) domain.EventVisibility {
+	switch p {
+	case pb.TutorEventVisibility_TUTOR_EVENT_VISIBILITY_PRIVATE:
+		return domain.EventVisibilityPrivate
+	case pb.TutorEventVisibility_TUTOR_EVENT_VISIBILITY_SHARED:
+		return domain.EventVisibilityShared
+	}
+	return ""
+}
+
+func applicationStatusToProto(s domain.ApplicationStatus) pb.TutorApplicationStatus {
+	switch s {
+	case domain.ApplicationStatusPending:
+		return pb.TutorApplicationStatus_TUTOR_APPLICATION_STATUS_PENDING
+	case domain.ApplicationStatusAccepted:
+		return pb.TutorApplicationStatus_TUTOR_APPLICATION_STATUS_ACCEPTED
+	case domain.ApplicationStatusDeclined:
+		return pb.TutorApplicationStatus_TUTOR_APPLICATION_STATUS_DECLINED
+	}
+	return pb.TutorApplicationStatus_TUTOR_APPLICATION_STATUS_UNSPECIFIED
 }
 
 // domainNow gives the converter a single «now» reference. Wrapped to

@@ -267,7 +267,7 @@ func (s *Server) AdminListTasks(
 		return nil, err
 	}
 	f := domain.TaskFilter{
-		StageKind:  domain.StageKind(req.Msg.GetStageKind()),
+		StageKind:  stageKindFromProto(req.Msg.GetStageKind()),
 		Language:   domain.TaskLanguage(req.Msg.GetLanguage()),
 		OnlyActive: req.Msg.GetOnlyActive(),
 	}
@@ -377,7 +377,7 @@ func (s *Server) AdminToggleTaskActive(
 func mockTaskToProto(t domain.MockTask) *pb.MockTask {
 	out := &pb.MockTask{
 		Id:                       t.ID.String(),
-		StageKind:                string(t.StageKind),
+		StageKind:                stageKindToProto(t.StageKind),
 		Language:                 string(t.Language),
 		Difficulty:               int32(t.Difficulty),
 		Title:                    t.Title,
@@ -428,7 +428,7 @@ func mockTaskFromProtoInput(in *pb.MockTaskInput, id uuid.UUID) (domain.MockTask
 	}
 	t := domain.MockTask{
 		ID:                       id,
-		StageKind:                domain.StageKind(in.GetStageKind()),
+		StageKind:                stageKindFromProto(in.GetStageKind()),
 		Language:                 domain.TaskLanguage(in.GetLanguage()),
 		Difficulty:               int(in.GetDifficulty()),
 		Title:                    in.GetTitle(),
@@ -659,7 +659,7 @@ func (s *Server) AdminListDefaultQuestions(
 	if _, err := s.requireAdminConnect(ctx); err != nil {
 		return nil, err
 	}
-	out, err := s.H.ListDefaultQuestions(ctx, domain.StageKind(req.Msg.GetStageKind()), req.Msg.GetOnlyActive())
+	out, err := s.H.ListDefaultQuestions(ctx, stageKindFromProto(req.Msg.GetStageKind()), req.Msg.GetOnlyActive())
 	if err != nil {
 		return nil, s.toConnectErr(err)
 	}
@@ -740,7 +740,7 @@ func (s *Server) AdminListCompanyQuestions(
 	if perr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid company_id"))
 	}
-	out, err := s.H.ListCompanyQuestions(ctx, companyID, domain.StageKind(req.Msg.GetStageKind()))
+	out, err := s.H.ListCompanyQuestions(ctx, companyID, stageKindFromProto(req.Msg.GetStageKind()))
 	if err != nil {
 		return nil, s.toConnectErr(err)
 	}
@@ -819,7 +819,7 @@ func (s *Server) AdminDeleteCompanyQuestion(
 func defaultQuestionToProto(q domain.DefaultQuestion) *pb.MockDefaultQuestion {
 	out := &pb.MockDefaultQuestion{
 		Id:                q.ID.String(),
-		StageKind:         string(q.StageKind),
+		StageKind:         stageKindToProto(q.StageKind),
 		Body:              q.Body,
 		ExpectedAnswerMd:  q.ExpectedAnswerMD,
 		ReferenceCriteria: referenceCriteriaToProto(q.ReferenceCriteria),
@@ -835,7 +835,7 @@ func defaultQuestionToProto(q domain.DefaultQuestion) *pb.MockDefaultQuestion {
 func defaultQuestionFromProto(in *pb.MockDefaultQuestionInput, id uuid.UUID) domain.DefaultQuestion {
 	return domain.DefaultQuestion{
 		ID:                id,
-		StageKind:         domain.StageKind(in.GetStageKind()),
+		StageKind:         stageKindFromProto(in.GetStageKind()),
 		Body:              in.GetBody(),
 		ExpectedAnswerMD:  in.GetExpectedAnswerMd(),
 		ReferenceCriteria: refCriteriaFromProto(in.GetReferenceCriteria()),
@@ -848,7 +848,7 @@ func companyQuestionToProto(q domain.CompanyQuestion) *pb.MockCompanyQuestion {
 	out := &pb.MockCompanyQuestion{
 		Id:                q.ID.String(),
 		CompanyId:         q.CompanyID.String(),
-		StageKind:         string(q.StageKind),
+		StageKind:         stageKindToProto(q.StageKind),
 		Body:              q.Body,
 		ExpectedAnswerMd:  q.ExpectedAnswerMD,
 		ReferenceCriteria: referenceCriteriaToProto(q.ReferenceCriteria),
@@ -864,7 +864,7 @@ func companyQuestionToProto(q domain.CompanyQuestion) *pb.MockCompanyQuestion {
 func companyQuestionFromProto(in *pb.MockCompanyQuestionInput, id uuid.UUID) domain.CompanyQuestion {
 	return domain.CompanyQuestion{
 		ID:                id,
-		StageKind:         domain.StageKind(in.GetStageKind()),
+		StageKind:         stageKindFromProto(in.GetStageKind()),
 		Body:              in.GetBody(),
 		ExpectedAnswerMD:  in.GetExpectedAnswerMd(),
 		ReferenceCriteria: refCriteriaFromProto(in.GetReferenceCriteria()),
@@ -971,7 +971,7 @@ func companyStageToProto(s domain.CompanyStage) *pb.MockCompanyStage {
 		taskIDs = append(taskIDs, t.String())
 	}
 	out := &pb.MockCompanyStage{
-		StageKind:    string(s.StageKind),
+		StageKind:    stageKindToProto(s.StageKind),
 		Ordinal:      int32(s.Ordinal),
 		Optional:     s.Optional,
 		LanguagePool: langs,
@@ -994,7 +994,7 @@ func companyStageToProto(s domain.CompanyStage) *pb.MockCompanyStage {
 func companyStageFromProto(companyID uuid.UUID, in *pb.MockCompanyStage) (domain.CompanyStage, error) {
 	out := domain.CompanyStage{
 		CompanyID: companyID,
-		StageKind: domain.StageKind(in.GetStageKind()),
+		StageKind: stageKindFromProto(in.GetStageKind()),
 		Ordinal:   int(in.GetOrdinal()),
 		Optional:  in.GetOptional(),
 	}
@@ -1037,7 +1037,7 @@ func bulkImportItemFromProto(t *pb.MockBulkTaskImportItem) app.BulkTaskImportIte
 		})
 	}
 	return app.BulkTaskImportItem{
-		StageKind:                domain.StageKind(t.GetStageKind()),
+		StageKind:                stageKindFromProto(t.GetStageKind()),
 		Language:                 domain.TaskLanguage(t.GetLanguage()),
 		Difficulty:               int(t.GetDifficulty()),
 		Title:                    t.GetTitle(),

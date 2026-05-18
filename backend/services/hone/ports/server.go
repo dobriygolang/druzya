@@ -348,7 +348,7 @@ func (s *HoneServer) UpdateQueueItemStatus(
 	item, err := s.H.UpdateItemStatus.Do(ctx, app.UpdateItemStatusInput{
 		UserID: uid,
 		ItemID: itemID,
-		Status: domain.QueueItemStatus(req.Msg.GetStatus()),
+		Status: queueItemStatusFromProto(req.Msg.GetStatus()),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("hone.UpdateQueueItemStatus: %w", s.toConnectErr(err))
@@ -1311,7 +1311,7 @@ func toPlanProto(p domain.Plan) *pb.Plan {
 	for _, it := range p.Items {
 		out.Items = append(out.Items, &pb.PlanItem{
 			Id:           it.ID,
-			Kind:         string(it.Kind),
+			Kind:         planItemKindToProto(it.Kind),
 			Title:        it.Title,
 			Subtitle:     it.Subtitle,
 			Rationale:    it.Rationale,
@@ -1324,6 +1324,56 @@ func toPlanProto(p domain.Plan) *pb.Plan {
 		})
 	}
 	return out
+}
+
+func planItemKindToProto(k domain.PlanItemKind) pb.PlanItemKind {
+	switch k {
+	case domain.PlanItemSolve:
+		return pb.PlanItemKind_PLAN_ITEM_KIND_SOLVE
+	case domain.PlanItemMock:
+		return pb.PlanItemKind_PLAN_ITEM_KIND_MOCK
+	case domain.PlanItemReview:
+		return pb.PlanItemKind_PLAN_ITEM_KIND_REVIEW
+	case domain.PlanItemRead:
+		return pb.PlanItemKind_PLAN_ITEM_KIND_READ
+	case domain.PlanItemCustom:
+		return pb.PlanItemKind_PLAN_ITEM_KIND_CUSTOM
+	}
+	return pb.PlanItemKind_PLAN_ITEM_KIND_UNSPECIFIED
+}
+
+func queueItemSourceToProto(s domain.QueueItemSource) pb.QueueItemSource {
+	switch s {
+	case domain.QueueItemSourceAI:
+		return pb.QueueItemSource_QUEUE_ITEM_SOURCE_AI
+	case domain.QueueItemSourceUser:
+		return pb.QueueItemSource_QUEUE_ITEM_SOURCE_USER
+	}
+	return pb.QueueItemSource_QUEUE_ITEM_SOURCE_UNSPECIFIED
+}
+
+func queueItemStatusToProto(s domain.QueueItemStatus) pb.QueueItemStatus {
+	switch s {
+	case domain.QueueItemStatusTodo:
+		return pb.QueueItemStatus_QUEUE_ITEM_STATUS_TODO
+	case domain.QueueItemStatusInProgress:
+		return pb.QueueItemStatus_QUEUE_ITEM_STATUS_IN_PROGRESS
+	case domain.QueueItemStatusDone:
+		return pb.QueueItemStatus_QUEUE_ITEM_STATUS_DONE
+	}
+	return pb.QueueItemStatus_QUEUE_ITEM_STATUS_UNSPECIFIED
+}
+
+func queueItemStatusFromProto(p pb.QueueItemStatus) domain.QueueItemStatus {
+	switch p {
+	case pb.QueueItemStatus_QUEUE_ITEM_STATUS_TODO:
+		return domain.QueueItemStatusTodo
+	case pb.QueueItemStatus_QUEUE_ITEM_STATUS_IN_PROGRESS:
+		return domain.QueueItemStatusInProgress
+	case pb.QueueItemStatus_QUEUE_ITEM_STATUS_DONE:
+		return domain.QueueItemStatusDone
+	}
+	return ""
 }
 
 func toFocusSessionProto(s domain.FocusSession) *pb.FocusSession {
@@ -1375,8 +1425,8 @@ func toQueueItemProto(q domain.QueueItem) *pb.QueueItem {
 	return &pb.QueueItem{
 		Id:       q.ID,
 		Title:    q.Title,
-		Source:   string(q.Source),
-		Status:   string(q.Status),
+		Source:   queueItemSourceToProto(q.Source),
+		Status:   queueItemStatusToProto(q.Status),
 		SkillKey: q.SkillKey,
 		Date:     q.Date.Format("2006-01-02"),
 	}

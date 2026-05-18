@@ -242,10 +242,11 @@ func (s *TutorServer) SetSessionNoteVisibility(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("event_id: %w", err))
 	}
+	vis := eventVisibilityFromProto(req.Msg.Visibility)
 	out, err := s.SetSessionNoteVisibilityUC.Do(ctx, app.SetSessionNoteVisibilityInput{
 		TutorID:         uid,
 		EventID:         eventID,
-		Visibility:      domain.EventVisibility(req.Msg.Visibility),
+		Visibility:      vis,
 		SharedContentMD: req.Msg.SharedContentMd,
 	})
 	if err != nil {
@@ -257,7 +258,7 @@ func (s *TutorServer) SetSessionNoteVisibility(
 			slog.String("audit", "tutor.note_visibility"),
 			slog.String("tutor_id", uid.String()),
 			slog.String("event_id", eventID.String()),
-			slog.String("visibility", req.Msg.Visibility),
+			slog.String("visibility", string(vis)),
 			slog.Bool("has_curated_copy", req.Msg.SharedContentMd != ""),
 		)
 	}

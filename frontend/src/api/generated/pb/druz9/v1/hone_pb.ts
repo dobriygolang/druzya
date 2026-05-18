@@ -25,6 +25,121 @@ import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialM
 import { Message, proto3, Timestamp } from "@bufbuild/protobuf";
 
 /**
+ * PlanItemKind classifies a row in the AI-generated plan. The client renders
+ * each kind differently (icon, deep-link shape).
+ *
+ *   SOLVE    — open a task on druz9.ru (carries target_ref like "dsa/p-102")
+ *   MOCK     — scheduled mock interview (target_ref is a slot_id)
+ *   REVIEW   — review PR / feedback waiting (target_ref is a URL)
+ *   READ     — reading / book continuation (target_ref optional)
+ *   CUSTOM   — free-form item user added manually
+ *
+ * @generated from enum druz9.v1.PlanItemKind
+ */
+export enum PlanItemKind {
+  /**
+   * @generated from enum value: PLAN_ITEM_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PLAN_ITEM_KIND_SOLVE = 1;
+   */
+  SOLVE = 1,
+
+  /**
+   * @generated from enum value: PLAN_ITEM_KIND_MOCK = 2;
+   */
+  MOCK = 2,
+
+  /**
+   * @generated from enum value: PLAN_ITEM_KIND_REVIEW = 3;
+   */
+  REVIEW = 3,
+
+  /**
+   * @generated from enum value: PLAN_ITEM_KIND_READ = 4;
+   */
+  READ = 4,
+
+  /**
+   * @generated from enum value: PLAN_ITEM_KIND_CUSTOM = 5;
+   */
+  CUSTOM = 5,
+}
+// Retrieve enum metadata with: proto3.getEnumType(PlanItemKind)
+proto3.util.setEnumType(PlanItemKind, "druz9.v1.PlanItemKind", [
+  { no: 0, name: "PLAN_ITEM_KIND_UNSPECIFIED" },
+  { no: 1, name: "PLAN_ITEM_KIND_SOLVE" },
+  { no: 2, name: "PLAN_ITEM_KIND_MOCK" },
+  { no: 3, name: "PLAN_ITEM_KIND_REVIEW" },
+  { no: 4, name: "PLAN_ITEM_KIND_READ" },
+  { no: 5, name: "PLAN_ITEM_KIND_CUSTOM" },
+]);
+
+/**
+ * QueueItemSource — кто положил карточку в очередь.
+ *
+ * @generated from enum druz9.v1.QueueItemSource
+ */
+export enum QueueItemSource {
+  /**
+   * @generated from enum value: QUEUE_ITEM_SOURCE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: QUEUE_ITEM_SOURCE_AI = 1;
+   */
+  AI = 1,
+
+  /**
+   * @generated from enum value: QUEUE_ITEM_SOURCE_USER = 2;
+   */
+  USER = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(QueueItemSource)
+proto3.util.setEnumType(QueueItemSource, "druz9.v1.QueueItemSource", [
+  { no: 0, name: "QUEUE_ITEM_SOURCE_UNSPECIFIED" },
+  { no: 1, name: "QUEUE_ITEM_SOURCE_AI" },
+  { no: 2, name: "QUEUE_ITEM_SOURCE_USER" },
+]);
+
+/**
+ * QueueItemStatus — kanban-state для focus queue card.
+ *
+ * @generated from enum druz9.v1.QueueItemStatus
+ */
+export enum QueueItemStatus {
+  /**
+   * @generated from enum value: QUEUE_ITEM_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: QUEUE_ITEM_STATUS_TODO = 1;
+   */
+  TODO = 1,
+
+  /**
+   * @generated from enum value: QUEUE_ITEM_STATUS_IN_PROGRESS = 2;
+   */
+  IN_PROGRESS = 2,
+
+  /**
+   * @generated from enum value: QUEUE_ITEM_STATUS_DONE = 3;
+   */
+  DONE = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(QueueItemStatus)
+proto3.util.setEnumType(QueueItemStatus, "druz9.v1.QueueItemStatus", [
+  { no: 0, name: "QUEUE_ITEM_STATUS_UNSPECIFIED" },
+  { no: 1, name: "QUEUE_ITEM_STATUS_TODO" },
+  { no: 2, name: "QUEUE_ITEM_STATUS_IN_PROGRESS" },
+  { no: 3, name: "QUEUE_ITEM_STATUS_DONE" },
+]);
+
+/**
  * TaskStatus — kanban-колонка карточки.
  *
  * @generated from enum druz9.v1.TaskStatus
@@ -203,11 +318,9 @@ export class PlanItem extends Message<PlanItem> {
   id = "";
 
   /**
-   * solve | mock | review | read | custom
-   *
-   * @generated from field: string kind = 2;
+   * @generated from field: druz9.v1.PlanItemKind kind = 2;
    */
-  kind = "";
+  kind = PlanItemKind.UNSPECIFIED;
 
   /**
    * @generated from field: string title = 3;
@@ -277,7 +390,7 @@ export class PlanItem extends Message<PlanItem> {
   static readonly typeName = "druz9.v1.PlanItem";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "kind", kind: "enum", T: proto3.getEnumType(PlanItemKind) },
     { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "subtitle", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "target_ref", kind: "scalar", T: 9 /* ScalarType.STRING */ },
@@ -889,18 +1002,14 @@ export class QueueItem extends Message<QueueItem> {
   title = "";
 
   /**
-   * 'ai' | 'user'.
-   *
-   * @generated from field: string source = 3;
+   * @generated from field: druz9.v1.QueueItemSource source = 3;
    */
-  source = "";
+  source = QueueItemSource.UNSPECIFIED;
 
   /**
-   * 'todo' | 'in_progress' | 'done'.
-   *
-   * @generated from field: string status = 4;
+   * @generated from field: druz9.v1.QueueItemStatus status = 4;
    */
-  status = "";
+  status = QueueItemStatus.UNSPECIFIED;
 
   /**
    * Skill key копируется из PlanItem для AI items, пустой для user items.
@@ -926,8 +1035,8 @@ export class QueueItem extends Message<QueueItem> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "source", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "source", kind: "enum", T: proto3.getEnumType(QueueItemSource) },
+    { no: 4, name: "status", kind: "enum", T: proto3.getEnumType(QueueItemStatus) },
     { no: 5, name: "skill_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
@@ -1129,9 +1238,9 @@ export class UpdateQueueItemStatusRequest extends Message<UpdateQueueItemStatusR
   id = "";
 
   /**
-   * @generated from field: string status = 2;
+   * @generated from field: druz9.v1.QueueItemStatus status = 2;
    */
-  status = "";
+  status = QueueItemStatus.UNSPECIFIED;
 
   constructor(data?: PartialMessage<UpdateQueueItemStatusRequest>) {
     super();
@@ -1142,7 +1251,7 @@ export class UpdateQueueItemStatusRequest extends Message<UpdateQueueItemStatusR
   static readonly typeName = "druz9.v1.UpdateQueueItemStatusRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "status", kind: "enum", T: proto3.getEnumType(QueueItemStatus) },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateQueueItemStatusRequest {

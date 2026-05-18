@@ -61,6 +61,105 @@ proto3.util.setEnumType(InviteStatus, "druz9.v1.InviteStatus", [
 ]);
 
 /**
+ * TutorEventStatus mirrors domain.EventStatus + CHECK on tutor_events.status.
+ *
+ * @generated from enum druz9.v1.TutorEventStatus
+ */
+export enum TutorEventStatus {
+  /**
+   * @generated from enum value: TUTOR_EVENT_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TUTOR_EVENT_STATUS_SCHEDULED = 1;
+   */
+  SCHEDULED = 1,
+
+  /**
+   * @generated from enum value: TUTOR_EVENT_STATUS_CANCELLED = 2;
+   */
+  CANCELLED = 2,
+
+  /**
+   * @generated from enum value: TUTOR_EVENT_STATUS_COMPLETED = 3;
+   */
+  COMPLETED = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(TutorEventStatus)
+proto3.util.setEnumType(TutorEventStatus, "druz9.v1.TutorEventStatus", [
+  { no: 0, name: "TUTOR_EVENT_STATUS_UNSPECIFIED" },
+  { no: 1, name: "TUTOR_EVENT_STATUS_SCHEDULED" },
+  { no: 2, name: "TUTOR_EVENT_STATUS_CANCELLED" },
+  { no: 3, name: "TUTOR_EVENT_STATUS_COMPLETED" },
+]);
+
+/**
+ * TutorEventVisibility mirrors domain.EventVisibility for the session-note
+ * share toggle. Used by TutorEvent.visibility and the SetSessionNoteVisibility
+ * RPC payload.
+ *
+ * @generated from enum druz9.v1.TutorEventVisibility
+ */
+export enum TutorEventVisibility {
+  /**
+   * @generated from enum value: TUTOR_EVENT_VISIBILITY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TUTOR_EVENT_VISIBILITY_PRIVATE = 1;
+   */
+  PRIVATE = 1,
+
+  /**
+   * @generated from enum value: TUTOR_EVENT_VISIBILITY_SHARED = 2;
+   */
+  SHARED = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(TutorEventVisibility)
+proto3.util.setEnumType(TutorEventVisibility, "druz9.v1.TutorEventVisibility", [
+  { no: 0, name: "TUTOR_EVENT_VISIBILITY_UNSPECIFIED" },
+  { no: 1, name: "TUTOR_EVENT_VISIBILITY_PRIVATE" },
+  { no: 2, name: "TUTOR_EVENT_VISIBILITY_SHARED" },
+]);
+
+/**
+ * TutorApplicationStatus mirrors domain.ApplicationStatus on directory
+ * application rows.
+ *
+ * @generated from enum druz9.v1.TutorApplicationStatus
+ */
+export enum TutorApplicationStatus {
+  /**
+   * @generated from enum value: TUTOR_APPLICATION_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TUTOR_APPLICATION_STATUS_PENDING = 1;
+   */
+  PENDING = 1,
+
+  /**
+   * @generated from enum value: TUTOR_APPLICATION_STATUS_ACCEPTED = 2;
+   */
+  ACCEPTED = 2,
+
+  /**
+   * @generated from enum value: TUTOR_APPLICATION_STATUS_DECLINED = 3;
+   */
+  DECLINED = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(TutorApplicationStatus)
+proto3.util.setEnumType(TutorApplicationStatus, "druz9.v1.TutorApplicationStatus", [
+  { no: 0, name: "TUTOR_APPLICATION_STATUS_UNSPECIFIED" },
+  { no: 1, name: "TUTOR_APPLICATION_STATUS_PENDING" },
+  { no: 2, name: "TUTOR_APPLICATION_STATUS_ACCEPTED" },
+  { no: 3, name: "TUTOR_APPLICATION_STATUS_DECLINED" },
+]);
+
+/**
  * @generated from message druz9.v1.TutorInvite
  */
 export class TutorInvite extends Message<TutorInvite> {
@@ -2718,12 +2817,9 @@ export class TutorEvent extends Message<TutorEvent> {
   capacity = 0;
 
   /**
-   * 'scheduled' | 'cancelled' | 'completed'. Wire it as a free string
-   * so older clients don't break when we add 'rescheduled' etc.
-   *
-   * @generated from field: string status = 11;
+   * @generated from field: druz9.v1.TutorEventStatus status = 11;
    */
-  status = "";
+  status = TutorEventStatus.UNSPECIFIED;
 
   /**
    * @generated from field: string cancellation_reason = 12;
@@ -2742,21 +2838,21 @@ export class TutorEvent extends Message<TutorEvent> {
 
   /**
    * Wave 5.2d — tutor's post-session write-up. Non-empty iff
-   * status=='completed'. Tutor-visible always; student-visible only when
-   * visibility=='shared' (see field 16).
+   * status==COMPLETED. Tutor-visible always; student-visible only when
+   * visibility==SHARED (see field 16).
    *
    * @generated from field: string session_note = 15;
    */
   sessionNote = "";
 
   /**
-   * Phase K T4 (2026-05-13) — session-note share toggle. 'private' (default)
-   * means student never sees the note; 'shared' surfaces it via
+   * Phase K T4 (2026-05-13) — session-note share toggle. PRIVATE (default)
+   * means student never sees the note; SHARED surfaces it via
    * ListSharedSessionNotesForStudent.
    *
-   * @generated from field: string visibility = 16;
+   * @generated from field: druz9.v1.TutorEventVisibility visibility = 16;
    */
-  visibility = "";
+  visibility = TutorEventVisibility.UNSPECIFIED;
 
   /**
    * Optional curated copy for student-facing audience. Empty string with
@@ -2791,12 +2887,12 @@ export class TutorEvent extends Message<TutorEvent> {
     { no: 8, name: "duration_min", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 9, name: "meet_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 10, name: "capacity", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 11, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "status", kind: "enum", T: proto3.getEnumType(TutorEventStatus) },
     { no: 12, name: "cancellation_reason", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 13, name: "created_at", kind: "message", T: Timestamp },
     { no: 14, name: "updated_at", kind: "message", T: Timestamp },
     { no: 15, name: "session_note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 16, name: "visibility", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 16, name: "visibility", kind: "enum", T: proto3.getEnumType(TutorEventVisibility) },
     { no: 17, name: "shared_content_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 18, name: "shared_at", kind: "message", T: Timestamp },
   ]);
@@ -4337,11 +4433,9 @@ export class TutorDirectoryApplication extends Message<TutorDirectoryApplication
   message = "";
 
   /**
-   * 'pending' | 'accepted' | 'declined'
-   *
-   * @generated from field: string status = 5;
+   * @generated from field: druz9.v1.TutorApplicationStatus status = 5;
    */
-  status = "";
+  status = TutorApplicationStatus.UNSPECIFIED;
 
   /**
    * RFC3339
@@ -4380,7 +4474,7 @@ export class TutorDirectoryApplication extends Message<TutorDirectoryApplication
     { no: 2, name: "tutor_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "student_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "status", kind: "enum", T: proto3.getEnumType(TutorApplicationStatus) },
     { no: 6, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "student_display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 8, name: "student_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
@@ -5004,14 +5098,12 @@ export class TutorSetSessionNoteVisibilityRequest extends Message<TutorSetSessio
   eventId = "";
 
   /**
-   * 'private' | 'shared'
-   *
-   * @generated from field: string visibility = 2;
+   * @generated from field: druz9.v1.TutorEventVisibility visibility = 2;
    */
-  visibility = "";
+  visibility = TutorEventVisibility.UNSPECIFIED;
 
   /**
-   * Optional. Empty string + visibility='shared' = share raw private note.
+   * Optional. Empty string + visibility==SHARED = share raw private note.
    *
    * @generated from field: string shared_content_md = 3;
    */
@@ -5026,7 +5118,7 @@ export class TutorSetSessionNoteVisibilityRequest extends Message<TutorSetSessio
   static readonly typeName = "druz9.v1.TutorSetSessionNoteVisibilityRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "event_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "visibility", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "visibility", kind: "enum", T: proto3.getEnumType(TutorEventVisibility) },
     { no: 3, name: "shared_content_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 

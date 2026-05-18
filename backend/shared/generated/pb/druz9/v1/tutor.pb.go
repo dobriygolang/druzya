@@ -93,6 +93,165 @@ func (InviteStatus) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{0}
 }
 
+// TutorEventStatus mirrors domain.EventStatus + CHECK on tutor_events.status.
+type TutorEventStatus int32
+
+const (
+	TutorEventStatus_TUTOR_EVENT_STATUS_UNSPECIFIED TutorEventStatus = 0
+	TutorEventStatus_TUTOR_EVENT_STATUS_SCHEDULED   TutorEventStatus = 1
+	TutorEventStatus_TUTOR_EVENT_STATUS_CANCELLED   TutorEventStatus = 2
+	TutorEventStatus_TUTOR_EVENT_STATUS_COMPLETED   TutorEventStatus = 3
+)
+
+// Enum value maps for TutorEventStatus.
+var (
+	TutorEventStatus_name = map[int32]string{
+		0: "TUTOR_EVENT_STATUS_UNSPECIFIED",
+		1: "TUTOR_EVENT_STATUS_SCHEDULED",
+		2: "TUTOR_EVENT_STATUS_CANCELLED",
+		3: "TUTOR_EVENT_STATUS_COMPLETED",
+	}
+	TutorEventStatus_value = map[string]int32{
+		"TUTOR_EVENT_STATUS_UNSPECIFIED": 0,
+		"TUTOR_EVENT_STATUS_SCHEDULED":   1,
+		"TUTOR_EVENT_STATUS_CANCELLED":   2,
+		"TUTOR_EVENT_STATUS_COMPLETED":   3,
+	}
+)
+
+func (x TutorEventStatus) Enum() *TutorEventStatus {
+	p := new(TutorEventStatus)
+	*p = x
+	return p
+}
+
+func (x TutorEventStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TutorEventStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_tutor_proto_enumTypes[1].Descriptor()
+}
+
+func (TutorEventStatus) Type() protoreflect.EnumType {
+	return &file_druz9_v1_tutor_proto_enumTypes[1]
+}
+
+func (x TutorEventStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TutorEventStatus.Descriptor instead.
+func (TutorEventStatus) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{1}
+}
+
+// TutorEventVisibility mirrors domain.EventVisibility for the session-note
+// share toggle. Used by TutorEvent.visibility and the SetSessionNoteVisibility
+// RPC payload.
+type TutorEventVisibility int32
+
+const (
+	TutorEventVisibility_TUTOR_EVENT_VISIBILITY_UNSPECIFIED TutorEventVisibility = 0
+	TutorEventVisibility_TUTOR_EVENT_VISIBILITY_PRIVATE     TutorEventVisibility = 1
+	TutorEventVisibility_TUTOR_EVENT_VISIBILITY_SHARED      TutorEventVisibility = 2
+)
+
+// Enum value maps for TutorEventVisibility.
+var (
+	TutorEventVisibility_name = map[int32]string{
+		0: "TUTOR_EVENT_VISIBILITY_UNSPECIFIED",
+		1: "TUTOR_EVENT_VISIBILITY_PRIVATE",
+		2: "TUTOR_EVENT_VISIBILITY_SHARED",
+	}
+	TutorEventVisibility_value = map[string]int32{
+		"TUTOR_EVENT_VISIBILITY_UNSPECIFIED": 0,
+		"TUTOR_EVENT_VISIBILITY_PRIVATE":     1,
+		"TUTOR_EVENT_VISIBILITY_SHARED":      2,
+	}
+)
+
+func (x TutorEventVisibility) Enum() *TutorEventVisibility {
+	p := new(TutorEventVisibility)
+	*p = x
+	return p
+}
+
+func (x TutorEventVisibility) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TutorEventVisibility) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_tutor_proto_enumTypes[2].Descriptor()
+}
+
+func (TutorEventVisibility) Type() protoreflect.EnumType {
+	return &file_druz9_v1_tutor_proto_enumTypes[2]
+}
+
+func (x TutorEventVisibility) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TutorEventVisibility.Descriptor instead.
+func (TutorEventVisibility) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{2}
+}
+
+// TutorApplicationStatus mirrors domain.ApplicationStatus on directory
+// application rows.
+type TutorApplicationStatus int32
+
+const (
+	TutorApplicationStatus_TUTOR_APPLICATION_STATUS_UNSPECIFIED TutorApplicationStatus = 0
+	TutorApplicationStatus_TUTOR_APPLICATION_STATUS_PENDING     TutorApplicationStatus = 1
+	TutorApplicationStatus_TUTOR_APPLICATION_STATUS_ACCEPTED    TutorApplicationStatus = 2
+	TutorApplicationStatus_TUTOR_APPLICATION_STATUS_DECLINED    TutorApplicationStatus = 3
+)
+
+// Enum value maps for TutorApplicationStatus.
+var (
+	TutorApplicationStatus_name = map[int32]string{
+		0: "TUTOR_APPLICATION_STATUS_UNSPECIFIED",
+		1: "TUTOR_APPLICATION_STATUS_PENDING",
+		2: "TUTOR_APPLICATION_STATUS_ACCEPTED",
+		3: "TUTOR_APPLICATION_STATUS_DECLINED",
+	}
+	TutorApplicationStatus_value = map[string]int32{
+		"TUTOR_APPLICATION_STATUS_UNSPECIFIED": 0,
+		"TUTOR_APPLICATION_STATUS_PENDING":     1,
+		"TUTOR_APPLICATION_STATUS_ACCEPTED":    2,
+		"TUTOR_APPLICATION_STATUS_DECLINED":    3,
+	}
+)
+
+func (x TutorApplicationStatus) Enum() *TutorApplicationStatus {
+	p := new(TutorApplicationStatus)
+	*p = x
+	return p
+}
+
+func (x TutorApplicationStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TutorApplicationStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_tutor_proto_enumTypes[3].Descriptor()
+}
+
+func (TutorApplicationStatus) Type() protoreflect.EnumType {
+	return &file_druz9_v1_tutor_proto_enumTypes[3]
+}
+
+func (x TutorApplicationStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TutorApplicationStatus.Descriptor instead.
+func (TutorApplicationStatus) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_tutor_proto_rawDescGZIP(), []int{3}
+}
+
 type TutorInvite struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -3180,21 +3339,19 @@ type TutorEvent struct {
 	MeetUrl     string                 `protobuf:"bytes,9,opt,name=meet_url,json=meetUrl,proto3" json:"meet_url,omitempty"`
 	// Optional. Only set for circle (group) events. Zero = unlimited /
 	// not applicable.
-	Capacity int32 `protobuf:"varint,10,opt,name=capacity,proto3" json:"capacity,omitempty"`
-	// 'scheduled' | 'cancelled' | 'completed'. Wire it as a free string
-	// so older clients don't break when we add 'rescheduled' etc.
-	Status             string                 `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
+	Capacity           int32                  `protobuf:"varint,10,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	Status             TutorEventStatus       `protobuf:"varint,11,opt,name=status,proto3,enum=druz9.v1.TutorEventStatus" json:"status,omitempty"`
 	CancellationReason string                 `protobuf:"bytes,12,opt,name=cancellation_reason,json=cancellationReason,proto3" json:"cancellation_reason,omitempty"`
 	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt          *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Wave 5.2d — tutor's post-session write-up. Non-empty iff
-	// status=='completed'. Tutor-visible always; student-visible only when
-	// visibility=='shared' (see field 16).
+	// status==COMPLETED. Tutor-visible always; student-visible only when
+	// visibility==SHARED (see field 16).
 	SessionNote string `protobuf:"bytes,15,opt,name=session_note,json=sessionNote,proto3" json:"session_note,omitempty"`
-	// Phase K T4 (2026-05-13) — session-note share toggle. 'private' (default)
-	// means student never sees the note; 'shared' surfaces it via
+	// Phase K T4 (2026-05-13) — session-note share toggle. PRIVATE (default)
+	// means student never sees the note; SHARED surfaces it via
 	// ListSharedSessionNotesForStudent.
-	Visibility string `protobuf:"bytes,16,opt,name=visibility,proto3" json:"visibility,omitempty"`
+	Visibility TutorEventVisibility `protobuf:"varint,16,opt,name=visibility,proto3,enum=druz9.v1.TutorEventVisibility" json:"visibility,omitempty"`
 	// Optional curated copy for student-facing audience. Empty string with
 	// visibility='shared' means «share the full private note as-is».
 	SharedContentMd string `protobuf:"bytes,17,opt,name=shared_content_md,json=sharedContentMd,proto3" json:"shared_content_md,omitempty"`
@@ -3304,11 +3461,11 @@ func (x *TutorEvent) GetCapacity() int32 {
 	return 0
 }
 
-func (x *TutorEvent) GetStatus() string {
+func (x *TutorEvent) GetStatus() TutorEventStatus {
 	if x != nil {
 		return x.Status
 	}
-	return ""
+	return TutorEventStatus_TUTOR_EVENT_STATUS_UNSPECIFIED
 }
 
 func (x *TutorEvent) GetCancellationReason() string {
@@ -3339,11 +3496,11 @@ func (x *TutorEvent) GetSessionNote() string {
 	return ""
 }
 
-func (x *TutorEvent) GetVisibility() string {
+func (x *TutorEvent) GetVisibility() TutorEventVisibility {
 	if x != nil {
 		return x.Visibility
 	}
-	return ""
+	return TutorEventVisibility_TUTOR_EVENT_VISIBILITY_UNSPECIFIED
 }
 
 func (x *TutorEvent) GetSharedContentMd() string {
@@ -5142,7 +5299,7 @@ type TutorDirectoryApplication struct {
 	TutorId   string                 `protobuf:"bytes,2,opt,name=tutor_id,json=tutorId,proto3" json:"tutor_id,omitempty"`
 	StudentId string                 `protobuf:"bytes,3,opt,name=student_id,json=studentId,proto3" json:"student_id,omitempty"`
 	Message   string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
-	Status    string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`                        // 'pending' | 'accepted' | 'declined'
+	Status    TutorApplicationStatus `protobuf:"varint,5,opt,name=status,proto3,enum=druz9.v1.TutorApplicationStatus" json:"status,omitempty"`
 	CreatedAt string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // RFC3339
 	// Student display info (server-filled from users JOIN). Empty when
 	// student row is unavailable (extremely rare — ON DELETE CASCADE).
@@ -5211,11 +5368,11 @@ func (x *TutorDirectoryApplication) GetMessage() string {
 	return ""
 }
 
-func (x *TutorDirectoryApplication) GetStatus() string {
+func (x *TutorDirectoryApplication) GetStatus() TutorApplicationStatus {
 	if x != nil {
 		return x.Status
 	}
-	return ""
+	return TutorApplicationStatus_TUTOR_APPLICATION_STATUS_UNSPECIFIED
 }
 
 func (x *TutorDirectoryApplication) GetCreatedAt() string {
@@ -5943,11 +6100,10 @@ func (*TutorDeclineApplicationResponse) Descriptor() ([]byte, []int) {
 }
 
 type TutorSetSessionNoteVisibilityRequest struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	EventId string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	// 'private' | 'shared'
-	Visibility string `protobuf:"bytes,2,opt,name=visibility,proto3" json:"visibility,omitempty"`
-	// Optional. Empty string + visibility='shared' = share raw private note.
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	EventId    string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Visibility TutorEventVisibility   `protobuf:"varint,2,opt,name=visibility,proto3,enum=druz9.v1.TutorEventVisibility" json:"visibility,omitempty"`
+	// Optional. Empty string + visibility==SHARED = share raw private note.
 	SharedContentMd string `protobuf:"bytes,3,opt,name=shared_content_md,json=sharedContentMd,proto3" json:"shared_content_md,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -5990,11 +6146,11 @@ func (x *TutorSetSessionNoteVisibilityRequest) GetEventId() string {
 	return ""
 }
 
-func (x *TutorSetSessionNoteVisibilityRequest) GetVisibility() string {
+func (x *TutorSetSessionNoteVisibilityRequest) GetVisibility() TutorEventVisibility {
 	if x != nil {
 		return x.Visibility
 	}
-	return ""
+	return TutorEventVisibility_TUTOR_EVENT_VISIBILITY_UNSPECIFIED
 }
 
 func (x *TutorSetSessionNoteVisibilityRequest) GetSharedContentMd() string {
@@ -6494,7 +6650,7 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"nextCursor\"\x8e\x01\n" +
 	" TutorBroadcastAssignmentResponse\x121\n" +
 	"\x06pushed\x18\x01 \x03(\v2\x19.druz9.v1.TutorAssignmentR\x06pushed\x127\n" +
-	"\x06failed\x18\x02 \x03(\v2\x1f.druz9.v1.TutorBroadcastFailureR\x06failed\"\xa2\x05\n" +
+	"\x06failed\x18\x02 \x03(\v2\x1f.druz9.v1.TutorBroadcastFailureR\x06failed\"\xde\x05\n" +
 	"\n" +
 	"TutorEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
@@ -6508,16 +6664,16 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\fduration_min\x18\b \x01(\x05R\vdurationMin\x12\x19\n" +
 	"\bmeet_url\x18\t \x01(\tR\ameetUrl\x12\x1a\n" +
 	"\bcapacity\x18\n" +
-	" \x01(\x05R\bcapacity\x12\x16\n" +
-	"\x06status\x18\v \x01(\tR\x06status\x12/\n" +
+	" \x01(\x05R\bcapacity\x122\n" +
+	"\x06status\x18\v \x01(\x0e2\x1a.druz9.v1.TutorEventStatusR\x06status\x12/\n" +
 	"\x13cancellation_reason\x18\f \x01(\tR\x12cancellationReason\x129\n" +
 	"\n" +
 	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12!\n" +
-	"\fsession_note\x18\x0f \x01(\tR\vsessionNote\x12\x1e\n" +
+	"\fsession_note\x18\x0f \x01(\tR\vsessionNote\x12>\n" +
 	"\n" +
-	"visibility\x18\x10 \x01(\tR\n" +
+	"visibility\x18\x10 \x01(\x0e2\x1e.druz9.v1.TutorEventVisibilityR\n" +
 	"visibility\x12*\n" +
 	"\x11shared_content_md\x18\x11 \x01(\tR\x0fsharedContentMd\x127\n" +
 	"\tshared_at\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\bsharedAt\"\xe4\x01\n" +
@@ -6667,14 +6823,14 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\x0eexpertise_tags\x18\x06 \x03(\tR\rexpertiseTags\x12\x1c\n" +
 	"\tlanguages\x18\a \x03(\tR\tlanguages\x12\x1a\n" +
 	"\btimezone\x18\b \x01(\tR\btimezone\x12\x1a\n" +
-	"\bverified\x18\t \x01(\bR\bverified\"\xc1\x02\n" +
+	"\bverified\x18\t \x01(\bR\bverified\"\xe3\x02\n" +
 	"\x19TutorDirectoryApplication\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\btutor_id\x18\x02 \x01(\tR\atutorId\x12\x1d\n" +
 	"\n" +
 	"student_id\x18\x03 \x01(\tR\tstudentId\x12\x18\n" +
-	"\amessage\x18\x04 \x01(\tR\amessage\x12\x16\n" +
-	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1d\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\x128\n" +
+	"\x06status\x18\x05 \x01(\x0e2 .druz9.v1.TutorApplicationStatusR\x06status\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x06 \x01(\tR\tcreatedAt\x120\n" +
 	"\x14student_display_name\x18\a \x01(\tR\x12studentDisplayName\x12)\n" +
@@ -6719,11 +6875,11 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\frelationship\x18\x01 \x01(\v2\x1b.druz9.v1.TutorRelationshipR\frelationship\"G\n" +
 	"\x1eTutorDeclineApplicationRequest\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\"!\n" +
-	"\x1fTutorDeclineApplicationResponse\"\x8d\x01\n" +
+	"\x1fTutorDeclineApplicationResponse\"\xad\x01\n" +
 	"$TutorSetSessionNoteVisibilityRequest\x12\x19\n" +
-	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x1e\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12>\n" +
 	"\n" +
-	"visibility\x18\x02 \x01(\tR\n" +
+	"visibility\x18\x02 \x01(\x0e2\x1e.druz9.v1.TutorEventVisibilityR\n" +
 	"visibility\x12*\n" +
 	"\x11shared_content_md\x18\x03 \x01(\tR\x0fsharedContentMd\"S\n" +
 	"%TutorSetSessionNoteVisibilityResponse\x12*\n" +
@@ -6750,7 +6906,21 @@ const file_druz9_v1_tutor_proto_rawDesc = "" +
 	"\x14INVITE_STATUS_ACTIVE\x10\x01\x12\x1a\n" +
 	"\x16INVITE_STATUS_ACCEPTED\x10\x02\x12\x19\n" +
 	"\x15INVITE_STATUS_REVOKED\x10\x03\x12\x19\n" +
-	"\x15INVITE_STATUS_EXPIRED\x10\x042\x899\n" +
+	"\x15INVITE_STATUS_EXPIRED\x10\x04*\x9c\x01\n" +
+	"\x10TutorEventStatus\x12\"\n" +
+	"\x1eTUTOR_EVENT_STATUS_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cTUTOR_EVENT_STATUS_SCHEDULED\x10\x01\x12 \n" +
+	"\x1cTUTOR_EVENT_STATUS_CANCELLED\x10\x02\x12 \n" +
+	"\x1cTUTOR_EVENT_STATUS_COMPLETED\x10\x03*\x85\x01\n" +
+	"\x14TutorEventVisibility\x12&\n" +
+	"\"TUTOR_EVENT_VISIBILITY_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eTUTOR_EVENT_VISIBILITY_PRIVATE\x10\x01\x12!\n" +
+	"\x1dTUTOR_EVENT_VISIBILITY_SHARED\x10\x02*\xb6\x01\n" +
+	"\x16TutorApplicationStatus\x12(\n" +
+	"$TUTOR_APPLICATION_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
+	" TUTOR_APPLICATION_STATUS_PENDING\x10\x01\x12%\n" +
+	"!TUTOR_APPLICATION_STATUS_ACCEPTED\x10\x02\x12%\n" +
+	"!TUTOR_APPLICATION_STATUS_DECLINED\x10\x032\x899\n" +
 	"\fTutorService\x12k\n" +
 	"\fCreateInvite\x12\".druz9.v1.TutorCreateInviteRequest\x1a\x15.druz9.v1.TutorInvite\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/v1/tutor/invites\x12\x7f\n" +
 	"\x10InviteByUsername\x12&.druz9.v1.TutorInviteByUsernameRequest\x1a\x15.druz9.v1.TutorInvite\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/tutor/invites/by-username\x12\xa6\x01\n" +
@@ -6819,276 +6989,283 @@ func file_druz9_v1_tutor_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_tutor_proto_rawDescData
 }
 
-var file_druz9_v1_tutor_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_druz9_v1_tutor_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_druz9_v1_tutor_proto_msgTypes = make([]protoimpl.MessageInfo, 101)
 var file_druz9_v1_tutor_proto_goTypes = []any{
 	(InviteStatus)(0),                                     // 0: druz9.v1.InviteStatus
-	(*TutorInvite)(nil),                                   // 1: druz9.v1.TutorInvite
-	(*TutorRelationship)(nil),                             // 2: druz9.v1.TutorRelationship
-	(*TutorCreateInviteRequest)(nil),                      // 3: druz9.v1.TutorCreateInviteRequest
-	(*TutorInviteByUsernameRequest)(nil),                  // 4: druz9.v1.TutorInviteByUsernameRequest
-	(*TutorListPendingInvitesForMeRequest)(nil),           // 5: druz9.v1.TutorListPendingInvitesForMeRequest
-	(*TutorListPendingInvitesForMeResponse)(nil),          // 6: druz9.v1.TutorListPendingInvitesForMeResponse
-	(*TutorPendingInvite)(nil),                            // 7: druz9.v1.TutorPendingInvite
-	(*TutorRevokeInviteRequest)(nil),                      // 8: druz9.v1.TutorRevokeInviteRequest
-	(*TutorPeekInviteRequest)(nil),                        // 9: druz9.v1.TutorPeekInviteRequest
-	(*TutorAcceptInviteRequest)(nil),                      // 10: druz9.v1.TutorAcceptInviteRequest
-	(*TutorListInvitesRequest)(nil),                       // 11: druz9.v1.TutorListInvitesRequest
-	(*TutorListInvitesResponse)(nil),                      // 12: druz9.v1.TutorListInvitesResponse
-	(*TutorListStudentsRequest)(nil),                      // 13: druz9.v1.TutorListStudentsRequest
-	(*TutorListStudentsResponse)(nil),                     // 14: druz9.v1.TutorListStudentsResponse
-	(*TutorListMyTutorsRequest)(nil),                      // 15: druz9.v1.TutorListMyTutorsRequest
-	(*TutorGetActivityRequest)(nil),                       // 16: druz9.v1.TutorGetActivityRequest
-	(*TutorActivityResponse)(nil),                         // 17: druz9.v1.TutorActivityResponse
-	(*TutorMyTutorsActivityRequest)(nil),                  // 18: druz9.v1.TutorMyTutorsActivityRequest
-	(*TutorMyTutorActivitySummary)(nil),                   // 19: druz9.v1.TutorMyTutorActivitySummary
-	(*TutorMyTutorsActivityResponse)(nil),                 // 20: druz9.v1.TutorMyTutorsActivityResponse
-	(*TutorCreateGroupEventRequest)(nil),                  // 21: druz9.v1.TutorCreateGroupEventRequest
-	(*TutorJoinEventRequest)(nil),                         // 22: druz9.v1.TutorJoinEventRequest
-	(*TutorJoinEventResponse)(nil),                        // 23: druz9.v1.TutorJoinEventResponse
-	(*TutorLeaveEventRequest)(nil),                        // 24: druz9.v1.TutorLeaveEventRequest
-	(*TutorLeaveEventResponse)(nil),                       // 25: druz9.v1.TutorLeaveEventResponse
-	(*TutorListUpcomingGroupEventsRequest)(nil),           // 26: druz9.v1.TutorListUpcomingGroupEventsRequest
-	(*TutorGetEventRSVPCountRequest)(nil),                 // 27: druz9.v1.TutorGetEventRSVPCountRequest
-	(*TutorGetEventRSVPCountResponse)(nil),                // 28: druz9.v1.TutorGetEventRSVPCountResponse
-	(*TutorEndRelationshipRequest)(nil),                   // 29: druz9.v1.TutorEndRelationshipRequest
-	(*TutorEndRelationshipResponse)(nil),                  // 30: druz9.v1.TutorEndRelationshipResponse
-	(*TutorWeakSpot)(nil),                                 // 31: druz9.v1.TutorWeakSpot
-	(*TutorStudentSnapshot)(nil),                          // 32: druz9.v1.TutorStudentSnapshot
-	(*TutorGetStudentSnapshotRequest)(nil),                // 33: druz9.v1.TutorGetStudentSnapshotRequest
-	(*TutorPreSessionBrief)(nil),                          // 34: druz9.v1.TutorPreSessionBrief
-	(*TutorGenerateBriefRequest)(nil),                     // 35: druz9.v1.TutorGenerateBriefRequest
-	(*TutorAssignment)(nil),                               // 36: druz9.v1.TutorAssignment
-	(*TutorPushAssignmentRequest)(nil),                    // 37: druz9.v1.TutorPushAssignmentRequest
-	(*TutorListAssignmentsRequest)(nil),                   // 38: druz9.v1.TutorListAssignmentsRequest
-	(*TutorListPendingAssignmentsRequest)(nil),            // 39: druz9.v1.TutorListPendingAssignmentsRequest
-	(*TutorListAssignmentsResponse)(nil),                  // 40: druz9.v1.TutorListAssignmentsResponse
-	(*TutorCompleteAssignmentRequest)(nil),                // 41: druz9.v1.TutorCompleteAssignmentRequest
-	(*TutorCompleteAssignmentResponse)(nil),               // 42: druz9.v1.TutorCompleteAssignmentResponse
-	(*TutorArchiveAssignmentRequest)(nil),                 // 43: druz9.v1.TutorArchiveAssignmentRequest
-	(*TutorArchiveAssignmentResponse)(nil),                // 44: druz9.v1.TutorArchiveAssignmentResponse
-	(*TutorBroadcastAssignmentRequest)(nil),               // 45: druz9.v1.TutorBroadcastAssignmentRequest
-	(*TutorBroadcastFailure)(nil),                         // 46: druz9.v1.TutorBroadcastFailure
-	(*TutorSharedMaterial)(nil),                           // 47: druz9.v1.TutorSharedMaterial
-	(*TutorPushSharedReadingRequest)(nil),                 // 48: druz9.v1.TutorPushSharedReadingRequest
-	(*TutorPushSharedReadingResponse)(nil),                // 49: druz9.v1.TutorPushSharedReadingResponse
-	(*TutorListSharedReadingRequest)(nil),                 // 50: druz9.v1.TutorListSharedReadingRequest
-	(*TutorListSharedReadingResponse)(nil),                // 51: druz9.v1.TutorListSharedReadingResponse
-	(*TutorBroadcastAssignmentResponse)(nil),              // 52: druz9.v1.TutorBroadcastAssignmentResponse
-	(*TutorEvent)(nil),                                    // 53: druz9.v1.TutorEvent
-	(*TutorCreateEventRequest)(nil),                       // 54: druz9.v1.TutorCreateEventRequest
-	(*TutorCancelEventRequest)(nil),                       // 55: druz9.v1.TutorCancelEventRequest
-	(*TutorCancelEventResponse)(nil),                      // 56: druz9.v1.TutorCancelEventResponse
-	(*TutorCompleteEventRequest)(nil),                     // 57: druz9.v1.TutorCompleteEventRequest
-	(*TutorCompleteEventResponse)(nil),                    // 58: druz9.v1.TutorCompleteEventResponse
-	(*TutorListEventsRequest)(nil),                        // 59: druz9.v1.TutorListEventsRequest
-	(*TutorListUpcomingEventsRequest)(nil),                // 60: druz9.v1.TutorListUpcomingEventsRequest
-	(*TutorListEventsResponse)(nil),                       // 61: druz9.v1.TutorListEventsResponse
-	(*TutorPeekInviteResponse)(nil),                       // 62: druz9.v1.TutorPeekInviteResponse
-	(*TutorReadingPath)(nil),                              // 63: druz9.v1.TutorReadingPath
-	(*TutorListReadingPathsRequest)(nil),                  // 64: druz9.v1.TutorListReadingPathsRequest
-	(*TutorListReadingPathsResponse)(nil),                 // 65: druz9.v1.TutorListReadingPathsResponse
-	(*TutorCreateReadingPathRequest)(nil),                 // 66: druz9.v1.TutorCreateReadingPathRequest
-	(*TutorUpdateReadingPathRequest)(nil),                 // 67: druz9.v1.TutorUpdateReadingPathRequest
-	(*TutorArchiveReadingPathRequest)(nil),                // 68: druz9.v1.TutorArchiveReadingPathRequest
-	(*TutorArchiveReadingPathResponse)(nil),               // 69: druz9.v1.TutorArchiveReadingPathResponse
-	(*TutorPathAssignment)(nil),                           // 70: druz9.v1.TutorPathAssignment
-	(*TutorAssignReadingPathRequest)(nil),                 // 71: druz9.v1.TutorAssignReadingPathRequest
-	(*TutorAssignReadingPathResponse)(nil),                // 72: druz9.v1.TutorAssignReadingPathResponse
-	(*TutorListMyActivePathAssignmentsRequest)(nil),       // 73: druz9.v1.TutorListMyActivePathAssignmentsRequest
-	(*TutorListMyActivePathAssignmentsResponse)(nil),      // 74: druz9.v1.TutorListMyActivePathAssignmentsResponse
-	(*TutorAdvancePathStepRequest)(nil),                   // 75: druz9.v1.TutorAdvancePathStepRequest
-	(*TutorAdvancePathStepResponse)(nil),                  // 76: druz9.v1.TutorAdvancePathStepResponse
-	(*TutorGetSessionNotesRequest)(nil),                   // 77: druz9.v1.TutorGetSessionNotesRequest
-	(*TutorSaveSessionNotesRequest)(nil),                  // 78: druz9.v1.TutorSaveSessionNotesRequest
-	(*TutorSessionNotes)(nil),                             // 79: druz9.v1.TutorSessionNotes
-	(*TutorDirectoryProfile)(nil),                         // 80: druz9.v1.TutorDirectoryProfile
-	(*TutorDirectoryEntry)(nil),                           // 81: druz9.v1.TutorDirectoryEntry
-	(*TutorDirectoryApplication)(nil),                     // 82: druz9.v1.TutorDirectoryApplication
-	(*TutorGetMyDirectoryProfileRequest)(nil),             // 83: druz9.v1.TutorGetMyDirectoryProfileRequest
-	(*TutorGetMyDirectoryProfileResponse)(nil),            // 84: druz9.v1.TutorGetMyDirectoryProfileResponse
-	(*TutorUpsertDirectoryProfileRequest)(nil),            // 85: druz9.v1.TutorUpsertDirectoryProfileRequest
-	(*TutorUpsertDirectoryProfileResponse)(nil),           // 86: druz9.v1.TutorUpsertDirectoryProfileResponse
-	(*TutorListDirectoryTutorsRequest)(nil),               // 87: druz9.v1.TutorListDirectoryTutorsRequest
-	(*TutorListDirectoryTutorsResponse)(nil),              // 88: druz9.v1.TutorListDirectoryTutorsResponse
-	(*TutorApplyToTutorRequest)(nil),                      // 89: druz9.v1.TutorApplyToTutorRequest
-	(*TutorApplyToTutorResponse)(nil),                     // 90: druz9.v1.TutorApplyToTutorResponse
-	(*TutorListPendingApplicationsRequest)(nil),           // 91: druz9.v1.TutorListPendingApplicationsRequest
-	(*TutorListPendingApplicationsResponse)(nil),          // 92: druz9.v1.TutorListPendingApplicationsResponse
-	(*TutorAcceptApplicationRequest)(nil),                 // 93: druz9.v1.TutorAcceptApplicationRequest
-	(*TutorAcceptApplicationResponse)(nil),                // 94: druz9.v1.TutorAcceptApplicationResponse
-	(*TutorDeclineApplicationRequest)(nil),                // 95: druz9.v1.TutorDeclineApplicationRequest
-	(*TutorDeclineApplicationResponse)(nil),               // 96: druz9.v1.TutorDeclineApplicationResponse
-	(*TutorSetSessionNoteVisibilityRequest)(nil),          // 97: druz9.v1.TutorSetSessionNoteVisibilityRequest
-	(*TutorSetSessionNoteVisibilityResponse)(nil),         // 98: druz9.v1.TutorSetSessionNoteVisibilityResponse
-	(*TutorSharedSessionNote)(nil),                        // 99: druz9.v1.TutorSharedSessionNote
-	(*TutorListSharedSessionNotesForStudentRequest)(nil),  // 100: druz9.v1.TutorListSharedSessionNotesForStudentRequest
-	(*TutorListSharedSessionNotesForStudentResponse)(nil), // 101: druz9.v1.TutorListSharedSessionNotesForStudentResponse
-	(*timestamppb.Timestamp)(nil),                         // 102: google.protobuf.Timestamp
+	(TutorEventStatus)(0),                                 // 1: druz9.v1.TutorEventStatus
+	(TutorEventVisibility)(0),                             // 2: druz9.v1.TutorEventVisibility
+	(TutorApplicationStatus)(0),                           // 3: druz9.v1.TutorApplicationStatus
+	(*TutorInvite)(nil),                                   // 4: druz9.v1.TutorInvite
+	(*TutorRelationship)(nil),                             // 5: druz9.v1.TutorRelationship
+	(*TutorCreateInviteRequest)(nil),                      // 6: druz9.v1.TutorCreateInviteRequest
+	(*TutorInviteByUsernameRequest)(nil),                  // 7: druz9.v1.TutorInviteByUsernameRequest
+	(*TutorListPendingInvitesForMeRequest)(nil),           // 8: druz9.v1.TutorListPendingInvitesForMeRequest
+	(*TutorListPendingInvitesForMeResponse)(nil),          // 9: druz9.v1.TutorListPendingInvitesForMeResponse
+	(*TutorPendingInvite)(nil),                            // 10: druz9.v1.TutorPendingInvite
+	(*TutorRevokeInviteRequest)(nil),                      // 11: druz9.v1.TutorRevokeInviteRequest
+	(*TutorPeekInviteRequest)(nil),                        // 12: druz9.v1.TutorPeekInviteRequest
+	(*TutorAcceptInviteRequest)(nil),                      // 13: druz9.v1.TutorAcceptInviteRequest
+	(*TutorListInvitesRequest)(nil),                       // 14: druz9.v1.TutorListInvitesRequest
+	(*TutorListInvitesResponse)(nil),                      // 15: druz9.v1.TutorListInvitesResponse
+	(*TutorListStudentsRequest)(nil),                      // 16: druz9.v1.TutorListStudentsRequest
+	(*TutorListStudentsResponse)(nil),                     // 17: druz9.v1.TutorListStudentsResponse
+	(*TutorListMyTutorsRequest)(nil),                      // 18: druz9.v1.TutorListMyTutorsRequest
+	(*TutorGetActivityRequest)(nil),                       // 19: druz9.v1.TutorGetActivityRequest
+	(*TutorActivityResponse)(nil),                         // 20: druz9.v1.TutorActivityResponse
+	(*TutorMyTutorsActivityRequest)(nil),                  // 21: druz9.v1.TutorMyTutorsActivityRequest
+	(*TutorMyTutorActivitySummary)(nil),                   // 22: druz9.v1.TutorMyTutorActivitySummary
+	(*TutorMyTutorsActivityResponse)(nil),                 // 23: druz9.v1.TutorMyTutorsActivityResponse
+	(*TutorCreateGroupEventRequest)(nil),                  // 24: druz9.v1.TutorCreateGroupEventRequest
+	(*TutorJoinEventRequest)(nil),                         // 25: druz9.v1.TutorJoinEventRequest
+	(*TutorJoinEventResponse)(nil),                        // 26: druz9.v1.TutorJoinEventResponse
+	(*TutorLeaveEventRequest)(nil),                        // 27: druz9.v1.TutorLeaveEventRequest
+	(*TutorLeaveEventResponse)(nil),                       // 28: druz9.v1.TutorLeaveEventResponse
+	(*TutorListUpcomingGroupEventsRequest)(nil),           // 29: druz9.v1.TutorListUpcomingGroupEventsRequest
+	(*TutorGetEventRSVPCountRequest)(nil),                 // 30: druz9.v1.TutorGetEventRSVPCountRequest
+	(*TutorGetEventRSVPCountResponse)(nil),                // 31: druz9.v1.TutorGetEventRSVPCountResponse
+	(*TutorEndRelationshipRequest)(nil),                   // 32: druz9.v1.TutorEndRelationshipRequest
+	(*TutorEndRelationshipResponse)(nil),                  // 33: druz9.v1.TutorEndRelationshipResponse
+	(*TutorWeakSpot)(nil),                                 // 34: druz9.v1.TutorWeakSpot
+	(*TutorStudentSnapshot)(nil),                          // 35: druz9.v1.TutorStudentSnapshot
+	(*TutorGetStudentSnapshotRequest)(nil),                // 36: druz9.v1.TutorGetStudentSnapshotRequest
+	(*TutorPreSessionBrief)(nil),                          // 37: druz9.v1.TutorPreSessionBrief
+	(*TutorGenerateBriefRequest)(nil),                     // 38: druz9.v1.TutorGenerateBriefRequest
+	(*TutorAssignment)(nil),                               // 39: druz9.v1.TutorAssignment
+	(*TutorPushAssignmentRequest)(nil),                    // 40: druz9.v1.TutorPushAssignmentRequest
+	(*TutorListAssignmentsRequest)(nil),                   // 41: druz9.v1.TutorListAssignmentsRequest
+	(*TutorListPendingAssignmentsRequest)(nil),            // 42: druz9.v1.TutorListPendingAssignmentsRequest
+	(*TutorListAssignmentsResponse)(nil),                  // 43: druz9.v1.TutorListAssignmentsResponse
+	(*TutorCompleteAssignmentRequest)(nil),                // 44: druz9.v1.TutorCompleteAssignmentRequest
+	(*TutorCompleteAssignmentResponse)(nil),               // 45: druz9.v1.TutorCompleteAssignmentResponse
+	(*TutorArchiveAssignmentRequest)(nil),                 // 46: druz9.v1.TutorArchiveAssignmentRequest
+	(*TutorArchiveAssignmentResponse)(nil),                // 47: druz9.v1.TutorArchiveAssignmentResponse
+	(*TutorBroadcastAssignmentRequest)(nil),               // 48: druz9.v1.TutorBroadcastAssignmentRequest
+	(*TutorBroadcastFailure)(nil),                         // 49: druz9.v1.TutorBroadcastFailure
+	(*TutorSharedMaterial)(nil),                           // 50: druz9.v1.TutorSharedMaterial
+	(*TutorPushSharedReadingRequest)(nil),                 // 51: druz9.v1.TutorPushSharedReadingRequest
+	(*TutorPushSharedReadingResponse)(nil),                // 52: druz9.v1.TutorPushSharedReadingResponse
+	(*TutorListSharedReadingRequest)(nil),                 // 53: druz9.v1.TutorListSharedReadingRequest
+	(*TutorListSharedReadingResponse)(nil),                // 54: druz9.v1.TutorListSharedReadingResponse
+	(*TutorBroadcastAssignmentResponse)(nil),              // 55: druz9.v1.TutorBroadcastAssignmentResponse
+	(*TutorEvent)(nil),                                    // 56: druz9.v1.TutorEvent
+	(*TutorCreateEventRequest)(nil),                       // 57: druz9.v1.TutorCreateEventRequest
+	(*TutorCancelEventRequest)(nil),                       // 58: druz9.v1.TutorCancelEventRequest
+	(*TutorCancelEventResponse)(nil),                      // 59: druz9.v1.TutorCancelEventResponse
+	(*TutorCompleteEventRequest)(nil),                     // 60: druz9.v1.TutorCompleteEventRequest
+	(*TutorCompleteEventResponse)(nil),                    // 61: druz9.v1.TutorCompleteEventResponse
+	(*TutorListEventsRequest)(nil),                        // 62: druz9.v1.TutorListEventsRequest
+	(*TutorListUpcomingEventsRequest)(nil),                // 63: druz9.v1.TutorListUpcomingEventsRequest
+	(*TutorListEventsResponse)(nil),                       // 64: druz9.v1.TutorListEventsResponse
+	(*TutorPeekInviteResponse)(nil),                       // 65: druz9.v1.TutorPeekInviteResponse
+	(*TutorReadingPath)(nil),                              // 66: druz9.v1.TutorReadingPath
+	(*TutorListReadingPathsRequest)(nil),                  // 67: druz9.v1.TutorListReadingPathsRequest
+	(*TutorListReadingPathsResponse)(nil),                 // 68: druz9.v1.TutorListReadingPathsResponse
+	(*TutorCreateReadingPathRequest)(nil),                 // 69: druz9.v1.TutorCreateReadingPathRequest
+	(*TutorUpdateReadingPathRequest)(nil),                 // 70: druz9.v1.TutorUpdateReadingPathRequest
+	(*TutorArchiveReadingPathRequest)(nil),                // 71: druz9.v1.TutorArchiveReadingPathRequest
+	(*TutorArchiveReadingPathResponse)(nil),               // 72: druz9.v1.TutorArchiveReadingPathResponse
+	(*TutorPathAssignment)(nil),                           // 73: druz9.v1.TutorPathAssignment
+	(*TutorAssignReadingPathRequest)(nil),                 // 74: druz9.v1.TutorAssignReadingPathRequest
+	(*TutorAssignReadingPathResponse)(nil),                // 75: druz9.v1.TutorAssignReadingPathResponse
+	(*TutorListMyActivePathAssignmentsRequest)(nil),       // 76: druz9.v1.TutorListMyActivePathAssignmentsRequest
+	(*TutorListMyActivePathAssignmentsResponse)(nil),      // 77: druz9.v1.TutorListMyActivePathAssignmentsResponse
+	(*TutorAdvancePathStepRequest)(nil),                   // 78: druz9.v1.TutorAdvancePathStepRequest
+	(*TutorAdvancePathStepResponse)(nil),                  // 79: druz9.v1.TutorAdvancePathStepResponse
+	(*TutorGetSessionNotesRequest)(nil),                   // 80: druz9.v1.TutorGetSessionNotesRequest
+	(*TutorSaveSessionNotesRequest)(nil),                  // 81: druz9.v1.TutorSaveSessionNotesRequest
+	(*TutorSessionNotes)(nil),                             // 82: druz9.v1.TutorSessionNotes
+	(*TutorDirectoryProfile)(nil),                         // 83: druz9.v1.TutorDirectoryProfile
+	(*TutorDirectoryEntry)(nil),                           // 84: druz9.v1.TutorDirectoryEntry
+	(*TutorDirectoryApplication)(nil),                     // 85: druz9.v1.TutorDirectoryApplication
+	(*TutorGetMyDirectoryProfileRequest)(nil),             // 86: druz9.v1.TutorGetMyDirectoryProfileRequest
+	(*TutorGetMyDirectoryProfileResponse)(nil),            // 87: druz9.v1.TutorGetMyDirectoryProfileResponse
+	(*TutorUpsertDirectoryProfileRequest)(nil),            // 88: druz9.v1.TutorUpsertDirectoryProfileRequest
+	(*TutorUpsertDirectoryProfileResponse)(nil),           // 89: druz9.v1.TutorUpsertDirectoryProfileResponse
+	(*TutorListDirectoryTutorsRequest)(nil),               // 90: druz9.v1.TutorListDirectoryTutorsRequest
+	(*TutorListDirectoryTutorsResponse)(nil),              // 91: druz9.v1.TutorListDirectoryTutorsResponse
+	(*TutorApplyToTutorRequest)(nil),                      // 92: druz9.v1.TutorApplyToTutorRequest
+	(*TutorApplyToTutorResponse)(nil),                     // 93: druz9.v1.TutorApplyToTutorResponse
+	(*TutorListPendingApplicationsRequest)(nil),           // 94: druz9.v1.TutorListPendingApplicationsRequest
+	(*TutorListPendingApplicationsResponse)(nil),          // 95: druz9.v1.TutorListPendingApplicationsResponse
+	(*TutorAcceptApplicationRequest)(nil),                 // 96: druz9.v1.TutorAcceptApplicationRequest
+	(*TutorAcceptApplicationResponse)(nil),                // 97: druz9.v1.TutorAcceptApplicationResponse
+	(*TutorDeclineApplicationRequest)(nil),                // 98: druz9.v1.TutorDeclineApplicationRequest
+	(*TutorDeclineApplicationResponse)(nil),               // 99: druz9.v1.TutorDeclineApplicationResponse
+	(*TutorSetSessionNoteVisibilityRequest)(nil),          // 100: druz9.v1.TutorSetSessionNoteVisibilityRequest
+	(*TutorSetSessionNoteVisibilityResponse)(nil),         // 101: druz9.v1.TutorSetSessionNoteVisibilityResponse
+	(*TutorSharedSessionNote)(nil),                        // 102: druz9.v1.TutorSharedSessionNote
+	(*TutorListSharedSessionNotesForStudentRequest)(nil),  // 103: druz9.v1.TutorListSharedSessionNotesForStudentRequest
+	(*TutorListSharedSessionNotesForStudentResponse)(nil), // 104: druz9.v1.TutorListSharedSessionNotesForStudentResponse
+	(*timestamppb.Timestamp)(nil),                         // 105: google.protobuf.Timestamp
 }
 var file_druz9_v1_tutor_proto_depIdxs = []int32{
-	102, // 0: druz9.v1.TutorInvite.created_at:type_name -> google.protobuf.Timestamp
-	102, // 1: druz9.v1.TutorInvite.expires_at:type_name -> google.protobuf.Timestamp
-	102, // 2: druz9.v1.TutorInvite.accepted_at:type_name -> google.protobuf.Timestamp
-	102, // 3: druz9.v1.TutorInvite.revoked_at:type_name -> google.protobuf.Timestamp
+	105, // 0: druz9.v1.TutorInvite.created_at:type_name -> google.protobuf.Timestamp
+	105, // 1: druz9.v1.TutorInvite.expires_at:type_name -> google.protobuf.Timestamp
+	105, // 2: druz9.v1.TutorInvite.accepted_at:type_name -> google.protobuf.Timestamp
+	105, // 3: druz9.v1.TutorInvite.revoked_at:type_name -> google.protobuf.Timestamp
 	0,   // 4: druz9.v1.TutorInvite.status:type_name -> druz9.v1.InviteStatus
-	102, // 5: druz9.v1.TutorRelationship.started_at:type_name -> google.protobuf.Timestamp
-	102, // 6: druz9.v1.TutorRelationship.ended_at:type_name -> google.protobuf.Timestamp
-	7,   // 7: druz9.v1.TutorListPendingInvitesForMeResponse.items:type_name -> druz9.v1.TutorPendingInvite
-	102, // 8: druz9.v1.TutorPendingInvite.created_at:type_name -> google.protobuf.Timestamp
-	102, // 9: druz9.v1.TutorPendingInvite.expires_at:type_name -> google.protobuf.Timestamp
-	1,   // 10: druz9.v1.TutorListInvitesResponse.items:type_name -> druz9.v1.TutorInvite
-	2,   // 11: druz9.v1.TutorListStudentsResponse.items:type_name -> druz9.v1.TutorRelationship
-	102, // 12: druz9.v1.TutorMyTutorActivitySummary.last_active_at:type_name -> google.protobuf.Timestamp
-	19,  // 13: druz9.v1.TutorMyTutorsActivityResponse.items:type_name -> druz9.v1.TutorMyTutorActivitySummary
-	102, // 14: druz9.v1.TutorCreateGroupEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
-	102, // 15: druz9.v1.TutorStudentSnapshot.last_active_at:type_name -> google.protobuf.Timestamp
-	31,  // 16: druz9.v1.TutorStudentSnapshot.weak_spots:type_name -> druz9.v1.TutorWeakSpot
-	32,  // 17: druz9.v1.TutorPreSessionBrief.snapshot:type_name -> druz9.v1.TutorStudentSnapshot
-	102, // 18: druz9.v1.TutorAssignment.due_at:type_name -> google.protobuf.Timestamp
-	102, // 19: druz9.v1.TutorAssignment.created_at:type_name -> google.protobuf.Timestamp
-	102, // 20: druz9.v1.TutorAssignment.completed_at:type_name -> google.protobuf.Timestamp
-	102, // 21: druz9.v1.TutorAssignment.archived_at:type_name -> google.protobuf.Timestamp
-	102, // 22: druz9.v1.TutorPushAssignmentRequest.due_at:type_name -> google.protobuf.Timestamp
-	36,  // 23: druz9.v1.TutorListAssignmentsResponse.items:type_name -> druz9.v1.TutorAssignment
-	102, // 24: druz9.v1.TutorBroadcastAssignmentRequest.due_at:type_name -> google.protobuf.Timestamp
-	102, // 25: druz9.v1.TutorSharedMaterial.created_at:type_name -> google.protobuf.Timestamp
-	47,  // 26: druz9.v1.TutorPushSharedReadingResponse.material:type_name -> druz9.v1.TutorSharedMaterial
-	47,  // 27: druz9.v1.TutorListSharedReadingResponse.items:type_name -> druz9.v1.TutorSharedMaterial
-	36,  // 28: druz9.v1.TutorBroadcastAssignmentResponse.pushed:type_name -> druz9.v1.TutorAssignment
-	46,  // 29: druz9.v1.TutorBroadcastAssignmentResponse.failed:type_name -> druz9.v1.TutorBroadcastFailure
-	102, // 30: druz9.v1.TutorEvent.scheduled_at:type_name -> google.protobuf.Timestamp
-	102, // 31: druz9.v1.TutorEvent.created_at:type_name -> google.protobuf.Timestamp
-	102, // 32: druz9.v1.TutorEvent.updated_at:type_name -> google.protobuf.Timestamp
-	102, // 33: druz9.v1.TutorEvent.shared_at:type_name -> google.protobuf.Timestamp
-	102, // 34: druz9.v1.TutorCreateEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
-	53,  // 35: druz9.v1.TutorListEventsResponse.items:type_name -> druz9.v1.TutorEvent
-	1,   // 36: druz9.v1.TutorPeekInviteResponse.invite:type_name -> druz9.v1.TutorInvite
-	102, // 37: druz9.v1.TutorReadingPath.archived_at:type_name -> google.protobuf.Timestamp
-	102, // 38: druz9.v1.TutorReadingPath.created_at:type_name -> google.protobuf.Timestamp
-	102, // 39: druz9.v1.TutorReadingPath.updated_at:type_name -> google.protobuf.Timestamp
-	63,  // 40: druz9.v1.TutorListReadingPathsResponse.items:type_name -> druz9.v1.TutorReadingPath
-	102, // 41: druz9.v1.TutorPathAssignment.assigned_at:type_name -> google.protobuf.Timestamp
-	102, // 42: druz9.v1.TutorPathAssignment.completed_at:type_name -> google.protobuf.Timestamp
-	102, // 43: druz9.v1.TutorPathAssignment.archived_at:type_name -> google.protobuf.Timestamp
-	70,  // 44: druz9.v1.TutorAssignReadingPathResponse.assignment:type_name -> druz9.v1.TutorPathAssignment
-	70,  // 45: druz9.v1.TutorListMyActivePathAssignmentsResponse.items:type_name -> druz9.v1.TutorPathAssignment
-	70,  // 46: druz9.v1.TutorAdvancePathStepResponse.assignment:type_name -> druz9.v1.TutorPathAssignment
-	80,  // 47: druz9.v1.TutorGetMyDirectoryProfileResponse.profile:type_name -> druz9.v1.TutorDirectoryProfile
-	80,  // 48: druz9.v1.TutorUpsertDirectoryProfileResponse.profile:type_name -> druz9.v1.TutorDirectoryProfile
-	81,  // 49: druz9.v1.TutorListDirectoryTutorsResponse.items:type_name -> druz9.v1.TutorDirectoryEntry
-	82,  // 50: druz9.v1.TutorApplyToTutorResponse.application:type_name -> druz9.v1.TutorDirectoryApplication
-	82,  // 51: druz9.v1.TutorListPendingApplicationsResponse.items:type_name -> druz9.v1.TutorDirectoryApplication
-	2,   // 52: druz9.v1.TutorAcceptApplicationResponse.relationship:type_name -> druz9.v1.TutorRelationship
-	53,  // 53: druz9.v1.TutorSetSessionNoteVisibilityResponse.event:type_name -> druz9.v1.TutorEvent
-	102, // 54: druz9.v1.TutorSharedSessionNote.scheduled_at:type_name -> google.protobuf.Timestamp
-	102, // 55: druz9.v1.TutorSharedSessionNote.shared_at:type_name -> google.protobuf.Timestamp
-	99,  // 56: druz9.v1.TutorListSharedSessionNotesForStudentResponse.items:type_name -> druz9.v1.TutorSharedSessionNote
-	3,   // 57: druz9.v1.TutorService.CreateInvite:input_type -> druz9.v1.TutorCreateInviteRequest
-	4,   // 58: druz9.v1.TutorService.InviteByUsername:input_type -> druz9.v1.TutorInviteByUsernameRequest
-	5,   // 59: druz9.v1.TutorService.ListPendingInvitesForMe:input_type -> druz9.v1.TutorListPendingInvitesForMeRequest
-	8,   // 60: druz9.v1.TutorService.RevokeInvite:input_type -> druz9.v1.TutorRevokeInviteRequest
-	11,  // 61: druz9.v1.TutorService.ListInvites:input_type -> druz9.v1.TutorListInvitesRequest
-	9,   // 62: druz9.v1.TutorService.PeekInvite:input_type -> druz9.v1.TutorPeekInviteRequest
-	10,  // 63: druz9.v1.TutorService.AcceptInvite:input_type -> druz9.v1.TutorAcceptInviteRequest
-	13,  // 64: druz9.v1.TutorService.ListStudents:input_type -> druz9.v1.TutorListStudentsRequest
-	15,  // 65: druz9.v1.TutorService.ListMyTutors:input_type -> druz9.v1.TutorListMyTutorsRequest
-	29,  // 66: druz9.v1.TutorService.EndRelationship:input_type -> druz9.v1.TutorEndRelationshipRequest
-	33,  // 67: druz9.v1.TutorService.GetStudentSnapshot:input_type -> druz9.v1.TutorGetStudentSnapshotRequest
-	35,  // 68: druz9.v1.TutorService.GeneratePreSessionBrief:input_type -> druz9.v1.TutorGenerateBriefRequest
-	37,  // 69: druz9.v1.TutorService.PushAssignment:input_type -> druz9.v1.TutorPushAssignmentRequest
-	38,  // 70: druz9.v1.TutorService.ListAssignmentsForTutor:input_type -> druz9.v1.TutorListAssignmentsRequest
-	39,  // 71: druz9.v1.TutorService.ListPendingAssignments:input_type -> druz9.v1.TutorListPendingAssignmentsRequest
-	41,  // 72: druz9.v1.TutorService.CompleteAssignment:input_type -> druz9.v1.TutorCompleteAssignmentRequest
-	43,  // 73: druz9.v1.TutorService.ArchiveAssignment:input_type -> druz9.v1.TutorArchiveAssignmentRequest
-	45,  // 74: druz9.v1.TutorService.BroadcastAssignment:input_type -> druz9.v1.TutorBroadcastAssignmentRequest
-	48,  // 75: druz9.v1.TutorService.PushSharedReading:input_type -> druz9.v1.TutorPushSharedReadingRequest
-	50,  // 76: druz9.v1.TutorService.ListSharedReading:input_type -> druz9.v1.TutorListSharedReadingRequest
-	54,  // 77: druz9.v1.TutorService.CreateEvent:input_type -> druz9.v1.TutorCreateEventRequest
-	55,  // 78: druz9.v1.TutorService.CancelEvent:input_type -> druz9.v1.TutorCancelEventRequest
-	57,  // 79: druz9.v1.TutorService.CompleteEvent:input_type -> druz9.v1.TutorCompleteEventRequest
-	59,  // 80: druz9.v1.TutorService.ListEventsForTutor:input_type -> druz9.v1.TutorListEventsRequest
-	60,  // 81: druz9.v1.TutorService.ListUpcomingEventsForStudent:input_type -> druz9.v1.TutorListUpcomingEventsRequest
-	16,  // 82: druz9.v1.TutorService.GetTutorActivity:input_type -> druz9.v1.TutorGetActivityRequest
-	18,  // 83: druz9.v1.TutorService.ListMyTutorsActivity:input_type -> druz9.v1.TutorMyTutorsActivityRequest
-	21,  // 84: druz9.v1.TutorService.CreateGroupEvent:input_type -> druz9.v1.TutorCreateGroupEventRequest
-	22,  // 85: druz9.v1.TutorService.JoinEvent:input_type -> druz9.v1.TutorJoinEventRequest
-	24,  // 86: druz9.v1.TutorService.LeaveEvent:input_type -> druz9.v1.TutorLeaveEventRequest
-	26,  // 87: druz9.v1.TutorService.ListUpcomingGroupEventsForStudent:input_type -> druz9.v1.TutorListUpcomingGroupEventsRequest
-	27,  // 88: druz9.v1.TutorService.GetEventRSVPCount:input_type -> druz9.v1.TutorGetEventRSVPCountRequest
-	77,  // 89: druz9.v1.TutorService.GetSessionNotes:input_type -> druz9.v1.TutorGetSessionNotesRequest
-	78,  // 90: druz9.v1.TutorService.SaveSessionNotes:input_type -> druz9.v1.TutorSaveSessionNotesRequest
-	64,  // 91: druz9.v1.TutorService.ListReadingPaths:input_type -> druz9.v1.TutorListReadingPathsRequest
-	66,  // 92: druz9.v1.TutorService.CreateReadingPath:input_type -> druz9.v1.TutorCreateReadingPathRequest
-	67,  // 93: druz9.v1.TutorService.UpdateReadingPath:input_type -> druz9.v1.TutorUpdateReadingPathRequest
-	68,  // 94: druz9.v1.TutorService.ArchiveReadingPath:input_type -> druz9.v1.TutorArchiveReadingPathRequest
-	71,  // 95: druz9.v1.TutorService.AssignReadingPath:input_type -> druz9.v1.TutorAssignReadingPathRequest
-	73,  // 96: druz9.v1.TutorService.ListMyActivePathAssignments:input_type -> druz9.v1.TutorListMyActivePathAssignmentsRequest
-	75,  // 97: druz9.v1.TutorService.AdvancePathStep:input_type -> druz9.v1.TutorAdvancePathStepRequest
-	83,  // 98: druz9.v1.TutorService.GetMyDirectoryProfile:input_type -> druz9.v1.TutorGetMyDirectoryProfileRequest
-	85,  // 99: druz9.v1.TutorService.UpsertDirectoryProfile:input_type -> druz9.v1.TutorUpsertDirectoryProfileRequest
-	87,  // 100: druz9.v1.TutorService.ListDirectoryTutors:input_type -> druz9.v1.TutorListDirectoryTutorsRequest
-	89,  // 101: druz9.v1.TutorService.ApplyToTutor:input_type -> druz9.v1.TutorApplyToTutorRequest
-	91,  // 102: druz9.v1.TutorService.ListPendingApplications:input_type -> druz9.v1.TutorListPendingApplicationsRequest
-	93,  // 103: druz9.v1.TutorService.AcceptApplication:input_type -> druz9.v1.TutorAcceptApplicationRequest
-	95,  // 104: druz9.v1.TutorService.DeclineApplication:input_type -> druz9.v1.TutorDeclineApplicationRequest
-	97,  // 105: druz9.v1.TutorService.SetSessionNoteVisibility:input_type -> druz9.v1.TutorSetSessionNoteVisibilityRequest
-	100, // 106: druz9.v1.TutorService.ListSharedSessionNotesForStudent:input_type -> druz9.v1.TutorListSharedSessionNotesForStudentRequest
-	1,   // 107: druz9.v1.TutorService.CreateInvite:output_type -> druz9.v1.TutorInvite
-	1,   // 108: druz9.v1.TutorService.InviteByUsername:output_type -> druz9.v1.TutorInvite
-	6,   // 109: druz9.v1.TutorService.ListPendingInvitesForMe:output_type -> druz9.v1.TutorListPendingInvitesForMeResponse
-	1,   // 110: druz9.v1.TutorService.RevokeInvite:output_type -> druz9.v1.TutorInvite
-	12,  // 111: druz9.v1.TutorService.ListInvites:output_type -> druz9.v1.TutorListInvitesResponse
-	62,  // 112: druz9.v1.TutorService.PeekInvite:output_type -> druz9.v1.TutorPeekInviteResponse
-	2,   // 113: druz9.v1.TutorService.AcceptInvite:output_type -> druz9.v1.TutorRelationship
-	14,  // 114: druz9.v1.TutorService.ListStudents:output_type -> druz9.v1.TutorListStudentsResponse
-	14,  // 115: druz9.v1.TutorService.ListMyTutors:output_type -> druz9.v1.TutorListStudentsResponse
-	30,  // 116: druz9.v1.TutorService.EndRelationship:output_type -> druz9.v1.TutorEndRelationshipResponse
-	32,  // 117: druz9.v1.TutorService.GetStudentSnapshot:output_type -> druz9.v1.TutorStudentSnapshot
-	34,  // 118: druz9.v1.TutorService.GeneratePreSessionBrief:output_type -> druz9.v1.TutorPreSessionBrief
-	36,  // 119: druz9.v1.TutorService.PushAssignment:output_type -> druz9.v1.TutorAssignment
-	40,  // 120: druz9.v1.TutorService.ListAssignmentsForTutor:output_type -> druz9.v1.TutorListAssignmentsResponse
-	40,  // 121: druz9.v1.TutorService.ListPendingAssignments:output_type -> druz9.v1.TutorListAssignmentsResponse
-	42,  // 122: druz9.v1.TutorService.CompleteAssignment:output_type -> druz9.v1.TutorCompleteAssignmentResponse
-	44,  // 123: druz9.v1.TutorService.ArchiveAssignment:output_type -> druz9.v1.TutorArchiveAssignmentResponse
-	52,  // 124: druz9.v1.TutorService.BroadcastAssignment:output_type -> druz9.v1.TutorBroadcastAssignmentResponse
-	49,  // 125: druz9.v1.TutorService.PushSharedReading:output_type -> druz9.v1.TutorPushSharedReadingResponse
-	51,  // 126: druz9.v1.TutorService.ListSharedReading:output_type -> druz9.v1.TutorListSharedReadingResponse
-	53,  // 127: druz9.v1.TutorService.CreateEvent:output_type -> druz9.v1.TutorEvent
-	56,  // 128: druz9.v1.TutorService.CancelEvent:output_type -> druz9.v1.TutorCancelEventResponse
-	58,  // 129: druz9.v1.TutorService.CompleteEvent:output_type -> druz9.v1.TutorCompleteEventResponse
-	61,  // 130: druz9.v1.TutorService.ListEventsForTutor:output_type -> druz9.v1.TutorListEventsResponse
-	61,  // 131: druz9.v1.TutorService.ListUpcomingEventsForStudent:output_type -> druz9.v1.TutorListEventsResponse
-	17,  // 132: druz9.v1.TutorService.GetTutorActivity:output_type -> druz9.v1.TutorActivityResponse
-	20,  // 133: druz9.v1.TutorService.ListMyTutorsActivity:output_type -> druz9.v1.TutorMyTutorsActivityResponse
-	53,  // 134: druz9.v1.TutorService.CreateGroupEvent:output_type -> druz9.v1.TutorEvent
-	23,  // 135: druz9.v1.TutorService.JoinEvent:output_type -> druz9.v1.TutorJoinEventResponse
-	25,  // 136: druz9.v1.TutorService.LeaveEvent:output_type -> druz9.v1.TutorLeaveEventResponse
-	61,  // 137: druz9.v1.TutorService.ListUpcomingGroupEventsForStudent:output_type -> druz9.v1.TutorListEventsResponse
-	28,  // 138: druz9.v1.TutorService.GetEventRSVPCount:output_type -> druz9.v1.TutorGetEventRSVPCountResponse
-	79,  // 139: druz9.v1.TutorService.GetSessionNotes:output_type -> druz9.v1.TutorSessionNotes
-	79,  // 140: druz9.v1.TutorService.SaveSessionNotes:output_type -> druz9.v1.TutorSessionNotes
-	65,  // 141: druz9.v1.TutorService.ListReadingPaths:output_type -> druz9.v1.TutorListReadingPathsResponse
-	63,  // 142: druz9.v1.TutorService.CreateReadingPath:output_type -> druz9.v1.TutorReadingPath
-	63,  // 143: druz9.v1.TutorService.UpdateReadingPath:output_type -> druz9.v1.TutorReadingPath
-	69,  // 144: druz9.v1.TutorService.ArchiveReadingPath:output_type -> druz9.v1.TutorArchiveReadingPathResponse
-	72,  // 145: druz9.v1.TutorService.AssignReadingPath:output_type -> druz9.v1.TutorAssignReadingPathResponse
-	74,  // 146: druz9.v1.TutorService.ListMyActivePathAssignments:output_type -> druz9.v1.TutorListMyActivePathAssignmentsResponse
-	76,  // 147: druz9.v1.TutorService.AdvancePathStep:output_type -> druz9.v1.TutorAdvancePathStepResponse
-	84,  // 148: druz9.v1.TutorService.GetMyDirectoryProfile:output_type -> druz9.v1.TutorGetMyDirectoryProfileResponse
-	86,  // 149: druz9.v1.TutorService.UpsertDirectoryProfile:output_type -> druz9.v1.TutorUpsertDirectoryProfileResponse
-	88,  // 150: druz9.v1.TutorService.ListDirectoryTutors:output_type -> druz9.v1.TutorListDirectoryTutorsResponse
-	90,  // 151: druz9.v1.TutorService.ApplyToTutor:output_type -> druz9.v1.TutorApplyToTutorResponse
-	92,  // 152: druz9.v1.TutorService.ListPendingApplications:output_type -> druz9.v1.TutorListPendingApplicationsResponse
-	94,  // 153: druz9.v1.TutorService.AcceptApplication:output_type -> druz9.v1.TutorAcceptApplicationResponse
-	96,  // 154: druz9.v1.TutorService.DeclineApplication:output_type -> druz9.v1.TutorDeclineApplicationResponse
-	98,  // 155: druz9.v1.TutorService.SetSessionNoteVisibility:output_type -> druz9.v1.TutorSetSessionNoteVisibilityResponse
-	101, // 156: druz9.v1.TutorService.ListSharedSessionNotesForStudent:output_type -> druz9.v1.TutorListSharedSessionNotesForStudentResponse
-	107, // [107:157] is the sub-list for method output_type
-	57,  // [57:107] is the sub-list for method input_type
-	57,  // [57:57] is the sub-list for extension type_name
-	57,  // [57:57] is the sub-list for extension extendee
-	0,   // [0:57] is the sub-list for field type_name
+	105, // 5: druz9.v1.TutorRelationship.started_at:type_name -> google.protobuf.Timestamp
+	105, // 6: druz9.v1.TutorRelationship.ended_at:type_name -> google.protobuf.Timestamp
+	10,  // 7: druz9.v1.TutorListPendingInvitesForMeResponse.items:type_name -> druz9.v1.TutorPendingInvite
+	105, // 8: druz9.v1.TutorPendingInvite.created_at:type_name -> google.protobuf.Timestamp
+	105, // 9: druz9.v1.TutorPendingInvite.expires_at:type_name -> google.protobuf.Timestamp
+	4,   // 10: druz9.v1.TutorListInvitesResponse.items:type_name -> druz9.v1.TutorInvite
+	5,   // 11: druz9.v1.TutorListStudentsResponse.items:type_name -> druz9.v1.TutorRelationship
+	105, // 12: druz9.v1.TutorMyTutorActivitySummary.last_active_at:type_name -> google.protobuf.Timestamp
+	22,  // 13: druz9.v1.TutorMyTutorsActivityResponse.items:type_name -> druz9.v1.TutorMyTutorActivitySummary
+	105, // 14: druz9.v1.TutorCreateGroupEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
+	105, // 15: druz9.v1.TutorStudentSnapshot.last_active_at:type_name -> google.protobuf.Timestamp
+	34,  // 16: druz9.v1.TutorStudentSnapshot.weak_spots:type_name -> druz9.v1.TutorWeakSpot
+	35,  // 17: druz9.v1.TutorPreSessionBrief.snapshot:type_name -> druz9.v1.TutorStudentSnapshot
+	105, // 18: druz9.v1.TutorAssignment.due_at:type_name -> google.protobuf.Timestamp
+	105, // 19: druz9.v1.TutorAssignment.created_at:type_name -> google.protobuf.Timestamp
+	105, // 20: druz9.v1.TutorAssignment.completed_at:type_name -> google.protobuf.Timestamp
+	105, // 21: druz9.v1.TutorAssignment.archived_at:type_name -> google.protobuf.Timestamp
+	105, // 22: druz9.v1.TutorPushAssignmentRequest.due_at:type_name -> google.protobuf.Timestamp
+	39,  // 23: druz9.v1.TutorListAssignmentsResponse.items:type_name -> druz9.v1.TutorAssignment
+	105, // 24: druz9.v1.TutorBroadcastAssignmentRequest.due_at:type_name -> google.protobuf.Timestamp
+	105, // 25: druz9.v1.TutorSharedMaterial.created_at:type_name -> google.protobuf.Timestamp
+	50,  // 26: druz9.v1.TutorPushSharedReadingResponse.material:type_name -> druz9.v1.TutorSharedMaterial
+	50,  // 27: druz9.v1.TutorListSharedReadingResponse.items:type_name -> druz9.v1.TutorSharedMaterial
+	39,  // 28: druz9.v1.TutorBroadcastAssignmentResponse.pushed:type_name -> druz9.v1.TutorAssignment
+	49,  // 29: druz9.v1.TutorBroadcastAssignmentResponse.failed:type_name -> druz9.v1.TutorBroadcastFailure
+	105, // 30: druz9.v1.TutorEvent.scheduled_at:type_name -> google.protobuf.Timestamp
+	1,   // 31: druz9.v1.TutorEvent.status:type_name -> druz9.v1.TutorEventStatus
+	105, // 32: druz9.v1.TutorEvent.created_at:type_name -> google.protobuf.Timestamp
+	105, // 33: druz9.v1.TutorEvent.updated_at:type_name -> google.protobuf.Timestamp
+	2,   // 34: druz9.v1.TutorEvent.visibility:type_name -> druz9.v1.TutorEventVisibility
+	105, // 35: druz9.v1.TutorEvent.shared_at:type_name -> google.protobuf.Timestamp
+	105, // 36: druz9.v1.TutorCreateEventRequest.scheduled_at:type_name -> google.protobuf.Timestamp
+	56,  // 37: druz9.v1.TutorListEventsResponse.items:type_name -> druz9.v1.TutorEvent
+	4,   // 38: druz9.v1.TutorPeekInviteResponse.invite:type_name -> druz9.v1.TutorInvite
+	105, // 39: druz9.v1.TutorReadingPath.archived_at:type_name -> google.protobuf.Timestamp
+	105, // 40: druz9.v1.TutorReadingPath.created_at:type_name -> google.protobuf.Timestamp
+	105, // 41: druz9.v1.TutorReadingPath.updated_at:type_name -> google.protobuf.Timestamp
+	66,  // 42: druz9.v1.TutorListReadingPathsResponse.items:type_name -> druz9.v1.TutorReadingPath
+	105, // 43: druz9.v1.TutorPathAssignment.assigned_at:type_name -> google.protobuf.Timestamp
+	105, // 44: druz9.v1.TutorPathAssignment.completed_at:type_name -> google.protobuf.Timestamp
+	105, // 45: druz9.v1.TutorPathAssignment.archived_at:type_name -> google.protobuf.Timestamp
+	73,  // 46: druz9.v1.TutorAssignReadingPathResponse.assignment:type_name -> druz9.v1.TutorPathAssignment
+	73,  // 47: druz9.v1.TutorListMyActivePathAssignmentsResponse.items:type_name -> druz9.v1.TutorPathAssignment
+	73,  // 48: druz9.v1.TutorAdvancePathStepResponse.assignment:type_name -> druz9.v1.TutorPathAssignment
+	3,   // 49: druz9.v1.TutorDirectoryApplication.status:type_name -> druz9.v1.TutorApplicationStatus
+	83,  // 50: druz9.v1.TutorGetMyDirectoryProfileResponse.profile:type_name -> druz9.v1.TutorDirectoryProfile
+	83,  // 51: druz9.v1.TutorUpsertDirectoryProfileResponse.profile:type_name -> druz9.v1.TutorDirectoryProfile
+	84,  // 52: druz9.v1.TutorListDirectoryTutorsResponse.items:type_name -> druz9.v1.TutorDirectoryEntry
+	85,  // 53: druz9.v1.TutorApplyToTutorResponse.application:type_name -> druz9.v1.TutorDirectoryApplication
+	85,  // 54: druz9.v1.TutorListPendingApplicationsResponse.items:type_name -> druz9.v1.TutorDirectoryApplication
+	5,   // 55: druz9.v1.TutorAcceptApplicationResponse.relationship:type_name -> druz9.v1.TutorRelationship
+	2,   // 56: druz9.v1.TutorSetSessionNoteVisibilityRequest.visibility:type_name -> druz9.v1.TutorEventVisibility
+	56,  // 57: druz9.v1.TutorSetSessionNoteVisibilityResponse.event:type_name -> druz9.v1.TutorEvent
+	105, // 58: druz9.v1.TutorSharedSessionNote.scheduled_at:type_name -> google.protobuf.Timestamp
+	105, // 59: druz9.v1.TutorSharedSessionNote.shared_at:type_name -> google.protobuf.Timestamp
+	102, // 60: druz9.v1.TutorListSharedSessionNotesForStudentResponse.items:type_name -> druz9.v1.TutorSharedSessionNote
+	6,   // 61: druz9.v1.TutorService.CreateInvite:input_type -> druz9.v1.TutorCreateInviteRequest
+	7,   // 62: druz9.v1.TutorService.InviteByUsername:input_type -> druz9.v1.TutorInviteByUsernameRequest
+	8,   // 63: druz9.v1.TutorService.ListPendingInvitesForMe:input_type -> druz9.v1.TutorListPendingInvitesForMeRequest
+	11,  // 64: druz9.v1.TutorService.RevokeInvite:input_type -> druz9.v1.TutorRevokeInviteRequest
+	14,  // 65: druz9.v1.TutorService.ListInvites:input_type -> druz9.v1.TutorListInvitesRequest
+	12,  // 66: druz9.v1.TutorService.PeekInvite:input_type -> druz9.v1.TutorPeekInviteRequest
+	13,  // 67: druz9.v1.TutorService.AcceptInvite:input_type -> druz9.v1.TutorAcceptInviteRequest
+	16,  // 68: druz9.v1.TutorService.ListStudents:input_type -> druz9.v1.TutorListStudentsRequest
+	18,  // 69: druz9.v1.TutorService.ListMyTutors:input_type -> druz9.v1.TutorListMyTutorsRequest
+	32,  // 70: druz9.v1.TutorService.EndRelationship:input_type -> druz9.v1.TutorEndRelationshipRequest
+	36,  // 71: druz9.v1.TutorService.GetStudentSnapshot:input_type -> druz9.v1.TutorGetStudentSnapshotRequest
+	38,  // 72: druz9.v1.TutorService.GeneratePreSessionBrief:input_type -> druz9.v1.TutorGenerateBriefRequest
+	40,  // 73: druz9.v1.TutorService.PushAssignment:input_type -> druz9.v1.TutorPushAssignmentRequest
+	41,  // 74: druz9.v1.TutorService.ListAssignmentsForTutor:input_type -> druz9.v1.TutorListAssignmentsRequest
+	42,  // 75: druz9.v1.TutorService.ListPendingAssignments:input_type -> druz9.v1.TutorListPendingAssignmentsRequest
+	44,  // 76: druz9.v1.TutorService.CompleteAssignment:input_type -> druz9.v1.TutorCompleteAssignmentRequest
+	46,  // 77: druz9.v1.TutorService.ArchiveAssignment:input_type -> druz9.v1.TutorArchiveAssignmentRequest
+	48,  // 78: druz9.v1.TutorService.BroadcastAssignment:input_type -> druz9.v1.TutorBroadcastAssignmentRequest
+	51,  // 79: druz9.v1.TutorService.PushSharedReading:input_type -> druz9.v1.TutorPushSharedReadingRequest
+	53,  // 80: druz9.v1.TutorService.ListSharedReading:input_type -> druz9.v1.TutorListSharedReadingRequest
+	57,  // 81: druz9.v1.TutorService.CreateEvent:input_type -> druz9.v1.TutorCreateEventRequest
+	58,  // 82: druz9.v1.TutorService.CancelEvent:input_type -> druz9.v1.TutorCancelEventRequest
+	60,  // 83: druz9.v1.TutorService.CompleteEvent:input_type -> druz9.v1.TutorCompleteEventRequest
+	62,  // 84: druz9.v1.TutorService.ListEventsForTutor:input_type -> druz9.v1.TutorListEventsRequest
+	63,  // 85: druz9.v1.TutorService.ListUpcomingEventsForStudent:input_type -> druz9.v1.TutorListUpcomingEventsRequest
+	19,  // 86: druz9.v1.TutorService.GetTutorActivity:input_type -> druz9.v1.TutorGetActivityRequest
+	21,  // 87: druz9.v1.TutorService.ListMyTutorsActivity:input_type -> druz9.v1.TutorMyTutorsActivityRequest
+	24,  // 88: druz9.v1.TutorService.CreateGroupEvent:input_type -> druz9.v1.TutorCreateGroupEventRequest
+	25,  // 89: druz9.v1.TutorService.JoinEvent:input_type -> druz9.v1.TutorJoinEventRequest
+	27,  // 90: druz9.v1.TutorService.LeaveEvent:input_type -> druz9.v1.TutorLeaveEventRequest
+	29,  // 91: druz9.v1.TutorService.ListUpcomingGroupEventsForStudent:input_type -> druz9.v1.TutorListUpcomingGroupEventsRequest
+	30,  // 92: druz9.v1.TutorService.GetEventRSVPCount:input_type -> druz9.v1.TutorGetEventRSVPCountRequest
+	80,  // 93: druz9.v1.TutorService.GetSessionNotes:input_type -> druz9.v1.TutorGetSessionNotesRequest
+	81,  // 94: druz9.v1.TutorService.SaveSessionNotes:input_type -> druz9.v1.TutorSaveSessionNotesRequest
+	67,  // 95: druz9.v1.TutorService.ListReadingPaths:input_type -> druz9.v1.TutorListReadingPathsRequest
+	69,  // 96: druz9.v1.TutorService.CreateReadingPath:input_type -> druz9.v1.TutorCreateReadingPathRequest
+	70,  // 97: druz9.v1.TutorService.UpdateReadingPath:input_type -> druz9.v1.TutorUpdateReadingPathRequest
+	71,  // 98: druz9.v1.TutorService.ArchiveReadingPath:input_type -> druz9.v1.TutorArchiveReadingPathRequest
+	74,  // 99: druz9.v1.TutorService.AssignReadingPath:input_type -> druz9.v1.TutorAssignReadingPathRequest
+	76,  // 100: druz9.v1.TutorService.ListMyActivePathAssignments:input_type -> druz9.v1.TutorListMyActivePathAssignmentsRequest
+	78,  // 101: druz9.v1.TutorService.AdvancePathStep:input_type -> druz9.v1.TutorAdvancePathStepRequest
+	86,  // 102: druz9.v1.TutorService.GetMyDirectoryProfile:input_type -> druz9.v1.TutorGetMyDirectoryProfileRequest
+	88,  // 103: druz9.v1.TutorService.UpsertDirectoryProfile:input_type -> druz9.v1.TutorUpsertDirectoryProfileRequest
+	90,  // 104: druz9.v1.TutorService.ListDirectoryTutors:input_type -> druz9.v1.TutorListDirectoryTutorsRequest
+	92,  // 105: druz9.v1.TutorService.ApplyToTutor:input_type -> druz9.v1.TutorApplyToTutorRequest
+	94,  // 106: druz9.v1.TutorService.ListPendingApplications:input_type -> druz9.v1.TutorListPendingApplicationsRequest
+	96,  // 107: druz9.v1.TutorService.AcceptApplication:input_type -> druz9.v1.TutorAcceptApplicationRequest
+	98,  // 108: druz9.v1.TutorService.DeclineApplication:input_type -> druz9.v1.TutorDeclineApplicationRequest
+	100, // 109: druz9.v1.TutorService.SetSessionNoteVisibility:input_type -> druz9.v1.TutorSetSessionNoteVisibilityRequest
+	103, // 110: druz9.v1.TutorService.ListSharedSessionNotesForStudent:input_type -> druz9.v1.TutorListSharedSessionNotesForStudentRequest
+	4,   // 111: druz9.v1.TutorService.CreateInvite:output_type -> druz9.v1.TutorInvite
+	4,   // 112: druz9.v1.TutorService.InviteByUsername:output_type -> druz9.v1.TutorInvite
+	9,   // 113: druz9.v1.TutorService.ListPendingInvitesForMe:output_type -> druz9.v1.TutorListPendingInvitesForMeResponse
+	4,   // 114: druz9.v1.TutorService.RevokeInvite:output_type -> druz9.v1.TutorInvite
+	15,  // 115: druz9.v1.TutorService.ListInvites:output_type -> druz9.v1.TutorListInvitesResponse
+	65,  // 116: druz9.v1.TutorService.PeekInvite:output_type -> druz9.v1.TutorPeekInviteResponse
+	5,   // 117: druz9.v1.TutorService.AcceptInvite:output_type -> druz9.v1.TutorRelationship
+	17,  // 118: druz9.v1.TutorService.ListStudents:output_type -> druz9.v1.TutorListStudentsResponse
+	17,  // 119: druz9.v1.TutorService.ListMyTutors:output_type -> druz9.v1.TutorListStudentsResponse
+	33,  // 120: druz9.v1.TutorService.EndRelationship:output_type -> druz9.v1.TutorEndRelationshipResponse
+	35,  // 121: druz9.v1.TutorService.GetStudentSnapshot:output_type -> druz9.v1.TutorStudentSnapshot
+	37,  // 122: druz9.v1.TutorService.GeneratePreSessionBrief:output_type -> druz9.v1.TutorPreSessionBrief
+	39,  // 123: druz9.v1.TutorService.PushAssignment:output_type -> druz9.v1.TutorAssignment
+	43,  // 124: druz9.v1.TutorService.ListAssignmentsForTutor:output_type -> druz9.v1.TutorListAssignmentsResponse
+	43,  // 125: druz9.v1.TutorService.ListPendingAssignments:output_type -> druz9.v1.TutorListAssignmentsResponse
+	45,  // 126: druz9.v1.TutorService.CompleteAssignment:output_type -> druz9.v1.TutorCompleteAssignmentResponse
+	47,  // 127: druz9.v1.TutorService.ArchiveAssignment:output_type -> druz9.v1.TutorArchiveAssignmentResponse
+	55,  // 128: druz9.v1.TutorService.BroadcastAssignment:output_type -> druz9.v1.TutorBroadcastAssignmentResponse
+	52,  // 129: druz9.v1.TutorService.PushSharedReading:output_type -> druz9.v1.TutorPushSharedReadingResponse
+	54,  // 130: druz9.v1.TutorService.ListSharedReading:output_type -> druz9.v1.TutorListSharedReadingResponse
+	56,  // 131: druz9.v1.TutorService.CreateEvent:output_type -> druz9.v1.TutorEvent
+	59,  // 132: druz9.v1.TutorService.CancelEvent:output_type -> druz9.v1.TutorCancelEventResponse
+	61,  // 133: druz9.v1.TutorService.CompleteEvent:output_type -> druz9.v1.TutorCompleteEventResponse
+	64,  // 134: druz9.v1.TutorService.ListEventsForTutor:output_type -> druz9.v1.TutorListEventsResponse
+	64,  // 135: druz9.v1.TutorService.ListUpcomingEventsForStudent:output_type -> druz9.v1.TutorListEventsResponse
+	20,  // 136: druz9.v1.TutorService.GetTutorActivity:output_type -> druz9.v1.TutorActivityResponse
+	23,  // 137: druz9.v1.TutorService.ListMyTutorsActivity:output_type -> druz9.v1.TutorMyTutorsActivityResponse
+	56,  // 138: druz9.v1.TutorService.CreateGroupEvent:output_type -> druz9.v1.TutorEvent
+	26,  // 139: druz9.v1.TutorService.JoinEvent:output_type -> druz9.v1.TutorJoinEventResponse
+	28,  // 140: druz9.v1.TutorService.LeaveEvent:output_type -> druz9.v1.TutorLeaveEventResponse
+	64,  // 141: druz9.v1.TutorService.ListUpcomingGroupEventsForStudent:output_type -> druz9.v1.TutorListEventsResponse
+	31,  // 142: druz9.v1.TutorService.GetEventRSVPCount:output_type -> druz9.v1.TutorGetEventRSVPCountResponse
+	82,  // 143: druz9.v1.TutorService.GetSessionNotes:output_type -> druz9.v1.TutorSessionNotes
+	82,  // 144: druz9.v1.TutorService.SaveSessionNotes:output_type -> druz9.v1.TutorSessionNotes
+	68,  // 145: druz9.v1.TutorService.ListReadingPaths:output_type -> druz9.v1.TutorListReadingPathsResponse
+	66,  // 146: druz9.v1.TutorService.CreateReadingPath:output_type -> druz9.v1.TutorReadingPath
+	66,  // 147: druz9.v1.TutorService.UpdateReadingPath:output_type -> druz9.v1.TutorReadingPath
+	72,  // 148: druz9.v1.TutorService.ArchiveReadingPath:output_type -> druz9.v1.TutorArchiveReadingPathResponse
+	75,  // 149: druz9.v1.TutorService.AssignReadingPath:output_type -> druz9.v1.TutorAssignReadingPathResponse
+	77,  // 150: druz9.v1.TutorService.ListMyActivePathAssignments:output_type -> druz9.v1.TutorListMyActivePathAssignmentsResponse
+	79,  // 151: druz9.v1.TutorService.AdvancePathStep:output_type -> druz9.v1.TutorAdvancePathStepResponse
+	87,  // 152: druz9.v1.TutorService.GetMyDirectoryProfile:output_type -> druz9.v1.TutorGetMyDirectoryProfileResponse
+	89,  // 153: druz9.v1.TutorService.UpsertDirectoryProfile:output_type -> druz9.v1.TutorUpsertDirectoryProfileResponse
+	91,  // 154: druz9.v1.TutorService.ListDirectoryTutors:output_type -> druz9.v1.TutorListDirectoryTutorsResponse
+	93,  // 155: druz9.v1.TutorService.ApplyToTutor:output_type -> druz9.v1.TutorApplyToTutorResponse
+	95,  // 156: druz9.v1.TutorService.ListPendingApplications:output_type -> druz9.v1.TutorListPendingApplicationsResponse
+	97,  // 157: druz9.v1.TutorService.AcceptApplication:output_type -> druz9.v1.TutorAcceptApplicationResponse
+	99,  // 158: druz9.v1.TutorService.DeclineApplication:output_type -> druz9.v1.TutorDeclineApplicationResponse
+	101, // 159: druz9.v1.TutorService.SetSessionNoteVisibility:output_type -> druz9.v1.TutorSetSessionNoteVisibilityResponse
+	104, // 160: druz9.v1.TutorService.ListSharedSessionNotesForStudent:output_type -> druz9.v1.TutorListSharedSessionNotesForStudentResponse
+	111, // [111:161] is the sub-list for method output_type
+	61,  // [61:111] is the sub-list for method input_type
+	61,  // [61:61] is the sub-list for extension type_name
+	61,  // [61:61] is the sub-list for extension extendee
+	0,   // [0:61] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_tutor_proto_init() }
@@ -7101,7 +7278,7 @@ func file_druz9_v1_tutor_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_tutor_proto_rawDesc), len(file_druz9_v1_tutor_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      4,
 			NumMessages:   101,
 			NumExtensions: 0,
 			NumServices:   1,

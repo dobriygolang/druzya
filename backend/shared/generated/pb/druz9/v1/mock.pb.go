@@ -142,6 +142,193 @@ func (MockAttemptVerdict) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{1}
 }
 
+// PipelineStageKind mirrors domain.StageKind + the Postgres `mock_stage_kind`
+// enum. Routes attempt grading + question pool selection.
+type PipelineStageKind int32
+
+const (
+	PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED      PipelineStageKind = 0
+	PipelineStageKind_PIPELINE_STAGE_KIND_HR               PipelineStageKind = 1
+	PipelineStageKind_PIPELINE_STAGE_KIND_ALGO             PipelineStageKind = 2
+	PipelineStageKind_PIPELINE_STAGE_KIND_CODING           PipelineStageKind = 3
+	PipelineStageKind_PIPELINE_STAGE_KIND_SYSDESIGN        PipelineStageKind = 4
+	PipelineStageKind_PIPELINE_STAGE_KIND_BEHAVIORAL       PipelineStageKind = 5
+	PipelineStageKind_PIPELINE_STAGE_KIND_ML_CODING        PipelineStageKind = 6
+	PipelineStageKind_PIPELINE_STAGE_KIND_ML_SYSTEM_DESIGN PipelineStageKind = 7
+	PipelineStageKind_PIPELINE_STAGE_KIND_ML_THEORY        PipelineStageKind = 8
+)
+
+// Enum value maps for PipelineStageKind.
+var (
+	PipelineStageKind_name = map[int32]string{
+		0: "PIPELINE_STAGE_KIND_UNSPECIFIED",
+		1: "PIPELINE_STAGE_KIND_HR",
+		2: "PIPELINE_STAGE_KIND_ALGO",
+		3: "PIPELINE_STAGE_KIND_CODING",
+		4: "PIPELINE_STAGE_KIND_SYSDESIGN",
+		5: "PIPELINE_STAGE_KIND_BEHAVIORAL",
+		6: "PIPELINE_STAGE_KIND_ML_CODING",
+		7: "PIPELINE_STAGE_KIND_ML_SYSTEM_DESIGN",
+		8: "PIPELINE_STAGE_KIND_ML_THEORY",
+	}
+	PipelineStageKind_value = map[string]int32{
+		"PIPELINE_STAGE_KIND_UNSPECIFIED":      0,
+		"PIPELINE_STAGE_KIND_HR":               1,
+		"PIPELINE_STAGE_KIND_ALGO":             2,
+		"PIPELINE_STAGE_KIND_CODING":           3,
+		"PIPELINE_STAGE_KIND_SYSDESIGN":        4,
+		"PIPELINE_STAGE_KIND_BEHAVIORAL":       5,
+		"PIPELINE_STAGE_KIND_ML_CODING":        6,
+		"PIPELINE_STAGE_KIND_ML_SYSTEM_DESIGN": 7,
+		"PIPELINE_STAGE_KIND_ML_THEORY":        8,
+	}
+)
+
+func (x PipelineStageKind) Enum() *PipelineStageKind {
+	p := new(PipelineStageKind)
+	*p = x
+	return p
+}
+
+func (x PipelineStageKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PipelineStageKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_mock_proto_enumTypes[2].Descriptor()
+}
+
+func (PipelineStageKind) Type() protoreflect.EnumType {
+	return &file_druz9_v1_mock_proto_enumTypes[2]
+}
+
+func (x PipelineStageKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PipelineStageKind.Descriptor instead.
+func (PipelineStageKind) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{2}
+}
+
+// PipelineStageStatus mirrors domain.StageStatus + Postgres
+// `pipeline_stage_status` enum. Distinct from MockStatus (which describes the
+// top-level pipeline lifecycle): SKIPPED applies to stages dropped by section
+// filter, while pipelines themselves go CREATED → IN_PROGRESS → FINISHED |
+// ABANDONED.
+type PipelineStageStatus int32
+
+const (
+	PipelineStageStatus_PIPELINE_STAGE_STATUS_UNSPECIFIED PipelineStageStatus = 0
+	PipelineStageStatus_PIPELINE_STAGE_STATUS_PENDING     PipelineStageStatus = 1
+	PipelineStageStatus_PIPELINE_STAGE_STATUS_IN_PROGRESS PipelineStageStatus = 2
+	PipelineStageStatus_PIPELINE_STAGE_STATUS_FINISHED    PipelineStageStatus = 3
+	PipelineStageStatus_PIPELINE_STAGE_STATUS_SKIPPED     PipelineStageStatus = 4
+)
+
+// Enum value maps for PipelineStageStatus.
+var (
+	PipelineStageStatus_name = map[int32]string{
+		0: "PIPELINE_STAGE_STATUS_UNSPECIFIED",
+		1: "PIPELINE_STAGE_STATUS_PENDING",
+		2: "PIPELINE_STAGE_STATUS_IN_PROGRESS",
+		3: "PIPELINE_STAGE_STATUS_FINISHED",
+		4: "PIPELINE_STAGE_STATUS_SKIPPED",
+	}
+	PipelineStageStatus_value = map[string]int32{
+		"PIPELINE_STAGE_STATUS_UNSPECIFIED": 0,
+		"PIPELINE_STAGE_STATUS_PENDING":     1,
+		"PIPELINE_STAGE_STATUS_IN_PROGRESS": 2,
+		"PIPELINE_STAGE_STATUS_FINISHED":    3,
+		"PIPELINE_STAGE_STATUS_SKIPPED":     4,
+	}
+)
+
+func (x PipelineStageStatus) Enum() *PipelineStageStatus {
+	p := new(PipelineStageStatus)
+	*p = x
+	return p
+}
+
+func (x PipelineStageStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PipelineStageStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_mock_proto_enumTypes[3].Descriptor()
+}
+
+func (PipelineStageStatus) Type() protoreflect.EnumType {
+	return &file_druz9_v1_mock_proto_enumTypes[3]
+}
+
+func (x PipelineStageStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PipelineStageStatus.Descriptor instead.
+func (PipelineStageStatus) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{3}
+}
+
+// AlgoVerdictStatus — outcome of the «Run tests» sandbox call. UNAVAILABLE is
+// emitted when Judge0 is offline or the language is unsupported; the rest
+// mirror the typical compile/run lifecycle.
+type AlgoVerdictStatus int32
+
+const (
+	AlgoVerdictStatus_ALGO_VERDICT_STATUS_UNSPECIFIED   AlgoVerdictStatus = 0
+	AlgoVerdictStatus_ALGO_VERDICT_STATUS_OK            AlgoVerdictStatus = 1
+	AlgoVerdictStatus_ALGO_VERDICT_STATUS_COMPILE_ERROR AlgoVerdictStatus = 2
+	AlgoVerdictStatus_ALGO_VERDICT_STATUS_RUNTIME_ERROR AlgoVerdictStatus = 3
+	AlgoVerdictStatus_ALGO_VERDICT_STATUS_UNAVAILABLE   AlgoVerdictStatus = 4
+)
+
+// Enum value maps for AlgoVerdictStatus.
+var (
+	AlgoVerdictStatus_name = map[int32]string{
+		0: "ALGO_VERDICT_STATUS_UNSPECIFIED",
+		1: "ALGO_VERDICT_STATUS_OK",
+		2: "ALGO_VERDICT_STATUS_COMPILE_ERROR",
+		3: "ALGO_VERDICT_STATUS_RUNTIME_ERROR",
+		4: "ALGO_VERDICT_STATUS_UNAVAILABLE",
+	}
+	AlgoVerdictStatus_value = map[string]int32{
+		"ALGO_VERDICT_STATUS_UNSPECIFIED":   0,
+		"ALGO_VERDICT_STATUS_OK":            1,
+		"ALGO_VERDICT_STATUS_COMPILE_ERROR": 2,
+		"ALGO_VERDICT_STATUS_RUNTIME_ERROR": 3,
+		"ALGO_VERDICT_STATUS_UNAVAILABLE":   4,
+	}
+)
+
+func (x AlgoVerdictStatus) Enum() *AlgoVerdictStatus {
+	p := new(AlgoVerdictStatus)
+	*p = x
+	return p
+}
+
+func (x AlgoVerdictStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AlgoVerdictStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_mock_proto_enumTypes[4].Descriptor()
+}
+
+func (AlgoVerdictStatus) Type() protoreflect.EnumType {
+	return &file_druz9_v1_mock_proto_enumTypes[4]
+}
+
+func (x AlgoVerdictStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AlgoVerdictStatus.Descriptor instead.
+func (AlgoVerdictStatus) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{4}
+}
+
 // PipelineCompany — компания шаблонов pipeline'а (Google/Yandex/etc.).
 // Используется и публичным каталогом, и admin CRUD'ом.
 type PipelineCompany struct {
@@ -1019,9 +1206,9 @@ func (x *AttemptFinalisedResponse) GetVerdict() MockAttemptVerdict {
 type PipelineStage struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	StageKind string                 `protobuf:"bytes,2,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"` // free-form: hr/coding/sysdesign/...
+	StageKind PipelineStageKind      `protobuf:"varint,2,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"`
 	Ordinal   int32                  `protobuf:"varint,3,opt,name=ordinal,proto3" json:"ordinal,omitempty"`
-	Status    string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"` // pending|in_progress|finished|abandoned
+	Status    PipelineStageStatus    `protobuf:"varint,4,opt,name=status,proto3,enum=druz9.v1.PipelineStageStatus" json:"status,omitempty"`
 	// has_score=true когда score задан (proto3 nullable workaround).
 	HasScore              bool                   `protobuf:"varint,5,opt,name=has_score,json=hasScore,proto3" json:"has_score,omitempty"`
 	Score                 float32                `protobuf:"fixed32,6,opt,name=score,proto3" json:"score,omitempty"`
@@ -1071,11 +1258,11 @@ func (x *PipelineStage) GetId() string {
 	return ""
 }
 
-func (x *PipelineStage) GetStageKind() string {
+func (x *PipelineStage) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *PipelineStage) GetOrdinal() int32 {
@@ -1085,11 +1272,11 @@ func (x *PipelineStage) GetOrdinal() int32 {
 	return 0
 }
 
-func (x *PipelineStage) GetStatus() string {
+func (x *PipelineStage) GetStatus() PipelineStageStatus {
 	if x != nil {
 		return x.Status
 	}
-	return ""
+	return PipelineStageStatus_PIPELINE_STAGE_STATUS_UNSPECIFIED
 }
 
 func (x *PipelineStage) GetHasScore() bool {
@@ -1703,7 +1890,7 @@ type AlgoVerdict struct {
 	RuntimeMs          int32                  `protobuf:"varint,3,opt,name=runtime_ms,json=runtimeMs,proto3" json:"runtime_ms,omitempty"`                            // max runtime across visible cases
 	MemoryKb           int32                  `protobuf:"varint,4,opt,name=memory_kb,json=memoryKb,proto3" json:"memory_kb,omitempty"`                               // max memory across visible cases (0 when unavailable)
 	SandboxUnavailable bool                   `protobuf:"varint,5,opt,name=sandbox_unavailable,json=sandboxUnavailable,proto3" json:"sandbox_unavailable,omitempty"` // true when Judge0 is not wired / language unsupported
-	Status             string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`                                                    // free-form short status: "ok" | "compile_error" | "runtime_error" | "unavailable"
+	Status             AlgoVerdictStatus      `protobuf:"varint,6,opt,name=status,proto3,enum=druz9.v1.AlgoVerdictStatus" json:"status,omitempty"`
 	Tests              []*AlgoTestResult      `protobuf:"bytes,7,rep,name=tests,proto3" json:"tests,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
@@ -1774,11 +1961,11 @@ func (x *AlgoVerdict) GetSandboxUnavailable() bool {
 	return false
 }
 
-func (x *AlgoVerdict) GetStatus() string {
+func (x *AlgoVerdict) GetStatus() AlgoVerdictStatus {
 	if x != nil {
 		return x.Status
 	}
-	return ""
+	return AlgoVerdictStatus_ALGO_VERDICT_STATUS_UNSPECIFIED
 }
 
 func (x *AlgoVerdict) GetTests() []*AlgoTestResult {
@@ -3143,7 +3330,7 @@ func (x *AdminUpdateStrictnessRequest) GetProfile() *MockStrictnessInput {
 type MockTask struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	Id                       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	StageKind                string                 `protobuf:"bytes,2,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"`
+	StageKind                PipelineStageKind      `protobuf:"varint,2,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"`
 	Language                 string                 `protobuf:"bytes,3,opt,name=language,proto3" json:"language,omitempty"`
 	Difficulty               int32                  `protobuf:"varint,4,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
 	Title                    string                 `protobuf:"bytes,5,opt,name=title,proto3" json:"title,omitempty"`
@@ -3199,11 +3386,11 @@ func (x *MockTask) GetId() string {
 	return ""
 }
 
-func (x *MockTask) GetStageKind() string {
+func (x *MockTask) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *MockTask) GetLanguage() string {
@@ -3399,8 +3586,8 @@ func (x *MockTaskQuestion) GetCreatedAt() *timestamppb.Timestamp {
 
 type AdminListMockTasksRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	StageKind     string                 `protobuf:"bytes,1,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"` // empty = all
-	Language      string                 `protobuf:"bytes,2,opt,name=language,proto3" json:"language,omitempty"`                    // empty = all
+	StageKind     PipelineStageKind      `protobuf:"varint,1,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"` // empty = all
+	Language      string                 `protobuf:"bytes,2,opt,name=language,proto3" json:"language,omitempty"`                                                     // empty = all
 	OnlyActive    bool                   `protobuf:"varint,3,opt,name=only_active,json=onlyActive,proto3" json:"only_active,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3436,11 +3623,11 @@ func (*AdminListMockTasksRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{46}
 }
 
-func (x *AdminListMockTasksRequest) GetStageKind() string {
+func (x *AdminListMockTasksRequest) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *AdminListMockTasksRequest) GetLanguage() string {
@@ -3601,7 +3788,7 @@ func (x *AdminGetMockTaskResponse) GetQuestions() []*MockTaskQuestion {
 // MockTaskInput — общая форма для Create + Update.
 type MockTaskInput struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
-	StageKind                string                 `protobuf:"bytes,1,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"`
+	StageKind                PipelineStageKind      `protobuf:"varint,1,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"`
 	Language                 string                 `protobuf:"bytes,2,opt,name=language,proto3" json:"language,omitempty"`
 	Difficulty               int32                  `protobuf:"varint,3,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
 	Title                    string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
@@ -3648,11 +3835,11 @@ func (*MockTaskInput) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{50}
 }
 
-func (x *MockTaskInput) GetStageKind() string {
+func (x *MockTaskInput) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *MockTaskInput) GetLanguage() string {
@@ -4495,7 +4682,7 @@ func (x *AdminDeleteTestCaseRequest) GetId() string {
 type MockDefaultQuestion struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	StageKind         string                 `protobuf:"bytes,2,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"`
+	StageKind         PipelineStageKind      `protobuf:"varint,2,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"`
 	Body              string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
 	ExpectedAnswerMd  string                 `protobuf:"bytes,4,opt,name=expected_answer_md,json=expectedAnswerMd,proto3" json:"expected_answer_md,omitempty"`
 	ReferenceCriteria *ReferenceCriteria     `protobuf:"bytes,5,opt,name=reference_criteria,json=referenceCriteria,proto3" json:"reference_criteria,omitempty"`
@@ -4543,11 +4730,11 @@ func (x *MockDefaultQuestion) GetId() string {
 	return ""
 }
 
-func (x *MockDefaultQuestion) GetStageKind() string {
+func (x *MockDefaultQuestion) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *MockDefaultQuestion) GetBody() string {
@@ -4594,7 +4781,7 @@ func (x *MockDefaultQuestion) GetCreatedAt() *timestamppb.Timestamp {
 
 type MockDefaultQuestionInput struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	StageKind         string                 `protobuf:"bytes,1,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"`
+	StageKind         PipelineStageKind      `protobuf:"varint,1,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"`
 	Body              string                 `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
 	ExpectedAnswerMd  string                 `protobuf:"bytes,3,opt,name=expected_answer_md,json=expectedAnswerMd,proto3" json:"expected_answer_md,omitempty"`
 	ReferenceCriteria *ReferenceCriteria     `protobuf:"bytes,4,opt,name=reference_criteria,json=referenceCriteria,proto3" json:"reference_criteria,omitempty"`
@@ -4634,11 +4821,11 @@ func (*MockDefaultQuestionInput) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{66}
 }
 
-func (x *MockDefaultQuestionInput) GetStageKind() string {
+func (x *MockDefaultQuestionInput) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *MockDefaultQuestionInput) GetBody() string {
@@ -4678,7 +4865,7 @@ func (x *MockDefaultQuestionInput) GetSortOrder() int32 {
 
 type AdminListDefaultQuestionsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	StageKind     string                 `protobuf:"bytes,1,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"` // empty = all
+	StageKind     PipelineStageKind      `protobuf:"varint,1,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"` // empty = all
 	OnlyActive    bool                   `protobuf:"varint,2,opt,name=only_active,json=onlyActive,proto3" json:"only_active,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4714,11 +4901,11 @@ func (*AdminListDefaultQuestionsRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{67}
 }
 
-func (x *AdminListDefaultQuestionsRequest) GetStageKind() string {
+func (x *AdminListDefaultQuestionsRequest) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *AdminListDefaultQuestionsRequest) GetOnlyActive() bool {
@@ -4917,7 +5104,7 @@ type MockCompanyQuestion struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	CompanyId         string                 `protobuf:"bytes,2,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
-	StageKind         string                 `protobuf:"bytes,3,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"`
+	StageKind         PipelineStageKind      `protobuf:"varint,3,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"`
 	Body              string                 `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
 	ExpectedAnswerMd  string                 `protobuf:"bytes,5,opt,name=expected_answer_md,json=expectedAnswerMd,proto3" json:"expected_answer_md,omitempty"`
 	ReferenceCriteria *ReferenceCriteria     `protobuf:"bytes,6,opt,name=reference_criteria,json=referenceCriteria,proto3" json:"reference_criteria,omitempty"`
@@ -4972,11 +5159,11 @@ func (x *MockCompanyQuestion) GetCompanyId() string {
 	return ""
 }
 
-func (x *MockCompanyQuestion) GetStageKind() string {
+func (x *MockCompanyQuestion) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *MockCompanyQuestion) GetBody() string {
@@ -5023,7 +5210,7 @@ func (x *MockCompanyQuestion) GetCreatedAt() *timestamppb.Timestamp {
 
 type MockCompanyQuestionInput struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	StageKind         string                 `protobuf:"bytes,1,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"`
+	StageKind         PipelineStageKind      `protobuf:"varint,1,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"`
 	Body              string                 `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
 	ExpectedAnswerMd  string                 `protobuf:"bytes,3,opt,name=expected_answer_md,json=expectedAnswerMd,proto3" json:"expected_answer_md,omitempty"`
 	ReferenceCriteria *ReferenceCriteria     `protobuf:"bytes,4,opt,name=reference_criteria,json=referenceCriteria,proto3" json:"reference_criteria,omitempty"`
@@ -5063,11 +5250,11 @@ func (*MockCompanyQuestionInput) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{73}
 }
 
-func (x *MockCompanyQuestionInput) GetStageKind() string {
+func (x *MockCompanyQuestionInput) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *MockCompanyQuestionInput) GetBody() string {
@@ -5108,7 +5295,7 @@ func (x *MockCompanyQuestionInput) GetSortOrder() int32 {
 type AdminListCompanyQuestionsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
-	StageKind     string                 `protobuf:"bytes,2,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"` // empty = all
+	StageKind     PipelineStageKind      `protobuf:"varint,2,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"` // empty = all
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5150,11 +5337,11 @@ func (x *AdminListCompanyQuestionsRequest) GetCompanyId() string {
 	return ""
 }
 
-func (x *AdminListCompanyQuestionsRequest) GetStageKind() string {
+func (x *AdminListCompanyQuestionsRequest) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 type AdminListCompanyQuestionsResponse struct {
@@ -5352,7 +5539,7 @@ func (x *AdminDeleteCompanyQuestionRequest) GetId() string {
 // CompanyStage — одна стадия в шаблоне pipeline'а компании.
 type MockCompanyStage struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
-	StageKind             string                 `protobuf:"bytes,1,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"`
+	StageKind             PipelineStageKind      `protobuf:"varint,1,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"`
 	Ordinal               int32                  `protobuf:"varint,2,opt,name=ordinal,proto3" json:"ordinal,omitempty"`
 	Optional              bool                   `protobuf:"varint,3,opt,name=optional,proto3" json:"optional,omitempty"`
 	LanguagePool          []string               `protobuf:"bytes,4,rep,name=language_pool,json=languagePool,proto3" json:"language_pool,omitempty"`
@@ -5399,11 +5586,11 @@ func (*MockCompanyStage) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{79}
 }
 
-func (x *MockCompanyStage) GetStageKind() string {
+func (x *MockCompanyStage) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *MockCompanyStage) GetOrdinal() int32 {
@@ -5679,7 +5866,7 @@ func (x *MockBulkTestCase) GetOrdinal() int32 {
 
 type MockBulkTaskImportItem struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
-	StageKind                string                 `protobuf:"bytes,1,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"`
+	StageKind                PipelineStageKind      `protobuf:"varint,1,opt,name=stage_kind,json=stageKind,proto3,enum=druz9.v1.PipelineStageKind" json:"stage_kind,omitempty"`
 	Language                 string                 `protobuf:"bytes,2,opt,name=language,proto3" json:"language,omitempty"`
 	Difficulty               int32                  `protobuf:"varint,3,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
 	Title                    string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
@@ -5726,11 +5913,11 @@ func (*MockBulkTaskImportItem) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_mock_proto_rawDescGZIP(), []int{84}
 }
 
-func (x *MockBulkTaskImportItem) GetStageKind() string {
+func (x *MockBulkTaskImportItem) GetStageKind() PipelineStageKind {
 	if x != nil {
 		return x.StageKind
 	}
-	return ""
+	return PipelineStageKind_PIPELINE_STAGE_KIND_UNSPECIFIED
 }
 
 func (x *MockBulkTaskImportItem) GetLanguage() string {
@@ -6049,13 +6236,13 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"p\n" +
 	"\x18AttemptFinalisedResponse\x12\x1c\n" +
 	"\tfinalised\x18\x01 \x01(\bR\tfinalised\x126\n" +
-	"\averdict\x18\x02 \x01(\x0e2\x1c.druz9.v1.MockAttemptVerdictR\averdict\"\x94\x03\n" +
+	"\averdict\x18\x02 \x01(\x0e2\x1c.druz9.v1.MockAttemptVerdictR\averdict\"\xd0\x03\n" +
 	"\rPipelineStage\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x02 \x01(\tR\tstageKind\x12\x18\n" +
-	"\aordinal\x18\x03 \x01(\x05R\aordinal\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\tR\x06status\x12\x1b\n" +
+	"stage_kind\x18\x02 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x18\n" +
+	"\aordinal\x18\x03 \x01(\x05R\aordinal\x125\n" +
+	"\x06status\x18\x04 \x01(\x0e2\x1d.druz9.v1.PipelineStageStatusR\x06status\x12\x1b\n" +
 	"\thas_score\x18\x05 \x01(\bR\bhasScore\x12\x14\n" +
 	"\x05score\x18\x06 \x01(\x02R\x05score\x12\x18\n" +
 	"\averdict\x18\a \x01(\tR\averdict\x12$\n" +
@@ -6116,15 +6303,15 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x06stderr\x18\x06 \x01(\tR\x06stderr\x12\x1b\n" +
 	"\tis_hidden\x18\a \x01(\bR\bisHidden\x12\x1d\n" +
 	"\n" +
-	"runtime_ms\x18\b \x01(\x05R\truntimeMs\"\xf0\x01\n" +
+	"runtime_ms\x18\b \x01(\x05R\truntimeMs\"\x8d\x02\n" +
 	"\vAlgoVerdict\x12\x16\n" +
 	"\x06passed\x18\x01 \x01(\x05R\x06passed\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x1d\n" +
 	"\n" +
 	"runtime_ms\x18\x03 \x01(\x05R\truntimeMs\x12\x1b\n" +
 	"\tmemory_kb\x18\x04 \x01(\x05R\bmemoryKb\x12/\n" +
-	"\x13sandbox_unavailable\x18\x05 \x01(\bR\x12sandboxUnavailable\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\x12.\n" +
+	"\x13sandbox_unavailable\x18\x05 \x01(\bR\x12sandboxUnavailable\x123\n" +
+	"\x06status\x18\x06 \x01(\x0e2\x1b.druz9.v1.AlgoVerdictStatusR\x06status\x12.\n" +
 	"\x05tests\x18\a \x03(\v2\x18.druz9.v1.AlgoTestResultR\x05tests\"W\n" +
 	"\x15RunAlgoAttemptRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -6234,11 +6421,11 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\aprofile\x18\x01 \x01(\v2\x1d.druz9.v1.MockStrictnessInputR\aprofile\"g\n" +
 	"\x1cAdminUpdateStrictnessRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
-	"\aprofile\x18\x02 \x01(\v2\x1d.druz9.v1.MockStrictnessInputR\aprofile\"\x8e\x05\n" +
+	"\aprofile\x18\x02 \x01(\v2\x1d.druz9.v1.MockStrictnessInputR\aprofile\"\xab\x05\n" +
 	"\bMockTask\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x02 \x01(\tR\tstageKind\x12\x1a\n" +
+	"stage_kind\x18\x02 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x1a\n" +
 	"\blanguage\x18\x03 \x01(\tR\blanguage\x12\x1e\n" +
 	"\n" +
 	"difficulty\x18\x04 \x01(\x05R\n" +
@@ -6268,10 +6455,10 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\n" +
 	"sort_order\x18\x06 \x01(\x05R\tsortOrder\x129\n" +
 	"\n" +
-	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"w\n" +
-	"\x19AdminListMockTasksRequest\x12\x1d\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x94\x01\n" +
+	"\x19AdminListMockTasksRequest\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x01 \x01(\tR\tstageKind\x12\x1a\n" +
+	"stage_kind\x18\x01 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x1a\n" +
 	"\blanguage\x18\x02 \x01(\tR\blanguage\x12\x1f\n" +
 	"\vonly_active\x18\x03 \x01(\bR\n" +
 	"onlyActive\"F\n" +
@@ -6281,10 +6468,10 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"|\n" +
 	"\x18AdminGetMockTaskResponse\x12&\n" +
 	"\x04task\x18\x01 \x01(\v2\x12.druz9.v1.MockTaskR\x04task\x128\n" +
-	"\tquestions\x18\x02 \x03(\v2\x1a.druz9.v1.MockTaskQuestionR\tquestions\"\x8d\x04\n" +
-	"\rMockTaskInput\x12\x1d\n" +
+	"\tquestions\x18\x02 \x03(\v2\x1a.druz9.v1.MockTaskQuestionR\tquestions\"\xaa\x04\n" +
+	"\rMockTaskInput\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x01 \x01(\tR\tstageKind\x12\x1a\n" +
+	"stage_kind\x18\x01 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x1a\n" +
 	"\blanguage\x18\x02 \x01(\tR\blanguage\x12\x1e\n" +
 	"\n" +
 	"difficulty\x18\x03 \x01(\x05R\n" +
@@ -6346,11 +6533,11 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12<\n" +
 	"\ttest_case\x18\x02 \x01(\v2\x1f.druz9.v1.MockTaskTestCaseInputR\btestCase\",\n" +
 	"\x1aAdminDeleteTestCaseRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xc4\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xe1\x02\n" +
 	"\x13MockDefaultQuestion\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x02 \x01(\tR\tstageKind\x12\x12\n" +
+	"stage_kind\x18\x02 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x12\n" +
 	"\x04body\x18\x03 \x01(\tR\x04body\x12,\n" +
 	"\x12expected_answer_md\x18\x04 \x01(\tR\x10expectedAnswerMd\x12J\n" +
 	"\x12reference_criteria\x18\x05 \x01(\v2\x1b.druz9.v1.ReferenceCriteriaR\x11referenceCriteria\x12\x16\n" +
@@ -6358,19 +6545,19 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\n" +
 	"sort_order\x18\a \x01(\x05R\tsortOrder\x129\n" +
 	"\n" +
-	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xfe\x01\n" +
-	"\x18MockDefaultQuestionInput\x12\x1d\n" +
+	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x9b\x02\n" +
+	"\x18MockDefaultQuestionInput\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x01 \x01(\tR\tstageKind\x12\x12\n" +
+	"stage_kind\x18\x01 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12,\n" +
 	"\x12expected_answer_md\x18\x03 \x01(\tR\x10expectedAnswerMd\x12J\n" +
 	"\x12reference_criteria\x18\x04 \x01(\v2\x1b.druz9.v1.ReferenceCriteriaR\x11referenceCriteria\x12\x16\n" +
 	"\x06active\x18\x05 \x01(\bR\x06active\x12\x1d\n" +
 	"\n" +
-	"sort_order\x18\x06 \x01(\x05R\tsortOrder\"b\n" +
-	" AdminListDefaultQuestionsRequest\x12\x1d\n" +
+	"sort_order\x18\x06 \x01(\x05R\tsortOrder\"\x7f\n" +
+	" AdminListDefaultQuestionsRequest\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x01 \x01(\tR\tstageKind\x12\x1f\n" +
+	"stage_kind\x18\x01 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x1f\n" +
 	"\vonly_active\x18\x02 \x01(\bR\n" +
 	"onlyActive\"X\n" +
 	"!AdminListDefaultQuestionsResponse\x123\n" +
@@ -6381,13 +6568,13 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12>\n" +
 	"\bquestion\x18\x02 \x01(\v2\".druz9.v1.MockDefaultQuestionInputR\bquestion\"3\n" +
 	"!AdminDeleteDefaultQuestionRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xe3\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x80\x03\n" +
 	"\x13MockCompanyQuestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
-	"company_id\x18\x02 \x01(\tR\tcompanyId\x12\x1d\n" +
+	"company_id\x18\x02 \x01(\tR\tcompanyId\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x03 \x01(\tR\tstageKind\x12\x12\n" +
+	"stage_kind\x18\x03 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x12\n" +
 	"\x04body\x18\x04 \x01(\tR\x04body\x12,\n" +
 	"\x12expected_answer_md\x18\x05 \x01(\tR\x10expectedAnswerMd\x12J\n" +
 	"\x12reference_criteria\x18\x06 \x01(\v2\x1b.druz9.v1.ReferenceCriteriaR\x11referenceCriteria\x12\x16\n" +
@@ -6395,21 +6582,21 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\n" +
 	"sort_order\x18\b \x01(\x05R\tsortOrder\x129\n" +
 	"\n" +
-	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xfe\x01\n" +
-	"\x18MockCompanyQuestionInput\x12\x1d\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x9b\x02\n" +
+	"\x18MockCompanyQuestionInput\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x01 \x01(\tR\tstageKind\x12\x12\n" +
+	"stage_kind\x18\x01 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12,\n" +
 	"\x12expected_answer_md\x18\x03 \x01(\tR\x10expectedAnswerMd\x12J\n" +
 	"\x12reference_criteria\x18\x04 \x01(\v2\x1b.druz9.v1.ReferenceCriteriaR\x11referenceCriteria\x12\x16\n" +
 	"\x06active\x18\x05 \x01(\bR\x06active\x12\x1d\n" +
 	"\n" +
-	"sort_order\x18\x06 \x01(\x05R\tsortOrder\"`\n" +
+	"sort_order\x18\x06 \x01(\x05R\tsortOrder\"}\n" +
 	" AdminListCompanyQuestionsRequest\x12\x1d\n" +
 	"\n" +
-	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1d\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x02 \x01(\tR\tstageKind\"X\n" +
+	"stage_kind\x18\x02 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\"X\n" +
 	"!AdminListCompanyQuestionsResponse\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.druz9.v1.MockCompanyQuestionR\x05items\"\x82\x01\n" +
 	"!AdminCreateCompanyQuestionRequest\x12\x1d\n" +
@@ -6420,10 +6607,10 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12>\n" +
 	"\bquestion\x18\x02 \x01(\v2\".druz9.v1.MockCompanyQuestionInputR\bquestion\"3\n" +
 	"!AdminDeleteCompanyQuestionRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xcf\x03\n" +
-	"\x10MockCompanyStage\x12\x1d\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xec\x03\n" +
+	"\x10MockCompanyStage\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x01 \x01(\tR\tstageKind\x12\x18\n" +
+	"stage_kind\x18\x01 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x18\n" +
 	"\aordinal\x18\x02 \x01(\x05R\aordinal\x12\x1a\n" +
 	"\boptional\x18\x03 \x01(\bR\boptional\x12#\n" +
 	"\rlanguage_pool\x18\x04 \x03(\tR\flanguagePool\x12\"\n" +
@@ -6447,10 +6634,10 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\x05input\x18\x01 \x01(\tR\x05input\x12'\n" +
 	"\x0fexpected_output\x18\x02 \x01(\tR\x0eexpectedOutput\x12\x1b\n" +
 	"\tis_hidden\x18\x03 \x01(\bR\bisHidden\x12\x18\n" +
-	"\aordinal\x18\x04 \x01(\x05R\aordinal\"\x98\x04\n" +
-	"\x16MockBulkTaskImportItem\x12\x1d\n" +
+	"\aordinal\x18\x04 \x01(\x05R\aordinal\"\xb5\x04\n" +
+	"\x16MockBulkTaskImportItem\x12:\n" +
 	"\n" +
-	"stage_kind\x18\x01 \x01(\tR\tstageKind\x12\x1a\n" +
+	"stage_kind\x18\x01 \x01(\x0e2\x1b.druz9.v1.PipelineStageKindR\tstageKind\x12\x1a\n" +
 	"\blanguage\x18\x02 \x01(\tR\blanguage\x12\x1e\n" +
 	"\n" +
 	"difficulty\x18\x03 \x01(\x05R\n" +
@@ -6487,7 +6674,29 @@ const file_druz9_v1_mock_proto_rawDesc = "" +
 	" MOCK_ATTEMPT_VERDICT_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cMOCK_ATTEMPT_VERDICT_PENDING\x10\x01\x12\x1d\n" +
 	"\x19MOCK_ATTEMPT_VERDICT_PASS\x10\x02\x12\x1d\n" +
-	"\x19MOCK_ATTEMPT_VERDICT_FAIL\x10\x032\xc30\n" +
+	"\x19MOCK_ATTEMPT_VERDICT_FAIL\x10\x03*\xc9\x02\n" +
+	"\x11PipelineStageKind\x12#\n" +
+	"\x1fPIPELINE_STAGE_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16PIPELINE_STAGE_KIND_HR\x10\x01\x12\x1c\n" +
+	"\x18PIPELINE_STAGE_KIND_ALGO\x10\x02\x12\x1e\n" +
+	"\x1aPIPELINE_STAGE_KIND_CODING\x10\x03\x12!\n" +
+	"\x1dPIPELINE_STAGE_KIND_SYSDESIGN\x10\x04\x12\"\n" +
+	"\x1ePIPELINE_STAGE_KIND_BEHAVIORAL\x10\x05\x12!\n" +
+	"\x1dPIPELINE_STAGE_KIND_ML_CODING\x10\x06\x12(\n" +
+	"$PIPELINE_STAGE_KIND_ML_SYSTEM_DESIGN\x10\a\x12!\n" +
+	"\x1dPIPELINE_STAGE_KIND_ML_THEORY\x10\b*\xcd\x01\n" +
+	"\x13PipelineStageStatus\x12%\n" +
+	"!PIPELINE_STAGE_STATUS_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dPIPELINE_STAGE_STATUS_PENDING\x10\x01\x12%\n" +
+	"!PIPELINE_STAGE_STATUS_IN_PROGRESS\x10\x02\x12\"\n" +
+	"\x1ePIPELINE_STAGE_STATUS_FINISHED\x10\x03\x12!\n" +
+	"\x1dPIPELINE_STAGE_STATUS_SKIPPED\x10\x04*\xc7\x01\n" +
+	"\x11AlgoVerdictStatus\x12#\n" +
+	"\x1fALGO_VERDICT_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16ALGO_VERDICT_STATUS_OK\x10\x01\x12%\n" +
+	"!ALGO_VERDICT_STATUS_COMPILE_ERROR\x10\x02\x12%\n" +
+	"!ALGO_VERDICT_STATUS_RUNTIME_ERROR\x10\x03\x12#\n" +
+	"\x1fALGO_VERDICT_STATUS_UNAVAILABLE\x10\x042\xc30\n" +
 	"\x13MockPipelineService\x12x\n" +
 	"\rListCompanies\x12\".druz9.v1.ListMockCompaniesRequest\x1a#.druz9.v1.ListMockCompaniesResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/v1/mock/companies\x12l\n" +
 	"\vGetPipeline\x12 .druz9.v1.GetMockPipelineRequest\x1a\x16.druz9.v1.MockPipeline\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/mock/pipelines/{id}\x12x\n" +
@@ -6547,259 +6756,276 @@ func file_druz9_v1_mock_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_mock_proto_rawDescData
 }
 
-var file_druz9_v1_mock_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_druz9_v1_mock_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_druz9_v1_mock_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
 var file_druz9_v1_mock_proto_goTypes = []any{
 	(MockPipelineVerdict)(0),                    // 0: druz9.v1.MockPipelineVerdict
 	(MockAttemptVerdict)(0),                     // 1: druz9.v1.MockAttemptVerdict
-	(*PipelineCompany)(nil),                     // 2: druz9.v1.PipelineCompany
-	(*MockPipeline)(nil),                        // 3: druz9.v1.MockPipeline
-	(*MockLeaderboardEntry)(nil),                // 4: druz9.v1.MockLeaderboardEntry
-	(*ListMockCompaniesRequest)(nil),            // 5: druz9.v1.ListMockCompaniesRequest
-	(*ListMockCompaniesResponse)(nil),           // 6: druz9.v1.ListMockCompaniesResponse
-	(*GetMockPipelineRequest)(nil),              // 7: druz9.v1.GetMockPipelineRequest
-	(*ListMockPipelinesRequest)(nil),            // 8: druz9.v1.ListMockPipelinesRequest
-	(*ListMockPipelinesResponse)(nil),           // 9: druz9.v1.ListMockPipelinesResponse
-	(*GetMockLeaderboardRequest)(nil),           // 10: druz9.v1.GetMockLeaderboardRequest
-	(*GetMockLeaderboardResponse)(nil),          // 11: druz9.v1.GetMockLeaderboardResponse
-	(*CreateMockPipelineRequest)(nil),           // 12: druz9.v1.CreateMockPipelineRequest
-	(*CancelMockPipelineRequest)(nil),           // 13: druz9.v1.CancelMockPipelineRequest
-	(*AttemptFinalisedRequest)(nil),             // 14: druz9.v1.AttemptFinalisedRequest
-	(*AttemptFinalisedResponse)(nil),            // 15: druz9.v1.AttemptFinalisedResponse
-	(*PipelineStage)(nil),                       // 16: druz9.v1.PipelineStage
-	(*ReferenceCriteria)(nil),                   // 17: druz9.v1.ReferenceCriteria
-	(*PipelineAttempt)(nil),                     // 18: druz9.v1.PipelineAttempt
-	(*StageWithAttempts)(nil),                   // 19: druz9.v1.StageWithAttempts
-	(*StartNextStageRequest)(nil),               // 20: druz9.v1.StartNextStageRequest
-	(*SubmitAnswerRequest)(nil),                 // 21: druz9.v1.SubmitAnswerRequest
-	(*FinishStageRequest)(nil),                  // 22: druz9.v1.FinishStageRequest
-	(*AlgoTestResult)(nil),                      // 23: druz9.v1.AlgoTestResult
-	(*AlgoVerdict)(nil),                         // 24: druz9.v1.AlgoVerdict
-	(*RunAlgoAttemptRequest)(nil),               // 25: druz9.v1.RunAlgoAttemptRequest
-	(*CodingVerdict)(nil),                       // 26: druz9.v1.CodingVerdict
-	(*RunCodingAttemptRequest)(nil),             // 27: druz9.v1.RunCodingAttemptRequest
-	(*SysDesignAxes)(nil),                       // 28: druz9.v1.SysDesignAxes
-	(*SysDesignVerdict)(nil),                    // 29: druz9.v1.SysDesignVerdict
-	(*RunSysDesignAttemptRequest)(nil),          // 30: druz9.v1.RunSysDesignAttemptRequest
-	(*BehavioralAxes)(nil),                      // 31: druz9.v1.BehavioralAxes
-	(*BehavioralVerdict)(nil),                   // 32: druz9.v1.BehavioralVerdict
-	(*RunBehavioralAttemptRequest)(nil),         // 33: druz9.v1.RunBehavioralAttemptRequest
-	(*AdminListMockCompaniesRequest)(nil),       // 34: druz9.v1.AdminListMockCompaniesRequest
-	(*AdminListMockCompaniesResponse)(nil),      // 35: druz9.v1.AdminListMockCompaniesResponse
-	(*MockCompanyInput)(nil),                    // 36: druz9.v1.MockCompanyInput
-	(*AdminCreateMockCompanyRequest)(nil),       // 37: druz9.v1.AdminCreateMockCompanyRequest
-	(*AdminUpdateMockCompanyRequest)(nil),       // 38: druz9.v1.AdminUpdateMockCompanyRequest
-	(*AdminToggleMockCompanyActiveRequest)(nil), // 39: druz9.v1.AdminToggleMockCompanyActiveRequest
-	(*AIStrictnessProfile)(nil),                 // 40: druz9.v1.AIStrictnessProfile
-	(*AdminListStrictnessRequest)(nil),          // 41: druz9.v1.AdminListStrictnessRequest
-	(*AdminListStrictnessResponse)(nil),         // 42: druz9.v1.AdminListStrictnessResponse
-	(*MockStrictnessInput)(nil),                 // 43: druz9.v1.MockStrictnessInput
-	(*AdminCreateStrictnessRequest)(nil),        // 44: druz9.v1.AdminCreateStrictnessRequest
-	(*AdminUpdateStrictnessRequest)(nil),        // 45: druz9.v1.AdminUpdateStrictnessRequest
-	(*MockTask)(nil),                            // 46: druz9.v1.MockTask
-	(*MockTaskQuestion)(nil),                    // 47: druz9.v1.MockTaskQuestion
-	(*AdminListMockTasksRequest)(nil),           // 48: druz9.v1.AdminListMockTasksRequest
-	(*AdminListMockTasksResponse)(nil),          // 49: druz9.v1.AdminListMockTasksResponse
-	(*AdminGetMockTaskRequest)(nil),             // 50: druz9.v1.AdminGetMockTaskRequest
-	(*AdminGetMockTaskResponse)(nil),            // 51: druz9.v1.AdminGetMockTaskResponse
-	(*MockTaskInput)(nil),                       // 52: druz9.v1.MockTaskInput
-	(*AdminCreateMockTaskRequest)(nil),          // 53: druz9.v1.AdminCreateMockTaskRequest
-	(*AdminUpdateMockTaskRequest)(nil),          // 54: druz9.v1.AdminUpdateMockTaskRequest
-	(*AdminToggleMockTaskActiveRequest)(nil),    // 55: druz9.v1.AdminToggleMockTaskActiveRequest
-	(*MockTaskQuestionInput)(nil),               // 56: druz9.v1.MockTaskQuestionInput
-	(*AdminCreateMockTaskQuestionRequest)(nil),  // 57: druz9.v1.AdminCreateMockTaskQuestionRequest
-	(*AdminUpdateMockTaskQuestionRequest)(nil),  // 58: druz9.v1.AdminUpdateMockTaskQuestionRequest
-	(*AdminDeleteMockTaskQuestionRequest)(nil),  // 59: druz9.v1.AdminDeleteMockTaskQuestionRequest
-	(*MockTaskTestCase)(nil),                    // 60: druz9.v1.MockTaskTestCase
-	(*MockTaskTestCaseInput)(nil),               // 61: druz9.v1.MockTaskTestCaseInput
-	(*AdminListTestCasesRequest)(nil),           // 62: druz9.v1.AdminListTestCasesRequest
-	(*AdminListTestCasesResponse)(nil),          // 63: druz9.v1.AdminListTestCasesResponse
-	(*AdminCreateTestCaseRequest)(nil),          // 64: druz9.v1.AdminCreateTestCaseRequest
-	(*AdminUpdateTestCaseRequest)(nil),          // 65: druz9.v1.AdminUpdateTestCaseRequest
-	(*AdminDeleteTestCaseRequest)(nil),          // 66: druz9.v1.AdminDeleteTestCaseRequest
-	(*MockDefaultQuestion)(nil),                 // 67: druz9.v1.MockDefaultQuestion
-	(*MockDefaultQuestionInput)(nil),            // 68: druz9.v1.MockDefaultQuestionInput
-	(*AdminListDefaultQuestionsRequest)(nil),    // 69: druz9.v1.AdminListDefaultQuestionsRequest
-	(*AdminListDefaultQuestionsResponse)(nil),   // 70: druz9.v1.AdminListDefaultQuestionsResponse
-	(*AdminCreateDefaultQuestionRequest)(nil),   // 71: druz9.v1.AdminCreateDefaultQuestionRequest
-	(*AdminUpdateDefaultQuestionRequest)(nil),   // 72: druz9.v1.AdminUpdateDefaultQuestionRequest
-	(*AdminDeleteDefaultQuestionRequest)(nil),   // 73: druz9.v1.AdminDeleteDefaultQuestionRequest
-	(*MockCompanyQuestion)(nil),                 // 74: druz9.v1.MockCompanyQuestion
-	(*MockCompanyQuestionInput)(nil),            // 75: druz9.v1.MockCompanyQuestionInput
-	(*AdminListCompanyQuestionsRequest)(nil),    // 76: druz9.v1.AdminListCompanyQuestionsRequest
-	(*AdminListCompanyQuestionsResponse)(nil),   // 77: druz9.v1.AdminListCompanyQuestionsResponse
-	(*AdminCreateCompanyQuestionRequest)(nil),   // 78: druz9.v1.AdminCreateCompanyQuestionRequest
-	(*AdminUpdateCompanyQuestionRequest)(nil),   // 79: druz9.v1.AdminUpdateCompanyQuestionRequest
-	(*AdminDeleteCompanyQuestionRequest)(nil),   // 80: druz9.v1.AdminDeleteCompanyQuestionRequest
-	(*MockCompanyStage)(nil),                    // 81: druz9.v1.MockCompanyStage
-	(*AdminGetCompanyStagesRequest)(nil),        // 82: druz9.v1.AdminGetCompanyStagesRequest
-	(*AdminGetCompanyStagesResponse)(nil),       // 83: druz9.v1.AdminGetCompanyStagesResponse
-	(*AdminReplaceCompanyStagesRequest)(nil),    // 84: druz9.v1.AdminReplaceCompanyStagesRequest
-	(*MockBulkTestCase)(nil),                    // 85: druz9.v1.MockBulkTestCase
-	(*MockBulkTaskImportItem)(nil),              // 86: druz9.v1.MockBulkTaskImportItem
-	(*MockBulkImportResult)(nil),                // 87: druz9.v1.MockBulkImportResult
-	(*AdminBulkImportTasksRequest)(nil),         // 88: druz9.v1.AdminBulkImportTasksRequest
-	(*AdminBulkImportTasksResponse)(nil),        // 89: druz9.v1.AdminBulkImportTasksResponse
-	(*timestamppb.Timestamp)(nil),               // 90: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                       // 91: google.protobuf.Empty
+	(PipelineStageKind)(0),                      // 2: druz9.v1.PipelineStageKind
+	(PipelineStageStatus)(0),                    // 3: druz9.v1.PipelineStageStatus
+	(AlgoVerdictStatus)(0),                      // 4: druz9.v1.AlgoVerdictStatus
+	(*PipelineCompany)(nil),                     // 5: druz9.v1.PipelineCompany
+	(*MockPipeline)(nil),                        // 6: druz9.v1.MockPipeline
+	(*MockLeaderboardEntry)(nil),                // 7: druz9.v1.MockLeaderboardEntry
+	(*ListMockCompaniesRequest)(nil),            // 8: druz9.v1.ListMockCompaniesRequest
+	(*ListMockCompaniesResponse)(nil),           // 9: druz9.v1.ListMockCompaniesResponse
+	(*GetMockPipelineRequest)(nil),              // 10: druz9.v1.GetMockPipelineRequest
+	(*ListMockPipelinesRequest)(nil),            // 11: druz9.v1.ListMockPipelinesRequest
+	(*ListMockPipelinesResponse)(nil),           // 12: druz9.v1.ListMockPipelinesResponse
+	(*GetMockLeaderboardRequest)(nil),           // 13: druz9.v1.GetMockLeaderboardRequest
+	(*GetMockLeaderboardResponse)(nil),          // 14: druz9.v1.GetMockLeaderboardResponse
+	(*CreateMockPipelineRequest)(nil),           // 15: druz9.v1.CreateMockPipelineRequest
+	(*CancelMockPipelineRequest)(nil),           // 16: druz9.v1.CancelMockPipelineRequest
+	(*AttemptFinalisedRequest)(nil),             // 17: druz9.v1.AttemptFinalisedRequest
+	(*AttemptFinalisedResponse)(nil),            // 18: druz9.v1.AttemptFinalisedResponse
+	(*PipelineStage)(nil),                       // 19: druz9.v1.PipelineStage
+	(*ReferenceCriteria)(nil),                   // 20: druz9.v1.ReferenceCriteria
+	(*PipelineAttempt)(nil),                     // 21: druz9.v1.PipelineAttempt
+	(*StageWithAttempts)(nil),                   // 22: druz9.v1.StageWithAttempts
+	(*StartNextStageRequest)(nil),               // 23: druz9.v1.StartNextStageRequest
+	(*SubmitAnswerRequest)(nil),                 // 24: druz9.v1.SubmitAnswerRequest
+	(*FinishStageRequest)(nil),                  // 25: druz9.v1.FinishStageRequest
+	(*AlgoTestResult)(nil),                      // 26: druz9.v1.AlgoTestResult
+	(*AlgoVerdict)(nil),                         // 27: druz9.v1.AlgoVerdict
+	(*RunAlgoAttemptRequest)(nil),               // 28: druz9.v1.RunAlgoAttemptRequest
+	(*CodingVerdict)(nil),                       // 29: druz9.v1.CodingVerdict
+	(*RunCodingAttemptRequest)(nil),             // 30: druz9.v1.RunCodingAttemptRequest
+	(*SysDesignAxes)(nil),                       // 31: druz9.v1.SysDesignAxes
+	(*SysDesignVerdict)(nil),                    // 32: druz9.v1.SysDesignVerdict
+	(*RunSysDesignAttemptRequest)(nil),          // 33: druz9.v1.RunSysDesignAttemptRequest
+	(*BehavioralAxes)(nil),                      // 34: druz9.v1.BehavioralAxes
+	(*BehavioralVerdict)(nil),                   // 35: druz9.v1.BehavioralVerdict
+	(*RunBehavioralAttemptRequest)(nil),         // 36: druz9.v1.RunBehavioralAttemptRequest
+	(*AdminListMockCompaniesRequest)(nil),       // 37: druz9.v1.AdminListMockCompaniesRequest
+	(*AdminListMockCompaniesResponse)(nil),      // 38: druz9.v1.AdminListMockCompaniesResponse
+	(*MockCompanyInput)(nil),                    // 39: druz9.v1.MockCompanyInput
+	(*AdminCreateMockCompanyRequest)(nil),       // 40: druz9.v1.AdminCreateMockCompanyRequest
+	(*AdminUpdateMockCompanyRequest)(nil),       // 41: druz9.v1.AdminUpdateMockCompanyRequest
+	(*AdminToggleMockCompanyActiveRequest)(nil), // 42: druz9.v1.AdminToggleMockCompanyActiveRequest
+	(*AIStrictnessProfile)(nil),                 // 43: druz9.v1.AIStrictnessProfile
+	(*AdminListStrictnessRequest)(nil),          // 44: druz9.v1.AdminListStrictnessRequest
+	(*AdminListStrictnessResponse)(nil),         // 45: druz9.v1.AdminListStrictnessResponse
+	(*MockStrictnessInput)(nil),                 // 46: druz9.v1.MockStrictnessInput
+	(*AdminCreateStrictnessRequest)(nil),        // 47: druz9.v1.AdminCreateStrictnessRequest
+	(*AdminUpdateStrictnessRequest)(nil),        // 48: druz9.v1.AdminUpdateStrictnessRequest
+	(*MockTask)(nil),                            // 49: druz9.v1.MockTask
+	(*MockTaskQuestion)(nil),                    // 50: druz9.v1.MockTaskQuestion
+	(*AdminListMockTasksRequest)(nil),           // 51: druz9.v1.AdminListMockTasksRequest
+	(*AdminListMockTasksResponse)(nil),          // 52: druz9.v1.AdminListMockTasksResponse
+	(*AdminGetMockTaskRequest)(nil),             // 53: druz9.v1.AdminGetMockTaskRequest
+	(*AdminGetMockTaskResponse)(nil),            // 54: druz9.v1.AdminGetMockTaskResponse
+	(*MockTaskInput)(nil),                       // 55: druz9.v1.MockTaskInput
+	(*AdminCreateMockTaskRequest)(nil),          // 56: druz9.v1.AdminCreateMockTaskRequest
+	(*AdminUpdateMockTaskRequest)(nil),          // 57: druz9.v1.AdminUpdateMockTaskRequest
+	(*AdminToggleMockTaskActiveRequest)(nil),    // 58: druz9.v1.AdminToggleMockTaskActiveRequest
+	(*MockTaskQuestionInput)(nil),               // 59: druz9.v1.MockTaskQuestionInput
+	(*AdminCreateMockTaskQuestionRequest)(nil),  // 60: druz9.v1.AdminCreateMockTaskQuestionRequest
+	(*AdminUpdateMockTaskQuestionRequest)(nil),  // 61: druz9.v1.AdminUpdateMockTaskQuestionRequest
+	(*AdminDeleteMockTaskQuestionRequest)(nil),  // 62: druz9.v1.AdminDeleteMockTaskQuestionRequest
+	(*MockTaskTestCase)(nil),                    // 63: druz9.v1.MockTaskTestCase
+	(*MockTaskTestCaseInput)(nil),               // 64: druz9.v1.MockTaskTestCaseInput
+	(*AdminListTestCasesRequest)(nil),           // 65: druz9.v1.AdminListTestCasesRequest
+	(*AdminListTestCasesResponse)(nil),          // 66: druz9.v1.AdminListTestCasesResponse
+	(*AdminCreateTestCaseRequest)(nil),          // 67: druz9.v1.AdminCreateTestCaseRequest
+	(*AdminUpdateTestCaseRequest)(nil),          // 68: druz9.v1.AdminUpdateTestCaseRequest
+	(*AdminDeleteTestCaseRequest)(nil),          // 69: druz9.v1.AdminDeleteTestCaseRequest
+	(*MockDefaultQuestion)(nil),                 // 70: druz9.v1.MockDefaultQuestion
+	(*MockDefaultQuestionInput)(nil),            // 71: druz9.v1.MockDefaultQuestionInput
+	(*AdminListDefaultQuestionsRequest)(nil),    // 72: druz9.v1.AdminListDefaultQuestionsRequest
+	(*AdminListDefaultQuestionsResponse)(nil),   // 73: druz9.v1.AdminListDefaultQuestionsResponse
+	(*AdminCreateDefaultQuestionRequest)(nil),   // 74: druz9.v1.AdminCreateDefaultQuestionRequest
+	(*AdminUpdateDefaultQuestionRequest)(nil),   // 75: druz9.v1.AdminUpdateDefaultQuestionRequest
+	(*AdminDeleteDefaultQuestionRequest)(nil),   // 76: druz9.v1.AdminDeleteDefaultQuestionRequest
+	(*MockCompanyQuestion)(nil),                 // 77: druz9.v1.MockCompanyQuestion
+	(*MockCompanyQuestionInput)(nil),            // 78: druz9.v1.MockCompanyQuestionInput
+	(*AdminListCompanyQuestionsRequest)(nil),    // 79: druz9.v1.AdminListCompanyQuestionsRequest
+	(*AdminListCompanyQuestionsResponse)(nil),   // 80: druz9.v1.AdminListCompanyQuestionsResponse
+	(*AdminCreateCompanyQuestionRequest)(nil),   // 81: druz9.v1.AdminCreateCompanyQuestionRequest
+	(*AdminUpdateCompanyQuestionRequest)(nil),   // 82: druz9.v1.AdminUpdateCompanyQuestionRequest
+	(*AdminDeleteCompanyQuestionRequest)(nil),   // 83: druz9.v1.AdminDeleteCompanyQuestionRequest
+	(*MockCompanyStage)(nil),                    // 84: druz9.v1.MockCompanyStage
+	(*AdminGetCompanyStagesRequest)(nil),        // 85: druz9.v1.AdminGetCompanyStagesRequest
+	(*AdminGetCompanyStagesResponse)(nil),       // 86: druz9.v1.AdminGetCompanyStagesResponse
+	(*AdminReplaceCompanyStagesRequest)(nil),    // 87: druz9.v1.AdminReplaceCompanyStagesRequest
+	(*MockBulkTestCase)(nil),                    // 88: druz9.v1.MockBulkTestCase
+	(*MockBulkTaskImportItem)(nil),              // 89: druz9.v1.MockBulkTaskImportItem
+	(*MockBulkImportResult)(nil),                // 90: druz9.v1.MockBulkImportResult
+	(*AdminBulkImportTasksRequest)(nil),         // 91: druz9.v1.AdminBulkImportTasksRequest
+	(*AdminBulkImportTasksResponse)(nil),        // 92: druz9.v1.AdminBulkImportTasksResponse
+	(*timestamppb.Timestamp)(nil),               // 93: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                       // 94: google.protobuf.Empty
 }
 var file_druz9_v1_mock_proto_depIdxs = []int32{
-	90,  // 0: druz9.v1.PipelineCompany.created_at:type_name -> google.protobuf.Timestamp
-	90,  // 1: druz9.v1.PipelineCompany.updated_at:type_name -> google.protobuf.Timestamp
+	93,  // 0: druz9.v1.PipelineCompany.created_at:type_name -> google.protobuf.Timestamp
+	93,  // 1: druz9.v1.PipelineCompany.updated_at:type_name -> google.protobuf.Timestamp
 	0,   // 2: druz9.v1.MockPipeline.verdict:type_name -> druz9.v1.MockPipelineVerdict
-	90,  // 3: druz9.v1.MockPipeline.started_at:type_name -> google.protobuf.Timestamp
-	90,  // 4: druz9.v1.MockPipeline.finished_at:type_name -> google.protobuf.Timestamp
-	2,   // 5: druz9.v1.ListMockCompaniesResponse.items:type_name -> druz9.v1.PipelineCompany
-	3,   // 6: druz9.v1.ListMockPipelinesResponse.items:type_name -> druz9.v1.MockPipeline
-	4,   // 7: druz9.v1.GetMockLeaderboardResponse.items:type_name -> druz9.v1.MockLeaderboardEntry
+	93,  // 3: druz9.v1.MockPipeline.started_at:type_name -> google.protobuf.Timestamp
+	93,  // 4: druz9.v1.MockPipeline.finished_at:type_name -> google.protobuf.Timestamp
+	5,   // 5: druz9.v1.ListMockCompaniesResponse.items:type_name -> druz9.v1.PipelineCompany
+	6,   // 6: druz9.v1.ListMockPipelinesResponse.items:type_name -> druz9.v1.MockPipeline
+	7,   // 7: druz9.v1.GetMockLeaderboardResponse.items:type_name -> druz9.v1.MockLeaderboardEntry
 	1,   // 8: druz9.v1.AttemptFinalisedResponse.verdict:type_name -> druz9.v1.MockAttemptVerdict
-	90,  // 9: druz9.v1.PipelineStage.started_at:type_name -> google.protobuf.Timestamp
-	90,  // 10: druz9.v1.PipelineStage.finished_at:type_name -> google.protobuf.Timestamp
-	17,  // 11: druz9.v1.PipelineAttempt.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	1,   // 12: druz9.v1.PipelineAttempt.ai_verdict:type_name -> druz9.v1.MockAttemptVerdict
-	90,  // 13: druz9.v1.PipelineAttempt.ai_judged_at:type_name -> google.protobuf.Timestamp
-	90,  // 14: druz9.v1.PipelineAttempt.created_at:type_name -> google.protobuf.Timestamp
-	16,  // 15: druz9.v1.StageWithAttempts.stage:type_name -> druz9.v1.PipelineStage
-	18,  // 16: druz9.v1.StageWithAttempts.attempts:type_name -> druz9.v1.PipelineAttempt
-	23,  // 17: druz9.v1.AlgoVerdict.tests:type_name -> druz9.v1.AlgoTestResult
-	28,  // 18: druz9.v1.SysDesignVerdict.axes:type_name -> druz9.v1.SysDesignAxes
-	31,  // 19: druz9.v1.BehavioralVerdict.axes:type_name -> druz9.v1.BehavioralAxes
-	2,   // 20: druz9.v1.AdminListMockCompaniesResponse.items:type_name -> druz9.v1.PipelineCompany
-	36,  // 21: druz9.v1.AdminCreateMockCompanyRequest.company:type_name -> druz9.v1.MockCompanyInput
-	36,  // 22: druz9.v1.AdminUpdateMockCompanyRequest.company:type_name -> druz9.v1.MockCompanyInput
-	90,  // 23: druz9.v1.AIStrictnessProfile.created_at:type_name -> google.protobuf.Timestamp
-	90,  // 24: druz9.v1.AIStrictnessProfile.updated_at:type_name -> google.protobuf.Timestamp
-	40,  // 25: druz9.v1.AdminListStrictnessResponse.items:type_name -> druz9.v1.AIStrictnessProfile
-	43,  // 26: druz9.v1.AdminCreateStrictnessRequest.profile:type_name -> druz9.v1.MockStrictnessInput
-	43,  // 27: druz9.v1.AdminUpdateStrictnessRequest.profile:type_name -> druz9.v1.MockStrictnessInput
-	17,  // 28: druz9.v1.MockTask.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	90,  // 29: druz9.v1.MockTask.created_at:type_name -> google.protobuf.Timestamp
-	90,  // 30: druz9.v1.MockTask.updated_at:type_name -> google.protobuf.Timestamp
-	17,  // 31: druz9.v1.MockTaskQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	90,  // 32: druz9.v1.MockTaskQuestion.created_at:type_name -> google.protobuf.Timestamp
-	46,  // 33: druz9.v1.AdminListMockTasksResponse.items:type_name -> druz9.v1.MockTask
-	46,  // 34: druz9.v1.AdminGetMockTaskResponse.task:type_name -> druz9.v1.MockTask
-	47,  // 35: druz9.v1.AdminGetMockTaskResponse.questions:type_name -> druz9.v1.MockTaskQuestion
-	17,  // 36: druz9.v1.MockTaskInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	52,  // 37: druz9.v1.AdminCreateMockTaskRequest.task:type_name -> druz9.v1.MockTaskInput
-	52,  // 38: druz9.v1.AdminUpdateMockTaskRequest.task:type_name -> druz9.v1.MockTaskInput
-	17,  // 39: druz9.v1.MockTaskQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	56,  // 40: druz9.v1.AdminCreateMockTaskQuestionRequest.question:type_name -> druz9.v1.MockTaskQuestionInput
-	56,  // 41: druz9.v1.AdminUpdateMockTaskQuestionRequest.question:type_name -> druz9.v1.MockTaskQuestionInput
-	60,  // 42: druz9.v1.AdminListTestCasesResponse.items:type_name -> druz9.v1.MockTaskTestCase
-	61,  // 43: druz9.v1.AdminCreateTestCaseRequest.test_case:type_name -> druz9.v1.MockTaskTestCaseInput
-	61,  // 44: druz9.v1.AdminUpdateTestCaseRequest.test_case:type_name -> druz9.v1.MockTaskTestCaseInput
-	17,  // 45: druz9.v1.MockDefaultQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	90,  // 46: druz9.v1.MockDefaultQuestion.created_at:type_name -> google.protobuf.Timestamp
-	17,  // 47: druz9.v1.MockDefaultQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	67,  // 48: druz9.v1.AdminListDefaultQuestionsResponse.items:type_name -> druz9.v1.MockDefaultQuestion
-	68,  // 49: druz9.v1.AdminCreateDefaultQuestionRequest.question:type_name -> druz9.v1.MockDefaultQuestionInput
-	68,  // 50: druz9.v1.AdminUpdateDefaultQuestionRequest.question:type_name -> druz9.v1.MockDefaultQuestionInput
-	17,  // 51: druz9.v1.MockCompanyQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	90,  // 52: druz9.v1.MockCompanyQuestion.created_at:type_name -> google.protobuf.Timestamp
-	17,  // 53: druz9.v1.MockCompanyQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	74,  // 54: druz9.v1.AdminListCompanyQuestionsResponse.items:type_name -> druz9.v1.MockCompanyQuestion
-	75,  // 55: druz9.v1.AdminCreateCompanyQuestionRequest.question:type_name -> druz9.v1.MockCompanyQuestionInput
-	75,  // 56: druz9.v1.AdminUpdateCompanyQuestionRequest.question:type_name -> druz9.v1.MockCompanyQuestionInput
-	81,  // 57: druz9.v1.AdminGetCompanyStagesResponse.items:type_name -> druz9.v1.MockCompanyStage
-	81,  // 58: druz9.v1.AdminReplaceCompanyStagesRequest.items:type_name -> druz9.v1.MockCompanyStage
-	17,  // 59: druz9.v1.MockBulkTaskImportItem.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
-	85,  // 60: druz9.v1.MockBulkTaskImportItem.test_cases:type_name -> druz9.v1.MockBulkTestCase
-	86,  // 61: druz9.v1.AdminBulkImportTasksRequest.tasks:type_name -> druz9.v1.MockBulkTaskImportItem
-	87,  // 62: druz9.v1.AdminBulkImportTasksResponse.results:type_name -> druz9.v1.MockBulkImportResult
-	5,   // 63: druz9.v1.MockPipelineService.ListCompanies:input_type -> druz9.v1.ListMockCompaniesRequest
-	7,   // 64: druz9.v1.MockPipelineService.GetPipeline:input_type -> druz9.v1.GetMockPipelineRequest
-	8,   // 65: druz9.v1.MockPipelineService.ListPipelines:input_type -> druz9.v1.ListMockPipelinesRequest
-	10,  // 66: druz9.v1.MockPipelineService.GetLeaderboard:input_type -> druz9.v1.GetMockLeaderboardRequest
-	12,  // 67: druz9.v1.MockPipelineService.CreatePipeline:input_type -> druz9.v1.CreateMockPipelineRequest
-	13,  // 68: druz9.v1.MockPipelineService.CancelPipeline:input_type -> druz9.v1.CancelMockPipelineRequest
-	14,  // 69: druz9.v1.MockPipelineService.AttemptFinalised:input_type -> druz9.v1.AttemptFinalisedRequest
-	20,  // 70: druz9.v1.MockPipelineService.StartNextStage:input_type -> druz9.v1.StartNextStageRequest
-	21,  // 71: druz9.v1.MockPipelineService.SubmitAnswer:input_type -> druz9.v1.SubmitAnswerRequest
-	22,  // 72: druz9.v1.MockPipelineService.FinishStage:input_type -> druz9.v1.FinishStageRequest
-	25,  // 73: druz9.v1.MockPipelineService.RunAlgoAttempt:input_type -> druz9.v1.RunAlgoAttemptRequest
-	27,  // 74: druz9.v1.MockPipelineService.RunCodingAttempt:input_type -> druz9.v1.RunCodingAttemptRequest
-	30,  // 75: druz9.v1.MockPipelineService.RunSysDesignAttempt:input_type -> druz9.v1.RunSysDesignAttemptRequest
-	33,  // 76: druz9.v1.MockPipelineService.RunBehavioralAttempt:input_type -> druz9.v1.RunBehavioralAttemptRequest
-	34,  // 77: druz9.v1.MockPipelineService.AdminListCompanies:input_type -> druz9.v1.AdminListMockCompaniesRequest
-	37,  // 78: druz9.v1.MockPipelineService.AdminCreateCompany:input_type -> druz9.v1.AdminCreateMockCompanyRequest
-	38,  // 79: druz9.v1.MockPipelineService.AdminUpdateCompany:input_type -> druz9.v1.AdminUpdateMockCompanyRequest
-	39,  // 80: druz9.v1.MockPipelineService.AdminToggleCompanyActive:input_type -> druz9.v1.AdminToggleMockCompanyActiveRequest
-	41,  // 81: druz9.v1.MockPipelineService.AdminListStrictness:input_type -> druz9.v1.AdminListStrictnessRequest
-	44,  // 82: druz9.v1.MockPipelineService.AdminCreateStrictness:input_type -> druz9.v1.AdminCreateStrictnessRequest
-	45,  // 83: druz9.v1.MockPipelineService.AdminUpdateStrictness:input_type -> druz9.v1.AdminUpdateStrictnessRequest
-	48,  // 84: druz9.v1.MockPipelineService.AdminListTasks:input_type -> druz9.v1.AdminListMockTasksRequest
-	50,  // 85: druz9.v1.MockPipelineService.AdminGetTask:input_type -> druz9.v1.AdminGetMockTaskRequest
-	53,  // 86: druz9.v1.MockPipelineService.AdminCreateTask:input_type -> druz9.v1.AdminCreateMockTaskRequest
-	54,  // 87: druz9.v1.MockPipelineService.AdminUpdateTask:input_type -> druz9.v1.AdminUpdateMockTaskRequest
-	55,  // 88: druz9.v1.MockPipelineService.AdminToggleTaskActive:input_type -> druz9.v1.AdminToggleMockTaskActiveRequest
-	57,  // 89: druz9.v1.MockPipelineService.AdminCreateTaskQuestion:input_type -> druz9.v1.AdminCreateMockTaskQuestionRequest
-	58,  // 90: druz9.v1.MockPipelineService.AdminUpdateTaskQuestion:input_type -> druz9.v1.AdminUpdateMockTaskQuestionRequest
-	59,  // 91: druz9.v1.MockPipelineService.AdminDeleteTaskQuestion:input_type -> druz9.v1.AdminDeleteMockTaskQuestionRequest
-	62,  // 92: druz9.v1.MockPipelineService.AdminListTestCases:input_type -> druz9.v1.AdminListTestCasesRequest
-	64,  // 93: druz9.v1.MockPipelineService.AdminCreateTestCase:input_type -> druz9.v1.AdminCreateTestCaseRequest
-	65,  // 94: druz9.v1.MockPipelineService.AdminUpdateTestCase:input_type -> druz9.v1.AdminUpdateTestCaseRequest
-	66,  // 95: druz9.v1.MockPipelineService.AdminDeleteTestCase:input_type -> druz9.v1.AdminDeleteTestCaseRequest
-	69,  // 96: druz9.v1.MockPipelineService.AdminListDefaultQuestions:input_type -> druz9.v1.AdminListDefaultQuestionsRequest
-	71,  // 97: druz9.v1.MockPipelineService.AdminCreateDefaultQuestion:input_type -> druz9.v1.AdminCreateDefaultQuestionRequest
-	72,  // 98: druz9.v1.MockPipelineService.AdminUpdateDefaultQuestion:input_type -> druz9.v1.AdminUpdateDefaultQuestionRequest
-	73,  // 99: druz9.v1.MockPipelineService.AdminDeleteDefaultQuestion:input_type -> druz9.v1.AdminDeleteDefaultQuestionRequest
-	76,  // 100: druz9.v1.MockPipelineService.AdminListCompanyQuestions:input_type -> druz9.v1.AdminListCompanyQuestionsRequest
-	78,  // 101: druz9.v1.MockPipelineService.AdminCreateCompanyQuestion:input_type -> druz9.v1.AdminCreateCompanyQuestionRequest
-	79,  // 102: druz9.v1.MockPipelineService.AdminUpdateCompanyQuestion:input_type -> druz9.v1.AdminUpdateCompanyQuestionRequest
-	80,  // 103: druz9.v1.MockPipelineService.AdminDeleteCompanyQuestion:input_type -> druz9.v1.AdminDeleteCompanyQuestionRequest
-	82,  // 104: druz9.v1.MockPipelineService.AdminGetCompanyStages:input_type -> druz9.v1.AdminGetCompanyStagesRequest
-	84,  // 105: druz9.v1.MockPipelineService.AdminReplaceCompanyStages:input_type -> druz9.v1.AdminReplaceCompanyStagesRequest
-	88,  // 106: druz9.v1.MockPipelineService.AdminBulkImportTasks:input_type -> druz9.v1.AdminBulkImportTasksRequest
-	6,   // 107: druz9.v1.MockPipelineService.ListCompanies:output_type -> druz9.v1.ListMockCompaniesResponse
-	3,   // 108: druz9.v1.MockPipelineService.GetPipeline:output_type -> druz9.v1.MockPipeline
-	9,   // 109: druz9.v1.MockPipelineService.ListPipelines:output_type -> druz9.v1.ListMockPipelinesResponse
-	11,  // 110: druz9.v1.MockPipelineService.GetLeaderboard:output_type -> druz9.v1.GetMockLeaderboardResponse
-	3,   // 111: druz9.v1.MockPipelineService.CreatePipeline:output_type -> druz9.v1.MockPipeline
-	91,  // 112: druz9.v1.MockPipelineService.CancelPipeline:output_type -> google.protobuf.Empty
-	15,  // 113: druz9.v1.MockPipelineService.AttemptFinalised:output_type -> druz9.v1.AttemptFinalisedResponse
-	19,  // 114: druz9.v1.MockPipelineService.StartNextStage:output_type -> druz9.v1.StageWithAttempts
-	18,  // 115: druz9.v1.MockPipelineService.SubmitAnswer:output_type -> druz9.v1.PipelineAttempt
-	16,  // 116: druz9.v1.MockPipelineService.FinishStage:output_type -> druz9.v1.PipelineStage
-	24,  // 117: druz9.v1.MockPipelineService.RunAlgoAttempt:output_type -> druz9.v1.AlgoVerdict
-	26,  // 118: druz9.v1.MockPipelineService.RunCodingAttempt:output_type -> druz9.v1.CodingVerdict
-	29,  // 119: druz9.v1.MockPipelineService.RunSysDesignAttempt:output_type -> druz9.v1.SysDesignVerdict
-	32,  // 120: druz9.v1.MockPipelineService.RunBehavioralAttempt:output_type -> druz9.v1.BehavioralVerdict
-	35,  // 121: druz9.v1.MockPipelineService.AdminListCompanies:output_type -> druz9.v1.AdminListMockCompaniesResponse
-	2,   // 122: druz9.v1.MockPipelineService.AdminCreateCompany:output_type -> druz9.v1.PipelineCompany
-	2,   // 123: druz9.v1.MockPipelineService.AdminUpdateCompany:output_type -> druz9.v1.PipelineCompany
-	91,  // 124: druz9.v1.MockPipelineService.AdminToggleCompanyActive:output_type -> google.protobuf.Empty
-	42,  // 125: druz9.v1.MockPipelineService.AdminListStrictness:output_type -> druz9.v1.AdminListStrictnessResponse
-	40,  // 126: druz9.v1.MockPipelineService.AdminCreateStrictness:output_type -> druz9.v1.AIStrictnessProfile
-	40,  // 127: druz9.v1.MockPipelineService.AdminUpdateStrictness:output_type -> druz9.v1.AIStrictnessProfile
-	49,  // 128: druz9.v1.MockPipelineService.AdminListTasks:output_type -> druz9.v1.AdminListMockTasksResponse
-	51,  // 129: druz9.v1.MockPipelineService.AdminGetTask:output_type -> druz9.v1.AdminGetMockTaskResponse
-	46,  // 130: druz9.v1.MockPipelineService.AdminCreateTask:output_type -> druz9.v1.MockTask
-	46,  // 131: druz9.v1.MockPipelineService.AdminUpdateTask:output_type -> druz9.v1.MockTask
-	91,  // 132: druz9.v1.MockPipelineService.AdminToggleTaskActive:output_type -> google.protobuf.Empty
-	47,  // 133: druz9.v1.MockPipelineService.AdminCreateTaskQuestion:output_type -> druz9.v1.MockTaskQuestion
-	47,  // 134: druz9.v1.MockPipelineService.AdminUpdateTaskQuestion:output_type -> druz9.v1.MockTaskQuestion
-	91,  // 135: druz9.v1.MockPipelineService.AdminDeleteTaskQuestion:output_type -> google.protobuf.Empty
-	63,  // 136: druz9.v1.MockPipelineService.AdminListTestCases:output_type -> druz9.v1.AdminListTestCasesResponse
-	60,  // 137: druz9.v1.MockPipelineService.AdminCreateTestCase:output_type -> druz9.v1.MockTaskTestCase
-	60,  // 138: druz9.v1.MockPipelineService.AdminUpdateTestCase:output_type -> druz9.v1.MockTaskTestCase
-	91,  // 139: druz9.v1.MockPipelineService.AdminDeleteTestCase:output_type -> google.protobuf.Empty
-	70,  // 140: druz9.v1.MockPipelineService.AdminListDefaultQuestions:output_type -> druz9.v1.AdminListDefaultQuestionsResponse
-	67,  // 141: druz9.v1.MockPipelineService.AdminCreateDefaultQuestion:output_type -> druz9.v1.MockDefaultQuestion
-	67,  // 142: druz9.v1.MockPipelineService.AdminUpdateDefaultQuestion:output_type -> druz9.v1.MockDefaultQuestion
-	91,  // 143: druz9.v1.MockPipelineService.AdminDeleteDefaultQuestion:output_type -> google.protobuf.Empty
-	77,  // 144: druz9.v1.MockPipelineService.AdminListCompanyQuestions:output_type -> druz9.v1.AdminListCompanyQuestionsResponse
-	74,  // 145: druz9.v1.MockPipelineService.AdminCreateCompanyQuestion:output_type -> druz9.v1.MockCompanyQuestion
-	74,  // 146: druz9.v1.MockPipelineService.AdminUpdateCompanyQuestion:output_type -> druz9.v1.MockCompanyQuestion
-	91,  // 147: druz9.v1.MockPipelineService.AdminDeleteCompanyQuestion:output_type -> google.protobuf.Empty
-	83,  // 148: druz9.v1.MockPipelineService.AdminGetCompanyStages:output_type -> druz9.v1.AdminGetCompanyStagesResponse
-	91,  // 149: druz9.v1.MockPipelineService.AdminReplaceCompanyStages:output_type -> google.protobuf.Empty
-	89,  // 150: druz9.v1.MockPipelineService.AdminBulkImportTasks:output_type -> druz9.v1.AdminBulkImportTasksResponse
-	107, // [107:151] is the sub-list for method output_type
-	63,  // [63:107] is the sub-list for method input_type
-	63,  // [63:63] is the sub-list for extension type_name
-	63,  // [63:63] is the sub-list for extension extendee
-	0,   // [0:63] is the sub-list for field type_name
+	2,   // 9: druz9.v1.PipelineStage.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	3,   // 10: druz9.v1.PipelineStage.status:type_name -> druz9.v1.PipelineStageStatus
+	93,  // 11: druz9.v1.PipelineStage.started_at:type_name -> google.protobuf.Timestamp
+	93,  // 12: druz9.v1.PipelineStage.finished_at:type_name -> google.protobuf.Timestamp
+	20,  // 13: druz9.v1.PipelineAttempt.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	1,   // 14: druz9.v1.PipelineAttempt.ai_verdict:type_name -> druz9.v1.MockAttemptVerdict
+	93,  // 15: druz9.v1.PipelineAttempt.ai_judged_at:type_name -> google.protobuf.Timestamp
+	93,  // 16: druz9.v1.PipelineAttempt.created_at:type_name -> google.protobuf.Timestamp
+	19,  // 17: druz9.v1.StageWithAttempts.stage:type_name -> druz9.v1.PipelineStage
+	21,  // 18: druz9.v1.StageWithAttempts.attempts:type_name -> druz9.v1.PipelineAttempt
+	4,   // 19: druz9.v1.AlgoVerdict.status:type_name -> druz9.v1.AlgoVerdictStatus
+	26,  // 20: druz9.v1.AlgoVerdict.tests:type_name -> druz9.v1.AlgoTestResult
+	31,  // 21: druz9.v1.SysDesignVerdict.axes:type_name -> druz9.v1.SysDesignAxes
+	34,  // 22: druz9.v1.BehavioralVerdict.axes:type_name -> druz9.v1.BehavioralAxes
+	5,   // 23: druz9.v1.AdminListMockCompaniesResponse.items:type_name -> druz9.v1.PipelineCompany
+	39,  // 24: druz9.v1.AdminCreateMockCompanyRequest.company:type_name -> druz9.v1.MockCompanyInput
+	39,  // 25: druz9.v1.AdminUpdateMockCompanyRequest.company:type_name -> druz9.v1.MockCompanyInput
+	93,  // 26: druz9.v1.AIStrictnessProfile.created_at:type_name -> google.protobuf.Timestamp
+	93,  // 27: druz9.v1.AIStrictnessProfile.updated_at:type_name -> google.protobuf.Timestamp
+	43,  // 28: druz9.v1.AdminListStrictnessResponse.items:type_name -> druz9.v1.AIStrictnessProfile
+	46,  // 29: druz9.v1.AdminCreateStrictnessRequest.profile:type_name -> druz9.v1.MockStrictnessInput
+	46,  // 30: druz9.v1.AdminUpdateStrictnessRequest.profile:type_name -> druz9.v1.MockStrictnessInput
+	2,   // 31: druz9.v1.MockTask.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	20,  // 32: druz9.v1.MockTask.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	93,  // 33: druz9.v1.MockTask.created_at:type_name -> google.protobuf.Timestamp
+	93,  // 34: druz9.v1.MockTask.updated_at:type_name -> google.protobuf.Timestamp
+	20,  // 35: druz9.v1.MockTaskQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	93,  // 36: druz9.v1.MockTaskQuestion.created_at:type_name -> google.protobuf.Timestamp
+	2,   // 37: druz9.v1.AdminListMockTasksRequest.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	49,  // 38: druz9.v1.AdminListMockTasksResponse.items:type_name -> druz9.v1.MockTask
+	49,  // 39: druz9.v1.AdminGetMockTaskResponse.task:type_name -> druz9.v1.MockTask
+	50,  // 40: druz9.v1.AdminGetMockTaskResponse.questions:type_name -> druz9.v1.MockTaskQuestion
+	2,   // 41: druz9.v1.MockTaskInput.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	20,  // 42: druz9.v1.MockTaskInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	55,  // 43: druz9.v1.AdminCreateMockTaskRequest.task:type_name -> druz9.v1.MockTaskInput
+	55,  // 44: druz9.v1.AdminUpdateMockTaskRequest.task:type_name -> druz9.v1.MockTaskInput
+	20,  // 45: druz9.v1.MockTaskQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	59,  // 46: druz9.v1.AdminCreateMockTaskQuestionRequest.question:type_name -> druz9.v1.MockTaskQuestionInput
+	59,  // 47: druz9.v1.AdminUpdateMockTaskQuestionRequest.question:type_name -> druz9.v1.MockTaskQuestionInput
+	63,  // 48: druz9.v1.AdminListTestCasesResponse.items:type_name -> druz9.v1.MockTaskTestCase
+	64,  // 49: druz9.v1.AdminCreateTestCaseRequest.test_case:type_name -> druz9.v1.MockTaskTestCaseInput
+	64,  // 50: druz9.v1.AdminUpdateTestCaseRequest.test_case:type_name -> druz9.v1.MockTaskTestCaseInput
+	2,   // 51: druz9.v1.MockDefaultQuestion.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	20,  // 52: druz9.v1.MockDefaultQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	93,  // 53: druz9.v1.MockDefaultQuestion.created_at:type_name -> google.protobuf.Timestamp
+	2,   // 54: druz9.v1.MockDefaultQuestionInput.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	20,  // 55: druz9.v1.MockDefaultQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	2,   // 56: druz9.v1.AdminListDefaultQuestionsRequest.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	70,  // 57: druz9.v1.AdminListDefaultQuestionsResponse.items:type_name -> druz9.v1.MockDefaultQuestion
+	71,  // 58: druz9.v1.AdminCreateDefaultQuestionRequest.question:type_name -> druz9.v1.MockDefaultQuestionInput
+	71,  // 59: druz9.v1.AdminUpdateDefaultQuestionRequest.question:type_name -> druz9.v1.MockDefaultQuestionInput
+	2,   // 60: druz9.v1.MockCompanyQuestion.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	20,  // 61: druz9.v1.MockCompanyQuestion.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	93,  // 62: druz9.v1.MockCompanyQuestion.created_at:type_name -> google.protobuf.Timestamp
+	2,   // 63: druz9.v1.MockCompanyQuestionInput.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	20,  // 64: druz9.v1.MockCompanyQuestionInput.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	2,   // 65: druz9.v1.AdminListCompanyQuestionsRequest.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	77,  // 66: druz9.v1.AdminListCompanyQuestionsResponse.items:type_name -> druz9.v1.MockCompanyQuestion
+	78,  // 67: druz9.v1.AdminCreateCompanyQuestionRequest.question:type_name -> druz9.v1.MockCompanyQuestionInput
+	78,  // 68: druz9.v1.AdminUpdateCompanyQuestionRequest.question:type_name -> druz9.v1.MockCompanyQuestionInput
+	2,   // 69: druz9.v1.MockCompanyStage.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	84,  // 70: druz9.v1.AdminGetCompanyStagesResponse.items:type_name -> druz9.v1.MockCompanyStage
+	84,  // 71: druz9.v1.AdminReplaceCompanyStagesRequest.items:type_name -> druz9.v1.MockCompanyStage
+	2,   // 72: druz9.v1.MockBulkTaskImportItem.stage_kind:type_name -> druz9.v1.PipelineStageKind
+	20,  // 73: druz9.v1.MockBulkTaskImportItem.reference_criteria:type_name -> druz9.v1.ReferenceCriteria
+	88,  // 74: druz9.v1.MockBulkTaskImportItem.test_cases:type_name -> druz9.v1.MockBulkTestCase
+	89,  // 75: druz9.v1.AdminBulkImportTasksRequest.tasks:type_name -> druz9.v1.MockBulkTaskImportItem
+	90,  // 76: druz9.v1.AdminBulkImportTasksResponse.results:type_name -> druz9.v1.MockBulkImportResult
+	8,   // 77: druz9.v1.MockPipelineService.ListCompanies:input_type -> druz9.v1.ListMockCompaniesRequest
+	10,  // 78: druz9.v1.MockPipelineService.GetPipeline:input_type -> druz9.v1.GetMockPipelineRequest
+	11,  // 79: druz9.v1.MockPipelineService.ListPipelines:input_type -> druz9.v1.ListMockPipelinesRequest
+	13,  // 80: druz9.v1.MockPipelineService.GetLeaderboard:input_type -> druz9.v1.GetMockLeaderboardRequest
+	15,  // 81: druz9.v1.MockPipelineService.CreatePipeline:input_type -> druz9.v1.CreateMockPipelineRequest
+	16,  // 82: druz9.v1.MockPipelineService.CancelPipeline:input_type -> druz9.v1.CancelMockPipelineRequest
+	17,  // 83: druz9.v1.MockPipelineService.AttemptFinalised:input_type -> druz9.v1.AttemptFinalisedRequest
+	23,  // 84: druz9.v1.MockPipelineService.StartNextStage:input_type -> druz9.v1.StartNextStageRequest
+	24,  // 85: druz9.v1.MockPipelineService.SubmitAnswer:input_type -> druz9.v1.SubmitAnswerRequest
+	25,  // 86: druz9.v1.MockPipelineService.FinishStage:input_type -> druz9.v1.FinishStageRequest
+	28,  // 87: druz9.v1.MockPipelineService.RunAlgoAttempt:input_type -> druz9.v1.RunAlgoAttemptRequest
+	30,  // 88: druz9.v1.MockPipelineService.RunCodingAttempt:input_type -> druz9.v1.RunCodingAttemptRequest
+	33,  // 89: druz9.v1.MockPipelineService.RunSysDesignAttempt:input_type -> druz9.v1.RunSysDesignAttemptRequest
+	36,  // 90: druz9.v1.MockPipelineService.RunBehavioralAttempt:input_type -> druz9.v1.RunBehavioralAttemptRequest
+	37,  // 91: druz9.v1.MockPipelineService.AdminListCompanies:input_type -> druz9.v1.AdminListMockCompaniesRequest
+	40,  // 92: druz9.v1.MockPipelineService.AdminCreateCompany:input_type -> druz9.v1.AdminCreateMockCompanyRequest
+	41,  // 93: druz9.v1.MockPipelineService.AdminUpdateCompany:input_type -> druz9.v1.AdminUpdateMockCompanyRequest
+	42,  // 94: druz9.v1.MockPipelineService.AdminToggleCompanyActive:input_type -> druz9.v1.AdminToggleMockCompanyActiveRequest
+	44,  // 95: druz9.v1.MockPipelineService.AdminListStrictness:input_type -> druz9.v1.AdminListStrictnessRequest
+	47,  // 96: druz9.v1.MockPipelineService.AdminCreateStrictness:input_type -> druz9.v1.AdminCreateStrictnessRequest
+	48,  // 97: druz9.v1.MockPipelineService.AdminUpdateStrictness:input_type -> druz9.v1.AdminUpdateStrictnessRequest
+	51,  // 98: druz9.v1.MockPipelineService.AdminListTasks:input_type -> druz9.v1.AdminListMockTasksRequest
+	53,  // 99: druz9.v1.MockPipelineService.AdminGetTask:input_type -> druz9.v1.AdminGetMockTaskRequest
+	56,  // 100: druz9.v1.MockPipelineService.AdminCreateTask:input_type -> druz9.v1.AdminCreateMockTaskRequest
+	57,  // 101: druz9.v1.MockPipelineService.AdminUpdateTask:input_type -> druz9.v1.AdminUpdateMockTaskRequest
+	58,  // 102: druz9.v1.MockPipelineService.AdminToggleTaskActive:input_type -> druz9.v1.AdminToggleMockTaskActiveRequest
+	60,  // 103: druz9.v1.MockPipelineService.AdminCreateTaskQuestion:input_type -> druz9.v1.AdminCreateMockTaskQuestionRequest
+	61,  // 104: druz9.v1.MockPipelineService.AdminUpdateTaskQuestion:input_type -> druz9.v1.AdminUpdateMockTaskQuestionRequest
+	62,  // 105: druz9.v1.MockPipelineService.AdminDeleteTaskQuestion:input_type -> druz9.v1.AdminDeleteMockTaskQuestionRequest
+	65,  // 106: druz9.v1.MockPipelineService.AdminListTestCases:input_type -> druz9.v1.AdminListTestCasesRequest
+	67,  // 107: druz9.v1.MockPipelineService.AdminCreateTestCase:input_type -> druz9.v1.AdminCreateTestCaseRequest
+	68,  // 108: druz9.v1.MockPipelineService.AdminUpdateTestCase:input_type -> druz9.v1.AdminUpdateTestCaseRequest
+	69,  // 109: druz9.v1.MockPipelineService.AdminDeleteTestCase:input_type -> druz9.v1.AdminDeleteTestCaseRequest
+	72,  // 110: druz9.v1.MockPipelineService.AdminListDefaultQuestions:input_type -> druz9.v1.AdminListDefaultQuestionsRequest
+	74,  // 111: druz9.v1.MockPipelineService.AdminCreateDefaultQuestion:input_type -> druz9.v1.AdminCreateDefaultQuestionRequest
+	75,  // 112: druz9.v1.MockPipelineService.AdminUpdateDefaultQuestion:input_type -> druz9.v1.AdminUpdateDefaultQuestionRequest
+	76,  // 113: druz9.v1.MockPipelineService.AdminDeleteDefaultQuestion:input_type -> druz9.v1.AdminDeleteDefaultQuestionRequest
+	79,  // 114: druz9.v1.MockPipelineService.AdminListCompanyQuestions:input_type -> druz9.v1.AdminListCompanyQuestionsRequest
+	81,  // 115: druz9.v1.MockPipelineService.AdminCreateCompanyQuestion:input_type -> druz9.v1.AdminCreateCompanyQuestionRequest
+	82,  // 116: druz9.v1.MockPipelineService.AdminUpdateCompanyQuestion:input_type -> druz9.v1.AdminUpdateCompanyQuestionRequest
+	83,  // 117: druz9.v1.MockPipelineService.AdminDeleteCompanyQuestion:input_type -> druz9.v1.AdminDeleteCompanyQuestionRequest
+	85,  // 118: druz9.v1.MockPipelineService.AdminGetCompanyStages:input_type -> druz9.v1.AdminGetCompanyStagesRequest
+	87,  // 119: druz9.v1.MockPipelineService.AdminReplaceCompanyStages:input_type -> druz9.v1.AdminReplaceCompanyStagesRequest
+	91,  // 120: druz9.v1.MockPipelineService.AdminBulkImportTasks:input_type -> druz9.v1.AdminBulkImportTasksRequest
+	9,   // 121: druz9.v1.MockPipelineService.ListCompanies:output_type -> druz9.v1.ListMockCompaniesResponse
+	6,   // 122: druz9.v1.MockPipelineService.GetPipeline:output_type -> druz9.v1.MockPipeline
+	12,  // 123: druz9.v1.MockPipelineService.ListPipelines:output_type -> druz9.v1.ListMockPipelinesResponse
+	14,  // 124: druz9.v1.MockPipelineService.GetLeaderboard:output_type -> druz9.v1.GetMockLeaderboardResponse
+	6,   // 125: druz9.v1.MockPipelineService.CreatePipeline:output_type -> druz9.v1.MockPipeline
+	94,  // 126: druz9.v1.MockPipelineService.CancelPipeline:output_type -> google.protobuf.Empty
+	18,  // 127: druz9.v1.MockPipelineService.AttemptFinalised:output_type -> druz9.v1.AttemptFinalisedResponse
+	22,  // 128: druz9.v1.MockPipelineService.StartNextStage:output_type -> druz9.v1.StageWithAttempts
+	21,  // 129: druz9.v1.MockPipelineService.SubmitAnswer:output_type -> druz9.v1.PipelineAttempt
+	19,  // 130: druz9.v1.MockPipelineService.FinishStage:output_type -> druz9.v1.PipelineStage
+	27,  // 131: druz9.v1.MockPipelineService.RunAlgoAttempt:output_type -> druz9.v1.AlgoVerdict
+	29,  // 132: druz9.v1.MockPipelineService.RunCodingAttempt:output_type -> druz9.v1.CodingVerdict
+	32,  // 133: druz9.v1.MockPipelineService.RunSysDesignAttempt:output_type -> druz9.v1.SysDesignVerdict
+	35,  // 134: druz9.v1.MockPipelineService.RunBehavioralAttempt:output_type -> druz9.v1.BehavioralVerdict
+	38,  // 135: druz9.v1.MockPipelineService.AdminListCompanies:output_type -> druz9.v1.AdminListMockCompaniesResponse
+	5,   // 136: druz9.v1.MockPipelineService.AdminCreateCompany:output_type -> druz9.v1.PipelineCompany
+	5,   // 137: druz9.v1.MockPipelineService.AdminUpdateCompany:output_type -> druz9.v1.PipelineCompany
+	94,  // 138: druz9.v1.MockPipelineService.AdminToggleCompanyActive:output_type -> google.protobuf.Empty
+	45,  // 139: druz9.v1.MockPipelineService.AdminListStrictness:output_type -> druz9.v1.AdminListStrictnessResponse
+	43,  // 140: druz9.v1.MockPipelineService.AdminCreateStrictness:output_type -> druz9.v1.AIStrictnessProfile
+	43,  // 141: druz9.v1.MockPipelineService.AdminUpdateStrictness:output_type -> druz9.v1.AIStrictnessProfile
+	52,  // 142: druz9.v1.MockPipelineService.AdminListTasks:output_type -> druz9.v1.AdminListMockTasksResponse
+	54,  // 143: druz9.v1.MockPipelineService.AdminGetTask:output_type -> druz9.v1.AdminGetMockTaskResponse
+	49,  // 144: druz9.v1.MockPipelineService.AdminCreateTask:output_type -> druz9.v1.MockTask
+	49,  // 145: druz9.v1.MockPipelineService.AdminUpdateTask:output_type -> druz9.v1.MockTask
+	94,  // 146: druz9.v1.MockPipelineService.AdminToggleTaskActive:output_type -> google.protobuf.Empty
+	50,  // 147: druz9.v1.MockPipelineService.AdminCreateTaskQuestion:output_type -> druz9.v1.MockTaskQuestion
+	50,  // 148: druz9.v1.MockPipelineService.AdminUpdateTaskQuestion:output_type -> druz9.v1.MockTaskQuestion
+	94,  // 149: druz9.v1.MockPipelineService.AdminDeleteTaskQuestion:output_type -> google.protobuf.Empty
+	66,  // 150: druz9.v1.MockPipelineService.AdminListTestCases:output_type -> druz9.v1.AdminListTestCasesResponse
+	63,  // 151: druz9.v1.MockPipelineService.AdminCreateTestCase:output_type -> druz9.v1.MockTaskTestCase
+	63,  // 152: druz9.v1.MockPipelineService.AdminUpdateTestCase:output_type -> druz9.v1.MockTaskTestCase
+	94,  // 153: druz9.v1.MockPipelineService.AdminDeleteTestCase:output_type -> google.protobuf.Empty
+	73,  // 154: druz9.v1.MockPipelineService.AdminListDefaultQuestions:output_type -> druz9.v1.AdminListDefaultQuestionsResponse
+	70,  // 155: druz9.v1.MockPipelineService.AdminCreateDefaultQuestion:output_type -> druz9.v1.MockDefaultQuestion
+	70,  // 156: druz9.v1.MockPipelineService.AdminUpdateDefaultQuestion:output_type -> druz9.v1.MockDefaultQuestion
+	94,  // 157: druz9.v1.MockPipelineService.AdminDeleteDefaultQuestion:output_type -> google.protobuf.Empty
+	80,  // 158: druz9.v1.MockPipelineService.AdminListCompanyQuestions:output_type -> druz9.v1.AdminListCompanyQuestionsResponse
+	77,  // 159: druz9.v1.MockPipelineService.AdminCreateCompanyQuestion:output_type -> druz9.v1.MockCompanyQuestion
+	77,  // 160: druz9.v1.MockPipelineService.AdminUpdateCompanyQuestion:output_type -> druz9.v1.MockCompanyQuestion
+	94,  // 161: druz9.v1.MockPipelineService.AdminDeleteCompanyQuestion:output_type -> google.protobuf.Empty
+	86,  // 162: druz9.v1.MockPipelineService.AdminGetCompanyStages:output_type -> druz9.v1.AdminGetCompanyStagesResponse
+	94,  // 163: druz9.v1.MockPipelineService.AdminReplaceCompanyStages:output_type -> google.protobuf.Empty
+	92,  // 164: druz9.v1.MockPipelineService.AdminBulkImportTasks:output_type -> druz9.v1.AdminBulkImportTasksResponse
+	121, // [121:165] is the sub-list for method output_type
+	77,  // [77:121] is the sub-list for method input_type
+	77,  // [77:77] is the sub-list for extension type_name
+	77,  // [77:77] is the sub-list for extension extendee
+	0,   // [0:77] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_mock_proto_init() }
@@ -6812,7 +7038,7 @@ func file_druz9_v1_mock_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_mock_proto_rawDesc), len(file_druz9_v1_mock_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      5,
 			NumMessages:   88,
 			NumExtensions: 0,
 			NumServices:   1,

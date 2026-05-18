@@ -90,6 +90,157 @@ proto3.util.setEnumType(MockAttemptVerdict, "druz9.v1.MockAttemptVerdict", [
 ]);
 
 /**
+ * PipelineStageKind mirrors domain.StageKind + the Postgres `mock_stage_kind`
+ * enum. Routes attempt grading + question pool selection.
+ *
+ * @generated from enum druz9.v1.PipelineStageKind
+ */
+export enum PipelineStageKind {
+  /**
+   * @generated from enum value: PIPELINE_STAGE_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_KIND_HR = 1;
+   */
+  HR = 1,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_KIND_ALGO = 2;
+   */
+  ALGO = 2,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_KIND_CODING = 3;
+   */
+  CODING = 3,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_KIND_SYSDESIGN = 4;
+   */
+  SYSDESIGN = 4,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_KIND_BEHAVIORAL = 5;
+   */
+  BEHAVIORAL = 5,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_KIND_ML_CODING = 6;
+   */
+  ML_CODING = 6,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_KIND_ML_SYSTEM_DESIGN = 7;
+   */
+  ML_SYSTEM_DESIGN = 7,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_KIND_ML_THEORY = 8;
+   */
+  ML_THEORY = 8,
+}
+// Retrieve enum metadata with: proto3.getEnumType(PipelineStageKind)
+proto3.util.setEnumType(PipelineStageKind, "druz9.v1.PipelineStageKind", [
+  { no: 0, name: "PIPELINE_STAGE_KIND_UNSPECIFIED" },
+  { no: 1, name: "PIPELINE_STAGE_KIND_HR" },
+  { no: 2, name: "PIPELINE_STAGE_KIND_ALGO" },
+  { no: 3, name: "PIPELINE_STAGE_KIND_CODING" },
+  { no: 4, name: "PIPELINE_STAGE_KIND_SYSDESIGN" },
+  { no: 5, name: "PIPELINE_STAGE_KIND_BEHAVIORAL" },
+  { no: 6, name: "PIPELINE_STAGE_KIND_ML_CODING" },
+  { no: 7, name: "PIPELINE_STAGE_KIND_ML_SYSTEM_DESIGN" },
+  { no: 8, name: "PIPELINE_STAGE_KIND_ML_THEORY" },
+]);
+
+/**
+ * PipelineStageStatus mirrors domain.StageStatus + Postgres
+ * `pipeline_stage_status` enum. Distinct from MockStatus (which describes the
+ * top-level pipeline lifecycle): SKIPPED applies to stages dropped by section
+ * filter, while pipelines themselves go CREATED → IN_PROGRESS → FINISHED |
+ * ABANDONED.
+ *
+ * @generated from enum druz9.v1.PipelineStageStatus
+ */
+export enum PipelineStageStatus {
+  /**
+   * @generated from enum value: PIPELINE_STAGE_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_STATUS_PENDING = 1;
+   */
+  PENDING = 1,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_STATUS_IN_PROGRESS = 2;
+   */
+  IN_PROGRESS = 2,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_STATUS_FINISHED = 3;
+   */
+  FINISHED = 3,
+
+  /**
+   * @generated from enum value: PIPELINE_STAGE_STATUS_SKIPPED = 4;
+   */
+  SKIPPED = 4,
+}
+// Retrieve enum metadata with: proto3.getEnumType(PipelineStageStatus)
+proto3.util.setEnumType(PipelineStageStatus, "druz9.v1.PipelineStageStatus", [
+  { no: 0, name: "PIPELINE_STAGE_STATUS_UNSPECIFIED" },
+  { no: 1, name: "PIPELINE_STAGE_STATUS_PENDING" },
+  { no: 2, name: "PIPELINE_STAGE_STATUS_IN_PROGRESS" },
+  { no: 3, name: "PIPELINE_STAGE_STATUS_FINISHED" },
+  { no: 4, name: "PIPELINE_STAGE_STATUS_SKIPPED" },
+]);
+
+/**
+ * AlgoVerdictStatus — outcome of the «Run tests» sandbox call. UNAVAILABLE is
+ * emitted when Judge0 is offline or the language is unsupported; the rest
+ * mirror the typical compile/run lifecycle.
+ *
+ * @generated from enum druz9.v1.AlgoVerdictStatus
+ */
+export enum AlgoVerdictStatus {
+  /**
+   * @generated from enum value: ALGO_VERDICT_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ALGO_VERDICT_STATUS_OK = 1;
+   */
+  OK = 1,
+
+  /**
+   * @generated from enum value: ALGO_VERDICT_STATUS_COMPILE_ERROR = 2;
+   */
+  COMPILE_ERROR = 2,
+
+  /**
+   * @generated from enum value: ALGO_VERDICT_STATUS_RUNTIME_ERROR = 3;
+   */
+  RUNTIME_ERROR = 3,
+
+  /**
+   * @generated from enum value: ALGO_VERDICT_STATUS_UNAVAILABLE = 4;
+   */
+  UNAVAILABLE = 4,
+}
+// Retrieve enum metadata with: proto3.getEnumType(AlgoVerdictStatus)
+proto3.util.setEnumType(AlgoVerdictStatus, "druz9.v1.AlgoVerdictStatus", [
+  { no: 0, name: "ALGO_VERDICT_STATUS_UNSPECIFIED" },
+  { no: 1, name: "ALGO_VERDICT_STATUS_OK" },
+  { no: 2, name: "ALGO_VERDICT_STATUS_COMPILE_ERROR" },
+  { no: 3, name: "ALGO_VERDICT_STATUS_RUNTIME_ERROR" },
+  { no: 4, name: "ALGO_VERDICT_STATUS_UNAVAILABLE" },
+]);
+
+/**
  * PipelineCompany — компания шаблонов pipeline'а (Google/Yandex/etc.).
  * Используется и публичным каталогом, и admin CRUD'ом.
  *
@@ -828,11 +979,9 @@ export class PipelineStage extends Message<PipelineStage> {
   id = "";
 
   /**
-   * free-form: hr/coding/sysdesign/...
-   *
-   * @generated from field: string stage_kind = 2;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 2;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: int32 ordinal = 3;
@@ -840,11 +989,9 @@ export class PipelineStage extends Message<PipelineStage> {
   ordinal = 0;
 
   /**
-   * pending|in_progress|finished|abandoned
-   *
-   * @generated from field: string status = 4;
+   * @generated from field: druz9.v1.PipelineStageStatus status = 4;
    */
-  status = "";
+  status = PipelineStageStatus.UNSPECIFIED;
 
   /**
    * has_score=true когда score задан (proto3 nullable workaround).
@@ -896,9 +1043,9 @@ export class PipelineStage extends Message<PipelineStage> {
   static readonly typeName = "druz9.v1.PipelineStage";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 3, name: "ordinal", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 4, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "status", kind: "enum", T: proto3.getEnumType(PipelineStageStatus) },
     { no: 5, name: "has_score", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 6, name: "score", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
     { no: 7, name: "verdict", kind: "scalar", T: 9 /* ScalarType.STRING */ },
@@ -1430,11 +1577,9 @@ export class AlgoVerdict extends Message<AlgoVerdict> {
   sandboxUnavailable = false;
 
   /**
-   * free-form short status: "ok" | "compile_error" | "runtime_error" | "unavailable"
-   *
-   * @generated from field: string status = 6;
+   * @generated from field: druz9.v1.AlgoVerdictStatus status = 6;
    */
-  status = "";
+  status = AlgoVerdictStatus.UNSPECIFIED;
 
   /**
    * @generated from field: repeated druz9.v1.AlgoTestResult tests = 7;
@@ -1454,7 +1599,7 @@ export class AlgoVerdict extends Message<AlgoVerdict> {
     { no: 3, name: "runtime_ms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "memory_kb", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "sandbox_unavailable", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 6, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "status", kind: "enum", T: proto3.getEnumType(AlgoVerdictStatus) },
     { no: 7, name: "tests", kind: "message", T: AlgoTestResult, repeated: true },
   ]);
 
@@ -2638,9 +2783,9 @@ export class MockTask extends Message<MockTask> {
   id = "";
 
   /**
-   * @generated from field: string stage_kind = 2;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 2;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: string language = 3;
@@ -2723,7 +2868,7 @@ export class MockTask extends Message<MockTask> {
   static readonly typeName = "druz9.v1.MockTask";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 3, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "difficulty", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
@@ -2839,9 +2984,9 @@ export class AdminListMockTasksRequest extends Message<AdminListMockTasksRequest
   /**
    * empty = all
    *
-   * @generated from field: string stage_kind = 1;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 1;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * empty = all
@@ -2863,7 +3008,7 @@ export class AdminListMockTasksRequest extends Message<AdminListMockTasksRequest
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.AdminListMockTasksRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 2, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "only_active", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
@@ -3011,9 +3156,9 @@ export class AdminGetMockTaskResponse extends Message<AdminGetMockTaskResponse> 
  */
 export class MockTaskInput extends Message<MockTaskInput> {
   /**
-   * @generated from field: string stage_kind = 1;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 1;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: string language = 2;
@@ -3085,7 +3230,7 @@ export class MockTaskInput extends Message<MockTaskInput> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.MockTaskInput";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 2, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "difficulty", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
@@ -3751,9 +3896,9 @@ export class MockDefaultQuestion extends Message<MockDefaultQuestion> {
   id = "";
 
   /**
-   * @generated from field: string stage_kind = 2;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 2;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: string body = 3;
@@ -3794,7 +3939,7 @@ export class MockDefaultQuestion extends Message<MockDefaultQuestion> {
   static readonly typeName = "druz9.v1.MockDefaultQuestion";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 3, name: "body", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "expected_answer_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "reference_criteria", kind: "message", T: ReferenceCriteria },
@@ -3825,9 +3970,9 @@ export class MockDefaultQuestion extends Message<MockDefaultQuestion> {
  */
 export class MockDefaultQuestionInput extends Message<MockDefaultQuestionInput> {
   /**
-   * @generated from field: string stage_kind = 1;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 1;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: string body = 2;
@@ -3862,7 +4007,7 @@ export class MockDefaultQuestionInput extends Message<MockDefaultQuestionInput> 
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.MockDefaultQuestionInput";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 2, name: "body", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "expected_answer_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "reference_criteria", kind: "message", T: ReferenceCriteria },
@@ -3894,9 +4039,9 @@ export class AdminListDefaultQuestionsRequest extends Message<AdminListDefaultQu
   /**
    * empty = all
    *
-   * @generated from field: string stage_kind = 1;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 1;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: bool only_active = 2;
@@ -3911,7 +4056,7 @@ export class AdminListDefaultQuestionsRequest extends Message<AdminListDefaultQu
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.AdminListDefaultQuestionsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 2, name: "only_active", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
@@ -4103,9 +4248,9 @@ export class MockCompanyQuestion extends Message<MockCompanyQuestion> {
   companyId = "";
 
   /**
-   * @generated from field: string stage_kind = 3;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 3;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: string body = 4;
@@ -4147,7 +4292,7 @@ export class MockCompanyQuestion extends Message<MockCompanyQuestion> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "company_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 4, name: "body", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "expected_answer_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "reference_criteria", kind: "message", T: ReferenceCriteria },
@@ -4178,9 +4323,9 @@ export class MockCompanyQuestion extends Message<MockCompanyQuestion> {
  */
 export class MockCompanyQuestionInput extends Message<MockCompanyQuestionInput> {
   /**
-   * @generated from field: string stage_kind = 1;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 1;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: string body = 2;
@@ -4215,7 +4360,7 @@ export class MockCompanyQuestionInput extends Message<MockCompanyQuestionInput> 
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.MockCompanyQuestionInput";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 2, name: "body", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "expected_answer_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "reference_criteria", kind: "message", T: ReferenceCriteria },
@@ -4252,9 +4397,9 @@ export class AdminListCompanyQuestionsRequest extends Message<AdminListCompanyQu
   /**
    * empty = all
    *
-   * @generated from field: string stage_kind = 2;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 2;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   constructor(data?: PartialMessage<AdminListCompanyQuestionsRequest>) {
     super();
@@ -4265,7 +4410,7 @@ export class AdminListCompanyQuestionsRequest extends Message<AdminListCompanyQu
   static readonly typeName = "druz9.v1.AdminListCompanyQuestionsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "company_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminListCompanyQuestionsRequest {
@@ -4452,9 +4597,9 @@ export class AdminDeleteCompanyQuestionRequest extends Message<AdminDeleteCompan
  */
 export class MockCompanyStage extends Message<MockCompanyStage> {
   /**
-   * @generated from field: string stage_kind = 1;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 1;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: int32 ordinal = 2;
@@ -4515,7 +4660,7 @@ export class MockCompanyStage extends Message<MockCompanyStage> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.MockCompanyStage";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 2, name: "ordinal", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 3, name: "optional", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 4, name: "language_pool", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
@@ -4721,9 +4866,9 @@ export class MockBulkTestCase extends Message<MockBulkTestCase> {
  */
 export class MockBulkTaskImportItem extends Message<MockBulkTaskImportItem> {
   /**
-   * @generated from field: string stage_kind = 1;
+   * @generated from field: druz9.v1.PipelineStageKind stage_kind = 1;
    */
-  stageKind = "";
+  stageKind = PipelineStageKind.UNSPECIFIED;
 
   /**
    * @generated from field: string language = 2;
@@ -4793,7 +4938,7 @@ export class MockBulkTaskImportItem extends Message<MockBulkTaskImportItem> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.MockBulkTaskImportItem";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "stage_kind", kind: "enum", T: proto3.getEnumType(PipelineStageKind) },
     { no: 2, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "difficulty", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
