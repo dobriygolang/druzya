@@ -1,9 +1,9 @@
 // tasks.go — Notion-style TaskBoard use cases.
 //
 // Hone is the *coach panel*, not the validator. The real work happens in
-// the main project (arena, mock_interview, codex, daily) — these use
-// cases own only the kanban surface: create cards, move them between
-// columns, attach comments, enforce the cap=7 in_todo guard.
+// the main project (mock_interview, codex, atlas) — these use cases own
+// only the kanban surface: create cards, move them between columns,
+// attach comments, enforce the cap=7 in_todo guard.
 //
 // Status transitions and AI-driven moves are handled by coach_listener.go
 // which subscribes to the bus.
@@ -37,10 +37,10 @@ type AsyncSubmitter interface {
 // CreateTask — manual user task. Always source='user'; AI tasks are
 // produced via the coach generator (see coach_generator.go).
 //
-// Phase 10 — optional Categoriser hook. Когда LLM available, UC после
-// Create зовёт CategoriseTask UC чтобы AI инфер'ил column placement
-// (todo/doing/done) + tags по deadline/kind. Fail-soft: ошибка LLM не
-// блокирует Create — task остаётся в default todo column.
+// Optional Categoriser hook: когда LLM available, UC после Create зовёт
+// CategoriseTask UC чтобы AI инфер'ил column placement (todo/doing/done) +
+// tags по deadline/kind. Fail-soft: ошибка LLM не блокирует Create — task
+// остаётся в default todo column.
 type CreateTask struct {
 	Tasks           domain.TaskRepo
 	Log             *slog.Logger

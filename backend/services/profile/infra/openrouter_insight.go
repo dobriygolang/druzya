@@ -31,20 +31,32 @@ import (
 // InsightOpenRouterEndpoint is the OpenAI-compatible chat endpoint.
 const InsightOpenRouterEndpoint = "https://openrouter.ai/api/v1/chat/completions"
 
-// DefaultInsightModel is the zero-cost fallback. Switched off
-// `anthropic/claude-sonnet-4` when we ran out of OpenRouter credits
-// (every weekly-report generation was returning 402). gpt-oss-120b:free
-// is the strongest OpenRouter :free pick for multi-paragraph Russian
-// prose (qwen3-coder is coder-tuned, minimax runs shorter, liquid is
-// a 1.2B reasoning model). Premium users still get claude-sonnet-4 via
-// users.ai_insight_model — that override takes precedence over this
-// default at InsightClient.Generate time.
+// DefaultInsightModel is the zero-cost fallback. gpt-oss-120b:free is
+// the strongest OpenRouter :free pick for multi-paragraph Russian prose
+// (qwen3-coder is coder-tuned, minimax runs shorter, liquid is a 1.2B
+// reasoning model). Premium users override via users.ai_insight_model,
+// which takes precedence at InsightClient.Generate time.
 const DefaultInsightModel = "openai/gpt-oss-120b:free"
 
 // DefaultInsightCacheTTL — 24 h. The week's stats don't change once the week
 // is over, so the LLM output is effectively stable; we still cap at 24 h to
 // give late-arriving matches (timezone edge cases) a chance to refresh.
 const DefaultInsightCacheTTL = 24 * time.Hour
+
+// insightHTTPTimeout — async/analytical workload (weekly reports, profile
+// summaries) without a real-time UX bound. Modern reasoning-tier models on
+// 1-2K-token summaries can break 30s; 180s buys a comfortable margin
+// without enabling a hung process.
+const insightHTTPTimeout = 180 * time.Second
+
+// insightTemperature / insightMaxTokens — fixed shape of the chat-completion
+// call. Both paths (direct HTTP and chained llmchain) use them so cache
+// entries stay interchangeable across rollouts.
+const (
+	insightTemperature  = 0.3
+	insightMaxTokens    = 400
+	insightErrBodyLimit = 256
+)
 
 // InsightPayload is the structured snapshot we feed the LLM. Build it in the
 // app layer from the already-aggregated ReportView fields.
@@ -109,11 +121,7 @@ func NewInsightClient(httpClient *http.Client, apiKey, model string, log *slog.L
 		panic("profile.infra.NewInsightClient: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	if httpClient == nil {
-		// 180s: insight is async/analytical (weekly reports, profile
-		// summaries) — no real-time UX bound. Modern reasoning-tier
-		// models on 1-2K-token summaries can break 30s; 180s buys a
-		// comfortable margin without enabling a hung process.
-		httpClient = &http.Client{Timeout: 180 * time.Second}
+		httpClient = &http.Client{Timeout: insightHTTPTimeout}
 	}
 	if model == "" {
 		model = DefaultInsightModel
@@ -198,9 +206,7 @@ type insResp struct {
 // honest, calibrated feedback — not a generic "you're doing great" coach.
 //
 // Domain glossary the prompt may use freely:
-//   - ELO         — рейтинг пользователя (по итогам PvP-матчей в /arena)
 //   - streak      — серия дней подряд с активностью
-//   - war         — командный матч в когорты
 //   - мок-собес   — практическое интервью с напарником / AI-ботом
 //   - ката        — короткая задача-упражнение из /atlas
 //   - atlas       — каталог задач druz9 с тегами и треками подготовки
@@ -277,61 +283,78 @@ func (c *InsightClient) Generate(ctx context.Context, uid uuid.UUID, payload Ins
 	if payload.WeekISO == "" {
 		return "", fmt.Errorf("profile.insight.Generate: empty WeekISO in payload")
 	}
-	// Per-call model override; falls back to the client's configured default
-	// when the user hasn't picked one. Cache key includes the model so a
-	// model switch mid-week regenerates instead of returning a stale insight
-	// from the previous model (different style/quality).
+	// Per-call model override; falls back to the client's configured
+	// default when the user hasn't picked one. Cache key includes the
+	// model so a mid-week switch regenerates instead of returning stale
+	// output from the previous model (different style/quality).
 	effectiveModel := payload.Model
 	if effectiveModel == "" {
 		effectiveModel = c.model
 	}
 	key := insightCacheKey(uid, payload.WeekISO) + ":" + effectiveModel
-	if c.kv != nil {
-		if raw, err := c.kv.Get(ctx, key); err == nil {
-			return raw, nil
-		} else if !errors.Is(err, ErrCacheMiss) {
-			// Anti-fallback: real Redis failure propagates.
-			return "", fmt.Errorf("profile.insight.Generate: cache Get: %w", err)
-		}
+	if hit, ok, err := c.cacheRead(ctx, key); err != nil {
+		return "", err
+	} else if ok {
+		return hit, nil
 	}
-
-	// Chain path — preferred when Deps.LLMChain was registered. Shares
-	// the same cache key as the direct path so a deploy that flips
-	// WithChain on (or off) doesn't invalidate warm entries.
 	if c.chain != nil {
-		lreq := llmchain.Request{
-			Messages: []llmchain.Message{
-				{Role: llmchain.RoleSystem, Content: insightSystemPrompt},
-				{Role: llmchain.RoleUser, Content: renderUserPrompt(payload)},
-			},
-			Temperature: 0.3,
-			MaxTokens:   400,
-		}
-		// Turbo / empty = Task-driven routing; concrete id = pin via
-		// ModelOverride so the user's choice isn't silently swapped.
-		if effectiveModel == "" || effectiveModel == "druz9/turbo" || effectiveModel == DefaultInsightModel {
-			lreq.Task = llmchain.TaskInsightProse
-		} else {
-			lreq.ModelOverride = effectiveModel
-		}
-		resp, cerr := c.chain.Chat(ctx, lreq)
-		if cerr != nil {
-			return "", fmt.Errorf("profile.insight.chain: %w", cerr)
-		}
-		out := strings.TrimSpace(resp.Content)
-		if c.kv != nil && out != "" {
-			if serr := c.kv.Set(ctx, key, []byte(out), c.cacheTTL); serr != nil {
-				metrics.CacheSetErrorsTotal.WithLabelValues("profile_insight").Inc()
-				c.log.Warn("profile.insight: cache Set failed", slog.Any("err", serr))
-			}
-		}
-		return out, nil
+		return c.generateViaChain(ctx, key, effectiveModel, payload)
 	}
+	return c.generateViaHTTP(ctx, key, effectiveModel, payload)
+}
 
+// cacheRead returns (value, true, nil) on hit, ("", false, nil) on miss,
+// and ("", false, err) on a real Redis error.
+func (c *InsightClient) cacheRead(ctx context.Context, key string) (string, bool, error) {
+	if c.kv == nil {
+		return "", false, nil
+	}
+	raw, err := c.kv.Get(ctx, key)
+	if err == nil {
+		return raw, true, nil
+	}
+	if errors.Is(err, ErrCacheMiss) {
+		return "", false, nil
+	}
+	// Anti-fallback: real Redis failure propagates.
+	return "", false, fmt.Errorf("profile.insight.Generate: cache Get: %w", err)
+}
+
+// generateViaChain takes the llmchain path; preferred when Deps.LLMChain
+// was registered. Shares the cache key with the direct path so flipping
+// WithChain on/off doesn't invalidate warm entries.
+func (c *InsightClient) generateViaChain(ctx context.Context, key, effectiveModel string, payload InsightPayload) (string, error) {
+	lreq := llmchain.Request{
+		Messages: []llmchain.Message{
+			{Role: llmchain.RoleSystem, Content: insightSystemPrompt},
+			{Role: llmchain.RoleUser, Content: renderUserPrompt(payload)},
+		},
+		Temperature: insightTemperature,
+		MaxTokens:   insightMaxTokens,
+	}
+	// Turbo / empty = Task-driven routing; concrete id = pin via
+	// ModelOverride so the user's choice isn't silently swapped.
+	if effectiveModel == "" || effectiveModel == "druz9/turbo" || effectiveModel == DefaultInsightModel {
+		lreq.Task = llmchain.TaskInsightProse
+	} else {
+		lreq.ModelOverride = effectiveModel
+	}
+	resp, err := c.chain.Chat(ctx, lreq)
+	if err != nil {
+		return "", fmt.Errorf("profile.insight.chain: %w", err)
+	}
+	out := strings.TrimSpace(resp.Content)
+	c.cacheStore(ctx, key, out)
+	return out, nil
+}
+
+// generateViaHTTP is the direct-OpenRouter path used when the chain
+// isn't wired.
+func (c *InsightClient) generateViaHTTP(ctx context.Context, key, effectiveModel string, payload InsightPayload) (string, error) {
 	body, err := json.Marshal(insReq{
 		Model:       effectiveModel,
-		Temperature: 0.3,
-		MaxTokens:   400,
+		Temperature: insightTemperature,
+		MaxTokens:   insightMaxTokens,
 		Messages: []insMsg{
 			{Role: "system", Content: insightSystemPrompt},
 			{Role: "user", Content: renderUserPrompt(payload)},
@@ -355,26 +378,32 @@ func (c *InsightClient) Generate(ctx context.Context, uid uuid.UUID, payload Ins
 	if resp.StatusCode >= 400 {
 		raw, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("profile.insight: status=%d body=%q",
-			resp.StatusCode, truncateInsight(string(raw), 256))
+			resp.StatusCode, truncateInsight(string(raw), insightErrBodyLimit))
 	}
 	var parsed insResp
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return "", fmt.Errorf("profile.insight.decode: %w", err)
 	}
 	if len(parsed.Choices) == 0 {
-		// Anti-fallback: empty completion is suspicious; return empty without
-		// caching so the next request retries.
+		// Anti-fallback: empty completion is suspicious; return empty
+		// without caching so the next request retries.
 		return "", nil
 	}
 	out := strings.TrimSpace(parsed.Choices[0].Message.Content)
-	if c.kv != nil && out != "" {
-		if serr := c.kv.Set(ctx, key, []byte(out), c.cacheTTL); serr != nil {
-			metrics.CacheSetErrorsTotal.WithLabelValues("profile_insight").Inc()
-			c.log.Warn("profile.insight: cache Set failed",
-				slog.Any("err", serr))
-		}
-	}
+	c.cacheStore(ctx, key, out)
 	return out, nil
+}
+
+// cacheStore writes to Redis. Failures are recorded via metric + log so
+// the read keeps serving the value already loaded from upstream.
+func (c *InsightClient) cacheStore(ctx context.Context, key, value string) {
+	if c.kv == nil || value == "" {
+		return
+	}
+	if err := c.kv.Set(ctx, key, []byte(value), c.cacheTTL); err != nil {
+		metrics.CacheSetErrorsTotal.WithLabelValues("profile_insight").Inc()
+		c.log.Warn("profile.insight: cache Set failed", slog.Any("err", err))
+	}
 }
 
 func truncateInsight(s string, n int) string {

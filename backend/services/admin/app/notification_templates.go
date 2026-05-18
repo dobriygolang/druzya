@@ -1,4 +1,4 @@
-// notification_templates.go — Admin Phase 2: notification template UCs.
+// notification_templates.go — notification template UCs.
 //
 // CRUD over NotificationTemplateRepo. Validation:
 //   - slug + body non-empty.

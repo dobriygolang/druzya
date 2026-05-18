@@ -59,10 +59,10 @@ func parseBriefJSON(raw string, in domain.BriefPromptInput) (domain.DailyBrief, 
 
 	allowedLinks := allowedCodexLinks(in.CodexArticles)
 	blockedPast := blockedRecommendationKeys(in.PastEpisodes)
-	// Phase 4.6 — anti-suggestion-fatigue cooldown. Если за последние 14
-	// дней юзер dismissed ≥3 recommendations одного kind'а, блокируем
-	// весь kind на этот brief — coach должен искать другую leverage
-	// rather than продолжать ту же категорию.
+	// anti-suggestion-fatigue cooldown. Если за последние 14 дней юзер
+	// dismissed ≥3 recommendations одного kind'а, блокируем весь kind на
+	// этот brief — coach должен искать другую leverage rather than
+	// продолжать ту же категорию.
 	cooledKinds := cooledDownKinds(in.PastEpisodes, in.Today, 14, 3)
 	recs := make([]domain.Recommendation, 0, len(env.Recommendations))
 	seen := make(map[string]struct{}, len(env.Recommendations))
@@ -252,9 +252,9 @@ func allowedCodexLinks(articles []domain.CodexArticleSuggestion) map[string]stru
 	return out
 }
 
-// cooledDownKinds — Phase 4.6 anti-fatigue. Возвращает множество
-// recommendation-kinds, по которым юзер dismissed ≥threshold раз за
-// последние windowDays. Эти kinds исключаются из текущего brief.
+// cooledDownKinds — anti-fatigue. Возвращает множество recommendation-
+// kinds, по которым юзер dismissed ≥threshold раз за последние windowDays.
+// Эти kinds исключаются из текущего brief.
 //
 // Решение работает на rec_kind (не на title), потому что title-level
 // блокировку уже делает blockedRecommendationKeys: если юзер прибил

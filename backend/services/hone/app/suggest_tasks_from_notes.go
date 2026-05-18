@@ -1,4 +1,4 @@
-// Suggest tasks from notes (Phase K Wave 15).
+// Suggest tasks from notes.
 //
 // Coach читает свежие заметки (last 7 days, AI-readable only) и предлагает
 // добавить in-line action-items как таски в TaskBoard. Pre-filter regex'ом

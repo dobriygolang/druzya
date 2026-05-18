@@ -32,8 +32,10 @@ func (uc *FinishSession) Do(ctx context.Context, userID, sessionID uuid.UUID) (d
 	if s.UserID != userID {
 		return domain.Session{}, fmt.Errorf("mock.FinishSession: %w", domain.ErrForbidden)
 	}
-	if s.Status == enums.MockStatusFinished {
-		return s, nil // idempotent
+	// Double-finish guard: terminal statuses short-circuit before
+	// UpdateStatus / Bus.Publish / Worker.Enqueue to keep the op idempotent.
+	if s.Status == enums.MockStatusFinished || s.Status == enums.MockStatusAbandoned {
+		return s, nil
 	}
 	if err := uc.Sessions.UpdateStatus(ctx, sessionID, enums.MockStatusFinished.String(), true); err != nil {
 		return domain.Session{}, fmt.Errorf("mock.FinishSession: update: %w", err)

@@ -1,13 +1,11 @@
 //go:generate mockgen -package mocks -destination mocks/reading_path_mock.go -source reading_path.go
 
-// reading_path.go — Stream D (2026-05-12). Curated atlas-node sequence
-// that a tutor crafts for a student/cohort to walk through. Complements
-// SharedMaterial (one-off broadcast) — a path is reusable curriculum,
-// not a single recommendation.
+// Curated atlas-node sequence that a tutor crafts for a student/cohort
+// to walk through. Complements SharedMaterial (one-off broadcast) — a
+// path is reusable curriculum, not a single recommendation.
 //
-// V1: tutor-only CRUD. Assigning a path to a student is out-of-band
-// (assignment-with-link); the `assigned_count` counter is denormalised
-// for the list view and bumped by future assignment UC.
+// `assigned_count` is denormalised for the list view; bumped by
+// AssignReadingPath UC.
 
 package domain
 

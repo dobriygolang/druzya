@@ -458,7 +458,7 @@ func (r *Episodes) DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64
 	return cmd.RowsAffected(), nil
 }
 
-// CountByKindInRange — Phase 4.5. Single GROUP BY query. weekly_memory_summary
+// CountByKindInRange — single GROUP BY query. weekly_memory_summary
 // исключаем сами из результата чтобы prior consolidations не двоились.
 func (r *Episodes) CountByKindInRange(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[domain.EpisodeKind]int, error) {
 	rows, err := r.pool.Query(ctx,
@@ -492,7 +492,7 @@ func (r *Episodes) CountByKindInRange(ctx context.Context, userID uuid.UUID, fro
 	return out, nil
 }
 
-// HasWeeklySummary — Phase 4.5. Идемпотентность для consolidator: при
+// HasWeeklySummary обеспечивает идемпотентность consolidator'а: при
 // повторном вызове за ту же неделю не дублируем episode. Сравниваем по
 // payload.week_start (RFC3339 timestamp начала недели).
 func (r *Episodes) HasWeeklySummary(ctx context.Context, userID uuid.UUID, weekStart time.Time) (bool, error) {

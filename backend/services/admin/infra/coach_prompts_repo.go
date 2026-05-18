@@ -1,4 +1,4 @@
-// coach_prompts_repo.go — Admin Phase 2: coach_prompts pg adapter.
+// coach_prompts_repo.go — coach_prompts pg adapter.
 //
 // Same shape pattern как goal_presets_repo: direct pgx, dynamic-SET update,
 // unique-violation maps to ErrConflict. variables stored as JSONB.

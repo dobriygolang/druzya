@@ -25,7 +25,6 @@ type AIModels struct {
 // NewAIModels wraps a pool.
 func NewAIModels(pool *pgxpool.Pool) *AIModels { return &AIModels{pool: pool} }
 
-// use_for_arena dropped 2026-05-12 (D8) — see migration 00088.
 const adminLLMModelCols = `
 	id, model_id, label, provider, tier, is_enabled,
 	context_window, cost_per_1k_input_usd, cost_per_1k_output_usd,

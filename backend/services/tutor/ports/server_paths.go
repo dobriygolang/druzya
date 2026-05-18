@@ -1,6 +1,5 @@
-// server_paths.go — Stream D (2026-05-12). Reading-path RPC handlers.
-// Build-tag `tutorpaths` снят 2026-05-12 после `make generate` —
-// proto types существуют.
+// Reading-path RPC handlers. Split out of server.go to keep file size
+// manageable.
 package ports
 
 import (

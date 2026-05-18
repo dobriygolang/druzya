@@ -89,7 +89,7 @@ type Settings struct {
 
 	// TutorModeEnabled — write-side counterpart to User.TutorModeEnabled.
 	// HasTutorModeEnabled gates the column update so partial PUTs leave it
-	// alone. Stream D, 2026-05-12.
+	// alone.
 	TutorModeEnabled bool
 
 	// FieldMask flags — true when the caller explicitly provided the value

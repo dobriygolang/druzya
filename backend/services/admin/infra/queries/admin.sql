@@ -3,11 +3,11 @@
 -- NOTE: the task-listing and anticheat-listing endpoints require optional
 -- predicates (section, difficulty, is_active / severity, from). sqlc cannot
 -- elegantly model a WHERE clause that flips predicates in and out, so those
--- two are hand-rolled in postgres.go (same pattern as slot/daily). Every
--- other query in this file is sqlc-generated.
+-- two are hand-rolled in postgres.go. Every other query in this file is
+-- sqlc-generated.
 --
 -- The admin domain is the ONLY caller that reads tasks.solution_hint off the
--- API boundary (bible §3.14). Other domains use TaskPublic projections.
+-- API boundary. Other domains use TaskPublic projections.
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- Tasks

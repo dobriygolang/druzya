@@ -1,4 +1,4 @@
-// coverage_confirmation.go — Phase 3.5 daily producer.
+// coverage_confirmation.go — daily producer.
 //
 // Marks atlas-node confirmed-mastered when:
 //   - есть finished resource_log entry

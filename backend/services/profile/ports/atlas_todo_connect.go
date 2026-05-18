@@ -1,5 +1,5 @@
 // atlas_todo_connect.go — Connect-RPC handler for ClassifyAtlasTodo
-// (Phase 3.1 user-driven atlas).
+// (user-driven atlas).
 package ports
 
 import (

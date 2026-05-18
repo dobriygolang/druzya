@@ -150,9 +150,9 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 		Stages:   pipelineStages,
 		Log:      d.Log,
 	}
-	// Wave 15 — post-debrief replay. attempts is shared (it implements
-	// both PipelineAttemptRepo and ReplayRepo via the new postgres_replay.go
-	// methods on the same struct).
+	// Post-debrief replay. attempts is shared (it implements both
+	// PipelineAttemptRepo and ReplayRepo via the postgres_replay.go methods
+	// on the same struct).
 	server.Replay = &miApp.MockReplay{
 		D: miApp.MockReplayDeps{
 			Attempts: attempts,
@@ -163,10 +163,10 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 		},
 	}
 
-	// Phase: incremental chi→proto migration. 4 public read endpoints
+	// Incremental chi→proto migration. 4 public read endpoints
 	// (/mock/companies, /mock/pipelines, /mock/pipelines/{id},
 	// /mock/leaderboard) теперь идут через MockPipelineService Connect
-	// + REST aliases via vanguard transcoder. Остальные 33 admin/mutating
+	// + REST aliases via vanguard transcoder. Остальные admin/mutating
 	// endpoints остаются на chi-direct в Server.Mount() пока. Дублирование
 	// /api/v1/mock/* paths нет — chi handler'ы для перенесённых путей
 	// удалены из Mount() одновременно с этой регистрацией.

@@ -163,7 +163,6 @@ func (r *Postgres) ListByUser(ctx context.Context, userID uuid.UUID) ([]domain.U
 	return out, nil
 }
 
-// Get returns a single enrolment row.
 func (r *Postgres) Get(ctx context.Context, userID, trackID uuid.UUID) (domain.UserTrack, error) {
 	row := r.pool.QueryRow(ctx, `
         SELECT user_id, track_id, joined_at, current_step,
@@ -509,7 +508,7 @@ var (
 	_ domain.CheckpointRepo = (*Postgres)(nil)
 )
 
-// ── CheckpointRepo (Phase 2 step UX flow, миграция 00056) ────────────────
+// ── CheckpointRepo ───────────────────────────────────────────────────────
 
 const checkpointCols = `id, user_id, track_id, step_index, score, attempts, passed_at, created_at`
 

@@ -26,14 +26,9 @@ const adminRole = "admin"
 // Compile-time: наш SubscriptionServer реализует generated handler.
 var _ druz9v1connect.SubscriptionServiceHandler = (*SubscriptionServer)(nil)
 
-// SubscriptionServer адаптирует use-case'ы на Connect-RPC.
-//
-// Pivot 2026-05-01: LinkBoostyUC + SyncBoostyUC удалены вместе с
-// Boosty marketplace.
-//
-// Stream-C 2026-05-12: добавлен CheckTier + BYOK UC'ы. Существующие
-// GetTier/SetTier остаются для legacy (GetMyTier — raw subscriptions
-// row); CheckTier — composite (paid + BYOK + tutor signal).
+// SubscriptionServer адаптирует use-case'ы на Connect-RPC. GetMyTier отдаёт
+// raw subscriptions row (для billing-page expiry display); CheckTier — composite
+// projection (paid + BYOK + tutor signal) для paywall-gate UI.
 type SubscriptionServer struct {
 	GetTierUC               *app.GetTier
 	SetTierUC               *app.SetTier
@@ -96,8 +91,7 @@ func (s *SubscriptionServer) GetTierByUserID(
 	return connect.NewResponse(&pb.GetTierByUserIDResponse{Tier: string(tier)}), nil
 }
 
-// AdminSetTier — требует role=admin. Используется для ручной выдачи (тестеры,
-// поддержка, до того как M3 настроит Boosty-sync).
+// AdminSetTier — admin-only ручная выдача подписки (тестерам, поддержке).
 func (s *SubscriptionServer) AdminSetTier(
 	ctx context.Context,
 	req *connect.Request[pb.AdminSetTierRequest],
@@ -111,17 +105,6 @@ func (s *SubscriptionServer) AdminSetTier(
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid user_id: %w", err))
 	}
 	tier := enums.SubscriptionPlan(m.GetTier())
-	// Backward-compat alias normalization (legacy seeker/ascendant names).
-	// Default branch — current tier value passes through; IsValid() ниже
-	// отбрасывает всё что не free|pro|max.
-	switch tier {
-	case "seeker":
-		tier = enums.SubscriptionPlanPro
-	case "ascendant", "ascended":
-		tier = enums.SubscriptionPlanMax
-	case enums.SubscriptionPlanFree, enums.SubscriptionPlanPro, enums.SubscriptionPlanMax:
-		// already canonical
-	}
 	if !tier.IsValid() {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
 			fmt.Errorf("invalid tier %q; expected free|pro|max", m.GetTier()))

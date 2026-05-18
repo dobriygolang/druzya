@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"druz9/google_calendar/domain"
@@ -21,6 +22,10 @@ import (
 var defaultScopes = []string{
 	"https://www.googleapis.com/auth/calendar.events",
 }
+
+// refreshLocks serialises token refresh per userID — concurrent PullEvents +
+// PushEvent on the same user would otherwise race RefreshToken + Creds.Upsert.
+var refreshLocks sync.Map // userID(uuid.UUID) -> *sync.Mutex
 
 // Handlers — the bounded context's surface. One struct, no inheritance.
 type Handlers struct {
@@ -237,7 +242,7 @@ func (h *Handlers) DeleteEvent(ctx context.Context, userID uuid.UUID, googleEven
 	}
 	creds, err := h.ensureFreshCreds(ctx, userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("ensureFreshCreds: %w", err)
 	}
 	if err := h.Google.DeleteEvent(ctx, creds.AccessToken, creds.CalendarID, googleEventID); err != nil {
 		return fmt.Errorf("google.DeleteEvent: %w", err)
@@ -302,6 +307,22 @@ func (h *Handlers) ensureFreshCreds(ctx context.Context, userID uuid.UUID) (doma
 	if !creds.Expired(h.Now()) {
 		return creds, nil
 	}
+
+	mu, _ := refreshLocks.LoadOrStore(userID, &sync.Mutex{})
+	mu.(*sync.Mutex).Lock()
+	defer mu.(*sync.Mutex).Unlock()
+
+	creds, err = h.Creds.Get(ctx, userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.GoogleCredentials{}, domain.ErrNotConnected
+		}
+		return domain.GoogleCredentials{}, fmt.Errorf("creds.Get: %w", err)
+	}
+	if !creds.Expired(h.Now()) {
+		return creds, nil
+	}
+
 	newAccess, newExpiry, newRefresh, err := h.Google.RefreshToken(ctx, creds.RefreshToken)
 	if err != nil {
 		return domain.GoogleCredentials{}, fmt.Errorf("%w: %v", domain.ErrTokenRefresh, err)

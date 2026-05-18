@@ -18,7 +18,7 @@ import (
 // CanEdit returns true when the given role is allowed to mutate the CRDT
 // state of a room.
 //
-// Rules (bible §3.1):
+// Rules:
 //   - viewer    — read-only; never edits.
 //   - owner     — can always edit.
 //   - interviewer — can always edit (they drive the interview, even while frozen).
@@ -38,7 +38,7 @@ func CanEdit(role enums.EditorRole, frozen bool) bool {
 }
 
 // RoleForInvitee decides the role the invitee receives when they accept.
-// Rules mirror the bible:
+// Rules:
 //   - practice rooms: everyone is a participant.
 //   - interview rooms: first non-owner is interviewer, others are participant.
 //   - pair_mock rooms: both sides are participant.

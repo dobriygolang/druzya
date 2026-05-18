@@ -25,9 +25,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// NewEditor wires the solo code editor surface. D4/Stream F (2026-05-12) —
-// peer-collab dropped: Yjs WS hub, freeze gates, invite-link tokens, replay
-// upload, guest-join. Что осталось:
+// NewEditor wires the solo code editor surface. Peer-collab dropped: Yjs
+// WS hub, freeze gates, invite-link tokens, replay upload, guest-join.
+// Что осталось:
 //
 //   - Connect-RPC: CreateRoom, GetRoom, RunCode, GetVisibility/SetVisibility.
 //   - REST aliases for the above + Format + Delete + snapshot save/load.
@@ -126,13 +126,13 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 			r.Delete("/editor/room/{roomId}", edh.handle)
 			fh := &editorFormatHandler{log: d.Log}
 			r.Post("/editor/room/{roomId}/format", fh.handle)
-			// D4 Stream F (2026-05-12) — solo snapshot persistence.
+			// Solo snapshot persistence.
 			sh := &editorSnapshotHandler{rooms: rooms, log: d.Log}
 			r.Get("/editor/room/{roomId}/snapshot", sh.get)
 			r.Put("/editor/room/{roomId}/snapshot", sh.put)
 		},
-		// MountPublicREST / MountWS / hub shutdown — D4 Stream F (2026-05-12)
-		// удалены: guest-join был peer-collab only, WS hub снесён целиком.
+		// MountPublicREST / MountWS / hub shutdown удалены: guest-join был
+		// peer-collab only, WS hub снесён целиком.
 		Background: []func(ctx context.Context){
 			func(ctx context.Context) {
 				go subscriptionServices.RunFreeTierShareDowngradeEditor(ctx, d.Pool, d.Log)
@@ -178,14 +178,14 @@ func editorDomainQuotaField(p subDomain.QuotaPolicy) int {
 	return p.ActiveSharedRooms
 }
 
-// ─── Snapshot REST handler (D4 Stream F, 2026-05-12) ─────────────────────
+// ─── Snapshot REST handler ────────────────────────────────────────────────
 //
 // GET  /api/v1/editor/room/{roomId}/snapshot → {code} | 404
 // PUT  /api/v1/editor/room/{roomId}/snapshot   body: {code}
 //
 // Owner-only write; чтение любому залогиненному (read-only deeplinks).
 // Code blob — plain UTF-8 string (no base64, не binary), хранится в
-// editor_rooms.code TEXT column (см. migration 00091_drop_peer_collab).
+// editor_rooms.code TEXT column.
 type editorSnapshotHandler struct {
 	rooms editorDomain.RoomRepo
 	log   *slog.Logger

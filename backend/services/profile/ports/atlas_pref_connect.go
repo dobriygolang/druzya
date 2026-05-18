@@ -1,5 +1,5 @@
-// atlas_pref_connect.go — Phase 3 pin/hide overlay handler
-// (table user_atlas_node_prefs, миграция 00064).
+// atlas_pref_connect.go — pin/hide overlay handler
+// (table user_atlas_node_prefs).
 //
 // SetAtlasNodePref upsert'ит one row. Direct SQL — простейший CRUD без
 // app-UC, потому что валидация (only one of pinned/hidden) уже на DB

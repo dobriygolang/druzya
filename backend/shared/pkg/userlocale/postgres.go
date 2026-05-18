@@ -58,7 +58,7 @@ func (r *PostgresReader) Get(ctx context.Context, userID uuid.UUID) string {
 	err := r.pool.QueryRow(ctx, getLocaleQuery, userID).Scan(&locale)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			r.store(userID, "ru")
+			r.storeIfAbsent(userID, "ru")
 		}
 		return "ru"
 	}
@@ -92,6 +92,18 @@ func (r *PostgresReader) store(userID uuid.UUID, locale string) {
 	r.mu.Lock()
 	r.cache[userID] = cacheEntry{value: locale, expiresAt: time.Now().Add(r.ttl)}
 	r.mu.Unlock()
+}
+
+// storeIfAbsent кладёт значение только если кэш-entry для userID ещё нет
+// или истекла. Используется на miss-path "no rows" чтобы конкурентный
+// успешный Scan не был перетёрт fallback'ом "ru".
+func (r *PostgresReader) storeIfAbsent(userID uuid.UUID, locale string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if entry, ok := r.cache[userID]; ok && time.Now().Before(entry.expiresAt) {
+		return
+	}
+	r.cache[userID] = cacheEntry{value: locale, expiresAt: time.Now().Add(r.ttl)}
 }
 
 // StaticReader is a test/dev double that always returns the given locale.

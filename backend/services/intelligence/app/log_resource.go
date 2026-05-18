@@ -9,7 +9,7 @@
 //     создаёт hone_notes row через NoteCreator hook (caller-injected).
 //     UC пишет attempt в user_resource_log с reflection_note_id если
 //     создание Note прошло. Если упало — пишет без note_id; retry-job
-//     закроет позже (TODO: вынести в отдельный UC).
+//     закроет позже.
 package app
 
 import (
@@ -21,8 +21,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// ResourceLogRepo — write-side для user_resource_log (миграция 00055).
-// Read-side — domain.ResourceEngagementReader (Phase 1.7c).
+// ResourceLogRepo — write-side для user_resource_log.
+// Read-side — domain.ResourceEngagementReader.
 type ResourceLogRepo interface {
 	Insert(ctx context.Context, in ResourceLogEntry) (ResourceLogEntry, error)
 }

@@ -1,13 +1,10 @@
 // Package domain contains the entities and repository interfaces for the
-// shared-whiteboard bounded context (bible §9 Phase 6.5.4).
+// shared-whiteboard bounded context.
 //
-// A Room is a multiplayer Excalidraw canvas synced via Yjs. Every update
-// goes through the hub; periodically the hub snapshots the merged state
-// into whiteboard_rooms.snapshot so a late joiner can hydrate the canvas
-// without replaying the full history.
-//
-// Private drawings live in a separate bounded context (`hone` whiteboards,
-// migration 00015) — do not conflate them.
+// A Room is a solo Excalidraw canvas persisted as an opaque snapshot blob;
+// the older peer-collab Yjs sync hub has been dropped. Private drawings
+// live in a separate bounded context (the hone whiteboards) — do not
+// conflate them.
 package domain
 
 import (

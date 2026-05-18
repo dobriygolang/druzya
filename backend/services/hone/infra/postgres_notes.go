@@ -518,10 +518,9 @@ func (n *Notes) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID, mod
 	return out, nil
 }
 
-// SetAIExcluded toggles hone_notes.ai_excluded (Phase K Wave 15).
-// Stub returning ErrNotFound when the row is missing; real query path
-// is owned by the parallel «AI-readable» agent (migration 00121_notes_ai_excluded).
-// Wave 15 LLL agent surfaces it for interface completeness.
+// SetAIExcluded toggles hone_notes.ai_excluded — soft-privacy flag that
+// keeps the note out of any AI ingest path (embed, summary, action
+// extraction). Returns ErrNotFound when the row is missing.
 func (n *Notes) SetAIExcluded(ctx context.Context, userID, noteID uuid.UUID, excluded bool) (domain.Note, error) {
 	row := n.pool.QueryRow(ctx, `
         UPDATE hone_notes
@@ -562,10 +561,8 @@ func (n *Notes) SetAIExcluded(ctx context.Context, userID, noteID uuid.UUID, exc
 	return out, nil
 }
 
-// ListAIAvailable returns recent unencrypted non-ai_excluded notes
-// (Phase K Wave 15). Stub: real impl is owned by parallel «suggest-tasks-
-// from-notes» agent. Provides a basic SQL path so the build compiles —
-// safe for fallback paths.
+// ListAIAvailable returns recent unencrypted non-ai_excluded notes, used
+// by suggest-tasks-from-notes and other AI-ingest pipelines.
 func (n *Notes) ListAIAvailable(ctx context.Context, userID uuid.UUID, lookback time.Duration, limit int) ([]domain.Note, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20

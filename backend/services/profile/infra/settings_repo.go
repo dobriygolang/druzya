@@ -151,7 +151,7 @@ func (p *Postgres) UpdateRole(ctx context.Context, userID uuid.UUID, role string
 	return nil
 }
 
-// ── Interviewer application moderation queue (M4a) ────────────────────────
+// ── Interviewer application moderation queue ──────────────────────────────
 
 func (p *Postgres) SubmitInterviewerApplication(ctx context.Context, userID uuid.UUID, motivation string) (domain.InterviewerApplication, error) {
 	row, err := p.q.SubmitInterviewerApplication(ctx, profiledb.SubmitInterviewerApplicationParams{

@@ -14,6 +14,8 @@ package ai_tutor
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
 	"strings"
 	"time"
 
@@ -75,11 +77,24 @@ func NewAITutor(d monolithServices.Deps, td AITutorDeps) *monolithServices.Modul
 	}
 	llm := &llmAdapter{chain: td.Chain}
 
+	// Semantic recall embedder. Wired off OLLAMA_HOST — если переменная
+	// пуста, embedder=nil и ai_tutor расскейлится в legacy ranked recall.
+	// Тот же bge-m3 клиент, что Hone использует для notes — единая модель,
+	// один Ollama host, ноль дополнительного infra.
+	var embedder aiTutorDomain.Embedder
+	if host := strings.TrimSpace(os.Getenv("OLLAMA_HOST")); host != "" {
+		embedder = aiTutorInfra.NewEmbedder(host, "")
+		d.Log.Info("ai_tutor: Ollama embedder wired", slog.String("ollama_host", host))
+	} else {
+		d.Log.Warn("ai_tutor: OLLAMA_HOST not set — semantic recall disabled, fall back to ranked")
+	}
+
 	compactUC := &aiTutorApp.Compact{
 		Threads:  pg,
 		Episodes: pg,
 		Facts:    pg,
 		LLM:      llm,
+		Embedder: embedder,
 		Now:      d.Now,
 	}
 
@@ -102,6 +117,8 @@ func NewAITutor(d monolithServices.Deps, td AITutorDeps) *monolithServices.Modul
 			Facts:     pg,
 			Snapshot:  snapshot,
 			LLM:       llm,
+			Embedder:  embedder,
+			Recorder:  pg, // атомарный (counters + user-episode) writer
 			Compactor: compactUC,
 			Now:       d.Now,
 		},

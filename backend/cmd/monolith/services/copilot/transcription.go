@@ -110,11 +110,11 @@ func NewTranscription(d monolithServices.Deps) *monolithServices.Module {
 //	STREAMING_TRANSCRIBER=deepgram   — RESERVED, paid; falls back to groq.
 //	STREAMING_TRANSCRIBER=assemblyai — RESERVED, paid; falls back to groq.
 //
-// Свободные провайдеры на 2026-05 (groq/cerebras/mistral) не имеют
-// native streaming WS — все batch. Поэтому единственный legit choice
-// для free-tier — groq-batch с WAV-wrap, а alt-impl будут paid и
-// activate'нутся только когда `groq-batch` окажется недостаточным
-// для интерактивного UX (а сейчас он fine: <800ms на 2s окно).
+// Свободные провайдеры (groq/cerebras/mistral) не имеют native streaming WS —
+// все batch. Поэтому единственный legit choice для free-tier — groq-batch с
+// WAV-wrap, а alt-impl будут paid и activate'нутся только когда `groq-batch`
+// окажется недостаточным для интерактивного UX (а сейчас он fine: <800ms на
+// 2s окно).
 func pickStreamingTranscriber(provider transcriptionDomain.Provider) transcriptionDomain.StreamingTranscriber {
 	choice := os.Getenv("STREAMING_TRANSCRIBER")
 	switch choice {

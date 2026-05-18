@@ -47,8 +47,8 @@ type Handler struct {
 	// выделен (Issue/ResolveShareToken). Может быть nil в тестах, тогда
 	// share-эндпоинты вернут Internal/Unavailable.
 	Repo domain.ProfileRepo
-	// Pool — Phase 3 atlas pin/hide handler делает direct INSERT...ON
-	// CONFLICT в user_atlas_node_prefs. Trivial CRUD, без UC.
+	// Pool — atlas pin/hide handler делает direct INSERT...ON CONFLICT в
+	// user_atlas_node_prefs. Trivial CRUD, без UC.
 	Pool *pgxpool.Pool
 	Log  *slog.Logger
 }

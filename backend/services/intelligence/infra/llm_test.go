@@ -563,7 +563,7 @@ func TestDeriveSeverityRanksSignals(t *testing.T) {
 			want: severityNudge,
 		},
 		{
-			// Phase 4.7 — abandoned mock pipelines = consistency-break warn.
+			// abandoned mock pipelines = consistency-break warn.
 			name: "two_abandoned_mocks_is_warn",
 			in: domain.BriefPromptInput{
 				MockAbandonedRecent: 2,
@@ -571,7 +571,7 @@ func TestDeriveSeverityRanksSignals(t *testing.T) {
 			want: severityWarn,
 		},
 		{
-			// Phase 4.3 — goal deadline ≤3 days → critical.
+			// goal deadline ≤3 days → critical.
 			name: "goal_due_in_2_days_is_critical",
 			in: domain.BriefPromptInput{
 				ActiveGoals: []domain.UserGoal{{
@@ -584,7 +584,7 @@ func TestDeriveSeverityRanksSignals(t *testing.T) {
 			want: severityCritical,
 		},
 		{
-			// Phase 4.3 — goal deadline 4-7 days → warn.
+			// goal deadline 4-7 days → warn.
 			name: "goal_due_in_5_days_is_warn",
 			in: domain.BriefPromptInput{
 				ActiveGoals: []domain.UserGoal{{
@@ -597,7 +597,7 @@ func TestDeriveSeverityRanksSignals(t *testing.T) {
 			want: severityWarn,
 		},
 		{
-			// Phase 4.3 — goal без deadline → не триггерит severity (cruise
+			// goal без deadline → не триггерит severity (cruise
 			// если нет других сигналов).
 			name: "goal_without_deadline_is_cruise",
 			in: domain.BriefPromptInput{

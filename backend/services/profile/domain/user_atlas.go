@@ -1,8 +1,7 @@
-// user_atlas.go — Phase 3.1 user-driven atlas surface.
+// user_atlas.go — user-driven atlas surface.
 //
-// Sergey 2026-05-03: «Например сейчас изучаю ml и ии сам подхватывает
-// это, дополняет атлас». Юзер пишет TODO («изучить транзакции»);
-// ClassifyAndAddTodo UC спрашивает LLM (TaskAtlasClassify):
+// Юзер пишет TODO («изучить транзакции»); ClassifyAndAddTodo UC спрашивает
+// LLM (TaskAtlasClassify):
 //  1. лучше всего ложится в existing curated node X → возвращаем match
 //     (UC не создаёт новый row, фронт показывает «добавили в X»).
 //  2. тематика свежая → возвращаем new node, persist в user_atlas_nodes.
@@ -15,7 +14,7 @@ import (
 	"time"
 )
 
-// UserAtlasNode mirrors a row in user_atlas_nodes (migration 00044).
+// UserAtlasNode mirrors a row in user_atlas_nodes.
 type UserAtlasNode struct {
 	NodeKey     string
 	Title       string
@@ -34,8 +33,8 @@ type UserAtlasRepo interface {
 	DeleteNode(ctx context.Context, userID, nodeKey string) error
 }
 
-// AtlasNodePref — per-user pin/hide overlay (table user_atlas_node_prefs,
-// миграция 00064 · Phase 3). Mutually exclusive по DB CHECK.
+// AtlasNodePref — per-user pin/hide overlay (table user_atlas_node_prefs).
+// Mutually exclusive по DB CHECK.
 type AtlasNodePref struct {
 	NodeKey string
 	Pinned  bool

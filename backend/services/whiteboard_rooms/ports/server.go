@@ -62,11 +62,9 @@ func (s *WhiteboardRoomsServer) CreateRoom(
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	// Phase 2 quota enforcement: free-tier юзеры лимитятся по
-	// active_shared_boards. Note: на free создавать private board OK
-	// (хранится локально клиентом), а вот shared (visibility='shared') —
-	// counts toward quota. Создаваемая room по дефолту 'shared' →
-	// проверяем перед create.
+	// Free-tier quota enforcement: limited by active_shared_boards.
+	// Private boards do not count (they stay client-local), but a newly
+	// created room defaults to 'shared' and therefore must clear the gate.
 	if s.CheckCreateQuota != nil {
 		if err := s.CheckCreateQuota(ctx, uid); err != nil {
 			return nil, connect.NewError(connect.CodeResourceExhausted, err)

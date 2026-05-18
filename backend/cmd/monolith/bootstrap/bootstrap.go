@@ -112,6 +112,13 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	rdb := newRedis(cfg)
 	bus := newEventBus(log)
 
+	defer func() {
+		if err != nil {
+			pool.Close()
+			_ = rdb.Close()
+		}
+	}()
+
 	// Start pgxpool stats sampler — populates druz9_pgxpool_* gauges from
 	// pool.Stat() on a 15s tick. Stops when ctx is cancelled (app tear-down).
 	metrics.RegisterPgxPoolCollector(ctx, pool, 0)
@@ -125,8 +132,6 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	llmChain, llmRawChain, llmCacheClose, lcErr := adminServices.BuildLLMChainWithCache(*cfg, log, rdb, pool, ctx)
 
 	if lcErr != nil {
-		pool.Close()
-		_ = rdb.Close()
 		return nil, otelShutdown, fmt.Errorf("llmchain: %w", lcErr)
 	}
 
@@ -175,16 +180,12 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// other module that needs WS auth or a connect mount behind bearer.
 	auth, aerr := authServices.NewAuth(deps, os.Getenv("ENCRYPTION_KEY"))
 	if aerr != nil {
-		pool.Close()
-		_ = rdb.Close()
 		return nil, otelShutdown, fmt.Errorf("auth: %w", aerr)
 	}
 	deps.TokenIssuer = auth.Issuer
 
 	notify, nerr := notifyServices.NewNotify(deps)
 	if nerr != nil {
-		pool.Close()
-		_ = rdb.Close()
 		return nil, otelShutdown, fmt.Errorf("notify: %w", nerr)
 	}
 	// Cross-domain wiring: the bot's /start <code> handler talks to the
@@ -204,14 +205,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 
 	statsMod := adminServices.NewStats(deps)
 
-	// Pivot 2026-05-01: slot/rating/events/review services dropped (см
-	// docs/feature/identity.md). Slot booking flow + ELO rating + standalone
-	// events service выпиливаются как dead/redundant с tutor-toolkit pivot'ом.
-	// Circles wired ahead of `modules` so Events can borrow its handlers
-	// for the CircleAuthority gate without a second instantiation.
 	circlesMod := circlesServices.NewCircles(deps)
-	// Intelligence wired ahead so its MemoryHook is available to Hone
-	// (Hone-handlers'ы вызывают Hook.OnReflectionAdded etc).
 	// Storage gate должен быть построен ДО Hone — Hone оборачивает свои
 	// write-routes этим gate'ом, чтобы возвращать 413 при quota_exceeded.
 	storageMod, storageGate := storageServices.NewStorage(deps)
@@ -347,10 +341,14 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// disabled (OLLAMA_HOST unset) the searcher is nil and copilot's
 	// Analyze cleanly skips the RAG path.
 	documentsMod, docSearcher := copilotServices.NewDocuments(deps)
+	copilotMod, copilotErr := copilotServices.NewCopilot(deps, docSearcher)
+	if copilotErr != nil {
+		return nil, otelShutdown, fmt.Errorf("copilot: %w", copilotErr)
+	}
 	modules = append(modules,
 		documentsMod,
 		copilotServices.NewTranscription(deps),
-		copilotServices.NewCopilot(deps, docSearcher),
+		copilotMod,
 	)
 
 	registerSubscribers(bus, modules)
@@ -420,7 +418,8 @@ func (a *App) registerInfraClosers() {
 	// Drain bounded worker pools до Postgres/Redis: in-flight задачи
 	// (insight upserts / categoriser SetStatus) пишут в БД и Redis.
 	for _, p := range a.workerPools {
-		a.closers = append(a.closers, func(context.Context) error { return p.Close() })
+		pool := p
+		a.closers = append(a.closers, func(context.Context) error { return pool.Close() })
 	}
 	a.closers = append(a.closers,
 		func(context.Context) error { a.pool.Close(); return nil },

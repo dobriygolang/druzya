@@ -1,12 +1,11 @@
 // orchestrator_legacy_fakes_test.go — back-compat shims for tests
 // that still rely on hand-rolled fakes.
 //
-// Wave 14: orchestrator_test.go itself was converted to mockgen-driven
-// stateful mocks (see orchestrator_test.go's orchStore + wireOrch*).
-// The remaining consumers — atlas_struggle_test.go and the four
-// *_grade_test.go files — use a simple `atts.rows[id] = ...` seeding
-// pattern that doesn't justify the wire-code overhead. Keeping the
-// minimal in-memory fakes here lets those tests stay terse.
+// orchestrator_test.go uses mockgen-driven stateful mocks (orchStore +
+// wireOrch*). The remaining consumers — atlas_struggle_test.go and the
+// four *_grade_test.go files — use a simple `atts.rows[id] = ...`
+// seeding pattern that doesn't justify the wire-code overhead. Keeping
+// the minimal in-memory fakes here lets those tests stay terse.
 
 package app
 

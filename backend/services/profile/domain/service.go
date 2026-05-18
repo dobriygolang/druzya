@@ -5,7 +5,7 @@ import (
 )
 
 // XPToNext returns the XP threshold for the next level.
-// Formula: 500 * level^1.5 (bible instruction). Returns at least 500.
+// Formula: 500 * level^1.5. Returns at least 500.
 func XPToNext(level int) int64 {
 	if level < 1 {
 		level = 1

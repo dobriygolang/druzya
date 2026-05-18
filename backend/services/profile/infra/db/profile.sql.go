@@ -77,9 +77,7 @@ type CountWeeklyActivityRow struct {
 	MockMinutes int32
 }
 
-// Pivot 2026-05-01: arena_matches/participants/daily_kata_history дропнуты.
-// matches_won/katas_passed остаются в proto-shape но возвращают 0 —
-// TODO выпилить из proto после следующего gen-cycle.
+// matches_won/katas_passed остаются в proto-shape но возвращают 0.
 func (q *Queries) CountWeeklyActivity(ctx context.Context, arg CountWeeklyActivityParams) (CountWeeklyActivityRow, error) {
 	row := q.db.QueryRow(ctx, countWeeklyActivity, arg.UserID, arg.FinishedAt)
 	var i CountWeeklyActivityRow
@@ -205,7 +203,7 @@ type GetProfileBundleRow struct {
 
 // Queries consumed by sqlc; mirror the hand-rolled pgx code in infra/postgres.go.
 // v2: email column dropped from users; xp/level moved to user_xp.
-// Stream D (2026-05-12): tutor_mode_enabled surfaced for AppShell RBAC.
+// tutor_mode_enabled surfaced for AppShell RBAC.
 func (q *Queries) GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProfileBundleRow, error) {
 	row := q.db.QueryRow(ctx, getProfileBundle, id)
 	var i GetProfileBundleRow
@@ -500,7 +498,7 @@ type UpsertAppInstallRow struct {
 	Inserted    bool
 }
 
-// Phase J / X1 (P0). Idempotent heartbeat from web / Hone / Cue.
+// Idempotent heartbeat from web / Hone / Cue.
 // xmax = 0 on the returned row means INSERT path; xmax != 0 means UPDATE
 // path (existing row touched). That bit drives the «is this the first
 // install row for the user across all 3 apps» trial-grant check upstream.

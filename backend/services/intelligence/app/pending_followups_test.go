@@ -1,4 +1,4 @@
-// Phase 4.8 — closing-the-loop tests for computePendingFollowups.
+// closing-the-loop tests for computePendingFollowups.
 package app
 
 import (

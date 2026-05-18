@@ -255,12 +255,6 @@ func TestUpdateSettings_RequiresAuth(t *testing.T) {
 	}
 }
 
-// ── GetWeeklyShare / IssueShareToken tests removed in R1 (2026-05-05) ──
-// Share-link feature свёрнут вместе с stream/OG share UI; интерфейсные
-// методы IssueShareToken / ResolveShareToken удалены из ProfileRepo.
-// Пустой stub-handler GetWeeklyShare сохранён в server.go только до
-// следующего proto regen.
-
 func TestUpdateSettings_NilSettingsInvalidArgument(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)

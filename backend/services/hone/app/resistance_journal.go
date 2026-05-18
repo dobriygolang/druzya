@@ -1,4 +1,4 @@
-// Resistance journal use cases (Phase K Wave 15).
+// Resistance journal use cases.
 //
 // Не путать с plan.go::Resistance — там идёт agregate skip skill items.
 // Здесь — свободный текст pre-focus, отдельная таблица resistance_log.

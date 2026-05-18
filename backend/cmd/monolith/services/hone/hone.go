@@ -678,15 +678,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		// RequireAdminInline before transcoder (mirrors podcast admin
 		// pattern). Path declared in hone.proto google.api.http
 		// annotation.
-		adminGate := func(w http.ResponseWriter, req *http.Request) {
-			if _, err := authServices.RequireAdminInline(req); err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(authServices.StatusForAuthErr(err))
-				_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-				return
-			}
-			transcoder.ServeHTTP(w, req)
-		}
+		adminGate := authServices.AdminGateHandler(transcoder)
 		r.Post("/admin/hone/speaking/exercises/{exercise_id}/tts", adminGate)
 		// Admin-only writing prompts CRUD. Same adminGate as speaking
 		// TTS; List is unguarded above.

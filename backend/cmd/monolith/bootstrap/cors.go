@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"net/http"
 	"os"
-	"slices"
 	"strings"
 )
 
@@ -22,9 +21,12 @@ import (
 // «*» намеренно не используем: Connect-RPC шлёт `Authorization: Bearer …`,
 // а wildcard несовместим с credentials в большинстве браузеров.
 func corsMiddleware() func(http.Handler) http.Handler {
-	extra := strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",")
-	for i, v := range extra {
-		extra[i] = strings.TrimSpace(v)
+	extra := make(map[string]struct{})
+	for _, v := range strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",") {
+		v = strings.TrimSpace(v)
+		if v != "" {
+			extra[v] = struct{}{}
+		}
 	}
 	allow := func(origin string) bool {
 		if origin == "" || origin == "null" {
@@ -40,7 +42,10 @@ func corsMiddleware() func(http.Handler) http.Handler {
 			strings.HasPrefix(origin, "http://127.0.0.1:") {
 			return true
 		}
-		return origin != "" && slices.Contains(extra, origin)
+		if _, ok := extra[origin]; ok {
+			return true
+		}
+		return false
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

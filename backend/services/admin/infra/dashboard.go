@@ -28,11 +28,11 @@ func NewDashboard(pool *pgxpool.Pool) *Dashboard { return &Dashboard{pool: pool}
 
 // Snapshot fans out the count queries and assembles a single payload.
 //
-// Counters from optional tables (mock_sessions, daily_kata_history,
-// anticheat_signals, user_reports, user_bans, arena_matches) tolerate
-// "table does not exist" — a fresh environment without those migrations
-// applied still returns a valid (zero-counter) response. This mirrors the
-// resilience pattern in stats.go's /stats/public.
+// Counters from optional tables (mock_sessions, anticheat_signals,
+// user_reports, user_bans) tolerate "table does not exist" — a fresh
+// environment without those migrations applied still returns a valid
+// (zero-counter) response. This mirrors the resilience pattern in
+// stats.go's /stats/public.
 func (d *Dashboard) Snapshot(ctx context.Context, now time.Time) (domain.AdminDashboard, error) {
 	out := domain.AdminDashboard{GeneratedAt: now.UTC()}
 
@@ -47,8 +47,6 @@ func (d *Dashboard) Snapshot(ctx context.Context, now time.Time) (domain.AdminDa
 		{&out.UsersBanned, `SELECT COUNT(*)::bigint FROM user_bans
 		                     WHERE lifted_at IS NULL
 		                       AND (expires_at IS NULL OR expires_at > now())`},
-		// Pivot 2026-05: matches_today/week/active_arena_matches/katas_today/week
-		// удалены вместе с arena_matches и daily_kata_history.
 		{&out.ActiveMockSessions, `SELECT COUNT(*)::bigint FROM mock_sessions WHERE status = 'in_progress'`},
 		{&out.ReportsPending, `SELECT COUNT(*)::bigint FROM user_reports WHERE status = 'pending'`},
 	}

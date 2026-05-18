@@ -133,6 +133,12 @@ func keySession(id uuid.UUID) string {
 	return fmt.Sprintf("mock:%s:session:%s", CacheKeyVersion, id.String())
 }
 
+// ListByUser proxies straight to the delegate — кэш per-page имеет смысл
+// только под высокую частоту чтений, чего archive-вью не даёт.
+func (c *CachedSessionRepo) ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]domain.Session, int, error) {
+	return c.delegate.ListByUser(ctx, userID, limit, offset)
+}
+
 // Create forwards to the delegate. The new row has nothing to evict.
 func (c *CachedSessionRepo) Create(ctx context.Context, s domain.Session) (domain.Session, error) {
 	out, err := c.delegate.Create(ctx, s)

@@ -1,9 +1,9 @@
 //go:generate mockgen -package mocks -destination mocks/ab_experiments_mock.go -source ab_experiments.go
 
-// ab_experiments.go — Admin Phase 2: A/B experiment entity + repo port.
+// ab_experiments.go — A/B experiment entity + repo port.
 //
 // Minimal scaffolding для admin surface. Variant rollout logic,
-// bucketing, statistics analytics — Phase 3.
+// bucketing, statistics analytics live elsewhere.
 package domain
 
 import (
@@ -55,7 +55,7 @@ type ABExperimentUpsert struct {
 }
 
 // ABExperimentRepo — persistence port. Minimal CRUD; assignment +
-// stats — отдельные boundaries в Phase 3.
+// stats живут в отдельных boundaries.
 type ABExperimentRepo interface {
 	List(ctx context.Context) ([]ABExperiment, error)
 	GetByID(ctx context.Context, id uuid.UUID) (ABExperiment, error)

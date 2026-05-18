@@ -26,12 +26,8 @@ type Repo interface {
 	// render based on the status.
 	GetInviteByCode(ctx context.Context, code string) (Invite, error)
 
-	// ListTutorInvites returns this tutor's invites, most-recent
-	// first. limit caps the result; pass 0 for «all (admin only)».
-	ListTutorInvites(ctx context.Context, tutorID uuid.UUID, limit int) ([]Invite, error)
-
-	// ListTutorInvitesPaged — keyset cursor variant. Sort:
-	// created_at DESC, id DESC. cursor "" = first page.
+	// ListTutorInvitesPaged returns this tutor's invites; keyset cursor
+	// over (created_at DESC, id DESC). cursor "" = first page.
 	ListTutorInvitesPaged(ctx context.Context, tutorID uuid.UUID, limit int, cursor string) ([]Invite, string, error)
 
 	// RevokeInvite stamps revoked_at on an active invite. ErrNotFound

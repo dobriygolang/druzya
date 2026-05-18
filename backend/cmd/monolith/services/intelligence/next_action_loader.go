@@ -4,7 +4,6 @@ import (
 	"context"
 
 	intelApp "druz9/intelligence/app"
-	intelDomain "druz9/intelligence/domain"
 	intelInfra "druz9/intelligence/infra"
 
 	"github.com/google/uuid"
@@ -21,10 +20,6 @@ import (
 //
 // focusReflections reader feeds the prompt with recent pomodoro
 // grade+notes — direct lever for «previously stuck on X» rationale.
-//
-// mlProfile reader swaps default Go-senior framing for ML overlay when
-// the user committed to the ML offer track (primary_goal=ml_offer) or
-// is using Hone with active_track=ml.
 type nextActionLoader struct {
 	fork             *intelInfra.ForkProgressReader
 	resourceTrail    *intelInfra.ResourceEngagementReader
@@ -79,7 +74,6 @@ func (l *nextActionLoader) LoadNextActionContext(
 			}
 		}
 	}
-	_ = intelDomain.ActiveTrack{}
 
 	// Recent focus reflections (last 14 days). Cap'нем cпеc'ом
 	// 5 entries в prompt builder'е; reader возвращает up to 1000 чтобы

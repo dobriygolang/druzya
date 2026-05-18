@@ -32,7 +32,7 @@ type Server struct {
 	Leave      *tracksApp.LeaveTrack
 	CustomPath *tracksApp.GenerateCustomPath
 
-	// Phase 2 step UX (2026-05-04). nil-safe.
+	// Step UX. nil-safe.
 	StartCheckpointUC  *tracksApp.StartCheckpoint
 	SubmitCheckpointUC *tracksApp.SubmitCheckpoint
 
@@ -318,7 +318,7 @@ func (s *Server) GenerateCustomPath(
 	return connect.NewResponse(out), nil
 }
 
-// ── Phase 2 step UX (2026-05-04) ─────────────────────────────────────────
+// ── Step UX ──────────────────────────────────────────────────────────────
 
 // StartCheckpoint — открыть checkpoint quiz CTA на step.
 func (s *Server) StartCheckpoint(

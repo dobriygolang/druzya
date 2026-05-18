@@ -1,6 +1,6 @@
-// stage_templates_repo.go — R7 Phase 1 templates library + pipeline
-// validation adapters. Both impls live here, share the same pgxpool, и
-// никаких cross-context imports (mock_interview не трогаем).
+// stage_templates_repo.go — templates library + pipeline validation
+// adapters. Both impls live here, share the same pgxpool, и никаких
+// cross-context imports (mock_interview не трогаем).
 package infra
 
 import (

@@ -1,8 +1,8 @@
 // Package domain contains the entities, value objects and repository interfaces
 // for the admin bounded context. No external framework imports here.
 //
-// The admin domain is a CMS/ops surface (bible §3.14). Curators manage tasks,
-// companies and dynamic config; ops review anticheat signals. Read-heavy for
+// The admin domain is a CMS/ops surface. Curators manage tasks, companies
+// and dynamic config; ops review anticheat signals. Read-heavy for
 // dashboards, plus write for curators.
 //
 // solution_hint — IMPORTANT: every other domain treats tasks.solution_hint as

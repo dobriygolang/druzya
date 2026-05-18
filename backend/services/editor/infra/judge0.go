@@ -1,12 +1,12 @@
 // judge0.go — minimal Judge0 HTTP adapter for one-shot RunCode.
 //
-// Unlike daily/arena (test-case grading), the editor domain only needs a
-// single synchronous execution: (code, language) → (stdout, stderr,
-// exit_code, time_ms, status). No per-task grading, no fixture stdin.
+// Unlike test-case grading flows, the editor domain only needs a single
+// synchronous execution: (code, language) → (stdout, stderr, exit_code,
+// time_ms, status). No per-task grading, no fixture stdin.
 //
-// Anti-fallback policy (same as daily): if the sandbox is unreachable or
-// Judge0.URL is empty, the use case returns ErrSandboxUnavailable so the
-// transport renders Unavailable (503) instead of silently succeeding.
+// Anti-fallback policy: if the sandbox is unreachable or Judge0.URL is
+// empty, the use case returns ErrSandboxUnavailable so the transport
+// renders Unavailable (503) instead of silently succeeding.
 package infra
 
 import (
@@ -50,8 +50,7 @@ type Judge0RunClient struct {
 	Log     *slog.Logger
 }
 
-// NewJudge0RunClient builds a client. A nil log panics — same anti-fallback
-// stance as daily.infra.NewJudge0HTTPClient.
+// NewJudge0RunClient builds a client. A nil log panics (anti-fallback).
 func NewJudge0RunClient(baseURL string, log *slog.Logger) *Judge0RunClient {
 	if log == nil {
 		panic("editor.infra.NewJudge0RunClient: log is required")
@@ -181,7 +180,7 @@ func languageID(lang enums.Language) (int, bool) {
 	case enums.LanguageTypeScript:
 		return 74, true
 	case enums.LanguageSQL:
-		// Stock Judge0 cannot run SQL — same policy as daily/infra/judge0_client.
+		// Stock Judge0 cannot run SQL.
 		return 0, false
 	default:
 		return 0, false

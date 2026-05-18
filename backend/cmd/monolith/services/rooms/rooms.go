@@ -1,4 +1,4 @@
-// Package rooms — monolith bootstrap для services/rooms (Phase 9a).
+// Package rooms wires the low-key collab rooms surface into the monolith.
 package rooms
 
 import (
@@ -14,13 +14,14 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// NewRooms wires Phase 9a Path C low-key collab rooms.
+// NewRooms wires the Path C low-key collab rooms surface.
 //
-// Free-tier guarded: 3 active · 24h TTL. Discovery — только через
-// Settings → Developer tools / tutor / mock / club. NO top-level surface.
+// Free-tier guarded: 3 active rooms, 24h TTL. Discovery is intentionally low-
+// key: Settings → Developer tools / tutor / mock / club only, no top-level
+// surface.
 //
-// d.PublicBaseURL — origin для share-link генерации (https://druz9.online).
-// nil-safe: пустая строка → relative path.
+// d.Cfg.Notify.PublicBaseURL is the origin used for share-link generation
+// (e.g. https://druz9.online); the use case rejects an empty value.
 func NewRooms(d monolithServices.Deps) *monolithServices.Module {
 	repo := roomsInfra.NewRooms(d.Pool)
 	quota := roomsInfra.NewQuota(d.Pool)

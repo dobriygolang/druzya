@@ -68,9 +68,6 @@ func (uc *PullChanges) Run(ctx context.Context, in domain.PullRequest) (domain.P
 		maxSeenAt = latestTomb
 	}
 
-	// Cursor устанавливаем в max(seen) или now() если ничего не было.
-	// now() безопаснее: если cron в будущем положит row с updated_at < now(),
-	// наш cursor его всё равно не пропустит.
 	if maxSeenAt.IsZero() {
 		maxSeenAt = time.Now().UTC()
 	}

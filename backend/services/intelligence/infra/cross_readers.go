@@ -99,7 +99,7 @@ func (r *MockReader) LastNFinished(ctx context.Context, userID uuid.UUID, n int)
 	return out, nil
 }
 
-// RecentAbandonedCount — Phase 4.7. Single COUNT(*) хватит: мы используем
+// RecentAbandonedCount. Single COUNT(*) хватит: мы используем
 // только число для severity grader'а (детали abandoned mocks coach не
 // показывает, чтобы не превращать brief в naming-and-shaming).
 func (r *MockReader) RecentAbandonedCount(ctx context.Context, userID uuid.UUID, sinceDays int) (int, error) {
@@ -469,7 +469,7 @@ func (r *TrackReader) ActiveTracks(ctx context.Context, userID uuid.UUID) ([]dom
 // Compile-time guard.
 var _ domain.TrackReader = (*TrackReader)(nil)
 
-// ── ClubReader: services/clubs club_attendees + club_sessions (Phase 3) ──
+// ── ClubReader: services/clubs club_attendees + club_sessions ──
 
 // ClubReader implements domain.ClubReader over club_attendees +
 // club_sessions. Live в этом пакете (а не в services/clubs/infra) — same
@@ -533,7 +533,7 @@ func (r *ClubReader) GhostedSessions(ctx context.Context, userID uuid.UUID, wind
 // Compile-time guard.
 var _ domain.ClubReader = (*ClubReader)(nil)
 
-// ── GoalsReader: services/intelligence user_goals (Phase 4.3) ──
+// ── GoalsReader: services/intelligence user_goals ──
 
 // GoalsReader implements domain.GoalsReader over user_goals. Lives here
 // (а не в services/<owner>/infra) потому что user_goals — собственная
@@ -916,11 +916,10 @@ func (r *ExternalActivityReader) SummaryWindow(
 	return out, nil
 }
 
-// ── ResourceEngagementReader: services/learning-companion user_resource_log (00055) ──
+// ── ResourceEngagementReader: services/learning-companion user_resource_log ──
 //
-// Phase 1.7c. Источник для RESOURCE TRAIL prompt block + resource_engagement
-// producer (Phase 1.7d). _ = json чтобы не дёргать драйверов (см ниже:
-// reflection_text — обычная text-колонка, не jsonb).
+// Источник для RESOURCE TRAIL prompt block + resource_engagement producer.
+// reflection_text — обычная text-колонка, не jsonb (декод не нужен).
 
 type ResourceEngagementReader struct{ pool *pgxpool.Pool }
 
@@ -1016,16 +1015,14 @@ func (r *ResourceEngagementReader) EngagementWindow(
 
 // ── ForkProgressReader: services/learning_state + mock_sessions cross-ref ──
 //
-// Phase 1.7c. Источник для FORK STATUS prompt block (только при mode=='explore')
-// + fork_progress producer (Phase 1.7d) + admin learning-state tab.
+// Источник для FORK STATUS prompt block (только при mode=='explore')
+// + fork_progress producer + admin learning-state tab.
 //
 // Branch scoring rule:
 //   - "mle": mock_sessions.section IN ('ml_eng')
 //   - "de":  mock_sessions.section IN ('de')
 // Voluntary-deep-dive count — number of distinct atlas_nodes под fork-cluster
 // touched через user_resource_log (kind='clicked'|'finished') за explore окно.
-//
-// _ = json (no jsonb-decode здесь).
 
 type ForkProgressReader struct{ pool *pgxpool.Pool }
 
@@ -1160,12 +1157,12 @@ func (r *ForkProgressReader) Snapshot(
 	return out, nil
 }
 
-// ── DayShutdownReader: services/hone day_shutdowns (миграция 00120) ──
+// ── DayShutdownReader: services/hone day_shutdowns ──
 //
-// Phase K Wave 15. End-of-day shutdown ритуал: Hone сохраняет 3 поля
-// (done / pending / tomorrow) UPSERT'ом по (user_id, shutdown_date).
-// Утром daily_brief use case вытаскивает последнюю запись (если она
-// не старше 2 дней) и кладёт coach prompt секцией DAY SHUTDOWN.
+// End-of-day shutdown ритуал: Hone сохраняет 3 поля (done / pending /
+// tomorrow) UPSERT'ом по (user_id, shutdown_date). Утром daily_brief use
+// case вытаскивает последнюю запись (если она не старше 2 дней) и кладёт
+// coach prompt секцией DAY SHUTDOWN.
 
 type DayShutdownReader struct{ pool *pgxpool.Pool }
 

@@ -68,51 +68,71 @@ func PickModel(user UserContext, taskModel enums.LLMModel, section enums.Section
 // System prompt
 // ─────────────────────────────────────────────────────────────────────────
 
-// BuildSystemPrompt assembles the 4-block interviewer prompt (bible §8).
+// dispatchSystemPrompt routes a session to the specialised persona-prompt
+// builder when its Section is one of the dedicated tracks (English HR /
+// Senior SD / Tech Lead / sysanalyst / etc.). ok=false means the caller
+// should fall through to the generic algorithmic-interview prompt.
+func dispatchSystemPrompt(s Session, user UserContext, company CompanyContext, elapsed time.Duration) (string, bool) {
+	switch {
+	case IsEnglishHRSection(s.Section):
+		return BuildEnglishHRSystemPrompt(s, user, company, elapsed), true
+	case IsSystemDesignSeniorSection(s.Section):
+		return BuildSystemDesignSeniorSystemPrompt(s, user, company, elapsed), true
+	case IsTechLeadEMSection(s.Section):
+		return BuildTechLeadSystemPrompt(s, user, company, elapsed), true
+	case IsSysanalystSection(s.Section):
+		return BuildSysanalystSystemPrompt(s, user, company, elapsed), true
+	case IsProductAnalystSection(s.Section):
+		return BuildProductAnalystSystemPrompt(s, user, company, elapsed), true
+	case IsQASection(s.Section):
+		return BuildQASystemPrompt(s, user, company, elapsed), true
+	case IsDevOpsSection(s.Section):
+		return BuildDevOpsSystemPrompt(s, user, company, elapsed), true
+	case IsMLEngSection(s.Section):
+		return BuildMLEngSystemPrompt(s, user, company, elapsed), true
+	case IsDESection(s.Section):
+		return BuildDESystemPrompt(s, user, company, elapsed), true
+	}
+	return "", false
+}
+
+// dispatchReportPrompt is the report-prompt counterpart of
+// dispatchSystemPrompt. Same persona dispatch, different signature
+// (the grader only needs Session).
+func dispatchReportPrompt(s Session) (string, bool) {
+	switch {
+	case IsEnglishHRSection(s.Section):
+		return BuildEnglishHRReportPrompt(s), true
+	case IsSystemDesignSeniorSection(s.Section):
+		return BuildSystemDesignSeniorReportPrompt(s), true
+	case IsTechLeadEMSection(s.Section):
+		return BuildTechLeadReportPrompt(s), true
+	case IsSysanalystSection(s.Section):
+		return BuildSysanalystReportPrompt(s), true
+	case IsProductAnalystSection(s.Section):
+		return BuildProductAnalystReportPrompt(s), true
+	case IsQASection(s.Section):
+		return BuildQAReportPrompt(s), true
+	case IsDevOpsSection(s.Section):
+		return BuildDevOpsReportPrompt(s), true
+	case IsMLEngSection(s.Section):
+		return BuildMLEngReportPrompt(s), true
+	case IsDESection(s.Section):
+		return BuildDEReportPrompt(s), true
+	}
+	return "", false
+}
+
+// BuildSystemPrompt assembles the 4-block interviewer prompt.
 //
 // IMPORTANT: solution_hint is embedded verbatim into block 2. This prompt is
 // fed to the LLM — it MUST NEVER be persisted into mock_messages as a
 // user/assistant message or logged.
 func BuildSystemPrompt(s Session, t TaskWithHint, user UserContext, company CompanyContext, elapsed time.Duration, stress StressProfile, currentCode string) string {
-	// English HR rounds have no algorithmic task and a different rubric;
-	// delegate to the dedicated builder. Keeping the entry point unified
-	// so callers (send_message.buildLLMMessages, worker.report) don't have
-	// to branch on Section themselves.
-	if IsEnglishHRSection(s.Section) {
-		return BuildEnglishHRSystemPrompt(s, user, company, elapsed)
-	}
-	// Senior SD rounds — same treatment as English HR (no task, different
-	// rubric), different prompt voice (architectural pushback).
-	if IsSystemDesignSeniorSection(s.Section) {
-		return BuildSystemDesignSeniorSystemPrompt(s, user, company, elapsed)
-	}
-	// Tech Lead / EM behavioral STAR rounds — free-form people scenarios.
-	if IsTechLeadEMSection(s.Section) {
-		return BuildTechLeadSystemPrompt(s, user, company, elapsed)
-	}
-	// Sysanalyst free-form round.
-	if IsSysanalystSection(s.Section) {
-		return BuildSysanalystSystemPrompt(s, user, company, elapsed)
-	}
-	// Product analyst free-form round.
-	if IsProductAnalystSection(s.Section) {
-		return BuildProductAnalystSystemPrompt(s, user, company, elapsed)
-	}
-	// QA free-form round.
-	if IsQASection(s.Section) {
-		return BuildQASystemPrompt(s, user, company, elapsed)
-	}
-	// DevOps / SRE free-form round.
-	if IsDevOpsSection(s.Section) {
-		return BuildDevOpsSystemPrompt(s, user, company, elapsed)
-	}
-	// ML engineering free-form round.
-	if IsMLEngSection(s.Section) {
-		return BuildMLEngSystemPrompt(s, user, company, elapsed)
-	}
-	// Data engineering free-form round (Phase 1c · 2026-05-04).
-	if IsDESection(s.Section) {
-		return BuildDESystemPrompt(s, user, company, elapsed)
+	// Specialised persona sections (no algorithmic task, custom rubric):
+	// delegate to the dedicated builder so callers stay section-agnostic.
+	if out, ok := dispatchSystemPrompt(s, user, company, elapsed); ok {
+		return out
 	}
 
 	var b strings.Builder
@@ -176,44 +196,9 @@ func BuildSystemPrompt(s Session, t TaskWithHint, user UserContext, company Comp
 // LLM is asked to return JSON matching ReportDraft; a strict schema is listed
 // inside the prompt.
 func BuildReportPrompt(s Session, t TaskWithHint, stress StressProfile) string {
-	// English HR uses a different rubric (clarity / accuracy / range /
-	// fluency) — see BuildEnglishHRReportPrompt for the JSON shape.
-	if IsEnglishHRSection(s.Section) {
-		return BuildEnglishHRReportPrompt(s)
-	}
-	// Senior SD uses depth / tradeoffs / failure_modes / pragmatism.
-	if IsSystemDesignSeniorSection(s.Section) {
-		return BuildSystemDesignSeniorReportPrompt(s)
-	}
-	// Tech Lead / EM uses structure / ownership / impact / learning.
-	if IsTechLeadEMSection(s.Section) {
-		return BuildTechLeadReportPrompt(s)
-	}
-	// Sysanalyst — requirements / modeling / integration / data / process.
-	if IsSysanalystSection(s.Section) {
-		return BuildSysanalystReportPrompt(s)
-	}
-	// Product analyst — metrics / sql / experimentation / frameworks / communication.
-	if IsProductAnalystSection(s.Section) {
-		return BuildProductAnalystReportPrompt(s)
-	}
-	// QA — test_design / api / automation / bug_analysis / process.
-	if IsQASection(s.Section) {
-		return BuildQAReportPrompt(s)
-	}
-	// DevOps / SRE — infra / observability / cicd / incident / security.
-	if IsDevOpsSection(s.Section) {
-		return BuildDevOpsReportPrompt(s)
-	}
-	// ML engineering — theoretical_depth / practical_implementation /
-	// ml_system_design / data_intuition / production_awareness.
-	if IsMLEngSection(s.Section) {
-		return BuildMLEngReportPrompt(s)
-	}
-	// Data engineering — etl_design / distributed / sql_modeling /
-	// streaming / production_ops.
-	if IsDESection(s.Section) {
-		return BuildDEReportPrompt(s)
+	// Specialised persona sections use their own rubric JSON shapes.
+	if out, ok := dispatchReportPrompt(s); ok {
+		return out
 	}
 
 	var b strings.Builder

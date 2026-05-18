@@ -51,15 +51,21 @@ func (r *PostgresRepo) GetQuota(ctx context.Context, userID uuid.UUID) (domain.Q
 // v2: archive-концепции больше нет (hard-delete only per schema_v2),
 // семантика «освободить quota» сохраняется через DELETE оригиналов.
 // Caller (use-case) уже clamp'ит count в [1..100].
+//
+// DELETE+subselect is not atomic on MVCC if two callers race на одного юзера;
+// CTE с FOR UPDATE SKIP LOCKED локует строки до удаления и не блокирует
+// конкурентный writer'а (он просто пропустит уже залоченные).
 func (r *PostgresRepo) ArchiveOldestNotes(ctx context.Context, userID uuid.UUID, count int) (int64, error) {
 	cmd, err := r.pool.Exec(ctx,
-		`DELETE FROM hone_notes
-		  WHERE id IN (
-		      SELECT id FROM hone_notes
-		       WHERE user_id = $1
-		       ORDER BY updated_at ASC
-		       LIMIT $2
-		  )`,
+		`WITH victims AS (
+		    SELECT id FROM hone_notes
+		     WHERE user_id = $1
+		     ORDER BY updated_at ASC
+		     LIMIT $2
+		     FOR UPDATE SKIP LOCKED
+		)
+		DELETE FROM hone_notes
+		 WHERE id IN (SELECT id FROM victims)`,
 		userID, count,
 	)
 	if err != nil {

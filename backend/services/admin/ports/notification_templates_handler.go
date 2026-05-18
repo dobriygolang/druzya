@@ -1,5 +1,4 @@
-// notification_templates_handler.go — Admin Phase 2: notification template
-// CRUD endpoints.
+// notification_templates_handler.go — notification template CRUD endpoints.
 //
 //	GET    /admin/notification-templates                → list (?channel + ?active)
 //	POST   /admin/notification-templates                → create

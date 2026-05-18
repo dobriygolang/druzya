@@ -1,4 +1,4 @@
-// energy_repo.go — Postgres impl of domain.EnergyRepo (Phase K Wave 15).
+// energy_repo.go — Postgres impl of domain.EnergyRepo.
 package infra
 
 import (

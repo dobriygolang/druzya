@@ -84,6 +84,9 @@ type GetCheckoutSessionOutput struct {
 	Currency      string
 	PeriodEnd     *time.Time
 	CustomerEmail string
+	// OwnerUserID — parsed client_reference_id (uuid.Nil if absent/unparseable).
+	// Ports layer uses this to enforce a hard ownership check.
+	OwnerUserID uuid.UUID
 }
 
 // cachePayload — JSON-сериализуемая копия output'а для Redis.
@@ -94,6 +97,7 @@ type cachePayload struct {
 	Currency      string `json:"currency"`
 	PeriodEndUnix int64  `json:"period_end_unix"` // 0 = nil
 	CustomerEmail string `json:"customer_email"`
+	OwnerUserID   string `json:"owner_user_id,omitempty"`
 }
 
 // cacheKey — Redis key. Session-id immutable, scoped по session — owner-проверка
@@ -127,6 +131,11 @@ func (uc *GetCheckoutSession) Do(ctx context.Context, in GetCheckoutSessionInput
 				if p.PeriodEndUnix > 0 {
 					t := time.Unix(p.PeriodEndUnix, 0).UTC()
 					out.PeriodEnd = &t
+				}
+				if p.OwnerUserID != "" {
+					if oid, oerr := uuid.Parse(p.OwnerUserID); oerr == nil {
+						out.OwnerUserID = oid
+					}
 				}
 				return out, nil
 			}
@@ -179,6 +188,13 @@ func (uc *GetCheckoutSession) Do(ctx context.Context, in GetCheckoutSessionInput
 		CustomerEmail: sess.CustomerEmail,
 	}
 
+	// Parse owner before cache write so cache round-trips preserve ownership.
+	if sess.ClientReferenceID != "" {
+		if ownerID, perr := uuid.Parse(sess.ClientReferenceID); perr == nil {
+			out.OwnerUserID = ownerID
+		}
+	}
+
 	// 5) Cache write — best-effort. Не cache'им если ответ ещё processing
 	// (paid=false), потому что juniors / refresh'ы должны re-resolve как
 	// только webhook долетит.
@@ -193,25 +209,13 @@ func (uc *GetCheckoutSession) Do(ctx context.Context, in GetCheckoutSessionInput
 		if out.PeriodEnd != nil {
 			p.PeriodEndUnix = out.PeriodEnd.Unix()
 		}
+		if out.OwnerUserID != uuid.Nil {
+			p.OwnerUserID = out.OwnerUserID.String()
+		}
 		if raw, merr := json.Marshal(p); merr == nil {
 			if serr := uc.Redis.Set(ctx, uc.cacheKey(sid), raw, uc.CacheTTL).Err(); serr != nil {
 				uc.Log.WarnContext(ctx, "subscription.checkout_session.cache_write",
 					slog.String("session_id", sid), slog.Any("err", serr))
-			}
-		}
-	}
-
-	// 6) Optional owner verification. Если RequesterUserID задан и
-	// client_reference_id парсится в UUID — сверяем. Mismatch logge'ится
-	// (warn), но output возвращаем без обрезаний — frontend всё равно
-	// готов рендерить welcome для гостя (см. routing notes).
-	if in.RequesterUserID != uuid.Nil && sess.ClientReferenceID != "" {
-		if ownerID, perr := uuid.Parse(sess.ClientReferenceID); perr == nil {
-			if ownerID != in.RequesterUserID {
-				uc.Log.WarnContext(ctx, "subscription.checkout_session.owner_mismatch",
-					slog.String("session_id", sid),
-					slog.String("session_owner", ownerID.String()),
-					slog.String("requester", in.RequesterUserID.String()))
 			}
 		}
 	}

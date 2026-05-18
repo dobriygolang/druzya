@@ -1,9 +1,9 @@
 // review_animator.go — choreography for the AI cursor.
 //
 // When CoachListener decides "settle" or "regress" (driven by a real bus
-// event from arena/mock/quiz), it ALSO calls ReviewAnimator.Choreograph
-// which publishes a slow-motion sequence of CursorEvents to the
-// per-user CursorEventBus:
+// event from mock_interview / codex / copilot signals), it ALSO calls
+// ReviewAnimator.Choreograph which publishes a slow-motion sequence of
+// CursorEvents to the per-user CursorEventBus:
 //
 //  1. cursor.move    → fly to the card                ─┐
 //  2. card.focus     → highlight                       │  ~1.5–4s
@@ -12,7 +12,7 @@
 //  5. card.move      → card slides into the new column ─┘   each
 //
 // The pauses are intentional: the user perceives "the AI is reading my
-// arena result, deciding, then committing" instead of a teleport. The
+// attempt, deciding, then committing" instead of a teleport. The
 // animator runs in its own goroutine so the publishing path of the
 // triggering event is not blocked.
 package app

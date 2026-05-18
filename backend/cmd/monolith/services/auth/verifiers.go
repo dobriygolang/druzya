@@ -54,10 +54,9 @@ func (a TranscriptionTokenVerifier) Verify(raw string) (uuid.UUID, error) {
 	return parseSubject(a.Issuer, raw)
 }
 
-// WhiteboardTokenVerifier removed 2026-05-12 (D4/Stream F) — WS handshake
-// gone; whiteboard solo mode uses standard Connect-RPC auth.
-// EditorTokenVerifier также станет unused когда editor WS теплится off;
-// см. cmd/monolith/services/editor/editor.go.
+// WhiteboardTokenVerifier removed — WS handshake gone; whiteboard solo mode
+// uses standard Connect-RPC auth. EditorTokenVerifier также станет unused
+// когда editor WS теплится off.
 
 func parseSubject(issuer *authApp.TokenIssuer, raw string) (uuid.UUID, error) {
 	claims, err := issuer.Parse(raw)

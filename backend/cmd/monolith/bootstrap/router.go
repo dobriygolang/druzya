@@ -94,7 +94,6 @@ func buildHandler(d routerDeps) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"pong":true}`))
 		})
-		// TODO (openapi): add to shared/openapi.yaml so codegen owns the route.
 		api.Post("/notify/telegram/webhook", d.Notify.WebhookHandler.HandlerFunc())
 
 		// Public REST routes — мountятся ВНЕ auth-gate'а. Каждый handler

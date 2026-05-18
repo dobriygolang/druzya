@@ -1,7 +1,6 @@
-// reading_paths.go — Stream D (2026-05-12). Tutor-side CRUD for curated
-// atlas-node sequences. Per identity.md every tutor surface is free; the
-// use cases enforce per-row auth via tutor_id at the SQL gate so a client
-// bug can't accidentally touch another tutor's path.
+// Tutor-side CRUD for curated atlas-node sequences. Use cases enforce
+// per-row auth via tutor_id at the SQL gate so a client bug can't
+// accidentally touch another tutor's path.
 
 package app
 

@@ -1,4 +1,4 @@
-// english_activity_postgres.go — Wave 15 English activity reader.
+// english_activity_postgres.go — English activity reader.
 //
 // Aggregates 7-day window over:
 //   - hone_reading_sessions   → distinct days

@@ -58,15 +58,7 @@ func NewCodex(d monolithServices.Deps) *monolithServices.Module {
 	transcoder := monolithServices.MustTranscode("codex", connectPath, connectHandler)
 
 	// adminGate wraps the transcoder so admin-only paths require role=admin.
-	adminGate := func(w http.ResponseWriter, r *http.Request) {
-		if _, err := authServices.RequireAdminInline(r); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(authServices.StatusForAuthErr(err))
-			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-			return
-		}
-		transcoder.ServeHTTP(w, r)
-	}
+	adminGate := authServices.AdminGateHandler(transcoder)
 	// adminListAdapter rewrites GET /admin/codex/{articles,categories} onto
 	// the public ListArticles/ListCategories transcoder paths with
 	// active_only=false, so the admin can fetch drafts. The proto contract

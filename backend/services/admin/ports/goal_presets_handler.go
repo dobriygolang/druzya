@@ -1,4 +1,4 @@
-// goal_presets_handler.go — Admin Phase 2: goal preset CRUD chi-direct endpoints.
+// goal_presets_handler.go — goal preset CRUD chi-direct endpoints.
 //
 //	GET    /admin/goal-presets             → list (admin-only; includes inactive)
 //	POST   /admin/goal-presets             → create

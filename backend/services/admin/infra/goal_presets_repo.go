@@ -1,4 +1,4 @@
-// goal_presets_repo.go — Admin Phase 2: goal_presets pg adapter.
+// goal_presets_repo.go — goal_presets pg adapter.
 //
 // Не используем sqlc — таблица маленькая, queries прямолинейные, и
 // admin/infra/queries/admin.sql растёт медленно. Conventionally drop into

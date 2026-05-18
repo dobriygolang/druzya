@@ -74,6 +74,10 @@ func todayContextSnippets(body string, needles []string, limit int) []string {
 	return out
 }
 
+// maxTodayContextTopics caps how many topic-tags we emit per today-note,
+// keeping the plan-prompt tight even when a note touches many themes.
+const maxTodayContextTopics = 6
+
 func todayContextTopics(body string) []string {
 	lower := " " + strings.ToLower(body) + " "
 	rules := []struct {
@@ -91,7 +95,7 @@ func todayContextTopics(body string) []string {
 		{"interview", []string{"interview", "собес", "интервью"}},
 		{"go", []string{"golang", " go ", "grpc"}},
 	}
-	out := make([]string, 0, 6)
+	out := make([]string, 0, maxTodayContextTopics)
 	for _, rule := range rules {
 		for _, key := range rule.keys {
 			if strings.Contains(lower, key) {
@@ -99,7 +103,7 @@ func todayContextTopics(body string) []string {
 				break
 			}
 		}
-		if len(out) >= 6 {
+		if len(out) >= maxTodayContextTopics {
 			break
 		}
 	}

@@ -1,4 +1,4 @@
-// Phase 5 — eval_coach CLI.
+// eval_coach CLI.
 //
 // Static guardrail that loads a JSON dataset of (BriefPromptInput, raw
 // LLM response) pairs and runs them through the same parser/sanitizer

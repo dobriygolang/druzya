@@ -77,6 +77,11 @@ const (
 	wsPingInterval      = 30 * time.Second
 	wsReadDeadline      = 120 * time.Second
 	wsWriteTimeout      = 10 * time.Second
+
+	// RMS diarizer params. 0 = use built-in defaults (threshold from
+	// clusterer impl, unbounded speakers). Named for a single tuning knob.
+	diarizerMinThreshold = 0.0
+	diarizerMaxSpeakers  = 0
 )
 
 // TokenVerifier — locally-owned auth boundary. Adapter в monolith
@@ -192,7 +197,12 @@ func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn,
 	defer ws.Close()
 
 	out := newStreamConn(ws, h.Log)
+	// dispatchWG tracks every in-flight dispatchWindow goroutine. Wait
+	// first (LIFO defer), then close(out.done) so writeLoop can drain
+	// any remaining sends without racing dispatchWindow.
+	var dispatchWG sync.WaitGroup
 	defer close(out.done)
+	defer dispatchWG.Wait()
 
 	go out.writeLoop(ctx)
 
@@ -210,7 +220,7 @@ func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn,
 		windowSeq        int
 		languageOverride = language
 		promptOverride   = prompt
-		diarizer         = domain.NewRMSClusterer(0, 0) // default threshold + maxSpeakers
+		diarizer         = domain.NewRMSClusterer(diarizerMinThreshold, diarizerMaxSpeakers)
 	)
 
 	flushWindow := func(reason string) {
@@ -242,7 +252,11 @@ func (h *StreamHandler) serveStream(rootCtx context.Context, ws *websocket.Conn,
 			speakerID = diarizer.AssignSpeaker(feats)
 		} // else mic: speakerID stays 0.
 
-		go h.dispatchWindow(ctx, out, userID, owned, languageOverride, promptOverride, seq, reason, source, speakerID)
+		dispatchWG.Add(1)
+		go func() {
+			defer dispatchWG.Done()
+			h.dispatchWindow(ctx, out, userID, owned, languageOverride, promptOverride, seq, reason, source, speakerID)
+		}()
 	}
 
 	// Set deadlines + pong handler (ai_mock/editor pattern).

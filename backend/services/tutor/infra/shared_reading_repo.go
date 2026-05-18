@@ -34,21 +34,9 @@ func (p *Postgres) CreateSharedMaterial(ctx context.Context, m domain.SharedMate
 	return m, nil
 }
 
-// ListSharedMaterialsByTutor implements domain.SharedMaterialRepo.
-func (p *Postgres) ListSharedMaterialsByTutor(ctx context.Context, tutorID uuid.UUID, limit int) ([]domain.SharedMaterial, error) {
-	rows, _, err := p.listSharedMaterialsByTutorPaged(ctx, tutorID, limit, "")
-	return rows, err
-}
-
-// ListSharedMaterialsByTutorPaged — keyset cursor variant.
-// Sort: created_at DESC, id DESC. cursor "" = first page.
+// ListSharedMaterialsByTutorPaged — keyset cursor over
+// (created_at DESC, id DESC). cursor "" = first page.
 func (p *Postgres) ListSharedMaterialsByTutorPaged(
-	ctx context.Context, tutorID uuid.UUID, limit int, cursor string,
-) ([]domain.SharedMaterial, string, error) {
-	return p.listSharedMaterialsByTutorPaged(ctx, tutorID, limit, cursor)
-}
-
-func (p *Postgres) listSharedMaterialsByTutorPaged(
 	ctx context.Context, tutorID uuid.UUID, limit int, cursor string,
 ) ([]domain.SharedMaterial, string, error) {
 	if limit <= 0 || limit > 200 {

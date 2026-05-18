@@ -46,13 +46,10 @@ type TutorChecker interface {
 	IsTutor(ctx context.Context, userID uuid.UUID) (bool, error)
 }
 
-// CheckTier — главный use-case Stream-C: возвращает эффективный tier юзера
-// с явным указанием источника. Логика приоритизации:
-//
-//	paid Pro (active subscriptions) > BYOK (validated key) > tutor-role > free
-//
-// Если paid Pro есть — он doминирует, даже если у юзера ещё и BYOK ключ
-// привязан (BYOK не платный, paid даёт expiry/billing).
+// CheckTier возвращает эффективный tier с явным указанием источника.
+// Приоритет: paid Pro (active subscriptions) > BYOK (validated key) >
+// tutor-role > free. Paid Pro доминирует над BYOK потому что только он
+// несёт expiry/billing — BYOK даёт фичи бесплатно, но без срока.
 type CheckTier struct {
 	GetTierUC *GetTier
 	BYOKRepo  domain.BYOKRepo

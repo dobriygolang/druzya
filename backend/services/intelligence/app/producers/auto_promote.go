@@ -1,4 +1,4 @@
-// auto_promote.go — Phase 3.5 daily cron producer.
+// auto_promote.go — daily cron producer.
 //
 // Pipeline:
 //  1. Fetch promotion candidates (user_count ≥ 5, avg_quality ≥ 0.7,

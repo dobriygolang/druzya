@@ -1,4 +1,4 @@
-// cross_vertical_insights.go — Wave 15 cross-vertical insights v2.
+// cross_vertical_insights.go — cross-vertical insights.
 //
 // Why a separate UC from app/insights.go GenerateInsights:
 //   - GenerateInsights walks the SAME prompt-input snapshot the
@@ -32,7 +32,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// CrossInsight — projection produced by the Wave 15 cross-vertical UC.
+// CrossInsight — projection produced by the cross-vertical UC.
 //
 // Distinct from domain.Insight: this is ephemeral (no upsert), the wire
 // shape is flatter (no event_id / anchor / acted/dismissed state). We

@@ -1,4 +1,4 @@
-// Phase 4.1 — reflective two-stage brief synthesiser tests.
+// reflective two-stage brief synthesiser tests.
 //
 // Mocks ChatClient with a queue of responses so we can drive sketch /
 // critique pairs deterministically, then assert on:
@@ -56,7 +56,7 @@ func quietLogger() *slog.Logger {
 
 // criticalInput — BriefPromptInput that deriveSeverity grades as critical
 // (4× same plan item skipped). Used wherever we want a warn/critical-grade
-// gate to fire. Calendar pivot 2026-05-04: previously this used an
+// gate to fire. Previously this used an
 // upcoming interview signal, now driven by the skipped-item branch.
 func criticalInput() domain.BriefPromptInput {
 	today := time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC)
@@ -227,7 +227,7 @@ func TestSynthesise_CritiqueParseFailFallsBackToSketch(t *testing.T) {
 // silence "imported and not used" if anyone trims helpers.
 var _ = bytes.NewBuffer
 
-// ── Phase 4.2 persona overlay ────────────────────────────────────────────
+// ── persona overlay ────────────────────────────────────────────
 
 func TestSynthesise_NoPersonaOverlayWhenUnset(t *testing.T) {
 	chat := &queuedChat{
@@ -273,7 +273,7 @@ func TestSynthesise_PersonaOverlayInjectsSystemMessage(t *testing.T) {
 	}
 }
 
-// ── Phase 5 prompt-variant overlay ──────────────────────────────────────
+// ── prompt-variant overlay ──────────────────────────────────────
 
 func TestSynthesise_NoVariantOverlayWhenDefault(t *testing.T) {
 	chat := &queuedChat{

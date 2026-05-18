@@ -1,4 +1,4 @@
-// Resistance journal repository (Phase K Wave 15) — persists resistance_log.
+// Resistance journal repository — persists resistance_log.
 package infra
 
 import (

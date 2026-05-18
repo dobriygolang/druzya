@@ -1,12 +1,11 @@
-// listening_catalog.go — Sergey-curated «ready-made library» of English
-// listening tracks (podcast episodes / conference talks / interviews).
+// listening_catalog.go — curated «ready-made library» of English listening
+// tracks (podcast episodes / conference talks / interviews).
 //
-// Design choice (2026-05-14): user-facing curated catalog stays in-process
-// as a Go-authored list rather than DB-backed. Rationale matches
-// memory/project_curation_model: druz9 is a ranking-proxy on external
-// content — we link, not clone. Keeping the catalog as a typed Go slice
-// gives us compile-time guarantees on level/url/minutes, easy diffs in
-// git when editing, and zero schema churn when adding more entries.
+// User-facing curated catalog stays in-process as a Go-authored list rather
+// than DB-backed. Druz9 is a ranking-proxy on external content — we link,
+// not clone. Keeping the catalog as a typed Go slice gives us compile-time
+// guarantees on level/url/minutes, easy diffs in git when editing, and zero
+// schema churn when adding more entries.
 //
 // Wired through ports/curated_listening.go which mounts at
 // GET /api/v1/hone/listening/curated?level=B1|B2|C1.

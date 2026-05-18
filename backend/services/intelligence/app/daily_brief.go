@@ -72,11 +72,11 @@ type GetDailyBrief struct {
 	Clubs     domain.ClubReader
 	External  domain.ExternalActivityReader
 	MLProfile domain.MLProfileReader
-	// Wave 15: 24h activity (counts only) — surface context для
-	// «вчера ты сделал X» framing. nil-safe.
+	// 24h activity (counts only) — surface context для «вчера ты сделал X»
+	// framing. nil-safe.
 	RecentActivity domain.RecentActivityReader
-	// DayShutdown — Phase K Wave 15. Вчерашняя запись end-of-day ритуала
-	// из Hone (day_shutdowns). nil = section в prompt'е отсутствует.
+	// DayShutdown — вчерашняя запись end-of-day ритуала из Hone
+	// (day_shutdowns). nil = section в prompt'е отсутствует.
 	DayShutdown domain.DayShutdownReader
 
 	// Insights — when set, the brief use-case passes the same prompt-input
@@ -90,7 +90,7 @@ type GetDailyBrief struct {
 type GetDailyBriefInput struct {
 	UserID uuid.UUID
 	Force  bool
-	// Source — Wave 15 surface awareness. Empty / "web" → default web-bias.
+	// Source — surface awareness. Empty / "web" → default web-bias.
 	// "hone" → bias toward focus session on a Hone task. "cue" → bias toward
 	// interview prep if upcoming.
 	Source string
@@ -139,284 +139,20 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	}
 
 	// 3. Build prompt input.
-	since14 := today.Add(-14 * 24 * time.Hour)
-	since7 := today.Add(-7 * 24 * time.Hour)
+	req, err := uc.loadRequiredFeed(ctx, in.UserID, today)
+	if err != nil {
+		return domain.DailyBrief{}, err
+	}
+	opt := uc.loadOptionalFeed(ctx, in.UserID)
+	req.recent = freshRecentNotesForBrief(req.recent, today)
+	opt.dailyNotes = freshDailyNotesForBrief(opt.dailyNotes, today)
 
-	var (
-		focus     []domain.FocusDay
-		skipped   []domain.SkippedPlanItem
-		completed []domain.CompletedPlanItem
-		refl      []domain.Reflection
-		recent    []domain.NoteHead
+	pastEpisodes, cueMemories := uc.loadMemoryRecall(ctx, in.UserID, req, opt)
 
-		focusErr     error
-		skippedErr   error
-		completedErr error
-		reflErr      error
-		recentErr    error
-	)
-	var wg sync.WaitGroup
-	wg.Add(5)
-	go func() {
-		defer wg.Done()
-		focus, focusErr = uc.Focus.LastNDays(ctx, in.UserID, 7)
-	}()
-	go func() {
-		defer wg.Done()
-		skipped, skippedErr = uc.Plans.SkippedItems(ctx, in.UserID, since14)
-	}()
-	go func() {
-		defer wg.Done()
-		completed, completedErr = uc.Plans.CompletedItems(ctx, in.UserID, since7)
-	}()
-	go func() {
-		defer wg.Done()
-		refl, reflErr = uc.Notes.RecentReflections(ctx, in.UserID, 5)
-	}()
-	go func() {
-		defer wg.Done()
-		recent, recentErr = uc.Notes.RecentNotes(ctx, in.UserID, 8)
-	}()
-	wg.Wait()
-	if focusErr != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: focus: %w", focusErr)
-	}
-	if skippedErr != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: skipped: %w", skippedErr)
-	}
-	if completedErr != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: completed: %w", completedErr)
-	}
-	if reflErr != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: reflections: %w", reflErr)
-	}
-	if recentErr != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: recent notes: %w", recentErr)
-	}
-
-	var (
-		mocks           []domain.MockSessionSummary
-		queue           domain.QueueSnapshot
-		weakSkills      []domain.SkillWeak
-		dailyNotes      []domain.DailyNoteHead
-		keywords        []domain.MockKeywords
-		tracks          []domain.ActiveTrack
-		goals           []domain.UserGoal
-		ghostedClubs    []domain.GhostedClubSession
-		abandonedRecent int
-		external        domain.ExternalActivitySummary
-	)
-
-	var optionalWG sync.WaitGroup
-	if uc.Mocks != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.Mocks.LastNFinished(ctx, in.UserID, 5); err == nil {
-				mocks = v
-			} else {
-				warnReader(uc.Log, "mocks", err)
-			}
-			// Abandoned-mock counter (consistency-break сигнал). 14d window
-			// matches «recent» horizon other readers используют.
-			if v, err := uc.Mocks.RecentAbandonedCount(ctx, in.UserID, 14); err == nil {
-				abandonedRecent = v
-			} else {
-				warnReader(uc.Log, "mocks_abandoned", err)
-			}
-		}()
-	}
-	if uc.Queue != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.Queue.TodaySnapshot(ctx, in.UserID); err == nil {
-				queue = v
-			} else {
-				warnReader(uc.Log, "queue", err)
-			}
-		}()
-	}
-	if uc.Skills != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.Skills.WeakestN(ctx, in.UserID, 5); err == nil {
-				weakSkills = v
-			} else {
-				warnReader(uc.Log, "skills", err)
-			}
-		}()
-	}
-	if uc.DailyNotes != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.DailyNotes.RecentDailyNotes(ctx, in.UserID, 3); err == nil {
-				dailyNotes = v
-			} else {
-				warnReader(uc.Log, "daily_notes", err)
-			}
-		}()
-	}
-	if uc.MockMessages != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.MockMessages.TopKeywords(ctx, in.UserID, 14, 12); err == nil {
-				keywords = v
-			} else {
-				warnReader(uc.Log, "mock_messages", err)
-			}
-		}()
-	}
-	if uc.Tracks != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.Tracks.ActiveTracks(ctx, in.UserID); err == nil {
-				tracks = v
-			} else {
-				warnReader(uc.Log, "tracks", err)
-			}
-		}()
-	}
-	if uc.Goals != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.Goals.ActiveGoals(ctx, in.UserID); err == nil {
-				goals = v
-			} else {
-				warnReader(uc.Log, "goals", err)
-			}
-		}()
-	}
-	if uc.Clubs != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.Clubs.GhostedSessions(ctx, in.UserID, 7); err == nil {
-				ghostedClubs = v
-			} else {
-				warnReader(uc.Log, "clubs", err)
-			}
-		}()
-	}
-	if uc.External != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.External.SummaryWindow(ctx, in.UserID, 7); err == nil {
-				external = v
-			} else {
-				warnReader(uc.Log, "external_activity", err)
-			}
-		}()
-	}
-	var recentActivity domain.RecentActivitySummary
-	if uc.RecentActivity != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.RecentActivity.Last24h(ctx, in.UserID); err == nil {
-				recentActivity = v
-			} else {
-				warnReader(uc.Log, "recent_activity", err)
-			}
-		}()
-	}
-	var mlProfile domain.MLProfile
-	if uc.MLProfile != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			// Reader is fail-soft contract: IsML=false on any error.
-			if v, err := uc.MLProfile.GetMLProfile(ctx, in.UserID); err == nil {
-				mlProfile = v
-			} else {
-				warnReader(uc.Log, "ml_profile", err)
-			}
-		}()
-	}
-	// Phase K Wave 15 — DAY SHUTDOWN. Snapshot (HasRecord=false) если
-	// юзер не ритуалит / запись старше 2 дней.
-	var dayShutdown domain.DayShutdownSnapshot
-	if uc.DayShutdown != nil {
-		optionalWG.Add(1)
-		go func() {
-			defer optionalWG.Done()
-			if v, err := uc.DayShutdown.LatestRecent(ctx, in.UserID, 2); err == nil {
-				dayShutdown = v
-			} else {
-				warnReader(uc.Log, "day_shutdown", err)
-			}
-		}()
-	}
-	optionalWG.Wait()
-	recent = freshRecentNotesForBrief(recent, today)
-	dailyNotes = freshDailyNotesForBrief(dailyNotes, today)
-
-	var (
-		pastEpisodes []domain.Episode
-		cueMemories  []domain.Episode
-	)
-	if uc.Memory != nil {
-		recallQuery := briefMemoryRecallQuery(
-			mocks, weakSkills, keywords, queue, skipped, recent, dailyNotes,
-		)
-		var memoryWG sync.WaitGroup
-		memoryWG.Add(2)
-		go func() {
-			defer memoryWG.Done()
-			if recall, err := uc.Memory.Recall(ctx, RecallParams{
-				UserID: in.UserID,
-				Query:  recallQuery,
-				Kinds: []domain.EpisodeKind{
-					domain.EpisodeBriefEmitted,
-					domain.EpisodeBriefFollowed,
-					domain.EpisodeBriefDismissed,
-					domain.EpisodeQAQuery,
-					domain.EpisodeQAAnswered,
-					// Focus reflections (with grade) surface в "past coach
-					// interactions" prompt section. Coach видит «3 days ago
-					// user reflected "stuck on joins" grade 2».
-					domain.EpisodeFocusReflectionAdded,
-				},
-				// Tighter than the historical 60-day window: older brief
-				// signals lead to recommendations referencing what the user
-				// solved weeks ago and create the "coach feels stale" UX
-				// the rebuild was prompted by.
-				SinceDays:     30,
-				K:             4,
-				PerKindRecent: 3,
-			}); err == nil {
-				pastEpisodes = recall
-			} else {
-				warnReader(uc.Log, "memory", err)
-			}
-		}()
-		go func() {
-			defer memoryWG.Done()
-			if recall, err := uc.Memory.Recall(ctx, RecallParams{
-				UserID:        in.UserID,
-				Query:         recallQuery,
-				Kinds:         []domain.EpisodeKind{domain.EpisodeCueConversationMemory},
-				SinceDays:     14,
-				K:             6,
-				PerKindRecent: 8,
-			}); err == nil {
-				cueMemories = selectCueMemories(recall, 5)
-			} else {
-				warnReader(uc.Log, "cue_memory", err)
-			}
-		}()
-		memoryWG.Wait()
-	}
 	var codexArticles []domain.CodexArticleSuggestion
 	if uc.Codex != nil {
 		if v, cErr := uc.Codex.SuggestArticles(ctx, in.UserID, codexTopicsForBrief(
-			mocks, weakSkills, keywords, cueMemories,
+			opt.mocks, opt.weakSkills, opt.keywords, cueMemories,
 		), 6); cErr == nil {
 			codexArticles = v
 		} else {
@@ -432,29 +168,29 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	snapshot := domain.BriefPromptInput{
 		UserID:              in.UserID,
 		Today:               today,
-		FocusDays:           focus,
-		SkippedRecent:       skipped,
-		CompletedRecent:     completed,
-		Reflections:         refl,
-		RecentNotes:         recent,
+		FocusDays:           req.focus,
+		SkippedRecent:       req.skipped,
+		CompletedRecent:     req.completed,
+		Reflections:         req.refl,
+		RecentNotes:         req.recent,
 		PastEpisodes:        pastEpisodes,
 		CueMemories:         cueMemories,
-		Mocks:               mocks,
-		MockAbandonedRecent: abandonedRecent,
-		Queue:               queue,
-		WeakSkills:          weakSkills,
-		DailyNotes:          dailyNotes,
-		MockKeywords:        keywords,
+		Mocks:               opt.mocks,
+		MockAbandonedRecent: opt.abandonedRecent,
+		Queue:               opt.queue,
+		WeakSkills:          opt.weakSkills,
+		DailyNotes:          opt.dailyNotes,
+		MockKeywords:        opt.keywords,
 		CodexArticles:       codexArticles,
-		ActiveTracks:        tracks,
+		ActiveTracks:        opt.tracks,
 		PendingFollowups:    pendingFollowups,
-		ActiveGoals:         goals,
-		GhostedClubs:        ghostedClubs,
-		External:            external,
-		ML:                  mlProfile,
-		DayShutdown:         dayShutdown,
+		ActiveGoals:         opt.goals,
+		GhostedClubs:        opt.ghostedClubs,
+		External:            opt.external,
+		ML:                  opt.mlProfile,
+		DayShutdown:         opt.dayShutdown,
 		Source:              in.Source,
-		RecentActivity24h:   recentActivity,
+		RecentActivity24h:   opt.recentActivity,
 	}
 	brief, err := uc.Synthesiser.Synthesise(ctx, snapshot)
 	if err != nil {
@@ -544,6 +280,302 @@ func (uc *GetDailyBrief) cacheFreshEnough(
 		return true, nil
 	}
 	return !events[0].OccurredAt.After(generatedAt), nil
+}
+
+// requiredFeed bundles the mandatory readers that must succeed для brief.
+// Каждое поле — параллельно загружаемая выборка; ошибка любого → fail-fast.
+type requiredFeed struct {
+	focus     []domain.FocusDay
+	skipped   []domain.SkippedPlanItem
+	completed []domain.CompletedPlanItem
+	refl      []domain.Reflection
+	recent    []domain.NoteHead
+}
+
+// optionalFeed bundles fail-soft cross-product reader outputs. Любая
+// ошибка просто warn'ит и оставляет zero value — соответствующая prompt
+// секция просто не появится.
+type optionalFeed struct {
+	mocks           []domain.MockSessionSummary
+	queue           domain.QueueSnapshot
+	weakSkills      []domain.SkillWeak
+	dailyNotes      []domain.DailyNoteHead
+	keywords        []domain.MockKeywords
+	tracks          []domain.ActiveTrack
+	goals           []domain.UserGoal
+	ghostedClubs    []domain.GhostedClubSession
+	abandonedRecent int
+	external        domain.ExternalActivitySummary
+	recentActivity  domain.RecentActivitySummary
+	mlProfile       domain.MLProfile
+	dayShutdown     domain.DayShutdownSnapshot
+}
+
+// loadRequiredFeed kicks off the five must-succeed reads concurrently.
+// Fail-fast: first reader error → return with wrapped context.
+func (uc *GetDailyBrief) loadRequiredFeed(ctx context.Context, userID uuid.UUID, today time.Time) (requiredFeed, error) {
+	since14 := today.Add(-14 * 24 * time.Hour)
+	since7 := today.Add(-7 * 24 * time.Hour)
+
+	var (
+		out                                                          requiredFeed
+		focusErr, skippedErr, completedErr, reflErr, recentErr       error
+		wg                                                           sync.WaitGroup
+	)
+	wg.Add(5)
+	go func() {
+		defer wg.Done()
+		out.focus, focusErr = uc.Focus.LastNDays(ctx, userID, 7)
+	}()
+	go func() {
+		defer wg.Done()
+		out.skipped, skippedErr = uc.Plans.SkippedItems(ctx, userID, since14)
+	}()
+	go func() {
+		defer wg.Done()
+		out.completed, completedErr = uc.Plans.CompletedItems(ctx, userID, since7)
+	}()
+	go func() {
+		defer wg.Done()
+		out.refl, reflErr = uc.Notes.RecentReflections(ctx, userID, 5)
+	}()
+	go func() {
+		defer wg.Done()
+		out.recent, recentErr = uc.Notes.RecentNotes(ctx, userID, 8)
+	}()
+	wg.Wait()
+	for _, ex := range []struct {
+		label string
+		err   error
+	}{
+		{"focus", focusErr},
+		{"skipped", skippedErr},
+		{"completed", completedErr},
+		{"reflections", reflErr},
+		{"recent notes", recentErr},
+	} {
+		if ex.err != nil {
+			return requiredFeed{}, fmt.Errorf("intelligence.GetDailyBrief.Do: %s: %w", ex.label, ex.err)
+		}
+	}
+	return out, nil
+}
+
+// loadOptionalFeed kicks off all nil-safe cross-product readers in parallel.
+// Failures are logged through warnReader; zero values flow downstream.
+func (uc *GetDailyBrief) loadOptionalFeed(ctx context.Context, userID uuid.UUID) optionalFeed {
+	var (
+		out optionalFeed
+		wg  sync.WaitGroup
+	)
+	if uc.Mocks != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.Mocks.LastNFinished(ctx, userID, 5); err == nil {
+				out.mocks = v
+			} else {
+				warnReader(uc.Log, "mocks", err)
+			}
+			// Abandoned-mock counter (consistency-break сигнал). 14d window
+			// matches «recent» horizon other readers используют.
+			if v, err := uc.Mocks.RecentAbandonedCount(ctx, userID, 14); err == nil {
+				out.abandonedRecent = v
+			} else {
+				warnReader(uc.Log, "mocks_abandoned", err)
+			}
+		}()
+	}
+	if uc.Queue != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.Queue.TodaySnapshot(ctx, userID); err == nil {
+				out.queue = v
+			} else {
+				warnReader(uc.Log, "queue", err)
+			}
+		}()
+	}
+	if uc.Skills != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.Skills.WeakestN(ctx, userID, 5); err == nil {
+				out.weakSkills = v
+			} else {
+				warnReader(uc.Log, "skills", err)
+			}
+		}()
+	}
+	if uc.DailyNotes != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.DailyNotes.RecentDailyNotes(ctx, userID, 3); err == nil {
+				out.dailyNotes = v
+			} else {
+				warnReader(uc.Log, "daily_notes", err)
+			}
+		}()
+	}
+	if uc.MockMessages != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.MockMessages.TopKeywords(ctx, userID, 14, 12); err == nil {
+				out.keywords = v
+			} else {
+				warnReader(uc.Log, "mock_messages", err)
+			}
+		}()
+	}
+	if uc.Tracks != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.Tracks.ActiveTracks(ctx, userID); err == nil {
+				out.tracks = v
+			} else {
+				warnReader(uc.Log, "tracks", err)
+			}
+		}()
+	}
+	if uc.Goals != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.Goals.ActiveGoals(ctx, userID); err == nil {
+				out.goals = v
+			} else {
+				warnReader(uc.Log, "goals", err)
+			}
+		}()
+	}
+	if uc.Clubs != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.Clubs.GhostedSessions(ctx, userID, 7); err == nil {
+				out.ghostedClubs = v
+			} else {
+				warnReader(uc.Log, "clubs", err)
+			}
+		}()
+	}
+	if uc.External != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.External.SummaryWindow(ctx, userID, 7); err == nil {
+				out.external = v
+			} else {
+				warnReader(uc.Log, "external_activity", err)
+			}
+		}()
+	}
+	if uc.RecentActivity != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.RecentActivity.Last24h(ctx, userID); err == nil {
+				out.recentActivity = v
+			} else {
+				warnReader(uc.Log, "recent_activity", err)
+			}
+		}()
+	}
+	if uc.MLProfile != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Reader is fail-soft contract: IsML=false on any error.
+			if v, err := uc.MLProfile.GetMLProfile(ctx, userID); err == nil {
+				out.mlProfile = v
+			} else {
+				warnReader(uc.Log, "ml_profile", err)
+			}
+		}()
+	}
+	// DAY SHUTDOWN. Snapshot (HasRecord=false) если юзер не ритуалит /
+	// запись старше 2 дней.
+	if uc.DayShutdown != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if v, err := uc.DayShutdown.LatestRecent(ctx, userID, 2); err == nil {
+				out.dayShutdown = v
+			} else {
+				warnReader(uc.Log, "day_shutdown", err)
+			}
+		}()
+	}
+	wg.Wait()
+	return out
+}
+
+// loadMemoryRecall fetches past brief / Q&A interactions + Cue memories in
+// parallel. Both recall calls are nil-safe (uc.Memory == nil → empty result).
+func (uc *GetDailyBrief) loadMemoryRecall(
+	ctx context.Context,
+	userID uuid.UUID,
+	req requiredFeed,
+	opt optionalFeed,
+) (pastEpisodes, cueMemories []domain.Episode) {
+	if uc.Memory == nil {
+		return nil, nil
+	}
+	recallQuery := briefMemoryRecallQuery(
+		opt.mocks, opt.weakSkills, opt.keywords, opt.queue, req.skipped, req.recent, opt.dailyNotes,
+	)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if recall, err := uc.Memory.Recall(ctx, RecallParams{
+			UserID: userID,
+			Query:  recallQuery,
+			Kinds: []domain.EpisodeKind{
+				domain.EpisodeBriefEmitted,
+				domain.EpisodeBriefFollowed,
+				domain.EpisodeBriefDismissed,
+				domain.EpisodeQAQuery,
+				domain.EpisodeQAAnswered,
+				// Focus reflections (with grade) surface в "past coach
+				// interactions" prompt section. Coach видит «3 days ago
+				// user reflected "stuck on joins" grade 2».
+				domain.EpisodeFocusReflectionAdded,
+			},
+			// Tighter than the historical 60-day window: older brief
+			// signals lead to recommendations referencing what the user
+			// solved weeks ago and create the "coach feels stale" UX
+			// the rebuild was prompted by.
+			SinceDays:     30,
+			K:             4,
+			PerKindRecent: 3,
+		}); err == nil {
+			pastEpisodes = recall
+		} else {
+			warnReader(uc.Log, "memory", err)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if recall, err := uc.Memory.Recall(ctx, RecallParams{
+			UserID:        userID,
+			Query:         recallQuery,
+			Kinds:         []domain.EpisodeKind{domain.EpisodeCueConversationMemory},
+			SinceDays:     14,
+			K:             6,
+			PerKindRecent: 8,
+		}); err == nil {
+			cueMemories = selectCueMemories(recall, 5)
+		} else {
+			warnReader(uc.Log, "cue_memory", err)
+		}
+	}()
+	wg.Wait()
+	return pastEpisodes, cueMemories
 }
 
 func briefFreshnessEpisodeKinds() []domain.EpisodeKind {

@@ -1,4 +1,4 @@
-// pipeline_validate.go — R7 Phase 1.
+// pipeline_validate.go
 //
 // ValidatePipeline reads a company's stage config and reports per-stage
 // readiness: each stage needs ≥1 task (for task_solve kinds) OR ≥1

@@ -1,4 +1,4 @@
-// coach_prompts.go — Admin Phase 2: coach prompt CRUD use cases.
+// coach_prompts.go — coach prompt CRUD use cases.
 //
 // Four thin UCs (List / Create / Update / Deactivate) over CoachPromptRepo.
 // Validation:

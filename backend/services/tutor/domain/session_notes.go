@@ -7,10 +7,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// SessionNotes — Phase 3.3 writeable notepad для тутора per-student.
-// Live в tutor_session_notes (миграция 00045). Один markdown-блок на
-// (tutor, student) пару — без ревизий и журнала по сессиям. Доступ
-// строго tutor-only: студент свои notes не видит.
+// SessionNotes — writeable notepad для тутора per-student. Один
+// markdown-блок на (tutor, student) пару — без ревизий и журнала по
+// сессиям. Доступ строго tutor-only: студент свои notes не видит.
 type SessionNotes struct {
 	TutorID   uuid.UUID
 	StudentID uuid.UUID

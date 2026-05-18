@@ -3,10 +3,9 @@
 // dashboard.go — admin dashboard entity + repository contract.
 //
 // The dashboard surface is a simple counters payload assembled from several
-// tables (users / arena_matches / mock_sessions / daily_kata_history /
-// anticheat_signals / user_reports). The repo runs every query in a single
-// short-lived ctx so the use case can wrap the whole thing in a Redis cache
-// (60s TTL — see app/get_dashboard.go).
+// tables (users / mock_sessions / anticheat_signals / user_reports). The
+// repo runs every query in a single short-lived ctx so the use case can
+// wrap the whole thing in a Redis cache (60s TTL — see app/get_dashboard.go).
 //
 // Active timeframes are computed off users.updated_at as a coarse proxy
 // (mirrors the `/stats/public` endpoint in cmd/monolith/services/stats.go).
@@ -20,9 +19,6 @@ import (
 )
 
 // AdminDashboard is the live counters payload served by the /admin landing.
-//
-// Pivot 2026-05: MatchesToday/MatchesWeek/KatasToday/Week полей нет —
-// arena/daily_kata свёрнуты.
 type AdminDashboard struct {
 	UsersTotal         int64
 	UsersActiveToday   int64

@@ -32,6 +32,12 @@ func Write(w http.ResponseWriter, err error) {
 	if !errors.As(err, &ae) {
 		ae = New(http.StatusInternalServerError, "internal", "internal error")
 	}
+	// Guard: если headers уже отправлены (Content-Type выставлен), второй
+	// WriteHeader приведёт к "superfluous WriteHeader call" warning'у и
+	// порче response body. Просто выходим — caller уже ответил.
+	if w.Header().Get("Content-Type") != "" {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(ae.Status)
 	_ = json.NewEncoder(w).Encode(map[string]any{"error": ae})

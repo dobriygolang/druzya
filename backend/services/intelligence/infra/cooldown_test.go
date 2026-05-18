@@ -1,4 +1,4 @@
-// Phase 4.6 — anti-suggestion-fatigue cooldown tests.
+// anti-suggestion-fatigue cooldown tests.
 package infra
 
 import (

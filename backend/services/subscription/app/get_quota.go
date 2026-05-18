@@ -21,20 +21,19 @@ import (
 	"github.com/google/uuid"
 )
 
-// UsageReader — адаптер которым use-case заглядывает в чужие domain'ы
-// (notes / whiteboard_rooms / editor_rooms) для подсчёта текущего
-// использования. Реализуется в monolith/services/adapters.go через
-// raw pgx queries (cross-domain boundary preserved).
+// UsageReader — адаптер которым use-case заглядывает в чужие domain'ы для
+// подсчёта текущего использования. Cross-domain SELECT'ы реализуются в infra
+// adapter'е, чтобы subscription/app не импортировал чужие infra-пакеты.
 type UsageReader interface {
-	// Synced notes count — notes у этого user'а на backend'е (after Phase 5
-	// migration: notes которые НЕ ephemeral, т.е. реально cloud-stored).
+	// CountSyncedNotes — backend-stored notes (не локальные drafts).
 	CountSyncedNotes(ctx context.Context, userID uuid.UUID) (int, error)
-	// Active shared whiteboard rooms (visibility=shared) which user owns.
+	// CountActiveSharedBoards — whiteboard rooms (visibility=shared) которыми
+	// владеет юзер.
 	CountActiveSharedBoards(ctx context.Context, userID uuid.UUID) (int, error)
-	// Active shared editor rooms (visibility=shared) which user owns.
+	// CountActiveSharedRooms — то же для editor_rooms.
 	CountActiveSharedRooms(ctx context.Context, userID uuid.UUID) (int, error)
-	// AI invocations этим юзером с начала месяца. Реализация может либо
-	// SELECT count из ai_usage_log, либо вернуть 0 (если log не ведётся).
+	// CountAIThisMonth — AI invocations за календарный месяц. Adapter может
+	// читать ai_usage_log либо возвращать 0.
 	CountAIThisMonth(ctx context.Context, userID uuid.UUID) (int, error)
 }
 

@@ -2,9 +2,9 @@
 // is NOT yet in, newest first, with member counts. Used by the /circles
 // "Discover" tab so users can browse and join.
 //
-// Why chi-direct REST (not Connect): same rationale as arena queue-stats —
-// tiny shape, no proto regen needed, faster iteration. The existing
-// Connect surface (`ListMyCircles`) stays untouched.
+// Why chi-direct REST (not Connect): tiny shape, no proto regen needed,
+// faster iteration. The existing Connect surface (`ListMyCircles`) stays
+// untouched.
 package ports
 
 import (

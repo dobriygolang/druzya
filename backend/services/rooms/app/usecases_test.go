@@ -16,7 +16,7 @@ type fakeRepo struct {
 	rooms []domain.Room
 }
 
-func (r *fakeRepo) Create(_ interface{}, room domain.Room) (domain.Room, error) {
+func (r *fakeRepo) Create(_ context.Context, room domain.Room) (domain.Room, error) {
 	if room.ID == uuid.Nil {
 		room.ID = uuid.New()
 	}
@@ -27,7 +27,7 @@ func (r *fakeRepo) Create(_ interface{}, room domain.Room) (domain.Room, error) 
 	return room, nil
 }
 
-func (r *fakeRepo) Get(_ interface{}, kind domain.Kind, id uuid.UUID) (domain.Room, error) {
+func (r *fakeRepo) Get(_ context.Context, kind domain.Kind, id uuid.UUID) (domain.Room, error) {
 	for _, room := range r.rooms {
 		if room.ID == id && room.Kind == kind {
 			return room, nil
@@ -36,7 +36,7 @@ func (r *fakeRepo) Get(_ interface{}, kind domain.Kind, id uuid.UUID) (domain.Ro
 	return domain.Room{}, domain.ErrNotFound
 }
 
-func (r *fakeRepo) ListMy(_ interface{}, ownerID uuid.UUID, _ domain.Status) ([]domain.Room, error) {
+func (r *fakeRepo) ListMy(_ context.Context, ownerID uuid.UUID, _ domain.Status) ([]domain.Room, error) {
 	out := []domain.Room{}
 	for _, room := range r.rooms {
 		if room.OwnerID == ownerID {
@@ -46,7 +46,7 @@ func (r *fakeRepo) ListMy(_ interface{}, ownerID uuid.UUID, _ domain.Status) ([]
 	return out, nil
 }
 
-func (r *fakeRepo) ExtendExpiry(_ interface{}, kind domain.Kind, id uuid.UUID, exp time.Time) error {
+func (r *fakeRepo) ExtendExpiry(_ context.Context, kind domain.Kind, id uuid.UUID, exp time.Time) error {
 	for i := range r.rooms {
 		if r.rooms[i].ID == id && r.rooms[i].Kind == kind {
 			r.rooms[i].ExpiresAt = exp
@@ -56,7 +56,7 @@ func (r *fakeRepo) ExtendExpiry(_ interface{}, kind domain.Kind, id uuid.UUID, e
 	return domain.ErrNotFound
 }
 
-func (r *fakeRepo) Archive(_ interface{}, kind domain.Kind, id uuid.UUID, at time.Time) error {
+func (r *fakeRepo) Archive(_ context.Context, kind domain.Kind, id uuid.UUID, at time.Time) error {
 	for i := range r.rooms {
 		if r.rooms[i].ID == id && r.rooms[i].Kind == kind {
 			r.rooms[i].ArchivedAt = &at
@@ -66,7 +66,7 @@ func (r *fakeRepo) Archive(_ interface{}, kind domain.Kind, id uuid.UUID, at tim
 	return domain.ErrNotFound
 }
 
-func (r *fakeRepo) Restore(_ interface{}, kind domain.Kind, id uuid.UUID) error {
+func (r *fakeRepo) Restore(_ context.Context, kind domain.Kind, id uuid.UUID) error {
 	for i := range r.rooms {
 		if r.rooms[i].ID == id && r.rooms[i].Kind == kind {
 			r.rooms[i].ArchivedAt = nil
@@ -76,7 +76,7 @@ func (r *fakeRepo) Restore(_ interface{}, kind domain.Kind, id uuid.UUID) error 
 	return domain.ErrNotFound
 }
 
-func (r *fakeRepo) ListExpiredCandidates(_ interface{}, before time.Time, _ int) ([]domain.Room, error) {
+func (r *fakeRepo) ListExpiredCandidates(_ context.Context, before time.Time, _ int) ([]domain.Room, error) {
 	out := []domain.Room{}
 	for _, room := range r.rooms {
 		if room.ArchivedAt == nil && room.ExpiresAt.Before(before) {
@@ -92,17 +92,17 @@ type fakeQuota struct {
 	tier  string
 }
 
-func (q *fakeQuota) Get(_ interface{}, _ uuid.UUID) (domain.Quota, error) {
+func (q *fakeQuota) Get(_ context.Context, _ uuid.UUID) (domain.Quota, error) {
 	return domain.Quota{ActiveCount: q.count, Tier: q.tier}, nil
 }
-func (q *fakeQuota) Increment(_ interface{}, _ uuid.UUID, _ string) error { q.count++; return nil }
-func (q *fakeQuota) Decrement(_ interface{}, _ uuid.UUID) error           { q.count--; return nil }
-func (q *fakeQuota) Recompute(_ interface{}, _ uuid.UUID, _ int) error    { return nil }
+func (q *fakeQuota) Increment(_ context.Context, _ uuid.UUID, _ string) error { q.count++; return nil }
+func (q *fakeQuota) Decrement(_ context.Context, _ uuid.UUID) error           { q.count--; return nil }
+func (q *fakeQuota) Recompute(_ context.Context, _ uuid.UUID, _ int) error    { return nil }
 
 // fakeAbuse — banned-user check.
 type fakeAbuse struct{ blocked bool }
 
-func (a *fakeAbuse) IsUserBlocked(_ interface{}, _ uuid.UUID) (bool, error) {
+func (a *fakeAbuse) IsUserBlocked(_ context.Context, _ uuid.UUID) (bool, error) {
 	return a.blocked, nil
 }
 
@@ -145,7 +145,7 @@ func TestCreateRoom_BlockedUserRejected(t *testing.T) {
 
 func TestCreateRoom_BypassQuotaSkipsCounter(t *testing.T) {
 	q := &fakeQuota{count: domain.FreeMaxActive, tier: "free"}
-	uc := CreateRoom{Repo: &fakeRepo{}, Quota: q}
+	uc := CreateRoom{Repo: &fakeRepo{}, Quota: q, PublicBaseURL: "https://druz9.online"}
 	out, err := uc.Do(context.Background(), CreateRoomInput{
 		UserID: uuid.New(), Kind: domain.KindWhiteboard, BypassQuota: true,
 	})

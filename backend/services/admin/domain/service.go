@@ -18,7 +18,7 @@ import (
 //   - section + difficulty must be known enum values.
 //   - limits must be positive and within sane ceilings.
 //   - test_cases must carry at least MinOpenTestCases open (is_hidden=false)
-//     AND MinHiddenTestCases hidden (is_hidden=true) — bible §3.14.
+//     AND MinHiddenTestCases hidden (is_hidden=true).
 // ─────────────────────────────────────────────────────────────────────────
 
 const (

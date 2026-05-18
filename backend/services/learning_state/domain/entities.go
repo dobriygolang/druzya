@@ -3,8 +3,8 @@
 //
 // Зачем нужен отдельный сервис: intelligence читает FORK STATUS для
 // daily-brief prompt, hone-coach показывает «week N of 6 explore»,
-// admin distribution-tab (Phase 12.5) агрегирует по mode. Все три
-// слоя ходят к одной таблице, домен общий.
+// admin distribution-tab агрегирует по mode. Все три слоя ходят к одной
+// таблице, домен общий.
 package domain
 
 import (

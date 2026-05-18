@@ -6,8 +6,6 @@ package app
 import (
 	"log/slog"
 	"time"
-
-	"druz9/hone/domain"
 )
 
 // ChronicSkipWindow / ChronicSkipMinCount — порог «chronic skip» для
@@ -89,17 +87,17 @@ type Handler struct {
 	BulkAutoCategorise *BulkAutoCategorise
 	UpdateTaskKind     *UpdateTaskKind
 
-	// Time-blocking (Phase K Wave 15) — pin tasks to calendar slots.
+	// Time-blocking — pin tasks to calendar slots.
 	ScheduleTask   *ScheduleTask
 	UnscheduleTask *UnscheduleTask
 
-	// Energy tracker (Phase K Wave 15) — 1..5 ratings + recent list.
+	// Energy tracker — 1..5 ratings + recent list.
 	LogEnergy      *LogEnergy
 	ListEnergyLogs *ListEnergyLogs
 
-	// End-of-day shutdown ritual (Phase K Wave 15) — three textareas
-	// (done / pending / tomorrow) UPSERTed once per calendar day. Daily
-	// brief reads вчерашнюю запись и кладёт в coach prompt.
+	// End-of-day shutdown ritual — three textareas (done / pending /
+	// tomorrow) UPSERTed once per calendar day. Daily brief reads
+	// вчерашнюю запись и кладёт в coach prompt.
 	SubmitDayShutdown *SubmitDayShutdown
 	GetTodayShutdown  *GetTodayShutdown
 
@@ -165,14 +163,14 @@ type Handler struct {
 	SearchAtlasTopics      *SearchAtlasTopics
 	ListAtlasNodeTracks    *ListAtlasNodeTracks
 
-	// Resistance journal (Phase K Wave 15) — pre-focus mini-prompt + list.
+	// Resistance journal — pre-focus mini-prompt + list.
 	LogResistance      *LogResistance
 	ListResistanceLogs *ListResistanceLogs
 
-	// Notes AI-flag (Phase K Wave 15) — soft-privacy toggle.
+	// Notes AI-flag — soft-privacy toggle.
 	UpdateNoteAIExcluded *UpdateNoteAIExcluded
 
-	// Tasks from notes (Phase K Wave 15) — coach reading pipeline.
+	// Tasks from notes — coach reading pipeline.
 	SuggestTasksFromNotes *SuggestTasksFromNotes
 	AcceptTaskSuggestion  *AcceptTaskSuggestion
 
@@ -204,7 +202,3 @@ const MaxPlanItems = 5
 // item IDs. Deliberately short and stable so dismiss/complete clicks
 // don't confuse the UI when ids are long opaque strings.
 const PlanItemIDSeed = "hone-plan"
-
-// Ensure domain is referenced at compile time — guards against import
-// pruning when early app files don't yet touch domain types.
-var _ = domain.PlanItemSolve

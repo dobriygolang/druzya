@@ -1,4 +1,4 @@
-// english_pattern.go — Wave 15 cross-vertical producer.
+// english_pattern.go — cross-vertical producer.
 //
 // Trigger: user читает (SRS vocab + reading) подряд несколько дней, но
 // Speaking grade падает либо отсутствует. Сигнал: pronunciation/fluency

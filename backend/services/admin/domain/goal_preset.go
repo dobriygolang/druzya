@@ -1,6 +1,6 @@
 //go:generate mockgen -package mocks -destination mocks/goal_preset_mock.go -source goal_preset.go
 
-// goal_preset.go — Admin Phase 2: GoalPreset entity + repo port.
+// goal_preset.go — GoalPreset entity + repo port.
 //
 // Admin-curated quick-start goals for GoalWizardModal. Lives entirely в
 // admin/ bounded context — frontend GoalWizard читает через public REST

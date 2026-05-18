@@ -1,4 +1,4 @@
-// abuse.go — AbuseChecker impl checks user_bans + domain_reputation.
+// abuse.go — AbuseChecker implementation backed by user_bans.
 package infra
 
 import (
@@ -13,23 +13,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// AbuseChecker — combined banned-user check.
-//
-//	user_bans active row → blocked (manual admin ban)
-//
-// Phase 9a §spam mitigation: пока domain_reputation per-share-link signal
-// — postponed (нужен share-target hostname signal что отсутствует
-// в API CreateRoom). Stage 1 = user_bans only.
+// AbuseChecker rejects users with an active row in user_bans (manual admin
+// ban). A domain_reputation per-share-link signal is out of scope for now
+// — the CreateRoom API does not yet carry a recipient hostname.
 type AbuseChecker struct {
 	pool *pgxpool.Pool
 }
 
 func NewAbuseChecker(p *pgxpool.Pool) *AbuseChecker { return &AbuseChecker{pool: p} }
 
-func (a *AbuseChecker) IsUserBlocked(ctx interface{}, userID uuid.UUID) (bool, error) {
-	c := ctx.(context.Context)
+func (a *AbuseChecker) IsUserBlocked(ctx context.Context, userID uuid.UUID) (bool, error) {
 	var blocked bool
-	err := a.pool.QueryRow(c, `
+	err := a.pool.QueryRow(ctx, `
 SELECT EXISTS (
   SELECT 1 FROM user_bans
   WHERE user_id = $1

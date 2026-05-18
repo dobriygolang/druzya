@@ -1,4 +1,4 @@
-// classify_atlas_todo.go — Phase 3.1 user-driven atlas.
+// classify_atlas_todo.go — user-driven atlas.
 //
 // UC: юзер пишет TODO («изучить транзакции в Postgres»). LLM
 // (TaskAtlasClassify через PathLLMDispatcher-подобный adapter)

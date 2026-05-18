@@ -11,9 +11,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// SetTier — use-case для Admin'а (ручная выдача подписки тестеру / поддержке).
-// После M3 тот же use-case будет дёргаться Boosty-sync worker'ом — поэтому
-// logика валидации и idempotency-записи общая.
+// SetTier — единая точка записи в `subscriptions`. Используется admin-grant'ом,
+// Stripe webhook handler'ом и провайдер-sync worker'ами; общий путь даёт
+// единую валидацию и idempotency.
 type SetTier struct {
 	Repo  domain.Repo
 	Clock domain.Clock

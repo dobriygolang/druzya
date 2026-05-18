@@ -1,4 +1,4 @@
-// confusion_pickup.go — Phase 3.5 daily producer.
+// confusion_pickup.go — daily producer.
 //
 // Reflections с confusion_flag=true → AI-tutor ping. Headline цитирует
 // confusion_text для context. DeepLink в /tutor с pre-filled message.

@@ -140,7 +140,7 @@ func (b upsertNodeBody) validate() error {
 	if strings.TrimSpace(b.Section) == "" {
 		return errors.New("section is required")
 	}
-	// Wave-10 PoE-vocabulary kinds (migration 00034). Must mirror DB CHECK.
+	// PoE-vocabulary kinds. Must mirror DB CHECK.
 	switch b.Kind {
 	case "hub", "keystone", "notable", "small":
 	default:

@@ -1,6 +1,6 @@
-// cross_vertical.go — Wave 15 domain types for the cross-vertical
-// insights v2 use case + recent-activity context. Kept in a separate file
-// so repo.go (already large) stays focussed on the daily-brief contract.
+// cross_vertical.go — domain types for the cross-vertical insights use
+// case + recent-activity context. Kept in a separate file so repo.go
+// (already large) stays focussed on the daily-brief contract.
 package domain
 
 import (

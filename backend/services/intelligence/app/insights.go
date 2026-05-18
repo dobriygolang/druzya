@@ -1,6 +1,6 @@
 // insights.go — atomic-card generator + reader use cases.
 //
-// Phase 1.5 (architecture). The brain produces a stream of Insight
+// The brain produces a stream of Insight
 // rows; web/Hone/arena/codex surfaces are thin readers over that
 // stream. DailyBrief is still synthesised separately for the weekly
 // recap surface, but the day-in-day UX runs on insights now.

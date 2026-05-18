@@ -85,7 +85,7 @@ func (s *EditorServer) CreateRoom(
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	// Phase 2 quota enforcement: free-tier active_shared_rooms cap.
+	// Quota enforcement: free-tier active_shared_rooms cap.
 	if s.CheckCreateQuota != nil {
 		if err := s.CheckCreateQuota(ctx, uid); err != nil {
 			return nil, connect.NewError(connect.CodeResourceExhausted, err)
@@ -148,12 +148,12 @@ func (s *EditorServer) CreateInvite(
 	ctx context.Context,
 	req *connect.Request[pb.CreateInviteRequest],
 ) (*connect.Response[pb.InviteLink], error) {
-	// D4 Stream F (2026-05-12) — invites = peer-collab artefact; solo
-	// mode не нуждается в invite-flow. RPC оставлен в .proto для backwards
-	// compat (frozen contract), но wirings'ом отключён (s.InviteUC nil).
+	// Invites = peer-collab artefact; solo mode не нуждается в invite-flow.
+	// RPC оставлен в .proto для backwards compat (frozen contract), но
+	// wirings'ом отключён (s.InviteUC nil).
 	if s.InviteUC == nil {
 		return nil, connect.NewError(connect.CodeUnimplemented,
-			errors.New("CreateInvite removed in solo-mode migration (D4 Stream F)"))
+			errors.New("CreateInvite removed in solo-mode migration"))
 	}
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {
@@ -179,11 +179,11 @@ func (s *EditorServer) FreezeRoom(
 	ctx context.Context,
 	req *connect.Request[pb.FreezeRoomRequest],
 ) (*connect.Response[pb.EditorRoom], error) {
-	// D4 Stream F (2026-05-12) — freeze gate был interviewer-side multiplayer
-	// freeze; в solo-mode нет смысла.
+	// Freeze gate был interviewer-side multiplayer freeze; в solo-mode нет
+	// смысла.
 	if s.FreezeUC == nil {
 		return nil, connect.NewError(connect.CodeUnimplemented,
-			errors.New("FreezeRoom removed in solo-mode migration (D4 Stream F)"))
+			errors.New("FreezeRoom removed in solo-mode migration"))
 	}
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {
@@ -210,11 +210,11 @@ func (s *EditorServer) GetReplay(
 	ctx context.Context,
 	req *connect.Request[pb.GetReplayRequest],
 ) (*connect.Response[pb.ReplayUrl], error) {
-	// D4 Stream F (2026-05-12) — replay читал WS hub op buffer; в solo нет
-	// op-stream'а, replay-flow тоже dropped.
+	// Replay читал WS hub op buffer; в solo нет op-stream'а, replay-flow
+	// тоже dropped.
 	if s.ReplayUC == nil {
 		return nil, connect.NewError(connect.CodeUnimplemented,
-			errors.New("GetReplay removed in solo-mode migration (D4 Stream F)"))
+			errors.New("GetReplay removed in solo-mode migration"))
 	}
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {

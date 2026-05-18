@@ -30,10 +30,9 @@ type EmbedJob struct {
 
 // RedisEmbedQueue — очередь embedding-job'ов на Redis List.
 //
-// Почему persistent queue вместо `go func(){...}`: в Phase 4 embed был
-// fire-and-forget через goroutine (см. makeHoneEmbedJob в monolith wiring).
-// При рестарте сервиса inflight job'ы терялись → GetNoteConnections не
-// находил connections для заметок, созданных в последние ~секунды до
+// Почему persistent queue вместо `go func(){...}`: fire-and-forget через
+// goroutine терял inflight job'ы при рестарте сервиса → GetNoteConnections
+// не находил connections для заметок, созданных в последние ~секунды до
 // deploy'а. Redis AOF/RDB гарантирует, что очередь переживает рестарт.
 type RedisEmbedQueue struct {
 	rdb *redis.Client

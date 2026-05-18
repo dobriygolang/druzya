@@ -1,4 +1,4 @@
-// eval_ai — Phase 1.7f learning-companion eval suite.
+// eval_ai — learning-companion eval suite.
 //
 // Static guardrail для 4 datasets:
 //   - dataset.json                 (legacy daily-brief coach)

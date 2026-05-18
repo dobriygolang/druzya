@@ -38,8 +38,7 @@ type briefPayload struct {
 	Headline        string                  `json:"headline"`
 	Narrative       string                  `json:"narrative"`
 	Recommendations []recommendationPayload `json:"recommendations"`
-	// Phase 4.4 — severity wire. Empty string in legacy rows = treat as
-	// cruise on read.
+	// severity wire. Empty string in legacy rows = treat as cruise on read.
 	Severity       string `json:"severity,omitempty"`
 	SeverityReason string `json:"severity_reason,omitempty"`
 }
@@ -92,9 +91,9 @@ func (r *DailyBriefs) GetForDate(ctx context.Context, userID uuid.UUID, date tim
 	return out, nil
 }
 
-// severityFromPayload — пустая строка в payload (legacy rows до Phase 4.4)
-// = cruise; невалидное значение тоже = cruise (мы не хотим UNSPECIFIED
-// в кеше, фронт опирается на one-of-four).
+// severityFromPayload — пустая строка в payload (legacy rows) = cruise;
+// невалидное значение тоже = cruise (мы не хотим UNSPECIFIED в кеше,
+// фронт опирается на one-of-four).
 func severityFromPayload(s string) domain.InsightSeverity {
 	sev := domain.InsightSeverity(s)
 	if sev.IsValid() {
@@ -103,8 +102,8 @@ func severityFromPayload(s string) domain.InsightSeverity {
 	return domain.InsightSeverityCruise
 }
 
-// RecentForUser — Phase 5 Hone /coach feed. Возвращает briefs за
-// последние sinceDays дней, newest first. Limit hard-capped в caller'е.
+// RecentForUser feeds the Hone /coach view: briefs за последние sinceDays
+// дней, newest first. Limit hard-capped в caller'е.
 //
 // payload jsonb mapping: briefPayload struct (см. выше) — те же поля
 // что и в GetForDate, плюс severity / severity_reason для UI окраски.

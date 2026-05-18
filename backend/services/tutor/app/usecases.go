@@ -254,7 +254,7 @@ func newInviteCode(length int) (string, error) {
 	return string(out), nil
 }
 
-// ─── InviteByUsername (Wave «Invite by @username») ────────────────────────
+// ─── InviteByUsername ─────────────────────────────────────────────────────
 
 // InviteByUsername — alternative entry для CreateInvite. Тутор передаёт
 // @username студента (не e-mail / не код out-of-band). UC резолвит

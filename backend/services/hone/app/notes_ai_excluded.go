@@ -1,4 +1,4 @@
-// Notes AI flag use case (Phase K Wave 15).
+// Notes AI flag use case.
 //
 // Тонкий wrapper над NoteRepo.SetAIExcluded. Отдельный UC чтобы будущие
 // побочные эффекты (telemetry / coach memory invalidate / cache invalidate)

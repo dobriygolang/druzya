@@ -1,5 +1,4 @@
-// reading_path_repo.go — Stream D (2026-05-12). pgx-backed
-// domain.ReadingPathRepo over tutor_reading_paths (migration 00093).
+// pgx-backed domain.ReadingPathRepo over tutor_reading_paths.
 package infra
 
 import (

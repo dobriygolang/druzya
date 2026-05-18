@@ -14,6 +14,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -59,11 +60,10 @@ func (s *SubscriptionServer) CreateCheckoutSession(
 
 // GetCheckoutSession — Connect-RPC handler. Verify-endpoint для /billing/welcome.
 //
-// Auth: JWT необязателен. Юзер мог открыть /billing/welcome неавторизованным
-// (e.g. login session expired в момент Stripe-flow'а). Server делает
-// best-effort owner-binding через client_reference_id, но не блокирует
-// response если mismatch — frontend всё равно показывает welcome.
-// Owner-mismatch только логируется как warn.
+// Auth: JWT необязателен (юзер мог открыть /billing/welcome без сессии).
+// Если JWT присутствует и client_reference_id checkout'а распарсился —
+// ownership обязан совпасть, иначе 403 (защита от подмены session_id
+// залогиненным юзером для чтения чужого checkout'а).
 func (s *SubscriptionServer) GetCheckoutSession(
 	ctx context.Context,
 	req *connect.Request[pb.GetCheckoutSessionRequest],
@@ -75,7 +75,6 @@ func (s *SubscriptionServer) GetCheckoutSession(
 	if sid == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("session_id required"))
 	}
-	// User id опционален — best-effort owner-binding.
 	uid, _ := sharedMw.UserIDFromContext(ctx)
 
 	out, err := s.GetCheckoutSessionUC.Do(ctx, app.GetCheckoutSessionInput{
@@ -90,6 +89,10 @@ func (s *SubscriptionServer) GetCheckoutSession(
 			return nil, connect.NewError(connect.CodeUnavailable, err)
 		}
 		return nil, fmt.Errorf("subscription.GetCheckoutSession: %w", err)
+	}
+	// session ownership check; mismatch returns 403
+	if uid != uuid.Nil && out.OwnerUserID != uuid.Nil && uid != out.OwnerUserID {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("session ownership mismatch"))
 	}
 	resp := &pb.GetCheckoutSessionResponse{
 		Paid:          out.Paid,

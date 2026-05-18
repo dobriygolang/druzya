@@ -20,14 +20,14 @@ type memorySink struct {
 	now    func() time.Time
 }
 
-func newMemorySink(memory *intelApp.Memory, now func() time.Time) *memorySink {
+func newMemorySink(memory *intelApp.Memory, now func() time.Time) (*memorySink, error) {
 	if memory == nil {
-		panic("copilot.newMemorySink: intelligence memory is required")
+		return nil, fmt.Errorf("memory_sink: intelligence memory is nil")
 	}
 	if now == nil {
-		panic("copilot.newMemorySink: Now is required")
+		return nil, fmt.Errorf("memory_sink: Now is nil")
 	}
-	return &memorySink{memory: memory, now: now}
+	return &memorySink{memory: memory, now: now}, nil
 }
 
 func (s *memorySink) AppendConversationMemory(

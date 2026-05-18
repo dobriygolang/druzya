@@ -1,4 +1,4 @@
-// recent_activity_postgres.go — Wave 15 24h cross-surface activity.
+// recent_activity_postgres.go — 24h cross-surface activity.
 //
 // Aggregates last 24h counters from:
 //   - hone_focus_sessions   (count + sum duration_seconds)

@@ -54,7 +54,7 @@ type DailyBrief struct {
 	// Severity — deterministic urgency grade (cruise/nudge/warn/critical).
 	// Computed by deriveSeverity at brief synthesis time, не от LLM.
 	// SeverityReason — short fragment ("interview Friday in 2 days") used
-	// в UI tooltip. Phase 4.4 — wire-exposed in proto.DailyBrief.
+	// в UI tooltip; wire-exposed in proto.DailyBrief.
 	Severity       InsightSeverity
 	SeverityReason string
 }

@@ -111,10 +111,9 @@ func (uc *ArchiveListeningMaterial) Do(ctx context.Context, userID, materialID u
 }
 
 // IngestYouTubeListening — paste YouTube URL, pull auto-captions через
-// yt-dlp adapter, persist as ListeningMaterial. Sergey 2026-05-03:
-// «listening странный, надо самому транскрибацию искать хотя видео из
-// тюба». Этот UC закрывает gap: один POST /hone/listening/youtube +
-// material with transcript готов через 1-3 секунды.
+// yt-dlp adapter, persist as ListeningMaterial. Один POST
+// /hone/listening/youtube + material with transcript готов через
+// 1-3 секунды.
 type IngestYouTubeListening struct {
 	Repo    domain.ListeningRepo
 	Fetcher domain.YouTubeFetcher

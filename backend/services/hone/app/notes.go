@@ -239,7 +239,7 @@ func (uc *GetNoteConnections) Do(ctx context.Context, in GetNoteConnectionsInput
 			Snippet:      h.Snippet,
 			Similarity:   h.Score,
 		}); err != nil {
-			return err
+			return fmt.Errorf("notes update: %w", err)
 		}
 	}
 	return nil

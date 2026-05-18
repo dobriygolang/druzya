@@ -1,7 +1,7 @@
 // insights_sweeper.go — periodic SweepExpired worker for the insight
 // stream.
 //
-// Phase 1.5b. Two reasons for it to exist:
+// Two reasons for it to exist:
 //  1. Bounded retention. Insights have an expires_at column (default
 //     24h, urgent-event up to 7d). Without a sweep the table grows
 //     forever even though the rows are unused after expiry.

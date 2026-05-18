@@ -13,11 +13,9 @@ import (
 type Tier = enums.SubscriptionPlan
 
 const (
-	TierFree     = enums.SubscriptionPlanFree
-	TierSeeker   = enums.SubscriptionPlanSeeker
-	TierAscended = enums.SubscriptionPlanAscendant
-	TierPro      = enums.SubscriptionPlanPro
-	TierMax      = enums.SubscriptionPlanMax
+	TierFree = enums.SubscriptionPlanFree
+	TierPro  = enums.SubscriptionPlanPro
+	TierMax  = enums.SubscriptionPlanMax
 )
 
 // Status — жизненный цикл подписки. cancelled != expired: cancelled означает
@@ -38,7 +36,7 @@ const (
 	ProviderBoosty   Provider = "boosty"
 	ProviderYookassa Provider = "yookassa"
 	ProviderTBank    Provider = "tbank"
-	ProviderStripe   Provider = "stripe" // Stream-C: международная оплата
+	ProviderStripe   Provider = "stripe"
 	ProviderAdmin    Provider = "admin"  // ручная выдача без оплаты (тест / поддержка)
 )
 

@@ -16,7 +16,7 @@ import (
 )
 
 // MessageContextSize is the number of prior messages sent to the LLM in addition
-// to the system prompt. Bible §8: "last 10 messages always included".
+// to the system prompt.
 const MessageContextSize = 10
 
 // PerSessionRateLimit is the per-session message budget per minute.
@@ -78,7 +78,7 @@ func (uc *SendMessage) Do(ctx context.Context, in SendMessageInput) (SendMessage
 		}
 	}
 
-	// If voice_transcript set, prefer it — bible §8 treats voice as text.
+	// If voice_transcript set, prefer it — voice is treated as text.
 	content := in.Content
 	if in.VoiceTranscript != "" {
 		content = in.VoiceTranscript
@@ -325,7 +325,7 @@ func buildLLMMessages(s domain.Session, t domain.TaskWithHint, user domain.UserC
 //
 // STUB: once token counting is wired, if total tokens exceed model limit,
 // summarise [0..len-MessageContextSize] via a second LLM call and prepend the
-// summary as a system message. Tracking: bible §8 "older messages → summarized".
+// summary as a system message.
 func SummarizeOlder(ctx context.Context, msgs domain.MessageRepo, sessionID uuid.UUID, keep int) ([]domain.Message, error) {
 	out, err := msgs.ListLast(ctx, sessionID, keep)
 	if err != nil {

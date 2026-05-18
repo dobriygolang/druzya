@@ -6,9 +6,6 @@
 package admin
 
 import (
-	"fmt"
-	"net/http"
-
 	monolithServices "druz9/cmd/monolith/services"
 	authServices "druz9/cmd/monolith/services/auth"
 
@@ -38,15 +35,7 @@ func NewAIModels(d monolithServices.Deps) *monolithServices.Module {
 	connectPath, connectHandler := druz9v1connect.NewAIModelServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("ai_models", connectPath, connectHandler)
 
-	adminGate := func(w http.ResponseWriter, r *http.Request) {
-		if _, err := authServices.RequireAdminInline(r); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(authServices.StatusForAuthErr(err))
-			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-			return
-		}
-		transcoder.ServeHTTP(w, r)
-	}
+	adminGate := authServices.AdminGateHandler(transcoder)
 
 	return &monolithServices.Module{
 		ConnectPath:    connectPath,

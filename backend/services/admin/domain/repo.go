@@ -53,8 +53,8 @@ type ConfigRepo interface {
 }
 
 // ConfigBroadcaster publishes dynconfig change notifications over Redis
-// Pub/Sub for sub-100 ms hot-reload propagation (bible §7). The channel name
-// and payload shape are documented in infra/redis_broadcaster.go.
+// Pub/Sub for sub-100 ms hot-reload propagation. The channel name and
+// payload shape are documented in infra/redis_broadcaster.go.
 type ConfigBroadcaster interface {
 	Publish(ctx context.Context, entry ConfigEntry) error
 }

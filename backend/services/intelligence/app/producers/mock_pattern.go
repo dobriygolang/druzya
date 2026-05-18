@@ -1,4 +1,4 @@
-// mock_pattern.go — Wave 15 cross-vertical producer.
+// mock_pattern.go — cross-vertical producer.
 //
 // Trigger: одна и та же mock-секция (sysdesign / algorithms / ml_coding)
 // fail'ится 3+ раз подряд. Сигнал: атлас struggle + push в next_action.

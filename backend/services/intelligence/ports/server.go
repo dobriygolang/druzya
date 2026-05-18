@@ -83,8 +83,8 @@ type IntelligenceServer struct {
 	ListAtlasStrugglesUC *app.ListAtlasStruggles
 	ClearAtlasStruggleUC *app.ClearAtlasStruggle
 
-	// Wave 15: Cross-vertical insights v2. Lives alongside primary
-	// ListInsights but reads multi-axis producers (English / Mock / Vocab).
+	// Cross-vertical insights. Lives alongside primary ListInsights
+	// but reads multi-axis producers (English / Mock / Vocab).
 	CrossVerticalInsightsUC *app.CrossVerticalInsights
 }
 
@@ -139,7 +139,7 @@ func (s *IntelligenceServer) GetDailyBrief(
 	brief, err := s.H.GetDailyBrief.Do(ctx, app.GetDailyBriefInput{
 		UserID: uid,
 		Force:  req.Msg.GetForce(),
-		// Wave 15: surface bias — normalise to web|hone|cue, default web.
+		// surface bias — normalise to web|hone|cue, default web.
 		Source: normaliseBriefSource(req.Msg.GetSource()),
 	})
 	if err != nil {
@@ -382,57 +382,6 @@ func (s *IntelligenceServer) toConnectErr(err error) error {
 	}
 }
 
-// ─── converters (domain → proto) ──────────────────────────────────────────
-
-func toDailyBriefProto(b domain.DailyBrief) *pb.DailyBrief {
-	out := &pb.DailyBrief{
-		Headline:       b.Headline,
-		Narrative:      b.Narrative,
-		GeneratedAt:    timestamppb.New(b.GeneratedAt.UTC()),
-		Severity:       insightSeverityToProto(b.Severity),
-		SeverityReason: b.SeverityReason,
-	}
-	if b.BriefID != uuid.Nil {
-		out.BriefId = b.BriefID.String()
-	}
-	for _, r := range b.Recommendations {
-		out.Recommendations = append(out.Recommendations, &pb.BriefRecommendation{
-			Kind:      toRecommendationKindProto(r.Kind),
-			Title:     r.Title,
-			Rationale: r.Rationale,
-			TargetId:  r.TargetID,
-		})
-	}
-	return out
-}
-
-func toRecommendationKindProto(k domain.RecommendationKind) pb.BriefRecommendationKind {
-	switch k {
-	case domain.RecommendationTinyTask:
-		return pb.BriefRecommendationKind_BRIEF_RECOMMENDATION_KIND_TINY_TASK
-	case domain.RecommendationSchedule:
-		return pb.BriefRecommendationKind_BRIEF_RECOMMENDATION_KIND_SCHEDULE
-	case domain.RecommendationReviewNote:
-		return pb.BriefRecommendationKind_BRIEF_RECOMMENDATION_KIND_REVIEW_NOTE
-	case domain.RecommendationUnblock:
-		return pb.BriefRecommendationKind_BRIEF_RECOMMENDATION_KIND_UNBLOCK
-	default:
-		return pb.BriefRecommendationKind_BRIEF_RECOMMENDATION_KIND_UNSPECIFIED
-	}
-}
-
-func toAskAnswerProto(a domain.AskAnswer) *pb.AskAnswer {
-	out := &pb.AskAnswer{AnswerMd: a.AnswerMD}
-	for _, c := range a.Citations {
-		out.Citations = append(out.Citations, &pb.Citation{
-			NoteId:  c.NoteID.String(),
-			Title:   c.Title,
-			Snippet: c.Snippet,
-		})
-	}
-	return out
-}
-
 // ── Learning-companion handlers ─────────────────────────────────
 
 // GetNextAction implements druz9.v1.IntelligenceService/GetNextAction.
@@ -463,7 +412,7 @@ func (s *IntelligenceServer) GetNextAction(
 		Rationale:        out.Rationale,
 		EstimatedMinutes: int32(out.EstimatedMinutes),
 	}
-	// Wave 15: secondary action from cross-vertical insights (severity ≥ warn).
+	// secondary action from cross-vertical insights (severity ≥ warn).
 	// Fail-soft — broken cross UC doesn't block the primary action.
 	if s.CrossVerticalInsightsUC != nil {
 		if cv, cvErr := s.CrossVerticalInsightsUC.Do(ctx, app.ListCrossVerticalInsightsInput{UserID: uid}); cvErr == nil {
@@ -697,36 +646,6 @@ func (s *IntelligenceServer) GetSkillRadar(
 		})
 	}
 	return connect.NewResponse(resp), nil
-}
-
-func toResourceTrailProto(t domain.ResourceEngagement) *pb.ResourceTrail {
-	out := &pb.ResourceTrail{
-		UnfinishedCount: int32(t.UnfinishedCount),
-	}
-	for _, r := range t.FinishedRecent {
-		out.FinishedRecent = append(out.FinishedRecent, toResourceTouchProto(r))
-	}
-	for _, r := range t.MarkedUnhelpful {
-		out.MarkedUnhelpful = append(out.MarkedUnhelpful, toResourceTouchProto(r))
-	}
-	for _, r := range t.RecentReflections {
-		out.RecentReflections = append(out.RecentReflections, toResourceTouchProto(r))
-	}
-	return out
-}
-
-func toResourceTouchProto(r domain.ResourceTouch) *pb.ResourceTouch {
-	out := &pb.ResourceTouch{
-		Url:            r.URL,
-		AtlasNodeId:    r.AtlasNodeID,
-		Kind:           r.Kind,
-		HoursAgo:       int32(r.HoursAgo),
-		ReflectionText: r.Reflection,
-	}
-	if !r.OccurredAt.IsZero() {
-		out.OccurredAt = timestamppb.New(r.OccurredAt.UTC())
-	}
-	return out
 }
 
 // GetCoachStats implements druz9.v1.IntelligenceService/GetCoachStats.

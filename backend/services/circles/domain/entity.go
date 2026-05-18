@@ -1,4 +1,4 @@
-// Package domain — circles bounded context (bible §9 Phase 6.5.3).
+// Package domain — circles bounded context.
 //
 // A Circle is a community of users sharing an interest. Events live in a
 // sibling bounded context (`events`) and reference circles by id only.

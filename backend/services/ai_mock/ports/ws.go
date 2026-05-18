@@ -17,7 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// wsWriteRateLimit is the per-connection outbound frame budget (bible: 20/s).
+// wsWriteRateLimit is the per-connection outbound frame budget (20/s).
 const wsWriteRateLimit = 20
 
 // wsWriteBurst is the token-bucket burst. Small, since legitimate bursts are
@@ -164,7 +164,7 @@ func (c *wsConn) writeLoop(ctx context.Context) {
 			}
 		case f := <-c.out:
 			if !c.consumeToken() {
-				// Rate-limited — drop the frame. Bible: 20 msg/sec cap.
+				// Rate-limited — drop the frame (20 msg/sec cap).
 				continue
 			}
 			_ = c.ws.SetWriteDeadline(time.Now().Add(10 * time.Second))
@@ -218,7 +218,7 @@ type wsUserMessagePayload struct {
 }
 
 type wsVoiceChunkPayload struct {
-	// Transcript is produced client-side via Web Speech API (bible §8). Raw
+	// Transcript is produced client-side via Web Speech API. Raw
 	// audio is out of scope for v1 — STUB: real Whisper/TTS.
 	Transcript string `json:"transcript"`
 }

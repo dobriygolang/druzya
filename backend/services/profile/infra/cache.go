@@ -47,8 +47,8 @@ import (
 )
 
 // DefaultProfileCacheTTL is the per-key TTL applied to profile cache entries.
-// 60 seconds is the bible's recommended baseline for read-mostly user data;
-// write paths invalidate explicitly so freshness on edit is sub-second.
+// 60 seconds is a sensible baseline for read-mostly user data; write paths
+// invalidate explicitly so freshness on edit is sub-second.
 const DefaultProfileCacheTTL = 60 * time.Second
 
 // CacheKeyVersion is the prefix bump used when the on-disk JSON shape
@@ -318,7 +318,6 @@ func (c *CachedRepo) ApplyXPDelta(ctx context.Context, userID uuid.UUID, addXP i
 
 // GetSettings is uncached — settings are written rarely but read on the
 // settings page only, so the cost/benefit doesn't pencil out today.
-// TODO Phase 2: cache settings under profile:v1:settings:<uid> if hot.
 func (c *CachedRepo) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Settings, error) {
 	s, err := c.delegate.GetSettings(ctx, userID)
 	if err != nil {
@@ -337,8 +336,8 @@ func (c *CachedRepo) UpdateSettings(ctx context.Context, userID uuid.UUID, s dom
 	return nil
 }
 
-// GetTutorModeEnabled — Stream D (2026-05-12). Cheap PK lookup; we let
-// it pass through (cache key would invalidate alongside the bundle anyway).
+// GetTutorModeEnabled is a cheap PK lookup; we let it pass through
+// (cache key would invalidate alongside the bundle anyway).
 func (c *CachedRepo) GetTutorModeEnabled(ctx context.Context, userID uuid.UUID) (bool, error) {
 	v, err := c.delegate.GetTutorModeEnabled(ctx, userID)
 	if err != nil {
@@ -367,7 +366,7 @@ func (c *CachedRepo) UpdateRole(ctx context.Context, userID uuid.UUID, role stri
 	return nil
 }
 
-// ── Interviewer application moderation (M4a) — uncached pass-throughs.
+// ── Interviewer application moderation — uncached pass-throughs.
 // The applications queue isn't cached anywhere, so we just forward.
 // Approve/Reject additionally invalidate the applicant's cached bundle
 // because role changes (approve path) flow through UpdateRole upstream.

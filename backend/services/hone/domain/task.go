@@ -96,9 +96,9 @@ type Task struct {
 	// coach-listener) MUST skip rows with this flag set. Reset to false
 	// only via explicit user request (UI: «Auto-categorise this card»).
 	ManualKindOverride bool
-	// ScheduledStart / ScheduledDurationMin — time-blocking fields
-	// (Phase K Wave 15). nil ScheduledStart = карточка живёт в обычной
-	// kanban-колонке (бэклог), не на дневной таймлайн-канве.
+	// ScheduledStart / ScheduledDurationMin — time-blocking fields.
+	// nil ScheduledStart = карточка живёт в обычной kanban-колонке
+	// (бэклог), не на дневной таймлайн-канве.
 	ScheduledStart       *time.Time
 	ScheduledDurationMin int
 }
@@ -154,8 +154,8 @@ type TaskRepo interface {
 	// this row on subsequent passes (user-asserted truth). When false
 	// (auto-categorise path), preserves the existing override flag.
 	SetKind(ctx context.Context, userID, taskID uuid.UUID, kind TaskKind, manualOverride bool) (Task, error)
-	// Schedule pins a task to a calendar slot (time-blocking surface,
-	// Phase K Wave 15). durationMin must be 15..480.
+	// Schedule pins a task to a calendar slot (time-blocking surface).
+	// durationMin must be 15..480.
 	Schedule(ctx context.Context, userID, taskID uuid.UUID, start time.Time, durationMin int) (Task, error)
 	// Unschedule returns a task to the backlog (NULL scheduled cols).
 	Unschedule(ctx context.Context, userID, taskID uuid.UUID) (Task, error)

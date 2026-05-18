@@ -1,4 +1,4 @@
-// Package producers — Phase 1.7d insight-producers (learning-companion).
+// Package producers.7d insight-producers (learning-companion).
 //
 // Каждый producer — pure deterministic функция: ForkProgressSnapshot /
 // ResourceEngagement → []Insight. LLM-enrichment (TaskAssistantForkAnalysis
@@ -29,7 +29,7 @@ import (
 //   - confidence 0.4-0.7 → nudge («есть лёгкий lean, продолжай explore»)
 //   - confidence < 0.4   → cruise (тихий sigh «ещё рано судить»)
 //
-// LLM-enrichment (Phase 2): Coach hero берёт этот Insight как сигнал и
+// LLM-enrichment: Coach hero берёт этот Insight как сигнал и
 // зовёт TaskAssistantForkAnalysis с подробностями для narrative ответа.
 func FromForkProgress(snap domain.ForkProgressSnapshot, now time.Time) []domain.Insight {
 	if snap.Mode != "explore" {

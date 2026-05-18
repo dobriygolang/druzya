@@ -15,9 +15,9 @@ import (
 //
 // STUB: swap for a real MinIO client that PUTs the JSONL payload to
 // `editor-replays/{roomID}.jsonl` and issues a presigned GET with
-// X-Amz-Expires=3600 (bible §3.1 — TTL 1h). MinIO lifecycle policy handles
-// retention (bible §6). Assert presigned URL shape in an integration test
-// when the real client lands.
+// X-Amz-Expires=3600 (TTL 1h). MinIO lifecycle policy handles retention.
+// Assert presigned URL shape in an integration test when the real client
+// lands.
 type StubReplayUploader struct {
 	// BaseURL is logged into the fake URL shape; production uses cfg.MinIO.Endpoint.
 	BaseURL string
@@ -25,8 +25,8 @@ type StubReplayUploader struct {
 	TTL time.Duration
 }
 
-// NewStubReplayUploader builds a stub with a fake base URL.
-// The bible default is https://storage.druz9.local — we honour that.
+// NewStubReplayUploader builds a stub with a fake base URL. Default
+// https://storage.druz9.local.
 func NewStubReplayUploader(baseURL string, ttl time.Duration) *StubReplayUploader {
 	if baseURL == "" {
 		baseURL = "https://storage.druz9.local"

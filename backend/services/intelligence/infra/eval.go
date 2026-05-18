@@ -1,4 +1,4 @@
-// Phase 5 — eval harness for the daily brief synthesiser.
+// eval harness for the daily brief synthesiser.
 //
 // Public entry для CLI tool в cmd/eval_coach/. Unit-tests держат свою
 // частную тестовую обвязку, а eval — отдельный staic analyzer over

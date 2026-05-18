@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -32,22 +33,35 @@ type WSHandler struct {
 	Stress   *app.IngestStress
 	Log      *slog.Logger
 
-	// Upgrader is exposed for tests / origin-policy overrides. Default permits
-	// all origins — lock this down before production.
+	// Upgrader is exposed for tests / origin-policy overrides.
 	Upgrader websocket.Upgrader
 }
 
-// NewWSHandler constructs a handler with a permissive upgrader.
-//
-// STUB: Upgrader.CheckOrigin currently allows everything — tighten once the
-// frontend origin is pinned per-environment.
+// NewWSHandler constructs a handler. CheckOrigin matches request Origin
+// against CORS_ALLOWED_ORIGINS; localhost is allowed for dev.
 func NewWSHandler(hub *Hub, ver domain.TokenVerifier, sess domain.SessionRepo, msgs domain.MessageRepo, send *app.SendMessage, stress *app.IngestStress, log *slog.Logger) *WSHandler {
 	return &WSHandler{
 		Hub: hub, Verifier: ver, Sessions: sess, Messages: msgs, Send: send, Stress: stress, Log: log,
 		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  4096,
 			WriteBufferSize: 4096,
-			CheckOrigin:     func(r *http.Request) bool { return true },
+			CheckOrigin: func(r *http.Request) bool {
+				origin := r.Header.Get("Origin")
+				if origin == "" {
+					// same-origin or curl/non-browser client
+					return true
+				}
+				allowed := strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",")
+				for _, a := range allowed {
+					if strings.TrimSpace(a) == origin {
+						return true
+					}
+				}
+				if strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:") {
+					return true
+				}
+				return false
+			},
 		},
 	}
 }

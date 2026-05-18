@@ -12,7 +12,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// Wave 13 — shared test helpers для всех intelligence/app tests.
+// shared test helpers для всех intelligence/app tests.
 //
 // Каждый store-тип отвечает за in-memory state-машину одного интерфейса.
 // wireMock* helper подключает store к mockgen-generated mock через

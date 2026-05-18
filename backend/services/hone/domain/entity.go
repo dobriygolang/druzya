@@ -238,10 +238,10 @@ type Note struct {
 	// publish-to-web) — иначе мы перенесём plaintext в embeddings БД,
 	// что ломает E2E threat model.
 	Encrypted bool
-	// AIExcluded — soft-privacy флаг (Phase K Wave 15). Сервер видит
-	// plaintext, но SuggestTasksFromNotes / coach reading pipeline
-	// пропускают такие заметки. Cosine search всё ещё работает —
-	// для жёсткого hide есть Encrypted.
+	// AIExcluded — soft-privacy флаг. Сервер видит plaintext, но
+	// SuggestTasksFromNotes / coach reading pipeline пропускают такие
+	// заметки. Cosine search всё ещё работает — для жёсткого hide есть
+	// Encrypted.
 	AIExcluded bool
 }
 

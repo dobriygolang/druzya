@@ -37,11 +37,11 @@ func (uc *UpdateSettings) Do(ctx context.Context, userID uuid.UUID, s domain.Set
 			return domain.Settings{}, fmt.Errorf("profile.UpdateSettings: invalid channel %q", ch)
 		}
 	}
-	// Wave-10: focus_class is a closed set enforced by the DB CHECK in
-	// migration 00035. Reject unknown values BEFORE the DB layer so the
-	// caller gets a wrapped, structured error instead of a 500-from-CHECK.
-	// Only validate when the caller explicitly sent the field — partial
-	// updates that leave focus_class untouched are valid.
+	// focus_class is a closed set enforced by a DB CHECK. Reject unknown
+	// values BEFORE the DB layer so the caller gets a wrapped, structured
+	// error instead of a 500-from-CHECK. Only validate when the caller
+	// explicitly sent the field — partial updates that leave focus_class
+	// untouched are valid.
 	if s.HasFocusClass {
 		if _, ok := domain.AllowedFocusClasses[s.FocusClass]; !ok {
 			return domain.Settings{}, fmt.Errorf("profile.UpdateSettings: invalid focus_class %q", s.FocusClass)
@@ -50,10 +50,9 @@ func (uc *UpdateSettings) Do(ctx context.Context, userID uuid.UUID, s domain.Set
 	if err := uc.Repo.UpdateSettings(ctx, userID, s); err != nil {
 		return domain.Settings{}, fmt.Errorf("profile.UpdateSettings: %w", err)
 	}
-	// Stream D (2026-05-12) — tutor_mode_enabled lives on its own
-	// repo method (kept out of UpdateSettings' main tx so this PR doesn't
-	// require regenerating the sqlc GetProfileBundle query). The field-mask
-	// gate keeps partial PUTs from clobbering an explicit OFF.
+	// tutor_mode_enabled lives on its own repo method (kept out of
+	// UpdateSettings' main tx). The field-mask gate keeps partial PUTs from
+	// clobbering an explicit OFF.
 	if s.HasTutorModeEnabled {
 		if err := uc.Repo.SetTutorModeEnabled(ctx, userID, s.TutorModeEnabled); err != nil {
 			return domain.Settings{}, fmt.Errorf("profile.UpdateSettings: tutor mode: %w", err)

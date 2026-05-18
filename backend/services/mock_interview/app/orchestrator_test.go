@@ -1,10 +1,9 @@
 // orchestrator_test.go — Orchestrator coverage backed by mockgen.
 //
-// Wave 14 refactor: 6 hand-rolled stateful fakes converted to MockX +
-// DoAndReturn-closures driven by a shared `orchStore`. State that crosses
-// repo boundaries (pipelines ↔ stages ↔ attempts ↔ taskQs) lives in one
-// place; mocks delegate via thin closures. Scripted Judge / Strictness
-// responses use callIdx-based scripts.
+// State that crosses repo boundaries (pipelines ↔ stages ↔ attempts ↔
+// taskQs) lives in one shared `orchStore`; mocks delegate via thin
+// DoAndReturn closures. Scripted Judge / Strictness responses use
+// callIdx-based scripts.
 package app
 
 import (
@@ -786,7 +785,7 @@ func TestCancelPipeline_OwnerOnly(t *testing.T) {
 	}
 }
 
-// ── Phase C.1 — algo / coding orchestrator ──────────────────────────────
+// ── algo / coding orchestrator ─────────────────────────────────────────
 
 func TestStartNextStage_Algo_PicksTaskAndCreatesAttempts(t *testing.T) {
 	f := newOrchFixture(t)
@@ -903,7 +902,7 @@ func TestStartNextStage_Coding_RespectsLanguagePool(t *testing.T) {
 	}
 }
 
-// ── Phase D.1 — sysdesign orchestrator + canvas submit ─────────────────
+// ── sysdesign orchestrator + canvas submit ──────────────────────────────
 
 // 1×1 transparent PNG as a valid data URL — passes decodeDataURL without
 // dragging an image library into the test deps.

@@ -1,4 +1,4 @@
-// goal_presets.go — Admin Phase 2: goal preset CRUD use cases.
+// goal_presets.go — goal preset CRUD use cases.
 //
 // Four small UCs (List / Create / Update / Deactivate) на тонкой обёртке
 // над repo. Read path is symmetric: admin видит all, public видит active

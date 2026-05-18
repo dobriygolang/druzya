@@ -1,10 +1,9 @@
 //go:generate mockgen -package mocks -destination mocks/notification_templates_mock.go -source notification_templates.go
 
-// notification_templates.go — Admin Phase 2: notification template entity.
+// notification_templates.go — notification template entity.
 //
 // Admin-curated message templates для notify service. Per-channel
-// (email/tg/push/in_app); subject_template пустой для tg/push. Wire
-// в notify service runtime — deferred (Phase 3).
+// (email/tg/push/in_app); subject_template пустой для tg/push.
 package domain
 
 import (

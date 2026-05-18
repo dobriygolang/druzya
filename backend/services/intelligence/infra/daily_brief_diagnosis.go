@@ -123,8 +123,8 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 	if _, _, n := repeatedSkippedItem(in.SkippedRecent); n >= 4 {
 		return severityCritical, fmt.Sprintf("plan item skipped %d times — chronic avoidance", n)
 	}
-	// Phase 4.3 — goal deadline crit. job_target в 3 дня = равноценно
-	// interview-event критическому: нужен срочный фокус. skill/track
+	// Goal deadline critical: job_target в 3 дня = равноценно
+	// interview-event критическому, нужен срочный фокус. skill/track
 	// goals с deadline считаем тоже — юзер сам поставил дедлайн.
 	for _, g := range in.ActiveGoals {
 		if g.Deadline == nil || g.DaysToDeadline < 0 {
@@ -144,8 +144,8 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 	if topic, n := repeatedMockWeakTopic(in.Mocks); n >= 3 {
 		return severityWarn, fmt.Sprintf("%s flagged weak in %d mocks", topic, n)
 	}
-	// Phase 4.3 — goal deadline warn. ≤7 дней = «приближается» — ниже
-	// critical, но достаточно близко чтобы coach об этом сказал.
+	// Goal deadline warn: ≤7 дней = «приближается», ниже critical,
+	// но достаточно близко чтобы coach об этом сказал.
 	for _, g := range in.ActiveGoals {
 		if g.Deadline == nil || g.DaysToDeadline < 0 {
 			continue
@@ -155,9 +155,9 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 				strings.TrimSpace(g.Title), g.Kind, g.DaysToDeadline)
 		}
 	}
-	// Phase 4.7 — abandoned mock pipelines = consistency-break сигнал.
-	// 2+ за 14 дней = pattern, не случайность; coach должен это проговорить
-	// пока юзер не залип в loop'е start-mock-bail-out.
+	// Abandoned mock pipelines = consistency-break сигнал. 2+ за 14 дней
+	// = pattern, не случайность; coach должен это проговорить пока юзер
+	// не залип в loop'е start-mock-bail-out.
 	if in.MockAbandonedRecent >= 2 {
 		return severityWarn, fmt.Sprintf("%d mock pipelines abandoned in 14 days — consistency_break", in.MockAbandonedRecent)
 	}
@@ -174,9 +174,9 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 	if in.Queue.Total > 0 && in.Queue.Done == 0 && (in.Queue.Todo+in.Queue.InProgress) >= 3 {
 		return severityNudge, fmt.Sprintf("queue stalled: 0/%d done", in.Queue.Total)
 	}
-	// Phase 3 final — ghosted clubs. Если за неделю юзер пропустил ≥1
-	// сессию на которую RSVP'нул_yes — это disengagement signal. nudge,
-	// не warn: клубы — soft commitment, не hard как mock или goal.
+	// Ghosted clubs: если за неделю юзер пропустил ≥1 сессию на которую
+	// RSVP'нул_yes — это disengagement signal. nudge, не warn: клубы —
+	// soft commitment, не hard как mock или goal.
 	if len(in.GhostedClubs) > 0 {
 		gc := in.GhostedClubs[0]
 		topic := strings.TrimSpace(gc.TopicTitle)
@@ -188,9 +188,9 @@ func deriveSeverity(in domain.BriefPromptInput) (coachSeverity, string) {
 				topic, gc.HappenedAgo)
 		}
 	}
-	// Phase 2d — track stalled. Active (non-paused) track that hasn't
-	// seen activity for 5+ days = warn. Coach should call out the
-	// specific step the user is stuck on.
+	// Track stalled: active (non-paused) track that hasn't seen activity
+	// for 5+ days = warn. Coach should call out the specific step the
+	// user is stuck on.
 	for _, t := range in.ActiveTracks {
 		if t.IsPaused {
 			continue

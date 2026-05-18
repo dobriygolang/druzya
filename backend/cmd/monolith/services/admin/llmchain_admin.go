@@ -7,7 +7,6 @@ package admin
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -45,24 +44,8 @@ func NewLLMChainAdmin(d monolithServices.Deps, chain *llmchain.Chain, registered
 	connectPath, connectHandler := druz9v1connect.NewLLMChainAdminServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("llmchain_admin", connectPath, connectHandler)
 
-	adminGate := func(w http.ResponseWriter, r *http.Request) {
-		if _, err := authServices.RequireAdminInline(r); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(authServices.StatusForAuthErr(err))
-			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-			return
-		}
-		transcoder.ServeHTTP(w, r)
-	}
-	testGate := func(w http.ResponseWriter, r *http.Request) {
-		if _, err := authServices.RequireAdminInline(r); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(authServices.StatusForAuthErr(err))
-			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-			return
-		}
-		llmTestHandler(chain).ServeHTTP(w, r)
-	}
+	adminGate := authServices.AdminGateHandler(transcoder)
+	testGate := authServices.AdminGateHandler(llmTestHandler(chain))
 
 	return &monolithServices.Module{
 		ConnectPath:    connectPath,

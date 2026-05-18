@@ -3,12 +3,14 @@ package intelligence
 import (
 	"testing"
 
+	intelInfra "druz9/intelligence/infra"
+
 	"github.com/google/uuid"
 )
 
 func TestDailyNoteMemorySnapshotExtractsStructuredSignals(t *testing.T) {
 	t.Parallel()
-	_, payload, ok := dailyNoteMemorySnapshot(
+	_, payload, ok := intelInfra.DailyNoteMemorySnapshot(
 		uuid.New(),
 		"Daily 2026-04-28",
 		`Intent: focus on Redis cache invalidation before interview.
@@ -45,7 +47,7 @@ Need to write 3 examples and review Postgres consistency notes.`,
 
 func TestDailyNoteMemorySnapshotRejectsTinyNoise(t *testing.T) {
 	t.Parallel()
-	if _, _, ok := dailyNoteMemorySnapshot(uuid.New(), "Daily 2026-04-28", "ok"); ok {
+	if _, _, ok := intelInfra.DailyNoteMemorySnapshot(uuid.New(), "Daily 2026-04-28", "ok"); ok {
 		t.Fatal("tiny note should not create memory")
 	}
 }

@@ -1,4 +1,4 @@
-// llm_usage.go — Wave 15 admin LLM usage / cost panel RPC handler.
+// llm_usage.go — admin LLM usage / cost panel RPC handler.
 //
 // GET /api/v1/admin/llm-usage  (POST body in proto for groupBy/period filter)
 //

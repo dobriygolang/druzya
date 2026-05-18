@@ -279,13 +279,13 @@ type BriefPromptInput struct {
 	// Zero-value — no overlay, default coach behaviour.
 	ML MLProfile
 
-	// Wave 15: Source — surface bias for the brief synthesiser.
+	// Source — surface bias for the brief synthesiser.
 	// 'web' | 'hone' | 'cue'. Empty defaults to 'web'.
 	Source string
 
-	// Wave 15: RecentActivity24h — counts only, used by the synthesiser
-	// to mention "вчера ты сделал 3 focus session, 5 vocab cards" as
-	// context. Counts-only stays privacy-safe (no body content).
+	// RecentActivity24h — counts only, used by the synthesiser to mention
+	// "вчера ты сделал 3 focus session, 5 vocab cards" as context.
+	// Counts-only stays privacy-safe (no body content).
 	RecentActivity24h RecentActivitySummary
 
 	// DayShutdown — вчерашняя запись end-of-day ритуала из Hone (если есть).
@@ -316,7 +316,7 @@ type ExternalActivityReader interface {
 	SummaryWindow(ctx context.Context, userID uuid.UUID, days int) (ExternalActivitySummary, error)
 }
 
-// ── End-of-day shutdown reader (Phase K Wave 15) ──
+// ── End-of-day shutdown reader ──
 
 // DayShutdownSnapshot — что Hone сохранил вчера вечером (или утром перед
 // первым daily_brief). Все три поля одновременно могут быть пустыми

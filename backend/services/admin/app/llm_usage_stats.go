@@ -1,8 +1,8 @@
-// llm_usage_stats.go — Wave 15 admin LLM cost / usage aggregator.
+// llm_usage_stats.go — admin LLM cost / usage aggregator.
 //
-// Reads llm_invocations (migration 00126) and groups rows by one of
-// task / user / day / provider. Returns per-group totals + per-group
-// summary (sum of cost cents, sum of calls, etc.).
+// Reads llm_invocations and groups rows by one of task / user / day /
+// provider. Returns per-group totals + per-group summary (sum of cost
+// cents, sum of calls, etc.).
 //
 // Why not reuse ObservabilityReader: that one buckets at day granularity
 // only (dynamic_config_metrics) and never tracks user_id — too coarse for

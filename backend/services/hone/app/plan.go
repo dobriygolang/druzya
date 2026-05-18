@@ -91,8 +91,8 @@ func (uc *GeneratePlan) Do(ctx context.Context, in GeneratePlanInput) (domain.Pl
 
 	// Synthesise input today: weak nodes + chronic skills + free-form
 	// today note context. Events-today and recent-done queue items are
-	// surfaced separately via the home_brief / coach pipelines (Phase 6)
-	// rather than inlined here, so plan synthesis stays a pure function of
+	// surfaced separately via the home_brief / coach pipelines rather
+	// than inlined here, so plan synthesis stays a pure function of
 	// skill state.
 	items, err := uc.Synthesiser.Synthesise(ctx, in.UserID, weak, chronic, todayContext, today)
 	if err != nil {

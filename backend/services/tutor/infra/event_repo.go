@@ -90,7 +90,7 @@ func (p *Postgres) GetEvent(ctx context.Context, requesterID, eventID uuid.UUID)
 // closed» rather than silently confusing the tutor.
 //
 // The session_note is empty-checked at the use case layer; the SQL
-// CHECK (tutor_events_session_note_pair from 00017) is defence-in-depth.
+// CHECK (tutor_events_session_note_pair) is defence-in-depth.
 func (p *Postgres) CompleteEvent(ctx context.Context, tutorID, eventID uuid.UUID, note string, now time.Time) error {
 	tag, err := p.pool.Exec(ctx, `
 		UPDATE tutor_events
@@ -157,89 +157,9 @@ func (p *Postgres) CancelEvent(ctx context.Context, tutorID, eventID uuid.UUID, 
 	return nil
 }
 
-// ListByTutor — tutor's own events, most-recent-scheduled first.
-// Includes cancelled rows so the dashboard can render «cancelled»
-// status badges. Limit defends against unbounded reads.
-func (p *Postgres) ListByTutor(ctx context.Context, tutorID uuid.UUID, limit int) ([]domain.Event, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
-	}
-	const q = `
-		SELECT id, tutor_id, student_id, circle_id, title, body_md,
-		       scheduled_at, duration_min, meet_url, capacity,
-		       status, cancellation_reason, session_note,
-		       visibility, shared_content_md, shared_at,
-		       created_at, updated_at
-		FROM tutor_events
-		WHERE tutor_id = $1
-		ORDER BY scheduled_at DESC
-		LIMIT $2`
-	rows, err := p.pool.Query(ctx, q, pgUUID(tutorID), limit)
-	if err != nil {
-		return nil, fmt.Errorf("tutor.ListByTutor: %w", err)
-	}
-	defer rows.Close()
-	out := make([]domain.Event, 0, 16)
-	for rows.Next() {
-		ev, err := scanEvent(rows)
-		if err != nil {
-			return nil, fmt.Errorf("tutor.ListByTutor: scan: %w", err)
-		}
-		out = append(out, ev)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("tutor.ListByTutor: %w", err)
-	}
-	return out, nil
-}
-
-// ListUpcomingForStudent — earliest-first scheduled events whose end
-// time hasn't passed. Hits the partial idx idx_tutor_events_student_upcoming.
-// V2 will UNION ALL events whose circle the student belongs to.
-func (p *Postgres) ListUpcomingForStudent(ctx context.Context, studentID uuid.UUID, now time.Time, limit int) ([]domain.Event, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 25
-	}
-	// Compute end time SQL-side: scheduled_at + INTERVAL 'N minutes'.
-	// Pulls events that are still ongoing (in the «happening now» window)
-	// alongside truly future ones.
-	const q = `
-		SELECT id, tutor_id, student_id, circle_id, title, body_md,
-		       scheduled_at, duration_min, meet_url, capacity,
-		       status, cancellation_reason, session_note,
-		       visibility, shared_content_md, shared_at,
-		       created_at, updated_at
-		FROM tutor_events
-		WHERE student_id = $1
-		  AND status = 'scheduled'
-		  AND (scheduled_at + (duration_min || ' minutes')::interval) > $2
-		ORDER BY scheduled_at ASC
-		LIMIT $3`
-	rows, err := p.pool.Query(ctx, q,
-		pgUUID(studentID),
-		pgtype.Timestamptz{Time: now, Valid: true},
-		limit,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("tutor.ListUpcomingForStudent: %w", err)
-	}
-	defer rows.Close()
-	out := make([]domain.Event, 0, 8)
-	for rows.Next() {
-		ev, err := scanEvent(rows)
-		if err != nil {
-			return nil, fmt.Errorf("tutor.ListUpcomingForStudent: scan: %w", err)
-		}
-		out = append(out, ev)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("tutor.ListUpcomingForStudent: %w", err)
-	}
-	return out, nil
-}
-
-// ListByTutorPaged — keyset cursor variant of ListByTutor.
-// Sort: scheduled_at DESC, id DESC. cursor "" = first page.
+// ListByTutorPaged — tutor's own events; includes cancelled rows so
+// the dashboard can render «cancelled» status badges. Keyset cursor over
+// (scheduled_at DESC, id DESC). cursor "" = first page.
 func (p *Postgres) ListByTutorPaged(
 	ctx context.Context, tutorID uuid.UUID, limit int, cursor string,
 ) ([]domain.Event, string, error) {
@@ -400,9 +320,9 @@ func (p *Postgres) TutorEventStats(ctx context.Context, tutorID uuid.UUID, windo
 		out.CancellationRate = float64(out.EventsCancelled) / float64(denom)
 	}
 
-	// 4) Phase 8 — daily rolling series для sparkline UI. Inclusive
-	// window: [now - windowDays, now]. generate_series даёт пустой ряд
-	// дней без events чтобы фронт получил массив фиксированной длины.
+	// 4) Daily rolling series для sparkline UI. Inclusive window:
+	// [now - windowDays, now]. generate_series даёт пустой ряд дней без
+	// events, чтобы фронт получил массив фиксированной длины.
 	out.DailyCompleted = make([]int, windowDays)
 	out.DailyMinutes = make([]int, windowDays)
 	rows, err := p.pool.Query(ctx, `

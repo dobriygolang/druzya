@@ -88,7 +88,7 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 
 	server := subPorts.NewSubscriptionServer(getTierUC, setTierUC, d.Log)
 	server.GetQuotaUC = getQuotaUC
-	// Stream-C wiring: BYOK + CheckTier. Encryption key обязателен — если
+	// BYOK + CheckTier wiring. Encryption key обязателен — если
 	// env var пустой, генерируем ephemeral key с warning'ом (рестарт
 	// инвалидирует все ранее сохранённые BYOK ключи). Это failsafe для
 	// local-dev / preview deploy'ев; prod должен иметь stable secret.
@@ -118,7 +118,7 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 		server.CheckTierUC = checkTierUC
 	}
 
-	// Stream-C Stripe MVP wiring + multi-currency support (launch polish 2026-05-12).
+	// Stripe MVP wiring + multi-currency support.
 	// Env vars:
 	//   STRIPE_SECRET_KEY            → API auth (sk_test_... / sk_live_...)
 	//   STRIPE_WEBHOOK_SECRET        → HMAC verification (whsec_...)
@@ -179,12 +179,11 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 		d.Log.Warn("subscription.stripe: env vars пусты (STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET / STRIPE_PRICE_ID_PRO_RUB|MONTHLY) — Stripe endpoints отключены")
 	}
 
-	// Trial-expiring notification cron (launch polish 2026-05-12). Daily
-	// scan находит users on trial Pro у которых current_period_end в окне
-	// (now, now+24h] и пишет Insight + outbound notification (TG / email
-	// через notify-сервис). nil-safe: без insightWriter — cron всё равно
-	// работает, просто без feed-card'ы; без notify-Send — cron работает
-	// только с Insight (in-app card), без push.
+	// Trial-expiring notification cron. Daily scan находит users on trial Pro
+	// у которых current_period_end в окне (now, now+24h] и пишет Insight +
+	// outbound notification (TG / email через notify-сервис). nil-safe: без
+	// insightWriter — cron всё равно работает, просто без feed-card'ы; без
+	// notify-Send — cron работает только с Insight (in-app card), без push.
 	var notifyTrialUC *subApp.NotifyTrialExpiring
 	if d.IntelligenceInsightUpserter != nil {
 		insightWriter := newTrialExpiringInsightWriter(d.IntelligenceInsightUpserter)
@@ -204,27 +203,20 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 	}
 	connectPath, connectHandler := druz9v1connect.NewSubscriptionServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("subscription", connectPath, connectHandler)
-	// Pivot 2026-05-01: Boosty sync worker / LinkBoosty UC удалены вместе
-	// с marketplace.
-
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			// Pivot 2026-05-01: Boosty marketplace выпилен. /subscription/
-			// boosty/link и /admin/subscriptions/boosty/sync REST-aliases
-			// удалены; proto RPCs LinkBoosty/AdminBoostySync остаются до
-			// планового regen-cleanup'а.
 			r.Get("/subscription/quota", transcoder.ServeHTTP)
 			r.Post("/admin/subscriptions/set-tier", transcoder.ServeHTTP)
-			// Stream-C BYOK + tier-info aliases. Connect-path всегда
-			// доступен; REST даёт удобный API для curl/MSW моков.
+			// BYOK + tier-info aliases. Connect-path всегда доступен; REST
+			// даёт удобный API для curl/MSW моков.
 			r.Get("/subscription/tier-info", transcoder.ServeHTTP)
 			r.Post("/subscription/byok", transcoder.ServeHTTP)
 			r.Delete("/subscription/byok", transcoder.ServeHTTP)
-			// Stream-C Stripe MVP. POST /checkout создаёт Stripe Session;
-			// POST /cancel — cancel_at_period_end. Authenticated.
+			// Stripe MVP. POST /checkout создаёт Stripe Session; POST /cancel
+			// — cancel_at_period_end. Authenticated.
 			r.Post("/subscription/checkout", transcoder.ServeHTTP)
 			r.Post("/subscription/cancel", transcoder.ServeHTTP)
 		},

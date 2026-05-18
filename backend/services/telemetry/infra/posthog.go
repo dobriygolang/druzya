@@ -1,20 +1,6 @@
-// Package infra — PostHog AnalyticsSink.
-//
-// Provider choice: PostHog Cloud free tier — 1M events
-// /month, EU hosting (eu.i.posthog.com), built-in funnels/cohorts/retention
-// reports. SDK overhead — обычный HTTP POST к /capture endpoint, минимум
-// deps. Когда APIKey="" — wirer возвращает Noop.
-//
-// PostHog API contract (capture batch endpoint):
-//   POST {endpoint}/batch
-//   Content-Type: application/json
-//   { "api_key": "...", "batch": [ { event, properties, distinct_id, timestamp } ] }
-//
-// PostHog distinct_id'ы = HMAC(user_id, deploy_salt) для privacy:
-//   - PostHog видит непрозрачные ID
-//   - Без знания соли невозможно сопоставить distinct_id ↔ DB user.id
-//   - Salt rotation (если когда понадобится) = разрыв связности —
-//     старые events станут «новыми пользователями» (acceptable).
+// Package infra — PostHog AnalyticsSink. Batches events to the PostHog
+// capture endpoint; distinct_id = HMAC(user_id, salt) keeps IDs opaque.
+// When APIKey="" the wirer returns NoopSink.
 package infra
 
 import (
@@ -55,9 +41,10 @@ type PostHogSink struct {
 }
 
 const (
-	posthogBatchSize  = 50
-	posthogQueueLimit = 5000 // hard cap; drop new когда reached
-	posthogFlushEvery = 5 * time.Second
+	posthogBatchSize   = 50
+	posthogQueueLimit  = 5000 // hard cap; drop new когда reached
+	posthogFlushEvery  = 5 * time.Second
+	posthogHTTPTimeout = 10 * time.Second
 )
 
 // NewPostHogSink — конструктор. endpoint обычно https://eu.i.posthog.com
@@ -116,8 +103,9 @@ func (s *PostHogSink) DeleteUser(_ context.Context, _ string) error {
 }
 
 // Close — drain remaining queue + stop background flush. Используется
-// в Shutdown chain.
-func (s *PostHogSink) Close() error {
+// в Shutdown chain. Caller passes shutdown ctx so the final flush
+// honours bootstrap deadline.
+func (s *PostHogSink) Close(ctx context.Context) error {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
@@ -126,9 +114,12 @@ func (s *PostHogSink) Close() error {
 	s.closed = true
 	s.mu.Unlock()
 	close(s.closeCh)
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	// Final flush (synchronous, чтобы Shutdown не вернулся раньше
 	// чем pending events улетят).
-	return s.flushOnce(context.Background())
+	return s.flushOnce(ctx)
 }
 
 func (s *PostHogSink) flushLoop() {
@@ -139,9 +130,14 @@ func (s *PostHogSink) flushLoop() {
 		case <-s.closeCh:
 			return
 		case <-ticker.C:
-			_ = s.flushOnce(context.Background())
+			// detached from request lifetime — uses WithoutCancel
+			fCtx, cancel := context.WithTimeout(context.Background(), posthogHTTPTimeout)
+			_ = s.flushOnce(fCtx)
+			cancel()
 		case <-s.flushCh:
-			_ = s.flushOnce(context.Background())
+			fCtx, cancel := context.WithTimeout(context.Background(), posthogHTTPTimeout)
+			_ = s.flushOnce(fCtx)
+			cancel()
 		}
 	}
 }
@@ -226,7 +222,7 @@ type NoopSink struct{}
 
 func (NoopSink) Track(_ context.Context, _ []domain.Event) error { return nil }
 func (NoopSink) DeleteUser(_ context.Context, _ string) error    { return nil }
-func (NoopSink) Close() error                                    { return nil }
+func (NoopSink) Close(_ context.Context) error                   { return nil }
 
 // ── IDAnonymizer ───────────────────────────────────────────────────────
 

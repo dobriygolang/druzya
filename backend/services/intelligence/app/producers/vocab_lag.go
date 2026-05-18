@@ -1,4 +1,4 @@
-// vocab_lag.go — Wave 15 cross-vertical producer.
+// vocab_lag.go — cross-vertical producer.
 //
 // Trigger: SRS vocab queue имеет cards с next_review_at в прошлом, но
 // юзер давно не review'ил. ≥4 дней без review → утреннее напоминание.

@@ -1,7 +1,7 @@
-// ab_experiments.go — Admin Phase 2: A/B experiment UCs (minimal scaffold).
+// ab_experiments.go — A/B experiment UCs (minimal scaffold).
 //
 // List + Create + SetStatus (pause/resume/complete). Assignment logic +
-// stats aggregation — Phase 3.
+// stats aggregation live elsewhere.
 //
 // Validation:
 //   - slug + hypothesis + metric_slug non-empty.

@@ -1,10 +1,10 @@
-// ab_experiments_handler.go — Admin Phase 2: A/B experiment scaffold.
+// ab_experiments_handler.go — A/B experiment scaffold.
 //
 //	GET    /admin/ab-experiments                       → list
 //	POST   /admin/ab-experiments                       → create (status defaults to draft)
 //	POST   /admin/ab-experiments/{id}/status           → {"status":"running|paused|completed|draft"}
 //
-// Bucketing / assignment / stats — deferred Phase 3.
+// Bucketing / assignment / stats live elsewhere.
 package ports
 
 import (

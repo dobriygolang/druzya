@@ -240,24 +240,45 @@ func (o *Orchestrator) pickTaskForStage(
 // task_solve row is created first so it appears first in the
 // `created_at`-ordered list the frontend renders.
 func (o *Orchestrator) materialiseTaskAttempts(ctx context.Context, stage domain.PipelineStage, pipe domain.MockPipeline) ([]AttemptView, error) {
+	return o.materialiseTaskRoot(ctx, stage, pipe, domain.AttemptTaskSolve, "task_solve")
+}
+
+// materialiseSysDesignAttempts picks one sysdesign task and creates
+// ONE sysdesign_canvas attempt + one question_answer attempt per
+// task_question. Layout matches algo/coding (canvas first, follow-ups
+// after) so the frontend's `created_at`-ordered render is consistent.
+func (o *Orchestrator) materialiseSysDesignAttempts(ctx context.Context, stage domain.PipelineStage, pipe domain.MockPipeline) ([]AttemptView, error) {
+	return o.materialiseTaskRoot(ctx, stage, pipe, domain.AttemptSysDesignCanvas, "sysdesign_canvas")
+}
+
+// materialiseTaskRoot is the shared shape: pick a task, create the
+// primary attempt with kind=primaryKind (task_solve or sysdesign_canvas),
+// then one question_answer attempt per task_question follow-up.
+// errLabel is used in error wrapping so caller logs stay readable.
+func (o *Orchestrator) materialiseTaskRoot(
+	ctx context.Context,
+	stage domain.PipelineStage,
+	pipe domain.MockPipeline,
+	primaryKind domain.AttemptKind,
+	errLabel string,
+) ([]AttemptView, error) {
 	task, err := o.pickTaskForStage(ctx, stage, pipe)
 	if err != nil {
 		return nil, fmt.Errorf("pickTaskForStage: %w", err)
 	}
 
-	// 1) task_solve attempt — the actual coding submission.
 	tID := task.ID
-	solveAttempt := domain.PipelineAttempt{
+	primary := domain.PipelineAttempt{
 		ID:              uuid.New(),
 		PipelineStageID: stage.ID,
-		Kind:            domain.AttemptTaskSolve,
+		Kind:            primaryKind,
 		TaskID:          &tID,
 		AIVerdict:       domain.AttemptVerdictPending,
 		AIMissingPoints: []string{},
 	}
-	stored, err := o.Attempts.Create(ctx, solveAttempt)
+	stored, err := o.Attempts.Create(ctx, primary)
 	if err != nil {
-		return nil, fmt.Errorf("attempts.Create task_solve: %w", err)
+		return nil, fmt.Errorf("attempts.Create %s: %w", errLabel, err)
 	}
 	out := []AttemptView{{
 		Attempt:                      stored,
@@ -268,104 +289,36 @@ func (o *Orchestrator) materialiseTaskAttempts(ctx context.Context, stage domain
 		TaskLanguage:                 string(task.Language),
 	}}
 
-	// 2) one question_answer attempt per task_question (follow-ups).
-	if o.Questions != nil {
-		qs, qerr := o.Questions.ListTaskQuestions(ctx, task.ID)
-		if qerr != nil {
-			return nil, fmt.Errorf("questions.ListTaskQuestions: %w", qerr)
-		}
-		for _, q := range qs {
-			tq := q
-			a := domain.PipelineAttempt{
-				ID:              uuid.New(),
-				PipelineStageID: stage.ID,
-				Kind:            domain.AttemptQuestionAnswer,
-				TaskID:          &tID,
-				TaskQuestionID:  &tq.ID,
-				AIVerdict:       domain.AttemptVerdictPending,
-				AIMissingPoints: []string{},
-			}
-			storedQ, err := o.Attempts.Create(ctx, a)
-			if err != nil {
-				return nil, fmt.Errorf("attempts.Create task_question[%s]: %w", tq.ID, err)
-			}
-			out = append(out, AttemptView{
-				Attempt:                      storedQ,
-				QuestionBody:                 tq.Body,
-				ExpectedAnswerMD:             tq.ExpectedAnswerMD,
-				ReferenceCriteria:            tq.ReferenceCriteria,
-				TaskFunctionalRequirementsMD: task.FunctionalRequirementsMD,
-				TaskLanguage:                 string(task.Language),
-			})
-		}
+	if o.Questions == nil {
+		return out, nil
 	}
-	return out, nil
-}
-
-// materialiseSysDesignAttempts picks one sysdesign task and creates
-// ONE sysdesign_canvas attempt + one question_answer attempt per
-// task_question. Layout matches algo/coding (canvas first, follow-ups
-// after) so the frontend's `created_at`-ordered render is consistent.
-func (o *Orchestrator) materialiseSysDesignAttempts(ctx context.Context, stage domain.PipelineStage, pipe domain.MockPipeline) ([]AttemptView, error) {
-	task, err := o.pickTaskForStage(ctx, stage, pipe)
-	if err != nil {
-		return nil, fmt.Errorf("pickTaskForStage: %w", err)
+	qs, qerr := o.Questions.ListTaskQuestions(ctx, task.ID)
+	if qerr != nil {
+		return nil, fmt.Errorf("questions.ListTaskQuestions: %w", qerr)
 	}
-
-	tID := task.ID
-	canvas := domain.PipelineAttempt{
-		ID:              uuid.New(),
-		PipelineStageID: stage.ID,
-		Kind:            domain.AttemptSysDesignCanvas,
-		TaskID:          &tID,
-		AIVerdict:       domain.AttemptVerdictPending,
-		AIMissingPoints: []string{},
-	}
-	stored, err := o.Attempts.Create(ctx, canvas)
-	if err != nil {
-		return nil, fmt.Errorf("attempts.Create sysdesign_canvas: %w", err)
-	}
-	out := []AttemptView{{
-		Attempt: stored,
-		// QuestionBody is the task body — frontend renders the prompt
-		// next to the canvas. ExpectedAnswerMD carries the reference
-		// solution for the judge (not shown to the user).
-		QuestionBody:                 task.Title + "\n\n" + task.BodyMD,
-		ExpectedAnswerMD:             task.ReferenceSolutionMD,
-		ReferenceCriteria:            task.ReferenceCriteria,
-		TaskFunctionalRequirementsMD: task.FunctionalRequirementsMD,
-		TaskLanguage:                 string(task.Language),
-	}}
-
-	if o.Questions != nil {
-		qs, qerr := o.Questions.ListTaskQuestions(ctx, task.ID)
-		if qerr != nil {
-			return nil, fmt.Errorf("questions.ListTaskQuestions: %w", qerr)
+	for _, q := range qs {
+		tq := q
+		a := domain.PipelineAttempt{
+			ID:              uuid.New(),
+			PipelineStageID: stage.ID,
+			Kind:            domain.AttemptQuestionAnswer,
+			TaskID:          &tID,
+			TaskQuestionID:  &tq.ID,
+			AIVerdict:       domain.AttemptVerdictPending,
+			AIMissingPoints: []string{},
 		}
-		for _, q := range qs {
-			tq := q
-			a := domain.PipelineAttempt{
-				ID:              uuid.New(),
-				PipelineStageID: stage.ID,
-				Kind:            domain.AttemptQuestionAnswer,
-				TaskID:          &tID,
-				TaskQuestionID:  &tq.ID,
-				AIVerdict:       domain.AttemptVerdictPending,
-				AIMissingPoints: []string{},
-			}
-			storedQ, err := o.Attempts.Create(ctx, a)
-			if err != nil {
-				return nil, fmt.Errorf("attempts.Create sysdesign question[%s]: %w", tq.ID, err)
-			}
-			out = append(out, AttemptView{
-				Attempt:                      storedQ,
-				QuestionBody:                 tq.Body,
-				ExpectedAnswerMD:             tq.ExpectedAnswerMD,
-				ReferenceCriteria:            tq.ReferenceCriteria,
-				TaskFunctionalRequirementsMD: task.FunctionalRequirementsMD,
-				TaskLanguage:                 string(task.Language),
-			})
+		storedQ, err := o.Attempts.Create(ctx, a)
+		if err != nil {
+			return nil, fmt.Errorf("attempts.Create %s question[%s]: %w", errLabel, tq.ID, err)
 		}
+		out = append(out, AttemptView{
+			Attempt:                      storedQ,
+			QuestionBody:                 tq.Body,
+			ExpectedAnswerMD:             tq.ExpectedAnswerMD,
+			ReferenceCriteria:            tq.ReferenceCriteria,
+			TaskFunctionalRequirementsMD: task.FunctionalRequirementsMD,
+			TaskLanguage:                 string(task.Language),
+		})
 	}
 	return out, nil
 }
@@ -492,6 +445,20 @@ func (o *Orchestrator) materialiseQuestionAttempts(ctx context.Context, stageID 
 
 // ── SubmitAnswer ────────────────────────────────────────────────────────
 
+// mlHybridSandboxWeight / mlHybridLLMWeight — blend ratio for ML coding
+// verdicts. Pipeline/training tasks pass 4/5 unit tests when accuracy
+// thresholds are borderline (sklearn solver variance, torch seed drift)
+// — pure sandbox would FAIL them on technicalities while pure LLM would
+// miss accuracy bugs. The blend keeps both signals alive.
+const (
+	mlHybridSandboxWeight = 0.6
+	mlHybridLLMWeight     = 0.4
+)
+
+// defaultLocale — fallback response language when Locale reader isn't
+// wired or the user has no preference recorded.
+const defaultLocale = "ru"
+
 // SubmitAnswer scores a user answer for a single attempt — loads context,
 // calls the judge, and persists the result.
 func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, userAnswer string) (domain.PipelineAttempt, error) {
@@ -507,107 +474,17 @@ func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, us
 		return domain.PipelineAttempt{}, fmt.Errorf("pipelineStages.Get: %w", err)
 	}
 
-	// Resolve the snapshotted profile. Fallback to a zero-value profile
-	// (off_topic_penalty=0, bias_toward_fail=false) if the snapshot is
-	// missing — safer than 500-ing on legacy rows.
-	profile := domain.AIStrictnessProfile{}
-	if stage.AIStrictnessProfileID != nil {
-		p, perr := o.Strictness.ResolveStrictness(ctx, uuid.Nil, nil, stage.StageKind)
-		if perr == nil {
-			// Re-resolve produces the snapshotted (or current) profile.
-			// We trust `stage.AIStrictnessProfileID` to mean "this profile
-			// existed when the stage started"; any active drift is loaded
-			// transparently. We keep this resolver-based on purpose so the
-			// orchestrator doesn't need a direct StrictnessRepo dep.
-			profile = p
-		}
-	}
-
-	// For task_solve: ExpectedAnswerMD already holds the reference solution
-	// (GetWithQuestion maps mock_tasks.reference_solution_md → expected). Pass
-	// it explicitly via ReferenceSolutionMD so the code-review template can
-	// use it without re-loading the task.
-	//
-	// For question_answer attempts that are linked to a task (task_id != nil)
-	// — interviewer follow-ups about the task the user just solved — load the
-	// task body so the judge sees "the question is in the context of THIS
-	// task" via RelatedTaskMD.
-	locale := "ru"
-	if o.Locale != nil {
-		if pipe, perr := o.Pipelines.Get(ctx, stage.PipelineID); perr == nil {
-			locale = o.Locale.Get(ctx, pipe.UserID)
-		}
-	}
-
-	in := JudgeInput{
-		QuestionBody:      withQ.QuestionBody,
-		ExpectedAnswerMD:  withQ.ExpectedAnswerMD,
-		ReferenceCriteria: withQ.ReferenceCriteria,
-		UserAnswer:        userAnswer,
-		StrictnessProfile: profile,
-		StageKind:         stage.StageKind,
-		Kind:              withQ.Attempt.Kind,
-		Locale:            locale,
-	}
-	if withQ.Attempt.Kind == domain.AttemptTaskSolve {
-		in.ReferenceSolutionMD = withQ.ExpectedAnswerMD
-	}
-	if withQ.Attempt.Kind == domain.AttemptQuestionAnswer && withQ.Attempt.TaskID != nil && o.Tasks != nil {
-		if t, terr := o.Tasks.Get(ctx, *withQ.Attempt.TaskID); terr == nil {
-			in.RelatedTaskMD = t.Title + "\n\n" + t.BodyMD
-		}
-	}
+	profile := o.loadStrictnessForStage(ctx, stage)
+	locale := o.loadLocaleForPipeline(ctx, stage.PipelineID)
+	in := o.buildJudgeInput(ctx, withQ, stage, userAnswer, profile, locale)
 
 	out, err := o.Judge.JudgeAnswer(ctx, in)
 	if err != nil {
 		return domain.PipelineAttempt{}, fmt.Errorf("judge.JudgeAnswer: %w", err)
 	}
 
-	// F-2: when this is a task_solve attempt and the sandbox is wired AND
-	// the task has Judge0-runnable test cases, fold the sandbox result into
-	// the verdict. Two paths:
-	//   • Algo / coding stages — deterministic exact-match overrides the
-	//     LLM score (single right answer; tests pass ⇒ pass).
-	//   • ML coding stage — HYBRID blend: 0.6·sandbox + 0.4·LLM-rubric.
-	//     Pipeline/training tasks routinely pass 4/5 unit-tests when the
-	//     accuracy threshold is borderline (sklearn solver variance, torch
-	//     seed drift across builds). Pure sandbox override would FAIL these
-	//     on technicalities even when the code is correct and idiomatic;
-	//     pure LLM override leaks accuracy bugs the rubric can't see. The
-	//     blend keeps the rubric signal alive while letting tests anchor
-	//     the math. Verdict re-derived from the blended score.
-	// LLM feedback always preserved because Judge0 only produces pass/fail.
-	if withQ.Attempt.Kind == domain.AttemptTaskSolve &&
-		o.Sandbox != nil && o.Sandbox.Available() &&
-		withQ.Attempt.TaskID != nil && o.Tasks != nil {
-		if task, terr := o.Tasks.Get(ctx, *withQ.Attempt.TaskID); terr == nil {
-			res, sErr := o.Sandbox.Submit(ctx, userAnswer, enums.Language(task.Language), task.ID)
-			if sErr != nil {
-				if !errors.Is(sErr, domain.ErrSandboxUnavailable) && o.Log != nil {
-					o.Log.WarnContext(ctx, "mock_interview.orch: sandbox submit failed; using LLM-only verdict",
-						slog.String("task_id", task.ID.String()), slog.Any("err", sErr))
-				}
-				// ErrSandboxUnavailable is the documented degradation path —
-				// no log noise, just keep the LLM-derived verdict/score.
-				// For ml_coding this is the common case on stock Judge0
-				// without the ML lib image — see infra/judge0/README.md.
-			} else if stage.StageKind == domain.StageMLCoding {
-				// Hybrid blend for ML coding.
-				blended := 0.6*float64(res.Score) + 0.4*out.Score
-				out.Score = blended
-				out.Verdict = mapVerdict(blended, in.StrictnessProfile.BiasTowardFail)
-				out.Feedback = fmt.Sprintf(
-					"**Sandbox: %d/%d tests passed. Hybrid score: %.0f (60%% tests + 40%% LLM rubric).**\n\n",
-					res.PassedCount, res.Total, blended,
-				) + out.Feedback
-			} else {
-				out.Score = float64(res.Score)
-				out.Verdict = res.Verdict
-				// Stitch a sandbox summary line into the LLM feedback so the
-				// candidate sees BOTH the auto-grader result and the code review.
-				out.Feedback = fmt.Sprintf("**Sandbox: %d/%d tests passed.**\n\n", res.PassedCount, res.Total) + out.Feedback
-			}
-		}
+	if withQ.Attempt.Kind == domain.AttemptTaskSolve {
+		out = o.foldSandboxResult(ctx, withQ.Attempt, stage, userAnswer, in, out)
 	}
 
 	if uerr := o.Attempts.UpdateJudgeResult(ctx, attemptID, userAnswer,
@@ -621,6 +498,121 @@ func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, us
 		return domain.PipelineAttempt{}, fmt.Errorf("attempts.Get post-update: %w", err)
 	}
 	return updated, nil
+}
+
+// loadStrictnessForStage resolves the strictness profile snapshotted at
+// stage start. Falls back to a zero-value profile so legacy rows without
+// the snapshot don't 500 — safer than failing the submit.
+func (o *Orchestrator) loadStrictnessForStage(ctx context.Context, stage domain.PipelineStage) domain.AIStrictnessProfile {
+	if stage.AIStrictnessProfileID == nil {
+		return domain.AIStrictnessProfile{}
+	}
+	// Resolver returns the (possibly drifted) current profile; we trust
+	// the snapshot id to mean "existed when stage started". Resolver-based
+	// so the orchestrator doesn't need a direct StrictnessRepo dep.
+	p, perr := o.Strictness.ResolveStrictness(ctx, uuid.Nil, nil, stage.StageKind)
+	if perr != nil {
+		return domain.AIStrictnessProfile{}
+	}
+	return p
+}
+
+// loadLocaleForPipeline resolves the user's preferred response language.
+// nil reader / unknown pipeline → defaultLocale.
+func (o *Orchestrator) loadLocaleForPipeline(ctx context.Context, pipelineID uuid.UUID) string {
+	if o.Locale == nil {
+		return defaultLocale
+	}
+	pipe, perr := o.Pipelines.Get(ctx, pipelineID)
+	if perr != nil {
+		return defaultLocale
+	}
+	return o.Locale.Get(ctx, pipe.UserID)
+}
+
+// buildJudgeInput composes the JudgeInput payload, including the optional
+// reference solution (task_solve) and related-task context (question_answer
+// follow-ups on a coding task).
+func (o *Orchestrator) buildJudgeInput(
+	ctx context.Context,
+	withQ domain.AttemptWithQuestion,
+	stage domain.PipelineStage,
+	userAnswer string,
+	profile domain.AIStrictnessProfile,
+	locale string,
+) JudgeInput {
+	in := JudgeInput{
+		QuestionBody:      withQ.QuestionBody,
+		ExpectedAnswerMD:  withQ.ExpectedAnswerMD,
+		ReferenceCriteria: withQ.ReferenceCriteria,
+		UserAnswer:        userAnswer,
+		StrictnessProfile: profile,
+		StageKind:         stage.StageKind,
+		Kind:              withQ.Attempt.Kind,
+		Locale:            locale,
+	}
+	if withQ.Attempt.Kind == domain.AttemptTaskSolve {
+		// GetWithQuestion maps mock_tasks.reference_solution_md → expected;
+		// expose explicitly so the code-review template doesn't re-load.
+		in.ReferenceSolutionMD = withQ.ExpectedAnswerMD
+	}
+	if withQ.Attempt.Kind == domain.AttemptQuestionAnswer && withQ.Attempt.TaskID != nil && o.Tasks != nil {
+		// Interviewer follow-up on a coding task — feed the task body so the
+		// judge knows the question is in the context of THIS task.
+		if t, terr := o.Tasks.Get(ctx, *withQ.Attempt.TaskID); terr == nil {
+			in.RelatedTaskMD = t.Title + "\n\n" + t.BodyMD
+		}
+	}
+	return in
+}
+
+// foldSandboxResult overrides the LLM verdict with Judge0 results when the
+// sandbox is wired and the task has runnable test cases.
+//
+//   - Algo / coding: deterministic — tests pass ⇒ pass.
+//   - ML coding: hybrid blend so accuracy-threshold flakiness doesn't fail
+//     correct code, and LLM rubric still surfaces math bugs sandbox can't
+//     see. LLM feedback is always preserved because Judge0 only produces
+//     pass/fail.
+func (o *Orchestrator) foldSandboxResult(
+	ctx context.Context,
+	attempt domain.PipelineAttempt,
+	stage domain.PipelineStage,
+	userAnswer string,
+	in JudgeInput,
+	out JudgeOutput,
+) JudgeOutput {
+	if o.Sandbox == nil || !o.Sandbox.Available() || attempt.TaskID == nil || o.Tasks == nil {
+		return out
+	}
+	task, terr := o.Tasks.Get(ctx, *attempt.TaskID)
+	if terr != nil {
+		return out
+	}
+	res, sErr := o.Sandbox.Submit(ctx, userAnswer, enums.Language(task.Language), task.ID)
+	if sErr != nil {
+		if !errors.Is(sErr, domain.ErrSandboxUnavailable) && o.Log != nil {
+			o.Log.WarnContext(ctx, "mock_interview.orch: sandbox submit failed; using LLM-only verdict",
+				slog.String("task_id", task.ID.String()), slog.Any("err", sErr))
+		}
+		// ErrSandboxUnavailable is the documented degradation path — no log.
+		// ml_coding tends to land here on stock Judge0 без ML lib image.
+		return out
+	}
+	if stage.StageKind == domain.StageMLCoding {
+		blended := mlHybridSandboxWeight*float64(res.Score) + mlHybridLLMWeight*out.Score
+		out.Score = blended
+		out.Verdict = mapVerdict(blended, in.StrictnessProfile.BiasTowardFail)
+		out.Feedback = fmt.Sprintf(
+			"**Sandbox: %d/%d tests passed. Hybrid score: %.0f (60%% tests + 40%% LLM rubric).**\n\n",
+			res.PassedCount, res.Total, blended,
+		) + out.Feedback
+		return out
+	}
+	out.Score = float64(res.Score)
+	out.Verdict = res.Verdict
+	out.Feedback = fmt.Sprintf("**Sandbox: %d/%d tests passed.**\n\n", res.PassedCount, res.Total) + out.Feedback
+	return out
 }
 
 // ── SubmitCanvas ────────────────────────────────────────────────────

@@ -29,10 +29,9 @@ type ProfileRepo interface {
 	GetSettings(ctx context.Context, userID uuid.UUID) (Settings, error)
 	UpdateSettings(ctx context.Context, userID uuid.UUID, s Settings) error
 
-	// Stream D (2026-05-12) — auxiliary read/write for the
-	// users.tutor_mode_enabled flag (migration 00093). Kept out of
-	// GetSettings/UpdateSettings so the UC layer can decide whether to
-	// invoke them (PUT may omit the field; Bundle reads always include).
+	// Auxiliary read/write for the users.tutor_mode_enabled flag. Kept
+	// out of GetSettings/UpdateSettings so the UC layer can decide whether
+	// to invoke them (PUT may omit the field; Bundle reads always include).
 	GetTutorModeEnabled(ctx context.Context, userID uuid.UUID) (bool, error)
 	SetTutorModeEnabled(ctx context.Context, userID uuid.UUID, enabled bool) error
 
@@ -40,7 +39,7 @@ type ProfileRepo interface {
 	// a regular user; idempotent (no-op when current role is already >= role).
 	UpdateRole(ctx context.Context, userID uuid.UUID, role string) error
 
-	// Interviewer-application moderation queue (M4a).
+	// Interviewer-application moderation queue.
 	SubmitInterviewerApplication(ctx context.Context, userID uuid.UUID, motivation string) (InterviewerApplication, error)
 	GetMyInterviewerApplication(ctx context.Context, userID uuid.UUID) (InterviewerApplication, error)
 	ListInterviewerApplications(ctx context.Context, status string) ([]InterviewerApplication, error)

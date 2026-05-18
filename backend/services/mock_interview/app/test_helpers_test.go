@@ -11,9 +11,9 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// Wave 13 — shared mockgen-backed helpers для mock_interview tests.
-// Каждый store-тип хранит in-memory state и подключается к mock через
-// DoAndReturn-closures.
+// Shared mockgen-backed helpers for mock_interview tests. Each store
+// type holds in-memory state and plugs into a gomock via DoAndReturn
+// closures.
 
 // ─── CompanyRepo ─────────────────────────────────────────────────────────
 

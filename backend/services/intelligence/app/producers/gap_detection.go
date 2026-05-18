@@ -1,4 +1,4 @@
-// gap_detection.go — Phase 3.5 daily producer.
+// gap_detection.go — daily producer.
 //
 // Pattern: user продвигается к next-step но prereq atlas-узлы НЕ confirmed
 // (no coverage insight в последние N дней). Emit warn-severity insight

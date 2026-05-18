@@ -68,131 +68,6 @@ type GradeSpeakingInput struct {
 	DurationMS      int
 }
 
-func (uc *GradeSpeaking) Do(ctx context.Context, in GradeSpeakingInput) (domain.SpeakingSession, error) {
-	if uc.Exercises == nil || uc.Sessions == nil {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: repos not wired")
-	}
-	if uc.STT == nil {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: stt not wired")
-	}
-	if uc.Grader == nil {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: grader not wired")
-	}
-	if in.UserID == uuid.Nil {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: user_id required")
-	}
-	exerciseID := strings.TrimSpace(in.ExerciseID)
-	if exerciseID == "" {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: exercise_id required")
-	}
-	clientSessionID := strings.TrimSpace(in.ClientSessionID)
-	if clientSessionID == "" {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: client_session_id required")
-	}
-	// Cheap UUID-ish guard: client_session_id should look like a UUIDv4.
-	// We don't enforce strict format (other clients might send slug-ish
-	// keys) — just ban obvious typos like single chars.
-	if len(clientSessionID) < 8 {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: client_session_id too short")
-	}
-
-	// Decode + size check на ДЕКОДИРОВАННОЙ длине — base64 expands by ~33%,
-	// 5MB binary cap = ~6.7MB encoded.
-	audio, err := base64.StdEncoding.DecodeString(in.AudioBase64)
-	if err != nil {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: bad audio_base64: %w", err)
-	}
-	if len(audio) == 0 {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: %w", domain.ErrEmptyAudio)
-	}
-	if len(audio) > domain.MaxSpeakingAudioBytes {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: %w", domain.ErrAudioTooLarge)
-	}
-
-	mime := strings.TrimSpace(in.MIMEType)
-	if mime == "" {
-		mime = "audio/webm"
-	}
-
-	// Look up the exercise to get the reference prompt + level. Catalog
-	// is fixed; mismatch = client bug.
-	ex, err := uc.Exercises.Get(ctx, exerciseID)
-	if err != nil {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: %w", err)
-	}
-
-	// Transcribe via Whisper. Hint language=en — shadowing катedex always
-	// English. Provider may fail (network / quota) → bubble up as a
-	// typed error; handler surfaces 502 if so.
-	sttOut, err := uc.STT.Transcribe(ctx, domain.STTInput{
-		Audio:    audio,
-		MIME:     mime,
-		Language: "en",
-	})
-	if err != nil {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: stt: %w", err)
-	}
-
-	transcript := strings.TrimSpace(sttOut.Text)
-	durationMS := in.DurationMS
-	if durationMS <= 0 && sttOut.Duration > 0 {
-		durationMS = int(sttOut.Duration * 1000)
-	}
-
-	// LLM grade — even when transcript is empty (silent recording) we want
-	// the floor "say something" feedback rather than zero-score void.
-	fb, err := uc.Grader.GradeSpeaking(ctx, domain.SpeakingGraderInput{
-		Prompt:     ex.Prompt,
-		Transcript: transcript,
-		Level:      ex.Level,
-		DurationMS: durationMS,
-	})
-	if err != nil {
-		// Floor adapter returns ErrLLMUnavailable; handler maps to 503.
-		// Still persist a session row with the transcript so юзер не
-		// теряет recording — фон только feedback пуст.
-		if errors.Is(err, domain.ErrLLMUnavailable) {
-			saved, sErr := uc.Sessions.Insert(ctx, domain.SpeakingSession{
-				UserID:          in.UserID,
-				ClientSessionID: clientSessionID,
-				ExerciseID:      exerciseID,
-				Prompt:          ex.Prompt,
-				UserTranscript:  transcript,
-				DurationMS:      durationMS,
-			})
-			if sErr != nil {
-				return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: persist after llm-fail: %w", sErr)
-			}
-			return saved, fmt.Errorf("hone.GradeSpeaking: %w", err)
-		}
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: grade: %w", err)
-	}
-
-	saved, err := uc.Sessions.Insert(ctx, domain.SpeakingSession{
-		UserID:             in.UserID,
-		ClientSessionID:    clientSessionID,
-		ExerciseID:         exerciseID,
-		Prompt:             ex.Prompt,
-		UserTranscript:     transcript,
-		PronunciationScore: fb.PronunciationScore,
-		FluencyScore:       fb.FluencyScore,
-		CoachFeedback:      fb.CoachFeedback,
-		DurationMS:         durationMS,
-	})
-	if err != nil {
-		return domain.SpeakingSession{}, fmt.Errorf("hone.GradeSpeaking: persist: %w", err)
-	}
-	// Re-attach the WordDiffs onto the returned session — they're not
-	// persisted (token-level data isn't queryable, doesn't earn its
-	// storage cost), but the handler still surfaces them in the
-	// immediate response. Stored as a transient field via closure in the
-	// caller's view.
-	saved.PronunciationScore = fb.PronunciationScore
-	saved.FluencyScore = fb.FluencyScore
-	saved.CoachFeedback = fb.CoachFeedback
-	return saved, nil
-}
-
 // GradeSpeakingResult — what the handler turns into the proto Response.
 // Wraps the persisted SpeakingSession + transient WordDiffs (which live
 // only in this response, not in the DB row).
@@ -201,10 +76,9 @@ type GradeSpeakingResult struct {
 	WordDiffs []domain.WordDiff
 }
 
-// DoWithDiffs — variant returning both the persisted row AND the
-// transient word-diff slice. Separate method (vs adding a return) so
-// the existing Do contract stays small for callers that only need the
-// row (admin / analytics / batch replay).
+// DoWithDiffs — STT-transcribe, LLM-grade, persist session, return diffs.
+// WordDiffs are transient (not persisted; token-level data isn't queryable
+// and doesn't earn its storage cost).
 func (uc *GradeSpeaking) DoWithDiffs(ctx context.Context, in GradeSpeakingInput) (GradeSpeakingResult, error) {
 	if uc.Exercises == nil || uc.Sessions == nil {
 		return GradeSpeakingResult{}, fmt.Errorf("hone.GradeSpeaking.DoWithDiffs: repos not wired")

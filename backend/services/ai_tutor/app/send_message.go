@@ -11,29 +11,32 @@ import (
 	"github.com/google/uuid"
 )
 
-// SendMessage — main chat use case.
-//
-// Flow:
-//  1. Load thread + verify ownership (student_id == requester)
-//  2. IncrementCounters (atomic; ErrRateLimited if daily cap hit)
-//  3. Append user-episode
-//  4. Recall: persona prompt + facts + summary + recent episodes + snapshot
-//  5. LLM call (TaskAITutorChat) с собранным prompt
-//  6. Append assistant-episode
-//  7. Touch facts (last_used_at update)
-//  8. Maybe-compact: если exceed thresholds → trigger в той же call-path
-//     (мы синхронны — пусть user подождёт extra 1-2s раз в N сообщений
-//     вместо background-job complexity).
+// SendMessage — main chat use case. See doc.go for the call flow.
 type SendMessage struct {
-	Personas  domain.PersonaRepo
-	Threads   domain.ThreadRepo
-	Episodes  domain.EpisodeRepo
-	Facts     domain.FactRepo
-	Snapshot  domain.SnapshotProvider
-	LLM       domain.LLMDispatcher
+	Personas domain.PersonaRepo
+	Threads  domain.ThreadRepo
+	Episodes domain.EpisodeRepo
+	Facts    domain.FactRepo
+	Snapshot domain.SnapshotProvider
+	LLM      domain.LLMDispatcher
+	// Recorder — атомарный writer для (IncrementCounters + Append user-
+	// episode). В продакшен wiring это *infra.Postgres; оба write'а
+	// летят в одну БД-транзакцию и устраняют race на параллельных
+	// SendMessage'ах. nil → legacy non-atomic путь для in-mem fake'ов
+	// в тестах.
+	Recorder domain.MessageRecorder
+	// Embedder — optional. Когда есть, recall facts через semantic путь
+	// (embed user message → pgvector cosine + confidence + recency). nil →
+	// чистый TopRanked legacy путь (OLLAMA_HOST не настроен).
+	Embedder  domain.Embedder
 	Compactor *Compact
 	Now       func() time.Time
 }
+
+// queryEmbedTimeout — hard cap на query embedding в hot chat path. bge-m3
+// на CPU = 150-400ms; 800ms потолок без задержки чату. Превышение → recall
+// fallback'ает в TopRanked legacy путь.
+const queryEmbedTimeout = 800 * time.Millisecond
 
 type SendMessageInput struct {
 	StudentID uuid.UUID
@@ -76,33 +79,14 @@ func (uc *SendMessage) Do(ctx context.Context, in SendMessageInput) (SendMessage
 
 	now := nowOr(uc.Now)
 
-	// Counters first — если ErrRateLimited, не делаем LLM call впустую.
-	thread, err = uc.Threads.IncrementCounters(ctx, thread.ID, now)
+	// Counters + user-episode пишутся атомарно через Recorder в одной
+	// БД-транзакции (production path). Без этого параллельные SendMessage
+	// гонят: counter ушёл вперёд, а episode не вставился. ErrRateLimited
+	// откатывает tx, LLM call не запускается. В тестах с nil Recorder
+	// идём legacy путём — последовательно.
+	thread, userEp, err := uc.recordIncomingMessage(ctx, thread, content, strings.TrimSpace(in.ContextNote), now)
 	if err != nil {
-		return SendMessageResult{}, fmt.Errorf("ai_tutor.SendMessage: counters: %w", err)
-	}
-
-	// 1a. Optional context note — system-episode перед user'овским ходом.
-	// Используется inline contextual pill'ом для surface-context (atlas-node,
-	// mock-result, reading-абзац). Best-effort: ошибка append'а не должна
-	// блокировать chat-flow.
-	if note := strings.TrimSpace(in.ContextNote); note != "" {
-		// Best-effort: ошибка append'а не блокирует chat-flow.
-		_, _ = uc.Episodes.Append(ctx, domain.Episode{
-			ThreadID: thread.ID,
-			Role:     domain.RoleSystem,
-			Content:  note,
-		})
-	}
-
-	// 1. Append user episode.
-	userEp, err := uc.Episodes.Append(ctx, domain.Episode{
-		ThreadID: thread.ID,
-		Role:     domain.RoleUser,
-		Content:  content,
-	})
-	if err != nil {
-		return SendMessageResult{}, fmt.Errorf("ai_tutor.SendMessage: user episode: %w", err)
+		return SendMessageResult{}, err
 	}
 
 	// 2. Recall.
@@ -110,7 +94,7 @@ func (uc *SendMessage) Do(ctx context.Context, in SendMessageInput) (SendMessage
 	if err != nil {
 		return SendMessageResult{}, fmt.Errorf("ai_tutor.SendMessage: persona: %w", err)
 	}
-	facts, err := uc.Facts.TopRanked(ctx, thread.ID, 5)
+	facts, err := uc.recallFacts(ctx, thread.ID, content)
 	if err != nil {
 		return SendMessageResult{}, fmt.Errorf("ai_tutor.SendMessage: facts: %w", err)
 	}
@@ -285,4 +269,115 @@ func shouldCompact(thread domain.Thread, recent []domain.Episode, lastResp domai
 	// Token threshold — если последний ответ alone > N, prompt budget
 	// близок к перегрузу.
 	return lastResp.TokensIn+lastResp.TokensOut >= domain.CompactionTokenThreshold
+}
+
+// recallFacts собирает Top-K facts через гибридный путь:
+//
+//  1. Если есть Embedder + non-empty userMessage — embed userMessage с
+//     tight timeout (queryEmbedTimeout) и сходить в RecallSemantic. Top-K
+//     по hybrid score: 0.55*cosine + 0.30*confidence + 0.15*recency_decay.
+//  2. Если semantic вернул меньше limit (facts ещё не embed'нуты,
+//     Ollama упал, или timeout) — добрать TopRanked, исключая дубли.
+//  3. Если Embedder выключен — путь идентичен legacy: чистый TopRanked.
+//
+// Worst-case latency: 800ms embed timeout + 50ms semantic + 50ms ranked =
+// ~900ms на cold miss. Hot path с warm Ollama: ~300ms. LLM сам тратит 2-3s,
+// поэтому overhead невидим.
+func (uc *SendMessage) recallFacts(
+	ctx context.Context, threadID uuid.UUID, userMessage string,
+) ([]domain.Fact, error) {
+	const limit = 5
+
+	var semantic []domain.Fact
+	if uc.Embedder != nil && strings.TrimSpace(userMessage) != "" {
+		embedCtx, cancel := context.WithTimeout(ctx, queryEmbedTimeout)
+		vec, _, eerr := uc.Embedder.Embed(embedCtx, userMessage)
+		cancel()
+		if eerr == nil && len(vec) > 0 {
+			if hits, rerr := uc.Facts.RecallSemantic(ctx, threadID, vec, limit); rerr == nil {
+				semantic = hits
+			}
+		}
+	}
+
+	if len(semantic) >= limit {
+		return semantic, nil
+	}
+
+	ranked, err := uc.Facts.TopRanked(ctx, threadID, limit)
+	if err != nil {
+		return nil, err
+	}
+	return mergeFacts(semantic, ranked, limit), nil
+}
+
+// mergeFacts конкатит semantic + ranked, сохраняя порядок semantic и
+// добавляя из ranked только новые (по Fact.ID). Стабильно отрезает на limit.
+func mergeFacts(primary, fallback []domain.Fact, limit int) []domain.Fact {
+	if limit <= 0 {
+		return nil
+	}
+	seen := make(map[uuid.UUID]struct{}, len(primary)+len(fallback))
+	out := make([]domain.Fact, 0, limit)
+	for _, f := range primary {
+		if _, dup := seen[f.ID]; dup {
+			continue
+		}
+		seen[f.ID] = struct{}{}
+		out = append(out, f)
+		if len(out) >= limit {
+			return out
+		}
+	}
+	for _, f := range fallback {
+		if _, dup := seen[f.ID]; dup {
+			continue
+		}
+		seen[f.ID] = struct{}{}
+		out = append(out, f)
+		if len(out) >= limit {
+			return out
+		}
+	}
+	return out
+}
+
+// recordIncomingMessage скрывает атомарный (Recorder) и legacy non-
+// atomic пути за единой сигнатурой. В прод-wiring Recorder != nil —
+// counters и user-episode пишутся одним tx; в тестах с in-mem fake'ами
+// Recorder=nil, и мы используем последовательную запись ради совместимости
+// с in-mem фейками.
+func (uc *SendMessage) recordIncomingMessage(
+	ctx context.Context,
+	thread domain.Thread,
+	content, contextNote string,
+	now time.Time,
+) (domain.Thread, domain.Episode, error) {
+	if uc.Recorder != nil {
+		updated, userEp, err := uc.Recorder.RecordUserMessage(ctx, thread.ID, content, contextNote, now)
+		if err != nil {
+			return domain.Thread{}, domain.Episode{}, fmt.Errorf("ai_tutor.SendMessage: record: %w", err)
+		}
+		return updated, userEp, nil
+	}
+	updated, err := uc.Threads.IncrementCounters(ctx, thread.ID, now)
+	if err != nil {
+		return domain.Thread{}, domain.Episode{}, fmt.Errorf("ai_tutor.SendMessage: counters: %w", err)
+	}
+	if contextNote != "" {
+		_, _ = uc.Episodes.Append(ctx, domain.Episode{
+			ThreadID: updated.ID,
+			Role:     domain.RoleSystem,
+			Content:  contextNote,
+		})
+	}
+	userEp, err := uc.Episodes.Append(ctx, domain.Episode{
+		ThreadID: updated.ID,
+		Role:     domain.RoleUser,
+		Content:  content,
+	})
+	if err != nil {
+		return domain.Thread{}, domain.Episode{}, fmt.Errorf("ai_tutor.SendMessage: user episode: %w", err)
+	}
+	return updated, userEp, nil
 }

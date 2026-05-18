@@ -1,12 +1,13 @@
-// Package domain — Phase 9a Path C low-key collab rooms.
+// Package domain defines the low-key collab rooms aggregate.
 //
-// Cross-cuts existing editor_rooms + whiteboard_rooms tables через `kind`
-// enum. Не дублирует CRUD'ы (editor / whiteboard сервисы продолжают свою
-// логику для tutor/mock workflows); этот сервис экспонирует unified
-// view для standalone-create через Settings → Developer tools.
+// It cross-cuts editor_rooms and whiteboard_rooms via the Kind enum. The
+// older per-table services still own their tutor/mock CRUD paths; this
+// service exposes the unified view used by standalone create flows
+// (Settings → Developer tools).
 package domain
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -42,20 +43,18 @@ type Room struct {
 	UpdatedAt  time.Time
 }
 
-// Repo — write+read над обеими таблицами. Concrete impl выбирает
-// которую таблицу хитить по Kind.
+// Repo handles reads and writes against both tables. Concrete implementations
+// dispatch on Kind to pick which table to touch.
 type Repo interface {
-	Create(ctx ctxValue, r Room) (Room, error)
-	Get(ctx ctxValue, kind Kind, id uuid.UUID) (Room, error)
-	ListMy(ctx ctxValue, ownerID uuid.UUID, status Status) ([]Room, error)
-	ExtendExpiry(ctx ctxValue, kind Kind, id uuid.UUID, newExpiry time.Time) error
-	Archive(ctx ctxValue, kind Kind, id uuid.UUID, at time.Time) error
-	Restore(ctx ctxValue, kind Kind, id uuid.UUID) error
-	// Cron support — все expired non-archived rows.
-	ListExpiredCandidates(ctx ctxValue, before time.Time, limit int) ([]Room, error)
+	Create(ctx context.Context, r Room) (Room, error)
+	Get(ctx context.Context, kind Kind, id uuid.UUID) (Room, error)
+	ListMy(ctx context.Context, ownerID uuid.UUID, status Status) ([]Room, error)
+	ExtendExpiry(ctx context.Context, kind Kind, id uuid.UUID, newExpiry time.Time) error
+	Archive(ctx context.Context, kind Kind, id uuid.UUID, at time.Time) error
+	Restore(ctx context.Context, kind Kind, id uuid.UUID) error
+	// ListExpiredCandidates feeds the TTL sweep cron.
+	ListExpiredCandidates(ctx context.Context, before time.Time, limit int) ([]Room, error)
 }
-
-type ctxValue = interface{} // type-alias чтобы не тянуть context import в domain (минимизировать deps).
 
 type Status string
 
@@ -65,14 +64,15 @@ const (
 	StatusAll    Status = "all"
 )
 
-// QuotaRepo — per-user `user_room_quota`.
+// QuotaRepo tracks the per-user `user_room_quota` row.
 type QuotaRepo interface {
-	Get(ctx ctxValue, userID uuid.UUID) (Quota, error)
-	Increment(ctx ctxValue, userID uuid.UUID, tier string) error
-	Decrement(ctx ctxValue, userID uuid.UUID) error
-	// Recompute — sync active_count с фактическим count'ом из rooms tables.
-	// Daily cron вызывает чтобы избежать drift'а.
-	Recompute(ctx ctxValue, userID uuid.UUID, count int) error
+	Get(ctx context.Context, userID uuid.UUID) (Quota, error)
+	Increment(ctx context.Context, userID uuid.UUID, tier string) error
+	Decrement(ctx context.Context, userID uuid.UUID) error
+	// Recompute reconciles active_count against the actual room rows. Run
+	// daily so drift from failed increment/decrement attempts does not
+	// accumulate.
+	Recompute(ctx context.Context, userID uuid.UUID, count int) error
 }
 
 type Quota struct {
@@ -82,7 +82,7 @@ type Quota struct {
 	PeriodStart time.Time
 }
 
-// Limits для free-tier (Sergey 2026-05-04 Path C low-key).
+// Free-tier limits.
 const (
 	FreeMaxActive       = 3
 	FreeTTL             = 24 * time.Hour
@@ -101,10 +101,10 @@ var (
 	ErrUserBlocked     = errors.New("rooms: user blocked")
 )
 
-// AbuseChecker — Phase 9a §spam mitigation. Blocked users (через
-// `domain_reputation` или admin manual ban) не могут create rooms.
-// Implementation проверяет user_id или (когда есть share-link domain
-// signal) — host из share-URL recipient'а. nil → no-check.
+// AbuseChecker blocks banned users (admin ban or domain_reputation signal)
+// before any quota work. Implementations look up by user_id, or by host
+// when a share-link signal is available. Nil at the CreateRoom UC means
+// no check.
 type AbuseChecker interface {
-	IsUserBlocked(ctx ctxValue, userID uuid.UUID) (bool, error)
+	IsUserBlocked(ctx context.Context, userID uuid.UUID) (bool, error)
 }

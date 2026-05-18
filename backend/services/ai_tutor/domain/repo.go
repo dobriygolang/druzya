@@ -53,19 +53,59 @@ type EpisodeRepo interface {
 	CountSinceCompaction(ctx context.Context, threadID uuid.UUID, since *time.Time) (int, error)
 }
 
-// FactRepo — semantic memory с ranked recall.
+// MessageRecorder атомарно инкрементит thread counters и аппендит user-
+// episode (плюс optional context-note system-episode) в одной БД-
+// транзакции. Без этого параллельные SendMessage гонят: counter ушёл, а
+// episode не успел вставиться. Реализация в infra использует BeginTx;
+// ErrRateLimited после неудачного инкремента откатывает append.
+type MessageRecorder interface {
+	RecordUserMessage(
+		ctx context.Context,
+		threadID uuid.UUID,
+		content, contextNote string,
+		now time.Time,
+	) (Thread, Episode, error)
+}
+
+// FactRepo — semantic memory с ranked + semantic recall.
+//
+// Recall пути:
+//   - TopRanked — legacy, confidence × last_used_at сортировка. Fallback
+//     когда embedding недоступен (Ollama off, fact ещё не embed'нут, или
+//     query embed таймаут).
+//   - RecallSemantic — основной путь когда embedding есть. Hybrid score:
+//     0.55*cosine + 0.30*confidence + 0.15*recency_decay.
 type FactRepo interface {
 	// Upsert — INSERT … ON CONFLICT (thread_id, fact_key) DO UPDATE.
-	// На update: value/confidence/source_episode_id перезаписываются.
+	// На update: value/confidence/source_episode_id перезаписываются. Если
+	// fact_value меняется — embedding сбрасывается (compaction re-embed'нёт).
+	// Decay sweep с тем же value сохраняет embedding.
 	Upsert(ctx context.Context, f Fact) (Fact, error)
-	// TopRanked — recall query: ORDER BY confidence DESC, last_used_at DESC.
+	// TopRanked — legacy recall: ORDER BY confidence DESC, last_used_at DESC.
 	// limit обычно 5 для prompt budget.
 	TopRanked(ctx context.Context, threadID uuid.UUID, limit int) ([]Fact, error)
+	// RecallSemantic — гибридный recall через pgvector cosine + confidence
+	// + recency. Возвращает только embed'нутые rows. queryVec —
+	// нормализованный bge-m3 вектор (1024d).
+	RecallSemantic(ctx context.Context, threadID uuid.UUID, queryVec []float32, limit int) ([]Fact, error)
 	// TouchLastUsed — после того как fact попал в prompt, апдейтим
 	// last_used_at чтобы recall ranking видел его как актуальный.
 	TouchLastUsed(ctx context.Context, ids []uuid.UUID, now time.Time) error
+	// SetEmbedding — UPDATE embedding_vec + embed_model + embedded_at для
+	// одного fact'а. Best-effort: row отсутствует → no-op.
+	SetEmbedding(ctx context.Context, factID uuid.UUID, vec []float32, model string, at time.Time) error
 	// Delete — для случая «студент явно опроверг fact».
 	Delete(ctx context.Context, threadID uuid.UUID, key string) error
+}
+
+// Embedder — text → unit-normalized vector + model id. Реализация
+// в ai_tutor/infra оборачивает llmcache.OllamaEmbedder (bge-m3, 1024d).
+//
+// Если OLLAMA_HOST не выставлен в env, bootstrap инжектит nil — SendMessage
+// проверяет и не делает embed вызов. Ошибка от Embed — non-fatal: caller
+// всегда умеет деградировать в TopRanked.
+type Embedder interface {
+	Embed(ctx context.Context, text string) ([]float32, string, error)
 }
 
 // AIUserCreator — adapter, создающий user с role='ai_tutor' если ещё нет.

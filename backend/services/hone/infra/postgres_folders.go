@@ -60,7 +60,7 @@ func (f *Folders) List(ctx context.Context, userID uuid.UUID) ([]domain.Folder, 
 		return nil, fmt.Errorf("hone.Folders.List: %w", err)
 	}
 	defer rows.Close()
-	var out []domain.Folder
+	out := make([]domain.Folder, 0, 16)
 	for rows.Next() {
 		var (
 			id        pgtype.UUID

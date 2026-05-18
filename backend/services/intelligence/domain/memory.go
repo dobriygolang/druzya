@@ -40,10 +40,10 @@ const (
 	// EpisodeCueConversationMemory stores compact derived memory from
 	// Cue desktop conversations. Raw screenshots/audio are never stored.
 	EpisodeCueConversationMemory EpisodeKind = "cue_conversation_memory"
-	// EpisodeWeeklyMemorySummary — Phase 4.5 consolidation. One per
-	// (user, ISO-week): a compact rollup of every other episode that
-	// week. Coach reads these instead of raw episode storms beyond the
-	// 7-day fresh window so prompt-bloat stays bounded.
+	// EpisodeWeeklyMemorySummary — consolidation. One per (user, ISO-week):
+	// a compact rollup of every other episode that week. Coach reads these
+	// instead of raw episode storms beyond the 7-day fresh window so
+	// prompt-bloat stays bounded.
 	EpisodeWeeklyMemorySummary EpisodeKind = "weekly_memory_summary"
 	// EpisodeExternalActivity — структурированный лог обучения вне druz9
 	// (LeetCode / Coursera / YouTube / книги). Пишется hone'ом из
@@ -150,9 +150,9 @@ type EpisodeRepo interface {
 	// than the cutoff. Returns the number of rows deleted. Used by the
 	// retention worker to keep coach memory bounded.
 	DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
-	// CountByKindInRange — Phase 4.5. Returns map[kind]count of episodes
-	// whose occurred_at lies in [from, to). Used by the weekly memory
-	// consolidator to build a compact rollup без скана payload-полей.
+	// CountByKindInRange returns map[kind]count of episodes whose
+	// occurred_at lies in [from, to). Used by the weekly memory consolidator
+	// to build a compact rollup без скана payload-полей.
 	CountByKindInRange(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[EpisodeKind]int, error)
 	// HasWeeklySummary returns true when a weekly_memory_summary episode
 	// already exists for the given (user, week_start). Used to avoid

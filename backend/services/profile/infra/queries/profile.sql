@@ -2,7 +2,7 @@
 
 -- name: GetProfileBundle :one
 -- v2: email column dropped from users; xp/level moved to user_xp.
--- Stream D (2026-05-12): tutor_mode_enabled surfaced for AppShell RBAC.
+-- tutor_mode_enabled surfaced for AppShell RBAC.
 SELECT u.id, u.username, u.role, u.locale, u.display_name, u.created_at,
        u.tutor_mode_enabled,
        p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
@@ -47,9 +47,7 @@ SELECT node_key, progress, unlocked_at, decayed_at, updated_at
   FROM skill_nodes WHERE user_id = $1;
 
 -- name: CountWeeklyActivity :one
--- Pivot 2026-05-01: arena_matches/participants/daily_kata_history дропнуты.
--- matches_won/katas_passed остаются в proto-shape но возвращают 0 —
--- TODO выпилить из proto после следующего gen-cycle.
+-- matches_won/katas_passed остаются в proto-shape но возвращают 0.
 SELECT
   0::int AS katas_passed,
   0::int AS matches_won,
@@ -111,7 +109,7 @@ UPDATE interviewer_applications
 RETURNING id, user_id, motivation, status, reviewed_by, reviewed_at, decision_note, created_at;
 
 -- name: UpsertAppInstall :one
--- Phase J / X1 (P0). Idempotent heartbeat from web / Hone / Cue.
+-- Idempotent heartbeat from web / Hone / Cue.
 -- xmax = 0 on the returned row means INSERT path; xmax != 0 means UPDATE
 -- path (existing row touched). That bit drives the «is this the first
 -- install row for the user across all 3 apps» trial-grant check upstream.

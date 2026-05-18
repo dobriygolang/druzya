@@ -1,4 +1,4 @@
-// Package infra — Phase 9a postgres adapters.
+// Package infra wires the room repositories to postgres.
 package infra
 
 import (
@@ -14,19 +14,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Rooms — unified read/write над editor_rooms + whiteboard_rooms.
+// Rooms is a unified read/write repo over editor_rooms + whiteboard_rooms.
 type Rooms struct {
 	pool *pgxpool.Pool
 }
 
 func NewRooms(p *pgxpool.Pool) *Rooms { return &Rooms{pool: p} }
 
-func (r *Rooms) Create(ctx interface{}, room domain.Room) (domain.Room, error) {
-	c := ctx.(context.Context)
+func (r *Rooms) Create(ctx context.Context, room domain.Room) (domain.Room, error) {
 	switch room.Kind {
 	case domain.KindCode:
-		// editor_rooms требует language NOT NULL — default "go" для standalone create.
-		row := r.pool.QueryRow(c, `
+		// editor_rooms.language is NOT NULL, so standalone code rooms default
+		// to "go" until the UI exposes a language picker.
+		row := r.pool.QueryRow(ctx, `
 INSERT INTO editor_rooms (owner_id, type, language, expires_at, visibility, free_tier)
 VALUES ($1, 'practice', 'go', $2, $3, $4)
 RETURNING id, created_at
@@ -37,7 +37,7 @@ RETURNING id, created_at
 		room.UpdatedAt = room.CreatedAt
 		return room, nil
 	case domain.KindWhiteboard:
-		row := r.pool.QueryRow(c, `
+		row := r.pool.QueryRow(ctx, `
 INSERT INTO whiteboard_rooms (owner_id, title, expires_at, visibility, free_tier)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING id, created_at, updated_at
@@ -50,8 +50,7 @@ RETURNING id, created_at, updated_at
 	return room, domain.ErrInvalidKind
 }
 
-func (r *Rooms) Get(ctx interface{}, kind domain.Kind, id uuid.UUID) (domain.Room, error) {
-	c := ctx.(context.Context)
+func (r *Rooms) Get(ctx context.Context, kind domain.Kind, id uuid.UUID) (domain.Room, error) {
 	out := domain.Room{ID: id, Kind: kind}
 	var (
 		title    *string
@@ -59,7 +58,7 @@ func (r *Rooms) Get(ctx interface{}, kind domain.Kind, id uuid.UUID) (domain.Roo
 	)
 	switch kind {
 	case domain.KindCode:
-		err := r.pool.QueryRow(c, `
+		err := r.pool.QueryRow(ctx, `
 SELECT owner_id, expires_at, archived_at, free_tier, visibility, created_at
 FROM editor_rooms WHERE id=$1
 `, id).Scan(&out.OwnerID, &out.ExpiresAt, &archived, &out.FreeTier, &out.Visibility, &out.CreatedAt)
@@ -71,7 +70,7 @@ FROM editor_rooms WHERE id=$1
 		}
 		out.UpdatedAt = out.CreatedAt
 	case domain.KindWhiteboard:
-		err := r.pool.QueryRow(c, `
+		err := r.pool.QueryRow(ctx, `
 SELECT owner_id, title, expires_at, archived_at, free_tier, visibility, created_at, updated_at
 FROM whiteboard_rooms WHERE id=$1
 `, id).Scan(&out.OwnerID, &title, &out.ExpiresAt, &archived, &out.FreeTier, &out.Visibility, &out.CreatedAt, &out.UpdatedAt)
@@ -91,16 +90,14 @@ FROM whiteboard_rooms WHERE id=$1
 	return out, nil
 }
 
-func (r *Rooms) ListMy(ctx interface{}, ownerID uuid.UUID, status domain.Status) ([]domain.Room, error) {
-	c := ctx.(context.Context)
+func (r *Rooms) ListMy(ctx context.Context, ownerID uuid.UUID, status domain.Status) ([]domain.Room, error) {
 	now := time.Now().UTC()
 	var out []domain.Room
 
-	type query struct {
+	queries := []struct {
 		sql  string
 		kind domain.Kind
-	}
-	queries := []query{
+	}{
 		{
 			sql: `
 SELECT id, expires_at, archived_at, free_tier, visibility, created_at
@@ -117,19 +114,18 @@ FROM whiteboard_rooms WHERE owner_id=$1
 		},
 	}
 	for _, q := range queries {
-		if err := r.collectRoomsForKind(c, q.sql, q.kind, ownerID, now, status, &out); err != nil {
+		if err := r.collectRoomsForKind(ctx, q.sql, q.kind, ownerID, now, status, &out); err != nil {
 			return nil, err
 		}
 	}
 	return out, nil
 }
 
-// collectRoomsForKind runs one of the per-kind queries in ListMy and appends
-// matching rooms to *out. Extracted so rows.Close fires via defer on every
-// exit path (scan error, rows.Err()), instead of the prior manual Close calls
-// that also skipped the rows.Err() check entirely.
-func (r *Rooms) collectRoomsForKind(c context.Context, sql string, kind domain.Kind, ownerID uuid.UUID, now time.Time, status domain.Status, out *[]domain.Room) error {
-	rows, err := r.pool.Query(c, sql, ownerID)
+// collectRoomsForKind runs one per-kind query and appends matching rooms to
+// *out. Pulled out so rows.Close fires via defer on every exit path, including
+// the rows.Err() check that the prior inline version silently skipped.
+func (r *Rooms) collectRoomsForKind(ctx context.Context, sql string, kind domain.Kind, ownerID uuid.UUID, now time.Time, status domain.Status, out *[]domain.Room) error {
+	rows, err := r.pool.Query(ctx, sql, ownerID)
 	if err != nil {
 		return fmt.Errorf("rooms.ListMy %s: %w", kind, err)
 	}
@@ -169,67 +165,72 @@ func (r *Rooms) collectRoomsForKind(c context.Context, sql string, kind domain.K
 	return nil
 }
 
-func (r *Rooms) ExtendExpiry(ctx interface{}, kind domain.Kind, id uuid.UUID, newExpiry time.Time) error {
-	c := ctx.(context.Context)
+func (r *Rooms) ExtendExpiry(ctx context.Context, kind domain.Kind, id uuid.UUID, newExpiry time.Time) error {
 	tbl, err := tableFor(kind)
 	if err != nil {
 		return err
 	}
-	if _, err := r.pool.Exec(c, `UPDATE `+tbl+` SET expires_at=$2 WHERE id=$1`, id, newExpiry); err != nil {
+	if _, err := r.pool.Exec(ctx, `UPDATE `+tbl+` SET expires_at=$2 WHERE id=$1`, id, newExpiry); err != nil {
 		return fmt.Errorf("rooms.ExtendExpiry: %w", err)
 	}
 	return nil
 }
 
-func (r *Rooms) Archive(ctx interface{}, kind domain.Kind, id uuid.UUID, at time.Time) error {
-	c := ctx.(context.Context)
+func (r *Rooms) Archive(ctx context.Context, kind domain.Kind, id uuid.UUID, at time.Time) error {
 	tbl, err := tableFor(kind)
 	if err != nil {
 		return err
 	}
-	if _, err := r.pool.Exec(c, `UPDATE `+tbl+` SET archived_at=$2 WHERE id=$1 AND archived_at IS NULL`, id, at); err != nil {
+	if _, err := r.pool.Exec(ctx, `UPDATE `+tbl+` SET archived_at=$2 WHERE id=$1 AND archived_at IS NULL`, id, at); err != nil {
 		return fmt.Errorf("rooms.Archive: %w", err)
 	}
 	return nil
 }
 
-func (r *Rooms) Restore(ctx interface{}, kind domain.Kind, id uuid.UUID) error {
-	c := ctx.(context.Context)
+func (r *Rooms) Restore(ctx context.Context, kind domain.Kind, id uuid.UUID) error {
 	tbl, err := tableFor(kind)
 	if err != nil {
 		return err
 	}
-	if _, err := r.pool.Exec(c, `UPDATE `+tbl+` SET archived_at=NULL WHERE id=$1`, id); err != nil {
+	if _, err := r.pool.Exec(ctx, `UPDATE `+tbl+` SET archived_at=NULL WHERE id=$1`, id); err != nil {
 		return fmt.Errorf("rooms.Restore: %w", err)
 	}
 	return nil
 }
 
-func (r *Rooms) ListExpiredCandidates(ctx interface{}, before time.Time, limit int) ([]domain.Room, error) {
-	c := ctx.(context.Context)
+func (r *Rooms) ListExpiredCandidates(ctx context.Context, before time.Time, limit int) ([]domain.Room, error) {
 	var out []domain.Room
 	for _, kind := range []domain.Kind{domain.KindCode, domain.KindWhiteboard} {
 		tbl, _ := tableFor(kind)
-		rows, err := r.pool.Query(c,
-			`SELECT id, owner_id, expires_at, free_tier
-             FROM `+tbl+`
-             WHERE archived_at IS NULL AND expires_at < $1
-             ORDER BY expires_at ASC LIMIT $2`,
-			before, limit)
-		if err != nil {
-			return nil, fmt.Errorf("rooms.ListExpiredCandidates %s: %w", kind, err)
+		if err := r.collectExpiredForKind(ctx, tbl, kind, before, limit, &out); err != nil {
+			return nil, err
 		}
-		for rows.Next() {
-			r := domain.Room{Kind: kind}
-			if err := rows.Scan(&r.ID, &r.OwnerID, &r.ExpiresAt, &r.FreeTier); err != nil {
-				rows.Close()
-				return nil, fmt.Errorf("rooms.ListExpiredCandidates scan: %w", err)
-			}
-			out = append(out, r)
-		}
-		rows.Close()
 	}
 	return out, nil
+}
+
+func (r *Rooms) collectExpiredForKind(ctx context.Context, tbl string, kind domain.Kind, before time.Time, limit int, out *[]domain.Room) error {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, owner_id, expires_at, free_tier
+		 FROM `+tbl+`
+		 WHERE archived_at IS NULL AND expires_at < $1
+		 ORDER BY expires_at ASC LIMIT $2`,
+		before, limit)
+	if err != nil {
+		return fmt.Errorf("rooms.ListExpiredCandidates %s: %w", kind, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		room := domain.Room{Kind: kind}
+		if err := rows.Scan(&room.ID, &room.OwnerID, &room.ExpiresAt, &room.FreeTier); err != nil {
+			return fmt.Errorf("rooms.ListExpiredCandidates scan: %w", err)
+		}
+		*out = append(*out, room)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("rooms.ListExpiredCandidates %s rows: %w", kind, err)
+	}
+	return nil
 }
 
 func tableFor(k domain.Kind) (string, error) {
@@ -242,23 +243,21 @@ func tableFor(k domain.Kind) (string, error) {
 	return "", domain.ErrInvalidKind
 }
 
-// ─── QuotaRepo ────────────────────────────────────────────────────────────
-
 type Quota struct {
 	pool *pgxpool.Pool
 }
 
 func NewQuota(p *pgxpool.Pool) *Quota { return &Quota{pool: p} }
 
-func (q *Quota) Get(ctx interface{}, userID uuid.UUID) (domain.Quota, error) {
-	c := ctx.(context.Context)
+func (q *Quota) Get(ctx context.Context, userID uuid.UUID) (domain.Quota, error) {
 	out := domain.Quota{UserID: userID, Tier: "free"}
-	err := q.pool.QueryRow(c, `
+	err := q.pool.QueryRow(ctx, `
 SELECT active_count, tier, period_start
 FROM user_room_quota WHERE user_id=$1
 `, userID).Scan(&out.ActiveCount, &out.Tier, &out.PeriodStart)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return out, nil // unknown user → defaults free/0
+		// Unknown user defaults to free/0; no row is implicit "fresh account".
+		return out, nil
 	}
 	if err != nil {
 		return out, fmt.Errorf("rooms.Quota.Get: %w", err)
@@ -266,9 +265,8 @@ FROM user_room_quota WHERE user_id=$1
 	return out, nil
 }
 
-func (q *Quota) Increment(ctx interface{}, userID uuid.UUID, tier string) error {
-	c := ctx.(context.Context)
-	if _, err := q.pool.Exec(c, `
+func (q *Quota) Increment(ctx context.Context, userID uuid.UUID, tier string) error {
+	if _, err := q.pool.Exec(ctx, `
 INSERT INTO user_room_quota (user_id, active_count, tier)
 VALUES ($1, 1, $2)
 ON CONFLICT (user_id) DO UPDATE SET active_count = user_room_quota.active_count + 1
@@ -278,9 +276,8 @@ ON CONFLICT (user_id) DO UPDATE SET active_count = user_room_quota.active_count 
 	return nil
 }
 
-func (q *Quota) Decrement(ctx interface{}, userID uuid.UUID) error {
-	c := ctx.(context.Context)
-	if _, err := q.pool.Exec(c, `
+func (q *Quota) Decrement(ctx context.Context, userID uuid.UUID) error {
+	if _, err := q.pool.Exec(ctx, `
 UPDATE user_room_quota SET active_count = GREATEST(active_count - 1, 0) WHERE user_id=$1
 `, userID); err != nil {
 		return fmt.Errorf("rooms.Quota.Decrement: %w", err)
@@ -288,9 +285,8 @@ UPDATE user_room_quota SET active_count = GREATEST(active_count - 1, 0) WHERE us
 	return nil
 }
 
-func (q *Quota) Recompute(ctx interface{}, userID uuid.UUID, count int) error {
-	c := ctx.(context.Context)
-	if _, err := q.pool.Exec(c, `
+func (q *Quota) Recompute(ctx context.Context, userID uuid.UUID, count int) error {
+	if _, err := q.pool.Exec(ctx, `
 INSERT INTO user_room_quota (user_id, active_count) VALUES ($1, $2)
 ON CONFLICT (user_id) DO UPDATE SET active_count = $2
 `, userID, count); err != nil {

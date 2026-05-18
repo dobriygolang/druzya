@@ -13,6 +13,9 @@ var (
 	ErrAlreadyEnrolled  = errors.New("tutor: already enrolled with this tutor")
 	ErrInvalidInput     = errors.New("tutor: invalid input")
 	ErrAlreadyCompleted = errors.New("tutor: assignment already completed")
+	// ErrForbidden — actor пытается прочитать/изменить ресурс, к которому
+	// не имеет отношения (не tutor, не student, не member круга).
+	ErrForbidden = errors.New("tutor: forbidden")
 	// Group events.
 	ErrCapacityFull = errors.New("tutor: event capacity full")
 )

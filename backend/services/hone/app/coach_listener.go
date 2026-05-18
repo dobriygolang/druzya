@@ -1,10 +1,9 @@
 // coach_listener.go — Hone TaskBoard's reaction surface.
 //
-// Hone is the coach panel, not the validator. The real validators are
-// arena (algo), mock_interview (sysdesign), daily_kata (habit), copilot
-// (rag-driven analysis), codex (reading), quiz (knowledge). Each of those
-// publishes a typed event when the user finishes a "real-world" attempt;
-// this listener translates those events into TaskBoard transitions:
+// Hone is the coach panel, not the validator. The real validators
+// (mock_interview, copilot analysis, codex) publish typed events when the
+// user finishes a "real-world" attempt; this listener translates those
+// events into TaskBoard transitions:
 //
 //	passing event → matching `in_review|in_progress` task → 'done'
 //	                + AI comment crediting the win
@@ -187,9 +186,11 @@ func (l *CoachListener) regress(ctx context.Context, userID uuid.UUID, skillKey,
 	}
 	if t.Status == domain.TaskStatusInProgress || t.Status == domain.TaskStatusToDo {
 		// Already in the right column; just add the comment.
-		_, _ = l.Tasks.AddComment(ctx, domain.TaskComment{
+		if _, err := l.Tasks.AddComment(ctx, domain.TaskComment{
 			TaskID: t.ID, AuthorKind: domain.TaskCommentAuthorAI, BodyMD: comment,
-		})
+		}); err != nil {
+			l.warn(ctx, "regress.comment", err)
+		}
 		if l.Animator != nil {
 			l.Animator.Choreograph(userID, t, comment, false)
 		}

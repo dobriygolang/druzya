@@ -38,35 +38,28 @@ type StripeRepo interface {
 	// GetCustomer возвращает stripe_customer_id для юзера или ErrNotFound.
 	GetCustomer(ctx context.Context, userID uuid.UUID) (StripeCustomer, error)
 
-	// UpsertCustomer — идемпотентная запись по user_id. Используется при
-	// lazy-create на первом checkout. Stripe customer_id уникален —
-	// дубликаты падают на DB unique constraint.
+	// UpsertCustomer — идемпотентная запись по user_id. Lazy-create на первом
+	// checkout. Stripe customer_id уникален; дубликаты падают на unique constraint.
 	UpsertCustomer(ctx context.Context, c StripeCustomer) error
 
 	// UpsertSubscription — идемпотентная запись по stripe_subscription_id.
-	// Используется webhook handler'ом для sync'а status / period_end.
+	// Webhook'и обновляют status/period_end через этот метод.
 	UpsertSubscription(ctx context.Context, s StripeSubscription) error
 
 	// GetActiveSubscriptionByUser — последняя active/trialing подписка юзера.
-	// Используется CancelSubscription UC чтобы узнать какой Stripe sub
-	// отменять. ErrNotFound если у юзера нет подписок.
+	// ErrNotFound если у юзера нет подписок.
 	GetActiveSubscriptionByUser(ctx context.Context, userID uuid.UUID) (StripeSubscription, error)
 
-	// GetSubscriptionByStripeID — lookup по stripe_subscription_id. Используется
-	// refund handler'ом: charge.refunded payload приносит invoice → invoice
-	// references subscription_id; нам нужен user_id чтобы flip'нуть tier.
-	// ErrNotFound если row отсутствует (e.g. webhook прилетел до того как
-	// мы записали subscription).
+	// GetSubscriptionByStripeID — lookup по stripe_subscription_id для refund/
+	// audit flow'ов. ErrNotFound если webhook прилетел до того как мы записали row.
 	GetSubscriptionByStripeID(ctx context.Context, stripeSubID string) (StripeSubscription, error)
 
-	// HasAnySubscription — true если у юзера когда-либо была подписка
-	// (включая canceled). Используется для гейтинга «first-time trial».
-	// Должна возвращать (false, nil) даже если row отсутствует.
+	// HasAnySubscription — true если у юзера когда-либо была подписка (включая
+	// canceled). Гейтит «first-time trial» от cancel/re-subscribe abuse'а.
 	HasAnySubscription(ctx context.Context, userID uuid.UUID) (bool, error)
 
-	// MarkWebhookSeen — idempotency guard для Stripe webhook'ов. Возвращает
-	// (true, nil) если eventID впервые видится (запись успешно INSERT'нута)
-	// и (false, nil) если event уже был обработан раньше (silent skip).
+	// MarkWebhookSeen — idempotency guard. (true, nil) — первый раз; (false, nil)
+	// — event уже видели (silent skip).
 	MarkWebhookSeen(ctx context.Context, eventID, eventType string) (bool, error)
 }
 

@@ -51,10 +51,10 @@ const (
 // DirectiveFor returns the system message text to insert as slot 0 in an
 // LLM call. policy overrides the user locale where applicable.
 func DirectiveFor(policy ResponseLanguagePolicy, userLocale string) string {
-	switch policy {
-	case PolicyForceEnglish:
+	if policy == PolicyForceEnglish {
 		return directiveForceEN
-	case PolicyForceRussian:
+	}
+	if policy == PolicyForceRussian {
 		return directiveForceRU
 	}
 	return LanguageDirective(userLocale)

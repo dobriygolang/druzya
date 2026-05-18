@@ -20,7 +20,7 @@ import (
 // CoachPinnedModelKey — dynamic_config row key.
 const CoachPinnedModelKey = "coach.pinned_model"
 
-// CoachReflectiveEnabledKey — Phase 4.1 dynamic_config row key.
+// CoachReflectiveEnabledKey — dynamic_config row key.
 //
 // Когда true и computed severity ∈ {warn, critical}, brief synthesiser
 // делает second LLM call с critique prompt и refined output подменяет
@@ -28,7 +28,7 @@ const CoachPinnedModelKey = "coach.pinned_model"
 // admin /llm-keys panel или прямым SQL update.
 const CoachReflectiveEnabledKey = "coach.reflective_enabled"
 
-// CoachPromptVariantKey — Phase 5 A/B prompt-variant gate.
+// CoachPromptVariantKey — A/B prompt-variant gate.
 //
 //	"" / "default"  — стандартный briefSystemPrompt без overlay.
 //	"terse"         — terser: shorter narrative, tighter rationales.
@@ -58,7 +58,7 @@ func (v CoachPromptVariant) IsValid() bool {
 	return false
 }
 
-// CoachPersonaKey — Phase 4.2 dynamic_config row key.
+// CoachPersonaKey — dynamic_config row key.
 //
 // Persona — это tone-overlay поверх стандартного briefSystemPrompt:
 //
@@ -99,21 +99,20 @@ type CoachConfigReader interface {
 	// трактуется как «pin не задан» — не ломаем coach из-за config-issue.
 	PinnedModel(ctx context.Context) string
 
-	// ReflectiveEnabled — Phase 4.1 feature gate. Если true, severity
-	// warn/critical триггерит second-stage critique LLM call.
-	// Cruise/nudge briefs идут single-stage всегда (latency не оправдана
-	// для спокойных дней). Fail-soft: любая ошибка чтения = false.
+	// ReflectiveEnabled — feature gate. Если true, severity warn/critical
+	// триггерит second-stage critique LLM call. Cruise/nudge briefs идут
+	// single-stage всегда (latency не оправдана для спокойных дней).
+	// Fail-soft: любая ошибка чтения = false.
 	ReflectiveEnabled(ctx context.Context) bool
 
-	// Persona — Phase 4.2. Возвращает active tone overlay (strict /
-	// warm / sparring) или пустую строку = no overlay. Невалидное
-	// значение в dynamic_config трактуется как пустая строка (default
-	// tone из briefSystemPrompt не меняется).
+	// Persona returns active tone overlay (strict / warm / sparring) или
+	// пустую строку = no overlay. Невалидное значение в dynamic_config
+	// трактуется как пустая строка (default tone из briefSystemPrompt не
+	// меняется).
 	Persona(ctx context.Context) CoachPersona
 
-	// PromptVariant — Phase 5 A/B variant gate. Возвращает active
-	// prompt-variant (terse / sharp / default). Empty / unknown →
-	// default = no overlay.
+	// PromptVariant returns active prompt-variant (terse / sharp /
+	// default). Empty / unknown → default = no overlay.
 	PromptVariant(ctx context.Context) CoachPromptVariant
 }
 
@@ -153,7 +152,7 @@ func (r *DBCoachConfigReader) PinnedModel(ctx context.Context) string {
 	return ""
 }
 
-// PromptVariant — Phase 5. Читает coach.prompt_variant. Возвращает
+// PromptVariant читает coach.prompt_variant. Возвращает
 // CoachPromptVariantDefault для пустого / unknown значения.
 func (r *DBCoachConfigReader) PromptVariant(ctx context.Context) CoachPromptVariant {
 	if r == nil || r.pool == nil {

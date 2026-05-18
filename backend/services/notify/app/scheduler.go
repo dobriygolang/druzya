@@ -50,15 +50,10 @@ const weeklyStoreKey = "notify:scheduler:weekly:last_fired"
 // замусоривать Redis вечно при деактивации feature'а.
 const weeklyStoreTTL = 8 * 24 * time.Hour
 
-// weeklyFanoutChunkSize — сколько event'ов publish'им за один chunk до
-// короткой паузы. На 100K subscribers без chunking'а EventBus захлёбы-
-// вается + downstream notify-handlers'ы лочат БД. 100 — здоровый
-// батч: ~50ms/chunk на типовой dispatch'е.
+// weeklyFanoutChunkSize — batch size перед паузой.
 const weeklyFanoutChunkSize = 100
 
-// weeklyFanoutChunkPause — пауза между chunk'ами. 100ms × 1000 chunks
-// (100K users) = 100s scheduler-block, что ок: weekly job не время-
-// критичный, окно «воскресенье 20:00-20:59» с щедрым запасом.
+// weeklyFanoutChunkPause — пауза между chunk'ами фан-аута.
 const weeklyFanoutChunkPause = 100 * time.Millisecond
 
 // Run blocks until ctx is cancelled. Ticker interval is 1 minute — good

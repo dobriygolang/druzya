@@ -1,4 +1,4 @@
-// notification_templates_repo.go — Admin Phase 2: pg adapter.
+// notification_templates_repo.go — pg adapter.
 package infra
 
 import (

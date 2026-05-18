@@ -1,4 +1,4 @@
-// Package app — Phase J Wave 1 / D coverage for AtlasReader wiring.
+// Package app — coverage for AtlasReader wiring.
 //
 // Covers:
 //   - Zero user_id rejected with ErrInvalidInput.

@@ -191,7 +191,7 @@ func TestParseLLMJSON_RegexFallback(t *testing.T) {
 	}
 }
 
-// ── Phase C.1 — code-aware judge ────────────────────────────────────────
+// ── code-aware judge ────────────────────────────────────────────────────
 
 func TestLLMJudge_TaskSolve_UsesCodeTemplate(t *testing.T) {
 	// task_solve skips Pass-1 → only one chain.Chat call expected.
@@ -303,7 +303,7 @@ func (c *captureChain) ChatStream(ctx context.Context, req llmchain.Request) (<-
 	return c.inner.ChatStream(ctx, req)
 }
 
-// ── Phase D.1 — multimodal canvas judge ────────────────────────────────
+// ── multimodal canvas judge ─────────────────────────────────────────────
 
 // 1×1 transparent PNG in a valid data URL — kept locally so this test file
 // doesn't depend on orchestrator_test.go's symbol.

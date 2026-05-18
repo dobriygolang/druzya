@@ -9,6 +9,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	sharedMw "druz9/shared/pkg/middleware"
@@ -44,4 +45,21 @@ func StatusForAuthErr(err error) int {
 		return http.StatusForbidden
 	}
 	return http.StatusInternalServerError
+}
+
+// AdminGateHandler wraps next so only authenticated admin users can reach
+// it. The auth context is populated by the bearer middleware above; this
+// handler only checks role. On failure it emits a JSON error body shaped
+// like the rest of the admin surface (`{"error":"..."}`). Used by every
+// admin REST mount that wraps a vanguard transcoder.
+func AdminGateHandler(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := RequireAdminInline(r); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(StatusForAuthErr(err))
+			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
 }

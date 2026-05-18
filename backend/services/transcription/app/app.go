@@ -14,15 +14,7 @@ import (
 	"druz9/transcription/domain"
 )
 
-// hallucinationPhrases — известные Whisper-галлюцинации на silent /
-// near-silent аудио. Whisper-large-v3 на русском (и всех языках) train'нут
-// на YouTube subs, где такие "сабы делал X" / "спасибо за внимание"
-// постоянно встречаются как outro — модель учила, что после долгой
-// тишины нужно «закрыть видео». Blocklist — pragmatic filter: проще
-// чем VAD-pre-filter и не требует backend-side audio analysis.
-//
-// Источники: https://github.com/openai/whisper/discussions/679,
-// https://github.com/SYSTRAN/faster-whisper/issues/156, личные тесты.
+// Whisper hallucination phrases.
 var hallucinationPhrases = []string{
 	// Russian
 	"субтитры делал dimatorzok",

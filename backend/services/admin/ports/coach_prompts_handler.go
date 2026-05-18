@@ -1,4 +1,4 @@
-// coach_prompts_handler.go — Admin Phase 2: coach prompt CRUD endpoints.
+// coach_prompts_handler.go — coach prompt CRUD endpoints.
 //
 //	GET    /admin/coach-prompts              → list (admin sees all)
 //	POST   /admin/coach-prompts              → create

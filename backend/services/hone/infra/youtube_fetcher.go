@@ -130,7 +130,7 @@ func pickSubtitle(m map[string][]ytSubtitle, hint string) pickedSub {
 	if len(m) == 0 {
 		return pickedSub{}
 	}
-	tryLangs := []string{}
+	tryLangs := make([]string, 0, 5)
 	if hint != "" {
 		tryLangs = append(tryLangs, hint)
 	}

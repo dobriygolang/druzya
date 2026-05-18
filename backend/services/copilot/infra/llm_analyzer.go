@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -123,6 +124,10 @@ func (a *LLMAnalyzer) Analyze(ctx context.Context, in domain.AnalyzerInput) (dom
 		return domain.AnalyzerResult{}, fmt.Errorf("copilot.LLMAnalyzer.http %d: %s", resp.StatusCode, truncate(string(b), 200))
 	}
 
+	rawBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return domain.AnalyzerResult{}, fmt.Errorf("copilot.LLMAnalyzer.readbody: %w", readErr)
+	}
 	var parsed struct {
 		Choices []struct {
 			Message struct {
@@ -130,7 +135,15 @@ func (a *LLMAnalyzer) Analyze(ctx context.Context, in domain.AnalyzerInput) (dom
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if decErr := json.NewDecoder(resp.Body).Decode(&parsed); decErr != nil {
+	if decErr := json.Unmarshal(rawBody, &parsed); decErr != nil {
+		// Log first 512 bytes of body + status + model — enough for
+		// post-mortem on a misbehaving provider without leaking the
+		// full prompt/PII payload.
+		slog.Default().Warn("copilot.LLMAnalyzer: decode failed",
+			slog.Any("err", decErr),
+			slog.String("status", resp.Status),
+			slog.String("model", a.model),
+			slog.String("body_preview", truncate(string(rawBody), 512)))
 		return domain.AnalyzerResult{}, fmt.Errorf("copilot.LLMAnalyzer.decode: %w", decErr)
 	}
 	if len(parsed.Choices) == 0 {

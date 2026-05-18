@@ -16,7 +16,7 @@ type Repo interface {
 	Get(ctx context.Context, userID uuid.UUID) (Subscription, error)
 
 	// Upsert — идемпотентная запись по (user_id). Используется Admin'ом
-	// (ручная выдача) и будущим Boosty-sync worker'ом (M3).
+	// (ручная выдача).
 	Upsert(ctx context.Context, sub Subscription) error
 
 	// ListByPlan — пагинируемая выборка для admin-dashboard'а и Boosty-sync.

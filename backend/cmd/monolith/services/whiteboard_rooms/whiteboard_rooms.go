@@ -23,29 +23,27 @@ import (
 	"github.com/google/uuid"
 )
 
-// NewWhiteboardRooms wires the whiteboard surface. D4/Stream F (2026-05-12)
-// — peer-collab Yjs WS / hub / participants gate dropped. Что осталось:
-// Connect-RPC CRUD + REST snapshot save/load (solo persistence). Web
-// (frontend/src/pages/whiteboard/WhiteboardPage.tsx) теперь единственный
-// surface; Hone migrated to deeplink.
+// NewWhiteboardRooms wires the whiteboard surface: Connect-RPC CRUD plus the
+// solo-persistence REST snapshot endpoint. Web is the only client surface;
+// Hone deep-links here.
 func NewWhiteboardRooms(d monolithServices.Deps) *monolithServices.Module {
+	if d.QuotaUsageReader == nil {
+		panic("whiteboard_rooms: QuotaUsageReader is required")
+	}
 	rooms := whiteboardInfra.NewRooms(d.Pool)
 	parts := whiteboardInfra.NewParticipants(d.Pool)
 	handlers := whiteboardApp.NewHandlers(rooms, parts)
 
-	// ws_url remains in proto/EditorRoom DTO for backwards compat (web client
-	// игнорирует поле). Возвращаем пустую строку.
+	// ws_url stays on the EditorRoom DTO for back-compat; the web client
+	// ignores it, so we hand back an empty string.
 	wsURL := func(_ uuid.UUID) string { return "" }
-	// Phase 2: closure для enforce quota'ы перед CreateRoom. nil-safe — при
-	// missing QuotaResolver / Usage / TierGetter (subscription not loaded)
-	// passthrough'ит без блокировок.
+	// EnforceCreate hooks the free-tier quota check before the room is
+	// persisted. QuotaUsageReader is required (asserted above), so the
+	// inner closure can rely on it being non-nil.
 	createCheck := func(ctx context.Context, userID uuid.UUID) error {
 		return subscriptionServices.EnforceCreate(ctx, d, userID,
 			whiteboardDomainQuotaField,
 			func(ctx context.Context, uid uuid.UUID) (int, error) {
-				if d.QuotaUsageReader == nil {
-					return 0, nil
-				}
 				return d.QuotaUsageReader.CountActiveSharedBoards(ctx, uid)
 			})
 	}
@@ -65,22 +63,17 @@ func NewWhiteboardRooms(d monolithServices.Deps) *monolithServices.Module {
 			r.Delete("/whiteboard/room/{room_id}", transcoder.ServeHTTP)
 			r.Get("/whiteboard/room/{room_id}/visibility", transcoder.ServeHTTP)
 			r.Post("/whiteboard/room/{room_id}/visibility", transcoder.ServeHTTP)
-			// D4 Stream F (2026-05-12) — solo snapshot endpoint, hand-rolled
-			// REST (не Connect-RPC). GET → {snapshot_b64} | 404. PUT body
-			// {snapshot_b64} → 204. Owner-only write; any participant read.
+			// Solo snapshot endpoint — hand-rolled REST (not Connect-RPC).
+			// GET → {snapshot_b64} | 404. PUT body {snapshot_b64} → 204.
+			// Owner-only write; any authenticated user can read.
 			sh := &snapshotHandler{rooms: rooms, log: d.Log}
 			r.Get("/whiteboard/room/{room_id}/snapshot", sh.get)
 			r.Put("/whiteboard/room/{room_id}/snapshot", sh.put)
 		},
-		// MountPublicREST / MountWS — D4 Stream F (2026-05-12) удалены:
-		// guest-join был peer-collab only (нужен был чтобы получить
-		// scoped WS-token); solo mode требует обычный bearer auth, гостя
-		// сюда не пускаем. WS hub снесён целиком.
 		Background: []func(ctx context.Context){
-			// Phase 4 — auto-downgrade free-tier shared boards после TTL.
-			// Раз в час: shared rooms принадлежащие free-tier owner'ам с
-			// expired expires_at → flip visibility='private'. Реализация
-			// в quota_enforce.go.
+			// Auto-downgrade free-tier shared boards once their TTL lapses:
+			// hourly tick flips shared rooms owned by free-tier accounts back
+			// to private. Implementation lives in subscription quota_enforce.go.
 			func(ctx context.Context) {
 				go subscriptionServices.RunFreeTierShareDowngradeWhiteboard(ctx, d.Pool, d.Log)
 			},
@@ -88,14 +81,14 @@ func NewWhiteboardRooms(d monolithServices.Deps) *monolithServices.Module {
 	}
 }
 
-// ─── Snapshot REST handler (D4 Stream F, 2026-05-12) ─────────────────────
+// Snapshot REST handler.
 //
 // GET  /api/v1/whiteboard/room/{room_id}/snapshot → {snapshot_b64} | 404
 // PUT  /api/v1/whiteboard/room/{room_id}/snapshot   body: {snapshot_b64}
 //
-// Snapshot — opaque base64 blob (raw Excalidraw scene JSON). Server не
-// валидирует структуру; web client сам решает что serialise'ить. Owner-
-// only write; чтение допускается любому залогиненному (read-only deeplinks).
+// Snapshot is an opaque base64 blob (raw Excalidraw scene JSON). The server
+// does not validate the structure — the web client decides what to serialise.
+// Owner-only write; any authenticated user can read (read-only deeplinks).
 type snapshotHandler struct {
 	rooms whiteboardDomain.RoomRepo
 	log   *slog.Logger

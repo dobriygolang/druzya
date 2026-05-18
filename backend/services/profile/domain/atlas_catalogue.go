@@ -17,8 +17,8 @@ var ErrConflict = errors.New("profile: conflict")
 
 // AtlasCatalogueNode mirrors a row in atlas_nodes.
 //
-// Wave-10 (migration 00034) introduced PoE-passive-tree vocabulary:
-//   - Kind ∈ {"hub","keystone","notable","small"} — see migration header.
+// PoE-passive-tree vocabulary:
+//   - Kind ∈ {"hub","keystone","notable","small"}.
 //   - Cluster names a designer-grouped dense gathering (not a 72° sector).
 //   - PosX/PosY remain hand-tuned (admin CMS) — clusters are organic.
 type AtlasCatalogueNode struct {
@@ -35,8 +35,8 @@ type AtlasCatalogueNode struct {
 	IsActive    bool
 	// TrackKind groups nodes by user-facing track persona: dev / dev_senior /
 	// sysanalyst / product_analyst / qa / english. Mirrors the Postgres
-	// `track_kind` enum from migration 00007_skill_atlas_tracks.sql. Empty
-	// string is treated as 'dev' by the catalogue read path (column default).
+	// `track_kind` enum. Empty string is treated as 'dev' by the catalogue
+	// read path (column default).
 	TrackKind string
 }
 

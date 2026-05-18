@@ -1,10 +1,10 @@
 // Package domain contains the entities, value objects and repository interfaces
 // for the editor bounded context. No external framework imports here.
 //
-// The editor domain is the foundation of every active-coding mode in druz9
-// (bible §3.1). A Room owns participants, Yjs/CRDT operations and the freeze
-// flag. Replay buffers live in-memory on the hub and are flushed to MinIO at
-// room-close time or on GET /replay.
+// The editor domain is the foundation of every active-coding mode in druz9.
+// A Room owns participants, Yjs/CRDT operations and the freeze flag. Replay
+// buffers live in-memory on the hub and are flushed to MinIO at room-close
+// time or on GET /replay.
 //
 // solution_hint (from tasks) NEVER crosses the API boundary — same rule as
 // ai_mock / ai_native. We keep the editor hint-free: only TaskPublic is
@@ -99,7 +99,7 @@ type InviteLink struct {
 	ExpiresAt time.Time
 }
 
-// ReplayURL is a presigned object-storage URL with a TTL (bible §3.1 / §6).
+// ReplayURL is a presigned object-storage URL with a TTL.
 type ReplayURL struct {
 	URL       string
 	ExpiresAt time.Time

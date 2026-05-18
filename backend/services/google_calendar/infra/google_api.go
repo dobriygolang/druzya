@@ -1,10 +1,3 @@
-// google_api.go — adapter over Google Calendar REST API + OAuth2 token endpoint.
-// Pure net/http to avoid pulling in golang.org/x/oauth2 + google.golang.org/api
-// (heavy indirect-dep trees). The surface we need is small and stable.
-//
-// Docs:
-//   https://developers.google.com/identity/protocols/oauth2/web-server
-//   https://developers.google.com/calendar/api/v3/reference/events
 package infra
 
 import (
@@ -26,9 +19,16 @@ const (
 	googleTokenURL    = "https://oauth2.googleapis.com/token"
 	googleRevokeURL   = "https://oauth2.googleapis.com/revoke"
 	googleCalendarAPI = "https://www.googleapis.com/calendar/v3"
+
+	exchangeCodeTimeout = 30 * time.Second
+	refreshTokenTimeout = 10 * time.Second
+	listEventsTimeout   = 15 * time.Second
+	insertEventTimeout  = 20 * time.Second
+	patchEventTimeout   = 20 * time.Second
+	deleteEventTimeout  = 15 * time.Second
+	revokeTokenTimeout  = 10 * time.Second
 )
 
-// GoogleAPI — concrete adapter. Configured with OAuth client creds + scopes.
 type GoogleAPI struct {
 	clientID     string
 	clientSecret string
@@ -44,12 +44,10 @@ func NewGoogleAPI(clientID, clientSecret string, scopes []string) *GoogleAPI {
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		scopes:       scopes,
-		httpc:        &http.Client{Timeout: 12 * time.Second},
+		httpc:        &http.Client{},
 	}
 }
 
-// AuthURL — consent screen URL. access_type=offline + prompt=consent чтобы
-// Google всегда вернул refresh_token, даже на повторных согласиях.
 func (g *GoogleAPI) AuthURL(state, redirectURI string) string {
 	q := url.Values{}
 	q.Set("client_id", g.clientID)
@@ -73,6 +71,8 @@ type tokenResp struct {
 }
 
 func (g *GoogleAPI) ExchangeCode(ctx context.Context, code, redirectURI string) (domain.GoogleCredentials, error) {
+	ctx, cancel := context.WithTimeout(ctx, exchangeCodeTimeout)
+	defer cancel()
 	form := url.Values{}
 	form.Set("code", code)
 	form.Set("client_id", g.clientID)
@@ -106,6 +106,8 @@ func (g *GoogleAPI) ExchangeCode(ctx context.Context, code, redirectURI string) 
 }
 
 func (g *GoogleAPI) RefreshToken(ctx context.Context, refresh string) (string, time.Time, string, error) {
+	ctx, cancel := context.WithTimeout(ctx, refreshTokenTimeout)
+	defer cancel()
 	form := url.Values{}
 	form.Set("refresh_token", refresh)
 	form.Set("client_id", g.clientID)
@@ -133,6 +135,8 @@ func (g *GoogleAPI) RefreshToken(ctx context.Context, refresh string) (string, t
 }
 
 func (g *GoogleAPI) RevokeToken(ctx context.Context, accessToken string) error {
+	ctx, cancel := context.WithTimeout(ctx, revokeTokenTimeout)
+	defer cancel()
 	form := url.Values{}
 	form.Set("token", accessToken)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, googleRevokeURL, strings.NewReader(form.Encode()))
@@ -189,6 +193,8 @@ func (d calendarEventDateTime) Parse() time.Time {
 }
 
 func (g *GoogleAPI) ListEvents(ctx context.Context, accessToken, calendarID string, timeMin, timeMax, updatedMin time.Time) ([]domain.GoogleEventDTO, error) {
+	ctx, cancel := context.WithTimeout(ctx, listEventsTimeout)
+	defer cancel()
 	if calendarID == "" {
 		calendarID = "primary"
 	}
@@ -252,6 +258,8 @@ type insertEventBody struct {
 }
 
 func (g *GoogleAPI) InsertEvent(ctx context.Context, accessToken, calendarID string, in domain.EventInput) (domain.GoogleEventDTO, error) {
+	ctx, cancel := context.WithTimeout(ctx, insertEventTimeout)
+	defer cancel()
 	if calendarID == "" {
 		calendarID = "primary"
 	}
@@ -285,6 +293,8 @@ func (g *GoogleAPI) InsertEvent(ctx context.Context, accessToken, calendarID str
 }
 
 func (g *GoogleAPI) PatchEvent(ctx context.Context, accessToken, calendarID, googleEventID string, in domain.EventInput) (domain.GoogleEventDTO, error) {
+	ctx, cancel := context.WithTimeout(ctx, patchEventTimeout)
+	defer cancel()
 	if calendarID == "" {
 		calendarID = "primary"
 	}
@@ -318,6 +328,8 @@ func (g *GoogleAPI) PatchEvent(ctx context.Context, accessToken, calendarID, goo
 }
 
 func (g *GoogleAPI) DeleteEvent(ctx context.Context, accessToken, calendarID, googleEventID string) error {
+	ctx, cancel := context.WithTimeout(ctx, deleteEventTimeout)
+	defer cancel()
 	if calendarID == "" {
 		calendarID = "primary"
 	}

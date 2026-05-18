@@ -83,6 +83,7 @@ func (uc *BulkAutoCategorise) Do(
 	var targets []domain.Task
 	if len(in.TaskIDs) > 0 {
 		// Fetch + filter to user-owned + non-overridden tasks.
+		targets = make([]domain.Task, 0, min(len(in.TaskIDs), maxBatch))
 		for _, id := range in.TaskIDs {
 			if len(targets) >= maxBatch {
 				break

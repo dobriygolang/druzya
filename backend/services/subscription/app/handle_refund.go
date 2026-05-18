@@ -1,37 +1,7 @@
-// handle_refund.go — обработка charge.refunded Stripe webhook'а. Pivot
-// vs handleSubscriptionDeleted: refund != cancellation.
-//
-//   - customer.subscription.deleted = «период закончился, Pro истёк» →
-//     tier flip уже либо отработан cron'ом MarkExpired, либо webhook
-//     handler сам flip'нет в Free at period_end (естественный конец).
-//
-//   - charge.refunded = «верните деньги» → flip немедленно в Free,
-//     не дожидаясь period end. Деньги вернули — Pro доступ ушёл сразу.
-//     Local row помечается status='refunded' чтобы reporting видел
-//     отличие от cancel'а.
-//
-// Stripe payload (subset):
-//
-//	{
-//	  "type": "charge.refunded",
-//	  "data": { "object": {
-//	    "id": "ch_...",                 // charge id
-//	    "customer": "cus_...",          // stripe customer
-//	    "invoice": "in_...",            // optional — связь с subscription
-//	    "metadata": { "user_id": "..." }
-//	  }}
-//	}
-//
-// invoice ↔ subscription mapping не в payload'е — но мы храним user_id
-// в stripe_customers (lazy-create на checkout), плюс metadata.user_id
-// почти всегда есть (мы set'аем при create). Этого достаточно для
-// резолва владельца refund'а без дополнительного API-call'а.
-//
-// Эффект на user-facing:
-//   - subscriptions row: tier=free, status=expired, provider=stripe
-//   - stripe_subscriptions row (если есть): status='refunded'
-//   - audit log запись через SetTierUC.Reason
-
+// handle_refund.go — Stripe charge.refunded handler. Отличие от subscription
+// .deleted: refund flip'ает tier в Free немедленно (не ждёт period_end), и
+// local stripe_subscriptions row помечается status='refunded' чтобы reporting
+// видел отличие от обычного cancel'а.
 package app
 
 import (
@@ -145,9 +115,9 @@ func (uc *HandleRefund) Do(ctx context.Context, raw json.RawMessage) error {
 	return nil
 }
 
-// resolveUserID находит user_id, привязанный к refund'у. Source priority:
-//  1. metadata["user_id"] — если мы set'нули при checkout.
-//  2. customer lookup в stripe_customers — устойчивее всего.
+// resolveUserID находит user_id привязанный к refund'у. Источники:
+//  1. metadata["user_id"] — мы set'аем при checkout.
+//  2. reverse lookup stripe_customer_id → user_id через optional interface.
 func (uc *HandleRefund) resolveUserID(ctx context.Context, ch stripeCharge) (uuid.UUID, error) {
 	if ch.Metadata != nil {
 		if v := strings.TrimSpace(ch.Metadata["user_id"]); v != "" {
@@ -159,27 +129,25 @@ func (uc *HandleRefund) resolveUserID(ctx context.Context, ch stripeCharge) (uui
 	if ch.Customer == "" {
 		return uuid.Nil, errors.New("no stripe customer on charge")
 	}
-	// Reverse lookup: stripe_customers.stripe_customer_id → user_id.
-	// Repo не expose'ит этот метод напрямую (lazy add); используем
-	// GetActiveSubscriptionByUser нет — нам нужен customer-id reverse.
-	// Поэтому добавляем тонкий обходной путь через стандартный SQL —
-	// инжектим через StripeRepo. Pattern: если в будущем понадобится
-	// шире — добавим GetCustomerByStripeID в port.
-	if finder, ok := uc.Repo.(stripeCustomerByIDFinder); ok {
-		userID, err := finder.GetCustomerByStripeID(ctx, ch.Customer)
-		if err == nil {
-			return userID, nil
-		}
-		if !errors.Is(err, domain.ErrNotFound) {
-			return uuid.Nil, fmt.Errorf("lookup customer: %w", err)
-		}
+	// Reverse lookup через extension interface — этот метод нужен только
+	// здесь, не выносим в StripeRepo чтобы не плодить mock-методы для callers,
+	// которым он не нужен.
+	finder, ok := uc.Repo.(stripeCustomerByIDFinder)
+	if !ok {
+		return uuid.Nil, errors.New("user not found by customer_id")
+	}
+	userID, err := finder.GetCustomerByStripeID(ctx, ch.Customer)
+	if err == nil {
+		return userID, nil
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		return uuid.Nil, fmt.Errorf("lookup customer: %w", err)
 	}
 	return uuid.Nil, errors.New("user not found by customer_id")
 }
 
-// stripeCustomerByIDFinder — narrow port для reverse-lookup'а. Implemented
-// в infra/stripe_repo.go. Отдельный optional-interface чтобы не ломать
-// signature StripeRepo для тех, кто не использует HandleRefund.
+// stripeCustomerByIDFinder — extension interface для reverse lookup'а.
+// Реализовано в infra/stripe_repo.go.
 type stripeCustomerByIDFinder interface {
 	GetCustomerByStripeID(ctx context.Context, stripeCustomerID string) (uuid.UUID, error)
 }

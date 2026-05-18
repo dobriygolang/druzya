@@ -1,12 +1,10 @@
-// tutor_mode_repo.go — Stream D (2026-05-12). Auxiliary read/write for
-// the users.tutor_mode_enabled column (migration 00093).
+// tutor_mode_repo.go — auxiliary read/write for the
+// users.tutor_mode_enabled column.
 //
 // Why a separate file: keeping it out of settings_repo.go means the main
 // Settings UPDATE doesn't depend on a regenerated sqlc query referencing
-// the new column — UpdateSettings stays green pre-`make generate` and
-// this extension simply does a follow-up UPDATE on the same row when
-// HasTutorModeEnabled is set. The cost is one extra round-trip, which
-// is fine for a profile-settings PUT (cold path, single-row write).
+// the new column. The cost is one extra round-trip, which is fine for a
+// profile-settings PUT (cold path, single-row write).
 package infra
 
 import (

@@ -12,41 +12,41 @@ import (
 	"github.com/google/uuid"
 )
 
-// CreateCheckoutSession — use-case для запуска Stripe Checkout flow.
-// Pipeline:
-//  1) resolve/create stripe_customer_id для юзера (lazy);
-//  2) call StripeClient.CreateCheckoutSession с success/cancel URL'ами;
-//  3) return session_id + checkout_url — фронт делает window.location =
-//     checkout_url.
+// CreateCheckoutSession запускает Stripe Checkout flow:
+//  1. lazy-create stripe_customer_id под user'а;
+//  2. POST /v1/checkout/sessions через StripeClient;
+//  3. return session_id + checkout_url для window.location redirect'а.
 //
-// При любом failure'е — error; фронт показывает toast «не удалось создать
-// сессию». DB write делается ТОЛЬКО для customer mapping; subscription row
-// создаётся webhook'ом после реальной оплаты.
+// DB write делается только для customer mapping; subscription row создаётся
+// webhook'ом после реальной оплаты.
 //
-// Multi-currency (2026-05-12 launch polish): PriceIDs хранит per-ISO 4217
-// мапу price_id; PriceID (legacy field) — fallback на default valutu (RUB).
-// Caller (Connect-RPC handler) передаёт ISO code в .Currency; UC резолвит
-// конкретный Stripe price object.
+// Multi-currency: PriceIDs хранит per-ISO 4217 мапу; PriceID — fallback на
+// default валюту. Caller передаёт ISO code в .Currency; UC резолвит price.
 type CreateCheckoutSession struct {
 	Repo    domain.StripeRepo
 	Client  domain.StripeClient
-	PriceID string // legacy fallback — env STRIPE_PRICE_ID_PRO_MONTHLY / STRIPE_PRICE_ID_PRO_RUB
-	// PriceIDs — currency → stripe price_id. Заполняется bootstrap'ом из
-	// STRIPE_PRICE_ID_PRO_RUB / _USD / _EUR. Пустые значения исключаются —
-	// caller пропускает только сконфигурированные валюты.
+	PriceID string // fallback price_id если PriceIDs не сматчился
+	// PriceIDs — currency → stripe price_id. Bootstrap заполняет из env
+	// STRIPE_PRICE_ID_PRO_RUB/_USD/_EUR; пустые значения исключаются.
 	PriceIDs map[string]string
-	// DefaultCurrency — какую валюту использовать когда caller передал пустой
-	// .Currency и server'ный locale-detection не разрешает выбор. По дефолту RUB.
+	// DefaultCurrency — fallback когда caller передал пустой .Currency.
 	DefaultCurrency string
 	Log             *slog.Logger
-	// DefaultTrialDays — fallback trial period for first-time subscribers
-	// when caller doesn't pass an explicit value. 0 = no trial.
-	// Поставлен Sergey'ем (2026-05-12) launch-polish: 7 дней.
+	// DefaultTrialDays — trial period для first-time subscribers если caller
+	// не передал explicit value. 0 = no trial.
 	DefaultTrialDays int
 }
 
-// NewCreateCheckoutSession — конструктор. Все поля обязательны;
-// если priceID пуст, UC возвращает ErrStripeNotConfigured на каждом Do.
+// defaultTrialDays — длительность trial Pro для first-time subscribers, если
+// caller не передал explicit override.
+const defaultTrialDays = 7
+
+// defaultCheckoutCurrency — ISO 4217 currency code по умолчанию.
+const defaultCheckoutCurrency = "RUB"
+
+// NewCreateCheckoutSession — конструктор. priceID работает как fallback если
+// per-currency price не сматчился; пустой priceID + пустые PriceIDs → Do
+// возвращает ErrStripeNotConfigured.
 func NewCreateCheckoutSession(repo domain.StripeRepo, client domain.StripeClient, priceID string, log *slog.Logger) *CreateCheckoutSession {
 	if log == nil {
 		panic("subscription.NewCreateCheckoutSession: logger is required")
@@ -56,28 +56,26 @@ func NewCreateCheckoutSession(repo domain.StripeRepo, client domain.StripeClient
 		Client:           client,
 		PriceID:          priceID,
 		PriceIDs:         map[string]string{},
-		DefaultCurrency:  "RUB",
+		DefaultCurrency:  defaultCheckoutCurrency,
 		Log:              log,
-		DefaultTrialDays: 7,
+		DefaultTrialDays: defaultTrialDays,
 	}
 }
 
 // CreateCheckoutSessionInput — payload.
 type CreateCheckoutSessionInput struct {
 	UserID     uuid.UUID
-	Email      string // optional — Stripe принимает пустую строку, но email удобен для receipt'ов
+	Email      string // optional, нужен Stripe только для receipt-mailing
 	SuccessURL string
 	CancelURL  string
-	// PriceID опционально перекрывает default из UC (для Max tier в будущем).
-	// Пусто = используется UC.PriceIDs[Currency] (или UC.PriceID fallback).
+	// PriceID перекрывает дефолт UC (для нестандартных tier'ов). Пусто = UC
+	// сам резолвит через PriceIDs[Currency] → PriceID.
 	PriceID string
-	// TrialDays — explicit per-request override. >0 = принудительный trial;
-	// 0 = use UC default (только для first-time subscribers); <0 = принудительно
-	// БЕЗ trial (используется для re-subscribe flow в будущем).
+	// TrialDays: >0 — принудительный trial; 0 — use UC default только для
+	// first-time subscribers; <0 — принудительно без trial (re-subscribe).
 	TrialDays int
-	// Currency — ISO 4217 code ("RUB"|"USD"|"EUR"). Пусто = UC.DefaultCurrency.
-	// Не-сконфигурированная валюта → ErrStripeNotConfigured. PriceID override
-	// игнорирует Currency (для Max tier нужно знать price_id напрямую).
+	// Currency — ISO 4217 ("RUB"|"USD"|"EUR"). Пусто = UC.DefaultCurrency.
+	// Если PriceID override задан — Currency игнорируется.
 	Currency string
 }
 
@@ -92,75 +90,19 @@ func (uc *CreateCheckoutSession) Do(ctx context.Context, in CreateCheckoutSessio
 	if uc.Client == nil {
 		return CreateCheckoutSessionOutput{}, domain.ErrStripeNotConfigured
 	}
-	// Resolve price_id: explicit PriceID override → PriceIDs[Currency] →
-	// PriceIDs[DefaultCurrency] → legacy PriceID. Любой шаг которая
-	// возвращает непустую строку — winner.
-	priceID := strings.TrimSpace(in.PriceID)
-	currency := strings.ToUpper(strings.TrimSpace(in.Currency))
-	if priceID == "" {
-		if currency == "" {
-			currency = strings.ToUpper(strings.TrimSpace(uc.DefaultCurrency))
-		}
-		if currency != "" && len(uc.PriceIDs) > 0 {
-			if p, ok := uc.PriceIDs[currency]; ok && strings.TrimSpace(p) != "" {
-				priceID = strings.TrimSpace(p)
-			}
-		}
-	}
-	if priceID == "" {
-		priceID = strings.TrimSpace(uc.PriceID)
-	}
+	priceID, currency := uc.resolvePrice(in)
 	if priceID == "" {
 		return CreateCheckoutSessionOutput{}, domain.ErrStripeNotConfigured
 	}
 	if strings.TrimSpace(in.SuccessURL) == "" || strings.TrimSpace(in.CancelURL) == "" {
 		return CreateCheckoutSessionOutput{}, fmt.Errorf("subscription.CreateCheckoutSession: success_url and cancel_url required")
 	}
-
-	// 1) Resolve customer.
-	customer, cerr := uc.Repo.GetCustomer(ctx, in.UserID)
-	if cerr != nil && !errors.Is(cerr, domain.ErrNotFound) {
-		return CreateCheckoutSessionOutput{}, fmt.Errorf("subscription.CreateCheckoutSession: get_customer: %w", cerr)
+	customer, err := uc.resolveCustomer(ctx, in.UserID, in.Email)
+	if err != nil {
+		return CreateCheckoutSessionOutput{}, err
 	}
-	if errors.Is(cerr, domain.ErrNotFound) {
-		stripeCustomerID, err := uc.Client.CreateCustomer(ctx, in.UserID, in.Email)
-		if err != nil {
-			return CreateCheckoutSessionOutput{}, fmt.Errorf("subscription.CreateCheckoutSession: create_customer: %w", err)
-		}
-		customer = domain.StripeCustomer{UserID: in.UserID, StripeCustomerID: stripeCustomerID}
-		if err := uc.Repo.UpsertCustomer(ctx, customer); err != nil {
-			return CreateCheckoutSessionOutput{}, fmt.Errorf("subscription.CreateCheckoutSession: upsert_customer: %w", err)
-		}
-		uc.Log.InfoContext(ctx, "subscription.stripe.customer_created",
-			slog.String("user_id", in.UserID.String()),
-			slog.String("stripe_customer_id", stripeCustomerID))
-	}
+	trialDays := uc.resolveTrialDays(ctx, in)
 
-	// 2) Resolve trial period. Priority: explicit caller override → default
-	//    for first-time subscribers → 0. Negative override = no trial.
-	trialDays := 0
-	switch {
-	case in.TrialDays < 0:
-		// Caller явно отключает trial — re-subscribe / promo path.
-		trialDays = 0
-	case in.TrialDays > 0:
-		// Caller pin'нул конкретный trial (e.g. promo код «14 дней»).
-		trialDays = in.TrialDays
-	case uc.DefaultTrialDays > 0:
-		// First-time subscribers получают UC.DefaultTrialDays (7 by default).
-		// HasAnySubscription пропустит trial если юзер раньше уже подписывался
-		// (и возможно отменил) — чтобы избежать abuse повторного «free 7 days».
-		had, herr := uc.Repo.HasAnySubscription(ctx, in.UserID)
-		if herr != nil {
-			uc.Log.WarnContext(ctx, "subscription.stripe.has_any_sub failed (skipping trial)",
-				slog.String("user_id", in.UserID.String()),
-				slog.Any("err", herr))
-		} else if !had {
-			trialDays = uc.DefaultTrialDays
-		}
-	}
-
-	// 3) Create Checkout Session.
 	sess, err := uc.Client.CreateCheckoutSession(ctx, domain.CreateCheckoutSessionInput{
 		CustomerID: customer.StripeCustomerID,
 		PriceID:    priceID,
@@ -182,4 +124,70 @@ func (uc *CreateCheckoutSession) Do(ctx context.Context, in CreateCheckoutSessio
 		SessionID:   sess.SessionID,
 		CheckoutURL: sess.CheckoutURL,
 	}, nil
+}
+
+// resolvePrice — explicit PriceID > PriceIDs[currency] > UC.PriceID fallback.
+func (uc *CreateCheckoutSession) resolvePrice(in CreateCheckoutSessionInput) (priceID, currency string) {
+	priceID = strings.TrimSpace(in.PriceID)
+	currency = strings.ToUpper(strings.TrimSpace(in.Currency))
+	if priceID == "" {
+		if currency == "" {
+			currency = strings.ToUpper(strings.TrimSpace(uc.DefaultCurrency))
+		}
+		if currency != "" && len(uc.PriceIDs) > 0 {
+			if p, ok := uc.PriceIDs[currency]; ok && strings.TrimSpace(p) != "" {
+				priceID = strings.TrimSpace(p)
+			}
+		}
+	}
+	if priceID == "" {
+		priceID = strings.TrimSpace(uc.PriceID)
+	}
+	return priceID, currency
+}
+
+// resolveCustomer — lookup customer, lazy-create через Stripe при ErrNotFound.
+func (uc *CreateCheckoutSession) resolveCustomer(ctx context.Context, userID uuid.UUID, email string) (domain.StripeCustomer, error) {
+	customer, cerr := uc.Repo.GetCustomer(ctx, userID)
+	if cerr == nil {
+		return customer, nil
+	}
+	if !errors.Is(cerr, domain.ErrNotFound) {
+		return domain.StripeCustomer{}, fmt.Errorf("subscription.CreateCheckoutSession: get_customer: %w", cerr)
+	}
+	stripeCustomerID, err := uc.Client.CreateCustomer(ctx, userID, email)
+	if err != nil {
+		return domain.StripeCustomer{}, fmt.Errorf("subscription.CreateCheckoutSession: create_customer: %w", err)
+	}
+	customer = domain.StripeCustomer{UserID: userID, StripeCustomerID: stripeCustomerID}
+	if err := uc.Repo.UpsertCustomer(ctx, customer); err != nil {
+		return domain.StripeCustomer{}, fmt.Errorf("subscription.CreateCheckoutSession: upsert_customer: %w", err)
+	}
+	uc.Log.InfoContext(ctx, "subscription.stripe.customer_created",
+		slog.String("user_id", userID.String()),
+		slog.String("stripe_customer_id", stripeCustomerID))
+	return customer, nil
+}
+
+// resolveTrialDays — explicit override > first-time default > 0. HasAnySubscription
+// защищает от повторного «free N days» через cancel/re-subscribe abuse.
+func (uc *CreateCheckoutSession) resolveTrialDays(ctx context.Context, in CreateCheckoutSessionInput) int {
+	switch {
+	case in.TrialDays < 0:
+		return 0
+	case in.TrialDays > 0:
+		return in.TrialDays
+	case uc.DefaultTrialDays > 0:
+		had, herr := uc.Repo.HasAnySubscription(ctx, in.UserID)
+		if herr != nil {
+			uc.Log.WarnContext(ctx, "subscription.stripe.has_any_sub failed (skipping trial)",
+				slog.String("user_id", in.UserID.String()),
+				slog.Any("err", herr))
+			return 0
+		}
+		if !had {
+			return uc.DefaultTrialDays
+		}
+	}
+	return 0
 }

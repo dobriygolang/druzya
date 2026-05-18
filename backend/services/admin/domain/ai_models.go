@@ -15,7 +15,6 @@ type AIModel struct {
 	ContextWindow     *int
 	CostPerKInputUSD  *float64
 	CostPerKOutputUSD *float64
-	// UseForArena removed 2026-05-12 (D8) — see migration 00088.
 	UseForInsight     bool
 	UseForMock        bool
 	SortOrder         int
@@ -35,7 +34,6 @@ type AIModelUpsert struct {
 	ContextWindow     *int
 	CostPerKInputUSD  *float64
 	CostPerKOutputUSD *float64
-	// UseForArena removed 2026-05-12 (D8).
 	UseForInsight     *bool
 	UseForMock        *bool
 	SortOrder         *int
@@ -53,7 +51,7 @@ type PublicAIModel struct {
 }
 
 // PublicAIModelFilter narrows the public listing by use-surface
-// (arena / insight / mock / vacancies). Empty Surface = no filter.
+// (insight / mock). Empty Surface = no filter.
 type PublicAIModelFilter struct {
 	Surface string
 }

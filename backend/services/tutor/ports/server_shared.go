@@ -19,7 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// ─── Shared reading library (Wave pivot 2026-05-02) ───────────────────────
+// ─── Shared reading library ──────────────────────────────────────────────
 
 func (s *TutorServer) PushSharedReading(
 	ctx context.Context,
@@ -88,7 +88,7 @@ func toSharedMaterialProto(m domain.SharedMaterial) *pb.TutorSharedMaterial {
 	return out
 }
 
-// ── InviteByUsername / ListPendingInvitesForMe (Wave «invite by @user») ──
+// ── InviteByUsername / ListPendingInvitesForMe ───────────────────────────
 
 func (s *TutorServer) InviteByUsername(
 	ctx context.Context,
@@ -160,7 +160,7 @@ func (s *TutorServer) ListPendingInvitesForMe(
 	return connect.NewResponse(out), nil
 }
 
-// ── Phase 3.3 — tutor session notes ──────────────────────────────────
+// ── Tutor session notes ──────────────────────────────────────────────
 
 func (s *TutorServer) GetSessionNotes(
 	ctx context.Context,

@@ -1,8 +1,8 @@
-// Package domain — mock_interview bounded context (per ADR-002).
+// Package domain — mock_interview bounded context.
 //
-// String-typed enums backed 1:1 by Postgres ENUM types defined in migration
-// 00043. Keeping them as string aliases (rather than int constants) lets us
-// scan/marshal directly to pgx without a converter layer.
+// String-typed enums backed 1:1 by Postgres ENUM types. Keeping them as
+// string aliases (rather than int constants) lets us scan/marshal
+// directly to pgx without a converter layer.
 package domain
 
 // StageKind enumerates pipeline stage flavours. Mirrors the Postgres

@@ -72,9 +72,9 @@ func NewCuration(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/curation/mark-unhelpful", connectHandler.ServeHTTP)
 			r.Post("/curation/replace-resource", connectHandler.ServeHTTP)
 			r.Post("/curation/reflection", connectHandler.ServeHTTP)
-			// Pivot 2026-05-05: orphan REST aliases /preview-resource,
-			// /reorder-resource, /apply-overrides удалены — клиенты ходят
-			// через Connect-RPC напрямую (см. hone/api/curation.ts).
+			// Orphan REST aliases /preview-resource, /reorder-resource,
+			// /apply-overrides удалены — клиенты ходят через Connect-RPC
+			// напрямую (см. hone/api/curation.ts).
 		},
 	}
 }
@@ -115,9 +115,9 @@ RETURNING resource_url
 `, logID, takeawaysJSON, quality, extracted, confusion).Scan(&resourceURL); err != nil {
 		return fmt.Errorf("curation.UpdateReflection exec: %w", err)
 	}
-	// Phase 3.5d closed-loop: feed quality back into promotion signals.
-	// Best-effort — promotion_signals row может не существовать (resource
-	// был добавлен tutor'ом, не user'ом → не bump'ался AddResource'ом).
+	// Closed-loop: feed quality back into promotion signals. Best-effort —
+	// promotion_signals row может не существовать (resource был добавлен
+	// tutor'ом, не user'ом → не bump'ался AddResource'ом).
 	if quality > 0 && resourceURL != "" && a.promotion != nil {
 		_ = a.promotion.UpdateQuality(ctx, resourceURL, quality)
 	}

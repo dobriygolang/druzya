@@ -9,17 +9,9 @@ import (
 
 // ActiveTrack — UI-фильтр Hone'а. Решает, какой контент (Plan / Tasks /
 // Reading / AI-tutor thread) рендерится. `general` = legacy all-in-one.
-// `go` — sub-mode dev'а для глубоких Go-сессий.
-//
-// History:
-//   - mig 00035 ввёл 'ml' (Phase 1 ML track)
-//   - mig 00046 (Phase 4.1, 2026-05-04) drop'нул 'ml' — ML стало
-//     специализацией внутри dev_senior
-//   - mig 00110 (M1 quick win, 2026-05-12) восстановил 'ml' — identity.md
-//     обещает 3 equal tracks (Go senior · ML engineering · English),
-//     и реальность не должна противоречить identity. ML атлас-узлы
-//     по-прежнему tag'нуты под dev_senior (ml-coach persona scoped
-//     to 'dev_senior'); 'ml' active track — UI-фильтр + persona handoff.
+// `go` — sub-mode dev'а для глубоких Go-сессий. ML атлас-узлы tag'нуты
+// под dev_senior (ml-coach persona scoped to 'dev_senior'); 'ml' active
+// track — UI-фильтр + persona handoff.
 type ActiveTrack string
 
 const (
@@ -39,7 +31,7 @@ func (t ActiveTrack) IsValid() bool {
 }
 
 // UserSettings — per-user Hone preferences. Active study mode + orthogonal
-// English-modifier (Sergey 2026-05-03: English — не track, а дополнение).
+// English-modifier (English — не track, а дополнение).
 type UserSettings struct {
 	UserID        uuid.UUID
 	ActiveTrack   ActiveTrack

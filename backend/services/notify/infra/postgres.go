@@ -158,7 +158,7 @@ func (p *Postgres) ListWeeklyReportEnabledChunked(ctx context.Context, chunkSize
 			return nil
 		}
 		if err := visit(batch); err != nil {
-			return err
+			return fmt.Errorf("notify postgres: %w", err)
 		}
 		last = batch[len(batch)-1]
 		if len(batch) < chunkSize {

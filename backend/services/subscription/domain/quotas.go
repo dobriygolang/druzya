@@ -1,21 +1,16 @@
-// Package domain — quota policy per tier для Phase 5+ subscription model.
+// Package domain — quota policy per tier.
 //
-// Квоты определяют что юзер может делать на данном tier'е. Не storage
-// per se (у нас infinite OS-disk на клиенте через IndexedDB), а
-// **server-side resources**: published notes (cloud-synced), shared
-// boards/rooms (multi-user collab требующая backend relay), AI calls
-// (cost-bound).
+// Квоты ограничивают server-side ресурсы: published notes (cloud-synced),
+// shared boards/rooms (multi-user collab требующий backend relay), AI calls
+// (cost-bound). Локальный диск через IndexedDB не лимитирован.
 //
 // Модель:
-//   - Free: notes ВСЕ локально (IndexedDB), Publish → cloud (counts toward
-//     SyncedNotes quota). Shared board/room: 1 active с 24h TTL → авто-
-//     downgrade в private + удаление с backend'а.
-//   - Pro: middle tier — cross-device sync для всех notes (counts toward
-//     SyncedNotes quota), 5 active shared boards/rooms без TTL.
-//   - Max: top tier — unlimited.
-//
-// Числа — стартовая прикидка (Phase 5 alpha). Tweak под рыночные данные
-// после первых retention-метрик.
+//   - Free: notes локально, Publish → cloud (counts toward SyncedNotes
+//     quota). Shared board/room: 1 active с 24h TTL → auto-downgrade в
+//     private + удаление backend'ом.
+//   - Pro: cross-device sync для всех notes, 5 active shared boards/rooms
+//     без TTL.
+//   - Max: unlimited.
 
 package domain
 

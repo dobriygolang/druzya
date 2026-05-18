@@ -151,9 +151,11 @@ func (s *redisStore) findBest(ctx context.Context, task llmchain.Task, vec []flo
 	if err := json.Unmarshal([]byte(rawEntry), &rec); err != nil {
 		return false, llmchain.Response{}, fmt.Errorf("llmcache.findBest: decode entry: %w", err)
 	}
-	// Обновить LRU score. Не продлеваем TTL emb'а — TTL это про TTL, LRU
-	// про порядок evict'а.
+	// Обновить LRU score и продлить TTL emb'а на hit'е, чтобы активно
+	// используемая запись не вылетала по голому TTL и не становилась
+	// orphaned (lru ZSET без emb).
 	s.rds.ZAdd(ctx, keyLRU(task), redis.Z{Score: float64(s.nowFn().Unix()), Member: bestID})
+	s.rds.Expire(ctx, keyEmb(task, bestID), s.ttl)
 	return true, rec.Response, nil
 }
 

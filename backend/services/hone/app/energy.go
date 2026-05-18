@@ -1,4 +1,4 @@
-// energy.go — energy tracker use cases (Phase K Wave 15).
+// energy.go — energy tracker use cases.
 //
 // Simple capture: юзер тэгает уровень 1-5 раз в N часов, бэк хранит,
 // клиент строит тренд. Нет AI, нет coach hooks — pure data plumbing.

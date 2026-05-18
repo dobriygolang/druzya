@@ -1,6 +1,6 @@
-// Resistance journal (Phase K Wave 15) — pre-focus mini-prompt «что трудно
-// прямо сейчас?». Не путать с ResistanceRepo (`hone_plan_skips`), который
-// трекает chronic-skip skill items по skill_key.
+// Resistance journal — pre-focus mini-prompt «что трудно прямо сейчас?».
+// Не путать с ResistanceRepo (`hone_plan_skips`), который трекает
+// chronic-skip skill items по skill_key.
 package domain
 
 import (

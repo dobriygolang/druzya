@@ -13,7 +13,6 @@ import (
 
 // GetCode returns the saved code blob for a solo editor room. Empty string
 // is a valid value (fresh rooms) — only missing rooms surface ErrNotFound.
-// D4 Stream F (2026-05-12).
 func (r *Rooms) GetCode(ctx context.Context, id uuid.UUID) (string, error) {
 	var code string
 	err := r.pool.QueryRow(ctx,

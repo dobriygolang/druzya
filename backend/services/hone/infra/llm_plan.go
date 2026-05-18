@@ -1,4 +1,4 @@
-// Package infra — daily plan synthesiser (Hone Coach / Phase 5+).
+// Package infra — daily plan synthesiser (Hone Coach).
 //
 // Builds a JSON-shaped daily plan from weakest atlas nodes + chronic skips
 // + today's note context. See llm.go for shared helpers and floor types.

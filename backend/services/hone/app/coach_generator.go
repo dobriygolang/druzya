@@ -1,14 +1,6 @@
 // coach_generator.go — periodic AI task suggestions for the TaskBoard.
-//
-// Runs in a cron loop (every 6h by default) over recently-active users.
-// For each user we pull the top-3 weak skill nodes from atlas, then call
-// SpawnAITask which honours the dedup-by-skill_key + cap=7 invariants.
-//
-// No LLM is invoked here on purpose: titles/briefs come straight from
-// atlas_nodes.{title, description}, and deep_link is a deterministic
-// druz9://… URL. A future iteration can swap Title/Brief for an LLM-
-// generated personalised pitch, but the current shape gives users a
-// useful default without spending tokens.
+// Cron sweeps active users, picks weak atlas nodes, spawns tasks
+// (deterministic title/brief — no LLM cost).
 package app
 
 import (
@@ -25,9 +17,7 @@ import (
 
 // ActiveUsersReader returns the user-ids that have been active recently.
 // "Active" is fuzzy by design — implementations typically union signals
-// from tg_user_link.last_seen_at, hone_focus_sessions, and arena
-// participation. Keeping the cross-domain join in the adapter (monolith
-// services/hone) avoids importing other services from this domain.
+// from tg_user_link.last_seen_at and hone_focus_sessions.
 type ActiveUsersReader interface {
 	ListActive(ctx context.Context, since time.Time, limit int) ([]uuid.UUID, error)
 }
@@ -151,14 +141,8 @@ func (g *CoachGenerator) generateForUser(ctx context.Context, userID uuid.UUID, 
 
 // ── content helpers ──────────────────────────────────────────────────────
 
-// kindForSkill maps an atlas skill_key to the right TaskBoard column
-// kind. Non-mapped skills default to algo (the safest bucket — solving
-// at arena is the universal fallback).
-//
-// ML-track atlas nodes (см. migration 00033) route to TaskKindML so the
-// TaskBoard kind-chip filter + auto-categoriser tag ML practice
-// consistently. Non-ML-named ML nodes (например ml_root hub) тоже
-// маршрутизируем как ML — hub задачи всё равно про ML curriculum.
+// kindForSkill maps an atlas skill_key to the right TaskBoard column kind.
+// ML-track nodes route to TaskKindML; everything else defaults to algo.
 func kindForSkill(nodeKey string) domain.TaskKind {
 	switch nodeKey {
 	case "sd_basics", "sd_scale":
@@ -188,7 +172,7 @@ func coachBriefForSkill(w domain.WeakNode) string {
 	if w.Progress == 0 {
 		return "Этот навык ещё не открыт. Начни с базовой задачи."
 	}
-	return fmt.Sprintf("Текущий прогресс: %d%%. Возьми задачу из arena по этой теме.", w.Progress)
+	return fmt.Sprintf("Текущий прогресс: %d%%. Открой соответствующий раздел skill atlas и закрепи тему.", w.Progress)
 }
 
 // deepLinkForSkill builds a druz9://… URL the frontend resolves to the
@@ -197,14 +181,10 @@ func deepLinkForSkill(nodeKey string) string {
 	switch nodeKey {
 	case "sd_basics", "sd_scale":
 		return "druz9://mock/start?section=system_design"
-	case "go_idioms", "go_concurrency":
-		return "druz9://arena/queue?section=go"
-	case "sql_basics", "sql_perf":
-		return "druz9://arena/queue?section=sql"
 	case "beh_star":
 		return "druz9://mock/start?section=behavioral"
 	default:
-		return "druz9://arena/queue?section=algorithms"
+		return "druz9://atlas/atlas"
 	}
 }
 

@@ -8,11 +8,11 @@
 //
 // SOLUTION_HINT EXCEPTION
 // Every other domain in druz9 treats tasks.solution_hint as a secret that
-// MUST NEVER cross the HTTP boundary (bible §3.14). The admin domain is the
-// one legitimate exception: curators explicitly need to author, review and
-// edit the hint text as part of the CMS. The role check in this file is the
-// load-bearing guard — without role=admin the request never lands at the
-// app layer and the hint never appears in a response body.
+// MUST NEVER cross the HTTP boundary. The admin domain is the one legitimate
+// exception: curators explicitly need to author, review and edit the hint
+// text as part of the CMS. The role check in this file is the load-bearing
+// guard — without role=admin the request never lands at the app layer and
+// the hint never appears in a response body.
 //
 // The handler implementation is split across this directory by resource:
 //   - config.go     ListConfig / UpdateConfig + structpb helpers
@@ -66,7 +66,7 @@ type AdminServer struct {
 	ListReportsUC  *app.ListReports
 	GetStatusUC    *app.GetStatus
 
-	// Wave 15: LLM usage / cost panel.
+	// LLM usage / cost panel.
 	GetLLMUsageStatsUC *app.GetLLMUsageStats
 
 	Log *slog.Logger

@@ -66,12 +66,6 @@ func DefaultConfig() Config {
 // копируется в результат. Пакет не решает когда его очищать — store-
 // specific.
 func BuildWindow(turns []Turn, runningSummary string, cfg Config) Window {
-	if cfg.WindowSize <= 0 {
-		// Fail-soft: при битом конфиге шлём всё, ничего не компактим.
-		// Политика anti-fallback требует ошибок в конструкторе (см.
-		// Validate) — на hot-path мы уже не можем всё сломать.
-		return Window{Tail: slices.Clone(turns)}
-	}
 	n := len(turns)
 	if n <= cfg.WindowSize {
 		return Window{
@@ -82,7 +76,7 @@ func BuildWindow(turns []Turn, runningSummary string, cfg Config) Window {
 	tailStart := n - cfg.WindowSize
 	tail := slices.Clone(turns[tailStart:])
 
-	if n <= cfg.Threshold || cfg.Threshold < cfg.WindowSize {
+	if n <= cfg.Threshold {
 		// Порог ещё не достигнут — срезаем окно, но компакцию не
 		// запускаем (running_summary остаётся прежним).
 		return Window{

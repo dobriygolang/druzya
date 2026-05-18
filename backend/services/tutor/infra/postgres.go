@@ -109,40 +109,8 @@ func (p *Postgres) GetInviteByCode(ctx context.Context, code string) (domain.Inv
 	return out, nil
 }
 
-// ListTutorInvites — most-recent first. limit==0 means «no cap».
-func (p *Postgres) ListTutorInvites(ctx context.Context, tutorID uuid.UUID, limit int) ([]domain.Invite, error) {
-	q := `
-		SELECT id, tutor_id, code, note, created_at, expires_at,
-		       accepted_by, accepted_at, revoked_at, target_user_id
-		FROM tutor_invites
-		WHERE tutor_id = $1
-		ORDER BY created_at DESC`
-	args := []any{pgUUID(tutorID)}
-	if limit > 0 {
-		q += " LIMIT $2"
-		args = append(args, limit)
-	}
-	rows, err := p.pool.Query(ctx, q, args...)
-	if err != nil {
-		return nil, fmt.Errorf("tutor.ListTutorInvites: %w", err)
-	}
-	defer rows.Close()
-	out := make([]domain.Invite, 0, 16)
-	for rows.Next() {
-		inv, err := scanInvite(rows)
-		if err != nil {
-			return nil, fmt.Errorf("tutor.ListTutorInvites: scan: %w", err)
-		}
-		out = append(out, inv)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("tutor.ListTutorInvites: iterate: %w", err)
-	}
-	return out, nil
-}
-
-// ListTutorInvitesPaged — keyset cursor variant.
-// Sort: created_at DESC, id DESC. limit clamped 1..200, default 50.
+// ListTutorInvitesPaged — keyset cursor over (created_at DESC, id DESC).
+// limit clamped 1..200, default 50.
 func (p *Postgres) ListTutorInvitesPaged(
 	ctx context.Context, tutorID uuid.UUID, limit int, cursor string,
 ) ([]domain.Invite, string, error) {

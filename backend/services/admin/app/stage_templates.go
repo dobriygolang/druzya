@@ -1,4 +1,4 @@
-// stage_templates.go — R7 Phase 1: pipeline templates library.
+// stage_templates.go — pipeline templates library.
 //
 // Two read-only UCs (list + get) plus an Apply that:
 //   1. validates template exists,

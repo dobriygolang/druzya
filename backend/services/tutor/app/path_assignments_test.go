@@ -1,4 +1,3 @@
-// path_assignments_test.go — Phase K T2+T3 coverage.
 package app
 
 import (

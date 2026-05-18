@@ -14,6 +14,24 @@ import (
 	"github.com/google/uuid"
 )
 
+// channelConcurrency caps parallel sends per non-TG channel — TG already
+// has its own per-user RateLimiter. 5 is conservative: enough to keep up
+// with backlog, low enough to avoid blasting a flaky SMTP host.
+const channelConcurrency = 5
+
+// channelSem holds one buffered chan per non-TG channel, lazily filled.
+var (
+	channelSem     = map[enums.NotificationChannel]chan struct{}{}
+	channelSemOnce sync.Once
+)
+
+func initChannelSem() {
+	channelSemOnce.Do(func() {
+		channelSem[enums.NotificationChannelEmail] = make(chan struct{}, channelConcurrency)
+		channelSem[enums.NotificationChannelPush] = make(chan struct{}, channelConcurrency)
+	})
+}
+
 // Worker drains the Queue and dispatches notifications to the correct Sender.
 //
 // Fall-through semantics: if the chosen Sender returns ErrNoTarget (e.g. no
@@ -133,6 +151,8 @@ func (w *Worker) process(ctx context.Context, n domain.Notification) {
 	// through the rest of the user's enabled channels in priority order.
 	channels := orderWithFallback(n.Channel, pref)
 
+	initChannelSem()
+
 	var sendErr error
 	for _, ch := range channels {
 		sender, ok := w.Senders[ch]
@@ -140,7 +160,17 @@ func (w *Worker) process(ctx context.Context, n domain.Notification) {
 			continue
 		}
 		identity := identityForChannel(ch, pref)
-		sendErr = sender.Send(ctx, n.UserID, identity, tpl)
+		if sem, hasSem := channelSem[ch]; hasSem {
+			select {
+			case sem <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
+			sendErr = sender.Send(ctx, n.UserID, identity, tpl)
+			<-sem
+		} else {
+			sendErr = sender.Send(ctx, n.UserID, identity, tpl)
+		}
 		if sendErr == nil {
 			_ = w.Logs.MarkSent(ctx, entry.ID, time.Now().UTC())
 			return

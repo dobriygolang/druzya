@@ -65,13 +65,8 @@ type compositeServer struct {
     apigen.Unimplemented
     Auth    *authPorts.AuthServer
     Profile *profilePorts.ProfileServer
-    Daily   *dailyPorts.DailyServer
-    Rating  *ratingPorts.RatingServer
-    Arena   *arenaPorts.ArenaServer
     Mock    *aimockPorts.MockServer
     Notify  *notifyPorts.NotifyServer
-    Cohort   *cohortPorts.CohortServer
-    Season  *seasonPorts.SeasonServer
     Podcast *podcastPorts.PodcastServer // ← add this
 }
 ```

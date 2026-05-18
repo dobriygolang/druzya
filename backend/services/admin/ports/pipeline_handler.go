@@ -1,4 +1,4 @@
-// pipeline_handler.go — R7 Phase 1 chi-direct endpoints for the
+// pipeline_handler.go — chi-direct endpoints for the
 // admin Company Manager redesign:
 //
 //	GET  /admin/mock/companies/{id}/validate          → ValidationReport

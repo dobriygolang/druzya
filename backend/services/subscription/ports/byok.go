@@ -1,7 +1,7 @@
-// byok.go — Connect-RPC handlers для Stream-C BYOK + GetTier endpoints.
+// byok.go — Connect-RPC handlers для BYOK + GetTier endpoints.
 //
-// GetTier возвращает source-aware projection. SetBYOKKey/RemoveBYOKKey —
-// само-сервис BYOK flow для авторизованного юзера.
+// GetTier возвращает source-aware projection (free/pro/byok/tutor).
+// SetBYOKKey/RemoveBYOKKey — self-serve BYOK flow для авторизованного юзера.
 package ports
 
 import (
@@ -19,10 +19,9 @@ import (
 	"druz9/subscription/domain"
 )
 
-// GetTier — Stream-C MVP endpoint. Возвращает TierInfo с source (free/pro/
-// byok/tutor). Не путать с GetMyTier (legacy: возвращает raw subscriptions
-// row). У них разные потребители: GetMyTier — for billing-page expiry, GetTier —
-// for paywall-gates UI.
+// GetTier возвращает source-aware TierInfo (free/pro/byok/tutor) — это то,
+// что нужно paywall-gate UI. GetMyTier отдаёт raw subscriptions row для
+// billing-page expiry display; не путать.
 func (s *SubscriptionServer) GetTier(
 	ctx context.Context,
 	_ *connect.Request[emptypb.Empty],

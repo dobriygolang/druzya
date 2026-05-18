@@ -12,7 +12,6 @@
 package admin
 
 import (
-	"fmt"
 	"net/http"
 
 	monolithServices "druz9/cmd/monolith/services"
@@ -41,15 +40,7 @@ func NewPersonas(d monolithServices.Deps) *monolithServices.Module {
 	connectPath, connectHandler := druz9v1connect.NewPersonaServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("personas", connectPath, connectHandler)
 
-	adminGate := func(w http.ResponseWriter, r *http.Request) {
-		if _, err := authServices.RequireAdminInline(r); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(authServices.StatusForAuthErr(err))
-			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-			return
-		}
-		transcoder.ServeHTTP(w, r)
-	}
+	adminGate := authServices.AdminGateHandler(transcoder)
 	publicListAdapter := func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		q.Set("active_only", "true")

@@ -30,7 +30,7 @@ import (
 //
 // Screenshot bytes still flow client → server → LLM → /dev/null. See
 // docs/copilot-architecture.md.
-func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearcher) *monolithServices.Module {
+func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearcher) (*monolithServices.Module, error) {
 	conversations := copilotInfra.NewConversations(d.Pool)
 	messages := copilotInfra.NewMessages(d.Pool)
 	quotas := copilotInfra.NewQuotas(d.Pool)
@@ -82,16 +82,13 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	// Single canonical cross-service read: see infra/mock_gate.go.
 	mockGate := copilotInfra.NewMockSessionGate(d.Pool)
 	// LLM dispatch: prefer the multi-provider chain when boot registered
-	// at least one driver; fall back to direct-OpenRouter otherwise so
-	// dev environments without GROQ_API_KEY still work. The chain is a
-	// superset of OpenRouter's behaviour — when only the OpenRouter
-	// driver is registered, it effectively emulates the legacy client
-	// with proper typed errors.
+	// LLM goes through llmchain only. Direct-OpenRouter fallback убран —
+	// он дублировал retry-логику и расходился с chain'ом по политике.
+	// Без зарегистрированных драйверов llm == nil; downstream handler'ы
+	// возвращают disabled-ответы (см. infra/llm_chain.go).
 	var llm copilotDomain.LLMProvider
 	if d.LLMChain != nil {
 		llm = copilotInfra.NewChainedLLM(d.LLMChain)
-	} else {
-		llm = copilotInfra.NewOpenRouter(d.Cfg.LLM.OpenRouterAPIKey)
 	}
 
 	analyzer := copilotInfra.NewLLMAnalyzer(
@@ -242,9 +239,13 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	// alongside the Connect transcoder on the same module — mounted
 	// below in MountREST.
 	sessionDocs := &copilotPorts.SessionDocumentsHandler{Sessions: sessions, Log: d.Log}
+	sink, sinkErr := newMemorySink(d.IntelligenceMemory, d.Now)
+	if sinkErr != nil {
+		return nil, fmt.Errorf("copilot: %w", sinkErr)
+	}
 	syncMemory := &copilotApp.SyncMemory{
 		Conversations: conversations,
-		Memory:        newMemorySink(d.IntelligenceMemory, d.Now),
+		Memory:        sink,
 	}
 	memoryHandler := copilotPorts.NewMemoryHandler(copilotPorts.MemoryHandler{
 		Sync: syncMemory,
@@ -331,7 +332,7 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 				return nil
 			},
 		},
-	}
+	}, nil
 }
 
 // channelPublisher bridges EndSession's synchronous PublishSessionEnded

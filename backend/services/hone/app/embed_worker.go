@@ -13,9 +13,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// EmbedQueue — persistent очередь embedding-job'ов, поднята из goroutine
-// (Phase 4) до Redis List (Phase 5b). Интерфейс здесь, реализация в infra
-// — сохраняется domain→infra направление зависимости.
+// EmbedQueue — persistent очередь embedding-job'ов (Redis List). Интерфейс
+// здесь, реализация в infra — сохраняется domain→infra направление
+// зависимости.
 //
 // Dequeue должен корректно реагировать на ctx.Done: возвращать либо
 // ошибку ctx, либо context.DeadlineExceeded на idle-тиках (когда очередь

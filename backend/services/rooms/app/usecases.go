@@ -1,18 +1,14 @@
-// Package app — Phase 9a rooms UCs.
-//
-//	CreateRoom    — free-tier guard + INSERT в editor_rooms / whiteboard_rooms
-//	                (выбор по kind) + INCREMENT quota. Returns share URL.
-//	ListMyRooms   — split active vs past.
-//	ExtendRoom    — pro-only.
-//	RestoreRoom   — undelete если в 30d window.
-//	DeleteRoom    — soft-delete (archived_at).
-//
-// Все UCs — pure functional, repo-abstracted.
+// Package app holds the room use cases: create / list / extend / delete /
+// restore plus the SweepExpired cron. All UCs are pure functional and
+// repo-abstracted so they can be exercised without a database.
 package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
+	"strings"
 	"time"
 
 	"druz9/rooms/domain"
@@ -20,16 +16,21 @@ import (
 	"github.com/google/uuid"
 )
 
-// CreateRoom UC.
+// defaultSweepLimit caps rows touched per SweepExpired tick. Keeps each cron
+// run bounded so a backlog cannot block the daemon, and the next tick picks
+// up the rest.
+const defaultSweepLimit = 500
+
+// CreateRoom mints a new room for the caller after running quota and abuse
+// gates. ShareURL is built from PublicBaseURL, which must be configured.
 type CreateRoom struct {
 	Repo  domain.Repo
 	Quota domain.QuotaRepo
 	Now   func() time.Time
-	// PublicBaseURL — origin для share-link (e.g. https://druz9.online).
+	// PublicBaseURL is the origin used to build share links (e.g.
+	// https://druz9.online). Must be non-empty.
 	PublicBaseURL string
-	// Abuse — optional spam-mitigation gate (Phase 9a). nil → no-check.
-	// Реализация может проверять user_id (admin ban) или host (когда есть
-	// share-link signal). Создаёт ErrUserBlocked при positive match.
+	// Abuse optionally rejects banned users before quota work. Nil = no check.
 	Abuse domain.AbuseChecker
 }
 
@@ -37,10 +38,10 @@ type CreateRoomInput struct {
 	UserID uuid.UUID
 	Kind   domain.Kind
 	Title  string
-	// TTLOverride — для tutor/mock workflows. Если nil → free-tier 24h.
+	// TTLOverride lets tutor/mock workflows extend rooms past the free 24h cap.
 	TTLOverride *time.Duration
-	// Bypass quota когда UC вызван из tutor/mock/club контекста (НЕ
-	// standalone create). Phase 9a §7a Settings → free_tier=true.
+	// BypassQuota skips the free-tier counter when callers (tutor / mock /
+	// club) already account for the room elsewhere.
 	BypassQuota bool
 }
 
@@ -55,8 +56,7 @@ func (uc *CreateRoom) Do(ctx context.Context, in CreateRoomInput) (CreateRoomOut
 	}
 	now := uc.now()
 
-	// Abuse gate (Phase 9a §spam). Blocked users — reject before quota
-	// check (cheaper). nil-safe.
+	// Reject banned users before any quota work so the cheap check fails fast.
 	if uc.Abuse != nil {
 		blocked, err := uc.Abuse.IsUserBlocked(ctx, in.UserID)
 		if err == nil && blocked {
@@ -64,7 +64,6 @@ func (uc *CreateRoom) Do(ctx context.Context, in CreateRoomInput) (CreateRoomOut
 		}
 	}
 
-	// Quota check (free-tier only).
 	if !in.BypassQuota {
 		q, err := uc.Quota.Get(ctx, in.UserID)
 		if err != nil {
@@ -95,26 +94,37 @@ func (uc *CreateRoom) Do(ctx context.Context, in CreateRoomInput) (CreateRoomOut
 		return CreateRoomOutput{}, fmt.Errorf("rooms.CreateRoom repo: %w", err)
 	}
 
-	if !in.BypassQuota {
-		_ = uc.Quota.Increment(ctx, in.UserID, "free")
+	share, shareErr := uc.shareURL(saved)
+	if shareErr != nil {
+		return CreateRoomOutput{}, fmt.Errorf("rooms.CreateRoom share: %w", shareErr)
 	}
 
-	share := uc.shareURL(saved)
+	if !in.BypassQuota {
+		// Best-effort: a transient increment failure is recovered by the
+		// daily QuotaRepo.Recompute pass, so we log and keep the create
+		// response intact rather than poisoning a successful insert.
+		if incErr := uc.Quota.Increment(ctx, in.UserID, "free"); incErr != nil {
+			slog.Default().WarnContext(ctx, "rooms.CreateRoom quota.Increment failed",
+				slog.String("user_id", in.UserID.String()),
+				slog.Any("err", incErr))
+		}
+	}
+
 	return CreateRoomOutput{Room: saved, ShareURL: share}, nil
 }
 
-func (uc *CreateRoom) shareURL(r domain.Room) string {
-	base := uc.PublicBaseURL
-	if base == "" {
-		base = ""
+func (uc *CreateRoom) shareURL(r domain.Room) (string, error) {
+	if uc.PublicBaseURL == "" {
+		return "", errors.New("rooms: PublicBaseURL not configured")
 	}
+	base := strings.TrimRight(uc.PublicBaseURL, "/")
 	switch r.Kind {
 	case domain.KindCode:
-		return base + "/editor/room/" + r.ID.String()
+		return base + "/editor/room/" + r.ID.String(), nil
 	case domain.KindWhiteboard:
-		return base + "/whiteboard/room/" + r.ID.String()
+		return base + "/whiteboard/room/" + r.ID.String(), nil
 	}
-	return ""
+	return "", fmt.Errorf("rooms: %w", domain.ErrInvalidKind)
 }
 
 func (uc *CreateRoom) now() time.Time {
@@ -123,8 +133,6 @@ func (uc *CreateRoom) now() time.Time {
 	}
 	return time.Now().UTC()
 }
-
-// ─── ListMyRooms ──────────────────────────────────────────────────────────
 
 type ListMyRooms struct {
 	Repo domain.Repo
@@ -137,8 +145,6 @@ func (uc *ListMyRooms) Do(ctx context.Context, userID uuid.UUID, status domain.S
 	}
 	return out, nil
 }
-
-// ─── ExtendRoom (pro-only) ────────────────────────────────────────────────
 
 type ExtendRoom struct {
 	Repo  domain.Repo
@@ -161,11 +167,10 @@ func (uc *ExtendRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kind
 	if r.OwnerID != userID {
 		return domain.ErrNotOwner
 	}
-	now := time.Now().UTC()
-	if uc.Now != nil {
-		now = uc.Now().UTC()
-	}
+	now := uc.nowOrDefault()
 	newExpiry := r.ExpiresAt.Add(time.Duration(hours) * time.Hour)
+	// If the room already expired, anchor the extension to "now" so the user
+	// gets the full window they paid for instead of a date in the past.
 	if newExpiry.Before(now) {
 		newExpiry = now.Add(time.Duration(hours) * time.Hour)
 	}
@@ -175,7 +180,12 @@ func (uc *ExtendRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kind
 	return nil
 }
 
-// ─── DeleteRoom (soft-delete) ─────────────────────────────────────────────
+func (uc *ExtendRoom) nowOrDefault() time.Time {
+	if uc.Now != nil {
+		return uc.Now().UTC()
+	}
+	return time.Now().UTC()
+}
 
 type DeleteRoom struct {
 	Repo  domain.Repo
@@ -202,12 +212,13 @@ func (uc *DeleteRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kind
 		return fmt.Errorf("rooms.DeleteRoom archive: %w", err)
 	}
 	if r.FreeTier {
-		_ = uc.Quota.Decrement(ctx, userID)
+		// Daily Recompute reconciles any drift if the decrement fails.
+		if err := uc.Quota.Decrement(ctx, userID); err != nil {
+			return fmt.Errorf("rooms.DeleteRoom quota.Decrement: %w", err)
+		}
 	}
 	return nil
 }
-
-// ─── RestoreRoom ──────────────────────────────────────────────────────────
 
 type RestoreRoom struct {
 	Repo  domain.Repo
@@ -224,7 +235,7 @@ func (uc *RestoreRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kin
 		return domain.ErrNotOwner
 	}
 	if r.ArchivedAt == nil {
-		return nil // already active
+		return nil
 	}
 	now := time.Now().UTC()
 	if uc.Now != nil {
@@ -233,7 +244,7 @@ func (uc *RestoreRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kin
 	if now.Sub(*r.ArchivedAt) > domain.RestoreWindow {
 		return fmt.Errorf("rooms.RestoreRoom: outside %dd restore window", int(domain.RestoreWindow/(24*time.Hour)))
 	}
-	// Free-tier quota check на restore — restore тоже выжирает slot.
+	// Restoring re-occupies a free slot, so re-run the quota gate here too.
 	if r.FreeTier {
 		q, qerr := uc.Quota.Get(ctx, userID)
 		if qerr == nil && q.Tier == "free" && q.ActiveCount >= domain.FreeMaxActive {
@@ -244,20 +255,20 @@ func (uc *RestoreRoom) Do(ctx context.Context, userID uuid.UUID, kind domain.Kin
 		return fmt.Errorf("rooms.RestoreRoom restore: %w", err)
 	}
 	if r.FreeTier {
-		_ = uc.Quota.Increment(ctx, userID, "free")
+		if err := uc.Quota.Increment(ctx, userID, "free"); err != nil {
+			return fmt.Errorf("rooms.RestoreRoom quota.Increment: %w", err)
+		}
 	}
 	return nil
 }
 
-// ─── TTL daemon (cron) ────────────────────────────────────────────────────
-
-// SweepExpired — daily cron-tick. Archives expired non-archived rooms +
+// SweepExpired is the daily cron tick: archives expired non-archived rooms and
 // decrements quota counters for free-tier rows.
 type SweepExpired struct {
 	Repo  domain.Repo
 	Quota domain.QuotaRepo
 	Now   func() time.Time
-	Limit int // default 500 per tick
+	Limit int // 0 = defaultSweepLimit
 }
 
 func (uc *SweepExpired) Run(ctx context.Context) (int, error) {
@@ -267,7 +278,7 @@ func (uc *SweepExpired) Run(ctx context.Context) (int, error) {
 	}
 	limit := uc.Limit
 	if limit <= 0 {
-		limit = 500
+		limit = defaultSweepLimit
 	}
 	candidates, err := uc.Repo.ListExpiredCandidates(ctx, now, limit)
 	if err != nil {
@@ -275,11 +286,19 @@ func (uc *SweepExpired) Run(ctx context.Context) (int, error) {
 	}
 	archived := 0
 	for _, r := range candidates {
+		// Best-effort: a transient archive failure is retried next tick rather
+		// than aborting the whole sweep.
 		if err := uc.Repo.Archive(ctx, r.Kind, r.ID, now); err != nil {
-			continue // best-effort; следующий tick re-try'нет
+			continue
 		}
 		if r.FreeTier {
-			_ = uc.Quota.Decrement(ctx, r.OwnerID)
+			// Decrement errors are tolerated for the same reason; daily
+			// Recompute is the source of truth for active_count.
+			if decErr := uc.Quota.Decrement(ctx, r.OwnerID); decErr != nil {
+				slog.Default().WarnContext(ctx, "rooms.SweepExpired quota.Decrement failed",
+					slog.String("user_id", r.OwnerID.String()),
+					slog.Any("err", decErr))
+			}
 		}
 		archived++
 	}

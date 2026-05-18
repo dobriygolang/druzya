@@ -1,6 +1,5 @@
-// Wave 13: in-memory fakes заменены на mockgen-generated mocks через
-// DoAndReturn-closures (см. test_helpers_test.go). Покрытие тестов
-// сохранено 1:1.
+// In-memory fakes are replaced with mockgen-generated mocks through
+// DoAndReturn closures (см. test_helpers_test.go); coverage is 1:1.
 package app
 
 import (

@@ -1,7 +1,7 @@
-// atlas_node_prefs_repo.go — Phase 3 per-user atlas overlay (table
-// user_atlas_node_prefs, миграция 00064). Read-side only: SetAtlasNodePref
-// RPC handler пишет напрямую через pool (см ports/atlas_pref_connect.go),
-// чтобы не множить interfaces для тривиального upsert'а.
+// atlas_node_prefs_repo.go — per-user atlas overlay (table
+// user_atlas_node_prefs). Read-side only: SetAtlasNodePref RPC handler пишет
+// напрямую через pool (см ports/atlas_pref_connect.go), чтобы не множить
+// interfaces для тривиального upsert'а.
 package infra
 
 import (

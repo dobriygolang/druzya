@@ -1,6 +1,6 @@
 // cms.go — runtime CMS surface (admin upload + public discovery).
 //
-// The legacy types in entity.go / repo.go drive the bible §3.9 catalog with
+// The legacy types in entity.go / repo.go drive the public catalog with
 // per-user progress (GET /podcast Connect RPC). The CMS additions in this
 // file are deliberately separate so they can evolve without churning the
 // existing PodcastRepo / Listing surface used by progress tracking.

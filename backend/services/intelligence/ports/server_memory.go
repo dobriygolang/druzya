@@ -20,7 +20,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// ── F1 Memory expansion Phase 2 handlers (2026-05-12) ────────────────────
+// ── Memory transparency handlers ─────────────────────────────────────────
 
 // ListMemoryEntries implements druz9.v1.IntelligenceService/ListMemoryEntries.
 func (s *IntelligenceServer) ListMemoryEntries(
@@ -295,7 +295,7 @@ func userContextToProto(b app.UserContextBundle) *pb.UserContext {
 			Kind:  r.Kind,
 		})
 	}
-	// Wave 15: 24h recent activity counters.
+	// 24h recent activity counters.
 	out.RecentActivity = &pb.RecentActivity24H{
 		FocusSessionsCount: int32(b.RecentActivity24h.FocusSessionsCount),
 		FocusMinutesTotal:  int32(b.RecentActivity24h.FocusMinutesTotal),

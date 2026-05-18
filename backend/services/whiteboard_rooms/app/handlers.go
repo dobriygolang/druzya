@@ -59,10 +59,9 @@ type RoomWithParticipants struct {
 	Participants []domain.ParticipantWithUsername
 }
 
-// GetRoomOpts — caller-side context. callerRole='guest' пропускает
-// auto-join (Wave-15: guest user_id transient, FK на users(id) сломал бы
-// participants.Add). Прочие role'ы — registered users — auto-join'ятся
-// как раньше.
+// GetRoomOpts carries caller-side context. CallerRole=="guest" skips the
+// auto-join write because guest user_ids are transient and would violate
+// the participants.user_id FK on users(id); registered users auto-join.
 type GetRoomOpts struct {
 	CallerRole string
 }
@@ -98,14 +97,11 @@ func (h *Handlers) GetRoomWithOpts(ctx context.Context, roomID, callerID uuid.UU
 			return RoomWithParticipants{}, domain.ErrForbidden
 		}
 	}
-	// Auto-join: share-link UX — первый заход === приглашение (только для
-	// shared visibility, см. private gate выше).
-	//
-	// SKIP для guest'ов (Wave-15): guest user_id — transient UUID не из
-	// users table; participants.user_id ссылается на users(id) с FK,
-	// INSERT падает на FK violation. Гости получают view-only доступ
-	// БЕЗ записи в participants — их presence отслеживается через
-	// awareness в WS, а не через DB-table.
+	// Auto-join implements the share-link UX — the first visit acts as the
+	// invite (only for shared visibility; private rooms hit the gate above).
+	// Guests are skipped because their user_id is a transient UUID not
+	// present in users(id); the participants FK would fail. They get
+	// view-only access tracked via WS awareness instead.
 	if opts.CallerRole != "guest" {
 		exists, exErr := h.Participants.Exists(ctx, roomID, callerID)
 		if exErr != nil {

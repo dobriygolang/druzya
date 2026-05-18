@@ -1,4 +1,4 @@
-// Package ports — Phase 9a RoomService Connect-RPC.
+// Package ports exposes the RoomService Connect-RPC server.
 package ports
 
 import (

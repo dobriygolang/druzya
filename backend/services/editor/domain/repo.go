@@ -80,9 +80,9 @@ type RoomRepo interface {
 	// when no row was deleted (either non-owner or unknown id) — callers MUST
 	// NOT distinguish these to avoid leaking room existence to non-owners.
 	DeleteOwned(ctx context.Context, id, ownerID uuid.UUID) error
-	// D4 Stream F (2026-05-12) — solo code persistence. GetCode returns the
-	// editor_rooms.code TEXT column; SaveCode upserts it (owner-only — caller
-	// enforces). ErrNotFound for missing rooms.
+	// Solo code persistence. GetCode returns the editor_rooms.code TEXT
+	// column; SaveCode upserts it (owner-only — caller enforces).
+	// ErrNotFound for missing rooms.
 	GetCode(ctx context.Context, id uuid.UUID) (string, error)
 	SaveCode(ctx context.Context, id uuid.UUID, code string) error
 }
@@ -97,7 +97,7 @@ type ParticipantRepo interface {
 // ─────────────────────────────────────────────────────────────────────────
 // Task — tiny read-only adapter so the editor can surface the TaskPublic
 // for interview/pair_mock rooms. Kept narrow so this domain does not
-// import ai_mock/ai_native/arena task entities.
+// import ai_mock task entities.
 // ─────────────────────────────────────────────────────────────────────────
 
 // TaskRepo fetches a client-safe task projection. The editor domain
@@ -116,7 +116,7 @@ type TaskRepo interface {
 //
 // STUB for MVP — infra/replay.go returns a fake URL without actually writing
 // anything. The production implementation will do MinIO multipart upload
-// under the `editor-replays/` prefix (bible §6 lifecycle policy).
+// under the `editor-replays/` prefix.
 type ReplayUploader interface {
 	Upload(ctx context.Context, roomID uuid.UUID, payload []byte) (presignedURL string, expiresAt time.Time, err error)
 }

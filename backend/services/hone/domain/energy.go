@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Energy tracker sub-context (Phase K Wave 15, 2026-05-14).
+// Energy tracker sub-context.
 //
 // Один лог-строкa = «сейчас энергия 1..5 + optional note». Через N точек
 // строится трендовый график, который помогает планировать сложные задачи

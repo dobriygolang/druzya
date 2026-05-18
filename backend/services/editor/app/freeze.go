@@ -13,9 +13,9 @@ import (
 
 // Freeze implements POST /api/v1/editor/room/{roomId}/freeze.
 //
-// Only owner + interviewer may flip the flag (bible §3.1). A freeze event
-// is broadcast via the Notifier interface so the WS hub fans it out to all
-// connected clients.
+// Only owner + interviewer may flip the flag. A freeze event is broadcast
+// via the Notifier interface so the WS hub fans it out to all connected
+// clients.
 type Freeze struct {
 	Rooms        domain.RoomRepo
 	Participants domain.ParticipantRepo

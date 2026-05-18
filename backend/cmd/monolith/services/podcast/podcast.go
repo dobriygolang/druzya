@@ -2,9 +2,7 @@ package podcast
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
@@ -106,15 +104,7 @@ func NewPodcast(d monolithServices.Deps) *monolithServices.Module {
 	connectPath, connectHandler := druz9v1connect.NewPodcastServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("podcast", connectPath, connectHandler)
 
-	adminGate := func(w http.ResponseWriter, r *http.Request) {
-		if _, err := authServices.RequireAdminInline(r); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(authServices.StatusForAuthErr(err))
-			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-			return
-		}
-		transcoder.ServeHTTP(w, r)
-	}
+	adminGate := authServices.AdminGateHandler(transcoder)
 
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,

@@ -30,6 +30,8 @@ type SessionRepo interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string, finishedAt bool) error
 	UpdateStress(ctx context.Context, id uuid.UUID, profile StressProfile) error
 	UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte) error
+	// ListByUser возвращает страницу архива (created_at DESC) + total для UI.
+	ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]Session, int, error)
 }
 
 // MessageRepo persists mock_messages rows.

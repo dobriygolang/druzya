@@ -463,7 +463,6 @@ func toProfileFullProto(v app.ProfileView) *pb.ProfileFull {
 		},
 		Role: userRoleToProto(b.User.Role),
 	}
-	// Stream D (2026-05-12) — surface tutor_mode_enabled for AppShell RBAC.
 	out.TutorModeEnabled = b.User.TutorModeEnabled
 	if b.Subscription.CurrentPeriodEnd != nil {
 		out.Subscription.CurrentPeriodEnd = timestamppb.New(b.Subscription.CurrentPeriodEnd.UTC())
@@ -618,7 +617,6 @@ func toSettingsProto(s domain.Settings) *pb.ProfileSettings {
 		OnboardingCompleted: &onboarding,
 		FocusClass:          &focus,
 	}
-	// Stream D (2026-05-12) — emit tutor_mode_enabled.
 	tm := s.TutorModeEnabled
 	out.TutorModeEnabled = &tm
 	channels := make([]pb.NotificationChannel, 0, len(s.Notifications.Channels))
@@ -641,7 +639,7 @@ func fromSettingsProto(req *pb.ProfileSettings) domain.Settings {
 		Locale:           req.GetLocale(),
 		AIInsightModel:   req.GetAiInsightModel(),
 	}
-	// Wave-10: optional proto3 fields carry presence so a PUT that omits
+	// Optional proto3 fields carry presence so a PUT that omits
 	// focus_class / onboarding_completed leaves the DB column untouched.
 	if req.OnboardingCompleted != nil {
 		s.HasOnboardingCompleted = true
@@ -651,8 +649,8 @@ func fromSettingsProto(req *pb.ProfileSettings) domain.Settings {
 		s.HasFocusClass = true
 		s.FocusClass = req.GetFocusClass()
 	}
-	// Stream D (2026-05-12) — tutor_mode_enabled is `optional` so a PUT
-	// that omits the field leaves the column untouched.
+	// tutor_mode_enabled is `optional` so a PUT that omits the field
+	// leaves the column untouched.
 	if req.TutorModeEnabled != nil {
 		s.HasTutorModeEnabled = true
 		s.TutorModeEnabled = req.GetTutorModeEnabled()

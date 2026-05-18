@@ -1,4 +1,5 @@
-// memory_entries_postgres.go — F1 Memory expansion Phase 2 read + soft-delete.
+// memory_entries_postgres.go — user-facing read + soft-delete для
+// coach_episodes.
 //
 // Reads coach_episodes WHERE deleted_at IS NULL with optional kind / since
 // filter. Soft-delete stamps deleted_at = now() scoped to (id, user_id).

@@ -47,10 +47,15 @@ type NextActionInput struct {
 	ActiveTrack            *ActiveTrackStep
 	RecentFocusReflections []domain.FocusReflection
 	ML                     domain.MLProfile
-	// Wave 15: RecentActivity24h — counts of last 24h actions. Coach
-	// uses these to either avoid duplicating recent action ("you did
-	// 3 focus sessions already") or build on momentum.
+	// RecentActivity24h — counts of last 24h actions. Coach uses these
+	// to either avoid duplicating recent action ("you did 3 focus sessions
+	// already") or build on momentum.
 	RecentActivity24h domain.RecentActivitySummary
+	// PinnedModel — optional model override. When non-empty, forwarded
+	// to llmchain.Request.ModelOverride so the admin pin in
+	// dynamic_config (coach.pinned_model) is honoured instead of the
+	// default task-based routing.
+	PinnedModel string
 }
 
 // LearningStateView — slim projection (UC не импортирует learning_state
@@ -111,6 +116,9 @@ func (uc *GetNextAction) Do(ctx context.Context, in NextActionInput) (NextAction
 		Temperature: 0.5,
 		MaxTokens:   400,
 		Messages:    messages,
+	}
+	if in.PinnedModel != "" {
+		req.ModelOverride = in.PinnedModel
 	}
 	resp, err := uc.Chain.Chat(ctx, req)
 	if err != nil {
@@ -213,7 +221,7 @@ func buildNextActionPrompt(in NextActionInput) string {
 		}
 	}
 
-	// Wave 15: RecentActivity24h — surface continuity context.
+	// RecentActivity24h — surface continuity context.
 	if hasRecentActivityNA(in.RecentActivity24h) {
 		ra := in.RecentActivity24h
 		b.WriteString("\nRECENT ACTIVITY (last 24h — DO NOT recommend a duplicate of what user just did):\n")

@@ -1,4 +1,4 @@
-// schedule_task.go — time-blocking use cases (Phase K Wave 15).
+// schedule_task.go — time-blocking use cases.
 //
 // Юзер таскает карточки из бэклога в часовые слоты day-view → бэк пишет
 // scheduled_start + scheduled_duration_min на hone_tasks row. UC лежит

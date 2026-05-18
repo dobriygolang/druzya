@@ -51,8 +51,7 @@ type MembershipRepo interface {
 	Leave(ctx context.Context, userID, trackID uuid.UUID) error
 }
 
-// CheckpointRepo — Phase 2 step UX flow (учитывает миграцию 00056).
-// Owns step_checkpoint_attempts.
+// CheckpointRepo owns step_checkpoint_attempts.
 type CheckpointRepo interface {
 	// Insert записывает результат attempt'а. ID + CreatedAt выставляются
 	// репозиторием.

@@ -27,8 +27,17 @@ type Compact struct {
 	Episodes domain.EpisodeRepo
 	Facts    domain.FactRepo
 	LLM      domain.LLMDispatcher
+	// Embedder — optional. Когда есть, после Upsert'а fact'ов
+	// background re-embed'ит их и пишет SetEmbedding для semantic
+	// recall. nil → пропускаем, остаётся чистый TopRanked путь.
+	Embedder domain.Embedder
 	Now      func() time.Time
 }
+
+// factEmbedTimeout — bound на embed одного нового fact'а в compaction.
+// 3s соответствует DefaultOllamaEmbedTimeout. Compaction не на user hot
+// path, latency некритична.
+const factEmbedTimeout = 3 * time.Second
 
 // compactPayload — что мы парсим из LLM JSON-output.
 //
@@ -128,15 +137,17 @@ func (uc *Compact) Do(ctx context.Context, threadID uuid.UUID) error {
 		if conf > 1 {
 			conf = 1
 		}
-		if _, ferr := uc.Facts.Upsert(ctx, domain.Fact{
+		upserted, ferr := uc.Facts.Upsert(ctx, domain.Fact{
 			ThreadID:   threadID,
 			Key:        strings.TrimSpace(f.Key),
 			Value:      strings.TrimSpace(f.Value),
 			Confidence: conf,
-		}); ferr != nil {
+		})
+		if ferr != nil {
 			// Non-fatal — следующая compaction попробует заново.
 			continue
 		}
+		uc.embedFact(ctx, upserted, now)
 	}
 
 	// Fact decay sweep. Stale facts (LastUsedAt > 7d ago) get
@@ -181,6 +192,28 @@ func (uc *Compact) decayStaleFacts(ctx context.Context, threadID uuid.UUID, now 
 			Confidence: newConf,
 		})
 	}
+}
+
+// embedFact — best-effort sync embed для свежеупсёртенного fact'а. Ollama
+// host выключен / embedder вернул error / SetEmbedding упал → no-op,
+// SendMessage потом recall'нёт этот fact через TopRanked legacy путь.
+// embed text формируется как "key: value" чтобы semantic recall ловил и
+// тематические запросы (по значению), и meta-вопросы («что я говорил про X»).
+func (uc *Compact) embedFact(ctx context.Context, f domain.Fact, at time.Time) {
+	if uc.Embedder == nil {
+		return
+	}
+	text := strings.TrimSpace(f.Key + ": " + f.Value)
+	if text == "" {
+		return
+	}
+	embedCtx, cancel := context.WithTimeout(ctx, factEmbedTimeout)
+	defer cancel()
+	vec, model, err := uc.Embedder.Embed(embedCtx, text)
+	if err != nil || len(vec) == 0 {
+		return
+	}
+	_ = uc.Facts.SetEmbedding(ctx, f.ID, vec, model, at)
 }
 
 func parseCompactPayload(raw string) compactPayload {

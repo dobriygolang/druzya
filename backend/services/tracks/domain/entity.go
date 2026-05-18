@@ -10,7 +10,6 @@
 // Read by:
 //   - web /atlas + /atlas/track/:slug
 //   - intelligence (track_stalled severity, step-aware recommendations)
-//   - lobby (custom solo lobbies seeded from a step's skill_keys)
 package domain
 
 import (
@@ -44,8 +43,7 @@ func (d Difficulty) IsValid() bool {
 type StepKind string
 
 const (
-	StepKindKata StepKind = "kata"
-	// Arena removed 2026-05-12 (D8) — see migration 00085. Seed-rows remapped to mock.
+	StepKindKata       StepKind = "kata"
 	StepKindMock       StepKind = "mock"
 	StepKindCodexRead  StepKind = "codex_read"
 	StepKindFocusBlock StepKind = "focus_block"
@@ -92,22 +90,20 @@ type Step struct {
 	RecommendedReading []string
 	EstimatedMinutes   int
 
-	// Phase 1a step UX flow (миграция 00050):
 	// CheckpointSkillKeys — какие skill-теги юзаются для 5-question
 	// checkpoint quiz из mock_pool. Empty = step без checkpoint (e.g.
 	// сам step — mock).
 	CheckpointSkillKeys []string
 	// ReflectionRequired — обязать reflection после core resource
 	// (auto-creates Note + auto-link на atlas-node через
-	// TaskReflectionExtract в Phase 5).
+	// TaskReflectionExtract).
 	ReflectionRequired bool
 	// GraduationMockSection — enums.Section value для optional
 	// graduation AI-mock после step. Empty = closed by checkpoint.
 	GraduationMockSection string
 }
 
-// CheckpointAttempt — Phase 2/2 step UX. Запись в step_checkpoint_attempts
-// (миграция 00056).
+// CheckpointAttempt — запись в step_checkpoint_attempts.
 type CheckpointAttempt struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID

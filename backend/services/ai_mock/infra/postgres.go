@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"druz9/ai_mock/domain"
 	ai_mockdb "druz9/ai_mock/infra/db"
@@ -22,6 +24,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// userContextCacheTTL — окно валидности кэша Users.Get. Подписка / locale
+// меняются редко (admin или billing flow); 30s срезает повторный SQL
+// каждый sendMessage без риска показать stale план дольше.
+const userContextCacheTTL = 30 * time.Second
+
+// userContextEntry — single cache row + expiry.
+type userContextEntry struct {
+	ctx       domain.UserContext
+	expiresAt time.Time
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Sessions
@@ -110,6 +123,54 @@ func (s *Sessions) UpdateStress(ctx context.Context, id uuid.UUID, profile domai
 		return fmt.Errorf("mock.Sessions.UpdateStress: %w", domain.ErrNotFound)
 	}
 	return nil
+}
+
+// ListByUser возвращает страницу архива (created_at DESC) + total для UI.
+// Используется ListSessions use-case'ом. Через raw pgx (не sqlc), чтобы не
+// расширять generated layer для одного per-user query.
+func (s *Sessions) ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]domain.Session, int, error) {
+	var total int
+	if err := s.pool.QueryRow(ctx,
+		`SELECT COUNT(*)::int FROM mock_sessions WHERE user_id = $1`,
+		sharedpg.UUID(userID),
+	).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("mock.Sessions.ListByUser: count: %w", err)
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, user_id, company_id, task_id, section, difficulty, status, duration_min,
+		       voice_mode, paired_user_id, llm_model, stress_profile, ai_report, ai_assist,
+		       running_summary, summary_model, started_at, finished_at, created_at
+		  FROM mock_sessions
+		 WHERE user_id = $1
+		 ORDER BY created_at DESC
+		 LIMIT $2 OFFSET $3`,
+		sharedpg.UUID(userID), limit, offset,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("mock.Sessions.ListByUser: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Session, 0, limit)
+	for rows.Next() {
+		var r ai_mockdb.MockSession
+		if err := rows.Scan(
+			&r.ID, &r.UserID, &r.CompanyID, &r.TaskID, &r.Section, &r.Difficulty, &r.Status,
+			&r.DurationMin, &r.VoiceMode, &r.PairedUserID, &r.LlmModel, &r.StressProfile,
+			&r.AiReport, &r.AiAssist, &r.RunningSummary, &r.SummaryModel,
+			&r.StartedAt, &r.FinishedAt, &r.CreatedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("mock.Sessions.ListByUser: scan: %w", err)
+		}
+		sess, err := sessionFromRow(r)
+		if err != nil {
+			return nil, 0, fmt.Errorf("mock.Sessions.ListByUser: map: %w", err)
+		}
+		out = append(out, sess)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("mock.Sessions.ListByUser: rows: %w", err)
+	}
+	return out, total, nil
 }
 
 // UpdateReport writes the ai_report blob.
@@ -267,23 +328,38 @@ func (c *Companies) Get(ctx context.Context, id uuid.UUID) (domain.CompanyContex
 }
 
 // Users fetches the subscription plan + user id + response locale. Model
-// preference has no storage today and falls back to default.
+// preference has no storage today and falls back to default. Get результаты
+// кэшируются in-memory на userContextCacheTTL чтобы hot SendMessage путь не
+// бил по БД на каждый ход.
 type Users struct {
-	q *ai_mockdb.Queries
+	q     *ai_mockdb.Queries
+	cache sync.Map // uuid.UUID -> userContextEntry
+	now   func() time.Time
 }
 
 // NewUsers wraps a pool.
-func NewUsers(pool *pgxpool.Pool) *Users { return &Users{q: ai_mockdb.New(pool)} }
+func NewUsers(pool *pgxpool.Pool) *Users {
+	return &Users{q: ai_mockdb.New(pool), now: time.Now}
+}
 
 // Get returns the minimal user context. Free-plan is the conservative fallback
 // when the user row is missing (e.g. brand-new user pre-onboarding). locale
 // comes from users.locale (DEFAULT 'ru') and feeds the LLM language directive
 // in domain.BuildSystemPrompt.
+//
+// Кэш на userContextCacheTTL: при cache-hit пропускаем SQL. Подписка / locale
+// меняются редко (admin или billing), 30s окно не критично; staleness
+// рассасывается на следующем cache miss.
 func (u *Users) Get(ctx context.Context, id uuid.UUID) (domain.UserContext, error) {
+	if cached, ok := u.cachedContext(id); ok {
+		return cached, nil
+	}
 	row, err := u.q.GetUserSubscriptionAndLocale(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.UserContext{ID: id, Subscription: enums.SubscriptionPlanFree, ResponseLanguage: "ru"}, nil
+			fallback := domain.UserContext{ID: id, Subscription: enums.SubscriptionPlanFree, ResponseLanguage: "ru"}
+			u.storeContext(id, fallback)
+			return fallback, nil
 		}
 		return domain.UserContext{}, fmt.Errorf("mock.Users.Get: %w", err)
 	}
@@ -295,7 +371,28 @@ func (u *Users) Get(ctx context.Context, id uuid.UUID) (domain.UserContext, erro
 	if locale != "en" {
 		locale = "ru"
 	}
-	return domain.UserContext{ID: id, Subscription: sub, ResponseLanguage: locale}, nil
+	out := domain.UserContext{ID: id, Subscription: sub, ResponseLanguage: locale}
+	u.storeContext(id, out)
+	return out, nil
+}
+
+// cachedContext возвращает кэшированный UserContext если запись не
+// expired'нула. На expiry чистит slot чтобы sync.Map не рос.
+func (u *Users) cachedContext(id uuid.UUID) (domain.UserContext, bool) {
+	v, ok := u.cache.Load(id)
+	if !ok {
+		return domain.UserContext{}, false
+	}
+	e := v.(userContextEntry)
+	if u.now().After(e.expiresAt) {
+		u.cache.Delete(id)
+		return domain.UserContext{}, false
+	}
+	return e.ctx, true
+}
+
+func (u *Users) storeContext(id uuid.UUID, c domain.UserContext) {
+	u.cache.Store(id, userContextEntry{ctx: c, expiresAt: u.now().Add(userContextCacheTTL)})
 }
 
 // ─────────────────────────────────────────────────────────────────────────

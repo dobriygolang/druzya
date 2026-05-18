@@ -255,7 +255,7 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Today: %s\n\n", in.Today.Format("2006-01-02 (Monday)"))
 
-	// Wave 15: surface bias. If the user opened a web Today, prefer
+	// surface bias. If the user opened a web Today, prefer
 	// «open atlas / codex / lingua reading» recommendation kinds. If
 	// they opened Hone, prefer focus-session-on-task. If Cue,
 	// prefer interview prep if upcoming.
@@ -270,7 +270,7 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		}
 	}
 
-	// Wave 15: 24h activity counts — coach mentions «вчера ты сделал X»
+	// 24h activity counts — coach mentions «вчера ты сделал X»
 	// as continuity signal. Counts only — no body content.
 	if hasRecentActivity(in.RecentActivity24h) {
 		sb.WriteString("RECENT ACTIVITY (last 24h — coach SHOULD mention these counts in narrative as continuity):\n")
@@ -354,7 +354,7 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		sb.WriteString(". (Don't re-suggest these topics in today's plan; coach should mention progress on them.)\n\n")
 	}
 
-	// ── DAY SHUTDOWN (Phase K Wave 15) ─────────────────────────────────
+	// ── DAY SHUTDOWN ───────────────────────────────────────────────────
 	// Вчерашняя запись end-of-day ритуала из Hone (day_shutdowns). Coach
 	// видит, что юзер сам зафиксировал как сделанное / висящее / важное
 	// на сегодня — и должен строить narrative + recommendations на этой
@@ -871,8 +871,8 @@ func writeResourceTrail(sb *strings.Builder, in domain.BriefPromptInput) {
 	sb.WriteString("\n")
 }
 
-// hasRecentActivity — Wave 15. True if any of the 24h counters is > 0,
-// so the brief synth knows whether to emit the RECENT ACTIVITY prompt block.
+// hasRecentActivity is true when any 24h counter is > 0, so the brief
+// synth knows whether to emit the RECENT ACTIVITY prompt block.
 func hasRecentActivity(r domain.RecentActivitySummary) bool {
 	return r.FocusSessionsCount > 0 ||
 		r.TasksDone > 0 ||
@@ -885,7 +885,7 @@ func hasRecentActivity(r domain.RecentActivitySummary) bool {
 
 // truncForPrompt — clip long user input для prompt блока. Сохраняет
 // читаемость (multi-line collapses в single line, hard cap по символам).
-// Используется DAY SHUTDOWN секцией (Wave 15).
+// Используется DAY SHUTDOWN секцией.
 func truncForPrompt(raw string, maxLen int) string {
 	// Replace newlines с " · " чтобы три-line shutdown не сломал prompt
 	// сетку. Coach видит «pending: foo · bar · baz» в одну строку.

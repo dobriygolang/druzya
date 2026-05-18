@@ -1,4 +1,4 @@
-// redundancy_signal.go — Phase 3.5 weekly producer.
+// redundancy_signal.go — weekly producer.
 //
 // Pattern: ≥3 finished resources с overlapping topics_covered + average
 // quality ≥ 0.85 → user уже well-covered, можно move on.

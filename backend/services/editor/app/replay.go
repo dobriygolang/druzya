@@ -12,8 +12,7 @@ import (
 
 // Replay implements GET /api/v1/editor/room/{roomId}/replay.
 //
-// Only a participant of the room may fetch its replay (bible §3.1 leakage
-// prevention).
+// Only a participant of the room may fetch its replay (leakage prevention).
 type Replay struct {
 	Rooms        domain.RoomRepo
 	Participants domain.ParticipantRepo

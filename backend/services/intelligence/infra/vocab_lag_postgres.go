@@ -1,4 +1,4 @@
-// vocab_lag_postgres.go — Wave 15 SRS vocab lag reader.
+// vocab_lag_postgres.go — SRS vocab lag reader.
 //
 // Inputs over hone_vocab_queue:
 //   - TotalCards    — count(*) WHERE user_id=$1.

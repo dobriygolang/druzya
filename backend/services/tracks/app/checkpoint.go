@@ -1,4 +1,4 @@
-// checkpoint.go — Phase 2 step UX flow UCs.
+// checkpoint.go — step UX flow UCs.
 //
 // StartCheckpoint:  юзер открывает checkpoint quiz CTA на step → UC
 //

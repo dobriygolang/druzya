@@ -1,4 +1,4 @@
-// atlas_struggle_test.go — Phase J Wave 3 / O (X5 cross-product handoff).
+// atlas_struggle_test.go — struggle-mark cross-product handoff.
 //
 // Covers emitStruggleMarks on top of the existing newTestOrchestrator
 // fixture. Each test pipes a finished pipeline through FinishPipeline

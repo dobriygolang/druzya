@@ -58,73 +58,9 @@ func (p *Postgres) GetAssignment(ctx context.Context, requesterID, assignmentID 
 	return out, nil
 }
 
-// ListByTutorStudent — tutor's full backlog for one student. Includes
-// completed AND archived; the dashboard renders status badges to
-// distinguish. Index `idx_tutor_assignments_tutor_student_active`
-// only covers active rows; for the full list we accept a non-partial
-// scan over (tutor_id, student_id) — fine, list size stays small.
-func (p *Postgres) ListByTutorStudent(ctx context.Context, tutorID, studentID uuid.UUID, limit int) ([]domain.Assignment, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
-	}
-	const q = `
-		SELECT id, tutor_id, student_id, title, body_md, due_at, created_at, completed_at, archived_at
-		FROM tutor_assignments
-		WHERE tutor_id = $1 AND student_id = $2
-		ORDER BY created_at DESC
-		LIMIT $3`
-	rows, err := p.pool.Query(ctx, q, pgUUID(tutorID), pgUUID(studentID), limit)
-	if err != nil {
-		return nil, fmt.Errorf("tutor.ListByTutorStudent: %w", err)
-	}
-	defer rows.Close()
-	out := make([]domain.Assignment, 0, 16)
-	for rows.Next() {
-		a, err := scanAssignment(rows)
-		if err != nil {
-			return nil, fmt.Errorf("tutor.ListByTutorStudent: scan: %w", err)
-		}
-		out = append(out, a)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("tutor.ListByTutorStudent: rows: %w", err)
-	}
-	return out, nil
-}
-
-// ListPendingForStudent — student-side «what to work on». Hits the
-// partial index by repeating the predicate.
-func (p *Postgres) ListPendingForStudent(ctx context.Context, studentID uuid.UUID, limit int) ([]domain.Assignment, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 25
-	}
-	const q = `
-		SELECT id, tutor_id, student_id, title, body_md, due_at, created_at, completed_at, archived_at
-		FROM tutor_assignments
-		WHERE student_id = $1 AND archived_at IS NULL AND completed_at IS NULL
-		ORDER BY due_at NULLS LAST, created_at DESC
-		LIMIT $2`
-	rows, err := p.pool.Query(ctx, q, pgUUID(studentID), limit)
-	if err != nil {
-		return nil, fmt.Errorf("tutor.ListPendingForStudent: %w", err)
-	}
-	defer rows.Close()
-	out := make([]domain.Assignment, 0, 8)
-	for rows.Next() {
-		a, err := scanAssignment(rows)
-		if err != nil {
-			return nil, fmt.Errorf("tutor.ListPendingForStudent: scan: %w", err)
-		}
-		out = append(out, a)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("tutor.ListPendingForStudent: rows: %w", err)
-	}
-	return out, nil
-}
-
-// ListByTutorStudentPaged — keyset-cursor variant of ListByTutorStudent.
-// Sort: created_at DESC, id DESC. Empty cursor = first page.
+// ListByTutorStudentPaged — tutor's full backlog for one student;
+// includes completed AND archived (dashboard renders status badges).
+// Keyset cursor over (created_at DESC, id DESC); empty cursor = first page.
 func (p *Postgres) ListByTutorStudentPaged(
 	ctx context.Context, tutorID, studentID uuid.UUID, limit int, cursor string,
 ) ([]domain.Assignment, string, error) {

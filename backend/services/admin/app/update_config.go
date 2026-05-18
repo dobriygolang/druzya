@@ -27,8 +27,7 @@ type UpdateConfigInput struct {
 //     only).
 //   - Value is validated against the stored type.
 //   - After a successful upsert the new entry is fan-out on Redis Pub/Sub so
-//     every subscriber (ai_mock / arena / season …) can refresh its in-memory
-//     snapshot sub-100 ms.
+//     every subscriber can refresh its in-memory snapshot sub-100 ms.
 //
 // STUB: a proper audit log (who changed what, when) is nice-to-have but not
 // wired for MVP — we stamp updated_at / updated_by on the row itself and rely

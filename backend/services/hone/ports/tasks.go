@@ -253,7 +253,7 @@ func (s *HoneServer) BulkAutoCategorise(
 	return nil
 }
 
-// ── Time-blocking (Phase K Wave 15) ─────────────────────────────────────
+// ── Time-blocking ────────────────────────────────────────────────────────
 
 // ScheduleTask pins a task to a calendar slot.
 func (s *HoneServer) ScheduleTask(
@@ -319,7 +319,7 @@ func (s *HoneServer) UnscheduleTask(
 	return connect.NewResponse(taskToProto(t)), nil
 }
 
-// ── Energy tracker (Phase K Wave 15) ────────────────────────────────────
+// ── Energy tracker ───────────────────────────────────────────────────────
 
 // LogEnergy creates a single energy_logs row.
 func (s *HoneServer) LogEnergy(
@@ -389,7 +389,7 @@ func (s *HoneServer) requireUser(ctx context.Context) (uuid.UUID, error) {
 	return uid, nil
 }
 
-// ── enum mappers (Phase enum-migration) ─────────────────────────────────
+// ── enum mappers ────────────────────────────────────────────────────────
 
 func taskStatusToProto(s domain.TaskStatus) pb.TaskStatus {
 	switch s {

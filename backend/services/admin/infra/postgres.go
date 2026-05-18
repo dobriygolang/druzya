@@ -2,8 +2,8 @@
 // Redis Pub/Sub broadcaster used for hot-reloading dynamic_config.
 //
 // The admin domain is the ONLY legitimate place where tasks.solution_hint
-// crosses the HTTP boundary (bible §3.14). The role check at ports is the
-// load-bearing guard — infra returns the hint verbatim.
+// crosses the HTTP boundary. The role check at ports is the load-bearing
+// guard — infra returns the hint verbatim.
 //
 // The repository implementations are split across this package by aggregate:
 //   - tasks_repo.go      Tasks (tasks + test_cases + templates + follow-ups)

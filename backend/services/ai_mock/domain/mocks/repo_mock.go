@@ -51,6 +51,22 @@ func (m *MockSessionRepo) Create(ctx context.Context, s domain.Session) (domain.
 	return ret0, ret1
 }
 
+// ListByUser mocks base method.
+func (m *MockSessionRepo) ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]domain.Session, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListByUser", ctx, userID, limit, offset)
+	ret0, _ := ret[0].([]domain.Session)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListByUser indicates an expected call of ListByUser.
+func (mr *MockSessionRepoMockRecorder) ListByUser(ctx, userID, limit, offset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByUser", reflect.TypeOf((*MockSessionRepo)(nil).ListByUser), ctx, userID, limit, offset)
+}
+
 // Create indicates an expected call of Create.
 func (mr *MockSessionRepoMockRecorder) Create(ctx, s any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()

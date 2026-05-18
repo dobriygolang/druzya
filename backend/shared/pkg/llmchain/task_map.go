@@ -4,34 +4,9 @@ import "maps"
 
 // TaskModelMap is the per-task → per-provider model catalogue. The chain
 // reads it to pick the right model on whichever provider is healthy at
-// call time. Keeping this in code (not the DB) because:
-//
-//   - It changes with model availability on each provider, not with
-//     operator choice. A deploy is the right cadence.
-//   - The chain needs it synchronously; a DB lookup per call would add
-//     latency to the hot path.
-//   - Admins still edit llm_models (user-facing list + per-model flags);
-//     this map is the chain's opinion of "best technical pick per task".
-//
-// Criteria for picks (as of 2026-Q2):
-//
-//	InsightProse     — 70B-class, Russian prose quality matters.
-//	CopilotStream    — 70B-class, reasoning + streaming. Same as insight
-//	                   but accessed via ChatStream.
-//	Reasoning        — 70B-class, analyzer / structured output tasks.
-//	CodingHint       — small + low latency. Для on-demand подсказок юзеру.
-//	CodeReview       — reasoning-heavy. Анализ submit'а.
-//	SysDesignCritique — long-context, quality > speed.
-//	Summarize        — самая дешёвая модель, фон для bg-summarizer.
-//
-// Default-карта включает ТОЛЬКО free-tier провайдеров (Groq, Cerebras,
-// Mistral La Plateforme, OpenRouter :free-lane) + Ollama как self-host
-// floor-fallback. Paid-провайдеры (DeepSeek) включаются только для
-// virtual-моделей druz9/pro и druz9/reasoning (см. tier.go).
-//
-// When a provider doesn't have a model for a task (e.g. Mistral-free
-// lacks an 8B instant option), the chain skips that provider for the
-// task. An empty string in this map means "not available here".
+// call time. Default map covers free-tier providers + Ollama floor;
+// paid providers ride only through tier.go virtual-model overrides.
+// An empty string means "not available on this provider for this task".
 type TaskModelMap map[Task]map[Provider]string
 
 // DefaultTaskModelMap is the baked-in catalogue. The chain copies from

@@ -231,7 +231,7 @@ func (r *AtlasCataloguePostgres) CreateEdge(ctx context.Context, from, to, kind 
 	switch kind {
 	case "prereq", "suggested", "crosslink":
 	case "":
-		kind = "prereq" // default — preserves Wave-9 semantics for callers that don't pass kind yet
+		kind = "prereq" // default for callers that don't pass kind yet
 	default:
 		return 0, fmt.Errorf("profile.AtlasCataloguePostgres.CreateEdge: invalid kind %q", kind)
 	}

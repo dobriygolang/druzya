@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"druz9/ai_tutor/domain"
+	sharedpg "druz9/shared/pkg/pg"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -427,6 +428,11 @@ func (p *Postgres) CountSinceCompaction(ctx context.Context, threadID uuid.UUID,
 
 // ── Facts ──────────────────────────────────────────────────────────
 
+// recencyHalfLifeDays — параметр exponential decay в RecallSemantic. Через
+// 14 дней без использования recency-компонента падает в e раз. Тонкая
+// настройка живёт здесь, не в SQL, чтобы explain plan был стабильным.
+const recencyHalfLifeDays = 14.0
+
 func (p *Postgres) Upsert(ctx context.Context, f domain.Fact) (domain.Fact, error) {
 	if f.ThreadID == uuid.Nil || f.Key == "" {
 		return domain.Fact{}, fmt.Errorf("ai_tutor.Upsert: %w", domain.ErrInvalidInput)
@@ -435,6 +441,10 @@ func (p *Postgres) Upsert(ctx context.Context, f domain.Fact) (domain.Fact, erro
 	if f.SourceEpisodeID != nil {
 		sourceArg = pgUUID(*f.SourceEpisodeID)
 	}
+	// CONFLICT поведение для embedding: если fact_value меняется, embedding
+	// устаревший → сбрасываем NULL чтобы compaction re-embed'нул. Если value
+	// тот же (decay sweep только confidence обновил), сохраняем embedding
+	// чтобы избежать лишнего вызова Ollama.
 	const q = `
 		INSERT INTO ai_tutor_facts (thread_id, fact_key, fact_value, confidence, source_episode_id, last_used_at)
 		VALUES ($1, $2, $3, $4, $5, now())
@@ -442,7 +452,19 @@ func (p *Postgres) Upsert(ctx context.Context, f domain.Fact) (domain.Fact, erro
 		    fact_value = EXCLUDED.fact_value,
 		    confidence = EXCLUDED.confidence,
 		    source_episode_id = EXCLUDED.source_episode_id,
-		    last_used_at = now()
+		    last_used_at = now(),
+		    embedding_vec = CASE
+		        WHEN ai_tutor_facts.fact_value IS DISTINCT FROM EXCLUDED.fact_value THEN NULL
+		        ELSE ai_tutor_facts.embedding_vec
+		    END,
+		    embed_model = CASE
+		        WHEN ai_tutor_facts.fact_value IS DISTINCT FROM EXCLUDED.fact_value THEN NULL
+		        ELSE ai_tutor_facts.embed_model
+		    END,
+		    embedded_at = CASE
+		        WHEN ai_tutor_facts.fact_value IS DISTINCT FROM EXCLUDED.fact_value THEN NULL
+		        ELSE ai_tutor_facts.embedded_at
+		    END
 		RETURNING id, last_used_at, created_at`
 	var (
 		id         pgtype.UUID
@@ -537,6 +559,106 @@ func (p *Postgres) Delete(ctx context.Context, threadID uuid.UUID, key string) e
 		return fmt.Errorf("ai_tutor.DeleteFact: %w", err)
 	}
 	return nil
+}
+
+// SetEmbedding обновляет embedding-колонки одной row. Best-effort: zero
+// rows affected (fact удалён между Upsert'ом и embed'ом) — не ошибка.
+func (p *Postgres) SetEmbedding(
+	ctx context.Context, factID uuid.UUID, vec []float32, model string, at time.Time,
+) error {
+	if factID == uuid.Nil {
+		return fmt.Errorf("ai_tutor.SetEmbedding: %w", domain.ErrInvalidInput)
+	}
+	vecStr := sharedpg.VectorString(vec)
+	if vecStr == "" {
+		return fmt.Errorf("ai_tutor.SetEmbedding: empty vector")
+	}
+	_, err := p.pool.Exec(ctx, `
+		UPDATE ai_tutor_facts
+		   SET embedding_vec = $2::vector,
+		       embed_model = $3,
+		       embedded_at = $4
+		 WHERE id = $1`,
+		pgUUID(factID), vecStr, model,
+		pgtype.Timestamptz{Time: at, Valid: true},
+	)
+	if err != nil {
+		return fmt.Errorf("ai_tutor.SetEmbedding: %w", err)
+	}
+	return nil
+}
+
+// RecallSemantic — гибридный recall через pgvector cosine similarity +
+// confidence + recency decay. Возвращает только rows с non-null
+// embedding_vec; ноль hits если в треде нет embed'нутых facts (cold
+// start или embedder выключен).
+//
+// SQL комбинирует три сигнала прямо в ORDER BY. ivfflat index ускоряет
+// prefilter, итоговый ranking — top-N sort in-memory. На threads <1k
+// facts это <2ms.
+func (p *Postgres) RecallSemantic(
+	ctx context.Context, threadID uuid.UUID, queryVec []float32, limit int,
+) ([]domain.Fact, error) {
+	if threadID == uuid.Nil || len(queryVec) == 0 {
+		return nil, nil
+	}
+	if limit <= 0 || limit > 50 {
+		limit = 5
+	}
+	vecStr := sharedpg.VectorString(queryVec)
+	if vecStr == "" {
+		return nil, nil
+	}
+	// 14d half-life recency. 0.55+0.30+0.15=1.0; semantic доминирует, но
+	// высокая confidence (explicit user-statement, 1.0) всё ещё подавляет
+	// случайный semantic-shot со средней similarity ~0.6.
+	const q = `
+		SELECT id, thread_id, fact_key, fact_value, confidence, source_episode_id, last_used_at, created_at
+		FROM ai_tutor_facts
+		WHERE thread_id = $1
+		  AND confidence > 0
+		  AND embedding_vec IS NOT NULL
+		ORDER BY (
+		      0.55 * (1 - (embedding_vec <=> $2::vector))
+		    + 0.30 * confidence
+		    + 0.15 * exp(-EXTRACT(EPOCH FROM (now() - last_used_at))
+		                 / ($3 * 86400.0))
+		) DESC
+		LIMIT $4`
+	rows, err := p.pool.Query(ctx, q, pgUUID(threadID), vecStr, recencyHalfLifeDays, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ai_tutor.RecallSemantic: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Fact, 0, limit)
+	for rows.Next() {
+		var (
+			f          domain.Fact
+			id, tid    pgtype.UUID
+			source     pgtype.UUID
+			lastUsedAt pgtype.Timestamptz
+			createdAt  pgtype.Timestamptz
+		)
+		if err := rows.Scan(&id, &tid, &f.Key, &f.Value, &f.Confidence,
+			&source, &lastUsedAt, &createdAt,
+		); err != nil {
+			return nil, fmt.Errorf("ai_tutor.RecallSemantic scan: %w", err)
+		}
+		f.ID = uuidFrom(id)
+		f.ThreadID = uuidFrom(tid)
+		f.SourceEpisodeID = nullableUUID(source)
+		if lastUsedAt.Valid {
+			f.LastUsedAt = lastUsedAt.Time
+		}
+		if createdAt.Valid {
+			f.CreatedAt = createdAt.Time
+		}
+		out = append(out, f)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ai_tutor.RecallSemantic: %w", err)
+	}
+	return out, nil
 }
 
 // ─── ProcessedMockGuard (idempotency for OnFailedMock subscriber) ────────

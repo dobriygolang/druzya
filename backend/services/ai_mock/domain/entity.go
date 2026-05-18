@@ -1,11 +1,6 @@
 // Package domain contains the entities, value objects and repository interfaces
-// for the ai_mock bounded context. No external framework imports here.
-//
-// Security invariant — read before editing:
-//
-//	solution_hint lives ONLY in TaskWithHint (consumed by the LLM prompt builder).
-//	Every client-facing shape (MockSessionView, MessageView, ReportView, …) MUST
-//	NOT carry that field. Breaking this invariant is an information-leak bug.
+// for the ai_mock bounded context. solution_hint MUST stay inside TaskWithHint
+// only — every client-facing shape MUST NOT carry it.
 package domain
 
 import (

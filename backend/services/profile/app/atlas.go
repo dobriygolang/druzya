@@ -13,12 +13,7 @@ import (
 
 // AtlasNode is the enriched skill-atlas node passed to ports.
 //
-// Поля SolvedCount/TotalCount/LastSolvedAt/RecommendedKata добавлены в Wave-2
-// вместе с интерактивным drawer'ом на /atlas. Они нужны фронту, чтобы
-// показать «Решено 8 из 23» + «давно не решал» + список ката-рекомендаций
-// без второго round-trip'а на /daily.
-//
-// Wave-10 (migration 00034) — PoE-passive-tree vocabulary:
+// PoE-passive-tree vocabulary:
 //   - Kind ∈ {"hub","keystone","notable","small"} — different visual grammar
 //     per kind (hub = big circle center, keystone = diamond, notable = sigil,
 //     small = simple disk).
@@ -45,12 +40,11 @@ type AtlasNode struct {
 	TotalCount      int
 	LastSolvedAt    *time.Time
 	RecommendedKata []KataRef
-	// IsUserOwned — true для узлов из user_atlas_nodes (Phase 3.1
-	// classify-flow). Frontend рендерит "your TODO" badge + drag/hide
-	// affordances per memory/project_hone.md «AI-cursor pattern».
+	// IsUserOwned — true для узлов из user_atlas_nodes (classify-flow).
+	// Frontend рендерит "your TODO" badge + drag/hide affordances.
 	IsUserOwned bool
-	// Phase 3 — per-user overlay (user_atlas_node_prefs, мig 00064).
-	// Mutually exclusive (DB CHECK). Frontend filters hidden + ribbons pinned.
+	// Per-user overlay (user_atlas_node_prefs). Mutually exclusive (DB CHECK).
+	// Frontend filters hidden + ribbons pinned.
 	Pinned bool
 	Hidden bool
 }
@@ -65,8 +59,8 @@ type KataRef struct {
 
 // AtlasEdge joins two node keys.
 //
-// Wave-10: Kind ∈ {"prereq","suggested","crosslink"} drives the rendered
-// visual grammar (thick-arrow / thin-line / dashed-faded).
+// Kind ∈ {"prereq","suggested","crosslink"} drives the rendered visual
+// grammar (thick-arrow / thin-line / dashed-faded).
 type AtlasEdge struct {
 	From string
 	To   string
@@ -97,10 +91,10 @@ type AtlasView struct {
 type GetAtlas struct {
 	Repo      domain.ProfileRepo
 	Catalogue domain.AtlasCatalogueRepo // optional; nil → static fallback
-	// UserAtlas (Phase 3.1) — user-driven atlas nodes. nil-safe: when wired,
-	// каждый GetAtlas merge'ит curated + user-owned узлы в один view.
+	// UserAtlas — user-driven atlas nodes. nil-safe: when wired, каждый
+	// GetAtlas merge'ит curated + user-owned узлы в один view.
 	UserAtlas domain.UserAtlasRepo
-	// Prefs (Phase 3) — per-user pin/hide overlay. nil-safe.
+	// Prefs — per-user pin/hide overlay. nil-safe.
 	Prefs domain.AtlasNodePrefsRepo
 }
 
@@ -114,103 +108,117 @@ func (uc *GetAtlas) Do(ctx context.Context, userID uuid.UUID) (AtlasView, error)
 	for _, n := range userNodes {
 		progressByKey[n.NodeKey] = n
 	}
-
 	cat, edges, centerKey, err := uc.loadCatalogue(ctx)
 	if err != nil {
 		return AtlasView{}, fmt.Errorf("profile.GetAtlas: catalogue: %w", err)
 	}
-
 	out := AtlasView{
 		CenterNode: centerKey,
 		Nodes:      make([]AtlasNode, 0, len(cat)),
 		Edges:      edges,
 	}
 	for _, cn := range cat {
-		user := progressByKey[cn.Key]
-		// solved = round(progress% * total / 100). Это согласуется с тем, как
-		// прогресс считается на стороне skill_nodes (каждый ката = +percent).
-		// Точное значение увидим, когда заведём `kata_progress.solved_at` в
-		// схему, пока — деривация для красивого UI.
-		solved := 0
-		if cn.TotalCount > 0 {
-			solved = (user.Progress * cn.TotalCount) / 100
-			if solved > cn.TotalCount {
-				solved = cn.TotalCount
-			}
-		}
-		// LastSolvedAt в этом use case = updated_at строки skill_nodes.
-		// Если строки нет (zero updated_at) — оставляем nil, чтобы фронт не
-		// показывал «решал в 0001-01-01». Когда заведём kata_progress.solved_at
-		// — заменим на реальный timestamp последней решённой ката из этой темы.
-		var lastSolved *time.Time
-		if !user.UpdatedAt.IsZero() {
-			t := user.UpdatedAt
-			lastSolved = &t
-		}
-		out.Nodes = append(out.Nodes, AtlasNode{
-			Key:             cn.Key,
-			Title:           cn.Title,
-			Description:     cn.Description,
-			Section:         cn.Section,
-			Kind:            cn.Kind,
-			Cluster:         cn.Cluster,
-			PosX:            cn.PosX,
-			PosY:            cn.PosY,
-			Progress:        user.Progress,
-			Unlocked:        user.UnlockedAt != nil,
-			Decaying:        user.DecayedAt != nil,
-			SolvedCount:     solved,
-			TotalCount:      cn.TotalCount,
-			LastSolvedAt:    lastSolved,
-			RecommendedKata: append([]KataRef(nil), recommendedKataByNode[cn.Key]...),
-		})
+		out.Nodes = append(out.Nodes, mergeCatalogueNode(cn, progressByKey[cn.Key]))
 	}
-	// Phase 3.1 — append user-driven atlas nodes (owned by this user).
-	// Edges из этих узлов до curated мы пока не строим — nodes лежат
-	// «облаком» в своём cluster'е (фронт авто-раскладывает unpinned).
-	if uc.UserAtlas != nil {
-		userNodes2, err := uc.UserAtlas.ListByUser(ctx, userID.String())
-		if err != nil {
-			return AtlasView{}, fmt.Errorf("profile.GetAtlas: user-atlas: %w", err)
-		}
-		for _, un := range userNodes2 {
-			out.Nodes = append(out.Nodes, AtlasNode{
-				Key:         un.NodeKey,
-				Title:       un.Title,
-				Description: un.Description,
-				Section:     enums.Section(un.Section),
-				Kind:        un.Kind,
-				Cluster:     un.Cluster,
-				// User-added nodes начинают с zero progress; юзер сам
-				// allocate'ит их через atlas/allocate flow.
-				Progress:    0,
-				Unlocked:    false,
-				Reachable:   true, // показываем сразу — это его собственная тема
-				IsUserOwned: true,
-			})
-		}
+	if err := uc.appendUserAtlas(ctx, userID, &out); err != nil {
+		return AtlasView{}, err
 	}
-	// Phase 3 — overlay pinned/hidden prefs. Best-effort: nil repo / read
-	// error → no annotation, не валим atlas.
-	if uc.Prefs != nil {
-		if prefs, err := uc.Prefs.ListByUser(ctx, userID.String()); err == nil {
-			byKey := make(map[string]domain.AtlasNodePref, len(prefs))
-			for _, p := range prefs {
-				byKey[p.NodeKey] = p
-			}
-			for i := range out.Nodes {
-				if p, ok := byKey[out.Nodes[i].Key]; ok {
-					out.Nodes[i].Pinned = p.Pinned
-					out.Nodes[i].Hidden = p.Hidden
-				}
-			}
-		}
-	}
-	// PoE allocation semantics — compute reachability after the slice is
-	// fully populated (we need the set of mastered keys + edge graph to
-	// run a BFS from the hub).
+	uc.overlayPrefs(ctx, userID, out.Nodes)
+	// Reachability needs the populated slice + edge graph; runs a BFS
+	// from the hub through mastered nodes.
 	annotateReachable(out.Nodes, out.Edges, centerKey)
 	return out, nil
+}
+
+// mergeCatalogueNode produces an AtlasNode by overlaying the user's
+// progress row (if any) on top of the catalogue entry.
+func mergeCatalogueNode(cn catalogueNode, user domain.SkillNode) AtlasNode {
+	// solved = round(progress% * total / 100). Mirrors how skill_nodes
+	// progress is computed (each kata = +percent). Replace with a real
+	// kata_progress.solved_at timestamp once that table exists.
+	solved := 0
+	if cn.TotalCount > 0 {
+		solved = (user.Progress * cn.TotalCount) / 100
+		if solved > cn.TotalCount {
+			solved = cn.TotalCount
+		}
+	}
+	// LastSolvedAt uses updated_at of skill_nodes; nil when the row is
+	// missing so the frontend doesn't render «решал в 0001-01-01».
+	var lastSolved *time.Time
+	if !user.UpdatedAt.IsZero() {
+		t := user.UpdatedAt
+		lastSolved = &t
+	}
+	return AtlasNode{
+		Key:             cn.Key,
+		Title:           cn.Title,
+		Description:     cn.Description,
+		Section:         cn.Section,
+		Kind:            cn.Kind,
+		Cluster:         cn.Cluster,
+		PosX:            cn.PosX,
+		PosY:            cn.PosY,
+		Progress:        user.Progress,
+		Unlocked:        user.UnlockedAt != nil,
+		Decaying:        user.DecayedAt != nil,
+		SolvedCount:     solved,
+		TotalCount:      cn.TotalCount,
+		LastSolvedAt:    lastSolved,
+		RecommendedKata: append([]KataRef(nil), recommendedKataByNode[cn.Key]...),
+	}
+}
+
+// appendUserAtlas tacks user-driven atlas nodes onto the view. Edges
+// from these nodes to curated are not built yet — they sit «облаком» in
+// their own cluster, auto-laid out by the frontend.
+func (uc *GetAtlas) appendUserAtlas(ctx context.Context, userID uuid.UUID, out *AtlasView) error {
+	if uc.UserAtlas == nil {
+		return nil
+	}
+	userNodes, err := uc.UserAtlas.ListByUser(ctx, userID.String())
+	if err != nil {
+		return fmt.Errorf("profile.GetAtlas: user-atlas: %w", err)
+	}
+	for _, un := range userNodes {
+		out.Nodes = append(out.Nodes, AtlasNode{
+			Key:         un.NodeKey,
+			Title:       un.Title,
+			Description: un.Description,
+			Section:     enums.Section(un.Section),
+			Kind:        un.Kind,
+			Cluster:     un.Cluster,
+			// User-added nodes start with zero progress; the user
+			// allocates them through atlas/allocate. Reachable=true so
+			// they show immediately — their own topic.
+			Reachable:   true,
+			IsUserOwned: true,
+		})
+	}
+	return nil
+}
+
+// overlayPrefs annotates each AtlasNode with pin/hide from per-user
+// prefs. Best-effort: nil repo or read error leaves nodes untouched
+// rather than failing the atlas read.
+func (uc *GetAtlas) overlayPrefs(ctx context.Context, userID uuid.UUID, nodes []AtlasNode) {
+	if uc.Prefs == nil {
+		return
+	}
+	prefs, err := uc.Prefs.ListByUser(ctx, userID.String())
+	if err != nil {
+		return
+	}
+	byKey := make(map[string]domain.AtlasNodePref, len(prefs))
+	for _, p := range prefs {
+		byKey[p.NodeKey] = p
+	}
+	for i := range nodes {
+		if p, ok := byKey[nodes[i].Key]; ok {
+			nodes[i].Pinned = p.Pinned
+			nodes[i].Hidden = p.Hidden
+		}
+	}
 }
 
 // annotateReachable runs a BFS from the hub through mastered nodes and
@@ -306,9 +314,8 @@ func (uc *GetAtlas) loadCatalogue(ctx context.Context) ([]catalogueNode, []Atlas
 			PosY:        n.PosY,
 			TotalCount:  n.TotalCount,
 		})
-		// Wave-10: hub kind replaces v1 "center". Accept both during the
-		// migration grace period — old "center" rows still resolve until
-		// 00034 backfills them to "hub".
+		// Hub kind replaces legacy "center". Accept both for backwards compat
+		// with un-backfilled rows.
 		if centerKey == "" && (n.Kind == "hub" || n.Kind == "center") {
 			centerKey = n.ID
 		}
@@ -328,9 +335,9 @@ func (uc *GetAtlas) loadCatalogue(ctx context.Context) ([]catalogueNode, []Atlas
 }
 
 // catalogueNode is the in-process shape merged with per-user progress.
-// The static `catalogueNodes` slice below mirrors the seed of migration
-// 00031 — keep them in sync if you edit one (the canonical source after
-// the migration ships is atlas_nodes; this slice exists only for tests).
+// The static `catalogueNodes` slice below mirrors the atlas_nodes seed —
+// keep them in sync. The canonical source in production is atlas_nodes;
+// this slice exists only for tests.
 type catalogueNode struct {
 	Key         string
 	Title       string
@@ -343,7 +350,7 @@ type catalogueNode struct {
 	TotalCount  int
 }
 
-// Wave-10 PoE-vocabulary catalogue (mirrors migration 00034 semantics):
+// PoE-vocabulary catalogue:
 //   - hub: starting node, always reachable
 //   - keystone: 1 per cluster, signature perk
 //   - notable: cluster milestones
@@ -365,8 +372,8 @@ var catalogueNodes = []catalogueNode{
 	{Key: "beh_star", Title: "Behavioral: STAR", Description: "Структура ответов на вопросы", Section: enums.SectionBehavioral, Kind: "notable", Cluster: "behavioral", TotalCount: 10},
 }
 
-// catalogueEdges — Wave-10: prereq edges from hub & in-cluster paths;
-// crosslink between sd/algo and go/algo to demonstrate the dashed grammar.
+// catalogueEdges — prereq edges from hub & in-cluster paths; crosslink
+// between sd/algo and go/algo to demonstrate the dashed grammar.
 var catalogueEdges = []AtlasEdge{
 	{From: "class_core", To: "algo_basics", Kind: "prereq"},
 	{From: "class_core", To: "sql_basics", Kind: "prereq"},

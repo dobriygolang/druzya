@@ -1,4 +1,4 @@
-// Package infra — LLM-backed action item extractor (Phase K Wave 16).
+// Package infra — LLM-backed action item extractor.
 //
 // Wired в honeApp.SuggestTasksFromNotes use case. Caller уже pre-filter'нул
 // заметки regex'ом и собрал ±2-line excerpts вокруг каждого match'а; этот

@@ -1,7 +1,7 @@
-// ab_experiments_repo.go — Admin Phase 2: pg adapter.
+// ab_experiments_repo.go — pg adapter.
 //
 // Minimal: List / GetByID / Create / SetStatus. Variant rollout
-// (ab_user_assignments) и stats — Phase 3 (отдельный сервис).
+// (ab_user_assignments) и stats живут в отдельном сервисе.
 package infra
 
 import (

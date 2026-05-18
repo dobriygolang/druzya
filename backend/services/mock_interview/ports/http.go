@@ -70,9 +70,9 @@ func (s *Server) Mount(r chi.Router) {
 	r.Get("/mock/attempts/{id}/canvas-draft", s.publicGetCanvasDraft)
 	r.Put("/mock/attempts/{id}/canvas-draft", s.publicSaveCanvasDraft)
 	r.Delete("/mock/attempts/{id}/canvas-draft", s.publicDeleteCanvasDraft)
-	// Wave 15 — post-debrief "разбор" replay. Chi-direct (см. http_replay.go)
-	// чтобы не тянуть proto round-trip; nested annotation payload удобнее
-	// в JSON-native.
+	// Post-debrief "разбор" replay (см. http_replay.go). Stays chi
+	// because the nested annotation payload reads more naturally in
+	// JSON-native shape than through proto round-trip.
 	r.Get("/mock/attempts/{id}/replay", s.getReplay)
 	r.Post("/mock/attempts/{id}/replay/generate", s.generateReplay)
 }

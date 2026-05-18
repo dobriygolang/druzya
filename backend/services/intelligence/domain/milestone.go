@@ -71,7 +71,7 @@ type MilestoneRepo interface {
 	LatestGenerationAt(ctx context.Context, userID, goalID uuid.UUID) (time.Time, error)
 }
 
-// ── F1 Memory expansion Phase 2 (2026-05-12) ──────────────────────────────
+// ── Memory transparency ports ─────────────────────────────────────────────
 //
 // Read + soft-delete над coach_episodes. ListMemoryEntries показывает юзеру
 // own AI memory в /profile transparency панели; DeleteMemoryEntry помечает

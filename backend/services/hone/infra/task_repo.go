@@ -348,7 +348,7 @@ func (r *TaskRepo) ListAutoCategorisable(ctx context.Context, userID uuid.UUID, 
 	return out, nil
 }
 
-// Schedule pins a task to a calendar slot. Phase K Wave 15 — time-blocking.
+// Schedule pins a task to a calendar slot.
 func (r *TaskRepo) Schedule(ctx context.Context, userID, taskID uuid.UUID, start time.Time, durationMin int) (domain.Task, error) {
 	if durationMin < 15 || durationMin > 480 {
 		return domain.Task{}, fmt.Errorf("hone.TaskRepo.Schedule: %w: duration_min out of range (15..480)", domain.ErrInvalidInput)

@@ -2,16 +2,14 @@
 // Most queries are now served by the sqlc-generated profiledb.Queries; a few
 // pieces that require dynamic SQL remain hand-rolled and are marked accordingly.
 //
-// File layout (split from a single 765-line postgres.go in WAVE-11; pruned
-// after R1 cleanup — daily_streaks / share_tokens / percentiles dropped):
+// File layout:
 //   - postgres.go           — constructor, pool wiring, top-level bundle reads.
 //   - settings_repo.go      — GetSettings / UpdateSettings.
 //   - skill_nodes_repo.go   — UpsertSkillNode + ListSkillNodes.
 //   - streaks_repo.go       — CountRecentActivity (XP/elo aggregates).
 //   - tracks_repo.go        — Track-related lookups.
 //
-// All methods stay on *Postgres — splitting is purely organisational so the
-// next reader can find the relevant SQL without scrolling 700 lines.
+// All methods stay on *Postgres — splitting is purely organisational.
 package infra
 
 import (
@@ -42,9 +40,7 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool: pool, q: profiledb.New(pool)}
 }
 
-// GetByUserID joins users + profiles + subscriptions via sqlc, then pulls
-// ratings separately. (ai_credits table dropped in 00074, AICredits field
-// returns 0 from the bundle reader.)
+// GetByUserID joins users + profiles + subscriptions via sqlc.
 func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bundle, error) {
 	row, err := p.q.GetProfileBundle(ctx, sharedpg.UUID(userID))
 	if err != nil {
@@ -62,10 +58,9 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 		DisplayName: pgText(row.DisplayName),
 		CreatedAt:   row.CreatedAt.Time,
 	}
-	// Stream D (2026-05-12) — enrich the bundle with tutor_mode_enabled.
-	// Separate query so this PR doesn't depend on regenerating the sqlc
-	// GetProfileBundle. Errors are wrapped so a missing column (migration
-	// 00091 unapplied) surfaces clearly rather than silently flipping false.
+	// Enrich the bundle with tutor_mode_enabled via a separate query so it
+	// stays decoupled from sqlc GetProfileBundle. Errors are wrapped so a
+	// missing column surfaces clearly rather than silently flipping false.
 	tutorMode, tmErr := p.GetTutorModeEnabled(ctx, userID)
 	if tmErr != nil && !errors.Is(tmErr, domain.ErrNotFound) {
 		return domain.Bundle{}, fmt.Errorf("profile.Postgres.GetByUserID: %w", tmErr)

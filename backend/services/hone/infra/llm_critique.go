@@ -110,7 +110,7 @@ type sectionBlock struct {
 // section (conservative — we never drop content).
 func splitCritiqueBySections(s string) []sectionBlock {
 	lines := strings.Split(s, "\n")
-	var out []sectionBlock
+	out := make([]sectionBlock, 0, 4)
 	var current domain.CritiqueSection
 	var buf strings.Builder
 
@@ -162,7 +162,7 @@ func emitSections(yield func(domain.CritiquePacket) error, blocks []sectionBlock
 			Delta:   b.Body,
 			Done:    i == len(blocks)-1,
 		}); err != nil {
-			return err
+			return fmt.Errorf("llm critique: %w", err)
 		}
 	}
 	return nil
